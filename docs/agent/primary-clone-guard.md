@@ -52,8 +52,8 @@ the call when the script is absent from the checkout the session started in.
 | Harness | Tracked configuration | Status |
 | --- | --- | --- |
 | omp | `.omp/hooks/pre/primary-clone-write-guard.ts` (`tool_call` handler returning `block`), loaded from `<cwd>/.omp` | **Proven live** (2026-11-12): a relative write in the primary was blocked, a worktree write allowed, the override honoured, and the hook applied inside omp subagents. The module is also executed under Node or Bun by `tests/unit/test_primary_clone_write_guard.py`. |
-| Claude Code | `.claude/settings.json` `hooks.PreToolUse`, matcher `Write\|Edit\|MultiEdit\|NotebookEdit` | Wired, not proven: the 2026-11-12 guard change could not exercise it live (authentication or quota). A 2026-11-13 probe with Claude Code 2.1.309 also failed: `claude --version` and `claude -p` printed nothing and used CPU until killed after 60 s and 200 s. No probe file was created. The configured command is run by the tests. Relies on the preflight backstop. |
-| Codex | `.codex/hooks.json` `PreToolUse`, matcher `apply_patch\|Edit\|Write` | Wired, not proven: a 2026-11-13 probe with codex-cli 0.162.1 started, ran its session hooks, then failed with `You've hit your usage limit` before any tool call, so neither the edit tool nor `apply_patch` was exercised. No probe file was created. Relies on the preflight backstop. The project layer must be trusted and each hook reviewed with `/hooks`; open upstream reports claim deny is not enforced for `apply_patch` on some builds (openai/codex#27833). |
+| Claude Code | `.claude/settings.json` `hooks.PreToolUse`, matcher `Write\|Edit\|MultiEdit\|NotebookEdit` | **Proven live** (2026-11-15, Claude Code 2.1.323): `claude -p` started in the primary clone and asked to create a file with its Write tool was refused with the guard's message, and no file was created. |
+| Codex | `.codex/hooks.json` `PreToolUse`, matcher `apply_patch\|Edit\|Write` | **Not enforced for `apply_patch`** (2026-11-15): codex-cli 0.162.1 started in the primary clone created a file there with `apply_patch`. In a scratch repository with a catch-all `PreToolUse` hook that exits 2, codex-cli 0.162.1 and 0.169.0 both ran the session, prompt and stop hooks but never called `PreToolUse` for `apply_patch`, and the file was created (openai/codex#27833, open). The guard script itself refuses the `apply_patch` payload. Codex writes in the primary clone, including new files, are caught only afterwards by the preflight backstop. |
 | Gemini CLI | `.gemini/settings.json` `hooks.BeforeTool`, matcher `write_file\|replace` | Wired, not proven: a 2026-11-13 probe with Gemini CLI 0.46.0 announced the project hook, then failed with `IneligibleTierError: This client is no longer supported for Gemini Code Assist for individuals`. No probe file was created. Relies on the preflight backstop. The workspace must be trusted and project hooks are fingerprinted. Antigravity CLI is not covered. |
 
 The instruction audit (`_project/scripts/agent_instruction_audit.py`) pins all
@@ -77,7 +77,8 @@ If a probe file ever appears in the primary clone, delete exactly that file and 
 ## The check
 
 `make agent-write-preflight` run in a worktree records a snapshot of the primary
-clone's tracked changes (each changed path with a content hash) in
+clone's changed tracked paths and its untracked, non-ignored files (each with a
+content hash) in
 `$(git rev-parse --git-dir)/primary-clone-snapshot.<hash of the session id>`,
 which Git never tracks. The session id is the one the worktree-ownership check
 uses (`PI_SESSION_ID`, `CLAUDE_CODE_SESSION_ID`, `CLAUDE_SESSION_ID`,
@@ -87,9 +88,10 @@ session are never reported and a worktree reused by a new session starts clean.
 Set `BENCHBOX_PRIMARY_SNAPSHOT_REFRESH=1` to re-record it.
 
 The explicit `make agent-write-preflight` then runs
-`scripts/check_primary_clone_clean.sh enforce` and fails when tracked paths in
-the primary clone are new or further modified since the session's snapshot,
-naming the paths and the recovery. Untracked files are ignored. With no session
+`scripts/check_primary_clone_clean.sh enforce` and fails when tracked paths or
+untracked, non-ignored files in the primary clone are new or further modified
+since the session's snapshot, naming the paths and the recovery. Gitignored
+files are never reported. With no session
 identity the check only reports. The commit hook (`agent_pre_commit_guard.sh`
 sets `BENCHBOX_PREFLIGHT_FROM_COMMIT_HOOK=1`) also only reports, so an owner's
 deliberate edit in the primary never blocks commits. After an owner's

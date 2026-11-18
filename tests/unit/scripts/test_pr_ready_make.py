@@ -23,7 +23,9 @@ def _make_pr_ready(
         shim = tmp_path / name
         shim.write_text(body)
         shim.chmod(0o755)
-    env = {k: v for k, v in os.environ.items() if k not in {"PR", "HEAD", "REPO"} and not k.startswith("PR_ARM_")}
+    env = {
+        k: v for k, v in os.environ.items() if k not in {"PR", "HEAD", "REPO", "BASE"} and not k.startswith("PR_ARM_")
+    }
     env.update({"PATH": f"{tmp_path}{os.pathsep}{env['PATH']}", "RECORD": str(tmp_path)})
     result = subprocess.run(
         ["make", "--no-print-directory", "pr-ready", *assignments],
@@ -98,3 +100,16 @@ def test_pr_ready_still_requires_a_pr_and_a_head(tmp_path: Path) -> None:
     missing_head, _, _ = _make_pr_ready(tmp_path / "b", "PR=7")
     assert missing_pr.returncode == 2 and "PR or URL is required" in missing_pr.stderr
     assert missing_head.returncode == 2 and "HEAD is required" in missing_head.stderr
+
+
+def test_pr_ready_hands_the_named_base_to_pr_arm(tmp_path: Path) -> None:
+    for name, assignments, expected in (
+        ("line", ("BASE=release/0.5.x",), "release/0.5.x"),
+        ("default", (), ""),
+    ):
+        record = tmp_path / name
+        record.mkdir()
+        result, argv, env = _make_pr_ready(record, "PR=7", f"HEAD={HEAD}", *assignments)
+        assert result.returncode == 0, (name, result.stderr)
+        assert argv == ["run", "--", "python", "scripts/pr_arm.py"], name
+        assert env["PR_ARM_BASE"] == expected, name

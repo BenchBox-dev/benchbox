@@ -40,7 +40,11 @@ _DATAFUSION_AGGREGATE_PATTERNS = (
     "first_value(",
     "last_value(",
     "stddev(",
+    "var(",
+    "var_samp(",
+    "approx_percentile_cont(",
     "approx_distinct(",
+    "array_agg(",
 )
 _TRUNCATE_UNITS = {
     "1s": "second",
@@ -51,6 +55,27 @@ _TRUNCATE_UNITS = {
     "1mo": "month",
     "1y": "year",
 }
+
+
+def _datafusion_text_has_aggregate(expr: Any) -> bool:
+    text = str(expr).lower()
+    return any(pattern in text for pattern in _DATAFUSION_AGGREGATE_PATTERNS)
+
+
+def _datafusion_expr_has_aggregate(expr: Any) -> bool:
+    if not hasattr(expr, "variant_name"):
+        return _datafusion_text_has_aggregate(expr)
+    if expr.variant_name() == "AggregateFunction":
+        return True
+    try:
+        variant = expr.to_variant()
+    except ValueError:
+        return _datafusion_text_has_aggregate(expr)
+    if hasattr(variant, "expr"):
+        return _datafusion_expr_has_aggregate(variant.expr())
+    if hasattr(variant, "left") and hasattr(variant, "right"):
+        return _datafusion_expr_has_aggregate(variant.left()) or _datafusion_expr_has_aggregate(variant.right())
+    return _datafusion_text_has_aggregate(expr)
 
 
 def _get_datafusion_type_mapping() -> dict[str, Any]:
@@ -1338,44 +1363,133 @@ class _DataFusionDeferredCumulative(UnifiedExpr):
         return UnifiedExpr(aggregate.over(window))
 
 
+_FILTERED_EXPRESSION_ERROR = (
+    "DataFusion expression filter(...) is only valid directly before an aggregate terminal "
+    "(sum, mean, avg, count, min, max, first, last, std, var, quantile, n_unique, approx_n_unique); "
+    "using it any other way would silently ignore the filter condition"
+)
+
+
 class _DataFusionDeferredFilter(UnifiedExpr):
+    _FILTERED_AGGREGATES = frozenset(
+        {
+            "sum",
+            "mean",
+            "avg",
+            "count",
+            "min",
+            "max",
+            "first",
+            "last",
+            "std",
+            "var",
+            "quantile",
+            "n_unique",
+            "approx_n_unique",
+        }
+    )
+
     def __init__(self, expr: DataFusionExpr, condition: DataFusionExpr) -> None:
         super().__init__(expr)
         self._filter_condition = condition
 
-    def _apply_filtered_agg(self, agg_func: Any) -> UnifiedExpr:
+    @property
+    def _expr(self) -> Any:
+        raise NotImplementedError(_FILTERED_EXPRESSION_ERROR)
 
-        agg_expr = agg_func(self._expr)
-        filtered = agg_expr.filter(self._filter_condition).build()
-        return UnifiedExpr(filtered)
+    @_expr.setter
+    def _expr(self, value: Any) -> None:
+        self._unfiltered_expr = value
+
+    @property
+    def native(self) -> Any:
+        raise NotImplementedError(_FILTERED_EXPRESSION_ERROR)
+
+    def __repr__(self) -> str:
+        return f"UnifiedExpr(filtered {self._unfiltered_expr})"
+
+    def _apply_filtered_agg(self, name: str, *args: Any, **kwargs: Any) -> UnifiedExpr:
+        from datafusion import functions as df_f
+
+        return UnifiedExpr(getattr(df_f, name)(self._unfiltered_expr, *args, filter=self._filter_condition, **kwargs))
 
     def sum(self) -> UnifiedExpr:
-        from datafusion import functions as df_f
-
-        return self._apply_filtered_agg(df_f.sum)
+        return self._apply_filtered_agg("sum")
 
     def count(self) -> UnifiedExpr:
-        from datafusion import functions as df_f
-
-        return self._apply_filtered_agg(df_f.count)
+        return self._apply_filtered_agg("count")
 
     def mean(self) -> UnifiedExpr:
-        from datafusion import functions as df_f
-
-        return self._apply_filtered_agg(df_f.avg)
+        return self._apply_filtered_agg("avg")
 
     def avg(self) -> UnifiedExpr:
         return self.mean()
 
     def min(self) -> UnifiedExpr:
-        from datafusion import functions as df_f
-
-        return self._apply_filtered_agg(df_f.min)
+        return self._apply_filtered_agg("min")
 
     def max(self) -> UnifiedExpr:
+        return self._apply_filtered_agg("max")
+
+    def first(self) -> UnifiedExpr:
+        return self._apply_filtered_agg("first_value")
+
+    def last(self) -> UnifiedExpr:
+        return self._apply_filtered_agg("last_value")
+
+    def std(self) -> UnifiedExpr:
+        return self._apply_filtered_agg("stddev")
+
+    def _case_filtered_value(self) -> Any:
+        from datafusion import functions as df_f, lit as df_lit
+
+        return df_f.case(self._filter_condition).when(df_lit(True), self._unfiltered_expr).end()
+
+    def var(self) -> UnifiedExpr:
         from datafusion import functions as df_f
 
-        return self._apply_filtered_agg(df_f.max)
+        return UnifiedExpr(df_f.var_samp(self._case_filtered_value()))
+
+    def quantile(self, q: float, interpolation: str = "nearest") -> UnifiedExpr:
+        from datafusion import functions as df_f
+
+        return UnifiedExpr(df_f.approx_percentile_cont(self._case_filtered_value(), q))
+
+    def n_unique(self) -> UnifiedExpr:
+        from datafusion import functions as df_f
+
+        return UnifiedExpr(df_f.count(self._unfiltered_expr, distinct=True, filter=self._filter_condition))
+
+    def approx_n_unique(self) -> UnifiedExpr:
+        return self._apply_filtered_agg("approx_distinct")
+
+
+_DEFERRED_FILTER_PASSTHROUGH = _DataFusionDeferredFilter._FILTERED_AGGREGATES
+
+
+def _reject_unfiltered_operation(name: str) -> Callable[..., Any]:
+    def reject(self: Any, *args: Any, **kwargs: Any) -> Any:
+        raise NotImplementedError(
+            f"DataFusion expression filter(...) supports only aggregate terminals "
+            f"({', '.join(sorted(_DataFusionDeferredFilter._FILTERED_AGGREGATES))}); "
+            f"'{name}' would silently ignore the filter condition"
+        )
+
+    reject.__name__ = name
+    return reject
+
+
+for _name, _member in tuple(vars(UnifiedExpr).items()):
+    if _name in _DEFERRED_FILTER_PASSTHROUGH or _name in vars(_DataFusionDeferredFilter):
+        continue
+    if _name.startswith("_") and not (_name.startswith("__") and _name.endswith("__")):
+        continue
+    if _name in {"__init__", "__repr__", "__class__", "__dict__", "__weakref__", "__module__", "__doc__"}:
+        continue
+    if isinstance(_member, property):
+        setattr(_DataFusionDeferredFilter, _name, property(_reject_unfiltered_operation(_name)))
+    elif callable(_member):
+        setattr(_DataFusionDeferredFilter, _name, _reject_unfiltered_operation(_name))
 
 
 class UnifiedWhenThen(_DataFusionDeferredOperations):
@@ -2232,7 +2346,7 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
         if not _is_datafusion_df(self._df):
             return False
 
-        return any(pattern in str(expr).lower() for expr in exprs for pattern in _DATAFUSION_AGGREGATE_PATTERNS)
+        return any(_datafusion_expr_has_aggregate(expr) for expr in exprs)
 
     @_bind_datafusion_arguments
     def with_columns(self, *exprs: Expr | list) -> UnifiedLazyFrame:

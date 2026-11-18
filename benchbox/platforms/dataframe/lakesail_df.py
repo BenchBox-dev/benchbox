@@ -47,7 +47,7 @@ class LakeSailDataFrameAdapter(PySparkDataFrameAdapter):
     ) -> None:
         if not PYSPARK_AVAILABLE:
             raise ImportError(
-                "PySpark not installed. Install with: pip install pyspark pyarrow\n"
+                'PySpark not installed. Install with: pip install "benchbox[lakesail]"  (or: uv add benchbox --extra lakesail)\n'
                 "LakeSail Sail uses the standard PySpark client via Spark Connect."
             )
 

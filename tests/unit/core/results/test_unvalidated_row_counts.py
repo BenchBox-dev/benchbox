@@ -97,3 +97,32 @@ def test_failed_validation_is_not_overwritten_by_unvalidated_queries():
     finalized = _finalize_validation_metadata(result, [])
 
     assert finalized.validation_status == "FAILED"
+
+
+def test_range_checked_pass_is_recorded_as_skipped_with_a_documented_reason():
+    normalized = normalize_row_count_validation({"status": "PASSED", "expected": None, "actual": 42}, rows_returned=42)
+
+    assert normalized["status"] == "SKIPPED"
+    assert normalized["warning"].startswith("within range:")
+
+
+def test_passed_run_whose_row_counts_were_all_skipped_is_not_reported_as_passed():
+    result = make_benchmark_results(
+        validation_status="PASSED",
+        validation_details={"row_count_matches": True},
+        query_results=[_row("1", "SKIPPED"), _row("2", "SKIPPED")],
+    )
+
+    finalized = _finalize_validation_metadata(result, [])
+
+    assert finalized.validation_status == "NOT_VALIDATED"
+
+
+def test_passed_run_with_skipped_beside_passed_row_counts_stays_passed():
+    result = make_benchmark_results(
+        validation_status="PASSED",
+        validation_details={"row_count_matches": True},
+        query_results=[_row("1", "PASSED"), _row("2", "SKIPPED")],
+    )
+
+    assert _finalize_validation_metadata(result, []).validation_status == "PASSED"

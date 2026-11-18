@@ -18,11 +18,6 @@ from .facts import FACT_TRADE_GENERATION_ALGORITHM_VERSION, FactGenerationMixin
 from .manifest import ManifestMixin
 from .monitoring import ResourceMonitoringMixin
 
-try:
-    import duckdb
-except ImportError:
-    duckdb = None
-
 
 class TPCDIDataGenerator(
     CompressionMixin,

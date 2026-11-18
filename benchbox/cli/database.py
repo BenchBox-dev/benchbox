@@ -342,6 +342,7 @@ class DatabaseManager:
         deployment_selector: str | None = None,
         gateway_selector: str | None = None,
         explicit_option_keys: Iterable[str] | None = None,
+        allow_driver_install: bool = True,
     ) -> DatabaseConfig:
 
         platform_lower = platform.lower()
@@ -354,11 +355,7 @@ class DatabaseManager:
             },
         )
 
-        defaults = {
-            name: value
-            for name, value in PlatformHookRegistry.get_default_options(platform_lower).items()
-            if value is not None
-        }
+        defaults = PlatformHookRegistry.get_applied_default_options(platform_lower)
         options = defaults
         if platform_options:
             options = {**defaults, **platform_options}
@@ -391,6 +388,7 @@ class DatabaseManager:
                 requested_version=driver_version,
                 auto_install=auto_install,
                 install_hint=platform_info.installation_command if platform_info else None,
+                allow_install=allow_driver_install,
             )
             config.driver_version = resolution.requested or driver_version
             config.driver_version_resolved = resolution.resolved

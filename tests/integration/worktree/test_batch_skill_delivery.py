@@ -15,12 +15,12 @@ pytestmark = [pytest.mark.integration, pytest.mark.medium]
 ROOT = Path(__file__).resolve().parents[3]
 
 
-DELIVERY_CATALOG_REV = "a315616052bd80c05928d3fe2604a938e1f6e4ee"
-SOURCE_REV = "aebc194afd6fcd16bc99abe86b73055833aa6088"
-TRACTABLE_VERSION = "1.1.1"
+DELIVERY_CATALOG_REV = "7625613714c5fd11e15ba97f96d33ef64e88ffe6"
+SOURCE_REV = "02d14769b2373175169dfbf554f267178f51f165"
+TRACTABLE_VERSION = "1.2.0"
 SCRIPTS_PROJECT = ROOT / "_project/scripts"
 WHEEL = SCRIPTS_PROJECT / f"vendor/tractable-{TRACTABLE_VERSION}-py3-none-any.whl"
-WHEEL_SHA256 = "c09ba584c782684fca49169cfd9862d6d2bcfb0903a7fe3af39aafd23607a5f4"
+WHEEL_SHA256 = "6d1556359a8db9643c9fa8d8fb0eee99bf37e4038b4687c914aa7f4dc21a0f31"
 REQUIRED_BATCH_TOOLS = {"register_batch", "prepare", "bind_batch_pr", "abort_batch"}
 
 

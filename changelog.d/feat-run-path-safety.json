@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "A dry run never installs a package, and driver auto-install is now explicit: it prints the exact package==version before installing, and a non-interactive session refuses it with exit 6 unless BENCHBOX_DRIVER_AUTO_INSTALL=1 is set.",
+      "details": [
+        "driver_auto_install=true as a platform option still installs in a terminal session, but no longer in a non-interactive one; set BENCHBOX_DRIVER_AUTO_INSTALL=1 there.",
+        "driver_version must be a valid package version such as 1.2.3; anything else is refused before it reaches pip or uv."
+      ]
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "A Databricks dry run no longer contacts the workspace to look for SQL warehouses, and run-official accepts --acknowledge-billable-platform like run and compare."
+    },
+    {
+      "category": "documentation",
+      "breaking": false,
+      "text": "benchbox run --help states what each --force value deletes, locally and on remote platforms, benchbox platforms install says it only prints instructions, and the billable-platform flag help lists the paths it does not guard."
+    }
+  ]
+}

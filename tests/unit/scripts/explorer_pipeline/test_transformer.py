@@ -10,7 +10,7 @@ from _project.scripts.explorer_pipeline import transformer as transformer_module
 from _project.scripts.explorer_pipeline.models import DetailResult, ManifestEntry
 from _project.scripts.explorer_pipeline.transformer import BundleTransformer
 from benchbox.core.cost.models import DeploymentMetadata, NormalizedCost
-from benchbox.validation.bundle import is_primary_bundle_file
+from benchbox.validation.bundle import KNOWN_DEFECT_REASONS, is_primary_bundle_file
 from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -1605,6 +1605,39 @@ class TestKnownDefectExclusion:
         detail = transformer.to_detail_result(bundle_file, rid)
 
         assert detail.ranking_exclusion_reason == "known_defective_data"
+
+    def test_known_defect_reason_comes_from_the_sidecar(self, bundle_file: Path) -> None:
+        self._write_sidecar(
+            bundle_file,
+            {
+                "known_defects": ["defective-variant-or-loader-wrong-result"],
+                "known_defect_reason": "Generated before the scale correction.",
+            },
+        )
+        transformer = BundleTransformer()
+        entry = transformer.to_manifest_entry(bundle_file)
+        detail = transformer.to_detail_result(bundle_file, transformer.result_id_from_bundle(bundle_file))
+
+        assert entry.known_defect_reason == "Generated before the scale correction."
+        assert detail.known_defect_reason == "Generated before the scale correction."
+
+    def test_known_defect_reason_defaults_from_the_defect_id(self, bundle_file: Path) -> None:
+        self._write_sidecar(bundle_file, {"known_defects": ["defective-macdbgen-addresses"]})
+        entry = BundleTransformer().to_manifest_entry(bundle_file)
+
+        assert entry.known_defect_reason == KNOWN_DEFECT_REASONS["defective-macdbgen-addresses"]
+
+    def test_unlisted_defect_id_has_no_reason(self, bundle_file: Path) -> None:
+        self._write_sidecar(bundle_file, {"known_defects": ["future-defect"]})
+        entry = BundleTransformer().to_manifest_entry(bundle_file)
+
+        assert entry.ranking_exclusion_reason == "known_defective_data"
+        assert entry.known_defect_reason is None
+
+    def test_no_known_defect_means_no_reason(self, bundle_file: Path) -> None:
+        self._write_sidecar(bundle_file, {"result_source": "internal"})
+
+        assert BundleTransformer().to_manifest_entry(bundle_file).known_defect_reason is None
 
     def test_unlisted_defect_id_still_excludes(self, bundle_file: Path) -> None:
         self._write_sidecar(bundle_file, {"known_defects": ["future-defect"]})

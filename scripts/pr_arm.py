@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import re
@@ -17,6 +18,7 @@ from typing import Any, NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ci_text_edit_verdict
+import pr_base
 import pr_landing
 import pr_stale_base
 import theseus_cli
@@ -27,21 +29,93 @@ CLI_DESCRIPTION = "Arm a pull request for its exact head after a live check that
 HOLD_LABEL = pr_landing.HOLD_LABEL
 REPOSITORY = "BenchBox-dev/benchbox"
 BASE_BRANCH = "develop"
-VIEW_FIELDS = "number,state,isDraft,labels,reviewDecision,headRefOid,baseRefName,headRefName,id"
+VIEW_FIELDS = (
+    "number,state,isDraft,labels,reviewDecision,headRefOid,baseRefName,headRefName,id,mergeable,mergeStateStatus"
+)
 
 BASELINE_DIRECTORY = "tests/fixtures/fast_tier_baseline"
 VERDICT_ARTIFACT_PREFIX = "fast-duration-verdict"
 VERDICT_FILE = "fast-duration-verdict.json"
 PROCEEDING_VERDICTS = frozenset({"pass", "neutral", "not-applicable"})
 PRODUCER_CHECK = "core"
-WAITING_MARKERS = ("waiting for full CI run", "waiting for the placeholder re-run", "has not finished for")
+WAITING_MARKERS = (
+    "waiting for full CI run",
+    "waiting for the placeholder re-run",
+    "has not finished for",
+    "has not computed whether",
+)
+CONFLICT_EXIT = 3
+TRANSIENT_EXIT = 4
+TRANSIENT_BACKOFF_SECONDS = 30.0
+RATE_LIMIT = "GitHub rate limit"
+TRANSIENT_PATTERNS = (
+    (
+        RATE_LIMIT,
+        re.compile(r"API rate limit|secondary rate limit|rate limit exceeded|Retry-After: ?\d|HTTP 429", re.IGNORECASE),
+    ),
+    (
+        "GitHub server error",
+        re.compile(r"HTTP 5\d\d\b|\b50[0-4] (?:Bad Gateway|Service Unavailable|Gateway Time-?out)", re.I),
+    ),
+    (
+        "network error",
+        re.compile(
+            r"TLS handshake timeout|i/o timeout|timed out after \d+|Client\.Timeout|connection reset|connection refused"
+            r"|unexpected EOF|no such host|temporary failure in name resolution",
+            re.IGNORECASE,
+        ),
+    ),
+    ("tracker read unparseable", re.compile(r"cannot read tracker batch .*: unparseable output \(exit \d+\)")),
+)
+READ_FAILURE_MARKERS = (
+    "could not look up the verify-fast-duration verdict of ",
+    "could not download the verify-fast-duration verdict of ",
+    " failed (exit ",
+)
 WAIT_INTERVAL_SECONDS = 180.0
 ALREADY_CLEAN = "clean status"
 WAIT_MAX_MINUTES = 120
 
 _last_outcome = ""
+_last_reasons: tuple[str, ...] = ()
+_last_head = ""
+_last_transient_kind = ""
 
 Runner = Callable[[list[str]], tuple[int, str]]
+
+WRITE_FLAGS = frozenset({"-X", "--method", "-f", "-F", "--field", "--raw-field", "--input"})
+PINNED_REF_RE = re.compile(r"[?&]ref=[0-9a-f]{40}(?:&|$)")
+NAMED_RUN_RE = re.compile(r"waiting for (?:full CI run|the placeholder re-run of CI run) (\d+)")
+CORE_PENDING = f"the {PRODUCER_CHECK} job that records it has not finished for "
+OPEN_RUN_STATUSES = frozenset({"queued", "in_progress", "waiting", "pending", "requested"})
+
+
+class AttemptReads:
+    def __init__(self, run: Runner) -> None:
+        self._run = run
+        self._attempt: dict[tuple[str, ...], tuple[int, str]] = {}
+        self._pinned: dict[tuple[str, ...], tuple[int, str]] = {}
+
+    @classmethod
+    def around(cls, run: Runner) -> AttemptReads:
+        return run if isinstance(run, AttemptReads) else cls(run)
+
+    def start_attempt(self) -> AttemptReads:
+        self._attempt = {}
+        return self
+
+    def __call__(self, cmd: list[str]) -> tuple[int, str]:
+        if cmd[:2] != ["gh", "api"] or "graphql" in cmd or WRITE_FLAGS.intersection(cmd):
+            return self._run(cmd)
+        store = self._pinned if any(PINNED_REF_RE.search(part) for part in cmd) else self._attempt
+        key = tuple(cmd)
+        if key not in store:
+            result = self._run(cmd)
+            if result[0] != 0:
+                return result
+            store[key] = result
+        return store[key]
+
 
 CI_RUNS_JQ = r".workflow_runs[] | [.id, .display_title, .status, .conclusion, .updated_at] | @tsv"
 PLACEHOLDER_REFRESH_SECONDS = 600
@@ -327,8 +401,18 @@ def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, la
     ]
 
 
-def gate_refusals(run: Runner, repo: str, number: int, head: str, label: str = "pr-arm") -> list[str]:
-    return theseus_cli.gate_refusals(run, repo, number, head, label)
+def gate_refusals(
+    run: Runner, repo: str, number: int, head: str, label: str = "pr-arm", base: str = BASE_BRANCH
+) -> list[str]:
+    return theseus_cli.gate_refusals(run, repo, number, head, label, base)
+
+
+def _base_hint(actual: object, requested: str) -> str:
+    try:
+        pr_base.validate(str(actual))
+    except ValueError:
+        return "; the only other bases it arms are 'develop' and release/X.Y.x lines, named by BASE"
+    return f"; pass BASE={actual} to arm it" if actual != requested else ""
 
 
 def refusals(
@@ -338,14 +422,18 @@ def refusals(
     unpublished: Sequence[str],
     unresolved_threads: Sequence[dict] = (),
     hidden_failures: Sequence[str] = (),
+    base: str = BASE_BRANCH,
 ) -> list[str]:
     reasons: list[str] = []
     if view.get("state") != "OPEN":
         reasons.append(f"PR is {view.get('state')!r}, not OPEN")
     if view.get("isDraft"):
         reasons.append("PR is a draft")
-    if view.get("baseRefName") != BASE_BRANCH:
-        reasons.append(f"PR targets {view.get('baseRefName')!r}; this path arms only PRs into {BASE_BRANCH!r}")
+    if view.get("baseRefName") != base:
+        reasons.append(
+            f"PR targets {view.get('baseRefName')!r}; this path arms only PRs into {base!r}"
+            f"{_base_hint(view.get('baseRefName'), base)}"
+        )
     labels = {label.get("name") for label in view.get("labels") or []}
     if HOLD_LABEL in labels:
         reasons.append(f"durable hold label {HOLD_LABEL!r} is present; remove it deliberately to release the hold")
@@ -360,12 +448,12 @@ def refusals(
     return reasons
 
 
-def _current_branch_pr(run: Runner, repo: str) -> str:
+def _current_branch_pr(run: Runner, repo: str, base: str = BASE_BRANCH) -> str:
     code, branch = run(["git", "rev-parse", "--abbrev-ref", "HEAD"])
     if code != 0 or not branch.strip() or branch.strip() == "HEAD":
         raise pr_landing.LandingError("cannot resolve the current branch; pass PR=<number>")
     code, out = run(
-        ["gh", "pr", "list", "--repo", repo, "--head", branch.strip(), "--base", BASE_BRANCH, "--state", "open"]
+        ["gh", "pr", "list", "--repo", repo, "--head", branch.strip(), "--base", base, "--state", "open"]
         + ["--json", "number"]
     )
     if code != 0:
@@ -373,7 +461,7 @@ def _current_branch_pr(run: Runner, repo: str) -> str:
     numbers = [item["number"] for item in json.loads(out)]
     if len(numbers) != 1:
         raise pr_landing.LandingError(
-            f"expected exactly one open PR into {BASE_BRANCH!r} from {branch.strip()!r}, found {len(numbers)}; pass PR=<number>"
+            f"expected exactly one open PR into {base!r} from {branch.strip()!r}, found {len(numbers)}; pass PR=<number>"
         )
     return str(numbers[0])
 
@@ -475,17 +563,25 @@ def arm(
     suites: Callable[[Runner, str, str, str], list[str]] = suite_refusals,
     duration: Callable[[Runner, str, int, str], list[str]] = duration_verdict_refusals,
     visible: Callable[[Runner, str, str, str], list[str]] = visible_refusals,
-    gate: Callable[[Runner, str, int, str], list[str]] = gate_refusals,
+    gate: Callable[[Runner, str, int, str], list[str]] | None = None,
     batch: Callable[..., list[str]] = batch_refusals,
     require_batch: bool = False,
     discover: Callable[..., tuple[str | None, str]] | None = None,
     wait_on_pending_review: bool = False,
     stale_base: Callable[..., list[str]] | None = None,
+    base: str = BASE_BRANCH,
 ) -> int:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         return _refused(f"--repo must be owner/name, got {repo!r}", 2)
     if head is not None and not re.fullmatch(r"[0-9a-f]{40}", head):
         return _refused(f"--head must be a full lowercase commit SHA, got {head!r}", 2)
+    try:
+        base = pr_base.validate(base)
+    except ValueError as exc:
+        return _refused(str(exc), 2)
+    gate = gate or functools.partial(gate_refusals, base=base)
+    _remember_waiting((), "")
+    run = AttemptReads.around(run)
     try:
         code, out = run(["git", "rev-parse", "HEAD"])
         if code != 0:
@@ -495,20 +591,27 @@ def arm(
             return _refused(f"requested head {head[:9]} is not local HEAD {local_head[:9]}", 2)
         if pr is not None and not re.fullmatch(r"[1-9][0-9]*", pr):
             return _refused(f"--pr must be a plain PR number, got {pr!r}", 2)
-        number = pr or _current_branch_pr(run, repo)
+        number = pr or _current_branch_pr(run, repo, base)
         code, out = run(["gh", "pr", "view", number, "--repo", repo, "--json", VIEW_FIELDS])
         if code != 0:
+            cause = transient_cause(out)
+            if cause is not None:
+                return _transient_outcome(f"PR #{number}", *cause)
             return _refused(f"cannot read the pull request: {out.strip()}", 1)
         view = json.loads(out)
+        if _is_conflicting(view):
+            return _conflict_outcome(view, base)
         reasons = refusals(
             view,
             local_head,
             unpublished=unpublished(checkout),
+            base=base,
             unresolved_threads=threads(run, repo, int(view["number"])),
             hidden_failures=[
-                *suites(run, repo, BASE_BRANCH, local_head),
+                *_mergeability_reasons(view),
+                *suites(run, repo, base, local_head),
                 *(duration(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
-                *visible(run, repo, BASE_BRANCH, local_head),
+                *visible(run, repo, base, local_head),
                 *(gate(run, repo, int(view["number"]), local_head) if view.get("headRefOid") == local_head else []),
                 *(
                     batch(run, checkout, local_head, int(view["number"]), view, require_batch, discover, repo)
@@ -518,23 +621,12 @@ def arm(
             ],
         )
         if reasons:
-            for reason in reasons:
-                print(f"pr-arm: refusing to arm PR #{view['number']}: {reason}", file=sys.stderr)
-            if all(_is_waiting(reason, local_head, wait_on_pending_review) for reason in reasons):
-                return _outcome(f"waiting: PR #{view['number']} is not armed yet: {' | '.join(reasons)}", 2)
-            return _outcome(f"refused: PR #{view['number']} was not armed: {' | '.join(reasons)}", 2)
+            return _blocked(view["number"], reasons, local_head, wait_on_pending_review, "was not armed")
         stale = (stale_base or pr_stale_base.stale_base_refusals)(
-            run, repo, int(view["number"]), local_head, BASE_BRANCH, checkout
+            run, repo, int(view["number"]), local_head, base, checkout
         )
         if stale:
-            for reason in stale:
-                print(f"pr-arm: refusing to arm PR #{view['number']}: {reason}", file=sys.stderr)
-            kind = (
-                "waiting"
-                if all(_is_waiting(reason, local_head, wait_on_pending_review) for reason in stale)
-                else "refused"
-            )
-            return _outcome(f"{kind}: PR #{view['number']} is not armed yet: {' | '.join(stale)}", 2)
+            return _blocked(view["number"], stale, local_head, wait_on_pending_review, "is not armed yet")
         merge = ["gh", "pr", "merge", str(view["number"]), "--repo", repo, "--squash"]
         code, out = run([*merge, "--auto", "--match-head-commit", local_head])
         print(out.strip())
@@ -550,6 +642,9 @@ def arm(
             return _outcome(f"refused: gh pr merge exited {code} for PR #{view['number']}: {out.strip()[:200]}", code)
         return _outcome(f"armed: PR #{view['number']} at head {local_head}", 0)
     except (pr_landing.LandingError, subprocess.SubprocessError, OSError, ValueError, KeyError, TypeError) as exc:
+        cause = transient_cause(str(exc))
+        if cause is not None:
+            return _transient_outcome("the pull request", *cause)
         print(f"pr-arm: refusing, live state could not be verified: {exc}", file=sys.stderr)
         return _outcome(f"refused: live state could not be verified: {exc}", 1)
 
@@ -585,22 +680,175 @@ def trunk_gate_refusal(
         return f"the trunk state could not be read: {exc}"
 
 
+def _remember_waiting(reasons: Sequence[str], head: str) -> None:
+    global _last_reasons, _last_head
+    _last_reasons = tuple(reasons)
+    _last_head = head
+
+
+def transient_cause(text: str) -> tuple[str, str] | None:
+    for kind, pattern in TRANSIENT_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            line = next((item for item in text.splitlines() if match.group(0) in item), text)
+            return kind, line.strip()[:200]
+    return None
+
+
+def _transient_outcome(subject: str, kind: str, detail: str) -> int:
+    global _last_transient_kind
+    _last_transient_kind = kind
+    print(f"pr-arm: not arming, a read failed transiently: {kind}: {detail}", file=sys.stderr)
+    return _outcome(f"transient: {subject} is not armed yet, {kind}: {detail}", TRANSIENT_EXIT)
+
+
+def _read_failure_cause(reason: str) -> tuple[str, str] | None:
+    for marker in READ_FAILURE_MARKERS:
+        if marker in reason:
+            return transient_cause(reason.split(marker, 1)[1])
+    return None
+
+
+def _transient_reasons(number: object, reasons: Sequence[str], head: str, wait_on_pending_review: bool) -> int | None:
+    causes = [(reason, _read_failure_cause(reason)) for reason in reasons]
+    flaky = [cause for _, cause in causes if cause is not None]
+    if flaky and all(
+        cause is not None or _is_waiting(reason, head, wait_on_pending_review) for reason, cause in causes
+    ):
+        return _transient_outcome(f"PR #{number}", *flaky[0])
+    return None
+
+
+def _mergeability_reasons(view: dict) -> list[str]:
+    mergeable, state = view.get("mergeable"), view.get("mergeStateStatus")
+    if mergeable == "UNKNOWN":
+        return ["GitHub has not computed whether the PR conflicts with its base yet (mergeable UNKNOWN)"]
+    if mergeable in ("MERGEABLE", "CONFLICTING") and isinstance(state, str) and state:
+        return []
+    return [f"whether the PR conflicts with its base could not be read (mergeable={mergeable!r}, state={state!r})"]
+
+
+def _is_conflicting(view: dict) -> bool:
+    return view["mergeable"] == "CONFLICTING" or view["mergeStateStatus"] == "DIRTY"
+
+
+def _conflict_outcome(view: dict, base: str) -> int:
+    print(f"pr-arm: refusing to arm PR #{view['number']}: it conflicts with {base}", file=sys.stderr)
+    return _outcome(
+        f"conflict: PR #{view['number']} conflicts with {base} (mergeable={view['mergeable']}, "
+        f"mergeStateStatus={view['mergeStateStatus']}) so its CI cannot run; "
+        f"merge or rebase origin/{base} into the branch, push, then re-run pr-arm",
+        CONFLICT_EXIT,
+    )
+
+
+def _blocked(number: object, reasons: Sequence[str], head: str, wait_on_pending_review: bool, refused: str) -> int:
+    for reason in reasons:
+        print(f"pr-arm: refusing to arm PR #{number}: {reason}", file=sys.stderr)
+    flaky = _transient_reasons(number, reasons, head, wait_on_pending_review)
+    if flaky is not None:
+        return flaky
+    kind = "waiting" if _held(reasons, head, wait_on_pending_review) else "refused"
+    text = refused if kind == "refused" else "is not armed yet"
+    return _outcome(f"{kind}: PR #{number} {text}: {' | '.join(reasons)}", 2)
+
+
+def _held(reasons: Sequence[str], head: str, wait_on_pending_review: bool) -> bool:
+    waiting = all(_is_waiting(reason, head, wait_on_pending_review) for reason in reasons)
+    if waiting:
+        _remember_waiting(reasons, head)
+    return waiting
+
+
+def _run_status(run: Runner, repo: str, run_id: int) -> str | None:
+    code, out = run(["gh", "api", "--jq", ".status", f"repos/{repo}/actions/runs/{run_id}"])
+    return out.strip() if code == 0 else None
+
+
+def _ci_run_open(run: Runner, repo: str, head: str) -> bool:
+    code, out = run(
+        [
+            "gh",
+            "api",
+            "--jq",
+            ".workflow_runs[].status",
+            f"repos/{repo}/actions/workflows/ci.yml/runs?event=pull_request&head_sha={head}&per_page=100",
+        ]
+    )
+    return code == 0 and any(status.strip() in OPEN_RUN_STATUSES for status in out.splitlines())
+
+
+def still_blocked(run: Runner, repo: str) -> bool:
+    if not _last_reasons or not _last_head:
+        return False
+    code, out = run(["git", "rev-parse", "HEAD"])
+    if code != 0 or out.strip() != _last_head:
+        return False
+    run_ids: set[int] = set()
+    core_pending = False
+    for reason in _last_reasons:
+        named = NAMED_RUN_RE.search(reason)
+        if named is not None:
+            run_ids.add(int(named.group(1)))
+        elif CORE_PENDING in reason:
+            core_pending = True
+        else:
+            return False
+    if any(_run_status(run, repo, run_id) not in OPEN_RUN_STATUSES for run_id in sorted(run_ids)):
+        return False
+    return not core_pending or _ci_run_open(run, repo, _last_head)
+
+
+def rate_limit_reset_seconds(run: Runner = pr_landing.live_run, now: Callable[[], float] = time.time) -> float | None:
+    try:
+        code, out = run(
+            ["gh", "api", "--jq", "[.resources[] | select(.remaining == 0) | .reset] | max // empty", "rate_limit"]
+        )
+        if code != 0 or not out.strip():
+            return None
+        return float(out.strip()) - now()
+    except (pr_landing.LandingError, subprocess.SubprocessError, OSError, ValueError):
+        return None
+
+
+def _transient_pause(streak: int, reset_in: Callable[[], float | None], now: Callable[[], float]) -> tuple[float, str]:
+    pause = min(WAIT_INTERVAL_SECONDS, TRANSIENT_BACKOFF_SECONDS * 2 ** (streak - 1))
+    if _last_transient_kind != RATE_LIMIT:
+        return pause, ""
+    reset = reset_in()
+    if reset is None:
+        return pause, ""
+    stamp = datetime.fromtimestamp(now() + reset, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return max(reset + 1.0, 1.0), f"; the rate limit resets at {stamp}"
+
+
 def arm_waiting(
     attempt: Callable[[], int],
     trunk_gate: Callable[[], str | None],
     minutes: int,
     clock: Callable[[], float] = _mono_time,
     sleep: Callable[[float], None] = time.sleep,
+    blocked: Callable[[], bool] = lambda: False,
+    reset_in: Callable[[], float | None] = lambda: None,
+    now: Callable[[], float] = time.time,
 ) -> int:
     deadline = clock() + minutes * 60.0
-    while True:
-        code = attempt()
-        if not _last_outcome.startswith("waiting:"):
-            return code
+    code = attempt()
+    fresh = True
+    streak = 0
+    reset_note = ""
+    while _last_outcome.startswith(("waiting:", "transient:")):
+        transient = _last_outcome.startswith("transient:")
+        streak = streak + 1 if transient else 0
         remaining = deadline - clock()
         if remaining <= 0:
-            return _outcome(f"{_last_outcome} (WAIT={minutes} expired)", code)
-        pause = min(WAIT_INTERVAL_SECONDS, remaining)
+            if not fresh:
+                code = attempt()
+                fresh = True
+                continue
+            return _outcome(f"{_last_outcome} (WAIT={minutes} expired{reset_note})", code)
+        pause, reset_note = _transient_pause(streak, reset_in, now) if transient else (WAIT_INTERVAL_SECONDS, "")
+        pause = min(pause, remaining)
         print(
             f"pr-arm: waiting {pause:.0f}s before checking again ({remaining / 60:.0f} min of WAIT={minutes} left)",
             file=sys.stderr,
@@ -609,7 +857,22 @@ def arm_waiting(
         sleep(pause)
         refusal = trunk_gate()
         if refusal:
-            return _refused(f"stopped waiting, the trunk check refuses: {refusal}", 2)
+            cause = transient_cause(refusal)
+            if cause is None:
+                return _refused(f"stopped waiting, the trunk check refuses: {refusal}", 2)
+            code = _transient_outcome("the trunk check", *cause)
+            fresh = True
+            continue
+        if blocked():
+            print(
+                "pr-arm: what it is waiting on has not finished; the other checks are re-read when it does",
+                file=sys.stderr,
+            )
+            fresh = False
+            continue
+        code = attempt()
+        fresh = True
+    return code
 
 
 def _environment_selection(env: Mapping[str, str]) -> dict[str, Any]:
@@ -619,6 +882,7 @@ def _environment_selection(env: Mapping[str, str]) -> dict[str, Any]:
         "repo": env.get("PR_ARM_REPO") if env.get("PR_ARM_REPO_SET") == "1" else None,
         "wait": env.get("PR_ARM_WAIT") if env.get("PR_ARM_WAIT_SET") == "1" else None,
         "require_batch": env.get("PR_ARM_REQUIRE_BATCH") == "1",
+        "base": env.get("PR_ARM_BASE") or None,
     }
 
 
@@ -639,23 +903,38 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
         default=selected["require_batch"],
         help="assert that the PR is a registered batch PR",
     )
+    parser.add_argument(
+        "--base",
+        default=selected["base"],
+        help="base branch of the pull request: develop (default) or a release/X.Y.x maintenance line",
+    )
     args = parser.parse_args(argv)
     try:
         minutes = wait_minutes(args.wait_minutes)
+        base = pr_base.validate(args.base)
     except ValueError as exc:
         return _refused(str(exc), 2)
+    reads = AttemptReads(pr_landing.live_run)
 
     def attempt() -> int:
-        options: dict[str, bool] = {}
+        options: dict[str, Any] = {"run": reads.start_attempt()}
         if args.require_batch:
             options["require_batch"] = True
         if minutes is not None:
             options["wait_on_pending_review"] = True
+        if base != BASE_BRANCH:
+            options["base"] = base
         return arm(args.pr, args.head, args.repo, **options)
 
     if minutes is None:
         return attempt()
-    return arm_waiting(attempt, lambda: trunk_gate_refusal(args.pr, args.repo), minutes)
+    return arm_waiting(
+        attempt,
+        lambda: trunk_gate_refusal(args.pr, args.repo),
+        minutes,
+        blocked=lambda: still_blocked(pr_landing.live_run, args.repo),
+        reset_in=rate_limit_reset_seconds,
+    )
 
 
 if __name__ == "__main__":

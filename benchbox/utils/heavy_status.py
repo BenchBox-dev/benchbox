@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from benchbox.utils import (
     git_flood as git_flood_module,
@@ -56,6 +57,11 @@ class Orphan:
     cwd: str
 
 
+TOP_CPU_COUNT = 5
+TOP_CPU_MIN_PERCENT = 1.0
+SHELL_NAMES = frozenset({"bash", "sh", "zsh", "dash", "fish"})
+
+
 @dataclass(frozen=True)
 class SentinelState:
     running: bool
@@ -77,6 +83,8 @@ class StatusReading:
     git_flood: git_flood_module.GitFlood | None = None
     vm: linux_machine.VmAssessment | None = None
     vm_line: str | None = None
+    top_cpu: tuple[tuple[int, float, str], ...] | None = None
+    spins: tuple[Any, ...] = ()
 
 
 def _holder_age(record: str) -> float | None:
@@ -108,7 +116,9 @@ def _command_name(command: str) -> str:
 
 
 def _is_server_candidate(command: str) -> bool:
-    return _command_name(command) in SERVER_NAMES or "questdb" in command.lower()
+    return (
+        _command_name(command) in SERVER_NAMES or _command_name(command) in SHELL_NAMES or "questdb" in command.lower()
+    )
 
 
 def _in_worktree(cwd: str) -> bool:
@@ -224,6 +234,39 @@ def sentinel_log_path(environ: Mapping[str, str] | None = None) -> Path:
     return sentinel_state_dir(environ) / SENTINEL_LOG_NAME
 
 
+def orphan_spin_path(environ: Mapping[str, str] | None = None) -> Path:
+    from benchbox.utils import orphan_spin
+
+    return sentinel_state_dir(environ) / orphan_spin.ACTIVE_NAME
+
+
+def read_active_spins(
+    environ: Mapping[str, str] | None = None,
+    *,
+    processes: Callable[[list[str]], Iterable[Any]] | None = None,
+) -> tuple[Any, ...]:
+    from benchbox.utils import orphan_spin
+
+    if not read_sentinel_state(environ).running:
+        return ()
+    return tuple(orphan_spin.read_active(orphan_spin_path(environ), processes=processes))
+
+
+def _spin_block(spins: Sequence[Any], now: float | None = None) -> list[str]:
+    from benchbox.utils import orphan_spin
+
+    if not spins:
+        return []
+    lines = ["WARNING orphaned CPU-bound shells reported by the sentinel (never signalled; stopping one is your call):"]
+    for spin in spins:
+        lines.extend(orphan_spin.describe_active(spin, now))
+    return lines
+
+
+def active_spin_lines(environ: Mapping[str, str] | None = None) -> list[str]:
+    return _spin_block(read_active_spins(environ))
+
+
 def sentinel_pid_path(environ: Mapping[str, str] | None = None) -> Path:
     env = os.environ if environ is None else environ
     override = env.get(SENTINEL_PID_ENV)
@@ -329,6 +372,27 @@ def _read_vm_line(
     return None if found is None else describe_vm_footprint(found)
 
 
+def parse_top_cpu(text: str) -> tuple[tuple[int, float, str], ...]:
+    rows: list[tuple[int, float, str]] = []
+    for line in text.splitlines():
+        fields = line.split(None, 2)
+        if len(fields) < 3 or not fields[0].isdigit():
+            continue
+        try:
+            cpu = float(fields[1])
+        except ValueError:
+            continue
+        if cpu >= TOP_CPU_MIN_PERCENT:
+            rows.append((int(fields[0]), cpu, fields[2]))
+    rows.sort(key=lambda row: row[1], reverse=True)
+    return tuple(rows[:TOP_CPU_COUNT])
+
+
+def _read_top_cpu(runner: Runner) -> tuple[tuple[int, float, str], ...] | None:
+    listing = runner(["ps", "-axo", "pid=,pcpu=,command="], EXTERNAL_TIMEOUT_SECONDS)
+    return None if listing is None else parse_top_cpu(listing)
+
+
 def collect(
     environ: Mapping[str, str] | None = None,
     *,
@@ -340,18 +404,22 @@ def collect(
     git_flood_reader: Callable[[], git_flood_module.GitFlood | None] | None = None,
     vm_reader: Callable[[], linux_machine.VmAssessment | None] | None = None,
     vm_attributor: vm_footprint.VmAttributor | None = None,
+    spin_reader: Callable[[], tuple[Any, ...]] | None = None,
 ) -> StatusReading:
     path = host_lock.lock_path(environ)
     with ThreadPoolExecutor(max_workers=4) as pool:
         pressure_future = pool.submit(pressure_reader or (lambda: _read_pressure(runner, which)))
         orphan_future = pool.submit(find_orphans, runner, footprint)
+        spin_future = pool.submit(spin_reader or (lambda: read_active_spins(environ)))
         vm_future = pool.submit(vm_reader or (lambda: _read_vm(environ, runner, which)))
         top = top_reader()
+        top_cpu = _read_top_cpu(runner)
         holder = read_holder_state(path)
         waiters = host_lock.live_waiter_count(path)
         pressure = pressure_future.result()
         orphans = orphan_future.result()
         vm = vm_future.result()
+        spins = spin_future.result()
     return StatusReading(
         lock_path=path,
         holder=holder,
@@ -360,6 +428,8 @@ def collect(
         budget_gib=resource_limits.heavy_memory_budget_gib(environ),
         top=top,
         orphans=orphans,
+        top_cpu=top_cpu,
+        spins=spins,
         sentinel=read_sentinel_state(environ),
         git_flood=(git_flood_reader or (lambda: _read_git_flood(environ, footprint)))(),
         vm=vm,
@@ -418,8 +488,18 @@ def _render_top(reading: StatusReading) -> list[str]:
     return lines
 
 
+def _render_top_cpu(reading: StatusReading) -> list[str]:
+    lines = [f"top {TOP_CPU_COUNT} processes by CPU use:"]
+    if reading.top_cpu is None:
+        return [*lines, "  unmeasured"]
+    if not reading.top_cpu:
+        return [*lines, "  none above 1%"]
+    lines.extend(f"  {pid:>7}  {cpu:>6.1f}%  {command[:120]}" for pid, cpu, command in reading.top_cpu)
+    return lines
+
+
 def _render_orphans(reading: StatusReading) -> list[str]:
-    lines = ["orphaned servers (ppid 1, cwd in a BenchBox worktree):"]
+    lines = ["orphaned servers and shells (ppid 1, cwd in a BenchBox worktree):"]
     if reading.orphans is None:
         return [*lines, "  unmeasured"]
     if not reading.orphans:
@@ -429,6 +509,10 @@ def _render_orphans(reading: StatusReading) -> list[str]:
         lines.append(f"  ORPHAN pid {orphan.pid}  {size}  cwd {orphan.cwd}")
         lines.append(f"    {orphan.command[:200]}")
     return lines
+
+
+def _render_spins(reading: StatusReading, now: float | None) -> list[str]:
+    return _spin_block(reading.spins, now)
 
 
 def _render_sentinel(reading: StatusReading) -> list[str]:
@@ -471,7 +555,7 @@ def _render_git_flood(reading: StatusReading) -> list[str]:
     return lines
 
 
-def render(reading: StatusReading, environ: Mapping[str, str] | None = None) -> str:
+def render(reading: StatusReading, environ: Mapping[str, str] | None = None, *, now: float | None = None) -> str:
     sections = (
         _render_lock(reading),
         _render_pressure(reading, environ),
@@ -479,7 +563,9 @@ def render(reading: StatusReading, environ: Mapping[str, str] | None = None) -> 
         _render_vm(reading),
         _render_git_flood(reading),
         _render_top(reading),
+        _render_top_cpu(reading),
         _render_orphans(reading),
+        _render_spins(reading, now),
     )
     return "\n".join(line for section in sections for line in section)
 

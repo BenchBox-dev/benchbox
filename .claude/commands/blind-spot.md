@@ -1,30 +1,30 @@
 ---
 allowed-tools: Bash(date:*), Bash(git:*), Bash(ls:*), Bash(grep:*), Bash(wc:*), Bash(tr:*), Bash(test:*), Bash(mkdir:*), Bash(uv:*), Bash(make:*), Write, Edit, Read
-description: Capture a blind-spot audit finding as a draft in ~/.benchbox/finding-drafts/ (out-of-tree, zero-credential)
+description: Capture a blind-spot audit finding as a draft in ~/.tractable/finding-drafts/benchbox/ (out-of-tree, zero-credential)
 ---
 
 ## Context
 
 - Branch: !`git branch --show-current`
 - Date/time: !`date +%Y-%m-%d-%H%M%S`
-- Unsynced drafts: !`ls ~/.benchbox/finding-drafts/*.md 2>/dev/null | wc -l | tr -d ' '`
+- Drafts: !`ls ~/.tractable/finding-drafts/benchbox/*.md 2>/dev/null | wc -l | tr -d ' '`
 
 ## Your task
 
-Follow `docs/agent/review-protocol.md` exactly. Apply the
-defect gate `[REVIEW-DEFECT-001]` **before** anything else: a finding that
+Follow `shared-review-protocol` and its BenchBox binding `docs/agent/review-protocol.md`.
+Apply the defect gate `[REVIEW-DEFECT-001]` **before** anything else: a finding that
 materially affects correctness, performance, or security is a defect, not a
-blind spot. If the gate triggers, refuse to file and offer the user the
-TODO / inline-fix / escalation menu instead. If the gate passes:
+blind spot. If the gate triggers, refuse to file and report it as a defect
+instead. If the gate passes:
 
 1. **Pick the slug.** Derive a 3–6 word kebab-case slug capturing the
    *class*, not the *instance*. Example: "react keys collide on
    platform name" → `react-key-collision-class`. If the user gave
    nothing, ask one short clarifying question and stop.
 
-2. **Compose the path** `~/.benchbox/finding-drafts/YYYY-MM-DD-HHMMSS-<slug>.md`
+2. **Compose the path** `~/.tractable/finding-drafts/benchbox/YYYY-MM-DD-HHMMSS-<slug>.md`
    using the timestamp from the Context block above (run
-   `mkdir -p ~/.benchbox/finding-drafts` first). Drafts live outside every
+   `mkdir -p ~/.tractable/finding-drafts/benchbox` first). Drafts live outside every
    worktree — capture needs no credentials and no network, and per
    `[REVIEW-CAPTURE-001]` the draft file is the *sole* in-review write for a
    finding.
@@ -40,16 +40,15 @@ TODO / inline-fix / escalation menu instead. If the gate passes:
 
 4. **Validate**:
    ```
-   uv run --project _project/scripts -- python _project/scripts/validate_blind_spot.py ~/.benchbox/finding-drafts/<filename>
+   uv run --project _project/scripts -- python _project/scripts/validate_blind_spot.py ~/.tractable/finding-drafts/benchbox/<filename>
    ```
    If validation fails, fix the frontmatter and re-run.
 
-5. **Report** with `Recorded: ~/.benchbox/finding-drafts/<filename>.md` and
+5. **Report** with `Recorded: ~/.tractable/finding-drafts/benchbox/<filename>.md` and
    a quote of the body. **Stop there** — do not commit, do not push, do not
-   run `make pr-open`, and do not write the finding into the tracker database.
-   Per `[REVIEW-CAPTURE-001]` the draft file is local-only; syncing it into
-   the tracker (`todo finding sync`) is a separate, user-authorized landing
-   step.
+   run `make pr-open`, and do not write the finding into the tracker.
+   Per `[REVIEW-CAPTURE-001]` the draft file is local-only; landing it in the
+   tracker is a separate, user-authorized step.
 
 ## Notes
 

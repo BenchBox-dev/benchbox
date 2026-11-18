@@ -5,13 +5,17 @@ from types import SimpleNamespace
 import pytest
 
 from benchbox.core.results.comparison_modes import (
+    CONFIG_CAPTURE_CURRENT,
+    CONFIG_CAPTURE_MCP_BEFORE_PARITY,
     RUN_MODE_FIELDS,
     IncomparableModesError,
+    bundle_config_capture,
     bundle_maintenance_method,
     bundle_mode_differences,
     bundle_timing_method,
     modes_comparable,
     require_comparable_modes,
+    results_config_capture,
     results_maintenance_method,
     results_mode_differences,
     results_timing_method,
@@ -167,3 +171,40 @@ def test_stored_timing_method_defaults_to_legacy():
     assert stored_timing_method({}) == 1
     assert stored_timing_method({"timing_method": 2}) == 2
     assert stored_timing_method({"timing_method": "2"}) == 1
+
+
+def _entry_bundle(entry_point: str | None, **config: object) -> dict:
+    bundle: dict = {"run": {}, "phases": {}, "config": dict(config)}
+    if entry_point is not None:
+        bundle["execution"] = {"entry_point": entry_point}
+    return bundle
+
+
+class TestConfigCapture:
+    def test_mcp_bundle_without_recorded_compression_or_options_predates_the_parity_fix(self) -> None:
+        assert bundle_config_capture(_entry_bundle("mcp")) == CONFIG_CAPTURE_MCP_BEFORE_PARITY
+
+    @pytest.mark.parametrize(
+        "config",
+        [{"compression": {"type": "zstd"}}, {"platform_options": {"memory_limit": "8GB"}}],
+    )
+    def test_mcp_bundle_with_recorded_config_is_current(self, config: dict) -> None:
+        assert bundle_config_capture(_entry_bundle("mcp", **config)) == CONFIG_CAPTURE_CURRENT
+
+    @pytest.mark.parametrize("entry_point", ["cli", None])
+    def test_other_entry_points_are_current(self, entry_point: str | None) -> None:
+        assert bundle_config_capture(_entry_bundle(entry_point)) == CONFIG_CAPTURE_CURRENT
+
+    def test_pre_fix_mcp_bundle_is_not_comparable_with_a_cli_bundle(self) -> None:
+        differences = bundle_mode_differences(_entry_bundle("mcp"), _entry_bundle("cli", compression={"type": "zstd"}))
+
+        assert differences == ["run configuration capture differs (mcp-before-config-parity vs current)"]
+
+    def test_pre_fix_mcp_bundle_is_not_comparable_with_a_current_mcp_bundle(self) -> None:
+        assert not modes_comparable(_entry_bundle("mcp"), _entry_bundle("mcp", platform_options={"a": 1}))
+
+    def test_two_pre_fix_mcp_bundles_stay_comparable(self) -> None:
+        assert modes_comparable(_entry_bundle("mcp"), _entry_bundle("mcp"))
+
+    def test_live_results_are_current(self) -> None:
+        assert results_config_capture(SimpleNamespace()) == CONFIG_CAPTURE_CURRENT

@@ -1,0 +1,107 @@
+name: perf-regression
+
+on:
+  pull_request:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BENCHBOX_VERSION: "0.5.2"
+  BASELINE_PATH: perf/baselines/duckdb_tpch_sf001.json
+  FAIL_ON_REGRESSION: 10%
+  MIN_REGRESSION_DELTA: 7ms
+  MIN_AGGREGATE_REGRESSION_DELTA: 82ms
+
+jobs:
+  perf-regression:
+    name: DuckDB TPC-H SF=0.01 regression gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.11'
+
+      - name: Install BenchBox
+        run: python -m pip install "benchbox[duckdb]==${BENCHBOX_VERSION}"
+
+      - name: Set isolated benchmark output
+        run: echo "BENCHBOX_OUTPUT_DIR=$RUNNER_TEMP/perf-regression" >> "$GITHUB_ENV"
+
+      - name: Run DuckDB TPC-H SF=0.01 power phase
+        run: |
+          benchbox run \
+            --platform duckdb \
+            --benchmark tpch \
+            --scale 0.01 \
+            --phases power \
+            --non-interactive
+
+      - name: Locate current result file
+        id: current
+        run: |
+          results=()
+          while IFS= read -r result; do
+            results+=("$result")
+          done < <(find "$BENCHBOX_OUTPUT_DIR/results" -maxdepth 1 -name 'tpch_sf001_duckdb_sql_*.json' -print)
+          if [[ "${#results[@]}" != "1" ]]; then
+            echo "Expected one current result file, found ${#results[@]}." >&2
+            exit 1
+          fi
+          echo "path=${results[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Compare against stored baseline
+        env:
+          CURRENT_RESULT: ${{ steps.current.outputs.path }}
+        run: |
+          set +e
+          benchbox compare \
+            "$BASELINE_PATH" \
+            "$CURRENT_RESULT" \
+            --fail-on-regression "$FAIL_ON_REGRESSION" \
+            --min-regression-delta "$MIN_REGRESSION_DELTA" \
+            --min-aggregate-regression-delta "$MIN_AGGREGATE_REGRESSION_DELTA" \
+            --non-interactive
+          status=$?
+          set -e
+          case "$status" in
+            0)
+              echo "No regression beyond the per-query and aggregate floors."
+              ;;
+            3)
+              echo "::error::Performance regression: a query or the aggregate exceeded ${FAIL_ON_REGRESSION} and its floor."
+              exit 1
+              ;;
+            4)
+              echo "::error::Baseline and current result are not comparable (different variant or timing mode). Rebuild the baseline."
+              exit 1
+              ;;
+            2)
+              echo "::error::Invalid compare options: the minimum-delta options require --fail-on-regression."
+              exit 1
+              ;;
+            1)
+              echo "::error::compare failed: unreadable result file or invalid FAIL_ON_REGRESSION or minimum-delta value."
+              exit 1
+              ;;
+            *)
+              echo "::error::compare exited with unexpected status ${status}."
+              exit 1
+              ;;
+          esac
+
+      - name: Upload result artifact
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: perf-regression-result
+          path: ${{ env.BENCHBOX_OUTPUT_DIR }}/results/*.json
+          retention-days: 30

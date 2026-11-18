@@ -33,6 +33,7 @@ current_state() {
   (
     unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX
     git -C "$primary_abs" -c core.quotepath=off diff --name-only HEAD 2>/dev/null || true
+    git -C "$primary_abs" -c core.quotepath=off ls-files --others --exclude-standard 2>/dev/null || true
   ) | while IFS= read -r path; do
     [ -n "$path" ] || continue
     if [ -f "$primary_abs/$path" ]; then
@@ -42,6 +43,23 @@ current_state() {
     fi
     printf '%s\t%s\n' "$hash" "$path"
   done
+}
+
+pinned_revs() {
+  sed -n 's/^rev[[:space:]]*=[[:space:]]*\([0-9a-f]\{40\}\)[[:space:]]*$/\1/p' "$1" | sort -u
+}
+
+report_stale_agent_skills() {
+  receipt="$primary_abs/.agents/skills/skill-sync.receipt"
+  config="$top_abs/skill-sync.conf"
+  [ -f "$receipt" ] && [ -f "$config" ] || return 0
+  [ "$(pinned_revs "$receipt")" = "$(pinned_revs "$config")" ] && return 0
+  cat >&2 <<EOM
+WARNING: the primary clone's .agents/skills copy is not at the catalog revisions
+this branch pins in skill-sync.conf. Codex, Gemini and Antigravity sessions
+started in the primary clone read that copy, so they see outdated skills.
+Agents may not refresh it. Owner: run 'make skill-sync' in $primary_abs.
+EOM
 }
 
 case "$mode" in
@@ -54,6 +72,7 @@ case "$mode" in
     mv "$tmp" "$snapshot"
     ;;
   report | enforce)
+    report_stale_agent_skills
     if [ ! -f "$snapshot" ]; then
       printf 'No primary-clone snapshot at %s; run make agent-write-preflight first. Skipping primary-clone change check.\n' "$snapshot" >&2
       exit 0
@@ -66,9 +85,9 @@ case "$mode" in
       mode=report
     fi
     if [ "$mode" = enforce ]; then
-      heading="ERROR: tracked files in the primary clone changed after this worktree's snapshot."
+      heading="ERROR: files in the primary clone were added or changed after this worktree's snapshot."
     else
-      heading="WARNING: tracked files in the primary clone changed since this worktree's write preflight."
+      heading="WARNING: files in the primary clone were added or changed since this worktree's write preflight."
     fi
     cat >&2 <<EOM
 $heading
@@ -83,9 +102,10 @@ $(printf '%s\n' "$changed" | sed 's/^/    /')
 Do NOT revert, restore, or checkout them. Nothing was changed: other sessions'
 edits must not be lost.
 Recovery:
-  1. Inspect: git -C "$primary_abs" diff -- <path>
+  1. Inspect: git -C "$primary_abs" diff -- <path>   (a new untracked file has no diff; read it)
   2. If a write of yours landed there, move it into this worktree as a patch:
        git -C "$primary_abs" diff -- <path> | git -C "$top_abs" apply
+     or, for a new untracked file, copy it to the same path under $top_abs/,
      and use absolute paths under $top_abs/ from now on.
   3. Report the paths to the owner; the owner decides what happens to the
      primary clone's copy.

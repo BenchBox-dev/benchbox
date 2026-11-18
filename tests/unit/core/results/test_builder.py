@@ -863,3 +863,64 @@ class TestResultFactoryExternalFormat:
         assert config.get("table_format") == "parquet"
         assert config.get("table_format_compression") == "zstd"
         assert config.get("table_format_partition_cols") == ["region"]
+
+
+def _skipped_row_count_query(query_id: str, status: str, expected: int | None, actual: int) -> dict:
+    return normalize_query_result(
+        {
+            "query_id": query_id,
+            "status": "SUCCESS",
+            "iteration": 1,
+            "execution_time_seconds": 0.5,
+            "rows_returned": actual,
+            "row_count_validation": {
+                "status": status,
+                "expected": expected,
+                "actual": actual,
+                **({"warning": "data refreshed: base-data answers do not apply"} if status == "SKIPPED" else {}),
+            },
+        }
+    )
+
+
+def _build_with_row_count_statuses(statuses: list[str]):
+    builder = ResultBuilder(
+        benchmark=BenchmarkInfoInput(name="TPC-H", scale_factor=1.0),
+        platform=PlatformInfoInput(name="duckdb", platform_version="1.3.2"),
+    )
+    builder.add_query_results(
+        [
+            _skipped_row_count_query(str(index), status, 4 if status == "PASSED" else None, 4)
+            for index, status in enumerate(statuses, start=1)
+        ]
+    )
+    return builder.build()
+
+
+def test_skipped_row_counts_beside_passed_ones_keep_the_summary_passed_and_valid():
+    from benchbox.core.results.schema import build_result_payload
+    from benchbox.validation.bundle import ValidationResult, _validate_execution_consistency
+
+    result = _build_with_row_count_statuses(["PASSED", "SKIPPED"])
+    payload = build_result_payload(result)
+
+    assert result.validation_status == "PASSED"
+    assert payload["summary"]["validation"] == "passed"
+    validation = ValidationResult("test")
+    _validate_execution_consistency(payload, validation)
+    assert validation.ok, validation.errors
+
+
+def test_all_skipped_row_counts_are_never_summarised_as_passed():
+    from benchbox.core.results.schema import build_result_payload
+    from benchbox.validation.bundle import ValidationResult, _validate_execution_consistency
+
+    result = _build_with_row_count_statuses(["SKIPPED", "SKIPPED"])
+    payload = build_result_payload(result)
+
+    assert result.validation_status == "NOT_VALIDATED"
+    assert payload["summary"]["validation"] == "not_validated"
+    payload["summary"]["validation"] = "passed"
+    validation = ValidationResult("test")
+    _validate_execution_consistency(payload, validation)
+    assert any("every recorded row count was skipped" in error for error in validation.errors)

@@ -9,22 +9,6 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "file": 1
-   },
-   "occurrences": 1,
-   "path": ".claude/skills/benchbox/SKILL.md",
-   "rule": "agent-and-contributor-prose",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "file",
-     "target": "docs/operations/uat-framework.md"
-    }
-   ]
-  },
-  {
-   "disposition": "prose-link-pinned",
-   "kinds": {
     "unresolved": 1
    },
    "occurrences": 1,
@@ -41,36 +25,16 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "unresolved": 7
+    "unresolved": 2
    },
-   "occurrences": 7,
+   "occurrences": 2,
    "path": ".claude/skills/skill-sync.manifest",
    "rule": "agent-and-contributor-prose",
-   "target_count": 7,
+   "target_count": 2,
    "targets": [
     {
      "kind": "unresolved",
      "target": "docs/SKILL.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/adversarial.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/build.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/commit.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/create.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/review.md"
     },
     {
      "kind": "unresolved",
@@ -81,36 +45,16 @@
   {
    "disposition": "prose-link-pinned",
    "kinds": {
-    "unresolved": 7
+    "unresolved": 2
    },
-   "occurrences": 7,
+   "occurrences": 2,
    "path": ".claude/skills/skill-sync.receipt",
    "rule": "agent-and-contributor-prose",
-   "target_count": 7,
+   "target_count": 2,
    "targets": [
     {
      "kind": "unresolved",
      "target": "docs/SKILL.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/adversarial.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/build.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/commit.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/create.md"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/references/review.md"
     },
     {
      "kind": "unresolved",
@@ -1774,16 +1718,21 @@
   {
    "disposition": "wiring-updated",
    "kinds": {
+    "extra": 1,
     "root": 1
    },
-   "occurrences": 1,
+   "occurrences": 4,
    "path": "_project/scripts/preflight_targets.py",
    "rule": "project-tooling",
-   "target_count": 1,
+   "target_count": 2,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
     }
    ]
   },
@@ -2601,7 +2550,7 @@
    "targets": [
     {
      "kind": "unresolved",
-     "target": "docs/tidy-perms/todo/shared-change-framework/shared-investigation-framework/shared-review-protocol"
+     "target": "docs/todo/shared-change-framework/shared-investigation-framework/shared-review-protocol"
     }
    ]
   },
@@ -3320,13 +3269,17 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "unresolved": 1
+    "unresolved": 2
    },
-   "occurrences": 4,
+   "occurrences": 6,
    "path": "tests/unit/scripts/test_batch_integration.py",
    "rule": "test-sample-data",
-   "target_count": 1,
+   "target_count": 2,
    "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/internal/read-by-tests.md"
+    },
     {
      "kind": "unresolved",
      "target": "docs/note.md"
@@ -4020,14 +3973,20 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "extra": 1,
+    "file": 2,
     "pattern": 1,
     "unresolved": 4
    },
-   "occurrences": 10,
+   "occurrences": 14,
    "path": "tests/unit/scripts/test_preflight_targets.py",
    "rule": "test-sample-data",
-   "target_count": 5,
+   "target_count": 8,
    "targets": [
+    {
+     "kind": "file",
+     "target": "docs/README.md"
+    },
     {
      "kind": "unresolved",
      "target": "docs/guide.md"
@@ -4047,6 +4006,14 @@
     {
      "kind": "unresolved",
      "target": "docs/operations/table.tsv"
+    },
+    {
+     "kind": "file",
+     "target": "docs/publish-allowlist.txt"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
     }
    ]
   },
@@ -4351,6 +4318,22 @@
     "root": 1
    },
    "occurrences": 1,
+   "path": "tests/unit/workflows/test_ci_short_checks.py",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "root",
+     "target": "docs/"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
+    "root": 1
+   },
+   "occurrences": 1,
    "path": "tests/unit/workflows/test_ci_text_edit_skip.py",
    "rule": "test-sample-data",
    "target_count": 1,
@@ -4367,11 +4350,11 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 40,
+   "fixture-data": 41,
    "governance-stays": 11,
    "historical-record": 118,
    "lock-test": 4,
-   "prose-link-pinned": 12,
+   "prose-link-pinned": 11,
    "site-pipeline-cutover": 4,
    "wiring-updated": 34
   },
@@ -4379,14 +4362,14 @@
   "kinds": {
    "built-url": 29037,
    "dir": 163,
-   "extra": 39,
-   "file": 1381,
+   "extra": 43,
+   "file": 1382,
    "generated": 3,
    "pattern": 335,
-   "root": 202,
-   "unresolved": 2080
+   "root": 204,
+   "unresolved": 2072
   },
-  "references": 33240,
+  "references": 33239,
   "unclassified": 0
  }
 }

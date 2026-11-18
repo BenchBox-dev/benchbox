@@ -6,6 +6,7 @@ env:
   BENCHBOX_TEST_LOCK_WAIT_SECONDS: "0"
   BENCHBOX_HEAVY_ADMIT_MIN_GIB: "1.5"
   BENCHBOX_HEAVY_MIN_FREE_DISK_GIB: "5"
+  BENCHBOX_HEAVY_MAX_LOAD_RATIO: "0"
 
 on:
   pull_request:
@@ -20,16 +21,22 @@ permissions:
   pull-requests: read
 
 jobs:
-  comment-policy:
-    name: comment-policy
-    if: ${{ !(github.event.action == 'edited' && !github.event.changes.base) }}
+  short-checks:
+    name: short-checks
+    needs: ci-paths
+    if: ${{ !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     permissions:
       contents: read
       pull-requests: read
       checks: read
       actions: read
+    outputs:
+      comment-policy: ${{ steps.comment-policy.conclusion == 'success' && steps.notice-drift.conclusion == 'success' && 'success' || 'failure' }}
+      spellcheck: ${{ steps.spellcheck.conclusion || 'skipped' }}
+      results-data-check: ${{ contains(format('{0} {1} {2} {3} {4} {5}', steps.results-python.conclusion, steps.results-install.conclusion, steps.results-inventory.conclusion, steps.results-corpus.conclusion, steps.results-validator.conclusion, steps.results-tests.conclusion), 'failure') && 'failure' || steps.results-tests.conclusion == 'success' && 'success' || 'skipped' }}
+      example-validation: ${{ contains(format('{0} {1} {2} {3} {4}', steps.docs-python.conclusion, steps.docs-install.conclusion, steps.docs-validate.conclusion, steps.docs-urls.conclusion, steps.docs-generate.conclusion), 'failure') && 'failure' || steps.docs-generate.conclusion == 'success' && 'success' || 'skipped' }}
     steps:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
@@ -40,10 +47,12 @@ jobs:
           working-directory: ${{ runner.temp }}
           ignore-empty-workdir: true
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        id: checkout
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: Enforce comment and docstring policy
+        id: comment-policy
         env:
           BASE_REF: ${{ github.event.pull_request.base.sha }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -65,6 +74,7 @@ jobs:
           fi
           python -I "$RUNNER_TEMP/comment-policy-runner.py"
       - name: Enforce pinned notice drift
+        id: notice-drift
         env:
           BASE_REF: ${{ github.event.pull_request.base.sha }}
         run: |
@@ -80,6 +90,97 @@ jobs:
           fi
           git show "${BASE_REF}:scripts/check_comment_cleanup_scope.py" > "$RUNNER_TEMP/trusted_check_scope.py"
           python -I "$RUNNER_TEMP/trusted_check_scope.py" --check-drift --base "$BASE_REF"
+      - name: Install uv for the path-gated checks
+        id: uv
+        if: ${{ !cancelled() && steps.checkout.conclusion == 'success' && (needs.ci-paths.outputs.unit-docs == 'true' || needs.ci-paths.outputs.unit-results-data == 'true') }}
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - name: Run codespell
+        id: spellcheck
+        if: ${{ !cancelled() && steps.uv.conclusion == 'success' && needs.ci-paths.outputs.unit-docs == 'true' }}
+        continue-on-error: true
+        run: >-
+          uvx --from 'codespell[toml]==2.4.3' codespell
+          --ignore-words .codespell-ignore.txt
+          --skip "*.pyc,_build,*.json,*.jsonl,*.lock,*.svg,*.min.js,*.min.css,_binaries,*.tpl,*.dst,*.tbl,_sources,benchmark_runs,*.dat,*.pdf,_project,htmlcov,.venv"
+      - name: Set up Python 3.12 for results-data
+        id: results-python
+        if: ${{ !cancelled() && steps.uv.conclusion == 'success' && needs.ci-paths.outputs.unit-results-data == 'true' }}
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Install results-data dependencies
+        id: results-install
+        if: ${{ !cancelled() && steps.results-python.conclusion == 'success' }}
+        env:
+          UV_PYTHON: "3.12"
+        run: uv sync --group dev
+      - name: Corpus inventory is current
+        id: results-inventory
+        if: ${{ !cancelled() && steps.results-install.conclusion == 'success' }}
+        env:
+          UV_PYTHON: "3.12"
+        run: uv run -- python scripts/generate_corpus_inventory.py --check
+      - name: Corpus validation
+        id: results-corpus
+        if: ${{ !cancelled() && steps.results-inventory.conclusion == 'success' }}
+        env:
+          UV_PYTHON: "3.12"
+        run: uv run -- python results-data/validate_corpus.py
+      - name: Submission validator stays in sync
+        id: results-validator
+        if: ${{ !cancelled() && steps.results-corpus.conclusion == 'success' && needs.ci-paths.outputs.submission-validator-changed == 'true' }}
+        env:
+          UV_PYTHON: "3.12"
+        run: |
+          git fetch --no-tags --depth=1 origin published-results
+          git show FETCH_HEAD:.github/workflows/validate-submission.yml \
+            > /tmp/published-validate-submission.yml
+          uv run -- python scripts/check_submission_validator_sync.py \
+            --develop .github/workflows/validate-submission.yml \
+            --published /tmp/published-validate-submission.yml
+      - name: Corpus, submission, and explorer-pipeline contract tests
+        id: results-tests
+        if: ${{ !cancelled() && steps.results-corpus.conclusion == 'success' && steps.results-validator.conclusion != 'failure' }}
+        env:
+          UV_PYTHON: "3.12"
+        run: |
+          uv run -- python -m pytest -p no:cacheprovider -o addopts='' -q \
+            tests/unit/scripts/test_generate_corpus_inventory.py \
+            tests/unit/scripts/test_validate_submission.py \
+            tests/unit/scripts/explorer_pipeline \
+            tests/unit/workflows/test_corpus_trust_boundary.py \
+            tests/unit/publication \
+            tests/unit/explorer
+      - name: Set up Python 3.11 for docs
+        id: docs-python
+        if: ${{ !cancelled() && steps.uv.conclusion == 'success' && needs.ci-paths.outputs.unit-docs == 'true' }}
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.11"
+      - name: Install docs dependencies
+        id: docs-install
+        if: ${{ !cancelled() && steps.docs-python.conclusion == 'success' }}
+        env:
+          UV_PYTHON: "3.11"
+        run: uv sync --group dev
+      - name: Validate examples and docs references
+        id: docs-validate
+        if: ${{ !cancelled() && steps.docs-install.conclusion == 'success' }}
+        env:
+          UV_PYTHON: "3.11"
+        run: make docs-validate
+      - name: Check user-facing text for contributor references
+        id: docs-urls
+        if: ${{ !cancelled() && steps.docs-validate.conclusion == 'success' }}
+        env:
+          UV_PYTHON: "3.11"
+        run: uv run -- python -m pytest tests/unit/cli/test_shipped_docs_urls.py -q -p no:cacheprovider
+      - name: Generate documentation inputs
+        id: docs-generate
+        if: ${{ !cancelled() && steps.docs-urls.conclusion == 'success' }}
+        env:
+          UV_PYTHON: "3.11"
+        run: make docs-generate
 
   ci-paths:
     name: ci-paths
@@ -105,6 +206,7 @@ jobs:
       trunk-lane-coverage-needed: ${{ steps.path-flags.outputs.trunk-lane-coverage-needed }}
       estimated-runner-minutes-saved: ${{ steps.classify.outputs.estimated-runner-minutes-saved }}
       packaging-needed: ${{ steps.classify.outputs.packaging-needed }}
+      first-command-needed: ${{ steps.classify.outputs.first-command-needed }}
       framing-needed: ${{ steps.classify.outputs.framing-needed }}
       viz-needed: ${{ steps.classify.outputs.viz-needed }}
       heavy-needed: ${{ steps.heavy.outputs.heavy-needed }}
@@ -698,6 +800,11 @@ jobs:
         id: guard-oracle-coverage-map
         continue-on-error: true
         run: make oracle-coverage-map-check
+
+      - name: Result bundle schema drift check
+        id: guard-result-schema
+        continue-on-error: true
+        run: uv run -- python -m benchbox.core.results.bundle_json_schema --check
 
       - name: Pricing data drift check
         id: guard-pricing-data
@@ -1519,7 +1626,7 @@ jobs:
   package-smoke:
     name: package-smoke
     needs: ci-paths
-    if: ${{ needs.ci-paths.outputs.packaging-needed == 'true' }}
+    if: ${{ needs.ci-paths.outputs.packaging-needed == 'true' || needs.ci-paths.outputs.first-command-needed == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -1556,6 +1663,18 @@ jobs:
           uv run --isolated --no-project --with "$wheel" -- benchbox --help
           uv run --isolated --no-project --with "$wheel" -- python -c "from benchbox import TPCDSOBT; benchmark = TPCDSOBT(scale_factor=1.0); queries = benchmark.get_queries(); assert queries, 'expected OBT queries from wheel install'; assert benchmark.get_query(next(iter(queries))); print(f'TPC-DS-OBT wheel smoke: {len(queries)} queries')"
 
+      - name: Run the README first command from the built wheel
+        shell: bash
+        run: |
+          set -euo pipefail
+          wheel=$(find "$PWD/dist" -maxdepth 1 -name '*.whl' -print -quit)
+          tmpdir=$(mktemp -d)
+          cd "$tmpdir"
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python "$wheel[duckdb]"
+          .venv/bin/benchbox run --platform duckdb --benchmark tpch --scale 0.01
+          test -n "$(find benchmark_runs/results -name '*.json' -print -quit)"
+
   dependency-audit:
     name: dependency-audit
     needs: ci-paths
@@ -1587,43 +1706,6 @@ jobs:
           else
             uv run --with pip-audit -- pip-audit
           fi
-
-  results-data-check:
-    name: results-data-check
-    needs: ci-paths
-    if: ${{ needs.ci-paths.outputs.unit-results-data == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - name: Install dependencies
-        run: uv sync --group dev
-      - name: Corpus inventory is current
-        run: uv run -- python scripts/generate_corpus_inventory.py --check
-      - name: Corpus validation
-        run: uv run -- python results-data/validate_corpus.py
-      - name: Submission validator stays in sync
-        if: ${{ needs.ci-paths.outputs.submission-validator-changed == 'true' }}
-        run: |
-          git fetch --no-tags --depth=1 origin published-results
-          git show FETCH_HEAD:.github/workflows/validate-submission.yml \
-            > /tmp/published-validate-submission.yml
-          uv run -- python scripts/check_submission_validator_sync.py \
-            --develop .github/workflows/validate-submission.yml \
-            --published /tmp/published-validate-submission.yml
-      - name: Corpus, submission, and explorer-pipeline contract tests
-        run: |
-          uv run -- python -m pytest -p no:cacheprovider -o addopts='' -q \
-            tests/unit/scripts/test_generate_corpus_inventory.py \
-            tests/unit/scripts/test_validate_submission.py \
-            tests/unit/scripts/explorer_pipeline \
-            tests/unit/workflows/test_corpus_trust_boundary.py \
-            tests/unit/publication \
-            tests/unit/explorer
 
   parity-check:
     name: parity-check
@@ -1665,55 +1747,6 @@ jobs:
 
       - name: Verify public API symbols against the released wheel
         run: make api-contract-check
-
-  example-validation:
-    needs: ci-paths
-    if: ${{ needs.ci-paths.outputs.unit-docs == 'true' }}
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-        with:
-          fetch-depth: 1
-          persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
-        with:
-          python-version: "3.11"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-
-      - name: Install dependencies
-        run: uv sync --group dev
-
-      - name: Validate examples and docs references
-        run: make docs-validate
-
-      - name: Check user-facing text for contributor references
-        run: uv run -- python -m pytest tests/unit/cli/test_shipped_docs_urls.py -q -p no:cacheprovider
-
-      - name: Generate documentation inputs
-        run: make docs-generate
-
-  spellcheck:
-    needs: ci-paths
-    if: ${{ needs.ci-paths.outputs.unit-docs == 'true' }}
-    runs-on: ubuntu-latest
-    continue-on-error: true
-
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-
-      - name: Run codespell
-        run: >-
-          uvx --from 'codespell[toml]==2.4.3' codespell
-          --ignore-words .codespell-ignore.txt
-          --skip "*.pyc,_build,*.json,*.jsonl,*.lock,*.svg,*.min.js,*.min.css,_binaries,*.tpl,*.dst,*.tbl,_sources,benchmark_runs,*.dat,*.pdf,_project,htmlcov,.venv"
 
   core:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'core (text edit)' || 'core' }}
@@ -1813,7 +1846,7 @@ jobs:
             --expect tuning-liveness=${{ needs.ci-paths.outputs.tuning-paths-changed == 'true' }} \
             --expect sql-execution-evidence=${{ needs.ci-paths.outputs.sql-evidence-paths-changed == 'true' }} \
             --expect windows-tests=${{ needs.ci-paths.outputs.windows-leg-needed == 'true' }} \
-            --expect package-smoke=${{ needs.ci-paths.outputs.packaging-needed == 'true' }} \
+            --expect package-smoke=${{ needs.ci-paths.outputs.packaging-needed == 'true' || needs.ci-paths.outputs.first-command-needed == 'true' }} \
             --expect dependency-audit=${{ needs.ci-paths.outputs.packaging-needed == 'true' }} \
             --expect trunk-lane-plain=${{ needs.ci-paths.outputs.trunk-lane-plain-needed == 'true' }} \
             --expect trunk-lane-coverage=${{ needs.ci-paths.outputs.trunk-lane-coverage-needed == 'true' }} || {
@@ -1916,7 +1949,7 @@ jobs:
 
   results-data:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'results-data (text edit)' || 'results-data' }}
-    needs: [ci-paths, results-data-check]
+    needs: [ci-paths, short-checks]
     if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1942,7 +1975,7 @@ jobs:
             --unit results-data \
             --needs "$NEEDS_JSON" \
             --always ci-paths \
-            --expect results-data-check=${{ needs.ci-paths.outputs.unit-results-data == 'true' }} || {
+            --expect short-checks.results-data-check=${{ needs.ci-paths.outputs.unit-results-data == 'true' }} || {
             rc=$?
             if [ "$rc" -eq 3 ]; then
               echo "superseded=true" >> "$GITHUB_OUTPUT"
@@ -1961,7 +1994,7 @@ jobs:
 
   docs:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'docs (text edit)' || 'docs' }}
-    needs: [ci-paths, example-validation, spellcheck]
+    needs: [ci-paths, short-checks]
     if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1987,8 +2020,8 @@ jobs:
             --unit docs \
             --needs "$NEEDS_JSON" \
             --always ci-paths \
-            --expect example-validation=${{ needs.ci-paths.outputs.unit-docs == 'true' }} \
-            --expect spellcheck=${{ needs.ci-paths.outputs.unit-docs == 'true' }} || {
+            --expect short-checks.example-validation=${{ needs.ci-paths.outputs.unit-docs == 'true' }} \
+            --expect short-checks.spellcheck=${{ needs.ci-paths.outputs.unit-docs == 'true' }} || {
             rc=$?
             if [ "$rc" -eq 3 ]; then
               echo "superseded=true" >> "$GITHUB_OUTPUT"
@@ -2007,7 +2040,7 @@ jobs:
 
   tooling:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'tooling (text edit)' || 'tooling' }}
-    needs: [ci-paths, content-guard, skill-integrity, audit-sha, comment-policy]
+    needs: [ci-paths, content-guard, skill-integrity, audit-sha, short-checks]
     if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -2033,7 +2066,7 @@ jobs:
             --unit tooling \
             --needs "$NEEDS_JSON" \
             --always ci-paths \
-            --always comment-policy \
+            --always short-checks.comment-policy \
             --expect content-guard=${{ needs.ci-paths.outputs.content-guard-needed == 'true' }} \
             --expect skill-integrity=${{ needs.ci-paths.outputs.skill-integrity-needed == 'true' }} \
             --expect audit-sha=${{ needs.ci-paths.outputs.audit-paths-changed == 'true' }} || {

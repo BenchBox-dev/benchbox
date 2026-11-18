@@ -82,6 +82,7 @@ def _is_engine_receipt_native_path(key_path: tuple[str, ...]) -> bool:
 _OPTION_SOURCE_LABELS = frozenset(
     {
         "registered_default",
+        "applied_defaults",
         "saved_config",
         "environment_variable",
         "cli_option",

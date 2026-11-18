@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed the official-run gate staying silent under --quiet: every refusal now prints its reason, and nightly throughput cells run the power phase the gate requires."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed result export failing when a row count inside its loose tolerance was recorded as an exact pass; it is now recorded as skipped with the reference count."
+    }
+  ]
+}

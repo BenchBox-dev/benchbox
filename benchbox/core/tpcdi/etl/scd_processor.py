@@ -25,6 +25,10 @@ HISTORY_TRACKING_TABLES = frozenset({"DimAccount", "DimBroker", "DimCompany", "D
 _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _PARAMETER_CHUNK = 500
 _SAVEPOINT_NAME = "benchbox_scd_changes"
+_NO_SAVEPOINT_MESSAGE = (
+    "Connection is in a caller-owned transaction without SAVEPOINT support; "
+    "the SCD changes cannot be applied atomically"
+)
 
 
 def _validated_identifier(name: str) -> str:
@@ -636,10 +640,12 @@ class EnhancedSCDType2Processor:
             raise ValueError(f"Table {table_name!r} is not a TPC-DI history-tracking dimension")
         return table_name
 
+    def _driver_reports_transaction(self) -> bool:
+        return isinstance(getattr(self.connection, "in_transaction", None), bool)
+
     def _caller_owns_transaction(self) -> bool:
-        in_transaction = getattr(self.connection, "in_transaction", None)
-        if isinstance(in_transaction, bool):
-            return in_transaction
+        if self._driver_reports_transaction():
+            return bool(self.connection.in_transaction)
         if self.dialect != "duckdb":
             return False
         try:
@@ -652,13 +658,12 @@ class EnhancedSCDType2Processor:
     @contextmanager
     def _transaction(self) -> Iterator[None]:
         if self._caller_owns_transaction():
+            if self.dialect == "duckdb" and not self._driver_reports_transaction():
+                raise RuntimeError(_NO_SAVEPOINT_MESSAGE)
             try:
                 self.connection.execute(f"SAVEPOINT {_SAVEPOINT_NAME}")
             except Exception as error:
-                raise RuntimeError(
-                    "Connection is in a caller-owned transaction without SAVEPOINT support; "
-                    "the SCD changes cannot be applied atomically"
-                ) from error
+                raise RuntimeError(_NO_SAVEPOINT_MESSAGE) from error
             try:
                 yield
             except BaseException:

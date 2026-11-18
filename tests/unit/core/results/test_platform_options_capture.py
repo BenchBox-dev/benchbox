@@ -50,14 +50,14 @@ def test_platform_options_capture_merges_values_and_records_sources() -> None:
     }
     assert sources == {
         "warehouse": "cli_option",
-        "region": "saved_config",
-        "cache_enabled": "saved_config",
-        "access_token": "saved_config",
+        "region": "applied_defaults",
+        "cache_enabled": "applied_defaults",
+        "access_token": "applied_defaults",
         "password": "cli_option",
     }
 
 
-def test_registered_default_does_not_overwrite_saved_config_provenance() -> None:
+def test_registered_default_does_not_overwrite_applied_defaults_provenance() -> None:
     values, sources = build_platform_options_capture(
         requested_options={"foo": "bar"},
         requested_sources={"foo": "registered_default"},
@@ -65,7 +65,7 @@ def test_registered_default_does_not_overwrite_saved_config_provenance() -> None
     )
 
     assert values == {"foo": "bar"}
-    assert sources == {"foo": "saved_config"}
+    assert sources == {"foo": "applied_defaults"}
 
 
 def test_registered_default_recorded_when_no_saved_value() -> None:
@@ -366,9 +366,9 @@ def test_lifecycle_run_config_persists_sanitized_platform_options_with_provenanc
     }
     assert run_config.platform_option_sources == {
         "warehouse": "cli_option",
-        "region": "saved_config",
-        "warehouse_size": "saved_config",
-        "access_token": "saved_config",
+        "region": "applied_defaults",
+        "warehouse_size": "applied_defaults",
+        "access_token": "applied_defaults",
         "password": "cli_option",
     }
 

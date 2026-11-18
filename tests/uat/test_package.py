@@ -280,3 +280,19 @@ def test_package_local_states_stage_through_the_maintainer_publish_command(tmp_p
         warn=lambda _msg: None,
     )
     assert result.invocations[0][:3] == ("benchbox", "publish", "run")
+
+
+def test_package_publish_runs_with_the_maintainer_label_opt_in(tmp_path: Path):
+    import os
+
+    cfg = validate_config({"name": "x", "package": {"submit_terminal_state": "local-stage"}})
+    seen: list[str | None] = []
+
+    def runner(argv, check=False):
+        seen.append(os.environ.get("BENCHBOX_ALLOW_MAINTAINER_LABEL"))
+        return Mock(returncode=0, args=argv)
+
+    package.run_package(cfg, result_paths=[tmp_path / "r.json"], submissions_dir=tmp_path / "subs", runner=runner)
+
+    assert seen == ["1"]
+    assert os.environ.get("BENCHBOX_ALLOW_MAINTAINER_LABEL") != "1"

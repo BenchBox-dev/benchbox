@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "pr-arm stops at once on a PR that conflicts with its base and waits out GitHub rate limits, server errors, network timeouts and unparseable tracker reads inside WAIT"}

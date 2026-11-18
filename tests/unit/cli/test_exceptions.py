@@ -218,36 +218,6 @@ class TestErrorHandler:
 
 
 class TestValidationRules:
-    def test_validate_scale_factor_positive(self):
-        ValidationRules.validate_scale_factor(0.01)
-        ValidationRules.validate_scale_factor(1.0)
-        ValidationRules.validate_scale_factor(10.0)
-
-    def test_validate_scale_factor_zero(self):
-
-        with pytest.raises(ValidationError) as exc_info:
-            ValidationRules.validate_scale_factor(0.0)
-
-        assert "Scale factor must be positive" in str(exc_info.value)
-        assert exc_info.value.details["provided_value"] == 0.0
-
-    def test_validate_scale_factor_negative(self):
-
-        with pytest.raises(ValidationError) as exc_info:
-            ValidationRules.validate_scale_factor(-1.0)
-
-        assert "Scale factor must be positive" in str(exc_info.value)
-        assert exc_info.value.details["provided_value"] == -1.0
-
-    def test_validate_scale_factor_large(self):
-
-        with pytest.raises(ValidationError) as exc_info:
-            ValidationRules.validate_scale_factor(200.0)
-
-        assert "Scale factor is very large" in str(exc_info.value)
-        assert exc_info.value.details["provided_value"] == 200.0
-        assert "recommended_range" in exc_info.value.details
-
     def test_validate_benchmark_name_valid(self):
         available = ["tpch", "tpcds", "ssb"]
 

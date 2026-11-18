@@ -20,6 +20,8 @@ LOCAL_STATE = Path(".cache") / "benchbox" / "local-review"
 OMP_CACHE = Path(".cache") / "benchbox" / "omp"
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
 GATE_WAITING_EXIT = 3
+TRUSTED_BASE_ENV = "REVIEW_TRUSTED_BASE"
+TRACKED_REF = re.compile(r"origin/(?:develop|release/[0-9]+\.[0-9]+\.x)")
 EXIT_UNAVAILABLE = 2
 
 Runner = Callable[[list[str]], tuple[int, str]]
@@ -47,8 +49,8 @@ def _git(root: Path, *args: str) -> bytes:
 def resolve_commit(root: Path, ref: str = DEVELOP_REF) -> str:
     if FULL_SHA.fullmatch(ref):
         return _git(root, "rev-parse", "--verify", f"{ref}^{{commit}}").decode("utf-8").strip()
-    if ref == DEVELOP_REF:
-        _git(root, "fetch", "origin", FETCH_BRANCH, "--quiet")
+    if TRACKED_REF.fullmatch(ref):
+        _git(root, "fetch", "origin", ref.removeprefix("origin/"), "--quiet")
     return _git(root, "rev-parse", "--verify", f"{ref}^{{commit}}").decode("utf-8").strip()
 
 
@@ -137,7 +139,10 @@ def run(
     )
 
 
-def gate_refusals(run_command: Runner, repo: str, number: int, head: str, label: str = "pr-arm") -> list[str]:
+def gate_refusals(
+    run_command: Runner, repo: str, number: int, head: str, label: str = "pr-arm", base: str = FETCH_BRANCH
+) -> list[str]:
+    line = ["--trusted-ref", f"origin/{base}"] if base != FETCH_BRANCH else []
     code, out = run_command(
         [
             "sh",
@@ -146,7 +151,9 @@ def gate_refusals(run_command: Runner, repo: str, number: int, head: str, label:
             "sh",
             sys.executable,
             str(Path(__file__).resolve()),
+            *line,
             "gate",
+            *(["--base", base] if line else []),
             "--repo",
             repo,
             "--pr",
@@ -186,7 +193,8 @@ def gate(args: argparse.Namespace) -> int:
         ]
         if not args.post:
             command.append("--no-post")
-        return run(root, commit, command).returncode
+        env = {**os.environ, TRUSTED_BASE_ENV: args.base} if args.base != FETCH_BRANCH else None
+        return run(root, commit, command, env=env).returncode
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -201,6 +209,7 @@ def _parser() -> argparse.ArgumentParser:
     gate_parser.add_argument("--pr", type=int, required=True)
     gate_parser.add_argument("--head-sha", required=True)
     gate_parser.add_argument("--post", action="store_true")
+    gate_parser.add_argument("--base", default=FETCH_BRANCH)
     return parser
 
 

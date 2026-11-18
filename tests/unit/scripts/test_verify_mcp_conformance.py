@@ -80,3 +80,31 @@ def test_generated_evidence_does_not_certify_local_multiworker_tests(monkeypatch
     payload = json.loads(evidence.read_text(encoding="utf-8"))
     assert payload["automated"]["conformance"] is True
     assert payload["automated"]["multiworker"] is False
+
+
+def _pin_metadata() -> dict[str, str]:
+    return {
+        "dist.integrity": verify_mcp_conformance.INSPECTOR_INTEGRITY,
+        "gitHead": verify_mcp_conformance.INSPECTOR_REVISION,
+    }
+
+
+def test_inspector_pin_accepts_scalar_npm_view_output() -> None:
+    assert verify_mcp_conformance._inspector_pin_matches(json.dumps(_pin_metadata()))
+
+
+def test_inspector_pin_accepts_one_element_array_npm_view_output() -> None:
+    assert verify_mcp_conformance._inspector_pin_matches(json.dumps([_pin_metadata()]))
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {**_pin_metadata(), "gitHead": "0" * 40},
+        [{**_pin_metadata(), "dist.integrity": "sha512-other"}],
+        [],
+        [_pin_metadata(), _pin_metadata()],
+    ],
+)
+def test_inspector_pin_rejects_mismatched_or_ambiguous_output(payload: object) -> None:
+    assert not verify_mcp_conformance._inspector_pin_matches(json.dumps(payload))

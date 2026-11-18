@@ -70,7 +70,7 @@ def test_approved_immutable_rev_only_change_is_narrow_eligible() -> None:
 @pytest.mark.parametrize(
     ("old", "new"),
     [
-        ("skill  = tidy-perms\n", ""),
+        ("skill  = docs\n", ""),
         ("target = .agents/skills\n", ""),
         ("target = .agents/skills", "target = .agents/skills\ntarget = .extra/skills"),
         ("dir    = skills", "dir    = other"),

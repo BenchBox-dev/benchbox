@@ -51,6 +51,36 @@ def test_each_signal_admits_or_refuses_at_its_threshold(overrides: dict[str, obj
     assert bool(rl.evaluate_admission(healthy(**overrides), POLICY)) is refused
 
 
+@pytest.mark.parametrize(
+    ("load", "cpus", "ratio", "refused"),
+    [
+        (20.0, 10, 2.0, False),
+        (20.1, 10, 2.0, True),
+        (80.0, 10, 0.0, False),
+        (80.0, None, 2.0, False),
+        (None, 10, 2.0, False),
+    ],
+)
+def test_load_average_refuses_only_above_the_ratio(
+    load: float | None, cpus: int | None, ratio: float, refused: bool
+) -> None:
+    policy = dataclasses.replace(POLICY, max_load_ratio=ratio)
+    pressure = healthy(load_average_5m=load, cpu_count=cpus)
+    refusals = rl.evaluate_admission(pressure, policy)
+    assert any("load average" in text for text in refusals) is refused
+
+
+def test_the_load_ratio_is_read_from_the_environment() -> None:
+    assert rl.admission_policy_from_env({rl.MAX_LOAD_RATIO_ENV: "3.5"}).max_load_ratio == 3.5
+    assert rl.admission_policy_from_env({}).max_load_ratio == rl.DEFAULT_MAX_LOAD_RATIO
+
+
+@pytest.mark.parametrize("env", [{"CI": "true"}, {"CI": "true", "GITHUB_ACTIONS": "true"}])
+def test_no_runner_marker_switches_the_load_check_off(env: dict[str, str]) -> None:
+    assert rl.admission_policy_from_env(env).max_load_ratio == rl.DEFAULT_MAX_LOAD_RATIO
+    assert rl.admission_policy_from_env({**env, rl.MAX_LOAD_RATIO_ENV: "0"}).max_load_ratio == 0.0
+
+
 def test_unmeasured_signals_never_refuse() -> None:
     blind = healthy(
         total_gib=None,
@@ -134,6 +164,7 @@ def test_a_hung_container_cli_degrades_to_unmeasured_within_six_seconds(
             available_gib=8.0,
             pressure_level=1,
             memorystatus_level=60,
+            load_average_5m=0.0,
         ),
     )
     assert rl.elapsed_seconds(started) < 6.0

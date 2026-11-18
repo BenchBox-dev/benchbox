@@ -8,6 +8,7 @@ from typing import Any, Callable
 import pandas as pd
 
 from benchbox.core.tpcdi.schema import TABLES
+from benchbox.utils.duckdb_extensions import finish_unfinished_result
 
 _STAGING_VIEW = "benchbox_tpcdi_stage"
 _COPY_NULL = "\\N"
@@ -22,6 +23,7 @@ def _driver_family(obj: Any) -> str:
 def bulk_insert_dataframe(cursor: Any, quoted_table: str, quoted_columns: list[str], dataframe: pd.DataFrame) -> bool:
     column_sql = ",".join(quoted_columns)
     if _driver_family(cursor) in _DUCKDB_DRIVERS and hasattr(cursor, "register"):
+        finish_unfinished_result(cursor)
         cursor.register(_STAGING_VIEW, dataframe)
         try:
             cursor.execute(f"INSERT INTO {quoted_table} ({column_sql}) SELECT * FROM {_STAGING_VIEW}")

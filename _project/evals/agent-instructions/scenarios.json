@@ -5,8 +5,7 @@
     "agents_lines": 425,
     "adapter_bytes": {
       "CLAUDE.md": 7292,
-      "GEMINI.md": 6740,
-      "ANTIGRAVITY.md": 6603
+      "GEMINI.md": 6740
     }
   },
   "budgets": {

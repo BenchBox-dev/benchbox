@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "make heavy-run now stops every process left running in the command's process group when the command ends, and admission refuses a host whose 5-minute load average exceeds five times its CPU count."
+    }
+  ]
+}

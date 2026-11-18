@@ -48,7 +48,6 @@ Checkouts are classified into four classes based on their actual git requirement
 | `trunk.yml` | `tpcds-parity-draws` | T | 0 | 1 | Parity report generation uses no git history. |
 | `trunk.yml` | `correctness-gate` | T | 0 | 1 | Make-driven correctness tests require only HEAD tree. |
 | `ci.yml` | `correctness-gate` | T | 0 | 1 | Same as trunk correctness-gate. |
-| `ci.yml` | `example-validation` | T | 0 | 1 | `make docs-validate` uses only `git ls-files`. |
 | `corpus-drift-check.yml` | `check` | T+X | 0 | 1 | Compares develop HEAD against explicitly fetched `published-results`. |
 | `submission-validator-drift-check.yml` | `check` | T+X | 0 | 1 | Compares develop against explicitly fetched `published-results`. |
 | `comment-policy-nightly.yml` | `scan` | T | 0 | 1 | Runs `scripts/run_comment_policy.py --full` which compares HEAD against HEAD. |
@@ -68,8 +67,9 @@ The following jobs **must not** use shallow checkouts because their core functio
 
 - **`ci.yml` `ci-paths`:** Uses three-dot diffs (`$EVENT_BASE_SHA...HEAD`), `git merge-base --is-ancestor`,
   `path_filter_decision.py`, and `coverage_test_selection.py` ancestry traversals to route PR tests.
-- **`ci.yml` `comment-policy`:** Runs `scripts/run_comment_policy.py` which derives the ownership base
-  via `git merge-base` with the base branch and verifies ancestry against bootstrap commits.
+- **`ci.yml` `short-checks`:** Its comment-policy step runs `scripts/run_comment_policy.py`, which derives the
+  ownership base via `git merge-base` with the base branch and verifies ancestry against bootstrap commits. The
+  spellcheck, results-data and docs checks in the same job need only the tree and share that checkout.
 - **`trunk.yml` `comment-policy-scan`:** Pinned by `test_trunk_workflow.py:158` to assert full checkout depth.
 - **`trunk-coverage.yml` `coverage-map-staleness`:** Runs `coverage_map_staleness.py` which executes
   `git rev-list --count map..base` to count commits behind develop.

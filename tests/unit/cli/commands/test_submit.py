@@ -26,6 +26,11 @@ def _community_publish_salt(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("BENCHBOX_MACHINE_ID_SALT", "unit-test-community-publish-salt")
 
 
+@pytest.fixture(autouse=True)
+def _acknowledge_hosted_submission(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BENCHBOX_ACKNOWLEDGE_HOSTED_SUBMISSION", "1")
+
+
 def _fake_result() -> SimpleNamespace:
     return SimpleNamespace(
         benchmark_name="tpch",
@@ -1185,3 +1190,37 @@ def test_submit_real_run_packages_override_companion_unchanged(monkeypatch: pyte
     original = json.loads(src.with_name(f"{src.stem}.override.json").read_text(encoding="utf-8"))
     packaged = json.loads((out_dir / "bundle" / f"{src.stem}.override.json").read_text(encoding="utf-8"))
     assert packaged == original
+
+
+@pytest.mark.parametrize(
+    ("benchmark_name", "expected", "mentions_tpcds_contract"),
+    [
+        ("TPC-H", "unofficial TPC-H configuration", False),
+        ("tpch", "unofficial TPC-H configuration", False),
+        ("TPC-DS", "unofficial TPC-DS configuration", True),
+        ("tpcds", "unofficial TPC-DS configuration", True),
+        ("SSB", "unofficial SSB configuration", False),
+    ],
+)
+def test_unofficial_refusal_names_the_actual_benchmark(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    benchmark_name: str,
+    expected: str,
+    mentions_tpcds_contract: bool,
+) -> None:
+    src = tmp_path / "unofficial.json"
+    src.write_text("{}", encoding="utf-8")
+    unofficial = _fake_result()
+    unofficial.benchmark_name = benchmark_name
+    unofficial.compliance_class = "unofficial_subscale"
+    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (unofficial, {}))
+
+    result = CliRunner().invoke(sub.submit, [str(src), "--output", str(tmp_path / "out")])
+
+    output = " ".join(result.output.split())
+    assert result.exit_code == 1
+    assert "Submission refused: compliance_class=unofficial_subscale" in output
+    assert expected in output
+    assert ("tpcds-subscale-contract" in output) is mentions_tpcds_contract
+    assert ("TPC-DS" in output) is ("TPC-DS" in expected)

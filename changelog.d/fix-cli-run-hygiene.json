@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The credential setup wizard (benchbox setup --platform <name>) now exits with code 6 and a clear message when no answer can be read from the terminal, instead of printing a bare setup failure, and the setup help lists its exit codes."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "benchbox run with an invalid driver_version now exits with the usage error code in a dry run too, matching a real run, and a regression test pins that --non-interactive refuses a driver auto-install in a terminal without BENCHBOX_DRIVER_AUTO_INSTALL."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Result environment.host_load.cpu_frequency_mhz is now null on Apple Silicon and wherever psutil reports no usable frequency, instead of a meaningless value such as 4."
+    },
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The package-smoke CI job, which runs the README first command from a clean wheel install, now also runs on any change under benchbox/, not only on packaging files; make pr-preflight now also runs the shipped-docs URL test when README, CONTRIBUTING, docs or example files change."
+    },
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "The heavy-work sentinel now logs a warning, and never signals the shell, when an orphaned shell (parent pid 1, working directory in a BenchBox worktree) holds sustained CPU; thresholds come from BENCHBOX_ORPHAN_SPIN_CPU_FRACTION and BENCHBOX_ORPHAN_SPIN_SECONDS."
+    }
+  ]
+}

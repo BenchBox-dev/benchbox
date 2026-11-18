@@ -6,7 +6,8 @@ or migration until it passes.
 ## Loop
 
 1. Run the requested command exactly unless unsafe.
-2. Save long or recurring output in `_project/iterate/<slug>/run<N>.log`.
+2. Save long or recurring output under the project's artifact directory, else
+   `/tmp/iterate-<slug>/run<N>.log`.
 3. Cluster failures by signature: error class + failing unit + likely layer.
 4. For one cluster at a time: research, debug, make a narrow fix, verify the
    target, review, and commit it.
@@ -32,16 +33,3 @@ or migration until it passes.
 - Apply the investigation framework's hard-blocker criteria before marking work
   blocked.
 - Do not hide remaining failures after one cluster turns green.
-- Edit against the smallest failing reproduction. Finish by rerunning the
-  original command.
-- For verification-only commits, keep raw stdout in `/tmp`, CI artifacts, or
-  the configured artifact directory, such as `BENCHBOX_OUTPUT_DIR`. Commit only
-  the durable command, checked SHA or version, PASS/FAIL result, and key lines
-  or counts. Do not commit
-  `_project/verification-logs/*.log` unless it is a deliberate small fixture
-  with a named consumer.
-- After `pr-open`, repeat preflight or broad diffs only if mergeability changes,
-  a required check fails, or the integration branch, such as `develop`, advances
-  into PR paths. Command reruns and PR or CI gates may be delegated for
-  run-and-report. Keep clustering, fixes, and stop decisions in the main
-  session.

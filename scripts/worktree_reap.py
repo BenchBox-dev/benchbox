@@ -33,8 +33,9 @@ from scripts.worktree_finish import (
 
 REMOVE = "remove"
 KEEP = "keep"
+ABANDONED = "abandoned"
 AMBIGUOUS = "ambiguous"
-VERDICTS = (REMOVE, KEEP, AMBIGUOUS)
+VERDICTS = (REMOVE, KEEP, ABANDONED, AMBIGUOUS)
 KEEP_HOLD_CODES = frozenset({"locked", "dirty", "no_pr", "open_pr", "unintegrated_commits"})
 
 
@@ -159,6 +160,12 @@ def classify_worktree(
     reason = res.hold_reason or "finish evaluation held without a reason"
     if res.hold_code in KEEP_HOLD_CODES:
         return verdict(KEEP, reason)
+    if res.hold_code == "closed_unmerged_pr":
+        return verdict(
+            ABANDONED,
+            f"{reason}; every PR is closed unmerged, so the branch was never integrated "
+            "(remove with make worktree-remove after confirming the work is not needed)",
+        )
     return verdict(AMBIGUOUS, reason)
 
 
@@ -241,7 +248,7 @@ def format_summary(verdicts: List[ReapVerdict]) -> str:
 
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Classify every registered worktree as remove, keep, or ambiguous; optionally remove the merged ones."
+        description="Classify every registered worktree as remove, keep, abandoned, or ambiguous; optionally remove the merged ones."
     )
     parser.add_argument(
         "--apply",

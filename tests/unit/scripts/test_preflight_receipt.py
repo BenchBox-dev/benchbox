@@ -358,6 +358,7 @@ def _receipt_status(repo: Path, env: dict[str, str], tmp_path: Path, stage: Path
 STUB_UV = """#!/bin/sh
 echo "$*" >> "$STUB_LOG"
 case "$*" in
+*pr_base.py*) echo "${PR_OPEN_BASE:-develop}" ;;
 *pr_open_rest.py*)
   while [ "$#" -gt 0 ]; do
     if [ "$1" = --receipt-file ]; then cp "$2" "$STUB_RECEIPT_COPY"; fi
@@ -755,3 +756,49 @@ def test_pr_open_resolves_the_pushed_commit_once_before_the_receipt_check() -> N
     assert recipe.index(resolved) < recipe.index("preflight_receipt.py verify")
     assert '--head "$$REVIEWED"' in recipe
     assert recipe.index("preflight_receipt.py verify") < recipe.index('git push origin "$$REVIEWED:')
+
+
+def test_skipped_theseus_tests_are_named_as_not_run_locally_and_never_reported_as_passed(repo, tmp_path: Path) -> None:
+    root, env = repo
+    reason = "the verified Theseus install is unavailable here: the install was refused: Connection refused"
+    output = (
+        f"SKIPPED [3] tests/unit/scripts/test_theseus_lock.py:53: {reason}\n"
+        f"SKIPPED [7] tests/unit/scripts/test_soundness_merge_digest.py:2721: {reason}\n"
+        "SKIPPED [2] tests/unit/test_other.py:9: platform is not linux\n"
+        "19 passed, 12 skipped in 1.00s"
+    )
+    stage, codes = _steps(root, env, tmp_path, [("pytest", output, 0)], None)
+    assert codes[0].returncode == 0
+    assert "10 tests that need the verified Theseus install were skipped" in codes[0].stderr
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    step = _receipt(root, env, tmp_path)["steps"][0]
+    assert step["outcome"] == "unverified"
+    assert step["theseus_skipped"] == 10
+    summary = tmp_path / "summary.md"
+    assert _verify(root, env, None, "--summary-out", str(summary)).returncode == 0
+    text = summary.read_text(encoding="utf-8")
+    assert "10 tests that need the verified Theseus install were skipped" in text
+    assert "not run locally" in text
+
+
+def test_a_pytest_run_without_theseus_skips_stays_passed(repo, tmp_path: Path) -> None:
+    root, env = repo
+    output = "SKIPPED [2] tests/unit/test_other.py:9: platform is not linux\n19 passed, 2 skipped in 1.00s"
+    stage, codes = _steps(root, env, tmp_path, [("pytest", output, 0)], None)
+    assert codes[0].returncode == 0
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    step = _receipt(root, env, tmp_path)["steps"][0]
+    assert step["outcome"] == "passed"
+    assert "theseus_skipped" not in step
+
+
+def test_a_theseus_prefetch_that_could_not_fetch_is_recorded_as_not_verified(repo, tmp_path: Path) -> None:
+    root, env = repo
+    output = "WARNING: Theseus install not verified locally: no reachable byte source; its tests are skipped"
+    stage, codes = _steps(root, env, tmp_path, [("theseus-prefetch", output, 0)], None)
+    assert codes[0].returncode == 0
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    assert _receipt(root, env, tmp_path)["steps"][0]["outcome"] == "unverified"
+    summary = tmp_path / "summary.md"
+    assert _verify(root, env, None, "--summary-out", str(summary)).returncode == 0
+    assert "was not verified: Theseus install not verified locally" in summary.read_text(encoding="utf-8")

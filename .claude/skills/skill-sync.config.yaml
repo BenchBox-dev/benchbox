@@ -13,6 +13,14 @@ code:
       PASS, grep the helper call site and confirm the harness probe matches the
       wrapper's `read=` argument. A single-dialect PASS cannot retire a helper
       invoked with SQLGlot cross-dialect translation.
+    - For changed measured values, add a checked-in smoke or Make target that
+      reproduces the measurement and a test that detects catalog/document drift.
+    - When an ADR changes branch shape, moves CI, or vendors across branches,
+      list CI, contributor, automation, and downstream consumers and verify each
+      under the allowlist; an undocumented exception blocks the ADR.
+    - When a specification is divided into work units, estimate lines per unit
+      from the module breakdown and require a split or a rationale for any unit
+      over 300 lines before approval.
   typecheck: uv run -- python -m scripts.typecheck
   verify: uv run ruff check . && uv run -- python -m scripts.typecheck && uv run -- python -m pytest -m
     fast -q

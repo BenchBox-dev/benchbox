@@ -6,6 +6,7 @@ from dataclasses import asdict, is_dataclass
 from typing import TYPE_CHECKING, Any, Callable
 
 from benchbox.core.results.fetch_mode import parse_fetch_mode
+from benchbox.core.results.query_status import within_range_warning
 from benchbox.core.results.timing_fields import platform_timing_problems
 
 if TYPE_CHECKING:
@@ -375,7 +376,8 @@ def normalize_row_count_validation(value: Any, *, rows_returned: int | None) -> 
         raise QueryExecutionContractError(
             f"row_count_validation.actual ({counts['actual']!r}) must match rows_returned ({rows_returned!r})"
         )
-    if status == "PASSED" and counts["expected"] is None:
+    range_checked = status == "PASSED" and counts["expected"] is None
+    if range_checked:
         status = "SKIPPED"
     elif status == "PASSED" and counts["actual"] != counts["expected"]:
         raise QueryExecutionContractError(
@@ -394,6 +396,8 @@ def normalize_row_count_validation(value: Any, *, rows_returned: int | None) -> 
                 f"row_count_validation.{field} exceeds {ROW_COUNT_VALIDATION_MESSAGE_MAX_CHARS} characters"
             )
         normalized[field] = message
+    if range_checked and "warning" not in normalized:
+        normalized["warning"] = within_range_warning(counts["actual"])
     return normalized
 
 

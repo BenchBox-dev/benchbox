@@ -4,8 +4,9 @@ on:
   workflow_run:
     workflows: [CI, review-verdict, review-gate]
     types: [completed]
+    branches: ["chore/sqlglot-**"]
   schedule:
-    - cron: "37 6 * * *"
+    - cron: "37 0,6,12,18 * * *"
   workflow_dispatch:
     inputs:
       dry_run:

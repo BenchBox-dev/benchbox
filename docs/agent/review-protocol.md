@@ -2,14 +2,12 @@
 
 BenchBox bindings for `shared-review-protocol`. The canonical skill governs
 behavior; this file records project-specific storage, evidence, and review axes.
-It supersedes `docs/agent/review-protocol-legacy.md`.
 
 ## Project bindings
 
 - `[REVIEW-AUTH-001]`, `[REVIEW-DEFECT-001]`, `[REVIEW-DEPTH-001]` and
-  `[REVIEW-L2-001]` are governed verbatim by the canonical skill. Named here to
-  satisfy `[REVIEW-PARITY-001]` without restating behavior, which
-  `shared-review-protocol` section 5 forbids this file from doing.
+  `[REVIEW-L2-001]` are governed verbatim by the canonical skill; they are
+  named here only so the policy IDs resolve.
 - `[REVIEW-CAPTURE-001]` Finding drafts live under `~/.tractable/finding-drafts/<project>/`;
   tracker operations use the `tractable-mcp` server.
 - `[REVIEW-PARITY-001]` The canonical skill governs behavior; this file contains
@@ -38,13 +36,8 @@ head races, and durable holds refuse loudly; a merge that wins the race
 stops modification and routes to follow-up. Batch readiness additionally
 binds the final head to the tracker's integration head and final-PR binding,
 every member receipt, current acceptance, the recomputed diff and member
-scopes, and a usable local member review. Serial mode covers standalone or
-approval-separated work; related work uses one feature branch and one PR.
-Feature delivery mode is opt-in: the owner names the batch (two or more
-members) and the tractable MCP server advertises the registered-batch v2
-capability. It has one shared integration branch, one integrator, no
-feature-base PRs, no new CI skips, and no change to hosted/native review, merge,
-deployment, or authority boundaries (`docs/agent/batch-feature-delivery.md`).
+scopes, and a usable local member review. Serial and feature delivery modes
+are defined in `AGENTS.md` (`docs/agent/batch-feature-delivery.md`).
 
 ## Architecture and plan review axes
 

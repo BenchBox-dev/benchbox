@@ -78,13 +78,14 @@ def test_supported_matrix_has_three_local_identities_per_cohort() -> None:
     assert cohorts == {
         ("tpch", "0.01"): {"duckdb", "datafusion", "polars-df"},
         ("tpch", "0.1"): {"duckdb", "datafusion", "polars-df"},
-        ("tpch", "1.0"): {"duckdb", "datafusion", "clickhouse-local"},
-        ("tpcds", "1"): {"duckdb", "datafusion", "clickhouse-local"},
+        ("tpcdi", "0.01"): {"duckdb", "datafusion", "clickhouse-local"},
+        ("tpcdi", "0.1"): {"duckdb", "datafusion", "clickhouse-local"},
+        ("tpcdi", "1.0"): {"duckdb", "datafusion", "clickhouse-local"},
         ("ssb", "0.01"): {"duckdb", "datafusion", "polars-df"},
         ("ssb", "0.1"): {"duckdb", "datafusion", "polars-df"},
     }
     assert all(len(platforms) == 3 for platforms in cohorts.values())
-    assert len(entries) == len(cells) == 18
+    assert len(entries) == len(cells) == 21
 
 
 def _stage_bundle(
@@ -388,20 +389,17 @@ def test_seed_corpus_local_jobs_do_not_reference_cloud_credentials() -> None:
     assert "matrix.optional" not in workflow_text
 
 
-def test_tpc_matrix_jobs_run_official_seeded_at_every_official_scale_point() -> None:
+def test_tpc_matrix_jobs_never_run_official_below_an_official_scale_point() -> None:
     from benchbox.core.tpcds.compliance import OFFICIAL_SCALE_POINTS as TPCDS_OFFICIAL_SCALE_POINTS
     from benchbox.core.tpch.compliance import OFFICIAL_SCALE_POINTS as TPCH_OFFICIAL_SCALE_POINTS
 
     official_points = {"tpch": TPCH_OFFICIAL_SCALE_POINTS, "tpcds": TPCDS_OFFICIAL_SCALE_POINTS}
     workflow = _workflow()
     entries = workflow["jobs"]["generate-seed-corpus"]["strategy"]["matrix"]["include"]
-    official_cells = set()
     for entry in entries:
         at_official_point = float(entry["scale_factor"]) in official_points.get(entry["benchmark"], frozenset())
-        assert entry.get("official", False) is at_official_point, entry
-        if at_official_point:
-            official_cells.add((entry["benchmark"], entry["scale_factor"]))
-    assert official_cells == {("tpch", "1.0"), ("tpcds", "1")}
+        if entry.get("official", False):
+            assert at_official_point, entry
 
     run_step = next(
         step["run"] for step in workflow["jobs"]["generate-seed-corpus"]["steps"] if step.get("name") == "Run benchmark"
@@ -409,6 +407,19 @@ def test_tpc_matrix_jobs_run_official_seeded_at_every_official_scale_point() -> 
     assert 'if [ "${{ matrix.official }}" = "true" ]; then' in run_step
     assert "command+=(--official --seed 42)" in run_step
     assert '"${command[@]}"' in run_step
+
+
+def test_no_matrix_cell_combines_official_with_phases_lacking_throughput() -> None:
+    workflow = _workflow()
+    entries = workflow["jobs"]["generate-seed-corpus"]["strategy"]["matrix"]["include"]
+    run_step = next(
+        step["run"] for step in workflow["jobs"]["generate-seed-corpus"]["steps"] if step.get("name") == "Run benchmark"
+    )
+    phase_lists = re.findall(r"--phases\s+([^\s\\]+)", run_step)
+    assert len(phase_lists) == 1
+    phases = set(phase_lists[0].split(","))
+    offending = [entry for entry in entries if entry.get("official", False) and "throughput" not in phases]
+    assert not offending, offending
 
 
 def test_seed_corpus_pr_targets_develop() -> None:

@@ -333,11 +333,16 @@ finish_worktree() {
     apply_args="--apply"
   fi
 
+  unpublished_args=""
+  if [ "${UNPUBLISHED:-}" = "1" ]; then
+    unpublished_args="--unpublished"
+  fi
+
   $py_runner "$script_dir/worktree_finish.py" \
     --repo-root "$primary_clone" \
     --worktree-path "$target" \
     --expected-head-oid "$oid_input" \
-    $format_args $apply_args
+    $format_args $apply_args $unpublished_args
 }
 
 case "$operation" in

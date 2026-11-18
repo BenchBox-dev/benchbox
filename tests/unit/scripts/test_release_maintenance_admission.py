@@ -15,6 +15,7 @@ from tests.unit.scripts.test_release_artifact_execution import bind_admission_fi
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 LINE = "release/0.4.x"
+PIN_TEST = "tests/unit/scripts/test_review_policy_pin.py"
 ADMISSION_RECEIPT_KEYS = {
     "tag",
     "tag_object",
@@ -266,13 +267,15 @@ def created_line(tmp_path):
     write(root, ".github/oracle.yml", "legacy\n")
     write(root, ".github/workflows/oracle-gate.yml", "legacy gate\n")
     write(root, ".github/review.yml", "tag policy\n")
-    git(root, "add", ".github")
+    write(root, PIN_TEST, "legacy pin\n")
+    git(root, "add", ".github", PIN_TEST)
     shas["released"] = commit_version(root, "0.4.1")
     tag(root, "v0.4.1")
     git(root, "rm", "-q", ".github/oracle.yml", ".github/workflows/oracle-gate.yml")
     write(root, ".github/review.yml", "reviewed policy\n")
     write(root, ".github/workflows/review-gate.yml", "reviewed gate\n")
-    git(root, "add", ".github")
+    write(root, PIN_TEST, "reviewed pin\n")
+    git(root, "add", ".github", PIN_TEST)
     git(root, "commit", "-q", "-m", "Rename the reviewer policy")
     shas["reviewed"] = git(root, "rev-parse", "HEAD")
     git(root, "checkout", "-q", "-b", "side")
@@ -295,7 +298,13 @@ def fixture_sha(root: Path, name: str) -> str:
 
 
 def create(
-    root: Path, source: str | None, *, policy: str | None = "reviewed policy\n", workflows: bool = True, edit=None
+    root: Path,
+    source: str | None,
+    *,
+    policy: str | None = "reviewed policy\n",
+    workflows: bool = True,
+    pin_test: bool = True,
+    edit=None,
 ) -> str:
     git(root, "rm", "-q", ".github/oracle.yml")
     if policy is not None:
@@ -305,6 +314,9 @@ def create(
         git(root, "rm", "-q", ".github/workflows/oracle-gate.yml")
         write(root, ".github/workflows/review-gate.yml", "reviewed gate\n")
         git(root, "add", ".github/workflows/review-gate.yml")
+    if pin_test:
+        write(root, PIN_TEST, "reviewed pin\n")
+        git(root, "add", PIN_TEST)
     if edit:
         edit(root)
     message = "Carry develop's reviewer files"
@@ -381,6 +393,29 @@ def test_a_creation_commit_that_carries_only_part_of_the_reviewer_files_is_refus
     create(created_line, fixture_sha(created_line, "tip"), policy=policy, workflows=workflows, edit=edit)
     fixed = land(created_line, "0.4.2")
     with pytest.raises(ValueError, match=f"creation does not carry {re.escape(missing)} as develop has it"):
+        consumer.verify_maintenance_line(created_line, "v0.4.2", fixed, LINE, merged_pulls(fixed))
+
+
+@pytest.mark.parametrize("tagged", [True, False], ids=["tagged", "untagged"])
+def test_a_creation_commit_that_carries_the_review_files_without_their_pinning_test_is_refused(created_line, tagged):
+    create(created_line, fixture_sha(created_line, "tip"), pin_test=False)
+    fixed = land(created_line, "0.4.2")
+    expected = f"creation does not carry {re.escape(PIN_TEST)} as develop has it"
+    with pytest.raises(ValueError, match=expected):
+        if tagged:
+            consumer.verify_maintenance_line(created_line, "v0.4.2", fixed, LINE, merged_pulls(fixed))
+        else:
+            consumer.verify_line(created_line, LINE, fixed, merged_pulls(fixed))
+
+
+def test_a_creation_commit_that_edits_a_pinning_test_away_from_develop_is_refused(created_line):
+    def edit(root):
+        write(root, PIN_TEST, "edited pin\n")
+        git(root, "add", PIN_TEST)
+
+    create(created_line, fixture_sha(created_line, "tip"), edit=edit)
+    fixed = land(created_line, "0.4.2")
+    with pytest.raises(ValueError, match=rf"sets {re.escape(PIN_TEST)}, which differs from develop at"):
         consumer.verify_maintenance_line(created_line, "v0.4.2", fixed, LINE, merged_pulls(fixed))
 
 
@@ -616,6 +651,12 @@ def test_the_creation_script_builds_a_commit_that_verify_line_accepts(created_li
         assert git(created_line, "ls-tree", commit, "--", path) == git(created_line, "ls-tree", develop, "--", path)
 
 
+def test_the_creation_script_carries_the_tests_that_pin_the_carried_files(created_line):
+    commit = create_with_script(created_line)
+    assert git(created_line, "show", f"{commit}:{PIN_TEST}") == "reviewed pin"
+    assert git(created_line, "show", f"{fixture_sha(created_line, 'released')}:{PIN_TEST}") == "legacy pin"
+
+
 def test_the_creation_script_leaves_the_checkout_and_index_untouched(created_line):
     before = git(created_line, "rev-parse", "HEAD")
     create_with_script(created_line)
@@ -693,7 +734,7 @@ def test_the_guide_scripts_creation_instead_of_listing_the_reviewer_files():
     guide = (Path(__file__).resolve().parents[3] / "docs/internal/release-guide.md").read_text(encoding="utf-8")
     assert "scripts/release_line_create.py" in guide
     assert "verify-line" in guide
-    for path in consumer.CREATION_REVIEW_PATHS:
+    for path in (*consumer.CREATION_REVIEW_PATHS, *consumer.CREATION_REVIEW_TESTS):
         assert path not in guide
 
 

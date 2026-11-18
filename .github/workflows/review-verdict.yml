@@ -38,10 +38,10 @@ jobs:
       actions: write
       contents: read
       pull-requests: read
-    uses: joeharris76/theseus/.github/workflows/review.yml@a9acebe7869ec2140d1baa3b5cd2c3ddd4a0c4ff
+    uses: joeharris76/theseus/.github/workflows/review.yml@312ece0876ced3ef72659e355b0a93287697fb7a
     with:
       environment: review
-      theseus_ref: a9acebe7869ec2140d1baa3b5cd2c3ddd4a0c4ff
+      theseus_ref: 312ece0876ced3ef72659e355b0a93287697fb7a
       gated_base: "develop,release/*"
       policy_path: .github/review.yml
       tailscale_tag: tag:review-ci
@@ -62,6 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
+      actions: write
       contents: read
       pull-requests: read
       statuses: read
@@ -78,6 +79,8 @@ jobs:
       JOB_RESULT: ${{ needs.verdict.result }}
       GATED_BASE: "develop,release/*"
       POSTER: benchbox-review[bot]
+      REF_NAME: ${{ github.ref_name }}
+      WORKFLOW_REF: ${{ github.workflow_ref }}
       CONTEXTS: review-verdict
     steps:
       - name: Fail when no verdict status was posted for the handled head
@@ -141,6 +144,16 @@ jobs:
           fi
           if [ -n "$handled" ] && [ "$handled" != "$head" ]; then
             echo "#$pr moved from $handled to $head; the run for the current head covers it."
+            exit 0
+          fi
+          if [ "$EVENT_NAME" = pull_request_target ] && [ "$base" != "$REF_NAME" ]; then
+            if [ "$JOB_RESULT" = failure ] || [ "$JOB_RESULT" = cancelled ]; then
+              echo "::error::the verdict job ended '$JOB_RESULT'"
+              exit 1
+            fi
+            echo "#$pr targets $base but this run reads the policy of $REF_NAME; $base decides it, so its own verdict run is dispatched for head $head."
+            workflow="${WORKFLOW_REF#"$REPO"/.github/workflows/}"
+            gh workflow run "${workflow%%@*}" --repo "$REPO" --ref "$base" -f pr="$pr" -f head="$head" -f reason="pull request into $base"
             exit 0
           fi
           posted="$(gh api --paginate "repos/$REPO/commits/$head/statuses?per_page=100" | jq -s --arg poster "$POSTER" --arg contexts "$CONTEXTS" '[.[][] | select(.creator.login == $poster and (.context as $context | ($contexts | split(" ") | index($context)) != null))] | length')"

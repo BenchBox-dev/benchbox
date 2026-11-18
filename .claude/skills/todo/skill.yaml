@@ -9,4 +9,3 @@ category: workflow
 targets:
   claude: true
   codex: true
-standalone_only_commands: {}

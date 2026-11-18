@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import plistlib
 import stat
 import subprocess
 import sys
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from pathlib import Path
+from types import SimpleNamespace
 
 import psutil
 import pytest
 
-from benchbox.utils import git_flood, heavy_sentinel as hs, heavy_status, host_lock as hl, sentinel_launchd
+from benchbox.utils import git_flood, heavy_sentinel as hs, heavy_status, host_lock as hl, orphan_spin, sentinel_launchd
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium, pytest.mark.skipif(sys.platform == "win32", reason="POSIX only")]
 
@@ -51,6 +53,8 @@ def make_sentinel(
     budget: int | None = 4 * GIB,
     git: list[git_flood.GitProc] | None = None,
     environ: dict[str, str] | None = None,
+    orphans: Callable[[], list[orphan_spin.OrphanShell]] = list,
+    clock: Callable[[], float] | None = None,
 ) -> tuple[hs.Sentinel, list[str]]:
     lines: list[str] = []
     sentinel = hs.Sentinel(
@@ -64,8 +68,10 @@ def make_sentinel(
         sleeper=lambda seconds: None,
         git_reader=lambda roots: git or [],
         total_ram=lambda: 16 * GIB,
+        orphan_reader=lambda roots: orphans(),
         environ=environ or {},
         exclude=(),
+        **({} if clock is None else {"clock": clock}),
     )
     return sentinel, lines
 
@@ -290,6 +296,208 @@ def test_a_git_flood_is_reported_again_only_after_the_summary_interval() -> None
     sentinel.step()
     sentinel.step()
     assert sum("WARNING git flood" in line for line in lines) == 1
+
+
+@pytest.fixture(autouse=True)
+def isolated_orphan_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    path = tmp_path / "state" / orphan_spin.ACTIVE_NAME
+    monkeypatch.setattr(heavy_status, "orphan_spin_path", lambda environ=None: path)
+    return path
+
+
+class SpinRig:
+    def __init__(self, *, cpu_per_second: float, mode: str = "warn", environ: dict[str, str] | None = None) -> None:
+        self.now = 1000.0
+        self.cpu_seconds = 50.0
+        self.rate = cpu_per_second
+        self.present = True
+        self.shell = orphan_spin.OrphanShell(
+            pid=4242,
+            created=1.0,
+            name="bash",
+            cwd="/work/BenchBox.wt-a/sub",
+            command="bash -c while true; do :; done",
+            cpu_seconds=self.cpu_seconds,
+        )
+        self.sentinel, self.lines = make_sentinel(
+            [],
+            {},
+            mode=mode,
+            orphans=self.table,
+            clock=lambda: self.now,
+            environ=environ,
+        )
+
+    def table(self) -> list[orphan_spin.OrphanShell]:
+        if not self.present:
+            return []
+        return [
+            orphan_spin.OrphanShell(
+                self.shell.pid,
+                self.shell.created,
+                self.shell.name,
+                self.shell.cwd,
+                self.shell.command,
+                self.cpu_seconds,
+            )
+        ]
+
+    def tick(self, seconds: float) -> None:
+        self.now += seconds
+        self.cpu_seconds += self.rate * seconds
+        self.sentinel.step()
+
+    def warnings(self) -> list[str]:
+        return [line for line in self.lines if "orphaned CPU-bound shell" in line and "WARNING" in line]
+
+
+def test_an_orphaned_shell_holding_sustained_cpu_is_reported_once_and_never_signalled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sent: list[int] = []
+    monkeypatch.setattr(hs.Sentinel, "_send", lambda self, proc, sig: sent.append(proc.pid))
+    rig = SpinRig(cpu_per_second=1.0, mode="kill")
+    for _ in range(80):
+        rig.tick(5.0)
+    warnings = rig.warnings()
+    assert len(warnings) == 1
+    assert "pid 4242 bash at 100% CPU" in warnings[0]
+    assert "cwd /work/BenchBox.wt-a/sub" in warnings[0]
+    assert "never signalled" in warnings[0]
+    assert sent == []
+
+
+def test_a_reported_orphan_is_published_for_the_readers_until_it_goes_idle_or_exits(
+    isolated_orphan_report: Path,
+) -> None:
+    rig = SpinRig(cpu_per_second=1.0)
+    for _ in range(80):
+        rig.tick(5.0)
+    published = orphan_spin.ActiveSpin(**json.loads(isolated_orphan_report.read_text(encoding="utf-8"))[0])
+    assert (published.pid, published.cwd, published.cpu_fraction) == (4242, "/work/BenchBox.wt-a/sub", 1.0)
+    assert published.busy_since < time.time()
+    rig.rate = 0.0
+    rig.tick(5.0)
+    rig.tick(5.0)
+    assert not isolated_orphan_report.exists()
+    rig.rate = 1.0
+    for _ in range(80):
+        rig.tick(5.0)
+    assert isolated_orphan_report.exists()
+    rig.present = False
+    rig.tick(5.0)
+    assert not isolated_orphan_report.exists()
+
+
+def test_nothing_is_published_without_a_report(isolated_orphan_report: Path) -> None:
+    rig = SpinRig(cpu_per_second=0.0)
+    for _ in range(80):
+        rig.tick(5.0)
+    assert not isolated_orphan_report.exists()
+
+
+def test_an_orphaned_shell_is_not_reported_before_the_sustain_window() -> None:
+    rig = SpinRig(cpu_per_second=1.0)
+    for _ in range(50):
+        rig.tick(5.0)
+    assert rig.warnings() == []
+
+
+def test_an_idle_orphaned_shell_is_never_reported() -> None:
+    rig = SpinRig(cpu_per_second=0.01)
+    for _ in range(400):
+        rig.tick(5.0)
+    assert rig.warnings() == []
+
+
+def test_a_burst_shorter_than_the_window_resets_when_the_shell_goes_idle() -> None:
+    rig = SpinRig(cpu_per_second=1.0)
+    for _ in range(40):
+        rig.tick(5.0)
+    rig.rate = 0.0
+    rig.tick(5.0)
+    rig.rate = 1.0
+    for _ in range(40):
+        rig.tick(5.0)
+    assert rig.warnings() == []
+
+
+def test_the_orphan_thresholds_come_from_the_environment() -> None:
+    rig = SpinRig(
+        cpu_per_second=0.3,
+        environ={orphan_spin.CPU_FRACTION_ENV: "0.25", orphan_spin.SECONDS_ENV: "30"},
+    )
+    for _ in range(10):
+        rig.tick(5.0)
+    assert len(rig.warnings()) == 1
+
+
+def test_an_orphan_that_exits_is_logged_as_gone_and_a_new_one_is_tracked_afresh() -> None:
+    rig = SpinRig(cpu_per_second=1.0)
+    for _ in range(80):
+        rig.tick(5.0)
+    rig.present = False
+    rig.tick(5.0)
+    assert any("pid 4242 is gone" in line for line in rig.lines)
+    rig.present = True
+    for _ in range(80):
+        rig.tick(5.0)
+    assert len(rig.warnings()) == 2
+
+
+def test_orphans_are_not_read_when_no_checkout_is_known() -> None:
+    read: list[Sequence[str]] = []
+    sentinel, lines = make_sentinel([], {}, roots=())
+    sentinel._orphan_reader = lambda roots: read.append(roots) or []
+    sentinel.step()
+    assert read == []
+    assert not any("orphaned" in line for line in lines)
+
+
+class FakeProc:
+    def __init__(self, info: dict[str, object], detail: dict[str, object]) -> None:
+        self.info = info
+        self._detail = detail
+
+    def as_dict(self, attrs: list[str], ad_value: object = None) -> dict[str, object]:
+        return {key: self._detail.get(key, ad_value) for key in attrs}
+
+
+def fake_shell(
+    pid: int,
+    *,
+    ppid: int = 1,
+    name: str = "bash",
+    cwd: str | None = "/work/BenchBox.wt-a",
+    user: int = 501,
+) -> FakeProc:
+    return FakeProc(
+        {
+            "pid": pid,
+            "ppid": ppid,
+            "name": name,
+            "create_time": float(pid),
+            "uids": SimpleNamespace(real=user),
+        },
+        {"cwd": cwd, "cmdline": [name, "-c", "spin"], "cpu_times": SimpleNamespace(user=40.0, system=2.0)},
+    )
+
+
+def test_the_process_table_filter_selects_only_orphaned_shells_of_this_user_in_a_checkout() -> None:
+    table = [
+        fake_shell(10),
+        fake_shell(11, ppid=500),
+        fake_shell(12, name="python3.12"),
+        fake_shell(13, cwd="/home/someone/notes"),
+        fake_shell(14, cwd=None),
+        fake_shell(15, user=502),
+        fake_shell(16, cwd="/work/BenchBox.wt-ab"),
+        fake_shell(17, name="zsh", cwd="/work/BenchBox.wt-a/deep/sub"),
+    ]
+    found = orphan_spin.read_orphan_shells(("/work/BenchBox.wt-a",), processes=lambda attrs: iter(table), uid=501)
+    assert [shell.pid for shell in found] == [10, 17]
+    assert found[0].cpu_seconds == 42.0
+    assert found[0].command == "bash -c spin"
 
 
 def test_summaries_are_logged_only_when_the_heavy_set_pressure_or_flood_changes() -> None:

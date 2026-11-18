@@ -3,10 +3,6 @@
 Set up tracker state for a repository. State lives on a dedicated Git branch,
 outside the code worktree.
 
-`tractable` was named `todo-db` before 1.0.0. A project still on `todo-db`
-uses its own pinned copy of this skill until it switches; this page and the
-rest of the skill assume `tractable` 1.0.0 or later.
-
 ## Install the runtime
 
 A human installs the tool from PyPI and upgrades it the same way:
@@ -62,9 +58,7 @@ untouched.
   Code reads `.mcp.json` at the project root and needs no arguments:
   `{"mcpServers": {"tractable": {"command": "tractable-mcp", "args": []}}}`.
   Codex needs `[mcp_servers.tractable]` with `command = "tractable-mcp"` in
-  `~/.codex/config.toml`. Cursor and Windsurf pass
-  `["--repo-root", "${workspaceFolder}"]`; Zed uses `context_servers`, not
-  `mcpServers`.
+  `~/.codex/config.toml`.
 - Per-client registration (Claude Code, Codex, Cursor, Windsurf, Zed) lives in
   the tractable repository's `docs/operations/mcp-clients.md`.
 

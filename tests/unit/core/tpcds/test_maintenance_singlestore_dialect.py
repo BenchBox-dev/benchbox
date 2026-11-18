@@ -18,6 +18,14 @@ def test_singlestore_adapter_runs_tpcds_maintenance() -> None:
     assert maintenance_unsupported_reason(adapter) is None
 
 
+def test_cedardb_adapter_does_not_run_tpcds_maintenance() -> None:
+    from benchbox.platforms.cedardb import CedarDBAdapter
+
+    assert CedarDBAdapter.supports_refresh_functions is True
+    adapter = CedarDBAdapter.__new__(CedarDBAdapter)
+    assert "not verified on CedarDB" in (maintenance_unsupported_reason(adapter) or "")
+
+
 @pytest.mark.parametrize("dialect", ["singlestore", "mysql", "SingleStore"])
 def test_mysql_wire_dialects_cast_to_signed(dialect: str) -> None:
     for name in RETURN_FUNCTIONS_WITH_TIME_PARSING:

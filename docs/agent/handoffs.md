@@ -60,6 +60,27 @@ quoted in an item binds only when it cites a real owner statement.
 Never write resumable state to a scratchpad or `/tmp`. A cloud session's
 scratchpad, and its home directory, disappear when the session ends.
 
+### Taking over a worktree
+
+The write preflight records which session owns a worktree and refuses another
+session while the owner's harness process is alive ("Worktree ... is owned by
+live session ..."). Subagents share their parent's harness process, so a
+subagent's claim stays live after the subagent has finished. A parent that
+writes in a worktree after its subagent did, or a subagent sent into its
+parent's worktree, is therefore refused.
+
+```bash
+BENCHBOX_WORKTREE_TAKEOVER=1 make agent-write-preflight
+```
+
+Run it, once, only when the recorded owner is an agent of the same harness
+session (this session's subagent, its parent, or an earlier subagent of the
+same parent) that has stopped writing there, or when the other session is
+confirmed gone. Never take a worktree from a session that may still be
+working: create your own with `make worktree-create`. A prompt that hands a
+worktree to a subagent should include the command. A batch leader does not
+need it: it never writes in a member worktree.
+
 ## Why handoff files were retired
 
 Handoffs were Markdown files of session state, kept first in several

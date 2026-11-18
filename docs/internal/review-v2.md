@@ -202,12 +202,30 @@ no status from `benchbox-review[bot]` in `review-verdict` (verdict) or
 `review-gate` (gate), so an empty secret mapping can no longer end green while
 posting nothing on a head that has no status yet. It asserts only for `pull_request_target`
 and `workflow_dispatch` runs, and skips the runs the callee skips by design: sweeps and
-comment events, closed or draft pull requests, a base other than `develop`, a head that has
+comment events, closed or draft pull requests, a base other than `develop` or `release/*`, a head that has
 since moved, and a title edit for the verdict. It cannot tell a run that posted nothing from
 a run the callee skipped because the head already had a decision, so a status left by an
 earlier run satisfies it: a green `posting-check` proves the pin only for a head that had no
 status before the run. Dispatch the checks above on such heads and record the run links in
 the tracker item that carried the bump.
+
+A `pull_request_target` run takes its policy from the branch the workflow runs on, and Theseus
+posts the gate and the verdict only from the policy of the pull request's own base. For a pull
+request into a `release/X.Y.x` line the run reads `develop`'s policy and posts nothing, so the
+`posting-check` job dispatches the same caller (`workflow_dispatch`, `--ref release/X.Y.x`)
+for the handled head, and the dispatched run decides it from the line's own policy and lock. The
+job holds `actions: write` for that one call and no other grant beyond reading statuses. The pull
+request run ends green once the dispatch is accepted; the required `review-gate` and
+`review-verdict` statuses stay unposted, and merging stays blocked, until the dispatched run posts
+them, and that run's own `posting-check` asserts the statuses exist. A callee that ended `failure` or
+`cancelled` keeps the run red, and a failed dispatch fails the job.
+
+`review-gate.yml` never cancels a run in flight: runs for one pull request queue in one
+concurrency group and a newer pending run replaces an older pending one before it starts,
+so it leaves no check. A run cancelled while it executed would leave its `gate / *` checks
+and `gate posting check` red on the head it handled, and a dispatch or comment run that
+cancelled it reports on the default-branch commit, so nothing ever replaced them. A
+`posting-check` that sees a cancelled gate job still fails by design.
 
 ### Rollback
 
@@ -764,6 +782,20 @@ names the PR, head, finding and decision in the current request, after an
 `Owner instruction` comment. The merge digest lists adjudications and flags one
 with no preceding `Owner instruction` comment. `review-gate` never parses
 findings.
+
+The same owner comment also settles an open finding carried as a claimed prior from
+the local findings record (its title begins `(claimed `), with no escalation needed:
+`WITHDRAW` removes it from the open set and `MAINTAIN` keeps it open. The ruling needs
+the head's latest review to be SHIP WITH FIXES, the finding to be open on it, and the
+finding to be either escalated or claimed; reviewer-written titles that begin
+`(claimed ` are rewritten so a reviewer cannot make a finding look claimed. The local
+record's claims still never close a finding or count as a strike. A comment starting
+`Review adjudication:` that cannot apply (not from an attester, edited, malformed,
+unknown or already closed id, or a finding that is neither escalated nor claimed) changes
+nothing, and the gate's blocked message names the reason and the comment (for example
+`Blocked · owner adjudication ignored · D9 is not an open finding on this head
+(joeharris76: 'WITHDRAW D9 - ...')`) instead of dropping it silently; a ruling aimed at
+another head is reported only in the verdict plan summary.
 
 The reviewer never resolves a thread: a follow-up lists defects it verified fixed,
 and the author resolves those. Each new thread carries a hidden `review-defect:
@@ -1421,8 +1453,9 @@ and posts nothing to GitHub.
   confirms count toward the defect-count overflow up to one short of the limit, so they never force a
   DO NOT SHIP alone, the record carries no strike data, and the
   CI id counter starts above the claimed ids, so a forged or edited record can only
-  create work. A local adjudication does not clear a finding in CI; CI escalation
-  still needs the owner's `Review adjudication:` comment on the PR.
+  create work. A local adjudication does not clear a finding in CI; only the owner's
+  `Review adjudication:` comment on the PR does, and it applies to a claimed prior
+  without escalation (see the escalation section).
 - **Pinned head.** `pr-open` records `HEAD` before the review and passes it as
   `--head`. It pushes exactly that commit (`git push origin <reviewed>:refs/heads/<branch>`)
   and arms that commit, even when the branch ref moved while the review ran; the
@@ -1881,8 +1914,9 @@ sparsely (gate, predicate, reviewers policy), run the script with pinned
 does, from the same `review` environment and secrets. If the reviewers policy
 cannot load, the script errors rather than deciding with empty rules; the sweep
 records every per-PR error and fails if any PR errored. Runs evaluating a PR
-share one concurrency group keyed by its number, with cancel-in-progress, so a
-newer run cancels an older one instead of racing.
+share one concurrency group keyed by its number that queues rather than cancels, so
+runs are serialized instead of racing and a newer pending run replaces an older pending
+one before it starts.
 
 When evaluation fails after the head SHA is known, whatever the cause (API,
 network, malformed payload, policy), the script posts `failure` for that head

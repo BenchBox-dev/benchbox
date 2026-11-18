@@ -148,7 +148,7 @@ def _validate_dataframe_spelling(
 
 def _validate_semantic_surfaces(errors: list[str]) -> None:
     import benchbox.platforms as platform_package
-    from benchbox.cli.commands.run import _GUIDED_CREDENTIAL_PLATFORMS
+    from benchbox.cli.run_interactive import _GUIDED_CREDENTIAL_PLATFORMS
     from benchbox.core.tuning.capability_registry import PLATFORM_ALIASES as TUNING_ALIASES
     from benchbox.platforms.base.format_capabilities import (
         CAPABILITIES_REGISTRY,

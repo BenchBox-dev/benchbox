@@ -581,3 +581,54 @@ def test_main_embeds_the_receipt_file_and_refuses_one_that_is_not_a_single_block
         receipt.write_text(bad)
         assert pr_open_rest.main([*args, "--receipt-file", str(receipt)], FakeGh([], "")) == 1
     assert pr_open_rest.main([*args, "--receipt-file", str(tmp_path / "missing.md")], FakeGh([], "")) == 1
+
+
+LINE = "release/0.5.x"
+
+
+def test_a_pull_request_into_a_line_is_looked_up_and_created_against_that_line() -> None:
+    gh = FakeGh([], _log(("fix: widget", "Why.")))
+
+    pr = pr_open_rest.publish(REPO, "BenchBox-dev", "fix/widget", "fix/widget", None, None, gh, base_branch=LINE)
+
+    assert pr.status == "created"
+    assert _fields(gh.api("GET")[0])["base"] == LINE
+    assert _fields(gh.api("POST")[0])["base"] == LINE
+    assert gh.calls[1][:3] == ["git", "log", "--reverse"] and gh.calls[1][-1] == f"origin/{LINE}..HEAD"
+
+
+def test_an_existing_line_pull_request_is_reused_and_a_develop_one_is_not_taken_for_it() -> None:
+    gh = FakeGh([_pull("BenchBox-dev", "fix/widget", 9)])
+    pr = pr_open_rest.publish(REPO, "BenchBox-dev", "fix/widget", "fix/widget", None, None, gh, base_branch=LINE)
+    assert (pr.status, pr.number) == ("reused", 9)
+    assert _fields(gh.api("GET")[0])["base"] == LINE
+
+
+def test_a_stack_on_a_line_must_end_at_that_line_and_not_at_develop() -> None:
+    on_line = ParentGh({"feat/parent": ("BenchBox-dev", LINE)})
+    pr_open_rest.verify_parent(on_line, REPO, "feat/upper", "feat/parent", LINE)
+    on_develop = ParentGh({"feat/parent": ("BenchBox-dev", "develop")})
+    with pytest.raises(pr_open_rest.PrOpenError, match="cyclic|not an open pull request"):
+        pr_open_rest.verify_parent(on_develop, REPO, "feat/upper", "feat/parent", LINE)
+
+
+def test_a_stack_on_develop_does_not_end_at_a_line() -> None:
+    on_line = ParentGh({"feat/parent": ("BenchBox-dev", LINE)})
+    with pytest.raises(pr_open_rest.PrOpenError):
+        pr_open_rest.verify_parent(on_line, REPO, "feat/upper", "feat/parent")
+
+
+def test_a_line_is_an_integration_branch_and_not_a_parent() -> None:
+    with pytest.raises(pr_open_rest.PrOpenError, match="integration branch"):
+        pr_open_rest.verify_parent(ParentGh({}), REPO, "feat/upper", LINE, LINE)
+
+
+def test_the_command_takes_the_line_and_refuses_any_other_base(capsys: pytest.CaptureFixture[str]) -> None:
+    args = ["--repo", REPO, "--head-owner", "BenchBox-dev", "--branch", "feat/w", "--head-spec", "feat/w"]
+    gh = FakeGh([_pull("BenchBox-dev", "feat/w")])
+    assert pr_open_rest.main([*args, "--base", LINE], gh) == 0
+    assert _fields(gh.api("GET")[0])["base"] == LINE
+    refused = FakeGh([])
+    assert pr_open_rest.main([*args, "--base", "main"], refused) == 1
+    assert refused.calls == []
+    assert "not 'develop' or a release/X.Y.x maintenance line" in capsys.readouterr().err

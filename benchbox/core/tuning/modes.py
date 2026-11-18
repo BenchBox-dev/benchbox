@@ -18,6 +18,8 @@ MODES: tuple[str, ...] = (TUNED, TUNED_FALLBACK, NOTUNING, AUTO, CUSTOM)
 
 NOT_RECORDED = "not-recorded"
 
+BASELINE_SOURCE = "baseline"
+
 
 def is_canonical_mode(value: str | None) -> bool:
     return value in MODES

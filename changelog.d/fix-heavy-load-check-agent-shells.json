@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Corrects the unreleased heavy-work load check; the existing fragment for that change carries the wording"
+}

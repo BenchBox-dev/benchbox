@@ -12,13 +12,14 @@ MAX_LINES_DEFAULT = 1_200
 ALLOWLIST_HEADROOM = 25
 
 ALLOWLIST = {
-    Path("benchbox/cli/commands/run.py"): 2_977,
+    Path("benchbox/cli/commands/run.py"): 2_251,
     Path("benchbox/core/tpcds/benchmark/runner.py"): 2_115,
     Path("benchbox/core/tpcdi/generator/data.py"): 317,
 }
 
 MODULE_PATHS = [
     Path("benchbox/cli/commands/run.py"),
+    Path("benchbox/cli/run_interactive.py"),
     Path("benchbox/cli/run_platform_resolution.py"),
     Path("benchbox/cli/app.py"),
     Path("benchbox/core/tpcds/benchmark/runner.py"),

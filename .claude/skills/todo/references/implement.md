@@ -17,9 +17,7 @@ A batch member skips this section and makes no tracker call (see §2).
 ### 2. Do the work
 
 Apply `shared-change-framework/SKILL.md` Section 1 before editing source code.
-Then edit, test locally, and keep the change focused on the task. There are no
-work units to tick off and no scope gate to satisfy — the task description and
-your judgment define the work.
+Then edit, test locally, and keep the change focused on the task.
 
 If the claim may outlast its lease (default 24h), call
 `renew(id=..., generation=...)`. Same generation, no milestones needed.
@@ -44,9 +42,7 @@ with).
 
 For a standalone item:
 
-1. Call `finish(id=..., generation=...)` to close the item once its delivery is
-   complete. For a batch member, never call `finish` after the member work or
-   after `prepare`; the leader finishes members at batch closeout.
+1. Call `finish(id=..., generation=...)` once its delivery is complete.
 2. If you must abandon work, call `release(id=..., generation=...)` so the task
    returns to the ready queue.
 

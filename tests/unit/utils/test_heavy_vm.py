@@ -403,6 +403,7 @@ def test_the_sentinel_survives_a_failing_vm_check() -> None:
         pressure_reader=lambda: 0,
         sleeper=lambda seconds: None,
         git_reader=lambda roots: [],
+        orphan_reader=lambda roots: [],
         total_ram=lambda: 16 * 2**30,
         environ={},
         vm_watch=rig.watch,

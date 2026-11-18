@@ -99,6 +99,40 @@ def test_rf1_uses_1000_row_insert_chunks_and_one_transaction(tmp_path: Path) -> 
     assert connection.rollbacks == 0
 
 
+class ImplicitTransactionDriver(RecordingConnection):
+    def __init__(self, autocommit: bool) -> None:
+        super().__init__()
+        self.autocommit = autocommit
+
+    def execute(self, statement: str):
+        if statement == "BEGIN" and not self.autocommit:
+            raise RuntimeError("there is already an active transaction")
+        return super().execute(statement)
+
+
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_refresh_does_not_issue_begin_when_the_driver_opens_transactions_implicitly(
+    tmp_path: Path, wrapped: bool
+) -> None:
+    update_set = _update_set(tmp_path, 8, order_keys=[81], lineitem_keys=[81], delete_keys=[81])
+    driver = ImplicitTransactionDriver(autocommit=False)
+    connection = SimpleNamespace(connection=driver, execute=driver.execute, commit=driver.commit) if wrapped else driver
+
+    assert apply_rf1(connection, update_set) == 2
+
+    assert "BEGIN" not in driver.statements
+    assert driver.commits == 1
+
+
+def test_refresh_issues_begin_when_the_driver_is_in_autocommit_mode(tmp_path: Path) -> None:
+    update_set = _update_set(tmp_path, 9, order_keys=[91], lineitem_keys=[91], delete_keys=[91])
+    driver = ImplicitTransactionDriver(autocommit=True)
+
+    apply_rf1(driver, update_set)
+
+    assert driver.statements[0] == "BEGIN"
+
+
 def test_rf1_check_rejects_keys_that_exist_more_than_once(tmp_path: Path) -> None:
     update_set = _update_set(tmp_path, 4, order_keys=[41], lineitem_keys=[41], delete_keys=[])
     connection = RecordingConnection([2])

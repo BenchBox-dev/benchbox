@@ -9,6 +9,7 @@ from benchbox.core.tpch.dataframe_queries import (
     get_query as get_tpch_query,
     get_tpch_parameters,
     q21_expression_impl as _q21_expr_base,
+    q21_final_join_how,
     q21_pandas_impl as _q21_pandas_base,
 )
 from benchbox.core.tpchavoc.dataframe_queries.loader import build_variants
@@ -63,12 +64,20 @@ def _q21_expr_final(candidates: Any, per_order: Any, late_per_order: Any, col: A
     )
 
 
-def _q21_expr_final_span(candidates: Any, per_order: Any, late_per_order: Any, col: Any) -> Any:
+def _q21_expr_final_span(candidates: Any, per_order: Any, late_per_order: Any, col: Any, join_how: str) -> Any:
     return (
-        candidates.join(per_order, left_on="l_orderkey", right_on="supp_orderkey")
-        .join(late_per_order, left_on="l_orderkey", right_on="late_orderkey")
-        .filter(col("min_supp") != col("max_supp"))
-        .filter(col("min_late_supp") == col("max_late_supp"))
+        candidates.join(
+            per_order.filter(col("min_supp") != col("max_supp")).select("supp_orderkey"),
+            left_on="l_orderkey",
+            right_on="supp_orderkey",
+            how=join_how,
+        )
+        .join(
+            late_per_order.filter(col("min_late_supp") == col("max_late_supp")).select("late_orderkey"),
+            left_on="l_orderkey",
+            right_on="late_orderkey",
+            how=join_how,
+        )
         .group_by("s_name")
         .agg(col("l_orderkey").count().alias("numwait"))
         .sort(["numwait", "s_name"], descending=[True, False])
@@ -174,7 +183,7 @@ def _make_q21_expression_impl(variant: int) -> VariantImpl:
                 )
                 .select(col("l_orderkey").alias("supp_orderkey"), col("min_supp"), col("max_supp"))
             )
-            return _q21_expr_final_span(candidates, per_order, late_per_order, col)
+            return _q21_expr_final_span(candidates, per_order, late_per_order, col, q21_final_join_how(ctx))
 
         if variant == 5:
             targets = (
@@ -216,7 +225,7 @@ def _make_q21_expression_impl(variant: int) -> VariantImpl:
                 )
                 .select(col("l_orderkey").alias("late_orderkey"), col("min_late_supp"), col("max_late_supp"))
             )
-            return _q21_expr_final_span(candidates, per_order, late_per_order, col)
+            return _q21_expr_final_span(candidates, per_order, late_per_order, col, q21_final_join_how(ctx))
 
         if variant == 6:
             valid = _q21_expr_valid_orders(orders, col, lit)
@@ -241,7 +250,7 @@ def _make_q21_expression_impl(variant: int) -> VariantImpl:
                 )
                 .select(col("l_orderkey").alias("late_orderkey"), col("min_late_supp"), col("max_late_supp"))
             )
-            return _q21_expr_final_span(candidates, per_order, late_per_order, col)
+            return _q21_expr_final_span(candidates, per_order, late_per_order, col, q21_final_join_how(ctx))
 
         if variant == 7:
             candidates = (
@@ -269,6 +278,7 @@ def _make_q21_expression_impl(variant: int) -> VariantImpl:
                 )
                 .select(col("l_orderkey").alias("late_orderkey"), col("min_late_supp"), col("max_late_supp")),
                 col,
+                q21_final_join_how(ctx),
             )
 
         candidates = _q21_expr_candidates(lineitem, targets, valid, col)
@@ -316,8 +326,9 @@ def _make_q21_expression_impl(variant: int) -> VariantImpl:
             )
 
         late_orders = scoped.filter(late).select(col("l_orderkey").alias("late_cand_orderkey")).unique()
-        narrowed = cand_orders.join(late_orders, left_on="cand_orderkey", right_on="late_cand_orderkey", how="semi")
-        scoped_narrow = lineitem.join(narrowed, left_on="l_orderkey", right_on="cand_orderkey", how="semi")
+        join_how = q21_final_join_how(ctx)
+        narrowed = cand_orders.join(late_orders, left_on="cand_orderkey", right_on="late_cand_orderkey", how=join_how)
+        scoped_narrow = lineitem.join(narrowed, left_on="l_orderkey", right_on="cand_orderkey", how=join_how)
         per_order = (
             scoped_narrow.group_by("l_orderkey")
             .agg(
@@ -335,7 +346,7 @@ def _make_q21_expression_impl(variant: int) -> VariantImpl:
             )
             .select(col("l_orderkey").alias("late_orderkey"), col("min_late_supp"), col("max_late_supp"))
         )
-        return _q21_expr_final_span(candidates, per_order, late_per_order, col)
+        return _q21_expr_final_span(candidates, per_order, late_per_order, col, q21_final_join_how(ctx))
 
     impl.__name__ = f"q21_v{variant}_expression_impl"
     impl.__qualname__ = impl.__name__

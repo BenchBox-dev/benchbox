@@ -26,6 +26,7 @@ REVIEW_CONSUMER_TESTS = (
     "tests/unit/scripts/test_remote_closeout.py",
     "tests/unit/scripts/test_soundness_merge_digest.py",
     "tests/unit/scripts/test_theseus_lock.py",
+    "tests/unit/scripts/test_theseus_prefetch.py",
     "tests/unit/scripts/test_theseus_release_check.py",
     "tests/unit/scripts/test_review_gateway_host.py",
     "tests/integration/review/test_curated_capture_fixtures.py",
@@ -36,8 +37,22 @@ REVIEW_CONSUMER_TESTS = (
     "tests/unit/workflows/test_review_verdict_workflow.py",
 )
 WORKFLOW_TESTS_ROOT = "tests/unit/workflows/"
+SHIPPED_DOCS_URL_TEST = "tests/unit/cli/test_shipped_docs_urls.py"
 SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
-    "benchbox/": ("tests/system/test_module_size_thresholds.py",),
+    "README.md": (SHIPPED_DOCS_URL_TEST,),
+    "CONTRIBUTING.md": (SHIPPED_DOCS_URL_TEST,),
+    "docs/": (SHIPPED_DOCS_URL_TEST,),
+    "examples/": (SHIPPED_DOCS_URL_TEST,),
+    "docker/velox/README.md": (SHIPPED_DOCS_URL_TEST,),
+    "results-data/": (SHIPPED_DOCS_URL_TEST,),
+    "quality/docs-ownership.json": (SHIPPED_DOCS_URL_TEST,),
+    "benchbox/": (
+        "tests/system/test_module_size_thresholds.py",
+        "tests/unit/cli/test_output_control_static.py",
+        SHIPPED_DOCS_URL_TEST,
+        "tests/unit/core/tpcdi/test_tpcdi_no_values_row_source.py",
+        "tests/unit/platforms/test_credential_error_messages.py",
+    ),
     "benchbox/cli/": ("tests/uat/test_no_cli_surface_drift.py",),
     "benchbox/core/tuning/": (
         "tests/unit/core/tuning/test_capability_registry_parity.py",
@@ -50,6 +65,7 @@ SOURCE_GUARD_TESTS: dict[str, tuple[str, ...]] = {
     "scripts/theseus_cli.py": REVIEW_CONSUMER_TESTS,
     "scripts/theseus_release_check.py": REVIEW_CONSUMER_TESTS,
     "_project/scripts/theseus_bootstrap.py": REVIEW_CONSUMER_TESTS,
+    "_project/scripts/theseus_prefetch.py": REVIEW_CONSUMER_TESTS,
     "_project/scripts/review_gateway_host.sh": REVIEW_CONSUMER_TESTS,
     "_project/scripts/soundness_merge_digest.py": REVIEW_CONSUMER_TESTS,
     "_project/scripts/soundness_manifest.py": REVIEW_CONSUMER_TESTS,
@@ -373,6 +389,7 @@ READERS_INDEX_TEST = "tests/unit/scripts/test_inert_paths.py::test_checked_in_re
 REFERENCE_GUARDS = ("docs-reference-inventory", "project-references")
 OWNERSHIP_GUARD = "docs-ownership"
 DOCS_ROOT = "docs/"
+OWNERSHIP_PATHS = ("README.md", "quality/docs-ownership.json")
 
 
 def _load_inert_paths() -> Any:
@@ -438,7 +455,7 @@ def guards(paths: list[str]) -> list[str]:
     selected: list[str] = []
     if paths:
         selected.extend(REFERENCE_GUARDS)
-    if any(path.startswith(DOCS_ROOT) for path in paths):
+    if any(path.startswith(DOCS_ROOT) or path in OWNERSHIP_PATHS for path in paths):
         selected.append(OWNERSHIP_GUARD)
     return selected
 
@@ -481,6 +498,8 @@ def map_tests(repo: Path, paths: list[str], *, doc_readers: bool = False) -> lis
             if module != "__init__":
                 selected.update(index.get(f"test_{module}.py", ()))
             selected.update(_platform_smoke_tests(path, test_files))
+            selected.update(_guard_tests(path, test_files))
+        else:
             selected.update(_guard_tests(path, test_files))
     if doc_readers:
         selected.update(_reader_tests(repo, paths, test_files))

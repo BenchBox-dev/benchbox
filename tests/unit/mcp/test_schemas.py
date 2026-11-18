@@ -25,7 +25,6 @@ from benchbox.mcp.schemas import (
     validate_platform_options,
     validate_query_id,
     validate_query_list,
-    validate_scale_factor,
 )
 
 pytestmark = [
@@ -159,30 +158,6 @@ class TestValidateFilename:
             validate_filename("file@name.json")
         with pytest.raises(MCPValidationError, match="invalid characters"):
             validate_filename("file name.json")
-
-
-class TestValidateScaleFactor:
-    def test_valid_scale_factors(self):
-        assert validate_scale_factor(0.01) == 0.01
-        assert validate_scale_factor(1.0) == 1.0
-        assert validate_scale_factor(10.0) == 10.0
-        assert validate_scale_factor(100.0) == 100.0
-
-    def test_zero_rejected(self):
-        with pytest.raises(MCPValidationError, match="must be positive"):
-            validate_scale_factor(0)
-
-    def test_negative_rejected(self):
-        with pytest.raises(MCPValidationError, match="must be positive"):
-            validate_scale_factor(-1)
-
-    def test_too_small_rejected(self):
-        with pytest.raises(MCPValidationError, match="too small"):
-            validate_scale_factor(0.0001)
-
-    def test_too_large_rejected(self):
-        with pytest.raises(MCPValidationError, match="too large"):
-            validate_scale_factor(20000)
 
 
 class TestPlatformOptionAdmission:

@@ -1331,6 +1331,24 @@ def test_arm_gate_warns_without_blocking_when_the_newest_run_is_stale(
     assert f"{status} for 91 minutes" in err
 
 
+@pytest.mark.parametrize("age", [timedelta(minutes=31), timedelta(hours=6), timedelta(days=3)])
+def test_arm_gate_never_refuses_for_a_pending_run_however_old(age: timedelta) -> None:
+    runs = _stale_arm_runs("queued", age)
+    assert trunk_revert.arm_gate("fix/thing", run=ArmRun(runs), now=NOW) is None
+
+
+def test_main_arm_gate_exits_zero_and_warns_when_the_newest_run_is_stale(capsys: pytest.CaptureFixture[str]) -> None:
+    created = datetime.now(UTC) - timedelta(hours=5)
+    runs = _stale_arm_runs("queued", timedelta(0))
+    runs[0]["createdAt"] = created.strftime("%Y-%m-%dT%H:%M:%SZ")
+    runs[1]["createdAt"] = (created - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    runs[1]["updatedAt"] = runs[1]["createdAt"]
+    assert trunk_revert.main(["arm-gate", "--branch", "fix/thing"], run=ArmRun(runs)) == 0
+    err = capsys.readouterr().err
+    assert "queued for 300 minutes" in err
+    assert "continuing anyway" in err
+
+
 def test_arm_gate_is_silent_when_the_newest_run_is_fresh(capsys: pytest.CaptureFixture[str]) -> None:
     runs = _stale_arm_runs("in_progress", timedelta(minutes=10))
     assert trunk_revert.arm_gate("fix/thing", run=ArmRun(runs), now=NOW) is None

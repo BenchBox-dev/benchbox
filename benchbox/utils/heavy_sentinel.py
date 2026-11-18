@@ -22,6 +22,7 @@ from benchbox.utils import (
     heavy_watchdog,
     host_lock,
     linux_machine,
+    orphan_spin,
     process_tree,
     resource_limits,
     vm_footprint,
@@ -597,8 +598,10 @@ class Sentinel:
         holder_reader: Callable[[], frozenset[int]] = lambda: frozenset(),
         sleeper: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = mono_time,
+        wall_clock: Callable[[], float] = time.time,
         git_reader: Callable[[Sequence[str]], Sequence[git_flood.GitProc]] = git_flood.read_git_processes,
         total_ram: Callable[[], int | None] = git_flood.total_ram_bytes,
+        orphan_reader: Callable[[Sequence[str]], Sequence[orphan_spin.OrphanShell]] = orphan_spin.read_orphan_shells,
         environ: Mapping[str, str] | None = None,
         exclude: Sequence[int] = (),
         vm_watch: VmWatch | None = None,
@@ -613,10 +616,15 @@ class Sentinel:
         self._holder_reader = holder_reader
         self._sleeper = sleeper
         self._clock = clock
+        self._wall_clock = wall_clock
+        self._busy_since: dict[tuple[int, float], float] = {}
+        self._published: list[orphan_spin.ActiveSpin] | None = None
         self._exclude = frozenset({os.getpid(), *exclude})
         self._git_reader = git_reader
         self._total_ram = total_ram
         self._environ = os.environ if environ is None else environ
+        self._orphan_reader = orphan_reader
+        self._spin = orphan_spin.SpinTracker(self._environ)
         self._roots: tuple[str, ...] = ()
         self._root_count = 0
         self._roots_at: float | None = None
@@ -733,6 +741,55 @@ class Sentinel:
         self._flooded = flood.breached
         return flood.breached
 
+    def _check_orphans(self) -> None:
+        if not self._roots:
+            return
+        try:
+            shells = self._orphan_reader(self._roots)
+            reports, ended = self._spin.observe(shells, self._clock())
+        except Exception as exc:
+            self._log(f"could not read orphaned shells: {exc}")
+            return
+        for report in reports:
+            shell = report.shell
+            self._log(
+                f"WARNING orphaned CPU-bound shell: pid {shell.pid} {shell.name} at {report.cpu_fraction:.0%} CPU "
+                f"for {report.busy_seconds:.0f}s (threshold {self._spin.cpu_fraction:.0%} for "
+                f"{self._spin.sustain_seconds:.0f}s), parent pid 1, cwd {shell.cwd} cmd {shell.command}; "
+                "shells are never signalled by the sentinel, stop it with kill if it is not yours to keep"
+            )
+        for pid in ended:
+            self._log(f"orphaned CPU-bound shell pid {pid} is gone")
+        self._publish_active(reports)
+
+    def _publish_active(self, fresh: Sequence[orphan_spin.SpinReport]) -> None:
+        wall = self._wall_clock()
+        for report in fresh:
+            self._busy_since[(report.shell.pid, report.shell.created)] = wall - report.busy_seconds
+        active = [
+            orphan_spin.ActiveSpin(
+                pid=report.shell.pid,
+                created=report.shell.created,
+                name=report.shell.name,
+                cwd=report.shell.cwd,
+                command=report.shell.command,
+                cpu_fraction=report.cpu_fraction,
+                busy_since=self._busy_since.get((report.shell.pid, report.shell.created), wall),
+            )
+            for report in self._spin.active()
+        ]
+        self._busy_since = {
+            key: since for key, since in self._busy_since.items() if key in {(a.pid, a.created) for a in active}
+        }
+        if active == self._published:
+            return
+        try:
+            orphan_spin.write_active(heavy_status.orphan_spin_path(self._environ), active)
+        except OSError as exc:
+            self._log(f"could not record the orphaned-shell report: {exc}")
+            return
+        self._published = active
+
     def _check_vm(self) -> None:
         if self._vm_watch is None:
             return
@@ -753,6 +810,7 @@ class Sentinel:
             measured = [Measured(m.proc, m.footprint_bytes, m.scope, m.proc.pid in held) for m in measured]
         evaluation = evaluate(measured, pressure, self.policy.budget_bytes)
         flooded = self._check_git()
+        self._check_orphans()
         self._summarize(measured, unreadable, pressure, flooded)
         offender = evaluation.offender
         if offender is None:

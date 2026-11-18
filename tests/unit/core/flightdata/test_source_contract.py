@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import re
+
 import pytest
 
+from benchbox.core.flightdata import downloader as downloader_module
 from benchbox.core.flightdata.downloader import (
     BTS_BASE_URL,
     PINNED_END_MONTH,
     PINNED_END_YEAR,
+    PINNED_SOURCE_SHA256,
     FlightDataDownloader,
     _months_sequence,
     _scale_to_months,
@@ -113,7 +117,7 @@ def test_pinned_checksum_mismatch_fails_instead_of_falling_back(tmp_path, monkey
         def read(self):
             return b"provider drift"
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", lambda *_args, **_kwargs: _Response())
+    monkeypatch.setattr(module.tls, "urlopen", lambda *_args, **_kwargs: _Response())
     downloader = FlightDataDownloader(scale_factor=0.1, output_dir=tmp_path)
     with pytest.raises(ChecksumMismatchError):
         downloader._process_month(csv.writer(io.StringIO()), 2024, 12, 0)
@@ -179,7 +183,8 @@ def test_unparseable_download_fails_closed_unless_fallback_is_explicit(tmp_path,
         def read(self):
             return b"not a zip"
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", lambda *_args, **_kwargs: _Response())
+    monkeypatch.setattr(module.tls, "urlopen", lambda *_args, **_kwargs: _Response())
+    monkeypatch.setattr(module, "PINNED_SOURCE_SHA256", {})
     downloader = FlightDataDownloader(scale_factor=0.1, output_dir=tmp_path)
     with pytest.raises(RuntimeError, match="2024-12.*real data is required"):
         downloader._process_month(csv.writer(io.StringIO()), 2024, 12, 0)
@@ -218,7 +223,8 @@ def test_valid_zip_without_csv_routes_through_fallback_cleanup(tmp_path, monkeyp
         def read(self):
             return payload
 
-    monkeypatch.setattr(module.urllib.request, "urlopen", lambda *_args, **_kwargs: _Response())
+    monkeypatch.setattr(module.tls, "urlopen", lambda *_args, **_kwargs: _Response())
+    monkeypatch.setattr(module, "PINNED_SOURCE_SHA256", {})
     downloader = FlightDataDownloader(scale_factor=0.1, output_dir=tmp_path)
     with pytest.raises(RuntimeError, match="2024-12.*real data is required"):
         downloader._process_month(csv.writer(io.StringIO()), 2024, 12, 0)
@@ -402,3 +408,22 @@ def test_prefetch_starts_only_when_a_month_is_downloaded(monkeypatch, tmp_path):
 
     assert fetched == []
     assert downloader._prefetcher is None
+
+
+def test_every_monthly_file_used_at_sf1_has_a_pinned_sha256(tmp_path):
+    urls = FlightDataDownloader(scale_factor=1.0, output_dir=tmp_path).source_contract()["urls"]
+    assert len(urls) == 41
+    assert set(urls) <= set(PINNED_SOURCE_SHA256)
+    assert all(re.fullmatch(r"[0-9a-f]{64}", PINNED_SOURCE_SHA256[url]) for url in urls)
+
+
+def test_pinned_files_beyond_sf1_are_not_listed():
+    assert len(PINNED_SOURCE_SHA256) == 41
+
+
+def test_sf1_row_count_is_the_sum_over_the_pinned_files():
+    from benchbox.core.results.benchmark_specs import get_spec
+
+    pinned_rows = downloader_module._DOWNLOADER_SPECS["pinned_source"]["rows"]
+    assert set(pinned_rows) == set(PINNED_SOURCE_SHA256)
+    assert sum(pinned_rows.values()) == get_spec("flightdata").sf1_row_counts["flights"]

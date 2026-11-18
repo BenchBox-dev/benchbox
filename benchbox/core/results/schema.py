@@ -15,6 +15,7 @@ from benchbox.core.execution_variant import VariantIdError, derive_variant_id, r
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.results.environment import (
     build_environment_payload,
+    build_host_load_block,
     build_platform_metadata_payload,
 )
 from benchbox.core.results.execution_variant import execution_engine_payload, gateway_payload
@@ -22,6 +23,7 @@ from benchbox.core.results.fetch_mode import summarize_fetch_modes
 from benchbox.core.results.metrics import UNOFFICIAL_COMPLIANCE_CLASSES, percentile_ms
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.platform_timing import resolve_net_estimate_status, summarize_run_platform_timing
+from benchbox.core.results.qphds import load_scope_components
 from benchbox.core.results.query_execution import (
     QueryExecutionContractError,
     normalize_row_count_validation,
@@ -41,7 +43,7 @@ from benchbox.core.results.schema_policy import (
 from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
     platform_info_gateway,
-    result_compliance_class,
+    result_recorded_compliance_class,
     unofficial_metric_marker,
 )
 from benchbox.core.results.timer_scope import TIMING_METHOD_LEGACY
@@ -554,7 +556,7 @@ def _build_benchmark_section(result: BenchmarkResults) -> dict[str, Any]:
         "scale_factor": result.scale_factor,
         "test_type": result.test_execution_type,
     }
-    compliance_class = result_compliance_class(result)
+    compliance_class = result_recorded_compliance_class(result)
     if compliance_class is not None:
         section["compliance_class"] = compliance_class
     if getattr(result, "data_generation_version", None) is not None:
@@ -827,7 +829,7 @@ _EXEC_CTX_TRUTHY = [
     ("strict_plan_capture", "strict_plan_capture", True),
     ("non_interactive", "non_interactive", True),
 ]
-_EXEC_CTX_VALUE = ["validation_mode", "query_subset", "tuning_mode"]
+_EXEC_CTX_VALUE = ["validation_mode", "query_subset", "tuning_mode", "billable_platform_acknowledgement"]
 
 
 def _build_execution_from_context(result: BenchmarkResults, driver_metadata: dict[str, Any]) -> dict[str, Any]:
@@ -1731,7 +1733,7 @@ def _compute_timing_stats(times_ms: list[float]) -> dict[str, Any]:
 
 
 def _build_tpc_metrics(result: BenchmarkResults) -> dict[str, Any] | None:
-    compliance_class = result_compliance_class(result)
+    compliance_class = result_recorded_compliance_class(result)
     if compliance_class == NONSTANDARD_COMPLIANCE_CLASS:
         metrics: dict[str, Any] = {"suppressed": True, "reason": f"compliance_class={compliance_class}"}
     else:
@@ -1758,6 +1760,14 @@ def _build_tpc_metrics(result: BenchmarkResults) -> dict[str, Any] | None:
             metrics["qphds_terms"] = dict(result.qphds_terms)
         if getattr(result, "qphds_unavailable", None):
             metrics["qphds_unavailable"] = list(result.qphds_unavailable)
+
+    if getattr(result, "test_execution_type", None) == "combined" and not metrics.get("suppressed"):
+        components = load_scope_components(getattr(result.execution_phases, "setup", None))
+        if components is not None:
+            metrics["load_scope"] = {
+                "components": components,
+                "counted_in_qph": getattr(result, "benchmark_id", None) == "tpcds",
+            }
 
     return metrics if metrics else None
 
@@ -1893,10 +1903,15 @@ def _extract_tuning_profile_metadata(result: BenchmarkResults) -> dict[str, Any]
 
 
 def _build_environment_block(result: BenchmarkResults) -> dict[str, Any]:
-    return build_environment_payload(
+    environment = build_environment_payload(
         system_profile=getattr(result, "system_profile", None),
         execution_environment=getattr(result, "execution_environment", None),
     )
+    metadata = result.execution_metadata if isinstance(result.execution_metadata, Mapping) else {}
+    environment["host_load"] = build_host_load_block(
+        metadata.get("resource_utilization_start"), metadata.get("resource_utilization")
+    )
+    return environment
 
 
 def _build_tables_block(table_statistics: dict[str, Any] | None) -> dict[str, Any]:

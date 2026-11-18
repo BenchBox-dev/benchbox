@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "TPC-H and TPC-Havoc DataFrame Q21 now filter the per-order supplier aggregates before joining them to the candidate rows, using semi-joins on Polars and DataFusion and inner joins on unique keys on PySpark and LakeSail. Spark pushes a semi-join through each per-file union of a table, so nested semi-joins multiplied the plan; this made Q21v10 run out of Java heap while planning and made Q21v6 take minutes. Results are unchanged."
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 ---
 name: todo
 description: Use when the user asks to "ideate on an idea", "refine an idea", "brainstorm", "write a spec", "create a specification", "create a TODO", "show TODO items", "manage TODOs", "prioritize TODOs", "top N most important todos", "rank the backlog", "what should we work on", "what should I work on", "implement a TODO", "implement a batch of TODOs", "complete a TODO", "finish an item", "release my claim", "why did finish fail", "cleanup TODOs", "review TODO quality", "claim a TODO", "what's ready" / "ready queue", "block"/"unblock a TODO", "create TODOs from a spec", "create a batch handoff", or "close out a reviewed batch". Covers the lifecycle from idea to specification, implementation, and completion.
-version: 4.0.0
+version: 4.2.0
 tools: Bash, Read, Edit, Write, Task
 ---
 
@@ -14,11 +14,8 @@ The `tractable` CLI keeps bootstrap, validation, migration, and recovery for
 humans and CI (listed at the end of this page). Never hand-edit state-branch
 files; every change goes through a tool so publication stays atomic.
 
-This is the only tracker skill. There is no separate `tractable` skill:
-`tractable` is the product this skill drives — the MCP server named
-`tractable` and the CLI of the same name. This skill requires tractable 1.0.0
-or later. Do not author a second skill for it, in this catalog or in
-the product repository.
+`tractable` is the product this skill drives: the MCP server and the CLI of
+that name. Requires tractable 1.0.0 or later.
 
 ## Critical rules
 
@@ -31,27 +28,37 @@ the product repository.
   branch, and a server bound to another project's tracker answers
   `expect_store` with a `gate`-kind `E_STATE`. On that refusal, stop and write
   nothing; tell the operator to restart `tractable-mcp` with the project's
-  `--config` or from the project directory. The match is a case-insensitive
-  substring of the remote only, so pass the full `owner/repo`, not a short
-  word.
-- **Drive through MCP tools, never the shell.** Do not invoke tracker verbs
-  through the `tractable` floor CLI, hand-edit state, or invent a second store.
-  Use `Bash` strictly for repo test suites, linters, and builds.
+  `--config` or from the project directory. Since tractable 1.1.1 the
+  server compares whole trailing repository path segments of the remote,
+  case-insensitively, and accepts `owner/repo`, a bare repository name or a
+  full URL (with or without `.git`). Keep passing `owner/repo`.
+- **A running server keeps the code it started with.** After
+  `get_instructions`, compare the server's `tractable_batch.tool_version`
+  (experimental capability, or `serverInfo.version`) with the project's pinned
+  runtime; in a vendoring project that is the wheel version under its vendor
+  directory (for example BenchBox
+  `_project/scripts/vendor/tractable-<v>-py3-none-any.whl`). If the server is
+  older, make no tracker writes and ask the operator to restart the session.
+- **Drive the tracker through MCP tools.** Never run tracker verbs through the
+  `tractable` CLI or invent a second store. Git, worktree, test, and build
+  commands in the shell are ordinary repository work.
 - **Fail-closed preflight.** If the `tractable` MCP tools are absent from your
   tool registry, stop and tell the operator to register `tractable-mcp`
   (`references/bootstrap.md`). Do not reconstruct the backlog from files or
   chat history — the state branch is the only source.
 - **One server instance is one worker identity.** Run separate servers with
-  different `--actor` values for concurrent workers.
-- **One live claim per worker.** Taking a second item without releasing or
-  finishing the first is refused with `E_MULTIPLE_CLAIMS`.
+  different `--actor` values for concurrent workers, and never share an actor
+  across concurrent servers.
+- **One live claim per slot.** A worker holds one live claim outside any batch
+  and one per active batch; a second claim in the same slot is refused with
+  `E_MULTIPLE_CLAIMS`.
 - **Only the claim holder may `renew`, `finish`, or `release` an item.** Keep
   the `generation` returned by `take`. The same stable actor may re-adopt after
   its previous server stops. For a default-identity ordinary reconnect, checkpoint
   and release first, confirm store/runtime after reconnect, then take again.
   A batch leader retains its stable owner identity or uses owner recovery.
 - **Take over a foreign live claim only when its session cannot resume.**
-  `takeover(item_id, expected_holder, reason)` transfers a live claim held by
+  `takeover(id, expected_holder, reason)` transfers a live claim held by
   another worker: name the exact holder you inspected with `show_item` and say
   why that session is dead. It is refused when the task has no live claim (use
   `take`), when you already hold it (use `take` to re-adopt), when the holder
@@ -60,35 +67,13 @@ the product repository.
   registered batch only the batch owner may take over a member
   (`E_BATCH_OWNER`); a dead leader is handled by `recover_batch_owner`, not by
   taking over a member.
-- **Prepared work is not completion.** The prepared lifecycle is fail-closed
-  and capability-versioned. Require the installed runtime's `tractable_batch`
-  version 2 capability, required tools and supported store/receipt schemas,
-  not a package-version string or static rollout record. Repository policy
-  selects prepared versus serial mode; unsupported runtimes stay serial.
-  A store below schema 4 is cut over by the first
-  `register_batch` with `confirm_schema3_cutover=true`. Never
-  treat legacy per-item receipts as valid. The first `register_batch` on an older
-  store needs `confirm_schema3_cutover=true` (it confirms the one-step cutover to
-  store schema 4, which older clients then refuse) and only when every process
-  with state-branch access is stopped or upgraded and no other worker holds a
-  live claim; batch writes below schema 4 are refused `E_SCHEMA`.
-  `register_batch` first persists one
-  project / repository identity, owner generation, integration branch/worktree
-  and immutable start head, an optional immutable `develop_ref` (a
-  `refs/remotes/...` ref; required for any later `develop-merge` advance),
-  ordered members, frozen scope, delivery boundary,
-  terminal outcome, and (later) one final PR identity. Register each member's
-  explicit implementation edge, then the leader `take`s and `prepare`s it as it
-  lands, with a clean exact checkout, actual member base (a recorded head),
-  accepted head, new integration head, scope hash, and passed bounded-suite
-  evidence. `prepare` releases the claim while leaving the item `open`; it does
-  not mark work done. Members execute mapped plus named checks; the leader
-  accepts an exact-range trusted invocation and retains its result in the
-  receipt. Final verification freshly executes every member's own command and
-  combined checks before arming. After actual merge, finish may consume that
-  successful run only while its relevant bindings still match; no separate
-  member-result-cache replay authorizes it. Ordinary dependencies remain done-only;
-  prepared receipts never unlock review, approval, merge or deployment gates.
+- **Prepared work is not completion.** `prepare` releases the claim and leaves
+  the item `open`; only `finish` after the final PR has actually merged closes
+  it. A prepared receipt satisfies only a registered same-batch implementation
+  edge; ordinary dependencies stay done-only, and receipts never unlock review,
+  approval, merge, or deployment gates. Prepared mode needs the live
+  `tractable_batch` version 2 capability and repository policy that selects it;
+  otherwise work serially. Procedure: `references/batch.md`.
 - **Role boundaries in a batch.** While a batch is active, only its owner (the
   leader) may `take`, `takeover`, `prepare`, or `finish` its members, and the
   leader is the only tracker and ledger writer. Member workers implement in their
@@ -99,14 +84,6 @@ the product repository.
   (`--actor`/`TRACTABLE_ACTOR`), such as a subagent, is not refused, so
   dispatch it with an instruction to make no tracker writes. Repository policy
   decides whether such a member is allowed. Procedure: `references/batch.md`.
-- **Guarded checkout relocation.** Require
-  `tractable_batch.features.integration_worktree_relocation=true` before using
-  the optional expected-path/expected-head/new-path tuple in owner recovery.
-  Preserve receipts/history, obtain the expected generation privately and save
-  the new generation before the call. Neither recovery nor abort works without
-  the expected generation. See `references/recovery.md`.
-- **Skill-only actions** — `ideate`, `spec`, `prioritize`, `batch`, `handoff`,
-  `closeout` — are workflows, not tools. Follow their reference guides.
 - **Close-out authorization.** `closeout` is write-shaped under
   `shared-review-protocol/SKILL.md` §1 (`[REVIEW-AUTH-001]`). A message that
   explicitly invokes `closeout` — alone or paired with review or validation —
@@ -114,85 +91,35 @@ the product repository.
   review-only: report findings and stop until a later message authorizes
   `closeout`.
 
-## The loop
-
-| Step | Tool | Notes |
-|---|---|---|
-| 1 | `list_items` | Brief rows; filters `status`, `priority`, `text`, `ready_only`; paging with `limit` (default 5) + `cursor`. |
-| 2 | `take` | Claim a task. Returns the claim `generation` plus enough context to begin work. |
-| 3 | `show_item` | One task with needs, readiness, and sections. Large fields spill to `field`/`offset`/`budget` reads. |
-| 4 | `renew` | Extend a long-running claim. Same generation; no progress milestones required. |
-| 5 | `finish` | Close the task with the `generation` from `take`. Every member of an active registered batch must already have a valid prepared receipt and bound final-tree evidence; ordinary tasks use the serial finish path. |
-| — | `register_batch` / `bind_batch_pr` / `abort_batch` | Register the immutable batch contract (with `develop_ref` if develop merges will be recorded, and `confirm_schema3_cutover` on the first registration), bind exactly one final PR identity (`pr_repository`, `number`, `node_id`, `head`; revisable only to the current integration head with `expected_previous_head`), or owner-abort after claims are released. Reject duplicates, foreign owners, foreign live claims, late membership, and incompatible capability/schema versions. |
-| — | `prepare` | Owner-only. Persist verified member work and hand back the claim without marking the member done. Requires the registered batch, explicit same-batch edge, exact clean source checkout, a recorded head as base, accepted and new integration heads, and frozen scope. |
-| — | `show_batch` | Read one batch: heads, owner and `owner_epoch`, final PR, member status, receipts, `acceptance_required`, log; large sections page like `show_item`. Never serves the owner generation, so the leader keeps it in its ledger. Scripts and CI read the same data with `tractable batch show <batch_id>`. |
-| — | `advance_batch_head` | Owner-only. Record a leader fix or integration-base merge as a new integration head (`owner_generation`, `expected_head`, `head`, `reason` `fix`\|`develop-merge`, `changed_files`). A `develop-merge` must be a real two-parent merge whose merged parent is under the batch's registered `develop_ref`; there is no per-call ref. Refused once any member is `done`. |
-| — | `recover_batch_owner` | Take over a dead leader's batch with the recorded owner and generation, a `new_owner_generation` you generate (32 hex) and record in your ledger **before** the call, and a reason. The server stores it and never returns it. Needs no member claim, keeps receipts. |
-| — | `release` | Hand the claim back without finishing (needs the `generation`). |
-| — | `takeover` | Take over a live claim whose session cannot resume: name the inspected holder and why it is dead. |
-| — | `drop` | Abandon a task as dropped. Requires `reason`: the owner's decision and any successor, at most 2000 characters, stored with the status change in one commit. Unclaimed tasks drop freely; a live claim needs its `generation`. |
-
-## Reading the response envelope
-
-```json
-{"ok": true,  "data": {...}}
-{"ok": false, "code": "E_...", "error": "...", "recovery": [...], "kind": "gate|error"}
-```
-
-`get_instructions` returns markdown text directly; the task tools return
-the `{ok, ...}` JSON envelope.
-
-`kind: "gate"` is an expected result you should act on. `kind: "error"` is an
-environment or protocol failure — stop and report it. The `recovery` list names
-concrete next steps; read it before improvising.
-
-Responses are capped at 16 KiB. Lists page with cursors scoped to a state
-revision: `E_CURSOR_STALE` means the branch moved under you — restart from the
-first page, never skip ahead.
-
 ## Gates and what to do about them
 
 | Code | Meaning | Do |
 |---|---|---|
 | `E_NOTHING_READY` | Nothing claimable, or `take`/`finish` hit a `not_before` hold. | Report it. Do not invent work or clear someone else's hold to get around it. |
-| `E_MULTIPLE_CLAIMS` | You already hold a claim. | Finish or `release` it first. |
-| `E_CLAIM_STALE` | Wrong generation or another holder. | `show_item`, then `take` again if it is free. |
-| `E_CONFLICT` | Someone changed the task first. | Re-read, re-evaluate; never overwrite blindly. |
-| `E_CURSOR_STALE` | State moved under your pages. | Restart listing without a cursor. |
-| `E_OVERSIZED` | One field exceeds the cap. | Read it with `show_item` `field`/`offset`/`budget`. |
 | `E_OUTPUT_TRUNCATED` | Response exceeded 16 KiB. | Narrow filters, smaller `limit`, or a section read. |
-| `E_NO_PRINCIPAL` | Identity not resolved. | Call `get_instructions`, then retry. |
-| `E_OFFLINE` | Remote unreachable. | Reads may be cached and marked stale; mutations fail — retry when reachable. |
-| `E_UNKNOWN` | Outcome undetermined. | Reconcile with the operation ID in `recovery`; do not re-apply blindly. |
 | `E_STATE` | Malformed state or rejected request. As a `gate` from `get_instructions`, the server is bound to another project's store. | Read the message; report it if you cannot fix the request. For the `expect_store` gate, stop and write nothing. |
-| `E_SCHEMA` | State format newer than this package. On a batch call: store below schema 4 (register with the cutover first) or a legacy receipt; see `references/recovery.md`. | Stop; a human upgrades the package. For a batch call, follow `references/recovery.md`. |
-| `E_FINAL_EVIDENCE` | Prepared member lacks current final-tree proof; a named acceptance identifies a missing binding. | Start a new final-verification invocation: every member's receipt command and the combined fast tier on the clean final head. Re-take the member and retry `finish` with that complete bound evidence after actual merge. |
-| `E_BATCH_OWNER` | You are not the owner of this active batch (`gate`). | Ask the owner named in the message; members hand work to the leader and never claim. A dead owner: `recover_batch_owner`. |
-| `E_BATCH_HEAD` | A head is not recorded, does not descend from the required head, or has unrecorded commits (`gate`). | `show_batch`; record the missing fix or merge with `advance_batch_head`, or re-base the member on a recorded head. |
+| `E_SCHEMA` | State format newer than this package. On a batch call: store below schema 4 (register with the cutover first) or a legacy receipt; see `references/batch.md`. | Stop; a human upgrades the package. For a batch call, follow `references/batch.md` (Register and dispatch). |
+| `E_OPEN_DEFERRALS` | `finish` refused: the task has open deferrals. | Promote or dismiss each blocking deferral named in the response, then retry `finish`. |
+| `E_FINAL_EVIDENCE` | Prepared member lacks current final-tree proof; a named acceptance identifies a missing binding. | Start a new final-verification invocation: every member's receipt command and the combined checks on the clean final head. Re-take the member and retry `finish` with that complete bound evidence after actual merge. |
 
-Conflicts, lost claims, and offline handling in full: `references/recovery.md`.
+The server's `get_instructions` text lists the other codes. Lost outcomes
+(`E_UNKNOWN`), open deferrals, and the batch codes (`E_BATCH_OWNER`,
+`E_BATCH_HEAD`) in full: `references/recovery.md`.
 
 ## Planning
 
-`register_batch` takes the immutable repository and integration contract before
-member enrollment. `create_item` takes `id`, `title`, and optionally `priority` (default
-`medium`), `description`, `needs` (IDs this task waits on), `acceptance`,
-`links`, `context`, `not_before`, and explicit batch metadata. Batch metadata names a
-`batch_id`, `member_id`, and `implementation_dependencies`; it is never
-inferred from `needs`. IDs use `a-z0-9-` (start/end alphanumeric). Titles are
-1–200 characters. There is no work breakdown, scope gate, or verification
-ladder: an ordinary task closes with `take` + `finish`.
+`create_item` takes `id` (`a-z0-9-`, alphanumeric at both ends), `title`
+(1–200 characters), and optional `priority` (default `medium`), `description`,
+`needs`, `acceptance`, `links`, `context`, `not_before`, and `batch` metadata
+(`batch_id`, `member_id`, `implementation_dependencies`; explicit, never
+inferred from `needs`, attached only after `register_batch`). An ordinary task
+closes with `take` + `finish`.
 
-`update_item` amends title/priority/description/needs/sections/`not_before`/`batch`,
-or moves status between `open` and `blocked`. Text and list fields are
-replaced whole; an empty value clears one. To add a progress note without
-resending the context, pass `context_append`: the
-server adds it to the end of the current context when the write lands, so a
-concurrent note is not lost. Closing goes through `finish`; dropping a task is
-a human decision reported to the user. Once the owner has decided, call `drop`
-with their decision and any successor item as `reason` (required, up to 2000
-characters, newlines allowed); the server stores it as `drop_reason` in the
-same commit, so do not write a separate `context_append` note first.
+`update_item` moves status only between `open` and `blocked`; closing goes
+through `finish`. Add progress notes with `context_append` so concurrent notes
+are not lost. Dropping a task is the owner's decision: report it, and once they
+decide, call `drop` with their decision and any successor as `reason` (no
+separate note).
 
 On a prepared member, `update_item` keeps the receipt only for a `context`
 edit (including `context_append`); any other field change (`description`,
@@ -209,7 +136,9 @@ such as the end of a measurement window. It takes a future RFC 3339 time with
 returns on its own; rows and `show_item` show `waiting_until` meanwhile, and
 `take` and `finish` refuse it with `E_NOTHING_READY` — a hold set while you
 hold the claim still blocks `finish`, so `release` instead. The hold also
-applies while the task is `blocked`. `not_before=""` clears the hold. Use
+applies while the task is `blocked`. `not_before=""` clears the hold; tractable 1.1.1+ also accepts
+`update_item(clear_not_before=true)`, for clients that drop empty-string
+arguments, and refuses it together with a non-empty `not_before`. Use
 `blocked` for work stalled on something with no known end.
 
 `list_items(ready_only=true)` returns only claimable tasks: `open`, unclaimed,
@@ -231,7 +160,10 @@ the evidence it binds, invalidates affected prepared evidence transitively.
 | Create or amend work | `create_item`, `update_item` |
 | Claim, extend, close, hand back, drop | `take`, `renew`, `finish`, `release`, `drop` (`drop` needs `reason`) |
 | Take over a dead session's live claim | `takeover` |
-| Read a batch, record a head change, recover a dead leader | `show_batch`, `advance_batch_head`, `recover_batch_owner` (`tractable_batch` version 2 capability) |
+| Defer work, then resolve the deferral | `defer`, `list_deferrals`, `promote_deferral`, `dismiss_deferral` (`finish` refuses with `E_OPEN_DEFERRALS` until every open deferral on the task is promoted or dismissed) |
+| Read a batch | `show_batch`: heads, owner and `owner_epoch`, final PR, member status, receipts, log. It never serves the owner generation, so the leader keeps it in its ledger. Scripts and CI read the same data with `tractable batch show <batch_id>`. |
+| Record a head change | `advance_batch_head`, owner-only; see `references/batch.md` |
+| Recover a dead leader | `recover_batch_owner`, with the recorded owner and generation and a `new_owner_generation` you generate (32 hex) and record in your ledger **before** the call. The server stores it and never returns it. Checkout relocation and abort: `references/recovery.md`. |
 
 ## Process guides
 

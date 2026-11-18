@@ -29,7 +29,14 @@ def check_and_setup_platform_credentials(
     console_obj.print(f"\n[yellow]⚠️  {platform.capitalize()} credentials not found[/yellow]")
     console_obj.print(f"\nTo use {platform.capitalize()}, you need to configure credentials.")
 
-    if not Confirm.ask("\n🔧 Would you like to set up credentials now?", default=True):
+    try:
+        wants_setup = Confirm.ask("\n🔧 Would you like to set up credentials now?", default=True)
+    except EOFError:
+        console_obj.print("[yellow]No terminal to answer on; skipping credential setup[/yellow]")
+        console_obj.print(f"\n[dim]To set up later, run: benchbox setup --platform {platform}[/dim]")
+        return False
+
+    if not wants_setup:
         console_obj.print("[yellow]Skipping credential setup[/yellow]")
         console_obj.print(f"\n[dim]To set up later, run: benchbox setup --platform {platform}[/dim]")
         return False

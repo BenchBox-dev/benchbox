@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import importlib
 import logging
 import re
 import uuid
-import warnings
 from collections.abc import Sequence
 from datetime import timedelta
 from pathlib import Path
@@ -12,16 +12,17 @@ from typing import TYPE_CHECKING, Any
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.runtime_env import DriverResolution, DriverRuntimeStrategy, load_driver_module
 
-try:
-    import duckdb
-except ImportError:
-    duckdb = None
+duckdb: Any = None
 
 from benchbox.core.errors import PlanCaptureError
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
 from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
-from benchbox.utils.duckdb_extensions import apply_single_arrow_lambda
+from benchbox.utils.duckdb_extensions import (
+    duckdb_relation_arrow_supported,
+    finish_unfinished_result,
+)
+from benchbox.utils.duckdb_lambda import duckdb_query_text
 from benchbox.utils.printing import emit
 
 from .base import DriverIsolationCapability, PlatformAdapter
@@ -39,17 +40,8 @@ _DUCKDB_MEMORY_SIZE_PATTERN = (
 )
 
 
-def _dbapi_arrow_fetcher(result: Any) -> Any:
-    method = getattr(result, "to_arrow_table", None)
-    if method is None:
-        return None
-
-    def fetch() -> Any:
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="Arrow output on a DB-API result", category=UserWarning)
-            return method()
-
-    return fetch
+def _legacy_arrow_fetcher(result: Any) -> Any:
+    return getattr(result, "fetch_arrow_table", None)
 
 
 def _as_bool(value: Any) -> bool:
@@ -731,8 +723,6 @@ class DuckDBAdapter(PlatformAdapter):
         }
         if self.allow_third_party_extensions:
             platform_info["configuration"]["allow_third_party_extensions"] = True
-        if self.lambda_syntax_setting:
-            platform_info["configuration"]["lambda_syntax"] = "ENABLE_SINGLE_ARROW"
         if self.temp_directory:
             platform_info["configuration"]["temp_directory"] = self.temp_directory
 
@@ -795,7 +785,6 @@ class DuckDBAdapter(PlatformAdapter):
         self.thread_limit = raw_threads
         self.enable_progress_bar = config.get("progress_bar", False)
         self.allow_third_party_extensions = _as_bool(config.get("allow_third_party_extensions"))
-        self.lambda_syntax_setting: str | None = None
 
     def _initialize_duckdb_runtime(self, config: dict[str, Any]):
         global duckdb
@@ -813,9 +802,12 @@ class DuckDBAdapter(PlatformAdapter):
         )
 
         if not has_runtime_contract:
-            if duckdb is not None:
-                return duckdb
-            raise ImportError("DuckDB not installed. Install with: pip install duckdb")
+            if duckdb is None:
+                try:
+                    duckdb = importlib.import_module("duckdb")
+                except ImportError as exc:
+                    raise ImportError("DuckDB not installed. Install with: pip install duckdb") from exc
+            return duckdb
 
         resolution = DriverResolution(
             package=(config.get("driver_package") or "duckdb"),
@@ -836,7 +828,7 @@ class DuckDBAdapter(PlatformAdapter):
             )
         except Exception as exc:
             raise ImportError(
-                "DuckDB runtime initialization failed. "
+                f"DuckDB runtime initialization failed: {exc} "
                 "Install duckdb or provide a valid isolated runtime for the requested version."
             ) from exc
 
@@ -926,9 +918,6 @@ class DuckDBAdapter(PlatformAdapter):
             config_applied.append("progress_bar=enabled")
             self.log_very_verbose("DuckDB progress bar enabled")
 
-        self.lambda_syntax_setting = apply_single_arrow_lambda(conn, getattr(self._duckdb_module, "__version__", None))
-        if self.lambda_syntax_setting:
-            config_applied.append(self.lambda_syntax_setting)
         conn.execute("SET default_order = 'ASC'")
         config_applied.append("OLAP optimizations")
         self.log_very_verbose("DuckDB OLAP optimizations applied")
@@ -1109,6 +1098,8 @@ class DuckDBAdapter(PlatformAdapter):
         self.log_verbose(f"Executing query {query_id}")
         self.log_very_verbose(f"Query SQL (first 200 chars): {query[:200]}{'...' if len(query) > 200 else ''}")
 
+        query = duckdb_query_text(query, getattr(self._duckdb_module, "__version__", None))
+
         if self.dry_run_mode:
             self.capture_sql(query, "query", None)
             self.log_very_verbose(f"Captured query {query_id} for dry-run")
@@ -1132,19 +1123,34 @@ class DuckDBAdapter(PlatformAdapter):
                     connection.execute("PRAGMA enable_profiling = 'query_tree'")
                 logger.debug("DuckDB query profiling enabled for this query")
 
+            via_relation = self.fetch_mode == FETCH_MODE_ARROW and duckdb_relation_arrow_supported(
+                getattr(self._duckdb_module, "__version__", None)
+            )
+            if via_relation:
+                finish_unfinished_result(connection)
+
             start_time = mono_time()
             ledger.add_request()
-            result = connection.execute(query)
-            fetched = fetch_result(
-                self.fetch_mode,
-                fetch_rows=result.fetchall,
-                fetch_arrow=_dbapi_arrow_fetcher(result),
-            )
+            if via_relation:
+                result = connection.sql(query)
+                if result is None:
+                    fetched = fetch_result(FETCH_MODE_ROWS, fetch_rows=list)
+                else:
+                    fetched = fetch_result(
+                        FETCH_MODE_ARROW, fetch_rows=result.fetchall, fetch_arrow=result.to_arrow_table
+                    )
+            else:
+                result = connection.execute(query)
+                fetched = fetch_result(
+                    self.fetch_mode,
+                    fetch_rows=result.fetchall,
+                    fetch_arrow=_legacy_arrow_fetcher(result),
+                )
 
             execution_time = elapsed_seconds(start_time)
             actual_row_count = fetched.row_count
             if isinstance(fetched.rows, ArrowRows):
-                fetched.rows.convert_columns(_duckdb_arrow_converters(result.description))
+                fetched.rows.convert_columns(_duckdb_arrow_converters(getattr(result, "description", None)))
             logger.debug(f"Query {query_id} completed in {execution_time:.3f}s, returned {actual_row_count} rows")
 
             validation_result = None

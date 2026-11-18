@@ -9,50 +9,50 @@
   "source": {
     "repository": "https://github.com/joeharris76/tractable",
     "canonical_branch": "main",
-    "merge_revision": "aebc194afd6fcd16bc99abe86b73055833aa6088",
-    "tree_revision": "05f010461a5b85f46968c38a9a65046fe6d7c992",
-    "release_tag": "v1.1.1",
+    "merge_revision": "02d14769b2373175169dfbf554f267178f51f165",
+    "tree_revision": "0fd8016a5fb737d91cb2eb221f81636ed26a133a",
+    "release_tag": "v1.2.0",
     "merge_contains_source_pr_head": false,
     "pr": {
-      "number": 74,
-      "url": "https://github.com/joeharris76/tractable/pull/74",
-      "merge_revision": "aebc194afd6fcd16bc99abe86b73055833aa6088"
+      "number": 78,
+      "url": "https://github.com/joeharris76/tractable/pull/78",
+      "merge_revision": "02d14769b2373175169dfbf554f267178f51f165"
     },
     "rename_adr": "https://github.com/joeharris76/tractable/blob/main/docs/adr/0013-rename-to-tractable.md"
   },
   "catalog": {
     "repository": "https://github.com/joeharris76/skill-sync-skills",
     "canonical_branch": "main",
-    "merge_revision": "a315616052bd80c05928d3fe2604a938e1f6e4ee",
-    "parent_revision": "92bd9cfea0bee228f38afe1ff5f5a66c611cd44b",
+    "merge_revision": "7625613714c5fd11e15ba97f96d33ef64e88ffe6",
+    "parent_revision": "06f00edbfe89fd40e76a4239a51e79c7b90ad83d",
     "canonical_path": "skills/todo",
     "pr": {
-      "number": 119,
-      "url": "https://github.com/joeharris76/skill-sync-skills/pull/119",
-      "merge_revision": "a315616052bd80c05928d3fe2604a938e1f6e4ee"
+      "number": 135,
+      "url": "https://github.com/joeharris76/skill-sync-skills/pull/135",
+      "merge_revision": "7625613714c5fd11e15ba97f96d33ef64e88ffe6"
     }
   },
   "artifact": {
-    "filename": "tractable-1.1.1-py3-none-any.whl",
-    "project_path": "_project/scripts/vendor/tractable-1.1.1-py3-none-any.whl",
-    "sha256": "c09ba584c782684fca49169cfd9862d6d2bcfb0903a7fe3af39aafd23607a5f4",
-    "origin": "GitHub release v1.1.1 asset, checked against the release SHA256SUMS",
+    "filename": "tractable-1.2.0-py3-none-any.whl",
+    "project_path": "_project/scripts/vendor/tractable-1.2.0-py3-none-any.whl",
+    "sha256": "6d1556359a8db9643c9fa8d8fb0eee99bf37e4038b4687c914aa7f4dc21a0f31",
+    "origin": "GitHub release v1.2.0 asset, checked against the release SHA256SUMS",
     "build": {
-      "source_input": "git archive --format=tar v1.1.1 (aebc194afd6fcd16bc99abe86b73055833aa6088)",
+      "source_input": "git archive --format=tar v1.2.0 (02d14769b2373175169dfbf554f267178f51f165)",
       "source_date_epoch": null,
       "command": "uv build --wheel --out-dir <dist> <git-archive-directory>",
       "reproducibility": {
         "independent_builds": 2,
-        "matching_sha256": "c09ba584c782684fca49169cfd9862d6d2bcfb0903a7fe3af39aafd23607a5f4",
-        "note": "rebuilt twice from v1.1.1 with identical sha256"
+        "matching_sha256": "6d1556359a8db9643c9fa8d8fb0eee99bf37e4038b4687c914aa7f4dc21a0f31",
+        "note": "rebuilt twice from v1.2.0 with identical sha256"
       },
       "sibling_checkout_used_for_install": false
     }
   },
   "runtime": {
     "project_command": "uv run --project _project/scripts --locked -- tractable-mcp",
-    "dependency_metadata_version": "1.1.1",
-    "reported_tool_version": "1.1.1",
+    "dependency_metadata_version": "1.2.0",
+    "reported_tool_version": "1.2.0",
     "schema_version": 4,
     "supported_schema_versions": [
       1,
@@ -102,7 +102,7 @@
         3,
         4
       ],
-      "tool_version": "1.1.1",
+      "tool_version": "1.2.0",
       "tools": [
         "advance_batch_head",
         "recover_batch_owner",
@@ -121,62 +121,62 @@
       "protocol_version": "2024-11-05",
       "server_info": {
         "name": "tractable",
-        "version": "1.1.1"
+        "version": "1.2.0"
       },
       "result": "pass",
       "state_remote": "local throwaway bare Git remote; no hosted state touched"
     }
   },
   "benchbox_pin": {
-    "before": "24693de8b3aadd58ce36943a003032864ffd41e0",
-    "after": "a315616052bd80c05928d3fe2604a938e1f6e4ee",
+    "before": "e04b1a717c6e4c5f341115166281e9398f27f951",
+    "after": "7625613714c5fd11e15ba97f96d33ef64e88ffe6",
     "config": "skill-sync.conf",
     "apply": "./tools/skill-sync apply"
   },
   "mirrors": {
     "tracked_target": {
       "root": ".claude/skills/todo",
-      "receipt_revision": "a315616052bd80c05928d3fe2604a938e1f6e4ee",
+      "receipt_revision": "7625613714c5fd11e15ba97f96d33ef64e88ffe6",
       "files": {
-        "SKILL.md": "1d2c6b84a4c705650c09ebe9364ded6cb671dfcea4e7cc05b4b69fd49866ece7",
-        "references/batch.md": "2a955142472566646288821afa26ec267618337d6fd6577507581d9cccd9a48e",
-        "references/bootstrap.md": "d921e0e0039f6f6014467ce5b34a82127cf4c4b41ed30fa758b158fdadeadd12",
-        "references/closeout.md": "f413fa57c11ce44e893377e9078c8cd3fb3063f183a041e1659df17b80a74e36",
+        "SKILL.md": "dc1e329146b31b813e78f06e9a1212ca1bd15d0195daee459ec847e8fd9f2ec7",
+        "references/batch.md": "2ee57c4ff9c8a93675892d9ff8137e56535eff5a597a244fae9f9acc23ce2d6f",
+        "references/bootstrap.md": "35af9661c59e11a1b12a76cc7ea1f038377f131c12631caa6c63ff107393f394",
+        "references/closeout.md": "11a5f528de28e09a86b623fe5f0795686cb8f59f3afb3a0e69b4ad3515f64d0c",
         "references/handoff.md": "585b160d8cd93fbf03f43a8f71a111f5fb187f3687d79cab2ad8a0c79f992ba8",
         "references/ideate.md": "cd849108e7950e6652b42249bb43bdab024005417c651d956ae0eaca9741233f",
-        "references/implement.md": "fb0094d8bab9d964d81f976fd2359c174ca6f7e29dec06a1c715280025a332d7",
-        "references/prioritize.md": "8cdf83f81b12777b8c543ec9011b0641614e5ddd16c9c2d1a7009ec6ba38bae2",
-        "references/queries.md": "ed1e5f1acc251e91c103114056135fd814f13a7b7261ac2ed44aca2265fd036c",
-        "references/recovery.md": "daed28bb501a4208edd13540950f6220d3ee5276cd39d99757c6713d9befe909",
-        "references/review.md": "0b49c8ad8038ebc7dd8bf4a7372684478bef8959c01a91cb45e2632abed89741",
-        "references/spec.md": "3cc77e191e6b5cd8f28341b346fb19d516582710d9b416844bb2175ebcf30cc8",
-        "skill.yaml": "3889fddb52b746c118ba4aab8b83780e89642efd519f8bc708e030964c6440fd"
+        "references/implement.md": "f478c011d571d3165cb241fbe8d4650305fa7e6a288e8f89abc3fc152929b742",
+        "references/prioritize.md": "e51ee3251f29fc09de6b4b8c45f5f5247b269dd453ea037c542c14f69f293c94",
+        "references/queries.md": "99c3ac34fb85beeb522848efcc3837840db47b4333f7aac8cc3048a525d8fe1a",
+        "references/recovery.md": "62aa8ac8c4c088807da7895f0e19accb8fbd66e19729770083262e0c8f1f8b6a",
+        "references/review.md": "e1849d5cee569c473cc406e23bf7986d1104cf8e7a981304d1e50908b5aa976c",
+        "references/spec.md": "5d25f910d9184a5d2820cf808bf265fe2a084b5a90af98da18bbc96a8d60326b",
+        "skill.yaml": "67f080e1bbae15f87043da200a5f650597f0befb3e9d53b9c300124b448b0a89"
       }
     },
     "agents_target": {
       "root": ".agents/skills/todo",
       "materialized": true,
-      "receipt_revision": "a315616052bd80c05928d3fe2604a938e1f6e4ee",
+      "receipt_revision": "7625613714c5fd11e15ba97f96d33ef64e88ffe6",
       "files": {
-        "SKILL.md": "1d2c6b84a4c705650c09ebe9364ded6cb671dfcea4e7cc05b4b69fd49866ece7",
-        "references/batch.md": "2a955142472566646288821afa26ec267618337d6fd6577507581d9cccd9a48e",
-        "references/bootstrap.md": "d921e0e0039f6f6014467ce5b34a82127cf4c4b41ed30fa758b158fdadeadd12",
-        "references/closeout.md": "f413fa57c11ce44e893377e9078c8cd3fb3063f183a041e1659df17b80a74e36",
+        "SKILL.md": "dc1e329146b31b813e78f06e9a1212ca1bd15d0195daee459ec847e8fd9f2ec7",
+        "references/batch.md": "2ee57c4ff9c8a93675892d9ff8137e56535eff5a597a244fae9f9acc23ce2d6f",
+        "references/bootstrap.md": "35af9661c59e11a1b12a76cc7ea1f038377f131c12631caa6c63ff107393f394",
+        "references/closeout.md": "11a5f528de28e09a86b623fe5f0795686cb8f59f3afb3a0e69b4ad3515f64d0c",
         "references/handoff.md": "585b160d8cd93fbf03f43a8f71a111f5fb187f3687d79cab2ad8a0c79f992ba8",
         "references/ideate.md": "cd849108e7950e6652b42249bb43bdab024005417c651d956ae0eaca9741233f",
-        "references/implement.md": "fb0094d8bab9d964d81f976fd2359c174ca6f7e29dec06a1c715280025a332d7",
-        "references/prioritize.md": "8cdf83f81b12777b8c543ec9011b0641614e5ddd16c9c2d1a7009ec6ba38bae2",
-        "references/queries.md": "ed1e5f1acc251e91c103114056135fd814f13a7b7261ac2ed44aca2265fd036c",
-        "references/recovery.md": "daed28bb501a4208edd13540950f6220d3ee5276cd39d99757c6713d9befe909",
-        "references/review.md": "0b49c8ad8038ebc7dd8bf4a7372684478bef8959c01a91cb45e2632abed89741",
-        "references/spec.md": "3cc77e191e6b5cd8f28341b346fb19d516582710d9b416844bb2175ebcf30cc8",
-        "skill.yaml": "3889fddb52b746c118ba4aab8b83780e89642efd519f8bc708e030964c6440fd"
+        "references/implement.md": "f478c011d571d3165cb241fbe8d4650305fa7e6a288e8f89abc3fc152929b742",
+        "references/prioritize.md": "e51ee3251f29fc09de6b4b8c45f5f5247b269dd453ea037c542c14f69f293c94",
+        "references/queries.md": "99c3ac34fb85beeb522848efcc3837840db47b4333f7aac8cc3048a525d8fe1a",
+        "references/recovery.md": "62aa8ac8c4c088807da7895f0e19accb8fbd66e19729770083262e0c8f1f8b6a",
+        "references/review.md": "e1849d5cee569c473cc406e23bf7986d1104cf8e7a981304d1e50908b5aa976c",
+        "references/spec.md": "5d25f910d9184a5d2820cf808bf265fe2a084b5a90af98da18bbc96a8d60326b",
+        "skill.yaml": "67f080e1bbae15f87043da200a5f650597f0befb3e9d53b9c300124b448b0a89"
       }
     }
   },
   "verification": {
     "clean_install": "uv sync --project _project/scripts --locked passed",
-    "standalone_metadata": "wheel metadata and entry points identify tractable 1.1.1",
+    "standalone_metadata": "wheel metadata and entry points identify tractable 1.2.0",
     "no_sibling_path": "project source and lock paths resolve only under _project/scripts/vendor",
     "batch_delivery_integration": "full JSON-RPC handshake passed with schema 4, 22 tools and the tractable_batch capability",
     "skill_integrity": "make skill-integrity-check passed against the pinned catalog and tracked mirror",

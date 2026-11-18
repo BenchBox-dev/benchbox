@@ -12,9 +12,11 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def _provide_fake_duckdb(_hermetic_state, monkeypatch):
+    import importlib.util
+
     from benchbox.platforms import duckdb as duckdb_module
 
-    if getattr(duckdb_module, "duckdb", None) is not None:
+    if importlib.util.find_spec("duckdb") is not None:
         yield
         return
 

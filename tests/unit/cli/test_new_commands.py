@@ -506,6 +506,17 @@ class TestRunOfficialFlag:
         assert result.exit_code == 1
         assert "not a TPC-specified scale factor" in result.output
 
+    @pytest.mark.parametrize("command_prefix", [["run-official", "tpch"], ["run", "--benchmark", "tpch", "--official"]])
+    def test_official_partial_phase_refusal_prints_reason_under_quiet(self, command_prefix):
+        runner = CliRunner()
+        argv = [*command_prefix, "--platform", "duckdb", "--scale", "1", "--phases", "load,throughput"]
+        argv += ["--streams", "3", "--seed", "7", "--quiet"]
+        result = runner.invoke(cli, argv)
+
+        assert result.exit_code == 1
+        assert "partial runs are not allowed; missing phases: power" in result.output
+        assert "Benchmark execution failed" not in result.output
+
     def test_run_official_warns_on_missing_seed(self):
         runner = CliRunner()
 

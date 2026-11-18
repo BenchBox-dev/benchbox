@@ -53,9 +53,10 @@ owner accepted detection afterwards by the snapshot comparison in
 `make agent-write-preflight`.
 
 Per-agent enforcement status, with the live-probe result and date for each
-agent, is the table in [primary-clone-guard.md](primary-clone-guard.md). On
-2026-11-13 live probes (a non-interactive session with the primary clone as
-working directory, asked to create `guard-probe-<agent>.txt` through the edit
-tool) could not be run for Claude Code, Codex or Gemini CLI, so those three rely
-on the preflight backstop. Rerun them when the login, quota or tier problem
-clears.
+agent, is the table in [primary-clone-guard.md](primary-clone-guard.md). Live
+probes (a non-interactive session with the primary clone as working directory,
+asked to create `guard-probe-<agent>.txt` through the edit tool) show omp and
+Claude Code blocked by the hook. Codex does not call the hook for `apply_patch`,
+and Gemini CLI could not be run, so for both only the preflight backstop
+applies: it reports, after the fact, a tracked file changed or a new
+non-ignored file created in the primary clone.

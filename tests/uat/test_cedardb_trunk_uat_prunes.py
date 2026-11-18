@@ -44,8 +44,6 @@ _TRINO_PRESTO_PRUNED_CELLS = {
     ("presto", "vector_search"): "array(real)",
 }
 
-_TPCDI_SF1_PRUNED_PLATFORMS = ("spark", "datafusion")
-
 
 def _rule(platform, bench_name, scale):
     benchmarks = matrix.load_benchmarks()
@@ -122,20 +120,9 @@ def test_trino_and_presto_keep_tpcds_and_other_scales(platform):
     assert _rule(platform, "tpcdi", 0.1) is None
 
 
-@pytest.mark.parametrize("platform", _TPCDI_SF1_PRUNED_PLATFORMS)
-def test_tpcdi_sf1_is_pruned_after_the_fact_table_growth(platform):
-    rule = _rule(platform, "tpcdi", 1.0)
-
-    assert rule is not None
-    assert rule.rule_id == f"uat.compat.{platform}.tpcdi.sf1.release_gate_runtime_envelope"
-    assert "275k to 6.77M rows" in rule.reason
-    assert "timed out at 1200s" in rule.reason
-    assert "43154678095" in rule.evidence
-    assert _rule(platform, "tpcdi", 0.1) is None
-
-
-def test_tpcdi_sf1_stays_in_the_gate_on_clickhouse_local():
-    assert _rule("clickhouse-local", "tpcdi", 1.0) is None
+@pytest.mark.parametrize("platform", ["spark", "datafusion", "clickhouse-local"])
+def test_tpcdi_sf1_stays_in_the_gate(platform):
+    assert _rule(platform, "tpcdi", 1.0) is None
 
 
 @pytest.mark.parametrize(("platform", "detail"), [("trino", "date + integer"), ("presto", "QUERY_HAS_TOO_MANY_STAGES")])

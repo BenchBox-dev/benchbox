@@ -23,7 +23,10 @@ pr-preflight:
 	fi; \
 	sh scripts/check_primary_clone_clean.sh report; \
 	PREFLIGHT_BASE="$(or $(BASE),origin/develop)"; \
-	if [ -z "$(BASE)" ]; then git fetch origin develop --quiet; fi; \
+	case "$(BASE)" in \
+		"") git fetch origin develop --quiet ;; \
+		develop|release/*) git fetch origin "$(BASE)" --quiet; PREFLIGHT_BASE="origin/$(BASE)" ;; \
+	esac; \
 	PY_LIST=$$(mktemp); \
 	TEST_LIST=$$(mktemp); \
 	LINUX_LIST=$$(mktemp); \
@@ -62,8 +65,9 @@ pr-preflight:
 		exit 0; \
 	fi; \
 	echo "==> tests for changed files: $$(python3 scripts/preflight_receipt.py tests --stage "$$STAGE" --list "$$TEST_LIST")"; \
+	$$RECORD --name theseus-prefetch -- uv run -- python -m _project.scripts.theseus_prefetch; \
 	STATUS=0; \
-	$$RECORD --name pytest --ok-codes 0,5 -- env $$(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/-u \1/p') uv run -- python -m pytest -q -n 0 --tb=short --ff $$(cat "$$TEST_LIST") || STATUS=$$?; \
+	$$RECORD --name pytest --ok-codes 0,5 -- env $$(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/-u \1/p') uv run -- python -m pytest -q -n 0 -rs --tb=short --ff $$(cat "$$TEST_LIST") || STATUS=$$?; \
 	if [ "$$STATUS" -eq 5 ]; then echo "Mapped tests are all deselected by the default markers."; STATUS=0; fi; \
 	if [ "$$STATUS" -eq 0 ]; then \
 		uv run -- python _project/scripts/preflight_targets.py linux --base-ref "$$PREFLIGHT_BASE" > "$$LINUX_LIST"; \
@@ -168,6 +172,8 @@ pr-open: override PR_BODY_FILE := $(value PR_BODY_FILE)
 pr-open: export PR_OPEN_BODY_FILE := $(PR_BODY_FILE)
 pr-open: override PARENT := $(value PARENT)
 pr-open: export PR_OPEN_PARENT := $(PARENT)
+pr-open: override BASE := $(value BASE)
+pr-open: export PR_OPEN_BASE := $(BASE)
 pr-open: override REBUTTALS_FILE := $(value REBUTTALS_FILE)
 pr-open: export PR_OPEN_REBUTTALS := $(REBUTTALS_FILE)
 pr-open: override ADJUDICATE := $(value ADJUDICATE)
@@ -188,6 +194,12 @@ pr-open:
 	case "$$CURRENT" in \
 		develop|main|release) echo "Refusing to open PR from $$CURRENT — switch to a feature branch."; exit 1 ;; \
 	esac; \
+	BASE_BRANCH=$$(uv run -- python scripts/pr_base.py "$$PR_OPEN_BASE") || { echo "Refusing to open PR: BASE must be develop or a release/X.Y.x maintenance line." >&2; exit 2; }; \
+	BASE_REMOTE="origin/$$BASE_BRANCH"; \
+	if [ "$$BASE_BRANCH" != develop ] && [ -n "$(EVIDENCE)" ]; then \
+		echo "Refusing to open PR: the readiness evidence transaction arms only pull requests into develop; open the PR into $$BASE_BRANCH without EVIDENCE and arm it with make pr-arm BASE=$$BASE_BRANCH." >&2; \
+		exit 2; \
+	fi; \
 	if [ -n "$$PR_OPEN_BODY_FILE" ] && [ ! -f "$$PR_OPEN_BODY_FILE" ]; then \
 		echo "PR_BODY_FILE does not exist: $$PR_OPEN_BODY_FILE" >&2; \
 		exit 1; \
@@ -219,23 +231,23 @@ pr-open:
 	if [ "$$ORIGIN_REPOSITORY_KEY" != "$$TARGET_REPOSITORY_KEY" ]; then \
 		HEAD_SPEC="$$ORIGIN_OWNER:$$CURRENT"; \
 	fi; \
-	git fetch origin develop --quiet; \
-	STACK_BASE=origin/develop; \
+	git fetch origin "$$BASE_BRANCH" --quiet; \
+	STACK_BASE="$$BASE_REMOTE"; \
 	PARENT_ARGS=; \
 	if [ -n "$$PR_OPEN_PARENT" ]; then \
 		uv run -- python scripts/pr_open_rest.py --repo "$$REPOSITORY" --head-owner "$$ORIGIN_OWNER" --branch "$$CURRENT" \
-			--head-spec "$$HEAD_SPEC" --parent "$$PR_OPEN_PARENT" --verify-parent || { echo "Refusing to open PR: PARENT is not a valid stack parent." >&2; exit 1; }; \
+			--head-spec "$$HEAD_SPEC" --base "$$BASE_BRANCH" --parent "$$PR_OPEN_PARENT" --verify-parent || { echo "Refusing to open PR: PARENT is not a valid stack parent." >&2; exit 1; }; \
 		git fetch origin "+refs/heads/$$PR_OPEN_PARENT:refs/remotes/origin/$$PR_OPEN_PARENT" --quiet || { echo "Refusing to open PR: cannot fetch the parent branch $$PR_OPEN_PARENT." >&2; exit 1; }; \
 		STACK_BASE="origin/$$PR_OPEN_PARENT"; \
 		PARENT_ARGS="--parent $$PR_OPEN_PARENT"; \
 		git merge-base --is-ancestor "$$STACK_BASE" HEAD || { echo "Refusing to open PR: HEAD does not contain $$STACK_BASE. Rebase onto the parent first." >&2; exit 1; }; \
-	elif ! git merge-base --is-ancestor origin/develop HEAD; then \
-		AMENDED=$$(git log --format='%h %s' origin/develop..HEAD | grep -E '\(#[0-9]+\)$$' | sed -n 1p || true); \
-		if ! git merge-tree --write-tree origin/develop HEAD >/dev/null 2>&1; then \
+	elif ! git merge-base --is-ancestor "$$BASE_REMOTE" HEAD; then \
+		AMENDED=$$(git log --format='%h %s' "$$BASE_REMOTE"..HEAD | grep -E '\(#[0-9]+\)$$' | sed -n 1p || true); \
+		if ! git merge-tree --write-tree "$$BASE_REMOTE" HEAD >/dev/null 2>&1; then \
 			if [ -n "$$AMENDED" ]; then \
-				echo "Refusing to open PR: HEAD conflicts with origin/develop, and the branch carries a develop squash commit that is not on origin/develop ($$AMENDED). It was most likely rewritten by git commit --amend, for example after a hook rejected a commit. Find the original commit with git reflog, restore the branch from it, and commit the fix as a new commit; or recreate the branch from origin/develop and re-apply only your own commits." >&2; \
+				echo "Refusing to open PR: HEAD conflicts with $$BASE_REMOTE, and the branch carries a $$BASE_BRANCH squash commit that is not on $$BASE_REMOTE ($$AMENDED). It was most likely rewritten by git commit --amend, for example after a hook rejected a commit. Find the original commit with git reflog, restore the branch from it, and commit the fix as a new commit; or recreate the branch from $$BASE_REMOTE and re-apply only your own commits." >&2; \
 			else \
-				echo "Refusing to open PR: HEAD conflicts with origin/develop. Resolve the conflict first; no refresh merge is attempted." >&2; \
+				echo "Refusing to open PR: HEAD conflicts with $$BASE_REMOTE. Resolve the conflict first; no refresh merge is attempted." >&2; \
 			fi; \
 			exit 1; \
 		fi; \
@@ -245,7 +257,7 @@ pr-open:
 	CL_DIR=$$(mktemp -d); \
 	git diff --name-only --diff-filter=ACDMRT "$$STACK_BASE"...HEAD > "$$CL_DIR/changed.txt"; \
 	git diff --name-only --diff-filter=A "$$STACK_BASE"...HEAD > "$$CL_DIR/added.txt"; \
-	uv run -- python scripts/changelog_fragments.py required --title "$$CL_TITLE" --changed-files-from "$$CL_DIR/changed.txt" --added-files-from "$$CL_DIR/added.txt" --release-base-sha "$$(git rev-parse origin/develop)" || { rm -rf "$$CL_DIR"; echo "Refusing to open PR: add a changelog fragment (make changelog-entry) or fix the title." >&2; exit 1; }; \
+	uv run -- python scripts/changelog_fragments.py required --title "$$CL_TITLE" --changed-files-from "$$CL_DIR/changed.txt" --added-files-from "$$CL_DIR/added.txt" --release-base-sha "$$(git rev-parse "$$BASE_REMOTE")" || { rm -rf "$$CL_DIR"; echo "Refusing to open PR: add a changelog fragment (make changelog-entry) or fix the title." >&2; exit 1; }; \
 	rm -rf "$$CL_DIR"; \
 	REVIEWED=$$(git rev-parse HEAD); \
 	RECEIPT_FILE=$$(mktemp); \
@@ -260,7 +272,7 @@ pr-open:
 	UNAVAILABLE_FILE=$$(mktemp); \
 	trap 'rm -f "$$RECORD_FILE" "$$UNAVAILABLE_FILE" "$$RECEIPT_FILE" "$$ALLOW_FILE"' EXIT; \
 	LOCAL_STATUS=0; \
-	python3 scripts/local_review.py --policy .github/review.yml --base-ref "$$STACK_BASE" --trusted-ref origin/develop --head "$$REVIEWED" --rebuttals "$$PR_OPEN_REBUTTALS" --adjudicate "$$PR_OPEN_ADJUDICATE" --record-out "$$RECORD_FILE" --unavailable-out "$$UNAVAILABLE_FILE" || LOCAL_STATUS=$$?; \
+	python3 scripts/local_review.py --policy .github/review.yml --base-ref "$$STACK_BASE" --trusted-ref "$$BASE_REMOTE" --head "$$REVIEWED" --rebuttals "$$PR_OPEN_REBUTTALS" --adjudicate "$$PR_OPEN_ADJUDICATE" --record-out "$$RECORD_FILE" --unavailable-out "$$UNAVAILABLE_FILE" || LOCAL_STATUS=$$?; \
 	UNAVAILABLE_CAUSE=; \
 	if [ "$$LOCAL_STATUS" != 0 ]; then \
 		if [ "$$LOCAL_STATUS" = 2 ]; then UNAVAILABLE_CAUSE=$$(sed -n 's/^availability: //p' "$$UNAVAILABLE_FILE" | sed -n 1p); fi; \
@@ -268,11 +280,11 @@ pr-open:
 		echo "The local review is unavailable ($$UNAVAILABLE_CAUSE); opening as a draft. The hosted review decides." >&2; \
 		DRAFT_FLAG=--draft; \
 	fi; \
-	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" || true; \
+	$(MAKE) -s pr-conflict-scan BRANCH="$$CURRENT" REPO="$$REPOSITORY" BASE="$$BASE_BRANCH" || true; \
 	git push origin "$$REVIEWED:refs/heads/$$CURRENT" || { echo "Push failed for $$CURRENT — aborting before opening a PR (remote branch may be stale)." >&2; exit 1; }; \
 	git branch --set-upstream-to="origin/$$CURRENT" "$$CURRENT" >/dev/null 2>&1 || true; \
 	PUBLISHED=$$(uv run -- python scripts/pr_open_rest.py --repo "$$REPOSITORY" --head-owner "$$ORIGIN_OWNER" \
-		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --title "$$PR_OPEN_TITLE" --body-file "$$PR_OPEN_BODY_FILE" --record-file "$$RECORD_FILE" --receipt-file "$$RECEIPT_FILE" $${UNAVAILABLE_CAUSE:+--local-review-unavailable "$$UNAVAILABLE_CAUSE"} $$DRAFT_FLAG $$PARENT_ARGS); \
+		--branch "$$CURRENT" --head-spec "$$HEAD_SPEC" --base "$$BASE_BRANCH" --title "$$PR_OPEN_TITLE" --body-file "$$PR_OPEN_BODY_FILE" --record-file "$$RECORD_FILE" --receipt-file "$$RECEIPT_FILE" $${UNAVAILABLE_CAUSE:+--local-review-unavailable "$$UNAVAILABLE_CAUSE"} $$DRAFT_FLAG $$PARENT_ARGS); \
 	PR_STATUS="$${PUBLISHED%% *}"; \
 	PR_NUMBER="$${PUBLISHED#* }"; \
 	URL="$${PR_NUMBER#* }"; \
@@ -297,7 +309,7 @@ pr-open:
 			$(MAKE) -s pr-ready REPO="$$REPOSITORY" URL="$$URL" HEAD="$$REVIEWED" EVIDENCE="$(EVIDENCE)" $(if $(BATCH),BATCH=1,); \
 		fi; \
 	else \
-		$(MAKE) -s pr-arm PR="$$PR_NUMBER" REPO="$$REPOSITORY" HEAD="$$REVIEWED" $(if $(BATCH),BATCH=1,); \
+		$(MAKE) -s pr-arm PR="$$PR_NUMBER" REPO="$$REPOSITORY" HEAD="$$REVIEWED" BASE="$$BASE_BRANCH" $(if $(BATCH),BATCH=1,); \
 	fi
 
 .PHONY: pr-arm-auto-merge
@@ -336,6 +348,7 @@ pr-arm: override PR := $(value PR)
 pr-arm: override HEAD := $(value HEAD)
 pr-arm: override REPO := $(value REPO)
 pr-arm: override WAIT := $(value WAIT)
+pr-arm: override BASE := $(value BASE)
 pr-arm: export PR_ARM_PR := $(PR)
 pr-arm: export PR_ARM_PR_SET := $(PR_ARM_PR_SET)
 pr-arm: export PR_ARM_HEAD := $(HEAD)
@@ -345,6 +358,7 @@ pr-arm: export PR_ARM_REPO_SET := $(PR_ARM_REPO_SET)
 pr-arm: export PR_ARM_WAIT := $(WAIT)
 pr-arm: export PR_ARM_WAIT_SET := $(PR_ARM_WAIT_SET)
 pr-arm: export PR_ARM_REQUIRE_BATCH := $(if $(BATCH),1,0)
+pr-arm: export PR_ARM_BASE := $(BASE)
 pr-arm:
 	@set -eu; \
 	if [ -n "$${PR_ARM_PR:-}" ]; then \
@@ -452,8 +466,8 @@ pr-conflict-scan:
 	@CURRENT="$(BRANCH)"; \
 	[ -n "$$CURRENT" ] || CURRENT=$$(git branch --show-current); \
 	scoped=1; mine=$$(mktemp); trap 'rm -f "$$mine"' EXIT; \
-	base=$$(git merge-base HEAD origin/develop 2>/dev/null) && git diff --no-renames --name-only "$$base" HEAD > "$$mine" 2>/dev/null || scoped=0; \
-	gh api --method GET --paginate "repos/$(or $(REPO),BenchBox-dev/benchbox)/pulls?base=develop&state=open&per_page=100" \
+	base=$$(git merge-base HEAD origin/$(or $(BASE),develop) 2>/dev/null) && git diff --no-renames --name-only "$$base" HEAD > "$$mine" 2>/dev/null || scoped=0; \
+	gh api --method GET --paginate "repos/$(or $(REPO),BenchBox-dev/benchbox)/pulls?base=$(or $(BASE),develop)&state=open&per_page=100" \
 		--jq '.[] | "\(.number) \(.head.ref)"' 2>/dev/null | \
 	while read num branch; do \
 		[ "$$branch" = "$$CURRENT" ] && continue; \

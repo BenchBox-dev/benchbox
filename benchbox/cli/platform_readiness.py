@@ -219,7 +219,7 @@ def _check_lakesail(platform: str, timeout_seconds: float) -> tuple[PlatformRead
                 check="pyspark_client",
                 status="environment_skip",
                 summary="PySpark Spark Connect client is not importable.",
-                remediation="Install the LakeSail client dependency with: uv add pyspark",
+                remediation="Install the LakeSail client dependency with: uv add 'pyspark>=3.4.0,<4.3'",
             )
         )
 

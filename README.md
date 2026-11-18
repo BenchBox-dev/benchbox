@@ -16,7 +16,8 @@
 
 BenchBox is an open-source Python toolkit for benchmarking analytical data
 platforms. It generates and loads data, runs repeatable workloads, validates
-execution, and records comparable results through one workflow.
+execution, and records [comparable results](https://benchbox.dev/docs/concepts/benchmark-methodology.html#when-two-results-are-comparable)
+through one workflow.
 
 Use BenchBox to evaluate local databases, cloud data warehouses, and DataFrame
 runtimes with the same benchmark definitions. It is built for data engineers,
@@ -99,6 +100,27 @@ benchbox run \
   --benchmark tpch \
   --scale 0.01
 ```
+
+### DuckDB versions and database files
+
+BenchBox supports DuckDB 1.x and 2.x. DuckDB 2.x writes new database files in a
+storage format that DuckDB 1.x cannot open: a 1.x process reports
+`Trying to read a database file with version number 999`. Running BenchBox on
+DuckDB 2.x therefore makes these files unreadable by DuckDB 1.x:
+
+- the `.duckdb` database (and its `.wal` file) that a DuckDB run creates, including
+  databases BenchBox reuses between runs when 2.x creates them;
+- DuckLake catalogs (`metadata.ducklake`) created by the DuckLake platform and the
+  DuckLake format converter;
+- the DataFrame SQL-parity database `_write_primitives_df_parity.duckdb` that the
+  write-primitives benchmark leaves in its data directory.
+
+A file that DuckDB 1.x created stays readable by 1.x after DuckDB 2.x opens and
+writes it. Result JSON files, the SQLite results store, generated Parquet and
+CSV data, and the Results Explorer snapshot (written in the DuckDB 1.0 storage
+format) are not affected. To hand a database to someone on DuckDB 1.x, run it
+with a 1.x `driver_version` or export it with `EXPORT DATABASE` and import the
+export there.
 
 Continue with the [five-minute guide](https://benchbox.dev/docs/usage/getting-started.html), or see
 the [installation guide](https://benchbox.dev/docs/usage/installation.html) for other platforms and
@@ -211,6 +233,27 @@ uv run -- benchbox check-deps --platform databricks
 
 Platform guides cover credentials, connection settings, and platform-specific
 options. Do not put credentials in configuration files that you commit.
+
+### Saved platform credentials
+
+`benchbox setup --platform <name>` saves credentials to `~/.benchbox/credentials.yaml`. The file is
+**not encrypted**: Snowflake, Redshift, SingleStore and Athena secrets, AWS keys and the Databricks token are
+stored as plain YAML text. BenchBox creates `~/.benchbox` with mode `0700` and the file with mode `0600`, and
+tightens a wider existing file on the next write with a warning, but any process you run can still read it.
+
+To keep a secret out of the file, write an environment reference as the value instead:
+
+```yaml
+snowflake:
+  account: myorg-myaccount
+  username: benchmark_user
+  password: ${SNOWFLAKE_PASSWORD}
+```
+
+The reference is expanded from the environment each time the file is read, and is kept as written when
+BenchBox saves the file again. `benchbox run` reads Snowflake settings only from this file and ignores
+`SNOWFLAKE_*` variables on their own; `benchbox setup` can read them for you, and `${VAR}` references are how
+`run` picks them up. The hosted-submit token is the one secret stored in the operating system keyring.
 
 ## Project status
 

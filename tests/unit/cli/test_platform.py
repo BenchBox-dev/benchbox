@@ -284,10 +284,10 @@ class TestPlatformManager:
         mock_module.__version__ = "1.0.0"
         mock_import.return_value = mock_module
 
-        lib_spec = {"name": "duckdb", "required": True}
+        lib_spec = {"name": "test_lib", "required": True}
         lib_info = self.manager._detect_library(lib_spec)
 
-        assert lib_info.name == "duckdb"
+        assert lib_info.name == "test_lib"
         assert lib_info.version == "1.0.0"
         assert lib_info.installed is True
         assert lib_info.import_error is None
@@ -1345,8 +1345,9 @@ DEFAULT_HEADERS = ("Platform", "Driver", "Support", "Libraries")
 def _render_platform_status(width: int, *, detail: bool = False) -> str:
     stream = StringIO()
     manager = get_platform_manager()
-    manager.console = Console(file=stream, force_terminal=False, color_system=None, width=width)
-    manager.display_platform_status(detail=detail)
+    console = Console(file=stream, force_terminal=False, color_system=None, width=width)
+    with patch.object(manager, "console", console):
+        manager.display_platform_status(detail=detail)
     return stream.getvalue()
 
 

@@ -11,7 +11,7 @@ import subprocess
 import sys
 import threading
 import time
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -44,6 +44,7 @@ RUNS_FILE_NAME = "heavy-runs.jsonl"
 _RUN_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 WATCHDOG_SCRIPT = Path(__file__).with_name("heavy_watchdog.py")
 _SIGTERM = signal.Signals["SIGTERM"]
+_SIGKILL = signal.Signals["SIGKILL"] if hasattr(signal, "SIGKILL") else _SIGTERM
 
 _HOLDER_OWNER = re.compile(r"^pid:\d+ owner:(\d+:\d+(?:\.\d+)?) ")
 
@@ -877,11 +878,18 @@ def start_guard(handle: HostLock, *, environ: Mapping[str, str] | None = None) -
 
 
 def check_admission(
-    *, need_gib: float | None = None, environ: Mapping[str, str] | None = None, echo: bool = True
+    *,
+    need_gib: float | None = None,
+    environ: Mapping[str, str] | None = None,
+    echo: bool = True,
+    spin_lines: Callable[[Mapping[str, str]], Sequence[str]] | None = None,
 ) -> str:
-    from benchbox.utils import resource_limits
+    from benchbox.utils import heavy_status, resource_limits
 
     env = os.environ if environ is None else environ
+    if echo:
+        for line in (spin_lines or heavy_status.active_spin_lines)(env):
+            _log(line)
     force = env.get(ADMIT_ENV, "").strip().lower() == "force"
     policy = resource_limits.admission_policy_from_env(env, need_gib=need_gib)
     result = resource_limits.admit_heavy_work(policy, force=force)
@@ -1037,6 +1045,70 @@ def _prepare_child(take_foreground: bool) -> None:
     signal.pthread_sigmask(signal.SIG_UNBLOCK, _FORWARDED_SIGNALS)
 
 
+GROUP_GRACE_SECONDS = 3.0
+_kill_group = os.killpg if hasattr(os, "killpg") else None
+
+
+def _group_members(pgid: int) -> list[tuple[int, str]]:
+    psutil = _psutil()
+    members: list[tuple[int, str]] = []
+    for proc in psutil.process_iter(["pid", "name"]):
+        try:
+            if proc.info["pid"] != os.getpid() and os.getpgid(proc.info["pid"]) == pgid:
+                if proc.status() != psutil.STATUS_ZOMBIE:
+                    members.append((proc.info["pid"], proc.info["name"] or "?"))
+        except (psutil.Error, OSError):
+            continue
+    return members
+
+
+def _reap_process_group(pgid: int, env: Mapping[str, str]) -> list[tuple[int, str]]:
+    survivors = _group_members(pgid)
+    if not survivors:
+        return []
+    _log(
+        f"the command ended with {len(survivors)} process(es) still running in its process group; stopping them: "
+        + ", ".join(f"{pid} {name}" for pid, name in survivors)
+    )
+    last_delivered = None
+    for sig in (_SIGTERM, _SIGKILL):
+        try:
+            _kill_group(pgid, sig)
+        except ProcessLookupError:
+            break
+        except OSError:
+            continue
+        last_delivered = sig
+        deadline = _now() + GROUP_GRACE_SECONDS
+        while _now() < deadline and _group_members(pgid):
+            _sleep(0.1)
+        if not _group_members(pgid):
+            break
+    remaining = _group_members(pgid)
+    if remaining:
+        reached = "could not be signalled" if last_delivered is None else f"survived {last_delivered.name}"
+        _log(
+            f"ERROR: {len(remaining)} process(es) {reached} and are still running: "
+            + ", ".join(f"{pid} {name}" for pid, name in remaining)
+        )
+    try:
+        _load_sibling("heavy_run_events").record_event(
+            "group_survivors_remaining" if remaining else "group_survivors_stopped",
+            outcome="survivors_remaining" if remaining else "stopped",
+            details={
+                "pgid": pgid,
+                "last_signal_delivered": None if last_delivered is None else last_delivered.name,
+                "found": [{"pid": pid, "name": name} for pid, name in survivors],
+                "remaining": [{"pid": pid, "name": name} for pid, name in remaining],
+            },
+            environ=env,
+            run_id=env.get(RUN_ID_ENV),
+        )
+    except Exception:
+        pass
+    return remaining
+
+
 def _exit_code(returncode: int) -> int:
     return 128 - returncode if returncode < 0 else returncode
 
@@ -1115,6 +1187,8 @@ def _supervise_posix(command: Sequence[str], env: Mapping[str, str]) -> int:
             signal.pthread_sigmask(signal.SIG_UNBLOCK, _FORWARDED_SIGNALS)
         return _wait_for_child(child, foreground)
     finally:
+        if child is not None:
+            _reap_process_group(child.pid, env)
         if foreground:
             try:
                 os.tcsetpgrp(0, os.getpgrp())

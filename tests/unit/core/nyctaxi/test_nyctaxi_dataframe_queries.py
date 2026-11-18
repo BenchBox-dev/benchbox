@@ -286,6 +286,119 @@ class TestNYCTaxiParameters:
         assert ctx.get_table("trips").native.collect_schema()["pickup_datetime"] == pl.Datetime("us")
         assert result.collect().height == 1
 
+    def test_airport_rate_filter_selects_float_rate_codes_on_polars(self):
+        pl = pytest.importorskip("polars")
+
+        from benchbox.core.nyctaxi.dataframe_queries.queries import _expr_extra, _expression_window
+        from benchbox.platforms.dataframe.polars_df import PolarsDataFrameAdapter
+
+        ctx = PolarsDataFrameAdapter().create_context()
+        ctx.register_table(
+            "trips",
+            pl.DataFrame(
+                {
+                    "pickup_datetime": [datetime(2019, 1, 2)] * 5,
+                    "rate_code_id": [1.0, 2.0, 3.0, 5.0, None],
+                    "trip_id": [1, 2, 3, 4, 5],
+                }
+            ),
+        )
+
+        result, _, _ = _expression_window(ctx, "Q17", "2019-01-01", "2019-03-31", _expr_extra("airport_rate"))
+
+        assert sorted(result.collect()["trip_id"].to_list()) == [2, 3]
+
+    def test_day_type_classifies_weekends_on_polars(self):
+        pl = pytest.importorskip("polars")
+
+        from benchbox.core.nyctaxi.dataframe_queries.queries import _expr_derive
+        from benchbox.platforms.dataframe.polars_df import PolarsDataFrameAdapter
+
+        ctx = PolarsDataFrameAdapter().create_context()
+        days = [datetime(2019, 1, day, 12) for day in range(1, 8)]
+        ctx.register_table("trips", pl.DataFrame({"pickup_datetime": days}))
+
+        result = _expr_derive(ctx, ctx.get_table("trips"), "day_type").collect().sort("pickup_datetime")
+
+        assert result["day_type"].to_list() == [
+            "weekday",
+            "weekday",
+            "weekday",
+            "weekday",
+            "weekend",
+            "weekend",
+            "weekday",
+        ]
+
+    def test_airport_trips_query_runs_end_to_end_on_polars(self):
+        pl = pytest.importorskip("polars")
+
+        from benchbox.core.nyctaxi.dataframe_queries import get_nyctaxi_query
+        from benchbox.platforms.dataframe.polars_df import PolarsDataFrameAdapter
+
+        ctx = PolarsDataFrameAdapter().create_context()
+        ctx.register_table(
+            "trips",
+            pl.DataFrame(
+                {
+                    "pickup_datetime": [datetime(2019, 1, 2)] * 6,
+                    "rate_code_id": [1.0, 2.0, 2.0, 3.0, 5.0, None],
+                    "pickup_location_id": [1, 1, 1, 2, 2, 2],
+                    "trip_distance": [9.0, 1.0, 3.0, 8.0, 7.0, 6.0],
+                    "total_amount": [90.0, 10.0, 20.0, 40.0, 70.0, 60.0],
+                    "tip_amount": [9.0, 1.0, 3.0, 4.0, 7.0, 6.0],
+                }
+            ),
+        )
+        ctx.register_table("taxi_zones", pl.DataFrame({"location_id": [1, 2], "zone": ["Alpha", "Beta"]}))
+
+        result = get_nyctaxi_query("Q17").expression_impl(ctx).collect()
+
+        assert result.rows(named=True) == [
+            {
+                "rate_code_id": 2.0,
+                "zone": "Alpha",
+                "trip_count": 2,
+                "avg_distance": 2.0,
+                "avg_fare": 15.0,
+                "avg_tip": 2.0,
+            },
+            {
+                "rate_code_id": 3.0,
+                "zone": "Beta",
+                "trip_count": 1,
+                "avg_distance": 8.0,
+                "avg_fare": 40.0,
+                "avg_tip": 4.0,
+            },
+        ]
+
+    def test_weekday_weekend_query_runs_end_to_end_on_polars(self):
+        pl = pytest.importorskip("polars")
+
+        from benchbox.core.nyctaxi.dataframe_queries import get_nyctaxi_query
+        from benchbox.platforms.dataframe.polars_df import PolarsDataFrameAdapter
+
+        ctx = PolarsDataFrameAdapter().create_context()
+        days = [datetime(2019, 1, day, 12) for day in range(1, 8)]
+        ctx.register_table(
+            "trips",
+            pl.DataFrame(
+                {
+                    "pickup_datetime": days,
+                    "trip_distance": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+                    "total_amount": [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0],
+                }
+            ),
+        )
+
+        result = get_nyctaxi_query("Q20").expression_impl(ctx).collect().sort("day_type")
+
+        assert result.rows(named=True) == [
+            {"day_type": "weekday", "hour": 12, "trip_count": 5, "avg_distance": 3.4, "avg_fare": 34.0},
+            {"day_type": "weekend", "hour": 12, "trip_count": 2, "avg_distance": 5.5, "avg_fare": 55.0},
+        ]
+
 
 class TestNYCTaxiBenchmarkRegistry:
     def test_nyctaxi_supports_dataframe(self):

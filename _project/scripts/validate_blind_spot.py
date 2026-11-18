@@ -34,7 +34,7 @@ ALLOWED_FIELDS = REQUIRED_FIELDS | OPTIONAL_FIELDS
 
 EVIDENCE_KEYS = {"path", "pattern", "note", "line_start", "line_end"}
 
-DEFAULT_DRAFTS_DIR = "~/.benchbox/finding-drafts"
+DEFAULT_DRAFTS_DIR = "~/.tractable/finding-drafts/benchbox"
 
 FILENAME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{6}-[a-z0-9]+(?:-[a-z0-9]+)*$")
 FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---(?:\n|\Z)(.*)\Z", re.DOTALL)

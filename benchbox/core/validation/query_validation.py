@@ -17,6 +17,7 @@ from benchbox.core.expected_results.tpcds_results import (
 from benchbox.core.expected_results.tpch_results import (
     PARAMETER_SENSITIVE_QUERY_IDS as _TPCH_PARAMETER_SENSITIVE_QUERY_IDS,
 )
+from benchbox.core.results.query_status import DATA_REFRESHED_REASON, PARAMETER_SENSITIVE_REASON
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +77,6 @@ def get_reference_seed_context() -> bool | None:
 def clear_reference_seed_context() -> None:
     _reference_seed_state.is_reference_seed = None
 
-
-DATA_REFRESHED_REASON = "data refreshed"
 
 _data_state_state = threading.local()
 
@@ -318,9 +317,10 @@ class QueryValidator:
                 actual_row_count=actual_row_count,
                 validation_mode=ValidationMode.SKIP,
                 warning_message=(
-                    f"Query '{query_id}' row count at scale factor {scale_factor} depends on the substitution "
-                    f"parameters; the '{benchmark_type}' reference count holds only for qgen default parameters. "
-                    f"Row-count validation excluded. Actual rows returned: {actual_row_count}"
+                    f"{PARAMETER_SENSITIVE_REASON}: query '{query_id}' row count at scale factor {scale_factor} "
+                    f"depends on the substitution parameters; the '{benchmark_type}' reference count holds only "
+                    f"for qgen default parameters. Row-count validation excluded. "
+                    f"Actual rows returned: {actual_row_count}"
                 ),
             )
 

@@ -5,6 +5,7 @@
 import argparse
 import importlib
 import os
+import sys
 from collections import Counter
 from collections.abc import Iterable
 from copy import deepcopy
@@ -23,6 +24,7 @@ from benchbox.core.platform_manifest import (
 )
 from benchbox.core.schemas import LibraryInfo, PlatformInfo
 from benchbox.platforms.base import PlatformAdapter
+from benchbox.utils.runtime_env import ISOLATABLE_NATIVE_DRIVER_IMPORTS, probe_unloaded_driver
 
 CostClass = Literal["free", "paid_credits", "paid_compute"]
 OptionalAdapterImportStatus = Literal[
@@ -223,6 +225,14 @@ class PlatformRegistry:
     def _detect_library(cls, lib_spec: dict[str, Any]) -> LibraryInfo:
         lib_name = lib_spec["name"]
         import_name = lib_spec.get("import_name", lib_name)
+
+        if import_name in ISOLATABLE_NATIVE_DRIVER_IMPORTS and import_name not in sys.modules:
+            installed, installed_version = probe_unloaded_driver(import_name, lib_name)
+            if installed:
+                return LibraryInfo(name=lib_name, version=installed_version, installed=True)
+            return LibraryInfo(
+                name=lib_name, version=None, installed=False, import_error=f"No module named '{import_name}'"
+            )
 
         original_cwd = os.getcwd()
         try:

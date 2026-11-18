@@ -158,15 +158,17 @@ def test_pg_duckdb_platform_options_parse_group_c_builder_fields():
 def test_database_manager_create_config_merges_options(monkeypatch):
     monkeypatch.setattr(
         "benchbox.cli.database.ensure_driver_version",
-        lambda package_name, requested_version, auto_install=False, install_hint=None: DriverResolution(
-            package=package_name or "",
-            requested=requested_version,
-            resolved=requested_version or "local-dev",
-            actual=requested_version or "local-dev",
-            auto_install_used=False,
-            runtime_strategy="current-process",
-            runtime_path=None,
-            runtime_python_executable="/tmp/python",
+        lambda package_name, requested_version, auto_install=False, install_hint=None, allow_install=True: (
+            DriverResolution(
+                package=package_name or "",
+                requested=requested_version,
+                resolved=requested_version or "local-dev",
+                actual=requested_version or "local-dev",
+                auto_install_used=False,
+                runtime_strategy="current-process",
+                runtime_path=None,
+                runtime_python_executable="/tmp/python",
+            )
         ),
     )
     manager = DatabaseManager()
@@ -193,15 +195,17 @@ def test_database_manager_create_config_merges_options(monkeypatch):
 def test_database_manager_create_config_preserves_saved_credentials_over_defaults(monkeypatch):
     monkeypatch.setattr(
         "benchbox.cli.database.ensure_driver_version",
-        lambda package_name, requested_version, auto_install=False, install_hint=None: DriverResolution(
-            package=package_name or "",
-            requested=requested_version,
-            resolved=requested_version or "local-dev",
-            actual=requested_version or "local-dev",
-            auto_install_used=False,
-            runtime_strategy="current-process",
-            runtime_path=None,
-            runtime_python_executable="/tmp/python",
+        lambda package_name, requested_version, auto_install=False, install_hint=None, allow_install=True: (
+            DriverResolution(
+                package=package_name or "",
+                requested=requested_version,
+                resolved=requested_version or "local-dev",
+                actual=requested_version or "local-dev",
+                auto_install_used=False,
+                runtime_strategy="current-process",
+                runtime_path=None,
+                runtime_python_executable="/tmp/python",
+            )
         ),
     )
 
@@ -225,15 +229,17 @@ def test_database_manager_create_config_preserves_saved_credentials_over_default
 def test_database_manager_create_config_explicit_options_override_saved_credentials(monkeypatch):
     monkeypatch.setattr(
         "benchbox.cli.database.ensure_driver_version",
-        lambda package_name, requested_version, auto_install=False, install_hint=None: DriverResolution(
-            package=package_name or "",
-            requested=requested_version,
-            resolved=requested_version or "local-dev",
-            actual=requested_version or "local-dev",
-            auto_install_used=False,
-            runtime_strategy="current-process",
-            runtime_path=None,
-            runtime_python_executable="/tmp/python",
+        lambda package_name, requested_version, auto_install=False, install_hint=None, allow_install=True: (
+            DriverResolution(
+                package=package_name or "",
+                requested=requested_version,
+                resolved=requested_version or "local-dev",
+                actual=requested_version or "local-dev",
+                auto_install_used=False,
+                runtime_strategy="current-process",
+                runtime_path=None,
+                runtime_python_executable="/tmp/python",
+            )
         ),
     )
 

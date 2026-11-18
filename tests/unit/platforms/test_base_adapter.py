@@ -1028,6 +1028,35 @@ def _build_dummy_psutil():
     )
 
 
+def test_collect_resource_utilization_reports_reading_off_apple_silicon(monkeypatch):
+    monkeypatch.setattr("benchbox.platforms.base.result_capture.platform.system", lambda: "Linux")
+    monkeypatch.setattr("benchbox.platforms.base.result_capture.platform.machine", lambda: "x86_64")
+    monkeypatch.setitem(sys.modules, "psutil", _build_dummy_psutil())
+
+    assert MockPlatformAdapter()._collect_resource_utilization()["cpu"]["frequency_mhz"] == 3200.0
+
+
+def test_collect_resource_utilization_nulls_apple_silicon_frequency(monkeypatch):
+    monkeypatch.setattr("benchbox.platforms.base.result_capture.platform.system", lambda: "Darwin")
+    monkeypatch.setattr("benchbox.platforms.base.result_capture.platform.machine", lambda: "arm64")
+    fake = _build_dummy_psutil()
+    fake.cpu_freq = lambda: SimpleNamespace(current=4, min=4, max=4)
+    monkeypatch.setitem(sys.modules, "psutil", fake)
+
+    assert MockPlatformAdapter()._collect_resource_utilization()["cpu"]["frequency_mhz"] is None
+
+
+@pytest.mark.parametrize("reading", [None, SimpleNamespace(current=0.0), SimpleNamespace(current=None)])
+def test_collect_resource_utilization_nulls_unusable_frequency(monkeypatch, reading):
+    monkeypatch.setattr("benchbox.platforms.base.result_capture.platform.system", lambda: "Linux")
+    monkeypatch.setattr("benchbox.platforms.base.result_capture.platform.machine", lambda: "x86_64")
+    fake = _build_dummy_psutil()
+    fake.cpu_freq = lambda: reading
+    monkeypatch.setitem(sys.modules, "psutil", fake)
+
+    assert MockPlatformAdapter()._collect_resource_utilization()["cpu"]["frequency_mhz"] is None
+
+
 def test_collect_resource_utilization_with_stub(monkeypatch):
     adapter = MockPlatformAdapter()
     monkeypatch.setitem(sys.modules, "psutil", _build_dummy_psutil())
@@ -3372,7 +3401,7 @@ class TestExceptionPathsForThroughputAndMaintenance:
             ("benchbox.platforms.singlestore", "SingleStoreAdapter", True),
             ("benchbox.platforms.snowflake", "SnowflakeAdapter", True),
             ("benchbox.platforms.redshift", "RedshiftAdapter", False),
-            ("benchbox.platforms.cedardb", "CedarDBAdapter", False),
+            ("benchbox.platforms.cedardb", "CedarDBAdapter", True),
             ("benchbox.platforms.citus", "CitusAdapter", False),
             ("benchbox.platforms.paradedb", "ParadeDBAdapter", False),
             ("benchbox.platforms.pg_duckdb", "PgDuckDBAdapter", False),

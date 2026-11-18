@@ -91,6 +91,48 @@ ancestor. A targeted rebuild only uploads the artifact: it does not send the
 `core-bundle` dispatch to the site, so the Results Explorer deploy is not
 affected, and it never opens or closes the `site-bundle-failed` incident.
 
+### The site deploy parity chain and its recovery
+
+The site deploy refuses a bundle whose corpus differs from the deployed one
+unless the bundle's `validator_parity` attestation covers the change since the
+deployed core commit. The attestation records a `base`, the parent commit
+the bundle was compared against. `site_inputs.py` runs `validator_parity.py`
+from the bundle's own checkout with `--base-sha` set to that parent; the
+script validates every submission bundle changed in `base...bundle core`.
+The separate `corpus_validation` attestation validates the whole corpus at the
+bundle core. `--base-sha` selects the diff range, not the
+validator implementation.
+
+The site accepts a `base` that equals the deployed `core_sha`, and also a
+`base` that is a strict ancestor of it, provided the bundle's core commit is
+the deployed commit or a descendant. The range `base..bundle core` then
+contains `deployed..bundle core`, so every corpus change the deploy introduces
+was validated; the only cost is revalidating bundles that are already live.
+The site reads both ancestry facts through the core compare API and refuses
+when the base is not an ancestor, when the bundle core is not a descendant,
+or when either comparison cannot be read.
+
+`site_inputs_parent.py` waits until no site `deploy.yml` run is in flight before
+it reads the deployed core as the bundle's parent. If the previous bundle's
+site deploy run has not been created yet at that moment, the bundle records an
+older parent. With the ancestor rule that bundle deploys without action. The
+site gate still refuses when the recorded base is not an ancestor of the
+deployed core, for example after a deploy of a commit on another line, and the
+run's message ends with the recovery command.
+
+Rebuild the bundle with the deployed core as its parent:
+
+```bash
+gh workflow run site-inputs.yml --ref develop -f parent_core_sha=<deployed core_sha>
+```
+
+Take `<deployed core_sha>` from the `not the deployed <sha>` text of the
+failed site run or from `npm run deploy -- deployed` in the site repository.
+The commit must be an ancestor of the bundle's target commit; the run refuses
+anything else. Use this only after a site run fails with
+`validator_parity covers ...`; do not dispatch it to preempt a deploy that is
+still running.
+
 ## Maintenance releases
 
 A maintenance line ships a fix on an older minor without shipping everything on
@@ -159,9 +201,14 @@ The procedure:
    The first command only verifies; `--push` creates `release/X.Y.x`. The
    reviewer file set comes from `CREATION_REVIEW_PATHS` and the `review-*` and
    `oracle-*` workflows in `scripts/release_artifact_consumer.py`, the same
-   constants admission checks, so the two cannot drift. Creation commits are
-   immutable, so check the line again from `develop` after the push, and any
-   time before a tag, without a tag in hand:
+   constants admission checks, so the two cannot drift. The commit also carries
+   the tests in `CREATION_REVIEW_TESTS`, which pin those files; without them
+   the line's required CI runs the tag's older tests against develop's newer
+   reviewer files and fails.
+   `tests/unit/scripts/test_release_line_carried_tests.py` fails when a test
+   names a carried file and is neither listed there nor declared unrelated.
+   Creation commits are immutable, so check the line again from `develop`
+   after the push, and any time before a tag, without a tag in hand:
 
    ```bash
    uv run -- python scripts/release_artifact_consumer.py verify-line \
@@ -186,13 +233,37 @@ The procedure:
    `scripts/release_canary_freshness.py` (and whatever they need) from
    `develop`; `ci.yml` accepts a `release/X.Y.x` base.
 4. Land the fix by pull request into `release/X.Y.x`; the pull request
-   squash-merges like any other. Land the same fix on `develop` through its own
-   pull request when `develop` has the defect too. Add a `changelog.d` fragment
-   on each branch.
+   squash-merges like any other. Branch the worktree from the line
+   (`make worktree-create BRANCH=fix/<name> WORKTREE_PATH=../BenchBox.wt-<name>
+   BASE=origin/release/X.Y.x`) and name the line in every close-out command:
+
+   ```bash
+   make pr-preflight BASE=release/X.Y.x
+   make pr-open BASE=release/X.Y.x
+   make pr-arm BASE=release/X.Y.x
+   ```
+
+   `pr-open` and `pr-arm` take `BASE` as `develop` (the default) or one
+   `release/X.Y.x` line and refuse any other value. `pr-preflight` reads
+   `BASE` as a ref, as before, and takes the branch names `develop` and
+   `release/*` as the fetched `origin/<branch>`; it refuses nothing, and
+   `pr-open` refuses a receipt that does not cover its base. `pr-open` takes the branch-point check, the
+   changelog check, the preflight receipt and the local review against that
+   line, opens the pull request into it, and arms it with the same `BASE`, and
+   `pr-arm` runs its live checks (required statuses, stale base, review gate
+   from the line's own policy) against the line. A pull request into a line is
+   decided by a `review-gate` and `review-verdict` run dispatched on the line,
+   which its `posting-check` jobs start themselves (see "Checks after the
+   merge" in [review-v2.md](review-v2.md)); nothing is dispatched by hand.
+   `READY=1 EVIDENCE=...` and `pr-ready` with `EVIDENCE` arm only `develop`
+   pull requests. Arming still reads the trunk state of `develop`. Land the
+   same fix on `develop` through its own pull request when `develop` has the
+   defect too. Add a `changelog.d` fragment on each branch.
 5. Prepare the release on the branch, as for `develop`: from a worktree on
    `release/X.Y.x`, `make release-prep VERSION=X.Y.Z` and
    `make release-check VERSION=X.Y.Z RELEASE_PRE_TAG=1`, committed as one pull
-   request into the branch. The lock-revision baseline is the newest final tag
+   request into the branch (`make pr-open BASE=release/X.Y.x`). The
+   lock-revision baseline is the newest final tag
    older than `X.Y.Z`, so `0.5.1` compares with `v0.5.0` even when `v0.6.0`
    exists.
 6. Wait for the `trunk.yml` push run of the merged commit on `release/X.Y.x`:
@@ -893,10 +964,18 @@ problem it finds. It verifies that:
   commit alone, and `scripts/release_releasable.py check --sha <sha>` runs the
   commit check without the release content checks.
 
-The `sqlglot-delivery` workflow adopts verified fork deliveries. It runs daily
-on `develop` in `BenchBox-dev/BenchBox` and on `workflow_dispatch`
-(`dry_run`, default true, and `retry`), and is driven by
-`scripts/sqlglot_delivery.py`.
+The `sqlglot-delivery` workflow adopts verified fork deliveries. It runs every
+6 hours, at :37 past 00, 06, 12 and 18 UTC, on `develop` in
+`BenchBox-dev/BenchBox` and on `workflow_dispatch` (`dry_run`, default true,
+and `retry`), and is driven by `scripts/sqlglot_delivery.py`.
+
+GitHub often starts scheduled runs hours late: between 2026-11-09 and
+2026-11-16 the fork controller (cron 05:41 UTC) started between 12:30Z and
+13:59Z and this workflow (then cron 06:37 UTC) started between 13:46Z and
+16:48Z, 7 to 10 hours late. Nothing orders the two schedules, so a fork release
+could otherwise wait a day for adoption. The expected worst-case adoption delay
+after the fork publishes is about 6 hours plus GitHub's schedule delay. A run
+with nothing new ends at state current in about a minute.
 
 - **Trust root.** `.github/sqlglot-delivery.json` fixes the producer
   repository, workflow path, branch `main`, allowed events, artifact prefix and
@@ -915,10 +994,26 @@ on `develop` in `BenchBox-dev/BenchBox` and on `workflow_dispatch`
 - **Prepare** has no credentials. It runs the adopter
   (`scripts/adopt_sqlglot_wheel.py`) with the version, fork SHA, upstream SHA
   and hash from the verified record, requires that only the pin, the wheel
-  archive, the license notice and the baseline identity changed, and emits a
-  git bundle and a pull request title and body. The body carries a marker that
+  archive, the license notice, the baseline identity and (below) the recorded
+  golden corpus changed, and emits a git bundle and a pull request title and
+  body. The body carries a marker that
   binds version, fork SHA, upstream SHA, hash, the producer run and attempt,
   and the adoption commit and its parent.
+- **Golden corpus.** After the adopter switches the runtime, prepare runs
+  `python -m tests.unit.sql_compat.golden_corpus` (every area) from the
+  checkout in a fresh interpreter, so it imports the newly pinned wheel from
+  `benchbox/_vendor`; it first checks that interpreter resolves the delivered
+  archive. Changed files under
+  `tests/unit/sql_compat/golden_corpus/recorded/*.json` go into the same single
+  adoption commit, which keeps the one-commit ownership rule. The pull request
+  body gains a "Golden corpus changes" section listing each changed case (area,
+  case id, and the before and after output of each field that differs); past 20
+  cases it gives counts per area and the first 20. A delivery that changes no
+  recorded output adds nothing. Publish and arm accept only the pin, archive,
+  notice, baseline, fragment and `recorded/*.json` paths. Nothing holds the
+  pull request automatically: it takes the normal path (CI including the SQL
+  execution evidence gate, review gate, arm). To stop a release over a corpus
+  change, apply `no-auto-merge` to the pull request.
 - **Publish** runs only when `SQLGLOT_DELIVERY_ENABLED` is `true`, the run is
   not a dry run and the plan says `adopt`. It re-checks the bundle, pushes
   `chore/sqlglot-<version>` and opens the pull request, resuming after an
@@ -949,7 +1044,7 @@ on `develop` in `BenchBox-dev/BenchBox` and on `workflow_dispatch`
   re-arms after a person disabled auto-merge or applied the hold. The one
   automation disarm it recovers from is the trunk-red disarm by
   `github-actions[bot]` (`trunk-red-disarm.yml`). The pull request is usually
-  not green on the run that opens it, so the next daily run arms it.
+  not green on the run that opens it, so a later scheduled run arms it.
 - **Kill switch and dry run.** Every mutating command refuses unless the
   repository variable `SQLGLOT_DELIVERY_ENABLED` is exactly `true`. A manual
   dispatch defaults to `dry_run`: the prepare job verifies the delivery and

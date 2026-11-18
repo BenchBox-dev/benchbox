@@ -165,17 +165,34 @@ class RowCountStrategy(ABC):
         pass
 
 
+_TPCH_EXACT_ROWS_PER_SCALE = {
+    "customer": 150_000,
+    "orders": 1_500_000,
+    "part": 200_000,
+    "partsupp": 800_000,
+    "supplier": 10_000,
+}
+_TPCH_FIXED_ROWS = {"nation": 25, "region": 5}
+_TPCH_LINEITEM_ROWS_PER_SCALE = 6_000_000
+_TPCH_LINEITEM_TOLERANCE = 0.005
+
+
 class TPCHRowCountStrategy(RowCountStrategy):
     def get_sample_tables(self, available_tables: set[str]) -> list[str]:
         return list(available_tables)
 
     def get_expected_range(self, table: str) -> tuple[float, float] | None:
-        ranges = {
-            "lineitem": (6000000 * self.scale_factor * 0.8, 6000000 * self.scale_factor * 1.2),
-            "orders": (1500000 * self.scale_factor * 0.8, 1500000 * self.scale_factor * 1.2),
-            "customer": (150000 * self.scale_factor * 0.8, 150000 * self.scale_factor * 1.2),
-        }
-        return ranges.get(table)
+        name = table.lower()
+        if name in _TPCH_FIXED_ROWS:
+            rows = float(_TPCH_FIXED_ROWS[name])
+            return (rows, rows)
+        if name in _TPCH_EXACT_ROWS_PER_SCALE:
+            rows = float(round(_TPCH_EXACT_ROWS_PER_SCALE[name] * self.scale_factor))
+            return (rows, rows)
+        if name == "lineitem":
+            expected = _TPCH_LINEITEM_ROWS_PER_SCALE * self.scale_factor
+            return (expected * (1 - _TPCH_LINEITEM_TOLERANCE), expected * (1 + _TPCH_LINEITEM_TOLERANCE))
+        return None
 
 
 _TPCDS_FRACTIONAL_LINEAR_TABLES = TPCDS_LINEAR_TABLES | {"customer"}

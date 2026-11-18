@@ -8,6 +8,7 @@ import pytest
 from click.testing import CliRunner
 
 from benchbox.cli.app import cli
+from benchbox.cli.exit_codes import ExitCode
 from benchbox.core.analysis.comparison import PlatformComparison
 from benchbox.core.results.analytics import compare_results
 from benchbox.core.results.models import (
@@ -110,7 +111,7 @@ def test_validate_accepts_result_without_maintenance():
 
 def test_cli_file_comparison_refuses_different_methods(tmp_path: Path):
     result = CliRunner().invoke(cli, ["compare", _write(tmp_path / "a.json", NEW), _write(tmp_path / "b.json", LEGACY)])
-    assert result.exit_code == 1
+    assert result.exit_code == ExitCode.NOT_COMPARABLE
     assert "maintenance method differs" in result.output
 
 
@@ -124,7 +125,7 @@ def test_cli_refusal_is_not_bypassed_by_heterogeneous_flag(tmp_path: Path):
             "--allow-heterogeneous-comparison",
         ],
     )
-    assert result.exit_code == 1
+    assert result.exit_code == ExitCode.NOT_COMPARABLE
     assert "maintenance method differs" in result.output
 
 

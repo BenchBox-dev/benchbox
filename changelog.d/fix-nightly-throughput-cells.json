@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed result validation rejecting a passed run whose throughput queries ran after the refresh functions: row counts skipped because the data was refreshed, or accepted within a tolerance or range, no longer contradict a passed summary, while skips without a documented reason still do and a run whose row counts were all skipped is now summarised as not validated."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed TPC-H refresh functions failing on CedarDB with an active-transaction error, which made official power and throughput runs fail there; CedarDB now runs refresh functions."
+    }
+  ]
+}

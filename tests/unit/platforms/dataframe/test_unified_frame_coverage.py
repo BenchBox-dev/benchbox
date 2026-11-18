@@ -78,20 +78,25 @@ class _DFCaseBuilder:
 
 
 class _DFFunctions:
-    def avg(self, x):
-        return _DFAggExpr(("avg", getattr(x, "value", x)))
+    @staticmethod
+    def _agg(name, x, filter=None):
+        agg = _DFAggExpr((name, getattr(x, "value", x)))
+        return agg if filter is None else agg.filter(filter).build()
 
-    def sum(self, x):
-        return _DFAggExpr(("sum", getattr(x, "value", x)))
+    def avg(self, x, filter=None):
+        return self._agg("avg", x, filter)
 
-    def count(self, x=None):
-        return _DFAggExpr(("count", getattr(x, "value", x)))
+    def sum(self, x, filter=None):
+        return self._agg("sum", x, filter)
 
-    def min(self, x):
-        return _DFAggExpr(("min", getattr(x, "value", x)))
+    def count(self, x=None, filter=None):
+        return self._agg("count", x, filter)
 
-    def max(self, x):
-        return _DFAggExpr(("max", getattr(x, "value", x)))
+    def min(self, x, filter=None):
+        return self._agg("min", x, filter)
+
+    def max(self, x, filter=None):
+        return self._agg("max", x, filter)
 
     def rank(self):
         return _DFExpr("rank")

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -130,6 +131,7 @@ def test_trunk_run_id_satisfies_the_schema4_certifier_rule() -> None:
     certified = parent_mod.decide_certified_by(CORE, "", [TRUNK_RUN])
     assert site_inputs.certifier_errors(4, certified) == []
     assert site_inputs.certifier_errors(5, certified) == []
+    assert site_inputs.certifier_errors(6, certified) == []
 
 
 def test_dispatch_build_without_trunk_run_is_refused() -> None:
@@ -551,3 +553,103 @@ def test_target_run_on_another_branch_is_not_certification(monkeypatch: pytest.M
     monkeypatch.setattr(parent_mod, "_gh", lambda args: __import__("json").dumps([row]))
     with pytest.raises(parent_mod.NotTrunkCertifiedError):
         parent_mod.resolve_and_decide(CORE, "", "o/r", 100, "", target=True)
+
+
+def _settle_harness(in_flight: list[int], deployed: list[str]):
+    clock = {"now": 0.0}
+    calls: list[str] = []
+
+    def count_in_flight(repo: str) -> int:
+        calls.append("in_flight")
+        return in_flight.pop(0) if len(in_flight) > 1 else in_flight[0]
+
+    def read_deployed(repo: str) -> str:
+        calls.append("deployed")
+        return deployed.pop(0) if len(deployed) > 1 else deployed[0]
+
+    def sleep(seconds: float) -> None:
+        clock["now"] += seconds
+
+    return count_in_flight, read_deployed, sleep, lambda: clock["now"], calls
+
+
+def test_deployed_parent_is_read_only_after_in_flight_site_deploys_finish() -> None:
+    count_in_flight, read_deployed, sleep, clock, calls = _settle_harness([1, 1, 0, 0], [OTHER, PARENT])
+    sha = parent_mod.settled_site_deployed_core_sha(
+        "o/site", in_flight_fn=count_in_flight, deployed_fn=read_deployed, sleep_fn=sleep, clock_fn=clock
+    )
+    assert sha == OTHER
+    assert calls == ["in_flight", "in_flight", "in_flight", "deployed", "in_flight"]
+
+
+def test_deployed_parent_is_read_again_when_a_deploy_starts_during_the_read() -> None:
+    count_in_flight, read_deployed, sleep, clock, calls = _settle_harness([0, 1, 0, 0], [PARENT, OTHER])
+    sha = parent_mod.settled_site_deployed_core_sha(
+        "o/site", in_flight_fn=count_in_flight, deployed_fn=read_deployed, sleep_fn=sleep, clock_fn=clock
+    )
+    assert sha == OTHER
+
+
+def test_deployed_parent_wait_gives_up_with_recovery_instruction() -> None:
+    count_in_flight, read_deployed, sleep, clock, calls = _settle_harness([1], [PARENT])
+    with pytest.raises(RuntimeError, match="still running"):
+        parent_mod.settled_site_deployed_core_sha(
+            "o/site",
+            in_flight_fn=count_in_flight,
+            deployed_fn=read_deployed,
+            sleep_fn=sleep,
+            clock_fn=clock,
+            timeout_seconds=100,
+            poll_seconds=30,
+        )
+    assert "deployed" not in calls
+
+
+def test_in_flight_site_deploys_are_counted_from_non_completed_runs() -> None:
+    commands: list[Sequence[str]] = []
+
+    def api(args: Sequence[str]) -> str:
+        commands.append(args)
+        return "11\n12\n"
+
+    assert parent_mod.site_deploys_in_flight("o/site", api_fn=api) == 2
+    assert "actions/workflows/deploy.yml/runs" in commands[0][1]
+    assert "completed" in commands[0][3]
+
+
+def test_in_flight_site_deploys_unreadable_is_refused_with_recovery_instruction() -> None:
+    def api(args: Sequence[str]) -> str:
+        raise parent_mod.ParentResolutionError("boom")
+
+    with pytest.raises(RuntimeError, match="parent_core_sha"):
+        parent_mod.site_deploys_in_flight("o/site", api_fn=api)
+
+
+def test_automatic_run_parents_on_the_core_the_site_deployed_while_the_bundle_waited(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[str] = []
+    in_flight = [1, 1, 0, 0]
+
+    def count_in_flight(repo: str) -> int:
+        events.append("in_flight")
+        return in_flight.pop(0)
+
+    def read_deployed(repo: str) -> str:
+        events.append("deployed")
+        return OTHER
+
+    settle = parent_mod.settled_site_deployed_core_sha
+    monkeypatch.setattr(
+        parent_mod,
+        "settled_site_deployed_core_sha",
+        lambda repo: settle(repo, sleep_fn=lambda seconds: events.append("sleep")),
+    )
+    monkeypatch.setattr(parent_mod, "site_deploys_in_flight", count_in_flight)
+    monkeypatch.setattr(parent_mod, "site_deployed_core_sha", read_deployed)
+    monkeypatch.setattr(parent_mod, "is_ancestor", lambda parent, core: True)
+    monkeypatch.setattr(parent_mod, "parent_bundle_state", lambda sha, repo: "bundle")
+    monkeypatch.setattr(parent_mod, "recent_trunk_runs", lambda repo: [])
+    parent_sha, parent_source, certified = parent_mod.resolve_and_decide(CORE, "", "o/r", 100, "123")
+    assert (parent_sha, parent_source) == (OTHER, "bundle")
+    assert events == ["in_flight", "sleep", "in_flight", "sleep", "in_flight", "deployed", "in_flight"]

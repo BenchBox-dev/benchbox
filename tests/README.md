@@ -378,7 +378,8 @@ same module, so it honors the override and the real-home default.
   (`-n 0`) locks only when its selected items, after deselection and before the first test, carry a heavy
   marker: `slow`, `stress`, `resource_heavy`, `live_integration`, `docker_integration` or any `live_*`.
   `make pr-preflight` runs only default-marker `-n 0` targets and a `fast and not (slow or stress ...)`
-  lane, so it never waits. `BENCHBOX_SKIP_TEST_LOCK=1` skips locking entirely.
+  lane, so it never waits. `BENCHBOX_SKIP_TEST_LOCK=1` skips locking entirely and needs owner approval in the current task;
+  the refusal message lists only compliant steps (wait, `make heavy-status`, `make heavy-run`).
 - Admission and the watchdog run only in sessions whose selected items include a heavy marker. A parallel
   session is judged from its `-m` expression, since the controller does not collect: it is heavy when a heavy
   marker it names can be selected, or when a test carrying only an unnamed heavy marker would be (`not stress`
@@ -525,13 +526,20 @@ refusal (exit 76) as `Linux not verified -- admission refused` and does not fail
 | `BENCHBOX_HEAVY_MIN_LEVEL` | 35 | Minimum `kern.memorystatus_level` |
 | `BENCHBOX_HEAVY_MIN_FREE_DISK_GIB` | 50 | Minimum free disk per root |
 | `BENCHBOX_HEAVY_MEMORY_BUDGET_GIB` | 50% of RAM | Shared memory budget resolver (`resource_limits.heavy_memory_budget_gib`) |
+| `BENCHBOX_HEAVY_MAX_LOAD_RATIO` | 5 | Refuse admission when the 5-minute load average exceeds this multiple of the CPU count; 0 disables. Set to catch runaway processes on a shared host, not to throttle busy hosts. The CI workflows set it to 0, because hosted runners are dedicated and routinely run above any such ratio; no environment marker such as `CI` disables it |
 | `BENCHBOX_HEAVY_ADMIT` | unset | `force` admits despite refusals, with a stderr warning |
 
 `make heavy-status` (`python -m benchbox.utils.host_lock status`) is read-only and never takes the lock. It prints the
-holder and its age, live waiters, the admission readings, VM inventory, the top 10 processes by physical footprint
-and orphaned servers (ppid 1, working directory in a BenchBox worktree); each external command is cut off at 5 s and
+holder and its age, live waiters, the admission readings (including load average), VM inventory, the top 10 processes by physical footprint,
+the top 5 by CPU use and orphaned servers and shells (ppid 1, working directory in a BenchBox worktree); each external command is cut off at 5 s and
 shown as `unmeasured`. `make heavy-run CMD='...'` is `run --admit --guard -- sh -c "$CMD"`. Agent rules and known limits:
 `docs/agent/heavy-work.md`.
+
+When the command under `make heavy-run` ends, every process still running in its process group is stopped (SIGTERM, then
+SIGKILL after 3 s), logged to stderr and recorded as a `group_survivors_stopped` event in the heavy-run ledger; if any
+survive SIGKILL the event is `group_survivors_remaining` and stderr carries an error. The command's own exit status is
+unchanged. A process that starts its own session, or is re-parented out of the group before the command ends, is not
+stopped and may not be reported at all.
 
 ### Heavy-work watchdog
 

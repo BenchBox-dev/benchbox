@@ -63,7 +63,6 @@ code-ci:
   - ".omp/**"
   - "CLAUDE.md"
   - "GEMINI.md"
-  - "ANTIGRAVITY.md"
   - "AGENTS.md"
   - "README.md"
   - "docs/README.md"
@@ -107,6 +106,9 @@ packaging:
   - "benchbox/__init__.py"
   - "uv.lock"
   - "benchbox/_vendor/**"
+
+first-command:
+  - "benchbox/**"
 
 framing:
   - "tests/utilities/**"

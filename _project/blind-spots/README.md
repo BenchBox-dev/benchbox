@@ -9,7 +9,7 @@
 > here.**
 >
 > - **Capture a new finding**: `todo finding create` — writes a draft to
->   `~/.benchbox/finding-drafts/`, outside every worktree, with no credentials.
+>   `~/.tractable/finding-drafts/benchbox/`, outside every worktree, with no credentials.
 > - **Land a draft**: `todo finding sync` (a separate authorized step).
 > - **Read or triage**: `todo finding list | show | candidates | triage |
 >   promote`.

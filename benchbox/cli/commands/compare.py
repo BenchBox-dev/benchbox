@@ -10,6 +10,7 @@ import re
 import statistics
 import sys
 import warnings
+from collections.abc import Mapping
 from html import escape as html_escape
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,8 @@ from rich.markup import escape
 from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
+from benchbox.cli.billable_guard import ACKNOWLEDGEMENT_FLAG_HELP, enforce_billable_acknowledgement
+from benchbox.cli.exit_codes import ExitCode, exit_code_help
 from benchbox.cli.host_lock_optin import host_guarded
 from benchbox.cli.shared import console
 from benchbox.core.results.exporter import ResultExporter
@@ -31,6 +34,15 @@ from benchbox.core.results.loader import (
 from benchbox.core.results.regression_policy import is_regression
 from benchbox.core.results.schema_policy import is_loader_supported_result_schema
 from benchbox.validation.bundle import COMPANION_SUFFIXES
+
+COMPARE_EXIT_CODES = (
+    ExitCode.SUCCESS,
+    ExitCode.ERROR,
+    ExitCode.USAGE,
+    ExitCode.REGRESSION,
+    ExitCode.NOT_COMPARABLE,
+    ExitCode.ACKNOWLEDGEMENT_REQUIRED,
+)
 
 
 def _escape_html(value: Any) -> str:
@@ -205,10 +217,15 @@ def _discover_result_files_with_metadata(
         "\n"
         "\b\n"
         "    # Non-interactive mode (CI/CD)\n"
-        "    benchbox compare --non-interactive -p duckdb -p sqlite"
+        "    benchbox compare --non-interactive -p duckdb -p sqlite\n"
+        "\n"
+        "\b\n"
+        "Exit status:\n"
+        f"{exit_code_help(COMPARE_EXIT_CODES)}\n"
+        "    Exit codes 75 to 79 belong to the heavy-work host lock."
     ),
 )
-@click.argument("result_files", nargs=-1, type=click.Path(exists=True))
+@click.argument("result_files", nargs=-1, type=click.Path(path_type=str))
 @click.option(
     "-p",
     "--platform",
@@ -279,7 +296,10 @@ def _discover_result_files_with_metadata(
 @click.option(
     "--fail-on-regression",
     type=str,
-    help='Fail (exit 1) if regression exceeds threshold (e.g., "10%", "0.1", "5%")',
+    help=(
+        'Fail (exit 3) if regression exceeds threshold (e.g., "10%", "0.1", "5%"). '
+        "Without this option a regression never changes the exit status."
+    ),
 )
 @click.option(
     "--min-regression-delta",
@@ -354,6 +374,12 @@ def _discover_result_files_with_metadata(
     default=None,
     help=f"{FETCH_MODE_OPTION_HELP} Applies to platform runs; defaults to BENCHBOX_FETCH_MODE when set.",
 )
+@click.option(
+    "--acknowledge-billable-platform",
+    "acknowledge_billable_platform",
+    is_flag=True,
+    help=ACKNOWLEDGEMENT_FLAG_HELP,
+)
 @click.pass_context
 @host_guarded(
     "compare",
@@ -389,6 +415,7 @@ def compare(
     plan_threshold,
     allow_heterogeneous_comparison: bool = False,
     fetch_mode: str | None = None,
+    acknowledge_billable_platform: bool = False,
 ):
     if list_platforms:
         _list_available_platforms()
@@ -446,6 +473,8 @@ def compare(
             generate_charts=generate_charts,
             theme=theme,
             fetch_mode=fetch_mode,
+            acknowledge_billable_platform=acknowledge_billable_platform,
+            non_interactive=non_interactive,
         )
     elif has_files:
         _run_file_comparison(
@@ -915,13 +944,16 @@ def _list_available_platforms():
     console.print("  benchbox compare                               # Interactive wizard")
 
 
-def _build_platform_runner(fetch_mode: str | None = None):
+def _build_platform_runner(
+    fetch_mode: str | None = None, acknowledgements: Mapping[str, dict[str, object] | None] | None = None
+):
+    acknowledgements = acknowledgements or {}
     from benchbox.cli.database import DatabaseManager
     from benchbox.cli.orchestrator import BenchmarkOrchestrator
     from benchbox.cli.system import SystemProfiler
     from benchbox.core.benchmark_registry import get_benchmark_metadata
     from benchbox.core.results.comparison_modes import IncomparableModesError, results_mode_differences
-    from benchbox.core.schemas import BenchmarkConfig
+    from benchbox.core.schemas import BenchmarkConfig, ExecutionContext
 
     executed: list[Any] = []
 
@@ -958,6 +990,7 @@ def _build_platform_runner(fetch_mode: str | None = None):
         platform_options = (
             {"fetch_mode": fetch_mode} if fetch_mode and platform.lower() in FETCH_MODE_PLATFORMS else None
         )
+        record = acknowledgements.get(platform)
         result = orchestrator.execute_benchmark(
             benchmark_config,
             SystemProfiler().get_system_profile(),
@@ -967,12 +1000,13 @@ def _build_platform_runner(fetch_mode: str | None = None):
                 explicit_option_keys=platform_options.keys() if platform_options else None,
             ),
             ["data", "schema", "load", "power"],
+            execution_context=(
+                ExecutionContext(entry_point="cli", billable_platform_acknowledgement=record) if record else None
+            ),
         )
         mode_differences = results_mode_differences([*executed, result])
         if mode_differences:
-            raise ValueError(
-                f"{IncomparableModesError(mode_differences)} Pass --fetch-mode rows or arrow to measure every platform the same way; platforms on different timing methods cannot be compared."
-            )
+            raise IncomparableModesError(mode_differences)
         executed.append(result)
         return result
 
@@ -993,6 +1027,8 @@ def _run_platform_comparison(
     generate_charts: bool,
     theme: str,
     fetch_mode: str | None = None,
+    acknowledge_billable_platform: bool = False,
+    non_interactive: bool = False,
 ):
     from benchbox.core.comparison import (
         PlatformType,
@@ -1000,6 +1036,7 @@ def _run_platform_comparison(
         UnifiedBenchmarkSuite,
         UnifiedComparisonPlotter,
     )
+    from benchbox.core.results.comparison_modes import IncomparableModesError
 
     if not platforms:
         console.print("[red]Error: Specify platforms with -p/--platform[/red]")
@@ -1033,7 +1070,13 @@ def _run_platform_comparison(
         benchmark_iterations=iterations,
     )
 
-    suite = UnifiedBenchmarkSuite(config=config, platform_runner=_build_platform_runner(fetch_mode))
+    acknowledgements = {
+        platform: enforce_billable_acknowledgement(
+            platform, flag=acknowledge_billable_platform, non_interactive=non_interactive
+        )
+        for platform in platforms
+    }
+    suite = UnifiedBenchmarkSuite(config=config, platform_runner=_build_platform_runner(fetch_mode, acknowledgements))
 
     console.print("\n[bold]Cross-Platform Benchmark Comparison[/bold]")
     console.print(f"Platforms: {', '.join(platforms)}")
@@ -1046,9 +1089,15 @@ def _run_platform_comparison(
     console.print("[dim]Running benchmarks...[/dim]")
     try:
         results = suite.run_comparison(platforms=platforms, data_dir=data_dir)
+    except IncomparableModesError as e:
+        console.print(
+            f"[red]Error: {escape(str(e))} Pass --fetch-mode rows or arrow to measure every platform the same way; "
+            "platforms on different timing methods cannot be compared.[/red]"
+        )
+        sys.exit(ExitCode.NOT_COMPARABLE)
     except ValueError as e:
         console.print(f"[red]Error: {e}[/red]")
-        sys.exit(1)
+        sys.exit(ExitCode.ERROR)
     except Exception as e:
         console.print(f"[red]Benchmark failed: {e}[/red]")
         sys.exit(1)
@@ -1203,14 +1252,14 @@ def _run_file_comparison(
                 f"[red]Error: {escape(str(IncomparableVariantsError(differences)))} "
                 "Use --allow-heterogeneous-comparison to override.[/red]"
             )
-            sys.exit(1)
+            sys.exit(ExitCode.NOT_COMPARABLE)
 
     from benchbox.core.results.comparison_modes import IncomparableModesError, bundle_mode_differences
 
     mode_differences = bundle_mode_differences(baseline_raw, current_raw)
     if mode_differences:
         console.print(f"[red]Error: {escape(str(IncomparableModesError(mode_differences)))}[/red]")
-        sys.exit(1)
+        sys.exit(ExitCode.NOT_COMPARABLE)
 
     comparison = _perform_comparison(
         baseline, current, baseline_path, current_path, include_plans, plan_threshold, output_format
@@ -1346,7 +1395,7 @@ def _check_regression_threshold(
     has_regression = _check_regression(comparison, regression_threshold, min_delta_ms, min_aggregate_delta_ms)
     if has_regression:
         console.print(f"\n[bold red]❌ Performance regression detected ({criteria})[/bold red]")
-        sys.exit(1)
+        sys.exit(ExitCode.REGRESSION)
     else:
         console.print(f"\n[bold green]✓ No performance regression ({criteria})[/bold green]")
 

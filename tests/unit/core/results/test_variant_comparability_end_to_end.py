@@ -9,6 +9,7 @@ from click.testing import CliRunner
 
 from benchbox.cli.commands.compare import compare
 from benchbox.cli.commands.report import report
+from benchbox.cli.exit_codes import ExitCode
 from benchbox.core.results.database import ResultDatabase
 from benchbox.core.results.models import BenchmarkResults, QueryExecution
 from benchbox.core.results.schema import build_result_payload
@@ -112,7 +113,7 @@ def test_cli_compare_refuses_bundles_of_different_variants(
 ) -> None:
     result = CliRunner().invoke(compare, [str(bundles[baseline]), str(bundles[current])])
 
-    assert result.exit_code == 1
+    assert result.exit_code == ExitCode.NOT_COMPARABLE
     assert difference in _flat(result.output)
 
     allowed = CliRunner().invoke(

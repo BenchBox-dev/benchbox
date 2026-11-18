@@ -17,7 +17,7 @@ WORKFLOW = ROOT / ".github/workflows/ci.yml"
 GATE_CONTEXT = "review-gate"
 ADMIN_SETTINGS = ROOT / "docs/internal/repo-admin-settings.md"
 TEXT_EDIT = "github.event.action == 'edited' && !github.event.changes.base"
-ROOT_JOBS = ("comment-policy", "ci-paths")
+ROOT_JOBS = ("ci-paths",)
 VERDICT_JOB = "text-edit-verdict"
 RUN_ID = 900
 PR_NUMBER = 42

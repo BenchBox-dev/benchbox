@@ -33,6 +33,7 @@ from benchbox.core.results.query_plan_models import (
     DEFAULT_RAW_OUTPUT_MAX_BYTES,
     DEFAULT_RAW_OUTPUT_POLICY,
 )
+from benchbox.core.results.query_status import within_tolerance_warning
 from benchbox.core.results.timer_scope import excluded_from_query_timer
 from benchbox.platforms.base.models import (
     MaintenanceOperation,
@@ -390,6 +391,19 @@ def _accumulate_query_metrics(
     )
 
 
+def _reported_cpu_frequency_mhz(psutil_module: Any) -> float | None:
+    if platform.system() == "Darwin" and platform.machine() == "arm64":
+        return None
+    try:
+        freq = psutil_module.cpu_freq()
+        current = freq.current if freq else None
+    except Exception:
+        return None
+    if not isinstance(current, (int, float)) or current <= 0:
+        return None
+    return current
+
+
 class ResultCaptureMixin:
     logger: logging.Logger
 
@@ -416,7 +430,8 @@ class ResultCaptureMixin:
             platform_info=platform_info,
         )
 
-    def _collect_resource_utilization(self) -> dict[str, Any]:
+    @staticmethod
+    def _collect_resource_utilization() -> dict[str, Any]:
         snapshot: dict[str, Any] = {
             "available": False,
             "platform": platform.platform(),
@@ -458,11 +473,7 @@ class ResultCaptureMixin:
             load_avg = None
         snapshot["cpu"]["load_average"] = load_avg
 
-        try:
-            freq = psutil.cpu_freq()
-            snapshot["cpu"]["frequency_mhz"] = freq.current if freq else None
-        except Exception:
-            snapshot["cpu"]["frequency_mhz"] = None
+        snapshot["cpu"]["frequency_mhz"] = _reported_cpu_frequency_mhz(psutil)
 
         try:
             counted = psutil.cpu_count()
@@ -1068,6 +1079,11 @@ class ResultCaptureMixin:
                 row_count_validation["status"] = "SKIPPED"
                 if validation_result.warning_message:
                     row_count_validation["warning"] = validation_result.warning_message
+            elif validation_result.is_valid and validation_result.expected_row_count not in (None, actual_row_count):
+                row_count_validation["status"] = "SKIPPED"
+                row_count_validation["warning"] = within_tolerance_warning(
+                    actual_row_count, validation_result.expected_row_count
+                )
             elif validation_result.is_valid:
                 row_count_validation["status"] = "PASSED"
             else:

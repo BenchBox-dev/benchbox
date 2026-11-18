@@ -29,7 +29,7 @@ def _make_resolution_factory(
     resolved_version: str = "1.0.0",
 ):
 
-    def _resolve(package_name, requested_version, auto_install=False, install_hint=None):
+    def _resolve(package_name, requested_version, auto_install=False, install_hint=None, allow_install=True):
         return DriverResolution(
             package=package_name or "dummy-driver",
             requested=requested_version,

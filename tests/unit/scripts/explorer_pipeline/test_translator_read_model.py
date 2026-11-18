@@ -74,22 +74,22 @@ def _design_results_columns() -> list[str]:
     return [line.split()[0] for line in block.splitlines() if line.strip()]
 
 
-def test_default_build_emits_read_model_18_with_translator_columns(tmp_path: Path) -> None:
+def test_default_build_emits_read_model_19_with_translator_columns(tmp_path: Path) -> None:
     db = _build(tmp_path, _corpus(tmp_path))
 
     with duckdb.connect(str(db), read_only=True) as con:
-        assert con.execute("SELECT read_model_version FROM metadata").fetchone() == (18,)
-    assert EXPLORER_READ_MODEL_VERSION == 18
-    assert EXPLORER_BUILD_CONTRACT["read_model_version"] == 18
+        assert con.execute("SELECT read_model_version FROM metadata").fetchone() == (19,)
+    assert EXPLORER_READ_MODEL_VERSION == 19
+    assert EXPLORER_BUILD_CONTRACT["read_model_version"] == 19
     assert EXPLORER_BUILD_CONTRACT["read_model_compatibility"]["minimum_supported"] == 17
     assert _columns(db) == _design_results_columns()
     assert set(TRANSLATOR_COLUMNS) <= set(_columns(db))
 
 
-def test_selecting_18_explicitly_matches_the_default(tmp_path: Path) -> None:
+def test_selecting_19_explicitly_matches_the_default(tmp_path: Path) -> None:
     data = _corpus(tmp_path)
     default = _columns(_build(tmp_path, data))
-    explicit = _columns(_build(tmp_path, data, read_model_version=18))
+    explicit = _columns(_build(tmp_path, data, read_model_version=19))
 
     assert explicit == default
 
@@ -99,7 +99,7 @@ def test_read_model_17_omits_exactly_the_translator_columns(tmp_path: Path) -> N
 
     with duckdb.connect(str(db), read_only=True) as con:
         assert con.execute("SELECT read_model_version FROM metadata").fetchone() == (17,)
-    assert _columns(db) == _design_results_columns()[:-3]
+    assert _columns(db) == _design_results_columns()[:-7]
     assert not set(TRANSLATOR_COLUMNS) & set(_columns(db))
 
 
@@ -123,7 +123,7 @@ def test_read_model_18_leaves_every_other_column_unchanged(tmp_path: Path) -> No
     base = tmp_path / "v17"
     new = tmp_path / "v18"
     ExplorerPipeline().run(data, base, read_model_version=17)
-    ExplorerPipeline().run(data, new)
+    ExplorerPipeline().run(data, new, read_model_version=18)
     shared = ", ".join(_columns(base / "results.duckdb"))
     query = f"SELECT {shared} FROM results ORDER BY result_id"
 
@@ -135,8 +135,8 @@ def test_read_model_18_leaves_every_other_column_unchanged(tmp_path: Path) -> No
 
 
 def test_an_unsupported_read_model_is_refused(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="unsupported read model version 19"):
-        ExplorerPipeline().run(_corpus(tmp_path), tmp_path / "out", read_model_version=19)
+    with pytest.raises(ValueError, match="unsupported read model version 20"):
+        ExplorerPipeline().run(_corpus(tmp_path), tmp_path / "out", read_model_version=20)
 
 
 def test_the_build_command_selects_the_read_model(tmp_path: Path) -> None:

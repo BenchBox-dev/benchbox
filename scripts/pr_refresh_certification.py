@@ -261,7 +261,6 @@ def _unknown_path(path: str) -> bool:
         "AGENTS.md",
         "CLAUDE.md",
         "GEMINI.md",
-        "ANTIGRAVITY.md",
         "Makefile",
         "README.md",
         "pyproject.toml",

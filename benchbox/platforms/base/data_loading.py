@@ -25,6 +25,7 @@ from typing import Any, Protocol
 
 from benchbox.core.loaded_tables import is_data_loading_skipped
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.duckdb_extensions import fetch_duckdb_arrow_table, finish_unfinished_result
 from benchbox.utils.file_format import (
     get_column_names_with_trailing,
     get_data_extension,
@@ -1109,6 +1110,7 @@ def insert_arrow_table(connection: Any, validated_table: str, arrow_table: Any) 
 
     if _connection_accepts_arrow(connection):
         view_name = f"_benchbox_arrow_{uuid.uuid4().hex[:12]}"
+        finish_unfinished_result(connection)
         connection.register(view_name, arrow_table)
         try:
             connection.execute(f"INSERT INTO {validated_table} ({columns_str}) SELECT {columns_str} FROM {view_name}")
@@ -1207,7 +1209,9 @@ class DuckLakeFileHandler(FileFormatHandler):
 
             temp_conn.execute(f"ATTACH 'ducklake:{metadata_path}' AS ducklake_db (DATA_PATH '{data_path}')")
 
-            arrow_table = temp_conn.execute(f"SELECT * FROM ducklake_db.main.{validated_table}").to_arrow_table()
+            arrow_table = fetch_duckdb_arrow_table(
+                temp_conn, f"SELECT * FROM ducklake_db.main.{validated_table}", duckdb.__version__
+            )
 
             row_count = arrow_table.num_rows
 

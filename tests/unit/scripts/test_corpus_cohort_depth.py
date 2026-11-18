@@ -4,6 +4,7 @@ import datetime as dt
 import importlib.util
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
 
@@ -13,6 +14,7 @@ from _project.scripts.explorer_pipeline import transformer as explorer_transform
 from _project.scripts.explorer_pipeline.models import (
     _PHASE_ALIASES,
     APPLIED_TUNING_STATUSES,
+    COMBINED_PHASE,
     RANKING_EXCLUDED_COMPLIANCE_CLASSES,
     RANKING_METRIC_BY_FAMILY,
     RANKING_METRIC_BY_FAMILY_PHASE,
@@ -25,7 +27,7 @@ from benchbox.core.results.status import NON_CLEAN_TRANSLATION_STATUSES, NON_CLE
 from benchbox.core.tuning.modes import MODES
 
 try:
-    from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE, throughput_bundle
+    from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE, combined_bundle, throughput_bundle
 
     _EXPLORER_FIXTURES_PRESENT = True
 except ImportError:
@@ -103,7 +105,6 @@ def _write_bundle(
 
 
 KNOWN_DEFECTIVE_SHALLOW_COHORTS = {
-    ("clickbench", "0.1"): {"bigquery", "snowflake"},
     ("datavault", "0.01"): {"clickhouse-local^container"},
     ("datavault", "0.1"): {"clickhouse-local^container"},
     ("read_primitives", "0.01"): {"clickhouse-local^container", "datafusion"},
@@ -787,7 +788,7 @@ def test_phase_names_are_case_normalized_and_standard_is_power(tmp_path: Path) -
     validator = _load_validator()
     _write_bundle(tmp_path, "upper.json", benchmark="tpch", scale=1.0, platform="DuckDB", test_type="POWER")
     _write_bundle(tmp_path, "standard.json", benchmark="tpch", scale=1.0, platform="Spark", test_type="Standard")
-    _write_bundle(tmp_path, "combined.json", benchmark="tpch", scale=1.0, platform="Doris", test_type="combined")
+    (tmp_path / "combined.json").write_text(json.dumps(combined_bundle("Doris")), encoding="utf-8")
     _write_bundle(tmp_path, "none.json", benchmark="tpch", scale=1.0, platform="Polars", test_type=None)
 
     assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {
@@ -1247,6 +1248,12 @@ def _explorer_pipeline_view(path: Path) -> tuple[str, str | None]:
     return canonical_phase(entry.test_type), entry.ranking_exclusion_reason
 
 
+def _mutated_combined(benchmark: str, mutate: Callable[[dict], object]) -> dict:
+    data = combined_bundle(benchmark=benchmark)
+    mutate(data)
+    return data
+
+
 def _parity_variants() -> dict[str, dict]:
     if not _EXPLORER_FIXTURES_PRESENT:
         return {}
@@ -1356,7 +1363,48 @@ def _parity_variants() -> dict[str, dict]:
         "throughput-unofficial": throughput_variant(compliance_class="unofficial_subscale"),
         "throughput-geomean-benchmark": throughput_variant(benchmark="ssb", throughput_at_size=None),
         "power-with-throughput-score-only": with_tpc_metrics({"throughput_at_size": 3741.0}),
-        "combined-phase-ranks-on-power-score": with_tpc_metrics({"power_at_size": 10.0}, test_type="combined"),
+        "combined-phase-with-power-score-only": with_tpc_metrics({"power_at_size": 10.0}, test_type="combined"),
+        "combined-tpch-clean": combined_bundle(),
+        "combined-tpcds-clean": combined_bundle(benchmark="tpcds"),
+        "combined-tpch-non-transactional-refresh": combined_bundle(transactional=False),
+        "combined-tpcds-non-transactional-maintenance": combined_bundle(benchmark="tpcds", transactional=False),
+        "combined-tpch-without-qph": combined_bundle(qph=None),
+        "combined-tpcds-without-qph": combined_bundle(benchmark="tpcds", qph=None),
+        "combined-tpch-failed-throughput-stream": _mutated_combined(
+            "tpch", lambda data: data["phases"]["throughput_test"]["stream_results"][1].update(success=False)
+        ),
+        "combined-tpch-throughput-phase-failed": _mutated_combined(
+            "tpch", lambda data: data["phases"]["throughput_test"].update(status="FAILED")
+        ),
+        "combined-tpch-failed-power-refresh": _mutated_combined(
+            "tpch", lambda data: data["phases"]["power_test"]["refresh_functions"][1].update(status="FAILED")
+        ),
+        "combined-tpch-failed-refresh-stream": _mutated_combined(
+            "tpch", lambda data: data["phases"]["throughput_test"]["refresh_stream"].update(status="FAILED")
+        ),
+        "combined-tpch-failed-refresh-pair": _mutated_combined(
+            "tpch",
+            lambda data: data["phases"]["throughput_test"]["refresh_stream"]["pairs"][0].update(status="FAILED"),
+        ),
+        "combined-tpch-refresh-not-included": _mutated_combined(
+            "tpch", lambda data: data["summary"]["tpc_metrics"].update(refresh_included=False)
+        ),
+        "combined-tpch-no-refresh-evidence": _mutated_combined(
+            "tpch", lambda data: data["phases"]["power_test"].pop("refresh_functions")
+        ),
+        "combined-tpcds-second-throughput-failed": _mutated_combined(
+            "tpcds", lambda data: data["phases"]["throughput_test_2"]["stream_results"][0].update(success=False)
+        ),
+        "combined-tpcds-failed-maintenance-operation": _mutated_combined(
+            "tpcds", lambda data: data["phases"]["maintenance_test_2"]["operations"][0].update(status="FAILED")
+        ),
+        "combined-tpcds-maintenance-phase-failed": _mutated_combined(
+            "tpcds", lambda data: data["phases"]["maintenance_test"].update(status="FAILED")
+        ),
+        "combined-tpcds-second-round-missing": _mutated_combined(
+            "tpcds",
+            lambda data: (data["phases"].pop("throughput_test_2"), data["phases"].pop("maintenance_test_2")),
+        ),
         "combined-phase-with-throughput-score-only": with_tpc_metrics(
             {"throughput_at_size": 3741.0}, test_type="combined"
         ),
@@ -1526,7 +1574,16 @@ def test_copied_constants_match_their_explorer_sources() -> None:
         for (family, phase), config in RANKING_METRIC_BY_FAMILY_PHASE.items()
         if phase == THROUGHPUT_PHASE and config.primary_metric == "throughput_at_size"
     } == validator.THROUGHPUT_SCORE_BENCHMARKS
-    assert {phase for _, phase in RANKING_METRIC_BY_FAMILY_PHASE} == {validator.THROUGHPUT_PHASE}
+    assert {phase for _, phase in RANKING_METRIC_BY_FAMILY_PHASE} == {
+        validator.THROUGHPUT_PHASE,
+        validator.COMBINED_PHASE,
+    }
+    assert COMBINED_PHASE == validator.COMBINED_PHASE
+    assert {
+        family: config.primary_metric
+        for (family, phase), config in RANKING_METRIC_BY_FAMILY_PHASE.items()
+        if phase == COMBINED_PHASE
+    } == validator.COMBINED_QPH_METRICS
     assert THROUGHPUT_PHASE == validator.THROUGHPUT_PHASE
     assert set(MODES) == validator.CANONICAL_TUNING_MODES
     assert set(APPLIED_TUNING_STATUSES) == validator.APPLIED_TUNING_STATUSES
@@ -1716,3 +1773,72 @@ def test_partial_final_iteration_is_not_back_filled(tmp_path: Path) -> None:
 
     assert validator._power_score(payload) is None
     assert BundleTransformer().to_manifest_entry(path, result_id="r").power_score is None
+
+
+def _combined_ranking_value(validator: ModuleType, payload: dict) -> float | None:
+    return validator._primary_metric_value(payload, validator._display_timings(payload))
+
+
+@pytest.mark.parametrize(("benchmark_id", "qph"), [("tpch", 250.0), ("tpcds", 410.0)])
+def test_combined_cohorts_rank_on_the_composite_qph_not_the_power_score(benchmark_id: str, qph: float) -> None:
+    validator = _load_validator()
+    payload = combined_bundle(benchmark=benchmark_id, qph=qph)
+
+    assert validator.bundle_phase(payload) == "combined"
+    assert payload["summary"]["tpc_metrics"]["power_at_size"] == 1234.5
+    assert _combined_ranking_value(validator, payload) == pytest.approx(qph)
+    assert validator.exclusion_reason(payload) is None
+
+
+@pytest.mark.parametrize(
+    ("name", "reason"),
+    [
+        ("combined-tpch-failed-throughput-stream", "combined_throughput_not_clean"),
+        ("combined-tpch-throughput-phase-failed", "combined_throughput_not_clean"),
+        ("combined-tpch-failed-power-refresh", "combined_refresh_not_clean"),
+        ("combined-tpch-failed-refresh-stream", "combined_refresh_not_clean"),
+        ("combined-tpch-failed-refresh-pair", "combined_refresh_not_clean"),
+        ("combined-tpch-no-refresh-evidence", "combined_refresh_not_clean"),
+        ("combined-tpch-refresh-not-included", "missing_primary_metric"),
+        ("combined-tpch-without-qph", "missing_primary_metric"),
+        ("combined-tpcds-without-qph", "missing_primary_metric"),
+        ("combined-tpcds-second-throughput-failed", "combined_throughput_not_clean"),
+        ("combined-tpcds-failed-maintenance-operation", "combined_refresh_not_clean"),
+        ("combined-tpcds-maintenance-phase-failed", "combined_refresh_not_clean"),
+        ("combined-tpcds-second-round-missing", "combined_throughput_not_clean"),
+        ("combined-phase-with-power-score-only", "combined_throughput_not_clean"),
+    ],
+)
+def test_combined_bundles_without_clean_throughput_and_refresh_evidence_are_not_ranked(name: str, reason: str) -> None:
+    validator = _load_validator()
+    payload = _parity_variants()[name]
+
+    assert _combined_ranking_value(validator, payload) is None
+    assert validator.exclusion_reason(payload) == reason
+    assert validator.bundle_rankable(payload) is False
+
+
+@pytest.mark.parametrize(
+    "name", ["combined-tpch-non-transactional-refresh", "combined-tpcds-non-transactional-maintenance"]
+)
+def test_non_transactional_refresh_does_not_stop_a_combined_bundle_ranking(name: str) -> None:
+    validator = _load_validator()
+
+    assert validator.bundle_rankable(_parity_variants()[name]) is True
+
+
+def test_power_cohorts_keep_ranking_on_the_power_score() -> None:
+    validator = _load_validator()
+    payload = json.loads(json.dumps(MINIMAL_BUNDLE))
+    payload["summary"]["tpc_metrics"]["qphh_at_size"] = 5.0
+
+    assert validator.bundle_phase(payload) == "power"
+    assert _combined_ranking_value(validator, payload) == pytest.approx(1234.56)
+    assert validator.cohort_phase_suffix(payload) == ""
+
+
+def test_combined_cohort_keys_stay_separate_from_the_power_cohort() -> None:
+    validator = _load_validator()
+
+    assert validator.cohort_phase_suffix(combined_bundle()) == "#combined"
+    assert validator.cohort_phase_suffix(combined_bundle(benchmark="tpcds")) == "#combined"

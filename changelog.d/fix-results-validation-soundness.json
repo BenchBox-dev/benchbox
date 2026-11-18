@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "benchbox results validate and MCP validate_results no longer fail correct bundles: table names match case-insensitively, a result_schema_version key satisfies the version requirement, PARTIAL is an accepted phase status, and the SF1 row counts for ClickBench, JoinOrder and FlightData now match the data their generators and pinned sources produce."
+    }
+  ]
+}

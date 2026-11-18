@@ -72,15 +72,17 @@ def _drivers_available(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(databend_module, "DATABEND_AVAILABLE", True)
     monkeypatch.setattr(
         "benchbox.platforms.ensure_driver_version",
-        lambda package_name, requested_version, auto_install=False, install_hint=None: DriverResolution(
-            package=package_name or "",
-            requested=requested_version,
-            resolved="local-dev",
-            actual="local-dev",
-            auto_install_used=False,
-            runtime_strategy="current-process",
-            runtime_path=None,
-            runtime_python_executable=sys.executable,
+        lambda package_name, requested_version, auto_install=False, install_hint=None, allow_install=True: (
+            DriverResolution(
+                package=package_name or "",
+                requested=requested_version,
+                resolved="local-dev",
+                actual="local-dev",
+                auto_install_used=False,
+                runtime_strategy="current-process",
+                runtime_path=None,
+                runtime_python_executable=sys.executable,
+            )
         ),
     )
 

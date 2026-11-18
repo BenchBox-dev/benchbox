@@ -41,8 +41,6 @@ MAX_PLATFORM_OPTIONS = 16
 MAX_PLATFORM_OPTION_VALUE_LENGTH = 256
 MAX_MEMORY_LIMIT_BYTES = 1 << 40
 
-MIN_SCALE_FACTOR = 0.001
-MAX_SCALE_FACTOR = 10000
 MAX_SEED = 2**31 - 1
 
 
@@ -645,19 +643,6 @@ def validate_phases(phases: str | None) -> str | None:
         )
 
     return ",".join(requested)
-
-
-def validate_scale_factor(scale_factor: float) -> float:
-    if scale_factor <= 0:
-        raise MCPValidationError(f"Scale factor must be positive: {scale_factor}")
-
-    if scale_factor < MIN_SCALE_FACTOR:
-        raise MCPValidationError(f"Scale factor too small (min {MIN_SCALE_FACTOR}): {scale_factor}")
-
-    if scale_factor > MAX_SCALE_FACTOR:
-        raise MCPValidationError(f"Scale factor too large (max {MAX_SCALE_FACTOR}): {scale_factor}")
-
-    return scale_factor
 
 
 def validate_seed(seed: object) -> int | None:

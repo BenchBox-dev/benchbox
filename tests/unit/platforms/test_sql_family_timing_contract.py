@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -15,6 +14,28 @@ pytestmark = [
     pytest.mark.unit,
     pytest.mark.fast,
 ]
+
+
+class _FakeMonotonic:
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+    def advance(self, seconds: float) -> None:
+        self.now += seconds
+
+
+@pytest.fixture
+def fake_clock():
+    clock = _FakeMonotonic()
+    with (
+        patch("benchbox.utils.clock.mono_time", clock),
+        patch("benchbox.core.results.timer_scope.mono_time", clock),
+        patch("benchbox.platforms.base.sql_execution.mono_time", clock),
+    ):
+        yield clock
 
 
 class _PsycopgAdapter(PsycopgConnectionMixin, TimingContractMixin):
@@ -67,12 +88,12 @@ def test_psycopg_unknown_connection_state_counts_only_the_query():
     assert result["request_count"] == 1
 
 
-def test_psycopg_validation_runs_outside_the_query_timer():
+def test_psycopg_validation_runs_outside_the_query_timer(fake_clock):
     connection = _psycopg_connection(autocommit=True, transaction_status=0)
     clock = ConversionClock().start()
 
     def slow_validation(**kwargs):
-        time.sleep(0.05)
+        fake_clock.advance(50.0)
 
     with patch("benchbox.core.validation.query_validation.QueryValidator") as validator:
         validator.return_value.validate_query_result.side_effect = slow_validation
@@ -80,8 +101,8 @@ def test_psycopg_validation_runs_outside_the_query_timer():
     excluded = clock.finish()
 
     assert result["status"] == "SUCCESS"
-    assert excluded >= 0.05
-    assert result["execution_time_seconds"] < 0.05
+    assert excluded == 50.0
+    assert result["execution_time_seconds"] == 0.0
 
 
 @pytest.mark.parametrize(
@@ -134,14 +155,14 @@ def test_pg_mooncake_retry_counts_the_failed_attempt():
     assert result["request_count"] == 4
 
 
-def test_pg_mooncake_transaction_closers_are_excluded_from_the_query_timer():
+def test_pg_mooncake_transaction_closers_are_excluded_from_the_query_timer(fake_clock):
     from benchbox.platforms import pg_mooncake as pg_mooncake_module
     from benchbox.platforms.pg_mooncake import PgMooncakeAdapter
 
     mock_psycopg = Mock()
     mock_psycopg.__version__ = "3.1.0"
     connection = Mock()
-    connection.commit.side_effect = lambda: time.sleep(0.05)
+    connection.commit.side_effect = lambda: fake_clock.advance(50.0)
     clock = ConversionClock().start()
 
     with (
@@ -152,7 +173,7 @@ def test_pg_mooncake_transaction_closers_are_excluded_from_the_query_timer():
         adapter._close_mooncake_query_transaction(connection, action="commit", phase="test")
     excluded = clock.finish()
 
-    assert excluded >= 0.05
+    assert excluded == 50.0
 
 
 def _databend_adapter():

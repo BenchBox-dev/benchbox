@@ -449,8 +449,7 @@ _SF1_TIMEOUT_PRUNED_CELLS = frozenset(
             "tsbs_devops",
         ),
         "pyspark-df": ("datavault", "tpchavoc", "tpcds", "joinorder", "flightdata"),
-        "spark": ("joinorder", "tpchavoc", "tpcds_obt", "datavault", "tpcdi"),
-        "datafusion": ("tpcdi",),
+        "spark": ("joinorder", "tpchavoc", "tpcds_obt", "datavault"),
         "pandas-df": ("joinorder", "flightdata", "datavault"),
         "sqlite": ("joinorder", "flightdata", "tsbs_devops", "tpch", "tpch_skew"),
     }.items()
@@ -470,7 +469,7 @@ def test_release_gate_stage1_prunes_sf1_timeouts_measured_in_dry_run_2():
         if cell.rule_id.endswith(".release_gate_runtime_envelope") and cell.scale == 1.0
     }
 
-    assert len(_SF1_TIMEOUT_PRUNED_CELLS) == 31
+    assert len(_SF1_TIMEOUT_PRUNED_CELLS) == 29
     assert pruned >= _SF1_TIMEOUT_PRUNED_CELLS
     assert _SF1_TIMEOUT_PRUNED_CELLS.isdisjoint(cells)
     for platform, benchmark, _ in _SF1_TIMEOUT_PRUNED_CELLS:
@@ -676,8 +675,8 @@ def test_release_gate_stage1_prunes_measured_runtime_envelopes():
     for cell in result.cells:
         by_pair.setdefault((cell.platform, cell.benchmark), set()).add(cell.scale)
     eligible = sum(1 for scales in by_pair.values() if set(stage1.scales.rungs).issubset(scales))
-    assert eligible == 115
-    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 92
+    assert eligible == 117
+    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 93
 
 
 def test_release_gate_cross_scale_floors_are_tuned_and_achievable():

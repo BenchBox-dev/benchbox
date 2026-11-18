@@ -168,6 +168,8 @@ def register_analytics_tools(
         verbose: bool = False,
     ) -> dict[str, Any]:
         from benchbox.core.results.integrity_validator import (
+            directory_payload,
+            report_payload,
             validate_directory as _validate_directory,
             validate_file as _validate_file,
         )
@@ -181,27 +183,7 @@ def register_analytics_tools(
                     result_file,
                     suggestion='Use get_results(format="list") to see available result files',
                 )
-            report = _validate_file(file_path)
-            checks = [
-                {
-                    "category": c.category.value,
-                    "name": c.name,
-                    "status": c.status.value,
-                    "message": c.message,
-                    "details": c.details,
-                }
-                for c in report.checks
-                if verbose or c.status.value != "PASS"
-            ]
-            return {
-                "file": report.file,
-                "benchmark_id": report.benchmark_id,
-                "platform": report.platform,
-                "scale_factor": report.scale_factor,
-                "overall_status": report.overall_status.value,
-                "summary": report.summary,
-                "checks": checks,
-            }
+            return report_payload(_validate_file(file_path), verbose=verbose)
         elif directory:
             resolved_directory = _resolve_validation_directory(
                 directory,
@@ -216,22 +198,7 @@ def register_analytics_tools(
                     ErrorCode.RESOURCE_NOT_FOUND,
                     f"Directory not found: {directory}",
                 )
-            reports = _validate_directory(dir_path)
-            return {
-                "total": len(reports),
-                "pass": sum(1 for r in reports if r.overall_status.value == "PASS"),
-                "warn": sum(1 for r in reports if r.overall_status.value == "WARN"),
-                "fail": sum(1 for r in reports if r.overall_status.value == "FAIL"),
-                "files": [
-                    {
-                        "file": r.file,
-                        "benchmark_id": r.benchmark_id,
-                        "platform": r.platform,
-                        "overall_status": r.overall_status.value,
-                    }
-                    for r in reports
-                ],
-            }
+            return directory_payload(_validate_directory(dir_path))
         else:
             return make_error(
                 ErrorCode.VALIDATION_ERROR,

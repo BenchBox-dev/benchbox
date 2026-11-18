@@ -329,6 +329,23 @@ stays red over two hours with no revert pull request open, that is a risk
 signal for the owner, who should revert the culprit; nothing enforces the
 two-hour figure.
 
+Why the stale-run check stays advisory (decided 2026-10-27, kept
+2026-10-30 in `_project/decisions/trunk-latest-head-runs-2026-10-30.md`, and
+re-examined 2026-11-15): the newest `develop` run is normally queued
+behind the run in flight or behind runner capacity, not broken. Arming a PR
+does not add a commit to `develop` until it merges, so refusing while the
+newest run is old would hold every PR for as long as the queue lasts and
+would not clear it faster; the queue drains only when runners free up, and PR
+CI draws from the same 20-job pool. A hard refusal therefore converts a
+capacity problem into a standstill with no signal that tells a human which run
+to look at. The gates that do protect trunk are unchanged: a red completed run
+refuses arming, and an unfinished older run in a red streak leaves the culprit
+undetermined and refuses. Arming still needs every required check on the PR
+head, so a stale trunk never lets a PR merge with fewer checks.
+`tests/unit/scripts/test_trunk_revert.py` pins this: a pending run of any age
+returns no refusal from `arm_gate` and `main arm-gate` exits 0 with the
+warning on stderr.
+
 Arming is stricter than opening: `make pr-arm`, `make pr-arm-remote`,
 `make pr-landing-remote ACTION=ready` and `make pr-landing-ready ARM=1` run `scripts/trunk_revert.py arm-gate`, which
 refuses at once, naming the culprit PR and run, while trunk is red and no

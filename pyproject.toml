@@ -61,7 +61,7 @@ dev = [
     "pytest-xdist>=3.0.0",
     "duckdb>=1.5.0,<3.0.0",
     "tox>=4.13.0",
-    "pyspark>=3.5.0",
+    "pyspark>=3.5.0,<4.3",
     "pytest-timeout>=2.4.0",
     "adbc-driver-gizmosql>=2.0.13,<3",
     "gizmosql==1.39.0",
@@ -101,9 +101,9 @@ all = [
     "pymysql>=1.1.0",
     "singlestoredb>=1.0.0",
     "adbc-driver-gizmosql>=2.0.13,<3",
-    "polars>=1.35.2",
+    "polars>=1.35.2,<3.0.0",
     "dask[distributed]>=2025.1.0",
-    "pyspark[connect]>=3.5.0",
+    "pyspark[connect]>=3.5.0,<4.3",
 ]
 cloud = [
     "databricks-sql-connector>=2.0.0",
@@ -201,15 +201,15 @@ cudf = []
 dataframe-cudf = [
 ]
 
-polars = ["polars>=1.35.2"]
+polars = ["polars>=1.35.2,<3.0.0"]
 dataframe-polars = [
-    "polars>=1.35.2",
+    "polars>=1.35.2,<3.0.0",
 ]
-pyspark = ["pyspark>=3.5.0"]
-lakesail = ["pyspark[connect]>=3.5.0", "grpcio>=1.84.1"]
-velox = ["pyspark[connect]>=3.5.0", "grpcio>=1.84.1"]
+pyspark = ["pyspark>=3.5.0,<4.3"]
+lakesail = ["pyspark[connect]>=3.5.0,<4.3", "grpcio>=1.84.1"]
+velox = ["pyspark[connect]>=3.5.0,<4.3", "grpcio>=1.84.1"]
 dataframe-pyspark = [
-    "pyspark>=3.5.0",
+    "pyspark>=3.5.0,<4.3",
 ]
 dataframe-datafusion = [
     "datafusion>=54.0.0",
@@ -221,20 +221,20 @@ dataframe-pandas-family = [
     "dask[distributed]>=2025.1.0",
 ]
 dataframe-expression-family = [
-    "polars>=1.35.2",
-    "pyspark>=3.5.0",
+    "polars>=1.35.2,<3.0.0",
+    "pyspark>=3.5.0,<4.3",
     "datafusion>=54.0.0",
 ]
 dataframe-all = [
     "pandas>=3.0.0",
     "dask[distributed]>=2025.1.0",
-    "polars>=1.35.2",
-    "pyspark>=3.5.0",
+    "polars>=1.35.2,<3.0.0",
+    "pyspark>=3.5.0,<4.3",
     "datafusion>=54.0.0",
 ]
 
 quick-start = [
-    "polars>=1.35.2",
+    "polars>=1.35.2,<3.0.0",
 ]
 
 cloud-spark-aws = [
@@ -252,7 +252,7 @@ cloud-spark-azure = [
 ]
 cloud-spark-snowflake = [
     "snowflake-snowpark-python>=1.11.0",
-    "pyspark>=3.5.0",
+    "pyspark>=3.5.0,<4.3",
 ]
 cloud-spark-databricks = [
     "databricks-sql-connector>=2.0.0",
@@ -270,7 +270,7 @@ cloud-spark = [
     "azure-storage-file-datalake>=12.14.0",
     "requests>=2.31.0",
     "snowflake-snowpark-python>=1.11.0",
-    "pyspark>=3.5.0",
+    "pyspark>=3.5.0,<4.3",
     "databricks-sql-connector>=2.0.0",
     "databricks-sdk>=0.20.0",
     "databricks-connect>=14.0.0,<19",
@@ -285,7 +285,7 @@ mcp = [
     "opentelemetry-sdk>=1.44,<2",
 ]
 spark = [
-    "pyspark>=4.0.1",
+    "pyspark>=4.0.1,<4.3",
 ]
 
 [project.scripts]
@@ -342,7 +342,7 @@ dev = [
     "ruff==0.16.7",
     "ty>=0.0.1a14",
     "duckdb>=1.5.0,<3.0.0",
-    "polars>=1.35.2",
+    "polars>=1.35.2,<3.0.0",
     "clickhouse-connect>=0.10.0",
     "psycopg[binary]>=3.1",
     "adbc-driver-gizmosql>=2.0.13,<3",
@@ -363,7 +363,7 @@ dev = [
     "firebolt-sdk>=1.18.0",
     "influxdb3-python>=0.10.0",
     "databricks-sdk>=0.20.0",
-    "pyspark>=3.5.0",
+    "pyspark>=3.5.0,<4.3",
     "mcp>=2,<3",
     "mutmut>=3.5.0",
     "dask[distributed]>=2026.1.1",

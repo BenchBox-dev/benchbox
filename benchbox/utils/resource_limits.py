@@ -404,10 +404,12 @@ ADMIT_MIN_GIB_ENV = "BENCHBOX_HEAVY_ADMIT_MIN_GIB"
 MIN_LEVEL_ENV = "BENCHBOX_HEAVY_MIN_LEVEL"
 MIN_FREE_DISK_GIB_ENV = "BENCHBOX_HEAVY_MIN_FREE_DISK_GIB"
 MEMORY_BUDGET_GIB_ENV = "BENCHBOX_HEAVY_MEMORY_BUDGET_GIB"
+MAX_LOAD_RATIO_ENV = "BENCHBOX_HEAVY_MAX_LOAD_RATIO"
 OUTPUT_DIR_ENV = "BENCHBOX_OUTPUT_DIR"
 DEFAULT_ADMIT_MIN_GIB = 2.0
 DEFAULT_MIN_LEVEL = 35.0
 DEFAULT_MIN_FREE_DISK_GIB = 50.0
+DEFAULT_MAX_LOAD_RATIO = 5.0
 DEFAULT_BUDGET_FRACTION = 0.5
 DEFAULT_OUTPUT_ROOT = "benchmark_runs"
 SYSCTL_PATH = "/usr/sbin/sysctl"
@@ -509,6 +511,8 @@ class HostPressure:
     memorystatus_level: int | None
     disks: tuple[DiskReading, ...]
     vms: tuple[VmReservation, ...] | None
+    load_average_5m: float | None = None
+    cpu_count: int | None = None
 
 
 @dataclass(frozen=True)
@@ -516,6 +520,7 @@ class AdmissionPolicy:
     need_gib: float = DEFAULT_ADMIT_MIN_GIB
     min_level: float = DEFAULT_MIN_LEVEL
     min_free_disk_gib: float = DEFAULT_MIN_FREE_DISK_GIB
+    max_load_ratio: float = DEFAULT_MAX_LOAD_RATIO
 
 
 @dataclass(frozen=True)
@@ -548,6 +553,7 @@ def admission_policy_from_env(
         need_gib=_float_setting(env, ADMIT_MIN_GIB_ENV, DEFAULT_ADMIT_MIN_GIB) if need_gib is None else need_gib,
         min_level=_float_setting(env, MIN_LEVEL_ENV, DEFAULT_MIN_LEVEL),
         min_free_disk_gib=_float_setting(env, MIN_FREE_DISK_GIB_ENV, DEFAULT_MIN_FREE_DISK_GIB),
+        max_load_ratio=_float_setting(env, MAX_LOAD_RATIO_ENV, DEFAULT_MAX_LOAD_RATIO),
     )
 
 
@@ -679,6 +685,13 @@ def _read_disk(label: str, path: str) -> DiskReading:
     return DiskReading(label=label, path=path, free_gib=free, device=device)
 
 
+def _load_average_5m() -> float | None:
+    try:
+        return os.getloadavg()[1]
+    except (OSError, AttributeError):
+        return None
+
+
 def read_host_pressure(
     roots: Sequence[tuple[str, str]] | None = None,
     *,
@@ -697,6 +710,8 @@ def read_host_pressure(
         memorystatus_level=_sysctl_int("kern.memorystatus_level", runner) if is_macos else None,
         disks=tuple(_read_disk(label, path) for label, path in (default_disk_roots() if roots is None else roots)),
         vms=read_vm_reservations(runner, which),
+        load_average_5m=_load_average_5m(),
+        cpu_count=os.cpu_count(),
     )
 
 
@@ -724,6 +739,12 @@ def evaluate_admission(pressure: HostPressure, policy: AdmissionPolicy) -> tuple
             f"free disk on {names} {lowest:.1f} GiB below floor {policy.min_free_disk_gib:g} GiB "
             f"({MIN_FREE_DISK_GIB_ENV})"
         )
+    load = pressure.load_average_5m
+    cpus = pressure.cpu_count
+    if load is not None and cpus and policy.max_load_ratio > 0 and load > policy.max_load_ratio * cpus:
+        refusals.append(
+            f"5-minute load average {load:.1f} above {policy.max_load_ratio:g} x {cpus} CPUs ({MAX_LOAD_RATIO_ENV})"
+        )
     return tuple(refusals)
 
 
@@ -747,6 +768,8 @@ def format_admission_report(result: AdmissionResult, policy: AdmissionPolicy) ->
         f"  available memory: {_fmt(pressure.available_gib, ' GiB')} (need {policy.need_gib:g} GiB)",
         f"  total memory: {_fmt(pressure.total_gib, ' GiB')}; swap used (reported only): "
         f"{_fmt(pressure.swap_used_percent, '%')}",
+        f"  5-minute load average: {_fmt(pressure.load_average_5m)} on {_fmt(pressure.cpu_count)} CPUs "
+        f"({f'refuse above {policy.max_load_ratio:g} x CPUs' if policy.max_load_ratio > 0 else 'not enforced'})",
     ]
     for disk in pressure.disks:
         lines.append(

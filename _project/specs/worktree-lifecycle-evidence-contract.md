@@ -1,10 +1,13 @@
 # BenchBox worktree lifecycle evidence contract
 
 Status: draft specification (2026-08-26) as amended 2026-08-31 to authorize
-`make branch-prune-merged` — an explicit, operator-driven, `gh`-based reaper
-limited to worktree-less local branches still at their historical merge-time PR head —
+`make branch-prune-merged` — an explicit, operator-driven reaper limited to
+worktree-less local branches proven merged into `origin/develop` (by local
+history, or by `gh` evidence of their historical merge-time PR head) —
 and amended 2026-10-18 to authorize `make worktree-reap`, an operator-invoked
-sweep whose removals are exactly `worktree-finish` apply actions; see §2.
+sweep whose removals are exactly `worktree-finish` apply actions; see §2 —
+and amended 2026-11-15 to authorize the §7.2 unpublished-branch deletion basis
+for `make worktree-finish UNPUBLISHED=1`.
 
 ## 1. Problem
 
@@ -24,8 +27,9 @@ This spec fixes what evidence is recorded, what it can and cannot prove, how
 uncertainty is classified, who is allowed to produce which part of it, and
 what a report is (and is not) authorized to do. The read-only audit adds no
 deletion authority. The separately invoked `branch-prune-merged` exception in
-§2 adds a destructive local-branch path only after independently recollecting
-the complete §7 evidence; it never consumes an audit snapshot as authority.
+§2 adds a destructive local-branch path only after independently proving each
+branch merged, from local history or from freshly recollected §7 evidence; it
+never consumes an audit snapshot as authority.
 
 ## 2. Non-goals
 
@@ -38,8 +42,10 @@ the complete §7 evidence; it never consumes an audit snapshot as authority.
   actions; it never removes the primary clone, the invoking worktree, or
   anything that evaluation holds. The authorized branch-only exception is
   `make branch-prune-merged`, which reaps only worktree-less local branches
-  still at their historically proven merge-time PR head (operator-driven, `gh`-based, with
-  `DRY_RUN=1` preview).
+  proven merged into `origin/develop`: the tip is an ancestor of it, the net
+  diff has a non-empty byte-exact (`git patch-id --verbatim`, `--binary`) match
+  with a non-merge commit on it, or `gh` shows the tip is the historically
+  proven merge-time PR head (operator-driven, with `DRY_RUN=1` preview).
 - No change to `worktree-remove`'s existing refusal rules, and no destructive
   Git operation beyond `worktree-finish` apply actions (also reached through
   `worktree-reap`) and `branch-prune-merged` local branch ref deletion.
@@ -339,6 +345,42 @@ re-evaluate §7 evidence, including merge-commit reachability, immediately befor
 apply. The integration tip MUST equal the final PR head; dirty, foreign or
 otherwise held worktrees and refused members block this step. Apply uses the
 existing expected-old-OID deletion, not the member deletion basis.
+
+### 7.2 Unpublished branches: deletion basis without integration
+
+A scratch or baseline branch that never reached a PR is never integration
+evidenced by §7, and its record stays `uncertain`. This subsection adds a
+**separate deletion basis** that proves deleting the branch loses no commit;
+like §7.1 it does **not** prove, and MUST NOT be reported as, integration.
+
+`make worktree-finish UNPUBLISHED=1` MAY remove one exact worktree and its
+local branch only when all of the following hold, in addition to the
+unchanged exact-path, expected-head-OID, registered, attached, unlocked and
+managed-provenance (no external controller) requirements of
+`worktree-finish`:
+
+1. **No PR** — a complete GitHub PR query for the branch (state `all`)
+   returns no PR. A query failure or truncation holds the target; a branch
+   with any PR uses §7.
+2. **Tip preserved on the remote** — after `git fetch --prune origin` in the
+   same run, the worktree HEAD is reachable from at least one
+   `refs/remotes/origin/*` ref (`git for-each-ref --contains <head>`), so no
+   commit exists only locally. Pruning keeps a deleted remote branch from
+   counting as proof. This is a reachability check of the branch's own tip,
+   not the source-tip-ancestry check §7 forbids as integration proof; it is
+   used only to show no commit is lost.
+3. **No tracked change** — `git status --porcelain` shows no modified,
+   staged, or otherwise tracked change.
+4. **Only known tool temp files untracked** — every untracked file (listed
+   individually) matches the tool temp allowlist, currently DuckDB spill files
+   `.tmp/duckdb_temp_storage*` and `.tmp/duckdb_temp_attach*`. Any other
+   untracked file refuses the removal and is named in the hold reason.
+
+Apply MUST default to a dry run, MUST reuse the expected-old-OID branch
+deletion, and MUST NOT use `--force`: it first unlinks exactly the listed temp
+files and then runs plain `git worktree remove`, so any file created after
+evaluation still blocks removal. The remote branch is never touched.
+`worktree-reap` does not apply this basis.
 
 ## 8. Controller-provider boundary
 

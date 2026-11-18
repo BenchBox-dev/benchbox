@@ -4,7 +4,9 @@ import dataclasses
 import os
 import stat
 import sys
+from collections.abc import Callable, Iterator
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -212,7 +214,7 @@ def test_unmeasured_sections_render_explicitly() -> None:
     reading = hs.StatusReading(Path("x/test.lock"), None, 0, None, None, None, None, SENT)
     text = hs.render(reading)
     assert "host readings: unmeasured" in text
-    assert text.count("unmeasured") == 4
+    assert text.count("unmeasured") == 5
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX shell stub")
@@ -244,3 +246,121 @@ def test_render_shows_a_git_flood_warning_with_the_top_processes() -> None:
     assert "WARNING git flood: 3 git processes >= 2" in text
     assert "pid 102 0.75 GiB cwd /work/BenchBox.wt-a cmd git status" in text
     assert "unmeasured" in hs.render(collect(git_flood_reader=lambda: None))
+
+
+def test_top_cpu_lists_the_busiest_processes_above_the_floor() -> None:
+    listing = "\n".join(
+        ["  10   0.4 /bin/idle", "  11  99.5 bash /tmp/spin.sh", "  12  42.0 /usr/bin/python3 job.py", "bad line"]
+    )
+    assert hs.parse_top_cpu(listing) == ((11, 99.5, "bash /tmp/spin.sh"), (12, 42.0, "/usr/bin/python3 job.py"))
+
+
+def test_top_cpu_is_capped_at_the_display_count() -> None:
+    listing = "\n".join(f"{n} {10 + n}.0 cmd{n}" for n in range(1, 12))
+    assert len(hs.parse_top_cpu(listing)) == hs.TOP_CPU_COUNT
+
+
+def test_a_shell_orphaned_to_init_is_an_orphan_candidate() -> None:
+    table = "\n".join(
+        ["500     1 bash /tmp/hl-smoke.sh", "501   500 bash /tmp/hl-smoke.sh", "502     1 /usr/bin/vim notes"]
+    )
+    assert hs._parse_ps(table) == [(500, "bash /tmp/hl-smoke.sh")]
+
+
+ADMITTED = SimpleNamespace(admitted=True, refusals=(), forced=False)
+SPIN_CWD = "/work/BenchBox.wt-spin"
+
+
+def spin_fixture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, alive: bool = True, sentinel_running: bool = True
+) -> Callable[[list[str]], Iterator[object]]:
+    from benchbox.utils import orphan_spin
+
+    spin = orphan_spin.ActiveSpin(
+        pid=4242,
+        created=4242.0,
+        name="bash",
+        cwd=SPIN_CWD,
+        command="bash -c while true; do :; done",
+        cpu_fraction=0.97,
+        busy_since=1000.0,
+    )
+    orphan_spin.write_active(hs.orphan_spin_path(), [spin])
+    if sentinel_running:
+        pid_path = hs.sentinel_pid_path()
+        pid_path.parent.mkdir(parents=True, exist_ok=True)
+        pid_path.write_text(hl.process_identity(), encoding="utf-8")
+
+    class Proc:
+        info = {
+            "pid": 4242,
+            "ppid": 1,
+            "name": "bash",
+            "create_time": 4242.0,
+            "uids": SimpleNamespace(real=getattr(os, "getuid", lambda: 0)()),
+        }
+
+        def as_dict(self, attrs, ad_value=None):
+            return {
+                "cwd": SPIN_CWD,
+                "cmdline": ["bash", "-c", "while true; do :; done"],
+                "cpu_times": SimpleNamespace(user=1.0, system=0.0),
+            }
+
+    return lambda attrs: iter([Proc()] if alive else [])
+
+
+def test_status_prints_an_active_orphan_report_with_pid_cwd_cpu_share_and_age(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    table = spin_fixture(tmp_path, monkeypatch)
+    text = hs.render(collect(spin_reader=lambda: hs.read_active_spins(processes=table)), now=1600.0)
+    assert "ORPHAN SPIN pid 4242" in text
+    assert "97% CPU" in text
+    assert "busy 600s" in text
+    assert f"cwd {SPIN_CWD}" in text
+    assert "never signalled" in text
+
+
+def test_status_is_unchanged_without_an_active_orphan_report(tmp_path: Path) -> None:
+    assert "ORPHAN SPIN" not in hs.render(collect())
+    assert hs.active_spin_lines() == []
+
+
+def test_a_report_for_an_exited_shell_is_not_printed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    table = spin_fixture(tmp_path, monkeypatch, alive=False)
+    assert "ORPHAN SPIN" not in hs.render(collect(spin_reader=lambda: hs.read_active_spins(processes=table)))
+
+
+def test_a_report_is_not_printed_when_the_sentinel_that_wrote_it_is_gone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    table = spin_fixture(tmp_path, monkeypatch, sentinel_running=False)
+    assert hs.read_active_spins(processes=table) == ()
+
+
+def test_admission_prints_the_report_and_still_admits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from benchbox.utils import resource_limits
+
+    table = spin_fixture(tmp_path, monkeypatch)
+    monkeypatch.setattr(resource_limits, "admit_heavy_work", lambda policy, force=False: ADMITTED)
+    monkeypatch.setattr(resource_limits, "format_admission_report", lambda result, policy: "admitted")
+
+    def spin_lines(environ):
+        return hs._spin_block(hs.read_active_spins(environ, processes=table), 1600.0)
+
+    assert hl.check_admission(environ=dict(os.environ), spin_lines=spin_lines) == "admitted"
+    assert "ORPHAN SPIN pid 4242" in capsys.readouterr().err
+
+
+def test_admission_prints_nothing_extra_without_a_report(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from benchbox.utils import resource_limits
+
+    monkeypatch.setattr(resource_limits, "admit_heavy_work", lambda policy, force=False: ADMITTED)
+    monkeypatch.setattr(resource_limits, "format_admission_report", lambda result, policy: "admitted")
+    hl.check_admission(environ=dict(os.environ))
+    assert "ORPHAN SPIN" not in capsys.readouterr().err

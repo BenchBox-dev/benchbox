@@ -245,6 +245,21 @@ def test_bundled_runtime_change_selects_package_smoke(rules: dict[str, list[str]
     assert decision["needs_code_ci"] is True
 
 
+def test_package_source_change_selects_package_smoke_without_the_dependency_audit(
+    rules: dict[str, list[str]],
+) -> None:
+    decision = classify_paths(["benchbox/core/tpch/generator.py"], rules)
+
+    assert decision["first_command_needed"] is True
+    assert decision["packaging_needed"] is False
+
+
+def test_test_only_change_does_not_select_the_first_command_smoke(rules: dict[str, list[str]]) -> None:
+    decision = classify_paths(["tests/unit/cli/test_run_command_branches.py"], rules)
+
+    assert decision["first_command_needed"] is False
+
+
 def test_docs_markdown_is_safe(rules: dict[str, list[str]]) -> None:
     decision = classify_paths(["docs/development/run-lifecycle-map.md"], rules)
     assert decision["safe_content_only"] is True

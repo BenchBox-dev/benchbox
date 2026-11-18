@@ -10,6 +10,7 @@ from benchbox.utils.environment import detect_execution_class
 
 MetadataSource: TypeAlias = Literal[
     "registered_default",
+    "applied_defaults",
     "saved_config",
     "environment_variable",
     "cli_option",
@@ -451,3 +452,34 @@ __all__ = [
     "build_environment_payload",
     "build_platform_metadata_payload",
 ]
+
+
+HOST_LOAD_SAMPLE_FIELD_TYPES = {
+    "load_average": ("array", "null"),
+    "cpu_frequency_mhz": ("number", "null"),
+    "memory_available_mb": ("number", "null"),
+    "swap_used_mb": ("number", "null"),
+    "swap_percent": ("number", "null"),
+    "sampled_at": ("string", "null"),
+}
+HOST_LOAD_SAMPLE_FIELDS = tuple(HOST_LOAD_SAMPLE_FIELD_TYPES)
+
+
+def host_load_sample(snapshot: Mapping[str, Any] | None) -> dict[str, Any]:
+    source = snapshot if isinstance(snapshot, Mapping) and snapshot.get("available") else {}
+    cpu = source.get("cpu") if isinstance(source.get("cpu"), Mapping) else {}
+    memory = source.get("memory") if isinstance(source.get("memory"), Mapping) else {}
+    swap = source.get("swap") if isinstance(source.get("swap"), Mapping) else {}
+    load_average = cpu.get("load_average")
+    return {
+        "load_average": [round(float(value), 2) for value in load_average] if load_average else None,
+        "cpu_frequency_mhz": cpu.get("frequency_mhz"),
+        "memory_available_mb": memory.get("available_mb"),
+        "swap_used_mb": swap.get("used_mb"),
+        "swap_percent": swap.get("percent"),
+        "sampled_at": source.get("timestamp"),
+    }
+
+
+def build_host_load_block(start: Mapping[str, Any] | None, end: Mapping[str, Any] | None) -> dict[str, Any]:
+    return {"start": host_load_sample(start), "end": host_load_sample(end)}

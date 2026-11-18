@@ -10,6 +10,9 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import pr_base
+
 BASE_BRANCH = "develop"
 BASE_REF = f"origin/{BASE_BRANCH}"
 REPOSITORY_PATTERN = r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"
@@ -107,11 +110,12 @@ def find_open_pr(
     return None
 
 
-def verify_parent(run: Runner, repo: str, branch: str, parent: str) -> None:
+def verify_parent(run: Runner, repo: str, branch: str, parent: str, base_branch: str = BASE_BRANCH) -> None:
     if parent == branch:
         raise PrOpenError(f"--parent {parent} is the branch being opened")
-    if parent in INTEGRATION_BRANCHES:
+    if parent in INTEGRATION_BRANCHES or pr_base.LINE.fullmatch(parent):
         raise PrOpenError(f"--parent {parent} is an integration branch; omit PARENT to target it")
+    roots = INTEGRATION_BRANCHES if base_branch == BASE_BRANCH else frozenset({base_branch})
     repo_owner = repo.split("/", 1)[0]
     depth = 1
     level = parent
@@ -123,7 +127,7 @@ def verify_parent(run: Runner, repo: str, branch: str, parent: str) -> None:
         base = str((pull.get("base") or {}).get("ref") or "")
         if not base:
             raise PrOpenError(f"unreadable open PR lookup response: no base for {level}")
-        if base in INTEGRATION_BRANCHES:
+        if base in roots:
             break
         if base in seen:
             raise PrOpenError(f"stack parent {parent} has a cyclic base chain")
@@ -198,10 +202,11 @@ def publish(
     record: str = "",
     unavailable: str = "",
     receipt: str = "",
+    base_branch: str = BASE_BRANCH,
 ) -> PublishedPr:
-    base = parent or BASE_BRANCH
+    base = parent or base_branch
     if parent:
-        verify_parent(run, repo, branch, parent)
+        verify_parent(run, repo, branch, parent, base_branch)
     existing = find_open_pr(run, repo, head_owner, branch, base)
     if existing is not None:
         pr = _pr_from(existing, "reused")
@@ -258,6 +263,7 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
     parser.add_argument("--draft", action="store_true")
     parser.add_argument("--parent", default="")
     parser.add_argument("--verify-parent", action="store_true")
+    parser.add_argument("--base", default="", help="base branch: develop (default) or a release/X.Y.x line")
     args = parser.parse_args(argv)
     if not re.fullmatch(REPOSITORY_PATTERN, args.repo):
         print(f"pr-open: --repo must be owner/name, got {args.repo!r}", file=sys.stderr)
@@ -287,8 +293,9 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
             print("pr-open: the preflight receipt summary is not one receipt block", file=sys.stderr)
             return 1
     try:
+        base_branch = pr_base.validate(args.base)
         if args.verify_parent:
-            verify_parent(run, args.repo, args.branch, args.parent)
+            verify_parent(run, args.repo, args.branch, args.parent, base_branch)
             return 0
         pr = publish(
             args.repo,
@@ -303,8 +310,9 @@ def main(argv: Sequence[str] | None = None, run: Runner = live_run) -> int:
             record,
             args.local_review_unavailable,
             receipt,
+            base_branch,
         )
-    except (PrOpenError, OSError) as exc:
+    except (PrOpenError, ValueError, OSError) as exc:
         print(f"pr-open: {exc}", file=sys.stderr)
         return 1
     print(f"{pr.status} {pr.number} {pr.url}")

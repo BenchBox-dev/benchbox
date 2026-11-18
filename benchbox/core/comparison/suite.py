@@ -20,6 +20,7 @@ from benchbox.core.comparison.types import (
     UnifiedQueryResult,
     detect_platform_types,
 )
+from benchbox.core.results.comparison_modes import IncomparableModesError
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,8 @@ class UnifiedBenchmarkSuite:
             try:
                 result = self._benchmark_sql_platform(platform, data_dir)
                 results.append(result)
+            except IncomparableModesError:
+                raise
             except Exception as e:
                 logger.error(f"Failed to benchmark {platform}: {e}")
                 results.append(

@@ -34,13 +34,43 @@ def job_text(name: str) -> str:
     return yaml.safe_dump(job(name))
 
 
-def test_the_workflow_runs_daily_on_demand_and_after_ci_and_review_with_dry_run_on_by_default() -> None:
+def test_the_workflow_runs_on_a_schedule_on_demand_and_after_ci_and_review_with_dry_run_on_by_default() -> None:
     triggers = load()[True]
     assert set(triggers) == {"schedule", "workflow_dispatch", "workflow_run"}
     inputs = triggers["workflow_dispatch"]["inputs"]
     assert inputs["dry_run"]["default"] is True
     assert inputs["retry"]["default"] is False
     assert triggers["workflow_run"]["types"] == ["completed"]
+
+
+def cron_field(field: str, low: int, high: int) -> set[int]:
+    values: set[int] = set()
+    for part in field.split(","):
+        base, _, step = part.partition("/")
+        if base == "*":
+            start, end = low, high
+        elif "-" in base:
+            start, end = (int(x) for x in base.split("-"))
+        else:
+            start = end = int(base)
+            if step:
+                end = high
+        values.update(range(start, end + 1, int(step) if step else 1))
+    return values
+
+
+def test_the_schedule_runs_at_least_every_six_hours() -> None:
+    minutes_of_day: set[int] = set()
+    for entry in load()[True]["schedule"]:
+        minute, hour, day, month, weekday = entry["cron"].split()
+        assert (day, month, weekday) == ("*", "*", "*")
+        for h in cron_field(hour, 0, 23):
+            for m in cron_field(minute, 0, 59):
+                minutes_of_day.add(h * 60 + m)
+    ordered = sorted(minutes_of_day)
+    gaps = [b - a for a, b in zip(ordered, ordered[1:] + [ordered[0] + 24 * 60])]
+    assert ordered
+    assert max(gaps) <= 6 * 60
 
 
 def test_every_workflow_that_triggers_arming_exists_by_that_name() -> None:
@@ -270,6 +300,28 @@ def test_the_arm_branch_filter_matches_the_trust_root_branch_prefix() -> None:
     trust_root = json.loads((WORKFLOWS.parent / "sqlglot-delivery.json").read_text(encoding="utf-8"))
     prefix = trust_root["consumer"]["branchPrefix"]
     assert f"startsWith(github.event.workflow_run.head_branch, '{prefix}')" in job("arm")["if"]
+
+
+def _branch_filter_matches(patterns: list[str], branch: str) -> bool:
+    for pattern in patterns:
+        regex = "".join(
+            ".*" if part == "**" else "[^/]*" if part == "*" else re.escape(part)
+            for part in re.split(r"(\*\*|\*)", pattern)
+        )
+        if re.fullmatch(regex, branch):
+            return True
+    return False
+
+
+def test_the_workflow_run_trigger_only_fires_for_branches_with_the_trust_root_branch_prefix() -> None:
+    trust_root = json.loads((WORKFLOWS.parent / "sqlglot-delivery.json").read_text(encoding="utf-8"))
+    prefix = trust_root["consumer"]["branchPrefix"]
+    patterns = load()[True]["workflow_run"]["branches"]
+    assert _branch_filter_matches(patterns, f"{prefix}1.2.3")
+    assert _branch_filter_matches(patterns, f"{prefix}nested/branch")
+    assert not _branch_filter_matches(patterns, prefix.rstrip("-"))
+    assert not _branch_filter_matches(patterns, "develop")
+    assert not _branch_filter_matches(patterns, f"feature/{prefix}1.2.3")
 
 
 def test_the_readiness_job_is_isolated_from_the_repository_and_prepared_artifacts() -> None:

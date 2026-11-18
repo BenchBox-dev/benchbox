@@ -67,17 +67,9 @@ labels as its GitHub-thread binding:
 | `defer` | `DEFER` | The finding is correct but too large, blocked, or outside scope |
 | `reject` | `REBUT` | The finding is wrong, refuted by a requirement, or outside the repository contract |
 
-Record evidence for every disposition:
-- For `already-fixed`, cite `file:line` in the revision under review or the
-  specific commit SHA merged on the integration baseline that resolved the defect.
-- For `narrow`, cite the narrower remedy applied and the tracking item for
-  re-homed scope per `shared-review-protocol/SKILL.md` §9 `[REVIEW-NARROWING-001]`.
-- For `defer` on external/upstream dependencies, cite the upstream tracking
-  issue or repository reference.
-- For `reject`, cite the requirement, source, or reproduction that refutes the
-  finding. When a finding is stale against an older commit, cite the current
-  source lines showing the condition is absent. Disagreement is not a refutation.
-- Uncertainty is not evidence; investigate or defer it.
+Record the evidence `shared-review-protocol/references/review-response.md`
+requires for each disposition. For `defer` on external/upstream dependencies,
+cite the upstream tracking issue or repository reference.
 
 ### 4. Act and verify
 
@@ -91,8 +83,9 @@ When the user authorizes fixes:
 3. Validate commit identity before creating commits per
    `shared-change-framework/SKILL.md [COMMIT-IDENTITY-001]`.
 4. Run targeted checks, then the repository's required preflight.
-5. Use the repository tracker or finding-capture flow for deferrals. If none
-   exists, report the deferred work without inventing a tracker.
+5. Use the repository tracker or finding-capture flow for deferrals. A deferral
+   names a tracker item or a captured finding per `[REVIEW-CAPTURE-001]`; with
+   no tracker, capture the finding.
 6. Publish through the repository's PR workflow. Reply with durable evidence:
    the fixing PR or commit, existing fix, deferral id, or rejection reason.
 7. Resolve threads only when repository policy permits and the disposition has

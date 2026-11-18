@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Cross-surface equivalence gate (development-only check) again fails when an approximate count-distinct cell starts matching; only the approximate quantile cells tolerate either outcome"
+}

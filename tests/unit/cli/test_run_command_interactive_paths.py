@@ -17,6 +17,8 @@ from benchbox.core.tuning.interface import UnifiedTuningConfiguration
 
 __import__("benchbox.cli.commands.run")
 _run_module = _sys.modules["benchbox.cli.commands.run"]
+__import__("benchbox.cli.run_interactive")
+_interactive_module = _sys.modules["benchbox.cli.run_interactive"]
 
 __import__("benchbox.cli.benchmarks")
 _benchmarks_module = _sys.modules["benchbox.cli.benchmarks"]
@@ -71,6 +73,7 @@ def test_interactive_header_suppressed_for_explicit_run_args():
 
     with (
         patch.object(_run_module, "sys", interactive_sys),
+        patch.object(_interactive_module, "sys", interactive_sys),
         patch.object(_run_module, "console") as mock_console,
     ):
         _run_module._derive_exec_type_and_banner(state)
@@ -84,6 +87,7 @@ def test_interactive_header_shown_for_prompted_tty_run():
 
     with (
         patch.object(_run_module, "sys", interactive_sys),
+        patch.object(_interactive_module, "sys", interactive_sys),
         patch.object(_run_module, "console") as mock_console,
     ):
         _run_module._derive_exec_type_and_banner(state)
@@ -102,11 +106,11 @@ def test_interactive_cloud_setup_leaves_server_credentials_to_adapter():
     )
 
     with (
-        patch.object(_run_module, "_run_stages_through_cloud_storage", return_value=False),
-        patch.object(_run_module, "_run_requires_platform_credentials", return_value=True),
-        patch.object(_run_module, "check_and_setup_platform_credentials") as check_credentials,
+        patch.object(_interactive_module, "_run_stages_through_cloud_storage", return_value=False),
+        patch.object(_interactive_module, "_run_requires_platform_credentials", return_value=True),
+        patch.object(_interactive_module, "check_and_setup_platform_credentials") as check_credentials,
     ):
-        _run_module._interactive_cloud_setup_if_needed(state)
+        _interactive_module._interactive_cloud_setup_if_needed(state)
 
     check_credentials.assert_not_called()
     state.ctx.exit.assert_not_called()
@@ -121,11 +125,13 @@ def test_interactive_cloud_setup_guides_singlestore_credentials():
     )
 
     with (
-        patch.object(_run_module, "_run_stages_through_cloud_storage", return_value=False),
-        patch.object(_run_module, "_run_requires_platform_credentials", return_value=True),
-        patch.object(_run_module, "check_and_setup_platform_credentials", return_value=True) as check_credentials,
+        patch.object(_interactive_module, "_run_stages_through_cloud_storage", return_value=False),
+        patch.object(_interactive_module, "_run_requires_platform_credentials", return_value=True),
+        patch.object(
+            _interactive_module, "check_and_setup_platform_credentials", return_value=True
+        ) as check_credentials,
     ):
-        _run_module._interactive_cloud_setup_if_needed(state)
+        _interactive_module._interactive_cloud_setup_if_needed(state)
 
     check_credentials.assert_called_once_with(platform="singlestore", console_obj=_run_module.console, interactive=True)
     state.ctx.exit.assert_not_called()
@@ -176,13 +182,16 @@ def test_interactive_guided_flow_uses_prompted_values_and_saves_preferences(tmp_
 
     with ExitStack() as stack:
         stack.enter_context(patch.object(_run_module, "sys", _interactive_sys()))
+        stack.enter_context(patch.object(_interactive_module, "sys", _interactive_sys()))
         stack.enter_context(patch.object(_run_module, "SystemProfiler", return_value=profiler))
         stack.enter_context(patch.object(_run_module, "DatabaseManager", return_value=db_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkManager", return_value=bench_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkOrchestrator", return_value=orchestrator))
-        stack.enter_context(patch.object(_run_module, "display_system_recommendations"))
-        mock_caps = stack.enter_context(patch.object(_run_module.PlatformRegistry, "get_platform_capabilities"))
-        stack.enter_context(patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False))
+        stack.enter_context(patch.object(_interactive_module, "display_system_recommendations"))
+        mock_caps = stack.enter_context(patch.object(_interactive_module.PlatformRegistry, "get_platform_capabilities"))
+        stack.enter_context(
+            patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+        )
         stack.enter_context(
             patch.object(_run_module, "normalize_output_root", return_value=str(tmp_path / "normalized"))
         )
@@ -330,13 +339,16 @@ def test_interactive_stats_controls_reach_benchmark_config(tmp_path: Path):
 
     with ExitStack() as stack:
         stack.enter_context(patch.object(_run_module, "sys", _interactive_sys()))
+        stack.enter_context(patch.object(_interactive_module, "sys", _interactive_sys()))
         stack.enter_context(patch.object(_run_module, "SystemProfiler", return_value=profiler))
         stack.enter_context(patch.object(_run_module, "DatabaseManager", return_value=db_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkManager", return_value=bench_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkOrchestrator", return_value=orchestrator))
-        stack.enter_context(patch.object(_run_module, "display_system_recommendations"))
-        mock_caps = stack.enter_context(patch.object(_run_module.PlatformRegistry, "get_platform_capabilities"))
-        stack.enter_context(patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False))
+        stack.enter_context(patch.object(_interactive_module, "display_system_recommendations"))
+        mock_caps = stack.enter_context(patch.object(_interactive_module.PlatformRegistry, "get_platform_capabilities"))
+        stack.enter_context(
+            patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+        )
         stack.enter_context(
             patch.object(_run_module, "normalize_output_root", return_value=str(tmp_path / "normalized"))
         )
@@ -444,13 +456,16 @@ def test_interactive_execution_type_derived_from_phases(tmp_path: Path):
 
     with ExitStack() as stack:
         stack.enter_context(patch.object(_run_module, "sys", _interactive_sys()))
+        stack.enter_context(patch.object(_interactive_module, "sys", _interactive_sys()))
         stack.enter_context(patch.object(_run_module, "SystemProfiler", return_value=profiler))
         stack.enter_context(patch.object(_run_module, "DatabaseManager", return_value=db_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkManager", return_value=bench_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkOrchestrator", return_value=orchestrator))
-        stack.enter_context(patch.object(_run_module, "display_system_recommendations"))
-        mock_caps = stack.enter_context(patch.object(_run_module.PlatformRegistry, "get_platform_capabilities"))
-        stack.enter_context(patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False))
+        stack.enter_context(patch.object(_interactive_module, "display_system_recommendations"))
+        mock_caps = stack.enter_context(patch.object(_interactive_module.PlatformRegistry, "get_platform_capabilities"))
+        stack.enter_context(
+            patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+        )
         stack.enter_context(
             patch.object(_run_module, "normalize_output_root", return_value=str(tmp_path / "normalized"))
         )
@@ -552,13 +567,16 @@ def test_interactive_dataframe_tuning_acceptance_applies_runtime_defaults(tmp_pa
 
     with ExitStack() as stack:
         stack.enter_context(patch.object(_run_module, "sys", _interactive_sys()))
+        stack.enter_context(patch.object(_interactive_module, "sys", _interactive_sys()))
         stack.enter_context(patch.object(_run_module, "SystemProfiler", return_value=profiler))
         stack.enter_context(patch.object(_run_module, "DatabaseManager", return_value=db_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkManager", return_value=bench_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkOrchestrator", return_value=orchestrator))
-        stack.enter_context(patch.object(_run_module, "display_system_recommendations"))
-        mock_caps = stack.enter_context(patch.object(_run_module.PlatformRegistry, "get_platform_capabilities"))
-        stack.enter_context(patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False))
+        stack.enter_context(patch.object(_interactive_module, "display_system_recommendations"))
+        mock_caps = stack.enter_context(patch.object(_interactive_module.PlatformRegistry, "get_platform_capabilities"))
+        stack.enter_context(
+            patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+        )
         stack.enter_context(
             patch.object(_run_module, "normalize_output_root", return_value=str(tmp_path / "normalized"))
         )
@@ -663,13 +681,16 @@ def test_interactive_wizard_baseline_maps_to_notuning_for_external_mode(tmp_path
 
     with ExitStack() as stack:
         stack.enter_context(patch.object(_run_module, "sys", _interactive_sys()))
+        stack.enter_context(patch.object(_interactive_module, "sys", _interactive_sys()))
         stack.enter_context(patch.object(_run_module, "SystemProfiler", return_value=profiler))
         stack.enter_context(patch.object(_run_module, "DatabaseManager", return_value=db_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkManager", return_value=bench_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkOrchestrator", return_value=orchestrator))
-        stack.enter_context(patch.object(_run_module, "display_system_recommendations"))
-        mock_caps = stack.enter_context(patch.object(_run_module.PlatformRegistry, "get_platform_capabilities"))
-        stack.enter_context(patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False))
+        stack.enter_context(patch.object(_interactive_module, "display_system_recommendations"))
+        mock_caps = stack.enter_context(patch.object(_interactive_module.PlatformRegistry, "get_platform_capabilities"))
+        stack.enter_context(
+            patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+        )
         stack.enter_context(
             patch.object(_run_module, "normalize_output_root", return_value=str(tmp_path / "normalized"))
         )
@@ -777,13 +798,16 @@ def test_interactive_dataframe_wizard_baseline_skips_runtime_defaults(tmp_path: 
 
     with ExitStack() as stack:
         stack.enter_context(patch.object(_run_module, "sys", _interactive_sys()))
+        stack.enter_context(patch.object(_interactive_module, "sys", _interactive_sys()))
         stack.enter_context(patch.object(_run_module, "SystemProfiler", return_value=profiler))
         stack.enter_context(patch.object(_run_module, "DatabaseManager", return_value=db_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkManager", return_value=bench_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkOrchestrator", return_value=orchestrator))
-        stack.enter_context(patch.object(_run_module, "display_system_recommendations"))
-        mock_caps = stack.enter_context(patch.object(_run_module.PlatformRegistry, "get_platform_capabilities"))
-        stack.enter_context(patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False))
+        stack.enter_context(patch.object(_interactive_module, "display_system_recommendations"))
+        mock_caps = stack.enter_context(patch.object(_interactive_module.PlatformRegistry, "get_platform_capabilities"))
+        stack.enter_context(
+            patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+        )
         stack.enter_context(
             patch.object(_run_module, "normalize_output_root", return_value=str(tmp_path / "normalized"))
         )
@@ -889,10 +913,10 @@ def test_fallback_wizard_baseline_reclassifies_runtime_state_for_dataframe_platf
         stack.enter_context(patch.object(_run_module, "DatabaseManager", return_value=db_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkManager", return_value=bench_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkOrchestrator", return_value=orchestrator))
-        stack.enter_context(patch.object(_run_module, "display_system_recommendations"))
+        stack.enter_context(patch.object(_interactive_module, "display_system_recommendations"))
         stack.enter_context(
             patch.object(
-                _run_module.PlatformRegistry,
+                _interactive_module.PlatformRegistry,
                 "get_platform_capabilities",
                 return_value=SimpleNamespace(
                     default_mode="dataframe",
@@ -904,7 +928,9 @@ def test_fallback_wizard_baseline_reclassifies_runtime_state_for_dataframe_platf
                 ),
             )
         )
-        stack.enter_context(patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False))
+        stack.enter_context(
+            patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+        )
         mock_execute = stack.enter_context(
             patch.object(_run_module, "_execute_orchestrated_run", return_value=result_payload)
         )
@@ -993,10 +1019,10 @@ def test_direct_dataframe_tuning_config_propagates_to_benchmark_config(tmp_path:
         stack.enter_context(patch.object(_run_module, "DatabaseManager", return_value=db_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkManager", return_value=bench_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkOrchestrator", return_value=orchestrator))
-        stack.enter_context(patch.object(_run_module, "display_system_recommendations"))
+        stack.enter_context(patch.object(_interactive_module, "display_system_recommendations"))
         stack.enter_context(
             patch.object(
-                _run_module.PlatformRegistry,
+                _interactive_module.PlatformRegistry,
                 "get_platform_capabilities",
                 return_value=SimpleNamespace(
                     default_mode="dataframe",
@@ -1008,7 +1034,9 @@ def test_direct_dataframe_tuning_config_propagates_to_benchmark_config(tmp_path:
                 ),
             )
         )
-        stack.enter_context(patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False))
+        stack.enter_context(
+            patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+        )
         mock_resolve = stack.enter_context(
             patch.object(_run_module, "resolve_dataframe_tuning_config", return_value=df_tuning_config)
         )
@@ -1080,13 +1108,16 @@ def test_interactive_tuning_declined_sets_notuning_state(tmp_path: Path):
 
     with ExitStack() as stack:
         stack.enter_context(patch.object(_run_module, "sys", _interactive_sys()))
+        stack.enter_context(patch.object(_interactive_module, "sys", _interactive_sys()))
         stack.enter_context(patch.object(_run_module, "SystemProfiler", return_value=profiler))
         stack.enter_context(patch.object(_run_module, "DatabaseManager", return_value=db_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkManager", return_value=bench_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkOrchestrator", return_value=orchestrator))
-        stack.enter_context(patch.object(_run_module, "display_system_recommendations"))
-        mock_caps = stack.enter_context(patch.object(_run_module.PlatformRegistry, "get_platform_capabilities"))
-        stack.enter_context(patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False))
+        stack.enter_context(patch.object(_interactive_module, "display_system_recommendations"))
+        mock_caps = stack.enter_context(patch.object(_interactive_module.PlatformRegistry, "get_platform_capabilities"))
+        stack.enter_context(
+            patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+        )
         stack.enter_context(
             patch.object(_run_module, "normalize_output_root", return_value=str(tmp_path / "normalized"))
         )
@@ -1178,14 +1209,19 @@ def test_interactive_cloud_platform_stops_when_credentials_are_missing():
 
     with ExitStack() as stack:
         stack.enter_context(patch.object(_run_module, "sys", _interactive_sys()))
+        stack.enter_context(patch.object(_interactive_module, "sys", _interactive_sys()))
         stack.enter_context(patch.object(_run_module, "SystemProfiler", return_value=profiler))
         stack.enter_context(patch.object(_run_module, "DatabaseManager", return_value=db_manager))
         stack.enter_context(patch.object(_run_module, "BenchmarkManager", return_value=bench_manager))
-        stack.enter_context(patch.object(_run_module, "display_system_recommendations"))
+        stack.enter_context(patch.object(_interactive_module, "display_system_recommendations"))
         stack.enter_context(patch.object(_benchmarks_module, "prompt_platform_options", return_value={}))
-        mock_caps = stack.enter_context(patch.object(_run_module.PlatformRegistry, "get_platform_capabilities"))
-        stack.enter_context(patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=True))
-        stack.enter_context(patch.object(_run_module, "check_and_setup_platform_credentials", return_value=False))
+        mock_caps = stack.enter_context(patch.object(_interactive_module.PlatformRegistry, "get_platform_capabilities"))
+        stack.enter_context(
+            patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=True)
+        )
+        stack.enter_context(
+            patch.object(_interactive_module, "check_and_setup_platform_credentials", return_value=False)
+        )
         stack.enter_context(patch("benchbox.cli.onboarding.check_and_run_first_time_setup", return_value=False))
         stack.enter_context(patch("benchbox.cli.preferences.load_last_run_config", return_value=None))
         mock_caps.return_value = SimpleNamespace(
@@ -1211,7 +1247,7 @@ def _non_interactive_base_patches():
     stack.enter_context(patch("benchbox.cli.onboarding.check_and_run_first_time_setup", return_value=False))
     stack.enter_context(patch("benchbox.cli.preferences.load_last_run_config", return_value=None))
     stack.enter_context(patch.object(_run_module, "SystemProfiler"))
-    stack.enter_context(patch.object(_run_module, "display_system_recommendations"))
+    stack.enter_context(patch.object(_interactive_module, "display_system_recommendations"))
     return stack
 
 
@@ -1244,7 +1280,7 @@ class TestRunCommandValidation:
             stack.enter_context(patch.object(_run_module, "_execute_orchestrated_run", side_effect=SystemExit(0)))
             stack.enter_context(
                 patch.object(
-                    _run_module.PlatformRegistry,
+                    _interactive_module.PlatformRegistry,
                     "get_platform_capabilities",
                     return_value=SimpleNamespace(
                         default_mode="sql",
@@ -1257,7 +1293,7 @@ class TestRunCommandValidation:
                 )
             )
             stack.enter_context(
-                patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+                patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
             )
             result = runner.invoke(
                 run,
@@ -1384,7 +1420,7 @@ class TestRunCommandValidation:
             stack.enter_context(patch.object(_run_module, "_execute_orchestrated_run", side_effect=SystemExit(0)))
             stack.enter_context(
                 patch.object(
-                    _run_module.PlatformRegistry,
+                    _interactive_module.PlatformRegistry,
                     "get_platform_capabilities",
                     return_value=SimpleNamespace(
                         default_mode="sql",
@@ -1397,7 +1433,7 @@ class TestRunCommandValidation:
                 )
             )
             stack.enter_context(
-                patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+                patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
             )
             result = runner.invoke(
                 run,
@@ -1425,7 +1461,7 @@ class TestRunCommandValidation:
             stack.enter_context(patch.object(_run_module, "_execute_orchestrated_run", side_effect=SystemExit(0)))
             stack.enter_context(
                 patch.object(
-                    _run_module.PlatformRegistry,
+                    _interactive_module.PlatformRegistry,
                     "get_platform_capabilities",
                     return_value=SimpleNamespace(
                         default_mode="sql",
@@ -1438,7 +1474,7 @@ class TestRunCommandValidation:
                 )
             )
             stack.enter_context(
-                patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+                patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
             )
             result = runner.invoke(
                 run,
@@ -1453,7 +1489,7 @@ class TestRunCommandValidation:
             stack.enter_context(patch.object(_run_module, "_execute_orchestrated_run", side_effect=SystemExit(0)))
             stack.enter_context(
                 patch.object(
-                    _run_module.PlatformRegistry,
+                    _interactive_module.PlatformRegistry,
                     "get_platform_capabilities",
                     return_value=SimpleNamespace(
                         default_mode="sql",
@@ -1466,7 +1502,7 @@ class TestRunCommandValidation:
                 )
             )
             stack.enter_context(
-                patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+                patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
             )
             result = runner.invoke(
                 run,
@@ -1490,7 +1526,7 @@ class TestRunCommandValidation:
             stack.enter_context(patch.object(_run_module, "_execute_orchestrated_run", side_effect=SystemExit(0)))
             stack.enter_context(
                 patch.object(
-                    _run_module.PlatformRegistry,
+                    _interactive_module.PlatformRegistry,
                     "get_platform_capabilities",
                     return_value=SimpleNamespace(
                         default_mode="sql",
@@ -1503,7 +1539,7 @@ class TestRunCommandValidation:
                 )
             )
             stack.enter_context(
-                patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+                patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
             )
             result = runner.invoke(
                 run,
@@ -1519,7 +1555,7 @@ class TestRunCommandValidation:
             stack.enter_context(patch.object(_run_module, "_execute_orchestrated_run", side_effect=SystemExit(0)))
             stack.enter_context(
                 patch.object(
-                    _run_module.PlatformRegistry,
+                    _interactive_module.PlatformRegistry,
                     "get_platform_capabilities",
                     return_value=SimpleNamespace(
                         default_mode="sql",
@@ -1532,7 +1568,7 @@ class TestRunCommandValidation:
                 )
             )
             stack.enter_context(
-                patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+                patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
             )
             result = runner.invoke(
                 run,
@@ -1548,7 +1584,7 @@ class TestRunCommandValidation:
             stack.enter_context(patch.object(_run_module, "_execute_orchestrated_run", side_effect=SystemExit(0)))
             stack.enter_context(
                 patch.object(
-                    _run_module.PlatformRegistry,
+                    _interactive_module.PlatformRegistry,
                     "get_platform_capabilities",
                     return_value=SimpleNamespace(
                         default_mode="sql",
@@ -1561,7 +1597,7 @@ class TestRunCommandValidation:
                 )
             )
             stack.enter_context(
-                patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+                patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
             )
             result = runner.invoke(
                 run,
@@ -1577,7 +1613,7 @@ class TestRunCommandValidation:
             stack.enter_context(patch.object(_run_module, "_execute_orchestrated_run", side_effect=SystemExit(0)))
             stack.enter_context(
                 patch.object(
-                    _run_module.PlatformRegistry,
+                    _interactive_module.PlatformRegistry,
                     "get_platform_capabilities",
                     return_value=SimpleNamespace(
                         default_mode="sql",
@@ -1590,7 +1626,7 @@ class TestRunCommandValidation:
                 )
             )
             stack.enter_context(
-                patch.object(_run_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
+                patch.object(_interactive_module.PlatformRegistry, "requires_cloud_storage", return_value=False)
             )
             result = runner.invoke(
                 run,

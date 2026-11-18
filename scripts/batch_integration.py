@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import fnmatch
 import hashlib
 import json
@@ -64,6 +65,9 @@ LEADER_MEMBER_OPS = frozenset({"take", "release", "renew", "recover"})
 POLICY_PATH = ".github/review.yml"
 SECTION_BUDGET = 6000
 REVIEW_PRINT_LIMIT = 16000
+GLOBAL_INPUT_FILES = frozenset(
+    {"pyproject.toml", "uv.lock", "ruff.toml", ".ruff.toml", "pytest.ini", "tox.ini", "setup.cfg", "Makefile"}
+)
 ALLOWED_VERIFICATION_PREFIXES = (
     ("uv", "run", "--", "python", "-m", "pytest"),
     ("uv", "run", "--", "ruff", "check"),
@@ -943,9 +947,10 @@ def _already_merged(
     )
     save_ledger(repo, ledger)
     if failures:
+        parent = _git(repo, "rev-parse", f"{landing['merge_head']}^1")
         raise BatchError(
             f"member {member!r} is merged at {landing['merge_head']} but the overlap rerun failed for {failures}; "
-            f"reset the integration branch to {landing.get('source_base')} and land again once the combination "
+            f"reset the integration branch to {parent} and land again once the combination "
             f"passes; do not prepare {member!r} until the reruns pass"
         )
     if head != landing["merge_head"] and head != tracker.get("integration_head"):
@@ -972,7 +977,196 @@ def _review_and_scope(
     return review, changed
 
 
-def _landing_preconditions(repo: Path, ledger: dict, tracker: dict, member: str, facts: dict, head: str) -> dict:
+def _verification_tests(verification: dict) -> set[str]:
+    command = verification.get("command", [])
+    if verification.get("suite") != "member-tests" or "-q" not in command:
+        return set()
+    return {part.split("::", 1)[0] for part in command[command.index("-q") + 1 :]}
+
+
+def _covered_tests(tests: set[str], verification: dict) -> set[str]:
+    ran = _verification_tests(verification)
+    return {
+        test
+        for test in tests
+        if any((file := test.split("::", 1)[0]) == path or file.startswith(f"{path.rstrip('/')}/") for path in ran)
+    }
+
+
+DOTTED_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+$")
+IMPORT_ROOTS = ("", "scripts/", "_project/scripts/")
+
+
+def _resolve_import(worktree: Path, dotted: str) -> str | None:
+    parts = dotted.split(".")
+    for end in range(len(parts), 0, -1):
+        base = "/".join(parts[:end])
+        for root in IMPORT_ROOTS:
+            for candidate in (f"{root}{base}.py", f"{root}{base}/__init__.py"):
+                if (worktree / candidate).is_file():
+                    return candidate
+    return None
+
+
+def _referenced_modules(worktree: Path, path: str) -> set[str]:
+    try:
+        tree = ast.parse((worktree / path).read_text(encoding="utf-8"))
+    except (OSError, SyntaxError, ValueError):
+        return set()
+    package = Path(path).parent.parts
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            prefix = package[: len(package) - node.level + 1] if node.level else ()
+            base = ".".join([*prefix, *(node.module.split(".") if node.module else [])])
+            names.add(base)
+            names.update(f"{base}.{alias.name}" for alias in node.names)
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str) and DOTTED_NAME.match(node.value):
+            names.add(node.value)
+    return names
+
+
+def _test_import_closure(worktree: Path, verification: dict) -> set[str]:
+    pending = []
+    for path in sorted(_verification_tests(verification)):
+        if (worktree / path).is_dir():
+            pending.extend(line for line in _git(worktree, "ls-files", "--", path).splitlines() if line.endswith(".py"))
+        else:
+            pending.append(path)
+    pending.extend(
+        f"{parent}/conftest.py" if parent != "." else "conftest.py"
+        for path in list(pending)
+        for parent in map(str, Path(path).parents)
+        if (worktree / parent / "conftest.py").is_file()
+    )
+    closure: set[str] = set()
+    while pending:
+        path = pending.pop()
+        if path in closure:
+            continue
+        closure.add(path)
+        for name in _referenced_modules(worktree, path):
+            resolved = _resolve_import(worktree, name)
+            if resolved is not None:
+                pending.append(resolved)
+                pending.extend(
+                    f"{parent}/__init__.py"
+                    for parent in map(str, Path(resolved).parents)
+                    if parent != "." and (worktree / parent / "__init__.py").is_file()
+                )
+    return closure
+
+
+def _mapped_tests(repo: Path, base: str) -> set[str] | None:
+    proc = _run(
+        ["uv", "run", "--", "python", "_project/scripts/preflight_targets.py", "tests", "--base-ref", base], repo
+    )
+    if proc.returncode != 0:
+        return None
+    return {line.strip() for line in proc.stdout.splitlines() if line.strip()}
+
+
+def _check_bases(worktree: Path, member_head: str) -> list[dict]:
+    proc = subprocess.run(
+        ["git", "config", "--worktree", "--name-only", "--get-regexp", rf"^{CONFIG_PREFIX}\.check\.{member_head}\.at-"],
+        cwd=worktree,
+        check=False,
+        encoding="utf-8",
+        capture_output=True,
+        timeout=60,
+    )
+    records = []
+    for key in proc.stdout.split():
+        record = _read_check(worktree, member_head, key.rsplit(".at-", 1)[1])
+        if record is not None:
+            records.append(record)
+    return records
+
+
+def _stale_base_refusal(
+    repo: Path, ledger: dict, tracker: dict, check: dict, facts: dict, head: str, dependencies: list[str]
+) -> str | None:
+    base = str(check.get("integration_head", ""))
+    member = str(check.get("member", ""))
+    if dependencies:
+        return f"member {member!r} has implementation dependencies, so its check must run at the current head"
+    if (
+        not FULL_SHA.match(base)
+        or not _is_ancestor(repo, base, head)
+        or not _is_ancestor(repo, base, facts["member_head"])
+    ):
+        return f"the check base {base} is not an ancestor of both the integration head and the member"
+    if base not in tracker_heads(tracker):
+        return f"the check base {base} is not a recorded integration head"
+    drift = _changed_files(repo, base, head)
+    member_changed = set(_changed_files(repo, base, facts["member_head"]))
+    patterns = [pattern for pattern in ledger["scope"][member] if pattern not in COMPANION_SCOPE]
+    touched = sorted(set(drift) & member_changed)
+    if touched:
+        return f"landings since the check changed files the member changed: {', '.join(touched[:5])}"
+    scoped = sorted(path for path in drift if _matches_scope(path, patterns))
+    if scoped:
+        return f"landings since the check changed paths inside the member's frozen scope: {', '.join(scoped[:5])}"
+    shared = sorted(path for path in drift if path in GLOBAL_INPUT_FILES or Path(path).name == "conftest.py")
+    if shared:
+        return f"landings since the check changed shared test inputs: {', '.join(shared[:5])}"
+    reached = sorted(set(drift) & _test_import_closure(facts["worktree"], check["verification"]))
+    if reached:
+        return f"landings since the check changed code the member's verification tests import: {', '.join(reached[:5])}"
+    data = sorted(
+        path for path in drift if not path.endswith(".py") and not _matches_scope(path, list(COMPANION_SCOPE))
+    )
+    if data:
+        return f"landings since the check changed non-Python files tests may read: {', '.join(data[:5])}"
+    mapped = _mapped_tests(repo, base)
+    if mapped is None:
+        return "the tests affected by the landings since the check could not be determined"
+    overlap = sorted(_covered_tests(mapped, check["verification"]))
+    if overlap:
+        return f"landings since the check affect the member's verification tests: {', '.join(overlap[:5])}"
+    return None
+
+
+def _stale_merge_refusal(repo: Path, check: dict, head: str, merged: str, member_head: str) -> str | None:
+    base = str(check["integration_head"])
+    member_changed = set(_changed_files(repo, base, member_head))
+    drift = set(_changed_files(repo, base, head))
+    if set(_changed_files(repo, head, merged)) != member_changed:
+        return "the merge changed paths other than the member's own"
+    stray = sorted(set(_changed_files(repo, member_head, merged)) - drift)
+    if stray:
+        return f"the merged tree differs from the member tree outside the landed changes: {', '.join(stray[:5])}"
+    mapped = _mapped_tests(repo, head)
+    if mapped is None:
+        return "the tests affected by the member could not be determined"
+    extra = sorted(mapped - _covered_tests(mapped, check["verification"]))
+    if extra:
+        return f"the merged tree maps tests the member never ran: {', '.join(extra[:5])}"
+    return None
+
+
+def _landing_check(repo: Path, ledger: dict, tracker: dict, facts: dict, head: str, dependencies: list[str]) -> dict:
+    exact = _read_check(facts["worktree"], facts["member_head"], head)
+    if exact is not None:
+        return exact
+    reasons = []
+    for record in sorted(_check_bases(facts["worktree"], facts["member_head"]), key=lambda r: str(r.get("checked_at"))):
+        reason = _stale_base_refusal(repo, ledger, tracker, record, facts, head, dependencies)
+        if reason is None:
+            return record
+        reasons.append(reason)
+    detail = f" ({reasons[-1]})" if reasons else ""
+    raise BatchError(
+        "the integration head moved since the member synced, or the member never ran batch-member-check at "
+        f"this head{detail}: merge {ledger['integration_branch']} into the member and run batch-member-check again"
+    )
+
+
+def _landing_preconditions(
+    repo: Path, ledger: dict, tracker: dict, member: str, facts: dict, head: str, dependencies: list[str]
+) -> dict:
     if not _is_clean(facts["worktree"]):
         raise BatchError("member worktree is not clean")
     if head not in tracker_heads(tracker):
@@ -984,20 +1178,18 @@ def _landing_preconditions(repo: Path, ledger: dict, tracker: dict, member: str,
         raise BatchError(
             f"tracker integration head {tracker.get('integration_head')} differs from {head}; run batch-status"
         )
-    check = _read_check(facts["worktree"], facts["member_head"], head)
-    if check is None:
-        raise BatchError(
-            "the integration head moved since the member synced, or the member never ran batch-member-check at "
-            f"this head: merge {ledger['integration_branch']} into the member and run batch-member-check again"
-        )
-    if not _is_ancestor(repo, head, facts["member_head"]):
-        raise BatchError("member does not contain the current integration head")
+    check = _landing_check(repo, ledger, tracker, facts, head, dependencies)
+    base = str(check["integration_head"])
+    if not _is_ancestor(repo, base, facts["member_head"]):
+        raise BatchError("member does not contain the integration head its check ran at")
     trusted = str(check.get("trusted_sha", ""))
     start_head = str(ledger.get("start_head", ""))
     if not _develop_is_trusted(repo, trusted, start_head):
         raise BatchError("the recorded trusted commit is not an ancestor of origin/develop or predates start_head")
-    review, changed = _review_and_scope(repo, ledger, member, head, facts["member_head"], trusted)
+    review, changed = _review_and_scope(repo, ledger, member, base, facts["member_head"], trusted)
     return {
+        "check": check,
+        "base": base,
         "trusted": trusted,
         "review": review,
         "changed": changed,
@@ -1235,13 +1427,13 @@ def land_member(repo: Path, member: str, *, push: bool = True, accepted_writes: 
             "integration head moves past the recorded head: take it now, before landing, and keep the generation "
             "for the prepare step"
         )
-    gate = _landing_preconditions(repo, ledger, tracker, member, facts, head)
+    gate = _landing_preconditions(repo, ledger, tracker, member, facts, head, dependencies)
     _refuse_primary_edits(repo, member, ledger["scope"][member])
     _, write_warnings, _ = _check_member_writes(repo, member, facts["worktree"], ledger, tracker, accepted_writes)
     warnings = [*write_warnings, *_preflight_gate(repo, facts["member_head"])]
-    if gate["preflight"] != [*DEFAULT_PREFLIGHT_COMMAND, f"BASE={head}"]:
+    if gate["preflight"] != [*DEFAULT_PREFLIGHT_COMMAND, f"BASE={gate['base']}"]:
         warnings.append(f"member preflight was not the default: {' '.join(gate['preflight']) or 'not recorded'}")
-    merged = _git_merge(repo, member, head, facts["member_head"], ledger)
+    merged = _git_merge(repo, member, head, facts["member_head"], ledger, gate["check"])
     try:
         reviewed_writes, _, sessions_through = _check_member_writes(
             repo, member, facts["worktree"], ledger, tracker, accepted_writes
@@ -1253,7 +1445,7 @@ def land_member(repo: Path, member: str, *, push: bool = True, accepted_writes: 
         "member_branch": facts["branch"],
         "member_worktree": str(facts["worktree"]),
         "member_head": facts["member_head"],
-        "source_base": head,
+        "source_base": gate["base"],
         "merge_head": merged,
         "changed_files": gate["changed"],
         "trusted_sha": gate["trusted"],
@@ -1301,7 +1493,7 @@ def _reconstruct_landing(
     if merged_tree != member_tree:
         raise BatchError(
             f"merge {merge_head} has tree {merged_tree}, not the member tree {member_tree}; it carries edits "
-            "the member never checked"
+            f"the member never checked; reset the integration branch to {source_base} and land again"
         )
     if source_base not in tracker_heads(tracker):
         raise BatchError(f"merge {merge_head} was made on {source_base}, which is not a recorded integration head")
@@ -1335,7 +1527,7 @@ def _reconstruct_landing(
     }
 
 
-def _git_merge(repo: Path, member: str, head: str, member_head: str, ledger: dict) -> str:
+def _git_merge(repo: Path, member: str, head: str, member_head: str, ledger: dict, check: dict) -> str:
     message = f"Merge {member} into {ledger['integration_branch']}"
     proc = subprocess.run(
         ["git", "merge", "--no-ff", "--no-edit", "-m", message, member_head],
@@ -1352,11 +1544,17 @@ def _git_merge(repo: Path, member: str, head: str, member_head: str, ledger: dic
     merged_tree = _git(repo, "rev-parse", "HEAD^{tree}")
     member_tree = _git(repo, "rev-parse", f"{member_head}^{{tree}}")
     if merged_tree != member_tree:
-        _git(repo, "reset", "--hard", head)
-        raise BatchError(
-            f"merged tree {merged_tree} differs from the member tree {member_tree}; the merge was undone "
-            f"and the integration head is back at {head}"
+        stale = (
+            "the check ran at the current head"
+            if check["integration_head"] == head
+            else _stale_merge_refusal(repo, check, head, merged, member_head)
         )
+        if stale is not None:
+            _git(repo, "reset", "--hard", head)
+            raise BatchError(
+                f"merged tree {merged_tree} differs from the member tree {member_tree} ({stale}); "
+                f"the merge was undone and the integration head is back at {head}"
+            )
     if not _is_clean(repo):
         _git(repo, "reset", "--hard", head)
         raise BatchError(f"the merge left the integration worktree dirty; it was undone and the head is back at {head}")

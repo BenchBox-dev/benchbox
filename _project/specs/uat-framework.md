@@ -136,6 +136,7 @@ tests/uat/
 | `compatibility.py` | Platform/benchmark compatibility rules; record compatibility-pruned cells with rule metadata | — |
 | `docker_assets.py` | Single connection registry: compose-file map, compose-derived host ports + platform options, safe project-scoped compose commands | 180 |
 | `docker_cleanup.py` | Docker stack teardown at platform boundaries; project-scoped down/volume handling | — |
+| `starrocks_evidence.py` | Bounded, redacted FE/BE logs, heap/blacklist/memory snapshots and host metadata collected before managed StarRocks teardown | — |
 | `container_cleanup.py` | Apple `container`-engine sibling of `docker_cleanup.py`; backs `make uat-docker-cleanup ENGINE=container` | — |
 | `artifact_hygiene.py` | Local-artifact hygiene guard: flags worktree-local `benchmark_runs/` growth whenever the resolved output root is outside the worktree — including the default `../benchmark_runs`, not only a configured one; report-only (`make uat-artifact-hygiene`) | — |
 | `cells_io.py` | `cells.jsonl` + accounting-sidecar read/write codec; single schema shared by `orchestrator.py` and `_cli.py` | — |

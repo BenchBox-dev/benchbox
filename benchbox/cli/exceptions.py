@@ -353,24 +353,6 @@ def create_error_handler(console: Union[Console, QuietConsoleProxy, None] = None
 
 class ValidationRules:
     @staticmethod
-    def validate_scale_factor(scale_factor: float) -> None:
-        if scale_factor <= 0:
-            raise ValidationError(
-                "Scale factor must be positive",
-                details={"provided_value": scale_factor, "valid_range": "> 0"},
-            )
-
-        if scale_factor > 100:
-            raise ValidationError(
-                "Scale factor is very large and may cause resource issues",
-                details={
-                    "provided_value": scale_factor,
-                    "recommended_range": "0.01 - 10.0",
-                    "warning": "Large scale factors require significant memory and disk space",
-                },
-            )
-
-    @staticmethod
     def validate_benchmark_name(name: str, available_benchmarks: list[str]) -> None:
         if not name:
             raise ValidationError("Benchmark name cannot be empty")

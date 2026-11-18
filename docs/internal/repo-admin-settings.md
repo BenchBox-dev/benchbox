@@ -564,11 +564,16 @@ instead and refuses a tag on a maintenance line unless:
   to a state older than the earlier copy carried (and so than the tag's own).
   The creation commit must also match that
   snapshot on every reviewer file, whether or not it changed it: the review
-  policy and its omp config, the Theseus lock, the soundness and inert path
-  manifests, `scripts/theseus_cli.py`, `scripts/theseus_release_check.py`,
-  `_project/scripts/theseus_bootstrap.py`, and every `review-*` or `oracle-*`
-  workflow in either tree. A line therefore cannot keep the tag's older reviewer
-  workflows or carry only some of develop's.
+  policy, its omp config and its guidance, the Theseus lock, the soundness and
+  inert path manifests, `scripts/theseus_cli.py`,
+  `scripts/theseus_release_check.py`, `_project/scripts/theseus_bootstrap.py`,
+  the matcher the lock pins (`_project/scripts/soundness_paths.py`), the
+  gateway host script, and every `review-*` or `oracle-*` workflow in either
+  tree, and every file in `CREATION_REVIEW_TESTS` (the tests that pin those
+  files and the fixture one of them reads). A line therefore cannot keep the
+  tag's older reviewer workflows, carry only some of develop's, or carry
+  develop's files without the tests that pin them, which the line's own CI
+  would then fail.
 
 `scripts/release_line_create.py` builds the creation commit and runs these
 creation checks before pushing. `release_artifact_consumer.py verify-line

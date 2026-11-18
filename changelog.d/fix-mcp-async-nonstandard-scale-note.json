@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed the MCP start_benchmark and get_benchmark_status tools not reporting a non-standard scale factor: both now return a warnings list with the note that results are not comparable with published results."
+    }
+  ]
+}

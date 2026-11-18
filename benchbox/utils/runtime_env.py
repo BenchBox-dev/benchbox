@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import importlib
 import importlib.machinery
+import importlib.util
 import logging
 import os
 import re
@@ -13,6 +14,11 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Iterable
+
+from packaging.version import InvalidVersion, Version
+
+from benchbox.utils.printing import emit
+from benchbox.utils.session import is_non_interactive_session
 
 try:
     from importlib import metadata as importlib_metadata
@@ -186,6 +192,38 @@ def _purge_module_tree(module_name: str) -> None:
             sys.modules.pop(loaded, None)
 
 
+ISOLATABLE_NATIVE_DRIVER_IMPORTS = frozenset({"duckdb"})
+
+
+def probe_unloaded_driver(import_name: str, distribution: str) -> tuple[bool, str | None]:
+    try:
+        spec = importlib.util.find_spec(import_name)
+    except (ImportError, ValueError):
+        return False, None
+    if spec is None:
+        return False, None
+    try:
+        return True, importlib_metadata.version(distribution)
+    except importlib_metadata.PackageNotFoundError:
+        return True, None
+
+
+def _reject_already_loaded_native_driver(import_name: str, runtime_path: str, requested: str | None) -> None:
+    loaded = sys.modules.get(import_name)
+    if loaded is None:
+        return
+    if _module_is_from_runtime(loaded, runtime_path):
+        return
+    raise RuntimeError(
+        f"Module '{import_name}' version {getattr(loaded, '__version__', 'unknown')} was already loaded from "
+        f"'{_module_origin(loaded) or 'unknown'}' before the isolated runtime '{runtime_path}'"
+        + (f" for version {requested}" if requested else "")
+        + " could be selected. Native driver modules cannot be reloaded in-process, so the requested version "
+        "must be the first one imported; start a new process and avoid importing the driver before the platform "
+        "adapter is created."
+    )
+
+
 def _module_origin(module: object) -> str | None:
     return str(getattr(module, "__file__", "")) or None
 
@@ -228,7 +266,7 @@ def load_driver_module(
         if not runtime_dir.exists():
             raise RuntimeError(f"Runtime path does not exist for module '{import_name}': {runtime_path}")
 
-        _purge_module_tree(import_name)
+        _reject_already_loaded_native_driver(import_name, runtime_path, resolution.requested)
         sys.path.insert(0, runtime_path)
         try:
             module = importlib.import_module(import_name)
@@ -280,11 +318,40 @@ def _run_install_command(command: list[str]) -> None:
         )
 
 
+class DriverAutoInstallRefused(RuntimeError):
+    pass
+
+
+class InvalidDriverVersion(RuntimeError):
+    pass
+
+
+def _auto_install_environment_enabled() -> bool:
+    return os.getenv("BENCHBOX_DRIVER_AUTO_INSTALL", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _should_auto_install(auto_install: bool) -> bool:
-    if auto_install:
+    if _auto_install_environment_enabled():
         return True
-    env_flag = os.getenv("BENCHBOX_DRIVER_AUTO_INSTALL", "").strip().lower()
-    return env_flag in {"1", "true", "yes", "on"}
+    if not auto_install:
+        return False
+    if is_non_interactive_session():
+        raise DriverAutoInstallRefused(
+            "Refusing to install a driver package in a non-interactive session: driver_auto_install was set as a "
+            "platform option, which is not enough here. Set BENCHBOX_DRIVER_AUTO_INSTALL=1 to allow the install, "
+            "or install the package yourself."
+        )
+    return True
+
+
+def _validate_driver_version(package: str, version: str) -> None:
+    try:
+        Version(version)
+    except InvalidVersion:
+        raise InvalidDriverVersion(
+            f"driver_version '{version}' for package '{package}' is not a valid package version "
+            "(for example 1.2.3); refusing to pass it to the installer."
+        ) from None
 
 
 def ensure_driver_version(
@@ -293,6 +360,7 @@ def ensure_driver_version(
     requested_version: str | None,
     auto_install: bool = False,
     install_hint: str | None = None,
+    allow_install: bool = True,
 ) -> DriverResolution:
 
     if not package_name:
@@ -306,6 +374,8 @@ def ensure_driver_version(
 
     normalized_package = _normalize_package_name(package_name)
     requested = (requested_version or "").strip() or None
+    if requested is not None:
+        _validate_driver_version(normalized_package, requested)
 
     installed_version = _get_installed_version(normalized_package)
     logger.debug(
@@ -361,7 +431,7 @@ def ensure_driver_version(
             runtime_python_executable=isolated_runtime.python_executable,
         )
 
-    auto_install_enabled = _should_auto_install(auto_install)
+    auto_install_enabled = allow_install and _should_auto_install(auto_install)
     if not auto_install_enabled:
         hint = install_hint or f"uv add {normalized_package}=={requested}"
         raise RuntimeError(
@@ -373,6 +443,12 @@ def ensure_driver_version(
             )
             + f"\nSuggested command: {hint}"
         )
+
+    emit(
+        f"Installing {normalized_package}=={requested} into {sys.executable} (driver auto-install).",
+        quiet=False,
+        stderr=True,
+    )
 
     commands_to_try = [
         ["uv", "pip", "install", "--python", sys.executable, f"{normalized_package}=={requested}"],

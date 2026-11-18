@@ -36,9 +36,16 @@ def test_blind_spot_command_uses_active_protocol() -> None:
     assert "docs/development/review-protocol.md" not in command_text
     assert "docs/development/agent-review-protocol.md" not in command_text
     assert "_project/blind-spots/README.md" in command_text
-    assert "~/.benchbox/finding-drafts" in command_text
+    assert "~/.tractable/finding-drafts/benchbox" in command_text
+    assert "~/.benchbox/finding-drafts" not in command_text
     assert ".claude/skills" not in command_text
     assert (REPO_ROOT / "docs" / "agent" / "review-protocol.md").is_file()
+
+
+def test_validator_default_drafts_dir_matches_capture_command() -> None:
+    command_text = (REPO_ROOT / ".claude" / "commands" / "blind-spot.md").read_text(encoding="utf-8")
+
+    assert validate_blind_spot.DEFAULT_DRAFTS_DIR in command_text
 
 
 def test_superseded_protocol_doc_is_demoted() -> None:
@@ -56,7 +63,8 @@ def test_blind_spot_command_forbids_direct_db_write() -> None:
     command_text = (REPO_ROOT / ".claude" / "commands" / "blind-spot.md").read_text(encoding="utf-8")
 
     assert "do not commit" in command_text
-    assert "todo finding sync" in command_text
+    assert "todo finding sync" not in command_text
+    assert "separate, user-authorized step" in command_text
     assert "local-only" in command_text
 
 

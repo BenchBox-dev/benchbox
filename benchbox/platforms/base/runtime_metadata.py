@@ -73,7 +73,16 @@ _STANDARD_PLATFORM_INFO_KEYS = {
 _STATUS_RANK = {"not_requested": 0, "unavailable": 0, "error": 1, "partial": 2, "available": 3}
 _SOURCE_RANK = {
     **dict.fromkeys(
-        ("registered_default", "saved_config", "environment_variable", "cli_option", "runtime_override", "requested"), 2
+        (
+            "registered_default",
+            "applied_defaults",
+            "saved_config",
+            "environment_variable",
+            "cli_option",
+            "runtime_override",
+            "requested",
+        ),
+        2,
     ),
     "unavailable": 0,
     "inferred": 1,

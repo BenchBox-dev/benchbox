@@ -1427,11 +1427,14 @@ def _web_multi_warehouse_pandas(
 
     if len(result) == 0:
         return pd.DataFrame({"order count": [0], "total shipping cost": [None], "total net profit": [None]})
+    order_count, total_shipping, total_profit = materialize(
+        result["ws_order_number"].nunique(), result["ws_ext_ship_cost"].sum(), result["ws_net_profit"].sum()
+    )
     return pd.DataFrame(
         {
-            "order count": [result["ws_order_number"].nunique()],
-            "total shipping cost": [result["ws_ext_ship_cost"].sum()],
-            "total net profit": [result["ws_net_profit"].sum()],
+            "order count": [order_count],
+            "total shipping cost": [total_shipping],
+            "total net profit": [total_profit],
         }
     )
 
@@ -8988,7 +8991,7 @@ def q28_expression_impl(ctx: DataFrameContext) -> Any:
         stats = bucket.select(
             ctx.mean("ss_list_price").alias(f"B{i + 1}_LP"),
             col("ss_list_price").count().alias(f"B{i + 1}_CNT"),
-            col("ss_list_price").filter(col("ss_list_price").is_not_null()).n_unique().alias(f"B{i + 1}_CNTD"),
+            col("ss_list_price").n_unique().alias(f"B{i + 1}_CNTD"),
         )
 
         bucket_results.append(stats)

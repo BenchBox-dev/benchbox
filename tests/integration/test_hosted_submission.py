@@ -25,6 +25,7 @@ pytestmark = [
 def _community_publish_salt(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setenv("BENCHBOX_MACHINE_ID_SALT", "integration-test-community-publish-salt")
+    monkeypatch.setenv("BENCHBOX_ACKNOWLEDGE_HOSTED_SUBMISSION", "1")
 
 
 class FakeKeyring:

@@ -252,7 +252,7 @@ def test_ratchet_rejects_renaming_a_wheel_to_a_different_distribution_and_owner(
         "provenance": "_project/scripts/pyproject.toml",
     }
     renamed_entry = {
-        "path": "_project/scripts/vendor/tractable-1.1.1-py3-none-any.whl",
+        "path": "_project/scripts/vendor/tractable-1.2.0-py3-none-any.whl",
         "owner": "tractable",
         "provenance": "_project/scripts/pyproject.toml",
     }
@@ -683,19 +683,19 @@ def test_legacy_command_markers_are_neutralized_in_text_and_annotations() -> Non
 
 def test_comment_policy_job_sets_up_every_tool_before_the_candidate_checkout() -> None:
     workflow = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
-    steps = workflow["jobs"]["comment-policy"]["steps"]
-    uses = [str(step.get("uses", "")).split("@")[0] for step in steps]
+    steps = workflow["jobs"]["short-checks"]["steps"]
+    policy = next(index for index, step in enumerate(steps) if step.get("id") == "comment-policy")
+    uses = [str(step.get("uses", "")).split("@")[0] for step in steps[:policy]]
+    assert all(uses), "no command may run before the comment-policy step"
     checkout = uses.index("actions/checkout")
     for tool in ("actions/setup-python", "astral-sh/setup-uv"):
         assert uses.index(tool) < checkout, f"{tool} must run before the candidate checkout"
-    assert checkout == max(index for index, name in enumerate(uses) if name) and steps[checkout + 1]["name"].startswith(
-        "Enforce"
-    )
+    assert checkout == policy - 1 and steps[policy]["name"].startswith("Enforce")
 
 
 def test_comment_policy_job_does_not_let_setup_uv_scan_the_candidate_checkout() -> None:
     workflow = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
-    steps = workflow["jobs"]["comment-policy"]["steps"]
+    steps = workflow["jobs"]["short-checks"]["steps"]
     uv = next(step for step in steps if str(step.get("uses", "")).startswith("astral-sh/setup-uv@"))
     assert uv["with"] == {
         "enable-cache": False,
@@ -4967,7 +4967,7 @@ def test_ci_invocation_still_rejects_a_new_fixture_without_oracle_cover(
 
 def test_only_the_commit_hook_requests_same_commit_fixture_acceptance() -> None:
     workflow = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
-    steps = workflow["jobs"]["comment-policy"]["steps"]
+    steps = workflow["jobs"]["short-checks"]["steps"]
     runs = "\n".join(step.get("run", "") for step in steps)
     assert "comment-policy-runner.py" in runs
     assert "accept-same-commit" not in runs

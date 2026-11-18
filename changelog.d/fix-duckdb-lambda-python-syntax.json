@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "DuckDB lambda expressions now run as lambda x: expr on DuckDB 1.3 and later, so BenchBox no longer sets the deprecated lambda_syntax option on DuckDB 2.x connections; runtimes older than 1.3 keep the arrow form."
+    }
+  ]
+}

@@ -300,6 +300,9 @@ pull request.
   file and delete the old one, point `[tool.uv.sources]` at it, run `uv lock`
   in that project, change only `path` in the policy entry, and commit them
   together.
+- **Vendored tracker-runtime bumps:** a bump of the vendored tractable wheel
+  depends only on the GitHub release, whose `SHA256SUMS` the ratchet verifies.
+  It does not wait for PyPI publication.
 - Generated first-party code and `_sources/compilation` scripts are in scope.
   TPC templates and catalog-owned skill mirrors are not; they have their own
   provenance.
@@ -311,10 +314,12 @@ module docstrings are transition debt, not an example.
 
 ## How CI protects the check
 
-The `comment-policy` job runs on every pull request and feeds the required
-tooling result. Its exit status decides the result; the log is for information
-only. The job stops a pull request from weakening the check
-that judges it:
+The comment-policy check runs on every pull request as the first two steps of
+the `short-checks` job in `ci.yml`, after `ci-paths` and whatever it decides,
+and feeds the required tooling result through the job's `comment-policy`
+output. The steps' exit status decides the result; the log is for information
+only. They run before any command from the pull request, and they stop a pull
+request from weakening the check that judges it:
 
 - **Fixed base.** The base SHA comes from the GitHub event and cannot be
   overridden. A pull request compares against the first parent of the merge

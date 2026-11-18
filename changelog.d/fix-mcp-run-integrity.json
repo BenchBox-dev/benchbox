@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "MCP run_benchmark now returns the result integrity validator's verdict (PASS, WARN or FAIL with the non-passing checks) in an integrity field of a completed run, the same verdict validate_results gives for the result file."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "MCP run_benchmark now returns an MCP error (is_error true) with the cause when a run ends without a result file, because the result export failed, no result was produced, or execution raised, instead of a normal response with status incomplete."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Reused TPC-H databases are now checked against exact row counts for orders, customer, part, partsupp, supplier, nation and region, and a tight lineitem range, so a database whose tables no longer hold the generated rows, such as one changed by earlier refresh inserts, is recreated instead of reused and returning different query results."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "compare now refuses, with the not-comparable exit code, a pair where one side is an MCP result from before MCP and CLI runs shared compression and platform-option defaults. Platform option values taken from the applied run configuration are now labelled applied_defaults; earlier results keep the saved_config label."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "benchbox results validate on a directory no longer reports the corpus inventory index as FAIL, and benchbox submit names the actual benchmark when it refuses an unofficial result. A manifest sidecar can now carry a known_defect_reason beside known_defects, which the explorer pipeline records on excluded results."
+    }
+  ]
+}

@@ -284,14 +284,16 @@ def test_snapshot_records_changed_tracked_paths_with_hashes(tmp_path: Path) -> N
     assert (primary / "README.md").read_text(encoding="utf-8") == "pre-existing owner edit\n"
 
 
-def test_snapshot_of_clean_primary_is_empty_and_report_is_silent(tmp_path: Path) -> None:
+def test_preexisting_untracked_file_is_recorded_and_report_is_silent(tmp_path: Path) -> None:
     primary, linked = _linked_worktree(tmp_path)
     (primary / "untracked.txt").write_text("scratch\n", encoding="utf-8")
 
     assert _run_check_in(linked, primary, "snapshot").returncode == 0
     result = _run_check_in(linked, primary, "report")
 
-    assert _snapshot_path(linked).read_text(encoding="utf-8") == ""
+    assert [line.split("\t")[1] for line in _snapshot_path(linked).read_text(encoding="utf-8").splitlines()] == [
+        "untracked.txt"
+    ]
     assert result.returncode == 0
     assert result.stderr == ""
 
@@ -347,6 +349,42 @@ def test_report_without_snapshot_does_not_fail(tmp_path: Path) -> None:
     assert "No primary-clone snapshot" in result.stderr
 
 
+PINNED_REV = "a" * 40
+
+
+def _skills_receipt(primary: Path, revs: list[str] | None, linked: Path) -> None:
+    (linked / "skill-sync.conf").write_text(
+        f"target = .agents/skills\n\nsource = catalog\nrev    = {PINNED_REV}\nskill  = todo\n", encoding="utf-8"
+    )
+    (primary / ".git" / "info" / "exclude").write_text(".agents/\n", encoding="utf-8")
+    if revs is None:
+        return
+    receipt = primary / ".agents" / "skills" / "skill-sync.receipt"
+    receipt.parent.mkdir(parents=True)
+    receipt.write_text("".join(f"source = catalog\nrev = {rev}\nskill = todo\n\n" for rev in revs), encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("revs", "stale"),
+    [([PINNED_REV], False), (["b" * 40], True), ([PINNED_REV, "b" * 40], True), (None, False)],
+    ids=["current", "older", "extra-source", "absent"],
+)
+def test_report_warns_when_the_primary_agents_skills_copy_is_not_at_the_pinned_revisions(
+    tmp_path: Path, revs: list[str] | None, stale: bool
+) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    _skills_receipt(primary, revs, linked)
+    _run_check_in(linked, primary, "snapshot")
+    before = sorted((primary / ".agents").rglob("*")) if revs else []
+
+    result = _run_check_in(linked, primary, "report")
+
+    assert result.returncode == 0
+    assert ("not at the catalog revisions" in result.stderr) is stale
+    assert ("make skill-sync" in result.stderr) is stale
+    assert (sorted((primary / ".agents").rglob("*")) if revs else []) == before
+
+
 def test_write_preflight_records_snapshot_and_passes_with_dirty_primary(tmp_path: Path) -> None:
     primary, linked = _dirty_primary_with_linked(tmp_path)
     _write_generated_hook(primary, sys.executable)
@@ -400,11 +438,26 @@ def test_write_preflight_fails_when_primary_gains_tracked_changes_after_snapshot
     assert (primary / "README.md").read_text(encoding="utf-8") == "stray write\n"
 
 
-def test_write_preflight_ignores_untracked_primary_files_and_preexisting_dirt(tmp_path: Path) -> None:
+def test_write_preflight_fails_when_primary_gains_an_untracked_file_after_snapshot(tmp_path: Path) -> None:
     primary, linked = _dirty_primary_with_linked(tmp_path)
     _write_generated_hook(primary, sys.executable)
     assert _write_preflight_in(linked, primary).returncode == 0
-    (primary / "scratch.txt").write_text("untracked\n", encoding="utf-8")
+    (primary / "scratch.txt").write_text("stray new file\n", encoding="utf-8")
+
+    result = _write_preflight_in(linked, primary)
+
+    assert result.returncode == 1
+    assert "scratch.txt" in result.stderr
+    assert (primary / "scratch.txt").read_text(encoding="utf-8") == "stray new file\n"
+
+
+def test_write_preflight_ignores_preexisting_and_gitignored_untracked_primary_files(tmp_path: Path) -> None:
+    primary, linked = _dirty_primary_with_linked(tmp_path)
+    _write_generated_hook(primary, sys.executable)
+    (primary / "local-notes.txt").write_text("owner's file\n", encoding="utf-8")
+    (primary / ".git" / "info" / "exclude").write_text("*.log\n", encoding="utf-8")
+    assert _write_preflight_in(linked, primary).returncode == 0
+    (primary / "run.log").write_text("ignored output\n", encoding="utf-8")
 
     assert _write_preflight_in(linked, primary).returncode == 0
 
@@ -948,6 +1001,8 @@ def test_preflight_refuses_live_foreign_session_and_takeover_replaces_it(tmp_pat
     assert second.returncode == 1
     assert "worktree ownership check failed" in second.stderr
     assert "session-one" in second.stderr
+    assert "BENCHBOX_WORKTREE_TAKEOVER=1 make agent-write-preflight" in second.stderr
+    assert "docs/agent/handoffs.md" in second.stderr
     assert renewed.returncode == 0, renewed.stderr
     assert taken.returncode == 0, taken.stderr
     assert previous_owner_now.returncode == 1

@@ -1,14 +1,8 @@
 # Batch close-out
 
-Use `closeout` when the user's message explicitly invokes it for a named batch;
-the authorization rule is `shared-review-protocol/SKILL.md` §1
-(`[REVIEW-AUTH-001]`). A request asking only for review or validation stays
-review-only: report findings and stop, and `closeout` then requires a later
-user message authorizing remediation and tracker closure. Name the batch, the
-review report, and the exact revisions reviewed. When `closeout` is authorized
-but no review report exists yet, produce the review phase in-turn as a stage of
-the authorized work, then proceed. When `closeout` is not authorized, collect
-those inputs without editing and ask for the required authorization.
+Authorization: SKILL.md, "Close-out authorization". Name the batch, the review
+report, and the exact revisions reviewed. When `closeout` is authorized and no
+review report exists, run the review in-turn as its first stage.
 
 One authorized `closeout` call covers fixes for the reported findings,
 follow-up PRs and follow-up items, and tracker closure for the named batch. It
@@ -28,10 +22,8 @@ Record changed or superseded findings. Do not silently apply a stale review.
 
 ## Phase 2 — remediate
 
-Disposition every finding in the report using
-`shared-review-protocol/references/review-response.md` before editing. Record
-the evidence that disposition requires; a finding you cannot classify becomes
-a verification item, not a dismissal.
+Disposition every finding with
+`shared-review-protocol/references/review-response.md` before editing.
 
 1. Fix every Critical and Required finding that still applies, or record the
    evidence that disproves it.
@@ -39,40 +31,25 @@ a verification item, not a dismissal.
    commits, and PRs. In a prepared batch the fix is a leader commit on the
    integration branch followed by the head advance and binding move, not a new
    member PR.
-3. Re-run the checks that prove each fix. This is implementation verification,
-   not a new review scope.
-4. Turn unfixed Nit or Consider items into documented skips (classified as
+3. Turn unfixed Nit or Consider items into documented skips (classified as
    `DEFER` with a tracking reference or `REBUT` with rationale per
    `shared-review-protocol/references/review-response.md`), or into follow-up
    items with `create_item(needs=[<batch item>])` rather than widening scope.
 
 ## Phase 3 — close tracker state
 
-Prepared feature members remain open until they are landed, the final PR is
-bound to the current integration head, and that bound PR has **actually merged**.
-Closeout fixes are leader commits followed by the head advance and CAS binding
-move, not member PRs; withdraw auto-merge before publishing them.
-
-Validate the completed successful final run against its current relevant
-head/checkout/receipt-command/ownership/PR bindings. If drift requires a new
-invocation, execute every member's receipt command and the combined fast tier
-afresh, invalidating old success first. The derived `acceptance_required` list
-is a tracker minimum, not the consumer's verification set. Then the leader
-re-takes each member and calls `finish` with complete bound final evidence.
-Never close solely because a receipt exists, a branch is an ancestor, or the PR
-is green. Heads cannot change once any member is done. After all members finish,
-follow merged-only member cleanup and leader-last worktree finish in
-`references/batch.md`.
+Close members per `references/batch.md`, Finish. Never close solely because a
+receipt exists, a branch is an ancestor, or the PR is green.
 
 1. If you hold the claim, call `finish(id=..., generation=...)`.
-2. To close externally merged work without a live claim, `take` the item first,
-   then `finish`. If someone else holds the claim, tell the human to close it.
+2. To close externally merged work without a live claim, `take` the item, then
+   `finish`. If another worker holds the claim, inspect it with `show_item`; use
+   `takeover` only when that session cannot resume (SKILL.md); otherwise ask the
+   holder or the human.
 3. Leave blocked items `open`/`blocked` and record the exact unblock condition.
 4. Dropping an item as unnecessary is a human decision — report it with the
-   fixing revision identified, do not `drop` it yourself. When the owner
-   decides to drop, call `drop(id=..., reason=...)` with their decision and
-   any successor item as the `reason`; do not add a
-   separate `context_append` note.
+   fixing revision identified, do not `drop` it yourself. Once the owner
+   decides, see SKILL.md, Planning.
 
 ## Report
 

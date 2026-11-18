@@ -69,11 +69,21 @@ Shell variables in `CMD` reach the shell unchanged: a `CMD` of `echo $HOME > $HO
 
 `make heavy-status` reports the lock holder and its age, live waiters, the
 admission readings (pressure level, available memory, disk), VM inventory,
-the top 10 processes by physical footprint, and orphans: server processes
-(JVMs, ClickHouse, PostgreSQL and similar) with parent pid 1 whose working
-directory is inside a BenchBox worktree. It never signals or modifies a
+the top 10 processes by physical footprint, the top 5 by CPU use, and orphans:
+server processes (JVMs, ClickHouse, PostgreSQL and similar) and shells with
+parent pid 1 whose working directory is inside a BenchBox worktree. It never signals or modifies a
 process, VM, or the lock file. Stopping an orphan is the owner's call or the
 task that started it.
+
+When the sentinel has reported an orphaned CPU-bound shell (see below) and that
+shell is still running, `make heavy-status` adds an `ORPHAN SPIN` entry with
+its pid, CPU share, how long it has been busy, and cwd, and `make heavy-run`
+prints the same entry before admission. Admission only prints it and never
+refuses on it: refusing would block all heavy work on a process the agent cannot
+safely stop. The sentinel records active reports in
+`~/.benchbox/orphan-spin.json` (beside the sentinel log); the readers
+drop entries whose process has exited, and without a running sentinel nothing is
+reported because a one-shot status cannot observe sustained CPU use.
 
 On `Error 76`, run the command again with `HEAVY_ADMIT_WAIT`; do not write a
 retry loop, and never set `BENCHBOX_HEAVY_ADMIT=force` to get past it. Time spent queued for the host
@@ -213,8 +223,33 @@ RAM. The sentinel logs a WARNING with the five largest once when the flood
 starts and a line when it clears. Nothing is signalled; stop the launching
 shells instead.
 
+## Orphaned CPU-bound shells
+
+Shells are never memory candidates, so a spin loop that escapes its process
+group (`setsid`, a double fork) holds a core without tripping the memory
+check. The sentinel therefore also watches for shells, and only reports them. A
+shell is reported when all of these hold: its parent pid is 1, it belongs to
+the same user, its working directory is inside a BenchBox checkout or linked
+worktree, and its own CPU time grew by at least
+`BENCHBOX_ORPHAN_SPIN_CPU_FRACTION` (default 0.5) of wall time at every sample
+for `BENCHBOX_ORPHAN_SPIN_SECONDS` (default 300) seconds. The sentinel logs one
+WARNING per shell with the cwd and command, and a line when it exits. It never
+signals a shell: stopping it is the owner's call or the task that started it.
+
+False-positive risk: a deliberately detached, CPU-bound shell script that you
+started in a worktree matches and gets a log line; nothing else happens. An
+interactive shell, or a shell waiting for a child (`nohup bash -c 'make ...'`),
+does not match even when its parent is pid 1: such a shell uses almost no CPU
+itself, since the work is in its children. A shell
+whose working directory is outside every checkout never matches, whatever it
+does. On the reference host the filter matched no shell when it was added: 19
+shells had parent pid 1, none had a working directory in a worktree.
+
 ## Known limits
 
+- The orphaned-shell watch reads only the shell's own CPU time. A CPU-bound
+  child of an orphaned shell is not itself an orphan and is not reported by the
+  sentinel; `make heavy-status` still lists the orphaned parent shell.
 - A child that forks without `exec` inherits the open lock file descriptor and
   keeps the flock after the wrapper exits.
 - A command that daemonizes (double fork, `nohup`, a start script that

@@ -38,7 +38,7 @@ class TestInteractiveEngineResolution:
         )
 
     def test_explicit_engine_skips_the_prompt(self):
-        from benchbox.cli.commands.run import _interactive_prompt_platform_options
+        from benchbox.cli.run_interactive import _interactive_prompt_platform_options
 
         s = self._state(execution_engine="streaming")
         with (
@@ -52,7 +52,7 @@ class TestInteractiveEngineResolution:
         assert s.database_config.execution_engine == "streaming"
 
     def test_prompted_engine_is_recorded(self):
-        from benchbox.cli.commands.run import _interactive_prompt_platform_options
+        from benchbox.cli.run_interactive import _interactive_prompt_platform_options
 
         s = self._state()
         with (
@@ -65,7 +65,7 @@ class TestInteractiveEngineResolution:
         assert s.resolved_execution_engine == "in-memory"
 
     def test_invalid_explicit_engine_exits(self):
-        from benchbox.cli.commands.run import _interactive_prompt_platform_options
+        from benchbox.cli.run_interactive import _interactive_prompt_platform_options
 
         s = self._state(execution_engine="gpu")
         with (
@@ -78,7 +78,7 @@ class TestInteractiveEngineResolution:
         assert s.ctx.exit.called
 
     def test_explicit_engine_survives_populated_platform_options(self):
-        from benchbox.cli.commands.run import _interactive_prompt_platform_options
+        from benchbox.cli.run_interactive import _interactive_prompt_platform_options
 
         s = self._state(execution_engine="streaming")
         s.parsed_platform_options = {"rechunk": True}

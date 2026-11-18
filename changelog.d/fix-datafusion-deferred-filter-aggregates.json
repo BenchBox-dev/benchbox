@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed DataFusion DataFrame expression filters silently dropping their condition for aggregates other than sum, count, mean, min and max (for example filter(...).n_unique() returned the unfiltered distinct count); every aggregate now applies the filter, and any non-aggregate use of a filtered expression raises an error.",
+      "platforms": ["datafusion-df"]
+    }
+  ]
+}
