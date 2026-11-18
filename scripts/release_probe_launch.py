@@ -16,7 +16,6 @@ RUNS_PAGE = 30
 FINISHED = "completed"
 QUEUED = frozenset({"queued", "waiting", "requested", "pending"})
 RUN_TIMEOUT = 1500.0
-QUEUE_TIMEOUT = 1200.0
 PROBED_PATHS = (
     ".github/workflows/release-v2.yml",
     ".github/workflows/release-v2-probe.yml",
@@ -126,11 +125,9 @@ def wait_for(
     sleep: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.monotonic,
     run_timeout: float = RUN_TIMEOUT,
-    queue_timeout: float = QUEUE_TIMEOUT,
     interval: float = 20.0,
     verdicts: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, dict[str, Any]]:
-    queue_deadline = clock() + queue_timeout
     started_at: dict[str, float] = {}
     verdicts = {} if verdicts is None else verdicts
     while len(verdicts) < len(run_ids):
@@ -141,13 +138,7 @@ def wait_for(
             now = clock()
             if run.get("status") == FINISHED:
                 verdicts[variant] = run
-            elif run.get("status") in QUEUED:
-                if now >= queue_deadline:
-                    raise RuntimeError(
-                        f"run {run_id} for the {variant} probe was still queued after {queue_timeout:g}s and never "
-                        "started; the Actions runner backlog is the cause, not the release workflow"
-                    )
-            else:
+            elif run.get("status") not in QUEUED:
                 started_at.setdefault(variant, now)
                 if now - started_at[variant] >= run_timeout:
                     raise RuntimeError(
@@ -174,7 +165,6 @@ def run_probes(
     sleep: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.monotonic,
     run_timeout: float = RUN_TIMEOUT,
-    queue_timeout: float = QUEUE_TIMEOUT,
 ) -> int:
     known = {int(run["id"]) for run in list_runs(repository, branch, runner)}
     started: dict[str, int] = {}
@@ -193,7 +183,6 @@ def run_probes(
             sleep=sleep,
             clock=clock,
             run_timeout=run_timeout,
-            queue_timeout=queue_timeout,
         )
     except BaseException:
         for variant, run_id in started.items():
@@ -215,7 +204,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--head-sha", required=True)
     parser.add_argument("--pull-request", type=int)
     parser.add_argument("--timeout-seconds", type=float, default=RUN_TIMEOUT)
-    parser.add_argument("--queue-timeout-seconds", type=float, default=QUEUE_TIMEOUT)
     args = parser.parse_args(argv)
     try:
         if args.pull_request is not None:
@@ -229,7 +217,6 @@ def main(argv: list[str] | None = None) -> int:
             args.branch,
             args.head_sha,
             run_timeout=args.timeout_seconds,
-            queue_timeout=args.queue_timeout_seconds,
         )
     except RuntimeError as exc:
         print(f"::error::{exc}", file=sys.stderr)

@@ -146,26 +146,18 @@ def _timed(fake: FakeGh, **kwargs) -> int:
 def test_a_run_that_starts_and_outlives_the_run_limit_fails_and_is_cancelled():
     fake = FakeGh(pending_polls=10**6)
     with pytest.raises(RuntimeError, match="started but did not finish within 100s"):
-        _timed(fake, run_timeout=100.0, queue_timeout=50.0)
+        _timed(fake, run_timeout=100.0)
     assert sorted(fake.cancelled) == sorted(fake.variant_of)
 
 
 def test_queue_time_does_not_count_against_the_run_limit():
     fake = FakeGh(queued_polls=20, pending_polls=3)
-    assert _timed(fake, run_timeout=100.0, queue_timeout=600.0) == 0
+    assert _timed(fake, run_timeout=100.0) == 0
     assert fake.cancelled == []
 
 
-def test_a_run_still_queued_past_the_queue_limit_fails_with_a_distinct_message_and_is_cancelled():
-    fake = FakeGh(queued_polls=10**6)
-    with pytest.raises(RuntimeError, match=r"still queued after 60s and never started") as raised:
-        _timed(fake, run_timeout=10**6, queue_timeout=60.0)
-    assert "did not finish" not in str(raised.value)
-    assert sorted(fake.cancelled) == sorted(fake.variant_of)
-
-
-@pytest.mark.parametrize("status", ["waiting", "requested", "pending"])
-def test_every_not_yet_started_status_counts_as_queued(status):
+@pytest.mark.parametrize("status", ["queued", "waiting", "requested", "pending"])
+def test_a_run_queued_for_hours_is_waited_out_and_its_result_counts(status):
     class Fake(FakeGh):
         def __call__(self, *args):
             result = super().__call__(*args)
@@ -173,34 +165,38 @@ def test_every_not_yet_started_status_counts_as_queued(status):
                 return {**result, "status": status}
             return result
 
-    fake = Fake(queued_polls=10**6)
-    with pytest.raises(RuntimeError, match="still queued"):
-        _timed(fake, run_timeout=10**6, queue_timeout=60.0)
+    fake = Fake(queued_polls=1000, pending_polls=3)
+    clock = FakeClock()
+    assert (
+        launch.run_probes(REPOSITORY, BRANCH, HEAD, runner=fake, sleep=clock.sleep, clock=clock, run_timeout=100.0) == 0
+    )
+    assert clock.now >= 1000 * 20.0
+    assert fake.cancelled == []
 
 
 @pytest.mark.parametrize("conclusion", ["failure", "cancelled", "timed_out"])
 def test_a_run_that_starts_after_queueing_and_fails_still_fails_the_probe(conclusion):
     fake = FakeGh({"fallback": conclusion}, queued_polls=5, pending_polls=2)
-    assert _timed(fake, run_timeout=500.0, queue_timeout=600.0) == 1
+    assert _timed(fake, run_timeout=500.0) == 1
 
 
-def test_a_finished_run_is_not_cancelled_when_another_run_stays_queued():
+def test_a_finished_run_is_not_cancelled_when_another_run_outlives_the_run_limit():
     class Fake(FakeGh):
         def __call__(self, *args):
             result = super().__call__(*args)
             if isinstance(result, dict) and "status" in result and self.variant_of[result["id"]] == "guarded-change":
-                return {"id": result["id"], "status": "queued"}
+                return {"id": result["id"], "status": "in_progress"}
             return result
 
     fake = Fake(pending_polls=0)
-    with pytest.raises(RuntimeError, match="still queued"):
-        _timed(fake, run_timeout=500.0, queue_timeout=60.0)
+    with pytest.raises(RuntimeError, match="did not finish"):
+        _timed(fake, run_timeout=500.0)
     assert fake.cancelled == [next(i for i, v in fake.variant_of.items() if v == "guarded-change")]
 
 
 def test_a_dispatch_that_becomes_visible_late_is_still_adopted():
     fake = FakeGh(visible_after=4)
-    assert _timed(fake, run_timeout=500.0, queue_timeout=600.0) == 0
+    assert _timed(fake, run_timeout=500.0) == 0
 
 
 def test_a_dispatch_that_never_becomes_visible_ends_after_a_finite_wait_and_names_the_commit():
@@ -215,16 +211,16 @@ def test_a_dispatch_that_never_becomes_visible_ends_after_a_finite_wait_and_name
 def test_a_failed_cancel_is_reported_without_hiding_the_original_failure(capsys):
     fake = FakeGh(pending_polls=10**6, cancel_fails=True)
     with pytest.raises(RuntimeError, match="did not finish"):
-        _timed(fake, run_timeout=100.0, queue_timeout=50.0)
+        _timed(fake, run_timeout=100.0)
     assert "could not cancel" in capsys.readouterr().err
 
 
-def test_the_main_command_passes_both_limits_to_the_probe(monkeypatch):
+def test_the_main_command_passes_the_run_limit_to_the_probe(monkeypatch):
     seen = {}
     monkeypatch.setattr(launch, "run_probes", lambda *a, **k: seen.update(k) or 0)
     argv = ["--repository", REPOSITORY, "--branch", BRANCH, "--head-sha", HEAD]
-    assert launch.main([*argv, "--timeout-seconds", "900", "--queue-timeout-seconds", "300"]) == 0
-    assert seen == {"run_timeout": 900.0, "queue_timeout": 300.0}
+    assert launch.main([*argv, "--timeout-seconds", "900"]) == 0
+    assert seen == {"run_timeout": 900.0}
 
 
 @pytest.mark.parametrize(

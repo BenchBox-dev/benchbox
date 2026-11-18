@@ -365,7 +365,7 @@ def test_the_launcher_workflow_runs_on_pull_requests_with_actions_write_and_neve
     assert job["name"] == "release-v2 probe"
     assert job["permissions"] == {"contents": "read", "actions": "write", "pull-requests": "read"}
     assert "environment" not in job
-    assert job["timeout-minutes"] <= 60
+    assert job["timeout-minutes"] <= 360
     text = PROBE_WORKFLOW.read_text(encoding="utf-8")
     assert "secrets." not in text
     assert "id-token" not in text
