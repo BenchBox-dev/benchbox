@@ -40406,10 +40406,15 @@
       "title": "Record the selected SQLGlot downstream maintenance strategy and delivery evidence"
     },
     "sqlglot-adoption-blocked-by-golden-corpus-change-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-19T13:15:55Z",
+        "generation": "836f5defdeec4f47aa9e117db485739f",
+        "renewals": 0,
+        "worker": "omp:sqlglot-delivery-hardening-leader"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Automated SQLGlot adoption cannot land a release that changes any golden-corpus output"
     },
     "sqlglot-bundled-import-startup-cost": {
