@@ -44432,10 +44432,15 @@
       "title": "Start the TPC-H refresh stream window after its connection is open, matching the query streams"
     },
     "tpch-reused-database-refresh-mutation-check-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-19T18:50:53Z",
+        "generation": "ca2243be08194623b2fc536bfa13a65d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6da452ef1bfe1d4c6329ec0"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Reused TPC-H databases that ran a full RF1 and RF2 pair pass the row-count reuse check"
     },
     "tpch-rf1-native-ingest-remote-engines-20261103": {
