@@ -71,13 +71,15 @@ def test_supported_matrix_has_three_local_identities_per_cohort() -> None:
     cells = set()
     for entry in entries:
         assert "cloud" not in entry["platform"]
-        assert entry["extras"] in {"duckdb", "datafusion", "polars", "clickhouse-local"}
+        assert entry["extras"] in {"duckdb", "datafusion", "polars", "clickhouse-local", "postgresql"}
         cohorts.setdefault((entry["benchmark"], entry["scale_factor"]), set()).add(entry["platform"])
         cells.add((entry["benchmark"], entry["platform"], entry["scale_factor"]))
 
     assert cohorts == {
         ("tpch", "0.01"): {"duckdb", "datafusion", "polars-df"},
         ("tpch", "0.1"): {"duckdb", "datafusion", "polars-df"},
+        ("tpch", "1.0"): {"duckdb", "clickhouse-local", "cedardb"},
+        ("tpcds", "1"): {"duckdb", "clickhouse-local", "cedardb"},
         ("tpcdi", "0.01"): {"duckdb", "datafusion", "clickhouse-local"},
         ("tpcdi", "0.1"): {"duckdb", "datafusion", "clickhouse-local"},
         ("tpcdi", "1.0"): {"duckdb", "datafusion", "clickhouse-local"},
@@ -85,7 +87,7 @@ def test_supported_matrix_has_three_local_identities_per_cohort() -> None:
         ("ssb", "0.1"): {"duckdb", "datafusion", "polars-df"},
     }
     assert all(len(platforms) == 3 for platforms in cohorts.values())
-    assert len(entries) == len(cells) == 21
+    assert len(entries) == len(cells) == 27
 
 
 def _stage_bundle(
@@ -409,17 +411,35 @@ def test_tpc_matrix_jobs_never_run_official_below_an_official_scale_point() -> N
     assert '"${command[@]}"' in run_step
 
 
-def test_no_matrix_cell_combines_official_with_phases_lacking_throughput() -> None:
+def test_official_cells_run_the_full_specification() -> None:
     workflow = _workflow()
     entries = workflow["jobs"]["generate-seed-corpus"]["strategy"]["matrix"]["include"]
     run_step = next(
-        step["run"] for step in workflow["jobs"]["generate-seed-corpus"]["steps"] if step.get("name") == "Run benchmark"
+        step for step in workflow["jobs"]["generate-seed-corpus"]["steps"] if step.get("name") == "Run benchmark"
     )
-    phase_lists = re.findall(r"--phases\s+([^\s\\]+)", run_step)
-    assert len(phase_lists) == 1
-    phases = set(phase_lists[0].split(","))
-    offending = [entry for entry in entries if entry.get("official", False) and "throughput" not in phases]
-    assert not offending, offending
+    assert run_step["env"]["SEED_PHASES"] == "${{ matrix.phases || 'generate,load,power' }}"
+    assert '--phases "$SEED_PHASES"' in run_step["run"]
+    assert 'command+=(--streams "${{ matrix.streams }}")' in run_step["run"]
+    assert "command+=(--benchmark-option tpch_refresh_functions=true)" in run_step["run"]
+    required = {"tpch": {"power", "throughput"}, "tpcds": {"load", "power", "throughput", "maintenance"}}
+    minimum_streams = {"tpch": 2, "tpcds": 4}
+    official = [entry for entry in entries if entry.get("official", False)]
+    assert official
+    for entry in official:
+        phases = set(entry.get("phases", "generate,load,power").split(","))
+        assert required[entry["benchmark"]] <= phases, entry
+        assert entry["streams"] >= minimum_streams[entry["benchmark"]], entry
+    assert not [entry for entry in entries if not entry.get("official", False) and "phases" in entry]
+
+
+def test_cedardb_cells_start_the_pinned_service_before_the_run() -> None:
+    steps = _workflow()["jobs"]["generate-seed-corpus"]["steps"]
+    names = [step.get("name") for step in steps]
+    start = steps[names.index("Start CedarDB")]
+    assert names.index("Authenticate to GHCR") < names.index("Start CedarDB") < names.index("Run benchmark")
+    assert start["if"] == "env.SELECTED == 'true' && matrix.platform == 'cedardb'"
+    assert start["env"]["CEDARDB_IMAGE"].startswith("ghcr.io/benchbox-dev/cedardb@sha256:")
+    assert "docker/cedardb/docker-compose.yml up -d --wait" in start["run"]
 
 
 def test_seed_corpus_pr_targets_develop() -> None:
