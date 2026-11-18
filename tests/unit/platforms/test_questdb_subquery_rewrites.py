@@ -388,6 +388,64 @@ def test_tpch_correlated_queries_leave_no_subquery_predicate(query_id):
     assert _where_subqueries(sql) == []
 
 
+def test_tpchavoc_case_in_subquery_query_leaves_no_subquery_predicate():
+    from benchbox.core.tpchavoc import TPCHavocBenchmark
+
+    sql = TPCHavocBenchmark(scale_factor=0.01).get_queries(dialect="questdb")["18_v10"]
+    assert _where_subqueries(sql) == []
+
+
+def _rewritten(sql: str) -> str:
+    return rewrite_subqueries(sqlglot.parse_one(sql, read="postgres")).sql("questdb")
+
+
+_CASE_IN = "CASE WHEN o_orderkey IN (SELECT l_orderkey FROM lineitem GROUP BY l_orderkey HAVING SUM(l_quantity) > 300)"
+
+
+def test_case_flag_conjunct_in_where_is_unnested():
+    sql = f"SELECT o_orderkey FROM orders WHERE {_CASE_IN} THEN 1 ELSE 0 END = 1 AND o_totalprice > 5"
+    out = _rewritten(sql)
+    assert "CASE" not in out
+    assert not re.search(r"\bIN \(SELECT", out)
+    assert "o_totalprice > 5" in out
+
+
+def test_case_flag_conjunct_with_reversed_operands_is_unnested():
+    out = _rewritten(f"SELECT o_orderkey FROM orders WHERE 1 = {_CASE_IN} THEN 1 ELSE 0 END")
+    assert "CASE" not in out
+    assert not re.search(r"\bIN \(SELECT", out)
+
+
+def test_case_flag_with_disjunctive_predicate_is_parenthesised():
+    out = _rewritten(
+        "SELECT o_orderkey FROM orders WHERE o_orderkey IN (SELECT l_orderkey FROM lineitem) AND CASE WHEN o_orderkey = 1 OR o_orderkey = 2 THEN 1 ELSE 0 END = 1 AND o_totalprice > 5"
+    )
+    assert "CASE" not in out
+    assert "(orders.o_orderkey = 1 OR orders.o_orderkey = 2) AND orders.o_totalprice > 5" in out
+
+
+def test_case_flag_in_select_list_is_untouched():
+    out = _rewritten(
+        f"SELECT {_CASE_IN} THEN 1 ELSE 0 END = 1 AS flag FROM orders WHERE o_orderkey IN (SELECT l_orderkey FROM lineitem)"
+    )
+    assert "CASE" in out
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "CASE WHEN o_orderkey > 1 THEN 2 ELSE 0 END = 1",
+        "CASE WHEN o_orderkey > 1 THEN 1 ELSE 0 END = 0",
+        "CASE WHEN o_orderkey > 1 THEN 1 ELSE 2 END = 1",
+        "CASE WHEN o_orderkey > 1 THEN 1 WHEN o_orderkey < 0 THEN 1 ELSE 0 END = 1",
+        "NOT (CASE WHEN o_orderkey > 1 THEN 1 ELSE 0 END = 1)",
+    ],
+)
+def test_case_flag_that_is_not_an_exact_filter_is_untouched(case):
+    out = _rewritten(f"SELECT o_orderkey FROM orders WHERE o_orderkey IN (SELECT l_orderkey FROM lineitem) AND {case}")
+    assert "CASE" in out
+
+
 def test_schema_registry_is_the_union_of_every_registered_benchmark():
     from benchbox.core.datavault.schema import TABLES as DATAVAULT_TABLES
     from benchbox.core.tpcds.schema.registry import TABLES as TPCDS_TABLES
