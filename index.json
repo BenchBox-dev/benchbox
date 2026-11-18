@@ -33344,10 +33344,15 @@
       "title": "Ignore a BENCHBOX_AGENT_PRIMARY_CLONE override that is not a worktree of the repository"
     },
     "primary-clone-unignored-tool-output-paths-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-19T19:35:01Z",
+        "generation": "b3a6d6fcb47344d98331bd3f2ceeb82a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b22c5dfe732da19b798cd911"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Ignore tool cache and scratch paths that would now fail the primary-clone preflight"
     },
     "primary-scripts-venv-not-exact-to-lock-20261112": {
