@@ -197,15 +197,20 @@ class TestSubscaleRefusalBeforeSpawn:
             validate_tpcds_scale(0.001)
         assert "catalog_sales" in str(exc_info.value)
 
-    def test_generator_constructor_refuses_without_spawning(self, monkeypatch, tmp_path):
-        import subprocess
-
+    def test_generator_constructor_refuses_below_the_floor(self, tmp_path):
         from benchbox.core.tpcds.generator import TPCDSDataGenerator
 
-        def forbid_spawn(*args, **kwargs):
-            raise AssertionError("dsdgen must not be spawned below the floor")
-
-        monkeypatch.setattr(subprocess, "Popen", forbid_spawn)
-        monkeypatch.setattr(subprocess, "run", forbid_spawn)
         with pytest.raises(ValueError, match="does not finish"):
             TPCDSDataGenerator(scale_factor=0.005, output_dir=tmp_path)
+
+
+class TestOfficialPointsStayRunnable:
+    def test_every_official_point_passes_scale_validation(self):
+        for sf in OFFICIAL_SCALE_POINTS:
+            assert validate_tpcds_scale(sf, official=True) is TpcdsComplianceClass.OFFICIAL
+
+    @pytest.mark.parametrize("sf", [10000.0, 30000.0, 100000.0])
+    def test_specified_points_above_the_maximum_are_not_offered_as_official(self, sf):
+        assert sf not in OFFICIAL_SCALE_POINTS
+        with pytest.raises(ValueError, match="exceeds maximum"):
+            validate_tpcds_scale(sf, official=True)

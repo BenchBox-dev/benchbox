@@ -7,12 +7,15 @@ class TpcdsComplianceClass(str, Enum):
     UNOFFICIAL_SUBSCALE = "unofficial_subscale"
 
 
-OFFICIAL_SCALE_POINTS: frozenset[float] = frozenset(
-    {1.0, 10.0, 100.0, 300.0, 1000.0, 3000.0, 10000.0, 30000.0, 100000.0}
-)
-
 TPCDS_MIN_SUBSCALE: float = 0.01
 TPCDS_MAX_SCALE: float = 3000.0
+
+TPCDS_SPECIFIED_SCALE_POINTS: frozenset[float] = frozenset(
+    {1.0, 10.0, 100.0, 300.0, 1000.0, 3000.0, 10000.0, 30000.0, 100000.0}
+)
+OFFICIAL_SCALE_POINTS: frozenset[float] = frozenset(
+    point for point in TPCDS_SPECIFIED_SCALE_POINTS if point <= TPCDS_MAX_SCALE
+)
 
 
 def classify_tpcds_run(scale_factor: float, *, official: bool = False) -> TpcdsComplianceClass:
