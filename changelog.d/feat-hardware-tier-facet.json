@@ -4,7 +4,7 @@
     {
       "category": "added",
       "breaking": false,
-      "text": "Results Explorer read model 19 carries a hardware class for every result (a pinned CPU class table, T0 to T5, plus managed and unclassified), the managed service size, and the known-defect reason, and the BenchBox version (recorded, or inferred from the run date)."
+      "text": "Results Explorer read model 20 carries a hardware class for every result (a pinned CPU class table, T0 to T5, plus managed and unclassified), the managed service size, and the known-defect reason, and the BenchBox version (recorded, or inferred from the run date)."
     },
     {
       "category": "changed",

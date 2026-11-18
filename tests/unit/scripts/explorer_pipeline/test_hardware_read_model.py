@@ -189,6 +189,27 @@ def test_a_user_attested_recorded_model_is_not_reported_as_measured(tmp_path: Pa
         ]
 
 
+def test_an_inferred_cpu_model_is_not_reported_as_attested(tmp_path: Path) -> None:
+    bundles = tmp_path / "data" / "bundles"
+    bundles.mkdir(parents=True)
+    environment = {
+        "os": "Linux 6.8",
+        "arch": "x86_64",
+        "cpu_model": "AMD EPYC 7763 64-Core Processor",
+        "cpu_count": 4,
+        "cpu_identity_provenance": "inferred",
+    }
+    _write(bundles, "guessed", _bundle("guessed", environment=environment))
+    out = tmp_path / "out"
+
+    ExplorerPipeline().run(tmp_path / "data", out)
+
+    with duckdb.connect(str(out / "results.duckdb"), read_only=True) as con:
+        basis = con.execute("SELECT hardware_basis FROM results").fetchone()
+    assert basis is not None
+    assert not basis[0].startswith("attested")
+
+
 def test_a_server_engine_with_an_unobserved_runtime_is_not_tiered_by_the_client_cpu(tmp_path: Path) -> None:
     bundles = tmp_path / "data" / "bundles"
     bundles.mkdir(parents=True)

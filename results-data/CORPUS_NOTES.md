@@ -1878,7 +1878,7 @@ ranked identities the validator computes agree with the Explorer pipeline.
 
 ### Hardware class and the owner's CPU attestation (2026-11-17)
 
-The Explorer read model 19 records a hardware class per result from the pinned CPU class table in
+The Explorer read model 20 records a hardware class per result from the pinned CPU class table in
 `benchbox/core/results/hardware_class.py` (table version `2026-11-17.1`). The default ranking is unchanged; the class is an
 optional facet filter. Managed services are one `managed` class, so the client CPU they record is never used.
 

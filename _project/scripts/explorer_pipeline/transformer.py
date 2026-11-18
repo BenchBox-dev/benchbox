@@ -1403,7 +1403,7 @@ def _hardware_columns(bundle_data: Mapping[str, Any], bundle_path: Path) -> dict
     recorded_model = environment.get("cpu_model") or host.get("cpu_model")
     provenance = environment.get("cpu_identity_provenance") or host.get("cpu_identity_provenance")
     sidecar_model = attestation["cpu_model"] if attestation else None
-    if provenance in ("user_attested", "inferred") and isinstance(recorded_model, str) and recorded_model.strip():
+    if provenance == "user_attested" and isinstance(recorded_model, str) and recorded_model.strip():
         sidecar_model, recorded_model = recorded_model, None
     classified = classify_hardware(
         cpu_model=recorded_model,

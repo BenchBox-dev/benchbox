@@ -185,8 +185,6 @@ class TestManifestProvenance:
         [
             "Apple M4",
             {"cpu_model": "Apple M4"},
-            {"cpu_model": "", "cpu_identity_provenance": "user_attested"},
-            {"cpu_model": "Apple M4", "cpu_identity_provenance": "measured"},
             {"cpu_model": "Apple M4", "cpu_identity_provenance": "user_attested", "unknown": "x"},
         ],
     )
@@ -194,6 +192,17 @@ class TestManifestProvenance:
         vr = self._run({"cpu_attestation": attestation})
         assert not vr.ok
         assert any("cpu_attestation" in e for e in vr.errors)
+
+    @pytest.mark.parametrize(
+        "attestation",
+        [
+            {**ATTESTATION, "cpu_model": ""},
+            {**ATTESTATION, "cpu_identity_provenance": "measured"},
+        ],
+    )
+    def test_incomplete_maintainer_cpu_attestation_rejected(self, attestation):
+        vr = self._run({"result_source": "internal", "cpu_attestation": attestation})
+        assert any("needs a non-empty cpu_model" in e for e in vr.errors)
 
     def test_cpu_attestation_needs_the_maintainer_on_an_internal_source(self, tmp_path):
         primary = tmp_path / "bundle.json"
