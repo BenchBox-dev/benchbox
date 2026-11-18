@@ -5794,7 +5794,7 @@
         }
       },
       "integration_branch": "feat/nightly-remediation",
-      "integration_head": "a6e39af52eb7882d71d35dc7cca05b7a3aaa0a80",
+      "integration_head": "96ffb4045ddf05abadce84ca39d76b51e27874a3",
       "integration_log": [
         {
           "at": "2026-11-17T17:50:03Z",
@@ -5925,6 +5925,24 @@
             "perf-smoke-method2-baseline-20261117"
           ],
           "seq": 6
+        },
+        {
+          "at": "2026-11-18T15:50:55Z",
+          "changed_files": [
+            "_project/baselines/perf_smoke_duckdb_tpch_001.json",
+            "_project/baselines/perf_smoke_duckdb_tpch_001.sources.json",
+            "docs/internal/perf-smoke.md",
+            "scripts/perf_smoke_baseline.py",
+            "tests/unit/scripts/test_perf_smoke_baseline.py"
+          ],
+          "head": "96ffb4045ddf05abadce84ca39d76b51e27874a3",
+          "kind": "fix",
+          "op_id": "6cd2de8ac73a498b99fdf7946d1ff057",
+          "previous_head": "a6e39af52eb7882d71d35dc7cca05b7a3aaa0a80",
+          "requires_acceptance": [
+            "perf-smoke-method2-baseline-20261117"
+          ],
+          "seq": 7
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-nightly-remediation",
