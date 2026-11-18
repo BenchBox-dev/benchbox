@@ -1194,7 +1194,7 @@ def main() -> int:
         print(format_human_report(res))
         print()
         print(format_apply_report(executed))
-    if branch_deleted:
+    if branch_deleted or (res.detached and worktree_removed):
         return 0
     if worktree_removed:
         print("\nPartial success: worktree removed but branch ref preserved.", file=sys.stderr)

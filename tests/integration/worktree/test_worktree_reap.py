@@ -745,6 +745,22 @@ def test_detached_apply_rechecks_after_the_preview(tmp_path: Path) -> None:
     assert "locked" not in _git(["worktree", "list", "--porcelain"], repo)
 
 
+def test_detached_apply_cli_reports_a_removed_worktree_as_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo = _init_repo(tmp_path / "repo")
+    wt = _detached_worktree(repo, "det-cli", "develop")
+    head = _git(["rev-parse", "HEAD"], wt)
+    res = finish.evaluate_finish_preview(wt.resolve(), head, repo, SLUG, pr_lookup=_lookup({}))
+    monkeypatch.setattr(finish, "evaluate_finish_preview", lambda **_: res)
+    argv = ["worktree_finish.py", "--worktree-path", str(wt), "--expected-head-oid", head, "--repo-root", str(repo)]
+    monkeypatch.setattr(sys, "argv", [*argv, "--apply"])
+
+    assert finish.main() == 0
+    assert not wt.exists()
+    assert "Partial success" not in capsys.readouterr().err
+
+
 def test_detached_apply_keeps_a_worktree_locked_after_the_preview(tmp_path: Path) -> None:
     repo = _init_repo(tmp_path / "repo")
     wt = _detached_worktree(repo, "det-lock", "develop")
