@@ -107,6 +107,7 @@ class TestRefreshPhases:
         power = builder.build().execution_phases.power_test
 
         assert power.refresh_first_set == 1
+        assert power.refresh_functions is not None
         assert [function["function"] for function in power.refresh_functions] == ["RF1", "RF2"]
         assert power.query_count == 22
         assert power.success is True
@@ -152,6 +153,7 @@ class TestRefreshPhases:
         result = builder.build()
 
         assert not result.qph_at_size
+        assert result.qphh_unavailable is not None
         assert any("immediately after the Power set" in reason for reason in result.qphh_unavailable)
 
     def test_a_throughput_only_run_has_no_power_phase(self) -> None:
