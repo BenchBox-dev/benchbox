@@ -55,6 +55,7 @@ class SmokeResult:
 
 
 Smoke = Callable[[str], SmokeResult]
+CommandRunner = Callable[..., subprocess.CompletedProcess[str]]
 
 
 def affected_benchmarks(changed_files: list[str]) -> list[str]:
@@ -134,11 +135,11 @@ def evaluate_smoke(smoke: SmokeResult) -> str | None:
     return None
 
 
-def run_smoke(benchmark: str) -> SmokeResult:
+def run_smoke(benchmark: str, *, runner: CommandRunner = subprocess.run) -> SmokeResult:
     start = mono_time()
     with tempfile.TemporaryDirectory(prefix="generator-volume-") as tmp:
         output = Path(tmp)
-        result = subprocess.run(
+        result = runner(
             [
                 "uv",
                 "run",

@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any
 
 PROBE_TAG = "v0.0.0rc0"
@@ -128,28 +129,43 @@ def wait_for(
 ) -> dict[str, Any]:
     began = clock()
     deadline = began + timeout
-    started_at: float | None = None
     while True:
         run = runner("api", f"repos/{repository}/actions/runs/{run_id}")
         now = clock()
         if run.get("status") == FINISHED:
             return run
-        if started_at is None and run.get("status") not in NOT_STARTED:
-            started_at = now
         if now >= deadline:
-            raise RuntimeError(_timeout_message(run_id, run.get("status"), began, started_at, now))
+            raise RuntimeError(_timeout_message(run_id, run, now - began))
         sleep(interval)
 
 
-def _timeout_message(run_id: int, status: object, began: float, started_at: float | None, now: float) -> str:
-    if started_at is None:
+def _seconds_between(start: object, end: object) -> float | None:
+    if not isinstance(start, str) or not isinstance(end, str):
+        return None
+    try:
+        return (datetime.fromisoformat(end) - datetime.fromisoformat(start)).total_seconds()
+    except ValueError:
+        return None
+
+
+def _describe(seconds: float | None) -> str:
+    return "an unrecorded time" if seconds is None else f"{seconds:g}s"
+
+
+def _timeout_message(run_id: int, run: dict[str, Any], waited: float) -> str:
+    status = run.get("status")
+    created = run.get("created_at")
+    if status in NOT_STARTED:
         return (
-            f"run {run_id} still {status} after {now - began:g}s of waiting and never began running; "
+            f"run {run_id} still {status} after {waited:g}s of waiting and never began running "
+            f"(queued {_describe(_seconds_between(created, run.get('updated_at')))} since dispatch); "
             "the runner backlog held it in the queue, so this is not a release-v2 failure"
         )
+    started = run.get("run_started_at")
     return (
-        f"run {run_id} started after {started_at - began:g}s queued and did not finish within "
-        f"{now - started_at:g}s of run time ({now - began:g}s total wait)"
+        f"run {run_id} queued {_describe(_seconds_between(created, started))} after dispatch, then ran "
+        f"{_describe(_seconds_between(started, run.get('updated_at')))} without finishing "
+        f"({waited:g}s of waiting here)"
     )
 
 

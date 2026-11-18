@@ -114,7 +114,7 @@ def test_the_variants_never_share_a_run():
 def test_a_run_that_outlives_the_timeout_fails_and_is_cancelled():
     fake = FakeGh(pending_polls=10**6)
     ticks = iter(range(0, 10**6, 100))
-    with pytest.raises(RuntimeError, match="did not finish"):
+    with pytest.raises(RuntimeError, match="without finishing"):
         launch.run_probes(
             REPOSITORY, BRANCH, HEAD, runner=fake, sleep=lambda _: None, clock=lambda: next(ticks), timeout=250.0
         )
@@ -142,7 +142,7 @@ def test_every_variant_is_bounded_by_one_overall_deadline(monkeypatch):
 def test_a_failed_cancel_is_reported_without_hiding_the_original_failure(capsys):
     fake = FakeGh(pending_polls=10**6, cancel_fails=True)
     ticks = iter(range(0, 10**6, 100))
-    with pytest.raises(RuntimeError, match="did not finish"):
+    with pytest.raises(RuntimeError, match="without finishing"):
         launch.run_probes(
             REPOSITORY, BRANCH, HEAD, runner=fake, sleep=lambda _: None, clock=lambda: next(ticks), timeout=250.0
         )
@@ -269,14 +269,15 @@ def test_api_calls_through_the_real_gh_wrapper_still_parse_json(fake_gh, monkeyp
 
 
 class ScriptedRun:
-    def __init__(self, statuses: list[tuple[str, str | None]]):
+    def __init__(self, statuses: list[tuple[str, str | None]], timestamps: dict[str, str] | None = None):
         self.statuses = statuses
+        self.timestamps = timestamps or {}
         self.polls = 0
 
     def __call__(self, *args: str):
         status, conclusion = self.statuses[min(self.polls, len(self.statuses) - 1)]
         self.polls += 1
-        return {"id": 1, "status": status, "conclusion": conclusion, "html_url": "url/1"}
+        return {"id": 1, "status": status, "conclusion": conclusion, "html_url": "url/1", **self.timestamps}
 
 
 class TickClock:
@@ -292,9 +293,9 @@ class TickClock:
         self.now += seconds
 
 
-def _wait(statuses, *, timeout=1000.0, interval=20.0):
+def _wait(statuses, *, timeout=1000.0, interval=20.0, timestamps=None):
     clock = TickClock()
-    runner = ScriptedRun(statuses)
+    runner = ScriptedRun(statuses, timestamps)
     result = launch.wait_for(
         REPOSITORY, 1, runner=runner, sleep=clock.sleep, clock=clock, timeout=timeout, interval=interval
     )
@@ -303,11 +304,14 @@ def _wait(statuses, *, timeout=1000.0, interval=20.0):
 
 def test_a_run_queued_for_the_whole_wait_reports_still_queued_not_a_run_failure():
     with pytest.raises(RuntimeError) as caught:
-        _wait([("queued", None)])
+        _wait(
+            [("queued", None)], timestamps={"created_at": "2026-11-18T10:00:00Z", "updated_at": "2026-11-18T10:50:00Z"}
+        )
     message = str(caught.value)
     assert "still queued after 1000s" in message and "never began running" in message
+    assert "queued 3000s since dispatch" in message
     assert "not a release-v2 failure" in message
-    assert "did not finish" not in message
+    assert "without finishing" not in message
 
 
 def test_a_never_started_wait_is_finite():
@@ -319,15 +323,25 @@ def test_a_never_started_wait_is_finite():
     assert runner.polls == 51
 
 
-def test_a_run_that_starts_but_never_ends_reports_queue_and_run_time_separately():
-    statuses = [("queued", None)] * 10 + [("in_progress", None)]
+def test_queue_and_run_time_come_from_the_run_record_not_from_when_this_wait_began():
+    timestamps = {
+        "created_at": "2026-11-18T10:00:00Z",
+        "run_started_at": "2026-11-18T10:07:00Z",
+        "updated_at": "2026-11-18T10:20:00Z",
+    }
     with pytest.raises(RuntimeError) as caught:
-        _wait(statuses, timeout=1000.0)
+        _wait([("in_progress", None)], timeout=100.0, timestamps=timestamps)
     message = str(caught.value)
-    assert "started after 200s queued" in message
-    assert "800s of run time" in message
-    assert "1000s total wait" in message
+    assert "queued 420s after dispatch" in message
+    assert "ran 780s without finishing" in message
+    assert "100s of waiting here" in message
     assert "never began running" not in message
+
+
+def test_missing_run_timestamps_are_reported_as_unrecorded():
+    with pytest.raises(RuntimeError) as caught:
+        _wait([("in_progress", None)], timeout=100.0)
+    assert "queued an unrecorded time after dispatch" in str(caught.value)
 
 
 @pytest.mark.parametrize("conclusion", ["success", "failure", "cancelled"])

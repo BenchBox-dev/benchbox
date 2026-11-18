@@ -230,12 +230,9 @@ class FakeBenchboxRun:
         return subprocess.CompletedProcess(command, self.returncode, "", "boom\n" if self.returncode else "")
 
 
-def test_the_smoke_runs_duckdb_at_sf1_and_counts_only_generated_source_bytes(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_the_smoke_runs_duckdb_at_sf1_and_counts_only_generated_source_bytes() -> None:
     fake = FakeBenchboxRun()
-    monkeypatch.setattr(gate.subprocess, "run", fake)
-    result = gate.run_smoke("amplab")
+    result = gate.run_smoke("amplab", runner=fake)
     assert result.dataset_bytes == 1000
     assert (result.queries_passed, result.queries_failed, result.rows_loaded) == (24, 0, 5)
     command = " ".join(fake.command)
@@ -243,19 +240,17 @@ def test_the_smoke_runs_duckdb_at_sf1_and_counts_only_generated_source_bytes(
     assert "--compression none" in command
 
 
-def test_a_failing_benchbox_run_is_a_smoke_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(gate.subprocess, "run", FakeBenchboxRun(returncode=1))
-    assert "benchbox run exited 1: boom" in (gate.run_smoke("amplab").error or "")
+def test_a_failing_benchbox_run_is_a_smoke_error() -> None:
+    assert "benchbox run exited 1: boom" in (gate.run_smoke("amplab", runner=FakeBenchboxRun(returncode=1)).error or "")
 
 
-def test_a_run_without_a_result_bundle_is_a_smoke_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(gate.subprocess, "run", FakeBenchboxRun(bundle=False))
-    assert "no result bundle" in (gate.run_smoke("amplab").error or "")
+def test_a_run_without_a_result_bundle_is_a_smoke_error() -> None:
+    assert "no result bundle" in (gate.run_smoke("amplab", runner=FakeBenchboxRun(bundle=False)).error or "")
 
 
-def test_the_smoke_surfaces_failed_power_queries(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(gate.subprocess, "run", FakeBenchboxRun(failed=3))
-    assert gate.evaluate_smoke(gate.run_smoke("amplab")) == "3 power-phase queries failed on DuckDB at SF 1"
+def test_the_smoke_surfaces_failed_power_queries() -> None:
+    result = gate.run_smoke("amplab", runner=FakeBenchboxRun(failed=3))
+    assert gate.evaluate_smoke(result) == "3 power-phase queries failed on DuckDB at SF 1"
 
 
 def test_every_gated_benchmark_has_a_committed_baseline_and_a_measurement_entry() -> None:
