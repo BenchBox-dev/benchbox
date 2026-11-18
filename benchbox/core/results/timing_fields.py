@@ -12,6 +12,7 @@ CLIENT_LINK_TIMING_FIELDS = ("probed_at", "platform_timing")
 KNOWN_TIMING_METHODS = frozenset({1, 2})
 NET_ESTIMATE_MIN_TIMING_METHOD = 2
 NETWORKED_ENDPOINT_CLASSES = frozenset({"localhost_port", "remote_host", "cloud_endpoint"})
+NET_ESTIMATE_ELIGIBLE_STATUS = "eligible"
 NET_ESTIMATE_STATUSES = frozenset(
     {
         "eligible",
@@ -23,7 +24,9 @@ NET_ESTIMATE_STATUSES = frozenset(
         "floor_suspect",
     }
 )
-PLATFORM_TIMING_STATUSES = frozenset({"valid", "suspect", "unavailable"})
+PLATFORM_TIMING_VALID_STATUS = "valid"
+PLATFORM_TIMING_REASON_STATUSES = frozenset({"suspect", "unavailable"})
+PLATFORM_TIMING_STATUSES = frozenset({PLATFORM_TIMING_VALID_STATUS, *PLATFORM_TIMING_REASON_STATUSES})
 PLATFORM_TIMING_DEFINITIONS = frozenset({"server_complete", "includes_fetch"})
 PLATFORM_TIMING_FIELDS = frozenset(
     {"source", "requests", "platform_ms", "queue_ms", "compile_ms", "exec_ms", "cache_hit", "status", "reason"}
@@ -86,10 +89,10 @@ def platform_timing_problems(value: Any) -> list[str]:
         duration = value.get(key)
         if duration is not None and (not _is_number(duration) or duration < 0):
             problems.append(f"{key} must be a non-negative finite number, got {duration!r}")
-    if status == "valid" and value.get("platform_ms") is None:
+    if status == PLATFORM_TIMING_VALID_STATUS and value.get("platform_ms") is None:
         problems.append("status 'valid' requires platform_ms")
     reason = value.get("reason")
-    if isinstance(status, str) and status in {"suspect", "unavailable"} and not _non_empty_string(reason):
+    if isinstance(status, str) and status in PLATFORM_TIMING_REASON_STATUSES and not _non_empty_string(reason):
         problems.append(f"status {status!r} requires a reason")
     elif reason is not None and not _non_empty_string(reason):
         problems.append("reason must be a non-empty string")
@@ -142,7 +145,7 @@ def run_timing_problems(run: Mapping[str, Any]) -> list[str]:
 
 def net_estimate_problems(payload: Mapping[str, Any]) -> list[str]:
     run = payload.get("run")
-    if not isinstance(run, Mapping) or run.get("net_estimate_status") != "eligible":
+    if not isinstance(run, Mapping) or run.get("net_estimate_status") != NET_ESTIMATE_ELIGIBLE_STATUS:
         return []
     problems: list[str] = []
     timing_method = run.get("timing_method")
@@ -227,10 +230,13 @@ __all__ = [
     "CLIENT_LINK_TIMING_FIELDS",
     "KNOWN_TIMING_METHODS",
     "NETWORKED_ENDPOINT_CLASSES",
+    "NET_ESTIMATE_ELIGIBLE_STATUS",
     "NET_ESTIMATE_MIN_TIMING_METHOD",
     "NET_ESTIMATE_STATUSES",
     "PLATFORM_TIMING_DEFINITIONS",
+    "PLATFORM_TIMING_REASON_STATUSES",
     "PLATFORM_TIMING_STATUSES",
+    "PLATFORM_TIMING_VALID_STATUS",
     "QUERY_TIMING_FIELDS",
     "RUN_TIMING_FIELDS",
     "TIMING_FIELDS_SCHEMA_VERSION",
