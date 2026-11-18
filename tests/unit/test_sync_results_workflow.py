@@ -127,8 +127,6 @@ def test_sync_workflow_merges_only_a_validated_fresh_mirror_head() -> None:
     assert names.index("Verify mirror PR publication freshness") < names.index("Merge the validated mirror PR")
     assert names.index("Close superseded mirror PRs") < names.index("Merge the validated mirror PR")
     assert 'gh pr merge "${PR_NUMBER}" --squash --match-head-commit "${MIRROR_HEAD_SHA}"' in merge_step["run"]
-    assert "gh workflow run corpus-reconciler.yml" in merge_step["run"]
-    assert workflow["permissions"]["actions"] == "write"
 
 
 def test_sync_workflow_references_publication_fixed_point_gate() -> None:

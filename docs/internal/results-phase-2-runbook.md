@@ -49,9 +49,8 @@ validators, plus `corpus-inventory.json`) and opens a **draft** PR against
 merged to `develop`. The mirror run validates the bundles, the corpus-path
 allowlist and validator parity (the checks `Validate Submission` would run,
 which does not start for bot-created PRs), posts `corpus-mirror/validate-bundles`,
-and once that passes with a fresh head, marks the PR ready, squash-merges it and
-dispatches `corpus-reconciler` with the merge SHA. A mirror that fails
-validation stays open and fails the workflow run.
+and once that passes with a fresh head, marks the PR ready and squash-merges
+it. A mirror that fails validation stays open and fails the workflow run.
 
 **Publication fixed-point gate.** Before building a mirror branch or opening
 a PR, the sync workflow runs the byte-identity part of

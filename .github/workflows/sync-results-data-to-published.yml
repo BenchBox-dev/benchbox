@@ -24,7 +24,6 @@ permissions:
   contents: write
   pull-requests: write
   statuses: write
-  actions: write
 
 concurrency:
   group: sync-results-to-published-${{ github.ref }}
@@ -469,22 +468,15 @@ jobs:
           done
 
       - name: Merge the validated mirror PR
-        id: merge
         if: steps.drift.outputs.has_drift == 'true' && steps.build.outputs.has_changes == 'true' && steps.validate.outputs.state == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
           MIRROR_HEAD_SHA: ${{ steps.build.outputs.mirror_head_sha }}
-          PUBLISHED_BASE_SHA: ${{ steps.drift.outputs.published_base_sha }}
         run: |
           set -euo pipefail
           gh pr ready "${PR_NUMBER}"
           gh pr merge "${PR_NUMBER}" --squash --match-head-commit "${MIRROR_HEAD_SHA}"
-          MERGE_SHA=$(gh pr view "${PR_NUMBER}" --json mergeCommit --jq '.mergeCommit.oid')
-          gh workflow run corpus-reconciler.yml --ref develop \
-            -f merge-sha="${MERGE_SHA}" \
-            -f base-sha="${PUBLISHED_BASE_SHA}" \
-            -f source="results-mirror-merge"
 
       - name: Fail the run if mirrored content failed validation
         if: always() && steps.drift.outputs.has_drift == 'true' && steps.build.outputs.has_changes == 'true' && steps.validate.outputs.state != 'success'
