@@ -33316,15 +33316,10 @@
       "title": "The primary clone's .agents/skills copy goes stale because only an agent-forbidden write there refreshes it"
     },
     "primary-clone-check-batch-hashing-20261117": {
-      "claim": {
-        "expires_at": "2026-11-19T19:35:16Z",
-        "generation": "af2d65b3b56744eaabaad67954acac59",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b22c5dfe732da19b798cd911"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Hash primary-clone files in one git call and detect edits to files with quoted names"
     },
     "primary-clone-dirty-edit-guard-20261020": {
