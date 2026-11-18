@@ -5,6 +5,7 @@
     "A script run over all 151 manifests on published-results shows each one either carrying evidence-backed fields, labelled pre-policy, or withdrawn, with zero manifests in none of these states (output in context); if the owner makes the fields mandatory, a test shows a new submission without them is refused",
     "The first t3:drift run after the corpus change (Monday schedule or a manual nightly with run_drift) is green"
   ],
+  "context": "Owner decision 2026-11-17: (0) fields become mandatory for BigQuery, Snowflake and Databricks submissions dated after a fixed cutoff; (corpus) option 2: results before the cutoff are labelled 'published before vendor-condition checks' and exempted by that date; a field is filled only where a run record proves it.",
   "description": "## Problem\nPR #4272 found that none of the 151 published (BigQuery 51, Snowflake 50, Databricks 50) BigQuery, Snowflake and Databricks manifests on published-results records plan_tier, vendor_permission, vendor_notice or self_run, and all have funding 'unspecified'. These results predate the vendor-condition fields from PR #4137. The site therefore shows results whose compliance with the vendor terms (free-tier, preview-feature and notice conditions) cannot be shown from the bundle, New submissions are not required to carry them either: a missing plan_tier, vendor_notice or self_run only warns (evaluate_vendor_conditions, benchbox/validation/bundle.py).\n\n## Decision gate (owner)\n0. Decide whether the fields become mandatory for new submissions (warning to refusal); options 1-3 apply to the existing corpus either way.\nThen choose one for the existing corpus, recorded with date:\n1. Backfill: fill a field only where a run record proves the value (account tier, features used); leave it absent otherwise.\n2. Label as pre-policy: keep the results, mark them visibly as published before vendor-condition checks, and exempt them by manifest date in the validator.\n3. Withdraw: remove results whose compliance cannot be shown.\nAn agent may prepare the per-manifest evidence table for the decision but must not choose.\n\n## Guardrails\n- Never infer or guess a plan_tier, permission or notice value; absent evidence stays absent.\n- Timings, digests and query results in the manifests do not change.\n- Corpus changes go through the published-results mirror flow, not direct pushes; the first t3:drift run after the change must be green.\n- If the fields become mandatory, any corpus exemption is keyed on a fixed manifest-date cutoff, never on a missing field.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4272",
@@ -41,6 +42,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "3c00999d213347d497e46a870177417f",
+      "session_id": "0362803867fb4929927e576283fffc32"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bfa5e7eb7cd30f69e1fe2571",
+      "at": "2026-11-18T01:59:02Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f6c86fdf21fc4b0a8dd56e60372e15cf",
       "session_id": "0362803867fb4929927e576283fffc32"
     }
   ]
