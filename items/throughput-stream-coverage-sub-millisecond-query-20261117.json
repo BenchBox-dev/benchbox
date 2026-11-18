@@ -4,6 +4,7 @@
     "If coverage changes: a unit test shows a successful sub-millisecond execution counts as covered, a genuinely missing execution still fails, and timing aggregation still excludes sub-millisecond values",
     "A fresh CedarDB SF0.01 3-stream throughput bundle (path recorded) passes the coverage check, or the owner-confirmed reason for keeping the floor is recorded"
   ],
+  "context": "Owner decision 2026-11-17: coverage counts every successful measurement execution regardless of duration; the 1 ms floor stays for timing aggregation only.",
   "description": "## Problem\nDuring PR #4260's CedarDB verification (mocker, TPC-H SF0.01, 3 streams, 132/132 queries passed), one sub-millisecond Q6 row tripped the stream-coverage check, so the result stayed unpublishable at that scale. A coverage check that treats a valid very fast query as missing would also misfire on fast engines at larger scales.\n\n## Decision gate\nCause located: _throughput_measurement_queries (benchbox/validation/bundle.py ~2520, from #2921) drops successful rows with ms < 1.0, so a positive sub-millisecond timing is excluded from coverage on purpose. The same 1 ms usable-timing floor exists near bundle.py:1239 for timing aggregation. Decide whether coverage should count every successful measurement execution regardless of duration while keeping the 1 ms floor for aggregation, and confirm the published metrics stay consistent when a covered query has no usable timing. If the floor is the intended publication rule for coverage, the owner confirms it and the item closes with that reason.\n\n## Guardrails\n- A missing execution must still fail the coverage check; add a test for that case alongside the fast-query case.\n- Do not lower timing resolution elsewhere.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4260"
@@ -32,6 +33,14 @@
       "op": "update",
       "op_id": "d9c90c19127a4fc387c8053df9664712",
       "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:bfa5e7eb7cd30f69e1fe2571",
+      "at": "2026-11-18T01:59:39Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4b8a5873326f4a94882c8d7834d10ee4",
+      "session_id": "0362803867fb4929927e576283fffc32"
     }
   ]
 }
