@@ -107,13 +107,36 @@ numbers are withheld. Following the rule, the cell was repeated at 15 rounds:
 No query fails, no answer differs, and no query is above the 1.5x bound (the largest `T` ratio is Q2.2
 at 1.04). Q4.2 and Q4.3 carry the benefit (0.32 and 0.27). The template is kept.
 
-## TPC-DS SF1: not measurable on this host
+## TPC-DS SF1 (GitHub-hosted runner, 9 rounds)
 
-Three attempts at the cell (9 rounds, arms `N`, `N2`, `S`, `T`) were each killed by the heavy-work
-memory-pressure watchdog (host pressure level 4, exit 79) right after the first arm finished loading;
-the benchmark processes were at 0.2 GiB and the Mocker guest is not attributed to the holder. The
-registry entry stays `unmeasured`, so the benefit rule directs no template change. The TPC-DS template
-is not retired: an unmeasured cell yields no verdict.
+Three attempts on the macOS host were killed by the heavy-work memory-pressure watchdog (host pressure
+level 4, exit 79) right after the first arm loaded. The cell was then run by the `Measurement` workflow
+on a GitHub-hosted runner (run 44348400951, 2026-11-18, develop `3847e49e8c`, ubuntu-latest, 4 vCPU,
+16 GB, AMD EPYC 7763), with the ClickHouse server (25.8.33.6) in Docker at the same 5.25 GiB limit
+(`memory.max` 5637144576, zero OOM kills). This host class has its own A/A and is not pooled with the
+macOS cells. Cell summary: `cells/tpcds-sf1-9rounds-gha-summary.md`.
+
+| Comparison | G over 99 queries | 95% interval | Verdict |
+|---|---|---|---|
+| A/A (`N2` vs `N`) | 1.0160 | 0.9948 to 1.0267 | passed |
+| `S` vs `N` | 0.9999 | 0.9790 to 1.0071 | neutral |
+| `T` vs `N` | 0.9708 | 0.9526 to 0.9887 | benefit |
+
+Every query passes in every arm, no answer differs, and no `T` query is above 1.3x, so there is no named
+loser. The layout alone is neutral; the full template is a small benefit. The template is kept. Q10, which
+failed for memory in earlier server runs, passes in every arm (149.8 ms `N`, 133.2 ms `T`).
+
+## TPC-H Q21 on Linux (GitHub-hosted runner)
+
+The `Measurement` workflow's Q21 cell (run 44348407053, same runner class and container limit) ran
+Q21 in all four arms with the existing per-query `join_algorithm = 'hash'` setting
+(`benchbox/platforms/clickhouse/statement_settings.py`): 40 of 40 executions pass, each returning the
+reference 100 rows with one checksum, at 3.40 GiB peak memory under the 5.25 GiB limit. The Q21 failure
+above is specific to the macOS Mocker host, not to the release memory envelope; no setting change is
+needed. Under the tuned template Q21 is 1.33x slower (median 8.7 s against 6.5 s, interval 1.29 to
+1.38), below the 1.5x bound. The capture's setting sweep did not select the benchmark database and
+returned "Unknown table expression identifier 'supplier'" for every candidate, so it adds nothing.
+Summaries: `cells/tpch-q21-gha-summary.md`, `cells/tpch-q21-gha-capture.md`.
 
 ## Harness defect fixed with this evidence
 
@@ -127,5 +150,4 @@ change). The fix does not touch timing.
 
 - The ADR-3 addendum in `benchbox-site` (the Q3, Q5 and Q18 narrative above supersedes the 2026-10-10
   evidence paragraph) is outside this repository.
-- ClickHouse TPC-DS SF1 needs a quieter host or a smaller footprint.
-- ClickHouse SF10 and the Q21 failure at this memory rung are unmeasured.
+- ClickHouse SF10 is unmeasured.
