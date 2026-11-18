@@ -20687,10 +20687,15 @@
       "title": "Validate DataFrame SF10 memory estimates and distinct-count timing on a host with 32 GiB or more"
     },
     "df-memory-guard-datagen-memory-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-19T19:54:05Z",
+        "generation": "c4695322b50e40a3ab3c0d8bd2ff8966",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:43c6657ebf2251468541889f"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Decide whether the DataFrame memory guard should account for data-generation memory"
     },
     "df-memory-guard-refusal-message-and-subset-estimate-20261112": {
