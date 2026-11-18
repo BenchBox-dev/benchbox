@@ -7,7 +7,7 @@
       "text": "ClickHouse Local (chDB) now runs the full TPC-H and TPC-DS specification: concurrent throughput streams, TPC-H refresh functions RF1 and RF2, and TPC-DS data maintenance. Every stream opens its own chDB session on the same database path, so in-memory databases are refused.",
       "details": [
         "chDB has no transactions, so refresh and maintenance steps run without BEGIN or COMMIT and cannot be rolled back; a failed step needs a reload.",
-        "chDB reports no deleted-row count, so RF2 counts the matching keys before each delete; that count is inside the RF2 timer.",
+        "chDB reports no deleted-row count, so RF2 counts the matching keys once before the RF2 timer starts; the RF2 time covers the deletes only.",
         "The three TPC-DS returns deletes run as an uncorrelated tuple IN subquery because chDB rejects a correlated EXISTS in a delete."
       ],
       "platforms": ["clickhouse-local"],
