@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "New Snowflake bundles record the size actually used (observed after any resize) in config.warehouse_size; a requested size that was not applied is not recorded as the size used. A test covers modify_warehouse_settings false and true.",
+    "Every published Snowflake bundle whose config.warehouse_size differs from its recorded observed size is corrected to the observed size, through the repository's sanctioned corpus-correction path (sidecar or correction record if one exists; otherwise a reviewed bundle edit with a CORPUS_NOTES entry). Owner authorizes correcting these published bundles.",
+    "validate_corpus passes; the site inputs and explorer show the corrected size after republish; the PR lists every corrected bundle."
+  ],
+  "context": "Owner decision 2026-11-18: 'new bundles record the real warehouse size used. existing bundles are corrected with the real size used.' Evidence: platform.compute.warehouse_size X-Small observed in all 50; config MEDIUM is the unapplied default. Guardrails: no live-cloud runs; linked worktree; changelog fragment; any integrity hash or signature over bundles must be handled by the repo's own tooling, never hand-patched.",
+  "description": "Problem: all 50 published Snowflake bundles record config.warehouse_size MEDIUM while platform.compute.warehouse_size (observed via SHOW WAREHOUSES) is X-Small. MEDIUM is the adapter default (benchbox/platforms/snowflake.py ~144) and is applied only when modify_warehouse_settings is true (~162, default False), so the warehouse was never resized.\n\nOutcome (owner decision 2026-11-18): new bundles record the warehouse size actually used; the 50 existing bundles are corrected to the real size used.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6da452ef1bfe1d4c6329ec0",
+      "at": "2026-11-18T21:38:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "904c51149f5542b19c011d9ddc3db593",
+      "session_id": "c565fe4336eb43b1a5921a95e6bb20da"
+    }
+  ]
+}

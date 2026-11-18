@@ -39732,6 +39732,13 @@
       "status": "dropped",
       "title": "Widen the migration snapshot to carry findings once todo-db can accept them"
     },
+    "snowflake-bundles-record-unapplied-warehouse-size-20261118": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Snowflake bundles record a requested warehouse size that was never applied"
+    },
     "snowflake-campaign-statement-history-timestamp-type-20261015": {
       "claim": null,
       "needs": [],
