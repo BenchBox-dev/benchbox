@@ -25363,10 +25363,15 @@
       "title": "Re-evaluate can_approve_pull_request_reviews once review enforcement is live"
     },
     "gizmosql-test-order-dependence-cli-platform-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-19T14:29:00Z",
+        "generation": "c0bff1f617474b0a96e509f3c3c15c43",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6da452ef1bfe1d4c6329ec0"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "A gizmosql unit test fails only when run after tests/unit/cli/test_platform.py"
     },
     "global-skill-deployment-pin-benchbox-refs-20261111": {
