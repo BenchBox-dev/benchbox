@@ -4,6 +4,7 @@
     "Each hint names an extra that exists in pyproject.toml (checked by a test or by `uv run -- python -c` resolving the extra).",
     "PR merged with a changelog.d fragment."
   ],
+  "context": "FINAL 2026-11-17. PR #4318 merged, 6baf7afe2f (reviewer SHIP, no open findings; preflight 4285 passed). Seven hints in six files now point at `pip install \"benchbox[pyspark]\"` / `\"benchbox[lakesail]\"` with `uv add benchbox --extra ...`; both extras exist (pyproject pyspark = pyspark>=3.5.0,<4.3; lakesail = pyspark[connect]>=3.5.0,<4.3). Live check on origin/develop: `git grep -E \"pip install (\\\"|')?pyspark\" -- benchbox docs` returns nothing; no docs matches to justify. Changelog fragment changelog.d/fix-pyspark-install-hints.json. No dependency/lock changes. Left as is: delta-spark hints (pyspark_maintenance.py, dataframe_operations.py) stay `pip install delta-spark`, since no extra covers delta-spark.",
   "description": "## Problem\nBenchBox caps pyspark `<4.3` (and delta-spark to match), but error messages and the platform registry tell users to run an unbounded `pip install pyspark`, which installs 4.3+ and breaks Delta sessions. Sites on develop (2026-11-17):\n- `benchbox/platforms/__init__.py:380-381` (pyspark-df, lakesail-df registry rows)\n- `benchbox/platforms/dataframe/pyspark_df.py:81`\n- `benchbox/platforms/dataframe/lakesail_df.py:50`\n- `benchbox/platforms/dataframe/pyspark_maintenance.py:115`\n- `benchbox/platforms/dataframe/hudi_maintenance.py:79`\n- `benchbox/core/transaction_primitives/dataframe_operations.py:229` (`pip install pyspark delta-spark`)\n\n## Change\nPoint each hint at the extra (`uv add benchbox --extra pyspark` / `pip install \"benchbox[pyspark]\"`), matching the existing wording in `platforms/__init__.py`, so the cap comes from package metadata. Do not hard-code a version range in messages. Check docs for the same unbounded hint (`git grep \"pip install pyspark\" docs`).\n\n## Guardrails\nMessages only; no dependency or lock changes. Keep any existing tests that assert message text green by updating them to the new contract.",
   "sessions": [
     {
@@ -20,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "e0c979ea57d44e5d96e39396514ea5cd",
+      "session_id": "584fe5162b994f91904666adf0c5e183"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:baf9996c1c86fb9c9b5547f3",
+      "at": "2026-11-18T00:58:42Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4c4c3bfd98bd4760ace764179606a67e",
       "session_id": "584fe5162b994f91904666adf0c5e183"
     }
   ]
