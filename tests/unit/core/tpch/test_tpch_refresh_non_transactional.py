@@ -9,13 +9,15 @@ import pytest
 from benchbox.core.contracts.platform_capabilities import refresh_is_transactional, refresh_reports_delete_counts
 from benchbox.core.tpch.refresh import (
     TPCHRefreshUpdateSet,
+    TPCHRF2Baseline,
     TPCHRF2Deletes,
     apply_rf1,
     apply_rf2,
-    capture_rf2_counts,
+    capture_rf2_baseline,
     check_rf1_applied,
     check_rf2_applied,
     refresh_transactional,
+    rf2_precount,
 )
 from benchbox.core.tpch.schema import LINEITEM, ORDERS
 from benchbox.platforms.base.adapter import PlatformAdapter
@@ -144,18 +146,13 @@ def test_transactional_adapter_still_begins_and_commits(tmp_path: Path) -> None:
     assert driver.commits == 1
 
 
-def test_rf2_counts_before_the_timer_and_deletes_without_counting(tmp_path: Path) -> None:
+def test_rf2_takes_its_counts_from_the_baseline_and_deletes_without_counting(tmp_path: Path) -> None:
     update_set = _update_set(tmp_path, [21, 22])
-    driver = _Driver(counts=[5, 2])
+    driver = _Driver()
     connection = _wrap(driver, supports_refresh_transactions=False, reports_refresh_delete_counts=False)
+    baseline = TPCHRF2Baseline(orders_total=9, lineitems_total=30, orders_for_keys=5, lineitems_for_keys=2)
 
-    precounted = capture_rf2_counts(connection, update_set)
-    assert driver.statements == [
-        "SELECT COUNT(*) FROM orders WHERE o_orderkey IN (21, 22)",
-        "SELECT COUNT(*) FROM lineitem WHERE l_orderkey IN (21, 22)",
-    ]
-    driver.statements.clear()
-    deleted = apply_rf2(connection, update_set, precounted=precounted)
+    deleted = apply_rf2(connection, update_set, precounted=rf2_precount(connection, baseline))
 
     assert deleted == TPCHRF2Deletes(orders=5, lineitems=2)
     assert driver.statements == [
@@ -164,11 +161,31 @@ def test_rf2_counts_before_the_timer_and_deletes_without_counting(tmp_path: Path
     ]
 
 
-def test_rf2_without_reported_counts_refuses_to_run_unprecounted(tmp_path: Path) -> None:
+def test_throughput_rf2_issues_no_count_query_inside_the_refresh_stream(tmp_path: Path) -> None:
+    from benchbox.core.tpch.throughput_test import TPCHThroughputTest
+
+    update_set = _update_set(tmp_path, [21, 22])
+    driver = _Driver()
+    connection = _wrap(driver, supports_refresh_transactions=False, reports_refresh_delete_counts=False)
+    throughput = TPCHThroughputTest(benchmark=object(), connection_factory=lambda: None, num_streams=1)
+    throughput._rf2_baselines = {
+        update_set.set_id: TPCHRF2Baseline(orders_total=9, lineitems_total=30, orders_for_keys=5, lineitems_for_keys=2)
+    }
+
+    result = throughput._execute_refresh_function("RF2", update_set, connection)
+
+    assert result["status"] == "SUCCESS", result["error"]
+    assert result["orders_deleted"] == 5
+    assert not any(statement.startswith("SELECT") for statement in driver.statements)
+
+
+def test_rf2_without_reported_counts_refuses_to_run_without_a_baseline(tmp_path: Path) -> None:
     update_set = _update_set(tmp_path, [21])
     connection = _wrap(_Driver(), reports_refresh_delete_counts=False)
 
-    with pytest.raises(RuntimeError, match="capture_rf2_counts"):
+    with pytest.raises(RuntimeError, match="baseline"):
+        rf2_precount(connection, None)
+    with pytest.raises(RuntimeError, match="baseline"):
         apply_rf2(connection, update_set)
 
 
@@ -185,11 +202,11 @@ def test_rf2_uses_the_reported_count_when_the_driver_provides_one(tmp_path: Path
 
 def test_refresh_sql_uses_schema_column_names_for_case_sensitive_engines(tmp_path: Path) -> None:
     update_set = _update_set(tmp_path, [31])
-    driver = _Driver(counts=[1, 1, 0, 0])
+    driver = _Driver(counts=[1, 1, 5, 5, 0, 0])
     connection = _wrap(driver, supports_refresh_transactions=False, reports_refresh_delete_counts=False)
 
     check_rf1_applied(_Driver(counts=[1, 1]), update_set, 2)
-    apply_rf2(connection, update_set, precounted=capture_rf2_counts(connection, update_set))
+    apply_rf2(connection, update_set, precounted=rf2_precount(connection, capture_rf2_baseline(connection, update_set)))
     check_rf2_applied(driver, update_set, 1)
 
     statements = " ".join(driver.statements)
@@ -255,9 +272,11 @@ def test_power_and_throughput_refresh_evidence_records_whether_the_step_was_tran
         refresh_connection_factory=lambda: connection,
     )._execute_refresh_function(function, connection)
     connection = _SqliteRefreshConnection(adapter, [81] if function == "RF2" else [])
-    throughput = TPCHThroughputTest(
+    throughput_test = TPCHThroughputTest(
         benchmark=object(), connection_factory=lambda: None, scale_factor=0.01, num_streams=1
-    )._execute_refresh_function(function, update_set, connection)
+    )
+    throughput_test._rf2_baselines = {update_set.set_id: capture_rf2_baseline(connection, update_set)}
+    throughput = throughput_test._execute_refresh_function(function, update_set, connection)
 
     assert power["status"] == "SUCCESS", power["error"]
     assert throughput["status"] == "SUCCESS", throughput["error"]

@@ -18,11 +18,11 @@ from benchbox.core.tpch.refresh import (
     apply_rf1,
     apply_rf2,
     capture_rf2_baseline,
-    capture_rf2_counts,
     check_rf1_applied,
     check_rf2_applied,
     generate_refresh_update_sets,
     record_refresh_applied,
+    rf2_precount,
     verify_rf2_deletes,
 )
 from benchbox.core.tpch.schema import LINEITEM, ORDERS
@@ -301,7 +301,7 @@ class TPCHMaintenanceTest:
             connection = self.connection_factory()
             record_refresh_applied(connection)
             baseline = capture_rf2_baseline(connection, update_set)
-            precounted = capture_rf2_counts(connection, update_set)
+            precounted = rf2_precount(connection, baseline)
             operation.start_time = mono_time()
             deletes = apply_rf2(connection, update_set, precounted=precounted)
             operation.end_time = mono_time()

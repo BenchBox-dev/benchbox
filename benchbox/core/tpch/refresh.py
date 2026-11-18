@@ -219,18 +219,12 @@ def apply_rf1(connection: Any, update_set: TPCHRefreshUpdateSet, chunk_size: int
         raise
 
 
-def capture_rf2_counts(
-    connection: Any, update_set: TPCHRefreshUpdateSet, chunk_size: int = REFRESH_CHUNK_SIZE
-) -> TPCHRF2Deletes | None:
+def rf2_precount(connection: Any, baseline: TPCHRF2Baseline | None) -> TPCHRF2Deletes | None:
     if refresh_reports_delete_counts(getattr(connection, "platform_adapter", None)):
         return None
-    _require_chunk_size(chunk_size)
-    orders = 0
-    lineitems = 0
-    for order_keys in _key_chunks(update_set.delete_path, chunk_size):
-        orders += _count_matching_keys(connection, ORDERS.name, ORDERS_KEY_COLUMN, order_keys)
-        lineitems += _count_matching_keys(connection, LINEITEM.name, LINEITEM_KEY_COLUMN, order_keys)
-    return TPCHRF2Deletes(orders=orders, lineitems=lineitems)
+    if baseline is None:
+        raise RuntimeError("RF2 needs a baseline captured before the timer starts on a driver without delete counts")
+    return TPCHRF2Deletes(orders=baseline.orders_for_keys, lineitems=baseline.lineitems_for_keys)
 
 
 def apply_rf2(
@@ -244,7 +238,7 @@ def apply_rf2(
     if not reports and precounted is None:
         raise RuntimeError(
             f"refresh set {update_set.set_id} RF2: the driver reports no deleted row count; "
-            "capture_rf2_counts before the timer starts"
+            "derive the count from the RF2 baseline before the timer starts"
         )
     _begin_transaction(connection)
     try:

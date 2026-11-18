@@ -9,11 +9,12 @@ from benchbox.core.tpch.refresh import (
     TPCHRefreshUpdateSet,
     apply_rf1,
     apply_rf2,
-    capture_rf2_counts,
+    capture_rf2_baseline,
     check_rf1_applied,
     check_rf2_applied,
     generate_refresh_update_sets,
     refresh_transactional,
+    rf2_precount,
 )
 from benchbox.core.tpch.schema import LINEITEM, ORDERS
 from benchbox.platforms.base.connection_wrappers import PlatformAdapterConnection
@@ -121,7 +122,8 @@ def test_chdb_rf2_reports_exact_counts_through_count_before_delete(tmp_path: Pat
         check_rf1_applied(connection, update_set, inserted)
         keys = ", ".join(str(key) for key in _delete_keys(update_set))
         expected_lineitems = _table_count(connection, LINEITEM.name, f"l_orderkey IN ({keys})")
-        deleted = apply_rf2(connection, update_set, precounted=capture_rf2_counts(connection, update_set))
+        precounted = rf2_precount(connection, capture_rf2_baseline(connection, update_set))
+        deleted = apply_rf2(connection, update_set, precounted=precounted)
         check_rf2_applied(connection, update_set, deleted.orders)
         assert deleted.lineitems == expected_lineitems
         assert _table_count(connection, LINEITEM.name, f"l_orderkey IN ({keys})") == 0

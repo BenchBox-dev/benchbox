@@ -26,12 +26,12 @@ from benchbox.core.tpch.refresh import (
     apply_rf1,
     apply_rf2,
     capture_rf2_baseline,
-    capture_rf2_counts,
     check_rf1_applied,
     check_rf2_applied,
     generate_refresh_update_sets,
     record_refresh_applied,
     refresh_transactional,
+    rf2_precount,
     verify_refresh_stream_totals,
     verify_rf2_reported,
 )
@@ -147,6 +147,7 @@ class TPCHThroughputTest:
 
         self.captured_items: list[tuple[str, str]] = []
 
+        self._rf2_baselines: dict[int, TPCHRF2Baseline] = {}
         self._pregenerated_queries: Optional[dict[int, list[Any]]] = None
 
     def run(self, config: Optional[TPCHThroughputTestConfig] = None) -> TPCHThroughputTestResult:
@@ -175,6 +176,7 @@ class TPCHThroughputTest:
 
             self._pregenerated_queries = self._pregenerate_stream_queries(config)
             baselines = self._capture_rf2_baselines(update_sets) if config.refresh_functions else {}
+            self._rf2_baselines = baselines
             start_time = mono_time()
             result.start_time = datetime.now().isoformat()
             auxiliary_fn = None
@@ -450,7 +452,9 @@ class TPCHThroughputTest:
         error = None
         duration_ms = 0
         try:
-            precounted = capture_rf2_counts(connection, update_set) if function == "RF2" else None
+            precounted = (
+                rf2_precount(connection, self._rf2_baselines.get(update_set.set_id)) if function == "RF2" else None
+            )
             start_time = mono_time()
             if function == "RF1":
                 applied = apply_rf1(connection, update_set)
