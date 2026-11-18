@@ -16309,12 +16309,17 @@
       "title": "Find why TPC-DS Q10 exceeds the 5.25 GiB envelope on ClickHouse server at SF1"
     },
     "clickhouse-server-tpch-q21-fails-at-5-25gib-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-19T21:39:02Z",
+        "generation": "62eb6a7e5baf4387a73e5f7b745745c9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a43b9a4b85fc0a7cdd51f943"
+      },
       "needs": [
         "heavy-work-host-capacity-owner-decision-20261117"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "ClickHouse server TPC-H Q21 fails at SF1 in every tuning arm under the 5.25 GiB container limit"
     },
     "clickhouse-session-policy-link-sqlglot-ast-gap-issue": {
