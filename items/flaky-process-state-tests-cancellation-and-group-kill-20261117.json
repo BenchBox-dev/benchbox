@@ -5,6 +5,7 @@
     "A deterministic test injects the identified timing and passes; each original test passes 200 sequential repetitions on an idle host via make heavy-run, counts recorded",
     "No skip, xfail, rerun marker or relaxed assertion added"
   ],
+  "context": "2026-11-18 evidence (PR #4351, f9dd3fc25e): root causes — (1) test_cancellation_kills_trapping_child_and_grandchild: an interrupt landing inside Popen.wait leaks the Popen wait lock, so no later Popen.wait can reap the direct child, which stays a zombie; fixed by reaping it with a background os.waitpid when the bounded wait times out (tests/uat/timeouts.py). (2) test_the_real_stop_process_is_group_killed_with_its_output_kept_and_no_leaked_worker: the test read the worker pid file before the shell had written the pid; it now waits for a complete line. Both tests together passed 200 of 200 sequential repetitions on this host through make heavy-run (idle-host admission, no deliberate load), 2026-11-18. No skip, xfail, rerun marker or relaxed assertion.",
   "description": "## Problem\nTwo tests failed once each on unrelated PRs and passed on rerun:\n- tests/uat/test_timeouts.py::test_cancellation_kills_trapping_child_and_grandchild (UAT process-state, medium-test shard 3): assertion 'zombie' == 'gone', on develop run 43254948280 after PR #4173 (2026-11-12).\n- tests/unit/utils/test_heavy_vm.py::test_the_real_stop_process_is_group_killed_with_its_output_kept_and_no_leaked_worker, first CI run of PR #4189 (2026-11-12).\nci-spurious-failures-under-runner-congestion-20261115 covers a different watchdog test and the duration gate. The test already polls up to 5 s (_STATE_TIMEOUT_S) for 'gone', so the child stayed unreaped for 5 s; establish who should reap it and why it did not.\n\n## Decision gate\nFor each test, find whether the flake is a test timing assumption (assert before reap) or a product defect (cancellation leaves an unreaped child in real use). A product defect gets fixed in the product; a test-only race gets a deterministic wait on the condition (reap or exit), never a sleep or a retry decorator.\n\n## Guardrails\n- No xfail, skip, rerun-on-failure marker or widened assertion that would also accept a real leak.\n- Prove determinism with 200 sequential repetitions per test on an idle host through make heavy-run, plus a deterministic test that injects the identified timing. No deliberate CPU or memory load (load-based repetition caused the 2026-11-13 spin-loop leak; see ci-spurious-failures-under-runner-congestion-20261115).",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/43254948280"
@@ -33,6 +34,14 @@
       "op": "update",
       "op_id": "b7289bde2e0248a88fd4520c6c155386",
       "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a43b9a4b85fc0a7cdd51f943",
+      "at": "2026-11-18T15:09:44Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "87d5b48dc7a145e1b1f005b2210528f5",
+      "session_id": "92b5cfb3e86e40bfb2cd8c982809e0b7"
     }
   ]
 }
