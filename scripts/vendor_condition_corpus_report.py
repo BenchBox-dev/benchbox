@@ -21,6 +21,7 @@ from benchbox.validation.bundle import (
     VENDOR_STATUS_PRE_POLICY,
     _manifest_with_bundle_identity,
     bundle_vendor_publication_status,
+    evaluate_vendor_conditions,
     vendor_platform_key,
 )
 
@@ -54,9 +55,11 @@ def classify_corpus(bundles_dir: Path, withdrawn: frozenset[str]) -> list[dict[s
     rows: list[dict[str, str]] = []
     for manifest_path in sorted(bundles_dir.glob("*.manifest.json")):
         bundle_path = manifest_path.with_name(manifest_path.name.removesuffix(".manifest.json") + ".json")
-        if not bundle_path.is_file():
-            continue
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if not bundle_path.is_file():
+            if "bundle_file" in manifest:
+                rows.append(_row(bundle_path.name, "unknown", "", [], [], STATUS_NONE))
+            continue
         merged = _manifest_with_bundle_identity(manifest, bundle_path)
         platform_name = str(merged.get("platform") or "")
         if vendor_platform_key(platform_name) not in MANDATORY_VENDOR_PLATFORMS:
@@ -65,21 +68,35 @@ def classify_corpus(bundles_dir: Path, withdrawn: frozenset[str]) -> list[dict[s
         present = [field for field in MANDATORY_VENDOR_FIELDS if manifest.get(field) is not None]
         evidence = sorted(_bundle_evidence_keys(bundle))
         status = bundle_vendor_publication_status(manifest, bundle_path)
+        errors, _ = evaluate_vendor_conditions(merged)
         if bundle_path.name in withdrawn:
             status = STATUS_WITHDRAWN
-        elif status not in (VENDOR_STATUS_EVIDENCE_BACKED, VENDOR_STATUS_PRE_POLICY):
+        elif errors or status not in (VENDOR_STATUS_EVIDENCE_BACKED, VENDOR_STATUS_PRE_POLICY):
             status = STATUS_NONE
         rows.append(
-            {
-                "bundle": bundle_path.name,
-                "platform": platform_name,
-                "run_date": str(merged.get(BUNDLE_RUN_TIMESTAMP_KEY) or "")[:10],
-                "fields_present": ",".join(present) or "-",
-                "run_record_evidence": ",".join(evidence) or "none",
-                "status": status,
-            }
+            _row(
+                bundle_path.name,
+                platform_name,
+                str(merged.get(BUNDLE_RUN_TIMESTAMP_KEY) or "")[:10],
+                present,
+                evidence,
+                status,
+            )
         )
     return rows
+
+
+def _row(
+    bundle: str, platform: str, run_date: str, present: list[str], evidence: list[str], status: str
+) -> dict[str, str]:
+    return {
+        "bundle": bundle,
+        "platform": platform,
+        "run_date": run_date,
+        "fields_present": ",".join(present) or "-",
+        "run_record_evidence": ",".join(evidence) or "none",
+        "status": status,
+    }
 
 
 def render_report(rows: list[dict[str, str]]) -> str:

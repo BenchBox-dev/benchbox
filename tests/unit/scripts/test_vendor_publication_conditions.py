@@ -214,6 +214,25 @@ class TestMandatoryFieldsAfterCutoff:
         manifest = {"platform": "snowflake", "submitted_at": POST_CUTOFF, BUNDLE_RUN_TIMESTAMP_KEY: PRE_CUTOFF}
         assert vendor_publication_status(manifest) == VENDOR_STATUS_INCOMPLETE
 
+    @pytest.mark.parametrize(
+        "stamp",
+        [{"submission_tool_version": "benchbox/0.0.0"}, {"result_source": "community"}],
+    )
+    def test_submit_written_manifest_without_submitted_at_is_never_exempt(self, stamp):
+        manifest = {"platform": "snowflake", BUNDLE_RUN_TIMESTAMP_KEY: PRE_CUTOFF, **stamp}
+        assert vendor_publication_status(manifest) == VENDOR_STATUS_INCOMPLETE
+        errors, _ = evaluate_vendor_conditions(manifest)
+        assert errors
+
+    def test_submit_written_manifest_with_pre_cutoff_submitted_at_is_pre_policy(self):
+        manifest = {
+            "platform": "snowflake",
+            "submission_tool_version": "benchbox/0.0.0",
+            "submitted_at": "2026-11-17T10:00:00+00:00",
+            BUNDLE_RUN_TIMESTAMP_KEY: PRE_CUTOFF,
+        }
+        assert vendor_publication_status(manifest) == VENDOR_STATUS_PRE_POLICY
+
     def test_other_platforms_not_affected(self):
         manifest = {"platform": "duckdb", "submitted_at": POST_CUTOFF}
         assert evaluate_vendor_conditions(manifest) == ([], [])

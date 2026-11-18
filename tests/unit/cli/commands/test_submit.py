@@ -612,6 +612,7 @@ def test_submit_refuses_missing_mandatory_vendor_fields(
     fake = _fake_result()
     fake.platform = platform
     monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (fake, {}))
+    monkeypatch.setattr(sub, "_submission_timestamp", lambda: "2026-11-18T00:00:00+00:00")
 
     out_dir = tmp_path / "submission"
     result = CliRunner().invoke(sub.submit, [str(src), "--output", str(out_dir)])
@@ -632,6 +633,7 @@ def test_submit_accepts_complete_mandatory_vendor_fields(
     fake = _fake_result()
     fake.platform = platform
     monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (fake, {}))
+    monkeypatch.setattr(sub, "_submission_timestamp", lambda: "2026-11-18T00:00:00+00:00")
 
     out_dir = tmp_path / "submission"
     result = CliRunner().invoke(
@@ -654,6 +656,24 @@ def test_submit_accepts_complete_mandatory_vendor_fields(
     manifest = json.loads((out_dir / "tpch_duckdb.manifest.json").read_text(encoding="utf-8"))
     assert manifest["self_run"] is True
     assert manifest["plan_tier"] == "paid"
+
+
+@pytest.mark.parametrize("platform", ["bigquery", "snowflake", "databricks"])
+def test_submit_before_cutoff_labels_missing_vendor_fields_pre_policy(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, platform: str
+) -> None:
+    src = tmp_path / "tpch_duckdb.json"
+    _write_valid_submission_bundle(src)
+    fake = _fake_result()
+    fake.platform = platform
+    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (fake, {}))
+    monkeypatch.setattr(sub, "_submission_timestamp", lambda: "2026-11-17T23:59:59+00:00")
+
+    out_dir = tmp_path / "submission"
+    result = CliRunner().invoke(sub.submit, [str(src), "--output", str(out_dir)])
+
+    assert result.exit_code == 0, result.output
+    assert "pre_policy" in result.output
 
 
 def test_submit_refuses_free_trial_funding_without_permission(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

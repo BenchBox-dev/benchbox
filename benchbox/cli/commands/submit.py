@@ -161,6 +161,10 @@ def _write_canonical_submission_file(source_path: Path, target_path: Path) -> Pa
     return target_path
 
 
+def _submission_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
 def _build_submission_manifest(
     *,
     source_path: Path,
@@ -177,7 +181,7 @@ def _build_submission_manifest(
 
     manifest = {
         "submission_tool_version": f"benchbox/{benchbox.__version__}",
-        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "submitted_at": _submission_timestamp(),
         "bundle_file": source_path.name,
         "bundle_hash": _hash_file(source_path),
         "companion_hashes": {comp.name: _hash_file(comp) for comp in companions},
@@ -225,7 +229,7 @@ def _enforce_vendor_conditions(ctx: click.Context, result, vendor_conditions: di
     declared = {
         "platform": result.platform,
         "funding": resolved_funding,
-        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "submitted_at": _submission_timestamp(),
         **vendor_conditions,
     }
     recorded = {

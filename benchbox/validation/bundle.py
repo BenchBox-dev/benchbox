@@ -877,7 +877,13 @@ def _self_run_errors_and_warnings(manifest: Mapping[str, Any], platform: str) ->
     return [], []
 
 
+def _is_submit_stamped(manifest: Mapping[str, Any]) -> bool:
+    return manifest.get("submission_tool_version") is not None or manifest.get("result_source") == "community"
+
+
 def _vendor_manifest_date(manifest: Mapping[str, Any]) -> datetime.date | None:
+    if _is_submit_stamped(manifest) and manifest.get("submitted_at") is None:
+        return None
     candidates = [
         manifest.get(key) for key in ("submitted_at", BUNDLE_RUN_TIMESTAMP_KEY) if manifest.get(key) is not None
     ]

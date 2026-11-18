@@ -51,6 +51,29 @@ def test_withdrawn_bundle_is_reported_withdrawn(tmp_path):
     assert statuses == {"new_db.json": "withdrawn"}
 
 
+def test_manifest_without_bundle_is_none(tmp_path):
+    (tmp_path / "orphan.manifest.json").write_text(json.dumps({"bundle_file": "orphan.json"}), encoding="utf-8")
+    (tmp_path / "ledger.manifest.json").write_text(json.dumps({"bundles": []}), encoding="utf-8")
+
+    statuses = _statuses(classify_corpus(tmp_path, frozenset()))
+
+    assert statuses == {"orphan.json": "none"}
+
+
+def test_fields_present_but_failing_validation_is_none(tmp_path):
+    _write(
+        tmp_path,
+        "free_sf",
+        "Snowflake",
+        "2026-09-19T21:11:34",
+        {"plan_tier": "free", "self_run": True, "vendor_notice": {"sent_on": "2026-09-01", "reference": "t"}},
+    )
+
+    statuses = _statuses(classify_corpus(tmp_path, frozenset()))
+
+    assert statuses == {"free_sf.json": "none"}
+
+
 def test_report_counts_and_exit_code(tmp_path, capsys):
     _write(tmp_path, "old_bq", "BigQuery", "2026-09-19T21:11:34")
 
