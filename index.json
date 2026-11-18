@@ -20683,7 +20683,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Validate DataFrame SF10 memory estimates and distinct-count timing on a host with 32 GiB or more"
     },
     "df-memory-guard-datagen-memory-20261117": {
