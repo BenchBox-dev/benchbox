@@ -110,3 +110,39 @@ def test_the_adapter_refuses_to_reuse_a_managed_database_a_refresh_run_modified(
 
     with pytest.raises(RuntimeError, match="refresh functions"):
         adapter.handle_existing_database()
+
+
+def test_writing_the_marker_never_probes_a_missing_metadata_table(tmp_path: Path) -> None:
+    class RecordingConnection:
+        def __init__(self, inner: sqlite3.Connection) -> None:
+            self.inner = inner
+            self.statements: list[str] = []
+
+        def cursor(self):
+            outer = self
+            cursor = self.inner.cursor()
+
+            class Recording:
+                def execute(self, sql, params=None):
+                    outer.statements.append(sql.strip().split("\n")[0])
+                    return cursor.execute(sql, params) if params else cursor.execute(sql)
+
+                def __getattr__(self, name):
+                    return getattr(cursor, name)
+
+            return Recording()
+
+        def commit(self) -> None:
+            self.inner.commit()
+
+    inner = sqlite3.connect(str(tmp_path / "a.sqlite"))
+    connection = RecordingConnection(inner)
+    manager = TuningMetadataManager(SQLiteAdapter(database_path=str(tmp_path / "a.sqlite")), connection=connection)
+    try:
+        assert manager.write_refresh_marker() is True
+    finally:
+        inner.close()
+
+    first_select = next(i for i, sql in enumerate(connection.statements) if sql.upper().startswith("SELECT"))
+    first_create = next(i for i, sql in enumerate(connection.statements) if sql.upper().startswith("CREATE TABLE"))
+    assert first_create < first_select

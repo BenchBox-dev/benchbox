@@ -392,10 +392,10 @@ class TuningMetadataManager:
             return False
 
     def write_refresh_marker(self) -> bool:
-        if self.has_refresh_marker():
-            return True
         if not self.create_metadata_table():
             return False
+        if self.has_refresh_marker():
+            return True
         self._batch_insert_records(
             [
                 TuningMetadata(
