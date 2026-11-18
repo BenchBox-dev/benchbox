@@ -51,7 +51,7 @@ def database():
     connection.close()
 
 
-def _refresh_set(tmp_path: Path, delete_rows: str = "2000-01-02|2000-01-03|\n") -> RefreshSet:
+def _refresh_set(tmp_path: Path, delete_rows: str = "2000-01-02|2000-01-03\n") -> RefreshSet:
     files = {table.name: tmp_path / f"{table.name}.dat" for table in SOURCE_TABLES}
     files["s_delete"].write_text(delete_rows, encoding="utf-8")
     counts = {table.name: 1 for table in SOURCE_TABLES}
@@ -150,12 +150,12 @@ def test_empty_staging_file_expects_no_removals(monkeypatch, database, tmp_path)
     operation = _harness(monkeypatch, database)._execute_function(MAINTENANCE_FUNCTIONS_BY_NAME["DF_SS"], refresh_set)
 
     assert operation.success is False
-    assert "removed 20 rows from store_sales; its predicate matches 0 rows" in operation.error
+    assert "removed 10 rows from store_returns; its predicate matches 0 rows" in operation.error
 
 
 def test_inline_staging_sql_renders_typed_values_and_handles_empty_files(tmp_path) -> None:
     path = tmp_path / "s_delete.dat"
-    path.write_text("2000-01-02|2000-01-03|\n2001-02-03|2001-02-04|\n", encoding="utf-8")
+    path.write_text("2000-01-02|2000-01-03\n2001-02-03|2001-02-04\n", encoding="utf-8")
     table = SOURCE_TABLES_BY_NAME["s_delete"]
 
     sql = inline_staging_sql(table, path)
