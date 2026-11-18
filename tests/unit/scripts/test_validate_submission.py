@@ -94,7 +94,9 @@ class TestManifestProvenance:
         bundle.parent.mkdir(parents=True)
         bundle.write_text(json.dumps({"platform": {"name": "Snowflake"}}), encoding="utf-8")
         vr = ValidationResult("test")
-        _validate_manifest_provenance({"bundle_run_timestamp": "2026-01-01T00:00:00"}, bundle, vr)
+        _validate_manifest_provenance(
+            {"bundle_run_timestamp": "2026-01-01T00:00:00", "result_source": "internal"}, bundle, vr
+        )
         assert not vr.ok
 
     def test_bundle_platform_and_funding_override_manifest(self, tmp_path):

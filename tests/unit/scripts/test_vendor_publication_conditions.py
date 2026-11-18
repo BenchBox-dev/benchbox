@@ -211,7 +211,12 @@ class TestMandatoryFieldsAfterCutoff:
         assert vendor_publication_status(manifest) == VENDOR_STATUS_INCOMPLETE
 
     def test_post_cutoff_submission_date_overrides_old_bundle_timestamp(self):
-        manifest = {"platform": "snowflake", "submitted_at": POST_CUTOFF, BUNDLE_RUN_TIMESTAMP_KEY: PRE_CUTOFF}
+        manifest = {
+            "platform": "snowflake",
+            "result_source": "internal",
+            "submitted_at": POST_CUTOFF,
+            BUNDLE_RUN_TIMESTAMP_KEY: PRE_CUTOFF,
+        }
         assert vendor_publication_status(manifest) == VENDOR_STATUS_INCOMPLETE
 
     @pytest.mark.parametrize(
