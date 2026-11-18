@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "On connector 5.x, gateway_ca_bundle reaches the connector (custom_root_store_path or extra_root_store_path) and a test proves a private-CA endpoint verifies",
+    "gateway_ocsp_fail_open and allow_insecure_gateway either map to the 5.x revocation settings (crl_check_mode) with tests, or are refused with an error naming the connector version",
+    "CI exercises at least one 5.x connector version for the gateway path",
+    "The site page docs/platforms/snowflake-gateways.md is updated to match"
+  ],
+  "context": "Found while correcting the site's Snowflake gateways page against v0.5.1 (91d357a); verified from the snowflake-connector-python 5.2.0 sdist. Related: gateway-insecure-option-help-text.",
+  "description": "Core pins snowflake-connector-python>=3.0.0 (pyproject.toml:86), and a fresh install resolves 5.2.0 (released 2026-11-04); core's own lockfile is on 4.7.3, so the tests do not cover 5.x. In the 5.2.0 source: ocsp_fail_open is accepted and ignored ('The driver accepts the key and does not apply it; certificate revocation uses CRL', sf_params_spec/src/lib.rs:2736-2742); insecure_mode is not a registered parameter and its property raises NotImplementedError (_internal/connection/connection.py:523-525); revocation uses CRLs with crl_check_mode defaulting to DISABLED (connection_config.py:92); REQUESTS_CA_BUNDLE is never read, and a private CA goes through custom_root_store_path or extra_root_store_path. So on 5.x gateway_ocsp_fail_open and allow_insecure_gateway do nothing, and gateway_ca_bundle (platforms/snowflake.py:228-232) does not reach the connector. A user who sets them gets a different transport than they asked for, silently.",
+  "links": [
+    "benchbox/platforms/snowflake.py",
+    "pyproject.toml",
+    "https://pypi.org/project/snowflake-connector-python/5.2.0/",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/platforms/snowflake-gateways.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp:joe@joe-mac-mini.local:64e582df628f30691111dd40",
+      "at": "2026-11-18T21:42:58Z",
+      "client": "omp",
+      "op": "create",
+      "op_id": "eac5c24c5de04749bb994ff611d96938",
+      "session_id": "61f73a6f08cd4699913cbb0090203dc7"
+    }
+  ]
+}
