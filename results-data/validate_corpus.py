@@ -256,7 +256,7 @@ def _usable_queries_by_stream(payload: dict) -> dict[int, set[str]] | None:
             duration = float(data.get("ms"))
         except (TypeError, ValueError):
             continue
-        if not math.isfinite(duration) or duration < 1.0:
+        if not math.isfinite(duration) or duration < 0.0:
             continue
         if str(data.get("run_type") or "measurement").strip().lower() != "measurement":
             continue
