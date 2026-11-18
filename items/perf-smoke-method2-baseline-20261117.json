@@ -176,6 +176,16 @@
       "op": "prepare",
       "op_id": "b475bf0846c141718073540124113142",
       "session_id": "b833d84af4ae4e4b999f435d3c8fd25e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8d4e2ec2cb1f569769838211",
+      "at": "2026-11-18T15:45:44Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b",
+      "op": "recover",
+      "op_id": "0388bb687c1d441ea129e691ba63e792",
+      "reason": "The MCP server process that registered the batch exited when the session restarted; its owner identity cannot resume and this session holds the checkout.",
+      "session_id": "0013bdb674094819a5cc711e0629a4ba"
     }
   ]
 }

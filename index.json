@@ -5935,11 +5935,22 @@
         "gateway-probe-served-providers-20261117",
         "green-sweep-clears-hidden-failures-20261117"
       ],
-      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b",
-      "owner_epoch": 0,
-      "owner_generation": "49fa8b1de7f2486546f4d6a36ae4dd55",
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8d4e2ec2cb1f569769838211",
+      "owner_epoch": 1,
+      "owner_generation": "88263a956393fb0c8876b825fedb4a4a",
       "project_id": "benchbox",
-      "recoveries": [],
+      "recoveries": [
+        {
+          "at": "2026-11-18T15:45:44Z",
+          "client": "omp-coding-agent",
+          "epoch": 1,
+          "new_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8d4e2ec2cb1f569769838211",
+          "op_id": "0388bb687c1d441ea129e691ba63e792",
+          "previous_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:daba6966dbafa9d0ecd0bd8b",
+          "reason": "The MCP server process that registered the batch exited when the session restarted; its owner identity cannot resume and this session holds the checkout.",
+          "session_id": "0013bdb674094819a5cc711e0629a4ba"
+        }
+      ],
       "repository": "https://github.com/BenchBox-dev/BenchBox.git",
       "scope": {
         "corpus-drift-mirror-grace-20261117": [
