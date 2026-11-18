@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "A gateway-routed run computes no internal cost total and logs no dollar figure",
+    "A test runs the cost path with gateway_routed true and resource_usage present and asserts no total is produced"
+  ],
+  "context": "Found by an independent review of the site page docs/platforms/snowflake-gateways.md against core v0.5.1 (91d357a); each claim was re-verified by a second reviewer.",
+  "description": "core/cost/integration.py:81 gates per-query cost on gateway_routed, but _collect_query_costs_from_executions (integration.py:707-724) is not gated. Snowflake attaches resource_usage to every query, gateway or not (platforms/snowflake.py:1519-1523), and the power phase passes it into the ungated path (integration.py:738). So for a gateway run the internal benchmark_cost.total_cost and the log line 'Cost estimation complete: $...' (integration.py:121) show a dollar figure, while the written result suppresses it (results/schema.py:781). The log contradicts the documented rule that a gateway run has no cost total.",
+  "links": [
+    "benchbox/core/cost/integration.py",
+    "benchbox/core/results/schema.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp:joe@joe-mac-mini.local:64e582df628f30691111dd40",
+      "at": "2026-11-18T21:37:01Z",
+      "client": "omp",
+      "op": "create",
+      "op_id": "2529e0ad2de54dfea08752f1b52651e1",
+      "session_id": "61f73a6f08cd4699913cbb0090203dc7"
+    }
+  ]
+}

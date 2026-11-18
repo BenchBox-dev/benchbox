@@ -25343,6 +25343,13 @@
       "status": "open",
       "title": "Degrade the review gateway only for served providers and debounce monitor alarms"
     },
+    "gateway-run-internal-cost-total-ungated": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Keep gateway runs out of the internal cost total and its log line"
+    },
     "gcloud-emsign-ca-workaround-revert": {
       "claim": null,
       "needs": [],
