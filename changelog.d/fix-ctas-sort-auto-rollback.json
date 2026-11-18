@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed a tuned DuckDB load reporting a sorted-ingestion rewrite as \"could not be rolled back\" when the rewrite failed at commit, for example out of memory. DuckDB had already rolled the transaction back, so the run now records the original error and continues with the table unsorted."
+    }
+  ]
+}
