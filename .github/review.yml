@@ -224,4 +224,5 @@ infra:
     REVIEW_GATEWAY_URL: {source: gateway_url}
     TS_OAUTH_CI_CLIENT_ID: {source: tailscale_oauth, field: id}
     TS_OAUTH_CI_SECRET: {source: tailscale_oauth, field: secret}
+    OPENAI_API_KEY: {source: openai_service_account, project: proj_Tes1bKdIYe0ecOtF1ZNnEBzV, name: review-classifier}
     TYPESAFE_API_KEY: {source: store, rotator: manual}
