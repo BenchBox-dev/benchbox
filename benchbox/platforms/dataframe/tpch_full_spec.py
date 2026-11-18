@@ -12,6 +12,7 @@ from benchbox.core.throughput.entrypoints import finalize_throughput_metrics
 from benchbox.core.tpc_spec import refresh_functions_enabled
 from benchbox.core.tpch.dataframe_refresh import DataFrameRefresher, execute_refresh_function
 from benchbox.core.tpch.dataframe_throughput import DataFrameTPCHThroughputTest
+from benchbox.core.tpch.platform_power import _power_test_error_result
 from benchbox.core.tpch.refresh import TPCHRefreshUpdateSet, generate_refresh_update_sets
 from benchbox.core.tpch.throughput_test import TPCHThroughputTestConfig
 from benchbox.platforms.base.execution import TestDriversMixin, _throughput_config_options
@@ -121,17 +122,7 @@ def resolve_stream_count(benchmark_config: Any) -> int:
 
 
 def failed_power_row(error: str) -> dict[str, Any]:
-    return {
-        "query_id": "power_test_error",
-        "execution_time_seconds": 0.0,
-        "status": "FAILED",
-        "rows_returned": 0,
-        "error": error,
-        "test_type": "power",
-        "iteration": 1,
-        "run_type": "measurement",
-        "stream_id": 0,
-    }
+    return {**_power_test_error_result(error, iteration=1, run_type="measurement"), "stream_id": 0}
 
 
 def run_throughput(
