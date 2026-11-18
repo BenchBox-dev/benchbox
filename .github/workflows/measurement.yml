@@ -1,0 +1,206 @@
+name: Measurement
+
+on:
+  workflow_dispatch:
+    inputs:
+      cell:
+        description: "Measurement cell to run"
+        type: choice
+        required: true
+        options:
+          - duckdb-tpch-sf10
+          - duckdb-ssb-sf10
+          - duckdb-tpcds-sf10
+          - clickhouse-tpcds-sf1
+          - clickhouse-tpch-q21
+      seed:
+        description: "Harness seed"
+        type: string
+        required: false
+        default: "42"
+      rounds:
+        description: "Timed rounds per arm (at least 7)"
+        type: string
+        required: false
+        default: "9"
+      ref:
+        description: "Commit to measure (default: the dispatched commit)"
+        type: string
+        required: false
+        default: ""
+
+concurrency:
+  group: measurement-${{ inputs.cell }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  CLICKHOUSE_IMAGE: ghcr.io/benchbox-dev/clickhouse:25.8@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77
+  CLICKHOUSE_CONTAINER_MEMORY: 5376m
+  CLICKHOUSE_PASSWORD: benchbox
+  HOST_CLASS: github-hosted ubuntu-latest, 4 vCPU, 16 GB RAM
+
+jobs:
+  measure:
+    name: Measure ${{ inputs.cell }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    env:
+      CELL: ${{ inputs.cell }}
+      SEED: ${{ inputs.seed }}
+      ROUNDS: ${{ inputs.rounds }}
+    steps:
+      - name: Validate inputs
+        run: |
+          case "$SEED" in ''|*[!0-9]*) echo "::error::seed must be an integer"; exit 1;; esac
+          case "$ROUNDS" in ''|*[!0-9]*) echo "::error::rounds must be an integer"; exit 1;; esac
+          if [ "$ROUNDS" -lt 7 ]; then echo "::error::rounds must be at least 7"; exit 1; fi
+
+      - name: Free disk space
+        run: |
+          df -h / /mnt
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune --all --force >/dev/null || true
+          df -h / /mnt
+
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev --extra duckdb --extra clickhouse
+
+      - name: Prepare the run directory and record the runner
+        run: |
+          out="${RUNNER_TEMP}/measurement/${CELL}"
+          mkdir -p "$out/env" "${RUNNER_TEMP}/work" "${RUNNER_TEMP}/data"
+          echo "OUT=$out" >> "$GITHUB_ENV"
+          echo "WORK=${RUNNER_TEMP}/work" >> "$GITHUB_ENV"
+          echo "DATA=${RUNNER_TEMP}/data" >> "$GITHUB_ENV"
+          {
+            echo "host_class: ${HOST_CLASS}"
+            echo "cell: ${CELL}"
+            echo "seed: ${SEED}"
+            echo "rounds: ${ROUNDS}"
+            echo "commit: $(git rev-parse HEAD)"
+            echo "tree_clean: $(test -z "$(git status --porcelain)" && echo yes || echo no)"
+            echo "dispatch_ref: ${GITHUB_REF}"
+            echo "workflow_run: ${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}"
+            echo "runner_image: ${ImageOS:-unknown} ${ImageVersion:-unknown}"
+            echo "runner_name: ${RUNNER_NAME}"
+            echo "nproc: $(nproc)"
+            echo "cpu_model: $(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ //')"
+            echo "mem_total_kib: $(awk '/MemTotal/ {print $2}' /proc/meminfo)"
+            echo "swap_total_kib: $(awk '/SwapTotal/ {print $2}' /proc/meminfo)"
+            echo "kernel: $(uname -r)"
+            echo "python: $(uv run -- python --version)"
+            echo "duckdb: $(uv run -- python -c 'import duckdb; print(duckdb.__version__)')"
+          } | tee "$out/env/runner.txt"
+          lscpu > "$out/env/lscpu.txt"
+          free -b > "$out/env/free-before.txt"
+          df -h > "$out/env/df-before.txt"
+
+      - name: Run the DuckDB template ablation
+        if: ${{ startsWith(inputs.cell, 'duckdb-') }}
+        run: |
+          benchmark="${CELL#duckdb-}"
+          benchmark="${benchmark%-sf10}"
+          uv run -- python -m scripts.tuning_evidence.duckdb_arms --benchmark "$benchmark" --out "$OUT/arms"
+          uv run -- python -m scripts.tuning_evidence run --platform duckdb --benchmark "$benchmark" --scale 10 \
+            --data-dir "$DATA/${benchmark}_sf10" --work-dir "$WORK" \
+            --arm N=notuning --arm N2=notuning \
+            --arm "C=$OUT/arms/${benchmark}_constraints_only.yaml" \
+            --arm "S=$OUT/arms/${benchmark}_sort_only.yaml" \
+            --arm T=tuned \
+            --baseline N --calibration-arm N2 --rounds "$ROUNDS" --seed "$SEED" \
+            --load-ceiling 12 --round-retries 5 --out "$OUT/harness" 2>&1 | tee "$OUT/run.log"
+
+      - name: Log in to GHCR
+        if: ${{ startsWith(inputs.cell, 'clickhouse-') }}
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Start the ClickHouse server under the release memory limit
+        if: ${{ startsWith(inputs.cell, 'clickhouse-') }}
+        run: |
+          docker run -d --name ch \
+            --memory "$CLICKHOUSE_CONTAINER_MEMORY" --memory-swap "$CLICKHOUSE_CONTAINER_MEMORY" \
+            --ulimit nofile=262144:262144 \
+            -p 9000:9000 -p 8123:8123 \
+            -e CLICKHOUSE_DB=default -e CLICKHOUSE_PASSWORD="$CLICKHOUSE_PASSWORD" \
+            -e CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 \
+            "$CLICKHOUSE_IMAGE"
+          for _ in $(seq 1 60); do
+            if docker exec ch clickhouse-client --password "$CLICKHOUSE_PASSWORD" -q "select version()" > "$OUT/env/ch-version.txt" 2>/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          [ "${ready:-0}" = 1 ] || { docker logs ch | tail -50; exit 1; }
+          docker inspect ch > "$OUT/env/docker-inspect.json"
+          docker info > "$OUT/env/docker-info.txt"
+          docker exec ch cat /sys/fs/cgroup/memory.max | tee "$OUT/env/guest-memory-max-start.txt"
+          docker exec ch cat /sys/fs/cgroup/memory.events > "$OUT/env/guest-memory-events-start.txt"
+          cat "$OUT/env/ch-version.txt"
+
+      - name: Run the ClickHouse TPC-DS tuned-versus-notuning cell
+        if: ${{ inputs.cell == 'clickhouse-tpcds-sf1' }}
+        run: |
+          uv run -- python -m scripts.tuning_evidence run --platform clickhouse-server --port 9000 --container ch \
+            --benchmark tpcds --scale 1 --data-dir "$DATA/tpcds_sf1" \
+            --arm N=notuning --arm N2=notuning --arm S=load=tuned,session=notuning --arm T=tuned \
+            --baseline N --calibration-arm N2 --rounds "$ROUNDS" --seed "$SEED" \
+            --load-ceiling 12 --round-retries 5 --out "$OUT/harness" 2>&1 | tee "$OUT/run.log"
+
+      - name: Run the ClickHouse TPC-H Q21 capture
+        if: ${{ inputs.cell == 'clickhouse-tpch-q21' }}
+        run: |
+          uv run -- python -m scripts.tuning_evidence run --platform clickhouse-server --port 9000 --container ch \
+            --benchmark tpch --scale 1 --data-dir "$DATA/tpch_sf1" --queries 6,21 \
+            --arm N=notuning --arm N2=notuning --arm S=load=tuned,session=notuning --arm T=tuned \
+            --baseline N --calibration-arm N2 --rounds "$ROUNDS" --seed "$SEED" --timeout 180 \
+            --load-ceiling 12 --round-retries 5 --keep-databases --out "$OUT/harness" 2>&1 | tee "$OUT/run.log"
+          uv run -- python -m scripts.tuning_evidence.capture "$OUT/harness/harness.json" --query 21 \
+            --commit "$(git rev-parse HEAD)" --out "$OUT/capture" 2>&1 | tee "$OUT/capture.log"
+
+      - name: Record the container end state
+        if: ${{ always() && startsWith(inputs.cell, 'clickhouse-') }}
+        run: |
+          docker exec ch cat /sys/fs/cgroup/memory.events > "$OUT/env/guest-memory-events-end.txt" || true
+          docker stats --no-stream ch > "$OUT/env/docker-stats-end.txt" || true
+          docker logs ch > "$OUT/env/clickhouse-server.log" 2>&1 || true
+
+      - name: Record the runner end state and publish the summary
+        if: always()
+        run: |
+          free -b > "$OUT/env/free-after.txt"
+          df -h > "$OUT/env/df-after.txt"
+          if [ -f "$OUT/harness/summary.md" ]; then
+            { echo "## ${CELL} (${HOST_CLASS})"; cat "$OUT/env/runner.txt" | sed 's/^/    /'; cat "$OUT/harness/summary.md"; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f "$OUT/capture/capture.md" ]; then
+            cat "$OUT/capture/capture.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload the run directory
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: measurement-${{ inputs.cell }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/measurement/${{ inputs.cell }}
+          if-no-files-found: error
+          retention-days: 90
