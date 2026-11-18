@@ -20693,6 +20693,13 @@
       "status": "done",
       "title": "Decide whether the DataFrame memory guard should account for data-generation memory"
     },
+    "df-memory-guard-generation-check-runs-after-generation-20261118": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "DataFrame memory guard's data-generation estimate likely never applies in benchbox run, because generation finishes first"
+    },
     "df-memory-guard-refusal-message-and-subset-estimate-20261112": {
       "claim": null,
       "needs": [],
