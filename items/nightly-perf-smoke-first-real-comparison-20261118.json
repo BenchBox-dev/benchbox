@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Two further scheduled nightly perf results are compared with the baseline and recorded here",
+    "Either a bisected cause is fixed or the floors are recomputed from at least 8 same-method results under the documented rule",
+    "Decision gate: if the slowdown is real and not trivially fixable, report to the owner before changing the gate"
+  ],
+  "context": "Found while verifying the nightly remediation batch. Do not edit the baseline to make a night pass.",
+  "description": "With the method-2 baseline merged (270 ms total, floors 5 ms and 31 ms), the dispatched nightly run 44386073922 on develop compared for real and reported a regression: total 320 ms (+18.6%, +50 ms), EPYC 7763 at about 3.0 GHz, DuckDB 2.0.0, host load normal. Per-query slowdowns up to +46%, mostly on queries of 3-5 ms. The two EPYC 7763 source nights of 2026-11-12 and 2026-11-13 ran 275-276 ms, and all five sources ran 261-286 ms, so tonight is 12% above the slowest source.\n\nDecide whether it is a real slowdown or runner noise: compare the next two scheduled nightly results (t3-perf-result artifacts), then bisect develop commits since 2026-11-16 touching DuckDB, TPC-H or timing code if it repeats. If it is noise, widen the aggregate floor from a larger sample under the documented rule; never loosen it without data.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8d4e2ec2cb1f569769838211",
+      "at": "2026-11-18T20:50:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "03e1d8243c7d422f883f323e00b8c259",
+      "session_id": "0013bdb674094819a5cc711e0629a4ba"
+    }
+  ]
+}

@@ -29492,6 +29492,13 @@
       "status": "open",
       "title": "Evaluate and document blind spots in nightly performance regression detection"
     },
+    "nightly-perf-smoke-first-real-comparison-20261118": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Investigate the first real nightly perf comparison: 320 ms against the 270 ms baseline"
+    },
     "nightly-py310-dataframe-options-mock-target": {
       "claim": null,
       "needs": [],
