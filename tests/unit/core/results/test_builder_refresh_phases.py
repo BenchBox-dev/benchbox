@@ -142,6 +142,7 @@ class TestRefreshPhases:
         assert not result.power_at_size
         assert result.qphh_unavailable
         assert not result.qph_at_size
+        assert result.execution_phases.power_test.success is False
 
     def test_throughput_sets_must_follow_the_power_set(self) -> None:
         builder = _builder()

@@ -708,7 +708,11 @@ class ResultBuilder:
                 power_test.refresh_first_set = self._power_refresh[0]
                 power_test.refresh_functions = functions
                 power_test.query_count = len(final_rows)
-                power_test.success = bool(final_rows) and all(r.status == "SUCCESS" for r in final_rows)
+                power_test.success = (
+                    bool(final_rows)
+                    and all(r.status == "SUCCESS" for r in final_rows)
+                    and self._refresh_times_seconds() is not None
+                )
         return ExecutionPhases(
             setup=self._build_setup_phase() or SetupPhase(),
             power_test=power_test,
