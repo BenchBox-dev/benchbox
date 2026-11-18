@@ -13,8 +13,11 @@ from benchbox.platforms.base.connection_wrappers import (
     resolve_stream_connection_capability,
 )
 from benchbox.platforms.clickhouse_local import ClickHouseLocalAdapter, _refresh_column_type
+from tests.utilities.optional_engines import chdb_skip_reason, chdb_usable
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
+
+requires_chdb = pytest.mark.skipif(not chdb_usable(), reason=chdb_skip_reason() or "chDB is usable")
 
 
 class _Recorder:
@@ -34,6 +37,8 @@ class _Recorder:
 
 @pytest.fixture()
 def adapter() -> ClickHouseLocalAdapter:
+    if not chdb_usable():
+        pytest.skip(chdb_skip_reason() or "chDB is not usable")
     return ClickHouseLocalAdapter()
 
 
@@ -103,6 +108,7 @@ def test_new_stream_connection_opens_a_session_on_the_same_path_and_applies_sett
     ]
 
 
+@requires_chdb
 def test_stream_memory_budget_is_configurable(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeClient:
         def __init__(self, db_path=None) -> None:

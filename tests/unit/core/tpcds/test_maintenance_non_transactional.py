@@ -14,6 +14,7 @@ from benchbox.core.tpcds.maintenance_functions import (
 from benchbox.core.tpcds.maintenance_test import TPCDSMaintenanceTest, maintenance_unsupported_reason
 from benchbox.platforms.cedardb import CedarDBAdapter
 from benchbox.platforms.clickhouse_local import ClickHouseLocalAdapter
+from tests.utilities.optional_engines import chdb_skip_reason, chdb_usable
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast, pytest.mark.tpcds]
 
@@ -101,6 +102,7 @@ def test_failed_function_on_a_non_transactional_adapter_does_not_roll_back(
     assert connection.rollbacks == 0
 
 
+@pytest.mark.skipif(not chdb_usable(), reason=chdb_skip_reason() or "chDB is usable")
 def test_clickhouse_local_and_cedardb_both_run_tpcds_maintenance() -> None:
     assert maintenance_unsupported_reason(ClickHouseLocalAdapter()) is None
     assert maintenance_unsupported_reason(CedarDBAdapter()) is None
