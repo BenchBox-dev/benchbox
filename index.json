@@ -47275,10 +47275,15 @@
       "title": "Gate vendor-supplied bundles: reject non-maintainer vendor/ additions on published-results"
     },
     "vendor-terms-unread-sources-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-19T21:40:07Z",
+        "generation": "5833b9302733499f9b8b74e9ce294fb6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a43b9a4b85fc0a7cdd51f943"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Vendor terms documents behind the publication-conditions record remain unread, and two table dates differ from the live pages"
     },
     "vendored-tracker-bump-before-index-distribution-20261112": {
