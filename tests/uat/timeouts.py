@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import os
 import signal
 import subprocess
@@ -141,19 +142,14 @@ def _kill_and_reap_process_group(proc: subprocess.Popen) -> None:
 
 
 def _reap_in_background(proc: subprocess.Popen) -> None:
-    threading.Thread(target=_reap_with_waitpid, args=(proc,), name=f"reap-{proc.pid}", daemon=True).start()
+    def reap() -> None:
+        with contextlib.suppress(ChildProcessError):
+            _, status = os.waitpid(proc.pid, 0)
+            if proc.returncode is None:
+                proc.returncode = os.waitstatus_to_exitcode(status)
 
-
-def _reap_with_waitpid(proc: subprocess.Popen) -> None:
-    if sys.platform == "win32":
-        proc.wait()
-        return
-    try:
-        _, status = os.waitpid(proc.pid, 0)
-    except ChildProcessError:
-        return
-    if proc.returncode is None:
-        proc.returncode = os.waitstatus_to_exitcode(status)
+    target = proc.wait if sys.platform == "win32" else reap
+    threading.Thread(target=target, name=f"reap-{proc.pid}", daemon=True).start()
 
 
 def _kill_process_group(proc: subprocess.Popen) -> None:
