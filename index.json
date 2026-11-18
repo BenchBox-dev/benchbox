@@ -19601,10 +19601,15 @@
       "title": "Databricks labels the warehouse `enable_photon` setting as observed from a vendor log"
     },
     "databricks-preview-features-refused-beyond-adr-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-19T21:40:14Z",
+        "generation": "2b261cdc5ba443d5a642f7934a53b250",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a43b9a4b85fc0a7cdd51f943"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Decide whether Databricks Preview (not Beta) features should be refused even with vendor permission"
     },
     "databricks-strategy-key-injected-all-platforms-20261013": {
