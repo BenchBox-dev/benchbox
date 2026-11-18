@@ -580,8 +580,8 @@ check_usage_probes() {
     if printf '%s\n' "$statuses" | grep -qxF -- "$name FAIL"; then
       note_degraded "usage probe: $name failed; run omp auth-gateway check on the host for the cause"
       problems=$((problems + 1))
-    elif [ "$rc" -ne 0 ] && ! printf '%s\n' "$statuses" | grep -qxF -- "$name ok"; then
-      note_degraded "usage probe: $name has no passing probe in a failed check; run omp auth-gateway check on the host for the cause"
+    elif [ "$rc" -ne 0 ] && ! printf '%s\n' "$statuses" | awk -v n="$name" '$1 == n && ($2 == "ok" || $2 == "unknown") { found = 1 } END { exit !found }'; then
+      note_degraded "usage probe: $name has no probe result in a failed check; run omp auth-gateway check on the host for the cause"
       problems=$((problems + 1))
     fi
   done <<< "$served"
