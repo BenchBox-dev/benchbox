@@ -23,13 +23,13 @@
   "catalog": {
     "repository": "https://github.com/joeharris76/skill-sync-skills",
     "canonical_branch": "main",
-    "merge_revision": "7625613714c5fd11e15ba97f96d33ef64e88ffe6",
-    "parent_revision": "06f00edbfe89fd40e76a4239a51e79c7b90ad83d",
+    "merge_revision": "bcafff240e5660f4c5968851a3666158be1c8c18",
+    "parent_revision": "bff071b69212d78d9949671ea565b4d6ea7ee4ac",
     "canonical_path": "skills/todo",
     "pr": {
-      "number": 135,
-      "url": "https://github.com/joeharris76/skill-sync-skills/pull/135",
-      "merge_revision": "7625613714c5fd11e15ba97f96d33ef64e88ffe6"
+      "number": 167,
+      "url": "https://github.com/joeharris76/skill-sync-skills/pull/167",
+      "merge_revision": "bcafff240e5660f4c5968851a3666158be1c8c18"
     }
   },
   "artifact": {
@@ -128,17 +128,17 @@
     }
   },
   "benchbox_pin": {
-    "before": "e04b1a717c6e4c5f341115166281e9398f27f951",
-    "after": "7625613714c5fd11e15ba97f96d33ef64e88ffe6",
+    "before": "7625613714c5fd11e15ba97f96d33ef64e88ffe6",
+    "after": "bcafff240e5660f4c5968851a3666158be1c8c18",
     "config": "skill-sync.conf",
     "apply": "./tools/skill-sync apply"
   },
   "mirrors": {
     "tracked_target": {
       "root": ".claude/skills/todo",
-      "receipt_revision": "7625613714c5fd11e15ba97f96d33ef64e88ffe6",
+      "receipt_revision": "bcafff240e5660f4c5968851a3666158be1c8c18",
       "files": {
-        "SKILL.md": "dc1e329146b31b813e78f06e9a1212ca1bd15d0195daee459ec847e8fd9f2ec7",
+        "SKILL.md": "6bd0f0d9ea104b72a92f2bd0ff457baf7231ea59aae17e5dfe8a398e00002482",
         "references/batch.md": "2ee57c4ff9c8a93675892d9ff8137e56535eff5a597a244fae9f9acc23ce2d6f",
         "references/bootstrap.md": "35af9661c59e11a1b12a76cc7ea1f038377f131c12631caa6c63ff107393f394",
         "references/closeout.md": "11a5f528de28e09a86b623fe5f0795686cb8f59f3afb3a0e69b4ad3515f64d0c",
@@ -156,9 +156,9 @@
     "agents_target": {
       "root": ".agents/skills/todo",
       "materialized": true,
-      "receipt_revision": "7625613714c5fd11e15ba97f96d33ef64e88ffe6",
+      "receipt_revision": "bcafff240e5660f4c5968851a3666158be1c8c18",
       "files": {
-        "SKILL.md": "dc1e329146b31b813e78f06e9a1212ca1bd15d0195daee459ec847e8fd9f2ec7",
+        "SKILL.md": "6bd0f0d9ea104b72a92f2bd0ff457baf7231ea59aae17e5dfe8a398e00002482",
         "references/batch.md": "2ee57c4ff9c8a93675892d9ff8137e56535eff5a597a244fae9f9acc23ce2d6f",
         "references/bootstrap.md": "35af9661c59e11a1b12a76cc7ea1f038377f131c12631caa6c63ff107393f394",
         "references/closeout.md": "11a5f528de28e09a86b623fe5f0795686cb8f59f3afb3a0e69b4ad3515f64d0c",
