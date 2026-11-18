@@ -1,10 +1,10 @@
 {
   "acceptance": [
-    "Measured peak RSS for Polars, DataFusion and PySpark on TPC-DS Q16+Q94+Q95 at SF10 is tabulated next to the guard estimate; if any peak exceeds the estimate, the multiplier is raised",
-    "Timing for PySpark SF1 and Polars/DataFusion SF10, base vs develop, is tabulated with the distinct-count 1.10 ratio gate applied"
+    "Measured peak RSS for Polars, DataFusion and PySpark on TPC-DS Q16+Q94+Q95 at SF10 is tabulated next to the guard estimate, with versions and host specs; any peak above the estimate leads to a merged multiplier or floor raise.",
+    "Timing for PySpark SF1 and Polars/DataFusion SF10, base vs develop, is tabulated with the 1.10 ratio gate applied; any pattern over 1.10 is changed or reverted in a merged PR."
   ],
   "context": "Replaces df-memory-guard-sf10-subset-validation-20261117 and df-distinct-pyspark-sf10-timing-20261113, dropped on 2026-11-18 because the 16 GiB host cannot run them. Prior results: ~/Developer/benchmark_runs/df-memory-guard-subset/table.md.",
-  "description": "Two measurements cannot run on the 16 GiB Mac. (1) The DataFrame memory guard's subset estimate for TPC-DS Q16+Q94+Q95 together at SF10 (Polars 9.1 GiB, DataFusion 8.19 GiB, PySpark 13.65 GiB) has never been compared with a measured peak; smaller cells all measured below the estimate. (2) The distinct-count NULL fix has no timing at PySpark SF1 or Polars/DataFusion SF10, comparing base 0eeec0d5bd194ad0b811911ea73004586ed51469 with develop.",
+  "description": "## Problem\nTwo measurements cannot run on the 16 GiB Mac. (1) The DataFrame memory guard's subset estimate for TPC-DS Q16+Q94+Q95 together at SF10 (Polars 9.1 GiB, DataFusion 8.19 GiB, PySpark 13.65 GiB; `benchbox/core/dataframe/memory_model.py`) has never been compared with a measured peak; all 28 smaller Polars/DataFusion cells measured below their estimates (results: ~/Developer/benchmark_runs/df-memory-guard-subset/table.md). (2) The distinct-count NULL fix has no timing at PySpark SF1 or Polars/DataFusion SF10, comparing base 0eeec0d5bd194ad0b811911ea73004586ed51469 with develop.\n\n## Trigger\nBlocked until the owner names a host with at least 32 GiB RAM that BenchBox heavy-work admission accepts. Do not rent or start cloud machines without the owner's approval in that task.\n\n## Method\n1. Memory: run each engine on TPC-DS Q16, Q94, Q95 at SF10 with cached data, 2 runs per cell, recording peak RSS of the whole process tree, engine and library versions, and free memory before the run.\n2. Timing: base vs develop, alternating arms, one warm-up then best of 5, PySpark at SF1 and Polars/DataFusion at SF10 on the queries used by df-distinct-timing-confirmation.\n\n## Decision gate\n- Any measured peak above its estimate: raise that engine's multiplier or floor so the estimate covers the peak plus the 20% margin (pre-approved). Peaks below half the estimate: report a proposed lower value; lowering needs the owner.\n- Any develop/base timing ratio above 1.10 on a pattern: change or revert that pattern per the distinct-count rule, in its own PR; at or below 1.10: record and close.\n\n## Guardrails\nTiming and memory runs only through `make heavy-run` after `make heavy-status`; never force admission, set BENCHBOX_SKIP_TEST_LOCK, disable the watchdog, or pass `--ignore-memory-warnings` without the owner's approval in that task. Never kill processes by pattern; the host is shared. No reference-answer changes. Record exact versions and host specs with every number.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:43c6657ebf2251468541889f",
@@ -12,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "f0ba4f949585400aab1721b04e32aab2",
+      "session_id": "481aef7ff9734ee2a66787f104bfbd49"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:43c6657ebf2251468541889f",
+      "at": "2026-11-18T22:15:02Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "edbffdab46464d308e608591485aba5f",
       "session_id": "481aef7ff9734ee2a66787f104bfbd49"
     }
   ]
