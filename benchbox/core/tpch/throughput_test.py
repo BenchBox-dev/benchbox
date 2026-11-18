@@ -374,6 +374,9 @@ class TPCHThroughputTest:
             ],
         )
 
+    def _record_refresh_applied(self, connection: Any) -> None:
+        record_refresh_applied(connection)
+
     def _execute_refresh_stream(
         self,
         update_sets: dict[int, TPCHRefreshUpdateSet],
@@ -390,7 +393,7 @@ class TPCHThroughputTest:
             if self.refresh_connection_factory is None:
                 raise RuntimeError("TPC-H refresh stream requires a separate connection factory")
             connection = self.refresh_connection_factory()
-            record_refresh_applied(connection)
+            self._record_refresh_applied(connection)
             refresh_stream.start_monotonic = mono_time()
             refresh_stream.start_time = datetime.now().isoformat()
             for offset in range(num_streams):

@@ -88,6 +88,9 @@ class DataFrameTPCHThroughputTest(TPCHThroughputTest):
     ) -> dict[str, Any]:
         return execute_refresh_function(connection.refresher, function, update_set, check=False)
 
+    def _record_refresh_applied(self, connection: DataFrameRefreshSession) -> None:
+        return None
+
     def _capture_rf2_baselines(self, update_sets: dict[int, TPCHRefreshUpdateSet]) -> dict[int, TPCHRF2Baseline]:
         return {}
 
