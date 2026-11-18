@@ -5,5 +5,9 @@
   "funding": "unspecified",
   "manifest_version": "1.0",
   "result_source": "internal",
-  "submitted_by": "maintainer"
+  "submitted_by": "maintainer",
+  "known_defects": [
+    "defective-nondefault-engine-config"
+  ],
+  "known_defect_reason": "Superseded: ran Doris with parallel_pipeline_task_num=1. Rerun at default parallelism and the default 6g container: c2022935."
 }

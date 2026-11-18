@@ -1887,3 +1887,39 @@ on the project's Apple M4 (10 cores). The attestation is a `cpu_attestation` obj
 with `cpu_identity_provenance: user_attested`; no bundle was edited, so no result id moved. The 27 that had a sidecar had it edited to carry the attestation; the other 18 had none, so a minimal one
 (`bundle_file`, `bundle_hash`, `manifest_version`, `funding`, `result_source`, `submitted_by`, as on every
 sibling run) was added. This is an operator attestation, not a measurement.
+
+### Doris TPC-DS OBT at default parallelism and LakeSail TPC-DS OBT SF 0.1 (2026-11-17, 2026-11-18)
+
+Doris reruns. The 2026-11-11 Doris TPC-DS OBT bundles `tpcds_obt_sf001_doris_sql_20261111_110147_93ab6464` and
+`tpcds_obt_sf01_doris_sql_20261111_110240_9315b4c2` ran with `parallel_pipeline_task_num=1`, which the UAT harness injected
+unconditionally. They were superseded because that cap does not represent Doris's default configuration, not because they
+were slower. Their sidecars carry `known_defects: ["defective-nondefault-engine-config"]` and a `known_defect_reason` naming the
+rerun; the bundle files are unchanged. The UAT harness now runs Doris at its own default parallelism; the cap is an opt-in
+override, `BENCHBOX_UAT_DORIS_PARALLEL_PIPELINE_TASK_NUM`, set to a positive integer.
+
+| scale | bundle | parallelism | container memory | statements | power total | load |
+|---|---|---|---|---|---|---|
+| 0.01 | `93ab6464` (superseded) | capped at 1 | not recorded | 279/279 | 6.2 s | 1.9 s |
+| 0.01 | `c2022935` | default | 6 GiB (compose default) | 279/279 | 7.4 s | 2.0 s |
+| 0.1 | `9315b4c2` (superseded) | capped at 1 | not recorded | 279/279 | 8.4 s | 35.3 s |
+| 0.1 | `4ded829a` | default | 6 GiB (compose default) | 279/279 | 19.9 s | 40.4 s |
+
+Validation passed for all four. Both reruns used the compose default `DORIS_MEMORY_LIMIT=6g`; the container logs record a
+6 GiB cgroup limit, a 512m FE heap and a 4400m BE `mem_limit`, and sampled container use peaked at about 0.7 GB (SF 0.01) and
+1.4 GB (SF 0.1). The bundles themselves read `environment.container.collection_status: unavailable`, so this note is the
+record of their memory sizing. The 2026-11-11 bundles predate that logging and their container memory is not known.
+
+Host conditions. Both reruns ran on a shared 16 GiB Apple-silicon machine under the heavy-work lock, so no other heavy run
+overlapped them; other interactive sessions were still active. The SF 0.01 admission recorded memory pressure level 1 and
+7.30 GiB available; the SF 0.1 run waited for the lock and its admission readings were not kept. The default-parallelism
+timings are slower than the capped ones, and that is disclosed rather than corrected: these numbers are not a statement about
+Doris's speed on an idle host, and the capped and default sets must not be compared as engine performance. Earlier
+default-parallelism attempts at 2 GiB and 3 GiB containers on a more contended host were discarded rather than published; a
+2 GiB container stalled at SF 0.1.
+
+LakeSail. `tpcds_obt_sf01_lakesail_sql_20261117_201241_312e8b59` is the SF 0.1 bundle: 279/279 statements, validation
+passed, power total 18.6 s, load 2.5 s, launched through `mocker run` from `tests/uat/mocker_launch.py` with the compose
+`mem_limit` (`LAKESAIL_MEMORY_LIMIT`, default 4g); the memory trace shows a 4.00 GB limit and about 600 MB peak sampled
+use. An earlier run launched with `mocker compose up` gave the server 1 GiB because that path ignores `mem_limit`, and the
+server died during the SF 0.1 load (inferred from the memory trace; `OOMKilled` read false). A hand-started 4g server also
+passed 279/279. No existing LakeSail bundle was superseded; the SF 0.01 bundle `a1896614` is unchanged.

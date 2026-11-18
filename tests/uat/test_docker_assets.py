@@ -1049,6 +1049,30 @@ def test_doris_compose_defaults_to_six_gib_and_sizes_be_memory_for_it():
     )
 
 
+@pytest.mark.parametrize("value", [None, "default", "DEFAULT"])
+def test_doris_local_managed_cell_runs_at_doris_default_parallelism_unless_capped(monkeypatch, value):
+    if value is None:
+        monkeypatch.delenv(docker_assets.DORIS_PIPELINE_TASKS_ENV_VAR, raising=False)
+    else:
+        monkeypatch.setenv(docker_assets.DORIS_PIPELINE_TASKS_ENV_VAR, value)
+    argv = matrix.benchbox_run_argv("doris", "tpcds_obt", 0.01, local_managed_platform=True)
+    assert not any(token.startswith("parallel_pipeline_task_num") for token in argv)
+
+
+def test_doris_pipeline_tasks_env_integer_sets_the_option(monkeypatch):
+    monkeypatch.setenv(docker_assets.DORIS_PIPELINE_TASKS_ENV_VAR, "4")
+    argv = matrix.benchbox_run_argv("doris", "tpcds_obt", 0.01, local_managed_platform=True)
+    assert "parallel_pipeline_task_num=4" in argv
+    assert "parallel_pipeline_task_num=1" not in argv
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "auto", "1.5"])
+def test_doris_pipeline_tasks_env_rejects_invalid_values(monkeypatch, value):
+    monkeypatch.setenv(docker_assets.DORIS_PIPELINE_TASKS_ENV_VAR, value)
+    with pytest.raises(docker_assets.DockerAssetError):
+        docker_assets.local_managed_platform_extra_opts("doris")
+
+
 def test_presto_compose_mounts_jvm_config_with_bounded_heap():
     spec = docker_assets.docker_platform_spec("presto")
     compose = yaml.safe_load(spec.compose_files[0].read_text(encoding="utf-8"))

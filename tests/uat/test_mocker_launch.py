@@ -52,6 +52,7 @@ def _runner(script=None):
 def test_applies_only_to_mocker_launch_platforms(mocker_cli, monkeypatch):
     assert mocker_launch.applies(docker_assets.docker_platform_spec("doris"))
     assert mocker_launch.applies(docker_assets.docker_platform_spec("singlestore"))
+    assert mocker_launch.applies(docker_assets.docker_platform_spec("lakesail"))
     assert not mocker_launch.applies(docker_assets.docker_platform_spec("postgresql"))
     monkeypatch.setenv(docker_assets.CONTAINER_CLI_ENV_VAR, "docker")
     docker_assets.resolve_container_cli.cache_clear()
@@ -94,6 +95,53 @@ def test_singlestore_translation_carries_platform_memory_cpus_port_and_env(mocke
         "@sha256:2f181587a74b63a83e7dbd46b02e9dce031b8cacf1f5651bff297b2d8c87df37"
     )
     assert "--entrypoint" not in argv
+
+
+def test_lakesail_translation_carries_memory_tmpfs_data_mount_and_port(mocker_cli):
+    spec = docker_assets.docker_platform_spec("lakesail")
+    project = "benchbox-uat-lakesail"
+    (service,) = mocker_launch.build_services(spec, project, env={"BENCHBOX_DATA_DIR": "/runs"})
+    argv = mocker_launch.run_command(service, project)
+    assert _flag_values(argv, "-m") == ["4g"]
+    assert _flag_values(argv, "--tmpfs") == ["/tmp:size=2g"]
+    assert _flag_values(argv, "-v") == ["/runs:/runs:ro"]
+    assert _flag_values(argv, "-p") == ["50051:50051"]
+    assert argv[argv.index("benchbox-lakesail:dev") + 1 :] == ["spark", "server", "--ip", "0.0.0.0", "--port", "50051"]
+    assert service.buildable
+
+
+def test_lakesail_memory_limit_is_overridable(mocker_cli):
+    spec = docker_assets.docker_platform_spec("lakesail")
+    env = {"BENCHBOX_DATA_DIR": "/runs", "LAKESAIL_MEMORY_LIMIT": "8g"}
+    (service,) = mocker_launch.build_services(spec, "p", env=env)
+    assert _flag_values(mocker_launch.run_command(service, "p"), "-m") == ["8g"]
+
+
+def test_launch_builds_a_buildable_service_before_running_it(mocker_cli):
+    spec = docker_assets.docker_platform_spec("lakesail")
+    run = _runner()
+    result = mocker_launch.launch_stack(
+        spec, "benchbox-uat-lakesail", env={"BENCHBOX_DATA_DIR": "/runs"}, runner=run, sleep=lambda s: None
+    )
+    assert result.succeeded
+    assert run.calls[0][1:3] == ["compose", "-p"] and run.calls[0][-2:] == ["build", "lakesail-connect"]
+    assert [call[1] for call in run.calls].index("run") > 0
+
+
+def test_launch_stops_when_the_build_fails(mocker_cli):
+    spec = docker_assets.docker_platform_spec("lakesail")
+
+    def script(argv):
+        if "build" in argv:
+            return docker_assets.DockerCommandResult(tuple(argv), 1, "", "boom")
+        return None
+
+    run = _runner(script)
+    result = mocker_launch.launch_stack(
+        spec, "benchbox-uat-lakesail", env={"BENCHBOX_DATA_DIR": "/runs"}, runner=run, sleep=lambda s: None
+    )
+    assert not result.succeeded and "compose build failed" in result.stderr
+    assert not [call for call in run.calls if call[1] == "run"]
 
 
 def test_env_overrides_drive_the_translation(mocker_cli):
@@ -189,6 +237,10 @@ def test_declared_settings_cover_the_mocker_launched_stacks(mocker_cli):
     ]
     assert singlestore.platform == "linux/amd64" and singlestore.cpus == 4
     assert singlestore.memory_bytes == 4 * 1024**3
+    lakesail = managed_runtime.compose_declared_settings(
+        docker_assets.docker_platform_spec("lakesail"), env={"BENCHBOX_DATA_DIR": "/runs"}
+    )["lakesail-connect"]
+    assert lakesail.memory_bytes == 4 * 1024**3
 
 
 def test_cpu_shortfall_is_reported():
