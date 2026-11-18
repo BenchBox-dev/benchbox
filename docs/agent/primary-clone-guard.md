@@ -52,7 +52,7 @@ the call when the script is absent from the checkout the session started in.
 | Harness | Tracked configuration | Status |
 | --- | --- | --- |
 | omp | `.omp/hooks/pre/primary-clone-write-guard.ts` (`tool_call` handler returning `block`), loaded from `<cwd>/.omp` | **Proven live** (2026-11-12): a relative write in the primary was blocked, a worktree write allowed, the override honoured, and the hook applied inside omp subagents. The module is also executed under Node or Bun by `tests/unit/test_primary_clone_write_guard.py`. |
-| Claude Code | `.claude/settings.json` `hooks.PreToolUse`, matcher `Write\|Edit\|MultiEdit\|NotebookEdit` | **Proven live** (2026-11-15, Claude Code 2.1.323): `claude -p` started in the primary clone and asked to create a file with its Write tool was refused with the guard's message, and no file was created. |
+| Claude Code | `.claude/settings.json` `hooks.PreToolUse`, matcher `Write\|Edit\|MultiEdit\|NotebookEdit` | **Proven live** (2026-11-15, Claude Code 2.1.323): `claude -p` started in the primary clone and asked to create a file with its Write tool was refused with the guard's message, and no file was created. On 2026-11-17 the same version refused a relative-path Write and Edit made by a Task subagent. |
 | Codex | `.codex/hooks.json` `PreToolUse`, matcher `apply_patch\|Edit\|Write` | **Not enforced for `apply_patch`** (2026-11-15): codex-cli 0.162.1 started in the primary clone created a file there with `apply_patch`. In a scratch repository with a catch-all `PreToolUse` hook that exits 2, codex-cli 0.162.1 and 0.169.0 both ran the session, prompt and stop hooks but never called `PreToolUse` for `apply_patch`, and the file was created (openai/codex#27833, open). The guard script itself refuses the `apply_patch` payload. Codex writes in the primary clone, including new files, are caught only afterwards by the preflight backstop. |
 | Gemini CLI | `.gemini/settings.json` `hooks.BeforeTool`, matcher `write_file\|replace` | Wired, not proven: a 2026-11-13 probe with Gemini CLI 0.46.0 announced the project hook, then failed with `IneligibleTierError: This client is no longer supported for Gemini Code Assist for individuals`. No probe file was created. Relies on the preflight backstop. The workspace must be trusted and project hooks are fingerprinted. Antigravity CLI is not covered. |
 
@@ -69,10 +69,20 @@ Gaps: shell commands (`bash`, `sed -i`, `cat >`) are not inspected; a hook only
 runs from a checkout that already contains it, so a primary clone behind
 `origin/develop` has none until it is updated; the Codex and Gemini trust
 prompts can be declined. The preflight below is the backstop for all of these.
+`BENCHBOX_AGENT_PRIMARY_CLONE`, a test override, points both the hook and the
+preflight at another path, so it must never be left set in an agent's
+environment: with it set, writes to the real primary clone go undetected.
 The preflight also warns when the primary clone is behind `origin/develop`; see
 [primary-clone-update.md](primary-clone-update.md) for the update procedure.
 
 If a probe file ever appears in the primary clone, delete exactly that file and record the hook as not enforcing for that agent.
+
+Delegated agents are covered by the same hook. A subagent's relative path
+resolves against the session directory, the primary clone, and the hook
+refuses it in omp and Claude Code (both proven with subagents). The hook was
+chosen over the alternatives: read-only tracked files in the primary clone
+would also block the owner's own edits there, and a check before and after each
+delegated task reports a write only after it has landed.
 
 ## The check
 
@@ -91,7 +101,8 @@ The explicit `make agent-write-preflight` then runs
 `scripts/check_primary_clone_clean.sh enforce` and fails when tracked paths or
 untracked, non-ignored files in the primary clone are new or further modified
 since the session's snapshot, naming the paths and the recovery. Gitignored
-files are never reported. With no session
+files are never reported, and a Git repository nested inside the primary clone
+is recorded by name only, so changes inside it are not reported. With no session
 identity the check only reports. The commit hook (`agent_pre_commit_guard.sh`
 sets `BENCHBOX_PREFLIGHT_FROM_COMMIT_HOOK=1`) also only reports, so an owner's
 deliberate edit in the primary never blocks commits. After an owner's

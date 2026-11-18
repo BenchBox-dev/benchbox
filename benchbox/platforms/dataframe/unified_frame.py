@@ -40,7 +40,11 @@ _DATAFUSION_AGGREGATE_PATTERNS = (
     "first_value(",
     "last_value(",
     "stddev(",
+    "var(",
+    "var_samp(",
+    "approx_percentile_cont(",
     "approx_distinct(",
+    "array_agg(",
 )
 _TRUNCATE_UNITS = {
     "1s": "second",
@@ -51,6 +55,27 @@ _TRUNCATE_UNITS = {
     "1mo": "month",
     "1y": "year",
 }
+
+
+def _datafusion_text_has_aggregate(expr: Any) -> bool:
+    text = str(expr).lower()
+    return any(pattern in text for pattern in _DATAFUSION_AGGREGATE_PATTERNS)
+
+
+def _datafusion_expr_has_aggregate(expr: Any) -> bool:
+    if not hasattr(expr, "variant_name"):
+        return _datafusion_text_has_aggregate(expr)
+    if expr.variant_name() == "AggregateFunction":
+        return True
+    try:
+        variant = expr.to_variant()
+    except ValueError:
+        return _datafusion_text_has_aggregate(expr)
+    if hasattr(variant, "expr"):
+        return _datafusion_expr_has_aggregate(variant.expr())
+    if hasattr(variant, "left") and hasattr(variant, "right"):
+        return _datafusion_expr_has_aggregate(variant.left()) or _datafusion_expr_has_aggregate(variant.right())
+    return _datafusion_text_has_aggregate(expr)
 
 
 def _get_datafusion_type_mapping() -> dict[str, Any]:
@@ -2321,7 +2346,7 @@ class UnifiedLazyFrame(Generic[DF, Expr]):
         if not _is_datafusion_df(self._df):
             return False
 
-        return any(pattern in str(expr).lower() for expr in exprs for pattern in _DATAFUSION_AGGREGATE_PATTERNS)
+        return any(_datafusion_expr_has_aggregate(expr) for expr in exprs)
 
     @_bind_datafusion_arguments
     def with_columns(self, *exprs: Expr | list) -> UnifiedLazyFrame:

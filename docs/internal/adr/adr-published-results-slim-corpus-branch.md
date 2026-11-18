@@ -302,9 +302,10 @@ published-results by hand" follow-up.
   `.github/workflows/sync-results-data-to-published.yml`. The workflow
   watches develop for changes under the slim-branch allowlist paths
   (`results-data/bundles/`, the corpus docs, the two vendored
-  validators) and opens a draft mirror PR vs `published-results`. The
-  mirror PR never auto-merges; maintainers review and flip ready when
-  the change is intended to surface on the public corpus branch.
+  validators) and opens a draft mirror PR vs `published-results`. Since
+  2026-11-17 the workflow squash-merges the mirror PR itself once it passes
+  validation and the freshness check: its content was already reviewed on
+  develop, and manual merging left the public branch behind for weeks.
 
 ## Maintenance protocol
 

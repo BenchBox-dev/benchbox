@@ -30,7 +30,26 @@ def is_subscale_tpc(benchmark_id: Any, scale_factor: Any) -> bool:
     return normalize_tpc_benchmark_id(benchmark_id) in SUBSCALE_TPC_BENCHMARKS and 0 < scale < 1.0
 
 
+def is_nonstandard_scale(benchmark_id: Any, scale_factor: Any) -> bool:
+    if isinstance(scale_factor, bool) or scale_factor is None:
+        return False
+    try:
+        float(scale_factor)
+    except (TypeError, ValueError):
+        return False
+    try:
+        from benchbox.core.benchmark_registry import is_standard_scale_factor
+    except ImportError:
+        return False
+    try:
+        return not is_standard_scale_factor(str(benchmark_id), scale_factor)
+    except ValueError:
+        return False
+
+
 def effective_compliance_class(benchmark_id: Any, scale_factor: Any, recorded: Any) -> str | None:
+    if is_nonstandard_scale(benchmark_id, scale_factor):
+        return NONSTANDARD_COMPLIANCE_CLASS
     if is_subscale_tpc(benchmark_id, scale_factor):
         return SUBSCALE_COMPLIANCE_CLASS
     if recorded is not None:
@@ -59,9 +78,19 @@ def platform_info_gateway(platform_info: Any) -> Any:
     return configuration.get("gateway") if isinstance(configuration, Mapping) else None
 
 
+def result_gateway_routed(result: Any) -> bool:
+    return gateway_routed(platform_info_gateway(getattr(result, "platform_info", None)))
+
+
 def result_compliance_class(result: Any) -> str | None:
     gateway = platform_info_gateway(getattr(result, "platform_info", None))
     return routed_compliance_class(getattr(result, "compliance_class", None), gateway)
+
+
+def result_recorded_compliance_class(result: Any) -> str | None:
+    if is_nonstandard_scale(getattr(result, "benchmark_id", None), getattr(result, "scale_factor", None)):
+        return NONSTANDARD_COMPLIANCE_CLASS
+    return result_compliance_class(result)
 
 
 def bundle_compliance_class(data: Mapping[str, Any]) -> str | None:

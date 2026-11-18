@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Result bundles at a scale factor that is not a standard scale for their benchmark are now accepted at submission and excluded from ranking as unofficial for every benchmark. Standard scales come from the benchmark registry."
+    }
+  ]
+}

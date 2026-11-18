@@ -76,7 +76,7 @@ class HudiMaintenanceOperations(BaseDataFrameMaintenanceOperations):
 
         if not PYSPARK_AVAILABLE:
             raise ImportError(
-                "PySpark is not installed. Install with: pip install pyspark\n"
+                'PySpark is not installed. Install with: pip install "benchbox[pyspark]"  (or: uv add benchbox --extra pyspark)\n'
                 "For Hudi support, also configure Spark with:\n"
                 f"  spark.jars.packages={HUDI_BUNDLES_BY_SPARK[(3, 5)]}"
             )
