@@ -18712,15 +18712,10 @@
       "title": "Close older results-mirror PRs when a newer mirror supersedes them"
     },
     "corpus-mirror-prs-need-manual-merge-and-keep-drift-red-20261101": {
-      "claim": {
-        "expires_at": "2026-11-19T16:32:48Z",
-        "generation": "a789f81c63c7418d8a8cf71a0c693ebc",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a43b9a4b85fc0a7cdd51f943"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Corpus mirror PRs pile up needing manual merge, and t3:drift issue #2471 reopens until each lands"
     },
     "corpus-mislabelling-leaves-the-leaderboard-with-15-rows": {
