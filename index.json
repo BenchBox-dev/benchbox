@@ -18581,17 +18581,12 @@
       "title": "Explorer leaderboard shows 15 of 207 results: trust mislabelling, missing query data, and unbacked validation claims"
     },
     "corpus-nonstandard-scale-submission-policy-20261111": {
-      "claim": {
-        "expires_at": "2026-11-19T14:28:35Z",
-        "generation": "d337b24400aa4709bd369171f44aba5d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c1640335852d926f7b2973b5"
-      },
+      "claim": null,
       "needs": [
         "feature-feat-corpus-scale-policy-and-reruns-20261117"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Decide how the corpus treats a result bundle at a non-standard scale factor"
     },
     "corpus-notes-reconcile-rerun-wheels": {
