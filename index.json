@@ -27257,17 +27257,12 @@
       "title": "Select the ledger test for ledger edits and align CONTRIBUTING with opt-in batches"
     },
     "ledger-seed-recut-after-published-results-advance-20261111": {
-      "claim": {
-        "expires_at": "2026-11-19T16:40:16Z",
-        "generation": "882b4980aa514bde9716b5f836b5397a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:c1640335852d926f7b2973b5"
-      },
+      "claim": null,
       "needs": [
         "feature-feat-corpus-scale-policy-and-reruns-20261117"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "publication/ledger-seed.json still records published-results at 33e5eeb after the branch advanced"
     },
     "ledger-tables-alter-targets-and-truncation-bound-20260801": {
