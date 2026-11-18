@@ -158,10 +158,11 @@ Then:
      provider section (a `<provider> (<count>)` header followed by one
      indented status line per login): a `FAIL` line under a served provider
      is `degraded: usage probe: <provider> failed`. When the check exits
-     non-zero, a served provider with no `ok` line is also degraded, and
-     output with no provider sections, or with no `FAIL` line at all, is
-     `degraded: usage probe: omp auth-gateway check failed` (the probe fails
-     closed). `unknown` entries are not failures. A gateway that
+     non-zero, a served provider with no `ok` or `unknown` line is also
+     degraded, and output with no provider sections, or with no `FAIL` line
+     at all, is `degraded: usage probe: omp auth-gateway check failed` (the
+     probe fails closed). An `unknown` entry (no usage data, or no probe for
+     the provider) is not a failure. A gateway that
      lists fewer models than `clients.json` grants is also degraded.
    - **Notice** (exit 0): `notice: <provider> removed by owner; develop still
      names <provider>` for each provider on the denylist, and `notice: usage
