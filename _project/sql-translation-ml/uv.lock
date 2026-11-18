@@ -13,7 +13,7 @@ wheels = [
 
 [[package]]
 name = "benchbox"
-version = "0.5.2rc2"
+version = "0.5.2rc3"
 source = { editable = "../../" }
 dependencies = [
     { name = "certifi" },
