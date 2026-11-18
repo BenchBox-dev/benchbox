@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "The help text and any other user-facing description of allow_insecure_gateway state that it turns off OCSP revocation checking only, and that certificate verification still applies",
+    "Or, if accepting self-signed gateways is the intended behaviour, the option implements it and a test proves a self-signed endpoint is accepted only with the option set",
+    "The site page docs/platforms/snowflake-gateways.md stays consistent with the result"
+  ],
+  "context": "Found by an independent review of the site page docs/platforms/snowflake-gateways.md against core v0.5.1 (91d357a); each claim was re-verified by a second reviewer.",
+  "description": "core/gateway.py:222 describes allow_insecure_gateway as 'Allow insecure (TLS disabled / self-signed) gateway connection'. The option only sets the Snowflake connector's insecure_mode (platforms/snowflake.py:684-685), which turns off OCSP revocation checks. Certificate and host name verification still run, so a self-signed or untrusted gateway still fails TLS. From connector 4.8.0, insecure_mode also turns OCSP off when gateway_ocsp_fail_open is set, so the two options interact.",
+  "links": [
+    "benchbox/core/gateway.py",
+    "benchbox/platforms/snowflake.py",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/main/docs/platforms/snowflake-gateways.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp:joe@joe-mac-mini.local:64e582df628f30691111dd40",
+      "at": "2026-11-18T21:36:50Z",
+      "client": "omp",
+      "op": "create",
+      "op_id": "dde48689208f471dae35117663a0abde",
+      "session_id": "61f73a6f08cd4699913cbb0090203dc7"
+    }
+  ]
+}
