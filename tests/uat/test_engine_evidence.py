@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from tests.uat import docker_assets, starrocks_evidence
+from tests.uat import docker_assets, engine_evidence
 
 pytestmark = pytest.mark.medium
 
@@ -16,8 +16,8 @@ def capture(tmp_path):
     calls = []
 
     def run(runner):
-        return starrocks_evidence.capture_starrocks_evidence(
-            spec, "evidence-test", log_dir=tmp_path, runner=runner, env={}
+        return engine_evidence.capture_engine_evidence(
+            "starrocks", spec, "evidence-test", log_dir=tmp_path, runner=runner, env={}
         )
 
     def runner(argv, **kwargs):
@@ -73,7 +73,7 @@ def test_capture_records_command_failure_and_continues(capture):
 
 def test_capture_deadline_stops_commands_and_marks_incomplete(capture, monkeypatch):
     run, runner, calls, destination = capture
-    monkeypatch.setattr(starrocks_evidence, "elapsed_seconds", lambda _: 61)
+    monkeypatch.setattr(engine_evidence, "elapsed_seconds", lambda _: 61)
     assert run(runner)
     assert not calls
     manifest = json.loads((destination / "manifest.json").read_text(encoding="utf-8"))
@@ -82,7 +82,7 @@ def test_capture_deadline_stops_commands_and_marks_incomplete(capture, monkeypat
 
 def test_capture_file_size_is_bounded_and_truncation_visible(capture, monkeypatch):
     run, runner, _, destination = capture
-    monkeypatch.setattr(starrocks_evidence, "_FILE_BYTES", 8192)
+    monkeypatch.setattr(engine_evidence, "_FILE_BYTES", 8192)
 
     def oversized(argv, **kwargs):
         if "-q" in argv:
@@ -102,10 +102,10 @@ def test_capture_file_size_is_bounded_and_truncation_visible(capture, monkeypatc
 
 
 def test_log_script_preserves_bounded_tail_and_marks_missing_file(tmp_path, monkeypatch):
-    monkeypatch.setattr(starrocks_evidence, "_LOG_ROOT", str(tmp_path))
+    monkeypatch.setattr(engine_evidence, "_LOG_ROOT", str(tmp_path))
     (tmp_path / "engine.log").write_text("first blacklist event\n" + "x" * 64, encoding="utf-8")
     result = docker_assets.run_docker_command(
-        ["sh", "-c", starrocks_evidence._log_script("engine.log", limit=32)],
+        ["sh", "-c", engine_evidence._log_script("engine.log", limit=32)],
         timeout_s=5,
     )
     assert result.returncode == 0
@@ -113,20 +113,20 @@ def test_log_script_preserves_bounded_tail_and_marks_missing_file(tmp_path, monk
     assert "TRUNCATED=true" in result.stdout
     assert result.stdout.endswith("x" * 32)
     missing = docker_assets.run_docker_command(
-        ["sh", "-c", starrocks_evidence._log_script("missing.log", limit=32)],
+        ["sh", "-c", engine_evidence._log_script("missing.log", limit=32)],
         timeout_s=5,
     )
     assert missing.returncode == 1
 
 
 def test_gc_file_limit_retains_newest_files_and_reports_omissions(tmp_path, monkeypatch):
-    monkeypatch.setattr(starrocks_evidence, "_LOG_ROOT", str(tmp_path))
+    monkeypatch.setattr(engine_evidence, "_LOG_ROOT", str(tmp_path))
     for index in range(10):
         path = tmp_path / f"gc.log.{index}"
         path.write_text(f"GC event {index}\n", encoding="utf-8")
         os.utime(path, (index + 1, index + 1))
     result = docker_assets.run_docker_command(
-        ["sh", "-c", starrocks_evidence._log_script("gc.log.*", limit=32, count=8)],
+        ["sh", "-c", engine_evidence._log_script("gc.log.*", limit=32, count=8)],
         timeout_s=5,
     )
     assert result.succeeded
@@ -135,3 +135,33 @@ def test_gc_file_limit_retains_newest_files_and_reports_omissions(tmp_path, monk
     assert "gc.log.1 BYTES" not in result.stdout
     assert "gc.log.2 BYTES" in result.stdout
     assert "gc.log.9 BYTES" in result.stdout
+
+
+def test_cedardb_capture_collects_logs_events_state_and_memory_redacted(tmp_path):
+    spec = docker_assets.docker_platform_spec("cedardb")
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append(argv)
+        output = "abc123" if "-q" in argv else "server terminated password=hidden-value"
+        return docker_assets.DockerCommandResult(tuple(argv), 0, output, "")
+
+    failures = engine_evidence.capture_engine_evidence(
+        "cedardb", spec, "evidence-test", log_dir=tmp_path, runner=runner, env={}
+    )
+    destination = tmp_path / "cedardb-evidence"
+    assert failures == ()
+    assert {path.name for path in destination.iterdir()} == {
+        "host.json",
+        "containers.txt",
+        "container-state.json",
+        "container.log",
+        "events.txt",
+        "memory.txt",
+        "manifest.json",
+    }
+    assert "terminated" in (destination / "container.log").read_text(encoding="utf-8")
+    assert "hidden-value" not in "".join(path.read_text(encoding="utf-8") for path in destination.iterdir())
+    assert any("logs" in argv and "--timestamps" in argv for argv in calls)
+    assert any("events" in argv and "container=abc123" in argv for argv in calls)
+    assert any(".State" in " ".join(argv) and "inspect" in argv for argv in calls)
