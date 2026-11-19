@@ -2,7 +2,7 @@
   "acceptance": [
     "The feature pull request is merged and each member item meets its own acceptance or records an owner-approved disposition."
   ],
-  "context": "Created 2026-11-17 to hold the related items on one feature branch.",
+  "context": "Created 2026-11-17 to hold the related items on one feature branch.\n\n2026-11-19: member ci-spurious-failures-under-runner-congestion-20261115 is done. Its probe queue-time part landed through develop's asynchronous probe (#4354, #4379); the watchdog race and the parity-test timeout landed in #4311 (cabfb6573c). It was delivered outside this umbrella's single branch.",
   "description": "Umbrella for one feature branch and one pull request (fix/ci-congestion-diagnostics-and-generator-gate). Members: ci-spurious-failures-under-runner-congestion-20261115, ci-fast-duration-gate-rerun-and-baseline-drift-20261113, generator-volume-changes-pass-pr-ci-unchecked-20261112. Owner decisions for every member were recorded on 2026-11-17.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "op": "create",
       "op_id": "36d280cd893948a6b4642b683ccd88da",
       "session_id": "989657b059c44ae4bade82cb666c453c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5df21d35942e57dc5553d5c9",
+      "at": "2026-11-19T16:52:06Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5316df3c40264106a418cf0265691a68",
+      "session_id": "79d870b64fc24eaca388b10bdd93eca5"
     }
   ]
 }
