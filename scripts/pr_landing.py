@@ -71,7 +71,7 @@ STATUS_CONTEXTS_JQ = (
     r'.[] | [.context, .state, (.creator.login // ""), (.creator.type // ""), (.description // "")] | @tsv'
 )
 REVIEW_GATE_CONTEXT = "review-gate"
-REVIEW_APP_LOGIN = "benchbox-oracle"
+REVIEW_APP_LOGIN = "benchbox-review"
 REVIEW_GATE_WAITING_PREFIX = "Waiting for review-verdict"
 MAX_RERUNS_PER_JOB = 1
 MAX_REENTRIES_PER_HEAD = 1

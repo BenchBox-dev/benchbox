@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from benchbox.core.contracts.platform_capabilities import resolve_primary_key_probe
+from benchbox.core.contracts.platform_capabilities import refresh_is_transactional, resolve_primary_key_probe
 from benchbox.core.results.maintenance_method import MAINTENANCE_METHOD
 from benchbox.core.tpcds.maintenance_functions import (
     MAINTENANCE_FUNCTIONS,
@@ -54,6 +54,7 @@ class TPCDSMaintenanceOperation:
     staged_rows: dict[str, int] = field(default_factory=dict)
     rows_by_table: dict[str, int] = field(default_factory=dict)
     statements_executed: int = 0
+    transactional: bool = True
 
 
 @dataclass
@@ -260,6 +261,7 @@ class TPCDSMaintenanceTest:
             if self.verbose:
                 self.logger.info(f"Executing {function.name} on refresh set {refresh_set.set_id}")
             connection = self.connection_factory()
+            operation.transactional = refresh_is_transactional(getattr(connection, "platform_adapter", None))
             before = {table: self._count_rows(connection, table) for table in function.target_tables}
             expected_removals = self._expected_removals(connection, function, refresh_set)
 
@@ -374,18 +376,32 @@ class TPCDSMaintenanceTest:
         return cls._count_query(connection, f"SELECT COUNT(*) FROM {table}")
 
     @staticmethod
-    def _begin(connection: Any) -> None:
+    def _transactional(connection: Any) -> bool:
+        return refresh_is_transactional(getattr(connection, "platform_adapter", None))
+
+    @classmethod
+    def _begin(cls, connection: Any) -> None:
+        if not cls._transactional(connection):
+            return
+        cls._commit(connection)
+        driver = getattr(connection, "connection", connection)
+        if getattr(driver, "autocommit", None) is False:
+            return
         connection.execute("BEGIN")
 
-    @staticmethod
-    def _commit(connection: Any) -> None:
+    @classmethod
+    def _commit(cls, connection: Any) -> None:
+        if not cls._transactional(connection):
+            return
         commit = getattr(connection, "commit", None)
         if not callable(commit):
             raise TypeError("TPC-DS maintenance functions require transactional commit() support")
         commit()
 
-    @staticmethod
-    def _rollback(connection: Any) -> None:
+    @classmethod
+    def _rollback(cls, connection: Any) -> None:
+        if not cls._transactional(connection):
+            return
         rollback = getattr(connection, "rollback", None)
         if callable(rollback):
             try:
