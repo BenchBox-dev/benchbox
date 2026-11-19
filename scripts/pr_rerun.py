@@ -208,7 +208,7 @@ def is_text_edit_run(jobs: Sequence[Mapping[str, Any]]) -> bool:
     return any(job.get("name") == PATHS_JOB and job.get("conclusion") == "skipped" for job in jobs)
 
 
-def _would_block_verdict(runner: Runner, repo: str, pr: int, head: str, run_id: int) -> bool:
+def _head_verdicts(runner: Runner, repo: str, pr: int, head: str) -> dict[int, str]:
     name = f"{VERDICT_ARTIFACT_PREFIX}-{pr}-{head}"
     try:
         found = _invoke(
@@ -216,22 +216,32 @@ def _would_block_verdict(runner: Runner, repo: str, pr: int, head: str, run_id: 
             [
                 "api",
                 "--jq",
-                f"[.artifacts[] | select((.expired | not) and .workflow_run.id == {run_id})][0].id // empty",
-                f"repos/{repo}/actions/artifacts?name={name}&per_page=20",
+                "[.artifacts[] | select(.expired | not) | .workflow_run.id] | unique | .[]",
+                f"repos/{repo}/actions/artifacts?name={name}&per_page=100",
             ],
         )
-        if not found.stdout.strip():
-            return False
-        with tempfile.TemporaryDirectory(prefix="pr-rerun-verdict-") as scratch:
-            _invoke(runner, ["run", "download", str(run_id), "--repo", repo, "-n", name, "-D", scratch])
-            report = json.loads((Path(scratch) / VERDICT_FILE).read_text(encoding="utf-8"))
-    except (RerunError, OSError, ValueError):
-        return False
-    return isinstance(report, dict) and report.get("verdict") == "would-block"
+    except RerunError:
+        return {}
+    verdicts: dict[int, str] = {}
+    for token in found.stdout.split():
+        try:
+            run_id = int(token)
+            with tempfile.TemporaryDirectory(prefix="pr-rerun-verdict-") as scratch:
+                _invoke(runner, ["run", "download", str(run_id), "--repo", repo, "-n", name, "-D", scratch])
+                report = json.loads((Path(scratch) / VERDICT_FILE).read_text(encoding="utf-8"))
+        except (RerunError, OSError, ValueError):
+            continue
+        if isinstance(report, dict) and isinstance(report.get("verdict"), str):
+            verdicts[run_id] = report["verdict"]
+    return verdicts
 
 
 def rerun_arguments(
-    run: Mapping[str, Any], jobs: Sequence[Mapping[str, Any]], repo: str, would_block: bool = False
+    run: Mapping[str, Any],
+    jobs: Sequence[Mapping[str, Any]],
+    repo: str,
+    would_block: bool = False,
+    inconsistent: bool = False,
 ) -> list[str] | None:
     status = run.get("status")
     conclusion = run.get("conclusion")
@@ -250,6 +260,13 @@ def rerun_arguments(
         if would_block:
             attempt = run.get("run_attempt")
             if isinstance(attempt, int) and attempt >= WOULD_BLOCK_MAX_ATTEMPTS:
+                if inconsistent:
+                    raise RerunError(
+                        f"CI run {run_id} reported a would-block duration verdict on {attempt} attempts, but other "
+                        "CI runs of this head passed the same gate: the verdicts are inconsistent across runners, "
+                        "so the gate is measuring the runner rather than the change. Re-running will not settle "
+                        "it; see Fast-test duration policy in docs/internal/nightly-t3.md"
+                    )
                 raise RerunError(
                     f"CI run {run_id} reported a would-block duration verdict on {attempt} attempts, each timed "
                     "afresh; that is a real slowdown, not runner noise. Remove the slowdown or regenerate the "
@@ -330,10 +347,12 @@ def rerun(repo: str, pr: int, runner: Runner = _subprocess_runner) -> str:
     if chosen is not None:
         run, jobs = chosen
         created.append(_time(run.get("created_at")))
-        would_block = run.get("conclusion") == "failure" and _would_block_verdict(
-            runner, repo, pr, head, int(run["id"])
+        verdicts = _head_verdicts(runner, repo, pr, head) if run.get("conclusion") == "failure" else {}
+        would_block = verdicts.get(int(run["id"])) == "would-block"
+        inconsistent = would_block and any(
+            verdict == "pass" for verdict_run, verdict in verdicts.items() if verdict_run != int(run["id"])
         )
-        arguments = rerun_arguments(run, jobs, repo, would_block)
+        arguments = rerun_arguments(run, jobs, repo, would_block, inconsistent)
         if arguments is not None:
             scope = "failed jobs of" if "--failed" in arguments else "all jobs of"
             fresh = " (would-block duration verdict, fresh timings)" if would_block else ""

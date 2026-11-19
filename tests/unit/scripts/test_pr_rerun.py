@@ -432,22 +432,29 @@ def test_invalid_gh_json_is_reported() -> None:
 
 
 class VerdictGitHub(FakeGitHub):
-    def __init__(self, *args: Any, verdict: dict[str, Any] | None, artifact_run: int = 11, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *args: Any,
+        verdict: dict[str, Any] | None,
+        artifact_run: int = 11,
+        other_verdicts: dict[int, dict[str, Any]] | None = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(*args, **kwargs)
-        self.verdict = verdict
-        self.artifact_run = artifact_run
+        self.verdicts = {} if verdict is None else {artifact_run: verdict}
+        self.verdicts.update(other_verdicts or {})
 
     def __call__(self, command: list[str]) -> subprocess.CompletedProcess[str]:
         args = command[1:]
         if args[0] == "api" and "/actions/artifacts?" in args[-1]:
             self.calls.append(command)
             assert args[-1].startswith(f"repos/{REPO}/actions/artifacts?name=fast-duration-verdict-{PR}-{HEAD}")
-            found = "" if self.verdict is None else "99\n"
+            found = "".join(f"{run_id}\n" for run_id in self.verdicts)
             return subprocess.CompletedProcess(command, 0, found, "")
         if args[:2] == ["run", "download"]:
             self.calls.append(command)
             Path(args[args.index("-D") + 1], "fast-duration-verdict.json").write_text(
-                json.dumps(self.verdict), encoding="utf-8"
+                json.dumps(self.verdicts[int(args[2])]), encoding="utf-8"
             )
             return subprocess.CompletedProcess(command, 0, "", "")
         return super().__call__(command)
@@ -497,6 +504,39 @@ def test_repeated_would_block_verdicts_stop_being_rerun(attempt: int, allowed: b
         return
     with pytest.raises(pr_rerun.RerunError, match="real slowdown"):
         pr_rerun.rerun_arguments(run, _jobs(), REPO, True)
+
+
+def test_would_block_on_three_attempts_with_a_passing_run_elsewhere_names_inconsistent_verdicts() -> None:
+    gh = VerdictGitHub(
+        [_run(11, "2026-10-17T10:00:00Z", run_attempt=3), _run(10, "2026-10-17T09:00:00Z", conclusion="success")],
+        {11: _jobs(), 10: _jobs()},
+        verdict={"verdict": "would-block"},
+        other_verdicts={10: {"verdict": "pass"}},
+    )
+    with pytest.raises(pr_rerun.RerunError, match="inconsistent across runners") as raised:
+        pr_rerun.rerun(REPO, PR, gh)
+    assert "real slowdown" not in str(raised.value)
+    assert "docs/internal/nightly-t3.md" in str(raised.value)
+    assert gh.reruns() == []
+
+
+def test_would_block_on_three_attempts_with_no_pass_anywhere_still_refuses_as_a_real_slowdown() -> None:
+    gh = VerdictGitHub(
+        [_run(11, "2026-10-17T10:00:00Z", run_attempt=3)],
+        {11: _jobs()},
+        verdict={"verdict": "would-block"},
+        other_verdicts={10: {"verdict": "would-block"}},
+    )
+    with pytest.raises(pr_rerun.RerunError, match="real slowdown"):
+        pr_rerun.rerun(REPO, PR, gh)
+
+
+def test_inconsistent_verdicts_are_only_reported_once_the_attempt_limit_is_reached() -> None:
+    run = _run(11, "2026-10-17T10:00:00Z", run_attempt=2)
+    assert pr_rerun.rerun_arguments(run, _jobs(), REPO, True, True) == ["run", "rerun", "11", "--repo", REPO]
+    refused = _run(11, "2026-10-17T10:00:00Z", run_attempt=3)
+    with pytest.raises(pr_rerun.RerunError, match="inconsistent across runners"):
+        pr_rerun.rerun_arguments(refused, _jobs(), REPO, True, True)
 
 
 def test_a_failed_placeholder_run_is_re_run_after_the_full_run_succeeded() -> None:
