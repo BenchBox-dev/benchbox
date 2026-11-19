@@ -6,7 +6,7 @@
     "The merge touches soundness paths (.github/workflows/, review_gateway_host.sh): the final PR carried a benchbox-oracle success review on its merged head, and the soundness merge digest shows the commit attested or tracked",
     "Decision gate: a newly red domain or a perf regression is reported to the owner and tracked as a new item, not fixed here"
   ],
-  "context": "Guardrails: publish only the validated mirror; never a wipe-based mirror; merge nothing else to published-results.",
+  "context": "Guardrails: publish only the validated mirror; never a wipe-based mirror; merge nothing else to published-results.\n\nVerification on develop (2026-11-18), nightly run 44386073922 plus host checks:\n- Drift: t3:drift passed (#2471 closed by the nightly). The mirror PRs #4358, #4359, #4366 and #4367 merged on their own.\n- Perf: the comparison now runs on the method-2 baseline but reports 320 ms against 270 ms (+18.6%, above both floors). NOT passed. Tracked separately as nightly-perf-smoke-first-real-comparison-20261118; #3930 stays open; no floor or baseline was changed.\n- Gateway: the check on the host showed no failure for the unserved provider, but an unrelated 'unknown' Anthropic probe result still degraded it (#4364). Fixed in #4365 (e9ff644730); monitor reinstalled; three consecutive healthy monitor runs; #4364 and #4282 closed.\n- #1508 no longer lists #4154.\n- Final PR #4332 carried an oracle review on its merged head; ADR #4352 merged.",
   "description": "After the batch's final PR merges:\n1. On this host, rerun _project/scripts/review_gateway_host.sh monitor-install from a shell where gh, jq and tailscale resolve; run check.\n2. Review mirror PR #4286 (or its current replacement): validate-bundles success, based on the current published-results tip; mark it ready and merge it (owner-approved publication).\n3. Dispatch nightly-v2.yml on develop with run_drift=true, and green-unmerged-sweep.yml.\n4. Close #2471, #3930, #4282, #1508 with evidence links where their automation does not.",
   "sessions": [
     {
@@ -16,6 +16,14 @@
       "op": "create",
       "op_id": "e50ae882019643b1be743eb1c2254efd",
       "session_id": "b833d84af4ae4e4b999f435d3c8fd25e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6a2213d6b55a7e3a8ad45472",
+      "at": "2026-11-19T00:06:54Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1ac9152839e64f5dab7e9c2afc11bd93",
+      "session_id": "ea4bcdaedc404466a3b06e87288386bf"
     }
   ]
 }
