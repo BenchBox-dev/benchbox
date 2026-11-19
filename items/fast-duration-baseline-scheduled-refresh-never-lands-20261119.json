@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "A scheduled refresh PR can reach merge without a per-PR owner stand-in: the review path either handles the generated baseline shards or treats them as generated data with a bounded, reviewable summary.",
+    "The refresh lands at least weekly without manual dispatch, observed over two consecutive scheduled runs.",
+    "The typical-runner normalized ratio returns to near 1.0 after each refresh."
+  ],
+  "context": "Related: ci-fast-duration-gate-rerun-and-baseline-drift-20261113, whose 2026-11-17 owner decision is to refresh the baseline through the existing workflow.\n\nEvidence from 2026-11-19. Committed baseline generated 2026-11-11T02:22Z (#4090) with 38,217 tests. 163 commits reached develop between it and the #4335 merge-base, adding 65 test files; across 55 recent CI verdicts the new-test count rose from 1,609 to 2,122 in under a day. On 41 runs on typical runners (speed factor about 0.95-1.2) the normalized sum ratio has a median of 1.19 (raw shared time about 20% above the baseline), leaving almost no headroom under the 1.30 gate. The drift is diffuse: the top 50 tests carry about a third of it (vendored sqlglot bypass scans, QuestDB, ClickHouse, release-probe graph tests). Refresh workflow history: scheduled runs 2026-11-02, 11-09 and 11-16 succeeded and opened PRs that never merged; dispatched runs 10-31, 11-01, 11-07 and 11-11 produced the merged baselines. 2026-11-19: owner approved a hand-dispatched refresh (run 44527917625) to replace the stale #4283.",
+  "description": "`.github/workflows/fast-duration-baseline-refresh.yml` runs weekly (Mondays) and opens a refresh PR, but no scheduled refresh PR has merged: #3928 and #4066 were closed and #4283 (opened 2026-11-16) sat with review-verdict pending 'Not reviewed · too large to review' and review-gate failing. Only hand-dispatched refreshes landed (#3915, #4004, #4090). The baseline then ages while develop adds hundreds of tests a day, shared-test time drifts against it, and ordinary PRs sit near the 1.30 gate ratio with no headroom.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4283",
+    "https://github.com/BenchBox-dev/benchbox/pull/4090",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/44527917625"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6159b4457b6c00e643109b5d",
+      "at": "2026-11-19T12:53:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7a4fceb10370419b8e8abc65ad657b79",
+      "session_id": "66e26021181f433192b652b8517b5f5f"
+    }
+  ]
+}

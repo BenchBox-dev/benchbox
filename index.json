@@ -24391,6 +24391,13 @@
       "status": "done",
       "title": "Architecture hardening: define fail-open vs fail-closed policy for translation and validation"
     },
+    "fast-duration-baseline-scheduled-refresh-never-lands-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Scheduled fast-tier duration baseline refreshes never merge because the review bot refuses them as too large"
+    },
     "fast-duration-gate-calibration-skew-20261028": {
       "claim": null,
       "needs": [],
