@@ -855,6 +855,31 @@ def test_reproduce_rebuilds_rejected_runs_from_a_different_directory(tmp_path: P
     assert baseline.reproduce_baseline(committed, fetch, tmp_path / "other-root", ids) == []
 
 
+def test_a_manifest_listing_the_same_source_run_twice_fails_reproduce(
+    world: World, capsys: pytest.CaptureFixture[str]
+) -> None:
+    manifest_path = world.committed / baseline.BASELINE_MANIFEST_NAME
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["runs"].append(dict(manifest["runs"][0]))
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+    assert world.reproduce() == 1
+    assert "lists the same source run more than once" in capsys.readouterr().out
+
+
+def test_a_symlinked_baseline_file_fails_reproduce_even_with_identical_bytes(
+    world: World, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    target = tmp_path / "elsewhere.json"
+    shard = world.committed / "tests-00.json"
+    target.write_bytes(shard.read_bytes())
+    shard.unlink()
+    shard.symlink_to(target)
+
+    assert world.reproduce() == 1
+    assert "tests-00.json: is a symlink" in capsys.readouterr().out
+
+
 def test_the_gh_fetcher_reports_an_expired_artifact(tmp_path: Path) -> None:
     with pytest.raises(baseline.BaselineError, match="expired"):
         baseline.gh_artifact_fetcher(FakeGh([]), REPO)(9, tmp_path / "artifact-9")

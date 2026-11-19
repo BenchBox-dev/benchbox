@@ -959,7 +959,10 @@ def provenance_problems(runner: GhRunner, repo: str, committed: dict[str, Any], 
     for record in records:
         problems += run_provenance_problems(runner, repo, record)
     derived = {source_identity(record) for record in select_source_runs(runner, repo, generated)}
-    listed = {source_identity(record) for record in records}
+    identities = [source_identity(record) for record in records]
+    if len(identities) != len(set(identities)) or len({identity[0] for identity in identities}) != len(identities):
+        problems.append("the manifest lists the same source run more than once")
+    listed = set(identities)
     if derived != listed:
         problems.append(
             f"source selection mismatch: only in the manifest {sorted(listed - derived)}; "
@@ -994,6 +997,8 @@ def reproduce_baseline(
             problems.append(f"{name}: missing from the committed baseline")
         elif name not in expected:
             problems.append(f"{name}: not produced by the build")
+        elif (baseline_dir / name).is_symlink():
+            problems.append(f"{name}: is a symlink")
         elif (baseline_dir / name).read_bytes() != (rebuilt_dir / name).read_bytes():
             problems.append(f"{name}: differs from the rebuild")
     report = check_baseline(rebuilt, entries, collected_ids)

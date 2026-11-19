@@ -117,7 +117,7 @@ byte-identical. It also requires each run's artifact to be named
 merged into develop. It re-derives the refresh workflow's source selection (the
 newest 60 `ci.yml` runs created up to `generated_at`, completed and successful,
 one per merged PR, 20 at most) and requires it to equal the manifest's runs. The
-refresh workflow stamps `generated_at` just before its `gh run list` call, which
+refresh workflow stamps `generated_at` just before its workflow-runs listing (`gh api .../actions/workflows/ci.yml/runs`), which
 is what makes the listing reproducible. `generated_at` must be no later than the
 time the check runs and at most 3 days before it, so a refresh PR must pass the
 check within 3 days of its refresh. Finally it re-runs the baseline gate
