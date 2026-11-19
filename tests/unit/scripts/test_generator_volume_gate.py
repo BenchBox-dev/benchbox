@@ -95,6 +95,22 @@ def test_a_baseline_change_that_alters_no_entry_skips_and_satisfies_the_required
     assert gate.main([*args, "--require-affected"]) == 0
 
 
+def test_a_baseline_that_only_raises_the_tolerance_fails(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    looser = baseline_with() | {"tolerance": 0.95}
+    args = write_inputs(tmp_path, [gate.BASELINE_PATH], looser, baseline_with())
+    assert gate.main([*args, "--require-affected"]) == 1
+    assert (
+        "::error title=generator-volume::the baseline tolerance is raised from 0.05 to 0.95" in capsys.readouterr().out
+    )
+    assert "tolerance is raised" in (tmp_path / "summary.md").read_text(encoding="utf-8")
+
+
+def test_a_baseline_that_tightens_the_tolerance_is_accepted(tmp_path: Path) -> None:
+    tighter = baseline_with() | {"tolerance": 0.02}
+    args = write_inputs(tmp_path, [gate.BASELINE_PATH], tighter, baseline_with())
+    assert gate.main([*args, "--require-affected"]) == 0
+
+
 def test_output_within_tolerance_passes() -> None:
     smoke = RecordingSmoke({"amplab": healthy(1_040_000)})
     report = gate.run_gate([AMPLAB_GENERATOR], baseline_with(), baseline_with(), smoke=smoke)

@@ -43,7 +43,8 @@ A drift fails unless the same diff updates the baseline entry to the new size.
 An edited entry that still does not match the generator also fails. The
 tolerance always comes from the base branch's copy of the baseline, so a diff
 cannot loosen the threshold it is judged by; a new baseline file supplies its
-own.
+own. A diff that raises the baseline's tolerance fails outright, because the
+looser threshold would judge later pull requests; tightening it is accepted.
 
 The gate, the baseline, `scripts/measure_sf1_sizes.py` (which decides which
 files count) and `benchbox/utils/datagen_manifest.py` are soundness paths, so

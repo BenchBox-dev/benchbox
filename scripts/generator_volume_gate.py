@@ -219,6 +219,17 @@ def run_gate(
     smoke: Smoke | None = None,
 ) -> dict[str, Any]:
     measure = run_smoke if smoke is None else smoke
+    if (
+        BASELINE_PATH in changed_files
+        and base_baseline is not None
+        and baseline_tolerance(baseline) > baseline_tolerance(base_baseline)
+    ):
+        reason = (
+            f"the baseline tolerance is raised from {baseline_tolerance(base_baseline):g} to "
+            f"{baseline_tolerance(baseline):g}; a looser tolerance would judge later pull requests unmeasured, "
+            "so it needs a change to this gate rather than to the baseline"
+        )
+        return {"status": "fail", "reason": reason, "benchmarks": []}
     benchmarks = selected_benchmarks(changed_files, baseline, base_baseline)
     if not benchmarks:
         reason = (
@@ -252,7 +263,7 @@ def run_gate(
 
 def render_markdown(report: dict[str, Any]) -> str:
     lines = ["### generator-volume", "", f"Result: **{report['status']}**", ""]
-    if report["status"] == "skipped":
+    if report["status"] == "skipped" or not report["benchmarks"]:
         lines.append(str(report["reason"]))
         return "\n".join(lines) + "\n"
     lines += [
@@ -327,6 +338,8 @@ def main(argv: list[str] | None = None) -> int:
     for record in report["benchmarks"]:
         if record["status"] == "fail":
             print(f"::error title=generator-volume::{record['benchmark']}: {record['reason']}")
+    if report["status"] == "fail" and not report["benchmarks"]:
+        print(f"::error title=generator-volume::{report['reason']}")
     return 1 if report["status"] == "fail" else 0
 
 
