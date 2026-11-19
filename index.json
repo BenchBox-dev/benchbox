@@ -14888,6 +14888,13 @@
       "status": "done",
       "title": "Add CedarDB Platform Adapter"
     },
+    "cedardb-bundles-record-no-server-version-or-edition-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "CedarDB result bundles record no server version or edition"
+    },
     "cedardb-release-gate-cell-restoration": {
       "claim": null,
       "needs": [],
