@@ -25361,15 +25361,10 @@
       "title": "Correct the allow_insecure_gateway help text: it skips only OCSP revocation checks"
     },
     "gateway-probe-served-providers-20261117": {
-      "claim": {
-        "expires_at": "2026-11-20T00:03:52Z",
-        "generation": "52ae25eaebee4897950d859ed6312e58",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6a2213d6b55a7e3a8ad45472"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Degrade the review gateway only for served providers and debounce monitor alarms"
     },
     "gateway-run-internal-cost-total-ungated": {
