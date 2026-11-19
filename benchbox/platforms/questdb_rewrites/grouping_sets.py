@@ -9,6 +9,7 @@ ORDER = 200
 _GROUP_PREFIX = "__g"
 _FLAG_PREFIX = "__f"
 _AGG_PREFIX = "__a"
+_ORDER_PREFIX = "__o"
 _RESULT_ALIAS = "__staged"
 _STAGE_ARGS = ("with_", "having", "qualify", "order", "limit", "offset", "distinct")
 
@@ -151,8 +152,6 @@ def _build_level(
     ]
     level.set("expressions", projections)
     level.set("group", exp.Group(expressions=[member.copy() for member in grouping_set]) if grouping_set else None)
-    if not aggregates:
-        level.set("distinct", exp.Distinct())
     return level
 
 
@@ -183,22 +182,47 @@ def _make_lowering(columns: list[exp.Expr], aggregates: list[exp.Expr]):
     return lambda expression: expression.copy().transform(substitute)
 
 
+def _hoist_window_orderings(roots: list[exp.Expr]) -> list[exp.Expr]:
+    hoisted: list[exp.Expr] = []
+    for root in roots:
+        for window in root.find_all(exp.Window):
+            order = window.args.get("order")
+            for item in order.expressions if order is not None else []:
+                if isinstance(item.this, (exp.Column, exp.Literal)):
+                    continue
+                position = _index(hoisted, item.this)
+                if position < 0:
+                    hoisted.append(item.this.copy())
+                    position = len(hoisted) - 1
+                item.set("this", exp.column(f"{_ORDER_PREFIX}{position}"))
+    return hoisted
+
+
 def _build_outer(select: exp.Select, union: exp.Expr, lower) -> exp.Select:
     projections = []
     for projection in select.expressions:
         name = projection.alias_or_name
         lowered = lower(projection.this if isinstance(projection, exp.Alias) else projection)
         projections.append(exp.alias_(lowered, name) if name else lowered)
+    clauses: dict[str, exp.Expr] = {}
+    if select.args.get("having") is not None:
+        clauses["where"] = exp.Where(this=lower(select.args["having"].this))
+    if select.args.get("qualify") is not None:
+        clauses["qualify"] = exp.Qualify(this=lower(select.args["qualify"].this))
+    if select.args.get("order") is not None:
+        clauses["order"] = lower(select.args["order"])
+    hoisted = _hoist_window_orderings([*projections, *clauses.values()])
+    if hoisted:
+        staged = [exp.alias_(exp.column(projection.alias), projection.alias) for projection in union.selects]
+        derived = [exp.alias_(expression, f"{_ORDER_PREFIX}{position}") for position, expression in enumerate(hoisted)]
+        base = exp.Subquery(this=union, alias=exp.TableAlias(this=exp.to_identifier(f"{_RESULT_ALIAS}_base")))
+        union = exp.select(*staged, *derived).from_(base)
     source = exp.Subquery(this=union, alias=exp.TableAlias(this=exp.to_identifier(_RESULT_ALIAS)))
     outer = exp.select(*projections).from_(source)
     if select.args.get("distinct") is not None:
         outer.set("distinct", select.args["distinct"].copy())
-    if select.args.get("having") is not None:
-        outer.set("where", exp.Where(this=lower(select.args["having"].this)))
-    if select.args.get("qualify") is not None:
-        outer.set("qualify", exp.Qualify(this=lower(select.args["qualify"].this)))
-    if select.args.get("order") is not None:
-        outer.set("order", lower(select.args["order"]))
+    for key, clause in clauses.items():
+        outer.set(key, clause)
     for key in ("limit", "offset", "with_"):
         if select.args.get(key) is not None:
             outer.set(key, select.args[key].copy())

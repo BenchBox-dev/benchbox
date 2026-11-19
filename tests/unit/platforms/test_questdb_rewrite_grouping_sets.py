@@ -78,3 +78,21 @@ def test_rollup_inside_subquery_is_expanded_in_place():
 def test_plain_group_by_is_untouched():
     sql = "SELECT a, SUM(x) FROM t GROUP BY a"
     assert rewrite_query(sql) == sql
+
+
+def test_window_ordering_expression_is_computed_below_the_window():
+    rewritten = rewrite_query(
+        "SELECT a, RANK() OVER (ORDER BY SUM(x) / COUNT(*)) AS r FROM t GROUP BY ROLLUP (a) ORDER BY r"
+    )
+    assert "RANK() OVER (ORDER BY __o0) AS r" in rewritten
+    assert "__a0 / __a1 AS __o0" in rewritten
+
+
+def test_window_ordering_expression_shared_with_order_by_is_computed_once():
+    rewritten = rewrite_query(
+        "SELECT a, RANK() OVER (ORDER BY SUM(x) / COUNT(*)) AS r FROM t GROUP BY ROLLUP (a) "
+        "ORDER BY RANK() OVER (ORDER BY SUM(x) / COUNT(*))"
+    )
+    assert rewritten.count("AS __o0") == 1
+    assert "__o1" not in rewritten
+    assert rewritten.endswith("ORDER BY RANK() OVER (ORDER BY __o0)")

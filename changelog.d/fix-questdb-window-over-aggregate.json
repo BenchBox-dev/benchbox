@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB queries combining GROUP BY with window functions over the grouped result (SUM(SUM(x)) OVER (...), RANK() OVER (ORDER BY SUM(x))) failing with \"Window function is not allowed in context of aggregation. Use sub-query.\" (TPC-DS Q51, Q70, CoffeeShop SA4); the adapter now computes the aggregation in a sub-query and applies the window functions above it."
+    }
+  ]
+}
