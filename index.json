@@ -18311,6 +18311,13 @@
       "status": "open",
       "title": "Consider: trim per-PR CI fan-out (medium-test shards, sleep 90, trunk lanes)"
     },
+    "consider-ci-schedules-off-peak-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Consider: keep scheduled workflows out of the busy hours"
+    },
     "consider-release-v2-probe-dispatch-once-per-ready-head-20261119": {
       "claim": null,
       "needs": [],

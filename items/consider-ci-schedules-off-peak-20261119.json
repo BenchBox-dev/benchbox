@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "If pursued: no change to PR required checks; peak-hour slot use by scheduled workflows measured before and after."
+  ],
+  "context": "Source: CI throughput investigation 2026-11-19.",
+  "description": "For consideration, not a required change (owner, 2026-11-19).\n\nObserved (72 h to 2026-11-19): scheduled runs fired 8-9 h late, into the busiest hours: trunk-uat (cron 02:00) started 09:45-10:13 and held up to 9 runner slots for 2-5 h; nightly-v2 (07:30, 47 jobs, no max-parallel) started 16:37-17:12; docker-integration and release-canary started around 16:00-17:50. The hourly review-gate/verdict sweep crons fired only 9 times each in 72 h. Cause of the delay unknown [inference: GitHub-side].\n\nIdeas: max-parallel on nightly-v2 (~11) and trunk-uat (~10, 112, 199, 276); run trunk-coverage less than 7x/day (~14-15); slow or drop the hourly gate/verdict sweeps given they also trigger on push (review-gate.yml ~26, review-verdict.yml ~27).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5df21d35942e57dc5553d5c9",
+      "at": "2026-11-19T17:38:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cbbfff5a9de34fffb416e2a314c4ed2b",
+      "session_id": "79d870b64fc24eaca388b10bdd93eca5"
+    }
+  ]
+}
