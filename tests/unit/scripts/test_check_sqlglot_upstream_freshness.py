@@ -81,6 +81,44 @@ def test_unreachable_upstream_fails_closed(tmp_path: Path) -> None:
     assert check(tmp_path, unreachable, TODAY) == ["cannot list upstream tags: offline"]
 
 
+OLDER_THAN_UPSTREAM = {"v30.23.0": PINNED, "v30.24.0": NEWER}
+
+
+@pytest.mark.parametrize("line", ["release/0.5.x", "release/12.34.x"])
+def test_a_maintenance_line_keeps_the_tag_wheel_without_asking_upstream(tmp_path: Path, line: str) -> None:
+    write_root(tmp_path, [])
+
+    def forbidden() -> dict[str, str]:
+        raise AssertionError("a maintenance line must not query upstream")
+
+    assert check(tmp_path, forbidden, TODAY, line=line) == []
+    assert check(tmp_path, lambda: OLDER_THAN_UPSTREAM, TODAY) != []
+
+
+def test_develop_and_an_unspecified_line_keep_the_freshness_requirement(tmp_path: Path) -> None:
+    write_root(tmp_path, [])
+    assert check(tmp_path, lambda: OLDER_THAN_UPSTREAM, TODAY, line="develop")
+    assert check(tmp_path, lambda: OLDER_THAN_UPSTREAM, TODAY, line=None)
+
+
+@pytest.mark.parametrize("line", ["release/0.5", "release/0.5.x/extra", "main", "release/a.b.x", ""])
+def test_a_line_that_is_neither_develop_nor_a_maintenance_line_is_refused(tmp_path: Path, line: str) -> None:
+    write_root(tmp_path, [])
+    (problem,) = check(tmp_path, lambda: {"v30.23.0": PINNED}, TODAY, line=line)
+    assert "maintenance line" in problem
+
+
+def test_main_skips_the_check_on_a_maintenance_line_and_enforces_it_on_develop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_root(tmp_path, [])
+    monkeypatch.setattr("scripts.check_sqlglot_upstream_freshness.list_upstream_tags", lambda: OLDER_THAN_UPSTREAM)
+    assert main(["--root", str(tmp_path), "--line", "release/0.5.x"]) == 0
+    assert "SKIPPED" in capsys.readouterr().out
+    assert main(["--root", str(tmp_path), "--line", "develop"]) == 1
+    assert main(["--root", str(tmp_path)]) == 1
+
+
 def test_check_reads_pin_and_waiver_files(tmp_path: Path) -> None:
     write_root(tmp_path, [waiver("v30.24.0")])
     assert check(tmp_path, lambda: {"v30.23.0": PINNED, "v30.24.0": NEWER}, TODAY) == []

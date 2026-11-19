@@ -239,6 +239,7 @@ class World:
         self.files.mkdir()
         self.counter = 0
         self.recorder: Callable[[Path, str], None] | None = None
+        self.reporter: delivery.TranslationReporter = lambda root, base, head: []
         self.config = delivery.load_config(REAL_CONFIG)
         self.bare = tmp_path / "origin.git"
         sh(tmp_path, "git", "init", "--bare", "-b", "develop", str(self.bare))
@@ -385,11 +386,18 @@ class World:
         code, plan = self.run_plan()
         assert code == 0 and plan["state"] == "adopt"
         return delivery.prepare(
-            self.clone, self.tmp / "plan", self.tmp / "prepared", self.config, checks=None, recorder=self.recorder
+            self.clone,
+            self.tmp / "plan",
+            self.tmp / "prepared",
+            self.config,
+            checks=None,
+            recorder=self.recorder,
+            reporter=self.reporter,
         )
 
     def publish(self, **options: Any) -> dict[str, Any]:
         options.setdefault("environ", ENABLED)
+        options.setdefault("reporter", self.reporter)
         return delivery.publish(
             self.api,
             self.config,
@@ -862,6 +870,130 @@ def test_a_prepared_body_that_hides_the_corpus_changes_is_refused_before_any_mut
     with pytest.raises(DeliveryError, match="does not list the corpus changes"):
         world.publish()
     assert not world.api.mutations and world.remote_branches() == ["develop"]
+
+
+def translation_change(
+    platform: str = "questdb", benchmark: str = "tpchavoc", query: str = "18_v10", before: str | None = None
+) -> delivery.TranslationChange:
+    return {
+        "platform": platform,
+        "benchmark": benchmark,
+        "query": query,
+        "before": "SELECT a FROM t WHERE x = 1 AND y IN (SELECT 1)" if before is None else before,
+        "after": "SELECT a FROM t WHERE x = 1 AND CASE WHEN y IN (SELECT 1) THEN 1 ELSE 0 END = 1",
+    }
+
+
+def test_prepare_reports_every_changed_translation_between_the_base_and_the_adoption_commit(world: World) -> None:
+    world.deliver(NEW, 2)
+    calls: list[tuple[Path, str, str]] = []
+    changes = [translation_change(), translation_change("spark,glue", "tpch", "7")]
+
+    def reporter(root: Path, base: str, head: str) -> list[delivery.TranslationChange]:
+        calls.append((root, base, head))
+        return changes
+
+    world.reporter = reporter
+    prepared = world.prepare()
+    assert calls == [(world.clone, prepared["base"], prepared["head"])]
+    body = prepared["body"]
+    assert "## Translated query changes" in body and "2 (platform, benchmark, query) entries" in body
+    assert "- `questdb` / `tpchavoc` / `18_v10`" in body and "- `spark,glue` / `tpch` / `7`" in body
+    assert "### `questdb` / `tpchavoc` / `18_v10`" in body
+    assert "- a FROM t WHERE x = 1 AND y IN (SELECT 1)" in body
+    assert "+ a FROM t WHERE x = 1 AND CASE WHEN y IN (SELECT 1)" in body
+    saved = json.loads((world.tmp / "prepared" / delivery.TRANSLATION_FILE).read_text(encoding="utf-8"))
+    assert saved == changes
+    assert "acknowledges nothing" in body
+    assert delivery.TRANSLATION_FILE not in prepared["paths"]
+
+
+def test_prepare_states_that_no_translation_changed(world: World) -> None:
+    world.deliver(NEW, 2)
+    body = world.prepare()["body"]
+    assert "changes no translated query on any platform" in body
+
+
+def test_prepare_bounds_the_translation_report_and_keeps_the_full_list_in_the_artifact(world: World) -> None:
+    world.deliver(NEW, 2)
+    many = [translation_change("questdb", "tpchavoc", f"{index}_v{index}", "b" * 4000) for index in range(900)]
+    world.reporter = lambda root, base, head: many
+    body = world.prepare()["body"]
+    assert "900 (platform, benchmark, query) entries" in body
+    assert delivery.TRANSLATION_FILE in body and "There are too many to list" in body
+    assert body.count("### `questdb`") <= delivery.MAX_LISTED_CASES
+    assert len(body) < 60000
+    assert len(json.loads((world.tmp / "prepared" / delivery.TRANSLATION_FILE).read_text(encoding="utf-8"))) == 900
+
+
+def test_publish_accepts_a_body_matching_the_recomputed_translation_report(world: World) -> None:
+    world.deliver(NEW, 2)
+    world.reporter = lambda root, base, head: [translation_change()]
+    world.prepare()
+    assert world.publish(dry_run=True)["outcome"] == "created"
+
+
+def test_publish_refuses_a_body_whose_translation_report_differs_from_the_recomputed_one(world: World) -> None:
+    world.deliver(NEW, 2)
+    world.reporter = lambda root, base, head: [translation_change()]
+    world.prepare()
+    world.reporter = lambda root, base, head: [translation_change(), translation_change("duckdb", "tpch", "1")]
+    with pytest.raises(DeliveryError, match="does not list the translated query changes"):
+        world.publish()
+    assert not world.api.mutations and world.remote_branches() == ["develop"]
+
+
+def test_publish_refuses_a_body_that_hides_the_translation_report(world: World) -> None:
+    world.deliver(NEW, 2)
+    world.reporter = lambda root, base, head: [translation_change()]
+    world.prepare()
+    path = world.tmp / "prepared" / delivery.PULL_REQUEST_FILE
+    pull = json.loads(path.read_text(encoding="utf-8"))
+    start = pull["body"].index(delivery.TRANSLATION_HEADING)
+    end = pull["body"].index("<!-- sqlglot-delivery:")
+    pull["body"] = pull["body"][:start] + pull["body"][end:]
+    path.write_text(json.dumps(pull))
+    with pytest.raises(DeliveryError, match="does not list the translated query changes"):
+        world.publish()
+    assert not world.api.mutations and world.remote_branches() == ["develop"]
+
+
+def test_publish_refuses_a_body_with_a_second_translation_section(world: World) -> None:
+    world.deliver(NEW, 2)
+    world.reporter = lambda root, base, head: [translation_change()]
+    world.prepare()
+    path = world.tmp / "prepared" / delivery.PULL_REQUEST_FILE
+    pull = json.loads(path.read_text(encoding="utf-8"))
+    pull["body"] = pull["body"].replace(
+        "<!-- sqlglot-delivery:", f"{delivery.TRANSLATION_HEADING}\n\n<!-- sqlglot-delivery:"
+    )
+    path.write_text(json.dumps(pull))
+    with pytest.raises(DeliveryError, match="does not list the translated query changes"):
+        world.publish()
+
+
+def test_publish_fails_closed_when_the_translation_report_cannot_be_recomputed(world: World) -> None:
+    world.deliver(NEW, 2)
+    world.prepare()
+
+    def broken(root: Path, base: str, head: str) -> list[delivery.TranslationChange]:
+        raise RuntimeError("emission failed")
+
+    world.reporter = broken
+    with pytest.raises(DeliveryError, match="could not be recomputed: emission failed"):
+        world.publish()
+    assert not world.api.mutations
+
+
+def test_prepare_fails_when_the_translation_report_cannot_be_computed(world: World) -> None:
+    world.deliver(NEW, 2)
+
+    def broken(root: Path, base: str, head: str) -> list[delivery.TranslationChange]:
+        raise RuntimeError("emission failed")
+
+    world.reporter = broken
+    with pytest.raises(DeliveryError, match="translation report failed: emission failed"):
+        world.prepare()
 
 
 def commit_corpus(world: World, prepared: dict[str, Any], text: str) -> None:

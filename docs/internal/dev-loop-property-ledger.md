@@ -364,6 +364,7 @@ with maintainer and release-manager escalation as described in
 | `changelog_fragments.py` | tooling | Changelog fragment validation, rendering, required-entry decision and Unreleased guard |
 | `check_sqlglot_upstream_freshness.py` | product-safety | Bundled SQLGlot freshness release gate |
 | `check_sqlglot_advisories.py` | product-safety | Bundled SQLGlot published-advisory release gate |
+| `check_line_sqlglot_adoption.py` | product-safety | Maintenance-line guard: a pull request that changes the SQLGlot pin must be a pure adoption whose body carries the recomputed translated-query report |
 | `sqlglot_delivery.py` | product-safety | Consumes the fork's verified runtime deliveries: plans against the reviewed trust root, prepares the adoption commit, publishes one automation-owned pull request and arms it only through the existing arming rules |
 | `generate_landing_quickstarts.py` | product-safety | Landing quickstart generation |
 | `site_inputs.py` | product-safety | Site-inputs bundle build and verify |
