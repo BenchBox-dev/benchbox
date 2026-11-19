@@ -9,7 +9,7 @@ the routine is now the reviewer-agnostic `pr-review-followups`) and extended
 with the two axes the original sweep template missed (captured in blind-spot
 `_project/blind-spots/2026-05-01-130000-codex-followups-todo-misses-coverage-downgrades.md`).
 
-The default `--author` filter targets the oracle reviewer App, `benchbox-oracle[bot]`, but the
+The default `--author` filter targets the oracle reviewer App, `benchbox-review[bot]`, but the
 routine accepts any reviewer login (other bots, human reviewers, etc.) via
 `--author` or `DEFAULT_REVIEW_AUTHORS`. The local executor is currently the
 codex CLI, isolated behind `--executor-*` flags.
@@ -98,7 +98,7 @@ work. Use it after any unplanned exit; do not use it on a fresh branch.
 
 The routine runs the executor (currently `codex exec --sandbox workspace-write
 -c approval_policy=never`) against the contents of comments authored by the
-configured reviewer set (default: `benchbox-oracle[bot]`). That gives
+configured reviewer set (default: `benchbox-review[bot]`). That gives
 the executor unattended write access to the repo for the duration of the
 sweep. The trust boundary is the **author filter** (`--author`). Anyone with
 repo write can change that flag to action comments from any author. Treat the

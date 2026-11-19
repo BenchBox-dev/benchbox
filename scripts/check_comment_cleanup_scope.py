@@ -1588,7 +1588,7 @@ def immutable_dependency_artifacts(
 
 
 REVIEW_GATE_CONTEXT = "review-gate"
-REVIEW_APP_LOGIN = "benchbox-oracle"
+REVIEW_APP_LOGIN = "benchbox-review"
 _REVIEW_VERDICT = re.compile(r"### review-verdict: ([a-z]+) for `([0-9a-f]{40})`")
 _REVIEW_VERDICT_MARKER = re.compile(r"<!-- review-verdict: v2 ([a-z]+) ([0-9a-f]{40}) -->")
 _REVIEW_VERDICT_MARKER_OPEN = re.compile(r"<\s*!\s*-\s*-\s*review-verdict")

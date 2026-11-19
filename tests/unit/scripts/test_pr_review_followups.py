@@ -399,10 +399,10 @@ def test_graphql_comment_mapping_retains_thread_state() -> None:
 @pytest.mark.parametrize(
     ("author", "trusted"),
     [
-        ({"__typename": "Bot", "login": "benchbox-oracle"}, True),
-        ({"__typename": "Bot", "login": "benchbox-oracle[bot]"}, True),
-        ({"__typename": "User", "login": "benchbox-oracle"}, False),
-        ({"login": "benchbox-oracle"}, False),
+        ({"__typename": "Bot", "login": "benchbox-review"}, True),
+        ({"__typename": "Bot", "login": "benchbox-review[bot]"}, True),
+        ({"__typename": "User", "login": "benchbox-review"}, False),
+        ({"login": "benchbox-review"}, False),
     ],
     ids=["graphql-bot", "rest-style-bot", "user-account", "no-type"],
 )

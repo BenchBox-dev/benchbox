@@ -31,7 +31,7 @@ PUSHED = "2026-10-02T10:00:00Z"
 AFTER = "2026-10-02T11:00:00Z"
 MERGED_AT = "2026-10-02T12:00:00Z"
 LATER = "2026-10-02T13:00:00Z"
-APP_BOT = "benchbox-oracle[bot]"
+APP_BOT = "benchbox-review[bot]"
 CONNECTOR = "chatgpt-codex-connector[bot]"
 
 
@@ -225,10 +225,10 @@ def test_threads_are_read_with_one_graphql_query_naming_owner_repo_pull_and_page
 
 
 def test_an_app_thread_keeps_the_severity_and_a_missing_commit_is_empty(monkeypatch):
-    nodes = [thread_node(False, "benchbox-oracle", HEAD), {"isResolved": True, "comments": {"nodes": [{"body": "x"}]}}]
+    nodes = [thread_node(False, "benchbox-review", HEAD), {"isResolved": True, "comments": {"nodes": [{"body": "x"}]}}]
     monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads(nodes))
     assert digest.collect_threads("o/r", 7) == (
-        digest.Thread(False, "benchbox-oracle", HEAD, "High"),
+        digest.Thread(False, "benchbox-review", HEAD, "High"),
         digest.Thread(True, "", ""),
     )
 
@@ -818,8 +818,8 @@ def test_a_finding_posted_by_the_app_account_is_still_the_reviews():
     assert digest.is_overridden_finding(bot_login_thread("High")) is True
     assert digest.is_overridden_finding(bot_login_thread("Medium")) is False
     assert digest.is_overridden_finding(bot_login_thread("Medium", unverifiable="edited")) is True
-    assert digest.is_overridden_finding(digest.Thread(True, "[bot]benchbox-oracle", HEAD, "High")) is False
-    assert digest.is_overridden_finding(digest.Thread(True, "benchbox-oracle-x", HEAD, "High")) is False
+    assert digest.is_overridden_finding(digest.Thread(True, "[bot]benchbox-review", HEAD, "High")) is False
+    assert digest.is_overridden_finding(digest.Thread(True, "benchbox-review-x", HEAD, "High")) is False
 
 
 def test_an_unresolved_app_thread_counts_as_an_open_finding():
