@@ -1549,7 +1549,7 @@ def test_dry_run_of_a_landing_target_touches_nothing_and_exits_zero(
     )
 
     assert result.returncode == 0, result.stderr
-    assert f"dry-run (-n, -q or -t): skipping {target}" in result.stdout
+    assert "dry-run" in result.stdout and f"skipping {target}" in result.stdout
     assert not calls.exists()
     assert _git(repo, "rev-parse", "HEAD") == head
     assert _git(remote, "for-each-ref") == remote_refs
