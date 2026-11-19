@@ -317,6 +317,7 @@ class MaintenanceOperation:
     refresh_set: int | None = None
     staged_rows: dict[str, int] | None = None
     rows_by_table: dict[str, int] | None = None
+    transactional: bool = True
 
 
 @dataclass

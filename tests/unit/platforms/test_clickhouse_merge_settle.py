@@ -108,13 +108,16 @@ def test_untuned_server_load_waits_for_merges() -> None:
     assert loading_time == 1.5
 
 
-def test_local_load_does_not_wait_for_merges() -> None:
+def test_local_load_waits_for_merges() -> None:
     adapter = _Adapter("local")
 
-    with patch("benchbox.platforms.clickhouse.workload.wait_for_merges_to_settle") as wait:
+    with patch(
+        "benchbox.platforms.clickhouse.workload.wait_for_merges_to_settle",
+        return_value=MergeSettleResult(True, 0.5, 3),
+    ) as wait:
         _load(adapter)
 
-    wait.assert_not_called()
+    wait.assert_called_once()
 
 
 def test_unsettled_merges_warn(caplog: pytest.LogCaptureFixture) -> None:

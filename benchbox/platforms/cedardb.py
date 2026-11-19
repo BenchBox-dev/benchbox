@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import re
+from collections.abc import Sequence
 from typing import Any
 
 from .base.config_utils import (
@@ -19,6 +21,19 @@ from .postgresql import (
 )
 
 CEDARDB_DEFAULT_PORT = 5432
+_CEDARDB_RELEASE_TAG = re.compile(r"\bv\d{4}-\d{2}-\d{2}\b")
+_CEDARDB_NAMED_VERSION = re.compile(r"\bCedarDB\s+v?(\S+)", re.IGNORECASE)
+
+
+def parse_cedardb_version(version_string: str) -> str:
+    text = version_string.strip()
+    release = _CEDARDB_RELEASE_TAG.search(text)
+    if release is not None:
+        return release.group(0)
+    named = _CEDARDB_NAMED_VERSION.search(text)
+    if named is not None:
+        return named.group(1).strip("(),;")
+    return text
 
 
 class CedarDBAdapter(PostgreSQLAdapter):
@@ -28,7 +43,6 @@ class CedarDBAdapter(PostgreSQLAdapter):
     forced_partition_strategy = "HASH"
     post_load_index_cluster_supported = False
     supports_refresh_functions = True
-    tpcds_maintenance_unsupported_reason = "not verified on CedarDB; only TPC-H refresh functions are"
     plan_capture_phase_eligible = True
 
     @property
@@ -66,18 +80,32 @@ class CedarDBAdapter(PostgreSQLAdapter):
 
         if connection:
             try:
+                connection.rollback()
                 cursor = connection.cursor()
 
                 cursor.execute("SELECT version()")
                 result = cursor.fetchone()
-                if result:
+                if result and result[0]:
                     platform_info["cedardb_version_string"] = result[0]
+                    platform_info["platform_version"] = parse_cedardb_version(str(result[0]))
 
                 cursor.close()
             except Exception as e:
                 self.logger.debug(f"Error getting CedarDB version info: {e}")
 
         return platform_info
+
+    def enforced_primary_key_tables(self, connection: Any, tables: Sequence[str]) -> list[str]:
+        try:
+            return super().enforced_primary_key_tables(connection, tables)
+        except Exception:
+            connection.rollback()
+        rows = connection.execute(
+            "SELECT DISTINCT table_name FROM information_schema.table_constraints "
+            "WHERE constraint_type = 'PRIMARY KEY' AND table_schema = current_schema()"
+        ).fetchall()
+        wanted = {table.lower() for table in tables}
+        return sorted(name.lower() for (name,) in rows if name.lower() in wanted)
 
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:
         if not self.tuning_enabled:

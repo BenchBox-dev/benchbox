@@ -277,6 +277,8 @@ pr-open:
 	if [ "$$LOCAL_STATUS" != 0 ]; then \
 		if [ "$$LOCAL_STATUS" = 2 ]; then UNAVAILABLE_CAUSE=$$(sed -n 's/^availability: //p' "$$UNAVAILABLE_FILE" | sed -n 1p); fi; \
 		if [ -z "$$UNAVAILABLE_CAUSE" ]; then echo "Refusing to open PR: the local review did not clear this head. Nothing was pushed." >&2; exit 1; fi; \
+		LOOKUP_GUIDANCE=$$(uv run -- python scripts/gh_transient.py "$$UNAVAILABLE_CAUSE" || true); \
+		if [ -n "$$LOOKUP_GUIDANCE" ]; then echo "Refusing to open PR: the local review could not look up the pull request. $$LOOKUP_GUIDANCE" >&2; exit 1; fi; \
 		echo "The local review is unavailable ($$UNAVAILABLE_CAUSE); opening as a draft. The hosted review decides." >&2; \
 		DRAFT_FLAG=--draft; \
 	fi; \

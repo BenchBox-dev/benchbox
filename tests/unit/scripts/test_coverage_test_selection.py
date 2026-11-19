@@ -1122,13 +1122,91 @@ def test_trusted_run_rejects_untrusted_runs(repo: Path, monkeypatch: pytest.Monk
         assert sel._trusted_run(repo, "o/r", 7) is None
 
 
-def test_trusted_run_reports_api_failures(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    def _run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(command, 1, "", "HTTP 500")
+class _FakeClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+        self.sleeps: list[float] = []
 
-    monkeypatch.setattr(sel.subprocess, "run", _run)
+    def __call__(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def _fake_backoff(monkeypatch: pytest.MonkeyPatch) -> _FakeClock:
+    clock = _FakeClock()
+    monkeypatch.setattr(sel, "_retry_budget", lambda: sel.gh_transient.Budget(90.0, clock=clock, sleep=clock.sleep))
+    return clock
+
+
+def _scripted_gh(monkeypatch: pytest.MonkeyPatch, replies: list[tuple[int, str, str]]) -> list[list[str]]:
+    calls: list[list[str]] = []
+    queue = list(replies)
+
+    def _run(command: list[str], repo: Path, timeout: int) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        code, out, err = queue.pop(0) if len(queue) > 1 else queue[0]
+        return subprocess.CompletedProcess(command, code, out, err)
+
+    monkeypatch.setattr(sel, "_run_gh", _run)
+    return calls
+
+
+EGRESS = "gh: HTTP 503: Egress is over the account limit. (https://api.github.com/x)"
+
+
+def test_trusted_run_reports_api_failures_after_bounded_retries(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = _fake_backoff(monkeypatch)
+    calls = _scripted_gh(monkeypatch, [(1, "", "HTTP 500")])
     with pytest.raises(sel.SelectionError, match="HTTP 500"):
         sel._trusted_run(repo, "o/r", 7)
+    assert len(calls) == 4 and clock.sleeps == [5.0, 15.0, 45.0]
+
+
+def test_an_artifact_download_that_hits_the_egress_limit_recovers_after_the_backoff(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = _fake_backoff(monkeypatch)
+    calls = _scripted_gh(monkeypatch, [(1, "", EGRESS), (0, "", "")])
+    assert sel._download_artifact(repo, "o/r", 7, "t2-coverage-map-x", tmp_path / "map") is True
+    assert len(calls) == 2 and clock.sleeps == [5.0]
+
+
+def test_an_artifact_download_that_stays_transient_raises_after_bounded_retries(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = _fake_backoff(monkeypatch)
+    calls = _scripted_gh(monkeypatch, [(1, "", EGRESS)])
+    with pytest.raises(sel.SelectionError, match="did not clear after 4 attempt"):
+        sel._download_artifact(repo, "o/r", 7, "t2-coverage-map-x", tmp_path / "map")
+    assert len(calls) == 4 and clock.sleeps == [5.0, 15.0, 45.0]
+
+
+def test_fetch_map_reports_a_lookup_failure_not_a_missing_map_when_a_download_stays_transient(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    head = _head(repo)
+    _fake_backoff(monkeypatch)
+    _scripted_gh(monkeypatch, [(1, "", EGRESS)])
+    artifacts = [("t2-coverage-map-x", 7, "2026-10-20T00:00:00Z")]
+    monkeypatch.setattr(sel, "_github_slug", lambda _repo: "o/r")
+    monkeypatch.setattr(sel, "_list_map_artifacts", lambda _repo, _slug, _prefix: artifacts)
+    monkeypatch.setattr(sel, "_trusted_run", lambda _repo, _slug, _run: (head, "schedule"))
+    monkeypatch.setattr(sel, "_is_ancestor", lambda _repo, _sha, _base: True)
+    result = sel.fetch_map(repo, head, tmp_path / "maps")
+    assert result["status"] == "lookup-failed"
+    assert "did not clear after" in result["reason"]
+
+
+def test_an_artifact_download_with_a_permanent_failure_is_skipped_without_a_retry(
+    repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = _fake_backoff(monkeypatch)
+    calls = _scripted_gh(monkeypatch, [(1, "", "no valid artifacts found to download")])
+    assert sel._download_artifact(repo, "o/r", 7, "t2-coverage-map-x", tmp_path / "map") is False
+    assert len(calls) == 1 and clock.sleeps == []
 
 
 def _fake_run(stdout: str) -> object:
