@@ -1,0 +1,14 @@
+{
+  "description": "The BenchBox org is on GitHub Free (20 concurrent jobs). UAT matrices are capped at max-parallel 4/2/3 since #4354 (2026-11-18). Compare one week of queue wait and runner-minutes against the week before, excluding the 15 stuck runs from 2026-11-11 (ids 43098737295, 43098738293, 43098738246, 43098737276, 43098737527, 43098581715, 43098581550, 43098581399, 43098581488, 43098580766, 43098581127, 43098580922, 43098580817, 43098580996, 43098580935), and recommend staying on Free or moving to Team (60 concurrent jobs).",
+  "not_before": "2026-11-26T00:00:00Z",
+  "sessions": [
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-19T22:33:36Z",
+      "client": "mcp",
+      "op": "create",
+      "op_id": "60cf967a43354c9fbcd175303a5a9b2c",
+      "session_id": "2105b3b578ac465bb0ef031e9fe01c05"
+    }
+  ]
+}

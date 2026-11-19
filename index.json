@@ -28729,6 +28729,13 @@
       "status": "open",
       "title": "Re-measure the first-CI failure rate four weeks after the preflight receipt landed"
     },
+    "measure-runner-demand-github-team-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Measure runner demand and decide on GitHub Team"
+    },
     "measurement-workflow-offers-duckdb-sf10-cells-that-cannot-finish-20261119": {
       "claim": null,
       "needs": [],
