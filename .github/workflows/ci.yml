@@ -1807,6 +1807,7 @@ jobs:
           sparse-checkout: |
             scripts/ci_unit_result.py
             scripts/coverage_test_selection.py
+            scripts/gh_transient.py
             scripts/release_canary_sharding.py
             _project/scripts/preflight_targets.py
             tests/fixtures/medium_shard_durations.json
