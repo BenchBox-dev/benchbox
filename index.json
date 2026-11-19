@@ -15105,6 +15105,13 @@
       "status": "done",
       "title": "Parallel PRs conflict on CHANGELOG.md every time, because all of them append to the same Fixed list"
     },
+    "changelog-revert-title-type-requires-fragment-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Revert PRs get the wrong changelog-fragment decision: `revert:` is refused and `Revert \"` is always exempt"
+    },
     "changelog-unreleased-test-paths-20261017": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Unit tests for decide_required: revert: whose diff deletes a fragment passes; revert: of shipped code with no fragment change is refused under rule (1); `Revert \"` follows the owner's choice; feat/fix/perf and ! titles unchanged.",
+    "make pr-open accepts a correctly formed revert: PR end to end in tests/unit/scripts/test_pr_landing.py, and the CI changelog check gives the same decision.",
+    "make trunk-revert PRs still pass."
+  ],
+  "description": "scripts/changelog_fragments.py exempts GitHub-style `Revert \"...\"` titles but not the conventional-commit `revert:` type, which is in neither EXEMPT_TYPES nor REQUIRED_TYPES; when a changed path ships in the package it falls through to \"unrecognised title type 'revert'\" and requires a fragment, and both make pr-open and the CI changelog check (ci.yml, run from a trusted base copy) refuse. Because --added-files-from counts only added files, deleting the reverted change's fragment never satisfies the check. While landing #4200 (revert of #4196), pr-open refused the `revert:` title; the PR landed as `Revert \"...\"`. Conversely, `Revert \"` skips the fragment even when it reverts a change that already shipped. scripts/trunk_revert.py generates `Revert \"` titles.\n\nDecision gate (owner), one rule for both forms: (1) if the diff deletes a changelog.d fragment, the reverted change was unreleased, so no fragment is needed and the deletion satisfies the check; otherwise the reverted change shipped and needs a fragment. Under (1) the owner also decides whether `Revert \"` stays blanket-exempt. Or (2) always exempt `revert:` as `Revert \"` is today.\n\nGuardrails: keep breaking-title (!) handling; no change to required types feat, fix and perf; pr-open and CI must give the same decision.",
+  "links": [
+    "scripts/changelog_fragments.py",
+    "scripts/trunk_revert.py",
+    "https://github.com/BenchBox-dev/benchbox/pull/4200"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a",
+      "at": "2026-11-19T14:34:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "bc0611a5d655443f8496ee66cd2cd9b6",
+      "session_id": "ad8ff63c31d0492faa7526a81e19db83"
+    }
+  ]
+}
