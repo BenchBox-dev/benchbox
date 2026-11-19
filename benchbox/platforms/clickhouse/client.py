@@ -204,6 +204,7 @@ class ClickHouseLocalClient:
         self._initialized = True
         from ._dependencies import import_chdb, import_chdb_session
 
+        self.db_path = db_path
         if db_path:
             Session = import_chdb_session().Session
             self._conn = Session(path=db_path)

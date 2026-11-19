@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -13,8 +14,10 @@ import traceback
 import zipfile
 from datetime import datetime
 from pathlib import Path
+from types import ModuleType
 from typing import Any, NamedTuple
 
+_TRANSIENT: ModuleType | None = None
 RELEASE_TAG = re.compile(r"v(\d+\.\d+\.\d+(?:(?:a|b|rc)\d+)?)")
 FINAL_TAG = re.compile(r"v(\d+\.\d+\.\d+)")
 RC_TAG = re.compile(r"v(\d+\.\d+\.\d+)rc(\d+)")
@@ -366,11 +369,41 @@ def tree_differences(
     ]
 
 
+def _transient() -> ModuleType:
+    global _TRANSIENT
+    if _TRANSIENT is None:
+        path = Path(__file__).resolve().with_name("gh_transient.py")
+        spec = importlib.util.spec_from_file_location("_reuse_gh_transient", path)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"{path} cannot be loaded")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _TRANSIENT = module
+    return _TRANSIENT
+
+
+def _retry_budget() -> Any:
+    transient = _transient()
+    return transient.Budget(transient.DEFAULT_BUDGET_SECONDS)
+
+
+def _gh_once(command: list[str]) -> tuple[int, bytes, str]:
+    result = subprocess.run(command, capture_output=True, check=False)
+    return result.returncode, result.stdout, result.stderr.decode("utf-8", "replace")
+
+
 def _gh_bytes(*args: str) -> bytes:
-    result = subprocess.run(["gh", *args], capture_output=True, check=False)
-    if result.returncode != 0:
-        raise ValueError(f"gh {' '.join(args)} failed: {result.stderr.decode('utf-8', 'replace').strip()}")
-    return result.stdout
+    captured: list[bytes] = []
+
+    def run(command: list[str]) -> tuple[int, str]:
+        code, stdout, detail = _gh_once(command)
+        captured[:] = [stdout]
+        return code, detail if code else stdout.decode("utf-8", "replace")
+
+    code, detail = _transient().RetryingRunner(run, _retry_budget())(["gh", *args])
+    if code != 0:
+        raise ValueError(f"gh {' '.join(args)} failed: {detail.strip()}")
+    return captured[0]
 
 
 def _gh_json(*args: str) -> Any:
