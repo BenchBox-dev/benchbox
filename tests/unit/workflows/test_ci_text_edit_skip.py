@@ -9,6 +9,7 @@ import pytest
 import yaml
 
 from scripts.ci_text_edit_verdict import TEXT_EDIT_RUN_NAME
+from scripts.release_probe_launch import CHECK_NAME as PROBE_CHECK_NAME
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -181,7 +182,7 @@ def _required_names() -> set[str]:
         for path in WORKFLOW.parent.glob("*.yml")
         if path != WORKFLOW
         for job_id, job in (yaml.safe_load(path.read_text(encoding="utf-8")).get("jobs") or {}).items()
-    } | {_gate_context(), "review-gate"}
+    } | {_gate_context(), "review-gate", PROBE_CHECK_NAME}
     return required - elsewhere
 
 

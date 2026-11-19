@@ -129,6 +129,25 @@ class TestResultFileMode:
         assert result.exit_code == 4
         assert "run configuration capture differs" in " ".join(result.output.split())
 
+    def test_current_mcp_bundle_with_no_recorded_config_compares_with_a_cli_bundle(self, tmp_path: Path):
+        result = _compare(
+            _bundle(tmp_path / "a.json", 100.0, execution={"entry_point": "mcp", "config_capture": 1}),
+            _bundle(tmp_path / "b.json", 100.0, execution={"entry_point": "cli", "config_capture": 1}),
+        )
+
+        assert result.exit_code == ExitCode.SUCCESS, result.output
+
+    def test_pre_parity_mcp_bundle_is_refused_against_a_current_one_with_the_same_reason(self, tmp_path: Path):
+        result = _compare(
+            _bundle(tmp_path / "a.json", 100.0, execution={"entry_point": "mcp"}),
+            _bundle(tmp_path / "b.json", 100.0, execution={"entry_point": "mcp", "config_capture": 1}),
+        )
+
+        assert result.exit_code == 4
+        assert "run configuration capture differs (mcp-before-config-parity vs current)" in " ".join(
+            result.output.split()
+        )
+
     def test_missing_result_file_exits_one(self, tmp_path: Path):
         result = _compare(_bundle(tmp_path / "a.json", 100.0), str(tmp_path / "absent.json"))
 

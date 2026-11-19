@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "lead": "Snowflake results record the warehouse size actually used",
+      "text": "Snowflake results record the warehouse size observed on the warehouse in the configured size field instead of the unapplied MEDIUM default, and the 50 published Snowflake bundles are corrected to the observed X-Small.",
+      "platforms": [
+        "snowflake"
+      ]
+    }
+  ]
+}

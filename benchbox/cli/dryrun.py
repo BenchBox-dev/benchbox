@@ -59,6 +59,8 @@ def generate_cli_command(
     publish_label: str | None = None,
     benchmark_options: dict[str, str] | None = None,
     funding: str | None = None,
+    plan_tier: str | None = None,
+    preview_features: tuple[str, ...] = (),
     result_source: str | None = None,
     client_region: str | None = None,
     client_cloud: str | None = None,
@@ -99,6 +101,7 @@ def generate_cli_command(
         (sorted_ingestion_mode, "--sorted-ingestion-mode", "off"),
         (sorted_ingestion_method, "--sorted-ingestion-method", None),
         (funding, "--funding", None),
+        (plan_tier, "--plan-tier", None),
         (result_source, "--result-source", None),
         (client_region, "--client-region", None),
         (client_cloud, "--client-cloud", None),
@@ -114,6 +117,8 @@ def generate_cli_command(
     if benchmark_options:
         for key, val in sorted(benchmark_options.items()):
             parts.append(f"--benchmark-option {key}={val}")
+
+    parts.extend(f"--preview-feature {feature}" for feature in preview_features)
 
     _BOOL_PARAMS = [
         (official, "--official"),

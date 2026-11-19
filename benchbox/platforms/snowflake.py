@@ -160,6 +160,7 @@ class SnowflakeAdapter(PlatformAdapter):
         self.suppress_nondeterministic_errors = config.get("suppress_nondeterministic_errors", False)
 
         self.modify_warehouse_settings = config.get("modify_warehouse_settings", False)
+        self._warehouse_size_applied = False
 
         self.file_format = config.get("file_format") or "CSV"
         self.compression = config.get("compression") or "AUTO"
@@ -347,7 +348,7 @@ class SnowflakeAdapter(PlatformAdapter):
                 "schema": self.schema,
                 "role": self.role,
                 "edition": getattr(self, "edition", None),
-                "warehouse_size": getattr(self, "warehouse_size", None),
+                "warehouse_size": self._applied_warehouse_size(),
                 "auto_suspend": self.auto_suspend,
                 "auto_resume": self.auto_resume,
                 "multi_cluster_warehouse": self.multi_cluster_warehouse,
@@ -415,6 +416,9 @@ class SnowflakeAdapter(PlatformAdapter):
                                 "query_acceleration_max_scale_factor": self._row_value(result, 22),
                                 "scaling_policy": self._row_value(result, 27),
                             }
+                            observed_size = platform_info["compute_configuration"]["warehouse_size"]
+                            if observed_size:
+                                platform_info["configuration"]["warehouse_size"] = observed_size
                             if len(result) <= 27:
                                 degraded = True
 
@@ -455,6 +459,11 @@ class SnowflakeAdapter(PlatformAdapter):
             platform_info["platform_version"] = None
 
         return platform_info
+
+    def _applied_warehouse_size(self) -> str | None:
+        if self._warehouse_size_applied:
+            return getattr(self, "warehouse_size", None)
+        return None
 
     @staticmethod
     def _row_value(row: Any, index: int) -> Any:
@@ -1333,6 +1342,7 @@ class SnowflakeAdapter(PlatformAdapter):
                             AUTO_SUSPEND = {self.auto_suspend}
                             AUTO_RESUME = {self.auto_resume}
                         """)
+                        self._warehouse_size_applied = True
                 else:
                     self.logger.info("Warehouse modifications skipped (modify_warehouse_settings=False)")
 

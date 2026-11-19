@@ -260,6 +260,28 @@ def test_apply_publishes_the_digest_when_only_a_hidden_failure_exists(monkeypatc
     assert any("actions/runs/1" in body and "make pr-rerun" in body for body in bodies)
 
 
+def _run_clear_sweep(monkeypatch: pytest.MonkeyPatch, body: str) -> FakeGitHubClient:
+    existing = {**_make_pinned_issue(1508, state="open"), "body": body}
+    client = FakeGitHubClient(paginated_issues=[existing])
+    monkeypatch.setattr(sweep, "resolve_token", lambda: "test-token")
+    monkeypatch.setattr(sweep, "GitHubClient", lambda token: client)
+    monkeypatch.setattr(sweep, "fetch_open_prs", lambda *args: [])
+    assert sweep.main(["--repo", "owner/repo", "--apply"]) == 0
+    return client
+
+
+def test_apply_clears_a_body_that_still_lists_hidden_failures(monkeypatch: pytest.MonkeyPatch) -> None:
+    stale_body = f"{sweep.DIGEST_BODY_MARKER}\n{sweep.HIDDEN_FAILURES_HEADING} (x):\n- #9 t\nNo stranded PRs"
+    client = _run_clear_sweep(monkeypatch, stale_body)
+    assert len(client.patched_issues) == 1
+    assert sweep.HIDDEN_FAILURES_HEADING not in client.patched_issues[0][1]["body"]
+
+
+def test_apply_stays_silent_when_the_body_is_already_clear(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _run_clear_sweep(monkeypatch, f"{sweep.DIGEST_BODY_MARKER}\nNo stranded PRs")
+    assert client.patched_issues == []
+
+
 def test_http_404_scan_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     import urllib.error
 
