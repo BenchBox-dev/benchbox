@@ -210,6 +210,17 @@ def test_the_command_skips_an_unrelated_change(tmp_path: Path, monkeypatch: pyte
     assert smoke.calls == []
 
 
+def test_the_command_fails_when_required_to_measure_and_nothing_is_selected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    smoke = RecordingSmoke({})
+    monkeypatch.setattr(gate, "run_smoke", smoke)
+    args = write_inputs(tmp_path, ["benchbox/core/amplab/source_generators.py"], baseline_with(), baseline_with())
+    assert gate.main([*args, "--require-affected"]) == 1
+    assert "::error title=generator-volume::" in capsys.readouterr().out
+    assert smoke.calls == []
+
+
 def test_the_command_tolerates_an_unreadable_base_baseline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(gate, "run_smoke", RecordingSmoke({"amplab": healthy(3_000_000)}))
     args = write_inputs(tmp_path, [AMPLAB_GENERATOR], baseline_with(), baseline_with())
@@ -303,6 +314,7 @@ def test_the_generator_volume_job_runs_only_when_the_path_filter_fires() -> None
     step = next(step for step in job["steps"] if step.get("name") == "Run the generator volume gate")
     assert step["env"]["BASE_SHA"] == "${{ github.event.pull_request.base.sha }}"
     assert '--base-ref "$BASE_SHA"' in step["run"]
+    assert "--require-affected" in step["run"]
 
 
 def path_filter_regex() -> re.Pattern[str]:
@@ -329,6 +341,34 @@ def test_the_workflow_path_filter_selects_exactly_what_the_gate_selects() -> Non
     ):
         assert not pattern.match(unrelated)
         assert gate.affected_benchmarks([unrelated]) == []
+
+
+def test_the_workflow_path_filter_fires_only_for_paths_the_gate_selects() -> None:
+    pattern = path_filter_regex()
+    tracked = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(REPO_ROOT),
+            "ls-files",
+            "--",
+            *(f"benchbox/core/{name}" for name in gate.PURE_PYTHON_GENERATORS),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    ).stdout.splitlines()
+    assert tracked
+    candidates = [
+        *tracked,
+        "benchbox/core/amplab/source_generators.py",
+        "benchbox/core/amplab/generator/helper.py",
+        "benchbox/core/vector_search/generator/helper.py",
+        "benchbox/core/tpcdi/scaling.pyc",
+    ]
+    for path in candidates:
+        assert bool(pattern.match(path)) == bool(gate.affected_benchmarks([path])), path
 
 
 def git(repo: Path, *args: str) -> str:

@@ -8,12 +8,17 @@ aggregate step, so no ruleset change is involved.
 ## When it runs
 
 `ci-paths` sets `generator-volume-needed` when the diff touches
-`benchbox/core/<benchmark>/generator.py`, a `generator/` package,
-`generator_specs.yaml` or `source_generators.py` of one of: tpcdi, amplab,
-h2odb, coffeeshop, tsbs_devops, joinorder_synthetic, vector_search,
-write_primitives, transaction_primitives. Any other change skips the job and
-the aggregate accepts the skip. `scripts/generator_volume_gate.py` holds the
-authoritative path table; a unit test keeps the workflow filter equal to it.
+`benchbox/core/<benchmark>/generator.py` or `generator_specs.yaml` of one of:
+tpcdi, amplab, h2odb, coffeeshop, tsbs_devops, joinorder_synthetic,
+vector_search, write_primitives, transaction_primitives. For tpcdi it also
+fires on the `generator/` package, `source_generators.py`, `scaling.py` (the
+row-count formula) and `financial_data.py`; for vector_search on
+`benchmark.py`, which sets the default vector width. Any other change skips
+the job and the aggregate accepts the skip. `scripts/generator_volume_gate.py`
+holds the authoritative path table; a unit test keeps the workflow filter
+exactly equal to it in both directions, and the job fails if it runs without
+selecting a benchmark (`--require-affected`), so a wider filter cannot pass as
+a skipped measurement.
 
 ## What it checks
 

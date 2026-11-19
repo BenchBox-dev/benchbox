@@ -358,7 +358,7 @@ jobs:
           echo "trunk-lane-coverage-needed=$trunk_coverage" >> "$GITHUB_OUTPUT"
           echo "sql-evidence-paths-changed=$sql_evidence" >> "$GITHUB_OUTPUT"
           generator_volume=false
-          if grep -qE '^benchbox/core/(tpcdi|amplab|h2odb|coffeeshop|tsbs_devops|joinorder_synthetic|vector_search|write_primitives|transaction_primitives)/(generator(\.py|_specs\.yaml|/.*)|source_generators\.py)$' .ci-paths/changed.txt; then generator_volume=true; fi
+          if grep -qE '^benchbox/core/(tpcdi/(generator/.*|generator_specs\.yaml|source_generators\.py|scaling\.py|financial_data\.py)|vector_search/(generator\.py|generator_specs\.yaml|benchmark\.py)|(amplab|h2odb|coffeeshop|tsbs_devops|joinorder_synthetic|write_primitives|transaction_primitives)/generator(\.py|_specs\.yaml))$' .ci-paths/changed.txt; then generator_volume=true; fi
           echo "generator-volume-needed=$generator_volume" >> "$GITHUB_OUTPUT"
           fast_baseline=false
           if grep -qE '^tests/fixtures/fast_tier_baseline/' .ci-paths/trunk-lane-changed.txt; then fast_baseline=true; fi
@@ -1756,6 +1756,7 @@ jobs:
         run: |
           uv run -- python -m scripts.generator_volume_gate \
             --base-ref "$BASE_SHA" \
+            --require-affected \
             --summary "$GITHUB_STEP_SUMMARY"
 
   sql-execution-evidence:

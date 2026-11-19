@@ -1,4 +1,4 @@
 {
   "schema": 1,
-  "internal": "CI-only: release probe queue diagnostics, generator volume gate, fast-duration re-run message and a test race fix"
+  "internal": "CI-only: generator volume gate, fast-duration verdicts that name the run attempt whose timings they read, and a test race fix"
 }
