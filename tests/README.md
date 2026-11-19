@@ -462,7 +462,7 @@ command line or environment, only the program name, `phase`/`gate` labels and ru
 
 Terminal `outcome` is one of `success`, `command_failed` (child exit status in `exit_code`), `queue_timeout`,
 `admission_refused`, `ownership_error`, `cancelled`, `watchdog_kill` (`exit_code` 79, the child's own status in
-`details.command_exit_code`), `error`, or `released` for a lock taken with `acquire`/`hold` (such as a pytest session)
+`details.command_exit_code`; a breach flagged only after the child exited 0 stays `success` with `details.late_watchdog_breach` true), `error`, or `released` for a lock taken with `acquire`/`hold` (such as a pytest session)
 where no command outcome is known. `success` is only ever derived from the child's exit status, never from the lock
 being released.
 

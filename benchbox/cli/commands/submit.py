@@ -61,6 +61,7 @@ from benchbox.validation.bundle import (
     COMPANION_SUFFIXES,
     PLAN_TIERS,
     SUBMISSION_NOTES_MAX_LEN,
+    VENDOR_CONDITIONS_MANDATORY_FROM,
     VENDOR_PROVENANCE_FIELDS,
     _hash_bytes,
     _hash_file,
@@ -160,6 +161,10 @@ def _write_canonical_submission_file(source_path: Path, target_path: Path) -> Pa
     return target_path
 
 
+def _submission_timestamp() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
 def _build_submission_manifest(
     *,
     source_path: Path,
@@ -176,7 +181,7 @@ def _build_submission_manifest(
 
     manifest = {
         "submission_tool_version": f"benchbox/{benchbox.__version__}",
-        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "submitted_at": _submission_timestamp(),
         "bundle_file": source_path.name,
         "bundle_hash": _hash_file(source_path),
         "companion_hashes": {comp.name: _hash_file(comp) for comp in companions},
@@ -221,7 +226,12 @@ def _vendor_condition_fields(
 
 def _enforce_vendor_conditions(ctx: click.Context, result, vendor_conditions: dict, funding: str | None) -> None:
     resolved_funding = normalize_funding(funding or getattr(result, "funding", None))
-    declared = {"platform": result.platform, "funding": resolved_funding, **vendor_conditions}
+    declared = {
+        "platform": result.platform,
+        "funding": resolved_funding,
+        "result_source": "community",
+        **vendor_conditions,
+    }
     recorded = {
         name: value for name in VENDOR_PROVENANCE_FIELDS if (value := getattr(result, name, None)) not in (None, [])
     }
@@ -784,7 +794,7 @@ def _print_submission_summary(
     "--self-run",
     is_flag=True,
     default=False,
-    help="Attest that you ran the benchmark yourself, not on behalf of a cloud provider (BigQuery).",
+    help=f"Attest that you ran the benchmark yourself, not on behalf of a cloud provider. Required for BigQuery, Snowflake and Databricks submissions dated on or after {VENDOR_CONDITIONS_MANDATORY_FROM}.",
 )
 @click.pass_context
 def submit(
@@ -890,14 +900,17 @@ def submit(
         _refuse_non_submittable_result(ctx, result, submit_state)
         return
 
-    vendor_conditions = _vendor_condition_fields(
-        plan_tier=plan_tier,
-        preview_features=preview_features,
-        vendor_permission=vendor_permission,
-        vendor_notice_date=vendor_notice_date,
-        vendor_notice_ref=vendor_notice_ref,
-        self_run=self_run,
-    )
+    vendor_conditions = {
+        **_vendor_condition_fields(
+            plan_tier=plan_tier,
+            preview_features=preview_features,
+            vendor_permission=vendor_permission,
+            vendor_notice_date=vendor_notice_date,
+            vendor_notice_ref=vendor_notice_ref,
+            self_run=self_run,
+        ),
+        "submitted_at": _submission_timestamp(),
+    }
     _enforce_vendor_conditions(ctx, result, vendor_conditions, funding)
 
     companions = [

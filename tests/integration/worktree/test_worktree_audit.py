@@ -552,6 +552,42 @@ def test_fixture_wrong_base_pr(tmp_path: Path):
     assert cls.item_classification == "wrong base"
 
 
+@pytest.mark.parametrize(
+    ("base", "wrong_base"),
+    [("release/0.5.x", False), ("release/foo", True), ("release/0.5", True), ("feature/arbitrary-base", True)],
+)
+def test_release_line_base_is_structural_in_audit(tmp_path: Path, base: str, wrong_base: bool):
+    repo = init_repo(tmp_path / "repo")
+    wt = add_worktree(repo, "fix/feature-line-base", tmp_path / "wt_line_base")
+    (wt / "change.txt").write_text("change\n", encoding="utf-8")
+    _git(["add", "change.txt"], wt)
+    _git(["commit", "-m", "change"], wt)
+    head_sha = _git(["rev-parse", "HEAD"], wt)
+    canned_prs = [
+        {
+            "number": 4249,
+            "state": "closed",
+            "merged": True,
+            "merged_at": "2026-11-17T12:00:00Z",
+            "merge_commit_sha": "merge4249",
+            "head": {"sha": head_sha},
+            "base": {"ref": base},
+        }
+    ]
+    wt_info, _ = audit_mod.get_git_worktrees(repo)
+    matched = [w for w in wt_info if w.branch == "fix/feature-line-base"][0]
+    cls, _ = audit_mod.evaluate_and_classify_worktree(
+        wt=matched,
+        repo_owner="BenchBox-dev",
+        repo_name="BenchBox",
+        expected_repo_id=None,
+        token=None,
+        repo_root=repo,
+        canned_prs=canned_prs,
+    )
+    assert (cls.item_classification == "wrong base") is wrong_base
+
+
 def test_fixture_old_but_active_worktree(tmp_path: Path):
     repo = init_repo(tmp_path / "repo")
     wt = add_worktree(repo, "fix/feature-old", tmp_path / "wt_old")

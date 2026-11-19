@@ -80,7 +80,7 @@ jobs:
     if: ${{ github.event.schedule != '47 7 * * *' }}
     needs: medium-collect
     runs-on: ubuntu-latest
-    timeout-minutes: 33
+    timeout-minutes: 53
     strategy:
       fail-fast: false
       matrix:
@@ -118,6 +118,7 @@ jobs:
         run: python3 scripts/theseus_release_check.py
         env:
           GITHUB_TOKEN: ${{ github.token }}
+        timeout-minutes: 20
 
       - name: Download medium collection evidence
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
@@ -140,6 +141,7 @@ jobs:
             --durations tests/fixtures/medium_shard_durations.json
 
       - name: Run medium speed tier
+        timeout-minutes: 33
         shell: bash
         env:
           SHARD_INDEX: ${{ matrix.shard_index }}

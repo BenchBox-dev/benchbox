@@ -25,6 +25,28 @@ class TPCHConnection(Protocol):
     def commit(self) -> Any: ...
 
 
+class RefreshMarkerLog:
+    def __init__(self) -> None:
+        self.recorded: list[Any] = []
+
+    def record_refresh_applied(self, connection: Any) -> None:
+        self.recorded.append(connection)
+
+
+class AdapterConnection:
+    def __init__(self, connection: Any, platform_adapter: RefreshMarkerLog, *, closes: bool = True) -> None:
+        self.connection = connection
+        self.platform_adapter = platform_adapter
+        self._closes = closes
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.connection, name)
+
+    def close(self) -> None:
+        if self._closes:
+            self.connection.close()
+
+
 def _make_update_set(tmp_path: Path) -> TPCHRefreshUpdateSet:
     from benchbox.core.tpch.refresh import generate_refresh_update_sets
 

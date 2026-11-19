@@ -320,5 +320,5 @@ def test_default_build_publishes_combined_cohorts(tmp_path: Path) -> None:
         version = con.execute("SELECT read_model_version FROM metadata").fetchone()
         metrics = {row[0] for row in con.execute("SELECT DISTINCT primary_metric FROM benchmark_rankings").fetchall()}
 
-    assert version == (19,)
+    assert version == (20,)
     assert metrics == {"power_score", "qphh_at_size"}

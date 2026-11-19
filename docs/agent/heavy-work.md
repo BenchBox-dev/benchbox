@@ -85,6 +85,16 @@ safely stop. The sentinel records active reports in
 drop entries whose process has exited, and without a running sentinel nothing is
 reported because a one-shot status cannot observe sustained CPU use.
 
+A watchdog breach is reported as `Error 79` when the guarded command was still
+running or had exited non-zero. When the command had already exited 0 before the
+watchdog flagged the breach (a breach that lands only during teardown, such as a
+container stop or child cleanup), the work is complete: `host_lock run` exits 0,
+logs `WARNING: the watchdog reported a breach after the command had already
+exited 0`, and records `outcome` `success` with `late_watchdog_breach` true in
+the run record. A command that traps the watchdog's SIGTERM and exits 0 still
+exits 79, because the breach was flagged before it exited. Never replay a
+command whose status was 0 after a breach.
+
 On `Error 76`, run the command again with `HEAVY_ADMIT_WAIT`; do not write a
 retry loop, and never set `BENCHBOX_HEAVY_ADMIT=force` to get past it. Time spent queued for the host
 lock counts against `HEAVY_ADMIT_WAIT`, and only `make heavy-run` reads it.
