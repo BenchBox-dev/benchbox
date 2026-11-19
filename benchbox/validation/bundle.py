@@ -811,6 +811,10 @@ SELF_RUN_PLATFORMS: Mapping[str, str] = {
     "bigquery": "BigQuery terms: publish only tests you ran yourself, not on behalf of a hyperscale cloud provider",
 }
 
+UNSETTLED_VENDOR_PLATFORMS: frozenset[str] = frozenset(
+    {"redshift", "athena", "clickhouse-cloud", "motherduck", "starburst"}
+)
+
 VENDOR_CONDITIONS_MANDATORY_FROM = "2026-11-18"
 MANDATORY_VENDOR_PLATFORMS: frozenset[str] = frozenset({"bigquery", "snowflake", "databricks"})
 MANDATORY_VENDOR_FIELDS: tuple[str, ...] = ("plan_tier", "vendor_notice", "self_run")
@@ -831,6 +835,7 @@ _VENDOR_KEYWORDS: tuple[tuple[str, str], ...] = (
     ("motherduck", "motherduck"),
     ("databricks", "databricks"),
     ("bigquery", "bigquery"),
+    ("starburst", "starburst"),
 )
 
 
@@ -999,6 +1004,11 @@ def evaluate_vendor_conditions(
         warnings.extend(check_warnings)
 
     status = vendor_publication_status(manifest) if require_mandatory_fields else VENDOR_STATUS_NOT_APPLICABLE
+    if require_mandatory_fields and platform in UNSETTLED_VENDOR_PLATFORMS:
+        errors.append(
+            f"Results for {platform} cannot be published yet: the project settles a vendor's publication terms "
+            "when its first result is submitted, and this vendor's terms are not settled; open an issue to request it"
+        )
     if status == VENDOR_STATUS_INCOMPLETE:
         errors.extend(_mandatory_field_messages(manifest, platform))
     elif status == VENDOR_STATUS_PRE_POLICY:
