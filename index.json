@@ -18694,10 +18694,15 @@
       "title": "Make test_unknown_phase_merges_with_power_cohort exercise an unknown phase"
     },
     "corpus-ledger-event-path-dormant-squash-merges-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-20T03:04:28Z",
+        "generation": "bde6dfb68d4a4127998093fdad25c25a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5636d6715f51bddd99245ae9"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Remove the dormant corpus event bridge and reconciler left over from the publication control plane retirement"
     },
     "corpus-migrate-232-pending-manifest-writes": {
