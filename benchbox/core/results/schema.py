@@ -1228,6 +1228,7 @@ def _maintenance_phase_payload(maintenance: Any) -> dict[str, Any]:
                 "duration_ms": operation.execution_time_ms,
                 "rows_affected": operation.rows_affected,
                 "status": operation.status,
+                "transactional": operation.transactional,
                 **({"error": operation.error_message} if operation.error_message else {}),
                 **({"refresh_set": operation.refresh_set} if operation.refresh_set is not None else {}),
                 **({"staged_rows": operation.staged_rows} if operation.staged_rows is not None else {}),
