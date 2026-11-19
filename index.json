@@ -29614,6 +29614,13 @@
       "status": "done",
       "title": "Verify the remediation on develop and close the nightly issues"
     },
+    "nightly-slow-tier-test-failures-reported-as-success-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Nightly slow-tier test failures are recorded as durations and reported as success"
+    },
     "nightly-throughput-gate-restoration": {
       "claim": null,
       "needs": [
