@@ -1363,7 +1363,7 @@ case "$1 $2" in
   "log --no-merges") [ -z "$REVERTS_SHA" ] || echo "This reverts commit $REVERTS_SHA." ;;
   "merge-base --is-ancestor") ;;
   "cat-file -e") exit "${CAT_FILE_EXIT:-0}" ;;
-  "patch-id --stable") cat | cksum | cut -d' ' -f1 | sed 's/$/ -/' ;;
+  "patch-id --verbatim") cat | cksum | cut -d' ' -f1 | sed 's/$/ -/' ;;
   "diff --binary")
     if [ "$4" = "$BASE_SHA" ]; then printf '%s\\n' "$NET_DIFF"; else printf '%s\\n' "$REVERSE_DIFF"; fi ;;
   "diff --name-only")

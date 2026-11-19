@@ -383,11 +383,9 @@ def _diff_text(root: Path, *args: str) -> str:
     return result.stdout
 
 
-def _patch_id(root: Path, diff: str) -> str:
-    if not diff.strip():
-        return ""
+def _patch_id(root: Path, diff: str) -> str | None:
     result = subprocess.run(
-        ["git", "-C", str(root), "patch-id", "--stable"],
+        ["git", "-C", str(root), "patch-id", "--verbatim"],
         input=diff,
         capture_output=True,
         encoding="utf-8",
@@ -395,17 +393,22 @@ def _patch_id(root: Path, diff: str) -> str:
         check=True,
     )
     fields = result.stdout.split()
-    return fields[0] if fields else ""
+    return fields[0] if fields else None
 
 
 def _inverts(root: Path, base: str, shas: Sequence[str], found: Sequence[RevertedCommit]) -> bool:
     content = [sorted(path for path in commit.paths if not is_fragment_path(path)) for commit in found]
+    union = sorted({path for paths in content for path in paths})
+    if not union:
+        return True
     reverse = "".join(
         _diff_text(root, sha, f"{sha}^", "--", *paths) for sha, paths in zip(shas, content, strict=True) if paths
     )
-    union = sorted({path for paths in content for path in paths})
-    net = _diff_text(root, base, "HEAD", "--", *union) if union else ""
-    return _patch_id(root, reverse) == _patch_id(root, net)
+    net = _diff_text(root, base, "HEAD", "--", *union)
+    if not reverse.strip() or not net.strip():
+        return False
+    reverse_id = _patch_id(root, reverse)
+    return reverse_id is not None and reverse_id == _patch_id(root, net)
 
 
 def reverted_commits(root: Path, base: str) -> list[RevertedCommit]:

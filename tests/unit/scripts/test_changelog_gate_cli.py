@@ -190,6 +190,7 @@ def _revert_gate(
         ({"trailer": False, "culprit_fragment": False}, 1),
         ({"revert_content": "VALUE = 3\n"}, 1),
         ({"revert_content": "VALUE = 3\n", "culprit_fragment": False}, 1),
+        ({"revert_content": "VALUE =  1\n", "culprit_fragment": False}, 1),
         ({"cites_unrelated": True}, 1),
         ({"cites_unrelated": True, "culprit_fragment": False}, 1),
     ],
