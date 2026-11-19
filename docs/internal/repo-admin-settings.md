@@ -65,8 +65,8 @@ Required status checks:
 (`integration_id` 5201041). `release-v2 probe` is a check run that
 `.github/workflows/release-v2-probe.yml` creates on the pull request head
 (in progress after dispatching the probe runs, or completed at once when no
-release input changed) and that `.github/workflows/release-v2-probe-verdict.yml`
-completes when the runs finish. It is created with `GITHUB_TOKEN`, so it is
+release input changed) and that the `probe report` job of
+`.github/workflows/release-v2.yml` completes when the runs finish. It is created with `GITHUB_TOKEN`, so it is
 bound to the GitHub Actions App (`integration_id` 15368); it runs on every pull
 request regardless of base.
 
