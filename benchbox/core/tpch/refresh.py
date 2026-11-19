@@ -10,11 +10,18 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
-from benchbox.core.contracts.platform_capabilities import TPCHRefreshIngester, resolve_refresh_ingester
+from benchbox.core.contracts.platform_capabilities import (
+    TPCHRefreshIngester,
+    refresh_is_transactional,
+    refresh_reports_delete_counts,
+    resolve_refresh_ingester,
+)
 from benchbox.core.tpch.generator import TPCHDataGenerator
 from benchbox.core.tpch.schema import LINEITEM, ORDERS, DataType
 
 REFRESH_CHUNK_SIZE = 1000
+ORDERS_KEY_COLUMN = ORDERS.columns[0].name
+LINEITEM_KEY_COLUMN = LINEITEM.columns[0].name
 
 
 @dataclass(frozen=True)
@@ -143,7 +150,7 @@ def check_rf1_applied(
     for rows in _source_row_chunks(update_set.orders_path, ORDERS, chunk_size):
         order_keys = [int(row[0]) for row in rows]
         order_rows += len(order_keys)
-        found, distinct = _count_matching_keys_distinct(connection, ORDERS.name, "O_ORDERKEY", order_keys)
+        found, distinct = _count_matching_keys_distinct(connection, ORDERS.name, ORDERS_KEY_COLUMN, order_keys)
         if found != len(order_keys) or distinct != len(order_keys):
             raise ValueError(
                 _reload_message(
@@ -152,7 +159,7 @@ def check_rf1_applied(
                     f"found {found} orders rows ({distinct} distinct keys) for {len(order_keys)} inserted order keys",
                 )
             )
-        found_lineitems += _count_matching_keys(connection, LINEITEM.name, "L_ORDERKEY", order_keys)
+        found_lineitems += _count_matching_keys(connection, LINEITEM.name, LINEITEM_KEY_COLUMN, order_keys)
     lineitem_rows = sum(len(rows) for rows in _source_row_chunks(update_set.lineitem_path, LINEITEM, chunk_size))
     if found_lineitems != lineitem_rows:
         raise ValueError(
@@ -182,9 +189,9 @@ def check_rf2_applied(
     expected_orders = 0
     for order_keys in _key_chunks(update_set.delete_path, chunk_size):
         expected_orders += len(order_keys)
-        if _count_matching_keys(connection, ORDERS.name, "O_ORDERKEY", order_keys):
+        if _count_matching_keys(connection, ORDERS.name, ORDERS_KEY_COLUMN, order_keys):
             raise ValueError(_reload_message(update_set, "RF2", "left orders for deleted keys"))
-        if _count_matching_keys(connection, LINEITEM.name, "L_ORDERKEY", order_keys):
+        if _count_matching_keys(connection, LINEITEM.name, LINEITEM_KEY_COLUMN, order_keys):
             raise ValueError(_reload_message(update_set, "RF2", "left lineitems for deleted orders"))
     if expected_orders == 0:
         raise ValueError(_reload_message(update_set, "RF2", "has no delete keys"))
@@ -212,30 +219,50 @@ def apply_rf1(connection: Any, update_set: TPCHRefreshUpdateSet, chunk_size: int
         raise
 
 
+def rf2_precount(connection: Any, baseline: TPCHRF2Baseline | None) -> TPCHRF2Deletes | None:
+    if refresh_reports_delete_counts(getattr(connection, "platform_adapter", None)):
+        return None
+    if baseline is None:
+        raise RuntimeError("RF2 needs a baseline captured before the timer starts on a driver without delete counts")
+    return TPCHRF2Deletes(orders=baseline.orders_for_keys, lineitems=baseline.lineitems_for_keys)
+
+
 def apply_rf2(
     connection: Any,
     update_set: TPCHRefreshUpdateSet,
     chunk_size: int = REFRESH_CHUNK_SIZE,
+    precounted: TPCHRF2Deletes | None = None,
 ) -> TPCHRF2Deletes:
     _require_chunk_size(chunk_size)
+    reports = refresh_reports_delete_counts(getattr(connection, "platform_adapter", None))
+    if not reports and precounted is None:
+        raise RuntimeError(
+            f"refresh set {update_set.set_id} RF2: the driver reports no deleted row count; "
+            "derive the count from the RF2 baseline before the timer starts"
+        )
     _begin_transaction(connection)
     try:
         lineitems_deleted = 0
         orders_deleted = 0
         for order_keys in _key_chunks(update_set.delete_path, chunk_size):
-            key_list = ", ".join(str(key) for key in order_keys)
-            lineitems_deleted += _reported_row_count(
-                connection.execute(f"DELETE FROM {LINEITEM.name} WHERE L_ORDERKEY IN ({key_list})"), update_set
-            )
-            orders_deleted += _reported_row_count(
-                connection.execute(f"DELETE FROM {ORDERS.name} WHERE O_ORDERKEY IN ({key_list})"), update_set
-            )
+            lineitems_deleted += _delete_keys(connection, LINEITEM.name, LINEITEM_KEY_COLUMN, order_keys, update_set)
+            orders_deleted += _delete_keys(connection, ORDERS.name, ORDERS_KEY_COLUMN, order_keys, update_set)
 
         _commit(connection)
-        return TPCHRF2Deletes(orders=orders_deleted, lineitems=lineitems_deleted)
+        return TPCHRF2Deletes(orders=orders_deleted, lineitems=lineitems_deleted) if reports else precounted
     except BaseException:
         _rollback(connection)
         raise
+
+
+def _delete_keys(
+    connection: Any, table_name: str, column_name: str, keys: list[int], update_set: TPCHRefreshUpdateSet
+) -> int:
+    key_list = ", ".join(str(key) for key in keys)
+    cursor = connection.execute(f"DELETE FROM {table_name} WHERE {column_name} IN ({key_list})")
+    if refresh_reports_delete_counts(getattr(connection, "platform_adapter", None)):
+        return _reported_row_count(cursor, update_set)
+    return 0
 
 
 def read_rf2_delete_keys(update_set: TPCHRefreshUpdateSet) -> list[int]:
@@ -287,7 +314,13 @@ def _require_chunk_size(chunk_size: int) -> None:
         raise ValueError(f"chunk_size must be positive, got {chunk_size}")
 
 
+def refresh_transactional(connection: Any) -> bool:
+    return refresh_is_transactional(getattr(connection, "platform_adapter", None))
+
+
 def _begin_transaction(connection: Any) -> None:
+    if not refresh_transactional(connection):
+        return
     if getattr(getattr(connection, "connection", connection), "autocommit", None) is False:
         return
     execute = getattr(connection, "execute", None)
@@ -297,6 +330,8 @@ def _begin_transaction(connection: Any) -> None:
 
 
 def _commit(connection: Any) -> None:
+    if not refresh_transactional(connection):
+        return
     commit = getattr(connection, "commit", None)
     if not callable(commit):
         raise TypeError("TPC-H refresh functions require transactional commit() support")
@@ -304,6 +339,8 @@ def _commit(connection: Any) -> None:
 
 
 def _rollback(connection: Any) -> None:
+    if not refresh_transactional(connection):
+        return
     rollback = getattr(connection, "rollback", None)
     if callable(rollback):
         try:
@@ -421,8 +458,8 @@ def capture_rf2_baseline(
     orders_for_keys = 0
     lineitems_for_keys = 0
     for order_keys in _key_chunks(update_set.delete_path, chunk_size):
-        orders_for_keys += _count_matching_keys(connection, ORDERS.name, "O_ORDERKEY", order_keys)
-        lineitems_for_keys += _count_matching_keys(connection, LINEITEM.name, "L_ORDERKEY", order_keys)
+        orders_for_keys += _count_matching_keys(connection, ORDERS.name, ORDERS_KEY_COLUMN, order_keys)
+        lineitems_for_keys += _count_matching_keys(connection, LINEITEM.name, LINEITEM_KEY_COLUMN, order_keys)
     return TPCHRF2Baseline(
         orders_total=_count_table_rows(connection, ORDERS.name),
         lineitems_total=_count_table_rows(connection, LINEITEM.name),

@@ -20,6 +20,7 @@ PUBLISHING_ACTIONS = ("pypa/gh-action-pypi-publish", "actions/attest-build-prove
 GATE_JOBS = ("admit", "install-matrix", "release-uat")
 REAL_PUBLISH_JOB = "publish"
 PROBE_PUBLISH_JOB = "publish-probe"
+PROBE_REPORT_JOB = "report-probe"
 VARIANTS = ("reuse", "fallback", "guarded-change")
 TARGETS = ("pypi", "test-pypi")
 RESULTS = ("success", "failure", "skipped")
@@ -535,6 +536,25 @@ def probe_publish_violations(workflow: dict[str, Any]) -> list[str]:
     return list(found)
 
 
+def probe_report_violations(workflow: dict[str, Any]) -> list[str]:
+    jobs = workflow["jobs"]
+    if PROBE_REPORT_JOB not in jobs:
+        return [f"the workflow has no {PROBE_REPORT_JOB} job"]
+    found: dict[str, None] = {}
+    unneeded = sorted(set(jobs) - {PROBE_REPORT_JOB} - set(needs_of(jobs[PROBE_REPORT_JOB])))
+    if unneeded:
+        found[f"{PROBE_REPORT_JOB} does not need {', '.join(unneeded)}"] = None
+    for event, inputs in (("push", {}), ("workflow_dispatch", {"probe": "none"})):
+        for scenario in scenarios(workflow, event, inputs):
+            if simulate(workflow, scenario)[PROBE_REPORT_JOB].result != "skipped":
+                found[f"{PROBE_REPORT_JOB} runs outside probe mode ({event})"] = None
+    for variant in VARIANTS:
+        for scenario in scenarios(workflow, "workflow_dispatch", {"probe": variant}):
+            if simulate(workflow, scenario)[PROBE_REPORT_JOB].result == "skipped":
+                found[f"{PROBE_REPORT_JOB} is skipped in probe mode (probe={variant})"] = None
+    return list(found)
+
+
 def dangling_needs(workflow: dict[str, Any]) -> list[str]:
     jobs = workflow["jobs"]
     return [
@@ -550,7 +570,12 @@ def check(workflow: dict[str, Any]) -> list[str]:
     if dangling:
         missing = [] if PROBE_PUBLISH_JOB in workflow["jobs"] else [f"the workflow has no {PROBE_PUBLISH_JOB} job"]
         return [*dangling, *missing]
-    return [*real_violations(workflow), *probe_violations(workflow), *probe_publish_violations(workflow)]
+    return [
+        *real_violations(workflow),
+        *probe_violations(workflow),
+        *probe_publish_violations(workflow),
+        *probe_report_violations(workflow),
+    ]
 
 
 def main(argv: list[str] | None = None) -> int:

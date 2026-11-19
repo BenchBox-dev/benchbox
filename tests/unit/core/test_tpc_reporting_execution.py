@@ -673,7 +673,7 @@ def test_tpch_maintenance_execution(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(f"{module}.capture_rf2_baseline", lambda *_args: object())
     monkeypatch.setattr(f"{module}.verify_rf2_deletes", lambda *_args: None)
     monkeypatch.setattr(f"{module}.apply_rf1", lambda *_args: 10)
-    monkeypatch.setattr(f"{module}.apply_rf2", lambda *_args: TPCHRF2Deletes(orders=2, lineitems=3))
+    monkeypatch.setattr(f"{module}.apply_rf2", lambda *_args, **_kwargs: TPCHRF2Deletes(orders=2, lineitems=3))
     rf1 = maint._execute_rf1(pair_id=0, update_set=update_set)
     assert rf1.success is True
     rf2 = maint._execute_rf2(pair_id=0, update_set=update_set)

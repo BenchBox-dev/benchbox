@@ -16,7 +16,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOWS = REPO_ROOT / ".github" / "workflows"
-POSTER = "benchbox-oracle[bot]"
+POSTER = "benchbox-review[bot]"
 HEAD = "a" * 40
 OLD_HEAD = "b" * 40
 REPO = "owner/repo"

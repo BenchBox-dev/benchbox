@@ -8,7 +8,7 @@ import pytest
 
 from tests.integration._cli_e2e_utils import run_cli_command
 
-pytestmark = [pytest.mark.integration, pytest.mark.medium]
+pytestmark = [pytest.mark.integration, pytest.mark.medium, pytest.mark.timeout(300)]
 
 SEED = 7
 QUERY = "6"

@@ -269,17 +269,82 @@ def test_deployed_parent_refuses_digest_mismatch(monkeypatch: pytest.MonkeyPatch
         parent_mod.site_deployed_core_sha("BenchBox-dev/benchbox-site", download_fn=lambda repo, run_id: tampered)
 
 
+class _FakeClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+        self.sleeps: list[float] = []
+
+    def __call__(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def _fake_backoff(monkeypatch: pytest.MonkeyPatch) -> _FakeClock:
+    clock = _FakeClock()
+    monkeypatch.setattr(
+        parent_mod,
+        "_retry_budget",
+        lambda: parent_mod.gh_transient.Budget(90.0, clock=clock, sleep=clock.sleep),
+    )
+    return clock
+
+
+def _scripted_gh(monkeypatch: pytest.MonkeyPatch, replies: list[tuple[int, str, str]]) -> list[list[str]]:
+    calls: list[list[str]] = []
+    queue = list(replies)
+
+    def run(argv: list[str]) -> tuple[int, str]:
+        calls.append(argv)
+        code, out, err = queue.pop(0) if len(queue) > 1 else queue[0]
+        return code, out if code == 0 else err
+
+    monkeypatch.setattr(parent_mod, "_gh_once", run)
+    return calls
+
+
+EGRESS = "gh: HTTP 503: Egress is over the account limit. (https://api.github.com/x)"
+
+
 def test_deployed_parent_fails_closed_when_site_unreadable(monkeypatch: pytest.MonkeyPatch) -> None:
-    import subprocess as subprocess_mod
-
-    def failing_run(argv: list[str], **kwargs: object) -> object:
-        if argv[0] == "gh":
-            return subprocess_mod.CompletedProcess(argv, 1, "", "connection refused")
-        return subprocess_mod.run(argv, **kwargs)
-
-    monkeypatch.setattr(subprocess_mod, "run", failing_run)
+    clock = _fake_backoff(monkeypatch)
+    calls = _scripted_gh(monkeypatch, [(1, "", "connection refused")])
     with pytest.raises(RuntimeError, match="cannot read the site deployments"):
         parent_mod.site_deployed_core_sha("BenchBox-dev/benchbox-site")
+    assert len(calls) == 4 and clock.sleeps == [5.0, 15.0, 45.0]
+
+
+def test_a_gh_read_that_hits_the_egress_limit_recovers_after_the_backoff(monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = _fake_backoff(monkeypatch)
+    calls = _scripted_gh(monkeypatch, [(1, "", EGRESS), (0, "12345\n", "")])
+    assert parent_mod._gh(["api", "repos/o/r/deployments"]) == "12345\n"
+    assert len(calls) == 2 and clock.sleeps == [5.0]
+
+
+def test_a_gh_read_with_a_permanent_failure_is_not_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = _fake_backoff(monkeypatch)
+    calls = _scripted_gh(monkeypatch, [(1, "", "gh: HTTP 404: Not Found")])
+    with pytest.raises(parent_mod.ParentResolutionError, match="HTTP 404"):
+        parent_mod._gh(["api", "repos/o/r/deployments"])
+    assert len(calls) == 1 and clock.sleeps == []
+
+
+def test_the_production_receipt_download_recovers_from_a_transient_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = _fake_backoff(monkeypatch)
+    calls = _scripted_gh(monkeypatch, [(1, "", EGRESS), (0, "", "")])
+    with pytest.raises(parent_mod.ParentResolutionError, match="holds no JSON"):
+        parent_mod.download_site_receipt("o/site", "42")
+    assert len(calls) == 2 and clock.sleeps == [5.0]
+
+
+def test_the_production_receipt_download_that_stays_transient_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = _fake_backoff(monkeypatch)
+    calls = _scripted_gh(monkeypatch, [(1, "", EGRESS)])
+    with pytest.raises(parent_mod.ParentResolutionError, match="did not clear after 4 attempt"):
+        parent_mod.download_site_receipt("o/site", "42")
+    assert len(calls) == 4 and clock.sleeps == [5.0, 15.0, 45.0]
 
 
 def test_deployed_parent_fails_closed_without_production(monkeypatch: pytest.MonkeyPatch) -> None:

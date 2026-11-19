@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 METHOD_FACT_INSERT = 1
 METHOD_FACT_DELETE = 2
 METHOD_INVENTORY_DELETE = 3
 
 MYSQL_INTEGER_CAST_DIALECTS = frozenset({"mysql", "singlestore"})
+CLICKHOUSE_DIALECT = "clickhouse"
 
 
 @dataclass(frozen=True)
@@ -20,12 +21,15 @@ class MaintenanceFunction:
     staging_tables: tuple[str, ...]
     statements: tuple[str, ...]
     expected_rows_table: str | None = None
+    dialect_statements: Mapping[str, tuple[str, ...]] = field(default_factory=dict, hash=False)
 
     @property
     def operation_type(self) -> str:
         return "INSERT" if self.method == METHOD_FACT_INSERT else "DELETE"
 
     def statements_for(self, dialect: str | None) -> tuple[str, ...]:
+        if dialect is not None and dialect.lower() in self.dialect_statements:
+            return self.dialect_statements[dialect.lower()]
         if dialect is not None and dialect.lower() in MYSQL_INTEGER_CAST_DIALECTS:
             return tuple(statement.replace("AS INTEGER)", "AS SIGNED)") for statement in self.statements)
         return self.statements
@@ -382,11 +386,35 @@ def _sales_returns_delete(
         f"DELETE FROM {returns} WHERE EXISTS "
         f"(SELECT 1 FROM {sales}, date_dim, s_delete WHERE {sales_date_sk} = d_date_sk AND {in_range} "
         f"AND {sales_key} = {returns_key} AND {sales_item} = {returns_item})",
-        f"DELETE FROM {sales} WHERE {sales_date_sk} IN (SELECT d_date_sk FROM date_dim, s_delete WHERE {in_range})",
+        _sales_delete(sales, sales_date_sk),
     )
 
 
-_DF_SS = _sales_returns_delete(
+def _sales_delete(sales: str, sales_date_sk: str) -> str:
+    return f"DELETE FROM {sales} WHERE {sales_date_sk} IN ({_deleted_date_sks()})"
+
+
+def _deleted_date_sks() -> str:
+    return f"SELECT d_date_sk FROM date_dim, s_delete WHERE {_delete_range('delete_date')}"
+
+
+def _clickhouse_returns_delete(
+    sales: str,
+    returns: str,
+    sales_date_sk: str,
+    sales_key: str,
+    sales_item: str,
+    returns_key: str,
+    returns_item: str,
+) -> tuple[str, str]:
+    return (
+        f"DELETE FROM {returns} WHERE ({returns_key}, {returns_item}) IN "
+        f"(SELECT {sales_key}, {sales_item} FROM {sales} WHERE {sales_date_sk} IN ({_deleted_date_sks()}))",
+        _sales_delete(sales, sales_date_sk),
+    )
+
+
+_SS_DELETE_ARGS = (
     "store_sales",
     "store_returns",
     "ss_sold_date_sk",
@@ -395,7 +423,7 @@ _DF_SS = _sales_returns_delete(
     "sr_ticket_number",
     "sr_item_sk",
 )
-_DF_CS = _sales_returns_delete(
+_CS_DELETE_ARGS = (
     "catalog_sales",
     "catalog_returns",
     "cs_sold_date_sk",
@@ -404,18 +432,51 @@ _DF_CS = _sales_returns_delete(
     "cr_order_number",
     "cr_item_sk",
 )
-_DF_WS = _sales_returns_delete(
-    "web_sales", "web_returns", "ws_sold_date_sk", "ws_order_number", "ws_item_sk", "wr_order_number", "wr_item_sk"
+_WS_DELETE_ARGS = (
+    "web_sales",
+    "web_returns",
+    "ws_sold_date_sk",
+    "ws_order_number",
+    "ws_item_sk",
+    "wr_order_number",
+    "wr_item_sk",
 )
+_DF_SS = _sales_returns_delete(*_SS_DELETE_ARGS)
+_DF_CS = _sales_returns_delete(*_CS_DELETE_ARGS)
+_DF_WS = _sales_returns_delete(*_WS_DELETE_ARGS)
 _DF_I = (
     "DELETE FROM inventory WHERE inv_date_sk IN "
     f"(SELECT d_date_sk FROM date_dim, s_inventory_delete WHERE {_delete_range('inv_delete_date')})",
 )
 
 MAINTENANCE_FUNCTIONS: tuple[MaintenanceFunction, ...] = (
-    MaintenanceFunction(8, "DF_CS", METHOD_FACT_DELETE, ("catalog_returns", "catalog_sales"), ("s_delete",), _DF_CS),
-    MaintenanceFunction(9, "DF_SS", METHOD_FACT_DELETE, ("store_returns", "store_sales"), ("s_delete",), _DF_SS),
-    MaintenanceFunction(10, "DF_WS", METHOD_FACT_DELETE, ("web_returns", "web_sales"), ("s_delete",), _DF_WS),
+    MaintenanceFunction(
+        8,
+        "DF_CS",
+        METHOD_FACT_DELETE,
+        ("catalog_returns", "catalog_sales"),
+        ("s_delete",),
+        _DF_CS,
+        dialect_statements={CLICKHOUSE_DIALECT: _clickhouse_returns_delete(*_CS_DELETE_ARGS)},
+    ),
+    MaintenanceFunction(
+        9,
+        "DF_SS",
+        METHOD_FACT_DELETE,
+        ("store_returns", "store_sales"),
+        ("s_delete",),
+        _DF_SS,
+        dialect_statements={CLICKHOUSE_DIALECT: _clickhouse_returns_delete(*_SS_DELETE_ARGS)},
+    ),
+    MaintenanceFunction(
+        10,
+        "DF_WS",
+        METHOD_FACT_DELETE,
+        ("web_returns", "web_sales"),
+        ("s_delete",),
+        _DF_WS,
+        dialect_statements={CLICKHOUSE_DIALECT: _clickhouse_returns_delete(*_WS_DELETE_ARGS)},
+    ),
     MaintenanceFunction(11, "DF_I", METHOD_INVENTORY_DELETE, ("inventory",), ("s_inventory_delete",), _DF_I),
     MaintenanceFunction(
         1,
