@@ -42602,6 +42602,13 @@
       "status": "open",
       "title": "Theseus CI: Linux pytest jobs run 24-28 min against a 30-minute limit"
     },
+    "theseus-claimed-prior-survives-withdrawal-20261118": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Theseus: a claimed prior finding stays open after the reviewer withdraws it"
+    },
     "theseus-close-known-defects-trigger-scan-20261112": {
       "claim": null,
       "needs": [],

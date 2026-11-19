@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A reviewer withdrawal of a claimed prior closes it in the posted verdict (regression test from the #4333 shape).",
+    "Claimed findings render their original title and detail in the thread and summary.",
+    "Merged under G7, released and locked."
+  ],
+  "description": "On BenchBox #4333 at head 38f36a39 the hosted review's notes said 'SHIP … Prior D1 and D2 are withdrawn', yet the posted verdict listed D1 as '(claimed Medium)' still open, with no detail, and posted SHIP WITH FIXES. D2 was correctly shown as withdrawn. It needed an owner adjudication to clear.\n\nThe '(claimed …)' prefix comes from the prior-finding carry-over. The thread rendering for such findings has no detail (findings.py:423-427). The withdrawal in the reviewer notes was not applied to the claimed D1.\n\nThe earlier dispute was posted as a PR comment 'Dispute: D1 - …' before the review at 38f36a39.\n\nInvestigate:\n- why a withdrawal of a claimed prior is ignored, while the same review withdraws a non-claimed prior;\n- whether the 'Dispute:' comment changed the classification;\n- make the posted verdict agree with the reviewer's stated decision;\n- render claimed findings with their original detail.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4333"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b5abc8a4010555c0d8f96bb",
+      "at": "2026-11-19T01:36:25Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c413eb105fb24fa3a3cb0b64c9be5afb",
+      "session_id": "045b6d4d12cf4622b6f5f4ab89e94f4e"
+    }
+  ]
+}
