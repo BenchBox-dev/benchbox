@@ -373,16 +373,18 @@ GLOB_READER_FILES = {
     "tests/unit/test_export.py": "import export\n",
     "tests/unit/test_loader.py": "import loader\n",
     "tests/unit/test_unrelated.py": 'GLOB = "**/*.md"\n',
+    "scripts/wrapper.py": "from scripts.audit import PATTERNS\n",
+    "tests/unit/test_wrapper.py": "import wrapper\n",
 }
 
 
 def test_reader_index_follows_globs_in_modules_a_test_imports(tmp_path: Path) -> None:
     repo = _git_repo(tmp_path / "repo", GLOB_READER_FILES)
     assert inert.doc_reader_index(repo) == {
-        ".claude/commands/pr.md": ["tests/unit/test_audit.py"],
+        ".claude/commands/pr.md": ["tests/unit/test_audit.py", "tests/unit/test_wrapper.py"],
         "AGENTS.md": ["tests/unit/test_loader.py"],
-        "docs/agent/one.md": ["tests/unit/test_audit.py"],
-        "docs/agent/two.md": ["tests/unit/test_audit.py"],
+        "docs/agent/one.md": ["tests/unit/test_audit.py", "tests/unit/test_wrapper.py"],
+        "docs/agent/two.md": ["tests/unit/test_audit.py", "tests/unit/test_wrapper.py"],
     }
 
 
@@ -415,7 +417,9 @@ def test_every_docs_agent_mention_is_an_indexed_read_or_named_here(
 ) -> None:
     refs, reads = inert_scan_reads
     mention = re.compile(r"docs/agent|[\"']docs[\"']\s*[/,]\s*[\"']agent[\"']")
+    reached = set().union(*inert.reach_from_tests(refs, reads).values())
     unindexed = []
+    unreached = []
     for scan in inert.SCAN_DIRS:
         for path in sorted((ROOT / scan).rglob("*.py")):
             own = path.relative_to(ROOT).as_posix()
@@ -426,9 +430,14 @@ def test_every_docs_agent_mention_is_an_indexed_read_or_named_here(
             hits = set(refs.get(own, ())) | set(reads.get(own, ()))
             if not any(hit.startswith("docs/agent/") for hit in hits):
                 unindexed.append(own)
+            elif own not in reached:
+                unreached.append(own)
     assert not unindexed, (
         "these files mention docs/agent but the reader index records no docs/agent read for them, so "
         f"heavy_tier_needed.read_documents_only could skip their tests: {unindexed}"
+    )
+    assert not unreached, (
+        f"these files read docs/agent but no test reaches them through imports or path references: {unreached}"
     )
 
 

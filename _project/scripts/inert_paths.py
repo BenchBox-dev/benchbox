@@ -469,6 +469,23 @@ def scan_tree_reads(repo_root: str | Path) -> tuple[dict[str, list[str]], dict[s
     return refs, reads
 
 
+def reach_from_tests(refs: dict[str, list[str]], reads: dict[str, list[str]]) -> dict[str, set[str]]:
+    edges = {source: set(refs.get(source, ())) | set(reads.get(source, ())) for source in refs.keys() | reads.keys()}
+    reach: dict[str, set[str]] = {}
+    for source in edges:
+        if not _is_test_file(source):
+            continue
+        seen = {source}
+        pending = [source]
+        while pending:
+            for hit in edges[pending.pop()]:
+                if hit not in seen and hit in edges and not _is_test_file(hit):
+                    seen.add(hit)
+                    pending.append(hit)
+        reach[source] = seen
+    return reach
+
+
 def doc_reader_index(
     repo_root: str | Path,
     refs: dict[str, list[str]] | None = None,
@@ -478,18 +495,11 @@ def doc_reader_index(
         refs, reads = scan_tree_reads(repo_root)
     indirect = reads or {}
     index: dict[str, set[str]] = {}
-    for source in refs.keys() | indirect.keys():
-        if not _is_test_file(source):
-            continue
-        direct = set(refs.get(source, ())) | set(indirect.get(source, ()))
-        reached = set(direct)
-        for hit in direct:
-            if not _is_test_file(hit):
-                reached.update(refs.get(hit, ()))
-                reached.update(indirect.get(hit, ()))
-        for hit in reached:
-            if is_machine_read_doc(hit):
-                index.setdefault(hit, set()).add(source)
+    for test, sources in reach_from_tests(refs, indirect).items():
+        for source in sources:
+            for hit in (*refs.get(source, ()), *indirect.get(source, ())):
+                if is_machine_read_doc(hit):
+                    index.setdefault(hit, set()).add(test)
     return {doc: sorted(tests) for doc, tests in sorted(index.items())}
 
 
