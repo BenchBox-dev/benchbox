@@ -332,6 +332,9 @@ make worktree-finish WORKTREE_PATH=<worktree> EXPECTED_HEAD_OID=<that oid> APPLY
   must be at, and the worktree's `HEAD` must equal it. Use the merged pull
   request's head OID from `gh pr view`; a squash merge keeps that OID only on
   the pull request, not on `develop`.
+- `KEEP_BRANCH=1` removes only the worktree, leaves the local branch at
+  `EXPECTED_HEAD_OID`, and needs no merged pull request; it still requires a
+  clean tree, every commit on origin and an unlocked worktree.
 - Without `APPLY=1` the target only reports (`FORMAT=json` for JSON) and
   changes nothing. Read the report; a held target lists its hold reason.
 - `APPLY=1` re-checks the evidence, runs `git worktree remove`, then deletes
