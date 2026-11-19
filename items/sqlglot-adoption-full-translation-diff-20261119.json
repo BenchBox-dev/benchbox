@@ -6,6 +6,7 @@
     "The check runs on every chore/sqlglot-* adoption PR with no manual step and behaves as the owner chose in gate 1; measured runtime recorded in the PR.",
     "The adoption PR body lists changed (platform, benchmark, query) entries, and publish refuses a body that does not equal the list recomputed from the wheels, matching the existing corpus-section check."
   ],
+  "context": "Owner decision 2026-11-19 (choice dialog): gate 1 = (a) report-only. The adoption PR body lists every changed (platform, benchmark, query) translation and publish refuses a body that does not match the recomputed list; no human acknowledgement, so unattended certification is preserved.",
   "description": "Adoption PR #4289 (benchbox-sqlglot 30.31.0.1 to 30.33.0.1) passed full CI, including make sql-execution-gate and the re-recorded golden corpus (bigquery_qualify_17/18), yet changed QuestDB's TPC-H Havoc 18_v10 output. The execution gate emits shipped SQL but executes only on local engines (SQLite, DuckDB, DataFusion, PostgreSQL), so text changes for every other platform go unseen. Upstream 6bff65f6 (#8990) stopped unnesting IN under CASE WHEN; QuestDB rejected the leftover IN subquery ('cannot compare LONG with type CURSOR') in release-v2 44189388601. Platform rewrites run inside translate_sql_query (benchbox/utils/dialect_utils.py), so a diff of that path covers them. A one-off comparison (29,341 queries, 22 benchmarks, 26 dialects, without base_dialect or platform_version) found 9 changed queries including the failing one. Expected outcome: every adoption reports each changed (platform, benchmark, query) translation, and the owner-chosen gate applies to changes on release-gated pairs.\n\nDecision gates (owner, before implementation):\n1. Gate semantics, constrained by the owner decisions of 2026-11-17 (sqlglot-adoption-blocked-by-golden-corpus-change-20261117, sqlglot-e2e-first-release-certification: a release certifies only if no person acts between tag and merge): (a) report-only, listing changed queries in the adoption PR body the way corpus changes are listed; (b) report plus an automatic hold label on changes to release-gated pairs, accepting that such a release no longer certifies; (c) another option the owner names.\n2. If any acceptance record is chosen, it must fit the single-commit delivery rule (scripts/sqlglot_delivery.py check_adoption_paths), or the owner approves widening it.\n3. Placement: extend scripts/sql_execution_gate emission (emit.py) to every dialect, run it inside sqlglot_delivery prepare, or run it as an adoption-PR CI job. A parallel query emitter is not an option.\n\nGuardrails: never execute engines or cloud services for this check; deterministic output (sorted, no timestamps); do not relax or re-record the golden corpus to make it pass; no blanket or glob acknowledgement; use the production adapter path, not a reimplementation; do not weaken the delivery single-commit or ownership checks without explicit owner approval; measure and record runtime before landing.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4289",
@@ -23,6 +24,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "0ab81f908c4542d99feb6250a97555be",
+      "session_id": "ad8ff63c31d0492faa7526a81e19db83"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a",
+      "at": "2026-11-19T20:48:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "844703e74cfa4703aa1d6a180094576e",
       "session_id": "ad8ff63c31d0492faa7526a81e19db83"
     }
   ]
