@@ -612,6 +612,7 @@ def test_report_with_no_data_says_so():
     report = dash.render_report(_empty_dashboard(dash.Window(T0, T0 + timedelta(days=1)), REPO))
     assert "no data" in report
     assert "No red trunk incidents in the window." in report
+    assert "| Red trunk incidents | 0 | 0 (0 red of 0 runs) | no data | not recorded |" in report
     assert "No release tags were pushed in the window." in report
     assert "No trunk UAT runs in the window." in report
     assert "| Public Make targets | <= 90 | 190 | missed | not recorded |" in report

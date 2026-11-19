@@ -718,7 +718,7 @@ def render_targets(dashboard: Dashboard) -> list[str]:
             "Red trunk incidents",
             "0",
             f"{len(dashboard.trunk.incidents)} ({dashboard.trunk.red_runs} red of {dashboard.trunk.runs} runs)",
-            _verdict(float(len(dashboard.trunk.incidents)), TARGET_RED_TRUNK),
+            _verdict(float(len(dashboard.trunk.incidents)) if dashboard.trunk.runs else None, TARGET_RED_TRUNK),
             _baseline(dashboard, "red_trunk"),
         ),
         (
