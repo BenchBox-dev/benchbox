@@ -28652,6 +28652,13 @@
       "status": "open",
       "title": "Re-measure the first-CI failure rate four weeks after the preflight receipt landed"
     },
+    "measurement-workflow-offers-duckdb-sf10-cells-that-cannot-finish-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "The measurement workflow still offers DuckDB SF10 cells that cannot finish on its runner"
+    },
     "medium-datagen-tests-build-full-scale-factor-data": {
       "claim": null,
       "needs": [
