@@ -93,7 +93,7 @@ class TestTPCHCompliance:
         import duckdb
 
         from benchbox.core.tpch.maintenance_test import TPCHMaintenanceTest
-        from tests.integration._tpch_refresh_utils import _load_sf001_base
+        from tests.integration._tpch_refresh_utils import AdapterConnection, RefreshMarkerLog, _load_sf001_base
 
         database_path = str(Path(self.temp_dir) / "maintenance.duckdb")
         seed_connection = duckdb.connect(database_path)
@@ -102,8 +102,9 @@ class TestTPCHCompliance:
         finally:
             seed_connection.close()
 
+        markers = RefreshMarkerLog()
         maintenance_test = TPCHMaintenanceTest(
-            connection_factory=lambda: duckdb.connect(database_path),
+            connection_factory=lambda: AdapterConnection(duckdb.connect(database_path), markers),
             scale_factor=0.01,
             verbose=False,
         )
@@ -115,6 +116,7 @@ class TestTPCHCompliance:
         assert result.total_time > 0
         assert result.rf1_operations > 0
         assert result.rf2_operations > 0
+        assert len(markers.recorded) == result.rf1_operations + result.rf2_operations
 
 
 class TestTPCDSCompliance:
