@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Each listed (platform, query) pair has recorded adapter-path SQL and a verdict (supported with citation or run id, or unsupported).",
+    "Every unsupported pair has a merged fix with a test asserting the new SQL, or an owner-recorded decision with reason.",
+    "statistical_variance_stddev on Oracle: show whether any group has exactly one row; if so, record the result change and fix it or get an owner decision.",
+    "The CARDINALITY difference is checked on postgresql, timescaledb and datafusion as well as the untested platforms: use the #4289 sql-execution-gate row comparison if it covers 1_v7, otherwise reason from the query text."
+  ],
+  "description": "The 30.31.0.1 to 30.33.0.1 adoption changed 9 translated queries. QuestDB 18_v10 broke and is fixed by #4339. Runs without error in release-v2 44417177182 (v0.5.2rc3): tpchavoc 1_v7 ARRAY_LENGTH to CARDINALITY on postgresql, timescaledb and datafusion. Execution is not result equality; the empty-array difference below applies to these platforms too. Unverified on a real engine:\n- tsql (synapse, fabric_warehouse, fabric_lakehouse): clickbench Q43 DATE_TRUNC('MINUTE', ...) to DATETRUNC(MINUTE, ...). DATETRUNC needs SQL Server 2022; support on Synapse dedicated pools and Fabric is unconfirmed.\n- oracle: clickbench Q43 TRUNC(..., 'MINUTE') to TRUNC(..., 'MI'); read_primitives approx_count_distinct_simple and _groupby APPROX_DISTINCT to APPROX_COUNT_DISTINCT (APPROX_DISTINCT is not an Oracle function, so this is likely a fix; confirm); statistical_variance_stddev VARIANCE to VAR_SAMP, which differ on single-row groups (VARIANCE returns 0, VAR_SAMP returns NULL), so results can change.\n- teradata: clickbench Q43 DATE_TRUNC('MINUTE', ...) to TRUNC(..., 'MI').\n- postgres-family platforms without tpchavoc results in UAT (citus, paradedb, pg_duckdb, pg_mooncake, cedardb): CARDINALITY returns 0 where ARRAY_LENGTH returned NULL for an empty array.\nThe one-off comparison did not pass base_dialect or platform_version, so platform-specific rewrites may alter some of these.\n\nDecision gates:\n1. Evidence standard per pair: vendor-documentation citation for the exact engine version, or a live run. The owner decides per engine.\n2. Live cloud runs (Synapse, Fabric, Oracle, Teradata) need explicit owner approval in that task; without it, documentation evidence is the ceiling and the item says so.\n3. For an unsupported translation: fix in the fork's dialect generator or in BenchBox sql_compat (platform-version-aware rewrite). The owner picks and the reason is recorded.\n\nGuardrails: no cell pruning, query exclusion or expected-difference entry to hide an unsupported function or a result change; no live-cloud spend without approval; re-run each translation through the real adapter path (with base_dialect and platform_version) and record the exact SQL before judging it.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/44417177182",
+    "https://github.com/BenchBox-dev/benchbox/pull/4289"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a",
+      "at": "2026-11-19T14:34:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b05704c6f8254174bb271c576666c380",
+      "session_id": "ad8ff63c31d0492faa7526a81e19db83"
+    }
+  ]
+}

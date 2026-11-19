@@ -40711,6 +40711,13 @@
       "status": "done",
       "title": "Record the selected SQLGlot downstream maintenance strategy and delivery evidence"
     },
+    "sqlglot-30-33-unverified-dialect-translations-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Verify the SQLGlot 30.33 translation changes on engines and results the release UAT does not check"
+    },
     "sqlglot-adoption-blocked-by-golden-corpus-change-20261117": {
       "claim": null,
       "needs": [],
