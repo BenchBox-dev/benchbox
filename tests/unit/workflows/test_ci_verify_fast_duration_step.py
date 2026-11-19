@@ -110,16 +110,30 @@ def test_a_baseline_change_runs_a_required_reproduce_job_inside_core() -> None:
     assert all(step.get("continue-on-error") is not True for step in job["steps"])
 
 
-def test_the_reproduce_job_checks_the_refresh_branch_and_rebuilds_from_the_manifest_artifacts() -> None:
+def test_the_reproduce_job_runs_the_base_branch_copy_of_the_script_against_the_head_fixture() -> None:
     steps = {step["name"]: step for step in workflow()["jobs"]["fast-baseline-reproduce"]["steps"]}
-    branch = steps["Require the refresh branch for a baseline-only change"]
-    assert "landing-branch" in branch["run"]
-    assert branch["env"]["HEAD_REF"] == "${{ github.head_ref }}"
-    assert "$BASE_SHA...HEAD" in branch["run"]
+    collect = steps["Collect the current fast tier"]
+    assert "--collect-only" in collect["run"]
     reproduce = steps["Reproduce the committed baseline from its source artifacts"]
-    assert "build_fast_duration_baseline reproduce" in reproduce["run"]
-    assert "--baseline-dir tests/fixtures/fast_tier_baseline" in reproduce["run"]
+    run = reproduce["run"]
+    assert 'git show "$BASE_SHA:$path"' in run
+    for path in (
+        "scripts/build_fast_duration_baseline.py",
+        "scripts/release_canary_sharding.py",
+        "tests/__init__.py",
+        "tests/duration_policy.py",
+    ):
+        assert path in run
+    assert "python -I -c" in run
+    assert "build_fast_duration_baseline reproduce" not in run
+    assert '"$trusted" reproduce' in run
+    assert "--baseline-dir tests/fixtures/fast_tier_baseline" in run
+    assert '--head-commit-time "$(git show -s --format=%cI "$HEAD_SHA")"' in run
+    assert '--collected-ids "$RUNNER_TEMP/collected-ids.txt"' in run
+    assert "::notice" in run and run.index("grep -q") < run.index("python -I")
+    assert reproduce["env"]["BASE_SHA"] == "${{ github.event.pull_request.base.sha }}"
     assert reproduce["env"]["GH_TOKEN"] == "${{ github.token }}"
+    assert "landing-branch" not in str(workflow()["jobs"]["fast-baseline-reproduce"])
 
 
 def test_the_baseline_flag_is_derived_from_the_changed_paths_whatever_the_inert_routing() -> None:

@@ -57,6 +57,8 @@ jobs:
               exit 1
             fi
           }
+          generated_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "GENERATED_AT=$generated_at" >> "$GITHUB_ENV"
           api_call "run list --workflow ci.yml --limit $MAX_RUNS_SCAN"
           gh run list --workflow ci.yml --limit "$MAX_RUNS_SCAN" \
             --json databaseId,status,conclusion > fast-refresh/ci-runs.json
@@ -90,9 +92,9 @@ jobs:
               case "$pr_number" in ''|*[!0-9]*) continue;; esac
               [ -n "${seen_pr[$pr_number]:-}" ] && continue
               api_call "pr $pr_number state"
-              state=$(gh pr view "$pr_number" --json state -q .state 2>/dev/null || echo UNKNOWN)
+              state=$(gh pr view "$pr_number" --json state,baseRefName -q '"\(.state) \(.baseRefName)"' 2>/dev/null || echo UNKNOWN)
               echo "run $run_id artifact $artifact_id pr $pr_number state $state" >> fast-refresh/api-calls.log
-              [ "$state" = "MERGED" ] || continue
+              [ "$state" = "MERGED develop" ] || continue
               sha="${name##*-}"
               if [ "$first" -eq 1 ]; then first=0; else echo "," >> fast-refresh/manifest.json; fi
               printf '  {"run_id": %s, "pr": %s, "sha": "%s", "artifact_id": %s, "dir": "fast-refresh/runs/run-%s"}' \
@@ -117,7 +119,8 @@ jobs:
         run: |
           uv run -- python -m scripts.build_fast_duration_baseline build \
             --manifest fast-refresh/manifest.json \
-            --output tests/fixtures/fast_tier_baseline
+            --output tests/fixtures/fast_tier_baseline \
+            --generated-at "$GENERATED_AT"
 
       - name: Collect the current fast tier
         shell: bash

@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import math
+import re
 import statistics
 import subprocess
 import sys
@@ -30,9 +31,14 @@ MEDIUM_MIN_DELTA_SECONDS = 0.1
 MEDIUM_MIN_RELATIVE_DELTA = 0.20
 MEDIUM_SHARD_COUNT = 4
 TEST_SHARD_COUNT = 8
-REFRESH_BRANCH_PREFIX = "chore/fast-baseline-"
-BASELINE_PATH_PREFIX = "tests/fixtures/fast_tier_baseline/"
-REFRESH_COMPANION_FILES = frozenset({"quality/docs-reference-inventory.json"})
+SOURCE_RUN_SCAN_LIMIT = 60
+SOURCE_RUN_LIMIT = 20
+SOURCE_WORKFLOW = "ci.yml"
+SOURCE_WORKFLOW_PATH = ".github/workflows/ci.yml"
+SOURCE_EVENT = "pull_request"
+SOURCE_ARTIFACT_PATTERN = re.compile(r"fast-junit-(\d+)-(.+)")
+SOURCE_BASE_BRANCH = "develop"
+MAX_BASELINE_AGE_DAYS = 3
 BASELINE_MANIFEST_NAME = "fast-baseline-manifest.json"
 
 
@@ -783,34 +789,166 @@ def build_command(args: argparse.Namespace) -> int:
     return 0
 
 
-def gh_artifact_fetcher(repo: str | None) -> Callable[[int, Path], None]:
-    base = f"repos/{repo}" if repo else "repos/{owner}/{repo}"
+GhRunner = Callable[[list[str]], "subprocess.CompletedProcess[bytes]"]
 
+
+def run_gh(arguments: list[str]) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(["gh", *arguments], capture_output=True, check=False)
+
+
+def gh_api(runner: GhRunner, endpoint: str, **query: object) -> bytes:
+    arguments = ["api", endpoint]
+    if query:
+        arguments += ["--method", "GET"]
+    for key, value in query.items():
+        arguments += ["-f", f"{key}={value}"]
+    proc = runner(arguments)
+    if proc.returncode != 0:
+        raise BaselineError(f"gh api {endpoint} failed: {proc.stderr.decode(errors='replace').strip()}")
+    return proc.stdout
+
+
+def gh_json(runner: GhRunner, endpoint: str, **query: object) -> Any:
+    try:
+        return json.loads(gh_api(runner, endpoint, **query))
+    except ValueError as exc:
+        raise BaselineError(f"gh api {endpoint} returned invalid JSON: {exc}") from exc
+
+
+def parse_timestamp(value: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise BaselineError(f"not a timestamp: {value!r}") from exc
+    return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=timezone.utc)
+
+
+def gh_artifact_fetcher(runner: GhRunner, repo: str) -> Callable[[int, Path], None]:
     def fetch(artifact_id: int, destination: Path) -> None:
         destination.mkdir(parents=True, exist_ok=True)
         archive = destination.with_suffix(".zip")
-        with archive.open("wb") as handle:
-            proc = subprocess.run(
-                ["gh", "api", f"{base}/actions/artifacts/{artifact_id}/zip"],
-                stdout=handle,
-                stderr=subprocess.PIPE,
-                check=False,
-            )
-        if proc.returncode != 0:
-            raise BaselineError(
-                f"could not download artifact {artifact_id} (an expired artifact cannot be reproduced): "
-                f"{proc.stderr.decode(errors='replace').strip()}"
-            )
         try:
+            archive.write_bytes(gh_api(runner, f"repos/{repo}/actions/artifacts/{artifact_id}/zip"))
             with zipfile.ZipFile(archive) as bundle:
                 bundle.extractall(destination)
         except zipfile.BadZipFile as exc:
             raise BaselineError(f"artifact {artifact_id} is not a zip archive: {exc}") from exc
+        except BaselineError as exc:
+            raise BaselineError(
+                f"could not download artifact {artifact_id} (an expired artifact cannot be reproduced): {exc}"
+            ) from exc
 
     return fetch
 
 
-def reproduce_baseline(baseline_dir: Path, fetch: Callable[[int, Path], None], work_dir: Path) -> list[str]:
+def select_source_runs(runner: GhRunner, repo: str, cutoff: datetime) -> list[dict[str, Any]]:
+    stamp = cutoff.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    listing = gh_json(
+        runner,
+        f"repos/{repo}/actions/workflows/{SOURCE_WORKFLOW}/runs",
+        created=f"<={stamp}",
+        per_page=SOURCE_RUN_SCAN_LIMIT,
+    )["workflow_runs"][:SOURCE_RUN_SCAN_LIMIT]
+    merged: dict[int, bool] = {}
+    seen: set[int] = set()
+    kept: list[dict[str, Any]] = []
+    for run in listing:
+        if len(kept) >= SOURCE_RUN_LIMIT:
+            break
+        if run.get("status") != "completed" or run.get("conclusion") != "success":
+            continue
+        if parse_timestamp(str(run["updated_at"])) > cutoff:
+            continue
+        artifacts = gh_json(runner, f"repos/{repo}/actions/runs/{run['id']}/artifacts", per_page=100)["artifacts"]
+        for artifact in artifacts:
+            if len(kept) >= SOURCE_RUN_LIMIT:
+                break
+            named = SOURCE_ARTIFACT_PATTERN.fullmatch(str(artifact.get("name")))
+            if artifact.get("expired") or named is None:
+                continue
+            pr = int(named.group(1))
+            if pr in seen:
+                continue
+            if pr not in merged:
+                pull = gh_json(runner, f"repos/{repo}/pulls/{pr}")
+                merged_at = pull.get("merged_at")
+                merged[pr] = (
+                    merged_at is not None
+                    and (pull.get("base") or {}).get("ref") == SOURCE_BASE_BRANCH
+                    and parse_timestamp(str(merged_at)) <= cutoff
+                )
+            if not merged[pr]:
+                continue
+            seen.add(pr)
+            kept.append(
+                {
+                    "run_id": int(run["id"]),
+                    "pr": pr,
+                    "sha": str(artifact["name"]).rsplit("-", 1)[1],
+                    "artifact_id": int(artifact["id"]),
+                }
+            )
+    return kept
+
+
+def source_identity(record: dict[str, Any]) -> tuple[int, int, str, int]:
+    return (int(record["run_id"]), int(record["pr"]), str(record["sha"]), int(record["artifact_id"]))
+
+
+def run_provenance_problems(runner: GhRunner, repo: str, record: dict[str, Any]) -> list[str]:
+    run_id, pr, sha, artifact_id = source_identity(record)
+    label = f"run {run_id}"
+    problems = []
+    artifact = gh_json(runner, f"repos/{repo}/actions/artifacts/{artifact_id}")
+    source = artifact.get("workflow_run") or {}
+    if artifact.get("name") != f"fast-junit-{pr}-{sha}":
+        problems.append(f"{label}: artifact {artifact_id} is named {artifact.get('name')!r}, not fast-junit-{pr}-{sha}")
+    if artifact.get("expired"):
+        problems.append(f"{label}: artifact {artifact_id} has expired")
+    if source.get("id") != run_id or source.get("head_sha") != sha:
+        problems.append(f"{label}: artifact {artifact_id} was not produced by run {run_id} at {sha}")
+    run = gh_json(runner, f"repos/{repo}/actions/runs/{run_id}")
+    if str(run.get("path", "")).split("@", 1)[0] != SOURCE_WORKFLOW_PATH or run.get("event") != SOURCE_EVENT:
+        problems.append(f"{label}: is not a {SOURCE_EVENT} run of {SOURCE_WORKFLOW_PATH}")
+    if str((run.get("repository") or {}).get("full_name", "")).casefold() != repo.casefold():
+        problems.append(f"{label}: belongs to a different repository")
+    if run.get("head_sha") != sha:
+        problems.append(f"{label}: ran {run.get('head_sha')}, not {sha}")
+    pull = gh_json(runner, f"repos/{repo}/pulls/{pr}")
+    if pull.get("merged_at") is None or (pull.get("base") or {}).get("ref") != SOURCE_BASE_BRANCH:
+        problems.append(f"{label}: PR #{pr} is not merged into {SOURCE_BASE_BRANCH}")
+    return problems
+
+
+def provenance_problems(
+    runner: GhRunner, repo: str, committed: dict[str, Any], head_commit_time: datetime
+) -> list[str]:
+    generated = parse_timestamp(str(committed["generated_at"]))
+    age_days = (head_commit_time - generated).total_seconds() / 86400
+    problems = []
+    if age_days < 0:
+        problems.append(f"generated_at {committed['generated_at']} is later than the head commit")
+    elif age_days > MAX_BASELINE_AGE_DAYS:
+        problems.append(
+            f"generated_at {committed['generated_at']} is {age_days:.1f} days before the head commit "
+            f"(limit {MAX_BASELINE_AGE_DAYS})"
+        )
+    records = [*committed.get("runs", []), *committed.get("rejected_runs", [])]
+    for record in records:
+        problems += run_provenance_problems(runner, repo, record)
+    derived = {source_identity(record) for record in select_source_runs(runner, repo, generated)}
+    listed = {source_identity(record) for record in records}
+    if derived != listed:
+        problems.append(
+            f"source selection mismatch: only in the manifest {sorted(listed - derived)}; "
+            f"only in the re-derived selection {sorted(derived - listed)}"
+        )
+    return problems
+
+
+def reproduce_baseline(
+    baseline_dir: Path, fetch: Callable[[int, Path], None], work_dir: Path, collected_ids: set[str]
+) -> list[str]:
     committed = read_sharded_baseline(baseline_dir)
     records = [*committed.get("runs", []), *committed.get("rejected_runs", [])]
     if not records:
@@ -832,38 +970,31 @@ def reproduce_baseline(baseline_dir: Path, fetch: Callable[[int, Path], None], w
             problems.append(f"{name}: not produced by the build")
         elif (baseline_dir / name).read_bytes() != (rebuilt_dir / name).read_bytes():
             problems.append(f"{name}: differs from the rebuild")
+    report = check_baseline(rebuilt, entries, collected_ids)
+    if not report["sum_within_tolerance"]:
+        problems.append(f"gate check: baseline sum ratio {report['sum_ratio']} is outside the tolerance")
+    if not report["coverage_within_minimum"]:
+        problems.append(f"gate check: coverage {report['coverage']} is under the minimum")
     return problems
 
 
-def reproduce_command(args: argparse.Namespace) -> int:
+def reproduce_command(args: argparse.Namespace, runner: GhRunner = run_gh) -> int:
     baseline_dir = Path(args.baseline_dir)
+    committed = read_sharded_baseline(baseline_dir)
+    problems = provenance_problems(runner, args.repo, committed, parse_timestamp(args.head_commit_time))
     with tempfile.TemporaryDirectory() as work:
-        problems = reproduce_baseline(baseline_dir, gh_artifact_fetcher(args.repo), Path(work))
+        problems += reproduce_baseline(
+            baseline_dir,
+            gh_artifact_fetcher(runner, args.repo),
+            Path(work),
+            read_collected_ids(Path(args.collected_ids)),
+        )
     if problems:
         for problem in problems:
             print(f"::error title=reproduce-fast-baseline::{problem}")
         print(f"{baseline_dir} is not reproducible from the artifacts named in its manifest")
         return 1
     print(f"{baseline_dir} is byte-identical to a rebuild from the artifacts named in its manifest")
-    return 0
-
-
-def landing_branch_command(args: argparse.Namespace) -> int:
-    text = Path(args.changed_files).read_text(encoding="utf-8", errors="replace")
-    changed = {line.strip() for line in text.splitlines() if line.strip()}
-    if not any(path.startswith(BASELINE_PATH_PREFIX) for path in changed):
-        print("no baseline change in this diff")
-        return 0
-    confined = all(path.startswith(BASELINE_PATH_PREFIX) or path in REFRESH_COMPANION_FILES for path in changed)
-    if confined and not args.head_ref.startswith(REFRESH_BRANCH_PREFIX):
-        print(
-            f"::error title=fast-baseline::a change confined to the fast-tier baseline must come from a "
-            f"{REFRESH_BRANCH_PREFIX}* branch produced by the refresh workflow, not {args.head_ref!r}; "
-            "mixed changes go through ordinary review"
-        )
-        return 1
-    scope = "confined to the baseline" if confined else "mixed with other files"
-    print(f"baseline change {scope}; head branch {args.head_ref!r} accepted")
     return 0
 
 
@@ -908,14 +1039,10 @@ def main(argv: list[str] | None = None) -> int:
         "reproduce", help="Rebuild the committed baseline from its manifest's artifacts and compare bytes."
     )
     reproduce_parser.add_argument("--baseline-dir", required=True)
-    reproduce_parser.add_argument("--repo", default=None)
+    reproduce_parser.add_argument("--repo", required=True)
+    reproduce_parser.add_argument("--head-commit-time", required=True)
+    reproduce_parser.add_argument("--collected-ids", required=True)
     reproduce_parser.set_defaults(handler=reproduce_command)
-    landing_parser = subparsers.add_parser(
-        "landing-branch", help="Require the refresh branch for a diff confined to the committed baseline."
-    )
-    landing_parser.add_argument("--changed-files", required=True)
-    landing_parser.add_argument("--head-ref", required=True)
-    landing_parser.set_defaults(handler=landing_branch_command)
     check_parser = subparsers.add_parser("check", help="Gate-check a baseline against its source runs.")
     check_parser.add_argument("--baseline", required=True)
     check_parser.add_argument("--manifest", required=True)

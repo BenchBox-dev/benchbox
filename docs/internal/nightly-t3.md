@@ -106,15 +106,26 @@ the fallback `GITHUB_TOKEN` cannot trigger the normal downstream PR workflows.
 A refresh is not an automatic waiver for a failing PR.
 
 A change to `tests/fixtures/fast_tier_baseline/` runs the required
-`fast-baseline-reproduce` job inside `core`. `python -m
-scripts.build_fast_duration_baseline reproduce --baseline-dir
-tests/fixtures/fast_tier_baseline` downloads the artifacts named in the
-manifest, rebuilds with the committed code and `generated_at`, and fails unless
-the manifest and shards are byte-identical. A diff confined to the baseline
-(plus `quality/docs-reference-inventory.json`) must come from a
-`chore/fast-baseline-*` branch. Source artifacts expire after 14 days. The
-baseline directory is an inert path, so such a refresh PR is not held for
-review; the reproduce check is its machine-checked substitute.
+`fast-baseline-reproduce` job inside `core`, so it does not matter who opened
+the PR. The job runs the base branch's copy of `build_fast_duration_baseline.py`
+(and the modules it imports) against the PR head's fixture. `reproduce`
+downloads the artifacts named in the manifest and rebuilds with that code and
+the committed `generated_at`, and fails unless the manifest and shards are
+byte-identical. It also requires each run's artifact to be named
+`fast-junit-<pr>-<sha>`, unexpired and produced by that run and sha of
+`.github/workflows/ci.yml` on a `pull_request` event of this repository, whose PR
+merged into develop. It re-derives the refresh workflow's source selection (the
+newest 60 `ci.yml` runs created up to `generated_at`, completed and successful,
+one per merged PR, 20 at most) and requires it to equal the manifest's runs. The
+refresh workflow stamps `generated_at` just before its `gh run list` call, which
+is what makes the listing reproducible. `generated_at` must be no later than the
+head commit and at most 3 days before it. Finally it re-runs the baseline gate
+check (sum tolerance, coverage of the fast tier collected on the PR head).
+Source artifacts expire after 14 days. The baseline directory is an inert path,
+so a baseline-only PR is not held for review; the reproduce check is its
+machine-checked substitute. Bootstrap: the first PR that introduces or changes
+the script runs the base copy, which has no `reproduce`, so the job reports a
+notice and passes; this applies to the PR that introduced the check.
 
 The earlier 0.5-second per-test budget and `duration_exempt` marker are retired.
 Collection enforces the quarantine marker contract (owner, issue and unexpired

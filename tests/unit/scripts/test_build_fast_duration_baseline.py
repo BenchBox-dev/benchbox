@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import argparse
+import io
 import json
-import shutil
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 import pytest
+import yaml
 
 from scripts import build_fast_duration_baseline as baseline
 
@@ -581,49 +584,130 @@ def test_refreshed_medium_file_loads_in_every_consumer(tmp_path: Path) -> None:
     }
 
 
-def fetch_from(sources: dict[int, Path]):
-    def fetch(artifact_id: int, destination: Path) -> None:
-        shutil.copytree(sources[artifact_id], destination)
-
-    return fetch
+REPO = "owner/name"
+HEAD_COMMIT = "2026-10-25T01:00:00Z"
 
 
-def committed_from_fixture(tmp_path: Path) -> tuple[Path, dict[int, Path]]:
-    manifest, runs = build_fixture(tmp_path)
-    built, _ = baseline.build_baseline(baseline.load_manifest(manifest), GENERATED_AT)
-    committed = tmp_path / "committed"
-    baseline.write_sharded_baseline(committed, built)
-    return committed, {200: runs[0], 201: runs[1]}
+def zip_of(directory: Path) -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as bundle:
+        for path in sorted(directory.iterdir()):
+            bundle.write(path, path.name)
+    return buffer.getvalue()
 
 
-def test_reproduce_passes_on_a_baseline_built_from_the_manifest_artifacts(tmp_path: Path) -> None:
-    committed, sources = committed_from_fixture(tmp_path)
+class FakeGh:
+    def __init__(self, runs: list[Path]) -> None:
+        self.calls: list[list[str]] = []
+        self.responses: dict[str, object] = {}
+        listing = []
+        for index, run_dir in enumerate(runs):
+            run_id, pr, sha, artifact = 100 + index, 3500 + index, f"sha{index}", 200 + index
+            listing.append(
+                {
+                    "id": run_id,
+                    "status": "completed",
+                    "conclusion": "success",
+                    "updated_at": "2026-10-24T10:00:00Z",
+                }
+            )
+            base = f"repos/{REPO}"
+            self.responses[f"{base}/actions/runs/{run_id}/artifacts"] = {
+                "artifacts": [{"id": artifact, "name": f"fast-junit-{pr}-{sha}", "expired": False}]
+            }
+            self.responses[f"{base}/pulls/{pr}"] = {"merged_at": "2026-10-24T11:00:00Z", "base": {"ref": "develop"}}
+            self.responses[f"{base}/actions/artifacts/{artifact}"] = {
+                "name": f"fast-junit-{pr}-{sha}",
+                "expired": False,
+                "workflow_run": {"id": run_id, "head_sha": sha},
+            }
+            self.responses[f"{base}/actions/runs/{run_id}"] = {
+                "path": ".github/workflows/ci.yml",
+                "event": "pull_request",
+                "repository": {"full_name": REPO},
+                "head_sha": sha,
+            }
+            self.responses[f"{base}/actions/artifacts/{artifact}/zip"] = zip_of(run_dir)
+        self.responses[f"repos/{REPO}/actions/workflows/ci.yml/runs"] = {"workflow_runs": listing}
 
-    assert baseline.reproduce_baseline(committed, fetch_from(sources), tmp_path / "work") == []
+    def __call__(self, arguments: list[str]) -> subprocess.CompletedProcess[bytes]:
+        self.calls.append(arguments)
+        payload = self.responses.get(arguments[1])
+        if payload is None:
+            return subprocess.CompletedProcess(arguments, 1, b"", b"HTTP 404")
+        body = payload if isinstance(payload, bytes) else json.dumps(payload).encode()
+        return subprocess.CompletedProcess(arguments, 0, body, b"")
 
 
-def test_reproduce_fails_when_one_byte_of_a_shard_changes(tmp_path: Path) -> None:
-    committed, sources = committed_from_fixture(tmp_path)
-    shard = committed / f"tests-{baseline.test_shard_index('tests/test_sample.py::TestSample::test_alpha'):02d}.json"
+class World:
+    def __init__(self, tmp_path: Path) -> None:
+        manifest, runs = build_fixture(tmp_path)
+        built, _ = baseline.build_baseline(baseline.load_manifest(manifest), GENERATED_AT)
+        self.committed = tmp_path / "committed"
+        baseline.write_sharded_baseline(self.committed, built)
+        self.gh = FakeGh(runs)
+        self.collected = tmp_path / "collected.txt"
+        self.collected.write_text(
+            "tests/test_sample.py::TestSample::test_alpha\ntests/test_sample.py::TestSample::test_beta\n",
+            encoding="utf-8",
+        )
+
+    def reproduce(self, head_commit: str = HEAD_COMMIT) -> int:
+        args = argparse.Namespace(
+            baseline_dir=str(self.committed),
+            repo=REPO,
+            head_commit_time=head_commit,
+            collected_ids=str(self.collected),
+        )
+        return baseline.reproduce_command(args, self.gh)
+
+
+@pytest.fixture
+def world(tmp_path: Path) -> World:
+    return World(tmp_path)
+
+
+def test_reproduce_passes_when_bytes_provenance_selection_and_gate_check_agree(
+    world: World, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert world.reproduce() == 0
+    assert "byte-identical" in capsys.readouterr().out
+
+
+def test_the_listing_is_requested_with_a_created_cutoff_at_generated_at(world: World) -> None:
+    world.reproduce()
+
+    listing = next(call for call in world.gh.calls if call[1].endswith("/workflows/ci.yml/runs"))
+    assert listing[2:] == ["--method", "GET", "-f", "created=<=2026-10-25T00:00:00Z", "-f", "per_page=60"]
+
+
+def test_reproduce_fails_when_one_byte_of_a_shard_changes(world: World, capsys: pytest.CaptureFixture[str]) -> None:
+    shard = (
+        world.committed / f"tests-{baseline.test_shard_index('tests/test_sample.py::TestSample::test_alpha'):02d}.json"
+    )
     payload = bytearray(shard.read_bytes())
     payload[payload.index(b"1.5")] = ord("2")
     shard.write_bytes(bytes(payload))
 
-    problems = baseline.reproduce_baseline(committed, fetch_from(sources), tmp_path / "work")
+    assert world.reproduce() == 1
+    assert f"{shard.name}: differs from the rebuild" in capsys.readouterr().out
 
-    assert problems == [f"{shard.name}: differs from the rebuild"]
 
-
-def test_reproduce_fails_when_the_manifest_changes_or_a_file_is_extra(tmp_path: Path) -> None:
-    committed, sources = committed_from_fixture(tmp_path)
+def test_reproduce_fails_on_a_changed_manifest_or_an_extra_file(tmp_path: Path) -> None:
+    manifest, runs = build_fixture(tmp_path)
+    built, _ = baseline.build_baseline(baseline.load_manifest(manifest), GENERATED_AT)
+    committed = tmp_path / "committed"
+    baseline.write_sharded_baseline(committed, built)
     manifest_path = committed / baseline.BASELINE_MANIFEST_NAME
     manifest_path.write_text(
         manifest_path.read_text(encoding="utf-8").replace('"speed_factor": 1.5', '"speed_factor": 1.6'),
         encoding="utf-8",
     )
     (committed / "stray.json").write_text("[]\n", encoding="utf-8")
+    fetch = baseline.gh_artifact_fetcher(FakeGh(runs), REPO)
+    ids = {"tests/test_sample.py::TestSample::test_alpha", "tests/test_sample.py::TestSample::test_beta"}
 
-    problems = baseline.reproduce_baseline(committed, fetch_from(sources), tmp_path / "work")
+    problems = baseline.reproduce_baseline(committed, fetch, tmp_path / "work", ids)
 
     assert problems == [
         f"{baseline.BASELINE_MANIFEST_NAME}: differs from the rebuild",
@@ -631,62 +715,127 @@ def test_reproduce_fails_when_the_manifest_changes_or_a_file_is_extra(tmp_path: 
     ]
 
 
-def test_reproduce_command_exits_non_zero_on_a_difference_and_names_the_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+def test_a_swapped_manifest_run_is_a_selection_mismatch(world: World, capsys: pytest.CaptureFixture[str]) -> None:
+    extra = {"id": 102, "status": "completed", "conclusion": "success", "updated_at": "2026-10-24T12:00:00Z"}
+    base = f"repos/{REPO}"
+    world.gh.responses[f"{base}/actions/workflows/ci.yml/runs"]["workflow_runs"].insert(0, extra)
+    world.gh.responses[f"{base}/actions/runs/102/artifacts"] = {
+        "artifacts": [{"id": 202, "name": "fast-junit-3502-sha2", "expired": False}]
+    }
+    world.gh.responses[f"{base}/pulls/3502"] = {"merged_at": "2026-10-24T11:00:00Z", "base": {"ref": "develop"}}
+
+    assert world.reproduce() == 1
+    assert "source selection mismatch" in capsys.readouterr().out
+
+
+def test_selection_skips_unmerged_prs_duplicates_expired_and_trunk_artifacts(world: World) -> None:
+    base = f"repos/{REPO}"
+    listing = world.gh.responses[f"{base}/actions/workflows/ci.yml/runs"]["workflow_runs"]
+    listing.append({"id": 103, "status": "completed", "conclusion": "failure", "updated_at": "2026-10-24T12:00:00Z"})
+    listing.append({"id": 104, "status": "in_progress", "conclusion": None, "updated_at": "2026-10-24T12:00:00Z"})
+    listing.append({"id": 105, "status": "completed", "conclusion": "success", "updated_at": "2026-10-26T12:00:00Z"})
+    listing.append({"id": 106, "status": "completed", "conclusion": "success", "updated_at": "2026-10-24T12:00:00Z"})
+    world.gh.responses[f"{base}/actions/runs/106/artifacts"] = {
+        "artifacts": [
+            {"id": 300, "name": "fast-junit-trunk-abc", "expired": False},
+            {"id": 301, "name": "fast-junit-3600-sha6", "expired": True},
+            {"id": 302, "name": "fast-junit-3500-sha0", "expired": False},
+            {"id": 303, "name": "fast-junit-3601-sha7", "expired": False},
+        ]
+    }
+    world.gh.responses[f"{base}/pulls/3601"] = {"merged_at": None, "base": {"ref": "develop"}}
+
+    selected = baseline.select_source_runs(world.gh, REPO, baseline.parse_timestamp(GENERATED_AT))
+
+    assert [item["run_id"] for item in selected] == [100, 101]
+
+
+def test_selection_stops_at_the_source_run_limit(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(baseline, "SOURCE_RUN_LIMIT", 1)
+
+    selected = baseline.select_source_runs(world.gh, REPO, baseline.parse_timestamp(GENERATED_AT))
+
+    assert [item["run_id"] for item in selected] == [100]
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "change", "message"),
+    [
+        ("actions/artifacts/200", {"name": "fast-junit-1-x"}, "is named"),
+        ("actions/artifacts/200", {"expired": True}, "has expired"),
+        ("actions/artifacts/200", {"workflow_run": {"id": 999, "head_sha": "sha0"}}, "was not produced by run 100"),
+        ("actions/runs/100", {"path": ".github/workflows/other.yml"}, "is not a pull_request run"),
+        ("actions/runs/100", {"event": "push"}, "is not a pull_request run"),
+        ("actions/runs/100", {"repository": {"full_name": "other/name"}}, "different repository"),
+        ("actions/runs/100", {"head_sha": "zzz"}, "ran zzz"),
+        ("pulls/3500", {"merged_at": None}, "is not merged into develop"),
+        ("pulls/3500", {"base": {"ref": "main"}}, "is not merged into develop"),
+    ],
+)
+def test_each_provenance_condition_fails_reproduce(
+    world: World, capsys: pytest.CaptureFixture[str], endpoint: str, change: dict[str, object], message: str
 ) -> None:
-    committed, sources = committed_from_fixture(tmp_path)
-    monkeypatch.setattr(baseline, "gh_artifact_fetcher", lambda repo: fetch_from(sources))
+    response = world.gh.responses[f"repos/{REPO}/{endpoint}"]
+    assert isinstance(response, dict)
+    response.update(change)
 
-    assert baseline.main(["reproduce", "--baseline-dir", str(committed)]) == 0
-    (committed / "tests-00.json").write_bytes((committed / "tests-00.json").read_bytes() + b" ")
-    assert baseline.main(["reproduce", "--baseline-dir", str(committed)]) == 1
-    assert "tests-00.json: differs from the rebuild" in capsys.readouterr().out
+    assert world.reproduce() == 1
+    assert message in capsys.readouterr().out
 
 
-def test_the_gh_fetcher_reports_an_expired_artifact(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("head_commit", "message"),
+    [
+        ("2026-10-24T23:59:59Z", "is later than the head commit"),
+        ("2026-10-28T00:00:01Z", "days before the head commit"),
+    ],
+)
+def test_generated_at_must_precede_the_head_commit_by_at_most_three_days(
+    world: World, capsys: pytest.CaptureFixture[str], head_commit: str, message: str
+) -> None:
+    assert world.reproduce(head_commit) == 1
+    assert message in capsys.readouterr().out
+
+
+def test_the_baseline_gate_check_runs_on_the_rebuilt_baseline(world: World, capsys: pytest.CaptureFixture[str]) -> None:
+    world.collected.write_text("tests/other.py::test_missing\n", encoding="utf-8")
+
+    assert world.reproduce() == 1
+    assert "gate check: coverage" in capsys.readouterr().out
+
+
+def test_the_gh_fetcher_reports_an_expired_artifact(tmp_path: Path) -> None:
+    with pytest.raises(baseline.BaselineError, match="expired"):
+        baseline.gh_artifact_fetcher(FakeGh([]), REPO)(9, tmp_path / "artifact-9")
+
+
+def test_the_gh_runner_is_injectable_and_the_default_calls_the_gh_cli(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[list[str]] = []
+
     def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
-        return subprocess.CompletedProcess(command, 1, b"", b"HTTP 410: artifact expired")
+        seen.append(command)
+        return subprocess.CompletedProcess(command, 0, b"{}", b"")
 
     monkeypatch.setattr(baseline.subprocess, "run", fake_run)
 
-    with pytest.raises(baseline.BaselineError, match="expired"):
-        baseline.gh_artifact_fetcher("owner/name")(9, tmp_path / "artifact-9")
+    assert baseline.gh_json(baseline.run_gh, "repos/o/n") == {}
+    assert seen == [["gh", "api", "repos/o/n"]]
 
 
-def landing(tmp_path: Path, files: list[str], head_ref: str) -> int:
-    listing = tmp_path / "changed.txt"
-    listing.write_text("".join(f"{name}\n" for name in files), encoding="utf-8")
-    return baseline.main(["landing-branch", "--changed-files", str(listing), "--head-ref", head_ref])
-
-
-BASELINE_SHARD = "tests/fixtures/fast_tier_baseline/tests-00.json"
-
-
-def test_a_baseline_only_change_from_the_refresh_branch_is_accepted(tmp_path: Path) -> None:
-    files = [BASELINE_SHARD, f"tests/fixtures/fast_tier_baseline/{baseline.BASELINE_MANIFEST_NAME}"]
-
-    assert landing(tmp_path, files, "chore/fast-baseline-20261120-12") == 0
-
-
-def test_the_refresh_companion_inventory_still_counts_as_baseline_only(tmp_path: Path) -> None:
-    files = [BASELINE_SHARD, "quality/docs-reference-inventory.json"]
-
-    assert landing(tmp_path, files, "chore/fast-baseline-20261120-12") == 0
-    assert landing(tmp_path, files, "feat/hand-edit") == 1
-
-
-def test_a_baseline_only_change_from_any_other_branch_is_refused(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    assert landing(tmp_path, [BASELINE_SHARD], "feat/hand-edit") == 1
-    assert "::error title=fast-baseline::" in capsys.readouterr().out
-
-
-def test_a_baseline_change_mixed_with_other_files_goes_through_ordinary_review(tmp_path: Path) -> None:
-    files = [BASELINE_SHARD, "scripts/build_fast_duration_baseline.py"]
-
-    assert landing(tmp_path, files, "feat/duration-gate") == 0
-
-
-def test_a_diff_without_baseline_files_is_not_this_checks_business(tmp_path: Path) -> None:
-    assert landing(tmp_path, ["scripts/other.py"], "feat/anything") == 0
+def test_the_refresh_workflow_and_the_reproduction_use_the_same_selection() -> None:
+    path = Path(__file__).resolve().parents[3] / ".github" / "workflows" / "fast-duration-baseline-refresh.yml"
+    refresh = yaml.safe_load(path.read_text(encoding="utf-8"))["jobs"]["refresh"]
+    step = next(item for item in refresh["steps"] if item.get("name", "").startswith("Fetch recent merged-PR"))
+    run = step["run"]
+    assert int(step["env"]["MAX_RUNS_SCAN"]) == baseline.SOURCE_RUN_SCAN_LIMIT
+    assert int(step["env"]["MAX_SOURCE_RUNS"]) == baseline.SOURCE_RUN_LIMIT
+    assert f"--workflow {baseline.SOURCE_WORKFLOW}" in run
+    assert 'run.get("conclusion") == "success"' in run
+    assert 'run["status"] == "completed"' in run
+    assert 'startswith("fast-junit-")' in run
+    assert 'case "$name" in fast-junit-trunk-*) continue;; esac' in run
+    assert '[ "$state" = "MERGED develop" ] || continue' in run
+    assert "seen_pr" in run
+    assert run.index("generated_at=$(date -u") < run.index("gh run list")
+    build = next(item for item in refresh["steps"] if item.get("name") == "Build the refreshed baseline")
+    assert '--generated-at "$GENERATED_AT"' in build["run"]
