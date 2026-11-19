@@ -42728,6 +42728,13 @@
       "status": "open",
       "title": "Theseus: `theseus infra setup` and `theseus infra rotate` recreate and rotate a consumer's review infrastructure without manual steps"
     },
+    "theseus-infra-tailscale-error-message-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Theseus infra: report Tailscale's error message when creating an OAuth client fails"
+    },
     "theseus-known-defect-base-reproduction-proof-20261109": {
       "claim": null,
       "needs": [

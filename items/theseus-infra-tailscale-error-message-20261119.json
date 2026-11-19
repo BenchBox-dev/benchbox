@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A failed OAuth-client creation reports Tailscale's message text.",
+    "docs/infra.md states the root client's tag requirement.",
+    "Merged under G7."
+  ],
+  "description": "`tailscale.py` create_oauth_client raises 'cannot create the OAuth client (HTTP 400)' and drops the response body. During the first live `setup --apply` (2026-11-19) the body was {\"message\":\"requested tags [tag:theseus-ci] are invalid or not permitted\"}, which is the actionable cause: the root OAuth client's oauth_keys scope must carry the CI tags, or tags that own them. Finding it needed a hand-patched run.\n\nInclude Tailscale's `message` (redacted through the existing redactor) in TailscaleError for create_oauth_client, and likewise for get/save policy and delete. docs/infra.md should also say that the root client's OAuth Keys and Auth Keys scopes must be tagged with every consumer's CI tag, or with a tag that owns them.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b5abc8a4010555c0d8f96bb",
+      "at": "2026-11-19T14:14:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "986d7915015b4d24aad9b2b49b6250d4",
+      "session_id": "045b6d4d12cf4622b6f5f4ab89e94f4e"
+    }
+  ]
+}
