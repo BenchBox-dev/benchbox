@@ -295,7 +295,9 @@ FRAGMENT = "changelog.d/fix-x.json"
         ("refactor(core): extract helper", False),
         ("style: format", False),
         ("test(core): cover edge", False),
-        ('Revert "feat(core): add a thing"', False),
+        ('Revert "feat(core): add a thing"', True),
+        ("revert: undo a thing", True),
+        ("revert!: undo a thing", True),
     ],
 )
 def test_required_decision_per_title_type(rules: tuple[object, ...], title: str, required: bool) -> None:
@@ -307,6 +309,37 @@ def test_required_decision_per_title_type(rules: tuple[object, ...], title: str,
 def test_release_identity_change_exempts_otherwise_required_title(rules: tuple[object, ...]) -> None:
     assert not cf.decide_required("feat: x y", SHIPPED, rules, release_identity_changed=True).required
     assert cf.decide_required("feat: x y", SHIPPED, rules, release_identity_changed=False).required
+
+
+@pytest.mark.parametrize("title", ['Revert "feat(core): add a thing"', "revert: undo a thing"])
+def test_a_revert_that_deletes_a_fragment_needs_no_new_one(rules: tuple[object, ...], title: str) -> None:
+    decision = cf.decide_required(title, [*SHIPPED, FRAGMENT], rules, added_paths=[], deleted_paths=[FRAGMENT])
+    assert decision.ok and not decision.required
+
+
+@pytest.mark.parametrize("title", ['Revert "feat(core): add a thing"', "revert: undo a thing"])
+def test_a_revert_of_shipped_code_without_a_deleted_fragment_needs_one(rules: tuple[object, ...], title: str) -> None:
+    refused = cf.decide_required(title, [*SHIPPED, FRAGMENT], rules, added_paths=[])
+    assert refused.required and not refused.ok
+    accepted = cf.decide_required(title, [*SHIPPED, FRAGMENT], rules, added_paths=[FRAGMENT])
+    assert accepted.ok
+
+
+def test_a_breaking_revert_title_still_needs_a_fragment_despite_a_deletion(rules: tuple[object, ...]) -> None:
+    decision = cf.decide_required(
+        "revert!: undo a thing", [*SHIPPED, FRAGMENT], rules, added_paths=[], deleted_paths=[FRAGMENT]
+    )
+    assert decision.required and not decision.ok
+
+
+def test_a_non_revert_title_gets_no_deletion_exemption(rules: tuple[object, ...]) -> None:
+    assert cf.decide_required(
+        "fix: repair", [*SHIPPED, FRAGMENT], rules, added_paths=[], deleted_paths=[FRAGMENT]
+    ).required
+
+
+def test_a_revert_touching_no_shipped_path_needs_no_fragment(rules: tuple[object, ...]) -> None:
+    assert cf.decide_required("revert: undo a doc", ["docs/a.md"], rules).ok
 
 
 @pytest.mark.parametrize(

@@ -355,6 +355,7 @@ def decide_required(
     release_identity_changed: bool = False,
     user_entry_fragments: Iterable[str] = (),
     added_paths: Iterable[str] | None = None,
+    deleted_paths: Iterable[str] = (),
 ) -> Decision:
     paths = [normalize_path(path) for path in changed_paths]
     user_entries = list(user_entry_fragments)
@@ -365,8 +366,9 @@ def decide_required(
     scope = match.group("scope") if match else None
     breaking_title = bool(match and match.group("bang"))
 
-    if title.startswith('Revert "'):
-        return Decision(False, satisfied, "revert pull request")
+    is_revert = title.startswith('Revert "') or pr_type == "revert"
+    if is_revert and not breaking_title and any(is_fragment_path(path) for path in deleted_paths):
+        return Decision(False, satisfied, "revert deletes an unreleased changelog fragment")
     if release_identity_changed:
         return Decision(False, satisfied, "release identity changed")
     if not any(matches_manifest(path, rules) for path in paths):
@@ -378,10 +380,12 @@ def decide_required(
         if user_entries:
             warnings = (f"a '{pr_type}' pull request adds a user-facing changelog entry; use a user-facing title type",)
         return Decision(False, satisfied, f"title type '{pr_type}' needs no entry", warnings)
-    if match is None:
-        reason = "title is not a conventional commit title"
-    elif breaking_title:
+    if breaking_title:
         reason = "breaking title"
+    elif is_revert:
+        reason = "revert of a change that is not an unreleased fragment"
+    elif match is None:
+        reason = "title is not a conventional commit title"
     elif pr_type == "chore":
         reason = "dependency update"
     elif pr_type in REQUIRED_TYPES:
@@ -551,10 +555,14 @@ def evaluate_required(args: argparse.Namespace) -> int:
         return EXIT_USAGE
     root = Path(args.root)
     user_entries = []
+    deleted = []
     for path in changed:
         if not is_fragment_path(path):
             continue
         candidate = root / normalize_path(path)
+        if not candidate.exists() and not candidate.is_symlink():
+            deleted.append(path)
+            continue
         if not candidate.is_file():
             continue
         fragment, _ = parse_fragment(candidate)
@@ -567,6 +575,7 @@ def evaluate_required(args: argparse.Namespace) -> int:
         release_identity_changed=identity_changed,
         user_entry_fragments=user_entries,
         added_paths=added,
+        deleted_paths=deleted,
     )
     for warning in decision.warnings:
         print(f"warning: {warning}", file=sys.stderr)

@@ -72,11 +72,86 @@ def test_user_facing_titles_touching_shipped_paths_need_a_fragment(tmp_path: Pat
         "ci: tune a thing",
         "refactor: reshape a thing",
         "chore: tidy a thing",
-        'Revert "feat: add a thing"',
     ],
 )
 def test_internal_titles_touching_shipped_paths_need_no_fragment(tmp_path: Path, title: str) -> None:
     assert _check(tmp_path, title, [SHIPPED]).returncode == 0
+
+
+@pytest.mark.parametrize("title", ['Revert "feat: add a thing"', "revert: undo a thing"])
+def test_a_revert_needs_a_fragment_unless_it_deletes_one(tmp_path: Path, title: str) -> None:
+    fragment = "changelog.d/feat-thing.json"
+    added = tmp_path / "added.txt"
+    added.write_text("", encoding="utf-8")
+    nothing_added = ["--added-files-from", str(added)]
+    assert _check(tmp_path, title, [SHIPPED], *nothing_added).returncode == 1
+    assert _check(tmp_path, title, [SHIPPED, fragment], *nothing_added).returncode == 0
+    (tmp_path / "changelog.d").mkdir()
+    (tmp_path / fragment).write_text(
+        '{"schema": 1, "entries": [{"category": "fixed", "text": "Fixed a thing in the runner."}]}\n',
+        encoding="utf-8",
+    )
+    kept = _check(tmp_path, title, [SHIPPED, fragment], *nothing_added)
+    assert kept.returncode == 1
+    assert "changelog entry required" in kept.stdout
+    added.write_text(f"{fragment}\n", encoding="utf-8")
+    assert _check(tmp_path, title, [SHIPPED, fragment], *nothing_added).returncode == 0
+
+
+def test_a_trunk_revert_of_a_change_that_added_a_fragment_passes_the_gate(tmp_path: Path) -> None:
+    def git(*args: str) -> str:
+        return subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", *args],
+            cwd=tmp_path,
+            capture_output=True,
+            encoding="utf-8",
+            check=True,
+        ).stdout.strip()
+
+    git("init", "-q", "-b", "develop")
+    (tmp_path / "benchbox/core").mkdir(parents=True)
+    (tmp_path / "benchbox/core/runner.py").write_text("VALUE = 1\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-q", "-m", "base")
+    (tmp_path / "benchbox/core/runner.py").write_text("VALUE = 2\n", encoding="utf-8")
+    (tmp_path / "changelog.d").mkdir()
+    (tmp_path / "changelog.d/fix-runner.json").write_text(
+        '{"schema": 1, "entries": [{"category": "fixed", "text": "Fixed the runner value."}]}\n', encoding="utf-8"
+    )
+    git("add", "-A")
+    git("commit", "-q", "-m", "fix: runner value (#5)")
+    culprit = git("rev-parse", "HEAD")
+    git("revert", "--no-edit", culprit)
+    subject = 'Revert "fix: runner value" (#5)'
+    git("commit", "-q", "--amend", "-m", subject, "-m", f"This reverts commit {culprit}.")
+    changed = git("diff", "--name-only", "--no-renames", "--diff-filter=ACDMRT", f"{culprit}...HEAD")
+    added = git("diff", "--name-only", "--diff-filter=A", f"{culprit}...HEAD")
+    assert changed.splitlines() == ["benchbox/core/runner.py", "changelog.d/fix-runner.json"]
+    assert added == ""
+    assert not (tmp_path / "changelog.d/fix-runner.json").exists()
+    (tmp_path / "changed.txt").write_text(changed + "\n", encoding="utf-8")
+    (tmp_path / "added.txt").write_text("", encoding="utf-8")
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--root",
+            str(tmp_path),
+            "required",
+            "--title",
+            subject,
+            "--manifest",
+            str(MANIFEST),
+            "--changed-files-from",
+            str(tmp_path / "changed.txt"),
+            "--added-files-from",
+            str(tmp_path / "added.txt"),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def _repo_with_version(tmp_path: Path, before: str, after: str) -> str:
@@ -174,3 +249,16 @@ def test_modified_or_deleted_fragments_do_not_satisfy_when_only_added_files_coun
     added.write_text("changelog.d/new.json\n", encoding="utf-8")
     accepted = subprocess.run(args, capture_output=True, text=True, cwd=root)
     assert accepted.returncode == 0, accepted.stderr
+
+
+def test_a_broken_symlink_fragment_is_not_a_deleted_fragment(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("symlinks need privileges on Windows")
+    (tmp_path / "changelog.d").mkdir()
+    (tmp_path / "changelog.d/feat-thing.json").symlink_to(tmp_path / "missing-target")
+    added = tmp_path / "added.txt"
+    added.write_text("", encoding="utf-8")
+    result = _check(
+        tmp_path, "revert: undo a thing", [SHIPPED, "changelog.d/feat-thing.json"], "--added-files-from", str(added)
+    )
+    assert result.returncode == 1

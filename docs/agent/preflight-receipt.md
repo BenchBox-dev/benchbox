@@ -24,6 +24,15 @@ can read what ran.
    `<!-- preflight-receipt: v1 begin tree=… -->` and `<!-- preflight-receipt: v1 end -->`, replacing the section
    from an earlier push of the same PR.
 
+## Dry runs
+
+GNU Make runs any recipe line that contains `$(MAKE)` even under `-n`, `-q` or `-t`, so the landing targets whose
+recipes call `$(MAKE)` (`pr-preflight`, `pr-preflight-fast-tests`, `pr-content-guard`, `pr-open`, `pr-refresh`,
+`pr-fanout`, `pr-ready`, `pr-arm-auto-merge`) check the first word of `MAKEFLAGS` themselves. Under a dry run they print
+`dry-run (-n, -q or -t): skipping <target>` and run nothing: no fetch, push, merge, receipt, `gh` call or arming.
+The recipe exits 0. Make itself exits 0 under `-n` and `-t`; under `-q` it reports its own question status (0 or 1,
+depending on the Make version).
+
 ## Theseus install
 
 The tests that need the verified Theseus install (`theseus_engine` in `tests/unit/scripts/conftest.py`) never touch the
