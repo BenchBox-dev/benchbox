@@ -763,6 +763,7 @@ class TestDatabaseValidator:
                 patch.object(TuningValidator, "validate") as mock_tuning,
                 patch.object(SchemaValidator, "validate") as mock_schema,
                 patch.object(RowCountValidator, "validate") as mock_rows,
+                patch.object(DatabaseValidator, "_refresh_issue", return_value=None),
             ):
                 mock_tuning.return_value = ValidationResult(is_valid=True)
                 mock_schema.return_value = ValidationResult(is_valid=True)
@@ -774,6 +775,56 @@ class TestDatabaseValidator:
                 assert isinstance(result, DatabaseValidationResult)
                 assert result.is_valid is True
                 assert result.can_reuse is True
+                assert result.refreshed is False
+
+    def test_validate_refuses_a_database_a_refresh_run_modified_even_when_everything_else_passes(self):
+        mock_adapter = Mock()
+        mock_adapter.tuning_enabled = False
+        mock_adapter.benchmark_instance = Mock()
+        mock_adapter.get_effective_tuning_configuration = Mock(return_value=None)
+        mock_adapter.log_operation_start = Mock()
+        mock_adapter.log_operation_complete = Mock()
+        mock_adapter.log_very_verbose = Mock()
+
+        with patch.object(ConnectionValidator, "create_temporary_connection") as mock_conn_mgr:
+            mock_conn_mgr.return_value.__enter__ = Mock(return_value=Mock())
+            mock_conn_mgr.return_value.__exit__ = Mock(return_value=False)
+            with (
+                patch.object(TuningValidator, "validate", return_value=ValidationResult(is_valid=True)),
+                patch.object(SchemaValidator, "validate", return_value=ValidationResult(is_valid=True)),
+                patch.object(RowCountValidator, "validate", return_value=ValidationResult(is_valid=True)),
+                patch.object(
+                    DatabaseValidator, "_refresh_issue", return_value="Database was modified by TPC-H refresh functions"
+                ),
+            ):
+                result = DatabaseValidator(mock_adapter, {}).validate()
+
+        assert result.refreshed is True
+        assert result.is_valid is False
+        assert result.can_reuse is False
+        assert any("refresh functions" in issue for issue in result.issues)
+
+    def test_refresh_issue_is_not_probed_on_platforms_without_refresh_functions(self):
+        mock_adapter = Mock()
+        mock_adapter.supports_refresh_functions = False
+
+        with patch("benchbox.core.tuning.metadata.TuningMetadataManager") as manager:
+            assert DatabaseValidator(mock_adapter, {})._refresh_issue(Mock()) is None
+
+        manager.assert_not_called()
+
+    def test_refresh_issue_reports_an_unreadable_marker_instead_of_assuming_the_database_is_clean(self):
+        mock_adapter = Mock()
+        mock_adapter.supports_refresh_functions = True
+        mock_adapter.canonical_platform_type = "duckdb"
+
+        with patch("benchbox.core.tuning.metadata.TuningMetadataManager") as manager:
+            manager.return_value.has_refresh_marker.side_effect = RuntimeError("catalog unreachable")
+            issue = DatabaseValidator(mock_adapter, {})._refresh_issue(Mock())
+
+        assert issue is not None
+        assert "Could not determine whether TPC-H refresh functions modified" in issue
+        assert "catalog unreachable" in issue
 
     def test_validate_with_errors(self):
 

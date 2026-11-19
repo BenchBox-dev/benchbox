@@ -17,7 +17,6 @@ pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "sync-results-data-to-published.yml"
-DRIFT_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "corpus-drift-check.yml"
 BUNDLES_DIR = "results-data/bundles"
 
 
@@ -111,6 +110,24 @@ def test_sync_workflow_revalidates_publication_after_pr_creation() -> None:
     assert "Re-run the mirror workflow" in verify_step["run"]
     assert 'echo "::error::${STALE_REASON}' in verify_step["run"]
     assert "exit 1" in verify_step["run"]
+
+
+def test_sync_workflow_merges_only_a_validated_fresh_mirror_head() -> None:
+    workflow = yaml.safe_load(WORKFLOW_PATH.read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["mirror"]["steps"]
+    names = [step.get("name") for step in steps]
+    validate_step = next(step for step in steps if step.get("id") == "validate")
+    merge_step = next(step for step in steps if step.get("name") == "Merge the validated mirror PR")
+
+    assert "scripts/publication/validator_parity.py" in validate_step["run"]
+    assert "--corpus-changed-paths" in validate_step["run"]
+    assert "always()" not in merge_step["if"]
+    assert "steps.validate.outputs.state == 'success'" in merge_step["if"]
+    assert names.index("Verify mirror PR publication freshness") < names.index("Merge the validated mirror PR")
+    assert names.index("Close superseded mirror PRs") < names.index("Merge the validated mirror PR")
+    assert 'gh pr merge "${PR_NUMBER}" --squash --match-head-commit "${MIRROR_HEAD_SHA}"' in merge_step["run"]
+    run = merge_step["run"]
+    assert run.index('"${CURRENT_PUBLISHED_SHA}" != "${PUBLISHED_BASE_SHA}"') < run.index("gh pr merge")
 
 
 def test_sync_workflow_references_publication_fixed_point_gate() -> None:
@@ -287,24 +304,21 @@ def test_runtime_drift_copies_exact_source_and_preserves_published_only_archive(
     assert _run(["git", "diff", "--cached", "--name-only"], cwd=repo) == helper
 
 
+def _drift_script_pathspecs(profile: str) -> list[str]:
+    from scripts import corpus_drift
+
+    return list(corpus_drift.PROFILES[profile])
+
+
 def test_drift_check_ignores_derived_inventory_difference() -> None:
-    workflow = yaml.safe_load(DRIFT_WORKFLOW_PATH.read_text(encoding="utf-8"))
-    steps = workflow["jobs"]["corpus-drift"]["steps"]
-    compare = next(step for step in steps if step.get("name") == "Compare the mirrored corpus paths (directional)")
-    run = compare["run"]
-    path_specs = run.split("PATHSPECS=(", 1)[1].split(")", 1)[0]
-    assert "results-data/bundles" in path_specs
-    assert "results-data/corpus-inventory.json" not in path_specs
+    for profile in ("canary", "nightly"):
+        path_specs = _drift_script_pathspecs(profile)
+        assert "results-data/bundles" in path_specs
+        assert "results-data/corpus-inventory.json" not in path_specs
 
 
 def _drift_check_pathspecs() -> list[str]:
-    workflow = yaml.safe_load(DRIFT_WORKFLOW_PATH.read_text(encoding="utf-8"))
-    compare = next(
-        step
-        for step in workflow["jobs"]["corpus-drift"]["steps"]
-        if step.get("name") == "Compare the mirrored corpus paths (directional)"
-    )
-    return shlex.split(compare["run"].split("PATHSPECS=(", 1)[1].split(")", 1)[0])
+    return _drift_script_pathspecs("canary")
 
 
 def test_drift_check_pathspec_matches_sync_list_except_derived_inventory() -> None:
@@ -315,6 +329,15 @@ def test_drift_check_pathspec_matches_sync_list_except_derived_inventory() -> No
     assert sorted(drift_paths) == sorted(set(compare_paths) - {"results-data/corpus-inventory.json"})
     assert sorted(drift_paths) == sorted([BUNDLES_DIR, *copy_paths])
     assert not [path for path in drift_paths if "*" in path]
+
+
+def test_drift_script_mirror_identity_matches_sync_workflow() -> None:
+    from scripts import corpus_drift
+
+    sync = WORKFLOW_PATH.read_text(encoding="utf-8")
+    assert f'MIRROR_BRANCH="{corpus_drift.MIRROR_BRANCH_PREFIX}$' in sync
+    assert corpus_drift.MIRROR_TITLE_PREFIX in sync
+    assert f'-f context="{corpus_drift.VALIDATE_STATUS_CONTEXT}"' in sync
 
 
 def test_mirror_allowlist_excludes_modules_the_variant_identity_import_needs() -> None:

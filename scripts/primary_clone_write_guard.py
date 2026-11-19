@@ -123,11 +123,14 @@ def repository_layout(cwd: Path) -> tuple[Path, Path, list[Path]] | None:
     listing = _git(["worktree", "list", "--porcelain"], cwd)
     if common_dir is None or listing is None:
         return None
-    override = os.environ.get(PRIMARY_ENV)
-    primary = Path(override).resolve() if override else common_dir.parent
     worktrees = [
         Path(line[len("worktree ") :]).resolve() for line in listing.splitlines() if line.startswith("worktree ")
     ]
+    override = os.environ.get(PRIMARY_ENV)
+    listed_override = [
+        path for path in worktrees if override and path.exists() and _same(path, Path(override).resolve())
+    ]
+    primary = listed_override[0] if listed_override else common_dir.parent
     linked = [path for path in worktrees if not _same(path, primary)]
     return common_dir, primary, linked
 

@@ -4,6 +4,7 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -254,6 +255,20 @@ def test_cancellation_cleanup_retries_wait_when_interrupted(monkeypatch):
     timeouts._kill_and_reap_process_group(proc)
 
     assert proc.wait_calls == 2
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX process reaping")
+def test_a_child_is_reaped_when_an_interrupted_wait_left_the_popen_wait_lock_held():
+    victim = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], preexec_fn=os.setsid)
+    assert victim._waitpid_lock.acquire(False)
+    try:
+        timeouts._kill_and_reap_process_group(victim)
+        assert _await_process_state(victim.pid, {_PROC_GONE}) == _PROC_GONE
+        for reaper in [t for t in threading.enumerate() if t.name == f"reap-{victim.pid}"]:
+            reaper.join(timeout=_STATE_TIMEOUT_S)
+        assert victim.returncode is not None and victim.returncode < 0
+    finally:
+        victim._waitpid_lock.release()
 
 
 def test_run_with_timeout_zero_timeout_kills_group_on_base_exception(monkeypatch):

@@ -16,6 +16,7 @@ CLIENTS_FILE=$GATEWAY_DIR/clients.json
 DENYLIST_FILE=$GATEWAY_DIR/disabled-providers
 GATEWAY_CONFIG=$GATEWAY_DIR/home/.omp/agent/config.yml
 STATE_FILE=$GATEWAY_DIR/monitor.state
+PENDING_FILE=$GATEWAY_DIR/monitor.pending
 SCRATCH=
 DEVELOP_DIR=
 ACCOUNTS_FILE=
@@ -551,20 +552,49 @@ health_collect() {
   check_gateway_scope "http://127.0.0.1:$GATEWAY_PORT"
   url=$(tailnet_url)
   check_gateway_scope "$url"
-  check_usage_probes
+  check_usage_probes "$(printf '%s' "$report" | jq -r '.providers | to_entries[] | select(.value.granted and .value.served) | .key')"
   [ "$rc" -ne 3 ] || [ "$DEGRADED_COUNT" -gt 0 ] || note_degraded "gateway-providers reports a degraded state with no provider reason"
   [ "$DEGRADED_COUNT" -eq 0 ] || return 3
 }
 
+probe_statuses() {
+  printf '%s\n' "$1" | awk '
+    /^[^[:space:]][^[:space:]]* \([0-9]+\)$/ { provider = $1; next }
+    /^[^[:space:]]/ { provider = ""; next }
+    provider != "" && NF > 0 { print provider, $1 }
+  '
+}
+
 check_usage_probes() {
-  local output
+  local served=$1 output rc=0 statuses name problems=0
   mkdir -p "$GATEWAY_DIR/home"
-  if output=$(HOME="$GATEWAY_DIR/home" OMP_AUTH_BROKER_URL="http://127.0.0.1:$BROKER_PORT" \
-    OMP_AUTH_BROKER_TOKEN=$(cat "$BROKER_TOKEN_FILE") "$OMP" auth-gateway check 2>&1); then
-    echo "usage probes: ok"
-  else
+  output=$(HOME="$GATEWAY_DIR/home" OMP_AUTH_BROKER_URL="http://127.0.0.1:$BROKER_PORT" \
+    OMP_AUTH_BROKER_TOKEN=$(cat "$BROKER_TOKEN_FILE") "$OMP" auth-gateway check 2>&1) || rc=$?
+  statuses=$(probe_statuses "$output")
+  if [ "$rc" -ne 0 ] && [ -z "$statuses" ]; then
     note_degraded "usage probe: omp auth-gateway check failed; run it on the host for the provider and cause"
+    return 0
   fi
+  while read -r name; do
+    [ -n "$name" ] || continue
+    if printf '%s\n' "$statuses" | grep -qxF -- "$name FAIL"; then
+      note_degraded "usage probe: $name failed; run omp auth-gateway check on the host for the cause"
+      problems=$((problems + 1))
+    elif [ "$rc" -ne 0 ] && ! printf '%s\n' "$statuses" | awk -v n="$name" '$1 == n && ($2 == "ok" || $2 == "unknown") { found = 1 } END { exit !found }'; then
+      note_degraded "usage probe: $name has no probe result in a failed check; run omp auth-gateway check on the host for the cause"
+      problems=$((problems + 1))
+    fi
+  done <<< "$served"
+  while read -r name; do
+    [ -n "$name" ] || continue
+    printf '%s\n' "$served" | grep -qxF -- "$name" && continue
+    echo "notice: usage probe for $name failed; $name is not served, so reviews are unaffected"
+  done <<< "$(printf '%s\n' "$statuses" | awk '$2 == "FAIL" { print $1 }' | sort -u)"
+  if [ "$rc" -ne 0 ] && [ "$problems" -eq 0 ] && ! printf '%s\n' "$statuses" | grep -q ' FAIL$'; then
+    note_degraded "usage probe: omp auth-gateway check failed; run it on the host for the provider and cause"
+    problems=1
+  fi
+  [ "$problems" -gt 0 ] || echo "usage probes: ok for every served provider"
 }
 
 cmd_check() {
@@ -588,6 +618,10 @@ cmd_check() {
   done
   echo "secrets: REVIEW_GATEWAY_TOKEN and REVIEW_GATEWAY_URL are set"
   exit "$rc"
+}
+
+health_class() {
+  if [ "${1:-healthy}" = healthy ]; then echo healthy; else echo unhealthy; fi
 }
 
 health_state() {
@@ -639,15 +673,25 @@ publish_health() {
 }
 
 cmd_monitor() {
-  local output rc=0 state signature previous summary
+  local output rc=0 state signature previous previous_state pending summary
   output=$(health_collect 2>&1) || rc=$?
   state=$(health_state "$rc")
   summary=$(health_lines "$output" 'degraded|error')
   signature=$(printf '%s\n%s\n' "$state" "$summary" | grep -v '^$' | sort)
   previous=$(cat "$STATE_FILE" 2>/dev/null || echo healthy)
   if [ "$signature" = "$previous" ]; then
+    rm -f "$PENDING_FILE"
     echo "monitor: $state, unchanged"
     return 0
+  fi
+  previous_state=$(printf '%s\n' "$previous" | grep -xE 'healthy|degraded|broken' | head -n 1)
+  if [ "$(health_class "$state")" != "$(health_class "$previous_state")" ]; then
+    pending=$(cat "$PENDING_FILE" 2>/dev/null || true)
+    if [ "$(health_class "$state")" != "$pending" ]; then
+      health_class "$state" > "$PENDING_FILE"
+      echo "monitor: $state, change awaiting a second consecutive run"
+      return 0
+    fi
   fi
   if [ "$state" = healthy ]; then
     notify "recovered"
@@ -657,6 +701,7 @@ cmd_monitor() {
   publish_health "$state" "$(printf 'State: %s\n\n%s\n\nRun "check" on the gateway host for the full report.' \
     "$state" "$(printf '%s\n' "$output" | grep -E '^(degraded|error|notice):' | redact | sed 's/^/- /')")"
   printf '%s\n' "$signature" > "$STATE_FILE"
+  rm -f "$PENDING_FILE"
   echo "monitor: $state"
 }
 

@@ -146,10 +146,12 @@ class ConnectionLifecycleMixin:
             tables_exist = self.check_benchmark_tables_exist(**connection_config)
             if tables_exist is False:
                 self.log_verbose("Managed database cannot be safely reused - treating as fresh database")
+                self._clear_stale_refresh_marker(**connection_config)
                 self.database_was_reused = False
                 return
             if tables_exist is True:
                 self.log_verbose("Managed database has required benchmark tables")
+                self._require_unrefreshed_managed_database(**connection_config)
             self.database_was_reused = True
             return
 
@@ -217,6 +219,8 @@ class ConnectionLifecycleMixin:
             else:
                 self.log_verbose("Database is not configured for this run - recreating")
 
+            if getattr(validation_result, "refreshed", False) is True:
+                self._require_recreatable_refreshed_database(is_file_based, db_path, db_info)
             self.log_verbose("Recreating database...")
             self.database_was_reused = False
             self._remove_database(
@@ -226,6 +230,55 @@ class ConnectionLifecycleMixin:
                 **connection_config,
             )
             self.log_operation_complete("Database validation", details="Database recreated due to incompatibility")
+
+    def _clear_stale_refresh_marker(self, **connection_config) -> None:
+        from benchbox.core.tuning.metadata import TuningMetadataManager
+
+        if getattr(self, "supports_refresh_functions", False) is not True or getattr(
+            self, "_validating_database", False
+        ):
+            return
+        if self.tuning_metadata_unsupported_reason() is not None:
+            return
+        try:
+            TuningMetadataManager(self, connection_config=connection_config).clear_refresh_marker()
+        except Exception as exc:
+            self.logger.warning(f"Could not clear the stale TPC-H refresh marker: {exc}")
+
+    def _require_unrefreshed_managed_database(self, **connection_config) -> None:
+        from benchbox.core.tuning.metadata import TuningMetadataManager
+
+        if getattr(self, "supports_refresh_functions", False) is not True or getattr(
+            self, "_validating_database", False
+        ):
+            return
+        if self.tuning_metadata_unsupported_reason() is not None:
+            return
+        manager = TuningMetadataManager(self, connection_config=connection_config)
+        if manager.has_refresh_marker():
+            raise RuntimeError(
+                "Refusing to reuse the managed database: TPC-H refresh functions (RF1/RF2) modified it in an "
+                "earlier run, so its rows no longer match the generated data. BenchBox does not drop managed "
+                "databases; reset the benchmark tables yourself and re-run."
+            )
+
+    def _require_recreatable_refreshed_database(self, is_file_based: bool, db_path: str | None, db_info: str) -> None:
+        from benchbox.utils.path_utils import resolve_benchmark_runs_dir
+
+        if is_file_based and db_path:
+            try:
+                Path(db_path).resolve().relative_to(resolve_benchmark_runs_dir().resolve())
+            except ValueError:
+                pass
+            else:
+                self.logger.warning(f"⚠️ Recreating {db_info}: it was modified by TPC-H refresh functions (RF1/RF2)")
+                return
+        raise RuntimeError(
+            f"Refusing to reuse or recreate database {db_info}: TPC-H refresh functions (RF1/RF2) modified it in an "
+            "earlier run, or that could not be ruled out, and it is outside the BenchBox output directory so "
+            "BenchBox will not delete it. "
+            "Delete or reset it yourself, or re-run with --force-recreate."
+        )
 
     def _remove_database(
         self, is_file_based: bool, db_path: str, *, foreign_tables: tuple[str, ...] = (), **connection_config

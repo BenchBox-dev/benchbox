@@ -9,9 +9,11 @@ from pathlib import Path
 from typing import Any
 
 from _project.scripts.explorer_pipeline.contract import (
+    EXPLORER_HARDWARE_READ_MODEL_VERSION,
     EXPLORER_QPH_READ_MODEL_VERSION,
     EXPLORER_READ_MODEL_VERSION,
     EXPLORER_TRANSLATOR_READ_MODEL_VERSION,
+    HARDWARE_RESULT_COLUMNS,
     QPH_RESULT_COLUMNS,
     SELECTABLE_READ_MODEL_VERSIONS,
     TRANSLATOR_RESULT_COLUMNS,
@@ -439,11 +441,12 @@ class DuckDBSnapshotBuilder:
                 power_score_source   VARCHAR"""
             + self._translator_ddl(read_model_version)
             + self._qph_ddl(read_model_version)
+            + self._hardware_ddl(read_model_version)
             + """
             )
         """
         )
-        con.execute("""
+        con.execute(f"""
             CREATE VIEW result_detail_metrics AS
             SELECT
                 r.result_id,
@@ -524,7 +527,7 @@ class DuckDBSnapshotBuilder:
                 r.benchmark_support_status,
                 r.throughput_at_size,
                 r.stream_count,
-                r.power_score_source,
+                r.power_score_source,{self._hardware_view_columns(read_model_version)}
                 e.os,
                 e.arch,
                 e.cpu_count,
@@ -787,6 +790,33 @@ class DuckDBSnapshotBuilder:
             json.dumps(source.transactional_steps, sort_keys=True) if source.transactional_steps else None,
         )
 
+    @staticmethod
+    def _hardware_values(entry: ManifestEntry, read_model_version: int) -> tuple:
+        if read_model_version < EXPLORER_HARDWARE_READ_MODEL_VERSION:
+            return ()
+        return (
+            entry.hardware_class,
+            entry.hardware_score,
+            entry.hardware_basis,
+            entry.hardware_table_version,
+            entry.service_size,
+            entry.known_defect_reason,
+            entry.benchbox_version,
+            entry.benchbox_version_basis,
+        )
+
+    @staticmethod
+    def _hardware_ddl(read_model_version: int) -> str:
+        if read_model_version < EXPLORER_HARDWARE_READ_MODEL_VERSION:
+            return ""
+        return "".join(f",\n                {name:<20} {dtype}" for name, dtype in HARDWARE_RESULT_COLUMNS)
+
+    @staticmethod
+    def _hardware_view_columns(read_model_version: int) -> str:
+        if read_model_version < EXPLORER_HARDWARE_READ_MODEL_VERSION:
+            return ""
+        return "".join(f"\n                r.{name}," for name, _ in HARDWARE_RESULT_COLUMNS)
+
     def _create_metadata(self, con: Any, read_model_version: int = EXPLORER_READ_MODEL_VERSION) -> None:
         con.execute("""
             CREATE TABLE IF NOT EXISTS metadata (
@@ -954,6 +984,7 @@ class DuckDBSnapshotBuilder:
                     entry.power_score_source,
                     *self._translator_values(entry, read_model_version),
                     *self._qph_values(entry, read_model_version),
+                    *self._hardware_values(entry, read_model_version),
                 )
             )
         if rows:

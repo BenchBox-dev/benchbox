@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed the throughput stream-coverage check rejecting bundles in which a successful query ran in under a millisecond; coverage now counts every successful measurement execution, and only timing aggregation keeps its 1 ms floor."
+    }
+  ]
+}

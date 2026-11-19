@@ -51,6 +51,7 @@ _TPCH_BASE_ROW_COUNTS = dict(_GENERATOR_SPECS["base_row_counts"])
 _NORMALIZE_CHUNK_SIZE = 1 << 20
 
 _MEASURED_ROW_COUNTS_SOURCE = "measured"
+_STREAMING_MIN_SCALE_FACTOR = 1.0
 
 
 def _has_trailing_delimiter(path: Path) -> bool:
@@ -491,6 +492,14 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
 
         return output_paths
 
+    def _streams_per_table(self) -> bool:
+        return (
+            self.should_use_compression()
+            and self.parallel == 1
+            and self.scale_factor > _STREAMING_MIN_SCALE_FACTOR
+            and self._check_stdout_support()
+        )
+
     def _run_dbgen_native(self, work_dir: Path) -> dict[str, Path | list[Path]] | None:
         work_dir_path = Path(work_dir)
         work_dir_path.mkdir(parents=True, exist_ok=True)
@@ -498,9 +507,7 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        use_streaming = self.should_use_compression() and self.parallel == 1 and self._check_stdout_support()
-
-        if use_streaming:
+        if self._streams_per_table():
             self.log_verbose("Using streaming data generation with -z flag")
             return self._run_streaming_dbgen(work_dir_path)
 

@@ -1,0 +1,15 @@
+{
+  "bundle_file": "flightdata_sf01_duckdb_sql_20260826_163357_76fda453.json",
+  "bundle_hash": "c78882bd2555819b50432d679fbe619b1074497b5c1c33f811ac4519a1a0083b",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer",
+  "cpu_attestation": {
+    "attested_by": "maintainer",
+    "cpu_identity_provenance": "user_attested",
+    "cpu_model": "Apple M4",
+    "cpu_vendor": "Apple",
+    "note": "Operator attestation, not a measurement: the maintainer attests this Darwin arm64 run executed on the project's Apple M4 (10 cores); the bundle recorded no CPU model."
+  }
+}

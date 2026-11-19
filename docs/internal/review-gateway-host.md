@@ -154,11 +154,20 @@ Then:
      <reason>` line for each provider that is routed but not served:
      `no logged-in broker account`, `stale pin` (a login changed identity, so
      `clients.json` pins accounts the broker no longer has; run `gateway`),
-     or `granted but not served`. A failed `omp auth-gateway check` usage
-     probe is `degraded: usage probe: <first lines>`, and a gateway that
+     or `granted but not served`. `omp auth-gateway check` is read per
+     provider section (a `<provider> (<count>)` header followed by one
+     indented status line per login): a `FAIL` line under a served provider
+     is `degraded: usage probe: <provider> failed`. When the check exits
+     non-zero, a served provider with no `ok` or `unknown` line is also
+     degraded, and output with no provider sections, or with no `FAIL` line
+     at all, is `degraded: usage probe: omp auth-gateway check failed` (the
+     probe fails closed). An `unknown` entry (no usage data, or no probe for
+     the provider) is not a failure. A gateway that
      lists fewer models than `clients.json` grants is also degraded.
    - **Notice** (exit 0): `notice: <provider> removed by owner; develop still
-     names <provider>` for each provider on the denylist.
+     names <provider>` for each provider on the denylist, and `notice: usage
+     probe for <login> failed; <login> is not served` for a failing login
+     that the gateway does not serve.
 
    With [named clients](#named-clients), each one gets its own line and must
    list the same models as `review-ci`.
@@ -236,7 +245,15 @@ checkout or an unreviewed edit cannot run unattended. Run `monitor-install`
 again after a change to the script merges to refresh the snapshot. The launchd `PATH` is the one in effect at install, so run
 it from a shell where `gh`, `jq` and `tailscale` resolve. Each run does the
 read-only part of `check` (no `gh secret list`) and compares the result with
-`~/.omp/review-gateway/monitor.state`. On a change, and only then, it:
+`~/.omp/review-gateway/monitor.state`. A move between healthy and unhealthy
+(degraded or broken) is published only when the previous run was also on the
+new side, so it takes two consecutive 15-minute runs, including recovery; the
+pending side is kept in `~/.omp/review-gateway/monitor.pending`, and a run
+that matches the recorded result clears it. The state and detail lines need
+not match between the two runs, so an outage that alternates between degraded
+and broken, or whose reasons vary, is still published. A change within an
+already published unhealthy outage is published at once. When a change is
+published, it:
 
 1. shows a macOS notification (`osascript`);
 2. creates, edits or closes the one open issue labelled
@@ -245,7 +262,7 @@ read-only part of `check` (no `gh secret list`) and compares the result with
 3. records the new state.
 
 If the issue cannot be filed, the state is not recorded, so the next run
-notifies and tries again. Steady state, including a deliberate removal, is
+notifies and tries again. Steady state, an unconfirmed change and a deliberate removal are
 silent. The scheduled `review-verdict` run in CI also goes red when the gateway
 is unreachable or a provider in `develop`'s config is not served; that job needs
 no token permission beyond the ones the caller already grants.

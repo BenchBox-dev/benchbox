@@ -397,11 +397,15 @@ class TestClickHouseAdapter:
 
         connection.execute(rendered)
 
-        show_create_rows = connection.execute("SHOW CREATE TABLE lineitem").fetchall()
-        ddl_text = show_create_rows[0][0]
+        keys = connection.execute(
+            "SELECT partition_key, sorting_key FROM system.tables WHERE database = currentDatabase() AND name = 'lineitem'"
+        ).fetchall()
+        partition_key, sorting_key = (
+            key[1:-1] if key.startswith("(") and key.endswith(")") else key for key in keys[0]
+        )
 
-        assert "PARTITION BY toYYYYMM(l_shipdate)" in ddl_text
-        assert "ORDER BY l_orderkey" in ddl_text
+        assert partition_key == "toYYYYMM(l_shipdate)"
+        assert sorting_key == "l_orderkey"
 
         connection.execute("INSERT INTO lineitem VALUES (1, '2026-01-15'), (2, '2026-02-01')")
         count_rows = connection.execute("SELECT count(*) FROM lineitem").fetchall()

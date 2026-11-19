@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Compressed TPC-H data generation at scale factor 1 or below runs dbgen once and compresses afterwards, instead of starting dbgen once per table. A compressed SF 0.01 run's data generation drops from about 14 s to under 2 s; the generated rows are byte-identical. Larger scale factors still stream each table straight into its compressed file."
+    }
+  ]
+}

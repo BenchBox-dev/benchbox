@@ -31,6 +31,9 @@ pytestmark = [
 ]
 
 
+ATTESTATION = {"cpu_model": "Apple M4", "cpu_identity_provenance": "user_attested", "attested_by": "maintainer"}
+
+
 class TestManifestProvenance:
     def _run(self, manifest: dict, bundle_name: str = "tpch_result.json", subdir: str = "bundles") -> ValidationResult:
         vr = ValidationResult("test")
@@ -66,15 +69,38 @@ class TestManifestProvenance:
                 "preview_features": ["hybrid tables"],
                 "vendor_permission": "approval 2026-11-01",
                 "vendor_notice": {"sent_on": "2026-11-01", "reference": "ticket"},
+                "self_run": True,
             }
         )
         assert vr.ok
         assert vr.warnings == []
 
-    def test_vendor_platform_without_notice_warns(self):
-        vr = self._run({"platform": "snowflake", "plan_tier": "paid"})
+    def test_mandatory_platform_without_fields_refused_after_cutoff(self):
+        vr = self._run({"platform": "snowflake", "submitted_at": "2026-11-18T00:00:00+00:00"})
+        assert not vr.ok
+        assert any("vendor_notice" in e for e in vr.errors)
+
+    def test_mandatory_platform_without_fields_labelled_pre_policy_from_bundle_run_date(self, tmp_path):
+        bundle = tmp_path / "results-data" / "bundles" / "tpch_result.json"
+        bundle.parent.mkdir(parents=True)
+        bundle.write_text(
+            json.dumps({"platform": {"name": "Snowflake"}, "run": {"timestamp": "2026-09-19T21:11:34.793439"}}),
+            encoding="utf-8",
+        )
+        vr = ValidationResult("test")
+        _validate_manifest_provenance({"funding": "unspecified", "result_source": "internal"}, bundle, vr)
         assert vr.ok
-        assert any("vendor_notice" in w for w in vr.warnings)
+        assert any("pre_policy" in w for w in vr.warnings)
+
+    def test_manifest_cannot_supply_its_own_bundle_run_date(self, tmp_path):
+        bundle = tmp_path / "results-data" / "bundles" / "tpch_result.json"
+        bundle.parent.mkdir(parents=True)
+        bundle.write_text(json.dumps({"platform": {"name": "Snowflake"}}), encoding="utf-8")
+        vr = ValidationResult("test")
+        _validate_manifest_provenance(
+            {"bundle_run_timestamp": "2026-01-01T00:00:00", "result_source": "internal"}, bundle, vr
+        )
+        assert not vr.ok
 
     def test_bundle_platform_and_funding_override_manifest(self, tmp_path):
         bundle = tmp_path / "results-data" / "bundles" / "tpch_result.json"
@@ -169,6 +195,63 @@ class TestManifestProvenance:
     def test_known_defect_reason_is_absent_without_a_known_defect(self):
         assert known_defect_reason({"known_defect_reason": "Old scale."}) is None
         assert known_defect_reason({"known_defects": ["future-defect"]}) is None
+
+    def test_cpu_attestation_ok(self, tmp_path):
+        primary = tmp_path / "bundle.json"
+        primary.write_text(json.dumps({"environment": {"os": "Darwin 25.0"}}), encoding="utf-8")
+        vr = ValidationResult("test")
+        _validate_manifest_provenance({"result_source": "internal", "cpu_attestation": ATTESTATION}, primary, vr)
+        assert vr.ok
+
+    @pytest.mark.parametrize(
+        "attestation",
+        [
+            "Apple M4",
+            {"cpu_model": "Apple M4"},
+            {"cpu_model": "Apple M4", "cpu_identity_provenance": "user_attested", "unknown": "x"},
+        ],
+    )
+    def test_invalid_cpu_attestation_rejected(self, attestation):
+        vr = self._run({"cpu_attestation": attestation})
+        assert not vr.ok
+        assert any("cpu_attestation" in e for e in vr.errors)
+
+    @pytest.mark.parametrize(
+        "attestation",
+        [
+            {**ATTESTATION, "cpu_model": ""},
+            {**ATTESTATION, "cpu_identity_provenance": "measured"},
+        ],
+    )
+    def test_incomplete_maintainer_cpu_attestation_rejected(self, attestation):
+        vr = self._run({"result_source": "internal", "cpu_attestation": attestation})
+        assert any("needs a non-empty cpu_model" in e for e in vr.errors)
+
+    def test_cpu_attestation_needs_the_maintainer_on_an_internal_source(self, tmp_path):
+        primary = tmp_path / "bundle.json"
+        primary.write_text(json.dumps({"environment": {}}), encoding="utf-8")
+        for manifest in (
+            {"result_source": "community", "cpu_attestation": ATTESTATION},
+            {"result_source": "internal", "cpu_attestation": {**ATTESTATION, "attested_by": "submitter"}},
+        ):
+            vr = ValidationResult("test")
+            _validate_manifest_provenance(manifest, primary, vr)
+            assert any("only from the maintainer" in e for e in vr.errors)
+
+    def test_cpu_attestation_is_refused_for_a_client_host_cpu(self, tmp_path):
+        primary = tmp_path / "bundle.json"
+        primary.write_text(json.dumps({"environment": {"client_host": {"cpu_model": "AMD EPYC"}}}), encoding="utf-8")
+        vr = ValidationResult("test")
+        _validate_manifest_provenance({"result_source": "internal", "cpu_attestation": ATTESTATION}, primary, vr)
+        assert any("records no cpu_model" in e for e in vr.errors)
+
+    def test_cpu_attestation_is_refused_for_a_bundle_that_records_a_cpu(self, tmp_path):
+        primary = tmp_path / "bundle.json"
+        primary.write_text(json.dumps({"environment": {"cpu_model": "AMD EPYC 7763"}}), encoding="utf-8")
+        vr = ValidationResult("test")
+        _validate_manifest_provenance({"result_source": "internal", "cpu_attestation": ATTESTATION}, primary, vr)
+        assert not vr.ok
+        assert any("records no cpu_model" in e for e in vr.errors)
 
     def test_sqlite_clickbench_row_count_defect_ok(self):
         assert self._run({"known_defects": ["defective-sqlite-clickbench-row-counts"]}).ok

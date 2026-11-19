@@ -62,9 +62,13 @@ Required status checks:
 ```
 
 `review-gate` is bound to the `benchbox-review` App
-(`integration_id` 5201041). `release-v2 probe` is the job of
-`.github/workflows/release-v2-probe.yml`, bound to the GitHub Actions App
-(`integration_id` 15368); it runs on every pull request regardless of base.
+(`integration_id` 5201041). `release-v2 probe` is a check run that
+`.github/workflows/release-v2-probe.yml` creates on the pull request head
+(in progress after dispatching the probe runs, or completed at once when no
+release input changed) and that `.github/workflows/release-v2-probe-verdict.yml`
+completes when the runs finish. It is created with `GITHUB_TOKEN`, so it is
+bound to the GitHub Actions App (`integration_id` 15368); it runs on every pull
+request regardless of base.
 
 Five of these contexts are always-reporting result jobs in
 `.github/workflows/ci.yml`. `review-gate` is a commit status that
@@ -602,7 +606,7 @@ Required status checks:
 ```
 
 `review-gate` is bound to the `benchbox-review` App (`integration_id` 5201041)
-and `release-v2 probe` to the GitHub Actions App (`integration_id` 15368),
+and the `release-v2 probe` check run to the GitHub Actions App (`integration_id` 15368),
 as on `develop`; the drift check requires the two required-check lists to be
 identical. The `review` environment already admits `release/*`, and `trunk.yml`
 runs on pushes to `release/**`. The gate workflow, the review workflow and the
