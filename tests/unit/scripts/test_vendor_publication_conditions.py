@@ -49,6 +49,7 @@ class TestPlatformKey:
             ("Amazon Redshift", "redshift"),
             ("Google BigQuery", "bigquery"),
             ("Snowflake Snowpark", "snowflake"),
+            ("Starburst Galaxy", "starburst"),
         ],
     )
     def test_matches_variant_names(self, raw, expected):
@@ -133,7 +134,7 @@ class TestVendorNotice:
     @pytest.mark.parametrize("platform", ["redshift", "athena", "clickhouse-cloud", "motherduck"])
     def test_missing_notice_warns_on_non_mandatory_platform(self, platform):
         errors, warnings = evaluate_vendor_conditions({"platform": platform, "plan_tier": "paid"})
-        assert errors == []
+        assert all("not settled" in e for e in errors)
         assert any("vendor_notice" in w for w in warnings)
 
     @pytest.mark.parametrize(
@@ -167,6 +168,24 @@ class TestBigQuerySelfRun:
     def test_self_run_must_be_boolean(self):
         errors, _ = evaluate_vendor_conditions(complete("duckdb", self_run="yes"))
         assert any("self_run must be a boolean" in e for e in errors)
+
+
+class TestUnsettledVendors:
+    @pytest.mark.parametrize(
+        "platform", ["Amazon Redshift", "Athena Spark", "ClickHouse Cloud", "MotherDuck", "Starburst"]
+    )
+    def test_refused_even_with_every_declaration(self, platform):
+        errors, _ = evaluate_vendor_conditions(complete(platform, vendor_permission="email 2026-11-01"))
+        assert len(errors) == 1
+        assert "cannot be published yet" in errors[0] and "not settled" in errors[0]
+
+    def test_bundle_provenance_check_does_not_repeat_the_refusal(self):
+        errors, _ = evaluate_vendor_conditions(complete("redshift"), require_mandatory_fields=False)
+        assert errors == []
+
+    @pytest.mark.parametrize("platform", ["clickhouse-local", "clickhouse-server", "trino"])
+    def test_self_run_engines_are_not_vendors(self, platform):
+        assert evaluate_vendor_conditions({"platform": platform}) == ([], [])
 
 
 class TestMandatoryFieldsAfterCutoff:

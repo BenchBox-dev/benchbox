@@ -945,6 +945,11 @@ then `scripts/generate_changelog_entry.py --compile-fragments`, which builds the
 `[X.Y.Z]` section from `changelog.d` (see "Release notes from fragments").
 Commit the changed files, including the deleted fragments, as one PR.
 
+Before a minor release, the owner re-reads the vendor terms recorded in
+[`results-vendor-publication-terms.md`](results-vendor-publication-terms.md)
+and updates the record where a vendor's text or date changed. The owner also
+re-reads it whenever a vendor in the published corpus announces new terms.
+
 `release-check` (`scripts/release_flow.py check`) exits non-zero and lists every
 problem it finds. It verifies that:
 
