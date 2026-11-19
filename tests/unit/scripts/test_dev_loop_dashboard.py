@@ -415,15 +415,16 @@ class FakeApi:
     @staticmethod
     def _in_range(runs: list[dict], created: str) -> list[dict]:
         start, end = (datetime.fromisoformat(part.replace("Z", "+00:00")) for part in created.split(".."))
-        return [run for run in runs if start <= datetime.fromisoformat(run["created_at"].replace("Z", "+00:00")) < end]
+        return [run for run in runs if start <= datetime.fromisoformat(run["created_at"].replace("Z", "+00:00")) <= end]
 
 
 def test_fetch_runs_bisects_a_window_that_exceeds_the_query_cap(monkeypatch):
     monkeypatch.setattr(dash, "RUN_QUERY_CAP", 10)
     runs = [_run(index, index * 60, event="push") for index in range(1, 21)]
+    runs.append(_run(99, 630, event="push"))
     api = FakeApi({"ci.yml": runs})
     fetched = dash.fetch_runs(api, 1, T0, T0 + timedelta(hours=21))
-    assert sorted(run["id"] for run in fetched) == list(range(1, 21))
+    assert sorted(run["id"] for run in fetched) == [*range(1, 21), 99]
 
 
 def test_fetch_runs_pages_through_a_large_result(monkeypatch):
@@ -473,6 +474,16 @@ def test_fetch_uat_evidence_reads_the_record_artifact():
     assert dash._uat_outcome(evidence[2]) == "no record"
 
 
+def test_fetch_uat_evidence_keeps_cancelled_runs_and_they_break_the_streak():
+    api = FakeApi()
+    cancelled = _run(60, 2 * 1440, event="schedule", head_branch="develop", conclusion="cancelled")
+    evidence = dash.fetch_uat_evidence(api, [cancelled])
+    assert [dash._uat_outcome(item) for item in evidence] == ["cancelled"]
+    items = [_evidence(1, 0, [_row("a")]), evidence[0], _evidence(3, 3, [_row("a")])]
+    assert dash.longest_recent_streak(items) == 1
+    assert dash.uat_summary(items).runs[1].outcome == "cancelled"
+
+
 def test_collect_and_render_report_end_to_end(monkeypatch):
     monkeypatch.setattr(dash, "count_make_targets", lambda root=ROOT: 88)
     monkeypatch.setattr(dash, "count_workflows", lambda directory=ROOT: 21)
@@ -480,6 +491,7 @@ def test_collect_and_render_report_end_to_end(monkeypatch):
     ci = [
         _run(1, 0, pull_requests=[{"number": 7}], duration=480),
         _run(2, 30, conclusion="failure", pull_requests=[{"number": 8}]),
+        _run(6, 31, pull_requests=[{"number": 8}], duration=2, display_title="CI (text edit)"),
     ]
     trunk = [_run(3, 40, event="push", head_branch="develop", conclusion="failure")]
     uat = [_run(4, 50, event="schedule", head_branch="develop")]
@@ -507,6 +519,7 @@ def test_collect_and_render_report_end_to_end(monkeypatch):
 
     dashboard = dash.collect(api, window, baseline, REPO)
     assert dashboard.ci_runs == 2
+    assert dashboard.time_to_green_tier.samples == 1
     assert dashboard.make_targets == 88 and dashboard.workflows == 21
     assert len(dashboard.trunk.incidents) == 1
     assert dashboard.blockers == (1, 1)
@@ -516,6 +529,7 @@ def test_collect_and_render_report_end_to_end(monkeypatch):
 
     report = dash.render_report(dashboard)
     assert "| T1 fast tier job p95 (incl. setup) | <= 7 min | 5.0 min (n=1) | met | 1,108 s / 1,458 s" in report
+    assert "| T2 PR required-check time-to-green p95 | <= 15 min | 8.0 min (n=1) | met | not recorded |" in report
     assert "| Public Make targets | <= 90 | 88 | met | 216 targets |" in report
     assert "| Red trunk incidents | 0 | 1 (1 red of 1 runs) | missed | 0 incidents |" in report
     assert "| Workflow files | no numeric target | 21 | reported | 46 files |" in report

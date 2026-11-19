@@ -75,6 +75,7 @@ TARGET_T1_SECONDS = 7 * 60
 TARGET_T2_SECONDS = 15 * 60
 TARGET_RED_TRUNK = 0
 TARGET_FLAKE_RATE = 0.02
+TEXT_EDIT_DISPLAY_TITLE = "CI (text edit)"
 TARGET_MAKE_TARGETS = 90
 
 BASELINE_ROWS = {
@@ -163,7 +164,8 @@ def fetch_runs(api: Api, workflow: str | int, start: datetime, end: datetime) ->
     total = int(first.get("total_count", 0))
     if total > RUN_QUERY_CAP and end - start > MINIMUM_SPLIT_SPAN:
         middle = start + (end - start) / 2
-        return fetch_runs(api, workflow, start, middle) + fetch_runs(api, workflow, middle, end)
+        halves = fetch_runs(api, workflow, start, middle) + fetch_runs(api, workflow, middle, end)
+        return list({int(run["id"]): run for run in halves}.values())
     runs = list(first.get("workflow_runs", []))
     page = 1
     while len(runs) < min(total, RUN_QUERY_CAP):
@@ -443,6 +445,8 @@ class UatEvidence:
 def _uat_outcome(evidence: UatEvidence) -> str:
     if evidence.record is not None:
         return str(evidence.record.get("outcome", "recorded"))
+    if evidence.run.get("conclusion") == "cancelled":
+        return "cancelled"
     if evidence.run.get("conclusion") == "success":
         return "skipped"
     return "no record"
@@ -540,7 +544,7 @@ def uat_summary(items: Sequence[UatEvidence]) -> UatSummary:
 
 def fetch_uat_evidence(api: Api, runs: Iterable[dict[str, Any]]) -> list[UatEvidence]:
     evidence: list[UatEvidence] = []
-    for run in _concluded(runs):
+    for run in (run for run in runs if run.get("status") == "completed"):
         artifacts = api.json("GET", f"/repos/{api.repository}/actions/runs/{run['id']}/artifacts?per_page=100")
         live = [
             artifact
@@ -628,7 +632,11 @@ def collect(api: Api, window: Window, baseline: Mapping[str, str], repository: s
     with ThreadPoolExecutor(max_workers=JOB_WORKERS) as pool:
         listed = list(pool.map(lambda name: fetch_runs(api, workflow_ids[name], window.start, window.end), names))
     runs_by_workflow = {name: runs for name, runs in zip(names, listed) if runs}
-    ci_runs = [run for run in runs_by_workflow.get(CI_WORKFLOW, ()) if run.get("event") == "pull_request"]
+    ci_runs = [
+        run
+        for run in runs_by_workflow.get(CI_WORKFLOW, ())
+        if run.get("event") == "pull_request" and run.get("display_title") != TEXT_EDIT_DISPLAY_TITLE
+    ]
     trunk_runs = runs_by_workflow.get(TRUNK_WORKFLOW, [])
     uat_runs = runs_by_workflow.get(UAT_WORKFLOW, [])
     release_runs = runs_by_workflow.get(RELEASE_WORKFLOW, [])
@@ -698,7 +706,7 @@ def render_targets(dashboard: Dashboard) -> list[str]:
             "<= 15 min",
             f"{_minutes(dashboard.time_to_green_tier.p95_seconds)} (n={dashboard.time_to_green_tier.samples})",
             _verdict(dashboard.time_to_green_tier.p95_seconds, TARGET_T2_SECONDS),
-            _baseline(dashboard, "medium_p95"),
+            "not recorded",
         ),
         (
             "Red trunk incidents",
