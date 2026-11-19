@@ -126,6 +126,16 @@
       "op_id": "0388bb687c1d441ea129e691ba63e792",
       "reason": "The MCP server process that registered the batch exited when the session restarted; its owner identity cannot resume and this session holds the checkout.",
       "session_id": "0013bdb674094819a5cc711e0629a4ba"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6a2213d6b55a7e3a8ad45472",
+      "at": "2026-11-19T00:03:34Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8d4e2ec2cb1f569769838211",
+      "op": "recover",
+      "op_id": "d90bf4ba1fb4419e81aac02eb651a6dc",
+      "reason": "The leader session ended when the host session resumed; the same operator continues the batch to close it out.",
+      "session_id": "ea4bcdaedc404466a3b06e87288386bf"
     }
   ]
 }
