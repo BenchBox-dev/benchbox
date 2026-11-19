@@ -212,8 +212,8 @@ def test_runner_hours_separates_wall_clock_from_expanded_job_time():
     }
     jobs = {1: [_job("a", 3600), _job("b", 1800)], 2: [_job("c", 900)]}
     usage = dash.runner_hours(runs, jobs)
-    assert usage["ci.yml"] == dash.RunnerUsage(2, 1.5, 1.75)
-    assert usage["other.yml"] == dash.RunnerUsage(1, 2.0, None)
+    assert usage["ci.yml"] == dash.RunnerUsage(2, 1.5, 1.75, 2)
+    assert usage["other.yml"] == dash.RunnerUsage(1, 2.0, None, 0)
 
 
 def test_release_lead_time_excludes_the_approval_wait():
@@ -542,8 +542,9 @@ def test_collect_and_render_report_end_to_end(monkeypatch):
 def test_main_writes_the_report(tmp_path, monkeypatch):
     seen = {}
 
-    def fake_collect(api, window, baseline, repository):
+    def fake_collect(api, window, baseline, repository, max_job_runs):
         seen["window"] = window
+        seen["max_job_runs"] = max_job_runs
         seen["repository"] = repository
         return _empty_dashboard(window, repository)
 
@@ -560,7 +561,7 @@ def test_main_writes_the_report(tmp_path, monkeypatch):
 
 
 def test_main_reports_api_failure(tmp_path, monkeypatch, capsys):
-    def failing(api, window, baseline, repository):
+    def failing(api, window, baseline, repository, max_job_runs):
         raise dash.trend.TrendError("boom")
 
     monkeypatch.setattr(dash, "collect", failing)
@@ -736,3 +737,26 @@ def test_report_lists_cells_with_infrastructure_failures_and_counts_product_only
     assert "Cells observed: 3; with an infrastructure failure: 1; with only product failures: 1." in report
     assert "| flaky / tpch / SF1 | 2 | 1 | 50.0% | 0 |" in report
     assert "broken / tpch" not in report
+
+
+def test_job_run_ids_sample_busy_workflows_and_keep_every_release_push():
+    ci = [_run(index, index) for index in range(1, 11)]
+    trunk = [_run(100 + index, index, event="push") for index in range(1, 4)]
+    uat = [_run(200, 0, event="schedule")]
+    releases = [
+        _run(300, 0, event="push", head_branch="v1"),
+        _run(301, 1, event="push", head_branch="v2"),
+        *[_run(310 + index, index, event="workflow_dispatch") for index in range(6)],
+    ]
+    ids = dash.job_run_ids(ci, trunk, uat, releases, 3)
+    assert {run_id for run_id in ids if run_id < 100} == {1, 5, 10}
+    assert {101, 102, 103, 200, 300, 301} <= set(ids)
+    assert len([run_id for run_id in ids if run_id >= 310]) == 3
+    assert len(ids) == len(set(ids))
+
+
+def test_sample_runs_is_ordered_and_ignores_unfinished_runs():
+    runs = [_run(3, 30), _run(1, 10), _run(2, 20, conclusion="cancelled"), _run(4, 40)]
+    assert [run["id"] for run in dash.sample_runs(runs, 10)] == [1, 3, 4]
+    assert [run["id"] for run in dash.sample_runs(runs, 2)] == [1, 4]
+    assert dash.sample_runs(runs, 0) == []

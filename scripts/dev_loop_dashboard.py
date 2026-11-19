@@ -48,6 +48,7 @@ DEFAULT_DAYS = 7
 DEFAULT_BUDGET = 6000
 TRANSPORT_ATTEMPTS = 5
 JOB_WORKERS = 8
+DEFAULT_JOB_RUNS = 100
 RETRY_STATUSES = frozenset({500, 502, 503, 504})
 BASELINE_FILE = REPO_ROOT / "_project/archive/dev-loop-v2/baseline.md"
 WORKFLOW_DIRECTORY = REPO_ROOT / ".github/workflows"
@@ -334,6 +335,7 @@ class RunnerUsage:
     runs: int
     wall_hours: float
     job_hours: float | None
+    job_runs: int
 
 
 def runner_hours(
@@ -350,7 +352,7 @@ def runner_hours(
             for run in expanded
             for job in jobs_by_run[int(run["id"])]
         )
-        usage[workflow] = RunnerUsage(len(runs), wall / 3600, job_seconds / 3600 if expanded else None)
+        usage[workflow] = RunnerUsage(len(runs), wall / 3600, job_seconds / 3600 if expanded else None, len(expanded))
     return usage
 
 
@@ -621,7 +623,9 @@ class Dashboard:
     api_calls: int
 
 
-def collect(api: Api, window: Window, baseline: Mapping[str, str], repository: str) -> Dashboard:
+def collect(
+    api: Api, window: Window, baseline: Mapping[str, str], repository: str, max_job_runs: int = DEFAULT_JOB_RUNS
+) -> Dashboard:
     listing = api.json("GET", f"/repos/{repository}/actions/workflows?per_page=100").get("workflows", [])
     workflow_ids = {
         str(entry["path"]).rsplit("/", 1)[-1]: entry["id"]
@@ -641,7 +645,7 @@ def collect(api: Api, window: Window, baseline: Mapping[str, str], repository: s
     uat_runs = runs_by_workflow.get(UAT_WORKFLOW, [])
     release_runs = runs_by_workflow.get(RELEASE_WORKFLOW, [])
 
-    wanted = [int(run["id"]) for name in JOB_WORKFLOWS for run in _concluded(runs_by_workflow.get(name, ()))]
+    wanted = job_run_ids(ci_runs, trunk_runs, uat_runs, release_runs, max_job_runs)
     jobs_by_run, jobs_unavailable = fetch_all_jobs(api, wanted)
     ci_jobs = [job for run in _concluded(ci_runs) for job in jobs_by_run.get(int(run["id"]), ())]
 
@@ -787,12 +791,12 @@ def render_report(dashboard: Dashboard) -> str:
         "",
         "## Runner hours by workflow",
         "",
-        "| Workflow | Runs | Run wall-clock h | Job runner-h |",
-        "|---|---|---|---|",
+        "| Workflow | Runs | Run wall-clock h | Job runner-h (sampled runs) | Runs sampled |",
+        "|---|---|---|---|---|",
     ]
     for name, usage in sorted(dashboard.usage.items(), key=lambda pair: pair[1].wall_hours, reverse=True):
-        jobs = "not expanded" if usage.job_hours is None else f"{usage.job_hours:.1f}"
-        out.append(f"| {name} | {usage.runs} | {usage.wall_hours:.1f} | {jobs} |")
+        jobs = "not read" if usage.job_hours is None else f"{usage.job_hours:.1f}"
+        out.append(f"| {name} | {usage.runs} | {usage.wall_hours:.1f} | {jobs} | {usage.job_runs} |")
     out += ["", "## Release lead time", ""]
     if dashboard.releases:
         out += [
@@ -822,7 +826,8 @@ def render_report(dashboard: Dashboard) -> str:
         "- Flaky retry rate is the share of completed PR CI and trunk runs that succeeded only after a re-run.",
         "- First-pass green is the share of PRs whose first concluded CI run succeeded on its first attempt.",
         "- Release lead time excludes the approval wait: it ends when the publish job is queued for its environment.",
-        "- Job runner-hours cover the workflows whose jobs are fetched; other workflows show run wall-clock only.",
+        "- Job-based metrics (tier p95, job runner-hours, release lead time) read the job listing of up to"
+        " `--max-job-runs` evenly sampled runs per workflow, so the table gives runs sampled next to runs.",
         "- Runs whose job listing GitHub kept refusing are left out of job-based metrics and counted above.",
         "- Make targets use `scripts/check_make_targets.py`, the dlv2-84 counting method.",
         "",
@@ -878,6 +883,30 @@ def _render_uat(dashboard: Dashboard) -> list[str]:
             for rate in sorted(flaky, key=lambda item: (-item.infrastructure_rate, item.cell))
         ]
     return out
+
+
+def sample_runs(runs: Iterable[dict[str, Any]], cap: int) -> list[dict[str, Any]]:
+    ordered = sorted(_concluded(runs), key=lambda run: (str(run.get("created_at")), int(run["id"])))
+    return trend.even_sample(ordered, cap)
+
+
+def job_run_ids(
+    ci_runs: Sequence[dict[str, Any]],
+    trunk_runs: Sequence[dict[str, Any]],
+    uat_runs: Sequence[dict[str, Any]],
+    release_runs: Sequence[dict[str, Any]],
+    cap: int,
+) -> list[int]:
+    release_pushes = [run for run in release_runs if run.get("event") == "push"]
+    release_other = [run for run in release_runs if run.get("event") != "push"]
+    chosen = [
+        *sample_runs(ci_runs, cap),
+        *sample_runs(trunk_runs, cap),
+        *sample_runs(uat_runs, cap),
+        *_concluded(release_pushes),
+        *sample_runs(release_other, cap),
+    ]
+    return list(dict.fromkeys(int(run["id"]) for run in chosen))
 
 
 def _fetch_jobs_or_none(api: Api, run_id: int) -> list[dict[str, Any]] | None:
@@ -978,11 +1007,23 @@ def main(argv: list[str] | None = None, now: datetime | None = None) -> int:
     parser.add_argument("--repository", default=DEFAULT_REPOSITORY)
     parser.add_argument("--output", type=Path, default=Path("dev-loop-dashboard.md"))
     parser.add_argument("--max-api-calls", type=int, default=DEFAULT_BUDGET)
+    parser.add_argument(
+        "--max-job-runs",
+        type=int,
+        default=DEFAULT_JOB_RUNS,
+        help="Runs per workflow whose job listing is read, evenly sampled over the window (release pushes: all)",
+    )
     args = parser.parse_args(argv)
     try:
         window = resolve_window(args.days, args.since, args.until, now or datetime.now(timezone.utc))
         api = LockedApi(args.repository, _token(), budget=args.max_api_calls, transport=KeepAliveTransport())
-        dashboard = collect(api, window, parse_baseline(BASELINE_FILE.read_text(encoding="utf-8")), args.repository)
+        dashboard = collect(
+            api,
+            window,
+            parse_baseline(BASELINE_FILE.read_text(encoding="utf-8")),
+            args.repository,
+            args.max_job_runs,
+        )
     except (ValueError, OSError, trend.TrendError) as error:
         print(f"dev_loop_dashboard FAILED: {error}", file=sys.stderr)
         return 1

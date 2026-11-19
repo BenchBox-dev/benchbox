@@ -42,5 +42,6 @@ def test_collects_with_the_default_token_and_uploads_the_report(workflow):
     collect = next(step for step in steps if "dev_loop_dashboard.py" in step.get("run", ""))
     assert collect["env"]["GITHUB_TOKEN"] == "${{ secrets.GITHUB_TOKEN }}"
     upload = next(step for step in steps if step.get("uses", "").startswith("actions/upload-artifact@"))
+    assert "--max-api-calls 900" in collect["run"]
     assert upload["with"]["name"] == "dev-loop-dashboard-${{ github.run_id }}"
     assert upload["with"]["if-no-files-found"] == "error"

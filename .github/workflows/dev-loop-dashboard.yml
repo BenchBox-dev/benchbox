@@ -45,6 +45,7 @@ jobs:
           python3 scripts/dev_loop_dashboard.py \
             --repository "$GITHUB_REPOSITORY" \
             --days "$WINDOW_DAYS" \
+            --max-api-calls 900 \
             --output "$RUNNER_TEMP/dev-loop-dashboard.md"
           cat "$RUNNER_TEMP/dev-loop-dashboard.md" >> "$GITHUB_STEP_SUMMARY"
 
