@@ -408,6 +408,7 @@ DOCS_AGENT_MENTIONS_WITHOUT_READS = {
     "tests/conftest.py": "names docs/agent/heavy-work.md in the lock refusal message",
     "tests/unit/cli/test_shipped_docs_urls.py": "uses docs/agent paths as link-checker sample input",
     "tests/unit/scripts/test_coverage_test_selection.py": "writes docs/agent pages into a fixture repository",
+    "tests/unit/scripts/test_preflight_targets.py": "writes a docs/agent glob into a fixture repository module",
     "tests/unit/scripts/test_remote_closeout.py": "builds docs/agent pages in a fixture repository",
 }
 
