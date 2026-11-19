@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Reduced pandas DataFrame memory use for Data Vault loads by reading string columns such as hash keys with compact string storage instead of Python objects."
+    }
+  ]
+}
