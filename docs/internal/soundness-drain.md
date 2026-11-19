@@ -9,7 +9,7 @@ Post-merge `soundness-review-gap` issues, and how to close one, are covered in
 
 Soundness-path PRs (paths in `.github/soundness-paths.txt`) merge only after
 the required `review-gate` check passes, which needs a success `review-verdict` status on the
-current head created by the `benchbox-oracle` App. CI cannot catch a change that
+current head created by the `benchbox-review` App. CI cannot catch a change that
 redefines the reviewer it validates against, so such a PR can sit green but
 unmergeable while it waits for that review. The reviewer reviews each push on its own; to rerun it,
 post a top-level `/review` comment or run
@@ -34,7 +34,7 @@ re-evaluated by a review edit or dismissal, a `develop` push that
 changes the gate code or policy, the hourly sweep, or on demand with
 `gh workflow run review-gate.yml --ref develop -f pr=<number>`.
 
-The develop ruleset requires `review-gate` bound to the `benchbox-oracle`
+The develop ruleset requires `review-gate` bound to the `benchbox-review`
 App's integration ID, so only a status that App posts satisfies it, and the
 `review-gate` workflow runs only `develop` code. The `review-request` workflow
 is a no-op notification on `pull_request_review` edited and
@@ -123,7 +123,7 @@ back under 24h on a fresh push, etc.). Do not hand-manage it — the next
 ## The digest issue
 
 No workflow runs the report on a schedule any more: the daily
-`soundness-drain.yml` was retired with the unit-based CI (2026-09-29); the `benchbox-oracle`
+`soundness-drain.yml` was retired with the unit-based CI (2026-09-29); the `benchbox-review`
 App now reviews soundness-path PRs. Run
 `make soundness-drain-report` for the read-only view, or the script with
 `--apply` when you want the label and issue updated. The digest is posted to a single pinned issue titled
