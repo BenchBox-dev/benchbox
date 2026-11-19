@@ -23,6 +23,8 @@ PURE_PYTHON_GENERATORS: dict[str, tuple[str, ...]] = {
         "benchbox/core/tpcdi/generator/*",
         "benchbox/core/tpcdi/generator_specs.yaml",
         "benchbox/core/tpcdi/source_generators.py",
+        "benchbox/core/tpcdi/scaling.py",
+        "benchbox/core/tpcdi/financial_data.py",
     ),
     "amplab": ("benchbox/core/amplab/generator.py", "benchbox/core/amplab/generator_specs.yaml"),
     "h2odb": ("benchbox/core/h2odb/generator.py", "benchbox/core/h2odb/generator_specs.yaml"),
@@ -32,7 +34,11 @@ PURE_PYTHON_GENERATORS: dict[str, tuple[str, ...]] = {
         "benchbox/core/joinorder_synthetic/generator.py",
         "benchbox/core/joinorder_synthetic/generator_specs.yaml",
     ),
-    "vector_search": ("benchbox/core/vector_search/generator.py", "benchbox/core/vector_search/generator_specs.yaml"),
+    "vector_search": (
+        "benchbox/core/vector_search/generator.py",
+        "benchbox/core/vector_search/generator_specs.yaml",
+        "benchbox/core/vector_search/benchmark.py",
+    ),
     "write_primitives": (
         "benchbox/core/write_primitives/generator.py",
         "benchbox/core/write_primitives/generator_specs.yaml",
@@ -277,6 +283,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--base-baseline", type=Path, default=None)
     parser.add_argument("--summary", type=Path, default=None)
     parser.add_argument("--list-affected", action="store_true")
+    parser.add_argument("--require-affected", action="store_true")
     args = parser.parse_args(argv)
     changed = changed_since(args.base_ref) if args.base_ref else read_changed(args.changed_files)
     if args.list_affected:
@@ -284,6 +291,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     base_baseline = baseline_at(args.base_ref) if args.base_ref else load_base_baseline(args.base_baseline)
     report = run_gate(changed, load_baseline(args.baseline), base_baseline)
+    if args.require_affected and report["status"] == "skipped":
+        print("::error title=generator-volume::the job ran but no change selects a gated benchmark")
+        return 1
     text = render_markdown(report)
     if args.summary:
         with args.summary.open("a", encoding="utf-8") as handle:
