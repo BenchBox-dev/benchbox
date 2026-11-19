@@ -29572,17 +29572,12 @@
       "title": "Nightly and Release Canary are chronically red, so the UAT release-gate evidence v0.4.0 needs cannot be produced"
     },
     "nightly-remediation-2026-11-17": {
-      "claim": {
-        "expires_at": "2026-11-20T00:07:06Z",
-        "generation": "bf4990a8708345ba9cf11caac6248a8c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6a2213d6b55a7e3a8ad45472"
-      },
+      "claim": null,
       "needs": [
         "nightly-remediation-verify-20261117"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Restore nightly T3 signal and quiet false alarms (umbrella)"
     },
     "nightly-remediation-housekeeping-20261117": {
