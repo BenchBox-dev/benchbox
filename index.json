@@ -27877,6 +27877,13 @@
       "status": "done",
       "title": "Maintainer review of 27 G4 UNCERTAIN deferrals"
     },
+    "maintenance-line-landing-tooling-frozen-at-tag-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Maintenance lines carry the tag's landing tooling, so line PRs bypass make pr-open and make pr-arm"
+    },
     "make-benchmark-query-tests-hermetic": {
       "claim": null,
       "needs": [],
