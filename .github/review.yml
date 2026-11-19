@@ -219,7 +219,7 @@ infra:
     client: review-ci
   secrets:
     REVIEW_APP_ID: {source: literal, value: "5201041"}
-    REVIEW_APP_PRIVATE_KEY: {source: app_key, app_slug: benchbox-oracle, pem_dir: ~/Downloads}
+    REVIEW_APP_PRIVATE_KEY: {source: app_key, app_slug: benchbox-review, pem_dir: ~/Downloads}
     REVIEW_GATEWAY_TOKEN: {source: gateway_token}
     REVIEW_GATEWAY_URL: {source: gateway_url}
     TS_OAUTH_CI_CLIENT_ID: {source: tailscale_oauth, field: id}
