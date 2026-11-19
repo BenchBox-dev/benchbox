@@ -793,3 +793,10 @@ def test_release_lead_time_measures_a_publish_job_still_awaiting_approval():
     lead = dash.release_lead_times([run], {10: [waiting]})[0]
     assert lead.ready_seconds == 15 * 60
     assert lead.approval_wait_seconds is None
+
+
+def test_time_to_green_counts_the_failed_attempts_of_a_rerun():
+    rerun = _run(1, attempt=2, duration=3600)
+    rerun["run_started_at"] = _stamp(T0, minutes=50)
+    tier = dash.time_to_green([rerun])
+    assert tier.p95_seconds == 3600

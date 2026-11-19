@@ -270,7 +270,7 @@ def time_to_green(ci_runs: Iterable[dict[str, Any]]) -> TierTimes:
         value
         for run in _concluded(ci_runs)
         if run["conclusion"] == "success"
-        and (value := _seconds(run.get("run_started_at"), run.get("updated_at"))) is not None
+        and (value := _seconds(run.get("created_at"), run.get("updated_at"))) is not None
     ]
     return _tier(values)
 
@@ -823,7 +823,7 @@ def render_report(dashboard: Dashboard) -> str:
         "## Definitions",
         "",
         "- Percentiles use nearest rank.",
-        "- T1 is the p95 duration of the PR fast-test job, setup included; T2 is the p95 wall time of a successful PR CI run.",
+        "- T1 is the p95 duration of the PR fast-test job, setup included; T2 is the p95 time from creation of a successful PR CI run to its completion, re-run attempts included.",
         "- A red trunk incident is a run of consecutive failing `trunk.yml` pushes on develop, ended by the next success.",
         "- Flaky retry rate is the share of completed PR CI and trunk runs that succeeded only after a re-run.",
         "- First-pass green is the share of PRs whose first concluded CI run succeeded on its first attempt.",
