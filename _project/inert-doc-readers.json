@@ -15,319 +15,31 @@
     "tests/unit/test_check_primary_clone_stale.py",
     "tests/unit/test_primary_clone_write_guard.py"
   ],
-  ".claude/skills/benchbox/SKILL.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/benchbox/references/architecture.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/benchbox/references/binary.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/benchbox/references/compare.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/benchbox/references/compliance.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/benchbox/references/dialect.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/benchbox/references/live.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/benchbox/references/plan.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/benchbox/references/quality.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/benchbox/references/release.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/benchbox/references/test.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/benchbox/skill.yaml": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
   ".claude/skills/code/SKILL.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/code/references/analysis.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/code/references/compare.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/code/references/five-axis-review.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
+    "tests/unit/scripts/test_inert_paths.py"
   ],
   ".claude/skills/code/references/handoff.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_check_untracked_handoffs.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/code/references/implementation.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/code/references/iterate.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/code/references/pr-backlog.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/code/references/pr-sweep.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/code/references/shrink.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/code/skill.yaml": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/docs/SKILL.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/docs/skill.yaml": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/shared-agent-execution/SKILL.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/shared-agent-execution/references/external-harnesses.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/shared-agent-execution/skill.yaml": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
+    "tests/unit/scripts/test_check_untracked_handoffs.py"
   ],
   ".claude/skills/shared-change-framework/SKILL.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/shared-change-framework/skill.yaml": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
+    "tests/unit/scripts/test_agent_instruction_audit.py"
   ],
   ".claude/skills/shared-investigation-framework/SKILL.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/shared-investigation-framework/skill.yaml": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
+    "tests/unit/scripts/test_agent_instruction_audit.py"
   ],
   ".claude/skills/shared-review-protocol/SKILL.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/shared-review-protocol/references/adversarial-review.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/shared-review-protocol/references/review-response.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/shared-review-protocol/skill.yaml": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/skill-sync.config.yaml": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/skill-sync.manifest": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
+    "tests/unit/scripts/test_agent_instruction_audit.py"
   ],
   ".claude/skills/skill-sync.receipt": [
     "tests/integration/worktree/test_batch_skill_delivery.py",
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/skill-sync/SKILL.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/skill-sync/references/operations.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/skill-sync/skill.yaml": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/test/SKILL.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/test/references/perf.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/test/references/run.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/test/skill.yaml": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
     "tests/unit/scripts/test_skill_sync_ci_policy.py"
   ],
   ".claude/skills/todo/SKILL.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py",
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
     "tests/unit/scripts/test_ci_units.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   ".claude/skills/todo/references/batch.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py",
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/todo/references/bootstrap.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py",
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/todo/references/closeout.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py",
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/todo/references/handoff.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py",
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/todo/references/ideate.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py",
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/todo/references/implement.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py",
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/todo/references/prioritize.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py",
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/todo/references/queries.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py",
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/todo/references/recovery.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py",
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/todo/references/review.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py",
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/todo/references/spec.md": [
-    "tests/integration/worktree/test_batch_skill_delivery.py",
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
-  ],
-  ".claude/skills/todo/skill.yaml": [
-    "tests/integration/worktree/test_batch_skill_delivery.py",
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_skill_sync_ci_policy.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   ".github/PULL_REQUEST_TEMPLATE.md": [
     "tests/unit/scripts/test_inert_paths.py",
@@ -379,31 +91,19 @@
     "tests/unit/utils/test_utils_version_management.py"
   ],
   "_project/analysis/cross-surface-applicability.md": [
-    "tests/unit/scripts/test_comment_policy_strict_ownership.py",
     "tests/unit/test_cross_surface_applicability.py"
   ],
   "_project/analysis/oracle-coverage-map.md": [
-    "tests/unit/scripts/test_comment_policy_strict_ownership.py",
     "tests/unit/test_oracle_coverage_map.py"
   ],
   "_project/audits/results-explorer-hierarchy-usability-data-audit-20260507.md": [
-    "tests/unit/explorer/test_results_explorer_audit_manifest.py",
-    "tests/unit/scripts/test_check_doc_anchors.py",
-    "tests/unit/test_canary_impact.py",
-    "tests/unit/test_canary_impact_live.py",
-    "tests/unit/test_canary_impact_live_full_tree.py"
+    "tests/unit/explorer/test_results_explorer_audit_manifest.py"
   ],
   "_project/decisions/independent-publication-a0-a1-tracker-completion-evidence-2026-09-01.md": [
-    "tests/unit/docs/test_publication_architecture.py",
-    "tests/unit/scripts/test_check_doc_anchors.py",
-    "tests/unit/scripts/test_check_project_references.py",
-    "tests/unit/scripts/test_comment_policy.py"
+    "tests/unit/docs/test_publication_architecture.py"
   ],
   "_project/decisions/joinorder-track2-scaling-direction-2026-07-04.md": [
-    "tests/unit/core/joinorder_replicated/test_replication_prototype.py",
-    "tests/unit/scripts/test_check_doc_anchors.py",
-    "tests/unit/scripts/test_check_project_references.py",
-    "tests/unit/scripts/test_comment_policy.py"
+    "tests/unit/core/joinorder_replicated/test_replication_prototype.py"
   ],
   "_project/notes/phase-2-requests.md": [
     "tests/unit/scripts/test_ci_units.py"
@@ -412,41 +112,10 @@
     "tests/unit/test_release_infrastructure.py"
   ],
   "_project/scripts/prompts/pr_review_followup.md": [
-    "tests/integration/worktree/test_batch_loop_e2e.py",
-    "tests/integration/worktree/test_batch_skill_delivery.py",
-    "tests/unit/scripts/test_batch_evidence.py",
-    "tests/unit/scripts/test_check_suites.py",
-    "tests/unit/scripts/test_comment_policy.py",
-    "tests/unit/scripts/test_comment_policy_changed_files.py",
-    "tests/unit/scripts/test_dev_loop_pr_metrics.py",
-    "tests/unit/scripts/test_generate_changelog_entry.py",
     "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_pr_landing.py",
-    "tests/unit/scripts/test_pr_preflight_base.py",
-    "tests/unit/scripts/test_pr_ready_make.py",
-    "tests/unit/scripts/test_pr_review_followups.py",
-    "tests/unit/scripts/test_preflight_receipt.py",
-    "tests/unit/scripts/test_preflight_targets.py",
-    "tests/unit/scripts/test_release_flow.py",
-    "tests/unit/scripts/test_release_line_carried_tests.py",
-    "tests/unit/scripts/test_release_probe_launch.py",
-    "tests/unit/scripts/test_soundness_manifest.py",
-    "tests/unit/scripts/test_soundness_merge_digest.py",
-    "tests/unit/scripts/test_soundness_merge_digest_dispatch.py",
-    "tests/unit/scripts/test_soundness_merge_digest_release_lines.py",
-    "tests/unit/scripts/test_timing_policy_check.py",
-    "tests/unit/scripts/test_todo_state_contract_check.py",
-    "tests/unit/test_canary_impact.py",
-    "tests/unit/test_canary_impact_live.py",
-    "tests/unit/test_canary_impact_live_full_tree.py",
-    "tests/unit/test_check_primary_clone_stale.py",
-    "tests/unit/workflows/test_batch_loop_e2e_workflow.py",
-    "tests/unit/workflows/test_ci_windows_pr_leg.py",
-    "tests/unit/workflows/test_pr_hold_workflow.py"
+    "tests/unit/scripts/test_pr_review_followups.py"
   ],
   "_project/specs/uat-framework.md": [
-    "tests/unit/scripts/test_check_doc_anchors.py",
-    "tests/unit/scripts/test_check_project_references.py",
     "tests/unit/scripts/test_guard_messages.py",
     "tests/unit/scripts/test_uat_loc_bucket_coverage.py"
   ],
@@ -454,78 +123,16 @@
     "tests/unit/scripts/test_comment_cleanup_scope.py"
   ],
   "benchbox/core/cost/README.md": [
-    "tests/unit/cli/test_shipped_docs_urls.py",
-    "tests/unit/core/sql_compat/test_registry_integrity_resource_heavy.py",
-    "tests/unit/core/sql_compat/test_schema_emit_rules_resource_heavy.py",
-    "tests/unit/core/test_query_catalog.py",
-    "tests/unit/core/test_tpc_notices.py",
-    "tests/unit/core/test_translation_source_dialects.py",
-    "tests/unit/scripts/test_comment_cleanup_scope.py",
-    "tests/unit/scripts/test_export_docs_data.py"
-  ],
-  "benchbox/core/joinorder/DATA-LICENSE.md": [
-    "tests/unit/core/sql_compat/test_registry_integrity_resource_heavy.py",
-    "tests/unit/core/sql_compat/test_schema_emit_rules_resource_heavy.py",
-    "tests/unit/core/test_query_catalog.py",
-    "tests/unit/core/test_tpc_notices.py",
-    "tests/unit/core/test_translation_source_dialects.py",
-    "tests/unit/scripts/test_comment_cleanup_scope.py",
-    "tests/unit/scripts/test_export_docs_data.py"
-  ],
-  "benchbox/core/tpchavoc/DATAFRAME_VARIANTS.md": [
-    "tests/unit/core/sql_compat/test_registry_integrity_resource_heavy.py",
-    "tests/unit/core/sql_compat/test_schema_emit_rules_resource_heavy.py",
-    "tests/unit/core/test_query_catalog.py",
-    "tests/unit/core/test_tpc_notices.py",
-    "tests/unit/core/test_translation_source_dialects.py",
-    "tests/unit/scripts/test_comment_cleanup_scope.py",
-    "tests/unit/scripts/test_export_docs_data.py"
+    "tests/unit/cli/test_shipped_docs_urls.py"
   ],
   "benchbox/core/tpchavoc/README.md": [
-    "tests/unit/core/sql_compat/test_registry_integrity_resource_heavy.py",
-    "tests/unit/core/sql_compat/test_schema_emit_rules_resource_heavy.py",
-    "tests/unit/core/test_query_catalog.py",
-    "tests/unit/core/test_tpc_notices.py",
-    "tests/unit/core/test_translation_source_dialects.py",
-    "tests/unit/scripts/test_ci_units.py",
-    "tests/unit/scripts/test_comment_cleanup_scope.py",
-    "tests/unit/scripts/test_export_docs_data.py"
+    "tests/unit/scripts/test_ci_units.py"
   ],
   "benchbox/core/tuning/templates/README.md": [
-    "tests/unit/cli/test_shipped_docs_urls.py",
-    "tests/unit/core/sql_compat/test_registry_integrity_resource_heavy.py",
-    "tests/unit/core/sql_compat/test_schema_emit_rules_resource_heavy.py",
-    "tests/unit/core/test_benchmark_api_contract.py",
-    "tests/unit/core/test_query_catalog.py",
-    "tests/unit/core/test_tpc_notices.py",
-    "tests/unit/core/test_translation_source_dialects.py",
-    "tests/unit/scripts/test_comment_cleanup_scope.py",
-    "tests/unit/scripts/test_export_docs_data.py",
-    "tests/unit/scripts/test_pr_preflight_base.py",
-    "tests/unit/scripts/test_preflight_receipt.py",
-    "tests/unit/scripts/test_preflight_targets.py",
-    "tests/unit/scripts/test_soundness_manifest.py",
-    "tests/unit/workflows/test_ci_windows_pr_leg.py"
+    "tests/unit/cli/test_shipped_docs_urls.py"
   ],
   "benchbox/core/write_primitives/README.md": [
-    "tests/unit/cli/test_shipped_docs_urls.py",
-    "tests/unit/core/sql_compat/test_registry_integrity_resource_heavy.py",
-    "tests/unit/core/sql_compat/test_schema_emit_rules_resource_heavy.py",
-    "tests/unit/core/test_query_catalog.py",
-    "tests/unit/core/test_tpc_notices.py",
-    "tests/unit/core/test_translation_source_dialects.py",
-    "tests/unit/scripts/test_comment_cleanup_scope.py",
-    "tests/unit/scripts/test_export_docs_data.py"
-  ],
-  "benchbox/platforms/base/README.md": [
-    "tests/unit/scripts/test_pr_preflight_base.py",
-    "tests/unit/scripts/test_preflight_receipt.py",
-    "tests/unit/scripts/test_preflight_targets.py",
-    "tests/unit/scripts/test_soundness_manifest.py",
-    "tests/unit/workflows/test_ci_windows_pr_leg.py"
-  ],
-  "benchbox/sql_compat/README.md": [
-    "tests/unit/sql_compat/test_vendored_sqlglot_bypass.py"
+    "tests/unit/cli/test_shipped_docs_urls.py"
   ],
   "benchbox/utils/VERSION_MANAGEMENT.md": [
     "tests/unit/core/test_benchmark_dependency_errors.py",
@@ -534,7 +141,6 @@
     "tests/unit/scripts/test_docs_ownership.py",
     "tests/unit/scripts/test_inert_paths.py",
     "tests/unit/scripts/test_release_flow.py",
-    "tests/unit/scripts/test_release_maintenance_admission.py",
     "tests/unit/scripts/test_release_probe.py",
     "tests/unit/scripts/test_release_probe_launch.py",
     "tests/unit/scripts/test_release_reuse_uat_evidence.py",
@@ -569,135 +175,101 @@
   "docs/agent/README.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/attribution-surfaces.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_ci_units.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/audit-evidence-provenance.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/batch-feature-delivery.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
     "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/batch-tracker-contract.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/cloud-builder.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/emergency-merge.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/handoffs.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_check_untracked_handoffs.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
     "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py",
     "tests/unit/test_agent_write_preflight.py"
   ],
   "docs/agent/heavy-work.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
     "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py",
     "tests/unit/test_lock_refusal_message.py"
   ],
   "docs/agent/identity-instruction-boundary.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_ci_units.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
     "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_pr_refresh_certification.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_pr_refresh_certification.py"
   ],
   "docs/agent/maintainer-bundles.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/merge-authority.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
     "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/pr-review-evidence.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/preflight-receipt.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/primary-clone-guard.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/primary-clone-update.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/remote-closeout.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/review-protocol-legacy.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_blind_spot_tools.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/review-protocol.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
@@ -705,15 +277,12 @@
     "tests/unit/scripts/test_ci_units.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
     "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py"
+    "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/todo-review.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
     "tests/unit/scripts/test_path_filter_decision.py",
-    "tests/unit/scripts/test_remote_closeout.py",
     "tests/unit/scripts/test_todo_review_own_edit_freshness.py"
   ],
   "docs/internal/adr/adr-independent-publication-authorities.md": [
@@ -878,7 +447,6 @@
   ],
   "tests/fixtures/dev_loop_metrics/refresh_audit_sample.md": [
     "tests/unit/scripts/test_dev_loop_pr_metrics.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_pr_refresh_certification.py"
+    "tests/unit/scripts/test_doc_reference_inventory.py"
   ]
 }

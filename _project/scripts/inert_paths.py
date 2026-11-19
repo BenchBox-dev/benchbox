@@ -371,18 +371,13 @@ def tracked_directories(tracked: set[str]) -> dict[str, list[str]]:
     return directories
 
 
-def expand_constants(constants: set[str], tracked: set[str], directories: dict[str, list[str]]) -> set[str]:
+def expand_globs(constants: set[str], directories: dict[str, list[str]]) -> set[str]:
     found: set[str] = set()
     for constant in constants:
         first = constant.split("/", 1)[0]
-        if any(char in constant for char in "*?["):
-            if any(char in first for char in "*?[") or first == "..":
-                continue
-            found.update(path for path in directories.get(first, ()) if _segment_glob_matches(path, constant))
-        elif constant in tracked:
-            found.add(constant)
-        else:
-            found.update(directories.get(constant, ()))
+        if not any(char in constant for char in "*?[") or any(char in first for char in "*?[") or first == "..":
+            continue
+        found.update(path for path in directories.get(first, ()) if _segment_glob_matches(path, constant))
     return found
 
 
@@ -455,7 +450,7 @@ def scan_tree_reads(
             if hits:
                 refs[own] = sorted(hits)
             exact = (candidates | path_constants(tree)) & tracked
-            constants = expand_constants(path_constants(tree), tracked, directories)
+            constants = expand_globs(path_constants(tree), directories)
             indirect = (exact | constants) - {own}
             if indirect:
                 reads[own] = sorted(indirect)

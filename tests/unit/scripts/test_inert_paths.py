@@ -399,7 +399,7 @@ def test_reader_index_ignores_globs_without_a_literal_first_segment(tmp_path: Pa
     refs, reads, modules = inert.scan_tree_reads(repo)
     assert "tests/unit/test_unrelated.py" not in refs | reads | modules
     assert reads["scripts/audit.py"] == [".claude/commands/pr.md", "docs/agent/one.md", "docs/agent/two.md"]
-    assert reads["scripts/export.py"] == ["rules/agent/one.md"]
+    assert "scripts/export.py" not in reads
     assert modules["tests/unit/test_audit.py"] == ["scripts/audit.py"]
     assert "scripts/audit.py" not in refs
 
@@ -411,6 +411,7 @@ def test_merge_authority_is_read_by_the_instruction_audit_test() -> None:
 
 
 DOCS_AGENT_MENTIONS_WITHOUT_READS = {
+    "scripts/remote_review.py": "exports the docs/agent directory from a review checkout as reviewer rules",
     "scripts/worktree_lifecycle_metadata.py": "names docs/agent/handoffs.md in a refusal message",
     "tests/conftest.py": "names docs/agent/heavy-work.md in the lock refusal message",
     "tests/unit/cli/test_shipped_docs_urls.py": "uses docs/agent paths as link-checker sample input",
