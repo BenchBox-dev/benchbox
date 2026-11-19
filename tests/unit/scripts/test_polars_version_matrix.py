@@ -122,11 +122,11 @@ def _cell(result: dict[str, Any], version: str, setup: str) -> dict[str, Any]:
 
 
 def test_spec_records_versions_scales_setups_and_qualification_hash() -> None:
-    assert POLARS.versions == ("1.31.0", "1.35.2", "1.40.1", "1.44.2", "2.0.0")
+    assert POLARS.versions == ("1.31.0", "1.35.2", "1.40.1", "1.44.2", "2.0.0", "2.1.0")
     assert POLARS.setups == {
-        "A": ("1.31.0", "1.35.2", "1.40.1", "1.44.2", "2.0.0"),
-        "B": ("2.0.0",),
-        "C": ("1.31.0", "1.40.1", "1.44.2", "2.0.0"),
+        "A": ("1.31.0", "1.35.2", "1.40.1", "1.44.2", "2.0.0", "2.1.0"),
+        "B": ("2.0.0", "2.1.0"),
+        "C": ("1.31.0", "1.40.1", "1.44.2", "2.0.0", "2.1.0"),
     }
     assert POLARS.benchmarks == (("tpch", 10.0), ("tpcds", 10.0), ("clickbench", 10.0), ("ssb", 10.0))
     assert POLARS.thread_count == 10
@@ -141,7 +141,7 @@ def test_dry_run_lists_every_invocation_and_matches_the_formula(capsys: pytest.C
     lines = capsys.readouterr().out.splitlines()
     invocations = [line for line in lines if line.startswith("round ")]
     per_benchmark = len(POLARS.setups["A"]) + len(POLARS.setups["B"]) + len(POLARS.setups["C"])
-    assert len(invocations) == POLARS.rounds * per_benchmark * len(POLARS.benchmarks) == 120
+    assert len(invocations) == POLARS.rounds * per_benchmark * len(POLARS.benchmarks) == 156
     assert len(invocations) == POLARS.expected_invocations
     assert lines == GOLDEN_DRY_RUN.read_text(encoding="utf-8").splitlines()
 
