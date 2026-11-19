@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Root cause named: the query or phase that hangs or slows, with a stack or timing evidence, and the commit or dependency change responsible (or proof it is a pre-existing flake with its rate).",
+    "Fix merged with a test that would have caught it where practical, or an owner decision recorded.",
+    "The cell passes in two consecutive nightly trunk UAT runs with no rerun (run ids recorded)."
+  ],
+  "description": "Nightly trunk UAT 44500662749 (develop 3d7619ee, 2026-11-19) stage 1 datafusion-clickhouse-local: clickhouse-local tpchavoc 1.0 hit the 1200 s UAT timeout twice (in-harness retry at 11:37), peak RSS 2.22 GiB, no subprocess output captured. tpchavoc 0.01 and 0.1 passed in 23 s and 43 s. The cell passed in the previous nightly 44278856759 (50fedc71) and in release-v2 44417177182 (v0.5.2rc3). A hang or a large slowdown on develop between 50fedc71 and 3d7619ee is likely; chdb-embedded-server-recursive-mutex-flake may be related.\n\nDecision gate: raising the 1200 s timeout or pruning the cell needs explicit owner approval; fixing a BenchBox regression does not.\n\nGuardrails: no timeout increase, retry or prune to make it green; reproduce locally through make heavy-run with the same command (benchbox run --platform clickhouse-local --benchmark tpchavoc --scale 1.0 --phases load,power) and capture a stack dump (py-spy or faulthandler) of the hang before fixing; bisect develop commits between 50fedc71 and 3d7619ee touching clickhouse-local, chdb, tpchavoc or the load path.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/44500662749",
+    "chdb-embedded-server-recursive-mutex-flake"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a",
+      "at": "2026-11-19T20:49:17Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "469268438ec148a9b293881efc3b1876",
+      "session_id": "ad8ff63c31d0492faa7526a81e19db83"
+    }
+  ]
+}
