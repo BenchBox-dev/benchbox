@@ -15206,12 +15206,17 @@
       "title": "Refuse to arm a PR whose duration check warned unless the PR updates the baseline"
     },
     "ci-artifact-downloads-single-attempt-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-20T14:19:18Z",
+        "generation": "e993710f06914f5d990b4048194b8d25",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fc3ffdf558b4ae7fa8a5c84"
+      },
       "needs": [
         "pr-arm-cut-repeated-github-reads-20261117"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "pr-arm and other CI tooling make one attempt at artifact downloads, so a transient GitHub 503 refuses the arm"
     },
     "ci-autouse-fixture-allowlist-20261025": {
