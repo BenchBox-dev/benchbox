@@ -21,7 +21,7 @@ PR_LANDING_DRY_RUN_SKIP = dry_run=; word_index=0; set -f; \
 		case "$$flag_word" in \
 			--dry-run|--just-print|--recon) dry_run=1 ;; \
 			--*) ;; \
-			-*[!a-zA-Z]*) ;; \
+			-*[!bBdeikLnpqrRsStw]*) ;; \
 			-*[nqt]*) dry_run=1 ;; \
 			*[!a-zA-Z]*|"") ;; \
 			*[nqt]*) if [ "$$word_index" -eq 1 ]; then dry_run=1; fi ;; \

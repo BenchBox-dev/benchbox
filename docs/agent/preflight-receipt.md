@@ -28,10 +28,11 @@ can read what ran.
 
 GNU Make runs any recipe line that contains `$(MAKE)` even under `-n`, `-q` or `-t`, so the landing targets whose
 recipes call `$(MAKE)` (`pr-preflight`, `pr-preflight-fast-tests`, `pr-content-guard`, `pr-open`, `pr-refresh`,
-`pr-fanout`, `pr-ready`, `pr-arm-auto-merge`) check the first word of `MAKEFLAGS` themselves. Under a dry run they print
+`pr-fanout`, `pr-ready`, `pr-arm-auto-merge`, and `skill-sync`) scan `MAKEFLAGS` themselves, from the first word up to
+the first `--` or variable assignment, so a title word such as `-n` never counts. Under a dry run they print
 `dry-run (-n, -q or -t): skipping <target>` and run nothing: no fetch, push, merge, receipt, `gh` call or arming.
 The recipe exits 0. Make itself exits 0 under `-n` and `-t`; under `-q` it reports its own question status (0 or 1,
-depending on the Make version).
+depending on the Make version). The timing shell wrapper uses the same scan and records nothing for a dry run.
 
 ## Theseus install
 
