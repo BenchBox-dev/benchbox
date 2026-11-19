@@ -14,6 +14,9 @@ from scripts.polars_matrix_spec import POLARS, SETUP_ENGINES, PolarsMatrixSpec, 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 GOLDEN_DRY_RUN = Path(__file__).resolve().parents[2] / "fixtures" / "version_matrix" / "polars_dry_run.txt"
+QUALIFICATION = (
+    Path(__file__).resolve().parents[3] / "_project" / "analysis" / "polars-version-matrix" / "qualification.json"
+)
 REFERENCE = {"tpch": {"0:1": 4, "0:2": 5}}
 PINS = {"benchbox_commit": "abc", "pyarrow": "1.0", "thread_count": 10, "datagen_manifests": {"tpch_sf10": "h"}}
 
@@ -132,7 +135,13 @@ def test_spec_records_versions_scales_setups_and_qualification_hash() -> None:
     assert POLARS.thread_count == 10
     assert POLARS.rounds == 3
     assert POLARS.iterations == 1
-    assert len(POLARS.qualification_sha256) == 64
+
+
+def test_committed_qualification_matches_the_pinned_hash_and_covers_every_cell() -> None:
+    assert hashlib.sha256(QUALIFICATION.read_bytes()).hexdigest() == POLARS.qualification_sha256
+    eligibility = json.loads(QUALIFICATION.read_text(encoding="utf-8"))["eligibility"]
+    evidence = {(row["benchmark"], row["setup"], row["version"]) for row in eligibility}
+    assert {(cell.benchmark, cell.setup, cell.version) for cell in POLARS.cells()} <= evidence
 
 
 def test_dry_run_lists_every_invocation_and_matches_the_formula(capsys: pytest.CaptureFixture[str]) -> None:
