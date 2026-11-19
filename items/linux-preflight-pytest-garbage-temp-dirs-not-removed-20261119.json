@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "G1 evidence recorded on this item: guest /tmp/pytest-of-joe size and garbage-* count before and after two consecutive Linux preflight runs, and the identified reason the directories stay non-empty.",
+    "Two consecutive make pr-preflight Linux runs after the fix print zero '(rm_rf) error removing' warnings, and the guest garbage-* count does not grow between them.",
+    "The fix addresses the G1 cause rather than suppressing the warning; a test or a documented check covers it where the cause is in repository code.",
+    "The unit tests' HOME isolation is unchanged: tests that read HOME still see a per-test directory."
+  ],
+  "description": "Every `make pr-preflight` Linux run on 2026-11-19 printed 770 pytest warnings of the form `PytestWarning: (rm_rf) error removing /tmp/pytest-of-joe/garbage-<uuid>/unit-home<N>` followed by `OSError: [Errno 39] Directory not empty`. Most paths are `unit-home<N>` directories created per test by the autouse `_unit_home` fixture in `tests/unit/conftest.py` (`tmp_path_factory.mktemp(\"unit-home\")`); the rest are ordinary `tmp_path` directories. The run executes inside the persistent Linux machine through `scripts/linux_preflight_pytest.sh` and `scripts/linux_machine_run.sh`; the tests themselves pass (4240 passed, 12 skipped).\n\nWhy it matters:\n- The warnings bury real output: 770 entries per preflight log make a genuine warning or failure context hard to find.\n- pytest renames an old base temp directory to `garbage-<uuid>` and then fails to remove it. If the guest's `/tmp/pytest-of-joe` grows across runs, it consumes the disk that heavy admission checks (`BENCHBOX_HEAVY_MIN_FREE_DISK_GIB=2` for this run), and a full guest disk refuses later Linux runs.\n\nUnknown cause. Candidates: two pytest sessions sharing `/tmp/pytest-of-joe` in the same guest and cleaning up each other's base temp; a child process or thread from a test still writing into a directory while pytest removes it; filesystem semantics of the guest `/tmp`.\n\n## Decision gates\n- G1 (diagnose, no code change): under `make heavy-run`, record the guest's `/tmp/pytest-of-joe` size and `garbage-*` count before and after two consecutive Linux preflight runs, and identify what keeps the directories non-empty (concurrent session, leaked writer, or filesystem). Record the evidence on this item before choosing a fix.\n- G2 (fix chosen by the G1 cause): concurrent sessions -> a per-run `--basetemp` the run removes on exit; leaked writer -> fix the leaking test or fixture; filesystem -> a guest-local base temp. A fix that changes the shared Linux machine's configuration needs the owner's choice through the choice dialog first.\n\n## Guardrails\n- Heavy work only through lock-taking entry points; check `make heavy-status` first.\n- Never delete another live session's guest directories, and never run a global mocker prune.\n- Do not hide the warning (`filterwarnings`, `-p no:tmpdir`, `-W ignore`) as the fix.\n- Keep `_unit_home`'s HOME isolation unchanged.\n- Changelog fragment only if the fix changes user-visible behaviour.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4382"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f7e1d096d0cfe816679daa7",
+      "at": "2026-11-19T20:55:16Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ab684212d8dc423a9919d2529c39cbe8",
+      "session_id": "9d7cd8ca6da14c539a81f76fc0281aa3"
+    }
+  ]
+}

@@ -27454,6 +27454,13 @@
       "status": "done",
       "title": "Lint lane reports ALL guard failures in one CI round trip (no fail-fast between independent guards)"
     },
+    "linux-preflight-pytest-garbage-temp-dirs-not-removed-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Linux preflight runs print 770 pytest warnings because old base temp directories cannot be removed"
+    },
     "live-cloud-benchmark-academic-suites": {
       "claim": null,
       "needs": [
