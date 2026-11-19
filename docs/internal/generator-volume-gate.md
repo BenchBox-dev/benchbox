@@ -30,7 +30,10 @@ For each touched benchmark, one `benchbox run --platform duckdb --scale 1
   generated twice.
 
 A drift fails unless the same diff updates the baseline entry to the new size.
-An edited entry that still does not match the generator also fails.
+An edited entry that still does not match the generator also fails. The
+tolerance always comes from the base branch's copy of the baseline, so a diff
+cannot loosen the threshold it is judged by; a new baseline file supplies its
+own.
 
 ## Updating the baseline
 

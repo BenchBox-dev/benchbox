@@ -111,6 +111,20 @@ def test_a_baseline_edit_that_does_not_match_the_generator_still_fails() -> None
     assert "changed in this diff but still does not match" in report["benchmarks"][0]["reason"]
 
 
+def test_a_tolerance_loosened_in_the_same_diff_is_ignored() -> None:
+    smoke = RecordingSmoke({"amplab": healthy(3_000_000)})
+    loosened = {**baseline_with(), "tolerance": 0.99}
+    report = gate.run_gate([AMPLAB_GENERATOR], loosened, baseline_with(), smoke=smoke)
+    assert report["status"] == "fail"
+    assert report["benchmarks"][0]["tolerance"] == 0.05
+
+
+def test_a_new_baseline_file_supplies_its_own_tolerance() -> None:
+    smoke = RecordingSmoke({"amplab": healthy(1_200_000)})
+    report = gate.run_gate([AMPLAB_GENERATOR], {**baseline_with(), "tolerance": 0.25}, None, smoke=smoke)
+    assert report["status"] == "pass"
+
+
 def test_an_updated_baseline_cannot_hide_a_broken_load_or_power_run() -> None:
     broken = gate.SmokeResult(3_000_000, 20, 4, 28_750, 9.0)
     smoke = RecordingSmoke({"amplab": broken})

@@ -93,7 +93,7 @@ def evaluate_size(
     benchmark: str, measured: int, baseline: dict[str, object], base_baseline: dict[str, object] | None
 ) -> dict[str, Any]:
     expected = baseline_size(baseline, benchmark)
-    tolerance = baseline_tolerance(baseline)
+    tolerance = baseline_tolerance(base_baseline if base_baseline is not None else baseline)
     if expected is None:
         return {
             "benchmark": benchmark,
