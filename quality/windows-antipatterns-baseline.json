@@ -60,9 +60,6 @@
     "scripts/publication/create_ledger_seed.py": {
       "WA007": 1
     },
-    "scripts/publication/reconciler.py": {
-      "WA007": 1
-    },
     "scripts/publication/validator_parity.py": {
       "WA007": 1
     },
@@ -394,9 +391,6 @@
     },
     "tests/unit/scripts/publication/test_override_companion_exclusion.py": {
       "WA007": 1
-    },
-    "tests/unit/scripts/publication/test_reconciler.py": {
-      "WA007": 6
     },
     "tests/unit/scripts/test_branch_prune_merged.py": {
       "WA007": 1

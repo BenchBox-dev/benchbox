@@ -107,6 +107,11 @@ Owner decisions of 2026-10-27:
 | Site-owned documentation is absent from core (replaces the documentation freeze) | PROCESS-ONLY | `scripts/check_docs_freeze.py` | `scripts/check_docs_ownership.py`, run by `make docs-validate`: every tracked document must be core-owned, and every site-owned path and its generator must be absent | waiver: documentation ownership layout hygiene, enforced by `make docs-validate` | waived |
 | Commit identity and attribution | HIGH-RISK | `scripts/check_agent_trailers.sh`, `_project/scripts/agent_instruction_audit.py`, hooks `agent-git-identity` and `agent-attribution-trailers` | Same hooks and `make agent-identity-check`; unchanged | pass: `tests/unit/test_check_agent_trailers.py::test_accepts_human_attribution`, `tests/unit/scripts/test_agent_instruction_audit.py::test_repository_candidate_passes`; refuse: `test_check_agent_trailers.py::test_rejects_agent_attribution`, `test_agent_instruction_audit.py::test_imposed_identity_fails` | proven |
 
+The corpus event bridge and corpus reconciler workflows, `scripts/publication/reconciler.py` and their tests are
+removed. They fed `publication/ledger.json`, the ledger of the retired publication control plane, which was never
+created on `published-results`, so they guarded nothing. The corpus promotion row above covers what reaches the site,
+and `publication/ledger-seed.json` is the publication ledger in use (corpus-to-artifact bijection row).
+
 ## Known KEEP traps
 
 These were misclassified as process in earlier plan revisions and must stay.
@@ -138,8 +143,6 @@ with maintainer and release-manager escalation as described in
 | `ci.yml` | product-safety | Pull-request path selection, fast and medium tests, correctness and required-case evidence, lint and required five-unit aggregation |
 | `comment-policy-nightly.yml` | tooling | Nightly and on-demand whole-tree comment-policy scan of develop; the backstop for files a pull request leaves unchanged |
 | `corpus-drift-check.yml` | product-safety | Corpus drift detection |
-| `corpus-event-bridge.yml` | product-safety | Corpus event integrity |
-| `corpus-reconciler.yml` | product-safety | Corpus reconciliation |
 | `cross-surface-baseline-autodetect.yml` | tooling | Baseline maintenance support |
 | `docker-integration.yml` | product-safety | Container integration coverage |
 | `extension-smoke.yml` | product-safety | Extension smoke coverage |
@@ -184,7 +187,6 @@ with maintainer and release-manager escalation as described in
 
 | File | Classification | Property or reason |
 | --- | --- | --- |
-| `test_corpus_event_bridge.py` | product-safety | Corpus event integrity |
 | `test_corpus_trust_boundary.py` | product-safety | Corpus trust boundary |
 | `test_docker_integration_workflow.py` | product-safety | Container integration |
 | `test_nightly_t3_workflow.py` | product-safety | Nightly T3 domain coverage |
@@ -332,7 +334,6 @@ with maintainer and release-manager escalation as described in
 | `publication/test_check_explorer_compat.py` | product-safety |
 | `publication/test_ledger_seed.py` | product-safety |
 | `publication/test_override_companion_exclusion.py` | product-safety |
-| `publication/test_reconciler.py` | product-safety |
 | `test_tpcds_divergence_report.py` | tooling |
 | `test_tpcds_platform_identity.py` | product-safety |
 
