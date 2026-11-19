@@ -23,7 +23,6 @@ tests/unit/scripts/publication/test_check_corpus_bijection.py
 tests/unit/scripts/publication/test_check_explorer_compat.py
 tests/unit/scripts/publication/test_ledger_seed.py
 tests/unit/scripts/publication/test_override_companion_exclusion.py
-tests/unit/scripts/publication/test_reconciler.py
 tests/unit/scripts/test_agent_instruction_audit.py
 tests/unit/scripts/test_audit_sha_check.py
 tests/unit/scripts/test_batch_integration.py
@@ -120,7 +119,6 @@ tests/unit/test_release_canary_incident.py
 tests/unit/test_release_canary_sharding.py
 tests/unit/test_release_infrastructure.py
 tests/unit/workflows/test_comment_policy_nightly_workflow.py
-tests/unit/workflows/test_corpus_event_bridge.py
 tests/unit/workflows/test_corpus_trust_boundary.py
 tests/unit/workflows/test_docker_integration_workflow.py
 tests/unit/workflows/test_nightly_t3_workflow.py

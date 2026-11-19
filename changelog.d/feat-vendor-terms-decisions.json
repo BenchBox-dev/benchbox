@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Submissions for Redshift, Athena, ClickHouse Cloud, MotherDuck and Starburst are now refused until the project settles that vendor's benchmark-publication terms, which happens when its first result is submitted. Open an issue to request it."
+    }
+  ]
+}
