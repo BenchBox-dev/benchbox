@@ -1657,6 +1657,7 @@ jobs:
               throughput) legs="throughput throughput-signal" ;;
               drift) legs="drift-gate drift" ;;
               throughput-cedardb) legs="mirror-cedardb throughput-cedardb" ;;
+              fullspec-cedardb) legs="mirror-cedardb fullspec-cedardb" ;;
               *) legs="$job" ;;
             esac
             failed_jobs=""
@@ -1673,6 +1674,9 @@ jobs:
             fi
             if [ "$job" = throughput-cedardb ] && [ "$(result_of mirror-cedardb)" = failure ]; then
               failure_detail="CedarDB image mirror infrastructure failed; throughput cell result: ${result}."
+            fi
+            if [ "$job" = fullspec-cedardb ] && [ "$(result_of mirror-cedardb)" = failure ]; then
+              failure_detail="CedarDB image mirror infrastructure failed; full-specification cell result: ${result}."
             fi
             if [ "$job" = throughput ] && [ "$(result_of throughput-signal)" = failure ]; then
               failure_detail="The nightly/throughput-uat commit status was not published; throughput job result: ${result}."

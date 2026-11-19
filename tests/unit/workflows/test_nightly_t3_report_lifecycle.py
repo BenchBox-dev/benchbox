@@ -296,7 +296,11 @@ def test_replay_of_the_durations_timeline_reopens_instead_of_creating(tmp_path: 
 
 @pytest.mark.parametrize(
     "domain_job, mirror_job, domain_label",
-    [("docker", "mirror-images", "t3:docker"), ("throughput-cedardb", "mirror-cedardb", "t3:throughput-cedardb")],
+    [
+        ("docker", "mirror-images", "t3:docker"),
+        ("throughput-cedardb", "mirror-cedardb", "t3:throughput-cedardb"),
+        ("fullspec-cedardb", "mirror-cedardb", "t3:fullspec-cedardb"),
+    ],
 )
 def test_signature_separates_mirror_legs_from_database_legs(
     tmp_path: Path, domain_job: str, mirror_job: str, domain_label: str
@@ -311,7 +315,8 @@ def test_signature_separates_mirror_legs_from_database_legs(
     _, both_calls = _run_report(both, {mirror_job: "failure", domain_job: "failure"}, label=domain_label)
 
     def marker(calls: list[list[str]]) -> str:
-        return next(_body(args) for args in calls if args[:2] == ["issue", "create"]).splitlines()[-1]
+        creates = (args for args in calls if args[:2] == ["issue", "create"] and domain_label in args)
+        return _body(next(creates)).splitlines()[-1]
 
     assert marker(mirror_calls) == f"<!-- t3-signature: {mirror_job} -->"
     assert marker(database_calls) == f"<!-- t3-signature: {domain_job} -->"

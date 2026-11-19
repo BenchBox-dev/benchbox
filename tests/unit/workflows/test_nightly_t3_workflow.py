@@ -813,7 +813,7 @@ def test_throughput_cedardb_domain_runs_the_cell_from_the_mirrored_image() -> No
     assert "--platform cedardb --benchmark tpch --scale 1 --streams 3" in text
 
 
-def test_report_attributes_cedardb_mirror_failure_to_the_cedardb_domain(tmp_path: Path) -> None:
+def test_report_attributes_cedardb_mirror_failure_to_both_cedardb_domains(tmp_path: Path) -> None:
     if shutil.which("jq") is None:
         pytest.skip("report execution requires jq")
     gh = tmp_path / "gh"
@@ -847,12 +847,11 @@ def test_report_attributes_cedardb_mirror_failure_to_the_cedardb_domain(tmp_path
     assert result.returncode == 0, result.stdout + result.stderr
     calls = [json.loads(line) for line in call_path.read_text(encoding="utf-8").splitlines()]
     issue_creates = [args for args in calls if args[:2] == ["issue", "create"]]
-    assert len(issue_creates) == 1
-    assert "t3:throughput-cedardb" in issue_creates[0]
-    body = issue_creates[0][issue_creates[0].index("--body") + 1]
-    assert "CedarDB image mirror infrastructure failed" in body
-    assert "throughput cell result: skipped" in body
-    assert not any("t3:docker" in args for args in issue_creates)
+    labels = {args[args.index("--label") + 1]: args[args.index("--body") + 1] for args in issue_creates}
+    assert set(labels) == {"t3:throughput-cedardb", "t3:fullspec-cedardb"}
+    assert "CedarDB image mirror infrastructure failed" in labels["t3:throughput-cedardb"]
+    assert "throughput cell result: skipped" in labels["t3:throughput-cedardb"]
+    assert "full-specification cell result: skipped" in labels["t3:fullspec-cedardb"]
 
 
 def test_throughput_signal_publishes_the_commit_status_the_retiring_workflow_published() -> None:
