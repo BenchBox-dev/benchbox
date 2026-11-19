@@ -841,6 +841,29 @@ def gh_artifact_fetcher(runner: GhRunner, repo: str) -> Callable[[int, Path], No
     return fetch
 
 
+def merged_into_base(pull: dict[str, Any], cutoff: datetime) -> bool:
+    merged_at = pull.get("merged_at")
+    return (
+        merged_at is not None
+        and (pull.get("base") or {}).get("ref") == SOURCE_BASE_BRANCH
+        and parse_timestamp(str(merged_at)) <= cutoff
+    )
+
+
+def bound_to_pull(run: dict[str, Any], pull: dict[str, Any], sha: str) -> bool:
+    head = pull.get("head") or {}
+    head_repo = (head.get("repo") or {}).get("full_name")
+    run_repo = (run.get("head_repository") or {}).get("full_name")
+    return (
+        run.get("event") == SOURCE_EVENT
+        and sha == head.get("sha")
+        and run.get("head_sha") == sha
+        and run.get("head_branch") == head.get("ref")
+        and head_repo is not None
+        and run_repo == head_repo
+    )
+
+
 def select_source_runs(runner: GhRunner, repo: str, cutoff: datetime) -> list[dict[str, Any]]:
     stamp = cutoff.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     listing = gh_json(
@@ -849,7 +872,7 @@ def select_source_runs(runner: GhRunner, repo: str, cutoff: datetime) -> list[di
         created=f"<={stamp}",
         per_page=SOURCE_RUN_SCAN_LIMIT,
     )["workflow_runs"][:SOURCE_RUN_SCAN_LIMIT]
-    merged: dict[int, bool] = {}
+    pulls: dict[int, dict[str, Any]] = {}
     seen: set[int] = set()
     kept: list[dict[str, Any]] = []
     for run in listing:
@@ -869,22 +892,17 @@ def select_source_runs(runner: GhRunner, repo: str, cutoff: datetime) -> list[di
             pr = int(named.group(1))
             if pr in seen:
                 continue
-            if pr not in merged:
-                pull = gh_json(runner, f"repos/{repo}/pulls/{pr}")
-                merged_at = pull.get("merged_at")
-                merged[pr] = (
-                    merged_at is not None
-                    and (pull.get("base") or {}).get("ref") == SOURCE_BASE_BRANCH
-                    and parse_timestamp(str(merged_at)) <= cutoff
-                )
-            if not merged[pr]:
+            if pr not in pulls:
+                pulls[pr] = gh_json(runner, f"repos/{repo}/pulls/{pr}")
+            sha = str(artifact["name"]).rsplit("-", 1)[1]
+            if not merged_into_base(pulls[pr], cutoff) or not bound_to_pull(run, pulls[pr], sha):
                 continue
             seen.add(pr)
             kept.append(
                 {
                     "run_id": int(run["id"]),
                     "pr": pr,
-                    "sha": str(artifact["name"]).rsplit("-", 1)[1],
+                    "sha": sha,
                     "artifact_id": int(artifact["id"]),
                 }
             )
@@ -917,6 +935,8 @@ def run_provenance_problems(runner: GhRunner, repo: str, record: dict[str, Any])
     pull = gh_json(runner, f"repos/{repo}/pulls/{pr}")
     if pull.get("merged_at") is None or (pull.get("base") or {}).get("ref") != SOURCE_BASE_BRANCH:
         problems.append(f"{label}: PR #{pr} is not merged into {SOURCE_BASE_BRANCH}")
+    elif not bound_to_pull(run, pull, sha):
+        problems.append(f"{label}: is not bound to the final head, branch and repository of PR #{pr}")
     return problems
 
 

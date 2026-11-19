@@ -1630,8 +1630,12 @@ jobs:
             git show "$BASE_SHA:$path" > "$trusted/$path"
           done
           if ! grep -q '"reproduce"' "$trusted/scripts/build_fast_duration_baseline.py"; then
-            echo "::notice title=fast-baseline-reproduce::the base branch's build script has no reproduce subcommand, so this PR, which introduces or changes that script, is not reproduced; the next baseline change is"
-            exit 0
+            if git diff --name-only --no-renames "$BASE_SHA...HEAD" | grep -qx 'scripts/build_fast_duration_baseline.py'; then
+              echo "::notice title=fast-baseline-reproduce::the base branch's build script has no reproduce subcommand and this PR introduces or changes that script, so it is not reproduced; the next baseline change is"
+              exit 0
+            fi
+            echo "::error title=fast-baseline-reproduce::the base branch's build script has no reproduce subcommand and this PR does not change that script, so the baseline cannot be checked"
+            exit 1
           fi
           python -I -c 'import sys; sys.path.insert(0, sys.argv[1]); from scripts.build_fast_duration_baseline import main; raise SystemExit(main(sys.argv[2:]))' \
             "$trusted" reproduce \

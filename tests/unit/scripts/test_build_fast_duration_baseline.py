@@ -596,6 +596,23 @@ def zip_of(directory: Path) -> bytes:
     return buffer.getvalue()
 
 
+def run_fields(sha: str, branch: str = "feature") -> dict[str, object]:
+    return {
+        "event": "pull_request",
+        "head_sha": sha,
+        "head_branch": branch,
+        "head_repository": {"full_name": REPO},
+    }
+
+
+def merged_pull(sha: str, branch: str = "feature") -> dict[str, object]:
+    return {
+        "merged_at": "2026-10-24T11:00:00Z",
+        "base": {"ref": "develop"},
+        "head": {"sha": sha, "ref": branch, "repo": {"full_name": REPO}},
+    }
+
+
 class FakeGh:
     def __init__(self, runs: list[Path]) -> None:
         self.calls: list[list[str]] = []
@@ -609,13 +626,14 @@ class FakeGh:
                     "status": "completed",
                     "conclusion": "success",
                     "updated_at": "2026-10-24T10:00:00Z",
+                    **run_fields(sha),
                 }
             )
             base = f"repos/{REPO}"
             self.responses[f"{base}/actions/runs/{run_id}/artifacts"] = {
                 "artifacts": [{"id": artifact, "name": f"fast-junit-{pr}-{sha}", "expired": False}]
             }
-            self.responses[f"{base}/pulls/{pr}"] = {"merged_at": "2026-10-24T11:00:00Z", "base": {"ref": "develop"}}
+            self.responses[f"{base}/pulls/{pr}"] = merged_pull(sha)
             self.responses[f"{base}/actions/artifacts/{artifact}"] = {
                 "name": f"fast-junit-{pr}-{sha}",
                 "expired": False,
@@ -623,9 +641,8 @@ class FakeGh:
             }
             self.responses[f"{base}/actions/runs/{run_id}"] = {
                 "path": ".github/workflows/ci.yml",
-                "event": "pull_request",
                 "repository": {"full_name": REPO},
-                "head_sha": sha,
+                **run_fields(sha),
             }
             self.responses[f"{base}/actions/artifacts/{artifact}/zip"] = zip_of(run_dir)
         self.responses[f"repos/{REPO}/actions/workflows/ci.yml/runs"] = {"workflow_runs": listing}
@@ -716,13 +733,19 @@ def test_reproduce_fails_on_a_changed_manifest_or_an_extra_file(tmp_path: Path) 
 
 
 def test_a_swapped_manifest_run_is_a_selection_mismatch(world: World, capsys: pytest.CaptureFixture[str]) -> None:
-    extra = {"id": 102, "status": "completed", "conclusion": "success", "updated_at": "2026-10-24T12:00:00Z"}
+    extra = {
+        "id": 102,
+        "status": "completed",
+        "conclusion": "success",
+        "updated_at": "2026-10-24T12:00:00Z",
+        **run_fields("sha2"),
+    }
     base = f"repos/{REPO}"
     world.gh.responses[f"{base}/actions/workflows/ci.yml/runs"]["workflow_runs"].insert(0, extra)
     world.gh.responses[f"{base}/actions/runs/102/artifacts"] = {
         "artifacts": [{"id": 202, "name": "fast-junit-3502-sha2", "expired": False}]
     }
-    world.gh.responses[f"{base}/pulls/3502"] = {"merged_at": "2026-10-24T11:00:00Z", "base": {"ref": "develop"}}
+    world.gh.responses[f"{base}/pulls/3502"] = merged_pull("sha2")
 
     assert world.reproduce() == 1
     assert "source selection mismatch" in capsys.readouterr().out
@@ -828,13 +851,64 @@ def test_the_refresh_workflow_and_the_reproduction_use_the_same_selection() -> N
     run = step["run"]
     assert int(step["env"]["MAX_RUNS_SCAN"]) == baseline.SOURCE_RUN_SCAN_LIMIT
     assert int(step["env"]["MAX_SOURCE_RUNS"]) == baseline.SOURCE_RUN_LIMIT
-    assert f"--workflow {baseline.SOURCE_WORKFLOW}" in run
+    assert f"workflows/{baseline.SOURCE_WORKFLOW}/runs" in run
     assert 'run.get("conclusion") == "success"' in run
+    assert 'run.get("event") == "pull_request"' in run
     assert 'run["status"] == "completed"' in run
     assert 'startswith("fast-junit-")' in run
     assert 'case "$name" in fast-junit-trunk-*) continue;; esac' in run
-    assert '[ "$state" = "MERGED develop" ] || continue' in run
+    assert '[ "$pr_merged" = "true" ] && [ "$pr_base" = "develop" ] || continue' in run
+    assert ".head.sha, .head.ref, (.head.repo.full_name" in run
+    assert '[ "$sha" = "$pr_sha" ] && [ "$run_sha" = "$pr_sha" ] || continue' in run
+    assert '[ "$run_branch" = "$pr_ref" ] && [ -n "$pr_repo" ] && [ "$run_repo" = "$pr_repo" ] || continue' in run
     assert "seen_pr" in run
-    assert run.index("generated_at=$(date -u") < run.index("gh run list")
+    assert run.index("generated_at=$(date -u") < run.index("workflows/ci.yml/runs")
     build = next(item for item in refresh["steps"] if item.get("name") == "Build the refreshed baseline")
     assert '--generated-at "$GENERATED_AT"' in build["run"]
+
+
+MOVED_HEADS = [
+    {"head": {"sha": "later", "ref": "feature", "repo": {"full_name": REPO}}},
+    {"head": {"sha": "sha0", "ref": "renamed", "repo": {"full_name": REPO}}},
+    {"head": {"sha": "sha0", "ref": "feature", "repo": {"full_name": "fork/name"}}},
+    {"head": {"sha": "sha0", "ref": "feature", "repo": None}},
+]
+
+
+@pytest.mark.parametrize("change", MOVED_HEADS)
+def test_an_artifact_must_belong_to_the_prs_final_head_branch_and_repository(
+    world: World, capsys: pytest.CaptureFixture[str], change: dict[str, object]
+) -> None:
+    response = world.gh.responses[f"repos/{REPO}/pulls/3500"]
+    assert isinstance(response, dict)
+    response.update(change)
+
+    assert world.reproduce() == 1
+    assert "is not bound to the final head, branch and repository of PR #3500" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("change", MOVED_HEADS)
+def test_selection_skips_artifacts_not_bound_to_the_prs_final_head(world: World, change: dict[str, object]) -> None:
+    response = world.gh.responses[f"repos/{REPO}/pulls/3500"]
+    assert isinstance(response, dict)
+    response.update(change)
+
+    selected = baseline.select_source_runs(world.gh, REPO, baseline.parse_timestamp(GENERATED_AT))
+
+    assert [item["run_id"] for item in selected] == [101]
+
+
+@pytest.mark.parametrize(
+    "change",
+    [{"event": "push"}, {"head_branch": "other"}, {"head_repository": {"full_name": "fork/name"}}],
+)
+def test_selection_skips_runs_whose_event_branch_or_repository_differ_from_the_pr(
+    world: World, change: dict[str, object]
+) -> None:
+    listing = world.gh.responses[f"repos/{REPO}/actions/workflows/ci.yml/runs"]
+    assert isinstance(listing, dict)
+    listing["workflow_runs"][0].update(change)
+
+    selected = baseline.select_source_runs(world.gh, REPO, baseline.parse_timestamp(GENERATED_AT))
+
+    assert [item["run_id"] for item in selected] == [101]

@@ -59,22 +59,23 @@ jobs:
           }
           generated_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           echo "GENERATED_AT=$generated_at" >> "$GITHUB_ENV"
-          api_call "run list --workflow ci.yml --limit $MAX_RUNS_SCAN"
-          gh run list --workflow ci.yml --limit "$MAX_RUNS_SCAN" \
-            --json databaseId,status,conclusion > fast-refresh/ci-runs.json
+          api_call "workflow runs ci.yml per_page=$MAX_RUNS_SCAN"
+          gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?per_page=$MAX_RUNS_SCAN" \
+            > fast-refresh/ci-runs.json
           python3 - <<'PY' > fast-refresh/run-ids.txt
           import json
-          runs = json.load(open("fast-refresh/ci-runs.json"))
+          runs = json.load(open("fast-refresh/ci-runs.json"))["workflow_runs"]
           for run in runs:
-              if run["status"] == "completed" and run.get("conclusion") == "success":
-                  print(run["databaseId"])
+              if run["status"] == "completed" and run.get("conclusion") == "success" and run.get("event") == "pull_request":
+                  fields = [run["id"], run["head_sha"], run["head_branch"], (run.get("head_repository") or {}).get("full_name") or ""]
+                  print("\t".join(str(field) for field in fields))
           PY
           : > fast-refresh/manifest.json
           echo "[" > fast-refresh/manifest.json
           first=1
           kept=0
           declare -A seen_pr=()
-          while read -r run_id; do
+          while IFS=$'\t' read -r run_id run_sha run_branch run_repo; do
             [ "$kept" -ge "$MAX_SOURCE_RUNS" ] && break
             api_call "run $run_id artifacts"
             names=$(gh api "repos/${{ github.repository }}/actions/runs/$run_id/artifacts?per_page=100" \
@@ -91,11 +92,15 @@ jobs:
               pr_number="${pr_number%%-*}"
               case "$pr_number" in ''|*[!0-9]*) continue;; esac
               [ -n "${seen_pr[$pr_number]:-}" ] && continue
-              api_call "pr $pr_number state"
-              state=$(gh pr view "$pr_number" --json state,baseRefName -q '"\(.state) \(.baseRefName)"' 2>/dev/null || echo UNKNOWN)
-              echo "run $run_id artifact $artifact_id pr $pr_number state $state" >> fast-refresh/api-calls.log
-              [ "$state" = "MERGED develop" ] || continue
+              api_call "pr $pr_number head"
+              pull=$(gh api "repos/${{ github.repository }}/pulls/$pr_number" \
+                -q '[(.merged_at != null), .base.ref, .head.sha, .head.ref, (.head.repo.full_name // "")] | @tsv' 2>/dev/null || echo UNKNOWN)
+              echo "run $run_id artifact $artifact_id pr $pr_number pull $pull" >> fast-refresh/api-calls.log
+              IFS=$'\t' read -r pr_merged pr_base pr_sha pr_ref pr_repo <<< "$pull"
+              [ "$pr_merged" = "true" ] && [ "$pr_base" = "develop" ] || continue
               sha="${name##*-}"
+              [ "$sha" = "$pr_sha" ] && [ "$run_sha" = "$pr_sha" ] || continue
+              [ "$run_branch" = "$pr_ref" ] && [ -n "$pr_repo" ] && [ "$run_repo" = "$pr_repo" ] || continue
               if [ "$first" -eq 1 ]; then first=0; else echo "," >> fast-refresh/manifest.json; fi
               printf '  {"run_id": %s, "pr": %s, "sha": "%s", "artifact_id": %s, "dir": "fast-refresh/runs/run-%s"}' \
                 "$run_id" "$pr_number" "$sha" "$artifact_id" "$run_id" >> fast-refresh/manifest.json
