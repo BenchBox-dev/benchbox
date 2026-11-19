@@ -1,9 +1,12 @@
 {
   "acceptance": [
-    "The backend's own logs (be.WARNING, memory usage) captured for a recurrence",
-    "Cause identified, e.g. a BE memory limit versus container size, or the heartbeat/blacklist timeout, and fixed or documented"
+    "On the first recurrence, the #4285 evidence from that run is analysed and the first fault is named (backend stall, heartbeat timeout, memory pressure, network or provider) with log lines cited.",
+    "Decision gate: a fix that changes memory limits, blacklist or heartbeat settings, timeouts, retries or cell pruning needs explicit owner approval before it lands.",
+    "If no recurrence happens in 10 consecutive release or trunk UAT StarRocks shards with capture enabled, record each shard's run id and runner provider/image, including at least 3 on AWS-hosted runners, then ask the owner whether to close as not reproducible. Passes on Azure alone do not count.",
+    "Determine whether the readiness probe's 'Backend node not found' is expected startup noise or a real readiness gap; if real, make the probe wait for an alive, non-blacklisted backend."
   ],
-  "description": "release-v2 43782246418 (v0.5.2rc1, release/0.5.x): starrocks tpchavoc 1.0 failed after about 104 s. Variants 9_v3 to 9_v9 failed with (1064, 'Backend node not found. Check if any backend node is down.backend: [127.0.0.1 alive: true inBlacklist: true]'). The other 52 of 53 shard cells passed, and the same StarRocks code passed in trunk UAT 43451522754. Likely the single backend stalled or ran out of memory on the hosted runner and the frontend blacklisted it.",
+  "context": "2026-11-19 evidence. Failures: rc1 release-v2 43782246418 attempts 1 to 3, on AWS-hosted runners (us-west-2, us-east-1, image 20261111.82.6). Passes: trunk UAT 43451522754, diagnostics 43928351171 and 43957849485 (two samples), and the rc2 44189388601 and rc3 44417177182 StarRocks shards; the passes inspected ran on Azure-hosted runners (image 20261111.196.1). Diagnostics found identical wheel, dependencies, image digest starrocks/allin1-ubuntu:3.5.16@sha256:00ca71aa..., shard order and config; no OOM, restarts or long FE GC; FE heap under 496 MiB of 8 GiB; brief bRPC timeouts in passing runs too. #4285 (0c078973) now captures FE/BE logs, SHOW BACKENDS, blacklist config, memory, container state and host provider/image before teardown; the rc2 capture worked. That capture also shows one 'Backend node not found' on `select @@version_comment` at 00:33:38Z in a passing run, probably the readiness probe before backend registration (unconfirmed). The AWS correlation is suggestive, not proven: GitHub offers no documented way to choose the cloud.",
+  "description": "release-v2 43782246418 (v0.5.2rc1, release/0.5.x): starrocks tpchavoc 1.0 failed after about 104 s. Variants 9_v3 to 9_v9 failed with (1064, 'Backend node not found. Check if any backend node is down.backend: [127.0.0.1 alive: true inBlacklist: true]'). The other 52 of 53 shard cells passed, and the same StarRocks code passed in trunk UAT 43451522754. Cause unknown. Every failure so far ran on AWS-hosted runners with image 20261111.82.6, and the passes inspected ran on Azure-hosted runners; see context.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cdf5cbeb2c796ff8953540c9",
@@ -12,6 +15,14 @@
       "op": "create",
       "op_id": "ed3a1bbb9af04a2686f776b9c537937b",
       "session_id": "e765b129a3244aa3bcd841f0d5e00904"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a",
+      "at": "2026-11-19T14:34:39Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e1af61a5712345cbbb8a4962457d581c",
+      "session_id": "ad8ff63c31d0492faa7526a81e19db83"
     }
   ]
 }
