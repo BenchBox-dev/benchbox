@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from unittest.mock import Mock, call
+from unittest.mock import Mock, call, patch
 
 import pytest
 
@@ -376,6 +376,28 @@ class TestConstraintPreservingCtasSort:
         statement = adapter._applied_tuning_ledger.statements[0]
         assert statement.status == STATEMENT_FAILED
         assert "rollback failed" in statement.error
+
+    def test_commit_failure_the_engine_already_rolled_back_is_a_safe_failure(self):
+        adapter, tuning_config = self._make_adapter_and_config()
+        adapter._applied_tuning_ledger = AppliedTuningLedger()
+        connection = Mock()
+        metadata = Mock()
+        metadata.fetchall.return_value = []
+        connection.execute.return_value = metadata
+        connection.commit.side_effect = RuntimeError("Failed to commit: failed to pin block (11.1 GiB/11.1 GiB used)")
+        connection.rollback.side_effect = RuntimeError(
+            "TransactionContext Error: cannot rollback - no transaction is active"
+        )
+
+        with patch.object(adapter.logger, "warning") as warning:
+            assert adapter.apply_ctas_sort("lineitem", tuning_config, connection) is False
+
+        statement = adapter._applied_tuning_ledger.statements[0]
+        assert statement.status == STATEMENT_FAILED
+        assert "failed to pin block" in statement.error
+        logged = " ".join(str(arg) for call_args in warning.call_args_list for arg in call_args.args)
+        assert "failed to pin block" in logged
+        assert "could not be rolled back" not in logged
 
     def test_active_caller_transaction_is_not_committed_or_rolled_back(self):
         adapter, tuning_config = self._make_adapter_and_config()

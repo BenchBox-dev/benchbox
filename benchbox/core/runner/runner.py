@@ -1016,7 +1016,14 @@ def _execute_via_adapter(
         elif isinstance(data_dir, str):
             data_dir = Path(data_dir)
 
-        df_phases = DataFramePhases(load=True, execute=phases.execute)
+        requested_phases = set((getattr(benchmark_config, "options", None) or {}).get("requested_phases") or ())
+        throughput_requested = "throughput" in requested_phases
+        df_phases = DataFramePhases(
+            load=True,
+            execute=phases.execute,
+            power=not throughput_requested or bool(requested_phases & {"power", "warmup"}),
+            throughput=throughput_requested,
+        )
         df_options = DataFrameRunOptions(
             ignore_memory_warnings=bool(options.get("ignore_memory_warnings", False)),
             force_regenerate=bool(options.get("force_regenerate", False)),

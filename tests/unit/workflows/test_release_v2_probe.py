@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from scripts import release_probe_graph as graph
+from scripts import release_probe_graph as graph, release_probe_verdict as verdict
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -357,19 +357,24 @@ def test_the_probe_distributions_are_built_with_the_commands_the_trunk_producer_
     assert '"uv", "build"' in source
 
 
-def test_the_launcher_workflow_runs_on_pull_requests_with_actions_write_and_never_a_publishing_scope():
+def test_the_dispatch_workflow_runs_on_pull_requests_with_checks_write_and_never_a_publishing_scope():
     workflow = _workflow(PROBE_WORKFLOW)
     triggers = workflow["on" if "on" in workflow else True]
     assert set(triggers) == {"pull_request"}
     job = workflow["jobs"]["probe"]
-    assert job["name"] == "release-v2 probe"
-    assert job["permissions"] == {"contents": "read", "actions": "write", "pull-requests": "read"}
+    assert job["name"] == "release-v2 probe dispatch"
+    assert job["permissions"] == {
+        "contents": "read",
+        "actions": "write",
+        "checks": "write",
+        "pull-requests": "read",
+    }
     assert "environment" not in job
-    assert job["timeout-minutes"] <= 30
+    assert job["timeout-minutes"] <= 15
     text = PROBE_WORKFLOW.read_text(encoding="utf-8")
     assert "secrets." not in text
     assert "id-token" not in text
-    assert "release_probe_launch.py" in text
+    assert "scripts.release_probe_launch" in text
     assert "release_probe_graph.py" in text
 
 
@@ -378,3 +383,88 @@ def test_the_launcher_workflow_runs_for_every_pull_request_so_a_required_check_a
     assert "paths" not in str(triggers["on" if "on" in triggers else True])
     assert "paths-ignore" not in PROBE_WORKFLOW.read_text(encoding="utf-8")
     assert "if" not in triggers["jobs"]["probe"]
+
+
+def test_the_dispatch_job_never_waits_for_the_probe_runs():
+    workflow = _workflow(PROBE_WORKFLOW)
+    assert set(workflow["jobs"]) == {"probe"}
+    text = PROBE_WORKFLOW.read_text(encoding="utf-8")
+    assert "--timeout-seconds" not in text
+    assert "wait_for" not in text
+    source = (ROOT / "scripts" / "release_probe_launch.py").read_text(encoding="utf-8")
+    assert "time.monotonic" not in source
+    assert "deadline" not in source
+
+
+def test_a_fork_pull_request_is_refused_before_any_other_step_and_the_scripts_run_as_modules():
+    steps = _workflow(PROBE_WORKFLOW)["jobs"]["probe"]["steps"]
+    assert steps[0]["if"] == "${{ github.event.pull_request.head.repo.full_name != github.repository }}"
+    assert "exit 1" in steps[0]["run"]
+    text = PROBE_WORKFLOW.read_text(encoding="utf-8")
+    assert "python3 scripts/release_probe_launch.py" not in text
+    assert text.count("python3 -m scripts.release_probe_launch") == 2
+
+
+def test_the_probe_report_job_is_the_last_job_and_needs_every_other_job(live):
+    jobs = live["jobs"]
+    assert set(jobs["report-probe"]["needs"]) == set(jobs) - {"report-probe"}
+    assert not [name for name, job in jobs.items() if "report-probe" in graph.needs_of(job)]
+    assert jobs["report-probe"]["name"] == verdict.REPORT_JOB_NAME
+
+
+def test_the_probe_report_job_runs_only_in_probe_mode_and_even_after_a_failure(live):
+    job = live["jobs"]["report-probe"]
+    assert job["if"] == "${{ always() && github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}"
+    for event, inputs in (("push", {}), ("workflow_dispatch", {"probe": "none"})):
+        for scenario in graph.scenarios(live, event, inputs):
+            assert graph.simulate(live, scenario)["report-probe"].result == "skipped"
+    for probe in graph.VARIANTS:
+        for scenario in graph.scenarios(live, "workflow_dispatch", {"probe": probe}):
+            assert graph.simulate(live, scenario)["report-probe"].result != "skipped"
+
+
+def test_the_probe_report_job_holds_only_checks_write_and_actions_read_and_cannot_publish(live):
+    job = live["jobs"]["report-probe"]
+    assert job["permissions"] == {"contents": "read", "actions": "read", "checks": "write"}
+    assert "environment" not in job
+    assert not graph.job_can_publish(job)
+    text = " ".join(_step_text(step) for step in job["steps"])
+    assert "secrets." not in text
+    assert "id-token" not in text
+    assert "scripts.release_probe_verdict" in text
+    assert "toJSON(needs)" in text
+
+
+def test_the_release_outcome_job_is_a_descendant_of_every_job_the_report_judges(live):
+    jobs = live["jobs"]
+    assert jobs["release-outcome"]["name"] == verdict.OUTCOME_JOB_NAME
+    family = graph.ancestors(jobs)
+    assert set(jobs) - {"report-probe", "release-outcome"} == family["release-outcome"]
+
+
+def test_the_graph_check_rejects_a_missing_or_misplaced_report_job(live):
+    assert graph.probe_report_violations(live) == []
+    missing = copy.deepcopy(live)
+    del missing["jobs"]["report-probe"]
+    assert graph.probe_report_violations(missing)
+    partial = copy.deepcopy(live)
+    partial["jobs"]["report-probe"]["needs"] = ["admit"]
+    assert any("does not need" in problem for problem in graph.probe_report_violations(partial))
+    always = copy.deepcopy(live)
+    always["jobs"]["report-probe"]["if"] = "${{ always() }}"
+    assert any("outside probe mode" in problem for problem in graph.probe_report_violations(always))
+    never = copy.deepcopy(live)
+    never["jobs"]["report-probe"]["if"] = "${{ success() && inputs.probe != 'none' }}"
+    assert any("skipped in probe mode" in problem for problem in graph.probe_report_violations(never))
+
+
+def test_the_dead_workflow_run_verdict_workflow_is_gone():
+    assert not (WORKFLOWS / "release-v2-probe-verdict.yml").exists()
+
+
+@pytest.mark.parametrize("workflow_name", ["release-v2.yml", "trunk-uat.yml"])
+@pytest.mark.parametrize(("stage", "cap"), [("uat-stage1", 4), ("uat-stage2", 2), ("uat-stage3", 3)])
+def test_every_uat_stage_matrix_caps_its_parallelism(workflow_name, stage, cap):
+    strategy = _workflow(WORKFLOWS / workflow_name)["jobs"][stage]["strategy"]
+    assert strategy["max-parallel"] == cap
+    assert strategy["fail-fast"] is False

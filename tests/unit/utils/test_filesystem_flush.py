@@ -106,6 +106,7 @@ def test_tpch_generation_returns_while_the_flush_is_stalled(tmp_path, blocking_s
     generator = SimpleNamespace(
         output_dir=tmp_path / "out",
         should_use_compression=lambda: False,
+        _streams_per_table=lambda: False,
         parallel=1,
         dbgen_path=dbgen_path,
         dbgen_exe=dbgen_path / "dbgen",

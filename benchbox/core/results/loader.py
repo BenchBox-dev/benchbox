@@ -287,6 +287,11 @@ def reconstruct_benchmark_results(
         data_archive_hash=benchmark_section.get("data_archive_hash"),
         funding=provenance_section.get("funding"),
         result_source=provenance_section.get("source"),
+        plan_tier=provenance_section.get("plan_tier"),
+        preview_features=provenance_section.get("preview_features"),
+        vendor_permission=provenance_section.get("vendor_permission"),
+        vendor_notice=provenance_section.get("vendor_notice"),
+        self_run=provenance_section.get("self_run"),
         execution_engine=read_execution_engine(data),
     )
 
@@ -731,6 +736,7 @@ def _reconstruct_maintenance_phase(data: dict[str, Any]) -> MaintenanceTestPhase
                 refresh_set=operation.get("refresh_set"),
                 staged_rows=operation.get("staged_rows"),
                 rows_by_table=operation.get("rows_by_table"),
+                transactional=operation.get("transactional", True),
             )
             for operation in data.get("operations", [])
         ],

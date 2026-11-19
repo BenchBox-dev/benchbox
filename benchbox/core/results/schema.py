@@ -13,6 +13,7 @@ import yaml
 from benchbox.core.cost.models import normalized_cost_allows_direct_total
 from benchbox.core.execution_variant import VariantIdError, derive_variant_id, resolve_variant_platform_id
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
+from benchbox.core.results.comparison_modes import CONFIG_CAPTURE_VERSION
 from benchbox.core.results.environment import (
     build_environment_payload,
     build_host_load_block,
@@ -23,6 +24,8 @@ from benchbox.core.results.fetch_mode import summarize_fetch_modes
 from benchbox.core.results.metrics import UNOFFICIAL_COMPLIANCE_CLASSES, percentile_ms
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.platform_timing import resolve_net_estimate_status, summarize_run_platform_timing
+from benchbox.core.results.provenance import VENDOR_PROVENANCE_FIELDS
+from benchbox.core.results.qphds import load_scope_components
 from benchbox.core.results.query_execution import (
     QueryExecutionContractError,
     normalize_row_count_validation,
@@ -36,13 +39,14 @@ from benchbox.core.results.schema_policy import (
     ROW_COUNT_VALIDATION_SCHEMA_VERSION,
     RUNTIME_SCHEMA_POLICY,
     result_schema_version_value,
+    supports_capture_and_vendor_fields,
     supports_round_trip_timing_fields,
     supports_row_count_validation,
 )
 from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
     platform_info_gateway,
-    result_compliance_class,
+    result_recorded_compliance_class,
     unofficial_metric_marker,
 )
 from benchbox.core.results.timer_scope import TIMING_METHOD_LEGACY
@@ -207,10 +211,23 @@ class SchemaV2Validator:
                 raise SchemaV2ValidationError(f"queries[{index}].row_count_validation is invalid: {exc}") from exc
 
         _validate_timing_fields(payload, version, run)
+        _validate_capture_and_vendor_fields(payload, version)
 
         unexpected = set(payload.keys()) - set(self.REQUIRED_KEYS) - set(self.OPTIONAL_KEYS)
         if unexpected:
             raise SchemaV2ValidationError(f"schema v2.0 payload contains unexpected keys: {sorted(unexpected)}")
+
+
+def _validate_capture_and_vendor_fields(payload: Mapping[str, Any], version: Any) -> None:
+    execution = payload.get("execution")
+    provenance = payload.get("provenance")
+    recorded = []
+    if isinstance(execution, Mapping) and "config_capture" in execution:
+        recorded.append("execution.config_capture")
+    if isinstance(provenance, Mapping):
+        recorded.extend(f"provenance.{name}" for name in VENDOR_PROVENANCE_FIELDS if name in provenance)
+    if recorded and not supports_capture_and_vendor_fields(version):
+        raise SchemaV2ValidationError(f"{recorded[0]} requires schema version 2.5 or later")
 
 
 def _validate_timing_fields(payload: Mapping[str, Any], version: Any, run: Mapping[str, Any]) -> None:
@@ -555,7 +572,7 @@ def _build_benchmark_section(result: BenchmarkResults) -> dict[str, Any]:
         "scale_factor": result.scale_factor,
         "test_type": result.test_execution_type,
     }
-    compliance_class = result_compliance_class(result)
+    compliance_class = result_recorded_compliance_class(result)
     if compliance_class is not None:
         section["compliance_class"] = compliance_class
     if getattr(result, "data_generation_version", None) is not None:
@@ -795,7 +812,10 @@ def _add_provenance_section(payload: dict[str, Any], result: BenchmarkResults) -
 
     funding = getattr(result, "funding", None)
     source = getattr(result, "result_source", None)
-    if not funding and not source:
+    vendor_fields = {
+        name: value for name in VENDOR_PROVENANCE_FIELDS if (value := getattr(result, name, None)) not in (None, [])
+    }
+    if not funding and not source and not vendor_fields:
         return
 
     block: dict[str, Any] = {}
@@ -803,6 +823,7 @@ def _add_provenance_section(payload: dict[str, Any], result: BenchmarkResults) -
         block["funding"] = normalize_funding(funding)
     if source:
         block["source"] = normalize_source(source)
+    block.update(vendor_fields)
     payload["provenance"] = block
 
 
@@ -816,6 +837,8 @@ def _add_execution_section(payload: dict[str, Any], result: BenchmarkResults, dr
         exec_block = _build_execution_fallback(result, driver_metadata)
         if exec_block:
             payload["execution"] = exec_block
+
+    payload.setdefault("execution", {})["config_capture"] = CONFIG_CAPTURE_VERSION
 
 
 _EXEC_CTX_PASSTHROUGH = [
@@ -1205,6 +1228,7 @@ def _maintenance_phase_payload(maintenance: Any) -> dict[str, Any]:
                 "duration_ms": operation.execution_time_ms,
                 "rows_affected": operation.rows_affected,
                 "status": operation.status,
+                "transactional": operation.transactional,
                 **({"error": operation.error_message} if operation.error_message else {}),
                 **({"refresh_set": operation.refresh_set} if operation.refresh_set is not None else {}),
                 **({"staged_rows": operation.staged_rows} if operation.staged_rows is not None else {}),
@@ -1732,7 +1756,7 @@ def _compute_timing_stats(times_ms: list[float]) -> dict[str, Any]:
 
 
 def _build_tpc_metrics(result: BenchmarkResults) -> dict[str, Any] | None:
-    compliance_class = result_compliance_class(result)
+    compliance_class = result_recorded_compliance_class(result)
     if compliance_class == NONSTANDARD_COMPLIANCE_CLASS:
         metrics: dict[str, Any] = {"suppressed": True, "reason": f"compliance_class={compliance_class}"}
     else:
@@ -1759,6 +1783,14 @@ def _build_tpc_metrics(result: BenchmarkResults) -> dict[str, Any] | None:
             metrics["qphds_terms"] = dict(result.qphds_terms)
         if getattr(result, "qphds_unavailable", None):
             metrics["qphds_unavailable"] = list(result.qphds_unavailable)
+
+    if getattr(result, "test_execution_type", None) == "combined" and not metrics.get("suppressed"):
+        components = load_scope_components(getattr(result.execution_phases, "setup", None))
+        if components is not None:
+            metrics["load_scope"] = {
+                "components": components,
+                "counted_in_qph": getattr(result, "benchmark_id", None) == "tpcds",
+            }
 
     return metrics if metrics else None
 

@@ -57,6 +57,13 @@ when the owner names the PR and its head in the current request. Otherwise wait
 for the review verdict, re-run it when a reviewer errors, and report a stalled
 verdict to the owner.
 
+When the `verdict / review` job fails before any reviewer ran (for example in
+its "Prepare the review" step on a GitHub 5xx), no verdict is posted and none
+will follow. Dispatch the review again for the same head with
+`gh workflow run review-verdict.yml --ref develop -f pr=<number> -f head=<head SHA>`.
+A failure before any reviewer ran does not count against the daily rerun
+budget.
+
 The comment body must be exactly `Stand-in review: APPROVE <40-character
 head SHA>` and nothing else: no fences, quotes, prefixes, or extra findings
 text. The checker matches the whole comment, so any extra text voids the
@@ -207,6 +214,17 @@ mergeable state or tracker state never arms, and other 4xx errors are not retrie
 but end as `refused`. When the time runs out it prints the last `waiting` or
 `transient` outcome with `(WAIT=<minutes> expired)`, and a `transient` one exits 4.
 It never re-runs a job, rebases, or changes a hold.
+Reads that fail transiently are first retried inside the read itself by
+`scripts/gh_transient.py` (three retries with 5, 15 and 45 s backoff for server
+errors and network timeouts, a sleep to the reset that `gh api rate_limit`
+reports for rate limits), bounded by the `WAIT` budget (90 s without `WAIT`) and
+never extending it. This covers the artifact download of the fast-duration
+verdict and the ruleset read. Only idempotent reads are retried; 401, 404 and
+other 403 fail at once, and a read that still fails is never a pass: it ends as a
+`transient` outcome, as described above. `make pr-open` refuses without pushing
+when the local review could not look up the pull request because of a transient
+GitHub failure, and prints the cause with the reset or retry guidance instead of
+opening a draft as if the review were unavailable.
 Do not write a polling loop around `make pr-arm`.
 
 ## Stale base guard
@@ -325,6 +343,9 @@ make worktree-finish WORKTREE_PATH=<worktree> EXPECTED_HEAD_OID=<that oid> APPLY
   must be at, and the worktree's `HEAD` must equal it. Use the merged pull
   request's head OID from `gh pr view`; a squash merge keeps that OID only on
   the pull request, not on `develop`.
+- `KEEP_BRANCH=1` removes only the worktree, leaves the local branch at
+  `EXPECTED_HEAD_OID`, and needs no merged pull request; it still requires a
+  clean tree, every commit on origin and an unlocked worktree.
 - Without `APPLY=1` the target only reports (`FORMAT=json` for JSON) and
   changes nothing. Read the report; a held target lists its hold reason.
 - `APPLY=1` re-checks the evidence, runs `git worktree remove`, then deletes

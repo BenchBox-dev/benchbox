@@ -36,6 +36,9 @@ class _RecordingConnection:
     def execute(self, sql: str) -> _Cursor | None:
         if sql.startswith("SELECT COUNT(*) FROM "):
             table = sql.removeprefix("SELECT COUNT(*) FROM ")
+            if " WHERE " in table:
+                self.events.append(f"count_where:{table.split(' ', 1)[0]}")
+                return _Cursor(3)
             self.events.append(f"count:{table}")
             return _Cursor(self.counts.get(table, 100))
         if sql == "BEGIN":
@@ -91,6 +94,10 @@ class _Harness:
 
         monkeypatch.setattr("benchbox.core.tpcds.maintenance_test.mono_time", mono_time)
         monkeypatch.setattr("benchbox.core.tpcds.maintenance_test.load_refresh_file", load_refresh_file)
+        monkeypatch.setattr(
+            "benchbox.core.tpcds.maintenance_test.inline_staging_sql",
+            lambda table, path: f"(SELECT 1 AS x) AS {table.name}",
+        )
         self.test = TPCDSMaintenanceTest(benchmark=None, connection_factory=self._open, scale_factor=0.01)
 
     def _open(self) -> _RecordingConnection:
@@ -125,6 +132,7 @@ def test_insert_function_event_order_keeps_setup_and_close_outside_interval(monk
         "create:s_purchase",
         "drop:s_purchase_lineitem",
         "create:s_purchase_lineitem",
+        "commit",
         "begin",
         "load:s_purchase",
         "load:s_purchase_lineitem",
@@ -152,9 +160,12 @@ def test_delete_function_event_order_covers_every_statement_inside_interval(monk
         "open",
         "count:store_returns",
         "count:store_sales",
+        "count_where:store_returns",
+        "count_where:store_sales",
         "clock",
         "drop:s_delete",
         "create:s_delete",
+        "commit",
         "begin",
         "load:s_delete",
         "statement",
@@ -211,6 +222,7 @@ def test_failing_statement_rolls_back_ends_interval_drops_staging_and_closes(mon
         "create:s_purchase",
         "drop:s_purchase_lineitem",
         "create:s_purchase_lineitem",
+        "commit",
         "begin",
         "load:s_purchase",
         "load:s_purchase_lineitem",

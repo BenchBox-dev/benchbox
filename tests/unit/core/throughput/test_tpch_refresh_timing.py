@@ -60,7 +60,9 @@ def test_sub_millisecond_refresh_functions_keep_positive_duration_evidence(monke
     from benchbox.core.tpch.throughput_test import TPCHThroughputTest
 
     update_set = SimpleNamespace(set_id=1)
-    connection = SimpleNamespace(close=lambda: None)
+    connection = SimpleNamespace(
+        close=lambda: None, platform_adapter=SimpleNamespace(record_refresh_applied=lambda _connection: None)
+    )
     monkeypatch.setattr(power_test, "check_rf1_applied", lambda *_args: None)
     monkeypatch.setattr(power_test, "apply_rf1", lambda *_args: 1)
     monkeypatch.setattr(throughput_test, "apply_rf1", lambda *_args: 1)
@@ -151,7 +153,9 @@ def test_refresh_stream_window_starts_after_refresh_connection_opens() -> None:
     def factory():
         time.sleep(0.2)
         opened_at.append(mono_time())
-        return SimpleNamespace(close=lambda: None)
+        return SimpleNamespace(
+            close=lambda: None, platform_adapter=SimpleNamespace(record_refresh_applied=lambda _connection: None)
+        )
 
     stream = _run_refresh_stream(_refresh_test(factory))
 
@@ -165,7 +169,9 @@ def test_throughput_total_time_excludes_refresh_connection_setup() -> None:
 
     def factory():
         time.sleep(0.2)
-        return SimpleNamespace(close=lambda: None)
+        return SimpleNamespace(
+            close=lambda: None, platform_adapter=SimpleNamespace(record_refresh_applied=lambda _connection: None)
+        )
 
     refresh = _run_refresh_stream(_refresh_test(factory))
     base = refresh.start_monotonic
@@ -184,3 +190,89 @@ def test_throughput_total_time_excludes_refresh_connection_setup() -> None:
 
     assert success is True
     assert result.total_time < 0.1
+
+
+@pytest.mark.parametrize("function", ["RF1", "RF2"])
+def test_the_refresh_marker_is_written_before_the_timer_starts(monkeypatch: pytest.MonkeyPatch, function: str) -> None:
+    from benchbox.core.tpch import maintenance_test, power_test, throughput_test
+    from benchbox.core.tpch.maintenance_test import TPCHMaintenanceTest
+    from benchbox.core.tpch.power_test import TPCHPowerTest
+    from benchbox.core.tpch.refresh import TPCHRF2Deletes
+    from benchbox.core.tpch.throughput_test import TPCHThroughputTest
+
+    update_set = SimpleNamespace(set_id=1)
+    connection = SimpleNamespace(
+        close=lambda: None, platform_adapter=SimpleNamespace(record_refresh_applied=lambda _connection: None)
+    )
+    events: list[str] = []
+    applied = 1 if function == "RF1" else TPCHRF2Deletes(orders=1, lineitems=1)
+    apply_name = "apply_rf1" if function == "RF1" else "apply_rf2"
+    for module in (power_test, throughput_test, maintenance_test):
+        monkeypatch.setattr(module, "record_refresh_applied", lambda _connection: events.append("marker"))
+        monkeypatch.setattr(module, "mono_time", lambda: events.append("timer") or 0.0)
+        monkeypatch.setattr(module, apply_name, lambda *_args, **_kwargs: events.append("apply") or applied)
+        monkeypatch.setattr(module, "rf2_precount", lambda *_args: None)
+    for module in (power_test, maintenance_test):
+        monkeypatch.setattr(module, "capture_rf2_baseline", lambda *_args: None)
+        monkeypatch.setattr(module, "verify_rf2_deletes", lambda *_args: None)
+    monkeypatch.setattr(power_test, "check_rf1_applied", lambda *_args: None)
+    monkeypatch.setattr(power_test, "check_rf2_applied", lambda *_args: None)
+    monkeypatch.setattr(maintenance_test, "check_rf1_applied", lambda *_args: None)
+    monkeypatch.setattr(maintenance_test, "check_rf2_applied", lambda *_args: None)
+
+    power = TPCHPowerTest(
+        benchmark=object(),
+        connection=connection,
+        refresh_update_set=update_set,
+        refresh_connection_factory=lambda: connection,
+    )
+    throughput = TPCHThroughputTest(
+        benchmark=object(),
+        connection_factory=lambda: connection,
+        refresh_enabled=True,
+        refresh_connection_factory=lambda: connection,
+    )
+    maintenance = TPCHMaintenanceTest(connection_factory=lambda: connection)
+    run_maintenance = maintenance._execute_rf1 if function == "RF1" else maintenance._execute_rf2
+
+    for run in (
+        lambda: power._execute_refresh_function(function, connection),
+        lambda: run_maintenance(0, update_set),
+    ):
+        events.clear()
+        run()
+        assert events.index("marker") < events.index("timer") < events.index("apply")
+
+    events.clear()
+    throughput._execute_refresh_function(function, update_set, connection)
+    assert "marker" not in events
+
+
+def test_the_throughput_refresh_marker_is_written_before_the_refresh_stream_interval_starts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from benchbox.core.tpch import throughput_test
+    from benchbox.core.tpch.refresh import TPCHRF2Deletes
+    from benchbox.core.tpch.throughput_test import TPCHRefreshStreamResult, TPCHThroughputTest
+
+    events: list[str] = []
+    connection = SimpleNamespace(
+        close=lambda: None, platform_adapter=SimpleNamespace(record_refresh_applied=lambda _connection: None)
+    )
+    monkeypatch.setattr(throughput_test, "record_refresh_applied", lambda _connection: events.append("marker"))
+    monkeypatch.setattr(throughput_test, "mono_time", lambda: events.append("timer") or 0.0)
+    monkeypatch.setattr(throughput_test, "apply_rf1", lambda *_args: events.append("apply") or 1)
+    monkeypatch.setattr(
+        throughput_test, "apply_rf2", lambda *_args: events.append("apply") or TPCHRF2Deletes(orders=1, lineitems=1)
+    )
+    throughput = TPCHThroughputTest(
+        benchmark=object(),
+        connection_factory=lambda: connection,
+        refresh_enabled=True,
+        refresh_connection_factory=lambda: connection,
+    )
+
+    throughput._execute_refresh_stream({1: SimpleNamespace(set_id=1)}, 1, TPCHRefreshStreamResult(first_set=1))
+
+    assert events.count("marker") == 1
+    assert events.index("marker") < events.index("timer")

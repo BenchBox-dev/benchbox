@@ -278,8 +278,8 @@ jobs:
             _project/baselines/perf_smoke_duckdb_tpch_001.json \
             "${{ steps.current.outputs.path }}" \
             --fail-on-regression 10% \
-            --min-regression-delta 7ms \
-            --min-aggregate-regression-delta 82ms
+            --min-regression-delta 5ms \
+            --min-aggregate-regression-delta 31ms
 
       - name: Upload result artifact
         if: always()
@@ -490,11 +490,28 @@ jobs:
             echo "::warning::could not list prior nightly-v2.yml runs; their Throughput@Size baselines are not counted"
             v2_ids=""
           fi
+          transient_failed=0
           for run_id in ${v2_ids} ${legacy_ids}; do
-            gh run download "${run_id}" --repo "$GITHUB_REPOSITORY" \
-              --pattern 'throughput-baseline-duckdb-tpch-sf1-*' --dir "${history}/${run_id}" 2>/dev/null || true
+            attempt=1
+            until err=$(gh run download "${run_id}" --repo "$GITHUB_REPOSITORY" \
+              --pattern 'throughput-baseline-duckdb-tpch-sf1-*' --dir "${history}/${run_id}" 2>&1); do
+              if ! python3 scripts/gh_transient.py --check "${err}"; then
+                echo "::notice::no Throughput@Size baseline downloaded from run ${run_id}: ${err}"
+                break
+              fi
+              if [ "${attempt}" -ge 3 ]; then
+                echo "::error::Throughput@Size baselines of run ${run_id} could not be downloaded after ${attempt} attempts, so the floor would silently count fewer samples: ${err}"
+                transient_failed=1
+                break
+              fi
+              sleep $((attempt * 10))
+              attempt=$((attempt + 1))
+            done
           done
           echo "Downloaded $(find "$history" -name 'throughput-baseline-*.json' | wc -l) baseline record(s)"
+          if [ "${transient_failed}" -ne 0 ]; then
+            exit 1
+          fi
 
       - name: Assert the requested stream count reached the driver and every stream succeeded
         if: ${{ !cancelled() }}
@@ -608,6 +625,117 @@ jobs:
             -f description="throughput-uat DuckDB ${DUCKDB_RESULT}; CedarDB job ${CEDARDB_RESULT}; cell ${CEDARDB_SWEEP_OUTCOME:-not run}" \
             -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
+  fullspec-chdb:
+    name: "t3:fullspec-chdb | clickhouse-local tpch sf1 streams 2 + tpcds sf1 streams 4 full spec"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run ClickHouse Local TPC-H full-specification UAT cell (SF1, run-official --streams 2)
+        id: chdb-tpch-sweep
+        run: |
+          make uat-sweep CONFIG=tests/uat/configs/full-spec/uat-fullspec-clickhouse-local-tpch-nightly.yaml
+
+      - name: Assert the ClickHouse Local TPC-H cell stream count and per-stream success
+        if: ${{ !cancelled() }}
+        run: |
+          uv run -- python -m tests.uat.throughput assert \
+            --cells-glob "$HOME/Developer/benchmark_runs/logs/uat_fullspec_clickhouse_local_tpch_nightly_*/cells.jsonl" \
+            --platform clickhouse-local --benchmark tpch --scale 1 --streams 2
+
+      - name: Run ClickHouse Local TPC-DS full-specification UAT cell (SF1, run-official --streams 4)
+        id: chdb-tpcds-sweep
+        if: ${{ !cancelled() }}
+        run: |
+          make uat-sweep CONFIG=tests/uat/configs/full-spec/uat-fullspec-clickhouse-local-tpcds-nightly.yaml
+
+      - name: Assert the ClickHouse Local TPC-DS cell stream count and per-stream success
+        if: ${{ !cancelled() }}
+        run: |
+          uv run -- python -m tests.uat.throughput assert \
+            --cells-glob "$HOME/Developer/benchmark_runs/logs/uat_fullspec_clickhouse_local_tpcds_nightly_*/cells.jsonl" \
+            --platform clickhouse-local --benchmark tpcds --scale 1 --streams 4
+
+      - name: Upload ClickHouse Local full-specification UAT logs and results
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: fullspec-uat-chdb-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ~/Developer/benchmark_runs/logs/uat_fullspec_clickhouse_local_*
+            ~/Developer/benchmark_runs/results/tpch_sf1_*.json
+            ~/Developer/benchmark_runs/results/tpcds_sf1_*.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  fullspec-cedardb:
+    name: "t3:fullspec-cedardb | cedardb tpcds sf1 streams 4 full spec"
+    needs: mirror-cedardb
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: read
+    env:
+      CEDARDB_IMAGE: ghcr.io/benchbox-dev/cedardb@sha256:dbbacb16b24421a9a123cd1d065e2a049c60b7cc6060d7db2f3cccbf69f5ff62
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Authenticate to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Run CedarDB TPC-DS full-specification UAT cell (SF1, run-official --streams 4)
+        id: cedardb-tpcds-sweep
+        run: |
+          make uat-sweep CONFIG=tests/uat/configs/full-spec/uat-fullspec-cedardb-tpcds-nightly.yaml
+
+      - name: Assert the CedarDB TPC-DS cell stream count and per-stream success
+        if: ${{ !cancelled() }}
+        run: |
+          uv run -- python -m tests.uat.throughput assert \
+            --cells-glob "$HOME/Developer/benchmark_runs/logs/uat_fullspec_cedardb_tpcds_nightly_*/cells.jsonl" \
+            --platform cedardb --benchmark tpcds --scale 1 --streams 4
+
+      - name: Upload CedarDB full-specification UAT logs and results
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: fullspec-uat-cedardb-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ~/Developer/benchmark_runs/logs/uat_fullspec_cedardb_*
+            ~/Developer/benchmark_runs/results/tpcds_sf1_*.json
+          if-no-files-found: warn
+          retention-days: 14
+
   drift-gate:
     name: "t3:drift | gate"
     runs-on: ubuntu-latest
@@ -638,6 +766,10 @@ jobs:
     if: ${{ needs.drift-gate.outputs.run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: read
     env:
       SUMMARY_PATH: t3-drift/cross-surface-baseline-summary.json
       BASELINE_PATH: benchbox/core/equivalence/cross_surface_baseline.yaml
@@ -665,47 +797,14 @@ jobs:
 
       - name: Corpus drift (develop vs published-results, directional)
         if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          PUB=origin/published-results
-          DEV=HEAD
-
-          if ! git cat-file -e "${PUB}:results-data" 2>/dev/null; then
-            echo "::error::published-results has no results-data/ tree"
-            exit 2
-          fi
-
-          PATHSPECS=(
-            'results-data/bundles'
-            'results-data/CORPUS_NOTES.md'
-            'results-data/SEED_CORPUS_SPEC.md'
-            'results-data/README.md'
-            'results-data/validate_corpus.py'
-          )
-
-          DEVELOP_AHEAD=$(git diff --name-only --diff-filter=A "${PUB}" "${DEV}" -- "${PATHSPECS[@]}" || true)
-          PUBLISHED_ONLY=$(git diff --name-only --diff-filter=D "${PUB}" "${DEV}" -- "${PATHSPECS[@]}" || true)
-          CONTENT_CHANGED=$(git diff --name-only --diff-filter=M "${PUB}" "${DEV}" -- "${PATHSPECS[@]}" || true)
-          STALE_PATHS=$(printf '%s\n%s\n' "${CONTENT_CHANGED}" "${DEVELOP_AHEAD}" | sed '/^$/d' || true)
-
-          if [[ -n "${PUBLISHED_ONLY}" ]]; then
-            PO_COUNT=$(printf '%s\n' "${PUBLISHED_ONLY}" | sed '/^$/d' | wc -l | tr -d ' ')
-            echo "::notice::published-results has ${PO_COUNT} path(s) not on develop (accepted archive submissions; not drift)."
-            printf '%s\n' "${PUBLISHED_ONLY}" | head -40
-          fi
-
-          if [[ -z "${STALE_PATHS}" ]]; then
-            echo "No develop-ahead corpus drift."
-            exit 0
-          fi
-
-          COUNT=$(printf '%s\n' "${STALE_PATHS}" | wc -l | tr -d ' ')
-          echo "::error::published-results corpus is ${COUNT} path(s) behind develop (develop-ahead or content-changed)."
-          printf '%s\n' "${STALE_PATHS}" | head -40
-          echo "Mirror develop-ahead paths with the non-destructive union overlay:"
-          echo "  gh workflow run sync-results-data-to-published.yml --ref develop"
-          echo "Never use a wipe-based full mirror: published-only community submissions would be deleted."
-          exit 1
+          git fetch --no-tags --shallow-since="72 hours ago" origin develop \
+            && git fetch --no-tags --deepen=1 origin develop \
+            || echo "::warning::Could not deepen develop history; mirror grace fails closed for stale paths."
+          python3 scripts/corpus_drift.py --profile nightly --repository "${GITHUB_REPOSITORY}"
 
       - name: Corpus privacy scan (published-results tip)
         if: ${{ !cancelled() }}
@@ -1339,7 +1438,7 @@ jobs:
   integration:
     name: "t3:integration | ${{ matrix.suite }}"
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
     env:
       BENCHBOX_TEST_TIER: t2
     strategy:
@@ -1384,12 +1483,15 @@ jobs:
         run: python3 scripts/theseus_release_check.py
         env:
           GITHUB_TOKEN: ${{ github.token }}
+        timeout-minutes: 20
 
       - name: Run core integration tests
+        timeout-minutes: 30
         if: matrix.suite == 'core'
         run: uv run -- python -m pytest tests/integration -m "integration and not (slow or stress or resource_heavy or live_integration)" --tb=short --maxfail=5 --timeout=300 --junitxml=${{ matrix.junit }}
 
       - name: Run table-format integration tests
+        timeout-minutes: 30
         if: matrix.suite == 'table-formats'
         run: uv run -- python -m pytest tests/integration/core/data_organization/test_presorted_generation.py -m "requires_table_formats" --tb=short --junitxml=${{ matrix.junit }}
 
@@ -1519,6 +1621,8 @@ jobs:
       - throughput
       - throughput-cedardb
       - throughput-signal
+      - fullspec-chdb
+      - fullspec-cedardb
       - drift-gate
       - drift
       - quarantine
@@ -1557,7 +1661,7 @@ jobs:
           result_of() {
             printf '%s' "$NEEDS_JSON" | jq -r --arg j "$1" '.[$j].result // "skipped"'
           }
-          for job in docker cloud perf matrix extension install throughput throughput-cedardb drift quarantine liveness ruleset-drift windows tpcds-obt sql-execution-gate-obt durations-refresh security cross-engine integration-smoke integration parity sqlglot-generator mirror-questdb mirror-postgres17; do
+          for job in docker cloud perf matrix extension install throughput throughput-cedardb fullspec-chdb fullspec-cedardb drift quarantine liveness ruleset-drift windows tpcds-obt sql-execution-gate-obt durations-refresh security cross-engine integration-smoke integration parity sqlglot-generator mirror-questdb mirror-postgres17; do
             case "$job" in
               durations-refresh) domain=durations ;;
               *) domain="$job" ;;
@@ -1570,6 +1674,7 @@ jobs:
               throughput) legs="throughput throughput-signal" ;;
               drift) legs="drift-gate drift" ;;
               throughput-cedardb) legs="mirror-cedardb throughput-cedardb" ;;
+              fullspec-cedardb) legs="mirror-cedardb fullspec-cedardb" ;;
               *) legs="$job" ;;
             esac
             failed_jobs=""
@@ -1586,6 +1691,9 @@ jobs:
             fi
             if [ "$job" = throughput-cedardb ] && [ "$(result_of mirror-cedardb)" = failure ]; then
               failure_detail="CedarDB image mirror infrastructure failed; throughput cell result: ${result}."
+            fi
+            if [ "$job" = fullspec-cedardb ] && [ "$(result_of mirror-cedardb)" = failure ]; then
+              failure_detail="CedarDB image mirror infrastructure failed; full-specification cell result: ${result}."
             fi
             if [ "$job" = throughput ] && [ "$(result_of throughput-signal)" = failure ]; then
               failure_detail="The nightly/throughput-uat commit status was not published; throughput job result: ${result}."

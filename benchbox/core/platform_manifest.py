@@ -876,7 +876,8 @@ _PLATFORM_MANIFEST_JSON = """[
     "adapter": {
       "module": "benchbox.platforms.clickhouse_local",
       "class_name": "ClickHouseLocalAdapter",
-      "registration_order": 7
+      "registration_order": 7,
+      "stream_connection_capability": "independent_connection"
     },
     "display_name": "ClickHouse Local (chDB)",
     "description": "Embedded ClickHouse via chDB • In-process • Zero network",
@@ -889,7 +890,7 @@ _PLATFORM_MANIFEST_JSON = """[
       }
     ],
     "requirements": [
-      "chdb>=0.10.0"
+      "chdb>=4.5.0"
     ],
     "installation_command": "uv add benchbox --extra clickhouse-local",
     "adoption": "established",

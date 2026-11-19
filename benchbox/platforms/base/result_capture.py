@@ -1374,6 +1374,7 @@ class ResultCaptureMixin:
                 refresh_set=operation.refresh_set,
                 staged_rows=dict(operation.staged_rows),
                 rows_by_table=dict(operation.rows_by_table),
+                transactional=getattr(operation, "transactional", True),
             )
             for operation in maintenance_result.get("operations", [])
         ]

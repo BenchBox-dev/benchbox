@@ -22,8 +22,13 @@ from benchbox.core.tpch.refresh import (
     applied_counts,
     apply_rf1,
     apply_rf2,
+    capture_rf2_baseline,
     check_rf1_applied,
     check_rf2_applied,
+    record_refresh_applied,
+    refresh_transactional,
+    rf2_precount,
+    verify_rf2_deletes,
 )
 from benchbox.core.validation.query_validation import (
     DATA_REFRESHED_REASON,
@@ -497,17 +502,21 @@ class TPCHPowerTest:
         try:
             if self.refresh_update_set is None or connection is None:
                 raise RuntimeError("TPC-H refresh functions require an update set and a separate session")
+            record_refresh_applied(connection)
+            baseline = capture_rf2_baseline(connection, self.refresh_update_set) if function == "RF2" else None
+            precounted = rf2_precount(connection, baseline) if function == "RF2" else None
             start_time = mono_time()
             if function == "RF1":
                 applied = apply_rf1(connection, self.refresh_update_set)
             else:
-                applied = apply_rf2(connection, self.refresh_update_set)
+                applied = apply_rf2(connection, self.refresh_update_set, precounted=precounted)
             duration_ms = max(1, round(elapsed_seconds(start_time) * 1000))
             counts = applied_counts(applied)
             check_status = "FAILED"
             if function == "RF1":
                 check_rf1_applied(connection, self.refresh_update_set, counts["rows_inserted"])
             else:
+                verify_rf2_deletes(connection, self.refresh_update_set, baseline, applied)
                 check_rf2_applied(connection, self.refresh_update_set, counts["orders_deleted"])
             check_status = "PASSED"
             status = "SUCCESS"
@@ -517,6 +526,7 @@ class TPCHPowerTest:
         return {
             "function": function,
             "update_set": self.refresh_update_set.set_id if self.refresh_update_set is not None else None,
+            "transactional": refresh_transactional(connection),
             "duration_ms": duration_ms if status == "SUCCESS" else 0,
             **counts,
             "status": status,

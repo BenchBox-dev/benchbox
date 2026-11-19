@@ -8,7 +8,7 @@ import pytest
 
 from tests.integration._cli_e2e_utils import run_cli_command
 
-pytestmark = [pytest.mark.integration, pytest.mark.medium]
+pytestmark = [pytest.mark.integration, pytest.mark.medium, pytest.mark.timeout(300)]
 
 SEED = 7
 QUERY = "6"
@@ -74,7 +74,7 @@ def _mcp_bundle(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, platform: str) 
         results_dir=results_dir,
         anonymize=False,
     )
-    assert response["mcp_metadata"]["status"] == "completed", response
+    assert response.get("mcp_metadata", {}).get("status") == "completed", response
     return _only_bundle(results_dir)
 
 
@@ -113,3 +113,47 @@ def test_dataframe_runs_record_host_load_samples_from_both_entry_points(
             assert host_load[point]["memory_available_mb"] is not None
             assert host_load[point]["sampled_at"] is not None
         assert host_load["start"]["sampled_at"] <= host_load["end"]["sampled_at"]
+
+
+@pytest.mark.parametrize("platform", ["duckdb", "polars-df"])
+def test_current_cli_and_mcp_bundles_with_compression_disabled_compare_as_the_same_mode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, platform: str
+) -> None:
+    if platform == "polars-df":
+        pytest.importorskip("polars")
+    _isolated_home(tmp_path, monkeypatch, "output:\n  compression:\n    enabled: false\n")
+    cli_path = _write_bundle(tmp_path / "cli.json", _cli_bundle(tmp_path, platform))
+    mcp_path = _write_bundle(tmp_path / "mcp.json", _mcp_bundle(tmp_path, monkeypatch, platform))
+
+    result = run_cli_command(["compare", str(cli_path), str(mcp_path)], home=tmp_path / "home")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "run configuration capture" not in " ".join((result.stdout + result.stderr).split())
+
+
+def test_mcp_bundle_with_no_recorded_config_and_no_capture_marker_is_still_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _isolated_home(tmp_path, monkeypatch, "output:\n  compression:\n    enabled: false\n")
+    cli = _cli_bundle(tmp_path, "duckdb")
+    mcp = _mcp_bundle(tmp_path, monkeypatch, "duckdb")
+    mcp["config"].pop("compression", None)
+    mcp["config"].pop("platform_options", None)
+    del mcp["execution"]["config_capture"]
+
+    result = run_cli_command(
+        [
+            "compare",
+            str(_write_bundle(tmp_path / "cli.json", cli)),
+            str(_write_bundle(tmp_path / "mcp.json", mcp)),
+        ],
+        home=tmp_path / "home",
+    )
+
+    assert result.returncode == 4, result.stdout + result.stderr
+    assert "run configuration capture differs" in " ".join((result.stdout + result.stderr).split())
+
+
+def _write_bundle(path: Path, bundle: dict[str, Any]) -> Path:
+    path.write_text(json.dumps(bundle), encoding="utf-8")
+    return path

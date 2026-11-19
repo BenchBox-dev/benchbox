@@ -19,6 +19,7 @@ file	scripts/path_filter_decision.py
 file	.github/path-filters.yml
 file	scripts/pr_arm.py
 file	scripts/pr_landing.py
+file	scripts/gh_transient.py
 file	scripts/local_review.py
 file	scripts/remote_closeout.py
 file	scripts/build_fast_duration_baseline.py
@@ -145,6 +146,7 @@ file	scripts/release_releasable.py
 file	scripts/release_probe.py
 file	scripts/release_probe_graph.py
 file	scripts/release_probe_launch.py
+file	scripts/release_probe_verdict.py
 file	scripts/release_probe_uat.py
 file	scripts/trunk_uat.py
 file	tests/uat/failure_signature.py

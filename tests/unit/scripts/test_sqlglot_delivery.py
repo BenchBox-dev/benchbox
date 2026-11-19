@@ -22,7 +22,8 @@ from tests.unit.scripts.test_adopt_sqlglot_wheel import build_wheel
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
-REAL_CONFIG = Path(__file__).resolve().parents[3] / ".github" / "sqlglot-delivery.json"
+REPO = Path(__file__).resolve().parents[3]
+REAL_CONFIG = REPO / ".github" / "sqlglot-delivery.json"
 CONSUMER = "BenchBox-dev/BenchBox"
 PRODUCER = "BenchBox-dev/benchbox-sqlglot"
 WORKFLOW = ".github/workflows/benchbox-delivery.yml"
@@ -237,6 +238,7 @@ class World:
         self.files = tmp_path / "wheels"
         self.files.mkdir()
         self.counter = 0
+        self.recorder: Callable[[Path, str], None] | None = None
         self.config = delivery.load_config(REAL_CONFIG)
         self.bare = tmp_path / "origin.git"
         sh(tmp_path, "git", "init", "--bare", "-b", "develop", str(self.bare))
@@ -382,7 +384,9 @@ class World:
     def prepare(self) -> dict[str, Any]:
         code, plan = self.run_plan()
         assert code == 0 and plan["state"] == "adopt"
-        return delivery.prepare(self.clone, self.tmp / "plan", self.tmp / "prepared", self.config, checks=None)
+        return delivery.prepare(
+            self.clone, self.tmp / "plan", self.tmp / "prepared", self.config, checks=None, recorder=self.recorder
+        )
 
     def publish(self, **options: Any) -> dict[str, Any]:
         options.setdefault("environ", ENABLED)
@@ -701,7 +705,9 @@ def test_prepare_refuses_a_wheel_that_does_not_match_the_plan_and_writes_no_bund
     plan["expected"]["sha256"] = "0" * 64
     (world.tmp / "plan" / delivery.PLAN_FILE).write_text(json.dumps(plan))
     with pytest.raises(DeliveryError, match="plan hash"):
-        delivery.prepare(world.clone, world.tmp / "plan", world.tmp / "prepared", world.config, checks=None)
+        delivery.prepare(
+            world.clone, world.tmp / "plan", world.tmp / "prepared", world.config, checks=None, recorder=None
+        )
     assert not (world.tmp / "prepared" / delivery.BUNDLE_FILE).exists()
 
 
@@ -713,7 +719,9 @@ def test_prepare_refuses_an_adopter_that_touches_anything_else(world: World) -> 
         (root / "scripts" / "stray.py").write_text("print('x')\n")
 
     with pytest.raises(DeliveryError, match="outside the allowed set"):
-        delivery.prepare(world.clone, world.tmp / "plan", world.tmp / "prepared", world.config, checks=stray)
+        delivery.prepare(
+            world.clone, world.tmp / "plan", world.tmp / "prepared", world.config, checks=stray, recorder=None
+        )
     assert not (world.tmp / "prepared" / delivery.BUNDLE_FILE).exists()
 
 
@@ -728,7 +736,257 @@ def test_prepare_refuses_an_adoption_that_changes_expected_outcomes(world: World
         path.write_text(json.dumps(baseline, indent=2) + "\n", encoding="utf-8")
 
     with pytest.raises(DeliveryError, match="expected outcomes"):
-        delivery.prepare(world.clone, world.tmp / "plan", world.tmp / "prepared", world.config, checks=rewrite_outcomes)
+        delivery.prepare(
+            world.clone,
+            world.tmp / "plan",
+            world.tmp / "prepared",
+            world.config,
+            checks=rewrite_outcomes,
+            recorder=None,
+        )
+    assert not (world.tmp / "prepared" / delivery.BUNDLE_FILE).exists()
+
+
+CORPUS = delivery.CORPUS_DIR
+
+
+def seed_corpus(world: World, area: str, recorded: dict[str, Any]) -> None:
+    path = world.clone / CORPUS / f"{area}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(recorded, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    sh(world.clone, "git", "add", CORPUS)
+    sh(world.clone, "git", "commit", "-m", "seed corpus")
+    sh(world.clone, "git", "push", "origin", "develop")
+
+
+def rewriting(area: str, recorded: dict[str, Any]) -> Callable[[Path, str], None]:
+    def record(root: Path, archive: str) -> None:
+        assert archive == f"benchbox_sqlglot-{NEW}-py3-none-any.whl.zip"
+        assert (root / "benchbox" / "_vendor" / archive).is_file()
+        (root / CORPUS / f"{area}.json").write_text(
+            json.dumps(recorded, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+
+    return record
+
+
+def test_prepare_re_records_a_corpus_difference_in_the_one_adoption_commit_and_lists_the_case(world: World) -> None:
+    seed_corpus(world, "area_adapters", {"case_a": {"fork": "SELECT 1 FROM `t`", "legacy": "SELECT 1 FROM t"}})
+    world.deliver(NEW, 2)
+    world.recorder = rewriting("area_adapters", {"case_a": {"fork": "SELECT 1 FROM t", "legacy": "SELECT 1 FROM t"}})
+    prepared = world.prepare()
+    assert f"{CORPUS}/area_adapters.json" in prepared["paths"]
+    assert sh(world.clone, "git", "rev-list", "--count", f"{prepared['base']}..{prepared['head']}") == "1"
+    committed = json.loads(sh(world.clone, "git", "show", f"{prepared['head']}:{CORPUS}/area_adapters.json"))
+    assert committed["case_a"]["fork"] == "SELECT 1 FROM t"
+    body = prepared["body"]
+    assert "## Golden corpus changes" in body
+    assert "`area_adapters` / `case_a` (changed)" in body
+    assert "fork, before:\n```\nSELECT 1 FROM `t`\n```" in body
+    assert "fork, after:\n```\nSELECT 1 FROM t\n```" in body
+    assert "legacy, before" not in body
+    assert delivery.parse_marker(body)["headSha"] == prepared["head"]
+
+
+def test_a_published_adoption_with_a_corpus_change_is_still_owned_and_armable(world: World) -> None:
+    seed_corpus(world, "area_adapters", {"case_a": {"fork": "x", "legacy": "y"}})
+    world.deliver(NEW, 2)
+    world.recorder = rewriting("area_adapters", {"case_a": {"fork": "z", "legacy": "y"}})
+    world.prepare()
+    world.publish()
+    assert len(world.api.pulls) == 1 and "Golden corpus changes" in world.api.pulls[0]["body"]
+    owned, foreign = delivery.open_adoptions(world.api, world.config, CONSUMER, APP)
+    assert len(owned) == 1 and not foreign
+
+
+def test_prepare_with_no_corpus_difference_leaves_the_corpus_and_the_body_untouched(world: World) -> None:
+    recorded = {"case_a": {"fork": "SELECT 1", "legacy": "SELECT 1"}}
+    seed_corpus(world, "area_adapters", recorded)
+    world.deliver(NEW, 2)
+    world.recorder = rewriting("area_adapters", recorded)
+    prepared = world.prepare()
+    assert not [path for path in prepared["paths"] if path.startswith(CORPUS)]
+    assert "Golden corpus" not in prepared["body"]
+    assert "recorded golden corpus" not in prepared["body"]
+
+
+def test_prepare_lists_added_and_removed_cases(world: World) -> None:
+    seed_corpus(world, "area_ddl", {"gone": {"fork": "a", "legacy": "b"}})
+    world.deliver(NEW, 2)
+    world.recorder = rewriting("area_ddl", {"fresh": {"fork": "c", "legacy": "d"}})
+    body = world.prepare()["body"]
+    assert "`area_ddl` / `fresh` (added)" in body and "`area_ddl` / `gone` (removed)" in body
+
+
+def test_prepare_bounds_the_listed_corpus_cases_and_says_so(world: World) -> None:
+    seed_corpus(world, "area_ddl", {})
+    world.deliver(NEW, 2)
+    many = {f"case_{index:03d}": {"fork": "f" * 5000, "legacy": "l"} for index in range(60)}
+    world.recorder = rewriting("area_ddl", many)
+    body = world.prepare()["body"]
+    assert "60 recorded case(s)" in body and "area_ddl: 60" in body
+    assert f"the first {delivery.MAX_LISTED_CASES} follow" in body
+    assert body.count("### `area_ddl`") == delivery.MAX_LISTED_CASES
+    assert "5000 characters in all" in body
+    assert len(body) < 60000
+
+
+def test_the_corpus_section_never_exceeds_its_overall_cap(world: World) -> None:
+    changes = [
+        {
+            "area": "a" * 5000,
+            "case": f"case_{index}" + "c" * 5000,
+            "before": {"fork": "f" * 600, "legacy": "l" * 600, "classification": "x" * 600, "reason": "r" * 600},
+            "after": {"fork": "g" * 600, "legacy": "m" * 600, "classification": "y" * 600, "reason": "s" * 600},
+        }
+        for index in range(delivery.MAX_LISTED_CASES)
+    ]
+    section = delivery.render_corpus_changes(changes)
+    assert len(section) <= delivery.MAX_SECTION_CHARS + 2
+    listed = section.count("### `")
+    assert 0 < listed < len(changes)
+    assert f"the first {listed} follow" in section
+
+
+def test_a_prepared_body_that_hides_the_corpus_changes_is_refused_before_any_mutation(world: World) -> None:
+    seed_corpus(world, "area_adapters", {"case_a": {"fork": "x", "legacy": "y"}})
+    world.deliver(NEW, 2)
+    world.recorder = rewriting("area_adapters", {"case_a": {"fork": "z", "legacy": "y"}})
+    world.prepare()
+    path = world.tmp / "prepared" / delivery.PULL_REQUEST_FILE
+    pull = json.loads(path.read_text(encoding="utf-8"))
+    start = pull["body"].index("## Golden corpus changes")
+    end = pull["body"].index("<!-- sqlglot-delivery:")
+    pull["body"] = pull["body"][:start] + pull["body"][end:]
+    path.write_text(json.dumps(pull))
+    with pytest.raises(DeliveryError, match="does not list the corpus changes"):
+        world.publish()
+    assert not world.api.mutations and world.remote_branches() == ["develop"]
+
+
+def commit_corpus(world: World, prepared: dict[str, Any], text: str) -> None:
+    (world.clone / CORPUS / "area_adapters.json").write_text(text, encoding="utf-8")
+    sh(world.clone, "git", "add", CORPUS)
+    env = {
+        "GIT_AUTHOR_NAME": "b",
+        "GIT_AUTHOR_EMAIL": delivery.BOT_EMAIL,
+        "GIT_COMMITTER_NAME": "b",
+        "GIT_COMMITTER_EMAIL": delivery.BOT_EMAIL,
+    }
+    subprocess.check_call(["git", "commit", "--amend", "--no-edit"], cwd=world.clone, env={**os.environ, **env})
+    head = sh(world.clone, "git", "rev-parse", "HEAD")
+    bundle = world.tmp / "prepared" / delivery.BUNDLE_FILE
+    bundle.unlink()
+    sh(world.clone, "git", "bundle", "create", str(bundle), prepared["branch"], f"^{prepared['base']}")
+    path = world.tmp / "prepared" / delivery.PULL_REQUEST_FILE
+    pull = json.loads(path.read_text(encoding="utf-8"))
+    pull["body"] = pull["body"].replace(prepared["head"], head)
+    pull["head"] = head
+    path.write_text(json.dumps(pull))
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "not json",
+        "[]\n",
+        json.dumps({"c": {"fork": "a"}}, indent=2) + "\n",
+        json.dumps({"c": {"fork": "a", "legacy": 1}}, indent=2) + "\n",
+        json.dumps({"c": {"fork": "a", "legacy": "b"}}),
+        json.dumps({"c": {"legacy": "b", "fork": "a"}}, indent=4) + "\n",
+    ],
+)
+def test_a_prepared_corpus_file_that_is_not_a_canonical_recording_is_refused(world: World, text: str) -> None:
+    seed_corpus(world, "area_adapters", {"case_a": {"fork": "x", "legacy": "y"}})
+    world.deliver(NEW, 2)
+    world.recorder = rewriting("area_adapters", {"case_a": {"fork": "z", "legacy": "y"}})
+    prepared = world.prepare()
+    commit_corpus(world, prepared, text)
+    with pytest.raises(DeliveryError, match="not publishable"):
+        world.publish()
+    assert not world.api.mutations and world.remote_branches() == ["develop"]
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        f"{CORPUS}/nested/area_x.json",
+        f"{CORPUS}/area_x.py",
+        "tests/unit/sql_compat/golden_corpus/area_adapters.py",
+        "tests/unit/sql_compat/golden_corpus/frozen/area_adapters.json",
+        "tests/unit/sql_compat/recorded/area_x.json",
+    ],
+)
+def test_only_the_recorded_corpus_directory_is_allowed_beyond_the_adoption_paths(path: str) -> None:
+    base = [
+        delivery.PIN,
+        delivery.BASELINE,
+        delivery.fragment_for(NEW),
+        f"benchbox/_vendor/benchbox_sqlglot-{NEW}-py3-none-any.whl.zip",
+    ]
+    delivery.check_adoption_paths([*base, f"{CORPUS}/area_x.json"], NEW)
+    with pytest.raises(DeliveryError, match="outside the allowed set"):
+        delivery.check_adoption_paths([*base, path], NEW)
+
+
+def recorder_root(world: World, main: str) -> Path:
+    root = world.tmp / "recorder-root"
+    vendor = root / "benchbox" / "_vendor"
+    vendor.mkdir(parents=True)
+    (root / "benchbox" / "__init__.py").write_text("")
+    shutil.copyfile(REPO / "benchbox" / "_vendor" / "__init__.py", vendor / "__init__.py")
+    adopt_wheel(world.build(NEW), vendor)
+    package = root.joinpath(*delivery.CORPUS_MODULE.split("."))
+    package.mkdir(parents=True)
+    for parent in [package, *package.parents]:
+        if parent == root:
+            break
+        (parent / "__init__.py").write_text("")
+    (package / "__main__.py").write_text(main)
+    return root
+
+
+ARCHIVE = f"benchbox_sqlglot-{NEW}-py3-none-any.whl.zip"
+
+
+def test_the_real_recorder_runs_the_corpus_module_from_the_checkout_against_the_pinned_archive(world: World) -> None:
+    root = recorder_root(
+        world,
+        "import json, pathlib\n"
+        "import benchbox._vendor as v\n"
+        "d = pathlib.Path(__file__).parent / 'recorded'\n"
+        "d.mkdir(exist_ok=True)\n"
+        "(d / 'area_x.json').write_text(json.dumps({'case': {'fork': v.__path__[-1], 'legacy': 'l'}}))\n",
+    )
+    delivery.record_corpus(root, ARCHIVE)
+    recorded = json.loads(root.joinpath(CORPUS, "area_x.json").read_text(encoding="utf-8"))
+    assert ARCHIVE in recorded["case"]["fork"] and str(root) in recorded["case"]["fork"]
+
+
+def test_the_real_recorder_refuses_a_runtime_that_is_not_the_delivered_archive(world: World) -> None:
+    root = recorder_root(world, "raise SystemExit(0)\n")
+    with pytest.raises(DeliveryError, match="would not load the delivered runtime"):
+        delivery.record_corpus(root, "benchbox_sqlglot-9.9.9.9-py3-none-any.whl.zip")
+
+
+def test_the_real_recorder_fails_loudly_when_the_corpus_module_fails(world: World) -> None:
+    root = recorder_root(world, "raise RuntimeError('boom')\n")
+    with pytest.raises(DeliveryError, match="(?s)recording the golden corpus failed.*boom"):
+        delivery.record_corpus(root, ARCHIVE)
+
+
+def test_prepare_refuses_a_recorder_that_writes_outside_the_corpus_directory(world: World) -> None:
+    world.deliver(NEW, 2)
+    world.run_plan()
+
+    def stray(root: Path, archive: str) -> None:
+        (root / "tests").mkdir(exist_ok=True)
+        (root / "tests" / "golden.py").write_text("x = 1\n")
+
+    with pytest.raises(DeliveryError, match="outside the allowed set"):
+        delivery.prepare(
+            world.clone, world.tmp / "plan", world.tmp / "prepared", world.config, checks=None, recorder=stray
+        )
     assert not (world.tmp / "prepared" / delivery.BUNDLE_FILE).exists()
 
 
@@ -1266,3 +1524,76 @@ def test_the_cli_reports_a_refusal_as_a_failure(world: World, capsys: pytest.Cap
     )
     assert code == 1
     assert "kind" in capsys.readouterr().err
+
+
+EGRESS = b"gh: HTTP 503: Egress is over the account limit. (https://api.github.com/x)"
+
+
+class FakeClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+        self.sleeps: list[float] = []
+
+    def __call__(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def scripted_download(
+    monkeypatch: pytest.MonkeyPatch, replies: list[tuple[int, bytes, bytes]]
+) -> tuple[delivery.GhApi, FakeClock, list[list[str]]]:
+    clock = FakeClock()
+    calls: list[list[str]] = []
+    queue = list(replies)
+
+    def run(command: list[str]) -> tuple[int, bytes, str]:
+        calls.append(command)
+        code, stdout, stderr = queue.pop(0) if len(queue) > 1 else queue[0]
+        return code, stdout, stderr.decode()
+
+    def budget() -> delivery.gh_transient.Budget:
+        return delivery.gh_transient.Budget(90.0, clock=clock, sleep=clock.sleep)
+
+    return delivery.GhApi(budget, run), clock, calls
+
+
+def test_an_artifact_download_that_hits_the_egress_limit_recovers_after_the_backoff(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    api, clock, calls = scripted_download(monkeypatch, [(1, b"", EGRESS), (0, b"zip-bytes", b"")])
+    assert api.download("repos/o/r/actions/artifacts/7/zip") == b"zip-bytes"
+    assert len(calls) == 2 and clock.sleeps == [5.0]
+
+
+def test_an_artifact_download_that_stays_transient_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    api, clock, calls = scripted_download(monkeypatch, [(1, b"", EGRESS)])
+    with pytest.raises(DeliveryError, match="did not clear after 4 attempt"):
+        api.download("repos/o/r/actions/artifacts/7/zip")
+    assert len(calls) == 4 and clock.sleeps == [5.0, 15.0, 45.0]
+
+
+def test_an_artifact_download_with_a_permanent_failure_is_refused_without_a_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    api, clock, calls = scripted_download(monkeypatch, [(1, b"", b"gh: HTTP 404: Not Found")])
+    with pytest.raises(DeliveryError, match="HTTP 404"):
+        api.download("repos/o/r/actions/artifacts/7/zip")
+    assert len(calls) == 1 and clock.sleeps == []
+
+
+def test_a_rate_limited_download_waits_for_the_reset_reported_by_gh(monkeypatch: pytest.MonkeyPatch) -> None:
+    api, clock, calls = scripted_download(
+        monkeypatch,
+        [
+            (1, b"", b"gh: API rate limit exceeded for installation"),
+            (0, b'{"resources": {"core": {"remaining": 0, "reset": 1030}}}', b""),
+            (0, b"zip-bytes", b""),
+        ],
+    )
+    api.new_budget = lambda: delivery.gh_transient.Budget(90.0, clock=clock, sleep=clock.sleep, wall=lambda: 1000.0)
+    assert api.download("repos/o/r/actions/artifacts/7/zip") == b"zip-bytes"
+    assert calls[1] == ["gh", "api", "rate_limit"]
+    assert clock.sleeps == [31.0]

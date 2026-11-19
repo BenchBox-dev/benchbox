@@ -279,7 +279,7 @@ class FakeGitHub:
         if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/status"):
             return 0, self.gate_state + "\n"
         if cmd[:2] == ["gh", "api"] and "/statuses?" in cmd[-1]:
-            default_creator = "benchbox-oracle[bot]\tBot"
+            default_creator = "benchbox-review[bot]\tBot"
             lines = [
                 "\t".join(
                     [
@@ -1450,6 +1450,7 @@ def test_the_reviewer_reads_the_head_tree_and_base_rules_exported_outside_the_re
 def test_the_reviewer_runs_isolated_from_user_config_secrets_and_the_network(
     tmp_path: Path, world: World, bound: FakeGitHub, codex: FakeCodex, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setenv("LANG", "C.UTF-8")
     monkeypatch.setenv("GH_TOKEN", "gh-secret")
     monkeypatch.setenv("OPENAI_API_KEY", "openai-secret")
     (codex.home / "config.toml").write_text('model = "gpt-test"\n[mcp_servers.todo]\ncommand = "todo"\n')
@@ -2016,6 +2017,7 @@ def test_claude_is_an_explicit_backend_with_the_same_record_and_publication_pipe
 def test_claude_is_confined_to_read_only_tools_and_an_isolated_login(
     world: World, bound: FakeGitHub, claude: FakeCodex, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setenv("LANG", "C.UTF-8")
     monkeypatch.setenv("GH_TOKEN", "gh-secret")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "api-secret")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "oauth-secret")

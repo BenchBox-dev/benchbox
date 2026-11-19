@@ -184,7 +184,7 @@ The procedure:
    legacy `release` branch and its rulesets are gone; Git cannot hold `release`
    and `release/X.Y.x` together, so none may be recreated.
 2. The owner creates the branch as one commit on top of the `vX.Y.0` tag commit
-   (or the newest `vX.Y.Z` tag of that minor). Because the `oracle` environment
+   (or the newest `vX.Y.Z` tag of that minor). Because the `review` environment
    admits `release/*`, that commit must replace the tag's reviewer files with
    `develop`'s before any workflow can run on the branch: a tag that predates
    the pinned callers must not leave older reviewer code able to run with the
@@ -408,6 +408,13 @@ to the history that `scripts/trunk_uat.py history` reads. Dispatch it with
 rules, artifacts and the decision gate on runner cost are in
 [Trunk UAT workflow reference](#trunk-uat-workflow-reference).
 
+Each UAT stage matrix sets `strategy.max-parallel` (stage 1: 4, stage 2: 2,
+stage 3: 3) in both workflows, so one release or trunk run holds at most nine
+runners of the organization's 20-job limit and leaves room for pull request CI.
+Shard contents, timeouts and conditions are unchanged. Expect a longer UAT wall
+time: stage 1 runs its shards in waves of four, stage 2 in waves of two and
+stage 3 in waves of three.
+
 ### Release probe
 
 A change to the release workflow can be wrong in ways unit tests do not show: a
@@ -460,18 +467,63 @@ green gates, if `publish` runs after a red gate, or if any job that can publish
 runs in probe mode; `tests/unit/workflows/test_release_v2_probe.py` pins the
 probe's permissions and the issue-3947 graph shape.
 
-`release-v2-probe.yml` runs on every pull request. When the pull request
+`release-v2-probe.yml` runs on every pull request and is asynchronous: its job
+`release-v2 probe dispatch` never waits for the probe runs, so it holds a runner
+for minutes rather than for as long as the runs queue. When the pull request
 touches `release-v2.yml`, `trunk-uat.yml`, `trunk.yml`, `release-uat-env`, the
 probe workflow, `scripts/release_*.py`, `scripts/release_requirements.txt`,
 `scripts/update_version.py`, `tests/uat/gate_summary.py`, `tests/uat/_cli.py`,
 `tests/uat/config.py`, `Makefile`, `make/uat.mk` or a release-gate UAT
 config (a rename counts under both its old and new path), it dispatches every probe variant
-from the pull request branch and fails unless every one succeeds; otherwise it passes
-at once. It runs on every pull request so that it can be made a required
-check without leaving unrelated pull requests pending. The probe builds its own
+from the pull request branch and creates the required check run `release-v2 probe`
+on the head commit as in progress, listing the three run links; its `external_id`
+records the three run ids. Otherwise it creates the check run as completed with
+success at once. It runs on every pull request from a branch of this repository so
+that the check can be required without leaving unrelated pull requests pending. If a dispatch fails, or the job
+graph check fails, the check run is created as a failure carrying the error.
+
+The last job of `release-v2.yml`, `probe report` (job id `report-probe`), completes
+the check. It runs only in probe mode, with `if: always()`, after every other job, and
+holds `contents: read`, `actions: read` and `checks: write`; it cannot publish and
+`scripts/release_probe_graph.py` enforces that it needs every other job, runs in every
+probe outcome and never runs in a real release. (A `workflow_run` workflow cannot do
+this: the variants are dispatched with `GITHUB_TOKEN`, so GitHub raises no
+`workflow_run` event for them.) Each variant's report job finds the in-progress
+`release-v2 probe` check on its head commit whose recorded ids include its run and
+judges the three runs by their substantive jobs, not by run status, which still reads
+in progress while a report job runs. The current run is judged from its `needs`
+results; every other recorded run is judged from the jobs the API lists for it, and
+counts as finished once its `release outcome` job (the last substantive job, which
+every other job precedes) and every non-report job have completed, or once the run
+itself completed. When all three are finished the check completes: success only if no
+substantive job in any run failed, was cancelled or timed out (skipped jobs are fine),
+otherwise failure naming each variant, its failing jobs and the run link. While any
+substantive job is unfinished it changes nothing, and a completed check is left alone,
+so two reports finishing together reach the same verdict and the second finds the
+check completed. The logic lives in `scripts/release_probe_verdict.py`. A run cancelled
+by a newer push completes the old head's check as failure, which is harmless because
+only the current head counts. Expect the check to stay in progress for as long as the
+runs queue: under runner congestion that can be hours, and waiting is the remedy; do
+not re-dispatch the probe. A check records three distinct run ids and each must be a
+`release-v2.yml` dispatch at the check's head commit, otherwise the check fails. Right
+after creating the check, the dispatch job completes it itself if every recorded run
+has already finished.
+
+Re-running the `release-v2 probe dispatch` job reconciles a check whose report job did
+not complete it (for example because the report job itself failed): before dispatching,
+the job looks for an in-progress `release-v2 probe` check on the head commit that
+records run ids. If every recorded run has finished, by the same job-based rule, it
+completes that check through the verdict code and exits without dispatching; if any is
+still running it exits and changes nothing. When the check is already completed, or none
+exists, the job behaves as it always did: it dispatches the three variants and creates a
+new check run, so a deliberate re-run of a completed probe probes again.
+
+The probe builds its own
 distributions, so it does not execute the `dist-artifact` job of `trunk.yml`;
 a drift test keeps the build and verification commands aligned.
-Fork pull requests cannot dispatch and fail.
+A fork pull request cannot create check runs or dispatch workflows, so the dispatch
+job fails at once with a message and `release-v2 probe` is never reported for it;
+push the branch to the repository and open the pull request from there.
 
 ## Trunk UAT workflow reference
 
@@ -904,6 +956,11 @@ then `scripts/generate_changelog_entry.py --compile-fragments`, which builds the
 `[X.Y.Z]` section from `changelog.d` (see "Release notes from fragments").
 Commit the changed files, including the deleted fragments, as one PR.
 
+Before a minor release, the owner re-reads the vendor terms recorded in
+[`results-vendor-publication-terms.md`](results-vendor-publication-terms.md)
+and updates the record where a vendor's text or date changed. The owner also
+re-reads it whenever a vendor in the published corpus announces new terms.
+
 `release-check` (`scripts/release_flow.py check`) exits non-zero and lists every
 problem it finds. It verifies that:
 
@@ -994,10 +1051,26 @@ with nothing new ends at state current in about a minute.
 - **Prepare** has no credentials. It runs the adopter
   (`scripts/adopt_sqlglot_wheel.py`) with the version, fork SHA, upstream SHA
   and hash from the verified record, requires that only the pin, the wheel
-  archive, the license notice and the baseline identity changed, and emits a
-  git bundle and a pull request title and body. The body carries a marker that
+  archive, the license notice, the baseline identity and (below) the recorded
+  golden corpus changed, and emits a git bundle and a pull request title and
+  body. The body carries a marker that
   binds version, fork SHA, upstream SHA, hash, the producer run and attempt,
   and the adoption commit and its parent.
+- **Golden corpus.** After the adopter switches the runtime, prepare runs
+  `python -m tests.unit.sql_compat.golden_corpus` (every area) from the
+  checkout in a fresh interpreter, so it imports the newly pinned wheel from
+  `benchbox/_vendor`; it first checks that interpreter resolves the delivered
+  archive. Changed files under
+  `tests/unit/sql_compat/golden_corpus/recorded/*.json` go into the same single
+  adoption commit, which keeps the one-commit ownership rule. The pull request
+  body gains a "Golden corpus changes" section listing each changed case (area,
+  case id, and the before and after output of each field that differs); past 20
+  cases it gives counts per area and the first 20. A delivery that changes no
+  recorded output adds nothing. Publish and arm accept only the pin, archive,
+  notice, baseline, fragment and `recorded/*.json` paths. Nothing holds the
+  pull request automatically: it takes the normal path (CI including the SQL
+  execution evidence gate, review gate, arm). To stop a release over a corpus
+  change, apply `no-auto-merge` to the pull request.
 - **Publish** runs only when `SQLGLOT_DELIVERY_ENABLED` is `true`, the run is
   not a dry run and the plan says `adopt`. It re-checks the bundle, pushes
   `chore/sqlglot-<version>` and opens the pull request, resuming after an

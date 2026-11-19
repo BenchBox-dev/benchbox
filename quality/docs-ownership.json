@@ -218,6 +218,7 @@
     "docs/internal/mcp-conformance-baseline.md": "core-only",
     "docs/internal/mcp-production-readiness-evidence.md": "core-only",
     "docs/internal/mcp-production-readiness.md": "core-only",
+    "docs/internal/measurement-workflow.md": "core-only",
     "docs/internal/merge-queue-governance.md": "core-only",
     "docs/internal/nightly-perf-gate-review.md": "core-only",
     "docs/internal/nightly-t3.md": "core-only",

@@ -94,6 +94,14 @@ def resolve_refresh_ingester(adapter: Any) -> TPCHRefreshIngester | None:
     return adapter
 
 
+def refresh_is_transactional(adapter: Any) -> bool:
+    return getattr(adapter, "supports_refresh_transactions", True) is not False
+
+
+def refresh_reports_delete_counts(adapter: Any) -> bool:
+    return getattr(adapter, "reports_refresh_delete_counts", True) is not False
+
+
 class DataFrameQueryRuntime(Protocol):
     platform_name: str
 

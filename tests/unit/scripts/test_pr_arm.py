@@ -75,6 +75,8 @@ class FakeGh:
         self.core = kwargs.get("core", ("completed", "success"))
         self.lookup_code = kwargs.get("lookup_code", 0)
         self.download = kwargs.get("download", (0, None))
+        self.download_script = list(kwargs.get("download_script", []))
+        self.rules_script = list(kwargs.get("rules_script", []))
         self.verdict_head = kwargs.get("verdict_head", self.local_head)
         self.changed_files = kwargs.get("changed_files", ["scripts/x.py"])
         self.rules = kwargs.get("rules", ["core"])
@@ -125,7 +127,7 @@ class FakeGh:
             return self.status_code, self.gate_state + "\n" if self.status_code == 0 else "gh: HTTP 502"
         if cmd[:2] == ["gh", "api"] and f"repos/{pr_arm.REPOSITORY}/commits/{self.local_head}/statuses?" in cmd[-1]:
             lines = [
-                "\t".join([name, state, "benchbox-oracle[bot]", "Bot", self.status_descriptions.get(name, "")])
+                "\t".join([name, state, "benchbox-review[bot]", "Bot", self.status_descriptions.get(name, "")])
                 for name, state in self.statuses.items()
             ]
             return 0, "\n".join(lines)
@@ -135,7 +137,7 @@ class FakeGh:
                 return self.lookup_code, "gh: HTTP 404"
             return 0, "" if self.verdict is None else f"555 {self.verdict_head}\n"
         if cmd[:3] == ["gh", "run", "download"]:
-            code, text = self.download
+            code, text = self.download_script.pop(0) if self.download_script else self.download
             if code != 0:
                 return code, text
             Path(cmd[cmd.index("-D") + 1], "fast-duration-verdict.json").write_text(
@@ -143,7 +145,7 @@ class FakeGh:
             )
             return 0, ""
         if cmd[:2] == ["gh", "api"] and "/rules/branches/" in cmd[-1]:
-            return 0, "\n".join(self.rules)
+            return self.rules_script.pop(0) if self.rules_script else (0, "\n".join(self.rules))
         if cmd[:3] == ["gh", "api", "--paginate"] and "/actions/workflows/" in cmd[-1]:
             return self._workflow_runs(cmd)
         if cmd[:3] == ["gh", "api", "--paginate"] and "/check-runs?" in cmd[-1]:
@@ -2431,3 +2433,102 @@ def test_a_failed_duration_verdict_read_inside_the_wait_is_retried(capsys: pytes
 
     assert code == 0
     assert clock.sleeps == [pr_arm.TRANSIENT_BACKOFF_SECONDS]
+
+
+TRANSIENT_503 = (1, "gh: HTTP 503: Egress is over the account limit")
+TRANSIENT_TIMEOUT = (1, 'Get "https://api.github.com/rules": dial tcp 140.82.1.6:443: i/o timeout')
+
+
+def _retrying(gh: FakeGh, seconds: float = 600.0) -> tuple[object, WaitClock]:
+    time = WaitClock()
+    budget = pr_arm.gh_transient.Budget(seconds, clock=time.clock, sleep=time.sleep)
+    return pr_arm.gh_transient.RetryingRunner(gh, budget), time
+
+
+def _arm_through(runner: object) -> int:
+    return pr_arm.arm(
+        "7",
+        None,
+        run=runner,
+        unpublished=lambda _checkout: [],
+        threads=lambda _run, _repo, _number: [],
+        gate=lambda *_a: [],
+    )
+
+
+def test_a_503_on_the_artifact_download_is_retried_and_the_verdict_is_evaluated(capsys) -> None:
+    gh = FakeGh(download_script=[TRANSIENT_503])
+    runner, time = _retrying(gh)
+
+    assert _arm_through(runner) == 0
+    assert len([call for call in gh.calls if call[:3] == ["gh", "run", "download"]]) == 2
+    assert time.sleeps == [5.0]
+    assert "verify-fast-duration verdict for aaaaaaaaa is pass" in capsys.readouterr().out
+    assert len(gh.merged()) == 1
+
+
+def test_a_persistent_503_on_the_artifact_download_ends_transient_after_the_bounded_attempts(capsys) -> None:
+    gh = FakeGh(download=TRANSIENT_503)
+    runner, time = _retrying(gh)
+
+    assert _arm_through(runner) == pr_arm.TRANSIENT_EXIT
+    assert len([call for call in gh.calls if call[:3] == ["gh", "run", "download"]]) == 4
+    assert time.sleeps == [5.0, 15.0, 45.0]
+    outcome = _last_outcome_line(capsys)
+    assert outcome.startswith("pr-arm: outcome: transient: ")
+    assert "GitHub server error" in outcome and "Egress is over the account limit" in outcome
+    assert gh.merged() == []
+
+
+def test_a_network_timeout_on_the_ruleset_read_is_retried_the_same_way() -> None:
+    gh = FakeGh(rules_script=[TRANSIENT_TIMEOUT, TRANSIENT_TIMEOUT])
+    runner, time = _retrying(gh)
+
+    assert _arm_through(runner) == 0
+    assert time.sleeps == [5.0, 15.0]
+    assert len(gh.merged()) == 1
+
+
+def test_a_persistent_network_timeout_on_the_ruleset_read_never_arms(capsys) -> None:
+    gh = FakeGh(rules_script=[TRANSIENT_TIMEOUT] * 10)
+    runner, _ = _retrying(gh)
+
+    assert _arm_through(runner) != 0
+    assert "network error" in _last_outcome_line(capsys)
+    assert gh.merged() == []
+
+
+def test_a_permanent_error_on_the_artifact_download_is_not_retried(capsys) -> None:
+    gh = FakeGh(download=(1, "gh: HTTP 404: Not Found"))
+    runner, time = _retrying(gh)
+
+    assert _arm_through(runner) == 2
+    assert time.sleeps == []
+    assert len([call for call in gh.calls if call[:3] == ["gh", "run", "download"]]) == 1
+    assert gh.merged() == []
+
+
+def test_main_builds_one_retry_budget_from_the_wait(monkeypatch: pytest.MonkeyPatch) -> None:
+    runners: list[object] = []
+    budgets: list[object] = []
+    monkeypatch.setattr(pr_arm, "arm", lambda pr, head, repo, **kwargs: runners.append(kwargs["run"]) or 0)
+    monkeypatch.setattr(pr_arm, "arm_waiting", lambda attempt, gate, minutes, **_: attempt())
+    real = pr_arm.new_budget
+    monkeypatch.setattr(pr_arm, "new_budget", lambda minutes: budgets.append(minutes) or real(minutes))
+
+    assert pr_arm.main([], env={"PR_ARM_WAIT": "15", "PR_ARM_WAIT_SET": "1"}) == 0
+    assert pr_arm.main([], env={}) == 0
+    assert budgets == [15, None]
+    assert all(isinstance(r, pr_arm.AttemptReads) for r in runners)
+
+
+def test_the_retry_budget_is_the_wait_or_a_short_default() -> None:
+    assert pr_arm.new_budget(60).remaining() == pytest.approx(3600.0, abs=5.0)
+    assert pr_arm.new_budget(None).remaining() == pytest.approx(pr_arm.gh_transient.DEFAULT_BUDGET_SECONDS, abs=5.0)
+
+
+def test_one_classifier_serves_pr_arm_and_the_retry_helper() -> None:
+    for text in ("HTTP 503: ServerBusy", "i/o timeout", "API rate limit exceeded", "unparseable output (exit 2)"):
+        cause = pr_arm.transient_cause(text)
+        assert cause is not None and cause[0] == pr_arm.gh_transient.classify(text).kind
+    assert pr_arm.transient_cause("HTTP 404: Not Found") is None

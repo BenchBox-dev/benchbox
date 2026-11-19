@@ -94,10 +94,15 @@ def stored_timing_method(metadata: Mapping[str, Any]) -> int:
 
 CONFIG_CAPTURE_CURRENT = "current"
 CONFIG_CAPTURE_MCP_BEFORE_PARITY = "mcp-before-config-parity"
+CONFIG_CAPTURE_VERSION = 1
 
 
 def bundle_config_capture(bundle: Mapping[str, Any]) -> str:
-    if _mapping(bundle.get("execution")).get("entry_point") != "mcp":
+    execution = _mapping(bundle.get("execution"))
+    if execution.get("entry_point") != "mcp":
+        return CONFIG_CAPTURE_CURRENT
+    recorded = execution.get("config_capture")
+    if type(recorded) is int and recorded >= CONFIG_CAPTURE_VERSION:
         return CONFIG_CAPTURE_CURRENT
     config = _mapping(bundle.get("config"))
     if config.get("compression") or config.get("platform_options"):

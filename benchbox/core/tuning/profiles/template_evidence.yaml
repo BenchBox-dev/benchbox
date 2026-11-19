@@ -11,14 +11,30 @@ clickhouse:
         evidence: >-
           scripts.tuning_evidence on a ClickHouse server in a Mocker 0.7.2 container, 9 shuffled
           rounds, seed 42, 22 queries, no answer mismatches, A/A passed (G 1.0066, 95% CI
-          0.9592-1.0464); Q21 fails in every arm at this memory rung, so G covers 21 queries: full
-          tuned template G 0.8230 (0.7803-0.8777) with load plus settle 14.4 s against 10.5 s
+          0.9592-1.0464); Q21 fails in every arm on this macOS Mocker host, so G covers 21 queries:
+          full tuned template G 0.8230 (0.7803-0.8777) with load plus settle 14.4 s against 10.5 s
           notuning, layout only G 0.8226 (0.7598-0.8807) with 13.9 s; no query exceeds the 1.5x
           bound with an interval above 1.0 (Q5 1.39, Q16 1.49 under the full template, causes
-          unproven); plans and rows read for Q3, Q5 and Q18 are in
-          _project/analysis/clickhouse-tuning-evidence-sf1; SF1 only, 5.25 GiB container
+          unproven); on a GitHub-hosted Linux runner at the same 5.25 GiB limit Q21 passes in every
+          arm with the reference 100 rows at 3.40 GiB peak (1.33x under the full template); plans
+          and rows read for Q3, Q5 and Q18 are in _project/analysis/clickhouse-tuning-evidence-sf1;
+          SF1 only, 5.25 GiB container
   tpcds:
-    measurements: []
+    measurements:
+      - state: measured-benefit
+        scale_factor: 1.0
+        memory:
+          basis: container_limit
+          value: 5637144576
+        engine_version: "25.8.33.6"
+        measured_on: "2026-11-18"
+        evidence: >-
+          scripts.tuning_evidence on a ClickHouse server in Docker on a GitHub-hosted ubuntu-latest
+          runner (4 vCPU, 16 GB, AMD EPYC 7763; Measurement workflow run 44348400951), 9 shuffled
+          rounds, seed 42, 99 queries, no failures or answer mismatches, A/A passed (G 1.0160, 95% CI
+          0.9948-1.0267): full tuned template G 0.9708 (0.9526-0.9887), layout only G 0.9999
+          (0.9790-1.0071, neutral); no query exceeds 1.3x under the full template; SF1 only,
+          5.25 GiB container
   ssb:
     measurements:
       - state: measured-benefit
@@ -61,9 +77,11 @@ duckdb:
           mismatches, A/A passed (G 1.0244, 95% CI 0.9861-1.0533): full tuned template G 1.0965
           (1.0443-1.1323), sort only G 1.1235 (1.0559-1.1732), constraints only G 1.0087
           (0.9722-1.0534) with load 85.7 s against 36.5 s notuning, full tuned load 138.7 s;
-          SF10 could not be measured on this 16 GiB host: the SF10 cell was killed by the
-          heavy-work memory-pressure watchdog during the lineitem load on 3 attempts, so SF10
-          stays unmeasured
+          SF10 is not measured: on the 16 GiB macOS host the cell was killed by the heavy-work
+          memory-pressure watchdog during the lineitem load on 3 attempts, and on a GitHub-hosted
+          16 GB runner the TPC-H, SSB and TPC-DS SF10 cells failed when the tuned template's sorted
+          rewrite ran out of memory or the runner was shut down after load; the measurement is SF1
+          only
   tpcds:
     measurements:
       - state: measured-regression
