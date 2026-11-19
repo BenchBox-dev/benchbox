@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The first fault is named with cited evidence (CedarDB container logs/exit state or BenchBox-side cause), including whether the image or BenchBox changed between 50fedc71 and 3d7619ee.",
+    "If evidence is missing, the UAT captures CedarDB server logs and container state before teardown (as #4285 does for StarRocks) and the cause is named on the next recurrence.",
+    "Fix merged (or owner decision recorded), and the cedardb shard passes in two consecutive nightly trunk UAT runs with no rerun (run ids recorded)."
+  ],
+  "description": "Nightly trunk UAT 44500662749 (develop 3d7619ee, 2026-11-19) stage 2 cedardb: 11 of 35 cells failed. tpcds_obt 0.1 and coffeeshop 1.0 failed with 'current transaction is aborted', then 'SSL error: unexpected eof', then 'the connection is closed'. ssb 0.01/0.1, tsbs_devops 0.01/0.1 and datavault 0.01/0.1/1.0 failed to connect: 'server closed the connection unexpectedly. This probably means the server terminated abnormally'. flightdata 1.0 failed after 910 s. Cells between failures passed (ssb 1.0, tsbs_devops 1.0), so the server is crashing and restarting, or dropping connections, intermittently. The previous nightly 44278856759 (50fedc71) passed the cedardb shard. Artifacts: release-uat-trunk-d3817ea0...-stage2-cedardb.\n\nDecision gate: any change to memory limits, timeouts, retries, prunes or container settings needs explicit owner approval before landing. A fix to BenchBox code (connection handling, load path) or a pinned CedarDB image regression with evidence does not.\n\nGuardrails: no cell pruning, retry or timeout increase to turn the shard green; find the first fault from server-side evidence (container logs, exit codes, OOM events, dmesg) before changing anything; compare the CedarDB image digest and BenchBox commits between 50fedc71 and 3d7619ee.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/44500662749",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/44278856759",
+    "monitor-nightly-cedardb-throughput-gate-and-floor"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a",
+      "at": "2026-11-19T20:49:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b78b7974198d42fb8beaa604b3f8a1d3",
+      "session_id": "ad8ff63c31d0492faa7526a81e19db83"
+    }
+  ]
+}
