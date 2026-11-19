@@ -243,7 +243,7 @@
       "schema": "schema_ebca565228a1",
       "staging_root": "path_542e3a574624",
       "warehouse": "warehouse_a86522e42ed1",
-      "warehouse_size": "MEDIUM"
+      "warehouse_size": "X-Small"
     },
     "deployment": {
       "collection_status": "partial",
@@ -281,7 +281,7 @@
       "type": "snowflake",
       "username": "user_d16817d72f81",
       "warehouse": "warehouse_a86522e42ed1",
-      "warehouse_size": "MEDIUM"
+      "warehouse_size": "X-Small"
     },
     "raw_metadata": {
       "cloud_provider": "AWS",
