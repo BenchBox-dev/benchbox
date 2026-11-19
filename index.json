@@ -18304,6 +18304,13 @@
       "status": "open",
       "title": "Consider: skip runner jobs for review-gate/verdict events that are ignored"
     },
+    "consider-ci-pr-fanout-trim-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Consider: trim per-PR CI fan-out (medium-test shards, sleep 90, trunk lanes)"
+    },
     "consider-whether-other-core-drivers-polars-clickhouse-connec": {
       "claim": null,
       "needs": [],

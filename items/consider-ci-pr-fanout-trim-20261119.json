@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "If pursued: core's shard-completeness check against medium_shard_durations.json stays consistent; before/after job-minutes and wall time per PR run measured on real runs."
+  ],
+  "context": "Owner 2026-11-19: stay on Free plan. Source: CI throughput investigation.",
+  "description": "For consideration, not a required change (owner, 2026-11-19).\n\nObserved: a full PR CI run is 21 jobs at the median, 44 at p90 and up to 100 (4-12 dynamic medium-test shards); setup steps are 15.5% of CI job time; under the 20-job cap more shards do not shorten wall time. PR CI waits ~36 min in queues across its stages (ci-paths -> medium-collect -> medium-test -> core). Three aggregate jobs sleep 90 s holding a runner when a run is cancelled.\n\nIdeas: cap medium-test at about 4 shards while the cap is 20 (ci.yml ~457, ~1162-1172); remove the sleep 90 x3 (~1909, ~1990, ~2035); consider dropping trunk-lane-plain/coverage from PR CI (~1333-1356). Estimated 5-15% of CI runner time [inference].",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5df21d35942e57dc5553d5c9",
+      "at": "2026-11-19T17:38:24Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "170ed5a4090e4edb99bde4cfbac23b71",
+      "session_id": "79d870b64fc24eaca388b10bdd93eca5"
+    }
+  ]
+}
