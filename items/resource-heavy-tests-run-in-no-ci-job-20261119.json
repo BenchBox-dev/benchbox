@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Owner choice and date recorded in context.",
+    "For 1 or 3: the chosen job runs the tests and fails on a test failure (shown by a deliberately failing test, run id recorded); for 2: the release guide names the command and cadence, and `make heavy-run` is the entry point.",
+    "`docs/internal/nightly-t3.md` or the release guide states where resource_heavy runs."
+  ],
+  "context": "Filed 2026-11-19 from the remediation of 2026-11-17 to 2026-11-19. Ordering: none. If the owner picks option 1 and it runs inside the slow domain, implement after nightly-slow-tier-test-failures-reported-as-success-20261119 lands; record that ordering in context at decision time.",
+  "description": "Problem. Every CI selection excludes `resource_heavy` (ci.yml fast and medium, nightly-v2 fast and slow). On develop 9b72ca3624 the marker selects 56 tests (with `slow`: 760). They run only when someone runs the t3 stage locally through `make heavy-run`, so a regression in them is found late or never.\nExpected outcome. Each resource_heavy test has a known place and cadence where it runs and fails loudly.\n\n## Decision gate\n(owner; agent must not pick): (1) run them nightly on a GitHub-hosted runner, as a new domain or inside the slow domain from nightly-slow-tier-test-failures-reported-as-success-20261119; (2) run them only locally, at a fixed cadence (for example before each minor release) recorded in the release guide; (3) re-mark tests that fit a hosted runner as `slow` and keep the rest local-only. Agent first measures: per-test duration and peak memory on one `ubuntu-latest` run (dispatch, not a nightly), recorded in context with the run id, before asking.\n\n## Guardrails\n- Work in a linked worktree (`make worktree-create`, `make agent-write-preflight`); never edit the primary clone.\n- No skip, xfail, rerun marker, raised timeout or weakened assertion to turn a check green.\n- Heavy work only through `make heavy-run` or a lock-taking entry point; no admission or watchdog override.\n- No live vendor cloud without owner approval in the task.\n- No explanatory comments or docstrings (`make comment-policy-check`); user-facing changes add a `changelog.d/` fragment.\n- Anchors (file:line, run ids) are orientation from 2026-11-19; re-read before editing and stop to update the item on a mismatch.\n- A hosted job must fit the runner (16 GB).\n- Do not re-mark a test to escape the marker without the measurement.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:811537edce076249399f3313",
+      "at": "2026-11-19T14:31:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c09e26e228e32768a7e2c125ae41813d",
+      "session_id": "1401fc36e42b41aea66be43c11e87a56"
+    }
+  ]
+}

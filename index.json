@@ -36206,6 +36206,13 @@
       "status": "done",
       "title": "Resolve whether the results explorer lives under BenchBox or Oxbow Research"
     },
+    "resource-heavy-tests-run-in-no-ci-job-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "The 56 resource_heavy tests run in no CI job"
+    },
     "resource-management": {
       "claim": null,
       "needs": [],
