@@ -16468,6 +16468,13 @@
       "status": "done",
       "title": "Extract a shared staged-load template method for redshift/snowflake (and evaluate bigquery/databricks)"
     },
+    "cloud-builder-review-gateway-access-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Re-enable cloud-builder access to the review gateway under a review tag"
+    },
     "cloud-bundle-metadata-gaps": {
       "claim": null,
       "needs": [],

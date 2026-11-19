@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The tailnet policy has tag:review-cloud with a grant limited to the gateway host on tcp:4000 and a passing tests block; no tag:oracle-cloud remains.",
+    "A cloud-builder session joins with the new TS_AUTHKEY and reaches the gateway (evidence recorded); port 22 is denied.",
+    "BenchBox docs and review guidance name tag:review-cloud, and a grep of live docs finds no tag:oracle-cloud."
+  ],
+  "description": "On 2026-11-19 the owner removed `tag:oracle-cloud` from the tailnet policy (tagOwners, grant, test) while retiring oracle infrastructure names. That tag was still in use: the cloud builder `TS_AUTHKEY` tags each cloud session node `tag:oracle-cloud`, and its grant was the only path from cloud sessions to the review gateway on tcp:4000. Cloud-builder sessions therefore cannot reach the gateway, and the existing TS_AUTHKEY likely no longer authenticates. The owner chose to leave it deleted and re-enable later under a non-oracle name.\n\nRe-enable: add `tag:review-cloud` (tagOwners, a grant to the gateway host on tcp:4000 only, and a tests block accepting :4000 and denying :22); the owner mints a new reusable, ephemeral, pre-approved auth key tagged `tag:review-cloud` and stores it as the cloud builders' TS_AUTHKEY; update docs/agent/cloud-builder.md, docs/internal/review-gateway-host.md and the `tag:oracle-cloud` entry in .github/review-guidance.md. Consider adding the tag to the Theseus `infra:` config so `theseus infra setup` manages it.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b5abc8a4010555c0d8f96bb",
+      "at": "2026-11-19T21:58:58Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8f1e13910905466d8caf9caab138353a",
+      "session_id": "045b6d4d12cf4622b6f5f4ab89e94f4e"
+    }
+  ]
+}
