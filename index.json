@@ -47995,15 +47995,10 @@
       "title": "Let make worktree-create accept the test/ branch prefix or document the allowed set"
     },
     "worktree-finish-cannot-keep-branch-20261117": {
-      "claim": {
-        "expires_at": "2026-11-20T02:35:01Z",
-        "generation": "bd0f34209f16423b9f67236589de3577",
-        "renewals": 0,
-        "worker": "joe-tractable-followups"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Let worktree-finish retire a clean worktree while keeping its branch"
     },
     "worktree-finish-no-path-for-unpublished-worktrees-20261113": {
