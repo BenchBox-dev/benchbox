@@ -426,13 +426,16 @@ def scan_tree(repo_root: str | Path) -> dict[str, list[str]]:
     return scan_tree_reads(repo_root)[0]
 
 
-def scan_tree_reads(repo_root: str | Path) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+def scan_tree_reads(
+    repo_root: str | Path,
+) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, list[str]]]:
     root = Path(repo_root)
     tracked = tracked_files(root)
     basenames = basename_index(tracked)
     directories = tracked_directories(tracked)
     refs: dict[str, list[str]] = {}
     reads: dict[str, list[str]] = {}
+    modules: dict[str, list[str]] = {}
     for scan in SCAN_DIRS:
         for path in sorted((root / scan).rglob("*.py")):
             if not path.is_file():
@@ -451,11 +454,14 @@ def scan_tree_reads(repo_root: str | Path) -> tuple[dict[str, list[str]], dict[s
             hits.discard(own)
             if hits:
                 refs[own] = sorted(hits)
-            named = candidates & tracked
+            exact = (candidates | path_constants(tree)) & tracked
             constants = expand_constants(path_constants(tree), tracked, directories)
-            indirect = (named | constants | imported_modules(tree, own, tracked)) - {own}
+            indirect = (exact | constants) - {own}
             if indirect:
                 reads[own] = sorted(indirect)
+            executed = (imported_modules(tree, own, tracked) | {path for path in exact if path.endswith(".py")}) - {own}
+            if executed:
+                modules[own] = sorted(executed)
     workflow_paths = sorted((root / ".github" / "workflows").glob("*.yml"))
     make_paths = [root / MAKEFILE] + sorted((root / "make").glob("*.mk"))
     for path in workflow_paths + make_paths:
@@ -468,35 +474,27 @@ def scan_tree_reads(repo_root: str | Path) -> tuple[dict[str, list[str]], dict[s
         hits = to_tracked(text_candidates(text, skip_echo_lines=path in make_paths), tracked, basenames)
         if hits:
             refs[path.relative_to(root).as_posix()] = sorted(hits)
-    return refs, reads
-
-
-def reach_from_tests(refs: dict[str, list[str]], reads: dict[str, list[str]]) -> dict[str, set[str]]:
-    sources = refs.keys() | reads.keys()
-    return {
-        test: {
-            hit
-            for hit in (*refs.get(test, ()), *reads.get(test, ()))
-            if hit in sources and hit.endswith(".py") and not _is_test_file(hit)
-        }
-        for test in sources
-        if _is_test_file(test)
-    }
+    return refs, reads, modules
 
 
 def doc_reader_index(
     repo_root: str | Path,
     refs: dict[str, list[str]] | None = None,
     reads: dict[str, list[str]] | None = None,
+    modules: dict[str, list[str]] | None = None,
 ) -> dict[str, list[str]]:
     if refs is None:
-        refs, reads = scan_tree_reads(repo_root)
+        refs, reads, modules = scan_tree_reads(repo_root)
     indirect = reads or {}
+    executed = modules or {}
     index: dict[str, set[str]] = {}
-    for test, modules in reach_from_tests(refs, indirect).items():
+    for test in refs.keys() | indirect.keys() | executed.keys():
+        if not _is_test_file(test):
+            continue
         hits = {*refs.get(test, ()), *indirect.get(test, ())}
-        for module in modules:
-            hits.update(indirect.get(module, ()))
+        for module in executed.get(test, ()):
+            if not _is_test_file(module):
+                hits.update(indirect.get(module, ()))
         for hit in hits:
             if is_machine_read_doc(hit):
                 index.setdefault(hit, set()).add(test)

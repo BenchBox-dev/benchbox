@@ -27,7 +27,7 @@ def _offline_member_binding(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(scope="session")
-def inert_scan_reads(tmp_path_factory: pytest.TempPathFactory) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+def inert_scan_reads(tmp_path_factory: pytest.TempPathFactory) -> tuple[dict[str, list[str]], ...]:
     from filelock import FileLock
 
     from _project.scripts import inert_paths
@@ -38,15 +38,14 @@ def inert_scan_reads(tmp_path_factory: pytest.TempPathFactory) -> tuple[dict[str
     shared = tmp_path_factory.getbasetemp().parent / "inert_scan.json"
     with FileLock(str(shared) + ".lock"):
         if shared.is_file():
-            refs, reads = json.loads(shared.read_text(encoding="utf-8"))
-            return refs, reads
-        refs, reads = inert_paths.scan_tree_reads(root)
-        shared.write_text(json.dumps([refs, reads]), encoding="utf-8")
-        return refs, reads
+            return tuple(json.loads(shared.read_text(encoding="utf-8")))
+        scanned = inert_paths.scan_tree_reads(root)
+        shared.write_text(json.dumps(list(scanned)), encoding="utf-8")
+        return scanned
 
 
 @pytest.fixture(scope="session")
-def inert_scan(inert_scan_reads: tuple[dict[str, list[str]], dict[str, list[str]]]) -> dict[str, list[str]]:
+def inert_scan(inert_scan_reads: tuple[dict[str, list[str]], ...]) -> dict[str, list[str]]:
     return inert_scan_reads[0]
 
 

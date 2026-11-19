@@ -199,7 +199,7 @@ def test_guard_resolves_the_joined_path_consumers(inert_scan: dict[str, list[str
 
 
 def test_checked_in_readers_match_the_rebuilt_index(
-    inert_scan_reads: tuple[dict[str, list[str]], dict[str, list[str]]],
+    inert_scan_reads: tuple[dict[str, list[str]], ...],
 ) -> None:
     assert json.loads(READERS_FILE.read_text(encoding="utf-8")) == inert.doc_reader_index(ROOT, *inert_scan_reads), (
         "_project/inert-doc-readers.json is stale; regenerate it with "
@@ -379,6 +379,7 @@ GLOB_READER_FILES = {
     "docs/README.md": "docs readme\n",
     "scripts/version.py": 'from pathlib import Path\nREADME = Path("README.md")\n',
     "tests/unit/test_version.py": "import version\n",
+    "tests/unit/test_text_scan.py": 'SCAN_GLOBS = ("scripts/*.py",)\n',
 }
 
 
@@ -395,10 +396,11 @@ def test_reader_index_follows_globs_in_modules_a_test_imports(tmp_path: Path) ->
 
 def test_reader_index_ignores_globs_without_a_literal_first_segment(tmp_path: Path) -> None:
     repo = _git_repo(tmp_path / "repo", GLOB_READER_FILES)
-    refs, reads = inert.scan_tree_reads(repo)
-    assert "tests/unit/test_unrelated.py" not in refs | reads
+    refs, reads, modules = inert.scan_tree_reads(repo)
+    assert "tests/unit/test_unrelated.py" not in refs | reads | modules
     assert reads["scripts/audit.py"] == [".claude/commands/pr.md", "docs/agent/one.md", "docs/agent/two.md"]
     assert reads["scripts/export.py"] == ["rules/agent/one.md"]
+    assert modules["tests/unit/test_audit.py"] == ["scripts/audit.py"]
     assert "scripts/audit.py" not in refs
 
 
@@ -419,12 +421,12 @@ DOCS_AGENT_MENTIONS_WITHOUT_READS = {
 
 
 def test_every_docs_agent_mention_is_an_indexed_read_or_named_here(
-    inert_scan_reads: tuple[dict[str, list[str]], dict[str, list[str]]],
+    inert_scan_reads: tuple[dict[str, list[str]], ...],
 ) -> None:
-    refs, reads = inert_scan_reads
+    refs, reads, modules = inert_scan_reads
     mention = re.compile(r"docs/agent|[\"']docs[\"']\s*[/,]\s*[\"']agent[\"']")
-    reach = inert.reach_from_tests(refs, reads)
-    reached = set(reach).union(*reach.values())
+    tests = {source for source in refs.keys() | reads.keys() | modules.keys() if inert._is_test_file(source)}
+    reached = tests.union(*(modules.get(test, ()) for test in tests))
     unindexed = []
     unreached = []
     for scan in inert.SCAN_DIRS:
