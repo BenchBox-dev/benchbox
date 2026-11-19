@@ -3,7 +3,7 @@
     "(a) Tests: keep-branch mode removes a clean worktree and leaves refs/heads/<branch> at the expected head; it refuses a dirty worktree, one with commits not on origin, a head mismatch and a locked worktree; default mode is unchanged. Or (b) the worktree doc states the plain-git procedure with its preconditions.",
     "The owner's choice is recorded here; merged through the BenchBox close-out."
   ],
-  "context": "2026-11-17 owner decision: option (a). Add a keep-branch mode to make worktree-finish with the same safety checks (clean tree, commits on origin, expected head, never a locked worktree) and no merged-PR requirement.",
+  "context": "2026-11-17 owner decision: option (a). Add a keep-branch mode to make worktree-finish with the same safety checks (clean tree, commits on origin, expected head, never a locked worktree) and no merged-PR requirement.\n\nFixed by https://github.com/BenchBox-dev/benchbox/pull/4292, merged as f3990481be. `make worktree-finish ... KEEP_BRANCH=1` (`--keep-branch`) removes the worktree and keeps the local and remote branch. Used on 2026-11-19 to retire 9 clean worktrees; afterwards each local branch and its origin branch existed at the same commit.\n",
   "description": "Gap. make worktree-finish (scripts/worktree_finish.py) always deletes the local branch (`git update-ref -d refs/heads/<branch>`) and acts only when the branch's PR is merged. Retiring a clean worktree whose branch should be kept (no PR yet, a closed PR, or work the owner may resume) therefore has no supported path. On 2026-11-14, removing 28 clean pre-tractable worktrees with their branches kept had to fall back to plain `git worktree remove`, bypassing the tool's provenance and expected-head checks. Related: worktree-reap-leaves-malformed-and-closed-pr-worktrees-20261112 (the reaper cannot remove some worktrees at all).\n\nDecision gate (owner): either (a) add a keep-branch mode to worktree-finish (for example KEEP_BRANCH=1) that removes only the worktree, still requires a clean tree, commits on origin and the expected head, and needs no merged PR, or (b) document plain `git worktree remove` (never --force) as the supported way to retire a clean unmerged worktree. Recommendation: (a), because it keeps the safety checks in one place.\n\nGuardrails:\n- Never remove a worktree with uncommitted changes or commits not on origin.\n- The default behaviour of worktree-finish for merged PRs is unchanged.\n- A locked worktree is never unlocked or removed by the tool.",
   "links": [
     "scripts/worktree_finish.py",
@@ -34,6 +34,14 @@
       "generation": "bd0f34209f16423b9f67236589de3577",
       "op": "take",
       "op_id": "a5ee8fc15c2e4cbfaea8ec670ec5569a",
+      "session_id": "5183342f59cf44e9a69ac2e78080141b"
+    },
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-19T02:35:05Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "62b60eb221f74f0d8ec5776ac6662f5e",
       "session_id": "5183342f59cf44e9a69ac2e78080141b"
     }
   ]
