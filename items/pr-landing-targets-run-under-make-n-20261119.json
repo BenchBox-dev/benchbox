@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "A test runs `make -n <target>` for every affected target in a temporary repository with a fake gh and a bare remote, and asserts no push, no gh call, no receipt or merge, and the documented exit status.",
+    "The PR records an inventory of make/*.mk targets whose recipe line contains $(MAKE) and has external side effects; each is fixed or covered."
+  ],
+  "description": "GNU make executes any recipe line containing $(MAKE) even under -n, -q or -t. The pr-open recipe in make/pr-landing.mk is one logical line that calls $(MAKE) -s agent-write-preflight, so `make -n pr-open` pushes the branch and opens a PR. Other landing targets whose recipe line contains $(MAKE) also run under -n: pr-preflight (full preflight, writes a receipt), pr-refresh (git merge, then a nested pr-open that also runs), pr-fanout (runs pr-open in every worktree), pr-preflight-fast-tests, pr-content-guard, pr-ready and pr-arm-auto-merge. pr-arm has no $(MAKE) and is safe. The pr-open push was observed during the 0.5.1 release session; no run or PR records it.\n\nDecision gate: default is to reuse the existing dry-run guard (make/quality.mk skill-sync's MAKEFLAGS word loop, and ci-lint) so -n refuses or reports and exits before any side effect. Moving $(MAKE) onto its own line is the alternative. The owner decides only if a target cannot take the guard. No second guard convention.\n\nGuardrails: no separate DRY_RUN path that diverges from the real recipe; no existing refusal weakened; tests touch no network (fake gh, bare local remote).",
+  "links": [
+    "make/pr-landing.mk",
+    "make/quality.mk"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a",
+      "at": "2026-11-19T14:34:12Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "76742d3855f243c2942e6e9e7a221522",
+      "session_id": "ad8ff63c31d0492faa7526a81e19db83"
+    }
+  ]
+}
