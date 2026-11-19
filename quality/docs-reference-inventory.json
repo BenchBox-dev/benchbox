@@ -3824,7 +3824,7 @@
     "root": 1,
     "unresolved": 13
    },
-   "occurrences": 38,
+   "occurrences": 39,
    "path": "tests/unit/scripts/test_inert_paths.py",
    "rule": "ci-path-classification",
    "target_count": 18,
@@ -4027,7 +4027,7 @@
     "pattern": 2,
     "unresolved": 4
    },
-   "occurrences": 15,
+   "occurrences": 16,
    "path": "tests/unit/scripts/test_preflight_targets.py",
    "rule": "test-sample-data",
    "target_count": 9,
@@ -4416,13 +4416,13 @@
    "built-url": 29037,
    "dir": 163,
    "extra": 43,
-   "file": 1385,
+   "file": 1386,
    "generated": 3,
    "pattern": 337,
    "root": 204,
-   "unresolved": 2082
+   "unresolved": 2083
   },
-  "references": 33254,
+  "references": 33256,
   "unclassified": 0
  }
 }

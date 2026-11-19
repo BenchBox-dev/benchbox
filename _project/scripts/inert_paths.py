@@ -446,12 +446,14 @@ def scan_tree_reads(repo_root: str | Path) -> tuple[dict[str, list[str]], dict[s
                 tree = ast.parse(source)
             except SyntaxError:
                 continue
-            hits = to_tracked(tree_candidates(tree, str(path), str(root)), tracked, basenames)
+            candidates = tree_candidates(tree, str(path), str(root))
+            hits = to_tracked(candidates, tracked, basenames)
             hits.discard(own)
             if hits:
                 refs[own] = sorted(hits)
+            named = candidates & tracked
             constants = expand_constants(path_constants(tree), tracked, directories)
-            indirect = (constants | imported_modules(tree, own, tracked)) - {own}
+            indirect = (named | constants | imported_modules(tree, own, tracked)) - {own}
             if indirect:
                 reads[own] = sorted(indirect)
     workflow_paths = sorted((root / ".github" / "workflows").glob("*.yml"))
@@ -470,20 +472,16 @@ def scan_tree_reads(repo_root: str | Path) -> tuple[dict[str, list[str]], dict[s
 
 
 def reach_from_tests(refs: dict[str, list[str]], reads: dict[str, list[str]]) -> dict[str, set[str]]:
-    edges = {source: set(refs.get(source, ())) | set(reads.get(source, ())) for source in refs.keys() | reads.keys()}
-    reach: dict[str, set[str]] = {}
-    for source in edges:
-        if not _is_test_file(source):
-            continue
-        seen = {source}
-        pending = [source]
-        while pending:
-            for hit in edges[pending.pop()]:
-                if hit not in seen and hit in edges and not _is_test_file(hit):
-                    seen.add(hit)
-                    pending.append(hit)
-        reach[source] = seen
-    return reach
+    sources = refs.keys() | reads.keys()
+    return {
+        test: {
+            hit
+            for hit in (*refs.get(test, ()), *reads.get(test, ()))
+            if hit in sources and hit.endswith(".py") and not _is_test_file(hit)
+        }
+        for test in sources
+        if _is_test_file(test)
+    }
 
 
 def doc_reader_index(
@@ -495,11 +493,13 @@ def doc_reader_index(
         refs, reads = scan_tree_reads(repo_root)
     indirect = reads or {}
     index: dict[str, set[str]] = {}
-    for test, sources in reach_from_tests(refs, indirect).items():
-        for source in sources:
-            for hit in (*refs.get(source, ()), *indirect.get(source, ())):
-                if is_machine_read_doc(hit):
-                    index.setdefault(hit, set()).add(test)
+    for test, modules in reach_from_tests(refs, indirect).items():
+        hits = {*refs.get(test, ()), *indirect.get(test, ())}
+        for module in modules:
+            hits.update(indirect.get(module, ()))
+        for hit in hits:
+            if is_machine_read_doc(hit):
+                index.setdefault(hit, set()).add(test)
     return {doc: sorted(tests) for doc, tests in sorted(index.items())}
 
 

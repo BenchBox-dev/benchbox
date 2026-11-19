@@ -741,7 +741,7 @@ def test_a_changed_doc_selects_the_tests_that_read_it(repo: Path) -> None:
 
     paths = pt.changed_paths(repo, "origin/develop")
 
-    assert pt.map_tests(repo, paths, doc_readers=True) == ["tests/unit/test_reader.py"]
+    assert pt.map_tests(repo, paths, doc_readers=True) == [pt.READERS_INDEX_TEST, "tests/unit/test_reader.py"]
     assert pt.map_tests(repo, paths) == []
 
 
@@ -802,9 +802,18 @@ def test_a_changed_module_selects_the_reader_index_check(repo: Path) -> None:
     assert pt.READERS_INDEX_TEST in _preflight_tests(repo)
 
 
-def test_a_doc_only_change_skips_the_reader_index_check(repo: Path) -> None:
+@pytest.mark.parametrize("path", ["AGENTS.md", ".github/workflows/extra.yml", "make/extra.mk", "Makefile"])
+def test_a_change_to_an_index_input_selects_the_reader_index_check(repo: Path, path: str) -> None:
     _with_reader_index(repo, INDEX)
-    _write(repo, "AGENTS.md", "# agents, edited\n")
+    _write(repo, path, "# edited\n")
+    _commit_all(repo)
+
+    assert pt.READERS_INDEX_TEST in _preflight_tests(repo)
+
+
+def test_a_prose_only_change_skips_the_reader_index_check(repo: Path) -> None:
+    _with_reader_index(repo, INDEX)
+    _write(repo, "docs/guide.md", "# guide, edited\n")
     _commit_all(repo)
 
     assert pt.READERS_INDEX_TEST not in _preflight_tests(repo)

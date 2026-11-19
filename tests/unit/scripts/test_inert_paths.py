@@ -375,16 +375,21 @@ GLOB_READER_FILES = {
     "tests/unit/test_unrelated.py": 'GLOB = "**/*.md"\n',
     "scripts/wrapper.py": "from scripts.audit import PATTERNS\n",
     "tests/unit/test_wrapper.py": "import wrapper\n",
+    "README.md": "readme\n",
+    "docs/README.md": "docs readme\n",
+    "scripts/version.py": 'from pathlib import Path\nREADME = Path("README.md")\n',
+    "tests/unit/test_version.py": "import version\n",
 }
 
 
 def test_reader_index_follows_globs_in_modules_a_test_imports(tmp_path: Path) -> None:
     repo = _git_repo(tmp_path / "repo", GLOB_READER_FILES)
     assert inert.doc_reader_index(repo) == {
-        ".claude/commands/pr.md": ["tests/unit/test_audit.py", "tests/unit/test_wrapper.py"],
+        ".claude/commands/pr.md": ["tests/unit/test_audit.py"],
         "AGENTS.md": ["tests/unit/test_loader.py"],
-        "docs/agent/one.md": ["tests/unit/test_audit.py", "tests/unit/test_wrapper.py"],
-        "docs/agent/two.md": ["tests/unit/test_audit.py", "tests/unit/test_wrapper.py"],
+        "README.md": ["tests/unit/test_version.py"],
+        "docs/agent/one.md": ["tests/unit/test_audit.py"],
+        "docs/agent/two.md": ["tests/unit/test_audit.py"],
     }
 
 
@@ -418,7 +423,8 @@ def test_every_docs_agent_mention_is_an_indexed_read_or_named_here(
 ) -> None:
     refs, reads = inert_scan_reads
     mention = re.compile(r"docs/agent|[\"']docs[\"']\s*[/,]\s*[\"']agent[\"']")
-    reached = set().union(*inert.reach_from_tests(refs, reads).values())
+    reach = inert.reach_from_tests(refs, reads)
+    reached = set(reach).union(*reach.values())
     unindexed = []
     unreached = []
     for scan in inert.SCAN_DIRS:

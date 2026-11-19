@@ -422,8 +422,13 @@ def _reader_tests(repo: Path, paths: list[str], test_files: list[str]) -> set[st
     if not readers:
         return index_check
     selected = {test for path in paths for test in readers.get(path, ()) if test in known}
-    stale = READERS_INDEX in paths or any(
-        path.endswith(".py") and path.startswith(tuple(f"{folder}/" for folder in inert_paths.SCAN_DIRS))
+    scanned = tuple(f"{folder}/" for folder in inert_paths.SCAN_DIRS)
+    stale = any(
+        path in (READERS_INDEX, ".github/inert-paths.txt", "Makefile")
+        or (path.endswith(".py") and path.startswith(scanned))
+        or (path.startswith(".github/workflows/") and path.endswith(".yml"))
+        or (path.startswith("make/") and path.endswith(".mk"))
+        or inert_paths.is_machine_read_doc(path)
         for path in paths
     )
     return selected | index_check if stale else selected
