@@ -29588,12 +29588,7 @@
       "title": "Post nightly cause notes, close throwaway PRs and release expired claims"
     },
     "nightly-remediation-verify-20261117": {
-      "claim": {
-        "expires_at": "2026-11-20T00:06:57Z",
-        "generation": "66b8d399cbeb42219b841f48f76500df",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6a2213d6b55a7e3a8ad45472"
-      },
+      "claim": null,
       "needs": [
         "perf-smoke-method2-baseline-20261117",
         "corpus-drift-mirror-grace-20261117",
@@ -29602,7 +29597,7 @@
         "nightly-remediation-housekeeping-20261117"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Verify the remediation on develop and close the nightly issues"
     },
     "nightly-throughput-gate-restoration": {
