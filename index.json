@@ -42831,10 +42831,15 @@
       "title": "Publish the parity-proven Theseus bytes and assemble independently approved first-promotion evidence"
     },
     "theseus-release-check-fails-on-pending-checks-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-20T02:34:49Z",
+        "generation": "c3b847504dbc491ab046ffdbe1593af8",
+        "renewals": 0,
+        "worker": "joe-tractable-followups"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Make the Theseus release check wait for, not fail on, Theseus checks still running"
     },
     "theseus-release-review-record-check-20261113": {
