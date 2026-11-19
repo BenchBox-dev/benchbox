@@ -3315,7 +3315,7 @@
    "kinds": {
     "unresolved": 2
    },
-   "occurrences": 5,
+   "occurrences": 6,
    "path": "tests/unit/scripts/test_changelog_fragments.py",
    "rule": "test-sample-data",
    "target_count": 2,
@@ -4367,9 +4367,9 @@
    "generated": 3,
    "pattern": 335,
    "root": 204,
-   "unresolved": 2072
+   "unresolved": 2073
   },
-  "references": 33239,
+  "references": 33240,
   "unclassified": 0
  }
 }
