@@ -38591,15 +38591,10 @@
       "title": "Seed a richer QA fixture corpus (multi-tier trust, tuned/notuned pairs, ≥4 platforms in one cohort)"
     },
     "seed-corpus-official-cells-refused-by-full-spec-20261115": {
-      "claim": {
-        "expires_at": "2026-11-20T19:22:16Z",
-        "generation": "840ad33cc579437088c53fb731f1b98d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:24cc2a1a2751f5337bc6abe3"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "seed-corpus SF 1 cells are refused since --official requires the full TPC specification"
     },
     "seed-corpus-proof-verification-window-v2": {
