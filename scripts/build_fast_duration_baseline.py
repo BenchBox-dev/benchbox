@@ -30,7 +30,7 @@ TEST_SHARD_COUNT = 8
 
 NEW_TEST_NOTE = (
     "Tests counted as new are those absent from the committed baseline, which includes tests added by other merged "
-    "pull requests since it was last refreshed; the automated baseline refresh re-inventories them."
+    "pull requests since it was last refreshed; they keep being charged until a refreshed baseline merges into develop."
 )
 
 
