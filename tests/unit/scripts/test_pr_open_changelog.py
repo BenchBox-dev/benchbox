@@ -24,6 +24,7 @@ def _open(
     reverted_paths: list[str],
     reverted_added: list[str],
     reverts: bool = True,
+    inverts: bool = True,
 ) -> tuple[int, list[str], bytes]:
     for name, value in {
         "REAL_ROOT": str(ROOT),
@@ -34,6 +35,8 @@ def _open(
         "REVERTED_PATHS": "\n".join(reverted_paths),
         "REVERTED_ADDED": "\n".join(reverted_added),
         "CAT_FILE_EXIT": "0",
+        "REVERSE_DIFF": "-VALUE = 2\n+VALUE = 1",
+        "NET_DIFF": "-VALUE = 2\n+VALUE = 1" if inverts else "-VALUE = 2\n+VALUE = 3",
     }.items():
         monkeypatch.setenv(name, value)
     result, _, pushes = _run_pr_open_result(tmp_path, "created", 0, f"TITLE={title}")
@@ -103,6 +106,26 @@ def test_pr_open_refuses_a_revert_that_names_no_commit(
         reverted_paths=[RUNNER, FRAGMENT],
         reverted_added=[FRAGMENT],
         reverts=False,
+    )
+
+    assert status != 0
+    assert pushes == []
+    assert b"changelog" in stderr.lower()
+
+
+@requires_posix_make
+@pytest.mark.parametrize("title", REVERT_TITLES)
+def test_pr_open_refuses_a_revert_whose_content_does_not_invert_the_cited_commit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, title: str
+) -> None:
+    status, pushes, stderr = _open(
+        tmp_path,
+        monkeypatch,
+        title,
+        changed=[RUNNER, FRAGMENT],
+        reverted_paths=[RUNNER, FRAGMENT],
+        reverted_added=[FRAGMENT],
+        inverts=False,
     )
 
     assert status != 0

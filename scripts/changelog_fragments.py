@@ -372,6 +372,42 @@ def _git_succeeds(root: Path, *args: str) -> bool:
     return subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=False).returncode == 0
 
 
+def _diff_text(root: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(root), "diff", "--binary", "--no-renames", *args],
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        check=True,
+    )
+    return result.stdout
+
+
+def _patch_id(root: Path, diff: str) -> str:
+    if not diff.strip():
+        return ""
+    result = subprocess.run(
+        ["git", "-C", str(root), "patch-id", "--stable"],
+        input=diff,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        check=True,
+    )
+    fields = result.stdout.split()
+    return fields[0] if fields else ""
+
+
+def _inverts(root: Path, base: str, shas: Sequence[str], found: Sequence[RevertedCommit]) -> bool:
+    content = [sorted(path for path in commit.paths if not is_fragment_path(path)) for commit in found]
+    reverse = "".join(
+        _diff_text(root, sha, f"{sha}^", "--", *paths) for sha, paths in zip(shas, content, strict=True) if paths
+    )
+    union = sorted({path for paths in content for path in paths})
+    net = _diff_text(root, base, "HEAD", "--", *union) if union else ""
+    return _patch_id(root, reverse) == _patch_id(root, net)
+
+
 def reverted_commits(root: Path, base: str) -> list[RevertedCommit]:
     try:
         message = "\n".join(_git_lines(root, "log", "--no-merges", "--format=%B", f"{base}..HEAD"))
@@ -387,7 +423,7 @@ def reverted_commits(root: Path, base: str) -> list[RevertedCommit]:
             fragments = {normalize_path(path) for path in added if is_fragment_path(path)}
             at_base = {path for path in fragments if _git_succeeds(root, "cat-file", "-e", f"{base}:{path}")}
             found.append(RevertedCommit(frozenset(paths), frozenset(fragments), frozenset(at_base)))
-        return found
+        return found if _inverts(root, base, shas, found) else []
     except (OSError, subprocess.SubprocessError):
         return []
 

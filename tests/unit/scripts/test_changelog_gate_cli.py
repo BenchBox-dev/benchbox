@@ -108,6 +108,8 @@ def _revert_gate(
     extra_path: bool = False,
     trailer: bool = True,
     new_fragment: bool = False,
+    revert_content: str = "VALUE = 1\n",
+    cites_unrelated: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     _git(repo, "init", "-q", "-b", "develop")
     _write(repo, "pyproject.toml", '[project]\nname = "x"\nversion = "1.0.0"\n')
@@ -116,6 +118,7 @@ def _revert_gate(
     _write(repo, "changelog.d/other-change.json", FRAGMENT_JSON)
     _git(repo, "add", "-A")
     _git(repo, "commit", "-q", "-m", "base")
+    first = _git(repo, "rev-parse", "HEAD")
     _write(repo, "benchbox/core/runner.py", "VALUE = 2\n")
     if culprit_fragment:
         _write(repo, "changelog.d/fix-runner.json", FRAGMENT_JSON)
@@ -127,7 +130,7 @@ def _revert_gate(
         _git(repo, "commit", "-q", "-m", "chore(release): fold fragments")
     base = _git(repo, "rev-parse", "HEAD")
     _git(repo, "checkout", "-q", "-b", "revert")
-    _write(repo, "benchbox/core/runner.py", "VALUE = 1\n")
+    _write(repo, "benchbox/core/runner.py", revert_content)
     if culprit_fragment and not released and delete_own_fragment:
         _git(repo, "rm", "-q", "changelog.d/fix-runner.json")
     if unrelated_deletion:
@@ -137,7 +140,8 @@ def _revert_gate(
     if new_fragment:
         _write(repo, "changelog.d/revert-entry.json", FRAGMENT_JSON)
     _git(repo, "add", "-A")
-    message = ["-m", "Revert subject"] + (["-m", f"This reverts commit {culprit}."] if trailer else [])
+    cited = first if cites_unrelated else culprit
+    message = ["-m", "Revert subject"] + (["-m", f"This reverts commit {cited}."] if trailer else [])
     _git(repo, "commit", "-q", *message)
     (repo / "changed.txt").write_text(
         _git(repo, "diff", "--name-only", "--no-renames", "--diff-filter=ACDMRT", f"{base}...HEAD") + "\n",
@@ -184,10 +188,14 @@ def _revert_gate(
         ({"released": True, "new_fragment": True}, 0),
         ({"trailer": False}, 1),
         ({"trailer": False, "culprit_fragment": False}, 1),
+        ({"revert_content": "VALUE = 3\n"}, 1),
+        ({"revert_content": "VALUE = 3\n", "culprit_fragment": False}, 1),
+        ({"cites_unrelated": True}, 1),
+        ({"cites_unrelated": True, "culprit_fragment": False}, 1),
     ],
 )
 def test_a_revert_is_decided_by_the_commit_it_reverts(
-    tmp_path: Path, title: str, options: dict[str, bool], status: int
+    tmp_path: Path, title: str, options: dict[str, object], status: int
 ) -> None:
     result = _revert_gate(tmp_path, title, **options)
     assert result.returncode == status, result.stdout + result.stderr
