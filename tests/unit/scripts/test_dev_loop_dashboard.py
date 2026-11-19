@@ -552,11 +552,23 @@ def test_main_writes_the_report(tmp_path, monkeypatch):
     monkeypatch.setattr(dash, "_token", lambda: "token")
     output = tmp_path / "out" / "report.md"
     code = dash.main(
-        ["--since", "2026-11-01", "--until", "2026-11-08", "--output", str(output), "--repository", REPO],
+        [
+            "--since",
+            "2026-11-01",
+            "--until",
+            "2026-11-08",
+            "--max-job-runs",
+            "7",
+            "--output",
+            str(output),
+            "--repository",
+            REPO,
+        ],
         now=NOW,
     )
     assert code == 0
     assert seen["window"].days == 7 and seen["repository"] == REPO
+    assert seen["max_job_runs"] == 7
     assert output.read_text(encoding="utf-8").startswith("# Dev-loop dashboard")
 
 
@@ -760,3 +772,23 @@ def test_sample_runs_is_ordered_and_ignores_unfinished_runs():
     assert [run["id"] for run in dash.sample_runs(runs, 10)] == [1, 3, 4]
     assert [run["id"] for run in dash.sample_runs(runs, 2)] == [1, 4]
     assert dash.sample_runs(runs, 0) == []
+
+
+def test_job_run_ids_include_release_pushes_that_are_pending_or_cancelled():
+    pending = _run(400, 0, event="push", head_branch="v3", status="in_progress", conclusion=None)
+    cancelled = _run(401, 1, event="push", head_branch="v4", conclusion="cancelled")
+    ids = dash.job_run_ids([], [], [], [pending, cancelled], 1)
+    assert {400, 401} <= set(ids)
+
+
+def test_release_lead_time_measures_a_publish_job_still_awaiting_approval():
+    run = _run(10, event="push", head_branch="v0.5.3rc1", status="in_progress", conclusion=None)
+    waiting = {
+        "name": "publish to testpypi",
+        "created_at": _stamp(T0, minutes=15),
+        "started_at": None,
+        "completed_at": None,
+    }
+    lead = dash.release_lead_times([run], {10: [waiting]})[0]
+    assert lead.ready_seconds == 15 * 60
+    assert lead.approval_wait_seconds is None

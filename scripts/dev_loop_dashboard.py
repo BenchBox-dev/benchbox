@@ -377,7 +377,9 @@ def release_lead_times(
             (
                 job
                 for job in jobs_by_run.get(int(run["id"]), ())
-                if PUBLISH_JOB.search(str(job.get("name", ""))) and job.get("started_at")
+                if PUBLISH_JOB.search(str(job.get("name", "")))
+                and job.get("created_at")
+                and job.get("conclusion") != "skipped"
             ),
             None,
         )
@@ -903,7 +905,7 @@ def job_run_ids(
         *sample_runs(ci_runs, cap),
         *sample_runs(trunk_runs, cap),
         *sample_runs(uat_runs, cap),
-        *_concluded(release_pushes),
+        *release_pushes,
         *sample_runs(release_other, cap),
     ]
     return list(dict.fromkeys(int(run["id"]) for run in chosen))
