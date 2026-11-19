@@ -97,17 +97,34 @@ def workflow() -> dict[str, Any]:
     return yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
 
 
-def test_a_baseline_change_runs_a_required_reproduce_job_inside_core() -> None:
+def test_the_reproduce_job_always_runs_and_core_always_expects_it() -> None:
     jobs = workflow()["jobs"]
     job = jobs["fast-baseline-reproduce"]
-    assert job["if"] == "${{ needs.ci-paths.outputs.fast-baseline-changed == 'true' }}"
-    assert job["needs"] == ["ci-paths", "fast-baseline-collect"]
+    assert "fast-baseline-changed" not in job["if"]
+    assert job["if"] == "${{ !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}"
+    assert job["needs"] == "fast-baseline-collect"
     assert job["permissions"]["actions"] == "read"
     assert "fast-baseline-reproduce" in jobs["core"]["needs"]
     aggregate = named("Aggregate core result")["run"]
-    assert "--expect fast-baseline-reproduce=${{ needs.ci-paths.outputs.fast-baseline-changed == 'true' }}" in aggregate
+    assert "--expect fast-baseline-reproduce=true \\" in aggregate
     assert "continue-on-error" not in job
     assert all(step.get("continue-on-error") is not True for step in job["steps"])
+
+
+def test_the_reproduce_job_detects_the_change_itself_before_any_other_step() -> None:
+    steps = workflow()["jobs"]["fast-baseline-reproduce"]["steps"]
+    assert [step["name"] for step in steps[:2]] == ["Checkout code", "Detect a baseline change"]
+    detect = steps[1]
+    assert detect["id"] == "detect"
+    assert "/usr/bin/git diff --name-only --no-renames" in detect["run"]
+    assert '"$BASE_SHA...$HEAD_SHA" -- tests/fixtures/fast_tier_baseline/' in detect["run"]
+    assert detect["env"]["HEAD_SHA"] == "${{ github.event.pull_request.head.sha }}"
+    assert steps[0]["with"]["fetch-depth"] == 0
+    for step in steps[2:]:
+        assert step["if"] == "steps.detect.outputs.changed == 'true'"
+    reproduce = steps[-1]["run"]
+    assert "[ ! -s collected-ids/collected-ids.txt ]" in reproduce
+    assert reproduce.index("[ ! -s collected-ids") < reproduce.index("git show")
 
 
 def test_the_reproduce_job_runs_the_base_branch_copy_of_the_script_against_the_head_fixture() -> None:
@@ -115,7 +132,7 @@ def test_the_reproduce_job_runs_the_base_branch_copy_of_the_script_against_the_h
     steps = {step["name"]: step for step in jobs["fast-baseline-reproduce"]["steps"]}
     collect = {step["name"]: step for step in jobs["fast-baseline-collect"]["steps"]}["Collect the current fast tier"]
     assert "--collect-only" in collect["run"]
-    assert jobs["fast-baseline-collect"]["if"] == jobs["fast-baseline-reproduce"]["if"]
+    assert jobs["fast-baseline-collect"]["if"] == "${{ needs.ci-paths.outputs.fast-baseline-changed == 'true' }}"
     assert "fast-baseline-collect" in jobs["fast-baseline-reproduce"]["needs"]
     assert "uv run" not in str(jobs["fast-baseline-reproduce"]["steps"])
     assert "pytest" not in str(jobs["fast-baseline-reproduce"]["steps"])
@@ -157,7 +174,7 @@ def test_the_bootstrap_pass_needs_the_pr_to_change_the_build_script_and_otherwis
     steps = {step["name"]: step for step in workflow()["jobs"]["fast-baseline-reproduce"]["steps"]}
     run = steps["Reproduce the committed baseline from its source artifacts"]["run"]
     missing = run.index("if ! grep -q '\"reproduce\"'")
-    changed = run.index('git diff --name-only --no-renames "$BASE_SHA...HEAD"', missing)
+    changed = run.index('git diff --name-only --no-renames "$BASE_SHA...$HEAD_SHA"', missing)
     notice = run.index("::notice", changed)
     error = run.index("::error", notice)
     assert "grep -qx 'scripts/build_fast_duration_baseline.py'" in run[changed:notice]

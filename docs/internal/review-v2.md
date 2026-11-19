@@ -624,10 +624,12 @@ through `core` whenever the baseline changes, runs the base branch's copy of the
 build script and rebuilds the baseline byte for byte from the artifacts its
 manifest names, verifies those artifacts' provenance and the refresh workflow's
 source selection, and re-runs the baseline gate check (see "Fast-test duration
-policy" in `docs/internal/nightly-t3.md`). Inert routing does not skip that job:
-`ci-paths` sets its flag from the changed paths (`fast-baseline-changed`),
-independent of the inert manifest, and `core` expects the job whenever the flag
-is set.
+policy" in `docs/internal/nightly-t3.md`). Inert routing does not skip that job,
+and no earlier step can switch it off: it runs on every pull request, its first
+step diffs the base and head commits itself with an absolute git path before any
+PR code runs, and `core` always expects it. The ids collected for the coverage
+check come from `fast-baseline-collect`, which may be skipped by the `ci-paths`
+flag for cost; a skipped collect makes the job fail when the baseline changed.
 
 ## Rounds
 

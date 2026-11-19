@@ -1626,8 +1626,8 @@ jobs:
 
   fast-baseline-reproduce:
     name: fast-baseline-reproduce
-    needs: [ci-paths, fast-baseline-collect]
-    if: ${{ needs.ci-paths.outputs.fast-baseline-changed == 'true' }}
+    needs: fast-baseline-collect
+    if: ${{ !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -1640,30 +1640,51 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Detect a baseline change
+        id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -eu
+          if [ -n "$(/usr/bin/git diff --name-only --no-renames "$BASE_SHA...$HEAD_SHA" -- tests/fixtures/fast_tier_baseline/)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Python 3.12
+        if: steps.detect.outputs.changed == 'true'
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.12'
 
       - name: Download the collected ids
+        if: steps.detect.outputs.changed == 'true'
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           name: fast-baseline-collected-ids-${{ github.run_id }}-${{ github.run_attempt }}
           path: collected-ids
 
       - name: Reproduce the committed baseline from its source artifacts
+        if: steps.detect.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
+          if [ ! -s collected-ids/collected-ids.txt ]; then
+            echo "::error title=fast-baseline-reproduce::the collected test ids are missing or empty, so the baseline cannot be checked"
+            exit 1
+          fi
           trusted="$RUNNER_TEMP/trusted-baseline"
           mkdir -p "$trusted/scripts" "$trusted/tests"
           for path in scripts/build_fast_duration_baseline.py scripts/release_canary_sharding.py tests/__init__.py tests/duration_policy.py; do
             git show "$BASE_SHA:$path" > "$trusted/$path"
           done
           if ! grep -q '"reproduce"' "$trusted/scripts/build_fast_duration_baseline.py"; then
-            if git diff --name-only --no-renames "$BASE_SHA...HEAD" | grep -qx 'scripts/build_fast_duration_baseline.py'; then
+            if git diff --name-only --no-renames "$BASE_SHA...$HEAD_SHA" | grep -qx 'scripts/build_fast_duration_baseline.py'; then
               echo "::notice title=fast-baseline-reproduce::the base branch's build script has no reproduce subcommand and this PR introduces or changes that script, so it is not reproduced; the next baseline change is"
               exit 0
             fi
@@ -1982,7 +2003,7 @@ jobs:
             --expect tpch-binary-framing=${{ needs.ci-paths.outputs.heavy-needed == 'true' || needs.ci-paths.outputs.framing-needed == 'true' }} \
             --expect tuning-liveness=${{ needs.ci-paths.outputs.tuning-paths-changed == 'true' }} \
             --expect generator-volume=${{ needs.ci-paths.outputs.generator-volume-needed == 'true' }} \
-            --expect fast-baseline-reproduce=${{ needs.ci-paths.outputs.fast-baseline-changed == 'true' }} \
+            --expect fast-baseline-reproduce=true \
             --expect sql-execution-evidence=${{ needs.ci-paths.outputs.sql-evidence-paths-changed == 'true' }} \
             --expect windows-tests=${{ needs.ci-paths.outputs.windows-leg-needed == 'true' }} \
             --expect package-smoke=${{ needs.ci-paths.outputs.packaging-needed == 'true' || needs.ci-paths.outputs.first-command-needed == 'true' }} \
