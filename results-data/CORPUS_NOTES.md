@@ -1902,24 +1902,37 @@ override, `BENCHBOX_UAT_DORIS_PARALLEL_PIPELINE_TASK_NUM`, set to a positive int
 | 0.01 | `93ab6464` (superseded) | capped at 1 | not recorded | 279/279 | 6.2 s | 1.9 s |
 | 0.01 | `c2022935` | default | 6 GiB (compose default) | 279/279 | 7.4 s | 2.0 s |
 | 0.1 | `9315b4c2` (superseded) | capped at 1 | not recorded | 279/279 | 8.4 s | 35.3 s |
-| 0.1 | `4ded829a` | default | 6 GiB (compose default) | 279/279 | 19.9 s | 40.4 s |
+| 0.1 | `c18125e7` | default | 6 GiB (compose default) | 279/279 | 10.4 s | 17.7 s |
 
 Validation passed for all four. Both reruns used the compose default `DORIS_MEMORY_LIMIT=6g`; the container logs record a
 6 GiB cgroup limit, a 512m FE heap and a 4400m BE `mem_limit`, and sampled container use peaked at about 0.7 GB (SF 0.01) and
-1.4 GB (SF 0.1). The bundles themselves read `environment.container.collection_status: unavailable`, so this note is the
-record of their memory sizing. The 2026-11-11 bundles predate that logging and their container memory is not known.
+2.7 GB (SF 0.1). The bundles read `environment.container.collection_status: unavailable`, so this note is the record of
+their memory sizing. The 2026-11-11 bundles predate that logging and their container memory is not known.
 
-Host conditions. Both reruns ran on a shared 16 GiB Apple-silicon machine under the heavy-work lock, so no other heavy run
-overlapped them; other interactive sessions were still active. The SF 0.01 admission recorded memory pressure level 1 and
-7.30 GiB available; the SF 0.1 run waited for the lock and its admission readings were not kept. The default-parallelism
-timings are slower than the capped ones, and that is disclosed rather than corrected: these numbers are not a statement about
-Doris's speed on an idle host, and the capped and default sets must not be compared as engine performance. Earlier
-default-parallelism attempts at 2 GiB and 3 GiB containers on a more contended host were discarded rather than published; a
-2 GiB container stalled at SF 0.1.
+Host conditions. Both reruns ran on a shared 16 GiB Apple-silicon machine (10 CPUs) under the heavy-work lock, so no other
+heavy run overlapped them; other interactive sessions were still active. Each bundle's `host_load` records the host at the
+start and end of the run:
+
+| bundle | 1/5/15-minute load average (start, end) | available memory (start, end) | swap used |
+|---|---|---|---|
+| `c2022935` | 6.6/7.3/9.7, 7.0/7.3/9.6 | 5.7 GiB, 4.6 GiB | 84%, 81% |
+| `c18125e7` | 5.9/4.1/2.7, 6.5/4.5/2.9 | 4.5 GiB, 3.0 GiB | 75%, 75% |
+
+The SF 0.1 rerun was started only once the 1-minute load average had fallen below 5 and admission found 6 GiB available;
+its rising 1-minute figure is the Doris bring-up and run itself. Swap stayed high throughout, so these are timings on a busy
+shared host, not on an idle one. The default-parallelism timings are slower than the capped ones, and that is disclosed
+rather than corrected: the capped and default sets must not be compared as engine performance.
+
+Discarded runs. Earlier default-parallelism attempts were not published: 2 GiB and 3 GiB containers on a contended host (a
+2 GiB container stalled at SF 0.1), and a 6 GiB SF 0.1 run, `4ded829a`, whose `host_load` recorded a 1-minute load average
+near 15 on 10 CPUs, 82-88% swap and available memory falling from 3.8 GiB to 2.7 GiB. That run took 19.9 s of power time,
+nearly twice the quieter rerun, so it measured the host more than Doris.
 
 LakeSail. `tpcds_obt_sf01_lakesail_sql_20261117_201241_312e8b59` is the SF 0.1 bundle: 279/279 statements, validation
 passed, power total 18.6 s, load 2.5 s, launched through `mocker run` from `tests/uat/mocker_launch.py` with the compose
 `mem_limit` (`LAKESAIL_MEMORY_LIMIT`, default 4g); the memory trace shows a 4.00 GB limit and about 600 MB peak sampled
 use. An earlier run launched with `mocker compose up` gave the server 1 GiB because that path ignores `mem_limit`, and the
 server died during the SF 0.1 load (inferred from the memory trace; `OOMKilled` read false). A hand-started 4g server also
-passed 279/279. No existing LakeSail bundle was superseded; the SF 0.01 bundle `a1896614` is unchanged.
+passed 279/279. No existing LakeSail bundle was superseded; the SF 0.01 bundle `a1896614` is unchanged. The bundle's
+`host_load` records a 1-minute load average of 3.3 at the start and 5.2 at the end, 82-93% swap and 3.1 GiB falling to
+2.9 GiB available, so it too is a timing on a busy shared host.

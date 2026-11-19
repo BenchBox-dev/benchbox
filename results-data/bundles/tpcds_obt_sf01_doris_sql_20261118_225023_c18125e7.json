@@ -63,11 +63,11 @@
     },
     "client_link": {
       "collection_status": "partial",
-      "probed_at": "2026-11-17T21:14:49.980772+00:00",
+      "probed_at": "2026-11-19T03:50:22.097088+00:00",
       "source": "unavailable",
       "statement_overhead_ms": {
-        "median": 3.486,
-        "min": 2.353,
+        "median": 0.625,
+        "min": 0.488,
         "samples": 5
       }
     },
@@ -91,26 +91,26 @@
       "end": {
         "cpu_frequency_mhz": null,
         "load_average": [
-          14.98,
-          12.54,
-          11.15
+          6.48,
+          4.47,
+          2.85
         ],
-        "memory_available_mb": 2815.16,
-        "sampled_at": "2026-11-17T16:14:52.586931",
-        "swap_percent": 88.3,
-        "swap_used_mb": 6329.19
+        "memory_available_mb": 3122.53,
+        "sampled_at": "2026-11-18T22:50:23.429647",
+        "swap_percent": 74.6,
+        "swap_used_mb": 4586.19
       },
       "start": {
         "cpu_frequency_mhz": null,
         "load_average": [
-          15.02,
-          11.53,
-          10.68
+          5.9,
+          4.1,
+          2.65
         ],
-        "memory_available_mb": 3889.23,
-        "sampled_at": "2026-11-17T16:13:31.774120",
-        "swap_percent": 82.5,
-        "swap_used_mb": 5913.81
+        "memory_available_mb": 4600.11,
+        "sampled_at": "2026-11-18T22:49:44.029436",
+        "swap_percent": 74.6,
+        "swap_used_mb": 4586.19
       }
     },
     "memory_gb": 16.0,
@@ -128,6 +128,7 @@
     "compression": {
       "type": "zstd"
     },
+    "config_capture": 1,
     "driver_package": "pymysql",
     "driver_runtime_strategy": "current-process",
     "driver_version_actual": "1.1.2",
@@ -140,7 +141,7 @@
       "load",
       "power"
     ],
-    "timestamp": "2026-11-17T16:13:31.730520",
+    "timestamp": "2026-11-18T22:49:43.995699",
     "translation": {
       "attempt_count": 212,
       "failed_count": 0,
@@ -177,10 +178,10 @@
       ],
       "runtime": {
         "distribution": "benchbox-sqlglot",
-        "fork_sha": "945aced55e0e25e83fed1f51f11af45c54e94318",
-        "upstream_sha": "447a8a8929835a82ead76d7c6d7e104df344ab36",
-        "version": "30.31.0.1",
-        "wheel_sha256": "cd2453520b31aa442a5b85f8f7c35b0d8a9aa401fe3a62bcd061167c47aa0d03"
+        "fork_sha": "c28e72ff6d66298fe07b8af4b3b8326919eff15b",
+        "upstream_sha": "0936dbe9192a3b57c6e6992acfcb93d4b429c51f",
+        "version": "30.33.0.1",
+        "wheel_sha256": "27cf37633a15bf75c65691af03109816052bb2792fe8c49b56e1621fa1d4dec1"
       },
       "schema_statements_translated": 26,
       "source_dialects": [
@@ -204,7 +205,7 @@
   "export": {
     "anonymized": true,
     "benchbox_version": "0.5.1",
-    "timestamp": "2026-11-17T16:14:52.637804",
+    "timestamp": "2026-11-18T22:50:23.453634",
     "tool": "benchbox-exporter"
   },
   "normalized_cost": {
@@ -241,25 +242,25 @@
       "status": "SUCCESS"
     },
     "data_loading": {
-      "duration_ms": 40378,
+      "duration_ms": 17741,
       "status": "SUCCESS"
     },
     "power_test": {
-      "duration_ms": 35150,
-      "geometric_mean_time": 0.08229961982533496,
+      "duration_ms": 18841,
+      "geometric_mean_time": 0.0446843656074282,
       "power_at_size": 0.0,
       "query_count": 372,
       "status": "COMPLETED"
     },
     "schema_creation": {
-      "duration_ms": 1901,
+      "duration_ms": 1237,
       "status": "SUCCESS"
     },
     "throughput_test": {
       "status": "NOT_RUN"
     },
     "validation": {
-      "duration_ms": 544,
+      "duration_ms": 157,
       "status": "PASSED"
     }
   },
@@ -379,7 +380,7 @@
     {
       "id": "1",
       "iter": 0,
-      "ms": 529.0212,
+      "ms": 175.797,
       "request_count": 1,
       "result_bytes": 1600,
       "rows": 100,
@@ -390,7 +391,7 @@
     {
       "id": "2",
       "iter": 0,
-      "ms": 398.1128,
+      "ms": 117.8143,
       "request_count": 1,
       "result_bytes": 90272,
       "rows": 2513,
@@ -401,7 +402,7 @@
     {
       "id": "3",
       "iter": 0,
-      "ms": 92.44967,
+      "ms": 28.15438,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -412,7 +413,7 @@
     {
       "id": "4",
       "iter": 0,
-      "ms": 526.5828,
+      "ms": 176.3513,
       "request_count": 1,
       "result_bytes": 69,
       "rows": 1,
@@ -423,7 +424,7 @@
     {
       "id": "5",
       "iter": 0,
-      "ms": 418.5305,
+      "ms": 189.1984,
       "request_count": 1,
       "result_bytes": 6170,
       "rows": 100,
@@ -434,7 +435,7 @@
     {
       "id": "6",
       "iter": 0,
-      "ms": 227.4432,
+      "ms": 103.5834,
       "request_count": 1,
       "result_bytes": 90,
       "rows": 9,
@@ -445,7 +446,7 @@
     {
       "id": "7",
       "iter": 0,
-      "ms": 107.705,
+      "ms": 64.47221,
       "request_count": 1,
       "result_bytes": 4474,
       "rows": 100,
@@ -456,7 +457,7 @@
     {
       "id": "9",
       "iter": 0,
-      "ms": 295.7038,
+      "ms": 154.2363,
       "request_count": 1,
       "result_bytes": 44,
       "rows": 1,
@@ -467,7 +468,7 @@
     {
       "id": "10",
       "iter": 0,
-      "ms": 196.6047,
+      "ms": 68.36146,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -478,7 +479,7 @@
     {
       "id": "11",
       "iter": 0,
-      "ms": 173.6345,
+      "ms": 80.33338,
       "request_count": 1,
       "result_bytes": 328,
       "rows": 6,
@@ -489,7 +490,7 @@
     {
       "id": "12",
       "iter": 0,
-      "ms": 96.39033,
+      "ms": 51.20158,
       "request_count": 1,
       "result_bytes": 15497,
       "rows": 100,
@@ -500,7 +501,7 @@
     {
       "id": "13",
       "iter": 0,
-      "ms": 101.4855,
+      "ms": 58.30042,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -511,7 +512,7 @@
     {
       "id": "14a",
       "iter": 0,
-      "ms": 422.5318,
+      "ms": 243.5506,
       "request_count": 1,
       "result_bytes": 4207,
       "rows": 100,
@@ -522,7 +523,7 @@
     {
       "id": "14b",
       "iter": 0,
-      "ms": 469.7618,
+      "ms": 281.7725,
       "request_count": 1,
       "result_bytes": 9000,
       "rows": 100,
@@ -533,7 +534,7 @@
     {
       "id": "15",
       "iter": 0,
-      "ms": 63.30642,
+      "ms": 30.98025,
       "request_count": 1,
       "result_bytes": 326,
       "rows": 30,
@@ -544,7 +545,7 @@
     {
       "id": "16",
       "iter": 0,
-      "ms": 110.9898,
+      "ms": 77.66604,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -555,7 +556,7 @@
     {
       "id": "17",
       "iter": 0,
-      "ms": 101.1273,
+      "ms": 73.91371,
       "request_count": 1,
       "result_bytes": 228,
       "rows": 1,
@@ -566,7 +567,7 @@
     {
       "id": "18",
       "iter": 0,
-      "ms": 57.31617,
+      "ms": 49.53838,
       "request_count": 1,
       "result_bytes": 9092,
       "rows": 100,
@@ -577,7 +578,7 @@
     {
       "id": "19",
       "iter": 0,
-      "ms": 58.86671,
+      "ms": 43.39029,
       "request_count": 1,
       "result_bytes": 764,
       "rows": 15,
@@ -588,7 +589,7 @@
     {
       "id": "20",
       "iter": 0,
-      "ms": 51.08738,
+      "ms": 32.41617,
       "request_count": 1,
       "result_bytes": 14340,
       "rows": 100,
@@ -599,7 +600,7 @@
     {
       "id": "23a",
       "iter": 0,
-      "ms": 198.8642,
+      "ms": 179.7715,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -610,7 +611,7 @@
     {
       "id": "23b",
       "iter": 0,
-      "ms": 230.8315,
+      "ms": 189.9757,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -621,7 +622,7 @@
     {
       "id": "24a",
       "iter": 0,
-      "ms": 58.20758,
+      "ms": 46.06854,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -632,7 +633,7 @@
     {
       "id": "24b",
       "iter": 0,
-      "ms": 47.54979,
+      "ms": 29.36229,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -643,7 +644,7 @@
     {
       "id": "25",
       "iter": 0,
-      "ms": 76.88496,
+      "ms": 99.80708,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -654,7 +655,7 @@
     {
       "id": "26",
       "iter": 0,
-      "ms": 38.11683,
+      "ms": 58.33267,
       "request_count": 1,
       "result_bytes": 4510,
       "rows": 100,
@@ -665,7 +666,7 @@
     {
       "id": "27",
       "iter": 0,
-      "ms": 56.24067,
+      "ms": 31.48354,
       "request_count": 1,
       "result_bytes": 5364,
       "rows": 100,
@@ -676,7 +677,7 @@
     {
       "id": "28",
       "iter": 0,
-      "ms": 141.6825,
+      "ms": 109.5506,
       "request_count": 1,
       "result_bytes": 139,
       "rows": 1,
@@ -687,7 +688,7 @@
     {
       "id": "29",
       "iter": 0,
-      "ms": 61.04604,
+      "ms": 43.06979,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -698,7 +699,7 @@
     {
       "id": "30",
       "iter": 0,
-      "ms": 67.864,
+      "ms": 46.31354,
       "request_count": 1,
       "result_bytes": 1181,
       "rows": 11,
@@ -709,7 +710,7 @@
     {
       "id": "31",
       "iter": 0,
-      "ms": 88.64225,
+      "ms": 70.46308,
       "request_count": 1,
       "result_bytes": 156,
       "rows": 3,
@@ -720,7 +721,7 @@
     {
       "id": "32",
       "iter": 0,
-      "ms": 46.70192,
+      "ms": 53.13704,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -731,7 +732,7 @@
     {
       "id": "33",
       "iter": 0,
-      "ms": 209.4147,
+      "ms": 112.1363,
       "request_count": 1,
       "result_bytes": 1492,
       "rows": 100,
@@ -742,7 +743,7 @@
     {
       "id": "34",
       "iter": 0,
-      "ms": 108.5316,
+      "ms": 50.00379,
       "request_count": 1,
       "result_bytes": 1596,
       "rows": 51,
@@ -753,7 +754,7 @@
     {
       "id": "35",
       "iter": 0,
-      "ms": 89.10862,
+      "ms": 58.6825,
       "request_count": 1,
       "result_bytes": 12400,
       "rows": 100,
@@ -764,7 +765,7 @@
     {
       "id": "36",
       "iter": 0,
-      "ms": 91.37258,
+      "ms": 69.30179,
       "request_count": 1,
       "result_bytes": 3817,
       "rows": 100,
@@ -775,7 +776,7 @@
     {
       "id": "38",
       "iter": 0,
-      "ms": 75.85967,
+      "ms": 69.68333,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -786,7 +787,7 @@
     {
       "id": "40",
       "iter": 0,
-      "ms": 30.18621,
+      "ms": 29.17458,
       "request_count": 1,
       "result_bytes": 1170,
       "rows": 41,
@@ -797,7 +798,7 @@
     {
       "id": "41",
       "iter": 0,
-      "ms": 129.6009,
+      "ms": 91.07125,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -808,7 +809,7 @@
     {
       "id": "42",
       "iter": 0,
-      "ms": 35.64288,
+      "ms": 28.18517,
       "request_count": 1,
       "result_bytes": 152,
       "rows": 5,
@@ -819,7 +820,7 @@
     {
       "id": "43",
       "iter": 0,
-      "ms": 53.35088,
+      "ms": 51.20608,
       "request_count": 1,
       "result_bytes": 84,
       "rows": 1,
@@ -830,7 +831,7 @@
     {
       "id": "44",
       "iter": 0,
-      "ms": 212.369,
+      "ms": 148.4464,
       "request_count": 1,
       "result_bytes": 374,
       "rows": 10,
@@ -841,7 +842,7 @@
     {
       "id": "45",
       "iter": 0,
-      "ms": 61.12738,
+      "ms": 54.1675,
       "request_count": 1,
       "result_bytes": 591,
       "rows": 25,
@@ -852,7 +853,7 @@
     {
       "id": "46",
       "iter": 0,
-      "ms": 92.15008,
+      "ms": 58.67508,
       "request_count": 1,
       "result_bytes": 5232,
       "rows": 100,
@@ -863,7 +864,7 @@
     {
       "id": "47",
       "iter": 0,
-      "ms": 119.5536,
+      "ms": 80.29204,
       "request_count": 1,
       "result_bytes": 6709,
       "rows": 100,
@@ -874,7 +875,7 @@
     {
       "id": "48",
       "iter": 0,
-      "ms": 51.66983,
+      "ms": 33.75533,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -885,7 +886,7 @@
     {
       "id": "49",
       "iter": 0,
-      "ms": 134.5038,
+      "ms": 68.04267,
       "request_count": 1,
       "result_bytes": 80,
       "rows": 2,
@@ -896,7 +897,7 @@
     {
       "id": "50",
       "iter": 0,
-      "ms": 90.46062,
+      "ms": 43.41904,
       "request_count": 1,
       "result_bytes": 104,
       "rows": 1,
@@ -907,7 +908,7 @@
     {
       "id": "51",
       "iter": 0,
-      "ms": 92.88558,
+      "ms": 60.36887,
       "request_count": 1,
       "result_bytes": 3326,
       "rows": 100,
@@ -918,7 +919,7 @@
     {
       "id": "52",
       "iter": 0,
-      "ms": 32.78079,
+      "ms": 23.87925,
       "request_count": 1,
       "result_bytes": 358,
       "rows": 9,
@@ -929,7 +930,7 @@
     {
       "id": "53",
       "iter": 0,
-      "ms": 37.36687,
+      "ms": 21.10171,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -940,7 +941,7 @@
     {
       "id": "55",
       "iter": 0,
-      "ms": 42.47917,
+      "ms": 19.26621,
       "request_count": 1,
       "result_bytes": 183,
       "rows": 6,
@@ -951,7 +952,7 @@
     {
       "id": "56",
       "iter": 0,
-      "ms": 133.2687,
+      "ms": 65.06792,
       "request_count": 1,
       "result_bytes": 202,
       "rows": 9,
@@ -962,7 +963,7 @@
     {
       "id": "57",
       "iter": 0,
-      "ms": 81.98829,
+      "ms": 41.573,
       "request_count": 1,
       "result_bytes": 5237,
       "rows": 100,
@@ -973,7 +974,7 @@
     {
       "id": "58",
       "iter": 0,
-      "ms": 167.4672,
+      "ms": 128.2172,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -984,7 +985,7 @@
     {
       "id": "59",
       "iter": 0,
-      "ms": 98.59512,
+      "ms": 87.01879,
       "request_count": 1,
       "result_bytes": 8500,
       "rows": 100,
@@ -995,7 +996,7 @@
     {
       "id": "60",
       "iter": 0,
-      "ms": 111.1031,
+      "ms": 70.34725,
       "request_count": 1,
       "result_bytes": 2337,
       "rows": 100,
@@ -1006,7 +1007,7 @@
     {
       "id": "61",
       "iter": 0,
-      "ms": 48.83458,
+      "ms": 31.06167,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -1017,7 +1018,7 @@
     {
       "id": "62",
       "iter": 0,
-      "ms": 50.8155,
+      "ms": 28.96762,
       "request_count": 1,
       "result_bytes": 435,
       "rows": 6,
@@ -1028,7 +1029,7 @@
     {
       "id": "63",
       "iter": 0,
-      "ms": 52.65008,
+      "ms": 24.11883,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -1039,7 +1040,7 @@
     {
       "id": "64",
       "iter": 0,
-      "ms": 112.604,
+      "ms": 70.14321,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -1050,7 +1051,7 @@
     {
       "id": "65",
       "iter": 0,
-      "ms": 59.82658,
+      "ms": 36.65671,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -1061,7 +1062,7 @@
     {
       "id": "66",
       "iter": 0,
-      "ms": 101.9373,
+      "ms": 54.95962,
       "request_count": 1,
       "result_bytes": 449,
       "rows": 1,
@@ -1072,7 +1073,7 @@
     {
       "id": "67",
       "iter": 0,
-      "ms": 82.79742,
+      "ms": 75.46892,
       "request_count": 1,
       "result_bytes": 5078,
       "rows": 100,
@@ -1083,7 +1084,7 @@
     {
       "id": "68",
       "iter": 0,
-      "ms": 47.01892,
+      "ms": 42.90812,
       "request_count": 1,
       "result_bytes": 5993,
       "rows": 100,
@@ -1094,7 +1095,7 @@
     {
       "id": "69",
       "iter": 0,
-      "ms": 60.54329,
+      "ms": 48.37338,
       "request_count": 1,
       "result_bytes": 2280,
       "rows": 45,
@@ -1105,7 +1106,7 @@
     {
       "id": "70",
       "iter": 0,
-      "ms": 92.65446,
+      "ms": 49.163,
       "request_count": 1,
       "result_bytes": 105,
       "rows": 3,
@@ -1116,7 +1117,7 @@
     {
       "id": "71",
       "iter": 0,
-      "ms": 46.83396,
+      "ms": 26.34567,
       "request_count": 1,
       "result_bytes": 3440,
       "rows": 73,
@@ -1127,7 +1128,7 @@
     {
       "id": "73",
       "iter": 0,
-      "ms": 51.19046,
+      "ms": 28.19733,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -1138,7 +1139,7 @@
     {
       "id": "74",
       "iter": 0,
-      "ms": 94.49154,
+      "ms": 47.22296,
       "request_count": 1,
       "result_bytes": 259,
       "rows": 9,
@@ -1149,7 +1150,7 @@
     {
       "id": "75",
       "iter": 0,
-      "ms": 138.4059,
+      "ms": 63.37321,
       "request_count": 1,
       "result_bytes": 1377,
       "rows": 17,
@@ -1160,7 +1161,7 @@
     {
       "id": "76",
       "iter": 0,
-      "ms": 67.23962,
+      "ms": 30.29042,
       "request_count": 1,
       "result_bytes": 5680,
       "rows": 100,
@@ -1171,7 +1172,7 @@
     {
       "id": "77",
       "iter": 0,
-      "ms": 116.2299,
+      "ms": 90.50096,
       "request_count": 1,
       "result_bytes": 444,
       "rows": 10,
@@ -1182,7 +1183,7 @@
     {
       "id": "78",
       "iter": 0,
-      "ms": 163.7509,
+      "ms": 110.631,
       "request_count": 1,
       "result_bytes": 6736,
       "rows": 100,
@@ -1193,7 +1194,7 @@
     {
       "id": "79",
       "iter": 0,
-      "ms": 51.35329,
+      "ms": 42.42633,
       "request_count": 1,
       "result_bytes": 3995,
       "rows": 100,
@@ -1204,7 +1205,7 @@
     {
       "id": "80",
       "iter": 0,
-      "ms": 107.8305,
+      "ms": 84.82925,
       "request_count": 1,
       "result_bytes": 6110,
       "rows": 100,
@@ -1215,7 +1216,7 @@
     {
       "id": "81",
       "iter": 0,
-      "ms": 94.12196,
+      "ms": 43.68592,
       "request_count": 1,
       "result_bytes": 707,
       "rows": 6,
@@ -1226,7 +1227,7 @@
     {
       "id": "83",
       "iter": 0,
-      "ms": 191.3285,
+      "ms": 101.2427,
       "request_count": 1,
       "result_bytes": 71,
       "rows": 1,
@@ -1237,7 +1238,7 @@
     {
       "id": "85",
       "iter": 0,
-      "ms": 54.90375,
+      "ms": 26.06363,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -1248,7 +1249,7 @@
     {
       "id": "86",
       "iter": 0,
-      "ms": 47.94158,
+      "ms": 21.96454,
       "request_count": 1,
       "result_bytes": 3818,
       "rows": 100,
@@ -1259,7 +1260,7 @@
     {
       "id": "87",
       "iter": 0,
-      "ms": 95.45263,
+      "ms": 43.22458,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -1270,7 +1271,7 @@
     {
       "id": "88",
       "iter": 0,
-      "ms": 150.1191,
+      "ms": 76.19446,
       "request_count": 1,
       "result_bytes": 64,
       "rows": 1,
@@ -1281,7 +1282,7 @@
     {
       "id": "89",
       "iter": 0,
-      "ms": 77.17508,
+      "ms": 38.27171,
       "request_count": 1,
       "result_bytes": 6255,
       "rows": 100,
@@ -1292,7 +1293,7 @@
     {
       "id": "90",
       "iter": 0,
-      "ms": 45.40592,
+      "ms": 35.92029,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -1303,7 +1304,7 @@
     {
       "id": "91",
       "iter": 0,
-      "ms": 34.92137,
+      "ms": 40.30371,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -1314,7 +1315,7 @@
     {
       "id": "92",
       "iter": 0,
-      "ms": 51.77929,
+      "ms": 36.37638,
       "request_count": 1,
       "result_bytes": 7,
       "rows": 1,
@@ -1325,7 +1326,7 @@
     {
       "id": "93",
       "iter": 0,
-      "ms": 32.60813,
+      "ms": 22.93096,
       "request_count": 1,
       "result_bytes": 1200,
       "rows": 100,
@@ -1336,7 +1337,7 @@
     {
       "id": "94",
       "iter": 0,
-      "ms": 59.34375,
+      "ms": 33.07717,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -1347,7 +1348,7 @@
     {
       "id": "95",
       "iter": 0,
-      "ms": 110.0996,
+      "ms": 43.41321,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -1358,7 +1359,7 @@
     {
       "id": "96",
       "iter": 0,
-      "ms": 40.82025,
+      "ms": 11.97513,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -1369,7 +1370,7 @@
     {
       "id": "97",
       "iter": 0,
-      "ms": 53.97142,
+      "ms": 30.39621,
       "request_count": 1,
       "result_bytes": 24,
       "rows": 1,
@@ -1380,7 +1381,7 @@
     {
       "id": "98",
       "iter": 0,
-      "ms": 33.02912,
+      "ms": 28.37571,
       "request_count": 1,
       "result_bytes": 40836,
       "rows": 269,
@@ -1391,7 +1392,7 @@
     {
       "id": "99",
       "iter": 0,
-      "ms": 47.86983,
+      "ms": 21.37758,
       "request_count": 1,
       "result_bytes": 447,
       "rows": 6,
@@ -1402,7 +1403,7 @@
     {
       "id": "1",
       "iter": 1,
-      "ms": 63.15942,
+      "ms": 40.77979,
       "request_count": 1,
       "result_bytes": 1600,
       "rows": 100,
@@ -1413,7 +1414,7 @@
     {
       "id": "2",
       "iter": 1,
-      "ms": 63.01271,
+      "ms": 57.2695,
       "request_count": 1,
       "result_bytes": 90272,
       "rows": 2513,
@@ -1424,7 +1425,7 @@
     {
       "id": "3",
       "iter": 1,
-      "ms": 20.20088,
+      "ms": 13.1895,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -1435,7 +1436,7 @@
     {
       "id": "4",
       "iter": 1,
-      "ms": 170.5184,
+      "ms": 82.93517,
       "request_count": 1,
       "result_bytes": 69,
       "rows": 1,
@@ -1446,7 +1447,7 @@
     {
       "id": "5",
       "iter": 1,
-      "ms": 119.5801,
+      "ms": 52.87912,
       "request_count": 1,
       "result_bytes": 6170,
       "rows": 100,
@@ -1457,7 +1458,7 @@
     {
       "id": "6",
       "iter": 1,
-      "ms": 88.46338,
+      "ms": 51.11804,
       "request_count": 1,
       "result_bytes": 90,
       "rows": 9,
@@ -1468,7 +1469,7 @@
     {
       "id": "7",
       "iter": 1,
-      "ms": 38.41667,
+      "ms": 34.4165,
       "request_count": 1,
       "result_bytes": 4474,
       "rows": 100,
@@ -1479,7 +1480,7 @@
     {
       "id": "9",
       "iter": 1,
-      "ms": 100.1205,
+      "ms": 81.98446,
       "request_count": 1,
       "result_bytes": 44,
       "rows": 1,
@@ -1490,7 +1491,7 @@
     {
       "id": "10",
       "iter": 1,
-      "ms": 71.322,
+      "ms": 48.73025,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -1501,7 +1502,7 @@
     {
       "id": "11",
       "iter": 1,
-      "ms": 134.5446,
+      "ms": 59.74896,
       "request_count": 1,
       "result_bytes": 328,
       "rows": 6,
@@ -1512,7 +1513,7 @@
     {
       "id": "12",
       "iter": 1,
-      "ms": 60.41967,
+      "ms": 18.07817,
       "request_count": 1,
       "result_bytes": 15497,
       "rows": 100,
@@ -1523,7 +1524,7 @@
     {
       "id": "13",
       "iter": 1,
-      "ms": 61.38029,
+      "ms": 25.46196,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -1534,7 +1535,7 @@
     {
       "id": "14a",
       "iter": 1,
-      "ms": 140.1228,
+      "ms": 113.3228,
       "request_count": 1,
       "result_bytes": 4207,
       "rows": 100,
@@ -1545,7 +1546,7 @@
     {
       "id": "14b",
       "iter": 1,
-      "ms": 217.8977,
+      "ms": 130.8146,
       "request_count": 1,
       "result_bytes": 9000,
       "rows": 100,
@@ -1556,7 +1557,7 @@
     {
       "id": "15",
       "iter": 1,
-      "ms": 34.00646,
+      "ms": 16.12117,
       "request_count": 1,
       "result_bytes": 326,
       "rows": 30,
@@ -1567,7 +1568,7 @@
     {
       "id": "16",
       "iter": 1,
-      "ms": 41.74104,
+      "ms": 43.04558,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -1578,7 +1579,7 @@
     {
       "id": "17",
       "iter": 1,
-      "ms": 33.63454,
+      "ms": 27.66362,
       "request_count": 1,
       "result_bytes": 228,
       "rows": 1,
@@ -1589,7 +1590,7 @@
     {
       "id": "18",
       "iter": 1,
-      "ms": 27.40246,
+      "ms": 23.79529,
       "request_count": 1,
       "result_bytes": 9092,
       "rows": 100,
@@ -1600,7 +1601,7 @@
     {
       "id": "19",
       "iter": 1,
-      "ms": 23.52083,
+      "ms": 18.09683,
       "request_count": 1,
       "result_bytes": 764,
       "rows": 15,
@@ -1611,7 +1612,7 @@
     {
       "id": "20",
       "iter": 1,
-      "ms": 17.80733,
+      "ms": 15.43208,
       "request_count": 1,
       "result_bytes": 14340,
       "rows": 100,
@@ -1622,7 +1623,7 @@
     {
       "id": "23a",
       "iter": 1,
-      "ms": 104.0954,
+      "ms": 79.23246,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -1633,7 +1634,7 @@
     {
       "id": "23b",
       "iter": 1,
-      "ms": 118.5942,
+      "ms": 110.3409,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -1644,7 +1645,7 @@
     {
       "id": "24a",
       "iter": 1,
-      "ms": 25.07417,
+      "ms": 53.41696,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -1655,7 +1656,7 @@
     {
       "id": "24b",
       "iter": 1,
-      "ms": 26.7055,
+      "ms": 34.99963,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -1666,7 +1667,7 @@
     {
       "id": "25",
       "iter": 1,
-      "ms": 35.64467,
+      "ms": 30.04696,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -1677,7 +1678,7 @@
     {
       "id": "26",
       "iter": 1,
-      "ms": 29.04713,
+      "ms": 15.62867,
       "request_count": 1,
       "result_bytes": 4510,
       "rows": 100,
@@ -1688,7 +1689,7 @@
     {
       "id": "27",
       "iter": 1,
-      "ms": 27.7375,
+      "ms": 19.9055,
       "request_count": 1,
       "result_bytes": 5364,
       "rows": 100,
@@ -1699,7 +1700,7 @@
     {
       "id": "28",
       "iter": 1,
-      "ms": 91.08979,
+      "ms": 71.28054,
       "request_count": 1,
       "result_bytes": 139,
       "rows": 1,
@@ -1710,7 +1711,7 @@
     {
       "id": "29",
       "iter": 1,
-      "ms": 39.54404,
+      "ms": 39.03667,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -1721,7 +1722,7 @@
     {
       "id": "30",
       "iter": 1,
-      "ms": 35.55229,
+      "ms": 33.42954,
       "request_count": 1,
       "result_bytes": 1181,
       "rows": 11,
@@ -1732,7 +1733,7 @@
     {
       "id": "31",
       "iter": 1,
-      "ms": 46.22387,
+      "ms": 44.24325,
       "request_count": 1,
       "result_bytes": 156,
       "rows": 3,
@@ -1743,7 +1744,7 @@
     {
       "id": "32",
       "iter": 1,
-      "ms": 35.15946,
+      "ms": 25.60721,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -1754,7 +1755,7 @@
     {
       "id": "33",
       "iter": 1,
-      "ms": 88.59971,
+      "ms": 65.71546,
       "request_count": 1,
       "result_bytes": 1492,
       "rows": 100,
@@ -1765,7 +1766,7 @@
     {
       "id": "34",
       "iter": 1,
-      "ms": 46.78167,
+      "ms": 32.84187,
       "request_count": 1,
       "result_bytes": 1596,
       "rows": 51,
@@ -1776,7 +1777,7 @@
     {
       "id": "35",
       "iter": 1,
-      "ms": 75.76204,
+      "ms": 49.874,
       "request_count": 1,
       "result_bytes": 12400,
       "rows": 100,
@@ -1787,7 +1788,7 @@
     {
       "id": "36",
       "iter": 1,
-      "ms": 59.00275,
+      "ms": 38.72587,
       "request_count": 1,
       "result_bytes": 3817,
       "rows": 100,
@@ -1798,7 +1799,7 @@
     {
       "id": "38",
       "iter": 1,
-      "ms": 52.29542,
+      "ms": 33.76213,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -1809,7 +1810,7 @@
     {
       "id": "40",
       "iter": 1,
-      "ms": 29.50771,
+      "ms": 15.40017,
       "request_count": 1,
       "result_bytes": 1170,
       "rows": 41,
@@ -1820,7 +1821,7 @@
     {
       "id": "41",
       "iter": 1,
-      "ms": 124.7616,
+      "ms": 69.73912,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -1831,7 +1832,7 @@
     {
       "id": "42",
       "iter": 1,
-      "ms": 36.70817,
+      "ms": 20.54371,
       "request_count": 1,
       "result_bytes": 152,
       "rows": 5,
@@ -1842,7 +1843,7 @@
     {
       "id": "43",
       "iter": 1,
-      "ms": 46.92171,
+      "ms": 24.60954,
       "request_count": 1,
       "result_bytes": 84,
       "rows": 1,
@@ -1853,7 +1854,7 @@
     {
       "id": "44",
       "iter": 1,
-      "ms": 103.0177,
+      "ms": 74.32562,
       "request_count": 1,
       "result_bytes": 374,
       "rows": 10,
@@ -1864,7 +1865,7 @@
     {
       "id": "45",
       "iter": 1,
-      "ms": 25.51325,
+      "ms": 18.56921,
       "request_count": 1,
       "result_bytes": 591,
       "rows": 25,
@@ -1875,7 +1876,7 @@
     {
       "id": "46",
       "iter": 1,
-      "ms": 39.74363,
+      "ms": 28.90271,
       "request_count": 1,
       "result_bytes": 5232,
       "rows": 100,
@@ -1886,7 +1887,7 @@
     {
       "id": "47",
       "iter": 1,
-      "ms": 50.24854,
+      "ms": 39.34763,
       "request_count": 1,
       "result_bytes": 6709,
       "rows": 100,
@@ -1897,7 +1898,7 @@
     {
       "id": "48",
       "iter": 1,
-      "ms": 32.23317,
+      "ms": 25.84588,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -1908,7 +1909,7 @@
     {
       "id": "49",
       "iter": 1,
-      "ms": 69.5375,
+      "ms": 53.33513,
       "request_count": 1,
       "result_bytes": 80,
       "rows": 2,
@@ -1919,7 +1920,7 @@
     {
       "id": "50",
       "iter": 1,
-      "ms": 43.593,
+      "ms": 35.14546,
       "request_count": 1,
       "result_bytes": 104,
       "rows": 1,
@@ -1930,7 +1931,7 @@
     {
       "id": "51",
       "iter": 1,
-      "ms": 52.76958,
+      "ms": 35.54229,
       "request_count": 1,
       "result_bytes": 3326,
       "rows": 100,
@@ -1941,7 +1942,7 @@
     {
       "id": "52",
       "iter": 1,
-      "ms": 23.88925,
+      "ms": 21.17779,
       "request_count": 1,
       "result_bytes": 358,
       "rows": 9,
@@ -1952,7 +1953,7 @@
     {
       "id": "53",
       "iter": 1,
-      "ms": 29.16483,
+      "ms": 20.39092,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -1963,7 +1964,7 @@
     {
       "id": "55",
       "iter": 1,
-      "ms": 26.21804,
+      "ms": 16.39425,
       "request_count": 1,
       "result_bytes": 183,
       "rows": 6,
@@ -1974,7 +1975,7 @@
     {
       "id": "56",
       "iter": 1,
-      "ms": 65.91263,
+      "ms": 44.1065,
       "request_count": 1,
       "result_bytes": 202,
       "rows": 9,
@@ -1985,7 +1986,7 @@
     {
       "id": "57",
       "iter": 1,
-      "ms": 45.36754,
+      "ms": 28.662,
       "request_count": 1,
       "result_bytes": 5237,
       "rows": 100,
@@ -1996,7 +1997,7 @@
     {
       "id": "58",
       "iter": 1,
-      "ms": 98.50383,
+      "ms": 80.74675,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2007,7 +2008,7 @@
     {
       "id": "59",
       "iter": 1,
-      "ms": 73.47658,
+      "ms": 46.94558,
       "request_count": 1,
       "result_bytes": 8500,
       "rows": 100,
@@ -2018,7 +2019,7 @@
     {
       "id": "60",
       "iter": 1,
-      "ms": 96.163,
+      "ms": 54.63904,
       "request_count": 1,
       "result_bytes": 2337,
       "rows": 100,
@@ -2029,7 +2030,7 @@
     {
       "id": "61",
       "iter": 1,
-      "ms": 35.50475,
+      "ms": 23.65621,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -2040,7 +2041,7 @@
     {
       "id": "62",
       "iter": 1,
-      "ms": 21.07392,
+      "ms": 18.0175,
       "request_count": 1,
       "result_bytes": 435,
       "rows": 6,
@@ -2051,7 +2052,7 @@
     {
       "id": "63",
       "iter": 1,
-      "ms": 31.75625,
+      "ms": 16.90683,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2062,7 +2063,7 @@
     {
       "id": "64",
       "iter": 1,
-      "ms": 74.80963,
+      "ms": 42.43654,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2073,7 +2074,7 @@
     {
       "id": "65",
       "iter": 1,
-      "ms": 38.404,
+      "ms": 32.79092,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2084,7 +2085,7 @@
     {
       "id": "66",
       "iter": 1,
-      "ms": 50.21225,
+      "ms": 40.62904,
       "request_count": 1,
       "result_bytes": 449,
       "rows": 1,
@@ -2095,7 +2096,7 @@
     {
       "id": "67",
       "iter": 1,
-      "ms": 95.79796,
+      "ms": 58.25833,
       "request_count": 1,
       "result_bytes": 5078,
       "rows": 100,
@@ -2106,7 +2107,7 @@
     {
       "id": "68",
       "iter": 1,
-      "ms": 30.756,
+      "ms": 27.08629,
       "request_count": 1,
       "result_bytes": 5993,
       "rows": 100,
@@ -2117,7 +2118,7 @@
     {
       "id": "69",
       "iter": 1,
-      "ms": 32.96054,
+      "ms": 27.98008,
       "request_count": 1,
       "result_bytes": 2280,
       "rows": 45,
@@ -2128,7 +2129,7 @@
     {
       "id": "70",
       "iter": 1,
-      "ms": 48.28733,
+      "ms": 40.38412,
       "request_count": 1,
       "result_bytes": 105,
       "rows": 3,
@@ -2139,7 +2140,7 @@
     {
       "id": "71",
       "iter": 1,
-      "ms": 23.3975,
+      "ms": 16.3365,
       "request_count": 1,
       "result_bytes": 3440,
       "rows": 73,
@@ -2150,7 +2151,7 @@
     {
       "id": "73",
       "iter": 1,
-      "ms": 29.93942,
+      "ms": 24.96858,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2161,7 +2162,7 @@
     {
       "id": "74",
       "iter": 1,
-      "ms": 55.77983,
+      "ms": 37.39558,
       "request_count": 1,
       "result_bytes": 259,
       "rows": 9,
@@ -2172,7 +2173,7 @@
     {
       "id": "75",
       "iter": 1,
-      "ms": 98.69892,
+      "ms": 47.94346,
       "request_count": 1,
       "result_bytes": 1377,
       "rows": 17,
@@ -2183,7 +2184,7 @@
     {
       "id": "76",
       "iter": 1,
-      "ms": 97.99029,
+      "ms": 29.59017,
       "request_count": 1,
       "result_bytes": 5680,
       "rows": 100,
@@ -2194,7 +2195,7 @@
     {
       "id": "77",
       "iter": 1,
-      "ms": 92.51838,
+      "ms": 49.70079,
       "request_count": 1,
       "result_bytes": 444,
       "rows": 10,
@@ -2205,7 +2206,7 @@
     {
       "id": "78",
       "iter": 1,
-      "ms": 90.42033,
+      "ms": 70.50363,
       "request_count": 1,
       "result_bytes": 6736,
       "rows": 100,
@@ -2216,7 +2217,7 @@
     {
       "id": "79",
       "iter": 1,
-      "ms": 49.45558,
+      "ms": 36.39417,
       "request_count": 1,
       "result_bytes": 3995,
       "rows": 100,
@@ -2227,7 +2228,7 @@
     {
       "id": "80",
       "iter": 1,
-      "ms": 59.20771,
+      "ms": 56.92346,
       "request_count": 1,
       "result_bytes": 6110,
       "rows": 100,
@@ -2238,7 +2239,7 @@
     {
       "id": "81",
       "iter": 1,
-      "ms": 54.45146,
+      "ms": 31.60571,
       "request_count": 1,
       "result_bytes": 707,
       "rows": 6,
@@ -2249,7 +2250,7 @@
     {
       "id": "83",
       "iter": 1,
-      "ms": 128.252,
+      "ms": 73.85317,
       "request_count": 1,
       "result_bytes": 71,
       "rows": 1,
@@ -2260,7 +2261,7 @@
     {
       "id": "85",
       "iter": 1,
-      "ms": 37.66633,
+      "ms": 27.53992,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2271,7 +2272,7 @@
     {
       "id": "86",
       "iter": 1,
-      "ms": 30.93742,
+      "ms": 19.259,
       "request_count": 1,
       "result_bytes": 3818,
       "rows": 100,
@@ -2282,7 +2283,7 @@
     {
       "id": "87",
       "iter": 1,
-      "ms": 47.19529,
+      "ms": 33.17758,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -2293,7 +2294,7 @@
     {
       "id": "88",
       "iter": 1,
-      "ms": 65.8365,
+      "ms": 44.171,
       "request_count": 1,
       "result_bytes": 64,
       "rows": 1,
@@ -2304,7 +2305,7 @@
     {
       "id": "89",
       "iter": 1,
-      "ms": 47.14767,
+      "ms": 26.66837,
       "request_count": 1,
       "result_bytes": 6255,
       "rows": 100,
@@ -2315,7 +2316,7 @@
     {
       "id": "90",
       "iter": 1,
-      "ms": 33.10721,
+      "ms": 16.68967,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -2326,7 +2327,7 @@
     {
       "id": "91",
       "iter": 1,
-      "ms": 40.10567,
+      "ms": 18.80717,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2337,7 +2338,7 @@
     {
       "id": "92",
       "iter": 1,
-      "ms": 33.59117,
+      "ms": 20.44408,
       "request_count": 1,
       "result_bytes": 7,
       "rows": 1,
@@ -2348,7 +2349,7 @@
     {
       "id": "93",
       "iter": 1,
-      "ms": 49.71754,
+      "ms": 19.96112,
       "request_count": 1,
       "result_bytes": 1200,
       "rows": 100,
@@ -2359,7 +2360,7 @@
     {
       "id": "94",
       "iter": 1,
-      "ms": 74.58596,
+      "ms": 26.33208,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -2370,7 +2371,7 @@
     {
       "id": "95",
       "iter": 1,
-      "ms": 77.212,
+      "ms": 38.76254,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -2381,7 +2382,7 @@
     {
       "id": "96",
       "iter": 1,
-      "ms": 18.75071,
+      "ms": 10.67575,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -2392,7 +2393,7 @@
     {
       "id": "97",
       "iter": 1,
-      "ms": 43.07504,
+      "ms": 25.18463,
       "request_count": 1,
       "result_bytes": 24,
       "rows": 1,
@@ -2403,7 +2404,7 @@
     {
       "id": "98",
       "iter": 1,
-      "ms": 29.3735,
+      "ms": 18.84629,
       "request_count": 1,
       "result_bytes": 40836,
       "rows": 269,
@@ -2414,7 +2415,7 @@
     {
       "id": "99",
       "iter": 1,
-      "ms": 24.55867,
+      "ms": 16.88642,
       "request_count": 1,
       "result_bytes": 447,
       "rows": 6,
@@ -2425,7 +2426,7 @@
     {
       "id": "1",
       "iter": 2,
-      "ms": 49.65646,
+      "ms": 31.15304,
       "request_count": 1,
       "result_bytes": 1600,
       "rows": 100,
@@ -2436,7 +2437,7 @@
     {
       "id": "2",
       "iter": 2,
-      "ms": 54.59896,
+      "ms": 36.96479,
       "request_count": 1,
       "result_bytes": 90272,
       "rows": 2513,
@@ -2447,7 +2448,7 @@
     {
       "id": "3",
       "iter": 2,
-      "ms": 17.69917,
+      "ms": 12.56417,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2458,7 +2459,7 @@
     {
       "id": "4",
       "iter": 2,
-      "ms": 104.1113,
+      "ms": 77.98575,
       "request_count": 1,
       "result_bytes": 69,
       "rows": 1,
@@ -2469,7 +2470,7 @@
     {
       "id": "5",
       "iter": 2,
-      "ms": 175.0641,
+      "ms": 66.32454,
       "request_count": 1,
       "result_bytes": 6170,
       "rows": 100,
@@ -2480,7 +2481,7 @@
     {
       "id": "6",
       "iter": 2,
-      "ms": 98.55129,
+      "ms": 60.285,
       "request_count": 1,
       "result_bytes": 90,
       "rows": 9,
@@ -2491,7 +2492,7 @@
     {
       "id": "7",
       "iter": 2,
-      "ms": 72.5905,
+      "ms": 24.33971,
       "request_count": 1,
       "result_bytes": 4474,
       "rows": 100,
@@ -2502,7 +2503,7 @@
     {
       "id": "9",
       "iter": 2,
-      "ms": 125.9243,
+      "ms": 67.19275,
       "request_count": 1,
       "result_bytes": 44,
       "rows": 1,
@@ -2513,7 +2514,7 @@
     {
       "id": "10",
       "iter": 2,
-      "ms": 45.34242,
+      "ms": 28.91546,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2524,7 +2525,7 @@
     {
       "id": "11",
       "iter": 2,
-      "ms": 114.527,
+      "ms": 62.47408,
       "request_count": 1,
       "result_bytes": 328,
       "rows": 6,
@@ -2535,7 +2536,7 @@
     {
       "id": "12",
       "iter": 2,
-      "ms": 42.81933,
+      "ms": 18.67508,
       "request_count": 1,
       "result_bytes": 15497,
       "rows": 100,
@@ -2546,7 +2547,7 @@
     {
       "id": "13",
       "iter": 2,
-      "ms": 47.36987,
+      "ms": 23.67687,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -2557,7 +2558,7 @@
     {
       "id": "14a",
       "iter": 2,
-      "ms": 169.4548,
+      "ms": 105.029,
       "request_count": 1,
       "result_bytes": 4207,
       "rows": 100,
@@ -2568,7 +2569,7 @@
     {
       "id": "14b",
       "iter": 2,
-      "ms": 178.8019,
+      "ms": 109.1227,
       "request_count": 1,
       "result_bytes": 9000,
       "rows": 100,
@@ -2579,7 +2580,7 @@
     {
       "id": "15",
       "iter": 2,
-      "ms": 33.05442,
+      "ms": 14.61267,
       "request_count": 1,
       "result_bytes": 326,
       "rows": 30,
@@ -2590,7 +2591,7 @@
     {
       "id": "16",
       "iter": 2,
-      "ms": 59.08871,
+      "ms": 40.62067,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -2601,7 +2602,7 @@
     {
       "id": "17",
       "iter": 2,
-      "ms": 40.94017,
+      "ms": 36.40283,
       "request_count": 1,
       "result_bytes": 228,
       "rows": 1,
@@ -2612,7 +2613,7 @@
     {
       "id": "18",
       "iter": 2,
-      "ms": 35.45408,
+      "ms": 21.63696,
       "request_count": 1,
       "result_bytes": 9092,
       "rows": 100,
@@ -2623,7 +2624,7 @@
     {
       "id": "19",
       "iter": 2,
-      "ms": 37.41579,
+      "ms": 19.98729,
       "request_count": 1,
       "result_bytes": 764,
       "rows": 15,
@@ -2634,7 +2635,7 @@
     {
       "id": "20",
       "iter": 2,
-      "ms": 35.36833,
+      "ms": 27.65804,
       "request_count": 1,
       "result_bytes": 14340,
       "rows": 100,
@@ -2645,7 +2646,7 @@
     {
       "id": "23a",
       "iter": 2,
-      "ms": 201.7038,
+      "ms": 75.43012,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -2656,7 +2657,7 @@
     {
       "id": "23b",
       "iter": 2,
-      "ms": 148.1729,
+      "ms": 83.87921,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2667,7 +2668,7 @@
     {
       "id": "24a",
       "iter": 2,
-      "ms": 31.10304,
+      "ms": 21.66525,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2678,7 +2679,7 @@
     {
       "id": "24b",
       "iter": 2,
-      "ms": 28.83058,
+      "ms": 23.99246,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2689,7 +2690,7 @@
     {
       "id": "25",
       "iter": 2,
-      "ms": 41.30663,
+      "ms": 30.02646,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2700,7 +2701,7 @@
     {
       "id": "26",
       "iter": 2,
-      "ms": 24.60646,
+      "ms": 16.44496,
       "request_count": 1,
       "result_bytes": 4510,
       "rows": 100,
@@ -2711,7 +2712,7 @@
     {
       "id": "27",
       "iter": 2,
-      "ms": 44.23562,
+      "ms": 25.27338,
       "request_count": 1,
       "result_bytes": 5364,
       "rows": 100,
@@ -2722,7 +2723,7 @@
     {
       "id": "28",
       "iter": 2,
-      "ms": 163.9357,
+      "ms": 63.58046,
       "request_count": 1,
       "result_bytes": 139,
       "rows": 1,
@@ -2733,7 +2734,7 @@
     {
       "id": "29",
       "iter": 2,
-      "ms": 99.61567,
+      "ms": 33.59533,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2744,7 +2745,7 @@
     {
       "id": "30",
       "iter": 2,
-      "ms": 67.36338,
+      "ms": 39.04542,
       "request_count": 1,
       "result_bytes": 1181,
       "rows": 11,
@@ -2755,7 +2756,7 @@
     {
       "id": "31",
       "iter": 2,
-      "ms": 59.41792,
+      "ms": 43.52025,
       "request_count": 1,
       "result_bytes": 156,
       "rows": 3,
@@ -2766,7 +2767,7 @@
     {
       "id": "32",
       "iter": 2,
-      "ms": 45.13054,
+      "ms": 29.71117,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -2777,7 +2778,7 @@
     {
       "id": "33",
       "iter": 2,
-      "ms": 207.0767,
+      "ms": 48.23496,
       "request_count": 1,
       "result_bytes": 1492,
       "rows": 100,
@@ -2788,7 +2789,7 @@
     {
       "id": "34",
       "iter": 2,
-      "ms": 76.17329,
+      "ms": 25.61408,
       "request_count": 1,
       "result_bytes": 1596,
       "rows": 51,
@@ -2799,7 +2800,7 @@
     {
       "id": "35",
       "iter": 2,
-      "ms": 61.77067,
+      "ms": 29.87208,
       "request_count": 1,
       "result_bytes": 12400,
       "rows": 100,
@@ -2810,7 +2811,7 @@
     {
       "id": "36",
       "iter": 2,
-      "ms": 59.37829,
+      "ms": 29.47425,
       "request_count": 1,
       "result_bytes": 3817,
       "rows": 100,
@@ -2821,7 +2822,7 @@
     {
       "id": "38",
       "iter": 2,
-      "ms": 56.68312,
+      "ms": 39.08417,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -2832,7 +2833,7 @@
     {
       "id": "40",
       "iter": 2,
-      "ms": 29.68821,
+      "ms": 14.097,
       "request_count": 1,
       "result_bytes": 1170,
       "rows": 41,
@@ -2843,7 +2844,7 @@
     {
       "id": "41",
       "iter": 2,
-      "ms": 115.2271,
+      "ms": 62.89983,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2854,7 +2855,7 @@
     {
       "id": "42",
       "iter": 2,
-      "ms": 27.136,
+      "ms": 15.4815,
       "request_count": 1,
       "result_bytes": 152,
       "rows": 5,
@@ -2865,7 +2866,7 @@
     {
       "id": "43",
       "iter": 2,
-      "ms": 41.39937,
+      "ms": 22.43796,
       "request_count": 1,
       "result_bytes": 84,
       "rows": 1,
@@ -2876,7 +2877,7 @@
     {
       "id": "44",
       "iter": 2,
-      "ms": 125.3938,
+      "ms": 47.82954,
       "request_count": 1,
       "result_bytes": 374,
       "rows": 10,
@@ -2887,7 +2888,7 @@
     {
       "id": "45",
       "iter": 2,
-      "ms": 44.41408,
+      "ms": 17.75229,
       "request_count": 1,
       "result_bytes": 591,
       "rows": 25,
@@ -2898,7 +2899,7 @@
     {
       "id": "46",
       "iter": 2,
-      "ms": 172.5862,
+      "ms": 28.11975,
       "request_count": 1,
       "result_bytes": 5232,
       "rows": 100,
@@ -2909,7 +2910,7 @@
     {
       "id": "47",
       "iter": 2,
-      "ms": 95.32929,
+      "ms": 41.00633,
       "request_count": 1,
       "result_bytes": 6709,
       "rows": 100,
@@ -2920,7 +2921,7 @@
     {
       "id": "48",
       "iter": 2,
-      "ms": 43.79008,
+      "ms": 27.60721,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -2931,7 +2932,7 @@
     {
       "id": "49",
       "iter": 2,
-      "ms": 112.597,
+      "ms": 45.65554,
       "request_count": 1,
       "result_bytes": 80,
       "rows": 2,
@@ -2942,7 +2943,7 @@
     {
       "id": "50",
       "iter": 2,
-      "ms": 81.17229,
+      "ms": 33.56908,
       "request_count": 1,
       "result_bytes": 104,
       "rows": 1,
@@ -2953,7 +2954,7 @@
     {
       "id": "51",
       "iter": 2,
-      "ms": 105.7941,
+      "ms": 33.80596,
       "request_count": 1,
       "result_bytes": 3326,
       "rows": 100,
@@ -2964,7 +2965,7 @@
     {
       "id": "52",
       "iter": 2,
-      "ms": 36.94075,
+      "ms": 15.01942,
       "request_count": 1,
       "result_bytes": 358,
       "rows": 9,
@@ -2975,7 +2976,7 @@
     {
       "id": "53",
       "iter": 2,
-      "ms": 54.48717,
+      "ms": 15.35725,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -2986,7 +2987,7 @@
     {
       "id": "55",
       "iter": 2,
-      "ms": 30.61392,
+      "ms": 14.72146,
       "request_count": 1,
       "result_bytes": 183,
       "rows": 6,
@@ -2997,7 +2998,7 @@
     {
       "id": "56",
       "iter": 2,
-      "ms": 149.7722,
+      "ms": 48.48283,
       "request_count": 1,
       "result_bytes": 202,
       "rows": 9,
@@ -3008,7 +3009,7 @@
     {
       "id": "57",
       "iter": 2,
-      "ms": 82.68204,
+      "ms": 40.75375,
       "request_count": 1,
       "result_bytes": 5237,
       "rows": 100,
@@ -3019,7 +3020,7 @@
     {
       "id": "58",
       "iter": 2,
-      "ms": 148.0786,
+      "ms": 76.59246,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -3030,7 +3031,7 @@
     {
       "id": "59",
       "iter": 2,
-      "ms": 87.54683,
+      "ms": 36.28221,
       "request_count": 1,
       "result_bytes": 8500,
       "rows": 100,
@@ -3041,7 +3042,7 @@
     {
       "id": "60",
       "iter": 2,
-      "ms": 131.3592,
+      "ms": 46.13175,
       "request_count": 1,
       "result_bytes": 2337,
       "rows": 100,
@@ -3052,7 +3053,7 @@
     {
       "id": "61",
       "iter": 2,
-      "ms": 55.77563,
+      "ms": 24.57846,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -3063,7 +3064,7 @@
     {
       "id": "62",
       "iter": 2,
-      "ms": 40.21625,
+      "ms": 17.71162,
       "request_count": 1,
       "result_bytes": 435,
       "rows": 6,
@@ -3074,7 +3075,7 @@
     {
       "id": "63",
       "iter": 2,
-      "ms": 39.33717,
+      "ms": 19.22775,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -3085,7 +3086,7 @@
     {
       "id": "64",
       "iter": 2,
-      "ms": 83.42125,
+      "ms": 44.98446,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -3096,7 +3097,7 @@
     {
       "id": "65",
       "iter": 2,
-      "ms": 60.90183,
+      "ms": 29.97662,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -3107,7 +3108,7 @@
     {
       "id": "66",
       "iter": 2,
-      "ms": 73.27292,
+      "ms": 48.87512,
       "request_count": 1,
       "result_bytes": 449,
       "rows": 1,
@@ -3118,7 +3119,7 @@
     {
       "id": "67",
       "iter": 2,
-      "ms": 112.8499,
+      "ms": 65.23837,
       "request_count": 1,
       "result_bytes": 5078,
       "rows": 100,
@@ -3129,7 +3130,7 @@
     {
       "id": "68",
       "iter": 2,
-      "ms": 65.76217,
+      "ms": 27.90312,
       "request_count": 1,
       "result_bytes": 5993,
       "rows": 100,
@@ -3140,7 +3141,7 @@
     {
       "id": "69",
       "iter": 2,
-      "ms": 64.70346,
+      "ms": 28.16004,
       "request_count": 1,
       "result_bytes": 2280,
       "rows": 45,
@@ -3151,7 +3152,7 @@
     {
       "id": "70",
       "iter": 2,
-      "ms": 71.20938,
+      "ms": 38.85596,
       "request_count": 1,
       "result_bytes": 105,
       "rows": 3,
@@ -3162,7 +3163,7 @@
     {
       "id": "71",
       "iter": 2,
-      "ms": 24.332,
+      "ms": 15.56479,
       "request_count": 1,
       "result_bytes": 3440,
       "rows": 73,
@@ -3173,7 +3174,7 @@
     {
       "id": "73",
       "iter": 2,
-      "ms": 40.34687,
+      "ms": 20.48846,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -3184,7 +3185,7 @@
     {
       "id": "74",
       "iter": 2,
-      "ms": 68.97729,
+      "ms": 37.76096,
       "request_count": 1,
       "result_bytes": 259,
       "rows": 9,
@@ -3195,7 +3196,7 @@
     {
       "id": "75",
       "iter": 2,
-      "ms": 93.8605,
+      "ms": 67.25233,
       "request_count": 1,
       "result_bytes": 1377,
       "rows": 17,
@@ -3206,7 +3207,7 @@
     {
       "id": "76",
       "iter": 2,
-      "ms": 34.28396,
+      "ms": 25.461,
       "request_count": 1,
       "result_bytes": 5680,
       "rows": 100,
@@ -3217,7 +3218,7 @@
     {
       "id": "77",
       "iter": 2,
-      "ms": 86.793,
+      "ms": 51.37042,
       "request_count": 1,
       "result_bytes": 444,
       "rows": 10,
@@ -3228,7 +3229,7 @@
     {
       "id": "78",
       "iter": 2,
-      "ms": 94.49025,
+      "ms": 52.66821,
       "request_count": 1,
       "result_bytes": 6736,
       "rows": 100,
@@ -3239,7 +3240,7 @@
     {
       "id": "79",
       "iter": 2,
-      "ms": 35.35863,
+      "ms": 26.47079,
       "request_count": 1,
       "result_bytes": 3995,
       "rows": 100,
@@ -3250,7 +3251,7 @@
     {
       "id": "80",
       "iter": 2,
-      "ms": 70.42,
+      "ms": 37.573,
       "request_count": 1,
       "result_bytes": 6110,
       "rows": 100,
@@ -3261,7 +3262,7 @@
     {
       "id": "81",
       "iter": 2,
-      "ms": 58.91033,
+      "ms": 33.403,
       "request_count": 1,
       "result_bytes": 707,
       "rows": 6,
@@ -3272,7 +3273,7 @@
     {
       "id": "83",
       "iter": 2,
-      "ms": 193.7887,
+      "ms": 58.12842,
       "request_count": 1,
       "result_bytes": 71,
       "rows": 1,
@@ -3283,7 +3284,7 @@
     {
       "id": "85",
       "iter": 2,
-      "ms": 42.85133,
+      "ms": 18.15338,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -3294,7 +3295,7 @@
     {
       "id": "86",
       "iter": 2,
-      "ms": 44.60408,
+      "ms": 20.34346,
       "request_count": 1,
       "result_bytes": 3818,
       "rows": 100,
@@ -3305,7 +3306,7 @@
     {
       "id": "87",
       "iter": 2,
-      "ms": 61.79721,
+      "ms": 29.35987,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -3316,7 +3317,7 @@
     {
       "id": "88",
       "iter": 2,
-      "ms": 64.01375,
+      "ms": 43.79967,
       "request_count": 1,
       "result_bytes": 64,
       "rows": 1,
@@ -3327,7 +3328,7 @@
     {
       "id": "89",
       "iter": 2,
-      "ms": 47.12933,
+      "ms": 25.95762,
       "request_count": 1,
       "result_bytes": 6255,
       "rows": 100,
@@ -3338,7 +3339,7 @@
     {
       "id": "90",
       "iter": 2,
-      "ms": 31.25888,
+      "ms": 15.15404,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -3349,7 +3350,7 @@
     {
       "id": "91",
       "iter": 2,
-      "ms": 44.80988,
+      "ms": 21.36108,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -3360,7 +3361,7 @@
     {
       "id": "92",
       "iter": 2,
-      "ms": 67.19963,
+      "ms": 18.32492,
       "request_count": 1,
       "result_bytes": 7,
       "rows": 1,
@@ -3371,7 +3372,7 @@
     {
       "id": "93",
       "iter": 2,
-      "ms": 32.00175,
+      "ms": 18.3295,
       "request_count": 1,
       "result_bytes": 1200,
       "rows": 100,
@@ -3382,7 +3383,7 @@
     {
       "id": "94",
       "iter": 2,
-      "ms": 48.63958,
+      "ms": 26.68992,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -3393,7 +3394,7 @@
     {
       "id": "95",
       "iter": 2,
-      "ms": 87.76612,
+      "ms": 39.15379,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -3404,7 +3405,7 @@
     {
       "id": "96",
       "iter": 2,
-      "ms": 16.06083,
+      "ms": 10.28263,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -3415,7 +3416,7 @@
     {
       "id": "97",
       "iter": 2,
-      "ms": 40.90867,
+      "ms": 25.37129,
       "request_count": 1,
       "result_bytes": 24,
       "rows": 1,
@@ -3426,7 +3427,7 @@
     {
       "id": "98",
       "iter": 2,
-      "ms": 34.89254,
+      "ms": 22.99829,
       "request_count": 1,
       "result_bytes": 40836,
       "rows": 269,
@@ -3437,7 +3438,7 @@
     {
       "id": "99",
       "iter": 2,
-      "ms": 40.74225,
+      "ms": 30.62312,
       "request_count": 1,
       "result_bytes": 447,
       "rows": 6,
@@ -3448,7 +3449,7 @@
     {
       "id": "1",
       "iter": 3,
-      "ms": 42.54358,
+      "ms": 54.83717,
       "request_count": 1,
       "result_bytes": 1600,
       "rows": 100,
@@ -3459,7 +3460,7 @@
     {
       "id": "2",
       "iter": 3,
-      "ms": 62.71825,
+      "ms": 41.54412,
       "request_count": 1,
       "result_bytes": 90272,
       "rows": 2513,
@@ -3470,7 +3471,7 @@
     {
       "id": "3",
       "iter": 3,
-      "ms": 26.56437,
+      "ms": 14.42167,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -3481,7 +3482,7 @@
     {
       "id": "4",
       "iter": 3,
-      "ms": 116.6134,
+      "ms": 65.53679,
       "request_count": 1,
       "result_bytes": 69,
       "rows": 1,
@@ -3492,7 +3493,7 @@
     {
       "id": "5",
       "iter": 3,
-      "ms": 62.39158,
+      "ms": 47.66517,
       "request_count": 1,
       "result_bytes": 6170,
       "rows": 100,
@@ -3503,7 +3504,7 @@
     {
       "id": "6",
       "iter": 3,
-      "ms": 55.03625,
+      "ms": 41.67958,
       "request_count": 1,
       "result_bytes": 90,
       "rows": 9,
@@ -3514,7 +3515,7 @@
     {
       "id": "7",
       "iter": 3,
-      "ms": 36.67858,
+      "ms": 19.71538,
       "request_count": 1,
       "result_bytes": 4474,
       "rows": 100,
@@ -3525,7 +3526,7 @@
     {
       "id": "9",
       "iter": 3,
-      "ms": 116.5858,
+      "ms": 65.00954,
       "request_count": 1,
       "result_bytes": 44,
       "rows": 1,
@@ -3536,7 +3537,7 @@
     {
       "id": "10",
       "iter": 3,
-      "ms": 91.75304,
+      "ms": 26.46404,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -3547,7 +3548,7 @@
     {
       "id": "11",
       "iter": 3,
-      "ms": 95.95075,
+      "ms": 46.92737,
       "request_count": 1,
       "result_bytes": 328,
       "rows": 6,
@@ -3558,7 +3559,7 @@
     {
       "id": "12",
       "iter": 3,
-      "ms": 22.74983,
+      "ms": 15.2275,
       "request_count": 1,
       "result_bytes": 15497,
       "rows": 100,
@@ -3569,7 +3570,7 @@
     {
       "id": "13",
       "iter": 3,
-      "ms": 41.59283,
+      "ms": 22.77879,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -3580,7 +3581,7 @@
     {
       "id": "14a",
       "iter": 3,
-      "ms": 128.9205,
+      "ms": 81.8175,
       "request_count": 1,
       "result_bytes": 4207,
       "rows": 100,
@@ -3591,7 +3592,7 @@
     {
       "id": "14b",
       "iter": 3,
-      "ms": 224.6582,
+      "ms": 139.7089,
       "request_count": 1,
       "result_bytes": 9000,
       "rows": 100,
@@ -3602,7 +3603,7 @@
     {
       "id": "15",
       "iter": 3,
-      "ms": 28.48563,
+      "ms": 23.42025,
       "request_count": 1,
       "result_bytes": 326,
       "rows": 30,
@@ -3613,7 +3614,7 @@
     {
       "id": "16",
       "iter": 3,
-      "ms": 61.34717,
+      "ms": 39.34287,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -3624,7 +3625,7 @@
     {
       "id": "17",
       "iter": 3,
-      "ms": 57.63521,
+      "ms": 27.45663,
       "request_count": 1,
       "result_bytes": 228,
       "rows": 1,
@@ -3635,7 +3636,7 @@
     {
       "id": "18",
       "iter": 3,
-      "ms": 57.69525,
+      "ms": 19.6575,
       "request_count": 1,
       "result_bytes": 9092,
       "rows": 100,
@@ -3646,7 +3647,7 @@
     {
       "id": "19",
       "iter": 3,
-      "ms": 34.71646,
+      "ms": 17.65633,
       "request_count": 1,
       "result_bytes": 764,
       "rows": 15,
@@ -3657,7 +3658,7 @@
     {
       "id": "20",
       "iter": 3,
-      "ms": 33.07496,
+      "ms": 13.54342,
       "request_count": 1,
       "result_bytes": 14340,
       "rows": 100,
@@ -3668,7 +3669,7 @@
     {
       "id": "23a",
       "iter": 3,
-      "ms": 143.5976,
+      "ms": 79.08546,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -3679,7 +3680,7 @@
     {
       "id": "23b",
       "iter": 3,
-      "ms": 183.9369,
+      "ms": 77.57808,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -3690,7 +3691,7 @@
     {
       "id": "24a",
       "iter": 3,
-      "ms": 67.99404,
+      "ms": 26.97025,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -3701,7 +3702,7 @@
     {
       "id": "24b",
       "iter": 3,
-      "ms": 39.00733,
+      "ms": 21.85479,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -3712,7 +3713,7 @@
     {
       "id": "25",
       "iter": 3,
-      "ms": 69.05,
+      "ms": 29.83083,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -3723,7 +3724,7 @@
     {
       "id": "26",
       "iter": 3,
-      "ms": 28.21238,
+      "ms": 14.25167,
       "request_count": 1,
       "result_bytes": 4510,
       "rows": 100,
@@ -3734,7 +3735,7 @@
     {
       "id": "27",
       "iter": 3,
-      "ms": 49.69604,
+      "ms": 23.94008,
       "request_count": 1,
       "result_bytes": 5364,
       "rows": 100,
@@ -3745,7 +3746,7 @@
     {
       "id": "28",
       "iter": 3,
-      "ms": 104.435,
+      "ms": 46.7295,
       "request_count": 1,
       "result_bytes": 139,
       "rows": 1,
@@ -3756,7 +3757,7 @@
     {
       "id": "29",
       "iter": 3,
-      "ms": 59.21246,
+      "ms": 35.32383,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -3767,7 +3768,7 @@
     {
       "id": "30",
       "iter": 3,
-      "ms": 70.08396,
+      "ms": 27.96175,
       "request_count": 1,
       "result_bytes": 1181,
       "rows": 11,
@@ -3778,7 +3779,7 @@
     {
       "id": "31",
       "iter": 3,
-      "ms": 83.45654,
+      "ms": 38.01454,
       "request_count": 1,
       "result_bytes": 156,
       "rows": 3,
@@ -3789,7 +3790,7 @@
     {
       "id": "32",
       "iter": 3,
-      "ms": 30.83646,
+      "ms": 23.06183,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -3800,7 +3801,7 @@
     {
       "id": "33",
       "iter": 3,
-      "ms": 104.8354,
+      "ms": 81.41317,
       "request_count": 1,
       "result_bytes": 1492,
       "rows": 100,
@@ -3811,7 +3812,7 @@
     {
       "id": "34",
       "iter": 3,
-      "ms": 54.27296,
+      "ms": 34.45883,
       "request_count": 1,
       "result_bytes": 1596,
       "rows": 51,
@@ -3822,7 +3823,7 @@
     {
       "id": "35",
       "iter": 3,
-      "ms": 59.246,
+      "ms": 44.58375,
       "request_count": 1,
       "result_bytes": 12400,
       "rows": 100,
@@ -3833,7 +3834,7 @@
     {
       "id": "36",
       "iter": 3,
-      "ms": 47.37617,
+      "ms": 30.65879,
       "request_count": 1,
       "result_bytes": 3817,
       "rows": 100,
@@ -3844,7 +3845,7 @@
     {
       "id": "38",
       "iter": 3,
-      "ms": 43.44675,
+      "ms": 35.27204,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -3855,7 +3856,7 @@
     {
       "id": "40",
       "iter": 3,
-      "ms": 27.25408,
+      "ms": 19.27283,
       "request_count": 1,
       "result_bytes": 1170,
       "rows": 41,
@@ -3866,7 +3867,7 @@
     {
       "id": "41",
       "iter": 3,
-      "ms": 103.4128,
+      "ms": 69.00833,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -3877,7 +3878,7 @@
     {
       "id": "42",
       "iter": 3,
-      "ms": 31.25512,
+      "ms": 16.46821,
       "request_count": 1,
       "result_bytes": 152,
       "rows": 5,
@@ -3888,7 +3889,7 @@
     {
       "id": "43",
       "iter": 3,
-      "ms": 54.54229,
+      "ms": 29.94492,
       "request_count": 1,
       "result_bytes": 84,
       "rows": 1,
@@ -3899,7 +3900,7 @@
     {
       "id": "44",
       "iter": 3,
-      "ms": 112.6983,
+      "ms": 55.67413,
       "request_count": 1,
       "result_bytes": 374,
       "rows": 10,
@@ -3910,7 +3911,7 @@
     {
       "id": "45",
       "iter": 3,
-      "ms": 47.21475,
+      "ms": 16.79879,
       "request_count": 1,
       "result_bytes": 591,
       "rows": 25,
@@ -3921,7 +3922,7 @@
     {
       "id": "46",
       "iter": 3,
-      "ms": 70.88746,
+      "ms": 29.0215,
       "request_count": 1,
       "result_bytes": 5232,
       "rows": 100,
@@ -3932,7 +3933,7 @@
     {
       "id": "47",
       "iter": 3,
-      "ms": 73.72387,
+      "ms": 40.44908,
       "request_count": 1,
       "result_bytes": 6709,
       "rows": 100,
@@ -3943,7 +3944,7 @@
     {
       "id": "48",
       "iter": 3,
-      "ms": 36.85583,
+      "ms": 28.78046,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -3954,7 +3955,7 @@
     {
       "id": "49",
       "iter": 3,
-      "ms": 79.12225,
+      "ms": 49.72317,
       "request_count": 1,
       "result_bytes": 80,
       "rows": 2,
@@ -3965,7 +3966,7 @@
     {
       "id": "50",
       "iter": 3,
-      "ms": 42.78154,
+      "ms": 32.81896,
       "request_count": 1,
       "result_bytes": 104,
       "rows": 1,
@@ -3976,7 +3977,7 @@
     {
       "id": "51",
       "iter": 3,
-      "ms": 53.9175,
+      "ms": 39.53496,
       "request_count": 1,
       "result_bytes": 3326,
       "rows": 100,
@@ -3987,7 +3988,7 @@
     {
       "id": "52",
       "iter": 3,
-      "ms": 24.15588,
+      "ms": 15.99408,
       "request_count": 1,
       "result_bytes": 358,
       "rows": 9,
@@ -3998,7 +3999,7 @@
     {
       "id": "53",
       "iter": 3,
-      "ms": 25.3385,
+      "ms": 15.39675,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -4009,7 +4010,7 @@
     {
       "id": "55",
       "iter": 3,
-      "ms": 26.05629,
+      "ms": 13.02808,
       "request_count": 1,
       "result_bytes": 183,
       "rows": 6,
@@ -4020,7 +4021,7 @@
     {
       "id": "56",
       "iter": 3,
-      "ms": 88.69446,
+      "ms": 41.92687,
       "request_count": 1,
       "result_bytes": 202,
       "rows": 9,
@@ -4031,7 +4032,7 @@
     {
       "id": "57",
       "iter": 3,
-      "ms": 51.23083,
+      "ms": 27.45487,
       "request_count": 1,
       "result_bytes": 5237,
       "rows": 100,
@@ -4042,7 +4043,7 @@
     {
       "id": "58",
       "iter": 3,
-      "ms": 104.993,
+      "ms": 83.79363,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -4053,7 +4054,7 @@
     {
       "id": "59",
       "iter": 3,
-      "ms": 62.84754,
+      "ms": 46.41367,
       "request_count": 1,
       "result_bytes": 8500,
       "rows": 100,
@@ -4064,7 +4065,7 @@
     {
       "id": "60",
       "iter": 3,
-      "ms": 186.2659,
+      "ms": 50.20638,
       "request_count": 1,
       "result_bytes": 2337,
       "rows": 100,
@@ -4075,7 +4076,7 @@
     {
       "id": "61",
       "iter": 3,
-      "ms": 297.3878,
+      "ms": 22.08083,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -4086,7 +4087,7 @@
     {
       "id": "62",
       "iter": 3,
-      "ms": 66.46558,
+      "ms": 15.67175,
       "request_count": 1,
       "result_bytes": 435,
       "rows": 6,
@@ -4097,7 +4098,7 @@
     {
       "id": "63",
       "iter": 3,
-      "ms": 90.52629,
+      "ms": 18.40721,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -4108,7 +4109,7 @@
     {
       "id": "64",
       "iter": 3,
-      "ms": 150.1158,
+      "ms": 43.14567,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -4119,7 +4120,7 @@
     {
       "id": "65",
       "iter": 3,
-      "ms": 103.3304,
+      "ms": 25.73975,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -4130,7 +4131,7 @@
     {
       "id": "66",
       "iter": 3,
-      "ms": 123.2378,
+      "ms": 34.51092,
       "request_count": 1,
       "result_bytes": 449,
       "rows": 1,
@@ -4141,7 +4142,7 @@
     {
       "id": "67",
       "iter": 3,
-      "ms": 151.1863,
+      "ms": 74.84742,
       "request_count": 1,
       "result_bytes": 5078,
       "rows": 100,
@@ -4152,7 +4153,7 @@
     {
       "id": "68",
       "iter": 3,
-      "ms": 53.02621,
+      "ms": 30.03787,
       "request_count": 1,
       "result_bytes": 5993,
       "rows": 100,
@@ -4163,7 +4164,7 @@
     {
       "id": "69",
       "iter": 3,
-      "ms": 83.84733,
+      "ms": 33.01246,
       "request_count": 1,
       "result_bytes": 2280,
       "rows": 45,
@@ -4174,7 +4175,7 @@
     {
       "id": "70",
       "iter": 3,
-      "ms": 172.9223,
+      "ms": 44.71821,
       "request_count": 1,
       "result_bytes": 105,
       "rows": 3,
@@ -4185,7 +4186,7 @@
     {
       "id": "71",
       "iter": 3,
-      "ms": 48.58192,
+      "ms": 18.469,
       "request_count": 1,
       "result_bytes": 3440,
       "rows": 73,
@@ -4196,7 +4197,7 @@
     {
       "id": "73",
       "iter": 3,
-      "ms": 86.627,
+      "ms": 20.52742,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -4207,7 +4208,7 @@
     {
       "id": "74",
       "iter": 3,
-      "ms": 139.9141,
+      "ms": 40.63992,
       "request_count": 1,
       "result_bytes": 259,
       "rows": 9,
@@ -4218,7 +4219,7 @@
     {
       "id": "75",
       "iter": 3,
-      "ms": 135.0688,
+      "ms": 47.49071,
       "request_count": 1,
       "result_bytes": 1377,
       "rows": 17,
@@ -4229,7 +4230,7 @@
     {
       "id": "76",
       "iter": 3,
-      "ms": 68.49933,
+      "ms": 24.83396,
       "request_count": 1,
       "result_bytes": 5680,
       "rows": 100,
@@ -4240,7 +4241,7 @@
     {
       "id": "77",
       "iter": 3,
-      "ms": 127.2785,
+      "ms": 41.95737,
       "request_count": 1,
       "result_bytes": 444,
       "rows": 10,
@@ -4251,7 +4252,7 @@
     {
       "id": "78",
       "iter": 3,
-      "ms": 160.7997,
+      "ms": 43.44267,
       "request_count": 1,
       "result_bytes": 6736,
       "rows": 100,
@@ -4262,7 +4263,7 @@
     {
       "id": "79",
       "iter": 3,
-      "ms": 53.80262,
+      "ms": 25.57542,
       "request_count": 1,
       "result_bytes": 3995,
       "rows": 100,
@@ -4273,7 +4274,7 @@
     {
       "id": "80",
       "iter": 3,
-      "ms": 124.6896,
+      "ms": 41.62371,
       "request_count": 1,
       "result_bytes": 6110,
       "rows": 100,
@@ -4284,7 +4285,7 @@
     {
       "id": "81",
       "iter": 3,
-      "ms": 85.59996,
+      "ms": 34.02012,
       "request_count": 1,
       "result_bytes": 707,
       "rows": 6,
@@ -4295,7 +4296,7 @@
     {
       "id": "83",
       "iter": 3,
-      "ms": 214.0957,
+      "ms": 82.28996,
       "request_count": 1,
       "result_bytes": 71,
       "rows": 1,
@@ -4306,7 +4307,7 @@
     {
       "id": "85",
       "iter": 3,
-      "ms": 50.912,
+      "ms": 25.71092,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -4317,7 +4318,7 @@
     {
       "id": "86",
       "iter": 3,
-      "ms": 72.62054,
+      "ms": 29.17283,
       "request_count": 1,
       "result_bytes": 3818,
       "rows": 100,
@@ -4328,7 +4329,7 @@
     {
       "id": "87",
       "iter": 3,
-      "ms": 109.3426,
+      "ms": 27.91921,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -4339,7 +4340,7 @@
     {
       "id": "88",
       "iter": 3,
-      "ms": 130.6445,
+      "ms": 43.10671,
       "request_count": 1,
       "result_bytes": 64,
       "rows": 1,
@@ -4350,7 +4351,7 @@
     {
       "id": "89",
       "iter": 3,
-      "ms": 58.42275,
+      "ms": 25.78179,
       "request_count": 1,
       "result_bytes": 6255,
       "rows": 100,
@@ -4361,7 +4362,7 @@
     {
       "id": "90",
       "iter": 3,
-      "ms": 45.94817,
+      "ms": 16.47725,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 1,
@@ -4372,7 +4373,7 @@
     {
       "id": "91",
       "iter": 3,
-      "ms": 59.85183,
+      "ms": 17.25267,
       "request_count": 1,
       "result_bytes": 0,
       "rows": 0,
@@ -4383,7 +4384,7 @@
     {
       "id": "92",
       "iter": 3,
-      "ms": 130.6793,
+      "ms": 19.48738,
       "request_count": 1,
       "result_bytes": 7,
       "rows": 1,
@@ -4394,7 +4395,7 @@
     {
       "id": "93",
       "iter": 3,
-      "ms": 53.42229,
+      "ms": 19.76571,
       "request_count": 1,
       "result_bytes": 1200,
       "rows": 100,
@@ -4405,7 +4406,7 @@
     {
       "id": "94",
       "iter": 3,
-      "ms": 86.33929,
+      "ms": 27.58429,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -4416,7 +4417,7 @@
     {
       "id": "95",
       "iter": 3,
-      "ms": 102.0949,
+      "ms": 41.94167,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -4427,7 +4428,7 @@
     {
       "id": "96",
       "iter": 3,
-      "ms": 27.08721,
+      "ms": 9.632792,
       "request_count": 1,
       "result_bytes": 8,
       "rows": 1,
@@ -4438,7 +4439,7 @@
     {
       "id": "97",
       "iter": 3,
-      "ms": 46.12246,
+      "ms": 21.73504,
       "request_count": 1,
       "result_bytes": 24,
       "rows": 1,
@@ -4449,7 +4450,7 @@
     {
       "id": "98",
       "iter": 3,
-      "ms": 43.04679,
+      "ms": 20.53483,
       "request_count": 1,
       "result_bytes": 40836,
       "rows": 269,
@@ -4460,7 +4461,7 @@
     {
       "id": "99",
       "iter": 3,
-      "ms": 46.24454,
+      "ms": 15.1155,
       "request_count": 1,
       "result_bytes": 447,
       "rows": 6,
@@ -4469,20 +4470,20 @@
       "stream": 3
     }
   ],
-  "result_schema_version": "2.4",
+  "result_schema_version": "2.5",
   "run": {
-    "id": "4ded829a",
+    "id": "c18125e7",
     "iterations": 3,
     "net_estimate_status": "probe_unverified",
-    "query_time_ms": 19853,
+    "query_time_ms": 10361,
     "streams": 4,
-    "timestamp": "2026-11-17T16:14:52.604286",
+    "timestamp": "2026-11-18T22:50:23.438696",
     "timing_method": 2,
-    "total_duration_ms": 79897
+    "total_duration_ms": 38560
   },
   "summary": {
     "data": {
-      "load_time_ms": 40378.1,
+      "load_time_ms": 17741.0,
       "rows_loaded": 503753
     },
     "queries": {
@@ -4491,23 +4492,23 @@
       "total": 279
     },
     "timing": {
-      "avg_ms": 71.2,
-      "geometric_mean_ms": 59.8,
-      "max_ms": 297.4,
-      "min_ms": 16.1,
-      "p90_ms": 131.4,
-      "p95_ms": 170.5,
-      "p99_ms": 217.9,
-      "stdev_ms": 45.3,
-      "total_ms": 19853.4
+      "avg_ms": 37.1,
+      "geometric_mean_ms": 32.2,
+      "max_ms": 139.7,
+      "min_ms": 9.6,
+      "p90_ms": 67.3,
+      "p95_ms": 80.7,
+      "p99_ms": 113.3,
+      "stdev_ms": 21.5,
+      "total_ms": 10360.7
     },
     "validation": "passed"
   },
   "tables": {
     "tpcds_sales_returns_obt": {
-      "load_ms": 40377,
+      "load_ms": 17740,
       "rows": 503753
     }
   },
-  "version": "2.4"
+  "version": "2.5"
 }

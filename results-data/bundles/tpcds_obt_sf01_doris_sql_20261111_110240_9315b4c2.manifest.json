@@ -9,5 +9,5 @@
   "known_defects": [
     "defective-nondefault-engine-config"
   ],
-  "known_defect_reason": "Superseded: ran Doris with parallel_pipeline_task_num=1. Rerun at default parallelism and the default 6g container: 4ded829a."
+  "known_defect_reason": "Superseded: ran Doris with parallel_pipeline_task_num=1. Rerun at default parallelism and the default 6g container: c18125e7."
 }
