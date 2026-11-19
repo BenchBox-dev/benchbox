@@ -839,6 +839,22 @@ def test_the_baseline_gate_check_runs_on_the_rebuilt_baseline(world: World, caps
     assert "gate check: coverage" in capsys.readouterr().out
 
 
+def test_reproduce_rebuilds_rejected_runs_from_a_different_directory(tmp_path: Path) -> None:
+    _manifest, runs = build_fixture(tmp_path)
+    broken = write_run(tmp_path, "broken", best_seconds=0.5)
+    (broken / "junit.xml").unlink()
+    entries = baseline.load_manifest(write_manifest(tmp_path, [*runs, broken]))
+    built, rejected = baseline.build_baseline(entries, GENERATED_AT)
+    assert len(rejected) == 1
+    assert str(tmp_path) not in rejected[0]["reason"]
+    committed = tmp_path / "committed"
+    baseline.write_sharded_baseline(committed, built)
+    fetch = baseline.gh_artifact_fetcher(FakeGh([*runs, broken]), REPO)
+    ids = {"tests/test_sample.py::TestSample::test_alpha", "tests/test_sample.py::TestSample::test_beta"}
+
+    assert baseline.reproduce_baseline(committed, fetch, tmp_path / "other-root", ids) == []
+
+
 def test_the_gh_fetcher_reports_an_expired_artifact(tmp_path: Path) -> None:
     with pytest.raises(baseline.BaselineError, match="expired"):
         baseline.gh_artifact_fetcher(FakeGh([]), REPO)(9, tmp_path / "artifact-9")

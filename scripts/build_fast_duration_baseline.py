@@ -52,11 +52,15 @@ class BaselineError(RuntimeError):
     pass
 
 
+def error_reason(exc: Exception) -> str:
+    return exc.strerror if isinstance(exc, OSError) and exc.strerror else str(exc)
+
+
 def read_calibration_best(run_dir: Path) -> tuple[float, dict[str, Any]]:
     try:
         payload = json.loads((run_dir / "calibration.json").read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
-        raise BaselineError(f"missing or unreadable calibration.json: {exc}") from exc
+        raise BaselineError(f"missing or unreadable calibration.json: {error_reason(exc)}") from exc
     workload = payload.get("workload") if isinstance(payload, dict) else None
     best = workload.get("best_seconds") if isinstance(workload, dict) else None
     if isinstance(best, bool) or not isinstance(best, (int, float)):
@@ -76,7 +80,7 @@ def read_run_samples(run_dir: Path) -> dict[str, list[float]]:
     try:
         root = ET.parse(junit_path).getroot()
     except (OSError, ET.ParseError) as exc:
-        raise BaselineError(f"missing or unreadable junit.xml: {exc}") from exc
+        raise BaselineError(f"missing or unreadable junit.xml: {error_reason(exc)}") from exc
     samples: dict[str, list[float]] = {}
     for testcase in root.iter("testcase"):
         raw_time = testcase.get("time")
@@ -85,15 +89,15 @@ def read_run_samples(run_dir: Path) -> dict[str, list[float]]:
         try:
             duration = float(raw_time)
         except ValueError as exc:
-            raise BaselineError(f"invalid junit time {raw_time!r} in {junit_path}") from exc
+            raise BaselineError(f"invalid junit time {raw_time!r}") from exc
         if not math.isfinite(duration) or duration < 0:
-            raise BaselineError(f"invalid junit time {raw_time!r} in {junit_path}")
+            raise BaselineError(f"invalid junit time {raw_time!r}")
         nodeid = _junit_nodeid(testcase)
         if nodeid is None:
             continue
         samples.setdefault(nodeid, []).append(duration)
     if not samples:
-        raise BaselineError(f"no usable testcase samples in {junit_path}")
+        raise BaselineError("no usable testcase samples in junit.xml")
     return samples
 
 

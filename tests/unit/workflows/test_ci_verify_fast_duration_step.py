@@ -148,7 +148,9 @@ def test_the_baseline_flag_is_derived_from_the_changed_paths_whatever_the_inert_
     assert paths["outputs"]["fast-baseline-changed"] == "${{ steps.path-flags.outputs.fast-baseline-changed }}"
     flags = next(step for step in paths["steps"] if step.get("id") == "path-flags")
     assert "tests/fixtures/fast_tier_baseline/" in flags["run"]
-    assert ".ci-paths/changed.txt" in flags["run"]
+    assert "fast_tier_baseline/' .ci-paths/trunk-lane-changed.txt" in flags["run"]
+    assert "--no-renames" in flags["run"]
+    assert flags["run"].index("--no-renames") < flags["run"].index("fast_tier_baseline/' .ci-paths/trunk")
 
 
 def test_the_bootstrap_pass_needs_the_pr_to_change_the_build_script_and_otherwise_fails() -> None:
