@@ -121,7 +121,10 @@ refresh workflow stamps `generated_at` just before its `gh run list` call, which
 is what makes the listing reproducible. `generated_at` must be no later than the
 time the check runs and at most 3 days before it, so a refresh PR must pass the
 check within 3 days of its refresh. Finally it re-runs the baseline gate
-check (sum tolerance, coverage of the fast tier collected on the PR head).
+check (sum tolerance, coverage of the fast tier collected on the PR head). The
+collection runs PR code, so it happens in a separate `fast-baseline-collect`
+job with no token; the trusted job only downloads its id list as data and never
+executes PR code.
 Source artifacts expire after 14 days. The baseline directory is an inert path,
 so a baseline-only PR is not held for review; the reproduce check is its
 machine-checked substitute. Bootstrap: the first PR that introduces or changes

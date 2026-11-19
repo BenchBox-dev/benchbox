@@ -129,7 +129,7 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "API with the job token, so it has no local equivalent; run `python -m scripts.build_fast_duration_baseline "
         "reproduce --baseline-dir tests/fixtures/fast_tier_baseline` with an authenticated gh for the same check."
     ),
-    ("ci.yml", "fast-baseline-reproduce", "Collect the current fast tier"): (
+    ("ci.yml", "fast-baseline-collect", "Collect the current fast tier"): (
         "Collection only, to give the reproduce check the ids a baseline must cover; the same selector runs in "
         "the fast lane, so the local `test-fast` target covers it."
     ),

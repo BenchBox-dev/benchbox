@@ -101,7 +101,7 @@ def test_a_baseline_change_runs_a_required_reproduce_job_inside_core() -> None:
     jobs = workflow()["jobs"]
     job = jobs["fast-baseline-reproduce"]
     assert job["if"] == "${{ needs.ci-paths.outputs.fast-baseline-changed == 'true' }}"
-    assert job["needs"] == "ci-paths"
+    assert job["needs"] == ["ci-paths", "fast-baseline-collect"]
     assert job["permissions"]["actions"] == "read"
     assert "fast-baseline-reproduce" in jobs["core"]["needs"]
     aggregate = named("Aggregate core result")["run"]
@@ -111,9 +111,16 @@ def test_a_baseline_change_runs_a_required_reproduce_job_inside_core() -> None:
 
 
 def test_the_reproduce_job_runs_the_base_branch_copy_of_the_script_against_the_head_fixture() -> None:
-    steps = {step["name"]: step for step in workflow()["jobs"]["fast-baseline-reproduce"]["steps"]}
-    collect = steps["Collect the current fast tier"]
+    jobs = workflow()["jobs"]
+    steps = {step["name"]: step for step in jobs["fast-baseline-reproduce"]["steps"]}
+    collect = {step["name"]: step for step in jobs["fast-baseline-collect"]["steps"]}["Collect the current fast tier"]
     assert "--collect-only" in collect["run"]
+    assert jobs["fast-baseline-collect"]["if"] == jobs["fast-baseline-reproduce"]["if"]
+    assert "fast-baseline-collect" in jobs["fast-baseline-reproduce"]["needs"]
+    assert "uv run" not in str(jobs["fast-baseline-reproduce"]["steps"])
+    assert "pytest" not in str(jobs["fast-baseline-reproduce"]["steps"])
+    assert "GH_TOKEN" not in str(jobs["fast-baseline-collect"])
+    assert "actions" not in jobs["fast-baseline-collect"]["permissions"]
     reproduce = steps["Reproduce the committed baseline from its source artifacts"]
     run = reproduce["run"]
     assert 'git show "$BASE_SHA:$path"' in run
@@ -129,7 +136,7 @@ def test_the_reproduce_job_runs_the_base_branch_copy_of_the_script_against_the_h
     assert '"$trusted" reproduce' in run
     assert "--baseline-dir tests/fixtures/fast_tier_baseline" in run
     assert '--checked-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"' in run
-    assert '--collected-ids "$RUNNER_TEMP/collected-ids.txt"' in run
+    assert "--collected-ids collected-ids/collected-ids.txt" in run
     assert "::notice" in run and run.index("grep -q") < run.index("python -I")
     assert reproduce["env"]["BASE_SHA"] == "${{ github.event.pull_request.base.sha }}"
     assert reproduce["env"]["GH_TOKEN"] == "${{ github.token }}"
