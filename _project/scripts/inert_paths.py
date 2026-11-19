@@ -374,8 +374,11 @@ def tracked_directories(tracked: set[str]) -> dict[str, list[str]]:
 def expand_globs(constants: set[str], directories: dict[str, list[str]]) -> set[str]:
     found: set[str] = set()
     for constant in constants:
-        first = constant.split("/", 1)[0]
+        segments = constant.split("/")
+        first = segments[0]
         if not any(char in constant for char in "*?[") or any(char in first for char in "*?[") or first == "..":
+            continue
+        if "**" in segments:
             continue
         found.update(path for path in directories.get(first, ()) if _segment_glob_matches(path, constant))
     return found

@@ -3820,18 +3820,22 @@
    "disposition": "wiring-updated",
    "kinds": {
     "file": 3,
-    "pattern": 1,
+    "pattern": 3,
     "root": 1,
     "unresolved": 13
    },
-   "occurrences": 39,
+   "occurrences": 41,
    "path": "tests/unit/scripts/test_inert_paths.py",
    "rule": "ci-path-classification",
-   "target_count": 18,
+   "target_count": 20,
    "targets": [
     {
      "kind": "root",
      "target": "docs/"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/**"
     },
     {
      "kind": "file",
@@ -3840,6 +3844,10 @@
     {
      "kind": "unresolved",
      "target": "docs/agent-only"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/agent/**/*.md"
     },
     {
      "kind": "pattern",
@@ -4418,11 +4426,11 @@
    "extra": 43,
    "file": 1386,
    "generated": 3,
-   "pattern": 337,
+   "pattern": 339,
    "root": 204,
    "unresolved": 2083
   },
-  "references": 33256,
+  "references": 33258,
   "unclassified": 0
  }
 }

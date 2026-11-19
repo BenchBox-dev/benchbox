@@ -136,7 +136,7 @@ report_stale_ignored_skills() {
     cut -d' ' -f2- "$expected" | (unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE; git -C "$primary_abs" check-ignore --stdin 2>/dev/null || true) |
       while IFS= read -r path; do
         [ -f "$primary_abs/$path" ] || continue
-        want=$(grep -F " $path" "$expected" | while IFS=' ' read -r hash listed; do [ "$listed" = "$path" ] && printf '%s\n' "$hash"; done)
+        want=$(grep -F " $path" "$expected" | while IFS=' ' read -r hash listed; do [ "$listed" != "$path" ] || printf '%s\n' "$hash"; done)
         [ "$(sha256_of "$primary_abs/$path")" = "$want" ] || printf '  %s\n' "$path"
       done
   )

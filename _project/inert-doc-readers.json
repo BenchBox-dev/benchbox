@@ -158,7 +158,6 @@
     "tests/unit/scripts/test_batch_integration.py",
     "tests/unit/scripts/test_batch_member_pr_refusal.py",
     "tests/unit/scripts/test_doc_contracts.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
     "tests/unit/scripts/test_docs_ownership.py",
     "tests/unit/scripts/test_inert_paths.py",
     "tests/unit/scripts/test_path_filter_decision.py",
@@ -174,133 +173,88 @@
   ],
   "docs/agent/README.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
     "tests/unit/scripts/test_path_filter_decision.py"
   ],
   "docs/agent/attribution-surfaces.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_ci_units.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_ci_units.py"
   ],
   "docs/agent/audit-evidence-provenance.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_agent_instruction_audit.py"
   ],
   "docs/agent/batch-feature-delivery.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_inert_paths.py"
   ],
   "docs/agent/batch-tracker-contract.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_agent_instruction_audit.py"
   ],
   "docs/agent/cloud-builder.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_agent_instruction_audit.py"
   ],
   "docs/agent/emergency-merge.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_agent_instruction_audit.py"
   ],
   "docs/agent/handoffs.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_check_untracked_handoffs.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/test_agent_write_preflight.py"
   ],
   "docs/agent/heavy-work.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/test_lock_refusal_message.py"
   ],
   "docs/agent/identity-instruction-boundary.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_ci_units.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/scripts/test_pr_refresh_certification.py"
   ],
   "docs/agent/maintainer-bundles.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_agent_instruction_audit.py"
   ],
   "docs/agent/merge-authority.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_inert_paths.py"
   ],
   "docs/agent/pr-review-evidence.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_agent_instruction_audit.py"
   ],
   "docs/agent/preflight-receipt.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_agent_instruction_audit.py"
   ],
   "docs/agent/primary-clone-guard.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_agent_instruction_audit.py"
   ],
   "docs/agent/primary-clone-update.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_agent_instruction_audit.py"
   ],
   "docs/agent/remote-closeout.md": [
-    "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_agent_instruction_audit.py"
   ],
   "docs/agent/review-protocol-legacy.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_blind_spot_tools.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_blind_spot_tools.py"
   ],
   "docs/agent/review-protocol.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_blind_spot_tools.py",
     "tests/unit/scripts/test_ci_units.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_inert_paths.py"
   ],
   "docs/agent/todo-review.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/scripts/test_todo_review_own_edit_freshness.py"
   ],
   "docs/internal/adr/adr-independent-publication-authorities.md": [
     "tests/unit/docs/test_publication_architecture.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/scripts/test_soundness_manifest.py"
   ],
   "docs/internal/adr/adr-published-results-slim-corpus-branch.md": [
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/scripts/test_soundness_manifest.py"
   ],
   "docs/internal/dev-loop-property-ledger.md": [
     "tests/integration/worktree/test_batch_loop_e2e.py",
     "tests/unit/scripts/test_batch_integration.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/scripts/test_pr_preflight_base.py",
     "tests/unit/scripts/test_preflight_receipt.py",
     "tests/unit/scripts/test_preflight_targets.py",
@@ -310,29 +264,20 @@
     "tests/unit/workflows/test_ci_windows_pr_leg.py"
   ],
   "docs/internal/dev-loop-worktrees.md": [
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/scripts/test_inert_paths.py"
   ],
   "docs/internal/hosted-results-planning.md": [
-    "tests/unit/docs/test_publication_architecture.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
+    "tests/unit/docs/test_publication_architecture.py"
   ],
   "docs/internal/independent-publication-contract.md": [
     "tests/unit/docs/test_publication_architecture.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/scripts/test_soundness_manifest.py"
   ],
   "docs/internal/independent-publication-threat-model.md": [
     "tests/unit/docs/test_publication_architecture.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/scripts/test_soundness_manifest.py"
   ],
   "docs/internal/nightly-t3.md": [
-    "tests/unit/scripts/test_doc_reference_inventory.py",
     "tests/unit/scripts/test_inert_paths.py",
     "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/scripts/test_soundness_manifest.py",
@@ -340,19 +285,14 @@
     "tests/unit/workflows/test_nightly_t3_report_lifecycle.py"
   ],
   "docs/internal/pr-base-branch-policy.md": [
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/workflows/test_stacked_pr_base_guard.py"
   ],
   "docs/internal/quality-gate-policy.md": [
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/test_standardized_test_commands.py"
   ],
   "docs/internal/release-guide.md": [
     "tests/unit/cli/test_shipped_docs_urls.py",
     "tests/unit/scripts/test_ci_units.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
     "tests/unit/scripts/test_generate_changelog_entry.py",
     "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/scripts/test_release_maintenance_admission.py"
@@ -360,9 +300,7 @@
   "docs/internal/repo-admin-settings.md": [
     "tests/unit/release/test_ruleset_drift_review_coverage.py",
     "tests/unit/scripts/test_agent_instruction_audit.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
     "tests/unit/scripts/test_inert_paths.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/scripts/test_pr_refresh_certification.py",
     "tests/unit/test_release_infrastructure.py",
     "tests/unit/test_ruleset_drift.py",
@@ -370,20 +308,12 @@
     "tests/unit/workflows/test_nightly_t3_workflow.py",
     "tests/unit/workflows/test_pr_hold_workflow.py"
   ],
-  "docs/internal/result-validation-triage.md": [
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py"
-  ],
   "docs/internal/results-phase-2-runbook.md": [
     "tests/unit/docs/test_publication_architecture.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/scripts/test_soundness_manifest.py"
   ],
   "docs/internal/results-phase-3-runbook.md": [
     "tests/unit/docs/test_publication_architecture.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/scripts/test_soundness_manifest.py"
   ],
   "docs/publish-allowlist.txt": [
@@ -416,8 +346,6 @@
   ],
   "docs/reference/threat-model.md": [
     "tests/unit/docs/test_publication_architecture.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py",
-    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/scripts/test_soundness_manifest.py"
   ],
   "results-data/CORPUS_NOTES.md": [
@@ -446,7 +374,6 @@
     "tests/unit/scripts/test_doc_reference_inventory.py"
   ],
   "tests/fixtures/dev_loop_metrics/refresh_audit_sample.md": [
-    "tests/unit/scripts/test_dev_loop_pr_metrics.py",
-    "tests/unit/scripts/test_doc_reference_inventory.py"
+    "tests/unit/scripts/test_dev_loop_pr_metrics.py"
   ]
 }

@@ -380,6 +380,7 @@ GLOB_READER_FILES = {
     "scripts/version.py": 'from pathlib import Path\nREADME = Path("README.md")\n',
     "tests/unit/test_version.py": "import version\n",
     "tests/unit/test_text_scan.py": 'SCAN_GLOBS = ("scripts/*.py",)\n',
+    "tests/unit/test_routes.py": 'FILTERS = ("docs/**", "docs/agent/**/*.md")\n',
 }
 
 
@@ -398,6 +399,7 @@ def test_reader_index_ignores_globs_without_a_literal_first_segment(tmp_path: Pa
     repo = _git_repo(tmp_path / "repo", GLOB_READER_FILES)
     refs, reads, modules = inert.scan_tree_reads(repo)
     assert "tests/unit/test_unrelated.py" not in refs | reads | modules
+    assert "tests/unit/test_routes.py" not in reads
     assert reads["scripts/audit.py"] == [".claude/commands/pr.md", "docs/agent/one.md", "docs/agent/two.md"]
     assert "scripts/export.py" not in reads
     assert modules["tests/unit/test_audit.py"] == ["scripts/audit.py"]
@@ -416,6 +418,7 @@ DOCS_AGENT_MENTIONS_WITHOUT_READS = {
     "tests/conftest.py": "names docs/agent/heavy-work.md in the lock refusal message",
     "tests/unit/cli/test_shipped_docs_urls.py": "uses docs/agent paths as link-checker sample input",
     "tests/unit/scripts/test_coverage_test_selection.py": "writes docs/agent pages into a fixture repository",
+    "tests/unit/scripts/test_doc_reference_inventory.py": "uses docs/agent paths as reference-classifier sample input",
     "tests/unit/scripts/test_preflight_targets.py": "writes a docs/agent glob into a fixture repository module",
     "tests/unit/scripts/test_remote_closeout.py": "builds docs/agent pages in a fixture repository",
 }

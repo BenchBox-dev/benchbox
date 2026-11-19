@@ -456,7 +456,10 @@ def _ignored_blog_skill(primary: Path, linked: Path, primary_text: str | None) -
     pinned = hashlib.sha256(b"pinned\n").hexdigest()
     manifest = linked / ".claude" / "skills" / "skill-sync.manifest"
     manifest.parent.mkdir(parents=True)
-    manifest.write_text(f"# header\n{pinned} 644 blog/SKILL.md\n{pinned} 644 code/SKILL.md\n", encoding="utf-8")
+    manifest.write_text(
+        f"# header\n{pinned} 644 blog/SKILL.md\n{pinned} 644 blog/SKILL.md.tmpl\n{pinned} 644 code/SKILL.md\n",
+        encoding="utf-8",
+    )
     (primary / ".git" / "info" / "exclude").write_text(".claude/skills/blog/\n", encoding="utf-8")
     code = primary / ".claude" / "skills" / "code" / "SKILL.md"
     code.parent.mkdir(parents=True)
