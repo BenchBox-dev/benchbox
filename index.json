@@ -15681,12 +15681,17 @@
       "title": "Compare soundness-flag against the merge commit's first parent, not the stale event base"
     },
     "ci-spurious-failures-under-runner-congestion-20261115": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-20T14:19:35Z",
+        "generation": "1615b5adeee847b38d7da69985acd08f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fc3ffdf558b4ae7fa8a5c84"
+      },
       "needs": [
         "feature-fix-ci-congestion-diagnostics-and-generator-gate-20261117"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Three unrelated CI failures hit small PRs during a runner backlog: release-v2 probe wait, fast-tier duration gate, and a flaky watchdog test"
     },
     "ci-sql-evidence-postgres-ecr-rate-limit-20261022": {
