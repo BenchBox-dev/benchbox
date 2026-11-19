@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The adopted wheel version and its upstream base are recorded, with proof it contains d30884dc.",
+    "The decision is recorded; if removed, the guard tests pass on that wheel and QuestDB tpchavoc passes in the next release or trunk UAT (run id recorded)."
+  ],
+  "description": "#4339 added _case_flag_to_predicate in benchbox/utils/questdb_subqueries.py, which turns a WHERE conjunct CASE WHEN p THEN 1 ELSE 0 END = 1 into p so SQLGlot 30.33 unnests the IN subquery for QuestDB again. Upstream answered tobymao/sqlglot#9190 with #9193 (merge d30884dc, 2026-11-18), which unnests membership in WHERE CASE conditions. It is not in v30.33.0. Once a benchbox-sqlglot wheel containing d30884dc is adopted, the pre-pass may be redundant. The not_before hold is a fallback; act earlier if such a wheel is adopted first.\n\nDecision gate: when an adopted wheel's upstream base contains d30884dc, or at the hold date, choose keep or remove. Remove only if the adopted wheel produces the same 18_v10 QuestDB SQL without the pre-pass.\n\nGuardrails: never remove before the adopted wheel contains d30884dc; test_tpchavoc_case_in_subquery_query_leaves_no_subquery_predicate and the not-exact-filter cases in tests/unit/platforms/test_questdb_subquery_rewrites.py stay either way.",
+  "links": [
+    "https://github.com/tobymao/sqlglot/issues/9190",
+    "https://github.com/tobymao/sqlglot/pull/9193",
+    "https://github.com/BenchBox-dev/benchbox/pull/4339"
+  ],
+  "not_before": "2027-01-15T00:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a",
+      "at": "2026-11-19T14:34:18Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6ab1c5d3556c431b8e95cba76977eaff",
+      "session_id": "ad8ff63c31d0492faa7526a81e19db83"
+    }
+  ]
+}
