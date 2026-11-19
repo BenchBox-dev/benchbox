@@ -133,6 +133,7 @@
       "match": [
         ".github/ci-units.yml",
         ".github/inert-paths.txt",
+        "_project/inert-doc-readers.json",
         ".github/soundness-paths.txt",
         ".github/path-filters.yml",
         ".pre-commit-config.yaml",
@@ -223,6 +224,7 @@
       "id": "test-sample-data",
       "match": [
         "scripts/changelog_fragments.py",
+        "tests/unit/scripts/test_heavy_tier_needed.py",
         "scripts/check_untracked_handoffs.sh",
         "scripts/generate_changelog_entry.py",
         "scripts/worktree_lifecycle.sh",

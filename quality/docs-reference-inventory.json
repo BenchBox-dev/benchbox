@@ -1517,6 +1517,30 @@
    "targets_sha256": "7d3ff4769d0751231305bfa99fec362125f133d84e6f466d07d9b9c716b09ee0"
   },
   {
+   "disposition": "wiring-updated",
+   "kinds": {
+    "file": 3
+   },
+   "occurrences": 3,
+   "path": "_project/inert-doc-readers.json",
+   "rule": "ci-path-classification",
+   "target_count": 3,
+   "targets": [
+    {
+     "kind": "file",
+     "target": "docs/README.md"
+    },
+    {
+     "kind": "file",
+     "target": "docs/publish-allowlist.txt"
+    },
+    {
+     "kind": "file",
+     "target": "docs/publish-exclusions.txt"
+    }
+   ]
+  },
+  {
    "disposition": "historical-record",
    "kinds": {
     "file": 1
@@ -3495,13 +3519,17 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "unresolved": 1
+    "unresolved": 2
    },
-   "occurrences": 4,
+   "occurrences": 6,
    "path": "tests/unit/scripts/test_coverage_test_selection.py",
    "rule": "test-sample-data",
-   "target_count": 1,
+   "target_count": 2,
    "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/agent/new-rule.md"
+    },
     {
      "kind": "unresolved",
      "target": "docs/guide.md"
@@ -3789,16 +3817,33 @@
    ]
   },
   {
+   "disposition": "fixture-data",
+   "kinds": {
+    "unresolved": 1
+   },
+   "occurrences": 1,
+   "path": "tests/unit/scripts/test_heavy_tier_needed.py",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "unresolved",
+     "target": "docs/agent/new.md"
+    }
+   ]
+  },
+  {
    "disposition": "wiring-updated",
    "kinds": {
     "file": 3,
+    "pattern": 1,
     "root": 1,
-    "unresolved": 9
+    "unresolved": 12
    },
-   "occurrences": 29,
+   "occurrences": 37,
    "path": "tests/unit/scripts/test_inert_paths.py",
    "rule": "ci-path-classification",
-   "target_count": 13,
+   "target_count": 17,
    "targets": [
     {
      "kind": "root",
@@ -3809,8 +3854,24 @@
      "target": "docs/README.md"
     },
     {
+     "kind": "pattern",
+     "target": "docs/agent/*.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/agent/nested/three.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/agent/one.md"
+    },
+    {
      "kind": "unresolved",
      "target": "docs/agent/review.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/agent/two.md"
     },
     {
      "kind": "unresolved",
@@ -4350,26 +4411,26 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 41,
+   "fixture-data": 42,
    "governance-stays": 11,
    "historical-record": 118,
    "lock-test": 4,
    "prose-link-pinned": 11,
    "site-pipeline-cutover": 4,
-   "wiring-updated": 34
+   "wiring-updated": 35
   },
-  "files": 230,
+  "files": 232,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
    "extra": 43,
-   "file": 1382,
+   "file": 1385,
    "generated": 3,
-   "pattern": 335,
+   "pattern": 336,
    "root": 204,
-   "unresolved": 2072
+   "unresolved": 2082
   },
-  "references": 33239,
+  "references": 33253,
   "unclassified": 0
  }
 }
