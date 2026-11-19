@@ -22781,17 +22781,12 @@
       "title": "DuckDB TPC-H SF 1 --official --seed 42 fails at export on a PASSED row-count record with unequal counts"
     },
     "duckdb-tuned-template-ablation-20261008": {
-      "claim": {
-        "expires_at": "2026-11-20T03:23:10Z",
-        "generation": "4ee54ef834df46ecb5a6294af458f1aa",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5636d6715f51bddd99245ae9"
-      },
+      "claim": null,
       "needs": [
         "heavy-work-host-capacity-owner-decision-20261117"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Measure the DuckDB tuned templates at SF1 and SF10, separating constraints from sort order and counting load time"
     },
     "duckdb-version-isolation-0-9-2-untested-20261112": {
