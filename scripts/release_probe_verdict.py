@@ -110,13 +110,19 @@ def state_from_needs(needs: dict[str, Any]) -> VariantState:
 
 
 def state_from_api(repository: str, run: dict[str, Any], runner: Gh = gh) -> VariantState:
-    jobs = [job for job in run_jobs(repository, int(run["id"]), runner) if job.get("name") != REPORT_JOB_NAME]
+    listed = run_jobs(repository, int(run["id"]), runner)
+    jobs = [job for job in listed if job.get("name") != REPORT_JOB_NAME]
     settled = bool(jobs) and all(job.get("status") == COMPLETED for job in jobs)
     outcome_done = any(job.get("name") == OUTCOME_JOB_NAME and job.get("status") == COMPLETED for job in jobs)
     finished = run.get("status") == COMPLETED or (settled and outcome_done)
     failures = tuple(f"{job['name']}: {job['conclusion']}" for job in jobs if job.get("conclusion") in JOB_FAILURES)
-    if finished and not jobs and run.get("conclusion") != "success":
-        failures = (f"run: {run.get('conclusion')}",)
+    conclusion = run.get("conclusion")
+    if run.get("status") == COMPLETED and conclusion != "success" and not failures:
+        report_failed = any(
+            job.get("name") == REPORT_JOB_NAME and job.get("conclusion") in JOB_FAILURES for job in listed
+        )
+        if conclusion != "failure" or not report_failed:
+            failures = (f"run: {conclusion}",)
     return VariantState(finished, failures)
 
 

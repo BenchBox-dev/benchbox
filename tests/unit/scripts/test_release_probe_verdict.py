@@ -196,6 +196,23 @@ def test_a_run_that_completed_without_any_job_and_did_not_succeed_fails_the_chec
     assert "- reuse: run: cancelled" in fake.patched[0]["output[summary]"]
 
 
+@pytest.mark.parametrize("conclusion", ["cancelled", "failure", "timed_out", "startup_failure"])
+def test_a_completed_run_whose_conclusion_is_not_success_fails_the_check_even_when_every_listed_job_is_green(
+    conclusion,
+):
+    fake = FakeGh({101: run_spec(status="completed", conclusion=conclusion, rows=jobs(report="completed"))})
+    _report(fake)
+    assert f"- reuse: run: {conclusion}" in fake.patched[0]["output[summary]"]
+
+
+def test_a_run_that_failed_only_because_its_own_report_job_failed_is_judged_on_its_substantive_jobs():
+    rows = jobs(report="completed")
+    rows[-1]["conclusion"] = "failure"
+    fake = FakeGh({101: run_spec(status="completed", conclusion="failure", rows=rows)})
+    _report(fake)
+    assert fake.patched[0]["conclusion"] == "success"
+
+
 def test_a_check_that_is_already_completed_is_left_alone():
     fake = FakeGh(checks=[FakeGh.check(status="completed")])
     assert "ignored" in _report(fake)
