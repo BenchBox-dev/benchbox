@@ -279,6 +279,56 @@ def test_selection_logic_changes_need_the_heavy_tier(tmp_path: Path) -> None:
         assert "test-infrastructure carve-out" in result["reason"]
 
 
+READ_DOC_SELECTION = {
+    "escalate": True,
+    "shadow": True,
+    "would_escalate": False,
+    "reason": "shadow mode: selection of 4 tests recorded; escalated to the full tier",
+    "reader_tests": ["tests/unit/scripts/test_agent_instruction_audit.py"],
+    "coverage_tests": [],
+    "changed_tests": [],
+    "uncovered_sources": [],
+}
+
+
+def test_documents_with_recorded_readers_skip_the_shadow_escalation(policy_sources: dict[str, str]) -> None:
+    result = heavy.heavy_needed(
+        _decision(["docs/agent/merge-authority.md"]),
+        "base",
+        REPO_ROOT,
+        read_base=lambda *_: policy_sources,
+        read_pr=lambda *_: policy_sources,
+        selection=READ_DOC_SELECTION,
+    )
+    assert result["heavy_needed"] is False, result["reason"]
+
+
+@pytest.mark.parametrize(
+    "paths,override",
+    [
+        (["docs/agent/merge-authority.md", "benchbox/core/x.py"], {}),
+        (["docs/agent/merge-authority.md"], {"would_escalate": True}),
+        (["docs/agent/merge-authority.md"], {"reader_tests": []}),
+        (["docs/agent/merge-authority.md"], {"uncovered_sources": ["docs/agent/new.md"]}),
+        (["docs/agent/merge-authority.md"], {"coverage_tests": ["tests/unit/test_x.py"]}),
+        (["docs/agent/merge-authority.md"], {"shadow": False}),
+    ],
+)
+def test_shadow_escalation_stands_unless_every_change_is_a_read_document(
+    policy_sources: dict[str, str], paths: list[str], override: dict
+) -> None:
+    result = heavy.heavy_needed(
+        _decision(paths),
+        "base",
+        REPO_ROOT,
+        read_base=lambda *_: policy_sources,
+        read_pr=lambda *_: policy_sources,
+        selection={**READ_DOC_SELECTION, **override},
+    )
+    assert result["heavy_needed"] is True
+    assert "coverage fail-closed carve-out" in result["reason"]
+
+
 def test_router_files_belong_to_the_selection_logic_check() -> None:
     assert {
         ".github/path-filters.yml",

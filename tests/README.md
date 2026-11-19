@@ -198,10 +198,13 @@ select but escalates to the complete tier. `scripts/heavy_tier_needed.py`
 therefore reports `heavy-needed == 'true'`; `medium-collect` collects the
 complete tier and four Python 3.12 shards partition it using
 `tests/fixtures/medium_shard_durations.json`. Do not assume ordinary code PRs
-skip the full medium tier.
+skip the full medium tier. The one exception is a change that touches only
+machine-read documents with recorded reader tests (no Python, nothing
+uncovered): `heavy_tier_needed.py` skips the shadow escalation for it, and the
+selected-only path below runs those readers.
 
 The workflow also implements a selected-only Python 3.14 medium path for
-`heavy-needed != 'true'`, but shadow-mode escalation prevents code-routed PRs
+`heavy-needed != 'true'`, but shadow-mode escalation keeps other code-routed PRs
 from taking it today. Its selection combines coverage impact with the
 name/import-based fallback from `_project/scripts/preflight_targets.py`.
 It belongs to `medium-test`, not the fast-test `code-test` job.
@@ -377,8 +380,8 @@ same module, so it honors the override and the real-home default.
 - A parallel session (`-n` above 0, including the default `-n auto`) always locks. A serial session
   (`-n 0`) locks only when its selected items, after deselection and before the first test, carry a heavy
   marker: `slow`, `stress`, `resource_heavy`, `live_integration`, `docker_integration` or any `live_*`.
-  `make pr-preflight` runs only default-marker `-n 0` targets and a `fast and not (slow or stress ...)`
-  lane, so it never waits. `BENCHBOX_SKIP_TEST_LOCK=1` skips locking entirely and needs owner approval in the current task;
+  `make pr-preflight` runs its mapped `-n 0` targets under `python -m benchbox.utils.host_lock run --admit --guard`,
+  so they wait for the lock, pass admission and run under the watchdog. `BENCHBOX_SKIP_TEST_LOCK=1` skips locking entirely and needs owner approval in the current task;
   the refusal message lists only compliant steps (wait, `make heavy-status`, `make heavy-run`).
 - Admission and the watchdog run only in sessions whose selected items include a heavy marker. A parallel
   session is judged from its `-m` expression, since the controller does not collect: it is heavy when a heavy

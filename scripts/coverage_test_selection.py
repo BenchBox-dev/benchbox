@@ -840,8 +840,15 @@ def select_tests(
     code_routed = decision is None or decision.get("needs_code_ci") is not False
     if non_python and code_routed:
         reasons.append(f"non-Python changes need the full tier: {', '.join(sorted(non_python))}")
-    if uncovered and code_routed:
-        reasons.append(f"changed Python code no recorded test executed: {', '.join(sorted(uncovered))}")
+    unread_docs = {path for path in uncovered if not path.endswith(".py")}
+    uncovered_code = uncovered - unread_docs
+    if unread_docs and code_routed:
+        reasons.append(
+            f"machine-read documents with no recorded reader test: {', '.join(sorted(unread_docs))}"
+            " (regenerate _project/inert-doc-readers.json if a test reads them)"
+        )
+    if uncovered_code and code_routed:
+        reasons.append(f"changed Python code no recorded test executed: {', '.join(sorted(uncovered_code))}")
     changed_tests = sorted(
         {
             entry.path

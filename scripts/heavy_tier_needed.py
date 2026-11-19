@@ -156,6 +156,19 @@ def broad_test_infrastructure(changed_paths: Iterable[str], repo_root: Path) -> 
     return broad
 
 
+def read_documents_only(selection: dict[str, Any], changed: list[str]) -> bool:
+    return (
+        selection.get("shadow") is True
+        and selection.get("would_escalate") is False
+        and bool(selection.get("reader_tests"))
+        and not selection.get("coverage_tests")
+        and not selection.get("changed_tests")
+        and not selection.get("uncovered_sources")
+        and bool(changed)
+        and not any(path.endswith(".py") for path in changed)
+    )
+
+
 def heavy_needed(
     decision: dict[str, Any],
     base_ref: str,
@@ -185,7 +198,7 @@ def heavy_needed(
         if selection is not None:
             if not isinstance(selection, dict) or not isinstance(selection.get("escalate"), bool):
                 raise HeavyTierError("coverage selection is unreadable")
-            if selection["escalate"]:
+            if selection["escalate"] and not read_documents_only(selection, changed):
                 detail = selection.get("reason") or "no reason recorded"
                 return {
                     "heavy_needed": True,

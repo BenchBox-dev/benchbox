@@ -27,21 +27,27 @@ def _offline_member_binding(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(scope="session")
-def inert_scan(tmp_path_factory: pytest.TempPathFactory) -> dict[str, list[str]]:
+def inert_scan_reads(tmp_path_factory: pytest.TempPathFactory) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
     from filelock import FileLock
 
     from _project.scripts import inert_paths
 
     root = Path(__file__).resolve().parents[3]
     if "PYTEST_XDIST_WORKER" not in os.environ:
-        return inert_paths.scan_tree(root)
+        return inert_paths.scan_tree_reads(root)
     shared = tmp_path_factory.getbasetemp().parent / "inert_scan.json"
     with FileLock(str(shared) + ".lock"):
         if shared.is_file():
-            return json.loads(shared.read_text(encoding="utf-8"))
-        refs = inert_paths.scan_tree(root)
-        shared.write_text(json.dumps(refs), encoding="utf-8")
-        return refs
+            refs, reads = json.loads(shared.read_text(encoding="utf-8"))
+            return refs, reads
+        refs, reads = inert_paths.scan_tree_reads(root)
+        shared.write_text(json.dumps([refs, reads]), encoding="utf-8")
+        return refs, reads
+
+
+@pytest.fixture(scope="session")
+def inert_scan(inert_scan_reads: tuple[dict[str, list[str]], dict[str, list[str]]]) -> dict[str, list[str]]:
+    return inert_scan_reads[0]
 
 
 @pytest.fixture(scope="session")

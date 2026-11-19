@@ -197,8 +197,10 @@ def test_guard_resolves_the_joined_path_consumers(inert_scan: dict[str, list[str
     assert "_project/scripts/prompts/pr_review_followup.md" in refs["_project/scripts/pr_review_followups.py"]
 
 
-def test_checked_in_readers_match_the_rebuilt_index(inert_scan: dict[str, list[str]]) -> None:
-    assert json.loads(READERS_FILE.read_text(encoding="utf-8")) == inert.doc_reader_index(ROOT, inert_scan), (
+def test_checked_in_readers_match_the_rebuilt_index(
+    inert_scan_reads: tuple[dict[str, list[str]], dict[str, list[str]]],
+) -> None:
+    assert json.loads(READERS_FILE.read_text(encoding="utf-8")) == inert.doc_reader_index(ROOT, *inert_scan_reads), (
         "_project/inert-doc-readers.json is stale; regenerate it with "
         "`uv run -- python _project/scripts/inert_paths.py --regenerate-readers`"
     )
@@ -354,6 +356,41 @@ def test_scan_tree_resolves_references_in_a_tracked_repo(tmp_path: Path) -> None
 def test_reader_index_keeps_only_test_readers_of_machine_read_docs(tmp_path: Path) -> None:
     repo = _git_repo(tmp_path / "repo", READER_FILES)
     assert inert.doc_reader_index(repo) == {"AGENTS.md": ["tests/unit/test_reads.py"]}
+
+
+GLOB_READER_FILES = {
+    "docs/agent/one.md": "one\n",
+    "docs/agent/two.md": "two\n",
+    "docs/agent/nested/three.md": "three\n",
+    "AGENTS.md": "agents\n",
+    "scripts/audit.py": 'PATTERNS = ("docs/agent/*.md",)\nEVERYTHING = "**/*"\n',
+    "_project/scripts/loader.py": 'NAMES = ("AGENTS.md",)\nfrom pathlib import Path\nA = Path("AGENTS.md")\n',
+    "tests/unit/test_audit.py": "from scripts.audit import PATTERNS\n",
+    "tests/unit/test_loader.py": "import loader\n",
+    "tests/unit/test_unrelated.py": 'GLOB = "**/*.md"\n',
+}
+
+
+def test_reader_index_follows_globs_in_modules_a_test_imports(tmp_path: Path) -> None:
+    repo = _git_repo(tmp_path / "repo", GLOB_READER_FILES)
+    assert inert.doc_reader_index(repo) == {
+        "AGENTS.md": ["tests/unit/test_loader.py"],
+        "docs/agent/one.md": ["tests/unit/test_audit.py"],
+        "docs/agent/two.md": ["tests/unit/test_audit.py"],
+    }
+
+
+def test_reader_index_ignores_globs_without_a_literal_first_segment(tmp_path: Path) -> None:
+    repo = _git_repo(tmp_path / "repo", GLOB_READER_FILES)
+    refs, reads = inert.scan_tree_reads(repo)
+    assert "tests/unit/test_unrelated.py" not in refs | reads
+    assert reads["scripts/audit.py"] == ["docs/agent/one.md", "docs/agent/two.md"]
+    assert "scripts/audit.py" not in refs
+
+
+def test_merge_authority_is_read_by_the_instruction_audit_test() -> None:
+    readers = inert.load_readers(ROOT)
+    assert "tests/unit/scripts/test_agent_instruction_audit.py" in readers["docs/agent/merge-authority.md"]
 
 
 def test_regenerate_readers_writes_the_index_and_load_readers_reads_it(tmp_path: Path) -> None:

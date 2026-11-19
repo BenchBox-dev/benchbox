@@ -67,7 +67,7 @@ pr-preflight:
 	echo "==> tests for changed files: $$(python3 scripts/preflight_receipt.py tests --stage "$$STAGE" --list "$$TEST_LIST")"; \
 	$$RECORD --name theseus-prefetch -- uv run -- python -m _project.scripts.theseus_prefetch; \
 	STATUS=0; \
-	$$RECORD --name pytest --ok-codes 0,5 -- env $$(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/-u \1/p') uv run -- python -m pytest -q -n 0 -rs --tb=short --ff $$(cat "$$TEST_LIST") || STATUS=$$?; \
+	$$RECORD --name pytest --ok-codes 0,5 -- env $$(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/-u \1/p') uv run -- python -m benchbox.utils.host_lock run --phase preflight-pytest --gate pr-preflight --admit --guard -- python -m pytest -q -n 0 -rs --tb=short --ff $$(cat "$$TEST_LIST") || STATUS=$$?; \
 	if [ "$$STATUS" -eq 5 ]; then echo "Mapped tests are all deselected by the default markers."; STATUS=0; fi; \
 	if [ "$$STATUS" -eq 0 ]; then \
 		uv run -- python _project/scripts/preflight_targets.py linux --base-ref "$$PREFLIGHT_BASE" > "$$LINUX_LIST"; \
