@@ -91,3 +91,40 @@ def test_the_attempt_that_measures_and_the_attempt_that_verifies_are_both_record
     fast = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))["jobs"]["code-test"]
     calibration = next(step for step in fast["steps"] if step.get("name") == "Record fast-tier runner calibration")
     assert '--run-attempt "${{ github.run_attempt }}"' in calibration["run"]
+
+
+def workflow() -> dict[str, Any]:
+    return yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+
+
+def test_a_baseline_change_runs_a_required_reproduce_job_inside_core() -> None:
+    jobs = workflow()["jobs"]
+    job = jobs["fast-baseline-reproduce"]
+    assert job["if"] == "${{ needs.ci-paths.outputs.fast-baseline-changed == 'true' }}"
+    assert job["needs"] == "ci-paths"
+    assert job["permissions"]["actions"] == "read"
+    assert "fast-baseline-reproduce" in jobs["core"]["needs"]
+    aggregate = named("Aggregate core result")["run"]
+    assert "--expect fast-baseline-reproduce=${{ needs.ci-paths.outputs.fast-baseline-changed == 'true' }}" in aggregate
+    assert "continue-on-error" not in job
+    assert all(step.get("continue-on-error") is not True for step in job["steps"])
+
+
+def test_the_reproduce_job_checks_the_refresh_branch_and_rebuilds_from_the_manifest_artifacts() -> None:
+    steps = {step["name"]: step for step in workflow()["jobs"]["fast-baseline-reproduce"]["steps"]}
+    branch = steps["Require the refresh branch for a baseline-only change"]
+    assert "landing-branch" in branch["run"]
+    assert branch["env"]["HEAD_REF"] == "${{ github.head_ref }}"
+    assert "$BASE_SHA...HEAD" in branch["run"]
+    reproduce = steps["Reproduce the committed baseline from its source artifacts"]
+    assert "build_fast_duration_baseline reproduce" in reproduce["run"]
+    assert "--baseline-dir tests/fixtures/fast_tier_baseline" in reproduce["run"]
+    assert reproduce["env"]["GH_TOKEN"] == "${{ github.token }}"
+
+
+def test_the_baseline_flag_is_derived_from_the_changed_paths_whatever_the_inert_routing() -> None:
+    paths = workflow()["jobs"]["ci-paths"]
+    assert paths["outputs"]["fast-baseline-changed"] == "${{ steps.path-flags.outputs.fast-baseline-changed }}"
+    flags = next(step for step in paths["steps"] if step.get("id") == "path-flags")
+    assert "tests/fixtures/fast_tier_baseline/" in flags["run"]
+    assert ".ci-paths/changed.txt" in flags["run"]

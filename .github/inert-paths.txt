@@ -1,6 +1,7 @@
 glob	docs/**
 glob	*.md
 glob	_project/todo-db-export/**
+glob	tests/fixtures/fast_tier_baseline/**
 except	AGENTS.md
 except	CLAUDE.md
 except	GEMINI.md

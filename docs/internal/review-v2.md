@@ -611,6 +611,23 @@ code and CI verifies freshness
 (`test_checked_in_readers_match_the_rebuilt_index`). Regenerate with `python3
 _project/scripts/inert_paths.py --regenerate-readers` and commit.
 
+`tests/fixtures/fast_tier_baseline/**` is a `glob` line, so a diff confined to
+the fast-tier duration baseline is inert-only and `review-gate` passes it
+without a reviewer. The directory is not in `.github/soundness-paths.txt`
+(soundness paths take precedence over inert ones); its generator and the
+calibration plugin still are. The baseline manifest is named
+`fast-baseline-manifest.json` because the inert-reference guard maps the bare
+basename `manifest.json`, which other workflows mention, onto every tracked
+`manifest.json`. The review it skips is replaced by a machine check: the
+`fast-baseline-reproduce` job, required through `core` whenever the baseline
+changes, rebuilds the baseline from the artifacts its manifest names and fails
+unless the result is byte-identical, and rejects a baseline-only diff whose
+head branch does not start with `chore/fast-baseline-`. Inert routing does not
+skip that job: `ci-paths` sets its flag from the changed paths
+(`fast-baseline-changed`), independent of the inert manifest, and `core`
+expects the job whenever the flag is set. A refresh PR that also changes
+`quality/docs-reference-inventory.json` is not inert-only and is still reviewed.
+
 ## Rounds
 
 The reviewer keeps its history in its reviews. Each decisive review ends with a

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -578,3 +579,114 @@ def test_refreshed_medium_file_loads_in_every_consumer(tmp_path: Path) -> None:
         "tests/test_sample.py::TestSample::test_alpha": 1.0,
         "tests/test_sample.py::TestSample::test_beta": 2.0,
     }
+
+
+def fetch_from(sources: dict[int, Path]):
+    def fetch(artifact_id: int, destination: Path) -> None:
+        shutil.copytree(sources[artifact_id], destination)
+
+    return fetch
+
+
+def committed_from_fixture(tmp_path: Path) -> tuple[Path, dict[int, Path]]:
+    manifest, runs = build_fixture(tmp_path)
+    built, _ = baseline.build_baseline(baseline.load_manifest(manifest), GENERATED_AT)
+    committed = tmp_path / "committed"
+    baseline.write_sharded_baseline(committed, built)
+    return committed, {200: runs[0], 201: runs[1]}
+
+
+def test_reproduce_passes_on_a_baseline_built_from_the_manifest_artifacts(tmp_path: Path) -> None:
+    committed, sources = committed_from_fixture(tmp_path)
+
+    assert baseline.reproduce_baseline(committed, fetch_from(sources), tmp_path / "work") == []
+
+
+def test_reproduce_fails_when_one_byte_of_a_shard_changes(tmp_path: Path) -> None:
+    committed, sources = committed_from_fixture(tmp_path)
+    shard = committed / f"tests-{baseline.test_shard_index('tests/test_sample.py::TestSample::test_alpha'):02d}.json"
+    payload = bytearray(shard.read_bytes())
+    payload[payload.index(b"1.5")] = ord("2")
+    shard.write_bytes(bytes(payload))
+
+    problems = baseline.reproduce_baseline(committed, fetch_from(sources), tmp_path / "work")
+
+    assert problems == [f"{shard.name}: differs from the rebuild"]
+
+
+def test_reproduce_fails_when_the_manifest_changes_or_a_file_is_extra(tmp_path: Path) -> None:
+    committed, sources = committed_from_fixture(tmp_path)
+    manifest_path = committed / baseline.BASELINE_MANIFEST_NAME
+    manifest_path.write_text(
+        manifest_path.read_text(encoding="utf-8").replace('"speed_factor": 1.5', '"speed_factor": 1.6'),
+        encoding="utf-8",
+    )
+    (committed / "stray.json").write_text("[]\n", encoding="utf-8")
+
+    problems = baseline.reproduce_baseline(committed, fetch_from(sources), tmp_path / "work")
+
+    assert problems == [
+        f"{baseline.BASELINE_MANIFEST_NAME}: differs from the rebuild",
+        "stray.json: not produced by the build",
+    ]
+
+
+def test_reproduce_command_exits_non_zero_on_a_difference_and_names_the_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    committed, sources = committed_from_fixture(tmp_path)
+    monkeypatch.setattr(baseline, "gh_artifact_fetcher", lambda repo: fetch_from(sources))
+
+    assert baseline.main(["reproduce", "--baseline-dir", str(committed)]) == 0
+    (committed / "tests-00.json").write_bytes((committed / "tests-00.json").read_bytes() + b" ")
+    assert baseline.main(["reproduce", "--baseline-dir", str(committed)]) == 1
+    assert "tests-00.json: differs from the rebuild" in capsys.readouterr().out
+
+
+def test_the_gh_fetcher_reports_an_expired_artifact(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.CompletedProcess(command, 1, b"", b"HTTP 410: artifact expired")
+
+    monkeypatch.setattr(baseline.subprocess, "run", fake_run)
+
+    with pytest.raises(baseline.BaselineError, match="expired"):
+        baseline.gh_artifact_fetcher("owner/name")(9, tmp_path / "artifact-9")
+
+
+def landing(tmp_path: Path, files: list[str], head_ref: str) -> int:
+    listing = tmp_path / "changed.txt"
+    listing.write_text("".join(f"{name}\n" for name in files), encoding="utf-8")
+    return baseline.main(["landing-branch", "--changed-files", str(listing), "--head-ref", head_ref])
+
+
+BASELINE_SHARD = "tests/fixtures/fast_tier_baseline/tests-00.json"
+
+
+def test_a_baseline_only_change_from_the_refresh_branch_is_accepted(tmp_path: Path) -> None:
+    files = [BASELINE_SHARD, f"tests/fixtures/fast_tier_baseline/{baseline.BASELINE_MANIFEST_NAME}"]
+
+    assert landing(tmp_path, files, "chore/fast-baseline-20261120-12") == 0
+
+
+def test_the_refresh_companion_inventory_still_counts_as_baseline_only(tmp_path: Path) -> None:
+    files = [BASELINE_SHARD, "quality/docs-reference-inventory.json"]
+
+    assert landing(tmp_path, files, "chore/fast-baseline-20261120-12") == 0
+    assert landing(tmp_path, files, "feat/hand-edit") == 1
+
+
+def test_a_baseline_only_change_from_any_other_branch_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert landing(tmp_path, [BASELINE_SHARD], "feat/hand-edit") == 1
+    assert "::error title=fast-baseline::" in capsys.readouterr().out
+
+
+def test_a_baseline_change_mixed_with_other_files_goes_through_ordinary_review(tmp_path: Path) -> None:
+    files = [BASELINE_SHARD, "scripts/build_fast_duration_baseline.py"]
+
+    assert landing(tmp_path, files, "feat/duration-gate") == 0
+
+
+def test_a_diff_without_baseline_files_is_not_this_checks_business(tmp_path: Path) -> None:
+    assert landing(tmp_path, ["scripts/other.py"], "feat/anything") == 0

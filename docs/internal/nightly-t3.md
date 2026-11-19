@@ -103,7 +103,18 @@ refreshes medium-shard weights from successful Trunk runs. Both regenerate
 `quality/docs-reference-inventory.json` before opening their PRs. The
 `CROSS_SURFACE_BASELINE_PR_TOKEN` secret lets those PRs trigger normal CI;
 the fallback `GITHUB_TOKEN` cannot trigger the normal downstream PR workflows.
-These are reviewed baseline changes, not an automatic waiver for a failing PR.
+A refresh is not an automatic waiver for a failing PR.
+
+A change to `tests/fixtures/fast_tier_baseline/` runs the required
+`fast-baseline-reproduce` job inside `core`. `python -m
+scripts.build_fast_duration_baseline reproduce --baseline-dir
+tests/fixtures/fast_tier_baseline` downloads the artifacts named in the
+manifest, rebuilds with the committed code and `generated_at`, and fails unless
+the manifest and shards are byte-identical. A diff confined to the baseline
+(plus `quality/docs-reference-inventory.json`) must come from a
+`chore/fast-baseline-*` branch. Source artifacts expire after 14 days. The
+baseline directory is an inert path, so such a refresh PR is not held for
+review; the reproduce check is its machine-checked substitute.
 
 The earlier 0.5-second per-test budget and `duration_exempt` marker are retired.
 Collection enforces the quarantine marker contract (owner, issue and unexpired

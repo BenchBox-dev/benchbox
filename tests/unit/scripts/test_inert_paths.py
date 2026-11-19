@@ -409,3 +409,27 @@ def test_inert_rule_kinds_compose_the_vendored_matcher(tmp_path: Path) -> None:
     patterns = tuple(rule.pattern for rule in rules if rule.kind == "except")
     assert inert.matches_exception("docs/agent/review.md", patterns)
     assert not inert.matches_exception("docs/other.md", patterns)
+
+
+BASELINE_FILES = [
+    "tests/fixtures/fast_tier_baseline/fast-baseline-manifest.json",
+    "tests/fixtures/fast_tier_baseline/tests-03.json",
+]
+
+
+def test_the_fast_tier_baseline_is_inert_and_only_its_generator_stays_a_soundness_path() -> None:
+    from _project.scripts.soundness_manifest import is_soundness_path
+
+    for path in BASELINE_FILES:
+        assert inert.is_inert_path(path), path
+        assert not inert.is_machine_read_doc(path), path
+        assert not is_soundness_path(path), path
+    assert is_soundness_path("scripts/build_fast_duration_baseline.py")
+    assert is_soundness_path("scripts/fast_tier_calibration.py")
+
+
+def test_an_inert_baseline_change_still_selects_core() -> None:
+    rules = load_unit_rules(ROOT / ".github" / "ci-units.yml")
+    for path in BASELINE_FILES:
+        units = {unit for unit, on in classify_units([path], rules)["units"].items() if on}
+        assert "core" in units, path

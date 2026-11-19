@@ -5,8 +5,12 @@ import hashlib
 import json
 import math
 import statistics
+import subprocess
 import sys
+import tempfile
 import xml.etree.ElementTree as ET
+import zipfile
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -26,6 +30,10 @@ MEDIUM_MIN_DELTA_SECONDS = 0.1
 MEDIUM_MIN_RELATIVE_DELTA = 0.20
 MEDIUM_SHARD_COUNT = 4
 TEST_SHARD_COUNT = 8
+REFRESH_BRANCH_PREFIX = "chore/fast-baseline-"
+BASELINE_PATH_PREFIX = "tests/fixtures/fast_tier_baseline/"
+REFRESH_COMPANION_FILES = frozenset({"quality/docs-reference-inventory.json"})
+BASELINE_MANIFEST_NAME = "fast-baseline-manifest.json"
 
 
 NEW_TEST_NOTE = (
@@ -183,7 +191,7 @@ def write_sharded_baseline(output_dir: Path, baseline: dict[str, Any]) -> list[P
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest = {key: baseline[key] for key in baseline if key != "tests"}
     manifest["test_shard_count"] = TEST_SHARD_COUNT
-    manifest_path = output_dir / "manifest.json"
+    manifest_path = output_dir / BASELINE_MANIFEST_NAME
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     buckets: dict[int, list[dict[str, Any]]] = {index: [] for index in range(TEST_SHARD_COUNT)}
     for record in baseline["tests"]:
@@ -198,7 +206,7 @@ def write_sharded_baseline(output_dir: Path, baseline: dict[str, Any]) -> list[P
 
 def read_sharded_baseline(input_dir: Path) -> dict[str, Any]:
     try:
-        manifest = json.loads((input_dir / "manifest.json").read_text(encoding="utf-8"))
+        manifest = json.loads((input_dir / BASELINE_MANIFEST_NAME).read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         raise BaselineError(f"missing or unreadable baseline manifest: {exc}") from exc
     if manifest.get("schema") != SCHEMA:
@@ -775,6 +783,90 @@ def build_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def gh_artifact_fetcher(repo: str | None) -> Callable[[int, Path], None]:
+    base = f"repos/{repo}" if repo else "repos/{owner}/{repo}"
+
+    def fetch(artifact_id: int, destination: Path) -> None:
+        destination.mkdir(parents=True, exist_ok=True)
+        archive = destination.with_suffix(".zip")
+        with archive.open("wb") as handle:
+            proc = subprocess.run(
+                ["gh", "api", f"{base}/actions/artifacts/{artifact_id}/zip"],
+                stdout=handle,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+        if proc.returncode != 0:
+            raise BaselineError(
+                f"could not download artifact {artifact_id} (an expired artifact cannot be reproduced): "
+                f"{proc.stderr.decode(errors='replace').strip()}"
+            )
+        try:
+            with zipfile.ZipFile(archive) as bundle:
+                bundle.extractall(destination)
+        except zipfile.BadZipFile as exc:
+            raise BaselineError(f"artifact {artifact_id} is not a zip archive: {exc}") from exc
+
+    return fetch
+
+
+def reproduce_baseline(baseline_dir: Path, fetch: Callable[[int, Path], None], work_dir: Path) -> list[str]:
+    committed = read_sharded_baseline(baseline_dir)
+    records = [*committed.get("runs", []), *committed.get("rejected_runs", [])]
+    if not records:
+        raise BaselineError("the committed manifest names no source runs to reproduce from")
+    entries = []
+    for record in records:
+        directory = work_dir / "sources" / f"artifact-{record['artifact_id']}"
+        fetch(int(record["artifact_id"]), directory)
+        entries.append({**{key: record[key] for key in ("run_id", "pr", "sha", "artifact_id")}, "dir": str(directory)})
+    rebuilt, _rejected = build_baseline(entries, str(committed["generated_at"]))
+    rebuilt_dir = work_dir / "rebuilt"
+    expected = {path.name for path in write_sharded_baseline(rebuilt_dir, rebuilt)}
+    actual = {path.name for path in baseline_dir.iterdir() if path.is_file() and not path.name.startswith(".")}
+    problems = []
+    for name in sorted(expected | actual):
+        if name not in actual:
+            problems.append(f"{name}: missing from the committed baseline")
+        elif name not in expected:
+            problems.append(f"{name}: not produced by the build")
+        elif (baseline_dir / name).read_bytes() != (rebuilt_dir / name).read_bytes():
+            problems.append(f"{name}: differs from the rebuild")
+    return problems
+
+
+def reproduce_command(args: argparse.Namespace) -> int:
+    baseline_dir = Path(args.baseline_dir)
+    with tempfile.TemporaryDirectory() as work:
+        problems = reproduce_baseline(baseline_dir, gh_artifact_fetcher(args.repo), Path(work))
+    if problems:
+        for problem in problems:
+            print(f"::error title=reproduce-fast-baseline::{problem}")
+        print(f"{baseline_dir} is not reproducible from the artifacts named in its manifest")
+        return 1
+    print(f"{baseline_dir} is byte-identical to a rebuild from the artifacts named in its manifest")
+    return 0
+
+
+def landing_branch_command(args: argparse.Namespace) -> int:
+    text = Path(args.changed_files).read_text(encoding="utf-8", errors="replace")
+    changed = {line.strip() for line in text.splitlines() if line.strip()}
+    if not any(path.startswith(BASELINE_PATH_PREFIX) for path in changed):
+        print("no baseline change in this diff")
+        return 0
+    confined = all(path.startswith(BASELINE_PATH_PREFIX) or path in REFRESH_COMPANION_FILES for path in changed)
+    if confined and not args.head_ref.startswith(REFRESH_BRANCH_PREFIX):
+        print(
+            f"::error title=fast-baseline::a change confined to the fast-tier baseline must come from a "
+            f"{REFRESH_BRANCH_PREFIX}* branch produced by the refresh workflow, not {args.head_ref!r}; "
+            "mixed changes go through ordinary review"
+        )
+        return 1
+    scope = "confined to the baseline" if confined else "mixed with other files"
+    print(f"baseline change {scope}; head branch {args.head_ref!r} accepted")
+    return 0
+
+
 def check_command(args: argparse.Namespace) -> int:
     baseline = read_sharded_baseline(Path(args.baseline))
     entries = load_manifest(Path(args.manifest))
@@ -812,6 +904,18 @@ def main(argv: list[str] | None = None) -> int:
     build_parser.add_argument("--output", required=True)
     build_parser.add_argument("--generated-at", default=None)
     build_parser.set_defaults(handler=build_command)
+    reproduce_parser = subparsers.add_parser(
+        "reproduce", help="Rebuild the committed baseline from its manifest's artifacts and compare bytes."
+    )
+    reproduce_parser.add_argument("--baseline-dir", required=True)
+    reproduce_parser.add_argument("--repo", default=None)
+    reproduce_parser.set_defaults(handler=reproduce_command)
+    landing_parser = subparsers.add_parser(
+        "landing-branch", help="Require the refresh branch for a diff confined to the committed baseline."
+    )
+    landing_parser.add_argument("--changed-files", required=True)
+    landing_parser.add_argument("--head-ref", required=True)
+    landing_parser.set_defaults(handler=landing_branch_command)
     check_parser = subparsers.add_parser("check", help="Gate-check a baseline against its source runs.")
     check_parser.add_argument("--baseline", required=True)
     check_parser.add_argument("--manifest", required=True)

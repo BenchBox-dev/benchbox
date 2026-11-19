@@ -201,6 +201,7 @@ jobs:
       api-contract-changed: ${{ steps.path-flags.outputs.api-contract-changed }}
       tuning-paths-changed: ${{ steps.path-flags.outputs.tuning-paths-changed }}
       generator-volume-needed: ${{ steps.path-flags.outputs.generator-volume-needed }}
+      fast-baseline-changed: ${{ steps.path-flags.outputs.fast-baseline-changed }}
       sql-evidence-paths-changed: ${{ steps.path-flags.outputs.sql-evidence-paths-changed }}
       windows-leg-needed: ${{ steps.windows-select.outputs.windows-leg-needed }}
       trunk-lane-plain-needed: ${{ steps.path-flags.outputs.trunk-lane-plain-needed }}
@@ -355,6 +356,9 @@ jobs:
           generator_volume=false
           if grep -qE '^benchbox/core/(tpcdi|amplab|h2odb|coffeeshop|tsbs_devops|joinorder_synthetic|vector_search|write_primitives|transaction_primitives)/(generator(\.py|_specs\.yaml|/.*)|source_generators\.py)$' .ci-paths/changed.txt; then generator_volume=true; fi
           echo "generator-volume-needed=$generator_volume" >> "$GITHUB_OUTPUT"
+          fast_baseline=false
+          if grep -qE '^tests/fixtures/fast_tier_baseline/' .ci-paths/changed.txt; then fast_baseline=true; fi
+          echo "fast-baseline-changed=$fast_baseline" >> "$GITHUB_OUTPUT"
 
       - name: Classify merge units
         id: units
@@ -1580,6 +1584,46 @@ jobs:
       - name: Run real-CLI tuning liveness matrix
         run: make tuning-liveness-gate
 
+  fast-baseline-reproduce:
+    name: fast-baseline-reproduce
+    needs: ci-paths
+    if: ${{ needs.ci-paths.outputs.fast-baseline-changed == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Require the refresh branch for a baseline-only change
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          git diff --name-only --no-renames "$BASE_SHA...HEAD" > "$RUNNER_TEMP/baseline-changed-files.txt"
+          python -m scripts.build_fast_duration_baseline landing-branch \
+            --changed-files "$RUNNER_TEMP/baseline-changed-files.txt" \
+            --head-ref "$HEAD_REF"
+
+      - name: Reproduce the committed baseline from its source artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -m scripts.build_fast_duration_baseline reproduce \
+            --baseline-dir tests/fixtures/fast_tier_baseline \
+            --repo "${{ github.repository }}"
+
   generator-volume:
     name: generator-volume
     needs: ci-paths
@@ -1790,7 +1834,7 @@ jobs:
 
   core:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'core (text edit)' || 'core' }}
-    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, generator-volume, sql-execution-evidence, windows-tests, package-smoke, dependency-audit, trunk-lane-plain, trunk-lane-coverage]
+    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, generator-volume, fast-baseline-reproduce, sql-execution-evidence, windows-tests, package-smoke, dependency-audit, trunk-lane-plain, trunk-lane-coverage]
     if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
@@ -1885,6 +1929,7 @@ jobs:
             --expect tpch-binary-framing=${{ needs.ci-paths.outputs.heavy-needed == 'true' || needs.ci-paths.outputs.framing-needed == 'true' }} \
             --expect tuning-liveness=${{ needs.ci-paths.outputs.tuning-paths-changed == 'true' }} \
             --expect generator-volume=${{ needs.ci-paths.outputs.generator-volume-needed == 'true' }} \
+            --expect fast-baseline-reproduce=${{ needs.ci-paths.outputs.fast-baseline-changed == 'true' }} \
             --expect sql-execution-evidence=${{ needs.ci-paths.outputs.sql-evidence-paths-changed == 'true' }} \
             --expect windows-tests=${{ needs.ci-paths.outputs.windows-leg-needed == 'true' }} \
             --expect package-smoke=${{ needs.ci-paths.outputs.packaging-needed == 'true' || needs.ci-paths.outputs.first-command-needed == 'true' }} \
