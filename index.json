@@ -35908,6 +35908,13 @@
       "status": "done",
       "title": "Release UAT Velox container exits with code 1 and its image is built on the runner"
     },
+    "release-v2-probe-runs-head-script-with-merge-ref-permissions-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "release-v2 probe runs the PR head's launch script under the merge ref's token permissions, so branches older than #4390 get 403"
+    },
     "relocate-cli-hook-registries": {
       "claim": null,
       "needs": [],
