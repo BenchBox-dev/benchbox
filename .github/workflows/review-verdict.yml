@@ -38,18 +38,18 @@ jobs:
       actions: write
       contents: read
       pull-requests: read
-    uses: joeharris76/theseus/.github/workflows/review.yml@312ece0876ced3ef72659e355b0a93287697fb7a
+    uses: joeharris76/theseus/.github/workflows/review.yml@ebc0bfae2d3665812f2e6c42f62362c1087e9ddd
     with:
-      environment: oracle
-      theseus_ref: 312ece0876ced3ef72659e355b0a93287697fb7a
+      environment: review
+      theseus_ref: ebc0bfae2d3665812f2e6c42f62362c1087e9ddd
       gated_base: "develop,release/*"
       policy_path: .github/review.yml
-      tailscale_tag: tag:oracle-ci
+      tailscale_tag: tag:review-ci
     secrets:
-      REVIEW_APP_ID: ${{ secrets.ORACLE_APP_ID }}
-      REVIEW_APP_PRIVATE_KEY: ${{ secrets.ORACLE_APP_PRIVATE_KEY }}
-      REVIEW_GATEWAY_TOKEN: ${{ secrets.ORACLE_GATEWAY_TOKEN }}
-      REVIEW_GATEWAY_URL: ${{ secrets.ORACLE_GATEWAY_URL }}
+      REVIEW_APP_ID: ${{ secrets.REVIEW_APP_ID }}
+      REVIEW_APP_PRIVATE_KEY: ${{ secrets.REVIEW_APP_PRIVATE_KEY }}
+      REVIEW_GATEWAY_TOKEN: ${{ secrets.REVIEW_GATEWAY_TOKEN }}
+      REVIEW_GATEWAY_URL: ${{ secrets.REVIEW_GATEWAY_URL }}
       TS_OAUTH_CI_CLIENT_ID: ${{ secrets.TS_OAUTH_CI_CLIENT_ID }}
       TS_OAUTH_CI_SECRET: ${{ secrets.TS_OAUTH_CI_SECRET }}
       TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
@@ -78,7 +78,7 @@ jobs:
       INPUT_HEAD: ${{ inputs.head }}
       JOB_RESULT: ${{ needs.verdict.result }}
       GATED_BASE: "develop,release/*"
-      POSTER: benchbox-oracle[bot]
+      POSTER: benchbox-review[bot]
       REF_NAME: ${{ github.ref_name }}
       WORKFLOW_REF: ${{ github.workflow_ref }}
       CONTEXTS: review-verdict

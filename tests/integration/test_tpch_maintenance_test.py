@@ -19,7 +19,14 @@ from benchbox.core.tpch.maintenance_test import (
 )
 from benchbox.core.tpch.refresh import generate_refresh_update_sets
 from benchbox.core.tpch.schema import LINEITEM, ORDERS
-from tests.integration._tpch_refresh_utils import _delete_keys, _file_row_count, _load_sf001_base, _table_count
+from tests.integration._tpch_refresh_utils import (
+    AdapterConnection,
+    RefreshMarkerLog,
+    _delete_keys,
+    _file_row_count,
+    _load_sf001_base,
+    _table_count,
+)
 
 pytestmark = [
     pytest.mark.integration,
@@ -134,16 +141,6 @@ def test_maintenance_pairs_against_in_memory_database(tmp_path: Path, engine: st
     else:
         connection = sqlite3.connect(":memory:")
 
-    class NonclosingConnection:
-        def __init__(self, inner):
-            self.inner = inner
-
-        def __getattr__(self, name):
-            return getattr(self.inner, name)
-
-        def close(self):
-            pass
-
     try:
         base_counts = _load_sf001_base(connection)
         update_sets = generate_refresh_update_sets(0.01, 3, 2, tmp_path / "expected")
@@ -155,7 +152,10 @@ def test_maintenance_pairs_against_in_memory_database(tmp_path: Path, engine: st
             rf2_rows = len(keys) + _table_count(connection, LINEITEM.name, f"L_ORDERKEY IN ({key_list})")
             expected_rows.extend([rf1_rows, rf2_rows])
 
-        maintenance = TPCHMaintenanceTest(lambda: NonclosingConnection(connection), scale_factor=0.01, first_set=3)
+        markers = RefreshMarkerLog()
+        maintenance = TPCHMaintenanceTest(
+            lambda: AdapterConnection(connection, markers, closes=False), scale_factor=0.01, first_set=3
+        )
         result = maintenance.run_maintenance_test(
             maintenance_pairs=2,
             concurrent_with_queries=False,
@@ -175,6 +175,7 @@ def test_maintenance_pairs_against_in_memory_database(tmp_path: Path, engine: st
         assert [operation.operation_type for operation in result.operations] == ["RF1", "RF2", "RF1", "RF2"]
         assert [operation.update_set for operation in result.operations] == [3, 3, 4, 4]
         assert [operation.rows_affected for operation in result.operations] == expected_rows
+        assert markers.recorded == [connection] * 4
         assert _table_count(connection, ORDERS.name) == base_counts[ORDERS.name] + sum(
             _file_row_count(update_set.orders_path) - len(_delete_keys(update_set))
             for update_set in update_sets.values()

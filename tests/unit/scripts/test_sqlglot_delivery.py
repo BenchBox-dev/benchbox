@@ -1524,3 +1524,76 @@ def test_the_cli_reports_a_refusal_as_a_failure(world: World, capsys: pytest.Cap
     )
     assert code == 1
     assert "kind" in capsys.readouterr().err
+
+
+EGRESS = b"gh: HTTP 503: Egress is over the account limit. (https://api.github.com/x)"
+
+
+class FakeClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+        self.sleeps: list[float] = []
+
+    def __call__(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def scripted_download(
+    monkeypatch: pytest.MonkeyPatch, replies: list[tuple[int, bytes, bytes]]
+) -> tuple[delivery.GhApi, FakeClock, list[list[str]]]:
+    clock = FakeClock()
+    calls: list[list[str]] = []
+    queue = list(replies)
+
+    def run(command: list[str]) -> tuple[int, bytes, str]:
+        calls.append(command)
+        code, stdout, stderr = queue.pop(0) if len(queue) > 1 else queue[0]
+        return code, stdout, stderr.decode()
+
+    def budget() -> delivery.gh_transient.Budget:
+        return delivery.gh_transient.Budget(90.0, clock=clock, sleep=clock.sleep)
+
+    return delivery.GhApi(budget, run), clock, calls
+
+
+def test_an_artifact_download_that_hits_the_egress_limit_recovers_after_the_backoff(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    api, clock, calls = scripted_download(monkeypatch, [(1, b"", EGRESS), (0, b"zip-bytes", b"")])
+    assert api.download("repos/o/r/actions/artifacts/7/zip") == b"zip-bytes"
+    assert len(calls) == 2 and clock.sleeps == [5.0]
+
+
+def test_an_artifact_download_that_stays_transient_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    api, clock, calls = scripted_download(monkeypatch, [(1, b"", EGRESS)])
+    with pytest.raises(DeliveryError, match="did not clear after 4 attempt"):
+        api.download("repos/o/r/actions/artifacts/7/zip")
+    assert len(calls) == 4 and clock.sleeps == [5.0, 15.0, 45.0]
+
+
+def test_an_artifact_download_with_a_permanent_failure_is_refused_without_a_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    api, clock, calls = scripted_download(monkeypatch, [(1, b"", b"gh: HTTP 404: Not Found")])
+    with pytest.raises(DeliveryError, match="HTTP 404"):
+        api.download("repos/o/r/actions/artifacts/7/zip")
+    assert len(calls) == 1 and clock.sleeps == []
+
+
+def test_a_rate_limited_download_waits_for_the_reset_reported_by_gh(monkeypatch: pytest.MonkeyPatch) -> None:
+    api, clock, calls = scripted_download(
+        monkeypatch,
+        [
+            (1, b"", b"gh: API rate limit exceeded for installation"),
+            (0, b'{"resources": {"core": {"remaining": 0, "reset": 1030}}}', b""),
+            (0, b"zip-bytes", b""),
+        ],
+    )
+    api.new_budget = lambda: delivery.gh_transient.Budget(90.0, clock=clock, sleep=clock.sleep, wall=lambda: 1000.0)
+    assert api.download("repos/o/r/actions/artifacts/7/zip") == b"zip-bytes"
+    assert calls[1] == ["gh", "api", "rate_limit"]
+    assert clock.sleeps == [31.0]

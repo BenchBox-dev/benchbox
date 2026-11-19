@@ -137,3 +137,64 @@ def test_create_maintenance_phase_marks_failed_operation():
     assert phase.success is False
     assert phase.maintenance_operations[0].status == "FAILED"
     assert phase.maintenance_operations[0].error_message == "boom"
+
+
+def test_transactional_flag_round_trips_through_the_bundle():
+    operation = MaintenanceOperation(
+        operation="DF_SS",
+        operation_type="DELETE",
+        table="store_returns, store_sales",
+        execution_time_ms=3,
+        rows_affected=157,
+        status="SUCCESS",
+        transactional=False,
+    )
+    phase = MaintenanceTestPhase(
+        start_time="2026-01-01T00:00:00",
+        end_time="2026-01-01T00:00:01",
+        duration_ms=1000,
+        maintenance_operations=[operation, _operation()],
+        query_executions=[],
+        maintenance_method=METHOD,
+        success=True,
+    )
+    results = make_benchmark_results(
+        platform="clickhouse-local",
+        benchmark_id="tpcds",
+        benchmark_name="TPC-DS",
+        execution_phases=ExecutionPhases(setup=SetupPhase(), maintenance_test=phase),
+    )
+
+    payload = build_result_payload(results)
+
+    assert [op["transactional"] for op in payload["phases"]["maintenance_test"]["operations"]] == [False, True]
+    loaded = reconstruct_benchmark_results(payload).execution_phases.maintenance_test
+    assert [op.transactional for op in loaded.maintenance_operations] == [False, True]
+
+
+def test_bundles_without_the_flag_load_as_transactional():
+    payload = build_result_payload(_results(METHOD))
+    for operation in payload["phases"]["maintenance_test"]["operations"]:
+        operation.pop("transactional")
+
+    loaded = reconstruct_benchmark_results(payload).execution_phases.maintenance_test
+
+    assert all(op.transactional is True for op in loaded.maintenance_operations)
+
+
+def test_create_maintenance_phase_carries_the_operation_transactional_flag():
+    operation = TPCDSMaintenanceOperation(
+        operation_type="DELETE",
+        table_name="store_sales",
+        start_time=0.0,
+        end_time=0.0,
+        duration=0.0,
+        rows_affected=0,
+        success=True,
+        function="DF_SS",
+        transactional=False,
+    )
+
+    phase = _Host()._create_maintenance_phase({"operations": [operation], "success": True})
+
+    assert phase.maintenance_operations[0].transactional is False

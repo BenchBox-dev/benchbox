@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import sys
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 from scripts.release_probe_launch import CHECK_NAME, VARIANTS, WORKFLOW_FILE, gh, run_url
@@ -13,6 +16,17 @@ CHECKS_PAGE = 100
 MAX_PAGES = 30
 IN_PROGRESS = "in_progress"
 COMPLETED = "completed"
+JOBS_PAGE = 100
+REPORT_JOB_NAME = "probe report"
+OUTCOME_JOB_NAME = "release outcome"
+NEEDS_FAILURES = frozenset({"failure", "cancelled"})
+JOB_FAILURES = frozenset({"failure", "cancelled", "timed_out", "action_required", "startup_failure"})
+
+
+@dataclass(frozen=True)
+class VariantState:
+    finished: bool
+    failures: tuple[str, ...]
 
 
 def parse_external_id(external_id: str | None) -> dict[str, int]:
@@ -75,7 +89,51 @@ def is_probe_run(run: dict[str, Any], head_sha: str) -> bool:
     )
 
 
-def judge(repository: str, recorded: dict[str, int], head_sha: str, runner: Gh = gh) -> tuple[str, str, str] | None:
+def run_jobs(repository: str, run_id: int, runner: Gh = gh) -> list[dict[str, Any]]:
+    jobs: list[dict[str, Any]] = []
+    for page in range(1, MAX_PAGES + 1):
+        payload = runner(
+            "api", f"repos/{repository}/actions/runs/{run_id}/jobs?filter=latest&per_page={JOBS_PAGE}&page={page}"
+        )
+        rows = list(payload.get("jobs", []))
+        jobs.extend(rows)
+        if len(rows) < JOBS_PAGE:
+            break
+    return jobs
+
+
+def state_from_needs(needs: dict[str, Any]) -> VariantState:
+    failures = tuple(
+        f"{name}: {info.get('result')}" for name, info in sorted(needs.items()) if info.get("result") in NEEDS_FAILURES
+    )
+    return VariantState(True, failures)
+
+
+def state_from_api(repository: str, run: dict[str, Any], runner: Gh = gh) -> VariantState:
+    listed = run_jobs(repository, int(run["id"]), runner)
+    jobs = [job for job in listed if job.get("name") != REPORT_JOB_NAME]
+    settled = bool(jobs) and all(job.get("status") == COMPLETED for job in jobs)
+    outcome_done = any(job.get("name") == OUTCOME_JOB_NAME and job.get("status") == COMPLETED for job in jobs)
+    finished = run.get("status") == COMPLETED or (settled and outcome_done)
+    failures = tuple(f"{job['name']}: {job['conclusion']}" for job in jobs if job.get("conclusion") in JOB_FAILURES)
+    conclusion = run.get("conclusion")
+    if run.get("status") == COMPLETED and conclusion != "success" and not failures:
+        report_failed = any(
+            job.get("name") == REPORT_JOB_NAME and job.get("conclusion") in JOB_FAILURES for job in listed
+        )
+        if conclusion != "failure" or not report_failed:
+            failures = (f"run: {conclusion}",)
+    return VariantState(finished, failures)
+
+
+def judge(
+    repository: str,
+    recorded: dict[str, int],
+    head_sha: str,
+    runner: Gh = gh,
+    local: dict[int, dict[str, Any]] | None = None,
+) -> tuple[str, str, str] | None:
+    local = local or {}
     runs = {variant: runner("api", f"repos/{repository}/actions/runs/{run_id}") for variant, run_id in recorded.items()}
     foreign = [
         f"- {variant}: {run_url(repository, recorded[variant])}"
@@ -88,12 +146,19 @@ def judge(repository: str, recorded: dict[str, int], head_sha: str, runner: Gh =
             "Probe records foreign runs",
             f"These recorded runs are not release-v2.yml dispatches at {head_sha[:10]}:\n" + "\n".join(foreign),
         )
-    if any(run.get("status") != COMPLETED for run in runs.values()):
+    states = {
+        variant: state_from_needs(local[recorded[variant]])
+        if recorded[variant] in local
+        else state_from_api(repository, run, runner)
+        for variant, run in runs.items()
+    }
+    if not all(state.finished for state in states.values()):
         return None
     failed = [
-        f"- {variant}: {run.get('conclusion')} ({run.get('html_url') or run_url(repository, recorded[variant])})"
-        for variant, run in runs.items()
-        if run.get("conclusion") != "success"
+        f"- {variant}: {', '.join(state.failures) or 'did not succeed'} "
+        f"({runs[variant].get('html_url') or run_url(repository, recorded[variant])})"
+        for variant, state in states.items()
+        if state.failures
     ]
     if failed:
         return "failure", "Probe failed", "These release-v2 probe variants did not succeed:\n" + "\n".join(failed)
@@ -101,8 +166,15 @@ def judge(repository: str, recorded: dict[str, int], head_sha: str, runner: Gh =
     return "success", "Probe passed", f"Every release-v2 probe variant succeeded.\n\n{links}"
 
 
-def reconcile(repository: str, check_id: int, recorded: dict[str, int], head_sha: str, runner: Gh = gh) -> str:
-    verdict = judge(repository, recorded, head_sha, runner)
+def reconcile(
+    repository: str,
+    check_id: int,
+    recorded: dict[str, int],
+    head_sha: str,
+    runner: Gh = gh,
+    local: dict[int, dict[str, Any]] | None = None,
+) -> str:
+    verdict = judge(repository, recorded, head_sha, runner, local)
     if verdict is None:
         return "waiting: probe variants still running"
     conclusion, title, summary = verdict
@@ -125,25 +197,24 @@ def reconcile_head(repository: str, head_sha: str, runner: Gh = gh) -> str | Non
     )
 
 
-def settle(repository: str, run_id: int, runner: Gh = gh) -> str:
-    run = runner("api", f"repos/{repository}/actions/runs/{run_id}")
-    if run.get("event") != "workflow_dispatch" or run.get("status") != COMPLETED:
-        return "ignored: not a completed dispatched run"
-    found = find_check(probe_checks(repository, str(run["head_sha"]), runner), run_id)
+def report(repository: str, run_id: int, head_sha: str, needs: dict[str, Any], runner: Gh = gh) -> str:
+    found = find_check(probe_checks(repository, head_sha, runner), run_id)
     if found is None:
         return "ignored: no in-progress probe check records this run"
     check, recorded = found
-    return reconcile(repository, int(check["id"]), recorded, str(run["head_sha"]), runner)
+    return reconcile(repository, int(check["id"]), recorded, head_sha, runner, {run_id: needs})
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Complete the release-v2 probe check when its variant runs finish.")
+    parser = argparse.ArgumentParser(description="Complete the release-v2 probe check from a finished variant run.")
     parser.add_argument("--repository", required=True)
-    parser.add_argument("--run-id", type=int, required=True)
+    parser.add_argument("--run", type=int, required=True)
+    parser.add_argument("--head-sha", required=True)
     args = parser.parse_args(argv)
     try:
-        print(settle(args.repository, args.run_id))
-    except RuntimeError as exc:
+        needs = json.loads(os.environ.get("NEEDS_JSON", ""))
+        print(report(args.repository, args.run, args.head_sha, needs))
+    except (RuntimeError, ValueError) as exc:
         print(f"::error::{exc}", file=sys.stderr)
         return 1
     return 0

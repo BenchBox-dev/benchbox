@@ -5,7 +5,7 @@
 
 ## Purpose and limits
 
-This page records texts. It is not legal analysis. Nothing here says whether a clause applies to BenchBox, whether BenchBox or a submitter complies with it, or what the project should do. Every decision column is the owner's and reads `Owner decision: pending`.
+This page records texts. It is not legal analysis. Nothing here says whether a clause applies to BenchBox, whether BenchBox or a submitter complies with it, or what the project should do. The owner's decisions of 2026-11-19 on the open questions are in [`vendor-publication-terms-2026-11-19.md`](../../_project/decisions/vendor-publication-terms-2026-11-19.md) (D1 to D6), and each section below names the one that applies. The owner owns this record and re-reads it before each minor release and when a vendor in the corpus announces new terms (D6).
 
 Owner decision of 2026-11-13: static result pages include every published result in the meantime. Any withdrawal goes through the existing takedown process, not by editing pages. That process is documented in [`results-phase-3-runbook.md`](results-phase-3-runbook.md) (section "Takedown Process": `benchbox result withdraw`, `benchbox admin withdraw --reason ...`) and [`independent-publication-contract.md`](independent-publication-contract.md) (section "Emergency takedown").
 
@@ -20,9 +20,10 @@ Source of the behaviour: `benchbox/validation/bundle.py` (`PLAN_TIERS`, `VENDOR_
 - Result schema 2.5 bundles can carry the same five fields in `provenance` (`benchbox run --plan-tier` and `--preview-feature` record the first two); the validator applies the same refusals to the bundle's own `provenance` and to a manifest, with the stricter declaration winning, and `benchbox submit` merges the bundle's fields with its options.
 - `benchbox submit` writes `plan_tier`, `preview_features`, `vendor_permission`, `vendor_notice` and `self_run` into the manifest from CLI options. The validator reads the same fields.
 - Refusal: `plan_tier` of `free` or `trial` (or `funding: free-trial`), or any `preview_features`, with no `vendor_permission`. On Databricks any `preview_features` entry refuses even with permission. `self_run: false` on BigQuery refuses. A malformed `vendor_notice` or an invalid `plan_tier` refuses. Since the owner decision of 2026-11-17 (section 6), BigQuery, Snowflake and Databricks manifests dated on or after `VENDOR_CONDITIONS_MANDATORY_FROM` (2026-11-18) are also refused when `plan_tier` (paid, free or trial), `vendor_notice` or `self_run: true` is missing.
+- Refusal, owner decision D5 of 2026-11-19: Redshift, Athena, ClickHouse Cloud, MotherDuck and Starburst are in `UNSETTLED_VENDOR_PLATFORMS`, and every submission for them is refused until the owner settles that vendor's terms, which happens when its first result is submitted. The notice and `plan_tier` warnings below apply once a vendor is settled without mandatory fields.
 - Warning: missing `vendor_notice` on Redshift, Athena, ClickHouse Cloud, MotherDuck; missing `plan_tier` on Redshift, Athena, ClickHouse Cloud, MotherDuck. For BigQuery, Snowflake and Databricks the warning is replaced by the mandatory-field refusal after the cutoff and by the `pre_policy` label before it.
 - The checks read only what the submitter declares. They cannot see the real plan tier or features.
-- Starburst Galaxy has no entry in any of the maps: no check. Platforms outside `_VENDOR_KEYWORDS` get no check.
+- Starburst matches `vendor_platform_key` only for the D5 refusal; it has no entry in the notice, tier or self-run maps. Platforms outside `_VENDOR_KEYWORDS` get no check.
 - Replication information: bundles carry configuration and query text; the checklist treats that as the "disclosure includes what is needed to replicate" condition. Sending information to a vendor, notice in advance and reciprocity are manual steps with no check beyond the recorded `vendor_notice`.
 - Published manifests in `results-data/bundles` for BigQuery (51), Snowflake (50) and Databricks (50): none records `plan_tier`, `preview_features`, `vendor_permission`, `vendor_notice` or `self_run`; all have `funding: unspecified`. Section 7 classifies all 151.
 - Per the ADR, the owner decided on 2026-10-21 that public bundles carry `platform_timing` for every platform, confirmed 2026-10-22 for MotherDuck and Databricks, with the MotherDuck 13.1 and Databricks 7(b) risks recorded as accepted. This page does not revisit that.
@@ -43,7 +44,7 @@ These are software the submitter runs; there is no vendor service whose terms go
 
 | Platform (bundles) | Licence | URL read | Terms date | Benchmark / performance-publication clause |
 | --- | --- | --- | --- | --- |
-| CedarDB (1) | CedarDB Community Edition General Terms and Conditions (German binding, English for information, s.8); OSS notices page | https://cedardb.com/legal/agreements/community_tcs.pdf ; https://cedardb.com/docs/licensing ; https://cedardb.com/legal/oss_licenses | PDF: no date shown. Licensing page metadata: modified 2026-11-09 | None found in the Community terms (ss.1-8 read; extracted text is garbled bilingual layout and Exhibits 1 and 2 were not in it). OSS notices page: one match for "benchmark", "Some of the benchmark data in testdata/ is licensed differently", a third-party data notice. Enterprise and Enterprise Trial terms were not found and not read. Edition used for the bundle not checked. |
+| CedarDB (1) | CedarDB Community Edition General Terms and Conditions (German binding, English for information, s.8); OSS notices page | https://cedardb.com/legal/agreements/community_tcs.pdf ; https://cedardb.com/docs/licensing ; https://cedardb.com/legal/oss_licenses | PDF: no date shown. Licensing page metadata: modified 2026-11-09 | None found in the Community terms (ss.1-8 read; extracted text is garbled bilingual layout and Exhibits 1 and 2 were not in it). OSS notices page: one match for "benchmark", "Some of the benchmark data in testdata/ is licensed differently", a third-party data notice. Enterprise and Enterprise Trial terms were not found and not read. Owner decision of 2026-11-17: publication of results from the CedarDB Community Edition is approved, on the terms at https://cedardb.com/legal/agreements/community_tcs.pdf. |
 | StarRocks (1) | Apache-2.0 | https://raw.githubusercontent.com/StarRocks/starrocks/main/LICENSE.txt | none shown | None found |
 | Apache Doris (3) | Apache-2.0 (file also bundles third-party licence texts, incl. MIT) | https://raw.githubusercontent.com/apache/doris/master/LICENSE.txt | none shown | None found |
 | LakeSail (2) | Apache-2.0 | https://raw.githubusercontent.com/lakehq/sail/main/LICENSE | none shown | None found |
@@ -58,7 +59,7 @@ These are software the submitter runs; there is no vendor service whose terms go
 
 Apache-2.0 reference text also read: https://www.apache.org/licenses/LICENSE-2.0.txt (no "benchmark" match). The same ClickHouse licence file covers the open-source server and local binary, not ClickHouse Cloud (section 5.3).
 
-Owner decision: pending.
+Owner decision D4 (2026-11-19): rely on the licence texts. The published CedarDB bundle records no edition; the owner confirms it was the Community Edition, and the Enterprise and Trial terms are pursued only if an Enterprise result is submitted.
 
 ## 2. Terms differences since 2026-10-22
 
@@ -73,10 +74,10 @@ Owner decision: pending.
 
 | Platform | Clause (verbatim, short) | URL | Terms date | Read | Owner decision |
 | --- | --- | --- | --- | --- | --- |
-| Redshift, Athena (incl. Athena Spark) | AWS Service Terms 1.8: "You may perform benchmarks or comparative tests or evaluations ... If you perform or disclose ... any Benchmark of any of the Services, you (i) will include in any disclosure, and will disclose to us, all information necessary to replicate such Benchmark, and (ii) agree that we may perform and disclose the results of Benchmarks of your products or services..." | https://aws.amazon.com/service-terms/ | Last Updated: November 5, 2026 | 2026-11-16 | pending |
-| ClickHouse Cloud | AUP 2: see 5.3 | https://clickhouse.com/legal/agreements/acceptable-use-policy | Effective date: July 16, 2026 | 2026-11-16 | pending |
-| MotherDuck | MSA 1.5: see 5.4 | https://motherduck.com/terms-of-service/ | Last Updated: 2026-10-05 | 2026-11-16 | pending |
-| Starburst Galaxy | No benchmark clause; see 5.5 | https://www.starburst.io/terms/galaxy-terms-of-service | no date shown | 2026-11-16 | pending |
+| Redshift, Athena (incl. Athena Spark) | AWS Service Terms 1.8: "You may perform benchmarks or comparative tests or evaluations ... If you perform or disclose ... any Benchmark of any of the Services, you (i) will include in any disclosure, and will disclose to us, all information necessary to replicate such Benchmark, and (ii) agree that we may perform and disclose the results of Benchmarks of your products or services..." | https://aws.amazon.com/service-terms/ | Last Updated: November 5, 2026 | 2026-11-16 | D5: settle on first result; refused until then |
+| ClickHouse Cloud | AUP 2: see 5.3 | https://clickhouse.com/legal/agreements/acceptable-use-policy | Effective date: July 16, 2026 | 2026-11-16 | D5: settle on first result; refused until then |
+| MotherDuck | MSA 1.5: see 5.4 | https://motherduck.com/terms-of-service/ | Last Updated: 2026-10-05 | 2026-11-16 | D5: settle on first result; refused until then |
+| Starburst Galaxy | No benchmark clause; see 5.5 | https://www.starburst.io/terms/galaxy-terms-of-service | no date shown | 2026-11-16 | D5: settle on first result; refused until then |
 
 ## 4. Managed platforms with published results
 
@@ -90,7 +91,7 @@ Owner decision: pending.
 - **Change since 2026-10-22:** none in clause substance; date shown differs (section 2).
 - **BenchBox today:** `SELF_RUN_PLATFORMS["bigquery"]` in `benchbox/validation/bundle.py`; `--self-run` in `benchbox/cli/commands/submit.py`. `self_run: false` refuses, missing warns. No check for reciprocity, no notice, no tier or preview check. Replication information: bundle config and query text. The 51 published manifests record none of the vendor fields.
 - **Flags** (looks restrictive - owner to assess): "may not permit a third party to" conduct tests; reciprocity ("Customer allows Google to conduct benchmark tests of Customer's publicly available products"); prior written consent where a Test is done on behalf of a hyperscale public cloud provider.
-- Owner decision: pending.
+- Owner decision D1 (2026-11-19): the submitter, as the account holder, carries the replication and reciprocity conditions; publishing is not acceptance by the project.
 
 ### 4.2 Snowflake (50 bundles)
 
@@ -102,7 +103,7 @@ Owner decision: pending.
 - **Change since 2026-10-22:** none.
 - **BenchBox today:** Snowflake is in `VENDOR_NOTICE_PLATFORMS` and `TIERED_PLATFORMS`. Missing `vendor_notice` warns; `plan_tier` free or trial, or `preview_features`, without `vendor_permission` refuses; missing `plan_tier` warns. The check confirms a dated reference exists; it does not judge "reasonably in advance". The 50 published manifests record none of the vendor fields.
 - **Flags** (looks restrictive - owner to assess): sharing results with Snowflake "reasonably in advance" of disclosure; prior written approval for results involving Preview features (confidential); "Subject to the use restrictions herein" qualifier; Snowflake Technology is Confidential Information under Terms of Service 14.
-- Owner decision: pending.
+- Owner decisions D1 and D2 (2026-11-19): the submitter carries the conditions, sends the advance notice and records it in `vendor_notice`; for project runs the owner sends it. Earlier results stay `pre_policy`.
 
 ### 4.3 Databricks (50 bundles)
 
@@ -115,7 +116,7 @@ Owner decision: pending.
 - **Change since 2026-10-22:** none.
 - **BenchBox today:** Databricks is in `TIERED_PLATFORMS` only. `plan_tier` free/trial without `vendor_permission` refuses; any `preview_features` entry refuses even with permission (message cites the AUP Beta exclusion); missing `plan_tier` warns. No notice check, no reciprocity check. Variants such as Databricks DataFrame match via `vendor_platform_key`. Bundles carry `platform_timing`. The 50 published manifests record none of the vendor fields.
 - **Flags** (looks restrictive - owner to assess): AUP 7(b) on bulk or systematic export or persistent copies of "metadata generated by the Databricks Services"; Beta Services excluded from disclosure; reciprocity; Free Edition results disclosable only if "expressly permitted by us"; whether results from a trial plan fall under "paid (including trial)" AUP.
-- Owner decision: pending.
+- Owner decisions D1 and D3 (2026-11-19): the submitter carries the conditions; the 2026-10-22 acceptance of 7(b) stands.
 
 ## 5. Managed platforms with no published result in the corpus
 
@@ -126,13 +127,13 @@ Owner decision: pending.
 - **Source:** https://aws.amazon.com/service-terms/ ; https://aws.amazon.com/agreement/
 - **Terms date shown:** Service Terms "Last Updated: November 5, 2026"; Customer Agreement "Last Updated: October 29, 2026".
 - **Date read:** 2026-11-16. **Change since 2026-10-22:** none in substance; dates moved (section 2). No Redshift-specific benchmark clause found in the Service Terms; the only other "benchmark" clause there concerns Oracle Software.
-- **BenchBox today:** in `VENDOR_NOTICE_PLATFORMS` (notice warning) and `TIERED_PLATFORMS` (preview/free/trial refusal). No published results.
+- **BenchBox today:** in `UNSETTLED_VENDOR_PLATFORMS` (every submission refused, D5), `VENDOR_NOTICE_PLATFORMS` (notice warning) and `TIERED_PLATFORMS` (preview/free/trial refusal). No published results.
 - **Flags** (looks restrictive - owner to assess): information must also go "to us" (AWS); reciprocity; Beta/Preview observations are AWS Confidential Information and limited to "internal evaluation purposes"; Customer Agreement 11.9 publicity clause (which 11.2 subordinates to Service Terms).
-- Owner decision: pending.
+- Owner decision D5 (2026-11-19): settle on the first submitted result; refused until then.
 
 ### 5.2 Athena (including Athena Spark)
 
-Same texts, URLs, dates and BenchBox behaviour as 5.1 (`vendor_platform_key` maps `athena` variants). No Athena-specific benchmark clause found. Flags as 5.1. Owner decision: pending.
+Same texts, URLs, dates and BenchBox behaviour as 5.1 (`vendor_platform_key` maps `athena` variants). No Athena-specific benchmark clause found. Flags as 5.1. Owner decision D5 (2026-11-19): settle on the first submitted result; refused until then.
 
 ### 5.3 ClickHouse Cloud
 
@@ -141,9 +142,9 @@ Same texts, URLs, dates and BenchBox behaviour as 5.1 (`vendor_platform_key` map
 - **Source:** https://clickhouse.com/legal/agreements/acceptable-use-policy ; https://clickhouse.com/legal/clickhouse-cloud-addendum
 - **Terms date shown:** AUP "Effective date: July 16, 2026"; Cloud Addendum "Effective Date: April 10, 2026" (see section 2 on a v20260917 PDF).
 - **Date read:** 2026-11-16. **Change since 2026-10-22:** none in the clauses read.
-- **BenchBox today:** in `VENDOR_NOTICE_PLATFORMS` and `TIERED_PLATFORMS` (`clickhouse-cloud`; "clickhouse" plus "cloud" in the platform name). ClickHouse Local and Server bundles in the corpus are not matched. No published results.
+- **BenchBox today:** in `UNSETTLED_VENDOR_PLATFORMS` (every submission refused, D5), `VENDOR_NOTICE_PLATFORMS` and `TIERED_PLATFORMS` (`clickhouse-cloud`; "clickhouse" plus "cloud" in the platform name). ClickHouse Local and Server bundles in the corpus are not matched. No published results.
 - **Flags** (looks restrictive - owner to assess): disclosure "to ClickHouse"; reciprocity; beta/preview/early-access results confidential without prior written consent; AUP 1.4 metadata extraction wording.
-- Owner decision: pending.
+- Owner decision D5 (2026-11-19): settle on the first submitted result, including which Cloud Addendum version is current; refused until then.
 
 ### 5.4 MotherDuck
 
@@ -152,9 +153,9 @@ Same texts, URLs, dates and BenchBox behaviour as 5.1 (`vendor_platform_key` map
 - **Source:** https://motherduck.com/terms-of-service/
 - **Terms date shown:** "Last Updated: 2026-10-05".
 - **Date read:** 2026-11-16. **Change since 2026-10-22:** none.
-- **BenchBox today:** in `VENDOR_NOTICE_PLATFORMS` and `TIERED_PLATFORMS`. Free or trial `plan_tier` or any preview feature without `vendor_permission` refuses. The ADR records the owner's acceptance of 13.1 for public bundles. No published results.
+- **BenchBox today:** in `UNSETTLED_VENDOR_PLATFORMS` (every submission refused, D5), `VENDOR_NOTICE_PLATFORMS` and `TIERED_PLATFORMS`. Free or trial `plan_tier` or any preview feature without `vendor_permission` refuses. The ADR records the owner's acceptance of 13.1 for public bundles. No published results.
 - **Flags** (looks restrictive - owner to assess): 13.1 treating "any technical or performance information about the Services" as Confidential Information; 15 for Trials and Betas; disclosure of "all data, software code, and other information" to MotherDuck; reciprocity.
-- Owner decision: pending.
+- Owner decisions D3 and D5 (2026-11-19): the 2026-10-22 acceptance of 13.1 stands; settle on the first submitted result; refused until then.
 
 ### 5.5 Starburst Galaxy
 
@@ -162,9 +163,9 @@ Same texts, URLs, dates and BenchBox behaviour as 5.1 (`vendor_platform_key` map
 - **Source:** https://www.starburst.io/terms/galaxy-terms-of-service
 - **Terms date shown:** no date shown.
 - **Date read:** 2026-11-16. **Change since 2026-10-22:** none.
-- **BenchBox today:** no entry in `VENDOR_NOTICE_PLATFORMS`, `TIERED_PLATFORMS` or `SELF_RUN_PLATFORMS`; no check. No published results.
+- **BenchBox today:** in `UNSETTLED_VENDOR_PLATFORMS` (platform names containing "starburst"; every submission refused, D5); no entry in `VENDOR_NOTICE_PLATFORMS`, `TIERED_PLATFORMS` or `SELF_RUN_PLATFORMS`. No published results.
 - **Flags** (looks restrictive - owner to assess): breadth of "relates to ... technology" in the Confidentiality clause (4); "proprietary and confidential" language about the Service in 3. Enterprise Software EULA and Galaxy Early Access Agreement not read.
-- Owner decision: pending.
+- Owner decision D5 (2026-11-19): settle on the first submitted result, including the EULA and Early Access Agreement questions in section 9; refused until then.
 
 ## 6. Owner decisions of 2026-11-17 and how they are implemented
 
@@ -229,9 +230,11 @@ Quotes are verbatim from the live vendor pages, retrieved 2026-11-17, with typog
 8. Starburst Galaxy Early Access Agreement: Galaxy and "information and documentation related thereto" are Starburst Confidential Information for five years; whether results of testing Galaxy are "related" information is not stated; "Effective Date" is used but not defined; the page shows no date, and a search listing aged it at about 71 months, so whether it still applies to current Galaxy use is not established.
 9. CedarDB: Enterprise and Enterprise Trial terms and Community Exhibits 1 and 2 are unreachable; whether any contains a benchmark or publication condition is unknown.
 
-No validator refusal and no checklist step was added for these: none is a benchmark-publication clause whose required fact a manifest records.
+No validator refusal and no checklist step was added for these: none is a benchmark-publication clause whose required fact a manifest records. Clauses 1, 2, 5, 6, 7 and 8 concern vendors with no published result and are resolved when each is settled (D5); clause 3 is settled by refusing Databricks preview features; clause 4 is covered by the free-tier refusal without `vendor_permission`; clause 9 is covered by D4.
 
 ## For the owner
+
+All eleven questions below are decided: questions 2 and 3 on 2026-11-17 (section 6), the rest on 2026-11-19 in [`vendor-publication-terms-2026-11-19.md`](../../_project/decisions/vendor-publication-terms-2026-11-19.md): questions 1 and 6 by D1, 5 by D2, 4 by D3, 7 and 8 by D4, 9 and 10 by D5, and 11 by D6.
 
 1. For BigQuery, Snowflake and Databricks, which clauses (if any) does the project treat as applying to published results, and who records that?
 2. Does the submit-time check, which reads only submitter declarations, stand as the project's handling of plan tier, Preview/Beta use, notice and permission, or does the project want something else recorded?
@@ -239,7 +242,7 @@ No validator refusal and no checklist step was added for these: none is a benchm
 4. Is the 2026-10-22 acceptance of MotherDuck 13.1 and Databricks 7(b) still the position, given the texts above?
 5. For Snowflake, who sends results to Snowflake "reasonably in advance", and how is that recorded for results the project itself publishes?
 6. For the reciprocity clauses (Google, Databricks, and the AWS, ClickHouse and MotherDuck ones), does the project treat publishing as acceptance, or leave that to submitters?
-7. For CedarDB, is the Community Edition the edition used for the published bundle, and does the project want the Enterprise and Trial terms read?
+7. For CedarDB, does the project want the Enterprise and Trial terms read? (Answered 2026-11-17 for the Community Edition: publication approved; see the CedarDB row.)
 8. Is the project content to rely on each engine's open-source licence text for the self-run engines, given none of the texts read mention benchmarks?
 9. Should Redshift, Athena, ClickHouse Cloud, MotherDuck and Starburst Galaxy be settled before their first published result, or when a result arrives?
 10. Which ClickHouse Cloud Addendum version (April 10 or September 17, 2026) is current, and should it be re-read?

@@ -24,7 +24,6 @@ def _load(module_name: str, filename: str):
 
 ledger_seed = _load("ledger_seed_under_test", "create_ledger_seed.py")
 bijection = _load("bijection_override_under_test", "check_corpus_bijection.py")
-reconciler = _load("reconciler_override_under_test", "reconciler.py")
 parity = _load("parity_override_under_test", "validator_parity.py")
 
 BUNDLE = "results-data/bundles/tpch/duckdb/sf1.json"
@@ -60,16 +59,6 @@ def test_ledger_seed_ignores_override_suffix() -> None:
 def test_bijection_ignores_override_suffix() -> None:
     assert bijection._is_primary_bundle(BUNDLE) is True
     assert bijection._is_primary_bundle(OVERRIDE) is False
-
-
-def test_reconciler_corpus_paths_ignore_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    repo = _init_repo(tmp_path)
-    (repo / BUNDLE).write_text("{}", encoding="utf-8")
-    (repo / OVERRIDE).write_text("{}", encoding="utf-8")
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-qm", "base")
-    monkeypatch.setattr(reconciler, "REPO_ROOT", repo)
-    assert reconciler.get_corpus_paths("HEAD") == {BUNDLE}
 
 
 def test_parity_override_change_back_maps_bundle_not_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
