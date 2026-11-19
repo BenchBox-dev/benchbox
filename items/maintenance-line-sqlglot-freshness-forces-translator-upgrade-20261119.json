@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "A test shows the chosen rule on a release/X.Y.x checkout whose wheel is older than upstream.",
+    "release-guide.md maintenance steps state the rule.",
+    "A line PR that changes benchbox/_vendor/sqlglot.json together with other changes is refused, or follows the chosen path."
+  ],
+  "description": "scripts/check_sqlglot_upstream_freshness.py (run by release_flow.py check) fails any release whose bundled SQLGlot is older than the newest upstream tag unless scripts/sqlglot_refresh_waiver.json holds a waiver (31 days at most). #4303 (StarRocks evidence backport and 0.5.2rc2 prep) therefore moved release/0.5.x from 30.31.0.1 to 30.33.0.1, as its body says the freshness check requires. That brought 9 translated-query changes, including the QuestDB 18_v10 break that failed rc2 (release-v2 44189388601), into a patch release, and bundled the wheel change into a fix and prep PR. This contradicts release-guide's aim to ship a fix on an older minor without shipping everything on develop.\n\nDecision gate (owner): (a) maintenance lines are exempt from freshness and keep the tag's wheel; (b) lines adopt only through a separate adoption PR carrying the translation report from sqlglot-adoption-full-translation-diff-20261119; (c) lines use a recorded, dated waiver.\n\nGuardrails: no silent waiver; no wheel change bundled into a fix or prep PR; develop's freshness gate unchanged; security advisories still enforced on lines.",
+  "links": [
+    "scripts/check_sqlglot_upstream_freshness.py",
+    "scripts/sqlglot_refresh_waiver.json",
+    "https://github.com/BenchBox-dev/benchbox/pull/4303",
+    "docs/internal/release-guide.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a",
+      "at": "2026-11-19T14:34:22Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f0449bd519eb47a994d952adb1183862",
+      "session_id": "ad8ff63c31d0492faa7526a81e19db83"
+    }
+  ]
+}
