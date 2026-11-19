@@ -442,6 +442,20 @@ def test_cedardb_cells_start_the_pinned_service_before_the_run() -> None:
     assert "docker/cedardb/docker-compose.yml up -d --wait" in start["run"]
 
 
+def test_cedardb_cells_connect_with_the_compose_service_credentials() -> None:
+    compose = yaml.safe_load((REPO_ROOT / "docker" / "cedardb" / "docker-compose.yml").read_text(encoding="utf-8"))
+    service = compose["services"]["cedardb"]
+    environment = service["environment"]
+    host_port = service["ports"][0].split(":")[0]
+    steps = _workflow()["jobs"]["generate-seed-corpus"]["steps"]
+    run = next(step for step in steps if step.get("name") == "Run benchmark")["run"]
+
+    assert f"--platform-option port={host_port}" in run
+    assert f"--platform-option username={environment['CEDAR_USER']}" in run
+    assert f"--platform-option 'password={environment['CEDAR_PASSWORD']}'" in run
+    assert f"--platform-option admin_database={environment['CEDAR_DB']}" in run
+
+
 def test_seed_corpus_pr_targets_develop() -> None:
     run = _create_pr_steps()["Open pull request"]
 

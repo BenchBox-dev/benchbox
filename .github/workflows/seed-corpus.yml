@@ -235,6 +235,9 @@ jobs:
           fi
           if [ "${{ matrix.platform }}" = "cedardb" ]; then
             command+=(--platform-option port=5435)
+            command+=(--platform-option username=benchbox)
+            command+=(--platform-option 'password=Benchbox1!')
+            command+=(--platform-option admin_database=benchbox_test)
           fi
           "${command[@]}"
 
