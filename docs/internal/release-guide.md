@@ -482,26 +482,37 @@ success at once. It runs on every pull request from a branch of this repository 
 that the check can be required without leaving unrelated pull requests pending. If a dispatch fails, or the job
 graph check fails, the check run is created as a failure carrying the error.
 
-`release-v2-probe-verdict.yml` runs on `workflow_run` completion of `Release v2`
-(always from the default branch). For a dispatched run it finds the in-progress
-`release-v2 probe` check run on the run's head commit whose recorded ids include
-that run. When all three recorded runs have completed it completes the check:
-success only if all three concluded success, otherwise failure naming each
-variant that did not succeed with its conclusion and link. While any run is
-queued or in progress it does nothing, and a check run that is already completed
-is left alone. The logic lives in `scripts/release_probe_verdict.py`. A run
-cancelled by a newer push completes the old head's check as failure, which is
-harmless because only the current head counts. Expect the check to stay in
-progress for as long as the runs queue: under runner congestion that can be hours,
-and waiting is the remedy; do not re-dispatch the probe. The verdict workflow
-only sees runs that finish after the check exists, so right after creating the
-check the dispatch job completes it itself if every recorded run has already
-finished. A check records three distinct run ids and each must be a
-`release-v2.yml` dispatch at the check's head commit, otherwise the check fails.
+The last job of `release-v2.yml`, `probe report` (job id `report-probe`), completes
+the check. It runs only in probe mode, with `if: always()`, after every other job, and
+holds `contents: read`, `actions: read` and `checks: write`; it cannot publish and
+`scripts/release_probe_graph.py` enforces that it needs every other job, runs in every
+probe outcome and never runs in a real release. (A `workflow_run` workflow cannot do
+this: the variants are dispatched with `GITHUB_TOKEN`, so GitHub raises no
+`workflow_run` event for them.) Each variant's report job finds the in-progress
+`release-v2 probe` check on its head commit whose recorded ids include its run and
+judges the three runs by their substantive jobs, not by run status, which still reads
+in progress while a report job runs. The current run is judged from its `needs`
+results; every other recorded run is judged from the jobs the API lists for it, and
+counts as finished once its `release outcome` job (the last substantive job, which
+every other job precedes) and every non-report job have completed, or once the run
+itself completed. When all three are finished the check completes: success only if no
+substantive job in any run failed, was cancelled or timed out (skipped jobs are fine),
+otherwise failure naming each variant, its failing jobs and the run link. While any
+substantive job is unfinished it changes nothing, and a completed check is left alone,
+so two reports finishing together reach the same verdict and the second finds the
+check completed. The logic lives in `scripts/release_probe_verdict.py`. A run cancelled
+by a newer push completes the old head's check as failure, which is harmless because
+only the current head counts. Expect the check to stay in progress for as long as the
+runs queue: under runner congestion that can be hours, and waiting is the remedy; do
+not re-dispatch the probe. A check records three distinct run ids and each must be a
+`release-v2.yml` dispatch at the check's head commit, otherwise the check fails. Right
+after creating the check, the dispatch job completes it itself if every recorded run
+has already finished.
 
-Re-running the `release-v2 probe dispatch` job reconciles a check whose `workflow_run`
-event was missed: before dispatching, the job looks for an in-progress `release-v2 probe`
-check on the head commit that records run ids. If every recorded run has finished it
+Re-running the `release-v2 probe dispatch` job reconciles a check whose report job did
+not complete it (for example because the report job itself failed): before dispatching,
+the job looks for an in-progress `release-v2 probe` check on the head commit that
+records run ids. If every recorded run has finished, by the same job-based rule, it
 completes that check through the verdict code and exits without dispatching; if any is
 still running it exits and changes nothing. When the check is already completed, or none
 exists, the job behaves as it always did: it dispatches the three variants and creates a

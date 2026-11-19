@@ -300,7 +300,11 @@ def test_only_the_reuse_and_gate_jobs_read_other_runs():
     for name, job in _jobs().items():
         actions = job.get("permissions", {}).get("actions")
         expected = (
-            "write" if name == "cancel-trunk-uat" else "read" if name in {"admit", "uat-reuse", "release-uat"} else None
+            "write"
+            if name == "cancel-trunk-uat"
+            else "read"
+            if name in {"admit", "uat-reuse", "release-uat", "report-probe"}
+            else None
         )
         assert actions == expected, name
     assert yaml.safe_load(_text())["permissions"] == {"contents": "read"}
