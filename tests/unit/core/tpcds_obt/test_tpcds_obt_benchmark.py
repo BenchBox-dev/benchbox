@@ -228,7 +228,7 @@ def test_get_data_source_benchmark_declares_tpcds() -> None:
     assert benchmark.get_data_source_benchmark() == "tpcds"
 
 
-@pytest.mark.parametrize("scale_factor", [0.01, 0.1, 1, 10, 100000])
+@pytest.mark.parametrize("scale_factor", [0.01, 0.1, 1, 10, 3000])
 def test_public_api_accepts_the_tpcds_scale_range(tmp_path: Path, scale_factor: float) -> None:
     from benchbox import TPCDSOBT
 
@@ -239,7 +239,7 @@ def test_public_api_accepts_the_tpcds_scale_range(tmp_path: Path, scale_factor: 
 
 @pytest.mark.parametrize(
     ("scale_factor", "message"),
-    [(0.0005, "below the minimum subscale"), (100001, "exceeds maximum"), (2.5, "whole integers")],
+    [(0.0005, "below the minimum subscale"), (3001, "exceeds maximum"), (2.5, "whole integers")],
 )
 def test_public_api_rejects_scales_the_cli_rejects(tmp_path: Path, scale_factor: float, message: str) -> None:
     from benchbox import TPCDSOBT

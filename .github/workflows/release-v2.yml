@@ -1148,14 +1148,14 @@ jobs:
     permissions:
       contents: read
       actions: read
-      checks: write
+      statuses: write
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           ref: ${{ needs.admit.outputs.head_sha }}
           persist-credentials: false
 
-      - name: Complete the release-v2 probe check once every variant run has finished
+      - name: Set the release-v2 probe status once every variant run has finished
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}

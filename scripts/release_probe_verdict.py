@@ -8,13 +8,21 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from scripts.release_probe_launch import CHECK_NAME, VARIANTS, WORKFLOW_FILE, gh, run_url
+from scripts.release_probe_launch import (
+    PENDING_PREFIX,
+    PROBE_CONTEXT,
+    VARIANTS,
+    WORKFLOW_FILE,
+    gh,
+    post_status,
+    run_url,
+)
 
 Gh = Callable[..., Any]
 RELEASE_WORKFLOW_PATH = f".github/workflows/{WORKFLOW_FILE}"
-CHECKS_PAGE = 100
+STATUSES_PAGE = 100
 MAX_PAGES = 30
-IN_PROGRESS = "in_progress"
+PENDING = "pending"
 COMPLETED = "completed"
 JOBS_PAGE = 100
 REPORT_JOB_NAME = "probe report"
@@ -29,9 +37,19 @@ class VariantState:
     failures: tuple[str, ...]
 
 
-def parse_external_id(external_id: str | None) -> dict[str, int]:
+@dataclass(frozen=True)
+class Verdict:
+    state: str
+    description: str
+    target_url: str | None = None
+
+
+def parse_recorded_runs(description: str | None) -> dict[str, int]:
+    text = description or ""
+    if not text.startswith(PENDING_PREFIX):
+        return {}
     recorded: dict[str, int] = {}
-    for part in (external_id or "").split(";"):
+    for part in text.removeprefix(PENDING_PREFIX).split(";"):
         variant, _, run_id = part.partition("=")
         if variant in VARIANTS and run_id.isdigit():
             recorded[variant] = int(run_id)
@@ -39,46 +57,23 @@ def parse_external_id(external_id: str | None) -> dict[str, int]:
     return recorded if set(recorded) == set(VARIANTS) and distinct else {}
 
 
-def probe_checks(repository: str, head_sha: str, runner: Gh = gh) -> list[dict[str, Any]]:
-    checks: list[dict[str, Any]] = []
+def latest_status(repository: str, head_sha: str, runner: Gh = gh) -> dict[str, Any] | None:
     for page in range(1, MAX_PAGES + 1):
-        payload = runner(
-            "api",
-            f"repos/{repository}/commits/{head_sha}/check-runs"
-            f"?filter=all&per_page={CHECKS_PAGE}&page={page}&check_name={CHECK_NAME.replace(' ', '%20')}",
+        rows = list(
+            runner("api", f"repos/{repository}/commits/{head_sha}/statuses?per_page={STATUSES_PAGE}&page={page}")
         )
-        rows = list(payload.get("check_runs", []))
-        checks.extend(rows)
-        if len(rows) < CHECKS_PAGE:
-            break
-    return checks
-
-
-def find_check(checks: list[dict[str, Any]], run_id: int) -> tuple[dict[str, Any], dict[str, int]] | None:
-    for check in checks:
-        if check.get("name") != CHECK_NAME or check.get("status") != IN_PROGRESS:
-            continue
-        recorded = parse_external_id(check.get("external_id"))
-        if run_id in recorded.values():
-            return check, recorded
+        for row in rows:
+            if row.get("context") == PROBE_CONTEXT:
+                return row
+        if len(rows) < STATUSES_PAGE:
+            return None
     return None
 
 
-def complete_check(repository: str, check_id: int, conclusion: str, title: str, summary: str, runner: Gh = gh) -> None:
-    runner(
-        "api",
-        "--method",
-        "PATCH",
-        f"repos/{repository}/check-runs/{check_id}",
-        "-f",
-        f"status={COMPLETED}",
-        "-f",
-        f"conclusion={conclusion}",
-        "-f",
-        f"output[title]={title}",
-        "-f",
-        f"output[summary]={summary}",
-    )
+def open_runs(status: dict[str, Any] | None) -> dict[str, int]:
+    if status is None or status.get("state") != PENDING:
+        return {}
+    return parse_recorded_runs(status.get("description"))
 
 
 def is_probe_run(run: dict[str, Any], head_sha: str) -> bool:
@@ -132,19 +127,15 @@ def judge(
     head_sha: str,
     runner: Gh = gh,
     local: dict[int, dict[str, Any]] | None = None,
-) -> tuple[str, str, str] | None:
+) -> Verdict | None:
     local = local or {}
     runs = {variant: runner("api", f"repos/{repository}/actions/runs/{run_id}") for variant, run_id in recorded.items()}
-    foreign = [
-        f"- {variant}: {run_url(repository, recorded[variant])}"
-        for variant, run in runs.items()
-        if not is_probe_run(run, head_sha)
-    ]
+    foreign = [variant for variant, run in runs.items() if not is_probe_run(run, head_sha)]
     if foreign:
-        return (
+        return Verdict(
             "failure",
-            "Probe records foreign runs",
-            f"These recorded runs are not release-v2.yml dispatches at {head_sha[:10]}:\n" + "\n".join(foreign),
+            f"Probe records foreign runs, not {WORKFLOW_FILE} dispatches at {head_sha[:10]}: {', '.join(foreign)}",
+            run_url(repository, recorded[foreign[0]]),
         )
     states = {
         variant: state_from_needs(local[recorded[variant]])
@@ -154,21 +145,20 @@ def judge(
     }
     if not all(state.finished for state in states.values()):
         return None
-    failed = [
-        f"- {variant}: {', '.join(state.failures) or 'did not succeed'} "
-        f"({runs[variant].get('html_url') or run_url(repository, recorded[variant])})"
-        for variant, state in states.items()
-        if state.failures
-    ]
+    failed = [variant for variant, state in states.items() if state.failures]
     if failed:
-        return "failure", "Probe failed", "These release-v2 probe variants did not succeed:\n" + "\n".join(failed)
-    links = "\n".join(f"- {variant}: {run_url(repository, run_id)}" for variant, run_id in recorded.items())
-    return "success", "Probe passed", f"Every release-v2 probe variant succeeded.\n\n{links}"
+        first = failed[0]
+        detail = "; ".join(f"{variant}: {', '.join(states[variant].failures)}" for variant in failed)
+        return Verdict(
+            "failure",
+            f"Probe failed: {detail}",
+            str(runs[first].get("html_url") or run_url(repository, recorded[first])),
+        )
+    return Verdict("success", "Probe passed")
 
 
 def reconcile(
     repository: str,
-    check_id: int,
     recorded: dict[str, int],
     head_sha: str,
     runner: Gh = gh,
@@ -177,36 +167,28 @@ def reconcile(
     verdict = judge(repository, recorded, head_sha, runner, local)
     if verdict is None:
         return "waiting: probe variants still running"
-    conclusion, title, summary = verdict
-    complete_check(repository, check_id, conclusion, title, summary, runner)
-    return f"completed the probe check as {conclusion}"
+    if open_runs(latest_status(repository, head_sha, runner)) != recorded:
+        return "ignored: the probe status is no longer pending for these runs"
+    post_status(repository, head_sha, verdict.state, verdict.description, target_url=verdict.target_url, runner=runner)
+    return f"set the probe status to {verdict.state}"
 
 
 def reconcile_head(repository: str, head_sha: str, runner: Gh = gh) -> str | None:
-    open_checks = [
-        (check, recorded)
-        for check in probe_checks(repository, head_sha, runner)
-        if check.get("name") == CHECK_NAME
-        and check.get("status") == IN_PROGRESS
-        and (recorded := parse_external_id(check.get("external_id")))
-    ]
-    if not open_checks:
+    recorded = open_runs(latest_status(repository, head_sha, runner))
+    if not recorded:
         return None
-    return "; ".join(
-        reconcile(repository, int(check["id"]), recorded, head_sha, runner) for check, recorded in open_checks
-    )
+    return reconcile(repository, recorded, head_sha, runner)
 
 
 def report(repository: str, run_id: int, head_sha: str, needs: dict[str, Any], runner: Gh = gh) -> str:
-    found = find_check(probe_checks(repository, head_sha, runner), run_id)
-    if found is None:
-        return "ignored: no in-progress probe check records this run"
-    check, recorded = found
-    return reconcile(repository, int(check["id"]), recorded, head_sha, runner, {run_id: needs})
+    recorded = open_runs(latest_status(repository, head_sha, runner))
+    if run_id not in recorded.values():
+        return "ignored: no pending probe status records this run"
+    return reconcile(repository, recorded, head_sha, runner, {run_id: needs})
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Complete the release-v2 probe check from a finished variant run.")
+    parser = argparse.ArgumentParser(description="Set the release-v2 probe status from a finished variant run.")
     parser.add_argument("--repository", required=True)
     parser.add_argument("--run", type=int, required=True)
     parser.add_argument("--head-sha", required=True)

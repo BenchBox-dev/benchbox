@@ -274,7 +274,28 @@ class TestPandasDataLoading:
         )
 
         assert list(df["code"]) == ["007", "10", ""]
-        assert df["code"].dtype == object
+        assert df["code"].dtype == pd.StringDtype(na_value=float("nan"))
+
+    def test_read_csv_hash_key_columns_use_compact_string_storage(self, tmp_path):
+        import hashlib
+
+        rows = 50_000
+        csv_path = tmp_path / "hub_sample.tbl"
+        csv_path.write_text("".join(f"{hashlib.md5(str(i).encode()).hexdigest()}|{i}|TPCH\n" for i in range(rows)))
+
+        df = PandasDataFrameAdapter().read_csv(
+            csv_path,
+            delimiter="|",
+            header=None,
+            names=["hk_sample", "s_key", "record_source"],
+            null_marker=None,
+            column_types=["HASHKEY", "INTEGER", "VARCHAR"],
+        )
+
+        assert len(df) == rows
+        assert df["hk_sample"].str.len().eq(32).all()
+        assert df["hk_sample"].memory_usage(deep=True) / rows < 48
+        assert df["record_source"].memory_usage(deep=True) / rows < 16
 
     def test_read_parquet(self, tmp_path):
 
