@@ -1302,6 +1302,14 @@ def test_pr_ready_with_evidence_runs_the_readiness_transaction_and_arms_the_exac
 
 
 @requires_posix_make
+def test_pr_arm_auto_merge_forwards_the_evidence_and_exact_head_to_the_readiness_transaction(tmp_path: Path) -> None:
+    (call,) = _recorded_make(tmp_path, "pr-arm-auto-merge", "REPO=o/r", "PR=3", "HEAD=abc", "EVIDENCE=e.json")
+
+    assert "pr-landing-ready" in call
+    assert {"PR=3", "HEAD=abc", "EVIDENCE=e.json", "ARM=1"} <= set(call)
+
+
+@requires_posix_make
 def test_pr_ready_without_evidence_arms_through_pr_arm_and_never_calls_gh_merge(tmp_path: Path) -> None:
     (call,) = _recorded_make(tmp_path, "pr-ready", "REPO=o/r", "PR=3", "HEAD=abc")
 
@@ -1456,6 +1464,7 @@ _DRY_RUN_TARGETS = [
     ("pr-preflight", []),
     ("pr-refresh", []),
     ("pr-fanout", []),
+    ("skill-sync", []),
     ("pr-preflight-fast-tests", []),
     ("pr-content-guard", ["PATH_LISTS=/nonexistent"]),
     ("pr-ready", ["PR=3", "HEAD=abc", "EVIDENCE=e.json"]),
@@ -1548,6 +1557,12 @@ def test_dry_run_of_a_landing_target_touches_nothing_and_exits_zero(
         (["-kn"], (0,)),
         (["-t"], (0,)),
         (["-n", "-j2"], (0,)),
+        (["-n", "--no-print-directory"], (0,)),
+        (["--no-print-directory", "-n"], (0,)),
+        (["-k", "--warn-undefined-variables", "-n"], (0,)),
+        (["-I", "/tmp", "-n"], (0,)),
+        (["-t", "--no-print-directory"], (0,)),
+        (["--no-print-directory", "-q"], (0, 1)),
         (["-q"], (0, 1)),
         (["-sq"], (0, 1)),
     ],
@@ -1576,6 +1591,8 @@ def test_every_dry_run_spelling_stops_pr_open(tmp_path: Path, flags: list[str], 
     [
         "fix: x y",
         "fix: handle n",
+        "fix: add -n and -q flags",
+        "fix: n q t -t --dry-run",
         "fix(core): parens (and) more",
         "fix: $(touch pwned) `touch pwned2` ; touch pwned3",
         'fix: it\'s "quoted"',

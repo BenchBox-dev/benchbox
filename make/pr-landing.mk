@@ -14,11 +14,21 @@ cloud-gateway:
 cloud-verify:
 	@sh scripts/cloud_verify.sh "$(or $(LEVEL),tests)"
 
-PR_LANDING_DRY_RUN_SKIP = flags_head=$${MAKEFLAGS%% *}; \
-	case "$$flags_head" in \
-		-*|*[!a-zA-Z]*|"") ;; \
-		*[nqt]*) echo "dry-run (-n, -q or -t): skipping $(1)"; exit 0 ;; \
-	esac;
+PR_LANDING_DRY_RUN_SKIP = dry_run=; word_index=0; set -f; \
+	for flag_word in $$MAKEFLAGS; do \
+		case "$$flag_word" in --) break ;; -*) ;; *=*) break ;; esac; \
+		word_index=$$((word_index + 1)); \
+		case "$$flag_word" in \
+			--dry-run|--just-print|--recon) dry_run=1 ;; \
+			--*) ;; \
+			-*[!a-zA-Z]*) ;; \
+			-*[nqt]*) dry_run=1 ;; \
+			*[!a-zA-Z]*|"") ;; \
+			*[nqt]*) if [ "$$word_index" -eq 1 ]; then dry_run=1; fi ;; \
+		esac; \
+	done; \
+	set +f; \
+	if [ -n "$$dry_run" ]; then echo "dry-run (-n, -q or -t): skipping $(1)"; exit 0; fi;
 
 .PHONY: pr-preflight
 pr-preflight:
