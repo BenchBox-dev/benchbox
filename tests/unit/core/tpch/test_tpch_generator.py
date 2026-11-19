@@ -177,6 +177,32 @@ class TestStdoutSupport:
         assert result is False
 
 
+@pytest.mark.parametrize(
+    ("scale_factor", "compress", "parallel", "streams"),
+    [
+        (0.01, True, 1, False),
+        (1.0, True, 1, False),
+        (10.0, True, 1, True),
+        (10.0, False, 1, False),
+        (10.0, True, 4, False),
+    ],
+)
+def test_only_compressed_serial_runs_above_scale_factor_one_stream_each_table(
+    tmp_path: Path, scale_factor: float, compress: bool, parallel: int, streams: bool
+) -> None:
+    gen = TPCHDataGenerator(
+        scale_factor=scale_factor,
+        output_dir=tmp_path,
+        quiet=True,
+        parallel=parallel,
+        compress_data=compress,
+        compression_type="zstd" if compress else "none",
+    )
+    gen._stdout_support_cached = True
+
+    assert gen._streams_per_table() is streams
+
+
 class TestDataOrganizationConfig:
     def test_default_none(self, tmp_path: Path):
         gen = TPCHDataGenerator(scale_factor=0.01, output_dir=tmp_path, quiet=True)

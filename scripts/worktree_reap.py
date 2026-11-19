@@ -149,6 +149,8 @@ def classify_worktree(
     except Exception as err:
         return verdict(AMBIGUOUS, f"finish evaluation failed: {err}")
 
+    if res.status == "actionable" and res.detached:
+        return verdict(REMOVE, "detached HEAD is already integrated into an accepted base; clean, managed, unowned")
     if res.status == "actionable":
         mismatch = open_pr_hold(res) or merged_head_mismatch(res)
         if mismatch:
@@ -205,7 +207,7 @@ def remove_worktree(
         )
         if res.status != "actionable":
             return outcome("failed", f"re-evaluation held: {res.hold_reason}")
-        mismatch = open_pr_hold(res) or merged_head_mismatch(res)
+        mismatch = None if res.detached else open_pr_hold(res) or merged_head_mismatch(res)
         if mismatch:
             return outcome("failed", f"re-evaluation held: {mismatch}")
         worktree_removed, branch_deleted, executed = apply_finish_actions(res, repo_root)
@@ -215,6 +217,8 @@ def remove_worktree(
     last_outcome = executed[-1]["outcome"] if executed else "no action executed"
     if branch_deleted:
         return outcome("removed", "worktree and local branch removed")
+    if worktree_removed and res.detached:
+        return outcome("removed", "detached worktree removed")
     if worktree_removed:
         return outcome("partial", f"worktree removed but branch ref preserved: {last_outcome}")
     return outcome("failed", last_outcome)

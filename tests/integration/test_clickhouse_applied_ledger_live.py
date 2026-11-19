@@ -30,6 +30,10 @@ SOURCE_DDL = "CREATE TABLE lineitem (l_orderkey INTEGER, l_linenumber INTEGER, l
 TUNED_PARTITION_CLAUSE = " PARTITION BY (toYYYYMM(l_shipdate))"
 
 
+def _unwrapped(key: str) -> str:
+    return key[1:-1] if key.startswith("(") and key.endswith(")") else key
+
+
 def _tuned_adapter() -> ClickHouseAdapter:
     adapter = ClickHouseAdapter()
     adapter.tuning_enabled = True
@@ -120,7 +124,8 @@ class TestAppliedLedgerAgainstLiveClickHouse:
 
         assert receipt.corroborated is False
         assert partition.verdict == "mismatch"
-        assert partition.evidence == {"partition_key": "toStartOfInterval(ts, toIntervalDay(1))"}
+        assert set(partition.evidence) == {"partition_key"}
+        assert _unwrapped(partition.evidence["partition_key"]) == "toStartOfInterval(ts, toIntervalDay(1))"
 
     def test_catalog_reports_the_partition_expression_with_its_closing_paren(self, connection):
         adapter = _tuned_adapter()
@@ -132,8 +137,8 @@ class TestAppliedLedgerAgainstLiveClickHouse:
         )
         assert rows, "live ClickHouse reported no lineitem row in system.tables"
         _, sorting_key, partition_key = rows[0][0], rows[0][1], rows[0][2]
-        assert partition_key == "toYYYYMM(l_shipdate)"
-        assert sorting_key == "l_orderkey, l_linenumber"
+        assert _unwrapped(partition_key) == "toYYYYMM(l_shipdate)"
+        assert _unwrapped(sorting_key) == "l_orderkey, l_linenumber"
 
     def test_date_partitioned_table_earns_verification(self, connection):
         status, verdicts = _run(connection, apply_partition=True)

@@ -47,6 +47,16 @@ FUNDING_SOURCES: tuple[str, ...] = (
 
 DEFAULT_FUNDING = "unspecified"
 
+PLAN_TIERS: tuple[str, ...] = ("paid", "free", "trial", "unspecified")
+
+VENDOR_PROVENANCE_FIELDS: tuple[str, ...] = (
+    "plan_tier",
+    "preview_features",
+    "vendor_permission",
+    "vendor_notice",
+    "self_run",
+)
+
 
 def _normalize_token(value: object) -> str:
     return str(value).strip().lower() if value is not None else ""
@@ -98,6 +108,8 @@ __all__ = [
     "RANKING_ELIGIBLE_VISIBILITIES",
     "FUNDING_SOURCES",
     "DEFAULT_FUNDING",
+    "PLAN_TIERS",
+    "VENDOR_PROVENANCE_FIELDS",
     "normalize_source",
     "is_valid_source",
     "normalize_funding",

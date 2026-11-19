@@ -14,6 +14,7 @@ from rich.panel import Panel
 from rich.prompt import Confirm
 from rich.text import Text
 
+from benchbox.cli import vendor_provenance_options as vendor_options
 from benchbox.cli.benchmarks import BenchmarkConfig, BenchmarkManager
 from benchbox.cli.billable_guard import ACKNOWLEDGEMENT_FLAG_HELP, enforce_billable_acknowledgement
 from benchbox.cli.composite_params import (
@@ -391,11 +392,14 @@ def _export_orchestrated_result(
     export_formats: list[str] | None = None,
     funding: str | None = None,
     result_source: str | None = None,
+    plan_tier: str | None = None,
+    preview_features: tuple[str, ...] | None = None,
 ) -> dict[str, Any]:
     from datetime import datetime
 
     if funding:
         result.funding = funding
+    vendor_options.record_vendor_provenance(result, plan_tier, preview_features)
     if result_source:
         result.result_source = result_source
 
@@ -1484,6 +1488,7 @@ def _direct_handle_result(
             export_formats=["json"],
             funding=getattr(s, "funding", None),
             result_source=getattr(s, "result_source", None),
+            **vendor_options.vendor_provenance_kwargs(s),
         )
 
         if s.quiet:
@@ -1708,6 +1713,7 @@ def _data_or_load_handle_result(
             export_formats=["json"],
             funding=getattr(s, "funding", None),
             result_source=getattr(s, "result_source", None),
+            **vendor_options.vendor_provenance_kwargs(s),
         )
 
         operation_status, operation_name = _data_or_load_operation_status(result, s.execution_mode)
@@ -2086,6 +2092,7 @@ def _data_or_load_handle_result(
         "provenance block; omitted when not set."
     ),
 )
+@vendor_options.vendor_provenance_options
 @click.option(
     "--result-source",
     type=click.Choice(RESULT_SOURCES, case_sensitive=False),
@@ -2162,6 +2169,8 @@ def run(
     publish_target: str,
     publish_label: str,
     funding: str | None,
+    plan_tier: str | None,
+    preview_features: tuple[str, ...],
     result_source: str | None,
     client_region: str | None = None,
     client_cloud: str | None = None,
@@ -2227,6 +2236,8 @@ def run(
         publish_target=publish_target,
         publish_label=publish_label,
         funding=funding,
+        plan_tier=plan_tier,
+        preview_features=preview_features,
         result_source=result_source,
         client_region=client_region,
         client_cloud=client_cloud,

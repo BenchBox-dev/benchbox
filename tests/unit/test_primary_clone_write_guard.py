@@ -133,6 +133,33 @@ def test_override_allows_primary_write(repo: tuple[Path, Path]) -> None:
     assert result.stderr == ""
 
 
+def test_stray_primary_override_outside_the_repository_still_refuses_primary_write(
+    repo: tuple[Path, Path], tmp_path: Path
+) -> None:
+    primary, _ = repo
+    unrelated = tmp_path / "scratch"
+    _git(tmp_path, "init", "-q", str(unrelated))
+
+    result = _run_guard(
+        _payload("Write", primary, file_path="app.txt"), env={"BENCHBOX_AGENT_PRIMARY_CLONE": str(unrelated)}
+    )
+
+    assert result.returncode == 2
+
+
+def test_primary_override_naming_a_deleted_worktree_still_refuses_primary_write(repo: tuple[Path, Path]) -> None:
+    primary, _ = repo
+    gone = primary.parent / "BenchBox.wt-gone"
+    _git(primary, "worktree", "add", "-q", "-b", "fix/gone", str(gone))
+    shutil.rmtree(gone)
+
+    result = _run_guard(
+        _payload("Write", primary, file_path="app.txt"), env={"BENCHBOX_AGENT_PRIMARY_CLONE": str(gone)}
+    )
+
+    assert result.returncode == 2
+
+
 def test_primary_without_linked_worktree_is_allowed(tmp_path: Path) -> None:
     primary = (tmp_path / "solo").resolve()
     primary.mkdir()

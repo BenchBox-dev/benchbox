@@ -308,6 +308,72 @@ def test_report_ignores_dirt_that_predates_the_snapshot(tmp_path: Path) -> None:
     assert result.stderr == ""
 
 
+def _stray_override(primary: Path, tmp_path: Path, kind: str) -> Path:
+    stray = tmp_path / "scratch" if kind == "unrelated" else primary.parent / "BenchBox.wt-gone"
+    if kind == "unrelated":
+        stray.mkdir()
+    else:
+        subprocess.run(["git", "worktree", "add", "-q", "-b", "fix/gone", str(stray), "HEAD"], cwd=primary, check=True)
+        shutil.rmtree(stray)
+    return stray
+
+
+@pytest.mark.parametrize("kind", ["unrelated", "deleted-worktree"])
+def test_stray_override_does_not_hide_a_primary_edit(tmp_path: Path, kind: str) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    stray = _stray_override(primary, tmp_path, kind)
+    _run_check_in(linked, stray, "snapshot")
+    (primary / "README.md").write_text("agent edit\n", encoding="utf-8")
+
+    result = _run_check_in(linked, stray, "report")
+
+    assert "README.md" in result.stderr
+
+
+@pytest.mark.parametrize("kind", ["unrelated", "deleted-worktree"])
+def test_stray_override_does_not_admit_preflight_in_the_primary(tmp_path: Path, kind: str) -> None:
+    primary, _ = _linked_worktree(tmp_path)
+    stray = _stray_override(primary, tmp_path, kind)
+    env = {**os.environ, **HUMAN_IDENTITY, "BENCHBOX_AGENT_PRIMARY_CLONE": str(stray)}
+    for key in ("BENCHBOX_ALLOW_MAIN_CLONE_WRITE", "ALLOW_MAIN_CLONE_WRITE", "BENCHBOX_EPHEMERAL_CLONE"):
+        env.pop(key, None)
+
+    result = _run_script(SCRIPT, cwd=primary, env=env)
+
+    assert result.returncode == 1
+    assert "Refusing BenchBox write preflight in the primary clone" in result.stderr
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="tab and newline are not valid in Windows file names")
+@pytest.mark.parametrize("name", ["tab\tname.txt", "new\nline.txt", 'quote"back\\slash.txt'])
+def test_report_names_edit_to_preexisting_file_with_quoted_name(tmp_path: Path, name: str) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    (primary / name).write_text("before\n", encoding="utf-8")
+    _run_check_in(linked, primary, "snapshot")
+    (primary / name).write_text("after\n", encoding="utf-8")
+
+    result = _run_check_in(linked, primary, "report")
+
+    assert result.returncode == 0
+    assert "changed paths:" in result.stderr
+    assert "deleted" not in _snapshot_path(linked).read_text(encoding="utf-8")
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need privileges on Windows")
+def test_dangling_symlink_is_recorded_deleted_without_aborting_the_scan(tmp_path: Path) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    (primary / "dangling").symlink_to(primary / "missing-target")
+    (primary / "real.txt").write_text("content\n", encoding="utf-8")
+
+    assert _run_check_in(linked, primary, "snapshot").returncode == 0
+
+    entries = dict(
+        reversed(line.split("\t", 1)) for line in _snapshot_path(linked).read_text(encoding="utf-8").splitlines()
+    )
+    assert entries["dangling"] == "deleted"
+    assert len(entries["real.txt"]) == 40
+
+
 def test_report_names_new_and_further_modified_tracked_paths(tmp_path: Path) -> None:
     primary, linked = _dirty_primary_with_linked(tmp_path)
     (primary / "notes.txt").write_text("tracked\n", encoding="utf-8")

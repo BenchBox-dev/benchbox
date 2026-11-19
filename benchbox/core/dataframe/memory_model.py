@@ -69,6 +69,15 @@ PLATFORM_BASELINE_GB: dict[str, float] = {
     "pyspark": 4.0,
 }
 
+GENERATION_BASE_GB = 0.1
+
+GENERATION_GB_PER_WORKER: dict[str, float] = {
+    "tpch": 0.30,
+    "tpcds": 0.01,
+}
+
+GENERATION_ESTIMATE_MARGIN = 1.1
+
 _TEMPLATE_LAYOUT: dict[str, tuple[str, str, str, str]] = {
     "tpch": ("tpc-h", "queries", "{number}.sql", r"^Q?(\d+)$"),
     "tpcds": ("tpc-ds", "query_templates", "query{number}.tpl", r"^Q?(\d+)[A-Z]?$"),
@@ -131,3 +140,10 @@ def subset_tables(benchmark: str, queries: Iterable[object] | None) -> tuple[str
 def tables_raw_gb(benchmark: str, tables: Iterable[str], scale_factor: float) -> float:
     sizes = TABLE_SIZE_MODELS[benchmark.lower()]
     return sum(sizes[name].bytes_at(scale_factor) for name in tables) / GIB
+
+
+def generation_estimate_gb(benchmark: str, workers: int) -> float | None:
+    per_worker = GENERATION_GB_PER_WORKER.get(benchmark.lower())
+    if per_worker is None:
+        return None
+    return (GENERATION_BASE_GB + per_worker * max(workers, 1)) * GENERATION_ESTIMATE_MARGIN

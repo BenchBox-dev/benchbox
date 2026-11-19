@@ -11,6 +11,7 @@ from click.testing import CliRunner
 from _project.scripts.explorer_pipeline.contract import (
     EXPLORER_BUILD_CONTRACT,
     EXPLORER_READ_MODEL_VERSION,
+    HARDWARE_RESULT_COLUMNS,
     TRANSLATOR_RESULT_COLUMNS,
 )
 from _project.scripts.explorer_pipeline.pipeline import ExplorerPipeline
@@ -74,37 +75,53 @@ def _design_results_columns() -> list[str]:
     return [line.split()[0] for line in block.splitlines() if line.strip()]
 
 
-def test_default_build_emits_read_model_18_with_translator_columns(tmp_path: Path) -> None:
+def test_default_build_emits_read_model_20_with_translator_columns(tmp_path: Path) -> None:
     db = _build(tmp_path, _corpus(tmp_path))
 
     with duckdb.connect(str(db), read_only=True) as con:
-        assert con.execute("SELECT read_model_version FROM metadata").fetchone() == (18,)
-    assert EXPLORER_READ_MODEL_VERSION == 18
-    assert EXPLORER_BUILD_CONTRACT["read_model_version"] == 18
+        assert con.execute("SELECT read_model_version FROM metadata").fetchone() == (20,)
+    assert EXPLORER_READ_MODEL_VERSION == 20
+    assert EXPLORER_BUILD_CONTRACT["read_model_version"] == 20
     assert EXPLORER_BUILD_CONTRACT["read_model_compatibility"]["minimum_supported"] == 17
     assert _columns(db) == _design_results_columns()
     assert set(TRANSLATOR_COLUMNS) <= set(_columns(db))
 
 
-def test_selecting_18_explicitly_matches_the_default(tmp_path: Path) -> None:
+def test_selecting_20_explicitly_matches_the_default(tmp_path: Path) -> None:
     data = _corpus(tmp_path)
     default = _columns(_build(tmp_path, data))
-    explicit = _columns(_build(tmp_path, data, read_model_version=18))
+    explicit = _columns(_build(tmp_path, data, read_model_version=20))
 
     assert explicit == default
 
 
-def test_read_model_17_omits_exactly_the_translator_columns(tmp_path: Path) -> None:
+def test_read_model_17_omits_the_translator_and_hardware_columns(tmp_path: Path) -> None:
     db = _build(tmp_path, _corpus(tmp_path), read_model_version=17)
 
     with duckdb.connect(str(db), read_only=True) as con:
         assert con.execute("SELECT read_model_version FROM metadata").fetchone() == (17,)
-    assert _columns(db) == _design_results_columns()[:-3]
+    assert _columns(db) == _design_results_columns()[: -(7 + len(HARDWARE_RESULT_COLUMNS))]
     assert not set(TRANSLATOR_COLUMNS) & set(_columns(db))
 
 
-def test_read_model_18_fills_translator_columns_by_source(tmp_path: Path) -> None:
+def test_read_model_18_omits_the_qph_and_hardware_columns(tmp_path: Path) -> None:
     db = _build(tmp_path, _corpus(tmp_path), read_model_version=18)
+
+    with duckdb.connect(str(db), read_only=True) as con:
+        assert con.execute("SELECT read_model_version FROM metadata").fetchone() == (18,)
+    assert _columns(db) == _design_results_columns()[: -(4 + len(HARDWARE_RESULT_COLUMNS))]
+
+
+def test_read_model_19_omits_exactly_the_hardware_columns(tmp_path: Path) -> None:
+    db = _build(tmp_path, _corpus(tmp_path), read_model_version=19)
+
+    with duckdb.connect(str(db), read_only=True) as con:
+        assert con.execute("SELECT read_model_version FROM metadata").fetchone() == (19,)
+    assert _columns(db) == _design_results_columns()[: -len(HARDWARE_RESULT_COLUMNS)]
+
+
+def test_read_model_20_fills_translator_columns_by_source(tmp_path: Path) -> None:
+    db = _build(tmp_path, _corpus(tmp_path))
 
     with duckdb.connect(str(db), read_only=True) as con:
         rows = con.execute(
@@ -118,10 +135,10 @@ def test_read_model_18_fills_translator_columns_by_source(tmp_path: Path) -> Non
     assert by_source["not_applicable"] == (None, None)
 
 
-def test_read_model_18_leaves_every_other_column_unchanged(tmp_path: Path) -> None:
+def test_read_model_20_leaves_every_other_column_unchanged(tmp_path: Path) -> None:
     data = _corpus(tmp_path)
     base = tmp_path / "v17"
-    new = tmp_path / "v18"
+    new = tmp_path / "v20"
     ExplorerPipeline().run(data, base, read_model_version=17)
     ExplorerPipeline().run(data, new)
     shared = ", ".join(_columns(base / "results.duckdb"))
@@ -135,8 +152,8 @@ def test_read_model_18_leaves_every_other_column_unchanged(tmp_path: Path) -> No
 
 
 def test_an_unsupported_read_model_is_refused(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="unsupported read model version 19"):
-        ExplorerPipeline().run(_corpus(tmp_path), tmp_path / "out", read_model_version=19)
+    with pytest.raises(ValueError, match="unsupported read model version 21"):
+        ExplorerPipeline().run(_corpus(tmp_path), tmp_path / "out", read_model_version=21)
 
 
 def test_the_build_command_selects_the_read_model(tmp_path: Path) -> None:

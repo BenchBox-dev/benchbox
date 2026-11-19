@@ -11,7 +11,7 @@ import subprocess
 import sys
 import threading
 import time
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -887,11 +887,18 @@ def start_guard(handle: HostLock, *, environ: Mapping[str, str] | None = None) -
 
 
 def check_admission(
-    *, need_gib: float | None = None, environ: Mapping[str, str] | None = None, echo: bool = True
+    *,
+    need_gib: float | None = None,
+    environ: Mapping[str, str] | None = None,
+    echo: bool = True,
+    spin_lines: Callable[[Mapping[str, str]], Sequence[str]] | None = None,
 ) -> str:
-    from benchbox.utils import resource_limits
+    from benchbox.utils import heavy_status, resource_limits
 
     env = os.environ if environ is None else environ
+    if echo:
+        for line in (spin_lines or heavy_status.active_spin_lines)(env):
+            _log(line)
     force = env.get(ADMIT_ENV, "").strip().lower() == "force"
     policy = resource_limits.admission_policy_from_env(env, need_gib=need_gib)
     result = resource_limits.admit_heavy_work(policy, force=force)
@@ -1158,7 +1165,7 @@ def _wait_for_child(child: subprocess.Popen[bytes], foreground: bool) -> int:
         return _exit_code(code)
 
 
-def _supervise_posix(command: Sequence[str], env: Mapping[str, str]) -> int:
+def _supervise_posix(command: Sequence[str], env: Mapping[str, str], on_exit: Callable[[], None] | None = None) -> int:
     stdin_is_tty, foreground = _stdin_foreground_state()
     stdin = subprocess.DEVNULL if stdin_is_tty and not foreground else None
     child: subprocess.Popen[bytes] | None = None
@@ -1187,7 +1194,10 @@ def _supervise_posix(command: Sequence[str], env: Mapping[str, str]) -> int:
             )
         finally:
             signal.pthread_sigmask(signal.SIG_UNBLOCK, _FORWARDED_SIGNALS)
-        return _wait_for_child(child, foreground)
+        code = _wait_for_child(child, foreground)
+        if on_exit is not None:
+            on_exit()
+        return code
     finally:
         if child is not None:
             _reap_process_group(child.pid, env)
@@ -1202,11 +1212,11 @@ def _supervise_posix(command: Sequence[str], env: Mapping[str, str]) -> int:
             signal.signal(sig, handler)
 
 
-def _run_supervised(command: Sequence[str], env: Mapping[str, str]) -> int:
+def _run_supervised(command: Sequence[str], env: Mapping[str, str], on_exit: Callable[[], None] | None = None) -> int:
     try:
         if IS_WINDOWS:
             return _supervise_windows(command, env)
-        return _supervise_posix(command, env)
+        return _supervise_posix(command, env, on_exit)
     except FileNotFoundError as exc:
         _log(f"command not found: {exc.filename or command[0]}")
         return 127
@@ -1278,8 +1288,14 @@ def _run_attempt(
     execution_started = _now()
     code: int | None = None
     outcome = "error"
+    breached_before_exit = False
+
+    def note_command_exit() -> None:
+        nonlocal breached_before_exit
+        breached_before_exit = watcher is not None and watcher.breached
+
     try:
-        code = _run_supervised(command, env)
+        code = _run_supervised(command, env, note_command_exit)
         if _forwarded_signals:
             outcome = "cancelled"
         else:
@@ -1295,10 +1311,13 @@ def _run_attempt(
         reported = code
         breached = False
         retryable = False
+        late_breach = False
         try:
             handle.release()
         finally:
-            breached = code is not None and watcher is not None and watcher.breached
+            flagged = code is not None and watcher is not None and watcher.breached
+            late_breach = flagged and code == 0 and not breached_before_exit and outcome == "success"
+            breached = flagged and not late_breach
             if breached:
                 outcome = "watchdog_kill"
                 retryable = watcher.retryable
@@ -1306,9 +1325,20 @@ def _run_attempt(
             if owned_run is not None:
                 if owned_run.cleanup_error:
                     outcome = "error"
-                _finish_run(owned_run, outcome, reported, command_exit_code=code)
+                _finish_run(
+                    owned_run,
+                    outcome,
+                    reported,
+                    command_exit_code=code,
+                    late_watchdog_breach=late_breach,
+                )
     if breached:
         _log(f"watchdog stopped the process tree after a breach; exiting {EXIT_WATCHDOG} (command status was {code})")
+    elif late_breach:
+        _log(
+            "WARNING: the watchdog reported a breach after the command had already exited 0; "
+            "its work was complete, so the exit status stays 0"
+        )
     return reported, retryable and not _forwarded_signals
 
 

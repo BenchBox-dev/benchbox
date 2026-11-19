@@ -107,6 +107,11 @@ Owner decisions of 2026-10-27:
 | Site-owned documentation is absent from core (replaces the documentation freeze) | PROCESS-ONLY | `scripts/check_docs_freeze.py` | `scripts/check_docs_ownership.py`, run by `make docs-validate`: every tracked document must be core-owned, and every site-owned path and its generator must be absent | waiver: documentation ownership layout hygiene, enforced by `make docs-validate` | waived |
 | Commit identity and attribution | HIGH-RISK | `scripts/check_agent_trailers.sh`, `_project/scripts/agent_instruction_audit.py`, hooks `agent-git-identity` and `agent-attribution-trailers` | Same hooks and `make agent-identity-check`; unchanged | pass: `tests/unit/test_check_agent_trailers.py::test_accepts_human_attribution`, `tests/unit/scripts/test_agent_instruction_audit.py::test_repository_candidate_passes`; refuse: `test_check_agent_trailers.py::test_rejects_agent_attribution`, `test_agent_instruction_audit.py::test_imposed_identity_fails` | proven |
 
+The corpus event bridge and corpus reconciler workflows, `scripts/publication/reconciler.py` and their tests are
+removed. They fed `publication/ledger.json`, the ledger of the retired publication control plane, which was never
+created on `published-results`, so they guarded nothing. The corpus promotion row above covers what reaches the site,
+and `publication/ledger-seed.json` is the publication ledger in use (corpus-to-artifact bijection row).
+
 ## Known KEEP traps
 
 These were misclassified as process in earlier plan revisions and must stay.
@@ -138,14 +143,13 @@ with maintainer and release-manager escalation as described in
 | `ci.yml` | product-safety | Pull-request path selection, fast and medium tests, correctness and required-case evidence, lint and required five-unit aggregation |
 | `comment-policy-nightly.yml` | tooling | Nightly and on-demand whole-tree comment-policy scan of develop; the backstop for files a pull request leaves unchanged |
 | `corpus-drift-check.yml` | product-safety | Corpus drift detection |
-| `corpus-event-bridge.yml` | product-safety | Corpus event integrity |
-| `corpus-reconciler.yml` | product-safety | Corpus reconciliation |
 | `cross-surface-baseline-autodetect.yml` | tooling | Baseline maintenance support |
 | `docker-integration.yml` | product-safety | Container integration coverage |
 | `extension-smoke.yml` | product-safety | Extension smoke coverage |
 | `gitignore-lint.yml` | tooling | Hygiene; standalone, not part of the ci.yml units |
 | `green-unmerged-sweep.yml` | tooling | Daily sweep that upserts the green-but-unmerged PR digest issue; never enables auto-merge |
 | `mirror-ci-images.yml` | product-safety | Seeds digest-pinned images in GHCR only when absent; scheduled CI checks mirrors by digest without routine Docker Hub reads |
+| `measurement.yml` | tooling | Manual `workflow_dispatch` measurement cells for memory-heavy tuning evidence on `ubuntu-latest` (DuckDB SF10 template ablation, ClickHouse server TPC-DS SF1 and TPC-H Q21 capture under a 5.25 GiB container); uploads the run directory; not a gate (`docs/internal/measurement-workflow.md`) |
 | `nightly-v2.yml` | product-safety | Nightly T3: platform matrix, docker engines, extension, install, DuckDB and CedarDB throughput UAT with the throughput commit status published through the `t3:throughput` domain, and drift with selection failures reported through `t3:drift`; `t3:sql-execution-gate-obt`, `t3:parity`, `t3:integration` and `t3:mirror-postgres17` are reported domains. It replaced the retired Nightly Validation and Cross-Platform Validation workflows. The browser check is owned by the site repository and has no domain here (`docs/internal/nightly-t3.md` lists every domain) |
 | `omp-pin-bump.yml` | tooling | Scheduled omp pin bump: a read-only job builds and proves the candidate, and a separate job holding the write token opens the bump pull request, which `review-gate` holds until the owner posts the Mac evidence line |
 | `omp-pin-watch.yml` | tooling | Scheduled comparison of the first reviews after an omp pin bump with the previous week, with a read-only job that keeps the attempt ledger and a separate job holding the write token that opens a revert pull request, which `review-gate` holds until the owner posts the Mac evidence line for the restored pin |
@@ -155,7 +159,8 @@ with maintainer and release-manager escalation as described in
 | `pr-hold.yml` | product-safety | Required `hold` check: fails while the `no-auto-merge` label is present in the PR's live labels, on every label change and on every re-run |
 | `pricing-data-drift-check.yml` | product-safety | Pricing data integrity |
 | `release-v2.yml` | product-safety | Tag-triggered publication of the admitted trunk artifacts: annotated tag, latest-run admission, install matrix, reuse of qualifying trunk or release-candidate UAT evidence re-verified against the admitted digest (full UAT only as the fallback), a fresh green release canary on an ancestor of the tag for every tag, publish-time tag re-check, attestation; a publish-free probe mode runs the same job graph without a tag |
-| `release-v2-probe.yml` | product-safety | Pull-request check that dispatches both `release-v2.yml` probe variants (reuse and fallback) from the branch when a release workflow input changed, and fails unless both succeed |
+| `release-v2-probe.yml` | product-safety | Pull-request job that dispatches the three `release-v2.yml` probe variants (reuse, fallback and guarded-change) from the branch when a release workflow input changed and records the required `release-v2 probe` check run in progress, or completed at once when nothing probed changed; it does not wait for the runs |
+| `release-v2-probe-verdict.yml` | product-safety | Completes the `release-v2 probe` check run when the recorded variant runs finish: success only if all three succeeded, otherwise failure naming each variant that did not; leaves the check alone while any run is unfinished |
 | `release-canary.yml` | product-safety | Release canary protection |
 | `seed-corpus.yml` | product-safety | Corpus seeding |
 | `site-inputs.yml` | product-safety | Versioned site-inputs bundle build, attestation, artifact upload and site dispatch |
@@ -182,7 +187,6 @@ with maintainer and release-manager escalation as described in
 
 | File | Classification | Property or reason |
 | --- | --- | --- |
-| `test_corpus_event_bridge.py` | product-safety | Corpus event integrity |
 | `test_corpus_trust_boundary.py` | product-safety | Corpus trust boundary |
 | `test_docker_integration_workflow.py` | product-safety | Container integration |
 | `test_nightly_t3_workflow.py` | product-safety | Nightly T3 domain coverage |
@@ -330,7 +334,6 @@ with maintainer and release-manager escalation as described in
 | `publication/test_check_explorer_compat.py` | product-safety |
 | `publication/test_ledger_seed.py` | product-safety |
 | `publication/test_override_companion_exclusion.py` | product-safety |
-| `publication/test_reconciler.py` | product-safety |
 | `test_tpcds_divergence_report.py` | tooling |
 | `test_tpcds_platform_identity.py` | product-safety |
 

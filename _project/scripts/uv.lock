@@ -56,7 +56,7 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.0.0,<3.0.0" },
     { name = "pyyaml", specifier = ">=6.0.0" },
     { name = "sqlglot", specifier = ">=25.6.0,<31.0.0" },
-    { name = "tractable", extras = ["mcp"], path = "vendor/tractable-1.1.1-py3-none-any.whl" },
+    { name = "tractable", extras = ["mcp"], path = "vendor/tractable-1.3.0-py3-none-any.whl" },
     { name = "zstandard", specifier = ">=0.20.0" },
 ]
 
@@ -798,10 +798,10 @@ wheels = [
 
 [[package]]
 name = "tractable"
-version = "1.1.1"
-source = { path = "vendor/tractable-1.1.1-py3-none-any.whl" }
+version = "1.3.0"
+source = { path = "vendor/tractable-1.3.0-py3-none-any.whl" }
 wheels = [
-    { filename = "tractable-1.1.1-py3-none-any.whl", hash = "sha256:c09ba584c782684fca49169cfd9862d6d2bcfb0903a7fe3af39aafd23607a5f4" },
+    { filename = "tractable-1.3.0-py3-none-any.whl", hash = "sha256:8d7f6353e308b3a433074cdeacf0ecad362d17ef41450938238324fe43fdc0c6" },
 ]
 
 [package.optional-dependencies]

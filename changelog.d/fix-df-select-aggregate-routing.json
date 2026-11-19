@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed ungrouped DataFusion DataFrame select of var and quantile (plain, aliased and filter(...) forms), which failed because the expression was sent to a projection instead of an aggregate."
+    }
+  ]
+}

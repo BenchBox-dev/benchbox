@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from _project.scripts.explorer_pipeline.models import (
+    COMBINED_PHASE,
     KNOWN_DEFECT_RANKING_EXCLUSION,
     THROUGHPUT_PHASE,
     BasisAvailability,
@@ -52,6 +53,8 @@ from benchbox.core.results.execution_variant import (
     read_execution_environment,
     read_requested_variant,
 )
+from benchbox.core.results.hardware_class import CLASS_MANAGED, classify_hardware
+from benchbox.core.results.release_history import resolve_benchbox_version
 from benchbox.core.results.schema_policy import EXPLORER_INPUT_SCHEMA_POLICY, result_schema_version_value
 from benchbox.core.results.status import bundle_failed_query_count, bundle_non_clean_reason, normalize_validation_status
 from benchbox.core.results.subscale_policy import (
@@ -68,6 +71,8 @@ from benchbox.validation.bundle import (
     OVERRIDE_SUFFIX,
     TRANSLATOR_VERSION_NOT_APPLICABLE,
     accepted_override_rules,
+    combined_evidence_defects,
+    manifest_cpu_attestation,
     manifest_known_defect_reason,
     resolve_translator_version,
     throughput_stream_defects,
@@ -515,6 +520,80 @@ def _throughput_at_size(bundle: BundleDocument, bundle_data: Mapping[str, Any]) 
     if not _throughput_phase_clean(bundle, bundle_data):
         return None
     return _tpc_metric(bundle.summary.tpc_metrics.throughput_at_size)
+
+
+_COMBINED_QPH_BY_BENCHMARK = {"tpch": "qphh_at_size", "tpcds": "qphds_at_size"}
+
+
+def _raw_tpc_metrics(bundle_data: Mapping[str, Any]) -> Mapping[str, Any]:
+    summary = bundle_data.get("summary")
+    metrics = summary.get("tpc_metrics") if isinstance(summary, Mapping) else None
+    return metrics if isinstance(metrics, Mapping) else {}
+
+
+def _combined_defects(bundle_data: Mapping[str, Any], test_type: str | None) -> list[str]:
+    if canonical_phase(test_type) != COMBINED_PHASE:
+        return []
+    return combined_evidence_defects(cast(dict[str, Any], bundle_data))
+
+
+def _qph_columns(bundle_data: Mapping[str, Any], test_type: str | None, benchmark: str) -> dict[str, float | None]:
+    columns: dict[str, float | None] = {"qphh_at_size": None, "qphds_at_size": None}
+    metric = _COMBINED_QPH_BY_BENCHMARK.get(canonical_benchmark_slug(benchmark))
+    if metric is None or canonical_phase(test_type) != COMBINED_PHASE or _combined_defects(bundle_data, test_type):
+        return columns
+    raw = _raw_tpc_metrics(bundle_data)
+    if metric == "qphh_at_size" and raw.get("refresh_included") is not True:
+        return columns
+    columns[metric] = _tpc_metric(raw.get(metric))
+    return columns
+
+
+def _combined_exclusion(bundle_data: Mapping[str, Any], test_type: str | None, reason: str | None) -> str | None:
+    if reason not in (None, "missing_primary_metric"):
+        return reason
+    defects = _combined_defects(bundle_data, test_type)
+    return defects[0] if defects else reason
+
+
+def _load_scope(bundle_data: Mapping[str, Any]) -> list[str] | None:
+    scope = _raw_tpc_metrics(bundle_data).get("load_scope")
+    components = scope.get("components") if isinstance(scope, Mapping) else None
+    if not isinstance(components, list):
+        return None
+    return [component for component in components if isinstance(component, str)]
+
+
+def _recorded_transactional_steps(bundle_data: Mapping[str, Any]) -> dict[str, bool]:
+    steps: dict[str, bool] = {}
+
+    def note(step: object, flag: object) -> None:
+        if isinstance(step, str) and step and isinstance(flag, bool):
+            steps[step] = steps.get(step, True) and flag
+
+    phases = bundle_data.get("phases")
+    if not isinstance(phases, Mapping):
+        return steps
+    power = phases.get("power_test")
+    for function in (power.get("refresh_functions") if isinstance(power, Mapping) else None) or []:
+        if isinstance(function, Mapping):
+            note(function.get("function"), function.get("transactional"))
+    throughput = phases.get("throughput_test")
+    refresh_stream = throughput.get("refresh_stream") if isinstance(throughput, Mapping) else None
+    for pair in (refresh_stream.get("pairs") if isinstance(refresh_stream, Mapping) else None) or []:
+        for function in (pair.get("functions") if isinstance(pair, Mapping) else None) or []:
+            if isinstance(function, Mapping):
+                note(function.get("function"), function.get("transactional"))
+    for name in ("maintenance_test", "maintenance_test_2"):
+        block = phases.get(name)
+        for operation in (block.get("operations") if isinstance(block, Mapping) else None) or []:
+            if isinstance(operation, Mapping):
+                note(operation.get("operation"), operation.get("transactional"))
+    return steps
+
+
+def _transactional_steps(bundle_data: Mapping[str, Any]) -> dict[str, bool] | None:
+    return _recorded_transactional_steps(bundle_data) or None
 
 
 def _stream_count(bundle: BundleDocument, test_type: str | None) -> int | None:
@@ -1287,6 +1366,68 @@ def _first_string(*values: Any) -> str | None:
     return None
 
 
+def _mapping(value: Any) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}
+
+
+def _managed_service_size(bundle_data: Mapping[str, Any]) -> str | None:
+    compute = _mapping(_mapping(bundle_data.get("platform")).get("compute"))
+    return _first_string(
+        compute.get("size"),
+        compute.get("warehouse_size"),
+        compute.get("cluster_size"),
+        compute.get("node_type"),
+        compute.get("worker_shape"),
+        compute.get("serverless_slots"),
+        compute.get("rpu"),
+        compute.get("edition"),
+    )
+
+
+_SERVER_ENDPOINT_CLASSES = frozenset({"localhost_port", "remote_host", "cloud_endpoint"})
+
+
+def _effective_runtime_type(bundle_data: Mapping[str, Any], environment: Mapping[str, Any]) -> Any:
+    runtime = _mapping(environment.get("platform_runtime")).get("runtime_type")
+    if runtime not in (None, "unknown"):
+        return runtime
+    deployment = _mapping(_mapping(bundle_data.get("platform")).get("deployment"))
+    return "remote_server" if deployment.get("endpoint_class") in _SERVER_ENDPOINT_CLASSES else runtime
+
+
+def _hardware_columns(bundle_data: Mapping[str, Any], bundle_path: Path) -> dict[str, Any]:
+    environment = _mapping(bundle_data.get("environment"))
+    host = _mapping(environment.get("client_host"))
+    execution = read_execution_environment(bundle_data, bundle_path)
+    attestation = manifest_cpu_attestation(bundle_path)
+    recorded_model = environment.get("cpu_model") or host.get("cpu_model")
+    provenance = environment.get("cpu_identity_provenance") or host.get("cpu_identity_provenance")
+    sidecar_model = attestation["cpu_model"] if attestation else None
+    if provenance == "user_attested" and isinstance(recorded_model, str) and recorded_model.strip():
+        sidecar_model, recorded_model = recorded_model, None
+    classified = classify_hardware(
+        cpu_model=recorded_model,
+        cpu_count=environment.get("cpu_count") or host.get("cpu_count"),
+        cpu_vendor=environment.get("cpu_vendor") or host.get("cpu_vendor"),
+        execution_class=execution.get("execution_class"),
+        container_host_os=execution.get("container_host_os"),
+        runtime_type=_effective_runtime_type(bundle_data, environment),
+        attested_cpu_model=sidecar_model,
+    )
+    version, version_basis = resolve_benchbox_version(
+        _mapping(bundle_data.get("export")).get("benchbox_version"), _mapping(bundle_data.get("run")).get("timestamp")
+    )
+    return {
+        "hardware_class": classified.hardware_class,
+        "hardware_score": classified.score,
+        "hardware_basis": classified.basis,
+        "hardware_table_version": classified.table_version,
+        "service_size": _managed_service_size(bundle_data) if classified.hardware_class == CLASS_MANAGED else None,
+        "benchbox_version": version,
+        "benchbox_version_basis": version_basis,
+    }
+
+
 def _deployment_class_from_contract(bundle: BundleDocument) -> str | None:
     environment = bundle.environment
     runtime = environment.platform_runtime
@@ -1639,6 +1780,11 @@ def _detail_environment(
         else:
             provided["cpu_model"] = None
             provided["cpu_family"] = None
+        attestation = manifest_cpu_attestation(bundle_path)
+        if not cleaned_cpu and attestation:
+            provided["cpu_model"] = attestation["cpu_model"]
+            provided["cpu_family"] = normalize_cpu_family(attestation["cpu_model"])
+            provided["cpu_identity_provenance"] = "user_attested"
 
     link = env.client_link
     overhead = link.statement_overhead_ms
@@ -1722,6 +1868,7 @@ class BundleTransformer:
         variant = _variant_info(bundle, bundle_data, bundle_path)
         execution_mode = _execution_mode(bundle)
         translator = _translator_columns(bundle_data, bundle_path, execution_mode)
+        hardware = _hardware_columns(bundle_data, bundle_path)
         power_score, power_score_source = _power_score(bundle, bundle_data)
         entry = ManifestEntry(
             result_id=rid,
@@ -1738,6 +1885,9 @@ class BundleTransformer:
             run_date=run_date,
             power_score=power_score,
             throughput_at_size=_throughput_at_size(bundle, bundle_data),
+            **_qph_columns(bundle_data, test_type, str(benchmark)),
+            load_scope=_load_scope(bundle_data),
+            transactional_steps=_transactional_steps(bundle_data),
             stream_count=_stream_count(bundle, test_type),
             total_duration_s=total_duration_s,
             geomean_ms=_geomean_ms(bundle),
@@ -1783,9 +1933,11 @@ class BundleTransformer:
             power_score_source=power_score_source,
             basis_availability=_compute_basis_availability(timings),
             **translator,
+            **hardware,
         )
         reason = ranking_exclusion_reason(entry)
         reason = _throughput_stream_exclusion(bundle, bundle_data, test_type, reason)
+        reason = _combined_exclusion(bundle_data, test_type, reason)
         defect_reason = None
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION
@@ -1847,6 +1999,9 @@ class BundleTransformer:
             display_geomean_ms=_display_geomean_ms(display_timings),
             power_score=power_score,
             throughput_at_size=_throughput_at_size(bundle, bundle_data),
+            **_qph_columns(bundle_data, test_type, str(benchmark)),
+            load_scope=_load_scope(bundle_data),
+            transactional_steps=_transactional_steps(bundle_data),
             stream_count=_stream_count(bundle, test_type),
             has_display_timing=timing_contract.has_display_timing,
             logical_query_count=logical_query_count,
@@ -1900,6 +2055,8 @@ class BundleTransformer:
             run_date=run_date,
             power_score=detail.power_score,
             throughput_at_size=detail.throughput_at_size,
+            qphh_at_size=detail.qphh_at_size,
+            qphds_at_size=detail.qphds_at_size,
             stream_count=detail.stream_count,
             test_type=detail.test_type,
             total_duration_s=total_duration_s,
@@ -1924,6 +2081,7 @@ class BundleTransformer:
         )
         reason = ranking_exclusion_reason(manifest_peer)
         reason = _throughput_stream_exclusion(bundle, bundle_data, test_type, reason)
+        reason = _combined_exclusion(bundle_data, test_type, reason)
         defect_reason = None
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION

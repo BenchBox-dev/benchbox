@@ -486,7 +486,9 @@ class DryRunExecutor:
             if test_execution_type == "load_only":
                 return {}
 
-            if execution_mode == "dataframe" and test_execution_type in ("maintenance", "combined"):
+            if execution_mode == "dataframe" and self._dataframe_maintenance_requested(
+                benchmark_config, test_execution_type
+            ):
                 return {
                     "_maintenance_not_supported": (
                         "-- Maintenance phase is not yet implemented for DataFrame mode.\n"
@@ -539,6 +541,17 @@ class DryRunExecutor:
             raise
         except Exception:
             return {}
+
+    @staticmethod
+    def _dataframe_maintenance_requested(benchmark_config: Any, test_execution_type: str) -> bool:
+        if test_execution_type == "maintenance":
+            return True
+        if test_execution_type != "combined":
+            return False
+        if str(getattr(benchmark_config, "name", "")).lower() != "tpch":
+            return True
+        requested = (getattr(benchmark_config, "options", None) or {}).get("requested_phases") or ()
+        return "maintenance" in set(requested)
 
     def _extract_queries_via_real_test_execution(
         self,

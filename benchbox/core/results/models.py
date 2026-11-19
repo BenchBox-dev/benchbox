@@ -483,6 +483,11 @@ class BenchmarkResults:
     data_archive_hash: str | None = None
     funding: str | None = None
     result_source: str | None = None
+    plan_tier: str | None = None
+    preview_features: list[str] | None = None
+    vendor_permission: str | None = None
+    vendor_notice: dict[str, Any] | None = None
+    self_run: bool | None = None
     execution_engine: dict[str, Any] | None = None
     timing_method: int | None = None
     net_estimate_status: str | None = None

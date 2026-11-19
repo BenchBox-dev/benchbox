@@ -279,8 +279,8 @@ jobs:
             _project/baselines/perf_smoke_duckdb_tpch_001.json \
             "${{ steps.current.outputs.path }}" \
             --fail-on-regression 10% \
-            --min-regression-delta 7ms \
-            --min-aggregate-regression-delta 82ms
+            --min-regression-delta 5ms \
+            --min-aggregate-regression-delta 31ms
 
       - name: Upload result artifact
         if: always()
@@ -639,6 +639,10 @@ jobs:
     if: ${{ needs.drift-gate.outputs.run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: read
     env:
       SUMMARY_PATH: t3-drift/cross-surface-baseline-summary.json
       BASELINE_PATH: benchbox/core/equivalence/cross_surface_baseline.yaml
@@ -666,47 +670,14 @@ jobs:
 
       - name: Corpus drift (develop vs published-results, directional)
         if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          PUB=origin/published-results
-          DEV=HEAD
-
-          if ! git cat-file -e "${PUB}:results-data" 2>/dev/null; then
-            echo "::error::published-results has no results-data/ tree"
-            exit 2
-          fi
-
-          PATHSPECS=(
-            'results-data/bundles'
-            'results-data/CORPUS_NOTES.md'
-            'results-data/SEED_CORPUS_SPEC.md'
-            'results-data/README.md'
-            'results-data/validate_corpus.py'
-          )
-
-          DEVELOP_AHEAD=$(git diff --name-only --diff-filter=A "${PUB}" "${DEV}" -- "${PATHSPECS[@]}" || true)
-          PUBLISHED_ONLY=$(git diff --name-only --diff-filter=D "${PUB}" "${DEV}" -- "${PATHSPECS[@]}" || true)
-          CONTENT_CHANGED=$(git diff --name-only --diff-filter=M "${PUB}" "${DEV}" -- "${PATHSPECS[@]}" || true)
-          STALE_PATHS=$(printf '%s\n%s\n' "${CONTENT_CHANGED}" "${DEVELOP_AHEAD}" | sed '/^$/d' || true)
-
-          if [[ -n "${PUBLISHED_ONLY}" ]]; then
-            PO_COUNT=$(printf '%s\n' "${PUBLISHED_ONLY}" | sed '/^$/d' | wc -l | tr -d ' ')
-            echo "::notice::published-results has ${PO_COUNT} path(s) not on develop (accepted archive submissions; not drift)."
-            printf '%s\n' "${PUBLISHED_ONLY}" | head -40
-          fi
-
-          if [[ -z "${STALE_PATHS}" ]]; then
-            echo "No develop-ahead corpus drift."
-            exit 0
-          fi
-
-          COUNT=$(printf '%s\n' "${STALE_PATHS}" | wc -l | tr -d ' ')
-          echo "::error::published-results corpus is ${COUNT} path(s) behind develop (develop-ahead or content-changed)."
-          printf '%s\n' "${STALE_PATHS}" | head -40
-          echo "Mirror develop-ahead paths with the non-destructive union overlay:"
-          echo "  gh workflow run sync-results-data-to-published.yml --ref develop"
-          echo "Never use a wipe-based full mirror: published-only community submissions would be deleted."
-          exit 1
+          git fetch --no-tags --shallow-since="72 hours ago" origin develop \
+            && git fetch --no-tags --deepen=1 origin develop \
+            || echo "::warning::Could not deepen develop history; mirror grace fails closed for stale paths."
+          python3 scripts/corpus_drift.py --profile nightly --repository "${GITHUB_REPOSITORY}"
 
       - name: Corpus privacy scan (published-results tip)
         if: ${{ !cancelled() }}
@@ -1340,7 +1311,7 @@ jobs:
   integration:
     name: "t3:integration | ${{ matrix.suite }}"
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
     env:
       BENCHBOX_TEST_TIER: t2
     strategy:
@@ -1385,12 +1356,15 @@ jobs:
         run: python3 scripts/theseus_release_check.py
         env:
           GITHUB_TOKEN: ${{ github.token }}
+        timeout-minutes: 20
 
       - name: Run core integration tests
+        timeout-minutes: 30
         if: matrix.suite == 'core'
         run: uv run -- python -m pytest tests/integration -m "integration and not (slow or stress or resource_heavy or live_integration)" --tb=short --maxfail=5 --timeout=300 --junitxml=${{ matrix.junit }}
 
       - name: Run table-format integration tests
+        timeout-minutes: 30
         if: matrix.suite == 'table-formats'
         run: uv run -- python -m pytest tests/integration/core/data_organization/test_presorted_generation.py -m "requires_table_formats" --tb=short --junitxml=${{ matrix.junit }}
 

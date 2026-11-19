@@ -67,8 +67,7 @@ def test_official_bundle_survives_a_json_round_trip_and_passes_submit(tmp_path: 
     ("official", "scale_factor", "expected_class"),
     [
         (False, OFFICIAL_SCALE, "unofficial_nonstandard"),
-        (True, 0.5, "unofficial_subscale"),
-        (True, 2.0, "unofficial_nonstandard"),
+        (False, 0.1, "unofficial_subscale"),
     ],
 )
 def test_unofficial_runs_are_refused_for_compliance(official: bool, scale_factor: float, expected_class: str) -> None:
@@ -79,6 +78,16 @@ def test_unofficial_runs_are_refused_for_compliance(official: bool, scale_factor
     decision = publish_admission(loaded, PUBLISH_LABEL)
     assert not decision.allowed
     assert decision.code == "unofficial_compliance"
+
+
+@pytest.mark.parametrize("scale_factor", [0.5, 2.0])
+def test_off_list_scale_runs_are_admitted_as_nonstandard(scale_factor: float) -> None:
+    payload = _bundle_payload(official=True, scale_factor=scale_factor)
+    loaded = reconstruct_benchmark_results(payload)
+
+    assert payload["benchmark"]["compliance_class"] == "unofficial_nonstandard"
+    assert loaded.compliance_class == "unofficial_nonstandard"
+    assert publish_admission(loaded, PUBLISH_LABEL).allowed
 
 
 def _dataframe_platform_input():

@@ -115,7 +115,7 @@ help:
 	@echo "  make worktree-create BRANCH=name WORKTREE_PATH=path [BASE=ref]  Create from BASE (default origin/develop); verify local/remote branch collisions"
 	@echo "  make worktree-remove WORKTREE_PATH=path              Remove an exact clean, attached, unlocked worktree"
 	@echo "  make worktree-release WORKTREE_PATH=path             Record manual owner release for caller-owned worktree (non-destructive)"
-	@echo "  make worktree-finish WORKTREE_PATH=path EXPECTED_HEAD_OID=oid [FORMAT=json] [APPLY=1] [UNPUBLISHED=1]  Preview single-target removal and ref deletion (APPLY=1 executes; UNPUBLISHED=1 for never-published scratch branches)"
+	@echo "  make worktree-finish WORKTREE_PATH=path EXPECTED_HEAD_OID=oid [FORMAT=json] [APPLY=1] [UNPUBLISHED=1] [KEEP_BRANCH=1]  Preview single-target removal and ref deletion (APPLY=1 executes; UNPUBLISHED=1 for never-published scratch branches; KEEP_BRANCH=1 removes only the worktree, keeps the branch, needs no merged PR)"
 	@echo "  make worktree-reap [APPLY=1]                         Classify every worktree remove/keep/abandoned/ambiguous with worktree-finish checks (APPLY=1 removes 'remove' verdicts)"
 	@echo "  make worktree-list                                   List registered worktrees"
 	@echo "  make worktree-audit [FORMAT=json]                    Read-only inventory and lifecycle audit of worktrees and branches"

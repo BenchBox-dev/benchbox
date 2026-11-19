@@ -73,6 +73,26 @@ def detect_cpu_info() -> Tuple[str | None, str | None]:
     return model, vendor
 
 
+CONTAINER_HOST_CPU_MODEL_ENV = "BENCHBOX_CONTAINER_HOST_CPU_MODEL"
+
+
+def _vendor_from_brand(model: str) -> str | None:
+    if model.startswith("Apple"):
+        return "Apple"
+    if "Intel" in model:
+        return "Intel"
+    if "AMD" in model:
+        return "AMD"
+    return None
+
+
+def container_host_cpu() -> Tuple[str | None, str | None]:
+    model = os.environ.get(CONTAINER_HOST_CPU_MODEL_ENV, "").strip()
+    if not model or is_cpu_architecture_token(model, platform.machine()):
+        return None, None
+    return model, _vendor_from_brand(model)
+
+
 def _detect_darwin_cpu() -> Tuple[str | None, str | None]:
     try:
         res = subprocess.run(
@@ -84,13 +104,7 @@ def _detect_darwin_cpu() -> Tuple[str | None, str | None]:
         )
         if res.returncode == 0 and res.stdout.strip():
             model = res.stdout.strip()
-            vendor = None
-            if model.startswith("Apple"):
-                vendor = "Apple"
-            elif "Intel" in model:
-                vendor = "Intel"
-            elif "AMD" in model:
-                vendor = "AMD"
+            vendor = _vendor_from_brand(model)
             return model, vendor
     except Exception:
         pass

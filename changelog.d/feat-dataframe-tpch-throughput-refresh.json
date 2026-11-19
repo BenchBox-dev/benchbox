@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "The polars-df and datafusion-df platforms now run the TPC-H throughput phase (concurrent query streams) and the RF1/RF2 refresh functions, so a full-specification `--official` TPC-H run works in DataFrame mode.",
+      "details": [
+        "Each query stream binds its own per-position parameter seed, matching the SQL throughput test, and every query reads a snapshot of the table registry taken when it starts.",
+        "RF1 appends the new orders and lineitems; RF2 finds the rows to delete when it runs and registers filtered tables. The tables swap in one step, so a stream sees the state before or after a refresh, never a partial one.",
+        "The refresh stream runs one RF1/RF2 pair per query stream alongside the query streams and records the same evidence fields as SQL bundles."
+      ],
+      "platforms": ["polars-df", "datafusion-df"],
+      "benchmarks": ["tpch"]
+    }
+  ]
+}
