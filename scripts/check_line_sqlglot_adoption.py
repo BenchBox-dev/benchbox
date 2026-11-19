@@ -30,6 +30,11 @@ def _git(root: Path, *args: str) -> str:
     ).stdout
 
 
+def outcomes(root: Path, rev: str) -> dict[str, object]:
+    baseline = json.loads(_git(root, "show", f"{rev}:{delivery.BASELINE}"))
+    return {key: value for key, value in baseline.items() if key != "identity"}
+
+
 def problems(
     root: Path,
     base_ref: str,
@@ -52,11 +57,16 @@ def problems(
             f"a pull request into {base_ref} changes {delivery.PIN} together with other changes ({error}); "
             "a maintenance line takes a newer SQLGlot wheel only through a separate adoption pull request"
         ]
+    if outcomes(root, base_sha) != outcomes(root, "HEAD"):
+        return [
+            f"the adoption into {base_ref} changes expected outcomes in {delivery.BASELINE}, not only its identity; "
+            "adopt this version by hand"
+        ]
     try:
         listing = delivery.render_translation_changes(reporter(root, base_sha, "HEAD"))
     except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
         return [f"the translation report could not be computed: {error}"]
-    if listing not in body:
+    if listing.replace("\r\n", "\n") not in body.replace("\r\n", "\n"):
         return [
             f"the pull request body does not carry the translated-query report for the {version} wheel; "
             "generate it with `python -m scripts.sql_execution_gate.translation_report --render` and paste it into the body"

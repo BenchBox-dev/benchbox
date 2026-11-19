@@ -18,6 +18,7 @@ EMIT = Path(__file__).with_name("emit.py")
 VENDOR_ARCHIVE = re.compile(r"benchbox/_vendor/benchbox_sqlglot-\d+\.\d+\.\d+\.\d+-py3-none-any\.whl\.zip")
 VENDOR_PIN = "benchbox/_vendor/sqlglot.json"
 DEFAULT_SCALE = 0.01
+SECRET_NAME = re.compile(r"TOKEN|SECRET|PASSWORD|CREDENTIAL|PRIVATE|API_?KEY|^GH_|^GITHUB_", re.IGNORECASE)
 
 Translations = dict[str, dict[str, dict[str, str]]]
 
@@ -64,7 +65,10 @@ def checkout(repo: Path, rev: str, scratch: Path, tag: str, vendor_from: str | N
 def emit_translations(root: Path, scratch: Path, tag: str, jobs: int, scale: float = DEFAULT_SCALE) -> Translations:
     helper = scratch / f"emit_{tag}.py"
     shutil.copy(EMIT, helper)
-    environment = {**os.environ, "PYTHONPATH": str(root)}
+    environment = {
+        **{key: value for key, value in os.environ.items() if not SECRET_NAME.search(key)},
+        "PYTHONPATH": str(root),
+    }
     launch = "import runpy, sys; sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')"
     processes: list[tuple[subprocess.Popen[bytes], Path]] = []
     for shard in range(jobs):

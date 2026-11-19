@@ -139,3 +139,21 @@ def test_main_reads_the_body_from_the_environment(
     commit(root, "adopt with fix")
     assert main(arguments) == 1
     assert "separate adoption pull request" in capsys.readouterr().err
+
+
+def test_a_body_edited_in_the_web_interface_keeps_matching_despite_crlf(repo: tuple[Path, str]) -> None:
+    root, base = repo
+    adopt(root)
+    commit(root, "adopt")
+    listing = delivery.render_translation_changes([change()])
+    body = ("intro\n\n" + listing).replace("\n", "\r\n")
+    assert problems(root, LINE, base, body, lambda path, before, after: [change()]) == []
+
+
+def test_an_adoption_that_changes_expected_outcomes_is_refused(repo: tuple[Path, str]) -> None:
+    root, base = repo
+    adopt(root)
+    write(root, delivery.BASELINE, '{"identity": 1, "cases": [1]}')
+    commit(root, "adopt")
+    (found,) = problems(root, LINE, base, "", never)
+    assert "expected outcomes" in found
