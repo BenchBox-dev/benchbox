@@ -44240,12 +44240,17 @@
       "title": "dsdgen never finishes below SF 0.01: it loops in catalog_sales date scaling"
     },
     "tpcds-dsqgen-q9-timeout-sf10000-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-20T21:40:00Z",
+        "generation": "d06cfb174b8d41cda306a425e652e9cd",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e"
+      },
       "needs": [
         "feature-fix-tpcds-scale-bounds-20261117"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DS and TPC-DS-OBT accept SF 10000 and above, where dsqgen times out on Q9"
     },
     "tpcds-expression-q41-row-count-differs-from-sql": {
