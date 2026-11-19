@@ -167,7 +167,7 @@ the first two lines of a Python file, and only for a non-UTF-8 encoding.
 To add an exception, first confirm the text has a real reader and need; the
 checker cannot judge that. You may register the exception and the code that
 uses it in the same pull request: the entries count only once the head carries
-a review-gate success status posted by the benchbox-oracle App and a success
+a review-gate success status posted by the benchbox-review App and a success
 review verdict review. Neither alone is enough: a gate status also passes for
 changes that need no review. Without both, the base policy still applies and
 the new entries do not count, so a change never authorizes its own exception
