@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The report target prints which draw failed and why whenever it exits non-zero",
+    "The cause of run 44457489422 is named with evidence, or reproduced and fixed"
+  ],
+  "description": "## Problem\nTrunk run 44457489422 (develop 3d7619eef, after #4379, 2026-11-19) failed job `tpcds-parity-draws`. `make tpcds-cross-surface-draws-report` printed \"0 divergent\" and \"SQL and DataFrame surfaces are equivalent\" for all three draws, then `make` exited 1 from make/reports.mk:37. The log names no failing draw. A re-run of the same commit passed, so develop went red for about an hour and blocked every pr-arm with no actionable cause.\n\n## Decision gate\nReproduce or explain the exit status: per draw, capture the exit code of `python -m benchbox.core.equivalence.cross_surface` and anything written to stderr. If a draw exits non-zero after printing \"equivalent\", fix the reporting so the reason is printed. If the cause is a crash/timeout in a backend (pandas/datafusion), fix or record it with the evidence. Do not mark as flaky without a cause.\n\n## Guardrails\n- Do not swallow the non-zero status or add retries to the target.\n- Do not narrow the draws or backends.\n\n## Verification rubric\nEither a reproduced cause with a fix and a test that a non-zero draw prints its reason, or a recorded root cause with log evidence.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/44457489422",
+    "make/reports.mk",
+    "benchbox/core/equivalence/cross_surface.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d414581c3188d7bdb8ecf82a",
+      "at": "2026-11-19T23:22:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "19c1db97c2fc447ca336eb55f54c5339",
+      "session_id": "7dea42834aac4e2d8252103612d62ce9"
+    }
+  ]
+}
