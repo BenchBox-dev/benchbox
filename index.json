@@ -15607,15 +15607,10 @@
       "title": "Rerun evidence artifacts collide by name and the canary core aggregator reads stale failure"
     },
     "ci-setup-uv-cache-volume-20261117": {
-      "claim": {
-        "expires_at": "2026-11-20T14:19:05Z",
-        "generation": "50818c886b364107a06ac6ad140c91f4",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fc3ffdf558b4ae7fa8a5c84"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Core CI restores a 429 MB setup-uv cache about 232 times a day and the repo cache sits above the 10 GB limit"
     },
     "ci-shallow-checkouts-audit-and-auxiliary-jobs-20261108": {
