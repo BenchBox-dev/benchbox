@@ -1518,7 +1518,8 @@ def test_dry_run_of_a_landing_target_touches_nothing_and_exits_zero(
     for name in ("gh", "uv", "python3"):
         (stubs / name).write_text(f'#!/bin/sh\necho "{name} $*" >> "{calls}"\nexit 99\n', encoding="utf-8")
         (stubs / name).chmod(0o755)
-    env = {**os.environ, "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}", "BENCHBOX_MAKE_TIMINGS": "0"}
+    env = {k: v for k, v in os.environ.items() if k != "BENCHBOX_MAKE_TIMINGS"}
+    env["PATH"] = f"{stubs}{os.pathsep}{os.environ['PATH']}"
     head = _git(repo, "rev-parse", "HEAD")
     remote_refs = _git(remote, "for-each-ref")
     files = _snapshot(repo, remote)
@@ -1558,7 +1559,7 @@ def test_every_dry_run_spelling_stops_pr_open(tmp_path: Path, flags: list[str], 
     result = subprocess.run(
         ["make", *flags, "pr-open", "TITLE=fix: x y"],
         cwd=repo,
-        env={**os.environ, "BENCHBOX_MAKE_TIMINGS": "0"},
+        env={k: v for k, v in os.environ.items() if k != "BENCHBOX_MAKE_TIMINGS"},
         capture_output=True,
         text=True,
         check=False,
