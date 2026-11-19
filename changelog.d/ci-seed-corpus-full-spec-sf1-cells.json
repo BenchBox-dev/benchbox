@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "The monthly seed corpus runs TPC-H SF 1 and TPC-DS SF 1 again as full-specification --official cells (throughput streams plus refresh or maintenance) on DuckDB, ClickHouse Local and CedarDB; CedarDB cells start the pinned docker/cedardb image first."
+}

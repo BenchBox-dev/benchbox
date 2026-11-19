@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import json
+import os
 import subprocess
 import sys
 import time
@@ -13,7 +14,9 @@ PROBE_TAG = "v0.0.0rc0"
 VARIANTS = ("reuse", "fallback", "guarded-change")
 WORKFLOW_FILE = "release-v2.yml"
 RUNS_PAGE = 30
-CHECK_NAME = "release-v2 probe"
+PROBE_CONTEXT = "release-v2 probe"
+PENDING_PREFIX = "Probe running: "
+DESCRIPTION_LIMIT = 140
 PROBED_PATHS = (
     ".github/workflows/release-v2.yml",
     ".github/workflows/release-v2-probe.yml",
@@ -122,45 +125,43 @@ def cancel(repository: str, run_id: int, runner: Gh = gh) -> None:
         print(f"::warning::could not cancel run {run_id}: {exc}", file=sys.stderr)
 
 
-def check_external_id(started: dict[str, int]) -> str:
-    return ";".join(f"{variant}={run_id}" for variant, run_id in started.items())
+def pending_description(started: dict[str, int]) -> str:
+    return PENDING_PREFIX + ";".join(f"{variant}={run_id}" for variant, run_id in started.items())
 
 
 def run_url(repository: str, run_id: int) -> str:
     return f"https://github.com/{repository}/actions/runs/{run_id}"
 
 
-def create_check(
+def clip(description: str) -> str:
+    if len(description) <= DESCRIPTION_LIMIT:
+        return description
+    return description[: DESCRIPTION_LIMIT - 1] + "…"
+
+
+def post_status(
     repository: str,
     head_sha: str,
+    state: str,
+    description: str,
     *,
-    status: str,
-    conclusion: str | None,
-    title: str,
-    summary: str,
-    external_id: str | None = None,
+    target_url: str | None = None,
     runner: Gh = gh,
 ) -> dict[str, Any]:
     args = [
         "api",
         "--method",
         "POST",
-        f"repos/{repository}/check-runs",
+        f"repos/{repository}/statuses/{head_sha}",
         "-f",
-        f"name={CHECK_NAME}",
+        f"state={state}",
         "-f",
-        f"head_sha={head_sha}",
+        f"context={PROBE_CONTEXT}",
         "-f",
-        f"status={status}",
-        "-f",
-        f"output[title]={title}",
-        "-f",
-        f"output[summary]={summary}",
+        f"description={clip(description)}",
     ]
-    if conclusion is not None:
-        args += ["-f", f"conclusion={conclusion}"]
-    if external_id is not None:
-        args += ["-f", f"external_id={external_id}"]
+    if target_url is not None:
+        args += ["-f", f"target_url={target_url}"]
     return runner(*args)
 
 
@@ -195,21 +196,14 @@ def report_probe(
     *,
     runner: Gh = gh,
     sleep: Callable[[float], None] = time.sleep,
-    reconcile: Callable[[int, dict[str, int]], None] | None = None,
+    reconcile: Callable[[dict[str, int]], None] | None = None,
     existing: Callable[[], str | None] | None = None,
+    dispatch_url: str | None = None,
 ) -> int:
     touched = touches_probed_paths(files)
     if not touched:
         print("no release-v2 probe input changed; nothing to probe")
-        create_check(
-            repository,
-            head_sha,
-            status="completed",
-            conclusion="success",
-            title="No release input changed",
-            summary="No release-v2 probe input changed in this pull request, so no probe was run.",
-            runner=runner,
-        )
+        post_status(repository, head_sha, "success", "No release input changed", runner=runner)
         return 0
     if existing is not None:
         outcome = existing()
@@ -221,45 +215,26 @@ def report_probe(
         started = start_probes(repository, branch, head_sha, runner=runner, sleep=sleep)
     except RuntimeError as exc:
         print(f"::error::{exc}", file=sys.stderr)
-        create_check(
-            repository,
-            head_sha,
-            status="completed",
-            conclusion="failure",
-            title="Probe dispatch failed",
-            summary=f"The release-v2 probe variants could not be dispatched: {exc}",
-            runner=runner,
-        )
+        post_status(repository, head_sha, "failure", f"Probe dispatch failed: {exc}", runner=runner)
         return 1
-    links = "\n".join(f"- {variant}: {run_url(repository, run_id)}" for variant, run_id in started.items())
-    check = create_check(
+    post_status(
         repository,
         head_sha,
-        status="in_progress",
-        conclusion=None,
-        title="Probe runs in progress",
-        summary=f"Release v2 probe runs dispatched for {head_sha[:10]}; the verdict follows when all finish.\n\n{links}",
-        external_id=check_external_id(started),
+        "pending",
+        pending_description(started),
+        target_url=dispatch_url or run_url(repository, next(iter(started.values()))),
         runner=runner,
     )
     if reconcile is not None:
         try:
-            reconcile(int(check["id"]), started)
+            reconcile(started)
         except RuntimeError as exc:
-            print(f"::warning::could not reconcile the probe check yet: {exc}", file=sys.stderr)
+            print(f"::warning::could not reconcile the probe status yet: {exc}", file=sys.stderr)
     return 0
 
 
-def fail_check(repository: str, head_sha: str, message: str, runner: Gh = gh) -> None:
-    create_check(
-        repository,
-        head_sha,
-        status="completed",
-        conclusion="failure",
-        title="Probe could not start",
-        summary=message,
-        runner=runner,
-    )
+def fail_probe(repository: str, head_sha: str, message: str, runner: Gh = gh) -> None:
+    post_status(repository, head_sha, "failure", f"Probe could not start: {message}", runner=runner)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -268,28 +243,37 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--head-sha", required=True)
     parser.add_argument("--branch")
     parser.add_argument("--pull-request", type=int)
-    parser.add_argument("--fail", help="Record a failed probe check with this message instead of dispatching")
+    parser.add_argument("--fail", help="Record a failed probe status with this message instead of dispatching")
     args = parser.parse_args(argv)
     try:
         if args.fail is not None:
-            fail_check(args.repository, args.head_sha, args.fail)
+            fail_probe(args.repository, args.head_sha, args.fail)
             return 0
         if args.branch is None or args.pull_request is None:
             parser.error("--branch and --pull-request are required unless --fail is given")
         files = changed_files(args.repository, args.pull_request)
         from scripts import release_probe_verdict
 
-        def reconcile(check_id: int, started: dict[str, int]) -> None:
-            print(release_probe_verdict.reconcile(args.repository, check_id, started, args.head_sha))
+        def reconcile(started: dict[str, int]) -> None:
+            print(release_probe_verdict.reconcile(args.repository, started, args.head_sha))
 
         def existing() -> str | None:
             return release_probe_verdict.reconcile_head(args.repository, args.head_sha)
 
-        return report_probe(args.repository, args.branch, args.head_sha, files, reconcile=reconcile, existing=existing)
+        dispatch_run = os.environ.get("GITHUB_RUN_ID", "")
+        return report_probe(
+            args.repository,
+            args.branch,
+            args.head_sha,
+            files,
+            reconcile=reconcile,
+            existing=existing,
+            dispatch_url=run_url(args.repository, int(dispatch_run)) if dispatch_run.isdigit() else None,
+        )
     except RuntimeError as exc:
         print(f"::error::{exc}", file=sys.stderr)
         try:
-            fail_check(args.repository, args.head_sha, str(exc))
+            fail_probe(args.repository, args.head_sha, str(exc))
         except RuntimeError as inner:
             print(f"::error::{inner}", file=sys.stderr)
         return 1

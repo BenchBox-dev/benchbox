@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import pytest
 
-from scripts import release_probe_verdict as verdict
+from scripts import release_probe_launch as launch, release_probe_verdict as verdict
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPOSITORY = "owner/repo"
 HEAD = "a" * 40
 IDS = {"reuse": 101, "fallback": 102, "guarded-change": 103}
-EXTERNAL_ID = "reuse=101;fallback=102;guarded-change=103"
+DESCRIPTION = "Probe running: reuse=101;fallback=102;guarded-change=103"
 NEEDS_OK = {
     "admit": {"result": "success", "outputs": {}},
     "publish": {"result": "skipped", "outputs": {}},
@@ -36,35 +36,38 @@ def run_spec(*, status: str = "in_progress", conclusion: str | None = None, rows
 
 
 class FakeGh:
-    def __init__(self, runs: dict[int, dict] | None = None, checks: list[dict] | None = None):
+    def __init__(self, runs: dict[int, dict] | None = None, statuses: list[dict] | None = None):
         self.runs = {101: run_spec(), 102: run_spec(), 103: run_spec()}
         self.runs.update(runs or {})
-        self.checks = checks if checks is not None else [self.check()]
-        self.patched: list[dict] = []
+        self.statuses = statuses if statuses is not None else [self.status()]
+        self.posted: list[dict] = []
         self.overrides: dict[int, dict] = {}
 
     @staticmethod
-    def check(status: str = "in_progress", external_id: str | None = EXTERNAL_ID, check_id: int = 9) -> dict:
-        return {"id": check_id, "name": "release-v2 probe", "status": status, "external_id": external_id}
+    def status(
+        state: str = "pending", description: str | None = DESCRIPTION, context: str = "release-v2 probe"
+    ) -> dict:
+        return {"context": context, "state": state, "description": description}
 
     def __call__(self, *args: str):
         if "--method" in args:
-            assert args[args.index("--method") + 1] == "PATCH"
+            assert args[args.index("--method") + 1] == "POST"
+            assert args[3] == f"repos/{REPOSITORY}/statuses/{HEAD}"
             fields = {}
             rest = list(args[4:])
             while rest:
                 assert rest.pop(0) == "-f"
                 key, _, value = rest.pop(0).partition("=")
                 fields[key] = value
-            self.patched.append({"path": args[3], **fields})
-            for check in self.checks:
-                if args[3].endswith(f"/{check['id']}"):
-                    check["status"] = "completed"
+            self.posted.append(fields)
+            self.statuses.insert(
+                0, {"context": fields["context"], "state": fields["state"], "description": fields["description"]}
+            )
             return {}
         path = args[1]
-        if "/check-runs" in path:
-            assert f"commits/{HEAD}/check-runs" in path and "check_name=release-v2%20probe" in path
-            return {"check_runs": self.checks}
+        if "/statuses?" in path:
+            assert path.startswith(f"repos/{REPOSITORY}/commits/{HEAD}/statuses?")
+            return self.statuses
         if "/jobs?" in path:
             run_id = int(path.split("/actions/runs/")[1].split("/")[0])
             assert "filter=latest" in path
@@ -87,29 +90,27 @@ def _report(fake: FakeGh, run_id: int = 103, needs: dict | None = None) -> str:
     return verdict.report(REPOSITORY, run_id, HEAD, NEEDS_OK if needs is None else needs, fake)
 
 
-def test_every_substantive_job_green_in_all_three_runs_completes_the_check_as_success():
+def test_every_substantive_job_green_in_all_three_runs_sets_the_status_to_success():
     fake = FakeGh()
     assert "success" in _report(fake)
-    (patch,) = fake.patched
-    assert patch["path"] == f"repos/{REPOSITORY}/check-runs/9"
-    assert (patch["status"], patch["conclusion"]) == ("completed", "success")
-    for run_id in IDS.values():
-        assert f"actions/runs/{run_id}" in patch["output[summary]"]
+    (patch,) = fake.posted
+    assert (patch["context"], patch["state"], patch["description"]) == ("release-v2 probe", "success", "Probe passed")
+    assert "target_url" not in patch
 
 
 def test_two_variants_finishing_together_each_see_the_other_run_finished_and_agree():
     first, second = FakeGh(), FakeGh()
     assert "success" in _report(first, 102)
     assert "success" in _report(second, 103)
-    assert [p["conclusion"] for p in first.patched + second.patched] == ["success", "success"]
-    assert first.patched[0]["output[summary]"] == second.patched[0]["output[summary]"]
+    assert [p["state"] for p in first.posted + second.posted] == ["success", "success"]
+    assert first.posted[0] == second.posted[0]
 
 
-def test_the_second_report_of_the_same_check_finds_it_completed_and_changes_nothing():
+def test_the_second_report_of_the_same_status_finds_it_final_and_changes_nothing():
     fake = FakeGh()
     _report(fake, 102)
     assert "ignored" in _report(fake, 103)
-    assert len(fake.patched) == 1
+    assert len(fake.posted) == 1
 
 
 def test_another_run_whose_substantive_jobs_are_done_counts_as_finished_while_its_report_job_runs():
@@ -123,63 +124,63 @@ def test_a_completed_run_counts_as_finished():
 
 
 @pytest.mark.parametrize("status", ["queued", "in_progress", "waiting", "pending"])
-def test_a_substantive_job_that_has_not_completed_leaves_the_check_untouched(status):
+def test_a_substantive_job_that_has_not_completed_leaves_the_status_untouched(status):
     rows = jobs(extra=[job("uat-stage1 sqlite", status=status)])
     fake = FakeGh({102: run_spec(rows=rows)})
     assert "waiting" in _report(fake)
-    assert fake.patched == []
+    assert fake.posted == []
 
 
 def test_a_run_whose_release_outcome_job_has_not_completed_is_not_finished_even_if_the_listed_jobs_are():
     rows = [job("admit"), job("release outcome", status="queued")]
     fake = FakeGh({102: run_spec(rows=rows)})
     assert "waiting" in _report(fake)
-    assert fake.patched == []
+    assert fake.posted == []
 
 
 def test_a_run_whose_listed_jobs_lack_the_release_outcome_job_is_not_finished():
     fake = FakeGh({102: run_spec(rows=[job("admit"), job("probe report", status="in_progress")])})
     assert "waiting" in _report(fake)
-    assert fake.patched == []
+    assert fake.posted == []
 
 
 def test_a_run_with_no_jobs_yet_is_not_finished():
     fake = FakeGh({102: run_spec(rows=[])})
     assert "waiting" in _report(fake)
-    assert fake.patched == []
+    assert fake.posted == []
 
 
 @pytest.mark.parametrize("variant", ["reuse", "fallback"])
 @pytest.mark.parametrize("conclusion", ["failure", "cancelled", "timed_out"])
-def test_a_failed_substantive_job_in_another_run_fails_the_check_naming_the_variant_and_job(variant, conclusion):
+def test_a_failed_substantive_job_in_another_run_fails_the_status_naming_the_variant_and_job(variant, conclusion):
     rows = jobs(extra=[job("install-matrix (ubuntu)", conclusion=conclusion)])
     fake = FakeGh({IDS[variant]: run_spec(rows=rows)})
     _report(fake)
-    (patch,) = fake.patched
-    assert patch["conclusion"] == "failure"
-    summary = patch["output[summary]"]
-    assert (
-        f"- {variant}: install-matrix (ubuntu): {conclusion} (https://github.com/{REPOSITORY}/actions/runs/" in summary
-    )
+    (patch,) = fake.posted
+    assert patch["state"] == "failure"
+    description = patch["description"]
+    assert f"{variant}: install-matrix (ubuntu): {conclusion}" in description
+    assert len(description) <= 140
+    assert patch["target_url"] == f"https://github.com/{REPOSITORY}/actions/runs/{IDS[variant]}"
     for other in set(IDS) - {variant}:
-        assert f"- {other}:" not in summary
+        assert other not in description
 
 
 @pytest.mark.parametrize("result", ["failure", "cancelled"])
-def test_a_failed_job_of_the_current_run_fails_the_check_through_its_needs(result):
+def test_a_failed_job_of_the_current_run_fails_the_status_through_its_needs(result):
     needs = {**NEEDS_OK, "release-uat": {"result": result, "outputs": {}}}
     fake = FakeGh()
     _report(fake, 103, needs)
-    (patch,) = fake.patched
-    assert patch["conclusion"] == "failure"
-    assert f"- guarded-change: release-uat: {result}" in patch["output[summary]"]
+    (patch,) = fake.posted
+    assert patch["state"] == "failure"
+    assert f"guarded-change: release-uat: {result}" in patch["description"]
 
 
-def test_skipped_jobs_never_fail_the_check():
+def test_skipped_jobs_never_fail_the_status():
     needs = {**NEEDS_OK, "uat-stage1": {"result": "skipped", "outputs": {}}}
     fake = FakeGh({101: run_spec(rows=jobs(extra=[job("uat-stage1 x", conclusion="skipped")]))})
     _report(fake, 103, needs)
-    assert fake.patched[0]["conclusion"] == "success"
+    assert fake.posted[0]["state"] == "success"
 
 
 def test_the_report_job_of_another_run_is_never_judged():
@@ -187,22 +188,22 @@ def test_the_report_job_of_another_run_is_never_judged():
     rows[-1]["conclusion"] = "failure"
     fake = FakeGh({101: run_spec(rows=rows)})
     _report(fake)
-    assert fake.patched[0]["conclusion"] == "success"
+    assert fake.posted[0]["state"] == "success"
 
 
-def test_a_run_that_completed_without_any_job_and_did_not_succeed_fails_the_check():
+def test_a_run_that_completed_without_any_job_and_did_not_succeed_fails_the_status():
     fake = FakeGh({101: run_spec(status="completed", conclusion="cancelled", rows=[])})
     _report(fake)
-    assert "- reuse: run: cancelled" in fake.patched[0]["output[summary]"]
+    assert "reuse: run: cancelled" in fake.posted[0]["description"]
 
 
 @pytest.mark.parametrize("conclusion", ["cancelled", "failure", "timed_out", "startup_failure"])
-def test_a_completed_run_whose_conclusion_is_not_success_fails_the_check_even_when_every_listed_job_is_green(
+def test_a_completed_run_whose_conclusion_is_not_success_fails_the_status_even_when_every_listed_job_is_green(
     conclusion,
 ):
     fake = FakeGh({101: run_spec(status="completed", conclusion=conclusion, rows=jobs(report="completed"))})
     _report(fake)
-    assert f"- reuse: run: {conclusion}" in fake.patched[0]["output[summary]"]
+    assert f"reuse: run: {conclusion}" in fake.posted[0]["description"]
 
 
 def test_a_run_that_failed_only_because_its_own_report_job_failed_is_judged_on_its_substantive_jobs():
@@ -210,120 +211,158 @@ def test_a_run_that_failed_only_because_its_own_report_job_failed_is_judged_on_i
     rows[-1]["conclusion"] = "failure"
     fake = FakeGh({101: run_spec(status="completed", conclusion="failure", rows=rows)})
     _report(fake)
-    assert fake.patched[0]["conclusion"] == "success"
+    assert fake.posted[0]["state"] == "success"
 
 
-def test_a_check_that_is_already_completed_is_left_alone():
-    fake = FakeGh(checks=[FakeGh.check(status="completed")])
+@pytest.mark.parametrize("state", ["success", "failure", "error"])
+def test_a_status_that_is_already_final_is_left_alone(state):
+    fake = FakeGh(statuses=[FakeGh.status(state=state, description="Probe passed"), FakeGh.status()])
     assert "ignored" in _report(fake)
-    assert fake.patched == []
+    assert fake.posted == []
 
 
-def test_a_run_that_belongs_to_no_probe_check_is_ignored():
+def test_a_run_that_belongs_to_no_pending_probe_status_is_ignored():
     fake = FakeGh(
-        checks=[FakeGh.check(external_id="reuse=1;fallback=2;guarded-change=3"), FakeGh.check(external_id=None)]
+        statuses=[
+            FakeGh.status(description="Probe running: reuse=1;fallback=2;guarded-change=3"),
+            FakeGh.status(description=None),
+        ]
     )
     assert "ignored" in _report(fake)
-    assert fake.patched == []
+    assert fake.posted == []
 
 
-def test_a_run_with_no_check_on_its_head_is_ignored():
-    fake = FakeGh(checks=[])
+def test_a_run_with_no_probe_status_on_its_head_is_ignored():
+    fake = FakeGh(statuses=[FakeGh.status(context="review-gate")])
     assert "ignored" in _report(fake)
-    assert fake.patched == []
+    assert fake.posted == []
 
 
-def test_only_the_check_recording_this_run_is_completed():
-    other = FakeGh.check(external_id="reuse=1;fallback=2;guarded-change=3", check_id=5)
-    fake = FakeGh(checks=[other, FakeGh.check(check_id=9)])
-    _report(fake)
-    assert [patch["path"] for patch in fake.patched] == [f"repos/{REPOSITORY}/check-runs/9"]
+def test_the_latest_probe_status_wins_over_an_older_pending_one_that_records_this_run():
+    newer = FakeGh.status(description="Probe running: reuse=1;fallback=2;guarded-change=3")
+    fake = FakeGh(statuses=[newer, FakeGh.status()])
+    assert "ignored" in _report(fake)
+    assert fake.posted == []
+
+
+def test_other_contexts_never_hide_the_probe_status():
+    fake = FakeGh(statuses=[FakeGh.status(context="review-gate", state="success"), FakeGh.status()])
+    assert "success" in _report(fake)
+    assert [patch["context"] for patch in fake.posted] == ["release-v2 probe"]
+
+
+def test_a_status_made_final_while_the_runs_were_judged_is_not_overwritten():
+    fake = FakeGh()
+
+    def racing(*args):
+        result = fake(*args)
+        if "/jobs?" in args[1]:
+            fake.statuses.insert(0, FakeGh.status(state="failure", description="Probe failed: elsewhere"))
+        return result
+
+    assert "ignored" in verdict.report(REPOSITORY, 103, HEAD, NEEDS_OK, racing)
+    assert fake.posted == []
 
 
 @pytest.mark.parametrize(
     "override",
     [{"path": ".github/workflows/ci.yml"}, {"event": "push"}, {"head_sha": "b" * 40}],
 )
-def test_a_recorded_run_that_is_not_a_release_v2_dispatch_at_the_check_head_fails_the_check(override):
+def test_a_recorded_run_that_is_not_a_release_v2_dispatch_at_the_status_head_fails_the_status(override):
     fake = FakeGh()
     fake.overrides[102] = override
     _report(fake)
-    (patch,) = fake.patched
-    assert patch["conclusion"] == "failure"
-    assert f"- fallback: https://github.com/{REPOSITORY}/actions/runs/102" in patch["output[summary]"]
+    (patch,) = fake.posted
+    assert patch["state"] == "failure"
+    assert "foreign runs" in patch["description"] and "fallback" in patch["description"]
+    assert patch["target_url"] == f"https://github.com/{REPOSITORY}/actions/runs/102"
 
 
 def test_a_recorded_run_path_carrying_its_ref_still_counts():
     fake = FakeGh()
     fake.overrides[102] = {"path": ".github/workflows/release-v2.yml@refs/heads/feat/x"}
     _report(fake)
-    assert fake.patched[0]["conclusion"] == "success"
+    assert fake.posted[0]["state"] == "success"
 
 
-def test_reconcile_head_completes_an_in_progress_check_whose_runs_all_finished():
+def test_reconcile_head_sets_a_pending_status_whose_runs_all_finished():
     fake = FakeGh()
     assert "success" in verdict.reconcile_head(REPOSITORY, HEAD, fake)
-    (patch,) = fake.patched
-    assert (patch["path"], patch["conclusion"]) == (f"repos/{REPOSITORY}/check-runs/9", "success")
+    (patch,) = fake.posted
+    assert (patch["context"], patch["state"]) == ("release-v2 probe", "success")
 
 
 def test_reconcile_head_uses_the_same_job_based_finished_rule():
     fake = FakeGh({102: run_spec(rows=jobs(extra=[job("uat-stage2 x", status="in_progress")]))})
     assert "waiting" in verdict.reconcile_head(REPOSITORY, HEAD, fake)
-    assert fake.patched == []
+    assert fake.posted == []
 
 
-def test_reconcile_head_fails_the_check_naming_a_failed_variant():
+def test_reconcile_head_fails_the_status_naming_a_failed_variant():
     fake = FakeGh({102: run_spec(rows=jobs(outcome="failure"))})
     assert "failure" in verdict.reconcile_head(REPOSITORY, HEAD, fake)
-    assert "- fallback: release outcome: failure" in fake.patched[0]["output[summary]"]
+    assert "fallback: release outcome: failure" in fake.posted[0]["description"]
 
 
-def test_reconcile_head_reports_no_check_so_the_caller_dispatches():
-    fake = FakeGh(checks=[])
+def test_reconcile_head_reports_no_status_so_the_caller_dispatches():
+    fake = FakeGh(statuses=[])
     assert verdict.reconcile_head(REPOSITORY, HEAD, fake) is None
-    assert fake.patched == []
+    assert fake.posted == []
 
 
-def test_reconcile_head_ignores_a_completed_check_so_a_deliberate_rerun_dispatches_again():
-    fake = FakeGh(checks=[FakeGh.check(status="completed")])
+def test_reconcile_head_ignores_a_final_status_so_a_deliberate_rerun_dispatches_again():
+    fake = FakeGh(statuses=[FakeGh.status(state="failure", description="Probe failed: x"), FakeGh.status()])
     assert verdict.reconcile_head(REPOSITORY, HEAD, fake) is None
-    assert fake.patched == []
+    assert fake.posted == []
 
 
-def test_reconcile_head_ignores_a_check_without_recorded_runs():
-    fake = FakeGh(checks=[FakeGh.check(external_id=None)])
+def test_reconcile_head_ignores_a_pending_status_without_recorded_runs():
+    fake = FakeGh(statuses=[FakeGh.status(description="Probe running")])
     assert verdict.reconcile_head(REPOSITORY, HEAD, fake) is None
 
 
 @pytest.mark.parametrize(
-    "external_id",
-    [None, "", "reuse=1", "reuse=1;fallback=x;guarded-change=3", "reuse=1;fallback=2;other=3"],
+    "description",
+    [
+        None,
+        "",
+        "reuse=101;fallback=102;guarded-change=103",
+        "Probe running: reuse=1",
+        "Probe running: reuse=1;fallback=x;guarded-change=3",
+        "Probe running: reuse=1;fallback=2;other=3",
+    ],
 )
-def test_a_malformed_external_id_records_nothing(external_id):
-    assert verdict.parse_external_id(external_id) == {}
+def test_a_malformed_description_records_nothing(description):
+    assert verdict.parse_recorded_runs(description) == {}
 
 
 def test_one_run_id_recorded_for_every_variant_records_nothing():
-    assert verdict.parse_external_id("reuse=7;fallback=7;guarded-change=7") == {}
-    assert verdict.parse_external_id("reuse=7;fallback=8;guarded-change=7") == {}
+    assert verdict.parse_recorded_runs("Probe running: reuse=7;fallback=7;guarded-change=7") == {}
+    assert verdict.parse_recorded_runs("Probe running: reuse=7;fallback=8;guarded-change=7") == {}
 
 
-def test_the_external_id_the_launcher_writes_round_trips():
-    assert verdict.parse_external_id(EXTERNAL_ID) == IDS
+def test_the_description_the_launcher_writes_round_trips():
+    assert verdict.parse_recorded_runs(DESCRIPTION) == IDS
+    assert verdict.parse_recorded_runs(launch.pending_description(IDS)) == IDS
+    assert len(launch.pending_description({variant: 10**12 + n for n, variant in enumerate(IDS)})) <= 140
 
 
-def test_the_check_pages_are_read_until_a_short_page(monkeypatch):
-    monkeypatch.setattr(verdict, "CHECKS_PAGE", 2)
-    pages = {1: [FakeGh.check(check_id=1), FakeGh.check(check_id=2)], 2: [FakeGh.check(check_id=3)]}
+def test_the_status_pages_are_read_until_the_probe_context_or_a_short_page(monkeypatch):
+    monkeypatch.setattr(verdict, "STATUSES_PAGE", 2)
+    other = FakeGh.status(context="review-gate")
+    pages = {1: [other, other], 2: [other, FakeGh.status()], 3: []}
     seen = []
 
     def runner(*args):
-        page = int(args[1].split("&page=")[1].split("&")[0])
+        page = int(args[1].split("&page=")[1])
         seen.append(page)
-        return {"check_runs": pages[page]}
+        return pages[page]
 
-    assert len(verdict.probe_checks(REPOSITORY, HEAD, runner)) == 3
+    assert verdict.latest_status(REPOSITORY, HEAD, runner)["context"] == "release-v2 probe"
+    assert seen == [1, 2]
+    seen.clear()
+    pages[2] = [other]
+    assert verdict.latest_status(REPOSITORY, HEAD, runner) is None
     assert seen == [1, 2]
 
 
@@ -341,7 +380,7 @@ def test_the_job_pages_are_read_until_a_short_page(monkeypatch):
     assert seen == [1, 2]
 
 
-def test_main_completes_the_check_from_the_needs_in_the_environment(monkeypatch, capsys):
+def test_main_completes_the_status_from_the_needs_in_the_environment(monkeypatch, capsys):
     monkeypatch.setenv("NEEDS_JSON", '{"admit": {"result": "success", "outputs": {}}}')
     seen = []
     monkeypatch.setattr(

@@ -9,7 +9,7 @@ import pytest
 import yaml
 
 from scripts.ci_text_edit_verdict import TEXT_EDIT_RUN_NAME
-from scripts.release_probe_launch import CHECK_NAME as PROBE_CHECK_NAME
+from scripts.release_probe_launch import PROBE_CONTEXT as PROBE_CHECK_NAME
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
