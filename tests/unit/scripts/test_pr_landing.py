@@ -1354,13 +1354,21 @@ if "scripts/pr_open_rest.py" in sys.argv:
 """
 _GIT = """#!/bin/sh
 [ -z "$GIT_LOG" ] || echo "$*" >> "$GIT_LOG"
+if [ "$1" = -C ]; then shift 2; fi
 case "$1 $2" in
   "branch --show-current") echo feat/x ;;
   "remote get-url") echo git@github.com:BenchBox-dev/BenchBox.git ;;
+  "--no-replace-objects show") cat "$REAL_ROOT/pyproject.toml" ;;
+  "rev-parse origin/develop") [ -z "$BASE_SHA" ] || echo "$BASE_SHA" ;;
+  "log --no-merges") [ -z "$REVERTS_SHA" ] || echo "This reverts commit $REVERTS_SHA." ;;
+  "merge-base --is-ancestor") ;;
+  "cat-file -e") exit "${CAT_FILE_EXIT:-0}" ;;
   "diff --name-only")
     case "$*" in
-      *--diff-filter=A" "*) [ -z "$ADDED_FILES" ] || printf '%s\n' "$ADDED_FILES" ;;
-      *) [ -z "$CHANGED_FILES" ] || printf '%s\n' "$CHANGED_FILES" ;;
+      *\\^*--diff-filter=A*|*--diff-filter=A*\\^*) [ -z "$REVERTED_ADDED" ] || printf '%s\\n' "$REVERTED_ADDED" ;;
+      *\\^*) [ -z "$REVERTED_PATHS" ] || printf '%s\\n' "$REVERTED_PATHS" ;;
+      *--diff-filter=A" "*) [ -z "$ADDED_FILES" ] || printf '%s\\n' "$ADDED_FILES" ;;
+      *) [ -z "$CHANGED_FILES" ] || printf '%s\\n' "$CHANGED_FILES" ;;
     esac ;;
   "rev-parse HEAD")
     if [ -n "$HEAD_MOVES" ] && [ -f "$GIT_LOG.seen" ]; then echo 2222222222222222222222222222222222222222

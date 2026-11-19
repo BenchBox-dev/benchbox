@@ -10,11 +10,13 @@ A pull request whose changes touch shipped paths (`.github/changelog-paths.txt`)
 needs a fragment when its title is `feat`, `fix`, `perf`, `chore(deps)`, a
 breaking `!` title, or is not a conventional commit title. `docs`, `test`, `ci`,
 `refactor`, `chore` pull requests and release preparation pull requests need
-none. A `revert:` or `Revert "..."` pull request that deletes a fragment (the
-reverted change was unreleased) needs none; one that does not (the reverted
-change shipped) needs a fragment like any other. In CI, only a fragment the
-pull request adds satisfies the check, except that deleting one satisfies a
-revert; the shipped-path list is read from the base branch.
+none. A `revert:` or `Revert "..."` pull request is matched to the commit it reverts through the
+`This reverts commit <sha>` lines of its commits (`git revert` and `make trunk-revert` write them), and every path it
+changes must be a path that commit changed. It then needs no entry when the reverted change added none, or when it
+deletes the fragment the reverted change added. When that fragment was already released, a new fragment is needed.
+Deleting any other fragment never satisfies the check, and a revert that names no commit or touches other paths is
+checked like any other title. In CI, only a fragment the pull request adds satisfies the check; the shipped-path list
+is read from the base branch.
 
 ## Writing an entry
 

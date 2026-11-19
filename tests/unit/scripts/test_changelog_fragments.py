@@ -311,31 +311,110 @@ def test_release_identity_change_exempts_otherwise_required_title(rules: tuple[o
     assert cf.decide_required("feat: x y", SHIPPED, rules, release_identity_changed=False).required
 
 
-@pytest.mark.parametrize("title", ['Revert "feat(core): add a thing"', "revert: undo a thing"])
-def test_a_revert_that_deletes_a_fragment_needs_no_new_one(rules: tuple[object, ...], title: str) -> None:
-    decision = cf.decide_required(title, [*SHIPPED, FRAGMENT], rules, added_paths=[], deleted_paths=[FRAGMENT])
+RUNNER = "benchbox/core/runner.py"
+OTHER_FRAGMENT = "changelog.d/other-change.json"
+REVERT_TITLES = ['Revert "feat(core): add a thing"', "revert: undo a thing"]
+
+
+def _reverted(*, fragment: bool = True, at_base: bool = True, paths: tuple[str, ...] = (RUNNER,)) -> cf.RevertedCommit:
+    fragments = frozenset({FRAGMENT}) if fragment else frozenset()
+    return cf.RevertedCommit(
+        paths=frozenset({*paths, *fragments}),
+        fragments=fragments,
+        fragments_at_base=fragments if at_base else frozenset(),
+    )
+
+
+@pytest.mark.parametrize("title", REVERT_TITLES)
+def test_a_revert_that_deletes_the_reverted_changes_fragment_needs_no_new_one(
+    rules: tuple[object, ...], title: str
+) -> None:
+    decision = cf.decide_required(
+        title, [RUNNER, FRAGMENT], rules, added_paths=[], deleted_paths=[FRAGMENT], reverted=[_reverted()]
+    )
     assert decision.ok and not decision.required
 
 
-@pytest.mark.parametrize("title", ['Revert "feat(core): add a thing"', "revert: undo a thing"])
-def test_a_revert_of_shipped_code_without_a_deleted_fragment_needs_one(rules: tuple[object, ...], title: str) -> None:
-    refused = cf.decide_required(title, [*SHIPPED, FRAGMENT], rules, added_paths=[])
+@pytest.mark.parametrize("title", REVERT_TITLES)
+def test_a_revert_that_leaves_the_reverted_changes_fragment_is_refused(rules: tuple[object, ...], title: str) -> None:
+    decision = cf.decide_required(title, [RUNNER], rules, added_paths=[], reverted=[_reverted()])
+    assert decision.required and not decision.ok
+
+
+@pytest.mark.parametrize("title", REVERT_TITLES)
+def test_deleting_an_unrelated_fragment_never_satisfies_a_revert(rules: tuple[object, ...], title: str) -> None:
+    internal = _reverted(fragment=False)
+    refused = cf.decide_required(
+        title, [RUNNER, OTHER_FRAGMENT], rules, added_paths=[], deleted_paths=[OTHER_FRAGMENT], reverted=[internal]
+    )
     assert refused.required and not refused.ok
-    accepted = cf.decide_required(title, [*SHIPPED, FRAGMENT], rules, added_paths=[FRAGMENT])
-    assert accepted.ok
+    kept = cf.decide_required(
+        title,
+        [RUNNER, OTHER_FRAGMENT],
+        rules,
+        added_paths=[],
+        deleted_paths=[OTHER_FRAGMENT],
+        reverted=[_reverted()],
+    )
+    assert kept.required and not kept.ok
 
 
-def test_a_breaking_revert_title_still_needs_a_fragment_despite_a_deletion(rules: tuple[object, ...]) -> None:
+@pytest.mark.parametrize("title", REVERT_TITLES)
+def test_a_revert_of_an_internal_change_needs_no_fragment(rules: tuple[object, ...], title: str) -> None:
+    decision = cf.decide_required(title, [RUNNER], rules, added_paths=[], reverted=[_reverted(fragment=False)])
+    assert decision.ok and not decision.required
+
+
+@pytest.mark.parametrize("title", REVERT_TITLES)
+def test_a_revert_carrying_paths_the_reverted_commit_did_not_touch_is_refused(
+    rules: tuple[object, ...], title: str
+) -> None:
     decision = cf.decide_required(
-        "revert!: undo a thing", [*SHIPPED, FRAGMENT], rules, added_paths=[], deleted_paths=[FRAGMENT]
+        title,
+        [RUNNER, "benchbox/core/other.py"],
+        rules,
+        added_paths=[],
+        reverted=[_reverted(fragment=False)],
     )
     assert decision.required and not decision.ok
 
 
-def test_a_non_revert_title_gets_no_deletion_exemption(rules: tuple[object, ...]) -> None:
-    assert cf.decide_required(
-        "fix: repair", [*SHIPPED, FRAGMENT], rules, added_paths=[], deleted_paths=[FRAGMENT]
-    ).required
+@pytest.mark.parametrize("title", REVERT_TITLES)
+def test_a_revert_of_a_released_fragment_needs_a_new_one(rules: tuple[object, ...], title: str) -> None:
+    released = _reverted(at_base=False)
+    refused = cf.decide_required(title, [RUNNER], rules, added_paths=[], reverted=[released])
+    assert refused.required and not refused.ok
+    accepted = cf.decide_required(
+        title, [RUNNER, OTHER_FRAGMENT], rules, added_paths=[OTHER_FRAGMENT], reverted=[released]
+    )
+    assert accepted.ok
+
+
+@pytest.mark.parametrize("title", REVERT_TITLES)
+def test_a_revert_that_names_no_commit_is_refused(rules: tuple[object, ...], title: str) -> None:
+    decision = cf.decide_required(
+        title, [RUNNER, FRAGMENT], rules, added_paths=[], deleted_paths=[FRAGMENT], reverted=[]
+    )
+    assert decision.required and not decision.ok
+
+
+def test_a_breaking_revert_title_gets_no_revert_treatment(rules: tuple[object, ...]) -> None:
+    decision = cf.decide_required(
+        "revert!: undo a thing",
+        [RUNNER, FRAGMENT],
+        rules,
+        added_paths=[],
+        deleted_paths=[FRAGMENT],
+        reverted=[_reverted()],
+    )
+    assert decision.required and not decision.ok
+
+
+def test_a_non_revert_title_gets_no_revert_treatment(rules: tuple[object, ...]) -> None:
+    decision = cf.decide_required(
+        "fix: repair", [RUNNER, FRAGMENT], rules, added_paths=[], deleted_paths=[FRAGMENT], reverted=[_reverted()]
+    )
+    assert decision.required and not decision.ok
 
 
 def test_a_revert_touching_no_shipped_path_needs_no_fragment(rules: tuple[object, ...]) -> None:
