@@ -5,7 +5,7 @@
     "Workflow timeouts for the jobs that run the check are above the wait bound (option a).",
     "Merged through the BenchBox close-out with required checks green."
   ],
-  "context": "2026-11-17 owner decision: option (a). Wait up to 15 minutes for queued or in-progress required Theseus runs, then judge them as now; raise the timeouts of the jobs that run the check to fit.",
+  "context": "2026-11-17 owner decision: option (a). Wait up to 15 minutes for queued or in-progress required Theseus runs, then judge them as now; raise the timeouts of the jobs that run the check to fit.\n\nFixed by https://github.com/BenchBox-dev/benchbox/pull/4292, merged 2026-11-19T01:49:43Z as f3990481be (head 2f39c3d598). The Theseus release check now waits up to 15 minutes for pending checks instead of failing on them. Review: SHIP with no open findings; CI green.\n",
   "description": "Defect. scripts/theseus_release_check.py (run from ci.yml, trunk.yml, trunk-coverage.yml and nightly-v2.yml) reads the check runs on the locked Theseus commit and, in _judge, reports any required check whose conclusion is not \"success\". A check that is still running has conclusion null, so it is reported as a failure (\"concluded None\") exactly like a real failure. Observed 2026-11-14 on BenchBox PR #4235 (Theseus lock 0.2.12 -> 0.2.13): core and four medium-test shards failed because the release check ran while Theseus's own test (py3.11) and test (py3.13) on the release commit were still in progress; both later concluded success and a rerun of the failed jobs passed. Every Theseus promotion opened soon after a Theseus merge can hit this.\n\nDecision gate (implementer, recorded here): either (a) treat queued or in-progress required runs as pending and poll them with a bounded wait (for example up to 15 minutes) before judging, or (b) fail fast with a distinct, clearly worded \"Theseus checks still running on <sha>; rerun when they finish\" message. Recommendation: (a), because it removes the manual rerun; (b) is the fallback if job time is a concern.\n\nGuardrails:\n- A failed, cancelled, skipped or missing required run still fails the check.\n- The wait is bounded, and the job's timeout stays above it.\n- No change to REQUIRED_CHECKS, the reachability check or the tree check.\n- No new network dependency beyond the GitHub API calls already made.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4235",
@@ -35,6 +35,14 @@
       "generation": "c3b847504dbc491ab046ffdbe1593af8",
       "op": "take",
       "op_id": "97e4b221b6954dcd9fc85cb8b82bc24a",
+      "session_id": "5d48da17613c47049b0c2fec13736544"
+    },
+    {
+      "actor": "joe-tractable-followups",
+      "at": "2026-11-19T02:34:53Z",
+      "client": "mcp",
+      "op": "update",
+      "op_id": "0dab68668a254897b35b70cd8ad81677",
       "session_id": "5d48da17613c47049b0c2fec13736544"
     }
   ]
