@@ -13,12 +13,17 @@ tpcdi, amplab, h2odb, coffeeshop, tsbs_devops, joinorder_synthetic,
 vector_search, write_primitives, transaction_primitives. For tpcdi it also
 fires on the `generator/` package, `source_generators.py`, `scaling.py` (the
 row-count formula) and `financial_data.py`; for vector_search on
-`benchmark.py`, which sets the default vector width. Any other change skips
-the job and the aggregate accepts the skip. `scripts/generator_volume_gate.py`
-holds the authoritative path table; a unit test keeps the workflow filter
-exactly equal to it in both directions, and the job fails if it runs without
-selecting a benchmark (`--require-affected`), so a wider filter cannot pass as
-a skipped measurement.
+`benchmark.py`, which sets the default vector width; and for both primitives
+benchmarks on `benchbox/core/primitives/generator_base.py`, which generates
+their data. It also fires on `tests/unit/generators/sf1_size_baseline.json`:
+a changed size entry selects its benchmark, so an entry cannot be raised in one
+pull request and matched by a larger generator in the next. Any other change
+skips the job and the aggregate accepts the skip.
+`scripts/generator_volume_gate.py` holds the authoritative path table; a unit
+test keeps the workflow filter exactly equal to it in both directions, and the
+job fails if a generator path fires it without selecting a benchmark
+(`--require-affected`), so a wider filter cannot pass as a skipped
+measurement.
 
 ## What it checks
 
@@ -39,6 +44,10 @@ An edited entry that still does not match the generator also fails. The
 tolerance always comes from the base branch's copy of the baseline, so a diff
 cannot loosen the threshold it is judged by; a new baseline file supplies its
 own.
+
+The gate, the baseline, `scripts/measure_sf1_sizes.py` (which decides which
+files count) and `benchbox/utils/datagen_manifest.py` are soundness paths, so
+a change to how bytes are counted is reviewed as a gate change.
 
 ## Updating the baseline
 
