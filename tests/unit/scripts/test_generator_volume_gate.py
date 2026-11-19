@@ -50,6 +50,13 @@ def test_a_package_generator_change_selects_tpcdi() -> None:
     assert gate.affected_benchmarks(["benchbox/core/tpcdi/generator/facts.py"]) == ["tpcdi"]
 
 
+def test_a_shared_primitives_generator_change_selects_both_primitives_benchmarks() -> None:
+    assert gate.affected_benchmarks(["benchbox/core/primitives/generator_base.py"]) == [
+        "write_primitives",
+        "transaction_primitives",
+    ]
+
+
 @pytest.mark.parametrize(
     "path",
     [
@@ -57,7 +64,6 @@ def test_a_package_generator_change_selects_tpcdi() -> None:
         "benchbox/core/amplab/schema_specs.yaml",
         "benchbox/core/tpcdi/schema_specs.yaml",
         "examples/amplab_demo.py",
-        "tests/unit/generators/sf1_size_baseline.json",
         "benchbox/core/tpch/generator.py",
     ],
 )
@@ -71,6 +77,22 @@ def test_an_unaffected_change_skips_without_generating_anything() -> None:
     assert report["status"] == "skipped"
     assert smoke.calls == []
     assert gate.render_markdown(report).count("no pure-Python generator") == 1
+
+
+def test_a_baseline_only_change_measures_the_benchmark_whose_entry_changed() -> None:
+    smoke = RecordingSmoke({"amplab": healthy(1_000_000)})
+    report = gate.run_gate([gate.BASELINE_PATH], baseline_with(amplab=3_000_000), baseline_with(), smoke=smoke)
+    assert smoke.calls == ["amplab"]
+    assert report["status"] == "fail"
+
+
+def test_a_baseline_change_that_alters_no_entry_skips_and_satisfies_the_required_run(tmp_path: Path) -> None:
+    smoke = RecordingSmoke({})
+    report = gate.run_gate([gate.BASELINE_PATH], baseline_with(), baseline_with(), smoke=smoke)
+    assert report["status"] == "skipped"
+    assert smoke.calls == []
+    args = write_inputs(tmp_path, [gate.BASELINE_PATH], baseline_with(), baseline_with())
+    assert gate.main([*args, "--require-affected"]) == 0
 
 
 def test_output_within_tolerance_passes() -> None:
@@ -319,9 +341,7 @@ def test_the_generator_volume_job_runs_only_when_the_path_filter_fires() -> None
 
 def path_filter_regex() -> re.Pattern[str]:
     step = next(step for step in ci_jobs()["ci-paths"]["steps"] if step.get("id") == "path-flags")
-    match = re.search(
-        r"if grep -qE '(\^benchbox/core/\(tpcdi[^']*)' \.ci-paths/changed\.txt; then generator_volume", step["run"]
-    )
+    match = re.search(r"if grep -qE '(\^[^']*)' \.ci-paths/changed\.txt; then generator_volume", step["run"])
     assert match, "the generator-volume path filter is missing from ci-paths"
     return re.compile(match.group(1))
 
@@ -332,7 +352,7 @@ def test_the_workflow_path_filter_selects_exactly_what_the_gate_selects() -> Non
         for glob in patterns:
             sample = glob.replace("*", "facts.py")
             assert pattern.match(sample), sample
-            assert gate.affected_benchmarks([sample]) == [benchmark]
+            assert benchmark in gate.affected_benchmarks([sample]), sample
     for unrelated in (
         "benchbox/core/amplab/queries.py",
         "benchbox/core/tpcdi/schema_specs.yaml",
@@ -352,7 +372,7 @@ def test_the_workflow_path_filter_fires_only_for_paths_the_gate_selects() -> Non
             str(REPO_ROOT),
             "ls-files",
             "--",
-            *(f"benchbox/core/{name}" for name in gate.PURE_PYTHON_GENERATORS),
+            "benchbox/core",
         ],
         check=True,
         capture_output=True,
@@ -366,9 +386,23 @@ def test_the_workflow_path_filter_fires_only_for_paths_the_gate_selects() -> Non
         "benchbox/core/amplab/generator/helper.py",
         "benchbox/core/vector_search/generator/helper.py",
         "benchbox/core/tpcdi/scaling.pyc",
+        "benchbox/core/primitives/catalog/loader.py",
     ]
     for path in candidates:
         assert bool(pattern.match(path)) == bool(gate.affected_benchmarks([path])), path
+    assert pattern.match(gate.BASELINE_PATH)
+
+
+def test_the_gate_and_the_code_that_counts_its_bytes_are_soundness_paths() -> None:
+    manifest = (REPO_ROOT / ".github" / "soundness-paths.txt").read_text(encoding="utf-8").splitlines()
+    files = {line.split("\t", 1)[1] for line in manifest if line.startswith("file\t")}
+    for path in (
+        "scripts/generator_volume_gate.py",
+        gate.BASELINE_PATH,
+        "scripts/measure_sf1_sizes.py",
+        "benchbox/utils/datagen_manifest.py",
+    ):
+        assert path in files, path
 
 
 def git(repo: Path, *args: str) -> str:

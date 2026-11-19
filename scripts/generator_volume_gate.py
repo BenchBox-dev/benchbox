@@ -42,10 +42,12 @@ PURE_PYTHON_GENERATORS: dict[str, tuple[str, ...]] = {
     "write_primitives": (
         "benchbox/core/write_primitives/generator.py",
         "benchbox/core/write_primitives/generator_specs.yaml",
+        "benchbox/core/primitives/generator_base.py",
     ),
     "transaction_primitives": (
         "benchbox/core/transaction_primitives/generator.py",
         "benchbox/core/transaction_primitives/generator_specs.yaml",
+        "benchbox/core/primitives/generator_base.py",
     ),
 }
 
@@ -70,6 +72,23 @@ def affected_benchmarks(changed_files: list[str]) -> list[str]:
         for benchmark, patterns in PURE_PYTHON_GENERATORS.items()
         if any(fnmatch.fnmatchcase(name, pattern) for name in changed_files for pattern in patterns)
     ]
+
+
+def changed_baseline_entries(baseline: dict[str, object], base_baseline: dict[str, object] | None) -> list[str]:
+    return [
+        benchmark
+        for benchmark in PURE_PYTHON_GENERATORS
+        if base_baseline is None or baseline_size(baseline, benchmark) != baseline_size(base_baseline, benchmark)
+    ]
+
+
+def selected_benchmarks(
+    changed_files: list[str], baseline: dict[str, object], base_baseline: dict[str, object] | None
+) -> list[str]:
+    selected = set(affected_benchmarks(changed_files))
+    if BASELINE_PATH in changed_files:
+        selected.update(changed_baseline_entries(baseline, base_baseline))
+    return [benchmark for benchmark in PURE_PYTHON_GENERATORS if benchmark in selected]
 
 
 def load_baseline(path: Path) -> dict[str, object]:
@@ -200,9 +219,14 @@ def run_gate(
     smoke: Smoke | None = None,
 ) -> dict[str, Any]:
     measure = run_smoke if smoke is None else smoke
-    benchmarks = affected_benchmarks(changed_files)
+    benchmarks = selected_benchmarks(changed_files, baseline, base_baseline)
     if not benchmarks:
-        return {"status": "skipped", "reason": "no pure-Python generator or generator spec changed", "benchmarks": []}
+        reason = (
+            "the baseline changed but no gated benchmark's size entry did"
+            if BASELINE_PATH in changed_files
+            else "no pure-Python generator or generator spec changed"
+        )
+        return {"status": "skipped", "reason": reason, "benchmarks": []}
     start = mono_time()
     records: list[dict[str, object]] = []
     for benchmark in benchmarks:
@@ -286,12 +310,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--require-affected", action="store_true")
     args = parser.parse_args(argv)
     changed = changed_since(args.base_ref) if args.base_ref else read_changed(args.changed_files)
-    if args.list_affected:
-        print(json.dumps(affected_benchmarks(changed)))
-        return 0
     base_baseline = baseline_at(args.base_ref) if args.base_ref else load_base_baseline(args.base_baseline)
-    report = run_gate(changed, load_baseline(args.baseline), base_baseline)
-    if args.require_affected and report["status"] == "skipped":
+    baseline = load_baseline(args.baseline)
+    if args.list_affected:
+        print(json.dumps(selected_benchmarks(changed, baseline, base_baseline)))
+        return 0
+    report = run_gate(changed, baseline, base_baseline)
+    if args.require_affected and report["status"] == "skipped" and BASELINE_PATH not in changed:
         print("::error title=generator-volume::the job ran but no change selects a gated benchmark")
         return 1
     text = render_markdown(report)
