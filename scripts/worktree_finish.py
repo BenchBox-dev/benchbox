@@ -79,6 +79,7 @@ class FinishPreviewResult:
     unpublished: bool = False
     remote_refs: Tuple[str, ...] = ()
     tool_temp_files: Tuple[str, ...] = ()
+    keep_branch: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return dataclasses.asdict(self)
@@ -164,6 +165,15 @@ def apply_finish_actions(
         return False, None, executed
     if res.detached:
         return True, None, executed
+    if res.keep_branch:
+        executed.append(
+            {
+                "action": "branch_kept",
+                "command": f"keep refs/heads/{res.branch} at {res.expected_head}",
+                "outcome": "kept",
+            }
+        )
+        return True, res.branch, executed
     code, _, stderr = _run_git(["update-ref", "-d", f"refs/heads/{res.branch}", res.expected_head], git_cwd)
     executed.append(
         {
@@ -840,6 +850,7 @@ def _actionable_result(
     unpublished: bool = False,
     remote_refs: Tuple[str, ...] = (),
     tool_temp_files: Tuple[str, ...] = (),
+    keep_branch: bool = False,
 ) -> FinishPreviewResult:
     action_remove = " ".join(["git", "worktree", "remove"])
     action_delete_ref = " ".join(["git", "update-ref", "-d"])
@@ -852,14 +863,14 @@ def _actionable_result(
         }
         for rel_path in tool_temp_files
     ]
-    proposed += [
+    proposed.append(
         {
             "action": "worktree_removal",
             "description": f"Remove linked worktree directory and Git registration at {target_path}",
             "command": f"{action_remove} {shlex.quote(str(target_path))}",
-        },
-    ]
-    if branch is not None:
+        }
+    )
+    if branch is not None and not keep_branch:
         proposed.append(
             {
                 "action": "branch_deletion",
@@ -895,7 +906,60 @@ def _actionable_result(
         unpublished=unpublished,
         remote_refs=remote_refs,
         tool_temp_files=tool_temp_files,
+        keep_branch=keep_branch,
     )
+
+
+def _evaluate_keep_branch(
+    target_path: Path,
+    expected_head_oid: str,
+    actual_head: str,
+    branch: str,
+    meta: WorktreeLifecycleMetadata,
+    repo_root: Path,
+    timestamp: str,
+) -> Optional[FinishPreviewResult]:
+    common = {
+        "branch": branch,
+        "current_head": actual_head,
+        "provenance_state": meta.provenance_state,
+        "owner_state": meta.owner_state,
+        "controller_kind": meta.controller_kind,
+        "controller_id": meta.controller_id,
+        "manual_released": bool(meta.manual_released_at),
+        "clean": True,
+    }
+    code, _, stderr = _run_git(["fetch", "--quiet", "--prune", "origin"], repo_root)
+    if code != 0:
+        return _make_hold_result(
+            target_path,
+            expected_head_oid,
+            f"Remote refs could not be refreshed to prove every commit is on origin: {stderr or 'git fetch --prune origin failed'}",
+            timestamp,
+            hold_code="remote_refresh_failed",
+            **common,
+        )
+    code, stdout, stderr = _run_git(["rev-list", actual_head, "--not", "--remotes=origin"], target_path)
+    if code != 0:
+        return _make_hold_result(
+            target_path,
+            expected_head_oid,
+            f"Commits not on origin could not be listed: {stderr or 'git rev-list failed'}",
+            timestamp,
+            hold_code="remote_refresh_failed",
+            **common,
+        )
+    if stdout:
+        count = len(stdout.splitlines())
+        return _make_hold_result(
+            target_path,
+            expected_head_oid,
+            f"Branch '{branch}' has {count} commit(s) not on origin; keep-branch removal would orphan unpublished work",
+            timestamp,
+            hold_code="unpushed_commits",
+            **common,
+        )
+    return None
 
 
 def _remote_refs_containing(commit: str, repo_root: Path) -> Tuple[Tuple[str, ...], Optional[str]]:
@@ -974,6 +1038,7 @@ def evaluate_finish_preview(
     pr_lookup: Optional[PrLookup] = None,
     refresh_target: Optional[TargetRefresher] = None,
     unpublished: bool = False,
+    keep_branch: bool = False,
 ) -> FinishPreviewResult:
     now_utc = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -1002,6 +1067,12 @@ def evaluate_finish_preview(
     provenance_hold = _check_provenance_state(target_path, expected_head_oid, actual_head, branch, meta, now_utc)
     if provenance_hold:
         return provenance_hold
+
+    if keep_branch:
+        keep_hold = _evaluate_keep_branch(target_path, expected_head_oid, actual_head, branch, meta, repo_root, now_utc)
+        if keep_hold:
+            return keep_hold
+        return _actionable_result(target_path, expected_head_oid, actual_head, branch, meta, now_utc, keep_branch=True)
 
     prs, fetch_err = _fetch_prs_for_evaluation(repo_root, repo_slug, branch, evidence_file, pr_lookup)
     if fetch_err:
@@ -1083,7 +1154,9 @@ def format_human_report(res: FinishPreviewResult) -> str:
         f"Owner state:       {res.owner_state} (manual_released={res.manual_released})",
         f"Cleanliness:       clean={res.clean}, locked={res.locked}, detached={res.detached}",
     ]
-    if res.unpublished:
+    if res.keep_branch:
+        lines.append(f"Keep branch:       every commit is on origin; refs/heads/{res.branch} is left in place")
+    elif res.unpublished:
         shown = ", ".join(res.remote_refs[:3])
         extra = len(res.remote_refs) - 3
         lines.append(f"Unpublished:       no PR; tip preserved on {shown}" + (f" (+{extra} more)" if extra > 0 else ""))
@@ -1150,6 +1223,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--keep-branch",
+        action="store_true",
+        help=(
+            "Remove only the worktree and leave refs/heads/<branch> at the expected head. Needs no merged PR but "
+            "requires a clean tree, every commit on origin, and an unlocked worktree."
+        ),
+    )
+    parser.add_argument(
         "--evidence-file",
         type=Path,
         default=None,
@@ -1163,6 +1244,8 @@ def main() -> int:
     )
 
     args = parser.parse_args()
+    if args.keep_branch and args.unpublished:
+        parser.error("--keep-branch and --unpublished are mutually exclusive")
 
     try:
         target_path, expected_oid = validate_inputs(args.worktree_path, args.expected_head_oid)
@@ -1173,6 +1256,7 @@ def main() -> int:
             repo_slug=args.repo,
             evidence_file=args.evidence_file,
             unpublished=args.unpublished,
+            keep_branch=args.keep_branch,
         )
     except FinishError as err:
         print(f"Error: {err}", file=sys.stderr)

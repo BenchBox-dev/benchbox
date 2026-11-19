@@ -187,6 +187,17 @@ Finish preview performs comprehensive live revalidation:
 - **Preview is the default / no worktree or branch mutation**: without APPLY=1, emits human or JSON previews naming the exact proposed worktree removal and atomic expected-OID ref deletion commands, while making no changes to worktrees, local branches, locks, or tracker state. It does refresh the remote-tracking ref of the merged PR's target branch (`git fetch origin <base>:refs/remotes/origin/<base>`) to check integration.
 - **Separately gated apply**: `APPLY=1 make worktree-finish ...` re-evaluates fresh evidence in the same invocation, then executes normal `git worktree remove` on the canonical path followed by `git update-ref -d` on the local branch with the expected OID. A held target, a moved branch, or a failed removal stops the sequence; partial success (worktree removed, branch preserved) is reported explicitly.
 
+### Remove a worktree and keep its branch
+
+To retire only the worktree while the local branch stays (for example, a branch still checked out for later work), use `KEEP_BRANCH=1` (CLI flag `--keep-branch` on `scripts/worktree_finish.py`):
+
+```bash
+make worktree-finish WORKTREE_PATH="$WORKTREE_PATH" EXPECTED_HEAD_OID="$OID" KEEP_BRANCH=1
+APPLY=1 make worktree-finish WORKTREE_PATH="$WORKTREE_PATH" EXPECTED_HEAD_OID="$OID" KEEP_BRANCH=1
+```
+
+No merged PR is required and `refs/heads/<branch>` is left at the expected head. Preview-then-`APPLY=1`, the expected-head check, managed provenance, and the detached and controller holds still apply. It additionally requires a clean tree (no uncommitted changes), no commits missing from origin (`git rev-list HEAD --not --remotes=origin` empty, after refreshing origin), and an unlocked worktree. It cannot be combined with `UNPUBLISHED=1`. Default behaviour is unchanged.
+
 ### Remove a never-published scratch worktree
 
 A baseline or scratch worktree whose branch never had a PR has no merged-PR evidence, so the default path holds it with `No PRs found`. Remove it with `UNPUBLISHED=1`:

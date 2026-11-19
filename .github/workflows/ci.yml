@@ -1164,7 +1164,7 @@ jobs:
     needs: [ci-paths, medium-collect]
     if: ${{ !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) && needs.ci-paths.result == 'success' && needs.ci-paths.outputs.medium-shards != '[]' && (needs.ci-paths.outputs.heavy-needed != 'true' || needs.medium-collect.result == 'success') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -1204,6 +1204,7 @@ jobs:
         run: python3 scripts/theseus_release_check.py
         env:
           GITHUB_TOKEN: ${{ github.token }}
+        timeout-minutes: 20
 
       - name: Download coverage selection
         if: needs.ci-paths.outputs.heavy-needed != 'true'
@@ -1213,6 +1214,7 @@ jobs:
           path: coverage-selection
 
       - name: Run medium tests for changed paths
+        timeout-minutes: 25
         if: needs.ci-paths.outputs.heavy-needed != 'true'
         shell: bash
         env:
@@ -1284,6 +1286,7 @@ jobs:
             --durations tests/fixtures/medium_shard_durations.json
 
       - name: Run medium speed tier
+        timeout-minutes: 25
         if: needs.ci-paths.outputs.heavy-needed == 'true'
         shell: bash
         env:

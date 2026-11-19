@@ -1310,7 +1310,7 @@ jobs:
   integration:
     name: "t3:integration | ${{ matrix.suite }}"
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
     env:
       BENCHBOX_TEST_TIER: t2
     strategy:
@@ -1355,12 +1355,15 @@ jobs:
         run: python3 scripts/theseus_release_check.py
         env:
           GITHUB_TOKEN: ${{ github.token }}
+        timeout-minutes: 20
 
       - name: Run core integration tests
+        timeout-minutes: 30
         if: matrix.suite == 'core'
         run: uv run -- python -m pytest tests/integration -m "integration and not (slow or stress or resource_heavy or live_integration)" --tb=short --maxfail=5 --timeout=300 --junitxml=${{ matrix.junit }}
 
       - name: Run table-format integration tests
+        timeout-minutes: 30
         if: matrix.suite == 'table-formats'
         run: uv run -- python -m pytest tests/integration/core/data_organization/test_presorted_generation.py -m "requires_table_formats" --tb=short --junitxml=${{ matrix.junit }}
 
