@@ -1336,7 +1336,7 @@ def test_execute_query_readiness_failure_is_one_startup_failure_with_container_l
     assert "coordinator booting" in (tmp_path / f"container-logs-{platform}.log").read_text(encoding="utf-8")
 
 
-@pytest.mark.parametrize("platform", ["cedardb", "presto", "trino"])
+@pytest.mark.parametrize("platform", ["presto", "trino"])
 def test_execute_missing_probe_tool_degrades_to_healthcheck_readiness(platform, tmp_path):
     def fake_docker(argv, **kwargs):
         action = "exec" if "exec" in argv else _docker_verb(argv)
@@ -1432,6 +1432,46 @@ def test_execute_starrocks_application_liveness_stops_after_runtime_wedge(monkey
     assert outcome.results and outcome.results[0].scale == 0.01
     assert [(cell.platform, cell.scale) for cell in outcome.died_mid_platform] == [("starrocks", 0.1)]
     assert any(event.action == "application-liveness" and event.status == "failed" for event in outcome.docker_events)
+
+
+def test_execute_cedardb_application_liveness_records_server_death(monkeypatch, tmp_path):
+    monkeypatch.setenv(docker_assets.CONTAINER_CLI_ENV_VAR, "mocker")
+    docker_assets.resolve_container_cli.cache_clear()
+    application_calls = 0
+
+    def fake_docker(argv, **kwargs):
+        nonlocal application_calls
+        call = tuple(argv)
+        if "ps" in call:
+            return _healthy_ps_result(argv)
+        if "exec" in call:
+            application_calls += 1
+            if application_calls >= 3:
+                return docker_assets.DockerCommandResult(call, 2, "localhost:5432 - no response", "")
+        if "stats" in call:
+            return _healthy_stats_result(argv, limit="8GiB")
+        return docker_assets.DockerCommandResult(call, 0, "", "")
+
+    cfg = _managed_docker_cfg(
+        "cedardb application liveness",
+        platforms={"include": ["cedardb"]},
+        scales={"rungs": [0.01, 0.1]},
+    )
+    with platform_reachability(True):
+        outcome = exec_phase.run_execute(
+            cfg,
+            log_dir=tmp_path,
+            databases_root=tmp_path / "databases",
+            runner=_stub_runner_factory({0.01: 1.0, 0.1: 1.0}, {0.01: True, 0.1: True}),
+            docker_runner=fake_docker,
+            memory_reader=_memory_reader(16.0),
+            sleep_fn=lambda _s: None,
+        )
+
+    assert outcome.results and outcome.results[0].scale == 0.01
+    assert [(cell.platform, cell.scale) for cell in outcome.died_mid_platform] == [("cedardb", 0.1)]
+    assert any(event.action == "application-liveness" and event.status == "failed" for event in outcome.docker_events)
+    assert not any(event.status == "skipped" for event in outcome.docker_events)
 
 
 def test_execute_starrocks_memory_admission_uses_measured_request(tmp_path):
