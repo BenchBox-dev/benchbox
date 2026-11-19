@@ -38008,11 +38008,10 @@
       "claim": null,
       "needs": [
         "rv2r-09-trunk-dist-every-commit",
-        "rv2r-16-release-branch-review-gating",
-        "rv2r-13-verify-next-release-under-new-model"
+        "rv2r-16-release-branch-review-gating"
       ],
       "priority": "high",
-      "status": "blocked",
+      "status": "open",
       "title": "Allow patch releases from owner-created release/X.Y.x branches with the same release-v2 checks"
     },
     "rv2r-15-review-posting-detector": {
