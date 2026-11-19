@@ -31781,10 +31781,15 @@
       "title": "Remove pandas/Python row steps in QuestDB and InfluxDB loading"
     },
     "perf-smoke-method2-baseline-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-20T00:03:40Z",
+        "generation": "368c47be44114531ad5ee1697dd321e6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6a2213d6b55a7e3a8ad45472"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Rebuild the perf-smoke baseline from method-2 nightly results and refuse mixed methods"
     },
     "perf-smoke-rebaseline-after-power-query-generation-20261103": {
