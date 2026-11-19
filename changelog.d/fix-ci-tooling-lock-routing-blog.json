@@ -4,7 +4,7 @@
     {
       "category": "changed",
       "breaking": false,
-      "text": "Contributor tooling: `make pr-preflight` now runs its mapped tests under the host lock, admission check and watchdog, so preflights from several sessions queue instead of running together. A pull request that changes only documents read by recorded tests, such as a `docs/agent` page, no longer runs the full heavy CI tier: the reader index now finds documents that tests reach through a glob in a module they import, and CI runs those reader tests instead. The primary-clone report also warns when git-ignored mirrored skills, such as `.claude/skills/blog`, differ from the pinned manifest."
+      "text": "Contributor tooling: `make pr-preflight` now runs its mapped tests under the host lock, admission check and watchdog, so preflights from several sessions queue instead of running together. The reader index that maps machine-read documents to their tests now follows path constants, globs and the modules a test reaches, so an edit to a `docs/agent` page selects the tests that read it, and a document with no reader is reported as such instead of as changed Python code. The primary-clone report also warns when git-ignored mirrored skills, such as `.claude/skills/blog`, differ from the pinned manifest."
     }
   ]
 }

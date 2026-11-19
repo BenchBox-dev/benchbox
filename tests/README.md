@@ -198,14 +198,10 @@ select but escalates to the complete tier. `scripts/heavy_tier_needed.py`
 therefore reports `heavy-needed == 'true'`; `medium-collect` collects the
 complete tier and four Python 3.12 shards partition it using
 `tests/fixtures/medium_shard_durations.json`. Do not assume ordinary code PRs
-skip the full medium tier. The one exception is a change that touches only
-`docs/agent` pages with recorded reader tests (no Python, nothing uncovered):
-`heavy_tier_needed.py` skips the shadow escalation for it, and the selected-only
-path below runs those readers. `test_every_docs_agent_mention_is_an_indexed_read_or_named_here`
-fails when code mentions `docs/agent` without a recorded read, so the reader set stays complete.
+skip the full medium tier.
 
 The workflow also implements a selected-only Python 3.14 medium path for
-`heavy-needed != 'true'`, but shadow-mode escalation keeps other code-routed PRs
+`heavy-needed != 'true'`, but shadow-mode escalation prevents code-routed PRs
 from taking it today. Its selection combines coverage impact with the
 name/import-based fallback from `_project/scripts/preflight_targets.py`.
 It belongs to `medium-test`, not the fast-test `code-test` job.

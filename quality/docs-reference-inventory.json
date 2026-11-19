@@ -3817,33 +3817,17 @@
    ]
   },
   {
-   "disposition": "fixture-data",
-   "kinds": {
-    "unresolved": 1
-   },
-   "occurrences": 1,
-   "path": "tests/unit/scripts/test_heavy_tier_needed.py",
-   "rule": "test-sample-data",
-   "target_count": 1,
-   "targets": [
-    {
-     "kind": "unresolved",
-     "target": "docs/agent/new.md"
-    }
-   ]
-  },
-  {
    "disposition": "wiring-updated",
    "kinds": {
     "file": 3,
     "pattern": 1,
     "root": 1,
-    "unresolved": 12
+    "unresolved": 13
    },
-   "occurrences": 37,
+   "occurrences": 38,
    "path": "tests/unit/scripts/test_inert_paths.py",
    "rule": "ci-path-classification",
-   "target_count": 17,
+   "target_count": 18,
    "targets": [
     {
      "kind": "root",
@@ -3852,6 +3836,10 @@
     {
      "kind": "file",
      "target": "docs/README.md"
+    },
+    {
+     "kind": "unresolved",
+     "target": "docs/agent-only"
     },
     {
      "kind": "pattern",
@@ -4411,7 +4399,7 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 42,
+   "fixture-data": 41,
    "governance-stays": 11,
    "historical-record": 118,
    "lock-test": 4,
@@ -4419,7 +4407,7 @@
    "site-pipeline-cutover": 4,
    "wiring-updated": 35
   },
-  "files": 232,
+  "files": 231,
   "kinds": {
    "built-url": 29037,
    "dir": 163,

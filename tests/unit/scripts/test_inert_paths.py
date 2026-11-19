@@ -433,8 +433,8 @@ def test_every_docs_agent_mention_is_an_indexed_read_or_named_here(
             elif own not in reached:
                 unreached.append(own)
     assert not unindexed, (
-        "these files mention docs/agent but the reader index records no docs/agent read for them, so "
-        f"heavy_tier_needed.read_documents_only could skip their tests: {unindexed}"
+        "these files mention docs/agent but the reader index records no docs/agent read for them, so a "
+        f"docs/agent-only change would not select their tests: {unindexed}"
     )
     assert not unreached, (
         f"these files read docs/agent but no test reaches them through imports or path references: {unreached}"

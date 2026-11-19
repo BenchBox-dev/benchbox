@@ -224,7 +224,6 @@
       "id": "test-sample-data",
       "match": [
         "scripts/changelog_fragments.py",
-        "tests/unit/scripts/test_heavy_tier_needed.py",
         "scripts/check_untracked_handoffs.sh",
         "scripts/generate_changelog_entry.py",
         "scripts/worktree_lifecycle.sh",

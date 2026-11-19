@@ -74,7 +74,7 @@ route to code CI.
 
 `.github/path-filters.yml` adds content, skill-integrity, packaging, binary-framing and
 visualization checks. Coverage-impact selection currently runs in shadow mode (`SELECTION_SHADOW` in
-`scripts/coverage_test_selection.py`): it records the proposed selection but escalates to the complete medium tier, except for a change that touches only `docs/agent` pages with recorded reader tests, which runs those readers instead. Selected Windows tests,
+`scripts/coverage_test_selection.py`): it records the proposed selection but escalates to the complete medium tier. Selected Windows tests,
 tuning, SQL-execution evidence, publication/API contracts and Trunk-lane changes have
 additional conditional jobs. Read the `ci-paths` summary and decision artifacts for the
 actual routing of a head rather than assuming every PR runs every job.
