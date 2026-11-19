@@ -39785,10 +39785,15 @@
       "title": "Widen the migration snapshot to carry findings once todo-db can accept them"
     },
     "snowflake-bundles-record-unapplied-warehouse-size-20261118": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-20T00:19:43Z",
+        "generation": "d2ad76ce28c34a10b7cf04753912fc2a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fc3ffdf558b4ae7fa8a5c84"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Snowflake bundles record a requested warehouse size that was never applied"
     },
     "snowflake-campaign-statement-history-timestamp-type-20261015": {
