@@ -560,9 +560,9 @@ def test_perf_comparison_preserves_threshold_and_failure(tmp_path: Path, compare
         "--fail-on-regression",
         "10%",
         "--min-regression-delta",
-        "7ms",
+        "5ms",
         "--min-aggregate-regression-delta",
-        "82ms",
+        "31ms",
     ]
 
 

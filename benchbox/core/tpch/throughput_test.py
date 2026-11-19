@@ -29,6 +29,7 @@ from benchbox.core.tpch.refresh import (
     check_rf1_applied,
     check_rf2_applied,
     generate_refresh_update_sets,
+    record_refresh_applied,
     verify_refresh_stream_totals,
     verify_rf2_reported,
 )
@@ -301,17 +302,7 @@ class TPCHThroughputTest:
                 update_set = update_sets[update_set_id]
                 function_result["check_status"] = "FAILED"
                 try:
-                    if function_result["function"] == "RF1":
-                        check_rf1_applied(connection, update_set, function_result["rows_inserted"])
-                    else:
-                        verify_rf2_reported(
-                            update_set,
-                            baselines[update_set_id],
-                            TPCHRF2Deletes(
-                                orders=function_result["orders_deleted"], lineitems=function_result["lineitems_deleted"]
-                            ),
-                        )
-                        check_rf2_applied(connection, update_set, function_result["orders_deleted"])
+                    self._check_refresh_function(connection, function_result, update_set, baselines.get(update_set_id))
                 except Exception as exc:
                     function_result["duration_ms"] = 0
                     function_result["status"] = "FAILED"
@@ -325,20 +316,7 @@ class TPCHThroughputTest:
                     refresh_stream.status = "FAILED"
                     return
                 function_result["check_status"] = "PASSED"
-            verify_refresh_stream_totals(
-                connection,
-                next(iter(baselines.values())),
-                [
-                    update_sets[pair["update_set"]]
-                    for pair, function_result in committed
-                    if function_result["function"] == "RF1"
-                ],
-                [
-                    baselines[pair["update_set"]]
-                    for pair, function_result in committed
-                    if function_result["function"] == "RF2"
-                ],
-            )
+            self._verify_refresh_totals(connection, baselines, update_sets, committed)
 
         try:
             self._with_refresh_session(check)
@@ -354,6 +332,50 @@ class TPCHThroughputTest:
             )
         elif refresh_stream.status == "FAILED":
             result.errors.append(f"Refresh stream failed: {refresh_stream.error}")
+
+    def _check_refresh_function(
+        self,
+        connection: Any,
+        function_result: dict[str, Any],
+        update_set: TPCHRefreshUpdateSet,
+        baseline: TPCHRF2Baseline | None,
+    ) -> None:
+        if function_result["function"] == "RF1":
+            check_rf1_applied(connection, update_set, function_result["rows_inserted"])
+            return
+        if baseline is None:
+            raise RuntimeError(f"no RF2 baseline was captured for refresh set {update_set.set_id}")
+        verify_rf2_reported(
+            update_set,
+            baseline,
+            TPCHRF2Deletes(orders=function_result["orders_deleted"], lineitems=function_result["lineitems_deleted"]),
+        )
+        check_rf2_applied(connection, update_set, function_result["orders_deleted"])
+
+    def _verify_refresh_totals(
+        self,
+        connection: Any,
+        baselines: dict[int, TPCHRF2Baseline],
+        update_sets: dict[int, TPCHRefreshUpdateSet],
+        committed: list[tuple[dict[str, Any], dict[str, Any]]],
+    ) -> None:
+        verify_refresh_stream_totals(
+            connection,
+            next(iter(baselines.values())),
+            [
+                update_sets[pair["update_set"]]
+                for pair, function_result in committed
+                if function_result["function"] == "RF1"
+            ],
+            [
+                baselines[pair["update_set"]]
+                for pair, function_result in committed
+                if function_result["function"] == "RF2"
+            ],
+        )
+
+    def _record_refresh_applied(self, connection: Any) -> None:
+        record_refresh_applied(connection)
 
     def _execute_refresh_stream(
         self,
@@ -371,6 +393,7 @@ class TPCHThroughputTest:
             if self.refresh_connection_factory is None:
                 raise RuntimeError("TPC-H refresh stream requires a separate connection factory")
             connection = self.refresh_connection_factory()
+            self._record_refresh_applied(connection)
             refresh_stream.start_monotonic = mono_time()
             refresh_stream.start_time = datetime.now().isoformat()
             for offset in range(num_streams):

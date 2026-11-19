@@ -53,6 +53,8 @@ from benchbox.core.results.execution_variant import (
     read_execution_environment,
     read_requested_variant,
 )
+from benchbox.core.results.hardware_class import CLASS_MANAGED, classify_hardware
+from benchbox.core.results.release_history import resolve_benchbox_version
 from benchbox.core.results.schema_policy import EXPLORER_INPUT_SCHEMA_POLICY, result_schema_version_value
 from benchbox.core.results.status import bundle_failed_query_count, bundle_non_clean_reason, normalize_validation_status
 from benchbox.core.results.subscale_policy import (
@@ -70,6 +72,7 @@ from benchbox.validation.bundle import (
     TRANSLATOR_VERSION_NOT_APPLICABLE,
     accepted_override_rules,
     combined_evidence_defects,
+    manifest_cpu_attestation,
     manifest_known_defect_reason,
     resolve_translator_version,
     throughput_stream_defects,
@@ -1363,6 +1366,68 @@ def _first_string(*values: Any) -> str | None:
     return None
 
 
+def _mapping(value: Any) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}
+
+
+def _managed_service_size(bundle_data: Mapping[str, Any]) -> str | None:
+    compute = _mapping(_mapping(bundle_data.get("platform")).get("compute"))
+    return _first_string(
+        compute.get("size"),
+        compute.get("warehouse_size"),
+        compute.get("cluster_size"),
+        compute.get("node_type"),
+        compute.get("worker_shape"),
+        compute.get("serverless_slots"),
+        compute.get("rpu"),
+        compute.get("edition"),
+    )
+
+
+_SERVER_ENDPOINT_CLASSES = frozenset({"localhost_port", "remote_host", "cloud_endpoint"})
+
+
+def _effective_runtime_type(bundle_data: Mapping[str, Any], environment: Mapping[str, Any]) -> Any:
+    runtime = _mapping(environment.get("platform_runtime")).get("runtime_type")
+    if runtime not in (None, "unknown"):
+        return runtime
+    deployment = _mapping(_mapping(bundle_data.get("platform")).get("deployment"))
+    return "remote_server" if deployment.get("endpoint_class") in _SERVER_ENDPOINT_CLASSES else runtime
+
+
+def _hardware_columns(bundle_data: Mapping[str, Any], bundle_path: Path) -> dict[str, Any]:
+    environment = _mapping(bundle_data.get("environment"))
+    host = _mapping(environment.get("client_host"))
+    execution = read_execution_environment(bundle_data, bundle_path)
+    attestation = manifest_cpu_attestation(bundle_path)
+    recorded_model = environment.get("cpu_model") or host.get("cpu_model")
+    provenance = environment.get("cpu_identity_provenance") or host.get("cpu_identity_provenance")
+    sidecar_model = attestation["cpu_model"] if attestation else None
+    if provenance == "user_attested" and isinstance(recorded_model, str) and recorded_model.strip():
+        sidecar_model, recorded_model = recorded_model, None
+    classified = classify_hardware(
+        cpu_model=recorded_model,
+        cpu_count=environment.get("cpu_count") or host.get("cpu_count"),
+        cpu_vendor=environment.get("cpu_vendor") or host.get("cpu_vendor"),
+        execution_class=execution.get("execution_class"),
+        container_host_os=execution.get("container_host_os"),
+        runtime_type=_effective_runtime_type(bundle_data, environment),
+        attested_cpu_model=sidecar_model,
+    )
+    version, version_basis = resolve_benchbox_version(
+        _mapping(bundle_data.get("export")).get("benchbox_version"), _mapping(bundle_data.get("run")).get("timestamp")
+    )
+    return {
+        "hardware_class": classified.hardware_class,
+        "hardware_score": classified.score,
+        "hardware_basis": classified.basis,
+        "hardware_table_version": classified.table_version,
+        "service_size": _managed_service_size(bundle_data) if classified.hardware_class == CLASS_MANAGED else None,
+        "benchbox_version": version,
+        "benchbox_version_basis": version_basis,
+    }
+
+
 def _deployment_class_from_contract(bundle: BundleDocument) -> str | None:
     environment = bundle.environment
     runtime = environment.platform_runtime
@@ -1715,6 +1780,11 @@ def _detail_environment(
         else:
             provided["cpu_model"] = None
             provided["cpu_family"] = None
+        attestation = manifest_cpu_attestation(bundle_path)
+        if not cleaned_cpu and attestation:
+            provided["cpu_model"] = attestation["cpu_model"]
+            provided["cpu_family"] = normalize_cpu_family(attestation["cpu_model"])
+            provided["cpu_identity_provenance"] = "user_attested"
 
     link = env.client_link
     overhead = link.statement_overhead_ms
@@ -1798,6 +1868,7 @@ class BundleTransformer:
         variant = _variant_info(bundle, bundle_data, bundle_path)
         execution_mode = _execution_mode(bundle)
         translator = _translator_columns(bundle_data, bundle_path, execution_mode)
+        hardware = _hardware_columns(bundle_data, bundle_path)
         power_score, power_score_source = _power_score(bundle, bundle_data)
         entry = ManifestEntry(
             result_id=rid,
@@ -1862,6 +1933,7 @@ class BundleTransformer:
             power_score_source=power_score_source,
             basis_availability=_compute_basis_availability(timings),
             **translator,
+            **hardware,
         )
         reason = ranking_exclusion_reason(entry)
         reason = _throughput_stream_exclusion(bundle, bundle_data, test_type, reason)

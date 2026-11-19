@@ -14,7 +14,12 @@ except ImportError:
     HAS_PSUTIL = False
 
 from benchbox.core.schemas import SystemProfile
-from benchbox.utils.environment import detect_cpu_info, detect_execution_class, is_cpu_architecture_token
+from benchbox.utils.environment import (
+    container_host_cpu,
+    detect_cpu_info,
+    detect_execution_class,
+    is_cpu_architecture_token,
+)
 
 
 class SystemProfiler:
@@ -34,11 +39,13 @@ class SystemProfiler:
         if cpu_model:
             cpu_identity_provenance: str | None = "measured"
         else:
-            cpu_identity_provenance = None
+            host_model, _host_vendor = container_host_cpu()
+            cpu_model = host_model
+            cpu_identity_provenance = "user_attested" if host_model else None
             try:
                 fallback = platform.processor() or ""
                 cleaned = fallback.strip()
-                if cleaned and not is_cpu_architecture_token(cleaned, architecture):
+                if not cpu_model and cleaned and not is_cpu_architecture_token(cleaned, architecture):
                     cpu_model = cleaned
                     cpu_identity_provenance = "inferred"
             except Exception:

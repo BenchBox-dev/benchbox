@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass, field, is_dataclass
 from typing import Any, Literal, TypeAlias
 from urllib.parse import urlparse
 
+from benchbox.core.results.hardware_class import MANAGED_RUNTIME_TYPES
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.utils.environment import detect_execution_class
 
@@ -108,7 +109,7 @@ class ClientHostEnvironment:
         cpu_vendor = profile.get("cpu_vendor")
         cpu_identity_provenance = profile.get("cpu_identity_provenance")
         if system_profile is None and (not cpu_model or not cpu_vendor):
-            from benchbox.utils.environment import detect_cpu_info
+            from benchbox.utils.environment import container_host_cpu, detect_cpu_info
 
             detected_model, detected_vendor = detect_cpu_info()
             if not cpu_model:
@@ -117,6 +118,12 @@ class ClientHostEnvironment:
                     cpu_identity_provenance = "measured"
             if not cpu_vendor:
                 cpu_vendor = detected_vendor
+            if not cpu_model:
+                host_model, host_vendor = container_host_cpu()
+                if host_model:
+                    cpu_model = host_model
+                    cpu_identity_provenance = "user_attested"
+                    cpu_vendor = cpu_vendor or host_vendor
 
         recorded_class = {
             key: profile.get(key)
@@ -314,6 +321,9 @@ def _docker_hosted_execution_class(
     }
 
 
+_CLIENT_HOST_HARDWARE_KEYS = ("cpu_model", "cpu_vendor", "cpu_identity_provenance", "cpu_count")
+
+
 def build_environment_payload(
     *,
     system_profile: Any | None,
@@ -329,6 +339,9 @@ def build_environment_payload(
     client_host = {**client_host, **_docker_hosted_execution_class(platform_runtime, container, client_host)}
 
     payload: dict[str, Any] = dict(client_host)
+    if platform_runtime.get("runtime_type") in MANAGED_RUNTIME_TYPES:
+        for key in _CLIENT_HOST_HARDWARE_KEYS:
+            payload.pop(key, None)
     if client_host:
         payload["client_host"] = client_host
     if platform_runtime:

@@ -196,6 +196,13 @@ class ManifestEntry(BaseModel):
     translator_version: str | None = None
     translator_fork_sha: str | None = None
     translator_version_source: str | None = None
+    hardware_class: str | None = None
+    hardware_score: float | None = None
+    hardware_basis: str | None = None
+    hardware_table_version: str | None = None
+    service_size: str | None = None
+    benchbox_version: str | None = None
+    benchbox_version_basis: str | None = None
 
     @field_serializer("normalized_cost")
     def _serialize_normalized_cost(self, cost: NormalizedCost) -> dict[str, Any]:

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The DataFrame memory guard now counts data-generation memory when the data is not cached: TPC-H generator processes were measured at about 3.0 GiB resident in total on a 10-CPU host (TPC-DS under 0.1 GiB), above the 2.0 GiB Polars and DataFusion floor, so an uncached run is refused with a message naming data generation when free memory cannot hold the generator processes. Runs with cached data are unaffected."
+    }
+  ]
+}

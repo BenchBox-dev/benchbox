@@ -1,5 +1,25 @@
 # Corpus Generation Notes - 2026-04-03
 
+## Snowflake bundles recorded the unapplied default warehouse size (2026-11-18)
+
+All 50 published Snowflake bundles recorded `platform.config.warehouse_size` and
+`platform.raw_config.warehouse_size` as `MEDIUM`, the adapter default. That size is applied
+only when `modify_warehouse_settings` is true, which defaults to false, so the warehouse was
+never resized. `SHOW WAREHOUSES` observed `X-Small` in every run and recorded it in
+`platform.compute.warehouse_size`, which the Explorer already used for compute, cost and
+facets. The owner decided on 2026-11-18 that bundles record the size actually used.
+
+The two configured fields now carry the observed `X-Small`. This is a reviewed bundle edit,
+not a sidecar attestation: the configured size is not a field a sidecar can override.
+`_project/scripts/results_snowflake_warehouse_size_correction.py` selects the bundles whose
+configured size differs from the observed one, rewrites only those two fields, refreshes
+`bundle_hash` in each `.manifest.json` sidecar and `results-data/corpus-inventory.json`
+(`scripts/generate_corpus_inventory.py --write`), and records every old and new SHA-256 and
+result ID in `bundles/snowflake-warehouse-size-correction.manifest.json`. Result IDs embed a
+hash prefix of the bundle bytes, so all 50 were renumbered. No timing, query or validation
+field changed. New Snowflake bundles record the observed size, or the requested size only
+when the adapter applied it.
+
 ## Remaining TPC-DI bundles from earlier generators (2026-11-17)
 
 The TPC-DI generator changed twice in November: the four secondary fact tables
@@ -1875,3 +1895,15 @@ Read Primitives SF0.01 and SF0.1, TPC-DS OBT SF1, TPC-H SF1, TPC-Havoc SF0.01, S
 `DOCUMENTED_SHALLOW_COHORTS` is unchanged by this note. The validator and Explorer parity and the cohort-depth tests
 (`tests/unit/publication/test_validator_parity.py`, `tests/unit/scripts/test_corpus_cohort_depth.py`) pass, 380 tests, so the
 ranked identities the validator computes agree with the Explorer pipeline.
+
+### Hardware class and the owner's CPU attestation (2026-11-17)
+
+The Explorer read model 20 records a hardware class per result from the pinned CPU class table in
+`benchbox/core/results/hardware_class.py` (table version `2026-11-17.1`). The default ranking is unchanged; the class is an
+optional facet filter. Managed services are one `managed` class, so the client CPU they record is never used.
+
+45 Darwin arm64 bundles recorded no CPU model (ClickHouse Local, DataFusion and DuckDB runs). The owner attests that they ran
+on the project's Apple M4 (10 cores). The attestation is a `cpu_attestation` object in each bundle's `.manifest.json` sidecar
+with `cpu_identity_provenance: user_attested`; no bundle was edited, so no result id moved. The 27 that had a sidecar had it edited to carry the attestation; the other 18 had none, so a minimal one
+(`bundle_file`, `bundle_hash`, `manifest_version`, `funding`, `result_source`, `submitted_by`, as on every
+sibling run) was added. This is an operator attestation, not a measurement.
