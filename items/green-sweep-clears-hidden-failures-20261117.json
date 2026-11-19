@@ -120,6 +120,15 @@
       "op_id": "d90bf4ba1fb4419e81aac02eb651a6dc",
       "reason": "The leader session ended when the host session resumed; the same operator continues the batch to close it out.",
       "session_id": "ea4bcdaedc404466a3b06e87288386bf"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6a2213d6b55a7e3a8ad45472",
+      "at": "2026-11-19T00:03:58Z",
+      "client": "omp-coding-agent",
+      "generation": "50b7cde632fa456fa1d4c5b69a3e12cf",
+      "op": "take",
+      "op_id": "d562f0572858493aa9937cdc790ff374",
+      "session_id": "ea4bcdaedc404466a3b06e87288386bf"
     }
   ]
 }
