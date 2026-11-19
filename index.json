@@ -25407,6 +25407,13 @@
       "status": "done",
       "title": "Full string_to_array support (returning actual list expressions, not split_part proxy)"
     },
+    "fullspec-sf1-first-runs-chdb-cedardb-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Verify the first SF 1 full-spec runs on ClickHouse Local and CedarDB before the 2026-12-01 seed run"
+    },
     "future-ideas-backlog": {
       "claim": null,
       "needs": [],

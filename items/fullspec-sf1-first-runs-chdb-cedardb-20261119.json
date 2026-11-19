@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "A scheduled nightly-v2 run passes fullspec-chdb (TPC-H and TPC-DS SF 1) and fullspec-cedardb (TPC-DS SF 1); run id, QphH/QphDS and stream counts recorded in context",
+    "The six SF 1 full-spec seed cells produce bundles accepted by the corpus validator (run id and seed PR cited), or an owner decision on each failing cell is recorded with its error",
+    "Every fix made on the way has a regression test and merged PR"
+  ],
+  "description": "## Problem\n#4329 added full-specification (`run-official`) support for ClickHouse Local (chDB) TPC-H and TPC-DS and CedarDB TPC-DS maintenance, plus the nightly domains `fullspec-chdb` and `fullspec-cedardb` in `.github/workflows/nightly-v2.yml`. #4350 added six SF 1 `official: true` seed-corpus cells (TPC-H 2 streams with RF1/RF2, TPC-DS 4 streams with maintenance) on duckdb, clickhouse-local and cedardb. No SF 1 full-spec run on ClickHouse Local or CedarDB has ever completed: CI covered SF 0.01 only. The seed run on 2026-12-01 07:00 UTC needs all three identities per cohort; one failed combined cell leaves a cohort with two identities and the corpus validator blocks the seed PR.\n\n## Decision gate\nAfter the first scheduled nightly with both full-spec domains:\n- Both pass: record QphH/QphDS, stream counts and `transactional` flags in context, then dispatch `seed-corpus.yml` manually for the six SF 1 cells (or wait for the cron) and record the outcome.\n- A cell fails on a BenchBox defect: fix it in a PR with a regression test before 2026-11-28.\n- A cell fails on an engine limit (memory, unsupported SQL, timeout): owner decides between removing that cell from the seed matrix for this run (as #4309 did) or swapping the engine (Doris, see doris-fourth-full-spec-identity-20261117). No silent skip.\n\n## Guardrails\n- Do not relax `--official` requirements, stream counts, or validation to get a pass.\n- Do not mark a cell passed from a partial bundle; the bundle must record every required phase.\n- Runner memory/timeout changes need owner approval.\n\n## Verification rubric\nPass only if: (1) one nightly run id each for `fullspec-chdb` and `fullspec-cedardb` at SF 1 is cited with green result and the bundle's phases listed; (2) the 2026-12-01 seed run (or a manual dispatch) produced six SF 1 combined bundles that pass the corpus validator, cited by run id and PR; or (3) an owner decision removing or swapping a cell is recorded with its evidence.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4329",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4350",
+    ".github/workflows/nightly-v2.yml",
+    ".github/workflows/seed-corpus.yml",
+    "results-data/SEED_CORPUS_SPEC.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d414581c3188d7bdb8ecf82a",
+      "at": "2026-11-19T23:22:35Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "87ec373318e7426a96d76b6bc84bc981",
+      "session_id": "7dea42834aac4e2d8252103612d62ce9"
+    }
+  ]
+}
