@@ -490,6 +490,67 @@ def test_an_unreadable_verdict_keeps_the_failed_jobs_rerun() -> None:
     assert any("--failed" in call for call in gh.reruns())
 
 
+EGRESS = "HTTP 503: Egress is over the account limit."
+
+
+class FakeClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+        self.sleeps: list[float] = []
+
+    def __call__(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def _failing_downloads(gh: VerdictGitHub, failures: int | None) -> tuple[Any, dict[str, int]]:
+    attempts = {"count": 0}
+    original = gh.__call__
+
+    def flaky(command: list[str]) -> subprocess.CompletedProcess[str]:
+        if command[1:3] == ["run", "download"]:
+            attempts["count"] += 1
+            if failures is None or attempts["count"] <= failures:
+                return subprocess.CompletedProcess(command, 1, "", EGRESS)
+        return original(command)
+
+    return flaky, attempts
+
+
+def _fake_backoff(monkeypatch: pytest.MonkeyPatch) -> FakeClock:
+    clock = FakeClock()
+    monkeypatch.setattr(
+        pr_rerun, "_retry_budget", lambda: pr_rerun.gh_transient.Budget(90.0, clock=clock, sleep=clock.sleep)
+    )
+    return clock
+
+
+def test_a_verdict_download_that_hits_the_egress_limit_recovers_and_still_reruns_everything(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clock = _fake_backoff(monkeypatch)
+    gh = VerdictGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: _jobs()}, verdict={"verdict": "would-block"})
+    flaky, attempts = _failing_downloads(gh, failures=1)
+    message = pr_rerun.rerun(REPO, PR, flaky)
+    assert "all jobs of CI run 11" in message
+    assert attempts["count"] == 2 and clock.sleeps == [5.0]
+
+
+def test_a_verdict_download_that_stays_transient_is_refused_not_treated_as_no_verdict(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clock = _fake_backoff(monkeypatch)
+    gh = VerdictGitHub([_run(11, "2026-10-17T10:00:00Z")], {11: _jobs()}, verdict={"verdict": "would-block"})
+    flaky, attempts = _failing_downloads(gh, failures=None)
+    with pytest.raises(pr_rerun.RerunError, match="did not clear after 4 attempt"):
+        pr_rerun.rerun(REPO, PR, flaky)
+    assert attempts["count"] == 4 and clock.sleeps == [5.0, 15.0, 45.0]
+    assert gh.reruns() == []
+
+
 def test_rerun_arguments_selects_a_full_rerun_only_for_a_failed_would_block_run() -> None:
     run = _run(11, "2026-10-17T10:00:00Z")
     assert pr_rerun.rerun_arguments(run, _jobs(), REPO, True) == ["run", "rerun", "11", "--repo", REPO]

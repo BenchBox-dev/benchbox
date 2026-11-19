@@ -1126,7 +1126,7 @@ def test_the_digest_no_longer_reads_head_workflow_runs(monkeypatch):
     assert digest.review_signals(pull) == ("stand-in",)
 
 
-APP_BOT = "benchbox-oracle[bot]"
+APP_BOT = "benchbox-review[bot]"
 
 
 def verdict_text(sha, state="success", context="review-verdict"):
@@ -1144,7 +1144,7 @@ def test_an_review_success_review_of_the_merged_content_is_a_signal():
         review(APP_BOT, HEAD, user_type="Bot", body=verdict_text(HEAD, "failure")),
         review(APP_BOT, HEAD, user_type="Bot", body=verdict_text(OLD)),
         review(APP_BOT, OLD, user_type="Bot", body=verdict_text(OLD)),
-        review("benchbox-oracle", HEAD, user_type="User", body=verdict_text(HEAD)),
+        review("benchbox-review", HEAD, user_type="User", body=verdict_text(HEAD)),
         review(APP_BOT, HEAD, LATER, user_type="Bot", body=verdict_text(HEAD)),
     ],
     ids=["failure", "other-sha", "older-commit", "user-account", "after-merge"],
@@ -1323,7 +1323,7 @@ def test_the_digest_and_the_gate_agree_on_the_standin_window(timeline):
     assert digest_accepts(verdicts, standin_at, base_change) is expected
 
 
-def app_thread(severity, started_by="benchbox-oracle"):
+def app_thread(severity, started_by="benchbox-review"):
     return digest.Thread(resolved=True, started_by=started_by, first_comment_sha=HEAD, severity=severity)
 
 
@@ -1373,7 +1373,7 @@ def test_a_gap_issue_for_a_commit_with_no_pull_request_states_no_review_signal()
 
 
 def test_a_thread_records_the_severity_the_review_titled_its_finding_with(monkeypatch):
-    node = thread_node(True, "benchbox-oracle", HEAD)
+    node = thread_node(True, "benchbox-review", HEAD)
     node["comments"]["nodes"][0]["body"] = "**High**: the title\n\ndetail"
     plain = thread_node(True, "reviewer", HEAD)
     plain["comments"]["nodes"][0]["body"] = "Consider **High** performance"
@@ -1481,7 +1481,7 @@ def test_a_no_signal_issue_closes_on_the_signal_whatever_the_threads_now_say(gap
 def test_a_thread_issue_is_never_closed_by_changing_its_threads(gap_env, severity, live_threads):
     gap_env["issues"] = [gap_issue(40, body=thread_body(severity))]
     threads = tuple(
-        digest.Thread(resolved=False, started_by="benchbox-oracle", first_comment_sha=HEAD, severity=severity)
+        digest.Thread(resolved=False, started_by="benchbox-review", first_comment_sha=HEAD, severity=severity)
         for _ in live_threads
     )
     gap_env["entries"][SHA_3030] = reviewed_entry(threads=threads)
@@ -1683,7 +1683,7 @@ def test_a_standin_override_lists_findings_of_any_severity(listed, expected):
 def test_an_unresolved_app_thread_counts_as_an_open_finding():
     pull = evidence(
         comments=(standin(HEAD),),
-        threads=(digest.Thread(False, "benchbox-oracle", HEAD, "Low"),),
+        threads=(digest.Thread(False, "benchbox-review", HEAD, "Low"),),
     )
     assert [override.severities for override in digest.standin_overrides([pull])] == [("Low",)]
 
@@ -1703,7 +1703,7 @@ def test_an_unresolved_app_thread_counts_as_an_open_finding():
         ),
         evidence(
             comments=(standin(HEAD),),
-            threads=(digest.Thread(True, "benchbox-oracle", OLD, "Medium"),),
+            threads=(digest.Thread(True, "benchbox-review", OLD, "Medium"),),
         ),
     ],
     ids=["review-success", "no-finding", "non-attester", "wrong-sha", "resolved-unlisted-thread"],
@@ -2194,7 +2194,7 @@ def test_an_instruction_from_an_untrusted_comment_does_not_count(comment):
     assert digest.standin_overrides([pull])[0].instruction_gap_seconds is None
 
 
-APP_LOGIN = "benchbox-oracle[bot]"
+APP_LOGIN = "benchbox-review[bot]"
 APP_CREATOR = {"login": APP_LOGIN, "type": "Bot"}
 
 
@@ -2389,7 +2389,7 @@ def comment_node(login, body, **edit):
     ids=["edited-later", "created-edit"],
 )
 def test_the_severity_of_an_edited_app_first_comment_is_unverifiable(monkeypatch, edit):
-    node = comment_node("benchbox-oracle", "**High**: the title", **edit)
+    node = comment_node("benchbox-review", "**High**: the title", **edit)
     monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads([node]))
     (thread,) = digest.collect_threads("o/r", 7)
     assert thread.severity == "" and "edited" in thread.unverifiable
@@ -2406,7 +2406,7 @@ def test_an_edited_non_app_first_comment_keeps_its_reading(monkeypatch):
 
 
 def test_an_app_first_comment_without_edit_state_is_unverifiable(monkeypatch):
-    node = comment_node("benchbox-oracle", "**High**: the title")
+    node = comment_node("benchbox-review", "**High**: the title")
     del node["comments"]["nodes"][0]["includesCreatedEdit"]
     monkeypatch.setattr(digest, "gh_json", lambda *args: graphql_threads([node]))
     (thread,) = digest.collect_threads("o/r", 7)
@@ -2435,7 +2435,7 @@ def test_a_standin_over_an_edited_blocking_review_is_still_an_override():
 
 
 def test_a_standin_over_an_edited_finding_thread_is_still_an_override():
-    thread = digest.Thread(False, "benchbox-oracle", HEAD, "", "a review finding was edited after posting")
+    thread = digest.Thread(False, "benchbox-review", HEAD, "", "a review finding was edited after posting")
     pull = evidence(threads=(thread,), comments=(standin(HEAD, at=STANDIN_AT),))
     assert [override.severities for override in digest.standin_overrides([pull])] == [(digest.UNVERIFIABLE_FINDING,)]
 
@@ -2479,13 +2479,13 @@ def test_an_unverifiable_review_sets_the_standin_cutoff_whatever_its_header_says
 
 
 def test_an_edited_finding_thread_on_a_non_content_commit_is_flagged():
-    thread = digest.Thread(False, "benchbox-oracle", OLD, "", "a review finding was edited after posting")
+    thread = digest.Thread(False, "benchbox-review", OLD, "", "a review finding was edited after posting")
     pull = refreshed(threads=(thread,), comments=(standin(HEAD, at=STANDIN_AT),))
     assert digest.unverifiable_review_evidence(pull)
 
 
 def test_a_resolved_edited_app_thread_stays_an_override_in_the_gap_class():
-    thread = digest.Thread(True, "benchbox-oracle", HEAD, "", "a review finding was edited after posting")
+    thread = digest.Thread(True, "benchbox-review", HEAD, "", "a review finding was edited after posting")
     assert (
         digest.CLASS_OVERRIDE
         in digest.classify("f" * 40, "change", ["AGENTS.md"], evidence(threads=(thread,))).reason_classes
@@ -2780,7 +2780,7 @@ def test_a_thread_title_line_in_either_format_gives_the_severity(title, marker, 
     assert digest.finding_severity(title) == expected
 
 
-def thread_with(body, resolved=True, login="benchbox-oracle"):
+def thread_with(body, resolved=True, login="benchbox-review"):
     node = thread_node(resolved, login, HEAD)
     node["comments"]["nodes"][0]["body"] = body
     return node

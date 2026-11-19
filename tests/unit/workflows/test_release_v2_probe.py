@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from scripts import release_probe_graph as graph
+from scripts import release_probe_graph as graph, release_probe_verdict as verdict
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -19,7 +19,6 @@ ROOT = Path(__file__).resolve().parents[3]
 WORKFLOWS = ROOT / ".github" / "workflows"
 RELEASE = WORKFLOWS / "release-v2.yml"
 PROBE_WORKFLOW = WORKFLOWS / "release-v2-probe.yml"
-VERDICT_WORKFLOW = WORKFLOWS / "release-v2-probe-verdict.yml"
 REAL_MODE = "${{ github.event_name == 'push' || inputs.probe == 'none' }}"
 PROBE_MODE = "${{ github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}"
 PUBLISH_ACTIONS = ("pypa/gh-action-pypi-publish", "actions/attest")
@@ -397,21 +396,6 @@ def test_the_dispatch_job_never_waits_for_the_probe_runs():
     assert "deadline" not in source
 
 
-def test_the_verdict_workflow_completes_the_probe_check_from_the_finished_release_runs():
-    workflow = _workflow(VERDICT_WORKFLOW)
-    triggers = workflow["on" if "on" in workflow else True]
-    assert triggers == {"workflow_run": {"workflows": ["Release v2"], "types": ["completed"]}}
-    assert _workflow(RELEASE)["name"] == "Release v2"
-    job = workflow["jobs"]["verdict"]
-    assert job["permissions"] == {"contents": "read", "actions": "read", "checks": "write"}
-    assert "environment" not in job
-    text = VERDICT_WORKFLOW.read_text(encoding="utf-8")
-    assert "secrets." not in text
-    assert "id-token" not in text
-    assert "release_probe_verdict" in text
-    assert "pull_request" not in text
-
-
 def test_a_fork_pull_request_is_refused_before_any_other_step_and_the_scripts_run_as_modules():
     steps = _workflow(PROBE_WORKFLOW)["jobs"]["probe"]["steps"]
     assert steps[0]["if"] == "${{ github.event.pull_request.head.repo.full_name != github.repository }}"
@@ -421,10 +405,61 @@ def test_a_fork_pull_request_is_refused_before_any_other_step_and_the_scripts_ru
     assert text.count("python3 -m scripts.release_probe_launch") == 2
 
 
-def test_the_verdict_workflow_checks_out_the_default_branch_never_the_probed_head():
-    steps = _workflow(VERDICT_WORKFLOW)["jobs"]["verdict"]["steps"]
-    checkout = next(step for step in steps if str(step.get("uses", "")).startswith("actions/checkout"))
-    assert checkout["with"]["ref"] == "${{ github.event.repository.default_branch }}"
+def test_the_probe_report_job_is_the_last_job_and_needs_every_other_job(live):
+    jobs = live["jobs"]
+    assert set(jobs["report-probe"]["needs"]) == set(jobs) - {"report-probe"}
+    assert not [name for name, job in jobs.items() if "report-probe" in graph.needs_of(job)]
+    assert jobs["report-probe"]["name"] == verdict.REPORT_JOB_NAME
+
+
+def test_the_probe_report_job_runs_only_in_probe_mode_and_even_after_a_failure(live):
+    job = live["jobs"]["report-probe"]
+    assert job["if"] == "${{ always() && github.event_name == 'workflow_dispatch' && inputs.probe != 'none' }}"
+    for event, inputs in (("push", {}), ("workflow_dispatch", {"probe": "none"})):
+        for scenario in graph.scenarios(live, event, inputs):
+            assert graph.simulate(live, scenario)["report-probe"].result == "skipped"
+    for probe in graph.VARIANTS:
+        for scenario in graph.scenarios(live, "workflow_dispatch", {"probe": probe}):
+            assert graph.simulate(live, scenario)["report-probe"].result != "skipped"
+
+
+def test_the_probe_report_job_holds_only_checks_write_and_actions_read_and_cannot_publish(live):
+    job = live["jobs"]["report-probe"]
+    assert job["permissions"] == {"contents": "read", "actions": "read", "checks": "write"}
+    assert "environment" not in job
+    assert not graph.job_can_publish(job)
+    text = " ".join(_step_text(step) for step in job["steps"])
+    assert "secrets." not in text
+    assert "id-token" not in text
+    assert "scripts.release_probe_verdict" in text
+    assert "toJSON(needs)" in text
+
+
+def test_the_release_outcome_job_is_a_descendant_of_every_job_the_report_judges(live):
+    jobs = live["jobs"]
+    assert jobs["release-outcome"]["name"] == verdict.OUTCOME_JOB_NAME
+    family = graph.ancestors(jobs)
+    assert set(jobs) - {"report-probe", "release-outcome"} == family["release-outcome"]
+
+
+def test_the_graph_check_rejects_a_missing_or_misplaced_report_job(live):
+    assert graph.probe_report_violations(live) == []
+    missing = copy.deepcopy(live)
+    del missing["jobs"]["report-probe"]
+    assert graph.probe_report_violations(missing)
+    partial = copy.deepcopy(live)
+    partial["jobs"]["report-probe"]["needs"] = ["admit"]
+    assert any("does not need" in problem for problem in graph.probe_report_violations(partial))
+    always = copy.deepcopy(live)
+    always["jobs"]["report-probe"]["if"] = "${{ always() }}"
+    assert any("outside probe mode" in problem for problem in graph.probe_report_violations(always))
+    never = copy.deepcopy(live)
+    never["jobs"]["report-probe"]["if"] = "${{ success() && inputs.probe != 'none' }}"
+    assert any("skipped in probe mode" in problem for problem in graph.probe_report_violations(never))
+
+
+def test_the_dead_workflow_run_verdict_workflow_is_gone():
+    assert not (WORKFLOWS / "release-v2-probe-verdict.yml").exists()
 
 
 @pytest.mark.parametrize("workflow_name", ["release-v2.yml", "trunk-uat.yml"])

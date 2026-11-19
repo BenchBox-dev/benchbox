@@ -555,7 +555,7 @@ class ClickHouseWorkloadMixin:
         self._merge_settle_result = None
         self._merge_settle_timeout_seconds = 0.0
         table_stats, loading_time = loader.load()
-        if self.deployment_mode == "server":
+        if self.deployment_mode in ("server", "local"):
             self._settle_background_merges(connection)
         return table_stats, loading_time, None
 

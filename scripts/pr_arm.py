@@ -18,6 +18,7 @@ from typing import Any, NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ci_text_edit_verdict
+import gh_transient
 import pr_base
 import pr_landing
 import pr_stale_base
@@ -47,26 +48,7 @@ WAITING_MARKERS = (
 CONFLICT_EXIT = 3
 TRANSIENT_EXIT = 4
 TRANSIENT_BACKOFF_SECONDS = 30.0
-RATE_LIMIT = "GitHub rate limit"
-TRANSIENT_PATTERNS = (
-    (
-        RATE_LIMIT,
-        re.compile(r"API rate limit|secondary rate limit|rate limit exceeded|Retry-After: ?\d|HTTP 429", re.IGNORECASE),
-    ),
-    (
-        "GitHub server error",
-        re.compile(r"HTTP 5\d\d\b|\b50[0-4] (?:Bad Gateway|Service Unavailable|Gateway Time-?out)", re.I),
-    ),
-    (
-        "network error",
-        re.compile(
-            r"TLS handshake timeout|i/o timeout|timed out after \d+|Client\.Timeout|connection reset|connection refused"
-            r"|unexpected EOF|no such host|temporary failure in name resolution",
-            re.IGNORECASE,
-        ),
-    ),
-    ("tracker read unparseable", re.compile(r"cannot read tracker batch .*: unparseable output \(exit \d+\)")),
-)
+RATE_LIMIT = gh_transient.RATE_LIMIT
 READ_FAILURE_MARKERS = (
     "could not look up the verify-fast-duration verdict of ",
     "could not download the verify-fast-duration verdict of ",
@@ -657,6 +639,10 @@ def _mono_time() -> float:
     return mono_time()
 
 
+def new_budget(minutes: int | None) -> gh_transient.Budget:
+    return gh_transient.Budget(minutes * 60.0 if minutes is not None else gh_transient.DEFAULT_BUDGET_SECONDS)
+
+
 def wait_minutes(raw: str | None) -> int | None:
     if raw is None or raw == "":
         return None
@@ -687,12 +673,8 @@ def _remember_waiting(reasons: Sequence[str], head: str) -> None:
 
 
 def transient_cause(text: str) -> tuple[str, str] | None:
-    for kind, pattern in TRANSIENT_PATTERNS:
-        match = pattern.search(text)
-        if match:
-            line = next((item for item in text.splitlines() if match.group(0) in item), text)
-            return kind, line.strip()[:200]
-    return None
+    found = gh_transient.classify(text)
+    return None if found is None else (found.kind, found.line.strip()[:200])
 
 
 def _transient_outcome(subject: str, kind: str, detail: str) -> int:
@@ -914,7 +896,9 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
         base = pr_base.validate(args.base)
     except ValueError as exc:
         return _refused(str(exc), 2)
-    reads = AttemptReads(pr_landing.live_run)
+    budget = new_budget(minutes)
+    reads = AttemptReads(gh_transient.RetryingRunner(pr_landing.live_run, budget))
+    trunk_run = gh_transient.RetryingRunner(trunk_revert.live_run, budget)
 
     def attempt() -> int:
         options: dict[str, Any] = {"run": reads.start_attempt()}
@@ -930,7 +914,7 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
         return attempt()
     return arm_waiting(
         attempt,
-        lambda: trunk_gate_refusal(args.pr, args.repo),
+        lambda: trunk_gate_refusal(args.pr, args.repo, trunk_run=trunk_run),
         minutes,
         blocked=lambda: still_blocked(pr_landing.live_run, args.repo),
         reset_in=rate_limit_reset_seconds,

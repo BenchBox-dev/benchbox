@@ -412,6 +412,24 @@ def test_run_guard_subprocess_stops_a_runaway_command_with_the_watchdog_status(t
         assert not alive(recorded)
 
 
+def test_helper_pid_file_is_never_visible_empty_while_being_published(tmp_path: Path, monkeypatch) -> None:
+    from tests.unit.utils import heavy_watchdog_helper as helper
+
+    target = tmp_path / "run.pid"
+    seen: list[tuple[bool, list[str]]] = []
+    real_replace = os.replace
+
+    def interrupted_replace(source, destination) -> None:
+        seen.append((Path(destination).exists(), [p.name for p in tmp_path.iterdir()]))
+        real_replace(source, destination)
+
+    monkeypatch.setattr(helper.os, "replace", interrupted_replace)
+    helper.publish(target, "1234")
+    assert seen[0][0] is False
+    assert target.read_text(encoding="utf-8") == "1234"
+    assert [p.name for p in tmp_path.iterdir()] == ["run.pid"]
+
+
 def test_nested_run_guard_under_an_outer_holder_is_guarded(tmp_path: Path) -> None:
     result = subprocess.run(
         [
@@ -602,20 +620,3 @@ def test_a_pid_file_caught_between_truncate_and_write_reads_as_no_pid(tmp_path: 
     assert recorded_pid(tmp_path / "missing.pid") is None
     pid_file.write_text("4242", encoding="utf-8")
     assert recorded_pid(pid_file) == 4242
-
-
-def test_the_helper_publishes_its_pid_file_only_once_complete(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from tests.unit.utils import heavy_watchdog_helper as helper
-
-    target = tmp_path / "run.pid"
-    seen: list[tuple[bool, str]] = []
-    real_replace = os.replace
-
-    def observing_replace(source, destination):
-        seen.append((target.exists(), Path(source).read_text(encoding="utf-8")))
-        real_replace(source, destination)
-
-    monkeypatch.setattr(helper.os, "replace", observing_replace)
-    helper.write_pid(target, 777)
-    assert seen == [(False, "777")]
-    assert target.read_text(encoding="utf-8") == "777"

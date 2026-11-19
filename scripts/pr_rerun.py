@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import ci_text_edit_verdict
+import gh_transient
 
 from _project.scripts import check_suites
 
@@ -208,10 +209,37 @@ def is_text_edit_run(jobs: Sequence[Mapping[str, Any]]) -> bool:
     return any(job.get("name") == PATHS_JOB and job.get("conclusion") == "skipped" for job in jobs)
 
 
+def _retry_budget() -> gh_transient.Budget:
+    return gh_transient.Budget(gh_transient.DEFAULT_BUDGET_SECONDS)
+
+
+def _invoke_read(runner: Runner, arguments: list[str]) -> subprocess.CompletedProcess[str]:
+    latest: list[subprocess.CompletedProcess[str]] = []
+
+    def run(command: list[str]) -> tuple[int, str]:
+        result = runner(command)
+        latest[:] = [result]
+        if result.returncode == 0:
+            return 0, result.stdout or ""
+        return result.returncode, (result.stderr or "").strip() or (result.stdout or "").strip()
+
+    try:
+        code, detail = gh_transient.RetryingRunner(run, _retry_budget())(["gh", *arguments])
+    except OSError as exc:
+        raise RerunError("could not execute the GitHub CLI") from exc
+    if code != 0:
+        raise RerunError(f"gh {arguments[0]} failed: {detail}")
+    return latest[0]
+
+
+def _retries_exhausted(exc: RerunError) -> bool:
+    return gh_transient.ATTEMPTS_EXHAUSTED in str(exc) or gh_transient.BEYOND_BUDGET in str(exc)
+
+
 def _head_verdicts(runner: Runner, repo: str, pr: int, head: str) -> dict[int, str]:
     name = f"{VERDICT_ARTIFACT_PREFIX}-{pr}-{head}"
     try:
-        found = _invoke(
+        found = _invoke_read(
             runner,
             [
                 "api",
@@ -220,16 +248,22 @@ def _head_verdicts(runner: Runner, repo: str, pr: int, head: str) -> dict[int, s
                 f"repos/{repo}/actions/artifacts?name={name}&per_page=100",
             ],
         )
-    except RerunError:
+    except RerunError as exc:
+        if _retries_exhausted(exc):
+            raise
         return {}
     verdicts: dict[int, str] = {}
     for token in found.stdout.split():
         try:
             run_id = int(token)
             with tempfile.TemporaryDirectory(prefix="pr-rerun-verdict-") as scratch:
-                _invoke(runner, ["run", "download", str(run_id), "--repo", repo, "-n", name, "-D", scratch])
+                _invoke_read(runner, ["run", "download", str(run_id), "--repo", repo, "-n", name, "-D", scratch])
                 report = json.loads((Path(scratch) / VERDICT_FILE).read_text(encoding="utf-8"))
-        except (RerunError, OSError, ValueError):
+        except RerunError as exc:
+            if _retries_exhausted(exc):
+                raise
+            continue
+        except (OSError, ValueError):
             continue
         if isinstance(report, dict) and isinstance(report.get("verdict"), str):
             verdicts[run_id] = report["verdict"]

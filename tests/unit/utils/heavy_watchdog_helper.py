@@ -22,22 +22,22 @@ def touch_memory(mib: int) -> bytearray:
     return buffer
 
 
-def write_pid(path: Path, pid: int) -> None:
-    staging = path.with_name(path.name + ".tmp")
-    staging.write_text(str(pid), encoding="utf-8")
+def publish(path: Path, text: str) -> None:
+    staging = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    staging.write_text(text, encoding="utf-8")
     os.replace(staging, path)
 
 
 def alloc(mib: str, pid_file: str) -> None:
     held = touch_memory(int(mib))
-    write_pid(Path(pid_file), os.getpid())
+    publish(Path(pid_file), str(os.getpid()))
     time.sleep(60)
     del held
 
 
 def nested_grandchild(directory: str, mib: str) -> None:
     root = Path(directory)
-    write_pid(root / "gc.pid", os.getpid())
+    (root / "gc.pid").write_text(str(os.getpid()), encoding="utf-8")
     deadline = time.monotonic() + WAIT_SECONDS
     while not (root / "go").exists() and time.monotonic() < deadline:
         time.sleep(0.05)
@@ -75,7 +75,7 @@ def guarded_holder(directory: str) -> None:
     root = Path(directory)
     host_lock.acquire(root / "test.lock", phase="t", guard=True)
     kid = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
-    write_pid(root / "kid.pid", kid.pid)
+    (root / "kid.pid").write_text(str(kid.pid), encoding="utf-8")
     deadline = time.monotonic() + WAIT_SECONDS
     while not (root / "go").exists() and time.monotonic() < deadline:
         time.sleep(0.05)
@@ -101,7 +101,7 @@ def stubborn(directory: str, mib: str) -> None:
 
     signal.signal(signal.Signals["SIGTERM"], signal.SIG_IGN)
     held = touch_memory(int(mib))
-    write_pid(Path(directory) / "stubborn.pid", os.getpid())
+    (Path(directory) / "stubborn.pid").write_text(str(os.getpid()), encoding="utf-8")
     time.sleep(60)
     del held
 

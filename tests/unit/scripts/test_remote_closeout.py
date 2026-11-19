@@ -279,7 +279,7 @@ class FakeGitHub:
         if cmd[:2] == ["gh", "api"] and cmd[-1].endswith("/status"):
             return 0, self.gate_state + "\n"
         if cmd[:2] == ["gh", "api"] and "/statuses?" in cmd[-1]:
-            default_creator = "benchbox-oracle[bot]\tBot"
+            default_creator = "benchbox-review[bot]\tBot"
             lines = [
                 "\t".join(
                     [

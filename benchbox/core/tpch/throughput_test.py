@@ -30,6 +30,8 @@ from benchbox.core.tpch.refresh import (
     check_rf2_applied,
     generate_refresh_update_sets,
     record_refresh_applied,
+    refresh_transactional,
+    rf2_precount,
     verify_refresh_stream_totals,
     verify_rf2_reported,
 )
@@ -145,6 +147,7 @@ class TPCHThroughputTest:
 
         self.captured_items: list[tuple[str, str]] = []
 
+        self._rf2_baselines: dict[int, TPCHRF2Baseline] = {}
         self._pregenerated_queries: Optional[dict[int, list[Any]]] = None
 
     def run(self, config: Optional[TPCHThroughputTestConfig] = None) -> TPCHThroughputTestResult:
@@ -173,6 +176,7 @@ class TPCHThroughputTest:
 
             self._pregenerated_queries = self._pregenerate_stream_queries(config)
             baselines = self._capture_rf2_baselines(update_sets) if config.refresh_functions else {}
+            self._rf2_baselines = baselines
             start_time = mono_time()
             result.start_time = datetime.now().isoformat()
             auxiliary_fn = None
@@ -448,11 +452,14 @@ class TPCHThroughputTest:
         error = None
         duration_ms = 0
         try:
+            precounted = (
+                rf2_precount(connection, self._rf2_baselines.get(update_set.set_id)) if function == "RF2" else None
+            )
             start_time = mono_time()
             if function == "RF1":
                 applied = apply_rf1(connection, update_set)
             else:
-                applied = apply_rf2(connection, update_set)
+                applied = apply_rf2(connection, update_set, precounted=precounted)
             duration_ms = max(1, round(elapsed_seconds(start_time) * 1000))
             counts = applied_counts(applied)
             status = "SUCCESS"
@@ -462,6 +469,7 @@ class TPCHThroughputTest:
         return {
             "function": function,
             "update_set": update_set.set_id,
+            "transactional": refresh_transactional(connection),
             "duration_ms": duration_ms if status == "SUCCESS" else 0,
             **counts,
             "status": status,

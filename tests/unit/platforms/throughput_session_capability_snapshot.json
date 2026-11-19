@@ -64,10 +64,10 @@
   },
   "clickhouse-local": {
     "adapter": "benchbox.platforms.clickhouse_local.ClickHouseLocalAdapter",
-    "capability": "unsupported",
+    "capability": "independent_connection",
     "declaration_site": "benchbox.core.platform_manifest",
     "declared": true,
-    "gate": "reject",
+    "gate": "pass",
     "key": "clickhouse-local",
     "status": "resolved"
   },
