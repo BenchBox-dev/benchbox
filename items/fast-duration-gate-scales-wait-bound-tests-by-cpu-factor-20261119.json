@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Wait-bound tests no longer gain normalized time on a runner with a speed factor above 1: the normalization excludes or caps time the calibration cannot explain, or uses a calibration that reflects the fast tier's real mix.",
+    "A regression test reproduces the #4335 case: raw shared time below the baseline, factor 1.62, verdict pass.",
+    "Across recent runs, the normalized ratio no longer depends on the speed-factor cluster: typical and fast runners land within the same band."
+  ],
+  "context": "Related: ci-fast-duration-gate-rerun-and-baseline-drift-20261113 (re-run message and refresh policy; its occurrences on #4172 at factor 1.635 and #4175 at 1.707 fit this pattern).\n\nEvidence from 2026-11-19. PR #4335 run 44411635546 at a404914d26: verdict would-block, sum ratio 1.302, speed factor 1.619 (calibration 0.882 s against reference 1.4275 s). Raw shared-test time was 1,461 s against the normalized baseline's 1,906 s (raw ratio 0.766). 109 shared tests of at least 0.5 s did not speed up on that runner (raw at or above 0.9x baseline); normalization added 101 s to them, and without that inflation the ratio is 1.249. Largest contributors: tests/unit/platforms/test_questdb_adapter.py ILP load tests (10.04 s baseline each, +6.19 s = 10.04 x 0.619), tests/unit/scripts/test_review_gateway_host.py (+20 s), sql_compat fork golden corpus and vendored sqlglot bypass tests. Across 55 recent CI verdicts the log-log slope of raw ratio on speed factor is -1.05, so normalization is right on average, but both blocked runs came from the factor 1.6-1.75 cluster (#4335 at 1.62, #4329 at 1.75 scoring 1.587).",
+  "description": "`scripts/build_fast_duration_baseline.py` normalizes every raw test time by `reference_calibration_best_seconds / calibration_best_seconds`, a single-threaded CPU microbenchmark. Tests bound by fixed waits (sleeps, timeouts, socket or subprocess waits) do not speed up on a faster CPU, yet are multiplied by the same factor. On a runner whose calibration is fast (factor 1.6-1.8) these tests are inflated by 60-80%, and the verdict can flip to would-block while the run is faster in raw time than the baseline.\n\nGuardrails: the 2026-11-17 owner decision on ci-fast-duration-gate-rerun-and-baseline-drift-20261113 rules out threshold changes; fix the normalization, not the thresholds. Never weaken the gate for a PR that really slows the tier.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4335",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/44411635546"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:6159b4457b6c00e643109b5d",
+      "at": "2026-11-19T12:53:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "790de54faf6744009cf5aa11474f8c0b",
+      "session_id": "66e26021181f433192b652b8517b5f5f"
+    }
+  ]
+}

@@ -24398,6 +24398,13 @@
       "status": "open",
       "title": "Make the fast-duration gate robust to a high calibration factor"
     },
+    "fast-duration-gate-scales-wait-bound-tests-by-cpu-factor-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Fast-tier duration gate scales wait-bound tests by the CPU speed factor and over-penalizes fast runners"
+    },
     "fast-lane-budget-doc-copy-stale-until-removal-20261028": {
       "claim": null,
       "needs": [],
