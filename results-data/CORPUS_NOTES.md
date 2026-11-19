@@ -1,5 +1,25 @@
 # Corpus Generation Notes - 2026-04-03
 
+## Snowflake bundles recorded the unapplied default warehouse size (2026-11-18)
+
+All 50 published Snowflake bundles recorded `platform.config.warehouse_size` and
+`platform.raw_config.warehouse_size` as `MEDIUM`, the adapter default. That size is applied
+only when `modify_warehouse_settings` is true, which defaults to false, so the warehouse was
+never resized. `SHOW WAREHOUSES` observed `X-Small` in every run and recorded it in
+`platform.compute.warehouse_size`, which the Explorer already used for compute, cost and
+facets. The owner decided on 2026-11-18 that bundles record the size actually used.
+
+The two configured fields now carry the observed `X-Small`. This is a reviewed bundle edit,
+not a sidecar attestation: the configured size is not a field a sidecar can override.
+`_project/scripts/results_snowflake_warehouse_size_correction.py` selects the bundles whose
+configured size differs from the observed one, rewrites only those two fields, refreshes
+`bundle_hash` in each `.manifest.json` sidecar and `results-data/corpus-inventory.json`
+(`scripts/generate_corpus_inventory.py --write`), and records every old and new SHA-256 and
+result ID in `bundles/snowflake-warehouse-size-correction.manifest.json`. Result IDs embed a
+hash prefix of the bundle bytes, so all 50 were renumbered. No timing, query or validation
+field changed. New Snowflake bundles record the observed size, or the requested size only
+when the adapter applied it.
+
 ## Remaining TPC-DI bundles from earlier generators (2026-11-17)
 
 The TPC-DI generator changed twice in November: the four secondary fact tables

@@ -408,6 +408,13 @@ to the history that `scripts/trunk_uat.py history` reads. Dispatch it with
 rules, artifacts and the decision gate on runner cost are in
 [Trunk UAT workflow reference](#trunk-uat-workflow-reference).
 
+Each UAT stage matrix sets `strategy.max-parallel` (stage 1: 4, stage 2: 2,
+stage 3: 3) in both workflows, so one release or trunk run holds at most nine
+runners of the organization's 20-job limit and leaves room for pull request CI.
+Shard contents, timeouts and conditions are unchanged. Expect a longer UAT wall
+time: stage 1 runs its shards in waves of four, stage 2 in waves of two and
+stage 3 in waves of three.
+
 ### Release probe
 
 A change to the release workflow can be wrong in ways unit tests do not show: a
@@ -460,18 +467,52 @@ green gates, if `publish` runs after a red gate, or if any job that can publish
 runs in probe mode; `tests/unit/workflows/test_release_v2_probe.py` pins the
 probe's permissions and the issue-3947 graph shape.
 
-`release-v2-probe.yml` runs on every pull request. When the pull request
+`release-v2-probe.yml` runs on every pull request and is asynchronous: its job
+`release-v2 probe dispatch` never waits for the probe runs, so it holds a runner
+for minutes rather than for as long as the runs queue. When the pull request
 touches `release-v2.yml`, `trunk-uat.yml`, `trunk.yml`, `release-uat-env`, the
 probe workflow, `scripts/release_*.py`, `scripts/release_requirements.txt`,
 `scripts/update_version.py`, `tests/uat/gate_summary.py`, `tests/uat/_cli.py`,
 `tests/uat/config.py`, `Makefile`, `make/uat.mk` or a release-gate UAT
 config (a rename counts under both its old and new path), it dispatches every probe variant
-from the pull request branch and fails unless every one succeeds; otherwise it passes
-at once. It runs on every pull request so that it can be made a required
-check without leaving unrelated pull requests pending. The probe builds its own
+from the pull request branch and creates the required check run `release-v2 probe`
+on the head commit as in progress, listing the three run links; its `external_id`
+records the three run ids. Otherwise it creates the check run as completed with
+success at once. It runs on every pull request from a branch of this repository so
+that the check can be required without leaving unrelated pull requests pending. If a dispatch fails, or the job
+graph check fails, the check run is created as a failure carrying the error.
+
+`release-v2-probe-verdict.yml` runs on `workflow_run` completion of `Release v2`
+(always from the default branch). For a dispatched run it finds the in-progress
+`release-v2 probe` check run on the run's head commit whose recorded ids include
+that run. When all three recorded runs have completed it completes the check:
+success only if all three concluded success, otherwise failure naming each
+variant that did not succeed with its conclusion and link. While any run is
+queued or in progress it does nothing, and a check run that is already completed
+is left alone. The logic lives in `scripts/release_probe_verdict.py`. A run
+cancelled by a newer push completes the old head's check as failure, which is
+harmless because only the current head counts. Expect the check to stay in
+progress for as long as the runs queue: under runner congestion that can be hours,
+and waiting is the remedy; do not re-dispatch the probe. The verdict workflow
+only sees runs that finish after the check exists, so right after creating the
+check the dispatch job completes it itself if every recorded run has already
+finished. A check records three distinct run ids and each must be a
+`release-v2.yml` dispatch at the check's head commit, otherwise the check fails.
+
+Re-running the `release-v2 probe dispatch` job reconciles a check whose `workflow_run`
+event was missed: before dispatching, the job looks for an in-progress `release-v2 probe`
+check on the head commit that records run ids. If every recorded run has finished it
+completes that check through the verdict code and exits without dispatching; if any is
+still running it exits and changes nothing. When the check is already completed, or none
+exists, the job behaves as it always did: it dispatches the three variants and creates a
+new check run, so a deliberate re-run of a completed probe probes again.
+
+The probe builds its own
 distributions, so it does not execute the `dist-artifact` job of `trunk.yml`;
 a drift test keeps the build and verification commands aligned.
-Fork pull requests cannot dispatch and fail.
+A fork pull request cannot create check runs or dispatch workflows, so the dispatch
+job fails at once with a message and `release-v2 probe` is never reported for it;
+push the branch to the repository and open the pull request from there.
 
 ## Trunk UAT workflow reference
 
@@ -903,6 +944,11 @@ make release-check VERSION=X.Y.Z [BASE_REF=<immutable-predecessor-sha>] [RELEASE
 then `scripts/generate_changelog_entry.py --compile-fragments`, which builds the
 `[X.Y.Z]` section from `changelog.d` (see "Release notes from fragments").
 Commit the changed files, including the deleted fragments, as one PR.
+
+Before a minor release, the owner re-reads the vendor terms recorded in
+[`results-vendor-publication-terms.md`](results-vendor-publication-terms.md)
+and updates the record where a vendor's text or date changed. The owner also
+re-reads it whenever a vendor in the published corpus announces new terms.
 
 `release-check` (`scripts/release_flow.py check`) exits non-zero and lists every
 problem it finds. It verifies that:

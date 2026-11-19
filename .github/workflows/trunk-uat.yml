@@ -109,6 +109,7 @@ jobs:
     timeout-minutes: 360
     strategy:
       fail-fast: false
+      max-parallel: 4
       matrix:
         include:
           - shard: sqlite
@@ -195,6 +196,7 @@ jobs:
     timeout-minutes: 360
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         include:
           - shard: lakesail
@@ -271,6 +273,7 @@ jobs:
     timeout-minutes: 360
     strategy:
       fail-fast: false
+      max-parallel: 3
       matrix:
         include:
           - shard: postgres-family

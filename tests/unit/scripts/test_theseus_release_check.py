@@ -15,8 +15,13 @@ LOCK = {"repository": "owner/engine", "source_commit": "a" * 40}
 PR_HEAD = "b" * 40
 
 
-def runs(*pairs: tuple[str, str], start: int = 1) -> dict[str, Any]:
-    return {"check_runs": [{"id": start + i, "name": n, "conclusion": c} for i, (n, c) in enumerate(pairs)]}
+def runs(*pairs: tuple[str, str | None], start: int = 1) -> dict[str, Any]:
+    return {
+        "check_runs": [
+            {"id": start + i, "name": n, "status": "completed" if c else "in_progress", "conclusion": c}
+            for i, (n, c) in enumerate(pairs)
+        ]
+    }
 
 
 GREEN = runs(*((name, "success") for name in check.REQUIRED_CHECKS))
@@ -283,3 +288,136 @@ def test_a_locked_commit_with_no_readable_tree_refuses_the_pull_fallback() -> No
     fetch = api(routes(direct=EMPTY, pulls=[pull()], pr_runs=GREEN, locked_tree="", head_tree=""))
 
     assert check.verify(LOCK, fetch) != []
+
+
+class Clock:
+    def __init__(self) -> None:
+        self.now = 1000.0
+        self.sleeps: list[float] = []
+
+    def __call__(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def sequenced(first: dict[str, Any], *later: dict[str, Any]) -> Any:
+    payloads = [first, *later]
+    calls = {"n": 0}
+    base = api(routes())
+
+    def fetch(path: str) -> Any:
+        if "/check-runs" in path:
+            payload = payloads[min(calls["n"], len(payloads) - 1)]
+            calls["n"] += 1
+            return payload
+        return base(path)
+
+    fetch.calls = calls
+    return fetch
+
+
+PENDING = runs(("test (py3.11)", "success"), ("test (py3.13)", None), ("build and installed-wheel smoke", "success"))
+
+
+def test_a_check_in_progress_that_then_succeeds_passes_after_waiting() -> None:
+    clock = Clock()
+    fetch = sequenced(PENDING, PENDING, GREEN)
+
+    assert check.verify(LOCK, fetch, clock.sleep, clock) == []
+    assert fetch.calls["n"] == 3
+    assert clock.sleeps == [check.PENDING_POLL_SECONDS] * 2
+
+
+@pytest.mark.parametrize("conclusion", ["failure", "cancelled", "skipped"])
+def test_a_check_that_concludes_unsuccessfully_after_waiting_fails_naming_the_conclusion(conclusion: str) -> None:
+    clock = Clock()
+    ended = runs(
+        ("test (py3.11)", "success"), ("test (py3.13)", conclusion), ("build and installed-wheel smoke", "success")
+    )
+
+    problems = check.verify(LOCK, sequenced(PENDING, ended), clock.sleep, clock)
+
+    assert problems == [f"test (py3.13): concluded {conclusion!r} on {'a' * 40}"]
+
+
+def test_a_missing_required_run_fails_without_waiting() -> None:
+    clock = Clock()
+    partial = runs(("test (py3.11)", "success"), ("test (py3.13)", "success"))
+
+    problems = check.verify(LOCK, sequenced(partial), clock.sleep, clock)
+
+    assert problems == [f"build and installed-wheel smoke: no check run on {'a' * 40}"]
+    assert clock.sleeps == []
+
+
+def test_a_run_that_never_completes_fails_after_the_bound_naming_the_pending_checks() -> None:
+    clock = Clock()
+    stuck = runs(("test (py3.11)", None), ("test (py3.13)", "success"), ("build and installed-wheel smoke", None))
+
+    problems = check.verify(LOCK, sequenced(stuck), clock.sleep, clock)
+
+    assert len(problems) == 2
+    assert problems[0].startswith("test (py3.11): still 'in_progress'")
+    assert problems[1].startswith("build and installed-wheel smoke: still 'in_progress'")
+    assert sum(clock.sleeps) == check.PENDING_WAIT_SECONDS
+    assert clock.now == 1000.0 + check.PENDING_WAIT_SECONDS
+
+
+def test_the_wait_is_shared_across_the_commit_and_the_pull_head() -> None:
+    clock = Clock()
+    stuck = runs(("test (py3.11)", None))
+    base = api(routes(direct=stuck, pulls=[pull()], pr_runs=stuck))
+
+    check.verify(LOCK, base, clock.sleep, clock)
+
+    assert sum(clock.sleeps) == check.PENDING_WAIT_SECONDS
+
+
+def test_every_workflow_step_running_the_check_outlasts_the_wait_within_its_job() -> None:
+    import re
+
+    root = Path(__file__).resolve().parents[3] / ".github" / "workflows"
+    wait_minutes = check.PENDING_WAIT_SECONDS / 60
+    found = 0
+    for workflow in sorted(root.glob("*.yml")):
+        text = workflow.read_text(encoding="utf-8")
+        for job in re.split(r"(?m)^  (?=[A-Za-z0-9_-]+:\s*$)", text)[1:]:
+            if "scripts/theseus_release_check.py" not in job:
+                continue
+            found += 1
+            job_timeout = int(re.search(r"(?m)^    timeout-minutes: (\d+)", job).group(1))
+            step = job[job.index("scripts/theseus_release_check.py") :]
+            step_timeout = int(re.search(r"(?m)^        timeout-minutes: (\d+)", step).group(1))
+            assert step_timeout > wait_minutes, workflow.name
+            assert job_timeout > step_timeout, workflow.name
+    assert found == 4
+
+
+def test_the_longer_job_timeout_is_not_a_longer_test_budget() -> None:
+    import re
+
+    root = Path(__file__).resolve().parents[3] / ".github" / "workflows"
+    test_steps = {
+        "ci.yml": ("Run medium tests for changed paths", "Run medium speed tier"),
+        "trunk.yml": ("Run medium speed tier",),
+        "trunk-coverage.yml": ("Run medium speed tier",),
+        "nightly-v2.yml": ("Run core integration tests", "Run table-format integration tests"),
+    }
+    for name, steps in test_steps.items():
+        text = (root / name).read_text(encoding="utf-8")
+        job = next(
+            j for j in re.split(r"(?m)^  (?=[A-Za-z0-9_-]+:\s*$)", text) if "scripts/theseus_release_check.py" in j
+        )
+        job_timeout = int(re.search(r"(?m)^    timeout-minutes: (\d+)", job).group(1))
+        wait_minutes = int(check.PENDING_WAIT_SECONDS // 60)
+        for step in steps:
+            body = job[job.index(f"      - name: {step}\n") :].split("\n      - name:", 2)[0]
+            assert (
+                int(re.search(r"(?m)^        timeout-minutes: (\d+)", body).group(1)) <= job_timeout - wait_minutes - 5
+            ), (
+                name,
+                step,
+            )

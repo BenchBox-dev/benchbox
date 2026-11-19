@@ -33,6 +33,7 @@ worktree-finish: export WORKTREE_PATH := $(WORKTREE_PATH)
 worktree-finish: export EXPECTED_HEAD_OID := $(EXPECTED_HEAD_OID)
 worktree-finish: export FORMAT := $(FORMAT)
 worktree-finish: export UNPUBLISHED := $(UNPUBLISHED)
+worktree-finish: export KEEP_BRANCH := $(KEEP_BRANCH)
 worktree-finish:
 	@$(BENCHBOX_MAKEFILE_ROOT)scripts/worktree_lifecycle.sh finish
 

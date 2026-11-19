@@ -1,6 +1,6 @@
 {
   "schema_version": "2.3",
-  "generated_at": "2026-11-18T23:24:32.504701+00:00",
+  "generated_at": "2026-11-19T03:51:32.687767+00:00",
   "bundles": [
     {
       "file": "amplab_sf01_bigquery_sql_20260920_000055_35490af7.json",
@@ -336,7 +336,7 @@
       "query_count": 16,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "04408d005074d5393f8bccb98be05341402db8f1f7d507e594ca2302c1fab8f0"
+      "bundle_sha256": "111bc635cb1babfc8d98de932a481540de1c9a475bad45ff2d5bdb5a5ca4dccb"
     },
     {
       "file": "amplab_sf1_snowflake_sql_20260920_000911_e1dbbcf8.json",
@@ -350,7 +350,7 @@
       "query_count": 16,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "49b9b5847a62be690c6bc104234389e74c8b315079ce30c66130c79b5eb95662"
+      "bundle_sha256": "5b978cab523f1d58cf391c547318977888928cee8a595004608d5e62d85ba8b4"
     },
     {
       "file": "clickbench_sf01_bigquery_sql_20260919_185021_2730e66a.json",
@@ -672,7 +672,7 @@
       "query_count": 86,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "60639402194c2d27526612dd8d01ca35193780f742c66d810f7dbdafecfba2fa"
+      "bundle_sha256": "5db25e33edd2845bfd58b57f44e874ff3227c9b1dc0e22eb245028de93f5a0ea"
     },
     {
       "file": "clickbench_sf1_snowflake_sql_20260920_025738_7ac21810.json",
@@ -686,7 +686,7 @@
       "query_count": 86,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "05fc08ce99f436f2ca261a70aad6680582f2664aa2ee67913c673127ce0a3e88"
+      "bundle_sha256": "d36b1aa848346ba686a47f31ff6db8e308cb305f51d69f8c0f8f59df0f270ff0"
     },
     {
       "file": "clickbench_sf10_snowflake_sql_20260919_213657_c9c32b6f.json",
@@ -700,7 +700,7 @@
       "query_count": 86,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "d63b8cac5cb4b12afad4512dba6eccb994c1959157b2e698ae44d06c1826fa69"
+      "bundle_sha256": "f25de4d45d6bedbd0cdb86e1f4bb19be6cb0cc2ae43058871c6c2e385c5eec92"
     },
     {
       "file": "coffeeshop_sf01_bigquery_sql_20260919_215952_d90b07cc.json",
@@ -1134,7 +1134,7 @@
       "query_count": 22,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "4a2d273914a53da88c8b90935ee5739efb9d5bb14e076ec15030621d3849864a"
+      "bundle_sha256": "daa96d004da287dab69450dddc9e849ac2682931c12b25f0628697023bb1094f"
     },
     {
       "file": "coffeeshop_sf1_snowflake_sql_20260919_221140_a33dc417.json",
@@ -1148,7 +1148,7 @@
       "query_count": 22,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "685c4ac4e4d2575950b3a74e61b3ee3cd2f28680fd129b0253418f1b007ffefb"
+      "bundle_sha256": "396a864b6a52413b3a48063d8fc6b234f9c0067ee22943f4f2c85de027ef219b"
     },
     {
       "file": "datavault_sf001_bigquery_sql_20260927_100530_5ec9efa0.json",
@@ -1372,7 +1372,7 @@
       "query_count": 66,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "e7eb6da617adc220522f895a1565b44749f17744d20b0da9460a1d99d731a3e2"
+      "bundle_sha256": "c6bd347fcd5ffd8ddcc2ec826ea6cc8f351a10d073385560554f4b0990137f38"
     },
     {
       "file": "datavault_sf1_snowflake_sql_20260925_224900_77db76a8.json",
@@ -1386,7 +1386,7 @@
       "query_count": 66,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "472f9f847df348bf31d0f1dd9f80fe2af0811e844b3c943f196388a710cb8acf"
+      "bundle_sha256": "51db791a1fa5a91beda641fd7228d24c59524217ff68df6e22df6d3feb64b6dd"
     },
     {
       "file": "datavault_sf10_snowflake_sql_20260930_180120_db643832.json",
@@ -1400,7 +1400,7 @@
       "query_count": 66,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "d4918143d89697aa28ef2121557d4d2b247198abf88122ffb62f74e509b53cf4"
+      "bundle_sha256": "468770932ab625b51deb9858793c4fa7103dacac5b9b5163729ca0630f90c003"
     },
     {
       "file": "flightdata_sf01_bigquery_sql_20260920_115330_5dd56bc3.json",
@@ -1666,7 +1666,7 @@
       "query_count": 60,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "462cc74227d010ebfb66e34c7a5cc2211f883fb89f188393e2c9a474eb25e327"
+      "bundle_sha256": "41893d3535434d14c963b93dd319462d795197f91e2dac90b4ed242e3ce59d14"
     },
     {
       "file": "flightdata_sf1_snowflake_sql_20261001_111501_3a83168a.json",
@@ -1680,7 +1680,7 @@
       "query_count": 60,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "6bc382ba24ddc1a169d0a853f22175a3c79e0434bd74f953cb18ca77fdd19f8d"
+      "bundle_sha256": "ee781566c2ee1786071bd8dbe1d027946341677cf6d14714905f768b287595b9"
     },
     {
       "file": "flightdata_sf10_snowflake_sql_20261001_113621_e22fa5a3.json",
@@ -1694,7 +1694,7 @@
       "query_count": 60,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "2cc3449aedf77ce4a204254902333fe3500f682eea2a6d7d029a272cda30e0fb"
+      "bundle_sha256": "41342d9336a7dd205698d676fc4993e238ddc9db2d966a7e17aa0289bdb42b37"
     },
     {
       "file": "h2odb_sf01_bigquery_sql_20260919_221927_c38c03f2.json",
@@ -2016,7 +2016,7 @@
       "query_count": 20,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "ea7edab28bf856f38d70a3241c5310ef04206d188fa9ee702cc1e6d8d7c42177"
+      "bundle_sha256": "1a77d0354f6ed20da15b4a8ebcb15658a7ce487de4a6a2485a3e1c0d1ae64aba"
     },
     {
       "file": "h2odb_sf1_snowflake_sql_20260919_223457_01856170.json",
@@ -2030,7 +2030,7 @@
       "query_count": 20,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "96a967a3759135e48ba88fed88471ca3cd2257d55b1adad693c7cfc2e01920b0"
+      "bundle_sha256": "1b2d33ac77454ae2e0cda247663371ae4171c13395ab816bdebbf90d1c8bca39"
     },
     {
       "file": "joinorder_sf1_bigquery_sql_20260920_004131_ebcd21b8.json",
@@ -2156,7 +2156,7 @@
       "query_count": 226,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "a17b086604649af3c0cd0b1a4a7c4d43887177596a3d56275fc2a9d2ace1bebb"
+      "bundle_sha256": "7d5f2ef43e552cdf6ce232f1771b6e710b9ea574614a6195a9713ed9a2a2929b"
     },
     {
       "file": "metadata_primitives_sf1_bigquery_sql_20260929_204456_e435b418.json",
@@ -2198,7 +2198,7 @@
       "query_count": 180,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "8c19e0c98fb3653f53e055a887c456b9395e29117583558c40d4c6c637b25dc4"
+      "bundle_sha256": "afb5b616c986d78643213e74c6931359b9b874c2ea77429dc9c6f2454ecdcbfe"
     },
     {
       "file": "nyctaxi_sf01_bigquery_sql_20260925_221622_67c2e5e9.json",
@@ -2464,7 +2464,7 @@
       "query_count": 75,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "1114ab7d410d47418d34c38eb998659b221dd4418f1102659e1e4c8294c31c70"
+      "bundle_sha256": "d9adf47f73f52e2edbe88efc6802fd5d045df11783603059cf5b8d15aabe60d9"
     },
     {
       "file": "nyctaxi_sf1_snowflake_sql_20260925_092203_0cd1a463.json",
@@ -2478,7 +2478,7 @@
       "query_count": 75,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "f9b3d2c11adda623e5a12e4d2ca0e4b4884570260205a6fe71b42ec36d8444aa"
+      "bundle_sha256": "a0d57f7b03537aec3be95b74b85e62211b2a19dbecd6ef9e982fe639b3854b9e"
     },
     {
       "file": "nyctaxi_sf10_snowflake_sql_20261001_102124_4c662b94.json",
@@ -2492,7 +2492,7 @@
       "query_count": 75,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "6a44b05019663363e3960a8f5f61ca9f195a5f76e9256d4d4269bc6a1d997143"
+      "bundle_sha256": "a06ed469b1ca54c725d7bc87e5ef30101650ee028c82f5d7cad4b0680fc72427"
     },
     {
       "file": "read_primitives_sf001_bigquery_sql_20260930_081905_1a102885.json",
@@ -2842,7 +2842,7 @@
       "query_count": 444,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "aa2194b5036763273d63b29e352780add83eb30bacc2943b340f5581be1cb350"
+      "bundle_sha256": "bf13acd02279003f4df194d01ff5de452c8107b3cd0c8e30674aa8614e868b15"
     },
     {
       "file": "read_primitives_sf01_snowflake_sql_20261001_105057_79bd90a5.json",
@@ -2856,7 +2856,7 @@
       "query_count": 444,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "3512a43789ee8952c50d633e0afc17d671a0fce93e729f2714b360aee5f00d10"
+      "bundle_sha256": "a4f7be0baff4746ca81f87510c9aff6c44e1d0bea7abbd19c5d596daea77a974"
     },
     {
       "file": "ssb_sf01_bigquery_sql_20260919_224527_9cb04d2f.json",
@@ -3486,7 +3486,7 @@
       "query_count": 26,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "bbd567397a9037cf93d67502b27b898b0325f7668ab058b89480d752bac8fa1e"
+      "bundle_sha256": "fa81287123dc9eba0d1948b3268615b8e75862ad36d4e563c943c23d4feea28c"
     },
     {
       "file": "ssb_sf1_snowflake_sql_20260919_225814_ec4b3865.json",
@@ -3500,7 +3500,7 @@
       "query_count": 26,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "b048e5c0c16c7d9c07bbbf5ad308bf8c82e7278456c87994f5480da891076659"
+      "bundle_sha256": "7b9b41027ec26e0098122c270a113be18317b827cc4cd6a5cd9d7f45484b7afd"
     },
     {
       "file": "ssb_sf10_snowflake_sql_20260919_233632_2df658e9.json",
@@ -3514,7 +3514,7 @@
       "query_count": 26,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "4d1b6561de9794f04ce646103fdc56cfabd5a4df00a2467b981f39f2cf1e2b55"
+      "bundle_sha256": "ad51ff5c4f3d823165060f72f93979ae39e3ea9138c63e6d4075b6754b91de7c"
     },
     {
       "file": "tpcdi_sf01_bigquery_sql_20260920_062227_ca696883.json",
@@ -3948,7 +3948,7 @@
       "query_count": 114,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "854d12e007b3a4f8c200a72c4625f632f927120afe5aae6ea792813f7259be96"
+      "bundle_sha256": "a2278dd3c80e496e356656892aba794a439e2ed38dd6ae567f41f35ff61beb69"
     },
     {
       "file": "tpcdi_sf1_snowflake_sql_20261003_134837_b45dfad3.json",
@@ -3962,7 +3962,7 @@
       "query_count": 114,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "e4c90b92b6343b8924d21723dd612adec6b4a50fd4f3a5375a49203c4abb1548"
+      "bundle_sha256": "c07dfbfb958838ced93a8e6635b0a806cd0223ccda4735643d4d48a110a0bab1"
     },
     {
       "file": "tpcdi_sf10_snowflake_sql_20261003_135304_9ec08998.json",
@@ -3976,7 +3976,7 @@
       "query_count": 114,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "cc1ce7fabfa70999252ef93fd6beab91fd0f4b5553da4f2d01fc565a7ce300a8"
+      "bundle_sha256": "629dab0882992676c47046f42bf6746c7eb3c8bae785ebb8dd9527fc667ec6e0"
     },
     {
       "file": "tpcds_sf01_bigquery_sql_20260920_015238_a9f40f37.json",
@@ -4424,7 +4424,7 @@
       "query_count": 309,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "983b0faeea922cd94cf575ece02702e1c019f0db5f6cb46c7bf9d3451631b841"
+      "bundle_sha256": "9380b8f7b3807af7385fe9b33a49fe170acc82863b5ba1b3a8825cbc8d07ae0b"
     },
     {
       "file": "tpcds_sf1_snowflake_sql_20261003_141435_27bd9f9c.json",
@@ -4438,7 +4438,7 @@
       "query_count": 309,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "53173c73c8f353863be04488c6f974cf773739f479a4553e20c8d4a6bf595a41"
+      "bundle_sha256": "21c306b8f0ad23d8dfacc850f251410d59dd1fe1f461d6b2f35736dafd5255ee"
     },
     {
       "file": "tpcds_sf10_snowflake_sql_20261003_143203_b8820a1d.json",
@@ -4452,7 +4452,7 @@
       "query_count": 309,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "facf01d338c0d9b442f06a31134f715f117dfe167eeb4bf7cac4259c1da8aff7"
+      "bundle_sha256": "a278d476536bf6deeda105fecc8388cf54fdf8f2c7b62f7316012d4a5b542796"
     },
     {
       "file": "tpcds_sf1_spark_sql_20260823_102343_1d9231a1.json",
@@ -4539,18 +4539,18 @@
       "bundle_sha256": "799a3c3248a6da80153d12a545f8769afca3f21cec044940bf12654c2a1c53b9"
     },
     {
-      "file": "tpcds_obt_sf01_doris_sql_20261117_161452_4ded829a.json",
+      "file": "tpcds_obt_sf01_doris_sql_20261118_225023_c18125e7.json",
       "benchmark": "tpcds_obt",
       "benchmark_name": "TPC-DS One Big Table",
       "platform": "Apache Doris",
       "platform_version": "4.0.3-rc03",
       "scale_factor": 0.1,
       "phase": "power",
-      "timestamp": "2026-11-17T16:14:52.604286",
+      "timestamp": "2026-11-18T22:50:23.438696",
       "query_count": 279,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "70554652c04bebd09c9a8334884f3652f5f77ef2513e6b386f88d9b51faae06e"
+      "bundle_sha256": "8510a80fee835f9f64df42aa7aacf3aab76923e259c4beeb11884c1a6b03349f"
     },
     {
       "file": "tpcds_obt_sf1_bigquery_sql_20260923_152357_480ffcea.json",
@@ -4760,7 +4760,7 @@
       "query_count": 267,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "1fd9a95b990a5f2369317bfb2704aeb6ef7055d00d8acc68d9c3554a9d7361c5"
+      "bundle_sha256": "f520a772342bc112b5ac5fc3228878187bbe4e7d985102a548b40eb9552b08f0"
     },
     {
       "file": "tpch_sf1_doris_sql_20261007_172956_5e453c54.json",
@@ -5768,7 +5768,7 @@
       "query_count": 66,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "9ee2da7b50282ebaa35d1cc0985acd5ab51e7b93c083b892a83bd564d46f5fd0"
+      "bundle_sha256": "b43bdbfb8e82cbbbe55632fcd116466bfd0b05f848a0f6d4db79f0ae06836d2a"
     },
     {
       "file": "tpch_sf1_snowflake_sql_20261003_113923_e545c1c5.json",
@@ -5782,7 +5782,7 @@
       "query_count": 66,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "c30a01782e7bd5329a14c4fff54cb2de443026a2f89435486c40c4f66bec2eb2"
+      "bundle_sha256": "22e9d6bda2346f567c59d09441e8bfd05f6a416f0c18623ea68dd13fee824e6c"
     },
     {
       "file": "tpch_sf10_snowflake_sql_20261003_114454_2454b319.json",
@@ -5796,7 +5796,7 @@
       "query_count": 66,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "f08359294dceba6a3faff6178363a876b0d2b2de7beb67935012b77753329b84"
+      "bundle_sha256": "5e9ad890f5bb598869ac88f7bcffdacefdf149c544e1f506abfc2f26bd6d8baf"
     },
     {
       "file": "tpch_sf001_spark_sql_20260826_191913_2fd3b12b.json",
@@ -6300,7 +6300,7 @@
       "query_count": 66,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "09cc0b677ebfd5edb3792542c2c4e75e72003ddcf3357edef29c579993c17183"
+      "bundle_sha256": "0ed999aeedb299c989676e02605f16c636d53f8d9cca7442859a461aa36ebba2"
     },
     {
       "file": "tpch_skew_sf1_snowflake_sql_20260925_221217_97d77ab8.json",
@@ -6314,7 +6314,7 @@
       "query_count": 66,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "60bc23cba50824c2f68fe086b73d0da1f5d450864e7a2639dbe3393fbeb6c065"
+      "bundle_sha256": "ba8e148ad2b375d29d09e6d7f38dd1da098a4a187a2d490f9b5e5b55af7a7bf2"
     },
     {
       "file": "tpch_skew_sf10_snowflake_sql_20260929_124322_e9d6506c.json",
@@ -6328,7 +6328,7 @@
       "query_count": 66,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "9d6269b898213625e690b7cd08fd95be40dab2d058acdd4790e52b6a806143c6"
+      "bundle_sha256": "3c01e54d5b1f9b3d9cd6c86875f8f76a96fd7397fcaddc1df42fad51cb8547c9"
     },
     {
       "file": "tpchavoc_sf01_bigquery_sql_20260929_141245_143d6f5e.json",
@@ -6636,7 +6636,7 @@
       "query_count": 654,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "42e1be186f55a297552b69e6f82a5c47c341a87d9dd5e6d597ca1f9d8bafbc82"
+      "bundle_sha256": "ac45996a2ce8e932180e84636b28c6988496cf55ea040966963044706d99155c"
     },
     {
       "file": "tpchavoc_sf1_snowflake_sql_20260930_200344_2761bdbc.json",
@@ -6650,7 +6650,7 @@
       "query_count": 654,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "60bec6fed54c01bb216de24f4035e52aa13a56dca2d5263449863fbb7bac1762"
+      "bundle_sha256": "b2e57e92c73f0a004bac5fac3355fe301377b978b8846f7791b1f62a4ced12b0"
     },
     {
       "file": "tpchavoc_sf10_snowflake_sql_20260930_193124_48bb07c7.json",
@@ -6664,7 +6664,7 @@
       "query_count": 654,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "b4ed07e5a9419a3c2269a8d2a831fbeb68111fae7b0fadc34df1edf1670d63a9"
+      "bundle_sha256": "a25d144ece3b2cb5387561a4d438090e626c6ec6ebc73012dc03b1404aa7c46e"
     },
     {
       "file": "transaction_primitives_sf001_bigquery_sql_20261001_205304_209908db.json",
@@ -6762,7 +6762,7 @@
       "query_count": 69,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "acc10702b195fa4016b961cb58825c031bf6631f0008a2338d83cfb532f6feb2"
+      "bundle_sha256": "19fcf35add0b50c2404f3712cc5245088bbfeea017ec9ddb76ed7892aff8418b"
     },
     {
       "file": "transaction_primitives_sf01_snowflake_sql_20261001_090534_90566a67.json",
@@ -6776,7 +6776,7 @@
       "query_count": 69,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "e2ea21fcaf0baf3e6df6da9372e089a22b6b0f24ac84925a306144ec7122cecd"
+      "bundle_sha256": "c5e04a8feb93590aec2d19730d35d7bf0f63b9b6c350b736262e48a510f6a3ad"
     },
     {
       "file": "transaction_primitives_sf1_snowflake_sql_20261001_092311_b4c0d6da.json",
@@ -6790,7 +6790,7 @@
       "query_count": 69,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "f17a2c358bfeaecfb67e5abbbd4ca383341da4693f631c08ee0f8da166de9361"
+      "bundle_sha256": "2310a86f759e29d821f82906bd87c05553a10bccd1e533b6a766ad201126760a"
     },
     {
       "file": "tsbs_devops_sf01_bigquery_sql_20260929_192405_78305c52.json",
@@ -6888,7 +6888,7 @@
       "query_count": 54,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "93cea4edec566fd66bc3eb7285d5713755c1e84ce66dc2db42d7b8db2c17c8d5"
+      "bundle_sha256": "ce50cdc542f8827c200b269fb4cbfda7629a8556687f8ac26e775612ba203c27"
     },
     {
       "file": "tsbs_devops_sf1_snowflake_sql_20260929_192925_18bb194f.json",
@@ -6902,7 +6902,7 @@
       "query_count": 54,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "60f4d13e6231dac9b1d321b475cb214721dadf6050ad595bd9021268adc0df46"
+      "bundle_sha256": "32d307f91048971807177fac687c29e5bb14b00f5658eb9adb582b514c8fc90a"
     },
     {
       "file": "tsbs_devops_sf10_snowflake_sql_20260929_224733_a340c633.json",
@@ -6916,7 +6916,7 @@
       "query_count": 54,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "aa90aa054b21ae9bf7f1db54c4e7f846a668d6975767eb7170ba7d9e6b455636"
+      "bundle_sha256": "c7a73929e42b1b9251268bd983c60fb09a8a875b8dde9dd6a594b0db4217cb24"
     },
     {
       "file": "write_primitives_sf001_bigquery_sql_20261001_202950_88736ac2.json",
@@ -7014,7 +7014,7 @@
       "query_count": 336,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "1e61b5de9cb402b0a5699df54bb3fa237ade3c1c9662cc99a24f69739b2e5f63"
+      "bundle_sha256": "b7780640c93bec54baa2f2be0132c47bd94a5754c2082176b8dc6a8508047db1"
     },
     {
       "file": "write_primitives_sf01_snowflake_sql_20260930_222159_5d085279.json",
@@ -7028,7 +7028,7 @@
       "query_count": 336,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "f397a57ee7c560854cc90fc3d1dd8af0d67df6c3cb9a67277defe12387c3c1fd"
+      "bundle_sha256": "0e8be8ceba555e7e6653bf4bbb0913c5cb0a6f728373da680fd60d5aa5abcbcd"
     },
     {
       "file": "write_primitives_sf1_snowflake_sql_20261001_083039_3c313d6f.json",
@@ -7042,7 +7042,7 @@
       "query_count": 336,
       "trust_label": "maintainer-run",
       "funding": "unspecified",
-      "bundle_sha256": "405e56dc4da5053f78daeb54e11b196ba0a6edb6cd95a84e6b665debf0cff914"
+      "bundle_sha256": "ef408a5198ea75118a64138e4e6e34b0b1581be097744a4a283f45dc3bdd6862"
     }
   ],
   "cohorts": {

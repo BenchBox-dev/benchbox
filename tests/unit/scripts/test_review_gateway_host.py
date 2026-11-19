@@ -993,16 +993,17 @@ def test_check_reports_a_failed_usage_probe_as_degraded(host: dict) -> None:
     assert "401 from anthropic" not in checked.stdout
 
 
-def _probe_lines(*failing: str, missing: tuple[str, ...] = ()) -> tuple[str, ...]:
+def _probe_lines(*failing: str, missing: tuple[str, ...] = (), unknown: tuple[str, ...] = ()) -> tuple[str, ...]:
     lines = ["broker: http://127.0.0.1:8765", ""]
     for provider in PROVIDERS:
         if provider in missing:
             continue
-        status = (
-            "FAIL     id=  2 oauth  x@example.com — oauth refresh failed: 500"
-            if provider in failing
-            else "ok       id=  1 oauth  x@example.com"
-        )
+        if provider in failing:
+            status = "FAIL     id=  2 oauth  x@example.com — oauth refresh failed: 500"
+        elif provider in unknown:
+            status = "unknown  id=  8 oauth  x@example.com — usage probe returned no data for this credential"
+        else:
+            status = "ok       id=  1 oauth  x@example.com"
         lines += [f"{provider} (1)", f"  {status}", ""]
     for name in failing:
         if name not in PROVIDERS:
@@ -1015,7 +1016,15 @@ def test_a_served_provider_missing_from_a_failed_check_is_degraded(host: dict) -
     _logins(host, PROVIDERS, probe_lines=_probe_lines("unused-login", missing=(PROVIDERS[1],)), probe_exit=1)
     checked = _check(host)
     assert checked.returncode == 3, checked.stdout + checked.stderr
-    assert f"degraded: usage probe: {PROVIDERS[1]} has no passing probe in a failed check" in checked.stdout
+    assert f"degraded: usage probe: {PROVIDERS[1]} has no probe result in a failed check" in checked.stdout
+    assert "notice: usage probe for unused-login failed" in checked.stdout
+
+
+def test_a_served_provider_with_no_usage_data_is_not_degraded_when_only_an_unserved_login_fails(host: dict) -> None:
+    _logins(host, PROVIDERS, probe_lines=_probe_lines("unused-login", unknown=(PROVIDERS[0],)), probe_exit=1)
+    checked = _check(host)
+    assert checked.returncode == 0, checked.stdout + checked.stderr
+    assert "degraded:" not in checked.stdout
     assert "notice: usage probe for unused-login failed" in checked.stdout
 
 
