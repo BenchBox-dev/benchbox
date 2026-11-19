@@ -1647,7 +1647,8 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -eu
-          if [ -n "$(/usr/bin/git diff --name-only --no-renames "$BASE_SHA...$HEAD_SHA" -- tests/fixtures/fast_tier_baseline/)" ]; then
+          diff=$(/usr/bin/git diff --name-only --no-renames "$BASE_SHA...$HEAD_SHA" -- tests/fixtures/fast_tier_baseline/)
+          if [ -n "$diff" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"

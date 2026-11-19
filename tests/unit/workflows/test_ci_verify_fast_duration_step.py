@@ -116,7 +116,9 @@ def test_the_reproduce_job_detects_the_change_itself_before_any_other_step() -> 
     assert [step["name"] for step in steps[:2]] == ["Checkout code", "Detect a baseline change"]
     detect = steps[1]
     assert detect["id"] == "detect"
-    assert "/usr/bin/git diff --name-only --no-renames" in detect["run"]
+    assert "diff=$(/usr/bin/git diff --name-only --no-renames" in detect["run"]
+    assert 'if [ -n "$diff" ]' in detect["run"]
+    assert "set -eu" in detect["run"]
     assert '"$BASE_SHA...$HEAD_SHA" -- tests/fixtures/fast_tier_baseline/' in detect["run"]
     assert detect["env"]["HEAD_SHA"] == "${{ github.event.pull_request.head.sha }}"
     assert steps[0]["with"]["fetch-depth"] == 0
