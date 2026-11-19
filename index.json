@@ -33018,10 +33018,15 @@
       "title": "Two tests fail in make pr-preflight's Linux VM leg on unmodified develop"
     },
     "pr-preflight-mapped-pytest-runs-without-host-lock-20261118": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-20T13:24:06Z",
+        "generation": "1c79cce0f9d74aed9ffff5ab9cfbaa08",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f7e1d096d0cfe816679daa7"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "make pr-preflight runs its mapped pytest step without the host lock, though heavy-work.md says its heavy steps take it"
     },
     "pr-preflight-maps-no-tests-for-workflow-edits-20261031": {
