@@ -348,27 +348,41 @@ def _segment_glob_matches(path: str, pattern: str) -> bool:
     )
 
 
-def glob_constants(tree: ast.AST) -> set[str]:
+def path_constants(tree: ast.AST) -> set[str]:
     return {
-        node.value
+        node.value.removeprefix("./").rstrip("/")
         for node in ast.walk(tree)
         if isinstance(node, ast.Constant)
         and isinstance(node.value, str)
-        and "/" in node.value
-        and any(char in node.value for char in "*?[")
-        and not any(char in node.value.split("/", 1)[0] for char in "*?[.~")
+        and "/" in node.value.strip("/")
         and not any(char.isspace() for char in node.value)
-        and not node.value.startswith("/")
+        and not node.value.startswith(("/", "~", "../"))
+        and len(node.value.split("/")) <= MAX_CANDIDATE_SEGMENTS
     }
 
 
-def expand_globs(patterns: set[str], tracked: set[str]) -> set[str]:
+def tracked_directories(tracked: set[str]) -> dict[str, list[str]]:
+    directories: dict[str, list[str]] = {}
+    for path in tracked:
+        parent = posixpath.dirname(path)
+        while parent:
+            directories.setdefault(parent, []).append(path)
+            parent = posixpath.dirname(parent)
+    return directories
+
+
+def expand_constants(constants: set[str], tracked: set[str], directories: dict[str, list[str]]) -> set[str]:
     found: set[str] = set()
-    for pattern in patterns:
-        if len(pattern.split("/")) > MAX_CANDIDATE_SEGMENTS:
-            continue
-        prefix = pattern.split("/", 1)[0] + "/"
-        found.update(path for path in tracked if path.startswith(prefix) and _segment_glob_matches(path, pattern))
+    for constant in constants:
+        first = constant.split("/", 1)[0]
+        if any(char in constant for char in "*?["):
+            if any(char in first for char in "*?[") or first == "..":
+                continue
+            found.update(path for path in directories.get(first, ()) if _segment_glob_matches(path, constant))
+        elif constant in tracked:
+            found.add(constant)
+        else:
+            found.update(directories.get(constant, ()))
     return found
 
 
@@ -416,6 +430,7 @@ def scan_tree_reads(repo_root: str | Path) -> tuple[dict[str, list[str]], dict[s
     root = Path(repo_root)
     tracked = tracked_files(root)
     basenames = basename_index(tracked)
+    directories = tracked_directories(tracked)
     refs: dict[str, list[str]] = {}
     reads: dict[str, list[str]] = {}
     for scan in SCAN_DIRS:
@@ -435,7 +450,8 @@ def scan_tree_reads(repo_root: str | Path) -> tuple[dict[str, list[str]], dict[s
             hits.discard(own)
             if hits:
                 refs[own] = sorted(hits)
-            indirect = (expand_globs(glob_constants(tree), tracked) | imported_modules(tree, own, tracked)) - {own}
+            constants = expand_constants(path_constants(tree), tracked, directories)
+            indirect = (constants | imported_modules(tree, own, tracked)) - {own}
             if indirect:
                 reads[own] = sorted(indirect)
     workflow_paths = sorted((root / ".github" / "workflows").glob("*.yml"))

@@ -156,6 +156,9 @@ def broad_test_infrastructure(changed_paths: Iterable[str], repo_root: Path) -> 
     return broad
 
 
+READ_DOCUMENT_TREES = ("docs/agent/",)
+
+
 def read_documents_only(selection: dict[str, Any], changed: list[str]) -> bool:
     return (
         selection.get("shadow") is True
@@ -165,7 +168,7 @@ def read_documents_only(selection: dict[str, Any], changed: list[str]) -> bool:
         and not selection.get("changed_tests")
         and not selection.get("uncovered_sources")
         and bool(changed)
-        and not any(path.endswith(".py") for path in changed)
+        and all(path.startswith(READ_DOCUMENT_TREES) and path.endswith(".md") for path in changed)
     )
 
 

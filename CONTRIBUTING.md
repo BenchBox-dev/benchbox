@@ -74,7 +74,7 @@ route to code CI.
 
 `.github/path-filters.yml` adds content, skill-integrity, packaging, binary-framing and
 visualization checks. Coverage-impact selection currently runs in shadow mode (`SELECTION_SHADOW` in
-`scripts/coverage_test_selection.py`): it records the proposed selection but escalates to the complete medium tier, except for a change that touches only machine-read documents with recorded reader tests, which runs those readers instead. Selected Windows tests,
+`scripts/coverage_test_selection.py`): it records the proposed selection but escalates to the complete medium tier, except for a change that touches only `docs/agent` pages with recorded reader tests, which runs those readers instead. Selected Windows tests,
 tuning, SQL-execution evidence, publication/API contracts and Trunk-lane changes have
 additional conditional jobs. Read the `ci-paths` summary and decision artifacts for the
 actual routing of a head rather than assuming every PR runs every job.
@@ -231,8 +231,8 @@ make pr-preflight
 ```
 
 This first reports primary-clone cleanliness and checks changelog fragments. It runs `ruff check`
-and `ruff format --check` on the Python files you changed, then runs mapped tests without xdist,
-so it does not wait on the shared test lock. A changed `tests/**/test_*.py` runs itself; a changed
+and `ruff format --check` on the Python files you changed, then runs mapped tests without xdist
+under the host lock, admission check and watchdog, so it waits while another heavy run holds the lock. A changed `tests/**/test_*.py` runs itself; a changed
 `benchbox/**/<module>.py` or `scripts/<module>.py` runs every `tests/**/test_<module>.py`.
 Tests that failed in the previous run go first (`--ff`), then the rest run. After a successful
 mapped run, changes touching platform-branching code or platform skips can select an additional

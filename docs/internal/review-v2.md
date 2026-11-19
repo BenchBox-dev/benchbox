@@ -607,9 +607,11 @@ an inert-path reference without an exception
 `_project/inert-doc-readers.json` maps each machine-read document to the tests
 that read it, so a docs-only change selects its readers and escalates only when
 nothing reads the document. A test reads a document when its source names the
-path, when it holds a glob whose first segment is literal (`docs/agent/*.md`)
-that matches it, or when a module the test imports or names by path does
-either; a glob such as `**/*.md` with no literal first segment is ignored. It is
+path, when it holds a path string constant naming the file, its directory
+(`docs/agent`) or a glob whose first segment has no wildcard (`docs/agent/*.md`,
+`.claude/commands/*.md`), or when a module the test imports or names by path
+does; a glob such as `**/*.md` is ignored. These indirect reads extend only the
+reader index, not the inert-path guard. It is
 checked in so the mapping is reviewed like code and CI verifies freshness
 (`test_checked_in_readers_match_the_rebuilt_index`). Regenerate with `python3
 _project/scripts/inert_paths.py --regenerate-readers` and commit.

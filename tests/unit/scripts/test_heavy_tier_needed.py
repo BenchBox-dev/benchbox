@@ -312,6 +312,9 @@ def test_documents_with_recorded_readers_skip_the_shadow_escalation(policy_sourc
         (["docs/agent/merge-authority.md"], {"uncovered_sources": ["docs/agent/new.md"]}),
         (["docs/agent/merge-authority.md"], {"coverage_tests": ["tests/unit/test_x.py"]}),
         (["docs/agent/merge-authority.md"], {"shadow": False}),
+        (["AGENTS.md"], {}),
+        ([".claude/commands/blind-spot.md"], {}),
+        (["docs/agent/merge-authority.md", "changelog.d/x.json"], {}),
     ],
 )
 def test_shadow_escalation_stands_unless_every_change_is_a_read_document(
