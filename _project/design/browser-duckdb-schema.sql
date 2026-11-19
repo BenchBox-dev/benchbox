@@ -118,7 +118,19 @@ CREATE TABLE IF NOT EXISTS results (
     power_score_source   VARCHAR,
     translator_version   VARCHAR,
     translator_fork_sha  VARCHAR,
-    translator_version_source VARCHAR
+    translator_version_source VARCHAR,
+    qphh_at_size         DOUBLE,
+    qphds_at_size        DOUBLE,
+    load_scope           VARCHAR,
+    transactional_steps  VARCHAR,
+    hardware_class       VARCHAR,
+    hardware_score       DOUBLE,
+    hardware_basis       VARCHAR,
+    hardware_table_version VARCHAR,
+    service_size         VARCHAR,
+    known_defect_reason  VARCHAR,
+    benchbox_version     VARCHAR,
+    benchbox_version_basis VARCHAR
 );
 
 CREATE TABLE IF NOT EXISTS query_display_timings (
@@ -225,6 +237,14 @@ SELECT
     r.throughput_at_size,
     r.stream_count,
     r.power_score_source,
+    r.hardware_class,
+    r.hardware_score,
+    r.hardware_basis,
+    r.hardware_table_version,
+    r.service_size,
+    r.known_defect_reason,
+    r.benchbox_version,
+    r.benchbox_version_basis,
     e.os,
     e.arch,
     e.cpu_count,
@@ -303,6 +323,10 @@ CREATE TABLE IF NOT EXISTS benchmark_rankings (
     throughput_at_size           DOUBLE,
     stream_count                 INTEGER,
     power_score_source           VARCHAR,
+    qphh_at_size                 DOUBLE,
+    qphds_at_size                DOUBLE,
+    load_scope                   VARCHAR,
+    transactional_steps          VARCHAR,
     PRIMARY KEY (benchmark, scale_factor, phase, result_id)
 );
 
@@ -359,7 +383,9 @@ SELECT
     cluster_size,
     storage_format,
     storage_tier,
-    power_score_source
+    power_score_source,
+    qphh_at_size,
+    qphds_at_size
 FROM results;
 
 CREATE TABLE IF NOT EXISTS cohort_metadata (

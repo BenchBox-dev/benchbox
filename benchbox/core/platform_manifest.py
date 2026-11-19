@@ -889,7 +889,7 @@ _PLATFORM_MANIFEST_JSON = """[
       }
     ],
     "requirements": [
-      "chdb>=0.10.0"
+      "chdb>=4.5.0"
     ],
     "installation_command": "uv add benchbox --extra clickhouse-local",
     "adoption": "established",

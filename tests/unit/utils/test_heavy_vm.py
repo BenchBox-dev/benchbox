@@ -4,6 +4,7 @@ import argparse
 import os
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -624,6 +625,34 @@ def test_closing_the_sentinel_kills_an_inflight_stop_and_frees_the_lock() -> Non
     assert [lock.released for lock in rig.locks] == [True]
 
 
+def _await_published_pid(path: Path, *, deadline: float, pause: Callable[[], None] = lambda: time.sleep(0.05)) -> int:
+    while time.monotonic() < deadline:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            text = ""
+        if text.endswith("\n"):
+            return int(text)
+        pause()
+    raise TimeoutError(f"{path} never received a complete pid line")
+
+
+def test_a_pid_file_that_exists_but_is_still_empty_is_not_read_as_a_pid(tmp_path: Path) -> None:
+    pid_file = tmp_path / "worker.pid"
+    pid_file.write_text("", encoding="utf-8")
+    pauses: list[str] = []
+
+    def publish_after_first_pause() -> None:
+        pauses.append(pid_file.read_text(encoding="utf-8"))
+        if len(pauses) == 1:
+            pid_file.write_text("4242", encoding="utf-8")
+        else:
+            pid_file.write_text("4242\n", encoding="utf-8")
+
+    assert _await_published_pid(pid_file, deadline=time.monotonic() + 5, pause=publish_after_first_pause) == 4242
+    assert pauses == ["", "4242"]
+
+
 @posix_only
 def test_the_real_stop_process_is_group_killed_with_its_output_kept_and_no_leaked_worker(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -648,10 +677,7 @@ def test_the_real_stop_process_is_group_killed_with_its_output_kept_and_no_leake
     monkeypatch.setenv(lm.GUEST_POWEROFF_WAIT_ENV, "0")
     monkeypatch.setattr(lm, "STOP_KILL_STEP_SECONDS", 0.3)
     handle = hs.start_machine_stop("m")
-    deadline = time.monotonic() + 20
-    while not (tmp_path / "worker.pid").exists() and time.monotonic() < deadline:
-        time.sleep(0.05)
-    worker = int((tmp_path / "worker.pid").read_text(encoding="utf-8"))
+    worker = _await_published_pid(tmp_path / "worker.pid", deadline=time.monotonic() + 20)
     assert handle.poll() is None
     handle.kill()
     assert handle.poll() is not None

@@ -148,6 +148,7 @@ file	scripts/release_releasable.py
 file	scripts/release_probe.py
 file	scripts/release_probe_graph.py
 file	scripts/release_probe_launch.py
+file	scripts/release_probe_verdict.py
 file	scripts/release_probe_uat.py
 file	scripts/trunk_uat.py
 file	tests/uat/failure_signature.py

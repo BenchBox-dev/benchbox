@@ -7,6 +7,7 @@ import pytest
 from benchbox.core.results.comparison_modes import (
     CONFIG_CAPTURE_CURRENT,
     CONFIG_CAPTURE_MCP_BEFORE_PARITY,
+    CONFIG_CAPTURE_VERSION,
     RUN_MODE_FIELDS,
     IncomparableModesError,
     bundle_config_capture,
@@ -202,6 +203,23 @@ class TestConfigCapture:
 
     def test_pre_fix_mcp_bundle_is_not_comparable_with_a_current_mcp_bundle(self) -> None:
         assert not modes_comparable(_entry_bundle("mcp"), _entry_bundle("mcp", platform_options={"a": 1}))
+
+    def test_current_mcp_bundle_with_no_recorded_config_is_comparable_with_a_cli_bundle(self) -> None:
+        current = _entry_bundle("mcp")
+        current["execution"]["config_capture"] = CONFIG_CAPTURE_VERSION
+        cli = _entry_bundle("cli")
+        cli["execution"]["config_capture"] = CONFIG_CAPTURE_VERSION
+
+        assert bundle_config_capture(current) == CONFIG_CAPTURE_CURRENT
+        assert modes_comparable(cli, current)
+
+    def test_pre_fix_mcp_bundle_is_still_refused_against_a_current_mcp_bundle_with_no_recorded_config(self) -> None:
+        current = _entry_bundle("mcp")
+        current["execution"]["config_capture"] = CONFIG_CAPTURE_VERSION
+
+        assert bundle_mode_differences(_entry_bundle("mcp"), current) == [
+            "run configuration capture differs (mcp-before-config-parity vs current)"
+        ]
 
     def test_two_pre_fix_mcp_bundles_stay_comparable(self) -> None:
         assert modes_comparable(_entry_bundle("mcp"), _entry_bundle("mcp"))

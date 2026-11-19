@@ -57,6 +57,13 @@ when the owner names the PR and its head in the current request. Otherwise wait
 for the review verdict, re-run it when a reviewer errors, and report a stalled
 verdict to the owner.
 
+When the `verdict / review` job fails before any reviewer ran (for example in
+its "Prepare the review" step on a GitHub 5xx), no verdict is posted and none
+will follow. Dispatch the review again for the same head with
+`gh workflow run review-verdict.yml --ref develop -f pr=<number> -f head=<head SHA>`.
+A failure before any reviewer ran does not count against the daily rerun
+budget.
+
 The comment body must be exactly `Stand-in review: APPROVE <40-character
 head SHA>` and nothing else: no fences, quotes, prefixes, or extra findings
 text. The checker matches the whole comment, so any extra text voids the
@@ -325,6 +332,9 @@ make worktree-finish WORKTREE_PATH=<worktree> EXPECTED_HEAD_OID=<that oid> APPLY
   must be at, and the worktree's `HEAD` must equal it. Use the merged pull
   request's head OID from `gh pr view`; a squash merge keeps that OID only on
   the pull request, not on `develop`.
+- `KEEP_BRANCH=1` removes only the worktree, leaves the local branch at
+  `EXPECTED_HEAD_OID`, and needs no merged pull request; it still requires a
+  clean tree, every commit on origin and an unlocked worktree.
 - Without `APPLY=1` the target only reports (`FORMAT=json` for JSON) and
   changes nothing. Read the report; a held target lists its hold reason.
 - `APPLY=1` re-checks the evidence, runs `git worktree remove`, then deletes

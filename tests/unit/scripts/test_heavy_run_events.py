@@ -291,6 +291,60 @@ def test_watchdog_breach_is_reported_as_watchdog_kill_not_success(
     assert final["details"]["command_exit_code"] == 0
 
 
+def _teardown_breach_guard(monkeypatch: pytest.MonkeyPatch) -> Any:
+    class LateGuard:
+        breached = False
+
+        def stop(self) -> None:
+            pass
+
+    guard = LateGuard()
+    monkeypatch.setattr(hl, "start_guard", lambda handle, environ=None: guard)
+    return guard
+
+
+def test_a_breach_during_teardown_after_the_command_exited_zero_keeps_exit_zero(
+    lock_dir: Path, runs_file: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    guard = _teardown_breach_guard(monkeypatch)
+
+    def breach_while_reaping(pgid: int, env: Mapping[str, str]) -> list[tuple[int, str]]:
+        guard.breached = True
+        return []
+
+    monkeypatch.setattr(hl, "_reap_process_group", breach_while_reaping)
+    assert hl.run_command(noop(), guard=True) == 0
+    final = by_event(read_events(runs_file))["run_finished"]
+    assert final["outcome"] == "success" and final["exit_code"] == 0
+    assert final["details"]["late_watchdog_breach"] is True
+    assert "already exited 0" in capsys.readouterr().err
+
+
+def test_a_breach_after_a_nonzero_exit_is_still_a_watchdog_kill(
+    lock_dir: Path, runs_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    guard = _teardown_breach_guard(monkeypatch)
+
+    def breach_while_reaping(pgid: int, env: Mapping[str, str]) -> list[tuple[int, str]]:
+        guard.breached = True
+        return []
+
+    monkeypatch.setattr(hl, "_reap_process_group", breach_while_reaping)
+    assert hl.run_command([sys.executable, "-c", "raise SystemExit(143)"], guard=True) == hl.EXIT_WATCHDOG
+    final = by_event(read_events(runs_file))["run_finished"]
+    assert final["outcome"] == "watchdog_kill" and final["details"]["command_exit_code"] == 143
+
+
+def test_a_breach_flagged_before_the_command_exits_zero_is_still_a_watchdog_kill(
+    lock_dir: Path, runs_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    guard = _teardown_breach_guard(monkeypatch)
+    guard.breached = True
+    assert hl.run_command(noop(), guard=True) == hl.EXIT_WATCHDOG
+    final = by_event(read_events(runs_file))["run_finished"]
+    assert final["outcome"] == "watchdog_kill" and final["details"]["late_watchdog_breach"] is False
+
+
 def test_nested_acquire_emits_one_run_and_one_terminal(lock_dir: Path, runs_file: Path) -> None:
     path = lock_dir / hl.LOCK_NAME
     outer = hl.acquire(path, wait_seconds=0, phase="outer")

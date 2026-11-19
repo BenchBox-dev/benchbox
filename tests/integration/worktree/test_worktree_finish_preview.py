@@ -31,7 +31,9 @@ FINISH_SCRIPT = REPO_ROOT / "scripts" / "worktree_finish.py"
 
 
 def _git(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> str:
-    res = subprocess.run(["git", *cmd], cwd=cwd, check=True, text=True, capture_output=True, env=env)
+    res = subprocess.run(
+        ["git", *cmd], cwd=cwd, check=True, text=True, encoding="utf-8", errors="replace", capture_output=True, env=env
+    )
     return res.stdout.strip()
 
 
@@ -566,6 +568,7 @@ def test_apply_executes_removal_and_ref_deletion_in_fixture(tmp_path: Path):
         cwd=repo,
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
     assert proc.returncode != 0
 
@@ -677,6 +680,7 @@ def test_apply_from_inside_target_worktree_still_deletes_ref(tmp_path: Path, mon
         cwd=repo,
         capture_output=True,
         text=True,
+        encoding="utf-8",
     )
     assert proc.returncode != 0
 
@@ -845,3 +849,109 @@ def test_unpublished_still_requires_expected_head(tmp_path: Path):
     )
     assert res.status == "hold"
     assert res.hold_code == "head_mismatch"
+
+
+def _branch_tip(repo: Path, branch: str) -> str | None:
+    proc = subprocess.run(
+        ["git", "rev-parse", "--verify", f"refs/heads/{branch}"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    return proc.stdout.strip() if proc.returncode == 0 else None
+
+
+def test_keep_branch_removes_clean_worktree_and_keeps_branch(tmp_path: Path):
+    repo, wt, head_oid = _unpublished_worktree(tmp_path, branch="feat/keep")
+    res = evaluate_finish_preview(target_path=wt, expected_head_oid=head_oid, repo_root=repo, keep_branch=True)
+    assert res.status == "actionable"
+    assert res.keep_branch is True
+    assert [a["action"] for a in res.proposed_actions] == ["worktree_removal"]
+    assert wt.exists()
+
+    removed, kept, executed = apply_finish_actions(res, repo)
+    assert removed is True
+    assert kept == "feat/keep"
+    assert [e["action"] for e in executed] == ["worktree_removal", "branch_kept"]
+    assert not wt.exists()
+    assert _branch_tip(repo, "feat/keep") == head_oid
+
+
+def test_keep_branch_needs_no_merged_pr(tmp_path: Path):
+    repo, wt, head_oid = _unpublished_worktree(tmp_path, branch="feat/keep-nopr")
+    evidence = write_canned_evidence(tmp_path / "evidence.json", [])
+    res = evaluate_finish_preview(
+        target_path=wt, expected_head_oid=head_oid, repo_root=repo, evidence_file=evidence, keep_branch=True
+    )
+    assert res.status == "actionable"
+
+
+def test_keep_branch_refuses_dirty_worktree(tmp_path: Path):
+    repo, wt, head_oid = _unpublished_worktree(tmp_path, branch="feat/keep-dirty")
+    (wt / "untracked.txt").write_text("x", encoding="utf-8")
+    res = evaluate_finish_preview(target_path=wt, expected_head_oid=head_oid, repo_root=repo, keep_branch=True)
+    assert res.status == "hold"
+    assert res.hold_code == "dirty"
+    assert wt.exists()
+
+
+def test_keep_branch_refuses_commits_not_on_origin(tmp_path: Path):
+    repo, wt, _ = _unpublished_worktree(tmp_path, branch="feat/keep-local")
+    (wt / "local.txt").write_text("only here\n", encoding="utf-8")
+    _git(["add", "local.txt"], wt)
+    _git(["commit", "-m", "local only"], wt)
+    tip = _git(["rev-parse", "HEAD"], wt)
+    res = evaluate_finish_preview(target_path=wt, expected_head_oid=tip, repo_root=repo, keep_branch=True)
+    assert res.status == "hold"
+    assert res.hold_code == "unpushed_commits"
+    assert wt.exists()
+    assert _branch_tip(repo, "feat/keep-local") == tip
+
+
+def test_keep_branch_refuses_head_mismatch(tmp_path: Path):
+    repo, wt, _ = _unpublished_worktree(tmp_path, branch="feat/keep-mismatch")
+    res = evaluate_finish_preview(target_path=wt, expected_head_oid="f" * 40, repo_root=repo, keep_branch=True)
+    assert res.status == "hold"
+    assert "does not match expected" in res.hold_reason.lower()
+
+
+def test_keep_branch_refuses_locked_worktree(tmp_path: Path):
+    repo, wt, head_oid = _unpublished_worktree(tmp_path, branch="feat/keep-locked")
+    _git(["worktree", "lock", "--reason", "guard", str(wt)], repo)
+    res = evaluate_finish_preview(target_path=wt, expected_head_oid=head_oid, repo_root=repo, keep_branch=True)
+    assert res.status == "hold"
+    assert res.locked is True
+
+
+def test_default_mode_unchanged_without_keep_branch(tmp_path: Path):
+    repo, wt, head_oid = _unpublished_worktree(tmp_path, branch="feat/default-mode")
+    evidence = write_canned_evidence(tmp_path / "evidence.json", [])
+    res = evaluate_finish_preview(target_path=wt, expected_head_oid=head_oid, repo_root=repo, evidence_file=evidence)
+    assert res.status == "hold"
+    assert res.hold_code == "no_pr"
+    assert res.keep_branch is False
+
+
+def test_make_target_keep_branch_applies(tmp_path: Path):
+    repo, wt, head_oid = _unpublished_worktree(tmp_path, branch="feat/keep-make")
+    env = make_test_env(tmp_path / "home")
+    preview = make_target(
+        repo, "worktree-finish", f"WORKTREE_PATH={wt}", f"EXPECTED_HEAD_OID={head_oid}", "KEEP_BRANCH=1", env=env
+    )
+    assert preview.returncode == 0, preview.stderr
+    assert "ACTIONABLE" in preview.stdout
+    assert wt.exists()
+    applied = make_target(
+        repo,
+        "worktree-finish",
+        f"WORKTREE_PATH={wt}",
+        f"EXPECTED_HEAD_OID={head_oid}",
+        "KEEP_BRANCH=1",
+        "APPLY=1",
+        env=env,
+    )
+    assert applied.returncode == 0, applied.stderr
+    assert not wt.exists()
+    assert _branch_tip(repo, "feat/keep-make") == head_oid

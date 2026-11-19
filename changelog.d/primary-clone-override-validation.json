@@ -1,0 +1,1 @@
+{"schema":1,"internal":"The primary-clone write guard and preflight ignore a BENCHBOX_AGENT_PRIMARY_CLONE value that is not a worktree of the repository, so a test override left in a shell no longer lets writes to the primary clone through unnoticed."}

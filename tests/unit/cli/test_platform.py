@@ -1345,8 +1345,9 @@ DEFAULT_HEADERS = ("Platform", "Driver", "Support", "Libraries")
 def _render_platform_status(width: int, *, detail: bool = False) -> str:
     stream = StringIO()
     manager = get_platform_manager()
-    manager.console = Console(file=stream, force_terminal=False, color_system=None, width=width)
-    manager.display_platform_status(detail=detail)
+    console = Console(file=stream, force_terminal=False, color_system=None, width=width)
+    with patch.object(manager, "console", console):
+        manager.display_platform_status(detail=detail)
     return stream.getvalue()
 
 

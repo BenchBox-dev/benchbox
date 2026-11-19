@@ -94,7 +94,7 @@ all = [
     "boto3>=1.20.0",
     "cloudpathlib[azure,gs,s3]>=0.15.0",
     "pandas>=3.0.0",
-    "chdb>=0.10.0; sys_platform != 'win32'",
+    "chdb>=4.5.0; sys_platform != 'win32'",
     "deltalake>=1.2.1",
     "pyiceberg>=0.10.0",
     "influxdb3-python>=0.10.0",
@@ -177,7 +177,7 @@ singlestore = ["singlestoredb>=1.0.0"]
 gizmosql = ["adbc-driver-gizmosql>=2.0.13,<3"]
 
 tpcdi = ["pandas>=3.0.0"]
-clickhouse-local = ["chdb>=0.10.0; sys_platform != 'win32'"]
+clickhouse-local = ["chdb>=4.5.0; sys_platform != 'win32'"]
 table-formats = [
     "deltalake>=1.2.1",
     "pyiceberg>=0.10.0",
@@ -357,7 +357,7 @@ dev = [
     "deltalake>=1.2.1",
     "datafusion>=54.0.0",
     "cloudpathlib[s3,gs,azure]>=0.15.0",
-    "chdb>=0.10.0; sys_platform != 'win32'",
+    "chdb>=4.5.0; sys_platform != 'win32'",
     "clickhouse-driver>=0.2.0",
     "trino>=0.336.0",
     "firebolt-sdk>=1.18.0",

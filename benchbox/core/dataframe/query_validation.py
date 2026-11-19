@@ -14,7 +14,9 @@ from benchbox.core.expected_results.tpcds_results import (
 from benchbox.core.results.query_status import row_count_skip_is_documented, within_tolerance_warning
 from benchbox.core.validation.query_validation import (
     QueryValidator,
+    get_data_refreshed_context,
     get_reference_seed_context,
+    set_data_refreshed_context,
     set_reference_seed_context,
 )
 
@@ -323,16 +325,21 @@ def _apply_expected_row_counts(
         evidence["errors"] = len(successful_rows)
         return message
 
-    _apply_row_count_oracle(
-        successful_rows,
-        lambda query_id, actual, row: validator.validate_query_result(
-            benchmark_type=benchmark_id,
-            query_id=query_id,
-            actual_row_count=actual,
-            scale_factor=scale_factor,
-        ),
-        evidence,
-    )
+    def _validate(query_id: str, actual: int, row: dict[str, Any]) -> ValidationResult:
+        previous_refreshed = get_data_refreshed_context()
+        set_data_refreshed_context(bool(row.get("data_refreshed")))
+        try:
+            return validator.validate_query_result(
+                benchmark_type=benchmark_id,
+                query_id=query_id,
+                actual_row_count=actual,
+                scale_factor=scale_factor,
+                stream_id=row.get("stream_id") if row.get("test_type") == "throughput" else None,
+            )
+        finally:
+            set_data_refreshed_context(previous_refreshed)
+
+    _apply_row_count_oracle(successful_rows, _validate, evidence)
     return None
 
 

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "TPC-DI data generation at large scale factors no longer holds every FactTrade row in memory before writing; parallel generation now writes chunks in order as they finish, so SF 100 fits in a normal memory budget."
+    }
+  ]
+}

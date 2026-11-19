@@ -15,7 +15,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from _project.scripts.explorer_pipeline.contract import EXPLORER_READ_MODEL_VERSION
+from _project.scripts.explorer_pipeline.contract import (
+    EXPLORER_QPH_READ_MODEL_VERSION,
+    EXPLORER_READ_MODEL_VERSION,
+)
 from _project.scripts.explorer_pipeline.duckdb_builder import DuckDBSnapshotBuilder
 from _project.scripts.explorer_pipeline.models import (
     BenchmarkSummary,
@@ -342,6 +345,10 @@ def _build_benchmark_summaries(
                 ranking_exclusion_reason=row_ranking_reason,
                 power_score=entry.power_score,
                 throughput_at_size=entry.throughput_at_size,
+                qphh_at_size=entry.qphh_at_size,
+                qphds_at_size=entry.qphds_at_size,
+                load_scope=entry.load_scope,
+                transactional_steps=entry.transactional_steps,
                 display_geomean_ms=entry.display_geomean_ms,
                 sample_geomean_ms=entry.geomean_ms,
                 cost_usd=entry.cost_usd,
@@ -649,6 +656,18 @@ class ExplorerPipeline:
                             "override_expires": public_override["override_expires"],
                         }
                     )
+
+                    if (
+                        read_model_version < EXPLORER_QPH_READ_MODEL_VERSION
+                        and canonical_phase(detail.test_type) == "combined"
+                    ):
+                        skipped_bundles += 1
+                        logger.info(
+                            "Skipping combined bundle %s: read model %d has no composite columns",
+                            bundle_path,
+                            read_model_version,
+                        )
+                        continue
 
                     dest_bundle = (out_bundles_dir / f"{result_id}.json").resolve()
                     if not dest_bundle.is_relative_to(out_bundles_dir.resolve()):

@@ -12,7 +12,12 @@ case "$common_dir" in
   *) common_abs=$(cd "$top" && realpath "$common_dir") ;;
 esac
 
-primary_clone=${BENCHBOX_AGENT_PRIMARY_CLONE:-$(dirname "$common_abs")}
+primary_clone=$(dirname "$common_abs")
+override_abs=$(realpath "${BENCHBOX_AGENT_PRIMARY_CLONE:-}" 2>/dev/null || true)
+if [ -n "${BENCHBOX_AGENT_PRIMARY_CLONE:-}" ] && [ -d "$BENCHBOX_AGENT_PRIMARY_CLONE" ] && [ -n "$override_abs" ] &&
+  git worktree list --porcelain | sed -n 's/^worktree //p' | while IFS= read -r listed; do realpath "$listed" 2>/dev/null || true; done | grep -Fxq -- "$override_abs"; then
+  primary_clone=$override_abs
+fi
 top_abs=$(realpath "$top")
 primary_abs=$(realpath "$primary_clone")
 snapshot="$git_dir_abs/primary-clone-snapshot"
@@ -29,20 +34,72 @@ if [ "$top_abs" -ef "$primary_abs" ]; then
   exit 0
 fi
 
+unquote_path() {
+  printf '%s\n' "$1" | awk '
+    function oct(s, n, k) { n = 0; for (k = 1; k <= 3; k++) n = n * 8 + substr(s, k, 1); return n }
+    {
+      s = substr($0, 2, length($0) - 2); out = ""
+      for (i = 1; i <= length(s); i++) {
+        c = substr(s, i, 1)
+        if (c != "\\") { out = out c; continue }
+        c = substr(s, ++i, 1)
+        if (c ~ /[0-7]/) { out = out sprintf("%c", oct(substr(s, i, 3))); i += 2 }
+        else if (c == "n") out = out "\n"
+        else if (c == "t") out = out "\t"
+        else if (c == "r") out = out "\r"
+        else if (c == "a") out = out "\007"
+        else if (c == "b") out = out "\010"
+        else if (c == "f") out = out "\014"
+        else if (c == "v") out = out "\013"
+        else out = out c
+      }
+      printf "%s/", out
+    }'
+}
+
+hash_one() {
+  if [ -f "$primary_abs/$1" ]; then
+    git hash-object -- "$primary_abs/$1" 2>/dev/null || echo unreadable
+  else
+    echo deleted
+  fi
+}
+
 current_state() {
+  plain=$(mktemp)
+  plain_abs=$(mktemp)
+  hashes=$(mktemp)
   (
     unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX
     git -C "$primary_abs" -c core.quotepath=off diff --name-only HEAD 2>/dev/null || true
     git -C "$primary_abs" -c core.quotepath=off ls-files --others --exclude-standard 2>/dev/null || true
   ) | while IFS= read -r path; do
     [ -n "$path" ] || continue
-    if [ -f "$primary_abs/$path" ]; then
-      hash=$(git hash-object -- "$primary_abs/$path" 2>/dev/null || echo unreadable)
-    else
-      hash=deleted
-    fi
-    printf '%s\t%s\n' "$hash" "$path"
+    case "$path" in
+      \"*)
+        real=$(unquote_path "$path")
+        printf '%s\t%s\n' "$(hash_one "${real%/}")" "$path"
+        ;;
+      *)
+        if [ -f "$primary_abs/$path" ]; then
+          printf '%s\n' "$path" >> "$plain"
+          printf '%s/%s\n' "$primary_abs" "$path" >> "$plain_abs"
+        else
+          printf 'deleted\t%s\n' "$path"
+        fi
+        ;;
+    esac
   done
+  if [ -s "$plain" ]; then
+    if git hash-object --stdin-paths < "$plain_abs" > "$hashes" 2>/dev/null; then
+      paste "$hashes" "$plain"
+    else
+      while IFS= read -r path; do
+        printf '%s\t%s\n' "$(hash_one "$path")" "$path"
+      done < "$plain"
+    fi
+  fi
+  rm -f "$plain" "$plain_abs" "$hashes"
 }
 
 pinned_revs() {
@@ -77,7 +134,10 @@ case "$mode" in
       printf 'No primary-clone snapshot at %s; run make agent-write-preflight first. Skipping primary-clone change check.\n' "$snapshot" >&2
       exit 0
     fi
-    changed=$(current_state | grep -vxFf "$snapshot" | cut -f2 || true)
+    recorded=$(mktemp)
+    LC_ALL=C sort -u "$snapshot" > "$recorded"
+    changed=$(current_state | LC_ALL=C sort -u | LC_ALL=C comm -23 - "$recorded" | cut -f2 || true)
+    rm -f "$recorded"
     if [ -z "$changed" ]; then
       exit 0
     fi

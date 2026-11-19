@@ -377,8 +377,8 @@ pandas-df|PandasDataFrameAdapter|PANDAS_AVAILABLE|pip install pandas  # standalo
 cudf-df|CuDFDataFrameAdapter|CUDF_AVAILABLE|pip install cudf-cu12 (requires NVIDIA GPU with CUDA)
 dask-df|DaskDataFrameAdapter|DASK_AVAILABLE|pip install dask[distributed]  # standalone\\n  uv add benchbox --extra dask  # inside a project
 datafusion-df|DataFusionDataFrameAdapter|DATAFUSION_DF_AVAILABLE|pip install datafusion  # standalone\\n  uv add benchbox --extra datafusion  # inside a project
-pyspark-df|PySparkDataFrameAdapter|PYSPARK_AVAILABLE|pip install pyspark  # standalone\\n  uv add benchbox --extra pyspark  # inside a project
-lakesail-df|LakeSailDataFrameAdapter|PYSPARK_AVAILABLE|pip install pyspark  # standalone (LakeSail Sail uses PySpark Spark Connect client)
+pyspark-df|PySparkDataFrameAdapter|PYSPARK_AVAILABLE|pip install "benchbox[pyspark]"  # standalone\\n  uv add benchbox --extra pyspark  # inside a project
+lakesail-df|LakeSailDataFrameAdapter|PYSPARK_AVAILABLE|pip install "benchbox[lakesail]"  # standalone\\n  uv add benchbox --extra lakesail  # inside a project (LakeSail Sail uses PySpark Spark Connect client)
 """
 _DATAFRAME_PLATFORM_INFO = {
     platform: (adapter, availability, requirements.replace("\\n", "\n"))

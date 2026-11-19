@@ -75,6 +75,7 @@ class DatabaseValidationResult:
     row_counts_valid: bool | None = None
     database_empty: bool = False
     foreign_tables: tuple[str, ...] = ()
+    refreshed: bool = False
 
 
 __all__ = [
