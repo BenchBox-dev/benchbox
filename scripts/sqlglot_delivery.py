@@ -119,7 +119,7 @@ class GhApi:
         def run(command: list[str]) -> tuple[int, str]:
             code, stdout, detail = self.run_once(command)
             captured[:] = [stdout]
-            return code, detail
+            return code, detail if code else stdout.decode("utf-8", "replace")
 
         code, detail = gh_transient.RetryingRunner(run, self.new_budget())(["gh", "api", path])
         if code:

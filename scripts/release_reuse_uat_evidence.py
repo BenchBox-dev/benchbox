@@ -398,7 +398,7 @@ def _gh_bytes(*args: str) -> bytes:
     def run(command: list[str]) -> tuple[int, str]:
         code, stdout, detail = _gh_once(command)
         captured[:] = [stdout]
-        return code, detail
+        return code, detail if code else stdout.decode("utf-8", "replace")
 
     code, detail = _transient().RetryingRunner(run, _retry_budget())(["gh", *args])
     if code != 0:

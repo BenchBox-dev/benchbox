@@ -1415,3 +1415,21 @@ def test_a_gh_read_with_a_permanent_failure_is_not_retried(monkeypatch):
     with pytest.raises(ValueError, match="HTTP 404"):
         reuse._gh_bytes("api", "repos/o/r/actions/artifacts/7/zip")
     assert len(calls) == 1 and clock.sleeps == []
+
+
+def test_a_rate_limited_read_waits_for_the_reset_reported_by_gh(monkeypatch):
+    clock, calls = _scripted_gh(
+        monkeypatch,
+        [
+            (1, b"", "gh: API rate limit exceeded for installation"),
+            (0, b'{"resources": {"core": {"remaining": 0, "reset": 1030}}}', ""),
+            (0, b"payload", ""),
+        ],
+    )
+    transient = reuse._transient()
+    monkeypatch.setattr(
+        reuse, "_retry_budget", lambda: transient.Budget(90.0, clock=clock, sleep=clock.sleep, wall=lambda: 1000.0)
+    )
+    assert reuse._gh_bytes("api", "repos/o/r/actions/artifacts/7/zip") == b"payload"
+    assert calls[1] == ["gh", "api", "rate_limit"]
+    assert clock.sleeps == [31.0]

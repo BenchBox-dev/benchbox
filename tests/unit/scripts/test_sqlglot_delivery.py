@@ -1582,3 +1582,18 @@ def test_an_artifact_download_with_a_permanent_failure_is_refused_without_a_retr
     with pytest.raises(DeliveryError, match="HTTP 404"):
         api.download("repos/o/r/actions/artifacts/7/zip")
     assert len(calls) == 1 and clock.sleeps == []
+
+
+def test_a_rate_limited_download_waits_for_the_reset_reported_by_gh(monkeypatch: pytest.MonkeyPatch) -> None:
+    api, clock, calls = scripted_download(
+        monkeypatch,
+        [
+            (1, b"", b"gh: API rate limit exceeded for installation"),
+            (0, b'{"resources": {"core": {"remaining": 0, "reset": 1030}}}', b""),
+            (0, b"zip-bytes", b""),
+        ],
+    )
+    api.new_budget = lambda: delivery.gh_transient.Budget(90.0, clock=clock, sleep=clock.sleep, wall=lambda: 1000.0)
+    assert api.download("repos/o/r/actions/artifacts/7/zip") == b"zip-bytes"
+    assert calls[1] == ["gh", "api", "rate_limit"]
+    assert clock.sleeps == [31.0]
