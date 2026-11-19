@@ -412,24 +412,6 @@ def _doc_readers(repo: Path, inert_paths: Any) -> dict[str, list[str]]:
     return readers
 
 
-def _reads_differ_from_index(
-    repo: Path,
-    path: str,
-    readers: dict[str, list[str]],
-    tracked: set[str],
-    basenames: dict[str, list[str]],
-    inert_paths: Any,
-) -> bool:
-    recorded = {doc for doc, tests in readers.items() if path in tests}
-    try:
-        source = (repo / path).read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return bool(recorded)
-    hits = inert_paths.to_tracked(inert_paths.file_candidates(source, str(repo / path), str(repo)), tracked, basenames)
-    hits.discard(path)
-    return recorded != {hit for hit in hits if inert_paths.is_machine_read_doc(hit)}
-
-
 def _reader_tests(repo: Path, paths: list[str], test_files: list[str]) -> set[str]:
     if not paths:
         return set()
@@ -440,14 +422,10 @@ def _reader_tests(repo: Path, paths: list[str], test_files: list[str]) -> set[st
     if not readers:
         return index_check
     selected = {test for path in paths for test in readers.get(path, ()) if test in known}
-    changed_tests = [path for path in paths if _is_test_file(path)]
-    stale = READERS_INDEX in paths
-    if not stale and changed_tests:
-        tracked = inert_paths.tracked_files(repo)
-        basenames = inert_paths.basename_index(tracked)
-        stale = any(
-            _reads_differ_from_index(repo, path, readers, tracked, basenames, inert_paths) for path in changed_tests
-        )
+    stale = READERS_INDEX in paths or any(
+        path.endswith(".py") and path.startswith(tuple(f"{folder}/" for folder in inert_paths.SCAN_DIRS))
+        for path in paths
+    )
     return selected | index_check if stale else selected
 
 
