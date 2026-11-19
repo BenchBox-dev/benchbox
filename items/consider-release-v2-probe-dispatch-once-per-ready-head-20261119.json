@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "If pursued: the required 'release-v2 probe' check (integration 15368) is still posted for every head, in the PR's newest check suite."
+  ],
+  "context": "Source: CI throughput investigation 2026-11-19.",
+  "description": "For consideration, not a required change (owner, 2026-11-19).\n\nObserved: the probe plus the release-v2 runs it dispatches are 4.5% of runner time and 7.1% of job starts; 197 release-v2 runs were dispatched in 72 h and 152 were cancelled by newer pushes.\n\nIdea: dispatch the three variants when the PR is ready or CI is green (release-v2-probe.yml ~3-9, scripts/release_probe_launch.py, release-v2.yml ~31-33).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5df21d35942e57dc5553d5c9",
+      "at": "2026-11-19T17:38:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7ab056e1e4a34553b2e53d31a27fafa8",
+      "session_id": "79d870b64fc24eaca388b10bdd93eca5"
+    }
+  ]
+}

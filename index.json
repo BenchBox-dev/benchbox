@@ -18311,6 +18311,13 @@
       "status": "open",
       "title": "Consider: trim per-PR CI fan-out (medium-test shards, sleep 90, trunk lanes)"
     },
+    "consider-release-v2-probe-dispatch-once-per-ready-head-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Consider: dispatch the release-v2 probe variants once per ready head, not on every push"
+    },
     "consider-whether-other-core-drivers-polars-clickhouse-connec": {
       "claim": null,
       "needs": [],
