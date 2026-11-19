@@ -39227,6 +39227,13 @@
       "status": "dropped",
       "title": "Decide whether to keep or retire the site's MyST-to-Markdown converter"
     },
+    "site-next-breaks-silently-when-core-bundle-changes-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Core changes break benchbox-site `next` CI, and nothing notices until the next site pull request"
+    },
     "site-parity-header-shrink-toggle": {
       "claim": null,
       "needs": [],
