@@ -33168,15 +33168,10 @@
       "title": "Pre-Compile TPC Binaries for Multiple Platforms ✅ COMPLETED"
     },
     "pre-tractable-worktrees-owner-triage-20261117": {
-      "claim": {
-        "expires_at": "2026-11-20T02:35:12Z",
-        "generation": "b0725f387bcb435f8da7d907f96bf5e2",
-        "renewals": 0,
-        "worker": "joe-tractable-followups"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Triage the 14 worktrees still on pre-tractable branches"
     },
     "pre-tractable-worktrees-still-register-todo-db-20261112": {
