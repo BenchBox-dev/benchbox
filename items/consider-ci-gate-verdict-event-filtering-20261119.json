@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "If pursued: review-gate (required App status, integration 5201041) is still posted for every pull_request_target and workflow_dispatch event; measured job starts per PR before and after."
+  ],
+  "context": "Owner decisions 2026-11-19: stay on the Free plan (20-job cap); no self-hosted runners; leave the 15 ghost runs from 2026-11-11. Source: CI throughput investigation report (agent CiThroughput).",
+  "description": "For consideration, not a required change (owner, 2026-11-19).\n\nObserved (read-only CI throughput study, 72 h to 2026-11-19): gate/verdict/hold/refresh workflows are 25.9% of job starts but 3.7% of runner time. Every run starts the theseus guard job and an always() posting-check, even for ignored events; 244 of 306 issue_comment runs came from benchbox-review[bot]'s own comments. Three jobs run one after another, so with ~20 min queueing per job a gate status takes ~45 min.\n\nIdea: caller-level if: on gate/posting-check (review-gate.yml ~34-53) and verdict/posting-check (review-verdict.yml ~35-61) for non-matching comment bodies, bot comments and non-base edited events; drop issue_comment edited/deleted if unneeded (review-gate.yml ~10-11); fold guard into gate in joeharris76/theseus gate.yml (needs a new pin and .github/theseus-lock.json bump).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5df21d35942e57dc5553d5c9",
+      "at": "2026-11-19T17:38:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a9a47b9370e94b079a40738ddcb6b597",
+      "session_id": "79d870b64fc24eaca388b10bdd93eca5"
+    }
+  ]
+}

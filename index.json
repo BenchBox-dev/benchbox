@@ -18297,6 +18297,13 @@
       "status": "done",
       "title": "Text outside the cleanup's scope still says soundness PRs need the Codex connector"
     },
+    "consider-ci-gate-verdict-event-filtering-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Consider: skip runner jobs for review-gate/verdict events that are ignored"
+    },
     "consider-whether-other-core-drivers-polars-clickhouse-connec": {
       "claim": null,
       "needs": [],
