@@ -18698,7 +18698,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "The corpus publication ledger never advances: the reconciler accepts only merge commits, and published-results only receives squash merges"
+      "title": "Remove the dormant corpus event bridge and reconciler left over from the publication control plane retirement"
     },
     "corpus-migrate-232-pending-manifest-writes": {
       "claim": null,

@@ -1,13 +1,12 @@
 {
   "acceptance": [
-    "The last ledger advance and the list of missed merges are recorded in context",
-    "Owner choice recorded with date",
-    "After the change, a mirror merge produces a successful reconciler run that advances ledger_head_sha (run id recorded)",
-    "Missed merges are replayed and a second replay leaves the ledger unchanged (test or recorded run)",
-    "A unit test covers the accepted commit shape and the refusal of a non-ancestor base"
+    "No workflow, script, test or ledger row names the corpus event bridge or the reconciler outside CHANGELOG.md and _project/.",
+    "The property ledger records why the corpus property stays covered.",
+    "tests/unit/test_ledger_coverage.py, the publication and workflow unit tests, the comment policy and the Windows antipattern ratchet pass.",
+    "The PR merges to develop."
   ],
-  "context": "2026-11-18 owner decision (Joe, choice dialog): option 1. Teach the reconciler and the bridge to accept a squash commit (first parent as base, still refusing a base that is not an ancestor or a commit not on published-results), have the mirror workflow dispatch the reconciler after it merges, and replay the missed merges in order. No settings change.",
-  "description": "## Problem\nscripts/publication/reconciler.py verify_merge_commit rejects any commit with fewer than two parents (\"expected 2+\"), and corpus-event-bridge.yml refuses the same. The repository disallows merge commits (allow_merge_commit=false), so every published-results merge is a single-parent squash (mirror #4114 landed as 4331a43a54 with one parent). corpus-event-bridge.yml has zero runs in its history, and the hourly corpus-reconciler schedule runs with no events file and exits \"no events\" (last 30 runs 'success', none processed anything). The ledger (publication/ledger.json, ledger_head_sha) and publication generation have therefore not advanced for any recent merge, manual or automated. The results mirror workflow now merges validated mirrors automatically, which makes this gap matter more.\n\n## Decision gate\n- Agent: confirm from published-results history when the ledger last advanced and which merges it missed.\n- Then choose one (owner confirms, because it changes the publication ledger contract):\n  1. Teach the reconciler and bridge to accept a squash commit, taking the first parent as the base, and have the mirror workflow dispatch the reconciler after its merge (GITHUB_TOKEN pushes do not trigger the bridge).\n  2. Allow merge commits for published-results only (ruleset or merge-method restriction), keeping develop squash-only.\n- Replay the missed merges into the ledger in order.\n\n## Guardrails\n- The reconciler must still refuse a commit whose base is not an ancestor, and must not accept a commit that is not on published-results.\n- No rewrite of published-results history.\n- Ledger replay is idempotent: running it twice produces the same ledger.",
+  "context": "2026-11-18 owner decision (Joe, choice dialog): option 1. Teach the reconciler and the bridge to accept a squash commit (first parent as base, still refusing a base that is not an ancestor or a commit not on published-results), have the mirror workflow dispatch the reconciler after it merges, and replay the missed merges in order. No settings change.\n\n2026-11-18 owner decision (Joe, choice dialog, after the corrected finding): remove the leftover bridge and reconciler. Supersedes the earlier answer, which rested on the wrong premise.",
+  "description": "## Finding (corrected 2026-11-18)\nThe original premise was wrong: squash merges are not what keeps the ledger from advancing. corpus-event-bridge.yml, corpus-reconciler.yml and scripts/publication/reconciler.py fed publication/ledger.json, the ledger of the publication control plane that site-split-51-publication-retirement removed from core in October (#3096). That file has never existed on published-results; the reconciler only validates and prints, never writes, and nothing reads its output. The hourly reconciler always reports no events. They were missed by the retirement's delete list and survived only because the reconciler workflow imports the script.\n\nThe publication ledger in use is publication/ledger-seed.json on develop, re-cut from published-results by seed-corpus.yml and make ledger-seed-recut, and read by the corpus_bijection attestation and scripts/site_inputs.py. It is current and unaffected.\n\n## Change\nDelete both workflows, scripts/publication/reconciler.py, tests/unit/scripts/publication/test_reconciler.py, tests/unit/workflows/test_corpus_event_bridge.py and the reconciler case in test_override_companion_exclusion.py; remove their rows from docs/internal/dev-loop-property-ledger.md, tests/unit/ledger_cutover_files.txt and quality/windows-antipatterns-baseline.json, and record in the property ledger why the property stays covered.\n\n## Guardrails\n- ledger-seed.json, create_ledger_seed.py, check_corpus_bijection.py, validator_parity.py and the seed-corpus workflow stay.\n- No change to published-results or repository settings.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4114"
   ],
@@ -26,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "e0d0bffb715a4568afb4e4e643ce85a5",
+      "session_id": "f3072b8ec4a34cb496cb9fad525a2e07"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5636d6715f51bddd99245ae9",
+      "at": "2026-11-19T01:31:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "411e3402c2ad412e8746c23a24f74019",
       "session_id": "f3072b8ec4a34cb496cb9fad525a2e07"
     }
   ]
