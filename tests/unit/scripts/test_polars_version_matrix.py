@@ -137,11 +137,12 @@ def test_spec_records_versions_scales_setups_and_qualification_hash() -> None:
     assert POLARS.iterations == 1
 
 
-def test_committed_qualification_matches_the_pinned_hash_and_covers_every_cell() -> None:
+def test_committed_qualification_matches_the_pinned_hash_and_clears_every_cell() -> None:
     assert hashlib.sha256(QUALIFICATION.read_bytes()).hexdigest() == POLARS.qualification_sha256
     eligibility = json.loads(QUALIFICATION.read_text(encoding="utf-8"))["eligibility"]
-    evidence = {(row["benchmark"], row["setup"], row["version"]) for row in eligibility}
-    assert {(cell.benchmark, cell.setup, cell.version) for cell in POLARS.cells()} <= evidence
+    assert [row for row in eligibility if row["clean"] is not True] == []
+    cleared = {(row["benchmark"], row["setup"], row["version"]) for row in eligibility}
+    assert {(cell.benchmark, cell.setup, cell.version) for cell in POLARS.cells()} <= cleared
 
 
 def test_dry_run_lists_every_invocation_and_matches_the_formula(capsys: pytest.CaptureFixture[str]) -> None:
