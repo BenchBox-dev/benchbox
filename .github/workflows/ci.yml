@@ -1622,7 +1622,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           trusted="$RUNNER_TEMP/trusted-baseline"
@@ -1638,7 +1637,7 @@ jobs:
             "$trusted" reproduce \
             --baseline-dir tests/fixtures/fast_tier_baseline \
             --repo "${{ github.repository }}" \
-            --head-commit-time "$(git show -s --format=%cI "$HEAD_SHA")" \
+            --checked-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --collected-ids "$RUNNER_TEMP/collected-ids.txt"
 
   generator-volume:

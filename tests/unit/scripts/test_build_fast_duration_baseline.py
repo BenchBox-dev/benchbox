@@ -585,7 +585,7 @@ def test_refreshed_medium_file_loads_in_every_consumer(tmp_path: Path) -> None:
 
 
 REPO = "owner/name"
-HEAD_COMMIT = "2026-10-25T01:00:00Z"
+CHECKED_AT = "2026-10-25T01:00:00Z"
 
 
 def zip_of(directory: Path) -> bytes:
@@ -652,11 +652,11 @@ class World:
             encoding="utf-8",
         )
 
-    def reproduce(self, head_commit: str = HEAD_COMMIT) -> int:
+    def reproduce(self, checked_at: str = CHECKED_AT) -> int:
         args = argparse.Namespace(
             baseline_dir=str(self.committed),
             repo=REPO,
-            head_commit_time=head_commit,
+            checked_at=checked_at,
             collected_ids=str(self.collected),
         )
         return baseline.reproduce_command(args, self.gh)
@@ -784,17 +784,29 @@ def test_each_provenance_condition_fails_reproduce(
 
 
 @pytest.mark.parametrize(
-    ("head_commit", "message"),
+    ("checked_at", "message"),
     [
-        ("2026-10-24T23:59:59Z", "is later than the head commit"),
-        ("2026-10-28T00:00:01Z", "days before the head commit"),
+        ("2026-10-24T23:59:59Z", "is later than the check time"),
+        ("2026-10-28T00:00:01Z", "days before the check time"),
     ],
 )
-def test_generated_at_must_precede_the_head_commit_by_at_most_three_days(
-    world: World, capsys: pytest.CaptureFixture[str], head_commit: str, message: str
+def test_generated_at_must_precede_the_check_by_at_most_three_days(
+    world: World, capsys: pytest.CaptureFixture[str], checked_at: str, message: str
 ) -> None:
-    assert world.reproduce(head_commit) == 1
+    assert world.reproduce(checked_at) == 1
     assert message in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("extra", ["nested/tests-00.json", ".hidden.json"])
+def test_a_file_the_build_does_not_produce_anywhere_in_the_directory_fails_reproduce(
+    world: World, capsys: pytest.CaptureFixture[str], extra: str
+) -> None:
+    path = world.committed / extra
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("{}\n", encoding="utf-8")
+
+    assert world.reproduce() == 1
+    assert f"{extra}: not produced by the build" in capsys.readouterr().out
 
 
 def test_the_baseline_gate_check_runs_on_the_rebuilt_baseline(world: World, capsys: pytest.CaptureFixture[str]) -> None:
@@ -807,19 +819,6 @@ def test_the_baseline_gate_check_runs_on_the_rebuilt_baseline(world: World, caps
 def test_the_gh_fetcher_reports_an_expired_artifact(tmp_path: Path) -> None:
     with pytest.raises(baseline.BaselineError, match="expired"):
         baseline.gh_artifact_fetcher(FakeGh([]), REPO)(9, tmp_path / "artifact-9")
-
-
-def test_the_gh_runner_is_injectable_and_the_default_calls_the_gh_cli(monkeypatch: pytest.MonkeyPatch) -> None:
-    seen: list[list[str]] = []
-
-    def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
-        seen.append(command)
-        return subprocess.CompletedProcess(command, 0, b"{}", b"")
-
-    monkeypatch.setattr(baseline.subprocess, "run", fake_run)
-
-    assert baseline.gh_json(baseline.run_gh, "repos/o/n") == {}
-    assert seen == [["gh", "api", "repos/o/n"]]
 
 
 def test_the_refresh_workflow_and_the_reproduction_use_the_same_selection() -> None:

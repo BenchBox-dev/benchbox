@@ -920,17 +920,15 @@ def run_provenance_problems(runner: GhRunner, repo: str, record: dict[str, Any])
     return problems
 
 
-def provenance_problems(
-    runner: GhRunner, repo: str, committed: dict[str, Any], head_commit_time: datetime
-) -> list[str]:
+def provenance_problems(runner: GhRunner, repo: str, committed: dict[str, Any], checked_at: datetime) -> list[str]:
     generated = parse_timestamp(str(committed["generated_at"]))
-    age_days = (head_commit_time - generated).total_seconds() / 86400
+    age_days = (checked_at - generated).total_seconds() / 86400
     problems = []
     if age_days < 0:
-        problems.append(f"generated_at {committed['generated_at']} is later than the head commit")
+        problems.append(f"generated_at {committed['generated_at']} is later than the check time")
     elif age_days > MAX_BASELINE_AGE_DAYS:
         problems.append(
-            f"generated_at {committed['generated_at']} is {age_days:.1f} days before the head commit "
+            f"generated_at {committed['generated_at']} is {age_days:.1f} days before the check time "
             f"(limit {MAX_BASELINE_AGE_DAYS})"
         )
     records = [*committed.get("runs", []), *committed.get("rejected_runs", [])]
@@ -961,7 +959,11 @@ def reproduce_baseline(
     rebuilt, _rejected = build_baseline(entries, str(committed["generated_at"]))
     rebuilt_dir = work_dir / "rebuilt"
     expected = {path.name for path in write_sharded_baseline(rebuilt_dir, rebuilt)}
-    actual = {path.name for path in baseline_dir.iterdir() if path.is_file() and not path.name.startswith(".")}
+    actual = {
+        path.relative_to(baseline_dir).as_posix()
+        for path in baseline_dir.rglob("*")
+        if path.is_symlink() or not path.is_dir()
+    }
     problems = []
     for name in sorted(expected | actual):
         if name not in actual:
@@ -981,7 +983,7 @@ def reproduce_baseline(
 def reproduce_command(args: argparse.Namespace, runner: GhRunner = run_gh) -> int:
     baseline_dir = Path(args.baseline_dir)
     committed = read_sharded_baseline(baseline_dir)
-    problems = provenance_problems(runner, args.repo, committed, parse_timestamp(args.head_commit_time))
+    problems = provenance_problems(runner, args.repo, committed, parse_timestamp(args.checked_at))
     with tempfile.TemporaryDirectory() as work:
         problems += reproduce_baseline(
             baseline_dir,
@@ -1040,7 +1042,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     reproduce_parser.add_argument("--baseline-dir", required=True)
     reproduce_parser.add_argument("--repo", required=True)
-    reproduce_parser.add_argument("--head-commit-time", required=True)
+    reproduce_parser.add_argument("--checked-at", required=True)
     reproduce_parser.add_argument("--collected-ids", required=True)
     reproduce_parser.set_defaults(handler=reproduce_command)
     check_parser = subparsers.add_parser("check", help="Gate-check a baseline against its source runs.")

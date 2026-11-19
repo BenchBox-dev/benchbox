@@ -119,7 +119,8 @@ newest 60 `ci.yml` runs created up to `generated_at`, completed and successful,
 one per merged PR, 20 at most) and requires it to equal the manifest's runs. The
 refresh workflow stamps `generated_at` just before its `gh run list` call, which
 is what makes the listing reproducible. `generated_at` must be no later than the
-head commit and at most 3 days before it. Finally it re-runs the baseline gate
+time the check runs and at most 3 days before it, so a refresh PR must pass the
+check within 3 days of its refresh. Finally it re-runs the baseline gate
 check (sum tolerance, coverage of the fast tier collected on the PR head).
 Source artifacts expire after 14 days. The baseline directory is an inert path,
 so a baseline-only PR is not held for review; the reproduce check is its

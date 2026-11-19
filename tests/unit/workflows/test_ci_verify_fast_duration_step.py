@@ -128,7 +128,7 @@ def test_the_reproduce_job_runs_the_base_branch_copy_of_the_script_against_the_h
     assert "build_fast_duration_baseline reproduce" not in run
     assert '"$trusted" reproduce' in run
     assert "--baseline-dir tests/fixtures/fast_tier_baseline" in run
-    assert '--head-commit-time "$(git show -s --format=%cI "$HEAD_SHA")"' in run
+    assert '--checked-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"' in run
     assert '--collected-ids "$RUNNER_TEMP/collected-ids.txt"' in run
     assert "::notice" in run and run.index("grep -q") < run.index("python -I")
     assert reproduce["env"]["BASE_SHA"] == "${{ github.event.pull_request.base.sha }}"
