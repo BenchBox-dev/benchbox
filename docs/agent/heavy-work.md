@@ -171,7 +171,7 @@ make heavy-run CMD='...' HEAVY_RETRY_IDEMPOTENT=1 HEAVY_RETRY_MAX=2 HEAVY_RETRY_
 
 `HEAVY_RETRY_MAX` (default 2 retries) and `HEAVY_RETRY_TOTAL_MINUTES` (default 30) bound the
 replay; each retry goes through lock, admission (including the hold) and a fresh
-watchdog, with the remaining retry time as its admission wait. When either bound is
+watchdog, with the retry time still left, at most 60 minutes, as its admission wait. When either bound is
 spent the last `Error 79` is returned. The opt-in is passed to the watchdog per run
 (`--retry-idempotent`, which also needs `--admit` and `--guard`); an inherited
 `BENCHBOX_HEAVY_RETRY_IDEMPOTENT` without the flag is removed from the watchdog's

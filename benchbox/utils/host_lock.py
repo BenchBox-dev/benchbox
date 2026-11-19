@@ -1388,7 +1388,7 @@ def run_command(
             f"the breach was memory pressure from outside a small holder tree; retrying attempt {attempt + 1} of "
             f"{retry_max + 1} after admission ({RETRY_ENV}: the command must be idempotent)"
         )
-        wait_seconds = max(wait_seconds, remaining)
+        wait_seconds = min(remaining, ADMIT_WAIT_MAX_MINUTES * 60.0)
 
 
 def admit_command(need_gib: float | None = None) -> int:

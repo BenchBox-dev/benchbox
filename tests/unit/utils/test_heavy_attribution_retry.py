@@ -217,6 +217,19 @@ def test_retries_stop_at_the_total_time_bound(monkeypatch) -> None:
     assert len(attempts.calls) == 2
 
 
+def test_each_retry_waits_only_for_the_retry_time_still_left(monkeypatch) -> None:
+    attempts = Attempts(monkeypatch, [(79, True)])
+    hl.run_command(["x"], admit=True, guard=True, retry_idempotent=True, retry_max=3, retry_total_seconds=1800.0)
+    waits = [call["admit_wait_seconds"] for call in attempts.calls[1:]]
+    assert waits == [1740.0, 1680.0, 1620.0]
+
+
+def test_a_retry_never_waits_longer_than_the_admission_wait_limit(monkeypatch) -> None:
+    attempts = Attempts(monkeypatch, [(79, True)])
+    hl.run_command(["x"], admit=True, guard=True, retry_idempotent=True, retry_max=1, retry_total_seconds=30000.0)
+    assert attempts.calls[1]["admit_wait_seconds"] == hl.ADMIT_WAIT_MAX_MINUTES * 60.0
+
+
 def test_a_non_idempotent_command_is_run_once_and_never_receives_the_retry_opt_in(monkeypatch) -> None:
     monkeypatch.setenv(hl.RETRY_ENV, "1")
     attempts = Attempts(monkeypatch, [(79, True)])
