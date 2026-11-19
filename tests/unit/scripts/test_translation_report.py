@@ -103,25 +103,14 @@ def test_seeded_benchmarks_emit_identical_queries_every_time(tmp_path: Path) -> 
     assert first.get_queries(dialect="duckdb") == second.get_queries(dialect="duckdb")
 
 
-def test_emission_subprocesses_do_not_inherit_credentials(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_emission_environment_drops_credentials_and_points_at_the_checkout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("GH_TOKEN", "secret")
     monkeypatch.setenv("GITHUB_TOKEN", "secret")
     monkeypatch.setenv("SOME_API_KEY", "secret")
     monkeypatch.setenv("HARMLESS", "kept")
-    seen: dict[str, str] = {}
-
-    class Process:
-        args: list[str] = []
-
-        def wait(self) -> int:
-            return 1
-
-    def popen(command: list[str], **options: object) -> Process:
-        seen.update(options["env"])
-        return Process()
-
-    monkeypatch.setattr(translation_report.subprocess, "Popen", popen)
-    with pytest.raises(RuntimeError):
-        translation_report.emit_translations(tmp_path, tmp_path, "x", 1)
-    assert "GH_TOKEN" not in seen and "GITHUB_TOKEN" not in seen and "SOME_API_KEY" not in seen
-    assert seen["HARMLESS"] == "kept" and seen["PYTHONPATH"] == str(tmp_path)
+    environment = translation_report.emission_environment(tmp_path)
+    assert "GH_TOKEN" not in environment and "GITHUB_TOKEN" not in environment
+    assert "SOME_API_KEY" not in environment
+    assert environment["HARMLESS"] == "kept" and environment["PYTHONPATH"] == str(tmp_path)

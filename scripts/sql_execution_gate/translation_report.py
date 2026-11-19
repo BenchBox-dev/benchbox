@@ -62,13 +62,17 @@ def checkout(repo: Path, rev: str, scratch: Path, tag: str, vendor_from: str | N
         subprocess.run(["git", "worktree", "remove", "--force", str(path)], cwd=repo, check=False)
 
 
-def emit_translations(root: Path, scratch: Path, tag: str, jobs: int, scale: float = DEFAULT_SCALE) -> Translations:
-    helper = scratch / f"emit_{tag}.py"
-    shutil.copy(EMIT, helper)
-    environment = {
+def emission_environment(root: Path) -> dict[str, str]:
+    return {
         **{key: value for key, value in os.environ.items() if not SECRET_NAME.search(key)},
         "PYTHONPATH": str(root),
     }
+
+
+def emit_translations(root: Path, scratch: Path, tag: str, jobs: int, scale: float = DEFAULT_SCALE) -> Translations:
+    helper = scratch / f"emit_{tag}.py"
+    shutil.copy(EMIT, helper)
+    environment = emission_environment(root)
     launch = "import runpy, sys; sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')"
     processes: list[tuple[subprocess.Popen[bytes], Path]] = []
     for shard in range(jobs):
