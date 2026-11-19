@@ -17,7 +17,7 @@ from benchbox.utils.resource_limits import (
     free_space_gib as default_free_space_reader,
     read_memory_snapshot as default_free_memory_reader,
 )
-from tests.uat import docker_assets, managed_runtime, mocker_launch, starrocks_evidence
+from tests.uat import docker_assets, engine_evidence, managed_runtime, mocker_launch
 from tests.uat.cleanup import CellKey, can_prune, prune_database_dir, prune_server_database, source_reuse_graph
 from tests.uat.config import OutputConfig, UATConfig
 from tests.uat.ladder import LadderRung, plan_ladder
@@ -656,12 +656,13 @@ def _teardown_docker_platform_if_needed(
 
     stack_started_successfully = docker_state.cleanup_status == "started"
     try:
-        if platform == "starrocks" and not config.dry_run:
+        if platform in engine_evidence.EVIDENCE_PLATFORMS and not config.dry_run:
             try:
                 if log_dir is None:
                     failures = ("UAT log directory unavailable",)
                 else:
-                    failures = starrocks_evidence.capture_starrocks_evidence(
+                    failures = engine_evidence.capture_engine_evidence(
+                        platform,
                         docker_state.spec,
                         docker_state.project_name,
                         log_dir=log_dir,
@@ -670,9 +671,9 @@ def _teardown_docker_platform_if_needed(
                     )
             except Exception as exc:
                 failures = (f"collector raised {type(exc).__name__}",)
-            message = "; ".join(failures) if failures else "captured starrocks-evidence before teardown"
+            message = "; ".join(failures) if failures else f"captured {platform}-evidence before teardown"
             if failures:
-                print(f"WARNING: StarRocks evidence capture failed: {message}", file=sys.stderr)
+                print(f"WARNING: {platform} evidence capture failed: {message}", file=sys.stderr)
             try:
                 _record_docker_event(
                     docker_events,
@@ -684,7 +685,7 @@ def _teardown_docker_platform_if_needed(
                     message=message,
                 )
             except OSError as exc:
-                print(f"WARNING: StarRocks evidence lifecycle log failed: {type(exc).__name__}", file=sys.stderr)
+                print(f"WARNING: {platform} evidence lifecycle log failed: {type(exc).__name__}", file=sys.stderr)
     finally:
         cleanup_status, cleanup_abort_reason = _run_docker_teardown(
             config,

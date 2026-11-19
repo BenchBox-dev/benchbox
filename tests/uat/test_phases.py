@@ -2882,6 +2882,51 @@ def test_starrocks_evidence_survives_teardown_without_changing_cell_outcome(tmp_
     assert (destination / "manifest.json").exists()
 
 
+def test_cedardb_evidence_captures_server_log_and_state_before_teardown(tmp_path):
+    sequence = []
+    destination = tmp_path / "cedardb-evidence"
+
+    def fake_docker(argv, **kwargs):
+        if "-q" in argv:
+            sequence.append("capture")
+            return docker_assets.DockerCommandResult(tuple(argv), 0, "abc123", "")
+        if "logs" in argv:
+            return docker_assets.DockerCommandResult(tuple(argv), 0, "server process was terminated by signal 9", "")
+        if "down" in argv:
+            sequence.append("down")
+            assert "terminated by signal 9" in (destination / "container.log").read_text(encoding="utf-8")
+        if "stats" in argv:
+            return _healthy_stats_result(argv, limit="8GiB")
+        return _healthy_fake_docker(argv, **kwargs)
+
+    def failing_cell(platform, benchmark, scale, **kwargs):
+        return CellResult(
+            platform=platform,
+            benchmark=benchmark,
+            scale=scale,
+            status="failed",
+            exit_code=1,
+            elapsed_s=1.0,
+            log_path=tmp_path / "cell.log",
+            result_path=None,
+        )
+
+    cfg = _managed_docker_cfg("cedardb evidence", platforms={"include": ["cedardb"]})
+    with platform_reachability(True):
+        outcome = exec_phase.run_execute(
+            cfg,
+            log_dir=tmp_path,
+            runner=failing_cell,
+            docker_runner=fake_docker,
+            memory_reader=_memory_reader(16.0),
+            sleep_fn=lambda _: None,
+        )
+    assert outcome.exit_code() == 1
+    assert sequence == ["capture", "down"]
+    assert (destination / "manifest.json").exists()
+    assert not (tmp_path / "starrocks-evidence").exists()
+
+
 @pytest.mark.parametrize("startup_exception", [False, True])
 def test_starrocks_collector_exception_cannot_strand_container_or_replace_original_error(
     tmp_path, monkeypatch, capsys, startup_exception
@@ -2902,7 +2947,7 @@ def test_starrocks_collector_exception_cannot_strand_container_or_replace_origin
             return _healthy_stats_result(argv, limit="8GiB")
         return _healthy_fake_docker(argv, **kwargs)
 
-    monkeypatch.setattr(exec_phase.starrocks_evidence, "capture_starrocks_evidence", failing_collector)
+    monkeypatch.setattr(exec_phase.engine_evidence, "capture_engine_evidence", failing_collector)
     if startup_exception:
         monkeypatch.setattr(exec_phase, "_start_docker_platform_if_needed", original_error)
     cfg = _managed_docker_cfg("evidence error", platforms={"include": ["starrocks"]})

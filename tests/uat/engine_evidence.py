@@ -5,7 +5,8 @@ import json
 import os
 import platform
 import shlex
-from collections.abc import Callable
+import time
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from benchbox.mcp.errors import scrub_secret_material
@@ -16,6 +17,15 @@ _FILE_BYTES = 16 * 1024 * 1024
 _COMMAND_SECONDS = 10
 _CAPTURE_SECONDS = 60
 _LOG_ROOT = "/data/deploy/starrocks"
+_CEDARDB_LOG_LINES = 50000
+_CEDARDB_EVENT_WINDOW_S = 6 * 3600
+_CGROUP_MEMORY = (
+    "status=0; for f in /sys/fs/cgroup/memory.events "
+    "/sys/fs/cgroup/memory.current /sys/fs/cgroup/memory.peak /sys/fs/cgroup/memory.max; "
+    'do echo "$f"; cat "$f" || status=1; done; exit "$status"'
+)
+_CONTAINER_STATE = "{{json .State}}\n{{json .RestartCount}}\n{{json .HostConfig.Memory}}\n{{json .Image}}"
+Collect = Callable[[str, list[str]], str]
 
 
 def _host_metadata() -> dict[str, object]:
@@ -55,7 +65,97 @@ def _log_script(pattern: str, *, limit: int = _FILE_BYTES, count: int = 1) -> st
     )
 
 
-def capture_starrocks_evidence(
+def _collect_starrocks(collect: Collect, cli: str, container: str) -> None:
+    execute = [cli, "exec", container]
+    for name, pattern in (
+        ("fe.log", "fe/log/fe.log"),
+        ("fe.warn.log", "fe/log/fe.warn.log"),
+        ("be.INFO", "be/log/be.INFO"),
+        ("be.WARNING", "be/log/be.WARNING"),
+        ("be.out", "be/log/be.out"),
+    ):
+        collect(name, [*execute, "sh", "-c", _log_script(pattern)])
+    collect(
+        "fe-gc.log",
+        [*execute, "sh", "-c", _log_script("fe/log/fe.gc.log.*", limit=(_FILE_BYTES - 8192) // 8, count=8)],
+    )
+    collect(
+        "backends.txt",
+        [
+            *execute,
+            "mysql",
+            "-h127.0.0.1",
+            "-P9030",
+            "-uroot",
+            "--skip-password",
+            "-e",
+            "SHOW BACKENDS\\G SHOW BACKEND BLACKLIST\\G",
+        ],
+    )
+    collect("memory.txt", [*execute, "sh", "-c", _CGROUP_MEMORY])
+    collect(
+        "fe-heap.txt",
+        [
+            *execute,
+            "sh",
+            "-c",
+            'pid=$(pgrep -o -f "com.starrocks.StarRocksFE") || exit $?; '
+            'jcmd "$pid" VM.flags && jcmd "$pid" GC.heap_info',
+        ],
+    )
+    collect(
+        "be-mem-limit.txt",
+        [
+            *execute,
+            "sh",
+            "-c",
+            "set -e; value=$(curl -fsS --max-time 5 http://127.0.0.1:8040/varz); "
+            'printf "%s\\n" "$value" | grep -E ' + shlex.quote(r"^mem_limit="),
+        ],
+    )
+    collect(
+        "fe-blacklist-config.txt",
+        [
+            *execute,
+            "mysql",
+            "-h127.0.0.1",
+            "-P9030",
+            "-uroot",
+            "--skip-password",
+            "-e",
+            "ADMIN SHOW FRONTEND CONFIG LIKE 'black_host%';",
+        ],
+    )
+
+
+def _collect_cedardb(collect: Collect, cli: str, container: str) -> None:
+    collect("container.log", [cli, "logs", "--timestamps", "--tail", str(_CEDARDB_LOG_LINES), container])
+    until = int(time.time())
+    collect(
+        "events.txt",
+        [
+            cli,
+            "events",
+            "--since",
+            str(until - _CEDARDB_EVENT_WINDOW_S),
+            "--until",
+            str(until),
+            "--filter",
+            f"container={container}",
+        ],
+    )
+    collect("memory.txt", [cli, "exec", container, "sh", "-c", _CGROUP_MEMORY])
+
+
+_COLLECTORS: dict[str, Callable[[Collect, str, str], None]] = {
+    "starrocks": _collect_starrocks,
+    "cedardb": _collect_cedardb,
+}
+EVIDENCE_PLATFORMS: Sequence[str] = tuple(_COLLECTORS)
+
+
+def capture_engine_evidence(
+    platform: str,
     spec: docker_assets.DockerPlatformSpec,
     project_name: str,
     *,
@@ -63,7 +163,7 @@ def capture_starrocks_evidence(
     runner: Callable[..., docker_assets.DockerCommandResult],
     env: dict[str, str],
 ) -> tuple[str, ...]:
-    destination = log_dir / "starrocks-evidence"
+    destination = log_dir / f"{platform}-evidence"
     destination.mkdir(parents=True, exist_ok=True)
     started = mono_time()
     records: list[dict[str, object]] = []
@@ -117,89 +217,14 @@ def capture_starrocks_evidence(
     ids = collect("containers.txt", docker_assets.compose_container_ids_command(spec, project_name))
     container_ids = ids.split()
     if len(container_ids) != 1 or not all(char.isalnum() or char in "-_" for char in container_ids[0]):
-        failures.append("expected exactly one StarRocks container")
+        failures.append(f"expected exactly one {platform} container")
     else:
         container = container_ids[0]
         collect(
             "container-state.json",
-            [
-                cli,
-                "inspect",
-                "--format",
-                "{{json .State}}\n{{json .RestartCount}}\n{{json .HostConfig.Memory}}\n{{json .Image}}",
-                container,
-            ],
+            [cli, "inspect", "--format", _CONTAINER_STATE, container],
         )
-        execute = [cli, "exec", container]
-        for name, pattern in (
-            ("fe.log", "fe/log/fe.log"),
-            ("fe.warn.log", "fe/log/fe.warn.log"),
-            ("be.INFO", "be/log/be.INFO"),
-            ("be.WARNING", "be/log/be.WARNING"),
-            ("be.out", "be/log/be.out"),
-        ):
-            collect(name, [*execute, "sh", "-c", _log_script(pattern)])
-        collect(
-            "fe-gc.log",
-            [*execute, "sh", "-c", _log_script("fe/log/fe.gc.log.*", limit=(_FILE_BYTES - 8192) // 8, count=8)],
-        )
-        collect(
-            "backends.txt",
-            [
-                *execute,
-                "mysql",
-                "-h127.0.0.1",
-                "-P9030",
-                "-uroot",
-                "--skip-password",
-                "-e",
-                "SHOW BACKENDS\\G SHOW BACKEND BLACKLIST\\G",
-            ],
-        )
-        collect(
-            "memory.txt",
-            [
-                *execute,
-                "sh",
-                "-c",
-                "status=0; for f in /sys/fs/cgroup/memory.events "
-                "/sys/fs/cgroup/memory.current /sys/fs/cgroup/memory.peak /sys/fs/cgroup/memory.max; "
-                'do echo "$f"; cat "$f" || status=1; done; exit "$status"',
-            ],
-        )
-        collect(
-            "fe-heap.txt",
-            [
-                *execute,
-                "sh",
-                "-c",
-                'pid=$(pgrep -o -f "com.starrocks.StarRocksFE") || exit $?; '
-                'jcmd "$pid" VM.flags && jcmd "$pid" GC.heap_info',
-            ],
-        )
-        collect(
-            "be-mem-limit.txt",
-            [
-                *execute,
-                "sh",
-                "-c",
-                "set -e; value=$(curl -fsS --max-time 5 http://127.0.0.1:8040/varz); "
-                'printf "%s\\n" "$value" | grep -E ' + shlex.quote(r"^mem_limit="),
-            ],
-        )
-        collect(
-            "fe-blacklist-config.txt",
-            [
-                *execute,
-                "mysql",
-                "-h127.0.0.1",
-                "-P9030",
-                "-uroot",
-                "--skip-password",
-                "-e",
-                "ADMIN SHOW FRONTEND CONFIG LIKE 'black_host%';",
-            ],
-        )
+        _COLLECTORS[platform](collect, cli, container)
     save(
         "manifest.json",
         json.dumps(
