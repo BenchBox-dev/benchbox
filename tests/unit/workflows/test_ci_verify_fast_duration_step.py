@@ -172,14 +172,14 @@ def test_the_baseline_flag_is_derived_from_the_changed_paths_whatever_the_inert_
     assert flags["run"].index("--no-renames") < flags["run"].index("fast_tier_baseline/' .ci-paths/trunk")
 
 
-def test_the_bootstrap_pass_needs_the_pr_to_change_the_build_script_and_otherwise_fails() -> None:
+def test_the_bootstrap_pass_needs_the_pr_to_add_reproduce_and_otherwise_fails() -> None:
     steps = {step["name"]: step for step in workflow()["jobs"]["fast-baseline-reproduce"]["steps"]}
     run = steps["Reproduce the committed baseline from its source artifacts"]["run"]
     missing = run.index("if ! grep -q '\"reproduce\"'")
-    changed = run.index('git diff --name-only --no-renames "$BASE_SHA...$HEAD_SHA"', missing)
-    notice = run.index("::notice", changed)
+    added = run.index('git show "$HEAD_SHA:scripts/build_fast_duration_baseline.py"', missing)
+    notice = run.index("::notice", added)
     error = run.index("::error", notice)
-    assert "grep -qx 'scripts/build_fast_duration_baseline.py'" in run[changed:notice]
+    assert "grep -q '\"reproduce\"'" in run[added:notice]
     assert "exit 0" in run[notice:error]
     assert "exit 1" in run[error : run.index("python -I")]
     assert run.index("python -I") > error

@@ -620,7 +620,7 @@ calibration plugin still are. The baseline manifest is named
 basename `manifest.json`, which other workflows mention, onto every tracked
 `manifest.json`. The review it skips is replaced by a machine check that does
 not depend on who opened the PR: the `fast-baseline-reproduce` job, required
-through `core` whenever the baseline changes, runs the base branch's copy of the
+through `core` on every pull request, runs the base branch's copy of the
 build script and rebuilds the baseline byte for byte from the artifacts its
 manifest names, verifies those artifacts' provenance and the refresh workflow's
 source selection, and re-runs the baseline gate check (see "Fast-test duration

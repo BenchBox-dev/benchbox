@@ -127,9 +127,10 @@ job with no token; the trusted job only downloads its id list as data and never
 executes PR code.
 Source artifacts expire after 14 days. The baseline directory is an inert path,
 so a baseline-only PR is not held for review; the reproduce check is its
-machine-checked substitute. Bootstrap: the first PR that introduces or changes
-the script runs the base copy, which has no `reproduce`, so the job reports a
-notice and passes; this applies to the PR that introduced the check.
+machine-checked substitute. Bootstrap: when the base branch's copy of the
+script has no `reproduce` but the PR's copy adds it, the job reports a notice
+and passes; such a PR changes the script, so it is not inert and is reviewed.
+When neither copy has `reproduce`, the job fails.
 
 The earlier 0.5-second per-test budget and `duration_exempt` marker are retired.
 Collection enforces the quarantine marker contract (owner, issue and unexpired

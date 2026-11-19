@@ -395,9 +395,9 @@ def duration_verdict_refusals(run: Runner, repo: str, number: int, head: str, la
         f"The duration gate blocks `core` on a would-block verdict, and arming refuses it unless the PR changes "
         f"{BASELINE_DIRECTORY}. If the change does not slow the fast tier (a slow runner alone can cause this), "
         f"run make pr-rerun PR={number}: it re-runs the whole CI run so the fast tier is timed again, and a "
-        f"failed-jobs-only re-run would re-read the same timings. Otherwise remove the slowdown, or regenerate the "
-        f"baseline with scripts/build_fast_duration_baseline.py (python -m scripts.build_fast_duration_baseline "
-        f"build --manifest <manifest> --output {BASELINE_DIRECTORY}) and justify the change in the PR"
+        f"failed-jobs-only re-run would re-read the same timings. Otherwise remove the slowdown, or dispatch the "
+        f"fast-duration-baseline-refresh workflow and let its refresh PR land, then update this PR from develop; "
+        f"a hand-built baseline fails the required fast-baseline-reproduce check"
     ]
 
 
