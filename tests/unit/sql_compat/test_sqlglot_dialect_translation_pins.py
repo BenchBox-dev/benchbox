@@ -83,11 +83,11 @@ def test_tpchavoc_1_v7_arrays_are_never_empty():
         connection.execute("CREATE TABLE lineitem (l_returnflag VARCHAR, l_linestatus VARCHAR, l_quantity INTEGER)")
         connection.execute("INSERT INTO lineitem VALUES ('A', 'F', 1), ('A', 'F', NULL), ('N', 'O', 7)")
         rows = connection.execute(
-            "SELECT l_returnflag, CARDINALITY(ARRAY_AGG(l_quantity)), LENGTH(LIST(l_quantity)) "
+            "SELECT l_returnflag, LEN(ARRAY_AGG(l_quantity)), LENGTH(LIST(l_quantity)) "
             "FROM lineitem GROUP BY l_returnflag, l_linestatus ORDER BY l_returnflag"
         ).fetchall()
         empty = connection.execute(
-            "SELECT CARDINALITY(ARRAY_AGG(l_quantity)) FROM lineitem WHERE FALSE GROUP BY l_returnflag"
+            "SELECT LEN(ARRAY_AGG(l_quantity)) FROM lineitem WHERE FALSE GROUP BY l_returnflag"
         ).fetchall()
     assert rows == [("A", 2, 2), ("N", 1, 1)]
     assert empty == []
