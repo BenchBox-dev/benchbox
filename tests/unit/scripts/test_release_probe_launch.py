@@ -75,7 +75,13 @@ class FakeGh:
         if path.endswith("/jobs?per_page=100"):
             run_id = int(path.split("/")[-2])
             idle = self.polls[run_id] <= self.queued_polls + self.idle_polls
-            return {"jobs": [{"status": "completed"}, {"status": "queued" if idle else "in_progress"}]}
+            waiting = {"status": "in_progress", "runner_id": None, "steps": []}
+            return {
+                "jobs": [
+                    {"status": "completed", "runner_id": 7},
+                    waiting if idle else {"status": "in_progress", "runner_id": 7},
+                ]
+            }
         run_id = int(path.rsplit("/", 1)[1])
         self.polls[run_id] = self.polls.get(run_id, 0) + 1
         if self.polls[run_id] <= self.queued_polls:
@@ -214,7 +220,7 @@ def test_job_time_accumulates_across_idle_gaps_and_still_fails_a_run_that_never_
             result = super().__call__(*args)
             if isinstance(result, dict) and "jobs" in result:
                 running = self.polls[int(args[1].split("/")[-2])] % 3 != 0
-                return {"jobs": [{"status": "in_progress" if running else "queued"}]}
+                return {"jobs": [{"status": "in_progress", "runner_id": 7 if running else None}]}
             return result
 
     fake = Gappy(pending_polls=10**6)

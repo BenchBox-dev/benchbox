@@ -171,7 +171,7 @@ def wait_for(
             previous = running_since.get(variant)
             if previous is not None:
                 job_time[variant] = job_time.get(variant, 0.0) + now - previous
-            running = any(job.get("status") == "in_progress" for job in jobs.get("jobs", []))
+            running = any(job.get("status") == "in_progress" and job.get("runner_id") for job in jobs.get("jobs", []))
             running_since[variant] = now if running else None
             if job_time.get(variant, 0.0) >= run_timeout:
                 raise RuntimeError(
