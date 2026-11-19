@@ -22,8 +22,11 @@ from benchbox.core.tpch.refresh import (
     applied_counts,
     apply_rf1,
     apply_rf2,
+    capture_rf2_baseline,
     check_rf1_applied,
     check_rf2_applied,
+    record_refresh_applied,
+    verify_rf2_deletes,
 )
 from benchbox.core.validation.query_validation import (
     DATA_REFRESHED_REASON,
@@ -497,6 +500,8 @@ class TPCHPowerTest:
         try:
             if self.refresh_update_set is None or connection is None:
                 raise RuntimeError("TPC-H refresh functions require an update set and a separate session")
+            record_refresh_applied(connection)
+            baseline = capture_rf2_baseline(connection, self.refresh_update_set) if function == "RF2" else None
             start_time = mono_time()
             if function == "RF1":
                 applied = apply_rf1(connection, self.refresh_update_set)
@@ -508,6 +513,7 @@ class TPCHPowerTest:
             if function == "RF1":
                 check_rf1_applied(connection, self.refresh_update_set, counts["rows_inserted"])
             else:
+                verify_rf2_deletes(connection, self.refresh_update_set, baseline, applied)
                 check_rf2_applied(connection, self.refresh_update_set, counts["orders_deleted"])
             check_status = "PASSED"
             status = "SUCCESS"

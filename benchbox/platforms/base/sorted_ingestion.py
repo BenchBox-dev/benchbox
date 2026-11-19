@@ -22,6 +22,10 @@ _REFERENCED_TABLE_RE = re.compile(
 )
 
 
+def _transaction_already_ended(rollback_error: Exception) -> bool:
+    return "no transaction is active" in str(rollback_error).lower()
+
+
 class SortedIngestionMixin:
     platform_name: str
     logger: logging.Logger
@@ -293,10 +297,11 @@ class SortedIngestionMixin:
                 try:
                     self._rollback_transaction(connection)
                 except Exception as cleanup_error:
-                    rollback_error = cleanup_error
-                    self.logger.warning(
-                        f"Failed to roll back constraint-preserving CTAS sort for {table_name}: {cleanup_error}"
-                    )
+                    if not _transaction_already_ended(cleanup_error):
+                        rollback_error = cleanup_error
+                        self.logger.warning(
+                            f"Failed to roll back constraint-preserving CTAS sort for {table_name}: {cleanup_error}"
+                        )
             if rollback_error is not None:
                 unsafe_error = RuntimeError(
                     f"Constraint-preserving CTAS sort for {table_name} failed and could not be rolled back: "

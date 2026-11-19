@@ -13,14 +13,23 @@ permissions:
 
 jobs:
   probe:
-    name: release-v2 probe
+    name: release-v2 probe dispatch
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 15
     permissions:
       contents: read
       actions: write
+      checks: write
       pull-requests: read
     steps:
+      - name: Refuse a fork pull request, whose token cannot create check runs
+        if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          echo "::error::release-v2 probe cannot report from a fork pull request: its token can neither create check runs nor dispatch workflows. Push the branch to $REPOSITORY and open the pull request from there."
+          exit 1
+
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -34,11 +43,13 @@ jobs:
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
 
       - name: Check the release-v2 job graph under every probe and real outcome
+        id: graph
         run: |
           set -euo pipefail
           uv run --locked --no-dev -- python scripts/release_probe_graph.py
 
-      - name: Run every probe variant when a release input changed
+      - name: Dispatch every probe variant when a release input changed
+        id: dispatch
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
@@ -47,9 +58,21 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          python3 scripts/release_probe_launch.py \
+          python3 -m scripts.release_probe_launch \
             --repository "$REPOSITORY" \
             --pull-request "$PULL_REQUEST" \
             --branch "$HEAD_BRANCH" \
+            --head-sha "$HEAD_SHA"
+
+      - name: Fail the probe check when the graph check stopped the job
+        if: ${{ failure() && steps.graph.outcome == 'failure' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          python3 -m scripts.release_probe_launch \
+            --repository "$REPOSITORY" \
             --head-sha "$HEAD_SHA" \
-            --timeout-seconds 1500
+            --fail "The release-v2 job graph check failed; see the dispatch job log."

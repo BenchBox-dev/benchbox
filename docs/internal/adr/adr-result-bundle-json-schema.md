@@ -8,7 +8,7 @@ Accepted 2026-11-16. Governs `quality/result-bundle.schema.json`, its generator
 
 ## Context
 
-Result bundles (result schema 2.4) were defined only in Python:
+Result bundles (result schema 2.4 when this was decided; 2.5 adds `execution.config_capture` and the vendor fields in `provenance`) were defined only in Python:
 `SchemaV2Validator` in `benchbox/core/results/schema.py`, the version policy in
 `schema_policy.py`, key orders in `schema_specs.yaml`, and the timing and row-count rules
 in `timing_fields.py` and `query_execution.py`. A pipeline or agent that parses a bundle had
@@ -36,7 +36,7 @@ nothing machine-readable to validate against.
    `removed_legacy` in the Explorer build contract. This decision does not reverse that removal.
 5. The `$id` is `https://benchbox.dev/schemas/result-bundle-2.schema.json`. The major version in
    the URL is the compatibility unit. The document carries the current result schema version in a
-   top-level `result_schema_version` key (currently 2.4); `properties.result_schema_version.enum`
+   top-level `result_schema_version` key (currently 2.5); `properties.result_schema_version.enum`
    lists every accepted 2.x version, so one schema validates every bundle the runtime accepts.
 6. Delivery: site-inputs bundle schema 6 is schema 5 plus the top-level member
    `result-bundle.schema.json`; the site publishes it at `/schemas/result-bundle-2.schema.json`.
@@ -47,7 +47,7 @@ nothing machine-readable to validate against.
 The schema encodes required keys at the top level and in `run`, `benchmark`, `platform` and
 `summary`; the closed top-level key set; version gating (row-count validation from 2.2, round-trip
 timing fields in `run`, `queries` and `environment.client_link` from 2.4, required `timing_method`,
-`net_estimate_status` and per-query `request_count`/`result_bytes` rules from 2.4); equality of
+`net_estimate_status` and per-query `request_count`/`result_bytes` rules from 2.4; `execution.config_capture` and the `provenance` plan tier, preview features, vendor permission, vendor notice and self-run fields from 2.5); equality of
 `version` and `result_schema_version` when both are present; the `row_count_validation` field set,
 statuses and message length; `platform_timing` including the `valid` (requires `platform_ms`) and
 `suspect`/`unavailable` (require a `reason`) rules; `run.platform_timing` required when any query
@@ -76,7 +76,7 @@ user-facing page.
 Compatibility promise for major version 2. Within major version 2 the schema changes only in ways
 that keep every bundle that was valid under an earlier 2.x version valid: new optional keys, new
 optional blocks, and new enum values on fields that consumers are told to treat as open. Such a
-change raises the minor version (2.4 to 2.5) and is published at this same URL. A change that
+change raises the minor version (2.5 to 2.6) and is published at this same URL. A change that
 removes or renames a required key, changes the type of an existing key, narrows an accepted value
 set, or changes the meaning of an existing key requires major version 3, which is published at a new
 URL with a 3 in its name; this URL keeps serving major version 2. Consumers of major version 2 must

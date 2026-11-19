@@ -54,6 +54,13 @@ def _driver_paramstyle(connection: Any) -> str | None:
     return None
 
 
+def _first_column(row: Any) -> Any:
+    try:
+        return row[0]
+    except (TypeError, IndexError, KeyError):
+        return None
+
+
 def _insert_value_mark(connection: Any) -> str:
     return "%s" if _driver_paramstyle(connection) in {"format", "pyformat"} else "?"
 
@@ -165,6 +172,9 @@ class TuningMetadataManager:
     _TUNING_TYPE_TABLE_ATTRIBUTES_HASH = "table_attributes_hash"
     _TUNING_TYPE_RUN_KIND = "run_kind"
     _TUNED_RUN_VALUE = "tuned"
+    _REFRESH_STATE_TABLE = "__benchbox_refresh_state__"
+    _TUNING_TYPE_REFRESH_STATE = "refresh_state"
+    _REFRESHED_VALUE = "refreshed"
 
     _METADATA_SCHEMA_VERSION = 3
 
@@ -380,6 +390,54 @@ class TuningMetadataManager:
                 return self._fetch_one(conn, query_sql) is not None
         except Exception:
             return False
+
+    def write_refresh_marker(self) -> bool:
+        if not self.create_metadata_table():
+            return False
+        if self.has_refresh_marker():
+            return True
+        self._batch_insert_records(
+            [
+                TuningMetadata(
+                    table_name=self._REFRESH_STATE_TABLE,
+                    tuning_type=self._TUNING_TYPE_REFRESH_STATE,
+                    column_name="refresh_state",
+                    column_order=0,
+                    configuration_hash=self._REFRESHED_VALUE,
+                    created_at=datetime.now(),
+                    platform=self._platform_key(),
+                )
+            ]
+        )
+        self._table_exists = True
+        return True
+
+    def clear_refresh_marker(self) -> bool:
+        if not self._table_exists_check():
+            return True
+        delete_sql = f"DELETE FROM {self._metadata_table_name} WHERE table_name = '{self._REFRESH_STATE_TABLE}'"
+        with self._managed_connection() as conn:
+            self._execute_sql(conn, delete_sql)
+            commit = getattr(conn, "commit", None)
+            if callable(commit):
+                commit()
+        return True
+
+    def has_refresh_marker(self) -> bool:
+        self.last_load_error = None
+        if not self._table_exists_check():
+            if self.last_load_error:
+                raise RuntimeError(f"Could not read the refresh marker: {self.last_load_error}")
+            return False
+        query_sql = self._first_row_query(
+            "SELECT configuration_hash FROM "
+            f"{self._metadata_table_name} "
+            f"WHERE table_name = '{self._REFRESH_STATE_TABLE}' "
+            f"AND tuning_type = '{self._TUNING_TYPE_REFRESH_STATE}'"
+        )
+        with self._managed_connection() as conn:
+            row = self._fetch_one(conn, query_sql)
+        return row is not None and _first_column(row) == self._REFRESHED_VALUE
 
     def _load_section_markers(self) -> dict[str, str]:
         if not self._table_exists_check():
@@ -767,6 +825,7 @@ class TuningMetadataManager:
             SELECT table_name, tuning_type, column_name, column_order,
                    configuration_hash, created_at, platform
             FROM {self._metadata_table_name}
+            WHERE table_name <> '{self._REFRESH_STATE_TABLE}'
             ORDER BY table_name, tuning_type, column_order
             """
 

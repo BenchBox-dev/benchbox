@@ -761,8 +761,8 @@ requires-dist = [
     { name = "boto3", marker = "extra == 'cloud-spark-aws'", specifier = ">=1.34.0" },
     { name = "boto3", marker = "extra == 'redshift'", specifier = ">=1.20.0" },
     { name = "certifi", specifier = ">=2026.10.19" },
-    { name = "chdb", marker = "sys_platform != 'win32' and extra == 'all'", specifier = ">=0.10.0" },
-    { name = "chdb", marker = "sys_platform != 'win32' and extra == 'clickhouse-local'", specifier = ">=0.10.0" },
+    { name = "chdb", marker = "sys_platform != 'win32' and extra == 'all'", specifier = ">=4.5.0" },
+    { name = "chdb", marker = "sys_platform != 'win32' and extra == 'clickhouse-local'", specifier = ">=4.5.0" },
     { name = "click", specifier = ">=8.3.3,<9.0.0" },
     { name = "clickhouse-connect", marker = "extra == 'all'", specifier = ">=0.10.0" },
     { name = "clickhouse-connect", marker = "extra == 'clickhouse-cloud'", specifier = ">=0.10.0" },
@@ -930,7 +930,7 @@ provides-extras = ["dev", "viz", "explorer", "all", "cloud", "cloudstorage", "du
 dev = [
     { name = "adbc-driver-gizmosql", specifier = ">=2.0.13,<3" },
     { name = "bashlex", specifier = "==0.18" },
-    { name = "chdb", marker = "sys_platform != 'win32'", specifier = ">=0.10.0" },
+    { name = "chdb", marker = "sys_platform != 'win32'", specifier = ">=4.5.0" },
     { name = "clickhouse-connect", specifier = ">=0.10.0" },
     { name = "clickhouse-driver", specifier = ">=0.2.0" },
     { name = "cloudpathlib", extras = ["s3", "gs", "azure"], specifier = ">=0.15.0" },
@@ -1269,7 +1269,7 @@ wheels = [
 
 [[package]]
 name = "chdb"
-version = "4.1.6"
+version = "4.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chdb-core" },
@@ -1277,22 +1277,22 @@ dependencies = [
     { name = "pyarrow" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/61/8b/b7ec9eff8795a87f462c4b304e82391ecd6e4b238607f130557294a9ae6f/chdb-4.1.6-py3-none-any.whl", hash = "sha256:9acf64920697a9a88608c2c740d5ad5c650d1f75a47af089bd78ae5b6fe40f30", size = 1444649, upload-time = "2026-03-19T15:27:04.271Z" },
+    { url = "https://files.pythonhosted.org/packages/89/c4/39a87d5e9d04bd2e01ad057643eaaf50fc4ca11cbad14040edca51d8027f/chdb-4.5.0-py3-none-any.whl", hash = "sha256:9620be5664382300feb57a411d78d91ebd9714ecc496e428608dfa76faa7ffec", size = 1829374, upload-time = "2026-11-18T00:27:14.383Z" },
 ]
 
 [[package]]
 name = "chdb-core"
-version = "26.1.0"
+version = "26.11.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pandas" },
     { name = "pyarrow" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/43/31e699cb602b8348531b2e36a57c70b7ad9238f6aaeed01dc38242524b34/chdb_core-26.1.0-cp39-abi3-macosx_10_15_x86_64.whl", hash = "sha256:7dd4fc1d008e60e1fb54440bc9a7c41996413f5f164c324acc790d47043264a5", size = 105204496, upload-time = "2026-03-02T13:20:46.813Z" },
-    { url = "https://files.pythonhosted.org/packages/b1/6a/872464cbffb7f345643751c4f670d0844aef16b2e82ae3f5ceb95790399e/chdb_core-26.1.0-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:73be929393fd33136e550e99a5101e3068fc7812dfbb93eacbba9603b9a8e77a", size = 87764655, upload-time = "2026-03-02T12:45:07.585Z" },
-    { url = "https://files.pythonhosted.org/packages/11/a9/649b956846bac60b91052583f84077a97bd9cc7dfb164178a4222f92b997/chdb_core-26.1.0-cp39-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:a62b85061ec81ca64b74f418edf4eaee6ff82aa915b0d537c7ccb3a3e2ed0e9d", size = 118355514, upload-time = "2026-03-02T13:23:53.088Z" },
-    { url = "https://files.pythonhosted.org/packages/aa/b1/266c91ca0cd9c5259dfb8f18efd507ba53611bab10bffc10083b97ff66bf/chdb_core-26.1.0-cp39-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:ff3559d024c10a31c5041ab4387e0b7d6a3b5d5bbf6dda884c5a36d4dc50ce47", size = 158111115, upload-time = "2026-03-02T13:16:14.098Z" },
+    { url = "https://files.pythonhosted.org/packages/ea/5e/1ff21eb28fd0099089cd0ee21d350548bb2d7930856a6158798862c4340b/chdb_core-26.11.1-cp39-abi3-macosx_10_15_x86_64.whl", hash = "sha256:d1da1f019a3f2785c688daea321b7c11ceb1160760b1566c0a36bce5ef41fe75", size = 134594360, upload-time = "2026-11-16T14:50:07.305Z" },
+    { url = "https://files.pythonhosted.org/packages/56/e4/8293769ecdd30488fe75a8fe7da8b10c26b8cf0a94f7745548540a6f2ba5/chdb_core-26.11.1-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:ba0a0575bc303b948e5b90a1ec1f1ae826cc1a96ea3c69f1a1f49882863816f6", size = 117069223, upload-time = "2026-11-16T12:11:31.669Z" },
+    { url = "https://files.pythonhosted.org/packages/af/ba/2a1b902265c8725d530b0ba32be7640486b3fb0c01c0b58b03ac1ee8e789/chdb_core-26.11.1-cp39-abi3-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:e24887b441f980f31b62d72b9894901ec756335af5ff7191ab17de368e57ff16", size = 184891473, upload-time = "2026-11-16T10:56:05.032Z" },
+    { url = "https://files.pythonhosted.org/packages/ef/8d/1bc6fb64e4b9e853ff4c5b87a1e640f5415f551ae5e09063d72593ecd05e/chdb_core-26.11.1-cp39-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:f7392dffe9ac1ffabd8aa5451cbbafa9fd426872340b588bfd71a78605a9c7f9", size = 164920514, upload-time = "2026-11-16T11:43:04.615Z" },
 ]
 
 [[package]]

@@ -169,27 +169,41 @@ def _owner_alive(pid_text: Optional[str], start: Optional[str]) -> bool:
     return _pid_may_exist(pid)
 
 
+def _parse_owner(raw: str) -> Optional[dict[str, Any]]:
+    try:
+        record = json.loads(raw)
+    except ValueError:
+        return None
+    if (
+        isinstance(record, dict)
+        and isinstance(record.get("session"), str)
+        and record["session"]
+        and isinstance(record.get("pid"), int)
+        and isinstance(record.get("start"), str)
+    ):
+        return record
+    return None
+
+
 def _read_owner(worktree_path: Path) -> Optional[dict[str, Any]]:
     raw = _get_worktree_config("owner", worktree_path)
     if raw is None:
         return None
-    try:
-        record = json.loads(raw)
-        if (
-            isinstance(record, dict)
-            and isinstance(record.get("session"), str)
-            and record["session"]
-            and isinstance(record.get("pid"), int)
-            and isinstance(record.get("start"), str)
-        ):
-            return record
-    except ValueError:
-        pass
-    print(
-        "warning: ignoring malformed worktree ownership record; treating the worktree as unowned.",
-        file=sys.stderr,
-    )
-    return None
+    record = _parse_owner(raw)
+    if record is None:
+        print(
+            "warning: ignoring malformed worktree ownership record; treating the worktree as unowned.",
+            file=sys.stderr,
+        )
+    return record
+
+
+def owner_blocks_removal(worktree_path: Path) -> bool:
+    raw = _get_worktree_config("owner", worktree_path)
+    if raw is None:
+        return False
+    record = _parse_owner(raw)
+    return record is None or _owner_alive(str(record["pid"]), record["start"])
 
 
 def _write_owner(worktree_path: Path, record: dict[str, Any]) -> None:

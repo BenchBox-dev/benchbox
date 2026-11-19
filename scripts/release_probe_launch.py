@@ -7,19 +7,13 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import gh_transient
 
 PROBE_TAG = "v0.0.0rc0"
 VARIANTS = ("reuse", "fallback", "guarded-change")
 WORKFLOW_FILE = "release-v2.yml"
 RUNS_PAGE = 30
-FINISHED = "completed"
-QUEUED = frozenset({"queued", "waiting", "requested", "pending"})
-RUN_TIMEOUT = 1500.0
+CHECK_NAME = "release-v2 probe"
 PROBED_PATHS = (
     ".github/workflows/release-v2.yml",
     ".github/workflows/release-v2-probe.yml",
@@ -111,13 +105,7 @@ def launch(
 ) -> int:
     dispatch(repository, branch, variant, runner)
     for _ in range(attempts):
-        try:
-            run = find_new_run(list_runs(repository, branch, runner), known, head_sha)
-        except RuntimeError as exc:
-            if not gh_transient.is_transient(exc):
-                raise
-            print(f"::warning::listing {WORKFLOW_FILE} runs for the {variant} probe failed transiently: {exc}")
-            run = None
+        run = find_new_run(list_runs(repository, branch, runner), known, head_sha)
         if run is not None:
             return int(run["id"])
         sleep(interval)
@@ -127,61 +115,6 @@ def launch(
     )
 
 
-def _read(runner: Gh, path: str, what: str) -> Any:
-    try:
-        return runner("api", path)
-    except RuntimeError as exc:
-        if not gh_transient.is_transient(exc):
-            raise
-        print(f"::warning::{what} failed transiently: {exc}")
-        return None
-
-
-def wait_for(
-    repository: str,
-    run_ids: dict[str, int],
-    *,
-    runner: Gh = gh,
-    sleep: Callable[[float], None] = time.sleep,
-    clock: Callable[[], float] = time.monotonic,
-    run_timeout: float = RUN_TIMEOUT,
-    interval: float = 60.0,
-    verdicts: dict[str, dict[str, Any]] | None = None,
-) -> dict[str, dict[str, Any]]:
-    running_since: dict[str, float | None] = {}
-    job_time: dict[str, float] = {}
-    verdicts = {} if verdicts is None else verdicts
-    while len(verdicts) < len(run_ids):
-        for variant, run_id in run_ids.items():
-            if variant in verdicts:
-                continue
-            what = f"polling run {run_id} for the {variant} probe"
-            run = _read(runner, f"repos/{repository}/actions/runs/{run_id}", what)
-            if run is None:
-                continue
-            if run.get("status") == FINISHED:
-                verdicts[variant] = run
-                continue
-            if run.get("status") in QUEUED:
-                continue
-            jobs = _read(runner, f"repos/{repository}/actions/runs/{run_id}/jobs?per_page=100", what)
-            if jobs is None:
-                continue
-            now = clock()
-            previous = running_since.get(variant)
-            if previous is not None:
-                job_time[variant] = job_time.get(variant, 0.0) + now - previous
-            running = any(job.get("status") == "in_progress" and job.get("runner_id") for job in jobs.get("jobs", []))
-            running_since[variant] = now if running else None
-            if job_time.get(variant, 0.0) >= run_timeout:
-                raise RuntimeError(
-                    f"run {run_id} for the {variant} probe ran jobs for {run_timeout:g}s without finishing"
-                )
-        if len(verdicts) < len(run_ids):
-            sleep(interval)
-    return verdicts
-
-
 def cancel(repository: str, run_id: int, runner: Gh = gh) -> None:
     try:
         runner("api", "--method", "POST", f"repos/{repository}/actions/runs/{run_id}/cancel")
@@ -189,70 +122,176 @@ def cancel(repository: str, run_id: int, runner: Gh = gh) -> None:
         print(f"::warning::could not cancel run {run_id}: {exc}", file=sys.stderr)
 
 
-def run_probes(
+def check_external_id(started: dict[str, int]) -> str:
+    return ";".join(f"{variant}={run_id}" for variant, run_id in started.items())
+
+
+def run_url(repository: str, run_id: int) -> str:
+    return f"https://github.com/{repository}/actions/runs/{run_id}"
+
+
+def create_check(
+    repository: str,
+    head_sha: str,
+    *,
+    status: str,
+    conclusion: str | None,
+    title: str,
+    summary: str,
+    external_id: str | None = None,
+    runner: Gh = gh,
+) -> dict[str, Any]:
+    args = [
+        "api",
+        "--method",
+        "POST",
+        f"repos/{repository}/check-runs",
+        "-f",
+        f"name={CHECK_NAME}",
+        "-f",
+        f"head_sha={head_sha}",
+        "-f",
+        f"status={status}",
+        "-f",
+        f"output[title]={title}",
+        "-f",
+        f"output[summary]={summary}",
+    ]
+    if conclusion is not None:
+        args += ["-f", f"conclusion={conclusion}"]
+    if external_id is not None:
+        args += ["-f", f"external_id={external_id}"]
+    return runner(*args)
+
+
+def start_probes(
     repository: str,
     branch: str,
     head_sha: str,
     *,
     runner: Gh = gh,
     sleep: Callable[[float], None] = time.sleep,
-    clock: Callable[[], float] = time.monotonic,
-    run_timeout: float = RUN_TIMEOUT,
-) -> int:
+) -> dict[str, int]:
     known = {int(run["id"]) for run in list_runs(repository, branch, runner)}
     started: dict[str, int] = {}
-    verdicts: dict[str, dict[str, Any]] = {}
     try:
         for variant in VARIANTS:
             run_id = launch(repository, branch, head_sha, variant, known, runner=runner, sleep=sleep)
             known.add(run_id)
             started[variant] = run_id
             print(f"dispatched the {variant} probe as run {run_id}")
-        wait_for(
-            repository,
-            started,
-            verdicts=verdicts,
-            runner=runner,
-            sleep=sleep,
-            clock=clock,
-            run_timeout=run_timeout,
-        )
     except BaseException:
-        for variant, run_id in started.items():
-            if variant not in verdicts:
-                cancel(repository, run_id, runner)
+        for run_id in started.values():
+            cancel(repository, run_id, runner)
         raise
-    failed = False
-    for variant, run in verdicts.items():
-        conclusion = run.get("conclusion")
-        print(f"{variant} probe: {conclusion} ({run.get('html_url')})")
-        failed = failed or conclusion != "success"
-    return 1 if failed else 0
+    return started
+
+
+def report_probe(
+    repository: str,
+    branch: str,
+    head_sha: str,
+    files: list[str],
+    *,
+    runner: Gh = gh,
+    sleep: Callable[[float], None] = time.sleep,
+    reconcile: Callable[[int, dict[str, int]], None] | None = None,
+    existing: Callable[[], str | None] | None = None,
+) -> int:
+    touched = touches_probed_paths(files)
+    if not touched:
+        print("no release-v2 probe input changed; nothing to probe")
+        create_check(
+            repository,
+            head_sha,
+            status="completed",
+            conclusion="success",
+            title="No release input changed",
+            summary="No release-v2 probe input changed in this pull request, so no probe was run.",
+            runner=runner,
+        )
+        return 0
+    if existing is not None:
+        outcome = existing()
+        if outcome is not None:
+            print(outcome)
+            return 0
+    print(f"probing because of: {', '.join(touched[:10])}")
+    try:
+        started = start_probes(repository, branch, head_sha, runner=runner, sleep=sleep)
+    except RuntimeError as exc:
+        print(f"::error::{exc}", file=sys.stderr)
+        create_check(
+            repository,
+            head_sha,
+            status="completed",
+            conclusion="failure",
+            title="Probe dispatch failed",
+            summary=f"The release-v2 probe variants could not be dispatched: {exc}",
+            runner=runner,
+        )
+        return 1
+    links = "\n".join(f"- {variant}: {run_url(repository, run_id)}" for variant, run_id in started.items())
+    check = create_check(
+        repository,
+        head_sha,
+        status="in_progress",
+        conclusion=None,
+        title="Probe runs in progress",
+        summary=f"Release v2 probe runs dispatched for {head_sha[:10]}; the verdict follows when all finish.\n\n{links}",
+        external_id=check_external_id(started),
+        runner=runner,
+    )
+    if reconcile is not None:
+        try:
+            reconcile(int(check["id"]), started)
+        except RuntimeError as exc:
+            print(f"::warning::could not reconcile the probe check yet: {exc}", file=sys.stderr)
+    return 0
+
+
+def fail_check(repository: str, head_sha: str, message: str, runner: Gh = gh) -> None:
+    create_check(
+        repository,
+        head_sha,
+        status="completed",
+        conclusion="failure",
+        title="Probe could not start",
+        summary=message,
+        runner=runner,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run every release-v2 probe variant for a pull request head.")
+    parser = argparse.ArgumentParser(description="Dispatch every release-v2 probe variant for a pull request head.")
     parser.add_argument("--repository", required=True)
-    parser.add_argument("--branch", required=True)
     parser.add_argument("--head-sha", required=True)
+    parser.add_argument("--branch")
     parser.add_argument("--pull-request", type=int)
-    parser.add_argument("--timeout-seconds", type=float, default=RUN_TIMEOUT)
+    parser.add_argument("--fail", help="Record a failed probe check with this message instead of dispatching")
     args = parser.parse_args(argv)
     try:
-        if args.pull_request is not None:
-            touched = touches_probed_paths(changed_files(args.repository, args.pull_request))
-            if not touched:
-                print("no release-v2 probe input changed; nothing to probe")
-                return 0
-            print(f"probing because of: {', '.join(touched[:10])}")
-        return run_probes(
-            args.repository,
-            args.branch,
-            args.head_sha,
-            run_timeout=args.timeout_seconds,
-        )
+        if args.fail is not None:
+            fail_check(args.repository, args.head_sha, args.fail)
+            return 0
+        if args.branch is None or args.pull_request is None:
+            parser.error("--branch and --pull-request are required unless --fail is given")
+        files = changed_files(args.repository, args.pull_request)
+        from scripts import release_probe_verdict
+
+        def reconcile(check_id: int, started: dict[str, int]) -> None:
+            print(release_probe_verdict.reconcile(args.repository, check_id, started, args.head_sha))
+
+        def existing() -> str | None:
+            return release_probe_verdict.reconcile_head(args.repository, args.head_sha)
+
+        return report_probe(args.repository, args.branch, args.head_sha, files, reconcile=reconcile, existing=existing)
     except RuntimeError as exc:
         print(f"::error::{exc}", file=sys.stderr)
+        try:
+            fail_check(args.repository, args.head_sha, str(exc))
+        except RuntimeError as inner:
+            print(f"::error::{inner}", file=sys.stderr)
         return 1
 
 

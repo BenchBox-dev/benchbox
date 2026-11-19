@@ -25,6 +25,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.medium]
 ROOT = Path(__file__).resolve().parents[4]
 BUNDLES = ROOT / "results-data" / "bundles"
 COMPANION_SUFFIXES = (".manifest.json", ".plans.json", ".tuning.json", ".applied.json", ".override.json")
+PREVIOUS_SCHEMA_VERSION = "2.4"
 BLOCK_REQUIRED = (
     ("run", SchemaV2Validator.RUN_REQUIRED),
     ("benchmark", SchemaV2Validator.BENCHMARK_REQUIRED),
@@ -50,9 +51,10 @@ def _load(path: Path) -> dict:
 def _current_bundle() -> dict:
     for path in _bundle_paths():
         data = _load(path)
-        if data.get("result_schema_version") == CURRENT_SCHEMA_VERSION:
+        if data.get("result_schema_version") == PREVIOUS_SCHEMA_VERSION:
+            data["result_schema_version"] = data["version"] = CURRENT_SCHEMA_VERSION
             return data
-    raise AssertionError("no current-version bundle in the corpus")
+    raise AssertionError("no bundle at the previous schema version in the corpus")
 
 
 def test_committed_schema_matches_generator() -> None:

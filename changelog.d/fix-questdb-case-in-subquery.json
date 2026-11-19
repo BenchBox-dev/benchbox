@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB translation of TPC-H Havoc query 18_v10 so an IN subquery inside a CASE WHEN filter is unnested instead of failing with 'cannot compare LONG with type CURSOR'."
+    }
+  ]
+}

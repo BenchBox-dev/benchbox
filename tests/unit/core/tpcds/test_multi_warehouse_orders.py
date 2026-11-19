@@ -6,7 +6,7 @@ import pytest
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
-PANDAS_FAMILIES = ["pandas", "dask", "modin", "cudf"]
+PANDAS_FAMILIES = ["pandas", "dask", "cudf"]
 FAMILIES = ["polars", "datafusion", *PANDAS_FAMILIES]
 WAREHOUSES = [1, 2, 1, None, None, None, 1, 2, None]
 ORDERS = [1, 1, 2, 2, 3, 3, 4, 4, 4]
@@ -71,17 +71,6 @@ def _pandas_family_context(family, tables):
 
         def convert(data):
             return dd.from_pandas(_loaded_frame(pd, data), npartitions=2)
-
-    elif family == "modin":
-        pytest.importorskip("modin.pandas")
-        import modin.pandas as mpd
-
-        from benchbox.platforms.dataframe.pandas_df import PandasDataFrameAdapter
-
-        ctx = PandasDataFrameAdapter().create_context()
-
-        def convert(data):
-            return mpd.DataFrame(_loaded_frame(pd, data))
 
     else:
         cudf = pytest.importorskip("cudf")

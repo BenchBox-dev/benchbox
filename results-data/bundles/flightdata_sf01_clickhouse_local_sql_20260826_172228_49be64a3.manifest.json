@@ -1,0 +1,15 @@
+{
+  "bundle_file": "flightdata_sf01_clickhouse_local_sql_20260826_172228_49be64a3.json",
+  "bundle_hash": "0da04befdcb2f98779ac3ab44fbe70a19df8de58e0b633372853bb46229822dc",
+  "funding": "unspecified",
+  "manifest_version": "1.0",
+  "result_source": "internal",
+  "submitted_by": "maintainer",
+  "cpu_attestation": {
+    "attested_by": "maintainer",
+    "cpu_identity_provenance": "user_attested",
+    "cpu_model": "Apple M4",
+    "cpu_vendor": "Apple",
+    "note": "Operator attestation, not a measurement: the maintainer attests this Darwin arm64 run executed on the project's Apple M4 (10 cores); the bundle recorded no CPU model."
+  }
+}

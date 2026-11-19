@@ -513,3 +513,65 @@ class TestSpecOrderBundleValidation:
         del payload["phases"]["maintenance_test_2"]
 
         assert any("recorded together" in item for item in throughput_stream_defects(payload))
+
+
+class TestLoadScope:
+    def test_combined_export_records_what_load_time_includes(self) -> None:
+        payload = _payload(_phases(), 1.0, "official")
+
+        assert payload["summary"]["tpc_metrics"]["load_scope"] == {
+            "components": ["data_loading"],
+            "counted_in_qph": True,
+        }
+
+    def test_every_timed_load_component_is_listed(self) -> None:
+        from benchbox.core.results.models import (
+            MergeSettlePhase,
+            PostLoadMaintenancePhase,
+            StatisticsGatheringPhase,
+        )
+
+        setup = _loading()
+        setup.statistics_gathering = StatisticsGatheringPhase(duration_ms=5, status="COMPLETED", stats_mode="all")
+        setup.post_load_maintenance = PostLoadMaintenancePhase(duration_ms=5)
+        setup.merge_settle = MergeSettlePhase(settled=True, waited_seconds=1.0, active_parts=0, timeout_seconds=60.0)
+        payload = _payload(replace(_phases(), setup=setup), 1.0, "official")
+
+        assert payload["summary"]["tpc_metrics"]["load_scope"]["components"] == [
+            "data_loading",
+            "statistics_gathering",
+            "post_load_maintenance",
+            "merge_settle",
+        ]
+
+    def test_tpch_combined_export_marks_load_as_outside_the_composite(self) -> None:
+        builder = ResultBuilder(
+            benchmark=BenchmarkInfoInput(
+                name="TPC-H",
+                scale_factor=1.0,
+                test_type="combined",
+                benchmark_id="tpch",
+                compliance_class="official",
+            ),
+            platform=PlatformInfoInput(name="DuckDB", execution_mode="sql"),
+        )
+        builder.set_execution_phases(ExecutionPhases(setup=_loading()))
+        metrics = build_result_payload(builder.build())["summary"].get("tpc_metrics") or {}
+
+        assert metrics["load_scope"] == {"components": ["data_loading"], "counted_in_qph": False}
+
+    def test_power_export_does_not_record_a_load_scope(self) -> None:
+        builder = ResultBuilder(
+            benchmark=BenchmarkInfoInput(
+                name="TPC-DS",
+                scale_factor=1.0,
+                test_type="power",
+                benchmark_id="tpcds",
+                compliance_class="official",
+            ),
+            platform=PlatformInfoInput(name="DuckDB", execution_mode="sql"),
+        )
+        builder.set_execution_phases(_phases())
+        metrics = build_result_payload(builder.build())["summary"].get("tpc_metrics") or {}
+
+        assert "load_scope" not in metrics

@@ -79,6 +79,8 @@ class _RefreshConnection:
         self.commits += 1
 
     def execute(self, sql):
+        if sql.startswith("SELECT COUNT(*) FROM ") and " WHERE " in sql:
+            return _Cursor(2)
         if sql.startswith("SELECT COUNT(*) FROM "):
             return _Cursor(self.counts.get(sql.removeprefix("SELECT COUNT(*) FROM "), 50))
         if sql.startswith("INSERT INTO "):
@@ -99,6 +101,14 @@ def _refresh_set(set_id: int = 1) -> RefreshSet:
         directory=Path("/refresh"),
         files={table.name: Path(f"/refresh/{table.file_stem}_{set_id}.dat") for table in SOURCE_TABLES},
         row_counts={table.name: ROWS for table in SOURCE_TABLES},
+    )
+
+
+@pytest.fixture(autouse=True)
+def _inline_staging(monkeypatch):
+    monkeypatch.setattr(
+        "benchbox.core.tpcds.maintenance_test.inline_staging_sql",
+        lambda table, path: f"(SELECT 1 AS x) AS {table.name}",
     )
 
 

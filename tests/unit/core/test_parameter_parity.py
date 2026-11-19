@@ -234,7 +234,9 @@ class TestMixinUnseededQ11ScaleFraction:
             def __init__(self):
                 self.observed_fraction = None
 
-            def _run_query_iterations(self, *, ctx, benchmark_config, benchmark_instance, monitor, run_options=None):
+            def _run_query_iterations(
+                self, *, ctx, benchmark_config, benchmark_instance, monitor, run_options=None, power_refresh=None
+            ):
                 self.observed_fraction = get_tpch_parameters(11)["fraction"]
                 return []
 

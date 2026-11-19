@@ -324,6 +324,15 @@ class RowCountValidator(BaseValidator):
             result.add_warning(f"Could not validate row count for table {table}: {str(e)}")
 
 
+REFRESHED_DATABASE_ISSUE = (
+    "Database was modified by TPC-H refresh functions (RF1/RF2) in an earlier run, "
+    "so its rows no longer match the generated data"
+)
+
+
+UNREADABLE_REFRESH_STATE_ISSUE = "Could not determine whether TPC-H refresh functions modified this database"
+
+
 class DatabaseValidator:
     def __init__(self, adapter: Any, connection_config: dict[str, Any]):
         self.adapter = adapter
@@ -351,6 +360,7 @@ class DatabaseValidator:
         tables_valid = None
         row_counts_valid = None
         database_empty = False
+        refreshed = False
         foreign_tables: set[str] = set()
 
         try:
@@ -376,6 +386,10 @@ class DatabaseValidator:
                     row_counts_valid = row_count_result.is_valid
                     issues.extend(row_count_result.errors)
                     warnings.extend(row_count_result.warnings)
+                    refresh_issue = self._refresh_issue(connection)
+                    if refresh_issue is not None:
+                        refreshed = True
+                        issues.append(refresh_issue)
 
         except Exception as e:
             issues.append(f"Database validation failed: {str(e)}")
@@ -388,6 +402,8 @@ class DatabaseValidator:
             )
 
         is_valid, can_reuse = self._determine_validity(tuning_valid, tables_valid, row_counts_valid)
+        if refreshed:
+            is_valid = can_reuse = False
 
         status = "valid" if is_valid else ("reusable" if can_reuse else "invalid")
         self.adapter.log_operation_complete(
@@ -405,7 +421,25 @@ class DatabaseValidator:
             row_counts_valid=row_counts_valid,
             database_empty=database_empty,
             foreign_tables=tuple(sorted(foreign_tables)),
+            refreshed=refreshed,
         )
+
+    def _refresh_issue(self, connection: Any) -> str | None:
+        from benchbox.core.tuning.metadata import TuningMetadataManager, metadata_store_unsupported_reason
+
+        if getattr(self.adapter, "supports_refresh_functions", False) is not True:
+            return None
+        platform = getattr(self.adapter, "canonical_platform_type", None) or getattr(
+            self.adapter, "platform_name", None
+        )
+        if metadata_store_unsupported_reason(platform) is not None:
+            return None
+        try:
+            if TuningMetadataManager(self.adapter, connection=connection).has_refresh_marker():
+                return REFRESHED_DATABASE_ISSUE
+        except Exception as exc:
+            return f"{UNREADABLE_REFRESH_STATE_ISSUE}: {exc}"
+        return None
 
     def _determine_validity(
         self, tuning_valid: bool | None, tables_valid: bool | None, row_counts_valid: bool | None
