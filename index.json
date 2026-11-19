@@ -40718,6 +40718,13 @@
       "status": "done",
       "title": "Automated SQLGlot adoption cannot land a release that changes any golden-corpus output"
     },
+    "sqlglot-adoption-full-translation-diff-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "SQLGlot adoption does not report translated-SQL changes for platforms the execution gate never runs"
+    },
     "sqlglot-bundled-import-startup-cost": {
       "claim": null,
       "needs": [],
