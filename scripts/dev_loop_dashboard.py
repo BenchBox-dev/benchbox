@@ -898,10 +898,19 @@ class LockedApi(trend.GitHubApi):
             super()._spend()
 
 
+def open_connection(host: str, timeout: float) -> http.client.HTTPSConnection:
+    return http.client.HTTPSConnection(host, timeout=timeout)
+
+
 class KeepAliveTransport:
-    def __init__(self, sleep: Callable[[float], None] = time.sleep) -> None:
+    def __init__(
+        self,
+        sleep: Callable[[float], None] = time.sleep,
+        connect: Callable[[str, float], http.client.HTTPSConnection] = open_connection,
+    ) -> None:
         self._local = threading.local()
         self._sleep = sleep
+        self._connect = connect
 
     @property
     def _connections(self) -> dict[str, http.client.HTTPSConnection]:
@@ -911,7 +920,7 @@ class KeepAliveTransport:
 
     def _connection(self, host: str) -> http.client.HTTPSConnection:
         if host not in self._connections:
-            self._connections[host] = http.client.HTTPSConnection(host, timeout=trend.HTTP_TIMEOUT_SECONDS)
+            self._connections[host] = self._connect(host, trend.HTTP_TIMEOUT_SECONDS)
         return self._connections[host]
 
     def _drop(self, host: str) -> None:

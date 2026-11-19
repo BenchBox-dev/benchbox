@@ -627,16 +627,21 @@ class _FakeConnection:
 
 
 @pytest.fixture
-def fake_connections(monkeypatch):
+def fake_connections():
     _FakeConnection.script = []
     _FakeConnection.opened = []
-    monkeypatch.setattr(dash.http.client, "HTTPSConnection", _FakeConnection)
     return _FakeConnection
+
+
+def _transport(pauses=None):
+    return dash.KeepAliveTransport(
+        sleep=(lambda seconds: None) if pauses is None else pauses.append, connect=_FakeConnection
+    )
 
 
 def test_transport_reuses_one_connection_per_host(fake_connections):
     fake_connections.script = [_FakeResponse(200, b"a"), _FakeResponse(200, b"b")]
-    transport = dash.KeepAliveTransport(sleep=lambda seconds: None)
+    transport = _transport()
     first = transport("GET", "https://api.github.com/repos/x?page=1", {}, None)
     second = transport("GET", "https://api.github.com/repos/y", {}, None)
     assert (first.body, second.body) == (b"a", b"b")
@@ -648,7 +653,7 @@ def test_transport_reuses_one_connection_per_host(fake_connections):
 def test_transport_retries_server_errors_and_dropped_connections(fake_connections):
     fake_connections.script = [_FakeResponse(502), ConnectionResetError("reset"), _FakeResponse(200, b"ok")]
     pauses: list[float] = []
-    transport = dash.KeepAliveTransport(sleep=pauses.append)
+    transport = _transport(pauses)
     assert transport("GET", "https://api.github.com/x", {}, None).body == b"ok"
     assert pauses == [1.0, 2.0]
     assert len(fake_connections.opened) == 3
@@ -657,19 +662,15 @@ def test_transport_retries_server_errors_and_dropped_connections(fake_connection
 
 def test_transport_returns_client_errors_without_retrying(fake_connections):
     fake_connections.script = [_FakeResponse(404)]
-    assert (
-        dash.KeepAliveTransport(sleep=lambda seconds: None)("GET", "https://api.github.com/x", {}, None).status == 404
-    )
+    assert _transport()("GET", "https://api.github.com/x", {}, None).status == 404
 
 
 def test_transport_gives_up_after_the_attempt_limit(fake_connections):
     fake_connections.script = [_FakeResponse(503)] * (dash.TRANSPORT_ATTEMPTS - 1) + [_FakeResponse(503)]
-    assert (
-        dash.KeepAliveTransport(sleep=lambda seconds: None)("GET", "https://api.github.com/x", {}, None).status == 503
-    )
+    assert _transport()("GET", "https://api.github.com/x", {}, None).status == 503
     fake_connections.script = [OSError("down")] * dash.TRANSPORT_ATTEMPTS
     with pytest.raises(dash.trend.TrendError):
-        dash.KeepAliveTransport(sleep=lambda seconds: None)("GET", "https://api.github.com/x", {}, None)
+        _transport()("GET", "https://api.github.com/x", {}, None)
 
 
 def test_fetch_all_jobs_skips_runs_whose_listing_keeps_failing():
