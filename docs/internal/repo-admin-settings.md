@@ -306,10 +306,11 @@ History of the required contexts:
   The migration is done: `review-gate` is the only required review check, and
   `scripts/ruleset_drift_check.py` treats `oracle-gate` as drift like any other
   unexpected required context. No BenchBox script reads an `oracle-*` status.
-- 2026-11-13: the GitHub App `benchbox-oracle` was renamed `benchbox-review`,
-  the `oracle` environment and its secrets became the `review` environment with
-  `REVIEW_*` secrets, and `tag:oracle-ci` became `tag:review-ci`. The App ID,
-  and so the `review-gate` integration binding, did not change.
+- Review infrastructure rename: the review workflows moved from the `oracle`
+  environment and its secrets to the `review` environment with `REVIEW_*`
+  secrets, and the runner tag from `tag:oracle-ci` to `tag:review-ci`. The App
+  `benchbox-oracle` is renamed `benchbox-review` once that change merges. The
+  App ID, and so the `review-gate` integration binding, does not change.
 
 ### No merge queue
 
@@ -384,7 +385,7 @@ Read it with
 `gh api repos/BenchBox-dev/benchbox/environments/review --jq .deployment_branch_policy`
 (expect `{"custom_branch_policies":true,"protected_branches":false}`) and
 `gh api repos/BenchBox-dev/benchbox/environments/review/deployment-branch-policies --jq '.branch_policies[]|[.type,.name]'`
-(expect exactly `["branch","develop"]` and `["branch","release/*"]`). Verified on 2026-11-08. To restore it:
+(expect exactly `["branch","develop"]` and `["branch","release/*"]`). To restore it:
 
 ```bash
 gh api -X PUT repos/BenchBox-dev/benchbox/environments/review \
