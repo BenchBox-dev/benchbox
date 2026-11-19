@@ -139,6 +139,17 @@ def test_materialize_rows_collects_and_normalizes() -> None:
     assert math.isnan(rows[1][1])
 
 
+def test_materialize_rows_reports_missing_pandas_strings_as_none() -> None:
+    import pandas as pd
+
+    frame = pd.DataFrame({"name": pd.Series(["a", None], dtype="str"), "value": [1.0, float("nan")]})
+    rows = materialize_rows(frame)
+
+    assert rows[0] == ("a", 1.0)
+    assert rows[1][0] is None
+    assert math.isnan(rows[1][1])
+
+
 def test_materialize_rows_rejects_unknown_result() -> None:
     with pytest.raises(TypeError):
         materialize_rows(object())

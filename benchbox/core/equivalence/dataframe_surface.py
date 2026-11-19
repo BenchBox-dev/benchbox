@@ -64,7 +64,7 @@ def materialize_rows(result: Any) -> list[tuple[Any, ...]]:
     if hasattr(native, "rows"):
         raw_rows = native.rows()
     elif hasattr(native, "itertuples"):
-        raw_rows = native.itertuples(index=False, name=None)
+        raw_rows = _pandas_rows(native)
     else:
         import pyarrow as pa
 
@@ -72,6 +72,20 @@ def materialize_rows(result: Any) -> list[tuple[Any, ...]]:
             raise TypeError(f"cannot materialize result of type {type(native).__name__}")
         raw_rows = zip(*(column.to_pylist() for column in native.columns))
     return [tuple(_normalize_value(value) for value in row) for row in raw_rows]
+
+
+def _pandas_rows(frame: Any) -> Iterable[tuple[Any, ...]]:
+    import pandas as pd
+
+    string_columns = {
+        position for position, dtype in enumerate(getattr(frame, "dtypes", ())) if isinstance(dtype, pd.StringDtype)
+    }
+    if not string_columns:
+        return frame.itertuples(index=False, name=None)
+    return (
+        tuple(None if position in string_columns and pd.isna(value) else value for position, value in enumerate(row))
+        for row in frame.itertuples(index=False, name=None)
+    )
 
 
 def fetch_reference_rows(connection: Any, reference_sql: str) -> list[tuple[Any, ...]]:
