@@ -32851,6 +32851,13 @@
       "status": "done",
       "title": "Make pr-arm and pr-rerun agree on what to do while a head's full CI run is still in progress"
     },
+    "pr-arm-silent-on-missing-required-check-20261119": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "pr-arm arms a PR whose required check will never be posted, and auto-merge stalls silently"
+    },
     "pr-arm-stale-hold-suite-needs-new-head-20261106": {
       "claim": null,
       "needs": [],

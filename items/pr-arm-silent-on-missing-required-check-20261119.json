@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "The chosen option is recorded with its reason",
+    "A behavioural test covers a head missing a required context",
+    "docs/internal/release-guide.md (probe recovery) names the stale-branch case and its remedy"
+  ],
+  "description": "## Problem\nOn #4329 (head 964d214ecc, 2026-11-19) `make pr-arm` reported \"armed\" while the ruleset-required check `release-v2 probe` did not exist on the head commit. The probe dispatch job checks out the PR head and runs that branch's `scripts/release_probe_launch.py`; the branch predated #4379, whose script creates the check run, so no check was ever posted. Auto-merge sat BLOCKED for hours with every reported check green, and re-running the dispatch job could not fix it. Only a develop merge into the branch did. Any open PR whose last develop merge predates #4379 has the same stall.\n\n## Decision gate\nPick one, smallest first:\n(a) pr-arm (and pr-landing) list required contexts from the develop ruleset and refuse or warn with a remedy when one is absent and no workflow run that would post it is queued;\n(b) the probe dispatch job runs the script from the base branch (`github.event.pull_request.base.sha`) rather than the head;\n(c) both. Record the choice and reason in context.\n\n## Guardrails\n- Never post the required check from a stand-in or by hand.\n- Do not make missing required checks non-blocking.\n- Keep the existing pr-arm refusal rules intact.\n\n## Verification rubric\nA test reproduces a PR head whose required context is absent and shows pr-arm reporting it with the remedy (merge develop / re-dispatch), or the probe dispatch posts the check for a head whose own script predates the check-creation code.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4379",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4329",
+    "scripts/release_probe_launch.py",
+    ".github/workflows/release-v2-probe.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d414581c3188d7bdb8ecf82a",
+      "at": "2026-11-19T23:22:38Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d3c1ebcf11a946cc8e0e43fddae7fbcb",
+      "session_id": "7dea42834aac4e2d8252103612d62ce9"
+    }
+  ]
+}
