@@ -4024,17 +4024,21 @@
    "kinds": {
     "extra": 1,
     "file": 2,
-    "pattern": 1,
+    "pattern": 2,
     "unresolved": 4
    },
-   "occurrences": 14,
+   "occurrences": 15,
    "path": "tests/unit/scripts/test_preflight_targets.py",
    "rule": "test-sample-data",
-   "target_count": 8,
+   "target_count": 9,
    "targets": [
     {
      "kind": "file",
      "target": "docs/README.md"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/agent/*.md"
     },
     {
      "kind": "unresolved",
@@ -4414,11 +4418,11 @@
    "extra": 43,
    "file": 1385,
    "generated": 3,
-   "pattern": 336,
+   "pattern": 337,
    "root": 204,
    "unresolved": 2082
   },
-  "references": 33253,
+  "references": 33254,
   "unclassified": 0
  }
 }
