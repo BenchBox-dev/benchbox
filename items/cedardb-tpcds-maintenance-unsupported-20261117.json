@@ -4,6 +4,7 @@
     "If supported: tpcds_maintenance_unsupported_reason no longer covers CedarDB, a unit test pins the capability, and post-maintenance row counts match DuckDB",
     "If unsupported: the reason string cites the reproduced error"
   ],
+  "context": "2026-11-19: #4329 (merge 3e3d9f1d86) enabled CedarDB TPC-DS maintenance: `_begin` in benchbox/core/tpcds/maintenance_test.py commits pending setup work and skips an explicit BEGIN when the driver's autocommit is False (test `test_a_driver_with_implicit_transactions_gets_no_explicit_begin`), and the docker-integration CedarDB job passes load, power, throughput and maintenance at SF 0.01. Not yet shown: post-maintenance row counts against DuckDB (acceptance 2). The SF 1 run is tracked in fullspec-sf1-first-runs-chdb-cedardb-20261119.",
   "description": "## Problem\nPR #4260 enabled TPC-H refresh functions on CedarDB (supports_refresh_functions = True) and fixed RF1's explicit BEGIN inside psycopg's implicit transaction (_begin_transaction now skips BEGIN when autocommit is False). It kept CedarDB TPC-DS maintenance off through tpcds_maintenance_unsupported_reason, because the same capability flag would otherwise have switched it on unverified. Official TPC-DS requires the maintenance phase (tpc_spec._REQUIRED_PHASES['tpcds'] includes maintenance), so official TPC-DS runs are refused on CedarDB.\n\n## Decision gate\nRun TPC-DS maintenance on CedarDB at SF0.01 locally (mocker, pinned image) with the #4260 transaction fix in place:\n- If it passes and data is consistent after maintenance, remove the unsupported reason and add CedarDB to the maintenance-capable set with a test.\n- If CedarDB lacks a needed SQL feature, record the exact error and keep the reason, citing the reproduced error (same standard as the release-gate compatibility skips).\n- If the failure is a BenchBox adapter defect (like the BEGIN bug #4260 fixed), fix it in the adapter with a test, then rerun.\n- A dialect gap shared with release-gate cells is fixed under cedardb-release-gate-cell-restoration and linked here.\n\n## Guardrails\n- Do not enable maintenance without a passing local run.\n- Verify row counts of the affected fact and dimension tables before and after maintenance against DuckDB on the same data.\n- Do not touch the TPC-H refresh path that #4260 verified.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4260"
@@ -56,6 +57,14 @@
       "op": "update",
       "op_id": "345c1c17d76749008d363ef0f269f5b9",
       "session_id": "71cadb46eee448f8a6d2019016ddc6eb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d414581c3188d7bdb8ecf82a",
+      "at": "2026-11-19T23:22:57Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "53c2202c8c584b0fb71706622474b766",
+      "session_id": "7dea42834aac4e2d8252103612d62ce9"
     }
   ]
 }
