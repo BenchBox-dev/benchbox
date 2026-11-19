@@ -24596,10 +24596,15 @@
       "title": "CI: release-v2 probe queue time, watchdog test race, duration re-run message, generator volume gate"
     },
     "feature-fix-tpcds-scale-bounds-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-20T21:39:17Z",
+        "generation": "048a6783b5e34f7b985fcf9944108f41",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DS scale bounds: dsdgen floor message and dsqgen Q9 at SF 10000"
     },
     "feature-pr-landing-guards-20261111": {
