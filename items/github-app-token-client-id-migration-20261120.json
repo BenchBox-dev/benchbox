@@ -4,7 +4,7 @@
     "theseus infra setup delivers the review App client ID, and a re-run plans no change.",
     "A review run, a gate run and a SQLGlot delivery run succeed after the switch."
   ],
-  "description": "actions/create-github-app-token warns that the `app-id` input is deprecated in favor of `client-id`. Current uses: Theseus .github/workflows/gate.yml (two steps) and review.yml (two steps), which read secrets.REVIEW_APP_ID; BenchBox .github/workflows/site-inputs.yml (SITE_BRIDGE_APP_ID) and sqlglot-delivery.yml (two steps, SQLGLOT_DELIVERY_APP_ID). Each App's client ID must be stored (secret or variable) before switching, and `theseus infra setup` should deliver the review App's client ID the same way it delivers REVIEW_APP_ID today. Changes to the review workflows are soundness paths and follow the review gate rules.",
+  "description": "actions/create-github-app-token deprecates the `app-id` input in favor of `client-id`. Uses on 2026-11-20: Theseus main .github/workflows/gate.yml:259 and :420 and review.yml:231, :535 and :547 (secrets.REVIEW_APP_ID); BenchBox develop .github/workflows/site-inputs.yml:131 (SITE_BRIDGE_APP_ID) and sqlglot-delivery.yml:239 and :298 (SQLGLOT_DELIVERY_APP_ID). Each App's client ID must be stored (secret or variable) before switching, and `theseus infra setup` should deliver the review App's client ID the same way it delivers REVIEW_APP_ID today. Changes to the review workflows are soundness paths and follow the review gate rules.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b5abc8a4010555c0d8f96bb",
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "76ad7e58216243b6923982369c9ac974",
       "session_id": "045b6d4d12cf4622b6f5f4ab89e94f4e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1125961d008304f6050893ef",
+      "at": "2026-11-20T14:16:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ef1a6291e3604d1eac127edf6052c6e9",
+      "session_id": "3678ab0e75574974b0dc1dcda02267b3"
     }
   ]
 }
