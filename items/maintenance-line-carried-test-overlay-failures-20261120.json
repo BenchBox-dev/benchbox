@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Every failure from a release_line_create.py-built overlay of the newest tag is classified (overlay artefact, test-order interference, real carry gap) with evidence.",
+    "Real carry gaps are fixed in the carry lists or tests, and the overlay run passes, or the remaining failures have an owner decision recorded."
+  ],
+  "description": "Running the tests carried by #4402 on a v0.5.1 tree with the carried files applied gave 1363 passed and 43 failed. The author saw two groups: review-workflow tests failing because the overlay lacked the reviewer workflows (which a real line gets from release_line_create.py), and 13 test_pr_landing batch tests that pass when run alone (cross-test interference in the overlay). The rest were not classified. A real line created by release_line_create.py may or may not show the same failures; the line's first PR would then fail CI.\n\nGuardrails: build the overlay with release_line_create.py's own carry logic (not a hand copy); do not move tests into NOT_CARRIED just to make the run green without a stated reason.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4402",
+    "scripts/release_line_create.py",
+    "tests/unit/scripts/test_release_line_carried_tests.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a",
+      "at": "2026-11-20T05:17:45Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "14a06e74513e4576937e3ee8c346731d",
+      "session_id": "ad8ff63c31d0492faa7526a81e19db83"
+    }
+  ]
+}

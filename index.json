@@ -28114,6 +28114,13 @@
       "status": "done",
       "title": "Maintainer review of 27 G4 UNCERTAIN deferrals"
     },
+    "maintenance-line-carried-test-overlay-failures-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Classify the 43 carried-test failures on a v0.5.1 overlay of the maintenance-line landing tooling"
+    },
     "maintenance-line-landing-tooling-frozen-at-tag-20261119": {
       "claim": null,
       "needs": [],
