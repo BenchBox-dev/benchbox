@@ -29570,7 +29570,10 @@
     },
     "mirror-validator-refuses-offlist-tpch-tpcds-bundles-20261120": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "bundle-validator-checks-compliance-before-offlist-return-20261120",
+        "feature-fix-corpus-classification-and-seed-provenance-20261120"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Make the published-results mirror validator apply the non-standard-scale policy"
