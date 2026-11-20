@@ -26096,7 +26096,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Owner decisions for the heavy-work guard pull request #4331"
     },
     "heavy-guard-admission-20261030": {
