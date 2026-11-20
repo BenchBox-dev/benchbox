@@ -24510,17 +24510,12 @@
       "title": "Test whether a scheduled baseline refresh merges without re-authoring its commit"
     },
     "fast-baseline-reproduce-as-review-evidence-and-refresh-cadence-20261120": {
-      "claim": {
-        "expires_at": "2026-11-21T16:18:30Z",
-        "generation": "591822f279bc47afba9c77f67df3630b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840"
-      },
+      "claim": null,
       "needs": [
         "duration-gate-redesign-prs-owner-decision-20261120"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Fail the scheduled refresh visibly when the previous refresh pull request is still open"
     },
     "fast-duration-baseline-scheduled-refresh-never-lands-20261119": {
