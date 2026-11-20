@@ -24694,6 +24694,13 @@
       "status": "done",
       "title": "TPC-DS scale bounds: dsdgen floor message and dsqgen Q9 at SF 10000"
     },
+    "feature-fix-tpcds-scale-error-reporting-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DS: scale and dsqgen errors are typed and say what happened"
+    },
     "feature-pr-landing-guards-20261111": {
       "claim": null,
       "needs": [],
