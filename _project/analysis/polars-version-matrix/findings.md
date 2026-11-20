@@ -2,7 +2,7 @@
 
 Method, controls and selection rules: `methodology.md`. Per-comparison values: `polars-version-matrix-comparisons.csv`. Qualification evidence: `qualification.json`.
 
-Totals are the sum of per-query wall times for one power run, in seconds: median (min-max) of three rounds. Every value is read from `polars-version-matrix-analysis.json` for the 2026-11-19 run (BenchBox commit `82e76af81`, 156 runs). Values marked "computed" are derived from the cell medians and ranges with the same candidate-mover rule; they are not among the analyzer's 59 comparisons.
+Totals are the sum of per-query wall times for one power run, in seconds: median (min-max) of three rounds. Cell medians and ranges, outcomes, peak RSS, the largest swap growth per cell and every analyzer comparison are read from `polars-version-matrix-analysis.json` for the 2026-11-19 run (BenchBox commit `82e76af81`, 156 runs). Per-run details are read from the run manifest, which is not committed: exit codes, spill, swap growth in individual rounds, per-run totals of runs that did not qualify, load averages and the round effect. Values marked "computed" are derived from the cell medians and ranges with the same candidate-mover rule; they are not among the analyzer's 59 comparisons.
 Setups A, B and C use `--execution-engine default`, `--execution-engine in-memory`, and `--execution-engine streaming`, respectively.
 
 ## Summary

@@ -75,4 +75,4 @@ Each run had its own `POLARS_TEMP_DIR` and its own process temporary directory (
 
 ## Limits
 
-See the limits section of `findings.md`. `polars-version-matrix-analysis.json` in this directory is the analyzer output that every value in `findings.md` is read from: per-cell medians, ranges, outcomes and reasons, and every comparison. Raw result bundles and the run manifest are not committed.
+See the limits section of `findings.md`. `polars-version-matrix-analysis.json` in this directory is the analyzer output: per-cell medians, ranges, outcomes, reasons, peak RSS and largest swap growth, and every comparison. Per-run details in `findings.md` (exit codes, spill, swap by round, per-run totals and load) come from the run manifest. Raw result bundles and the run manifest are not committed.
