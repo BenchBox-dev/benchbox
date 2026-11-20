@@ -44557,7 +44557,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Owner decision: what TPC-DS query 9 generation does above the scale where dsqgen can produce it"
     },
     "tpcds-qphds-nonspec-formula": {
