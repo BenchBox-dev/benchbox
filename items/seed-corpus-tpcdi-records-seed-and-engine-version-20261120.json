@@ -4,7 +4,7 @@
     "New ClickHouse Local bundles record the engine version.",
     "No committed bundle bytes change."
   ],
-  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).\n\n2026-11-20: the ClickHouse Local half merged in BenchBox-dev/BenchBox#4400 (head d7b868e5f8). Cause: _collect_local_clickhouse_metadata called connection.query, which ClickHouseLocalClient lacks; the AttributeError was swallowed. It now uses execute; a test reads the version from a real chdb client. Correction to this item: '30.25.0.2' is the sqlglot version, not a ClickHouse version; no ClickHouse Local bundle ever recorded a real version. The seed half is prepared but not committed: the generator already writes its seed to _datagen_manifest.json and the result pipeline did not copy it; the patch adds an optional bundle field benchmark.data_generation_seed (patch saved at ~/.cache/seed-field-pending-owner.patch). Adding a bundle field is a schema change, so it waits for the owner's approval of the field and its name.",
   "description": "## Problem\nTPC-DI seed-corpus cells are not official, so `.github/workflows/seed-corpus.yml` never passes `--seed`; runs rely on the default in `benchbox/core/tpcdi/config.py` and the bundles record no seed. The three ClickHouse Local bundles from run 3096 (#4317) record `platform.version: \"unknown\"`.\n\n## Change\nRecord in the bundle the data-generation seed actually used, read from the generator configuration (`get_generation_config()`); the CLI's `--seed` is documented as the seed for query parameter generation and may not reach TPC-DI data generation. Change the workflow command only if recording is impossible without it, with the value shown to the owner. Find why ClickHouse Local's version is recorded as unknown and record the real version. Existing bundles are not rewritten.\n\n## Decision gates\nIf recording the seed changes the bundle schema or any digest of existing bundles, stop and ask the owner. No re-run of hosted seed cells without owner approval (it is a workflow dispatch).\n\n## Verification rubric\nPass: a local SF 0.01 TPC-DI run through the same command line as the workflow cell produces a bundle with the seed recorded; a ClickHouse Local run records a concrete version; workflow lint and the seed-corpus workflow tests pass.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
   "links": [
     ".github/workflows/seed-corpus.yml",
@@ -25,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "779d15417a3246acb63080d9623012c1",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T03:06:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cb036b0addcc4c28b71173ed3cf7a59f",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
     }
   ]
