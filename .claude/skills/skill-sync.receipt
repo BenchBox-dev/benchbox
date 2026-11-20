@@ -3,12 +3,12 @@
 # carries no hashes and attests nothing about the current contents.
 
 source = https://github.com/joeharris76/skill-sync-skills.git
-rev = bcafff240e5660f4c5968851a3666158be1c8c18
+rev = 911ec8e8050e32d65b7cb4821b54981048f93619
 dir = skills
 skill = benchbox
 
 source = https://github.com/joeharris76/skill-sync-skills.git
-rev = bcafff240e5660f4c5968851a3666158be1c8c18
+rev = 911ec8e8050e32d65b7cb4821b54981048f93619
 dir = skills
 skill = blog
 skill = code
@@ -20,7 +20,7 @@ skill = test
 skill = todo
 
 source = https://github.com/joeharris76/skill-sync-skills.git
-rev = bcafff240e5660f4c5968851a3666158be1c8c18
+rev = 911ec8e8050e32d65b7cb4821b54981048f93619
 dir = skills
 skill = shared-agent-execution
 

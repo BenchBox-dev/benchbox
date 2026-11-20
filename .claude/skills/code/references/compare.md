@@ -10,10 +10,9 @@
 
 ## Compare
 
-Use the Compare scoring in `shared-investigation-framework/SKILL.md`. Mark a
-change as breaking if it alters a public contract, error behavior, persistence
-format, security property, or required dependency. Missing relationships or
-registration paths are high risk.
+Use the Compare pairing and verdict in `shared-investigation-framework/SKILL.md`.
+For code, the critical items also include a required dependency and every
+registration path; a change to any critical item is breaking.
 
 ## Output
 

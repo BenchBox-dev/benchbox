@@ -73,6 +73,11 @@ panel: it classifies, it does not review. The portable default is
 `typesafe/jev-1.14.0`. Image-carrying judgments are experimental; prefer
 text-only state.
 
+For a long list of homogeneous yes/no or bucket decisions (commits, review
+threads, log lines, compare pairs), judge every item in one eval
+`judge_batch` call with the question and rubric fixed before loading the
+data, then read and verify each flagged item before acting on it.
+
 ## Effort Translation
 
 Use the effort the routing table names for the selected role; it is generated

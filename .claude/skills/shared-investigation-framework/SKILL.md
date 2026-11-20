@@ -11,24 +11,24 @@ Compare artifact behavior, contracts, and relationships, not wording alone.
 
 1. Extract semantics from artifact A and B independently, preferably in parallel.
 2. Normalize items, relationships, metadata, and confidence.
-3. Compare exact matches, semantic equivalents, type mismatches, and unique items.
-4. Score: primary items 40%, relationships 40%, structure 20%.
-5. Report shared and unique items, warnings, and confidence.
+3. Pair each item and relationship of A with its counterpart in B, and list
+   the items unique to either side.
+4. Judge each pair: does B preserve A's behavior and contract for that item?
+   Mark the critical items: public contracts, error behavior, persistence
+   formats, security properties, and required relationships. In omp, put all
+   pairs through one eval `judge_batch` call with one bool question, each state
+   holding the A item and its B counterpart; elsewhere, judge each pair
+   yourself. Read every pair judged below 0.9 before accepting the verdict.
+5. Report shared and unique items, each pair that is not preserved, warnings,
+   and confidence.
 
-### Thresholds
+### Verdict
 
-| Score | Meaning |
+| Verdict | Condition |
 |---|---|
-| >=0.95 | Equivalent |
-| 0.85-0.94 | Mostly equivalent; review |
-| 0.70-0.84 | Significant differences |
-| <0.70 | Breaking/not equivalent |
-
-These weights and thresholds are default heuristics, not measurements. The
-numeric score remains the Shrink accept/reject input. State any critical
-contract that overrides the aggregate score.
-
-Breaking contract changes halve the score; lost critical relationships multiply by 0.7.
+| Equivalent | Every critical pair is preserved, and every item unique to A has a stated reason |
+| Review | Every critical pair is preserved; a non-critical pair is not, or an item unique to A is unexplained |
+| Not equivalent | A critical pair is not preserved |
 
 ### Limits
 
@@ -154,8 +154,8 @@ the task names them.
 2. Save baseline.
 3. Compress dead/repeated/verbose text only.
 4. Compare baseline vs compressed with Section 1 (Compare) above.
-5. Approve when the score is in the Equivalent band (Section 1, Thresholds)
-   and relevant checks pass; otherwise iterate up to 3 times.
+5. Approve when the verdict is Equivalent (Section 1, Verdict) and relevant
+   checks pass; otherwise iterate up to 3 times.
 
 ### Preserve
 
@@ -173,11 +173,11 @@ shared protocol.
 
 | Result | Action |
 |---|---|
-| Score in the Equivalent band and checks pass | Replace original |
-| Score in the Equivalent band and checks fail | Fix or revert |
-| Score below the Equivalent band and attempts remain | Restore missing semantics and retry |
-| Score remains low | Report best version and ask |
+| Equivalent and checks pass | Replace original |
+| Equivalent and checks fail | Fix or revert |
+| Not Equivalent and attempts remain | Restore missing semantics and retry |
+| Still not Equivalent after 3 attempts | Report best version and ask |
 
 ### Report
 
-State original size, new size, reduction, score, removed/simplified areas, checks run, and residual risk.
+State original size, new size, reduction, verdict, pairs not preserved, removed/simplified areas, checks run, and residual risk.
