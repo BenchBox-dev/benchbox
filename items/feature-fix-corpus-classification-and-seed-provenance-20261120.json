@@ -2,7 +2,7 @@
   "acceptance": [
     "The feature pull request is merged and each of the four members meets its own acceptance."
   ],
-  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).\n\nState 2026-11-20: branch fix/corpus-classification-and-seed-provenance in ../BenchBox.wt-corpus-class, three commits (9685798d80 validator and label, 8fbe977994 seed field, 7d8966ea57 class snapshot), not pushed. Snapshot file is results-data/compliance-classes.json (500 bundles: 24 official, 39 unofficial_nonstandard and ranking-excluded, 47 unofficial_subscale, 390 with no class). The 18 sidecars keep their own `known_defect_reason`, which is what the Explorer shows; only the label id changed. Targeted tests pass (1920, single process); the 17 new validator cases fail with the validator change reverted. `make pr-preflight` is waiting for the host test lock. Not done: a local TPC-DI SF 0.01 run showing a real bundle with the seed (needs `make heavy-run`).",
   "description": "Umbrella for one feature branch and one pull request in core. Members, worked in this order: bundle-validator-checks-compliance-before-offlist-return-20261120, seed-corpus-tpcdi-records-seed-and-engine-version-20261120, stored-bundle-class-must-not-follow-registry-edits-20261120, tpcdi-old-generator-bundle-defect-label-20261120. The mirror-validator item is not a member: it is design-only and ends at the owner.\n\n## Decision gates\nEach member's own gates. If the pull request becomes too large for the review bot, stop and tell the owner; do not ask for a stand-in.\n\n## Verification rubric\nPass: one pull request merged through `make pr-arm`; each member's rubric met at the merged head.\n\n## Guardrails (owner, 2026-11-20)\nAccepted by the owner in the choice dialog: the agent never posts a stand-in review, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. It arms with `make pr-arm` once per pull request and reports the result. Subagents are read-only. Any limit, default, threshold or label text is shown to the owner before it is committed. A blocked step stops this item; the agent moves to the next item and does not work around the block.\nReview threads: the accepted text also said the agent never resolves a thread. Asked afterwards which rule applies, the owner chose: \"The morning rule: I may resolve a thread once the bot has reviewed the new head and did not raise the finding again.\" ('I' is the agent.) So the agent pushes the fix and replies, and resolves a thread only after the bot's review of the new head does not raise that finding again.",
   "sessions": [
     {
@@ -27,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "e1d2fa232dee477eb151c8e5bf0c146e",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-20T15:47:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "da6679f656ea4da08eea93ca9495da29",
       "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
