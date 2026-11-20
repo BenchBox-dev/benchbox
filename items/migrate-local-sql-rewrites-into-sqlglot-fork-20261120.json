@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Each of the 22 _LOCAL_REWRITES entries is classified (move, delete as duplicate, or owner-approved exception) in context",
+    "Migrated rewrites live in the fork with tests and reach BenchBox through an adopted fork wheel (version cited)",
+    "BenchBox translation tests pass unchanged on the adopted wheel and _LOCAL_REWRITES holds only the approved exceptions"
+  ],
+  "description": "## Problem\nBenchBox applies SQL rewrites during query translation through `apply_rewrite` in `benchbox/utils/dialect_utils.py`. Rewrites resolve first from `_LOCAL_REWRITES`, a table of 22 rewrite functions implemented in BenchBox itself (`benchbox/utils/dialect_utils.py`, `benchbox/utils/query_shape_rewrites.py`: for example `alias_derived_tables`, `hoist_qualify_outer_clauses`, `rollup_empty_input_row`, `trim_char_case_comparisons`, `inline_named_windows`), and only then from the SQLGlot fork (`benchbox._vendor.sqlglot.benchbox.rewrites`, source BenchBox-dev/benchbox-sqlglot). Owner direction (2026-11-20): compatibility rewrites belong in the SQLGlot fork, so they are versioned, reviewed and tested with the transpiler they depend on, and delivered through the fork's verified wheel.\n\n## Decision gate\nBefore moving code, inventory each `_LOCAL_REWRITES` entry with its callers and tests, and record in context: (a) rewrites that move unchanged into `sqlglot/benchbox/rewrites.py` (or a sibling module) with their tests; (b) rewrites that duplicate an existing fork function and are deleted in favour of it; (c) any rewrite that depends on BenchBox-only state and so cannot move, with the reason. The owner confirms the (c) list before migration starts. Land fork changes first, adopt the new wheel through the `sqlglot-delivery` workflow, then delete the BenchBox copies in one cutover PR.\n\n## Guardrails\n- No behaviour change: every migrated rewrite produces byte-identical SQL for its existing test inputs, checked by running the BenchBox tests against the adopted wheel before deleting the local copy.\n- No dual implementations after cutover: `_LOCAL_REWRITES` is removed or limited to the owner-approved (c) list; no fallback to a local copy.\n- Fork changes follow the fork's own review and delivery rules; never hand-edit `benchbox/_vendor`.\n- New compatibility rewrites go to the fork from now on.\n\n## Verification rubric\nPass only if: the inventory and the owner-confirmed exceptions are recorded; each migrated rewrite has tests in the fork; the adopted wheel's version is cited; BenchBox's translation tests (tests/unit/utils dialect tests, TPC-DS/TPC-H/TPC-havoc translation tests) pass unchanged against it; and `_LOCAL_REWRITES` contains only the approved exceptions.",
+  "links": [
+    "benchbox/utils/dialect_utils.py",
+    "benchbox/utils/query_shape_rewrites.py",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a7a258a2d9eac99620687964",
+      "at": "2026-11-20T14:56:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c8a1873542d84eb3a993ba88f0bac29f",
+      "session_id": "c513634643a64739a36c63effd2bfe91"
+    }
+  ]
+}
