@@ -24518,6 +24518,13 @@
       "status": "open",
       "title": "Make the fast-duration gate robust to a high calibration factor"
     },
+    "fast-duration-gate-runner-class-spread-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Record and decide the fast duration gate's runner-class spread"
+    },
     "fast-duration-gate-scales-wait-bound-tests-by-cpu-factor-20261119": {
       "claim": null,
       "needs": [],
