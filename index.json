@@ -29622,8 +29622,7 @@
     "mirror-validator-refuses-offlist-tpch-tpcds-bundles-20261120": {
       "claim": null,
       "needs": [
-        "bundle-validator-checks-compliance-before-offlist-return-20261120",
-        "feature-fix-corpus-classification-and-seed-provenance-20261120"
+        "bundle-validator-checks-compliance-before-offlist-return-20261120"
       ],
       "priority": "medium",
       "status": "open",
