@@ -32,9 +32,9 @@ A previous run of this matrix on 2026-10-09 (five versions, 120 runs, BenchBox c
 
 `qualification.json` in this directory is the qualification file the runner and analyzer require; the spec pins its SHA-256.
 
-- Eligibility. Before the matrix, every version and engine in the spec was run through the cross-surface value gate (`benchbox.core.equivalence.cross_surface`) for each benchmark, at the commit the matrix ran on. The gate compares the Polars DataFrame results with DuckDB SQL results on the values, not only the row counts, at its own scale factor: 0.01 for TPC-H and TPC-DS, 0.1 for SSB and ClickBench. It checks returned order where the SQL has an ORDER BY, and compares rows as a set where it does not. All 52 rows are clean. ClickBench was gated with its default backends, because its classified query 18 exception (LIMIT 10 with no ORDER BY, so any ten groups are valid) is accepted only when the pandas cell also runs.
-- Reference row counts. One DuckDB SQL power run per benchmark at scale factor 10, on data generated at the same commit, gives the row count of every query. They match the reference used for the 2026-10-09 matrix on all 207 queries.
-- Known divergence. TPC-DS query 41 returns 10 rows on Polars against 12 on DuckDB at scale factor 10. It was rechecked on 1.44.2 and 2.1.0 for this run.
+- Eligibility. Before the matrix, every version and engine in the spec was run through the cross-surface value gate (`benchbox.core.equivalence.cross_surface`) for each benchmark, at BenchBox commit `3fb12d844`. The commits from there to the run commit `82e76af81` change only the matrix spec, its tests and dry-run fixture, `.gitattributes` and this qualification file, so the gate and the query code are the same as in the run. The gate compares the Polars DataFrame results with DuckDB SQL results on the values, not only the row counts, at its own scale factor: 0.01 for TPC-H and TPC-DS, 0.1 for SSB and ClickBench. It checks returned order where the SQL has an ORDER BY, and compares rows as a set where it does not. All 52 rows are clean. ClickBench was gated with its default backends, because its classified query 18 exception (LIMIT 10 with no ORDER BY, so any ten groups are valid) is accepted only when the pandas cell also runs.
+- Reference row counts. One DuckDB SQL power run per benchmark at scale factor 10, on data generated at `3fb12d844`, gives the row count of every query. They match the reference used for the 2026-10-09 matrix on all 207 queries.
+- Known divergence. TPC-DS query 41 returns 10 rows on Polars against 12 on DuckDB at scale factor 10. It was rechecked on 1.44.2 and 2.1.0 at `3fb12d844` for this run.
 
 ## Timing
 
@@ -75,4 +75,4 @@ Each run had its own `POLARS_TEMP_DIR` and its own process temporary directory (
 
 ## Limits
 
-See the limits section of `findings.md`. Raw result bundles, the run manifest and the analysis JSON are not committed.
+See the limits section of `findings.md`. `polars-version-matrix-analysis.json` in this directory is the analyzer output that every value in `findings.md` is read from: per-cell medians, ranges, outcomes and reasons, and every comparison. Raw result bundles and the run manifest are not committed.
