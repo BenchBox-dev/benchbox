@@ -2,7 +2,7 @@
   "acceptance": [
     "`next` has no TPC-DS 3000 limit statement and still states the dsdgen floor reason."
   ],
-  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).\n\n2026-11-20 done: BenchBox-dev/benchbox-site#218 merged to next as ec896fc11a after ci passed. `git grep` on origin/next finds no TPC-DS 3000-limit statement in docs, and both Python API pages keep 'does not finish below 0.01'. A local `npm run docs:check` against core bundle 9703d6d98c reports 7 blocking violations on next in pages this change does not touch (reference/public-contracts.md, reference/cli/results.md, reference/cli/run.md, reference/mcp.md); they are present on next without this change and are not addressed here.",
   "description": "## Problem\nThe #209 text reached `next` through the main-to-next sync (#213, fb41371): docs/benchmarks/index.md, docs/concepts/benchmark-methodology.md, docs/contributing-results.md, docs/reference/python-api/benchmarks/tpcds.md and tpcds-obt.md state a 3000 maximum. `next` documents core develop, which is restoring the 100000 range.\n\n## Change\nAfter the core restore merges, remove the 3000 statements on `next`; keep the dsdgen floor reason, which is true on develop.\n\n## Decision gates\nOnly after tpcds-restore-100000-maximum-and-official-points-20261120 is merged, so `next` matches develop.\n\n## Verification rubric\nPass: `git grep -n 3000 origin/next -- docs` shows no TPC-DS limit statement; `npm run lint:docs` and `npm run docs:check` pass.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-site/pull/213"
@@ -23,6 +23,14 @@
       "generation": "22577f896692459e8fd170cde42adbfc",
       "op": "take",
       "op_id": "346e823262784e6884e838a415c074f8",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T03:34:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "af596212f6174744bbf65d03c934bc95",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
     }
   ]
