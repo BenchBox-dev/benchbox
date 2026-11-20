@@ -1081,11 +1081,27 @@ class TestClickHouseMetadataCoverage:
         adapter = _DummyClickHouseMetadata(deployment_mode="local")
 
         class LocalConn:
-            def query(self, _sql):
-                return "24.10.1.1234\n"
+            def execute(self, sql):
+                assert sql == "SELECT version()"
+                return [("24.10.1.1234",)]
 
         info = adapter.get_platform_info(connection=LocalConn())
         assert info["platform_version"] == "24.10.1.1234"
+        assert info["engine_version"] == "24.10.1.1234"
+        assert info["engine_version_source"] == "sql_query"
+
+    @pytest.mark.skipif(not CHDB_AVAILABLE, reason=CHDB_SKIP_REASON)
+    def test_get_platform_info_local_real_client_reports_version(self):
+        from benchbox.platforms.clickhouse.client import ClickHouseLocalClient
+
+        adapter = _DummyClickHouseMetadata(deployment_mode="local")
+        client = ClickHouseLocalClient()
+        try:
+            info = adapter.get_platform_info(connection=client)
+        finally:
+            client.close()
+        assert info["platform_version"]
+        assert info["platform_version"] != "unknown"
 
     def test_get_platform_info_server_connection(self):
         adapter = _DummyClickHouseMetadata(deployment_mode="server")
