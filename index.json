@@ -39479,6 +39479,13 @@
       "status": "dropped",
       "title": "Serve /docs/ from the latest release and add canonical tags from /docs/dev/"
     },
+    "site-remove-withdrawn-picomatch-allowlist-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove the audit allowlist entries for the withdrawn picomatch advisory"
+    },
     "site-result-formats-translator-runtime-docs": {
       "claim": null,
       "needs": [
