@@ -38055,9 +38055,9 @@
     },
     "review-verdict-prepare-fails-on-transient-503-20261112": {
       "claim": {
-        "expires_at": "2026-11-21T03:50:50Z",
-        "generation": "7d347cca0cc947e081b87eaf461aceb2",
-        "renewals": 0,
+        "expires_at": "2026-11-21T03:51:33Z",
+        "generation": "cbed865b8be04e34b9cdd06ea736ccfb",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:50738e5478443e60088712f6"
       },
       "needs": [],
