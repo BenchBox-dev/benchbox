@@ -15360,6 +15360,15 @@
       "status": "open",
       "title": "Require public-site visual acceptance before merging into develop"
     },
+    "ci-diagnostics-pr-remove-dead-pid-helper-and-false-credit-20261120": {
+      "claim": null,
+      "needs": [
+        "feature-fix-ci-congestion-diagnostics-and-generator-gate-20261117"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove the unreachable PID-file helper from #4322 and correct its description"
+    },
     "ci-docker-hub-unauthenticated-pulls-20261009": {
       "claim": null,
       "needs": [],
