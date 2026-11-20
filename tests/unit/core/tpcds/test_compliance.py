@@ -186,15 +186,14 @@ class TestOfficialFlagReachesTheClassifier:
 
 
 class TestSubscaleRefusalBeforeSpawn:
-    def test_message_states_dsdgen_does_not_finish(self):
-        with pytest.raises(ValueError, match="does not finish") as exc_info:
+    def test_message_states_what_was_observed(self):
+        with pytest.raises(ValueError, match="did not finish at SF 0.001"):
             validate_tpcds_scale(0.001)
-        assert "catalog_sales" in str(exc_info.value)
 
     def test_generator_constructor_refuses_below_the_floor(self, tmp_path):
         from benchbox.core.tpcds.generator import TPCDSDataGenerator
 
-        with pytest.raises(ValueError, match="does not finish"):
+        with pytest.raises(ValueError, match="did not finish at SF 0.001"):
             TPCDSDataGenerator(scale_factor=0.005, output_dir=tmp_path)
 
 

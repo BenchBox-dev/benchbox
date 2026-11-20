@@ -10,7 +10,7 @@ from benchbox.core.benchmark_registry import (
     validate_scale_factor,
 )
 from benchbox.core.errors import ScaleFactorNotSupportedError, ScaleFactorOutOfRangeError
-from benchbox.core.tpcds.compliance import TpcdsComplianceClass, validate_tpcds_scale
+from benchbox.core.tpcds.compliance import TPCDS_BELOW_FLOOR_REASON, TpcdsComplianceClass, validate_tpcds_scale
 
 pytestmark = [
     pytest.mark.unit,
@@ -165,6 +165,14 @@ def test_no_registry_entry_goes_below_the_floor() -> None:
 
 
 @pytest.mark.parametrize("benchmark_id", ["tpcds", "tpcds_obt"])
-def test_tpcds_floor_refusal_explains_the_dsdgen_hang(benchmark_id: str) -> None:
-    with pytest.raises(ValueError, match="does not finish"):
+def test_tpcds_floor_refusal_is_typed_and_states_what_was_observed(benchmark_id: str) -> None:
+    with pytest.raises(ScaleFactorOutOfRangeError, match="from 0.01 to 100000") as excinfo:
         validate_scale_factor(benchmark_id, 0.001)
+    assert excinfo.value.reason == TPCDS_BELOW_FLOOR_REASON
+    assert "did not finish at SF 0.001" in str(excinfo.value)
+
+
+def test_range_errors_without_a_recorded_reason_carry_none() -> None:
+    with pytest.raises(ScaleFactorOutOfRangeError) as excinfo:
+        validate_scale_factor("tpcds", 100001)
+    assert excinfo.value.reason is None
