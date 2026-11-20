@@ -43555,15 +43555,10 @@
       "title": "Publish Theseus review-format release B (v0.2.11: verdict-first bodies, visible thread ids, optional minimising, pending gate)"
     },
     "theseus-review-low-findings-20261120": {
-      "claim": {
-        "expires_at": "2026-11-21T21:38:16Z",
-        "generation": "300e720d2dcb492b849e37846f516488",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1125961d008304f6050893ef"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Theseus: clear the low-priority review notes left from the format, dashboard, check-run and infra PRs"
     },
     "theseus-review-markers-dual-read-20261110": {
