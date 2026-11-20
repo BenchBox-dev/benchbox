@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "Scale factors 3001 through 100000 are accepted for tpcds and tpcds_obt through the CLI, MCP and public API, with tests for each surface.",
+    "The official TPC-DS scale-point list again contains 10000, 30000 and 100000, and no stored or new bundle at those points is classed non-standard.",
+    "The 0.01 floor message and its no-spawn test are unchanged.",
+    "The changelog fragment no longer claims a 3000 maximum."
+  ],
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "description": "## Problem\nPR #4335 (f37e1c090e) lowered the accepted maximum for `tpcds` and `tpcds_obt` from 100000 to 3000 and filtered `OFFICIAL_SCALE_POINTS` to 3000. The owner did not approve a number. The evidence was one query's parameter generation (dsqgen query 9), but the cap refuses data generation (dsdgen never calls dsqgen and was not measured above 3000), every query subset, all of TPC-DS-OBT and the TPC-specified points 10000, 30000 and 100000 through the CLI, MCP and public API. `--official --scale 10000` prints that 10000 is not a TPC-specified scale factor, which is false. The changelog fragment marks the change non-breaking.\n\n## Change\nRestore `TPCDS_MAX_SCALE` behaviour to the shared 100000 maximum and the full official point list (1, 10, 100, 300, 1000, 3000, 10000, 30000, 100000) in `benchbox/core/tpcds/compliance.py` and `benchbox/core/benchmark_registry.py`. Keep the 0.01 floor and its message that the bundled dsdgen does not finish below it (owner-approved 2026-11-17). Restore the range tests changed by #4335. Replace the unreleased changelog fragment so it describes only the floor message. Check `benchbox/cli/benchmarks.py` interactive official mode agrees with the restored list.\n\n## Decision gates\nNone for the restoration: it returns to the range the owner selected. Query 9 handling above the scale where dsqgen generates it is NOT part of this item; it is tpcds-q9-generation-above-sf5000-owner-decision-20261120. Do not add any new limit, timeout change or special case here.\n\n## Verification rubric\nPass: `TPCDS(scale_factor=100000)` and `TPCDSOBT(scale_factor=100000)` construct; 100001 and 0.001 are refused; `--official --scale 10000` is accepted as an official point for tpcds; the 0.001 refusal still states the dsdgen reason and spawns no process; an MCP-level test covers the tpcds range; `git diff` against the parent of f37e1c090e shows only the floor message, its test, and the changelog.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "links": [
+    "benchbox/core/tpcds/compliance.py",
+    "benchbox/core/benchmark_registry.py",
+    "benchbox/cli/benchmarks.py",
+    "changelog.d/fix-tpcds-scale-bounds.json",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4335"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:10:28Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6c13e8e14b2546938ceafdb4abca207c",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    }
+  ]
+}
