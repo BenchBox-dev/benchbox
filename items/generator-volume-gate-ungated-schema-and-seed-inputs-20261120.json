@@ -3,7 +3,7 @@
     "`coffeeshop_seed_loader.py`, `tsbs_devops/schema.py`, `joinorder/schema.py` and the CoffeeShop seeds trigger the gate.",
     "The remaining shared utility modules are listed as a documented limit."
   ],
-  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).\n\nState 2026-11-20: `benchbox/utils/coffeeshop_seed_loader.py` is added to the gate table, the CI path filter and the doc on the #4322 branch in ../BenchBox.wt-ci-diag; tests/unit/scripts/test_generator_volume_gate.py passes (56, single process), including the test that the filter selects exactly what the table selects. Local commit, not pushed: push only after `make pr-preflight` exits 0 on that head.",
   "description": "## Problem\nThe gate table on #4322 missed inputs that change SF 1 bytes. Head ea09ba98c4 now gates `benchbox/core/tsbs_devops/schema.py`, `benchbox/core/joinorder/schema.py` and the CoffeeShop seed files, and docs/internal/generator-volume-gate.md lists shared utility modules, including `coffeeshop_seed_loader.py`, as ungated limits.\n\n## Owner decision\n2026-11-20 (choice dialog, 13:25Z), gate_utils = \"seed-loader-and-limit\": gate only `coffeeshop_seed_loader.py`; keep the rest as a documented limit.\n\n## Change\nOn the #4322 branch: add `coffeeshop_seed_loader.py` to the gate table and the CI path filter and remove it from the documented limits. Leave the other shared utility modules as documented limits. No import-closure test.\n\n## Decision gates\nNone beyond the decision above. Nothing else is added to or removed from the gate.\n\n## Verification rubric\nPass: the table, the CI filter and the doc agree and name `coffeeshop_seed_loader.py` as gated; the existing gate tests pass with a case for that path; the three inputs gated in ea09ba98c4 are still gated.\n\n## Guardrails (owner, 2026-11-20)\nAccepted by the owner in the choice dialog: the agent never posts a stand-in review, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. It arms with `make pr-arm` once per pull request and reports the result. Subagents are read-only. Any limit, default, threshold or label text is shown to the owner before it is committed. A blocked step stops this item; the agent moves to the next item and does not work around the block.\nReview threads: the accepted text also said the agent never resolves a thread. Asked afterwards which rule applies, the owner chose: \"The morning rule: I may resolve a thread once the bot has reviewed the new head and did not raise the finding again.\" ('I' is the agent.) So the agent pushes the fix and replies, and resolves a thread only after the bot's review of the new head does not raise that finding again.",
   "links": [
     "scripts/generator_volume_gate.py",
@@ -32,6 +32,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "7d5fcc28852248cba985c62cfa00c330",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-20T15:50:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "25b7eb07663c4c34911d33c3051d125f",
       "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
