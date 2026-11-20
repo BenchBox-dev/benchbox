@@ -44485,7 +44485,9 @@
     },
     "tpc-generation-duration-estimate-20261120": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "tpc-generation-no-default-timeout-optional-user-timeout-20261120"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Show a rough duration estimate before TPC data and query generation"
