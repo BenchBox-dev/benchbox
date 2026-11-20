@@ -874,7 +874,9 @@ def prompt_official_mode(benchmark_id: str, scale_factor: float) -> tuple[bool, 
     if not Confirm.ask("Enable TPC official mode?", default=False):
         return False, None
 
-    tpc_allowed_scales = {1, 10, 30, 100, 300, 1000, 3000, 10000, 30000, 100000}
+    from benchbox.core.run_service import official_scale_points
+
+    tpc_allowed_scales = {int(point) for point in official_scale_points(benchmark_id.lower())}
 
     if scale_factor not in tpc_allowed_scales:
         console.print(f"\n[yellow]⚠️  Scale factor {scale_factor} is not a TPC-specified scale factor.[/yellow]")
