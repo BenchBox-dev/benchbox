@@ -39514,6 +39514,13 @@
       "status": "done",
       "title": "Site deploy refused a core bundle because its validator_parity range did not start at the deployed commit"
     },
+    "site-doc-rows-labelled-not-comparable-owner-decision-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Owner decision: documented scales labelled 'not comparable' on the site instead of being made standard"
+    },
     "site-docs-automatic-pseudonym-salt": {
       "claim": null,
       "needs": [
