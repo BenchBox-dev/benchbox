@@ -39518,7 +39518,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Owner decision: documented scales labelled 'not comparable' on the site instead of being made standard"
     },
     "site-docs-automatic-pseudonym-salt": {
