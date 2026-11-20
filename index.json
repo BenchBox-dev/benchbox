@@ -41770,6 +41770,13 @@
       "status": "done",
       "title": "SQLite: NYC Taxi query failures and four timeouts in release UAT"
     },
+    "ssb-and-primitives-sf100-generation-validation-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Validate SSB and the primitives generators at SF 100, or record an owner-approved narrowing"
+    },
     "ssb-dataframe-row-count-validation-20261016": {
       "claim": null,
       "needs": [],
