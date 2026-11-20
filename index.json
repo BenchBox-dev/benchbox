@@ -39559,7 +39559,9 @@
     },
     "site-next-tpcdi-page-tradetype-and-market-history-text-20261120": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "tpcdi-factmarkethistory-row-count-cause-20261120"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Correct the TPC-DI differences text on the site's next branch"
