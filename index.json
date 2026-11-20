@@ -44592,7 +44592,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "TPC-DI queries AQ9 and VQ6 return no rows in the nine seed-run bundles (SF 0.01, 0.1, 1 on three engines)"
     },
     "tpcdi-remaining-spec-differences-20261112": {
