@@ -40864,15 +40864,10 @@
       "title": "Automated SQLGlot adoption cannot land a release that changes any golden-corpus output"
     },
     "sqlglot-adoption-full-translation-diff-20261119": {
-      "claim": {
-        "expires_at": "2026-11-21T01:21:42Z",
-        "generation": "3f903e49c90b42d4bf928ba18f15cd5f",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "SQLGlot adoption does not report translated-SQL changes for platforms the execution gate never runs"
     },
     "sqlglot-bundled-import-startup-cost": {
