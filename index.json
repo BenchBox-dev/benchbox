@@ -43312,15 +43312,10 @@
       "title": "Theseus infra: root-name error hint and gateway namespace test"
     },
     "theseus-infra-setup-and-rotate-20261115": {
-      "claim": {
-        "expires_at": "2026-11-21T19:31:35Z",
-        "generation": "5bed32ecb68b4b34b6572c13cdeaf367",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1125961d008304f6050893ef"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Theseus: `theseus infra setup` and `theseus infra rotate` recreate and rotate a consumer's review infrastructure without manual steps"
     },
     "theseus-infra-tailscale-error-message-20261119": {
