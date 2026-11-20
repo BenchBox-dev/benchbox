@@ -38142,18 +38142,13 @@
       "title": "Measure why CI first-pass green fell to about 47% and bring threshold changes to the owner"
     },
     "rv2r-11-loop-metrics-dashboard": {
-      "claim": {
-        "expires_at": "2026-11-21T00:33:07Z",
-        "generation": "0997c8252dae410ca8c88eeb2fce08c5",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a"
-      },
+      "claim": null,
       "needs": [
         "rv2r-02-trunk-uat-nightly",
         "rv2r-04-uat-rubric-automation"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Publish a weekly dev-loop dashboard against the dev-loop v2 targets and baseline"
     },
     "rv2r-12-workflow-consolidation": {
