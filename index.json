@@ -23000,15 +23000,10 @@
       "title": "Remove or rename the duplicate small_scale_factor fixture"
     },
     "duration-gate-redesign-prs-owner-decision-20261120": {
-      "claim": {
-        "expires_at": "2026-11-21T15:13:57Z",
-        "generation": "6d9b9e47281d41bdb1a08ac1fa2f5410",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Owner decision: close the duration-gate redesign pull requests #4384 and #4385 and delete the normalizer branch"
     },
     "duration-refresh-workflow-closes-superseded-prs-20261110": {
