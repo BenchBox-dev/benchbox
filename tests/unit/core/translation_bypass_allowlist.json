@@ -501,9 +501,10 @@
     }
   },
   "tpcds": {
-    "reason": "Rewrite-only paths that apply sqlglot rewrites without translate_sql_query: Q90 nullif_zero_divisors on every dialect, ClickHouse alias/exists/qualify rewrites (10, 35, 47, 57, 66), Postgres inline_order_by_aliases (36, 70, 86). Pre-existing behavior, kept verbatim.",
+    "reason": "Rewrite-only paths that apply sqlglot rewrites without translate_sql_query: Q75 and Q90 nullif_zero_divisors on every dialect, ClickHouse alias/exists/qualify rewrites (10, 35, 47, 57, 66), Postgres inline_order_by_aliases (36, 70, 86).",
     "dialects": {
       "bigquery": [
+        "75",
         "90"
       ],
       "clickhouse": [
@@ -512,36 +513,46 @@
         "47",
         "57",
         "66",
+        "75",
         "90"
       ],
       "databricks": [
+        "75",
         "90"
       ],
       "datafusion": [
+        "75",
         "90"
       ],
       "doris": [
+        "75",
         "90"
       ],
       "duckdb": [
+        "75",
         "90"
       ],
       "postgres": [
         "36",
         "70",
+        "75",
         "86",
         "90"
       ],
       "snowflake": [
+        "75",
         "90"
       ],
       "spark": [
+        "75",
         "90"
       ],
       "sqlite": [
+        "75",
         "90"
       ],
       "starrocks": [
+        "75",
         "90"
       ]
     }
