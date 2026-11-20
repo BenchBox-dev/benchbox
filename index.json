@@ -33746,10 +33746,15 @@
       "title": "Find who writes to the primary clone and stop them now that the dirty guard blocks commits"
     },
     "primary-clone-ignored-blog-skill-copy-stale-20261118": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-21T03:50:41Z",
+        "generation": "2f1b01d00a434039b7d121e701eb2278",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:50738e5478443e60088712f6"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "The primary clone's git-ignored .claude/skills/blog copy is from 2026-10-01 and the stale-mirror report does not check it"
     },
     "primary-clone-override-env-silences-guard-20261117": {
