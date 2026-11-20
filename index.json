@@ -27009,7 +27009,9 @@
     },
     "interactive-official-mode-offers-sf30-for-tpcds-20261120": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-fix-tpcds-scale-error-reporting-20261120"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Interactive official mode offers scale factor 30 for TPC-DS"
