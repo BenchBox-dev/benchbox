@@ -36134,7 +36134,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "release-v2 probe runs the PR head's launch script under the merge ref's token permissions, so branches older than #4390 get 403"
+      "title": "release-v2 probe runs the PR head's launch script under the merge ref's token, so a head older than its base's #4390 gets 403"
     },
     "relocate-cli-hook-registries": {
       "claim": null,
