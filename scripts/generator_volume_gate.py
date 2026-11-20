@@ -32,6 +32,7 @@ PURE_PYTHON_GENERATORS: dict[str, tuple[str, ...]] = {
         "benchbox/core/coffeeshop/generator.py",
         "benchbox/core/coffeeshop/generator_specs.yaml",
         "benchbox/data/coffeeshop/*",
+        "benchbox/utils/coffeeshop_seed_loader.py",
     ),
     "tsbs_devops": (
         "benchbox/core/tsbs_devops/generator.py",

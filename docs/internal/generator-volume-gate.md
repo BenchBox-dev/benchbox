@@ -17,7 +17,8 @@ fires on the `generator/` package, `source_generators.py`, `scaling.py` (the
 row-count formula) and `financial_data.py`; for vector_search on
 `benchmark.py`, which sets the default vector width; and for both primitives
 benchmarks on `benchbox/core/primitives/generator_base.py`, which generates
-their data; for coffeeshop on the seed files under `benchbox/data/coffeeshop/`;
+their data; for coffeeshop on the seed files under `benchbox/data/coffeeshop/`
+and on `benchbox/utils/coffeeshop_seed_loader.py`, which reads them;
 for tsbs_devops on `benchbox/core/tsbs_devops/schema.py` (table order and
 schema); and for joinorder_synthetic on `benchbox/core/joinorder/schema.py`.
 It also fires on `tests/unit/generators/sf1_size_baseline.json`:
@@ -74,7 +75,7 @@ the diff and the baseline are read from.
   covered.
 - Shared modules a generator imports (`benchbox/utils/` helpers such as
   `cloud_storage.py`, `compression_mixin.py`, `arrow_rows.py`,
-  `datagen_manifest.py`, `coffeeshop_seed_loader.py`, and
+  `datagen_manifest.py`, and
   `benchbox/core/manifest_utils.py`) are not gated: they serve many
   benchmarks, and a change there does not run this job.
 - DuckDB completing at SF 1 says nothing about Spark, DataFusion or other
