@@ -4,7 +4,7 @@
     "release-guide.md maintenance steps state the rule.",
     "A line PR that changes benchbox/_vendor/sqlglot.json together with other changes is refused, or follows the chosen path."
   ],
-  "context": "Owner decision 2026-11-19 (choice dialog): (a)+(b). Maintenance lines are exempt from the upstream freshness gate and keep the tag's wheel; a line takes a newer wheel only through its own adoption PR carrying the translation report (sqlglot-adoption-full-translation-diff-20261119). Security advisories stay enforced on lines.",
+  "context": "Owner decision 2026-11-19 (choice dialog): (a)+(b). Maintenance lines are exempt from the upstream freshness gate and keep the tag's wheel; a line takes a newer wheel only through its own adoption PR carrying the translation report (sqlglot-adoption-full-translation-diff-20261119). Security advisories stay enforced on lines.\n\n2026-11-20 done: #4398 merged (86c7fe8e). The upstream-freshness check is skipped on release/X.Y.x lines while the advisory check stays enforced; a CI guard refuses a line PR that changes benchbox/_vendor/sqlglot.json together with non-adoption files; release-guide documents both, with tests for the line rule.",
   "description": "scripts/check_sqlglot_upstream_freshness.py (run by release_flow.py check) fails any release whose bundled SQLGlot is older than the newest upstream tag unless scripts/sqlglot_refresh_waiver.json holds a waiver (31 days at most). #4303 (StarRocks evidence backport and 0.5.2rc2 prep) therefore moved release/0.5.x from 30.31.0.1 to 30.33.0.1, as its body says the freshness check requires. That brought 9 translated-query changes, including the QuestDB 18_v10 break that failed rc2 (release-v2 44189388601), into a patch release, and bundled the wheel change into a fix and prep PR. This contradicts release-guide's aim to ship a fix on an older minor without shipping everything on develop.\n\nDecision gate (owner): (a) maintenance lines are exempt from freshness and keep the tag's wheel; (b) lines adopt only through a separate adoption PR carrying the translation report from sqlglot-adoption-full-translation-diff-20261119; (c) lines use a recorded, dated waiver.\n\nGuardrails: no silent waiver; no wheel change bundled into a fix or prep PR; develop's freshness gate unchanged; security advisories still enforced on lines.",
   "links": [
     "scripts/check_sqlglot_upstream_freshness.py",
@@ -27,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "b2feea6fd2c94daf9592419f03b7fd38",
+      "session_id": "ad8ff63c31d0492faa7526a81e19db83"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a",
+      "at": "2026-11-20T01:21:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e26056cbc5a944d9819cea0186f42896",
       "session_id": "ad8ff63c31d0492faa7526a81e19db83"
     }
   ]
