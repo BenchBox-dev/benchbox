@@ -2,7 +2,7 @@
 
 ## Question
 
-How does Polars 2.0.0 perform against earlier 1.x releases on the four BenchBox DataFrame benchmarks, separately for each collect engine?
+How do Polars 2.0.0 and 2.1.0 perform against earlier 1.x releases on the four BenchBox DataFrame benchmarks, separately for each collect engine?
 
 ## Measured configurations
 
@@ -10,20 +10,31 @@ How does Polars 2.0.0 perform against earlier 1.x releases on the four BenchBox 
 |---|---|
 | Platform | `polars-df` (DataFrame API, Parquet input) |
 | Benchmarks | TPC-H, TPC-DS, SSB, ClickBench at scale factor 10 |
-| Versions | 1.31.0, 1.35.2, 1.40.1, 1.44.2, 2.0.0 |
+| Versions | 1.31.0, 1.35.2, 1.40.1, 1.44.2, 2.0.0, 2.1.0 |
 | Setup A | each version's default `collect()` (`--execution-engine default`) |
-| Setup B | in-memory engine (`--execution-engine in-memory`), 2.0.0 only |
-| Setup C | streaming engine (`--execution-engine streaming`), 1.31.0, 1.40.1, 1.44.2, 2.0.0 |
+| Setup B | in-memory engine (`--execution-engine in-memory`), 2.0.0 and 2.1.0 |
+| Setup C | streaming engine (`--execution-engine streaming`), 1.31.0, 1.40.1, 1.44.2, 2.0.0, 2.1.0 |
 | Threads | `POLARS_MAX_THREADS=10` |
 | Rechunk | off (`rechunk=false`) |
-| Rounds | 3, one invocation per cell per round, cell order shuffled each round (seed 20261009) |
+| Rounds | 3, one invocation per cell per round, cell order shuffled each round (seed 20261119) |
 | Per invocation | one warm-up pass and one measured pass per query (`--iterations 1`), tuning `notuning` |
-| Code | BenchBox commit `ecd08a9f0`, same for every run |
-| Host | Apple M4, 10 cores, 16 GiB, on mains power, `caffeinate -dims` |
+| Code | BenchBox commit `82e76af81`, same for every run |
+| Host | Apple M4, 10 cores, 16 GiB, macOS 27.0.1, Python 3.12.15, on mains power |
+| Run | 2026-11-20 01:16 to 02:36 UTC, 156 runs |
 
-The default engine differs by version: 1.x collects in memory; 2.0.0 collects with the streaming engine. Setup B on 2.0.0 is therefore compared with 1.44.2 setup A (both in-memory). 1.35.2 is not in setup C. In the preliminary probe, the TPC-DS cross-surface check at scale factor 0.01 (BenchBox's Polars DataFrame queries against DuckDB SQL) failed for 1.35.2 on the streaming engine, in the first run and in a repeat: queries 5, 14 and 27 returned NULL in an ORDER BY key column near the end of the result, and query 67 returned NULL in four columns of its first row, where the SQL result has values. The probe did not determine whether Polars or the BenchBox DataFrame query code causes this. The same version passed the check with the default and in-memory engines. Versions 1.0.0, 1.12.0 and 1.22.0 were dropped after the probe: 1.0.0 has no `engine` argument and panicked, 1.12.0 returned a mismatching TPC-DS query 51, and 1.22.0 failed TPC-DS queries 51 and 87. Polars 1.35 and later load their native code from a separate runtime package; the package and its version are recorded in each result bundle.
+The default engine differs by version: 1.x collects in memory; 2.x collects with the streaming engine. Setup B is therefore compared with 1.44.2 setup A (both in-memory).
 
-The 2026-10-09 result bundles were recorded under the earlier Polars `engine` option name and map to the same requested values (`default`, `in-memory`, and `streaming`).
+1.35.2 is not in setup C. In the probe for the 2026-10-09 matrix, the TPC-DS cross-surface check at scale factor 0.01 (BenchBox's Polars DataFrame queries against DuckDB SQL) failed for 1.35.2 on the streaming engine, in the first run and in a repeat: queries 5, 14 and 27 returned NULL in an ORDER BY key column near the end of the result, and query 67 returned NULL in four columns of its first row, where the SQL result has values. That probe did not determine whether Polars or the BenchBox DataFrame query code causes this. The setup was not re-probed for this run. Versions 1.0.0, 1.12.0 and 1.22.0 were dropped after that probe: 1.0.0 has no `engine` argument and panicked, 1.12.0 returned a mismatching TPC-DS query 51, and 1.22.0 failed TPC-DS queries 51 and 87. Polars 1.35 and later load their native code from a separate runtime package; the package and its version are recorded in each result bundle.
+
+A previous run of this matrix on 2026-10-09 (five versions, 120 runs, BenchBox commit `ecd08a9f0`) is superseded by this one. Its default-engine headline (2.0.0 against 1.44.2) agreed with this run to within 2.1 percentage points on every benchmark.
+
+## Qualification
+
+`qualification.json` in this directory is the qualification file the runner and analyzer require; the spec pins its SHA-256.
+
+- Eligibility. Before the matrix, every version and engine in the spec was run through the cross-surface value gate (`benchbox.core.equivalence.cross_surface`) for each benchmark, at BenchBox commit `3fb12d844`. The commits from there to the run commit `82e76af81` change only the matrix spec, its tests and dry-run fixture, `.gitattributes` and this qualification file, so the gate and the query code are the same as in the run. The gate compares the Polars DataFrame results with DuckDB SQL results on the values, not only the row counts, at its own scale factor: 0.01 for TPC-H and TPC-DS, 0.1 for SSB and ClickBench. It checks returned order where the SQL has an ORDER BY, and compares rows as a set where it does not. All 52 rows are clean. ClickBench was gated with its default backends, because its classified query 18 exception (LIMIT 10 with no ORDER BY, so any ten groups are valid) is accepted only when the pandas cell also runs.
+- Reference row counts. One DuckDB SQL power run per benchmark at scale factor 10, on data generated at `3fb12d844`, gives the row count of every query. They match the reference used for the 2026-10-09 matrix on all 207 queries.
+- Known divergence. TPC-DS query 41 returns 10 rows on Polars against 12 on DuckDB at scale factor 10. It was rechecked on 1.44.2 and 2.1.0 at `3fb12d844` for this run.
 
 ## Timing
 
@@ -31,30 +42,37 @@ A cell total is the sum of per-query wall times of the measured pass, in seconds
 
 ## Comparisons and candidate movers
 
-Baselines: the reference version 1.44.2 in the same setup (and, for setup B, in setup A), and the oldest version in the setup. A comparison is a candidate mover when the median change is at least 10% and the min-max ranges of the two cells do not overlap. Candidates are leads for follow-up, not significance findings; three rounds are too few for a test, and the number of comparisons is reported with the results.
+The analyzer compares each cell with the reference version 1.44.2 in the same setup (and, for setup B, in setup A), and with the oldest version in the setup. A comparison is a candidate mover when the median change is at least 10% and the min-max ranges of the two cells do not overlap. Candidates are leads for follow-up, not significance findings: three rounds are too few for a test, and the number of comparisons is reported with the results. The analyzer compares common-query totals, which leave out TPC-DS query 41; for the other benchmarks they equal the full totals.
+
+Comparisons between 2.1.0 and 2.0.0, and between 1.44.2 streaming and 1.44.2 default, are not analyzer frames. `findings.md` computes them from the cell medians and ranges with the same rule and marks them as computed.
 
 ## Correctness rule
 
-A run is reported only when all of these hold: the installed Polars version, requested engine and `rechunk` setting recorded in the result match the cell; the run's own validation passed, or it was inconclusive and the preliminary qualification evidence for that version, setup and benchmark is clean; no measured query failed; the measured query set equals the reference set; and every query's row count equals the DuckDB SQL reference recorded for the scale factor (TPC-DS query 41 is the one known exception, with 10 rows on Polars against 12 on DuckDB on every version tested; it stays in full-suite totals and is excluded from the common-query totals, with the 10-row count still required). A cell is reported only when all three rounds satisfy the rule. Value-level agreement was checked at scale factor 0.1 per version and setup; at scale factor 10 only row counts were checked.
+A run is reported only when all of these hold: the installed Polars version, requested engine and `rechunk` setting recorded in the result match the cell; the run's own validation passed, or it was inconclusive and the qualification evidence for that version, setup and benchmark is clean; no measured query failed; the measured query set equals the reference set; and every query's row count equals the reference, apart from the known divergence above, whose 10-row count is still required. TPC-DS query 41 stays in full-suite totals and is left out of common-query totals. A cell is reported only when all three rounds satisfy the rule. At scale factor 10 only row counts were checked.
 
 ## Resource rules
 
-Three rules mark a cell `resource-policy-exceeded`. They are described here as the runner at `ecd08a9f0` applied them.
+Three rules mark a run `resource-policy-exceeded`. They are described here as the runner applied them.
 
-- Host safety monitor. This is the only rule that stops a run. It trips when memory pressure is at the critical level on three consecutive checks, or when host swap-out growth passes 6 GiB. The runner checks on every fifth 1-second sample, so a run can pass the limit before it is stopped: the largest swap growth recorded was 10.4 GiB.
-- Swap limit, 1 GiB. Applied after the run ends. Swap growth is the change in the `Swapouts` counter of `vm_stat`, which counts the whole host, so swap caused by any other process counts against the cell.
-- Memory limit, 14 GiB. Applied after the run ends, to the peak of resident set size summed over the process tree and sampled once a second. Resident set size on macOS leaves out pages that have been swapped out or compressed. The largest reading was 8.431 GiB, in a cell whose runs swapped out up to 10.4 GiB, so this limit was never exceeded and did not constrain any run.
+- Host safety monitor. This is the only rule that stops a run. It trips when memory pressure is at the critical level on three consecutive checks, or when host swap-out growth passes 6 GiB. The runner checks on every fifth 1-second sample, so a run can pass the limit before it is stopped.
+- Swap limit, 1 GiB. Applied after the run ends. Swap growth is the change in the `Swapouts` counter of `vm_stat`, which counts the whole host, so swap caused by any other process counts against the run.
+- Memory limit, 14 GiB. Applied after the run ends, to the peak of resident set size summed over the process tree and sampled once a second. Resident set size on macOS leaves out pages that have been swapped out or compressed. The largest reading was 8.865 GiB, so this limit was never exceeded.
 
-A run that exceeds 1800 s is stopped. Runs that exit with an error are `execution-failure`. All of these cells are listed rather than imputed.
+A run that exceeds 1800 s is stopped. A run that exits with an error is `execution-failure`. All of these cells are listed rather than imputed.
+
+Two host guards outside the runner also applied. The matrix ran under the BenchBox heavy-work lock, whose watchdog was set to warn rather than stop for this run. The host's heavy-work sentinel runs separately in kill mode: when memory pressure is critical and BenchBox processes together pass its 8 GiB budget, it sends SIGTERM to the largest. It stopped eight TPC-DS runs this way; they are recorded as `execution-failure` with exit code 143. Every one had already passed the 1 GiB swap limit when it was stopped (swap growth 1.98 to 7.50 GiB), and the swap-out counter only grows, so each would have been ruled out by the swap limit had it finished. The sentinel therefore changed how those runs are labelled, not which cells qualified. For TPC-DS 1.40.1 default (A), all three rounds were stopped by the sentinel, so this is the only basis for that cell's outcome (see `findings.md`).
+
+## Spill
+
+Each run had its own `POLARS_TEMP_DIR` and its own process temporary directory (`TMPDIR`). Spill is the size of the first plus any `polars-*/spill` directory under the second, where Polars writes out-of-core spill files, sampled every second and once after the run. The 2026-10-09 matrix measured only `POLARS_TEMP_DIR`, so its reading of zero did not show whether any run spilled.
 
 ## Controls
 
-- The host was quiet before the matrix started: 1-minute load average below 2.0 on three samples one minute apart, no other process above 50% CPU, and normal memory pressure.
 - Data generation and the Parquet conversion ran once before the first measured run. Generator binary hashes and datagen manifest hashes are recorded in the run manifest and were identical across runs.
 - Installed package pins were checked after every run.
-- Free disk, peak resident memory, swap growth and memory pressure were recorded per run.
-- Spilling to disk was not measured. The runner set `POLARS_TEMP_DIR` to a per-cell directory and recorded its size, which was 0.0 GiB in all 120 runs. Polars 2.0.0 enables out-of-core execution by default and writes spill files under the process temporary directory (`{TMPDIR}/polars-{USER}/spill` on macOS), which the runner did not set or sample. A check on 2026-11-12 confirmed this: a streaming sort on 2.0.0, limited with `POLARS_OOC_MEMORY_BUDGET_MB=200`, wrote 1.12 GB under `TMPDIR` and nothing under `POLARS_TEMP_DIR`.
+- Free disk, peak resident memory, swap growth, spill and memory pressure were recorded per run.
+- The host was not idle. Other work on the machine continued during the run, and the 1-minute load average read before each run was 10.8 to 43.1 (median 16.8). Memory pressure before every run was normal (level 1).
 
 ## Limits
 
-See the limits section of `findings.md`. Raw result bundles and the run manifest are not committed.
+See the limits section of `findings.md`. `polars-version-matrix-analysis.json` in this directory is the analyzer output: per-cell medians, ranges, outcomes, reasons, peak RSS and largest swap growth, and every comparison. Per-run details in `findings.md` (exit codes, spill, swap by round, per-run totals and load) come from the run manifest. Raw result bundles and the run manifest are not committed.

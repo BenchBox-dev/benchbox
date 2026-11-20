@@ -1,25 +1,70 @@
 {
   ".claude/commands/blind-spot.md": [
-    "tests/unit/scripts/test_blind_spot_tools.py"
+    "tests/unit/scripts/test_agent_instruction_audit.py",
+    "tests/unit/scripts/test_blind_spot_tools.py",
+    "tests/unit/scripts/test_inert_paths.py"
+  ],
+  ".claude/commands/pr.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py",
+    "tests/unit/scripts/test_inert_paths.py"
   ],
   ".claude/settings.json": [
+    "tests/unit/scripts/test_agent_instruction_audit.py",
+    "tests/unit/scripts/test_coverage_test_selection.py",
+    "tests/unit/scripts/test_inert_paths.py",
+    "tests/unit/test_check_primary_clone_stale.py",
+    "tests/unit/test_primary_clone_write_guard.py"
+  ],
+  ".claude/skills/code/SKILL.md": [
+    "tests/unit/scripts/test_inert_paths.py"
+  ],
+  ".claude/skills/code/references/handoff.md": [
+    "tests/unit/scripts/test_check_untracked_handoffs.py"
+  ],
+  ".claude/skills/shared-change-framework/SKILL.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py"
+  ],
+  ".claude/skills/shared-investigation-framework/SKILL.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py"
+  ],
+  ".claude/skills/shared-review-protocol/SKILL.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py"
   ],
   ".claude/skills/skill-sync.receipt": [
     "tests/integration/worktree/test_batch_skill_delivery.py",
     "tests/unit/scripts/test_skill_sync_ci_policy.py"
   ],
+  ".claude/skills/todo/SKILL.md": [
+    "tests/unit/scripts/test_ci_units.py",
+    "tests/unit/scripts/test_path_filter_decision.py"
+  ],
+  ".claude/skills/todo/references/batch.md": [
+    "tests/unit/scripts/test_path_filter_decision.py"
+  ],
   ".github/PULL_REQUEST_TEMPLATE.md": [
+    "tests/unit/scripts/test_inert_paths.py",
     "tests/unit/test_release_infrastructure.py"
   ],
   ".github/review-guidance.md": [
+    "tests/unit/scripts/test_release_admitted_dist.py",
+    "tests/unit/scripts/test_release_artifact_consumer.py",
+    "tests/unit/scripts/test_release_artifact_execution.py",
+    "tests/unit/scripts/test_release_flow.py",
+    "tests/unit/scripts/test_release_hosted_fetch.py",
+    "tests/unit/scripts/test_release_line_carried_tests.py",
+    "tests/unit/scripts/test_release_maintenance_admission.py",
+    "tests/unit/scripts/test_release_probe_launch.py",
+    "tests/unit/scripts/test_release_releasable.py",
     "tests/unit/scripts/test_review_policy_pin.py"
   ],
   "AGENTS.md": [
     "tests/unit/workflows/test_stacked_pr_base_guard.py"
   ],
   "CHANGELOG.md": [
+    "tests/unit/scripts/test_changelog_fragments.py",
+    "tests/unit/scripts/test_changelog_gate_cli.py",
     "tests/unit/scripts/test_generate_changelog_entry.py",
+    "tests/unit/scripts/test_release_flow.py",
     "tests/unit/test_release_infrastructure.py"
   ],
   "CONTRIBUTING.md": [
@@ -30,9 +75,29 @@
   ],
   "README.md": [
     "tests/unit/cli/test_logo.py",
+    "tests/unit/core/test_benchmark_dependency_errors.py",
     "tests/unit/core/test_platform_registry.py",
     "tests/unit/docs/test_readme_quickstart_installs_what_it_uses.py",
-    "tests/unit/test_release_infrastructure.py"
+    "tests/unit/scripts/test_doc_contracts.py",
+    "tests/unit/scripts/test_docs_ownership.py",
+    "tests/unit/scripts/test_inert_paths.py",
+    "tests/unit/scripts/test_release_flow.py",
+    "tests/unit/scripts/test_release_probe.py",
+    "tests/unit/scripts/test_release_probe_launch.py",
+    "tests/unit/scripts/test_update_version.py",
+    "tests/unit/test_import_isolation.py",
+    "tests/unit/test_release_infrastructure.py",
+    "tests/unit/test_version_management.py",
+    "tests/unit/utils/test_utils_version_management.py"
+  ],
+  "_project/analysis/cross-surface-applicability.md": [
+    "tests/unit/test_cross_surface_applicability.py"
+  ],
+  "_project/analysis/oracle-coverage-map.md": [
+    "tests/unit/test_oracle_coverage_map.py"
+  ],
+  "_project/archive/dev-loop-v2/baseline.md": [
+    "tests/unit/scripts/test_dev_loop_dashboard.py"
   ],
   "_project/audits/results-explorer-hierarchy-usability-data-audit-20260507.md": [
     "tests/unit/explorer/test_results_explorer_audit_manifest.py"
@@ -43,37 +108,182 @@
   "_project/decisions/joinorder-track2-scaling-direction-2026-07-04.md": [
     "tests/unit/core/joinorder_replicated/test_replication_prototype.py"
   ],
+  "_project/notes/phase-2-requests.md": [
+    "tests/unit/scripts/test_ci_units.py"
+  ],
   "_project/release-evidence/README.md": [
     "tests/unit/test_release_infrastructure.py"
+  ],
+  "_project/scripts/prompts/pr_review_followup.md": [
+    "tests/unit/scripts/test_inert_paths.py",
+    "tests/unit/scripts/test_pr_review_followups.py"
+  ],
+  "_project/specs/uat-framework.md": [
+    "tests/unit/scripts/test_guard_messages.py",
+    "tests/unit/scripts/test_uat_loc_bucket_coverage.py"
   ],
   "_sources/tpc-h/PATCHES.md": [
     "tests/unit/scripts/test_comment_cleanup_scope.py"
   ],
+  "benchbox/core/cost/README.md": [
+    "tests/unit/cli/test_shipped_docs_urls.py"
+  ],
+  "benchbox/core/tpchavoc/README.md": [
+    "tests/unit/scripts/test_ci_units.py"
+  ],
+  "benchbox/core/tuning/templates/README.md": [
+    "tests/unit/cli/test_shipped_docs_urls.py"
+  ],
+  "benchbox/core/write_primitives/README.md": [
+    "tests/unit/cli/test_shipped_docs_urls.py"
+  ],
+  "benchbox/utils/VERSION_MANAGEMENT.md": [
+    "tests/unit/core/test_benchmark_dependency_errors.py",
+    "tests/unit/scripts/test_changelog_fragments.py",
+    "tests/unit/scripts/test_doc_contracts.py",
+    "tests/unit/scripts/test_docs_ownership.py",
+    "tests/unit/scripts/test_inert_paths.py",
+    "tests/unit/scripts/test_release_flow.py",
+    "tests/unit/scripts/test_release_probe.py",
+    "tests/unit/scripts/test_release_probe_launch.py",
+    "tests/unit/scripts/test_release_reuse_uat_evidence.py",
+    "tests/unit/scripts/test_update_version.py",
+    "tests/unit/test_import_isolation.py",
+    "tests/unit/test_version_management.py",
+    "tests/unit/utils/test_utils_version_management.py",
+    "tests/unit/workflows/test_release_v2_workflow_reuse_step.py",
+    "tests/unit/workflows/test_trunk_uat_workflow.py"
+  ],
+  "docs/README.md": [
+    "tests/unit/core/test_benchmark_dependency_errors.py",
+    "tests/unit/scripts/test_batch_evidence.py",
+    "tests/unit/scripts/test_batch_finish.py",
+    "tests/unit/scripts/test_batch_integration.py",
+    "tests/unit/scripts/test_batch_member_pr_refusal.py",
+    "tests/unit/scripts/test_doc_contracts.py",
+    "tests/unit/scripts/test_docs_ownership.py",
+    "tests/unit/scripts/test_inert_paths.py",
+    "tests/unit/scripts/test_path_filter_decision.py",
+    "tests/unit/scripts/test_preflight_targets.py",
+    "tests/unit/scripts/test_release_flow.py",
+    "tests/unit/scripts/test_release_probe.py",
+    "tests/unit/scripts/test_release_probe_launch.py",
+    "tests/unit/scripts/test_soundness_manifest.py",
+    "tests/unit/scripts/test_update_version.py",
+    "tests/unit/test_import_isolation.py",
+    "tests/unit/test_version_management.py",
+    "tests/unit/utils/test_utils_version_management.py"
+  ],
+  "docs/agent/README.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py",
+    "tests/unit/scripts/test_path_filter_decision.py"
+  ],
+  "docs/agent/attribution-surfaces.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py",
+    "tests/unit/scripts/test_ci_units.py"
+  ],
+  "docs/agent/audit-evidence-provenance.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py"
+  ],
+  "docs/agent/batch-feature-delivery.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py",
+    "tests/unit/scripts/test_inert_paths.py"
+  ],
+  "docs/agent/batch-tracker-contract.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py"
+  ],
+  "docs/agent/cloud-builder.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py"
+  ],
+  "docs/agent/emergency-merge.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py"
+  ],
+  "docs/agent/handoffs.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py",
+    "tests/unit/scripts/test_check_untracked_handoffs.py",
+    "tests/unit/test_agent_write_preflight.py"
+  ],
+  "docs/agent/heavy-work.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py",
+    "tests/unit/test_lock_refusal_message.py"
+  ],
+  "docs/agent/identity-instruction-boundary.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py",
+    "tests/unit/scripts/test_ci_units.py",
+    "tests/unit/scripts/test_pr_refresh_certification.py"
+  ],
+  "docs/agent/maintainer-bundles.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py"
+  ],
+  "docs/agent/merge-authority.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py",
+    "tests/unit/scripts/test_inert_paths.py"
+  ],
+  "docs/agent/pr-review-evidence.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py"
+  ],
+  "docs/agent/preflight-receipt.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py"
+  ],
+  "docs/agent/primary-clone-guard.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py"
+  ],
+  "docs/agent/primary-clone-update.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py"
+  ],
+  "docs/agent/remote-closeout.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py"
+  ],
   "docs/agent/review-protocol-legacy.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_blind_spot_tools.py"
   ],
   "docs/agent/review-protocol.md": [
-    "tests/unit/scripts/test_blind_spot_tools.py"
+    "tests/unit/scripts/test_agent_instruction_audit.py",
+    "tests/unit/scripts/test_blind_spot_tools.py",
+    "tests/unit/scripts/test_ci_units.py",
+    "tests/unit/scripts/test_inert_paths.py"
   ],
   "docs/agent/todo-review.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_todo_review_own_edit_freshness.py"
   ],
   "docs/internal/adr/adr-independent-publication-authorities.md": [
-    "tests/unit/docs/test_publication_architecture.py"
+    "tests/unit/docs/test_publication_architecture.py",
+    "tests/unit/scripts/test_soundness_manifest.py"
+  ],
+  "docs/internal/adr/adr-published-results-slim-corpus-branch.md": [
+    "tests/unit/scripts/test_soundness_manifest.py"
   ],
   "docs/internal/dev-loop-property-ledger.md": [
-    "tests/unit/test_ledger_coverage.py"
+    "tests/integration/worktree/test_batch_loop_e2e.py",
+    "tests/unit/scripts/test_batch_integration.py",
+    "tests/unit/scripts/test_pr_preflight_base.py",
+    "tests/unit/scripts/test_preflight_receipt.py",
+    "tests/unit/scripts/test_preflight_targets.py",
+    "tests/unit/scripts/test_soundness_manifest.py",
+    "tests/unit/test_ledger_coverage.py",
+    "tests/unit/workflows/test_batch_loop_e2e_workflow.py",
+    "tests/unit/workflows/test_ci_windows_pr_leg.py"
+  ],
+  "docs/internal/dev-loop-worktrees.md": [
+    "tests/unit/scripts/test_inert_paths.py"
   ],
   "docs/internal/hosted-results-planning.md": [
     "tests/unit/docs/test_publication_architecture.py"
   ],
   "docs/internal/independent-publication-contract.md": [
-    "tests/unit/docs/test_publication_architecture.py"
+    "tests/unit/docs/test_publication_architecture.py",
+    "tests/unit/scripts/test_soundness_manifest.py"
   ],
   "docs/internal/independent-publication-threat-model.md": [
-    "tests/unit/docs/test_publication_architecture.py"
+    "tests/unit/docs/test_publication_architecture.py",
+    "tests/unit/scripts/test_soundness_manifest.py"
   ],
   "docs/internal/nightly-t3.md": [
+    "tests/unit/scripts/test_inert_paths.py",
+    "tests/unit/scripts/test_path_filter_decision.py",
+    "tests/unit/scripts/test_soundness_manifest.py",
     "tests/unit/workflows/test_nightly_t3_legacy_ports.py",
     "tests/unit/workflows/test_nightly_t3_report_lifecycle.py"
   ],
@@ -84,23 +294,87 @@
     "tests/unit/test_standardized_test_commands.py"
   ],
   "docs/internal/release-guide.md": [
+    "tests/unit/cli/test_shipped_docs_urls.py",
+    "tests/unit/scripts/test_ci_units.py",
     "tests/unit/scripts/test_generate_changelog_entry.py",
+    "tests/unit/scripts/test_path_filter_decision.py",
     "tests/unit/scripts/test_release_maintenance_admission.py"
   ],
   "docs/internal/repo-admin-settings.md": [
     "tests/unit/release/test_ruleset_drift_review_coverage.py",
+    "tests/unit/scripts/test_agent_instruction_audit.py",
+    "tests/unit/scripts/test_inert_paths.py",
+    "tests/unit/scripts/test_pr_refresh_certification.py",
+    "tests/unit/test_release_infrastructure.py",
     "tests/unit/test_ruleset_drift.py",
     "tests/unit/workflows/test_ci_text_edit_skip.py",
+    "tests/unit/workflows/test_nightly_t3_workflow.py",
     "tests/unit/workflows/test_pr_hold_workflow.py"
   ],
   "docs/internal/results-phase-2-runbook.md": [
-    "tests/unit/docs/test_publication_architecture.py"
+    "tests/unit/docs/test_publication_architecture.py",
+    "tests/unit/scripts/test_soundness_manifest.py"
   ],
   "docs/internal/results-phase-3-runbook.md": [
-    "tests/unit/docs/test_publication_architecture.py"
+    "tests/unit/docs/test_publication_architecture.py",
+    "tests/unit/scripts/test_soundness_manifest.py"
+  ],
+  "docs/publish-allowlist.txt": [
+    "tests/unit/scripts/test_batch_evidence.py",
+    "tests/unit/scripts/test_batch_finish.py",
+    "tests/unit/scripts/test_batch_integration.py",
+    "tests/unit/scripts/test_batch_member_pr_refusal.py",
+    "tests/unit/scripts/test_check_docs_contract_changes.py",
+    "tests/unit/scripts/test_doc_contracts.py",
+    "tests/unit/scripts/test_doc_reference_inventory.py",
+    "tests/unit/scripts/test_docs_ownership.py",
+    "tests/unit/scripts/test_inert_paths.py",
+    "tests/unit/scripts/test_path_filter_decision.py",
+    "tests/unit/scripts/test_preflight_targets.py",
+    "tests/unit/scripts/test_site_inputs.py"
+  ],
+  "docs/publish-exclusions.txt": [
+    "tests/unit/scripts/test_agent_instruction_audit.py",
+    "tests/unit/scripts/test_batch_evidence.py",
+    "tests/unit/scripts/test_batch_finish.py",
+    "tests/unit/scripts/test_batch_integration.py",
+    "tests/unit/scripts/test_batch_member_pr_refusal.py",
+    "tests/unit/scripts/test_check_docs_contract_changes.py",
+    "tests/unit/scripts/test_ci_units.py",
+    "tests/unit/scripts/test_doc_contracts.py",
+    "tests/unit/scripts/test_docs_ownership.py",
+    "tests/unit/scripts/test_inert_paths.py",
+    "tests/unit/scripts/test_path_filter_decision.py",
+    "tests/unit/scripts/test_site_inputs.py"
   ],
   "docs/reference/threat-model.md": [
-    "tests/unit/docs/test_publication_architecture.py"
+    "tests/unit/docs/test_publication_architecture.py",
+    "tests/unit/scripts/test_soundness_manifest.py"
+  ],
+  "results-data/CORPUS_NOTES.md": [
+    "tests/unit/scripts/test_annotate_sql_translator_version.py",
+    "tests/unit/scripts/test_corpus_drift.py",
+    "tests/unit/scripts/test_corpus_drift_canary.py",
+    "tests/unit/scripts/test_inert_paths.py",
+    "tests/unit/test_sync_results_workflow.py"
+  ],
+  "results-data/README.md": [
+    "tests/unit/cli/test_shipped_docs_urls.py",
+    "tests/unit/scripts/test_ci_units.py",
+    "tests/unit/scripts/test_corpus_drift.py",
+    "tests/unit/scripts/test_corpus_drift_canary.py",
+    "tests/unit/scripts/test_preflight_targets.py",
+    "tests/unit/test_sync_results_workflow.py"
+  ],
+  "results-data/SEED_CORPUS_SPEC.md": [
+    "tests/unit/cli/test_shipped_docs_urls.py",
+    "tests/unit/scripts/test_corpus_drift.py",
+    "tests/unit/scripts/test_corpus_drift_canary.py",
+    "tests/unit/test_sync_results_workflow.py"
+  ],
+  "tests/README.md": [
+    "tests/unit/scripts/test_batch_integration.py",
+    "tests/unit/scripts/test_doc_reference_inventory.py"
   ],
   "tests/fixtures/dev_loop_metrics/refresh_audit_sample.md": [
     "tests/unit/scripts/test_dev_loop_pr_metrics.py"

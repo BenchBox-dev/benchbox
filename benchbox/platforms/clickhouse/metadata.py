@@ -168,10 +168,10 @@ class ClickHouseMetadataMixin:
 
     def _collect_local_clickhouse_metadata(self, connection: Any, platform_info: dict[str, Any]) -> None:
         try:
-            result = connection.query("SELECT version()")
-            if result and len(result) > 0:
-                version_line = result.split("\n")[0] if isinstance(result, str) else str(result)
-                platform_info["platform_version"] = version_line.strip()
+            rows = connection.execute("SELECT version()")
+            version = str(rows[0][0]).strip() if rows else ""
+            if version:
+                platform_info["platform_version"] = version
                 platform_info["engine_version"] = platform_info["platform_version"]
                 platform_info["engine_version_source"] = "sql_query"
         except Exception as e:

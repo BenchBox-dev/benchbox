@@ -7,7 +7,6 @@ import pytest
 
 from benchbox.core.tpcds.compliance import (
     OFFICIAL_SCALE_POINTS,
-    TPCDS_MAX_SCALE,
     TPCDS_MIN_SUBSCALE,
     TpcdsComplianceClass,
     classify_tpcds_run,
@@ -84,16 +83,11 @@ class TestValidateTpcdsScale:
 
     def test_exceeds_maximum_raises(self):
         with pytest.raises(ValueError, match="exceeds maximum"):
-            validate_tpcds_scale(TPCDS_MAX_SCALE + 1)
+            validate_tpcds_scale(100001.0)
 
-    def test_maximum_is_pinned_to_the_largest_scale_query_9_generates(self):
-        assert TPCDS_MAX_SCALE == 3000.0
-        assert validate_tpcds_scale(TPCDS_MAX_SCALE) is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
-
-    @pytest.mark.parametrize("scale_factor", [10000.0, 30000.0, 100000.0])
-    def test_scales_where_dsqgen_cannot_generate_query_9_are_refused(self, scale_factor):
-        with pytest.raises(ValueError, match="cannot generate query 9"):
-            validate_tpcds_scale(scale_factor)
+    @pytest.mark.parametrize("scale_factor", [3001.0, 10000.0, 30000.0, 100000.0])
+    def test_scales_above_3000_up_to_the_maximum_are_accepted(self, scale_factor):
+        assert validate_tpcds_scale(scale_factor) is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
 
     def test_official_scale_point_returns_nonstandard_without_official_flag(self):
         result = validate_tpcds_scale(1.0)
@@ -210,7 +204,6 @@ class TestOfficialPointsStayRunnable:
             assert validate_tpcds_scale(sf, official=True) is TpcdsComplianceClass.OFFICIAL
 
     @pytest.mark.parametrize("sf", [10000.0, 30000.0, 100000.0])
-    def test_specified_points_above_the_maximum_are_not_offered_as_official(self, sf):
-        assert sf not in OFFICIAL_SCALE_POINTS
-        with pytest.raises(ValueError, match="exceeds maximum"):
-            validate_tpcds_scale(sf, official=True)
+    def test_specified_points_above_3000_are_official(self, sf):
+        assert sf in OFFICIAL_SCALE_POINTS
+        assert validate_tpcds_scale(sf, official=True) is TpcdsComplianceClass.OFFICIAL

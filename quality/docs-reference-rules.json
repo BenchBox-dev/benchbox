@@ -133,6 +133,7 @@
       "match": [
         ".github/ci-units.yml",
         ".github/inert-paths.txt",
+        "_project/inert-doc-readers.json",
         ".github/soundness-paths.txt",
         ".github/path-filters.yml",
         ".pre-commit-config.yaml",
