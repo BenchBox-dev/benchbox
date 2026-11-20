@@ -26155,7 +26155,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "blocked",
+      "status": "open",
       "title": "Owner decisions for the heavy-work guard pull request #4331"
     },
     "heavy-guard-4331-review-repairs-20261120": {
