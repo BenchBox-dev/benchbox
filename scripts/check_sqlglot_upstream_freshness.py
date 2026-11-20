@@ -19,9 +19,14 @@ CLI_DESCRIPTION = (
     "release tags of the upstream repository, and fails when a newer tag exists. A newer\n"
     "tag is accepted only when scripts/sqlglot_refresh_waiver.json carries an unexpired,\n"
     "reasoned waiver for exactly that tag. An unreachable upstream also fails the gate.\n"
+    "\n"
+    "A release/X.Y.x maintenance line (--line) is exempt: it keeps the wheel of its release\n"
+    "tag and takes a newer one only through its own adoption pull request.\n"
 )
 
 UPSTREAM_REPOSITORY = "https://github.com/tobymao/sqlglot"
+DEVELOPMENT_LINE = "develop"
+MAINTENANCE_LINE = re.compile(r"release/[0-9]+\.[0-9]+\.x")
 PIN_PATH = Path("benchbox/_vendor/sqlglot.json")
 WAIVER_PATH = Path("scripts/sqlglot_refresh_waiver.json")
 MAX_WAIVER_DAYS = 31
@@ -110,7 +115,15 @@ def evaluate(pin: Mapping[str, Any], tags: Mapping[str, str], waivers: Any, toda
     return [*problems, message]
 
 
-def check(root: Path, lister: TagLister | None = None, today: date | None = None) -> list[str]:
+def line_exempt(line: str | None) -> bool:
+    return line is not None and MAINTENANCE_LINE.fullmatch(line) is not None
+
+
+def check(root: Path, lister: TagLister | None = None, today: date | None = None, line: str | None = None) -> list[str]:
+    if line is not None and line != DEVELOPMENT_LINE and not line_exempt(line):
+        return [f"{line!r} is neither {DEVELOPMENT_LINE!r} nor a release/X.Y.x maintenance line"]
+    if line_exempt(line):
+        return []
     pin = load_json(root / PIN_PATH)
     waivers = load_json(root / WAIVER_PATH).get("waivers")
     try:
@@ -123,13 +136,17 @@ def check(root: Path, lister: TagLister | None = None, today: date | None = None
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=CLI_DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", type=Path, default=REPO_ROOT)
+    parser.add_argument("--line", help="Protected line of the checkout: develop or a release/X.Y.x maintenance line")
     arguments = parser.parse_args(argv)
-    problems = check(arguments.root)
+    problems = check(arguments.root, line=arguments.line)
     if problems:
         print("sqlglot upstream freshness FAILED:", file=sys.stderr)
         for problem in problems:
             print(f"  - {problem}", file=sys.stderr)
         return 1
+    if line_exempt(arguments.line):
+        print(f"sqlglot upstream freshness SKIPPED: {arguments.line} keeps the wheel of its release tag")
+        return 0
     print("sqlglot upstream freshness OK: bundled runtime is on the newest upstream release or an approved waiver")
     return 0
 

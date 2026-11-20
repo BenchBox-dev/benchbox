@@ -72,11 +72,224 @@ def test_user_facing_titles_touching_shipped_paths_need_a_fragment(tmp_path: Pat
         "ci: tune a thing",
         "refactor: reshape a thing",
         "chore: tidy a thing",
-        'Revert "feat: add a thing"',
     ],
 )
 def test_internal_titles_touching_shipped_paths_need_no_fragment(tmp_path: Path, title: str) -> None:
     assert _check(tmp_path, title, [SHIPPED]).returncode == 0
+
+
+REVERT_TITLES = ['Revert "fix: runner value" (#5)', "revert: undo the runner value"]
+FRAGMENT_JSON = '{"schema": 1, "entries": [{"category": "fixed", "text": "Fixed the runner value."}]}\n'
+
+
+def _git(repo: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", *args],
+        cwd=repo,
+        capture_output=True,
+        encoding="utf-8",
+        check=True,
+    ).stdout.strip()
+
+
+def _write(repo: Path, path: str, text: str) -> None:
+    (repo / path).parent.mkdir(parents=True, exist_ok=True)
+    (repo / path).write_text(text, encoding="utf-8")
+
+
+def _revert_gate(
+    repo: Path,
+    title: str,
+    *,
+    culprit_fragment: bool = True,
+    released: bool = False,
+    delete_own_fragment: bool = True,
+    unrelated_deletion: bool = False,
+    extra_path: bool = False,
+    trailer: bool = True,
+    new_fragment: bool = False,
+    revert_content: str = "VALUE = 1\n",
+    cites_unrelated: bool = False,
+    dangling_own_fragment: bool = False,
+) -> subprocess.CompletedProcess[str]:
+    _git(repo, "init", "-q", "-b", "develop")
+    _write(repo, "pyproject.toml", '[project]\nname = "x"\nversion = "1.0.0"\n')
+    _write(repo, "benchbox/core/runner.py", "VALUE = 1\n")
+    _write(repo, "benchbox/core/other.py", "OTHER = 1\n")
+    _write(repo, "changelog.d/other-change.json", FRAGMENT_JSON)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "base")
+    first = _git(repo, "rev-parse", "HEAD")
+    _write(repo, "benchbox/core/runner.py", "VALUE = 2\n")
+    if culprit_fragment:
+        _write(repo, "changelog.d/fix-runner.json", FRAGMENT_JSON)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "fix: runner value (#5)")
+    culprit = _git(repo, "rev-parse", "HEAD")
+    if released and culprit_fragment:
+        _git(repo, "rm", "-q", "changelog.d/fix-runner.json")
+        _git(repo, "commit", "-q", "-m", "chore(release): fold fragments")
+    base = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "checkout", "-q", "-b", "revert")
+    _write(repo, "benchbox/core/runner.py", revert_content)
+    if culprit_fragment and not released and delete_own_fragment:
+        _git(repo, "rm", "-q", "changelog.d/fix-runner.json")
+    if dangling_own_fragment:
+        (repo / "changelog.d/fix-runner.json").unlink()
+        (repo / "changelog.d/fix-runner.json").symlink_to(repo / "missing-target")
+    if unrelated_deletion:
+        _git(repo, "rm", "-q", "changelog.d/other-change.json")
+    if extra_path:
+        _write(repo, "benchbox/core/other.py", "OTHER = 2\n")
+    if new_fragment:
+        _write(repo, "changelog.d/revert-entry.json", FRAGMENT_JSON)
+    _git(repo, "add", "-A")
+    cited = first if cites_unrelated else culprit
+    message = ["-m", "Revert subject"] + (["-m", f"This reverts commit {cited}."] if trailer else [])
+    _git(repo, "commit", "-q", *message)
+    (repo / "changed.txt").write_text(
+        _git(repo, "diff", "--name-only", "--no-renames", "--diff-filter=ACDMRT", f"{base}...HEAD") + "\n",
+        encoding="utf-8",
+    )
+    (repo / "added.txt").write_text(
+        _git(repo, "diff", "--name-only", "--diff-filter=A", f"{base}...HEAD") + "\n", encoding="utf-8"
+    )
+    return subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--root",
+            str(repo),
+            "required",
+            "--title",
+            title,
+            "--manifest",
+            str(MANIFEST),
+            "--changed-files-from",
+            str(repo / "changed.txt"),
+            "--added-files-from",
+            str(repo / "added.txt"),
+            "--release-base-sha",
+            base,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+@pytest.mark.parametrize("title", REVERT_TITLES)
+@pytest.mark.parametrize(
+    ("options", "status"),
+    [
+        ({}, 0),
+        ({"culprit_fragment": False}, 0),
+        ({"delete_own_fragment": False}, 1),
+        ({"unrelated_deletion": True, "delete_own_fragment": False}, 1),
+        ({"unrelated_deletion": True, "culprit_fragment": False}, 1),
+        ({"extra_path": True}, 1),
+        ({"released": True}, 1),
+        ({"released": True, "new_fragment": True}, 0),
+        ({"trailer": False}, 1),
+        ({"trailer": False, "culprit_fragment": False}, 1),
+        ({"revert_content": "VALUE = 3\n"}, 1),
+        ({"revert_content": "VALUE = 3\n", "culprit_fragment": False}, 1),
+        ({"revert_content": "VALUE =  1\n", "culprit_fragment": False}, 1),
+        ({"cites_unrelated": True}, 1),
+        ({"cites_unrelated": True, "culprit_fragment": False}, 1),
+    ],
+)
+def test_a_revert_is_decided_by_the_commit_it_reverts(
+    tmp_path: Path, title: str, options: dict[str, object], status: int
+) -> None:
+    result = _revert_gate(tmp_path, title, **options)
+    assert result.returncode == status, result.stdout + result.stderr
+
+
+def test_a_trunk_revert_of_a_change_that_added_a_fragment_passes_the_gate(tmp_path: Path) -> None:
+    _git(tmp_path, "init", "-q", "-b", "develop")
+    _write(tmp_path, "pyproject.toml", '[project]\nname = "x"\nversion = "1.0.0"\n')
+    _write(tmp_path, "benchbox/core/runner.py", "VALUE = 1\n")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-q", "-m", "base")
+    _write(tmp_path, "benchbox/core/runner.py", "VALUE = 2\n")
+    _write(tmp_path, "changelog.d/fix-runner.json", FRAGMENT_JSON)
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-q", "-m", "fix: runner value (#5)")
+    culprit = _git(tmp_path, "rev-parse", "HEAD")
+    _git(tmp_path, "checkout", "-q", "-b", "fix/revert-5")
+    _git(tmp_path, "revert", "--no-edit", culprit)
+    subject = 'Revert "fix: runner value" (#5)'
+    _git(tmp_path, "commit", "-q", "--amend", "-m", subject, "-m", f"This reverts commit {culprit}.")
+    changed = _git(tmp_path, "diff", "--name-only", "--no-renames", "--diff-filter=ACDMRT", f"{culprit}...HEAD")
+    assert changed.splitlines() == ["benchbox/core/runner.py", "changelog.d/fix-runner.json"]
+    (tmp_path / "changed.txt").write_text(changed + "\n", encoding="utf-8")
+    (tmp_path / "added.txt").write_text("", encoding="utf-8")
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--root",
+            str(tmp_path),
+            "required",
+            "--title",
+            subject,
+            "--manifest",
+            str(MANIFEST),
+            "--changed-files-from",
+            str(tmp_path / "changed.txt"),
+            "--added-files-from",
+            str(tmp_path / "added.txt"),
+            "--release-base-sha",
+            culprit,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(("reverted", "status"), [(b"VALUE = \xff\n", 0), (b"VALUE = \xfd\n", 1)])
+def test_a_revert_of_non_utf8_text_must_match_byte_for_byte(tmp_path: Path, reverted: bytes, status: int) -> None:
+    runner = tmp_path / SHIPPED
+    _git(tmp_path, "init", "-q", "-b", "develop")
+    _write(tmp_path, "pyproject.toml", '[project]\nname = "x"\nversion = "1.0.0"\n')
+    runner.parent.mkdir(parents=True)
+    runner.write_bytes(b"VALUE = \xff\n")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-q", "-m", "base")
+    runner.write_bytes(b"VALUE = \xfe\n")
+    _git(tmp_path, "commit", "-q", "-am", "refactor: runner value (#5)")
+    culprit = _git(tmp_path, "rev-parse", "HEAD")
+    _git(tmp_path, "checkout", "-q", "-b", "revert")
+    runner.write_bytes(reverted)
+    _git(tmp_path, "commit", "-q", "-am", "Revert subject", "-m", f"This reverts commit {culprit}.")
+    (tmp_path / "changed.txt").write_text(SHIPPED + "\n", encoding="utf-8")
+    (tmp_path / "added.txt").write_text("", encoding="utf-8")
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--root",
+            str(tmp_path),
+            "required",
+            "--title",
+            "revert: undo the runner value",
+            "--manifest",
+            str(MANIFEST),
+            "--changed-files-from",
+            str(tmp_path / "changed.txt"),
+            "--added-files-from",
+            str(tmp_path / "added.txt"),
+            "--release-base-sha",
+            culprit,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == status, result.stdout + result.stderr
 
 
 def _repo_with_version(tmp_path: Path, before: str, after: str) -> str:
@@ -174,3 +387,12 @@ def test_modified_or_deleted_fragments_do_not_satisfy_when_only_added_files_coun
     added.write_text("changelog.d/new.json\n", encoding="utf-8")
     accepted = subprocess.run(args, capture_output=True, text=True, cwd=root)
     assert accepted.returncode == 0, accepted.stderr
+
+
+@pytest.mark.parametrize("title", REVERT_TITLES)
+def test_a_revert_that_leaves_a_dangling_symlink_for_its_fragment_is_refused(tmp_path: Path, title: str) -> None:
+    if sys.platform == "win32":
+        pytest.skip("symlinks need privileges on Windows")
+    result = _revert_gate(tmp_path, title, delete_own_fragment=False, dangling_own_fragment=True)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "leaves the reverted change's fragment" in result.stdout

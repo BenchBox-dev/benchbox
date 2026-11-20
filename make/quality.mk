@@ -129,15 +129,7 @@ SKILL_SYNC ?= tools/skill-sync
 
 .PHONY: skill-sync
 skill-sync:
-	@dry_run=""; \
-	for flag_word in $(MAKEFLAGS); do \
-		case "$$flag_word" in \
-			n|-n|--dry-run|--just-print) dry_run=1; break ;; \
-			-*) ;; \
-			*n*) case "$$flag_word" in *[!a-zA-Z]*) ;; *) dry_run=1; break ;; esac ;; \
-		esac; \
-	done; \
-	if [ -n "$$dry_run" ]; then echo "dry-run (-n): skipping skill-sync"; exit 0; fi; \
+	@$(call PR_LANDING_DRY_RUN_SKIP,skill-sync) \
 	if [ ! -x "$(SKILL_SYNC)" ]; then \
 		echo "skill-sync wrapper not found or not executable at $(SKILL_SYNC); refusing to report success without syncing (override with SKILL_SYNC=path/to/skill-sync)" >&2; \
 		exit 1; \

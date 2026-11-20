@@ -120,6 +120,11 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
 }
 
 MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
+    ("ci.yml", "ci-paths", "Guard SQLGlot adoption on a maintenance line"): (
+        "Hosted check on pull requests into a release/X.Y.x line; it reads the pull request base and body, "
+        "which exist only on the hosted event, and its logic is pinned by "
+        "tests/unit/scripts/test_check_line_sqlglot_adoption.py."
+    ),
     ("ci.yml", "short-checks", "Check user-facing text for contributor references"): (
         "A fast unit test, tests/unit/cli/test_shipped_docs_urls.py, that make test-fast and "
         "pr-preflight already run; the hosted step exists only so Markdown-only changes run it."
