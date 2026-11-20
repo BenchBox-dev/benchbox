@@ -39388,7 +39388,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Owner decision: ratify or revert the astro 7.3.5 to 7.4.12 bump on the site"
     },
     "site-browser-acceptance-ci-20261017": {
