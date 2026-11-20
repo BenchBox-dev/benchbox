@@ -24497,9 +24497,9 @@
     },
     "fast-baseline-4381-keep-or-refresh-owner-decision-20261120": {
       "claim": {
-        "expires_at": "2026-11-21T15:01:54Z",
-        "generation": "a74bd9f09c5f40f28957dd3fa748a133",
-        "renewals": 0,
+        "expires_at": "2026-11-21T15:02:19Z",
+        "generation": "98ee4cdcc6a04a13b9d9f5a5f4220403",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840"
       },
       "needs": [],
