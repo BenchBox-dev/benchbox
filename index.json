@@ -39059,6 +39059,13 @@
       "status": "done",
       "title": "Opt a real server adapter into per-stream INDEPENDENT_CONNECTION so the throughput session seam is used in production"
     },
+    "session-work-20261111-16-inventory-and-review-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Inventory and review the session's work from 11 to 16 November (read-only)"
+    },
     "set-a-ci-loc-budget-guard-that-fails-when-uat-exceeds-the-ag": {
       "claim": null,
       "needs": [],
