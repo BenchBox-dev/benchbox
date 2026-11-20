@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Every `benchbox run` UAT cell passes `--timeout` equal to its limit; the outside kill is at the limit plus 60 seconds.",
+    "A timed-out cell and a hung cell are reported differently, shown by tests and one real local cell."
+  ],
+  "description": "## Problem\nEach UAT cell is killed from outside after `per_cell_timeout_s` (tests/uat/timeouts.py, tests/uat/config.py, default 600). A slow cell leaves no result saying it timed out.\n\n## Owner decision\n\"each cell passes `--timeout` equal to its cell limit, and the outside kill moves to the cell limit plus 60 seconds (the 30-second grace plus a margin). A slow cell then ends with a result that says 'timed out' and exit code 124, and is killed only if BenchBox hangs.\" Source: owner's answer in the choice dialog, 2026-11-20.\n\n## Change\nThe UAT runner adds `--timeout <cell limit>` to each cell's `benchbox run` command and sets the outside kill to the cell limit plus 60 seconds. Exit code 124 is classified as a timeout with the product's own message; an outside kill is classified separately as a hang. Update tests/uat docs and the frozen-config or parity checks that pin the cell command line. Scripts that wrap `benchbox run` in a shell `timeout` (find them; do not assume) are listed in the pull request; change only those that run a single benchmark, and leave CI `timeout-minutes` alone.\n\n## Decision gates\nNo change to which cells run, their limits, or pass and fail rules other than the new timeout classification. No UAT run against live cloud. If a cell's command line cannot take `--timeout` (not a `benchbox run`), leave it and list it.\n\n## Verification rubric\nPass: runner tests show the command carries `--timeout` equal to the cell limit and the outside limit is the cell limit plus 60; a stubbed cell exiting 124 is classified as timeout and one killed from outside as hang; UAT config and parity tests pass; one real local cell through the lock-taking UAT entry point with a deliberately short limit ends with exit 124 and the timed-out result (announce command, maximum runtime, log path and stop condition; `BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs`). `make pr-preflight` exits 0.\n\n## Guardrails (owner, 2026-11-20)\nThe agent never posts a stand-in review, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. Arming: `make pr-arm` once; one more attempt only when the refusal named a cause, the agent reported it and the cause is cleared; never a third without asking; `make pr-rerun` at most once and only for a job that never ran or was cancelled by the runner, never for a test that failed. Review threads: reply, and resolve only after the bot's review of the new head does not raise the finding again. Subagents are read-only. Any limit, default, threshold or label text the owner has not already chosen is shown to the owner before it is committed. No file edit by script; use the edit tool. Do not edit a pull request description while its CI is starting; post a comment. A blocked step stops this item; no workaround. No live cloud run. Heavy work only through `make heavy-run`.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-20T18:19:12Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d4dce51bc71644eab7d2aeaa9546dd8f",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    }
+  ]
+}
