@@ -35514,7 +35514,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Record the deleted raw benchmark run directories and the #4381 authorship change"
     },
     "raw-text-benchmarks-duckdb-source-dialect-20261025": {
