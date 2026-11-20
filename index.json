@@ -39439,10 +39439,15 @@
       "title": "Add SiriusDB (GPU-Native SQL Engine) Platform Adapter"
     },
     "site-astro-7-4-12-bump-owner-ratification-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-21T15:02:32Z",
+        "generation": "492b9f78b7ba4d3fad38ee759c9e8498",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Owner decision: ratify or revert the astro 7.3.5 to 7.4.12 bump on the site"
     },
     "site-browser-acceptance-ci-20261017": {
