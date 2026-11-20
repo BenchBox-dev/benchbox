@@ -38321,6 +38321,15 @@
       "status": "open",
       "title": "Run timeout step 3: cancel remote work on cloud platforms when a run times out"
     },
+    "run-timeout-remove-unused-timers-20261120": {
+      "claim": null,
+      "needs": [
+        "run-timeout-execution-phases-20261120"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Run timeout step 5: remove timers with no caller; plan capture on the deadline; one kill helper"
+    },
     "run-timeout-uat-cells-20261120": {
       "claim": null,
       "needs": [
