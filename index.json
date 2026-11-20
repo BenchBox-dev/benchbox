@@ -24631,6 +24631,13 @@
       "status": "done",
       "title": "DECISION GATE: adopt a wall-clock fast-lane budget once 4 weeks of WS9 duration data exist"
     },
+    "fast-tier-move-slow-tests-to-medium": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Move the slowest fast-tier tests to the medium tier"
+    },
     "feature-agent-docs-operational-facts-20261111": {
       "claim": null,
       "needs": [],
