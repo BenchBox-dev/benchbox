@@ -78,6 +78,7 @@ A disposable clone (remote session, CI runner) declares `BENCHBOX_EPHEMERAL_CLON
 
 ## Tooling and implementation
 
+- `[MAINTAINER-001]` Work as this code's maintainer: you inherit every change. Within the task's scope, choose the change that leaves the touched code easier to maintain (reuse or extend what exists, delete what the change makes obsolete, keep the result small), even when a quicker patch would pass.
 - Prefer repository `make` targets and existing helpers.
 - Python tooling is `uv` only: `uv run -- ...`, `uv add`, `uv sync`, `uv lock`.
 - `[COMMENT-POLICY-001]` Follow the comment and docstring policy (`docs/internal/comment-policy.md`). Maintained first-party code has no explanatory comments or docstrings: clarify intent with structure, names, and types. Put public contracts in API docs, not source prose. Permitted directives, notices, and fixtures must be registered in `quality/comment-policy.json`. Verify with `make comment-policy-check`; resolve every finding. Enforcement is blocking.
