@@ -145,6 +145,33 @@ def test_a_source_whose_declared_tuple_is_not_a_literal_is_refused(tmp_path: Pat
         consumer.verify_line(root, LINE, _creation_carrying(root, source, ()), lambda _path: [])
 
 
+@pytest.mark.parametrize(
+    ("text", "message"),
+    [
+        ("CREATION_LANDING_PATHS = ()\nCREATION_LANDING_PATHS += ('a',)\nCREATION_LANDING_TESTS = ()\n", "form"),
+        ("CREATION_LANDING_PATHS, CREATION_LANDING_TESTS = (), ()\n", "form"),
+        ("CREATION_LANDING_PATHS = ()\n", "declares only one of"),
+    ],
+)
+def test_a_source_declaring_the_carry_in_a_form_the_check_cannot_read_is_refused(
+    tmp_path: Path, text: str, message: str
+) -> None:
+    root, source = _source_declaring(tmp_path, text, ())
+
+    with pytest.raises(ValueError, match=message):
+        consumer.verify_line(root, LINE, _creation_carrying(root, source, ()), lambda _path: [])
+
+
+def test_an_annotated_declaration_of_the_carry_is_enforced(tmp_path: Path) -> None:
+    declared = ("scripts/pr_base.py",)
+    text = f"CREATION_LANDING_PATHS: tuple[str, ...] = {declared!r}\nCREATION_LANDING_TESTS: tuple[str, ...] = ()\n"
+    root, source = _source_declaring(tmp_path, text, declared)
+
+    consumer.verify_line(root, LINE, _creation_carrying(root, source, declared), lambda _path: [])
+    with pytest.raises(ValueError, match=r"creation does not carry scripts/pr_base.py"):
+        consumer.verify_line(root, LINE, _creation_carrying(root, source, ()), lambda _path: [])
+
+
 def _create(root: Path) -> str:
     branch, commit = release_line_create.create_line(root, "v0.4.1", fetch=no_fetch)
     assert branch == LINE

@@ -629,6 +629,14 @@ def _state_at(root: Path, revision: str, path: str) -> str:
     return _run_git(root, "ls-tree", "-z", revision, "--", path, stdout=subprocess.PIPE, text=True, timeout=60).stdout
 
 
+def _plain_target(node: ast.stmt) -> ast.Name | None:
+    if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+        return node.targets[0]
+    if isinstance(node, ast.AnnAssign) and node.value is not None and isinstance(node.target, ast.Name):
+        return node.target
+    return None
+
+
 def _source_landing_paths(root: Path, source: str) -> set[str]:
     result = _run_git(
         root,
@@ -649,25 +657,34 @@ def _source_landing_paths(root: Path, source: str) -> set[str]:
         raise ValueError(
             f"{PRODUCER_BRANCH} at {source} has a release_artifact_consumer.py that does not parse"
         ) from error
-    declared: set[str] = set()
+    names = {"CREATION_LANDING_PATHS", "CREATION_LANDING_TESTS"}
+    declared: dict[str, tuple[str, ...]] = {}
     for node in module.body:
-        if not (
-            isinstance(node, ast.Assign)
-            and len(node.targets) == 1
-            and isinstance(node.targets[0], ast.Name)
-            and node.targets[0].id in {"CREATION_LANDING_PATHS", "CREATION_LANDING_TESTS"}
-        ):
+        target = _plain_target(node)
+        if target is None:
+            bound = {n.id for n in ast.walk(node) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)} & names
+            _require(
+                not bound,
+                f"{PRODUCER_BRANCH} at {source} declares {sorted(bound)[0] if bound else ''} in a form the creation "
+                "check cannot read; declare each as a plain assignment of a tuple of paths",
+            )
+            continue
+        if target.id not in names:
             continue
         try:
             value = ast.literal_eval(node.value)
         except ValueError as error:
-            raise ValueError(f"{PRODUCER_BRANCH} at {source} declares {node.targets[0].id} as a non-literal") from error
+            raise ValueError(f"{PRODUCER_BRANCH} at {source} declares {target.id} as a non-literal") from error
         _require(
             isinstance(value, tuple) and all(isinstance(path, str) for path in value),
-            f"{PRODUCER_BRANCH} at {source} declares {node.targets[0].id} as something other than a tuple of paths",
+            f"{PRODUCER_BRANCH} at {source} declares {target.id} as something other than a tuple of paths",
         )
-        declared.update(value)
-    return declared
+        declared[target.id] = value
+    _require(
+        not declared or declared.keys() == names,
+        f"{PRODUCER_BRANCH} at {source} declares only one of {', '.join(sorted(names))}",
+    )
+    return {path for value in declared.values() for path in value}
 
 
 def creation_carried_paths(root: Path, *revisions: str, landing: Collection[str] | None = None) -> set[str]:
