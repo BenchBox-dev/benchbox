@@ -32995,6 +32995,13 @@
       "status": "open",
       "title": "#2761 merged while its head carried a hollow oracle success; review it after merge"
     },
+    "pr-4381-standin-comments-correction-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Post one correcting comment on #4381, with the text approved first"
+    },
     "pr-arm-cut-repeated-github-reads-20261117": {
       "claim": null,
       "needs": [],
