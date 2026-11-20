@@ -391,9 +391,9 @@ SUBMISSION_NOTES_MAX_LEN = 500
 
 KNOWN_DEFECT_IDS = frozenset(
     {
+        "defective-capped-engine-parallelism",
         "defective-macdbgen-addresses",
         "defective-sqlite-clickbench-row-counts",
-        "defective-nondefault-engine-config",
         "defective-superseded-sql-translation",
         "defective-tpcds-obt-parameters",
         "defective-tpchavoc-variant-divergence",
@@ -403,9 +403,9 @@ KNOWN_DEFECT_IDS = frozenset(
 )
 
 KNOWN_DEFECT_REASONS = {
+    "defective-capped-engine-parallelism": "Ran with the engine's query parallelism capped below its default; replaced by a default-parallelism run.",
     "defective-macdbgen-addresses": "Data came from a defective macOS dbgen build that wrote non-canonical addresses.",
     "defective-sqlite-clickbench-row-counts": "Recorded wrong ClickBench row counts on SQLite.",
-    "defective-nondefault-engine-config": "Ran with an engine setting that is not the platform's default, so it does not represent that platform.",
     "defective-superseded-sql-translation": "Recorded wrong results from a SQL translation that has since been fixed.",
     "defective-tpcds-obt-parameters": "TPC-DS One Big Table query parameters were rendered wrongly, so queries returned wrong rows.",
     "defective-tpchavoc-variant-divergence": "TPC-Havoc variants of one query returned differing row counts.",

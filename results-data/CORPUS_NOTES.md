@@ -1923,7 +1923,7 @@ Doris reruns. The 2026-11-11 Doris TPC-DS OBT bundles `tpcds_obt_sf001_doris_sql
 unconditionally. Their bundles do not record container memory (`environment.container.collection_status: unavailable`).
 The Doris compose file's default was `mem_limit: ${DORIS_MEMORY_LIMIT:-4g}` until `21f6710306` (2026-11-12) raised it to
 6g, so they ran in a 4 GiB container unless `DORIS_MEMORY_LIMIT` was overridden, which no artifact records. They carry no
-`host_load`. Their sidecars carry `known_defects: ["defective-nondefault-engine-config"]` and a `known_defect_reason` naming
+`host_load`. Their sidecars carry `known_defects: ["defective-capped-engine-parallelism"]` and a `known_defect_reason` naming
 the rerun; the bundle files are unchanged. The UAT harness now runs Doris at its own default parallelism; the cap is an
 opt-in override, `BENCHBOX_UAT_DORIS_PARALLEL_PIPELINE_TASK_NUM`, set to a positive integer.
 
