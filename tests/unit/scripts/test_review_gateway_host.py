@@ -26,7 +26,7 @@ HOST_RELATIVE = "_project/scripts/review_gateway_host.sh"
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
     pytest.mark.skipif(sys.platform == "win32", reason="POSIX gateway host script"),
     pytest.mark.skipif(
         not (REPO_ROOT / HOST_RELATIVE).is_file(), reason="_project gateway host script not in this tree"

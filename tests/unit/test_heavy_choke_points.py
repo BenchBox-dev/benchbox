@@ -13,7 +13,7 @@ import pytest
 from benchbox.utils.host_lock import EXIT_ADMISSION
 from tests.utilities.paths import REPO_ROOT
 
-pytestmark = [pytest.mark.fast, pytest.mark.unit]
+pytestmark = [pytest.mark.medium, pytest.mark.unit]
 
 posix_only = pytest.mark.skipif(sys.platform == "win32", reason="POSIX process semantics")
 needs_make = pytest.mark.skipif(shutil.which("make") is None, reason="make is required")
