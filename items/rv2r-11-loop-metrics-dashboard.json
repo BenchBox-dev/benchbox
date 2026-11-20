@@ -5,7 +5,7 @@
     "A weekly scheduled workflow uploads the report; its first live run succeeds and the artifact is linked here",
     "dlv2-84 and dlv2-30day-metrics have a context note naming this script as their metrics collector; dlv2-30day-metrics can be closed with this report"
   ],
-  "context": "Serial item after the batch. GUARDRAILS: read-only GitHub API with the default token; no new secrets; the scheduled job holds at most 1 runner. No merge while develop is frozen for 0.5.0 or during a G13 release window. No DECISION GATE beyond normal review.",
+  "context": "Serial item after the batch. GUARDRAILS: read-only GitHub API with the default token; no new secrets; the scheduled job holds at most 1 runner. No merge while develop is frozen for 0.5.0 or during a G13 release window. No DECISION GATE beyond normal review.\n\n2026-11-20: #4395 merged (1cfe92a8). scripts/dev_loop_dashboard.py + weekly .github/workflows/dev-loop-dashboard.yml; first live dispatch run 44646358143 succeeded, artifact dev-loop-dashboard-44646358143. Acceptance: report for an arbitrary window via `uv run -- python scripts/dev_loop_dashboard.py --days N|--since/--until --output F`; 44 fixture-based unit tests plus a workflow test, no live API; each dev-loop v2 target shown beside its baseline.md row; weekly workflow first live run green (above); dlv2-84 and dlv2-30day-metrics annotated. 30-day live reading: fast-tier p95 19.0 min, PR time-to-green p95 188 min, red trunk 22, flaky retry 7.2%, first-pass green 63.6% (baseline 70.4%); nightly streak 11; infra failures 9/13,782 cell observations. Follow-up: dev-loop-dashboard-make-target-ceiling-20261120.",
   "description": "The dev-loop v2 targets (fast tier p95 <= 7 min, medium tier p95 <= 15 min, red trunk 0, flaky retry rate < 2%, public Make targets <= 90, workflow count) were never measured; dlv2-84 and dlv2-30day-metrics are open and unstarted. The retrospective had to sample gh data by hand. Build a script under scripts/ (no new service) that computes the metrics from the GitHub API and the trunk UAT history for a date window and writes a Markdown report, plus a weekly scheduled job that uploads it as an artifact. Extra metrics: CI first-pass green, PR open->merge p50/p90, runner-hours by workflow, release lead time (rc tag to PyPI), trunk UAT pass rate, per-cell infrastructure-failure rate and the share of red shards with product signatures (rv2r-04 signal record), and the process-blocker count (tracker items titled 'UAT envelope:' with link 'uat-rubric'). Count Make targets with the dlv2-84 counting method. This script is the replacement collector for dlv2-84's metrics step. Rollback: revert its commits.",
   "links": [
     "_project/archive/dev-loop-v2/baseline.md",
@@ -27,6 +27,14 @@
       "op": "update",
       "op_id": "093538a6b23d4a2aa00e52b2df5ab0ad",
       "session_id": "7da446616e5349658579dfc9c4288973"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a",
+      "at": "2026-11-20T00:33:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "da6eecba8a0140d99ea5a61641d45b61",
+      "session_id": "ad8ff63c31d0492faa7526a81e19db83"
     }
   ]
 }
