@@ -26827,6 +26827,13 @@
       "status": "done",
       "title": "A9: Cut accepted corpus promotions over to independent production deployment"
     },
+    "inert-path-guard-misses-computed-reader-paths-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "The inert-path guard cannot see files read through a computed path"
+    },
     "inert-paths-manifest-20261021": {
       "claim": null,
       "needs": [
