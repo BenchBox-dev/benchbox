@@ -35460,6 +35460,13 @@
       "status": "done",
       "title": "Ranking & Aggregation System - Platform Leaderboards & Trends"
     },
+    "raw-run-evidence-deleted-and-4381-authorship-record-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Record the deleted raw benchmark run directories and the #4381 authorship change"
+    },
     "raw-text-benchmarks-duckdb-source-dialect-20261025": {
       "claim": null,
       "needs": [

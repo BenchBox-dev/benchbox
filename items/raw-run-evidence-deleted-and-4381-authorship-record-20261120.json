@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Each deleted directory is restored or confirmed unrecoverable.",
+    "Affected published bundle ids are listed.",
+    "The #4381 authorship change is recorded."
+  ],
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "description": "## Problem\nRaw run directories were deleted from ~/Developer/benchmark_runs during the remediation work: obt-publish-20261111 and obt-scale-20261110 (raw evidence behind published TPC-DS-OBT bundles), tpcdi-sf100-20261117 and tpcdi-gate-20261115. The TPC-DI SF 100 result (2,678 s, 0.41 GiB) now exists only as a tracker note. Separately, #4381's commit names the owner as author although a workflow produced it.\n\n## Change\nCheck Time Machine, the Trash and any other copy for the four directories and restore what exists to the same paths. List which published bundle ids lost their raw evidence. Record the #4381 authorship fact here.\n\n## Decision gates\nRead-only except restoring a backup to its original path. Annotating published bundles or CORPUS_NOTES about lost evidence needs the owner's approval of the wording.\n\n## Verification rubric\nPass: per directory, restored or confirmed gone with where it was looked for; a list of affected bundle ids; the SF 100 figure marked as unevidenced if its run directory is gone.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4381"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:13:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6311794de2444c4882b30ddd62ed50f4",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    }
+  ]
+}
