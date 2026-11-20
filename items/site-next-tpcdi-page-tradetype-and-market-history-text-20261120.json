@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The page makes no claim that contradicts itself or core develop.",
+    "Every specification figure on the page is sourced or removed."
+  ],
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "description": "## Problem\nOn `next`, docs/benchmarks/tpc-di.md says the reference tables are smaller than the specification's and lists 'TradeType 6 (5)', which is larger; the FactMarketHistory sentence says 'about two years of trading days times 800 securities gives about 584,800', but 584800 / 800 = 731 calendar days. The specification figures quoted there (about 1,500 brokers per unit, DimDate 1950-2021, 541,550 rows) were not verified.\n\n## Change\nFix the two sentences against core develop and the TPC-DI specification; verify each quoted specification figure against the specification text or remove it.\n\n## Decision gates\nNone for wording fixes. `next` only; nothing goes to `main`.\n\n## Verification rubric\nPass: each number on the page has a source recorded in the PR body (core file and line, or specification clause); `npm run lint:docs` and `npm run docs:check` pass.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "links": [
+    "/Users/joe/Developer/benchbox-site/docs/benchmarks/tpc-di.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:12:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "217f0093968749e18ccc1ee9bd27c032",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    }
+  ]
+}
