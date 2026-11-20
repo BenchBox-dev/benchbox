@@ -60,15 +60,28 @@ def validate_result_identity(
     return True, "ok"
 
 
+def _throughput_tests(result_json: dict[str, Any], requested_streams: int) -> list[tuple[str, int, int | None]]:
+    phases = result_json.get("phases") or {}
+    tests = []
+    for name in sorted(phases, key=lambda key: (len(key), key)):
+        if not re.fullmatch(r"throughput_test(_\d+)?", name) or not isinstance(phases[name], dict):
+            continue
+        numbering = phases[name].get("stream_numbering") or {}
+        tests.append((name, int(numbering.get("first_stream_id", 1)), phases[name].get("num_streams")))
+    return tests or [("throughput_test", 1, requested_streams)]
+
+
 def validate_stream_count(result_json: dict[str, Any], *, requested_streams: int) -> tuple[bool, str]:
     streams_seen = {row["stream"] for row in _throughput_rows(result_json)}
-    executed = len(streams_seen)
-    if executed != requested_streams:
-        return (
-            False,
-            f"throughput stream count mismatch: requested {requested_streams}, executed {executed}",
-        )
-    expected_ids = set(throughput_stream_ids(requested_streams))
+    tests = _throughput_tests(result_json, requested_streams)
+    expected_ids: set[int] = set()
+    for name, first_id, _ in tests:
+        test_ids = set(throughput_stream_ids(requested_streams, first_id))
+        executed = len(streams_seen & test_ids) if len(tests) > 1 else len(streams_seen)
+        if executed != requested_streams:
+            where = f" in {name}" if len(tests) > 1 else ""
+            return False, f"throughput stream count mismatch: requested {requested_streams}, executed {executed}{where}"
+        expected_ids |= test_ids
     if streams_seen != expected_ids:
         return (
             False,
@@ -93,7 +106,9 @@ def validate_throughput_metric(result_json: dict[str, Any]) -> tuple[bool, str]:
     if not isinstance(throughput_at_size, (int, float)) or throughput_at_size <= 0:
         return False, f"Throughput@Size not positive (got {throughput_at_size!r})"
 
-    rows = _throughput_rows(result_json)
+    _, first_id, num_streams = _throughput_tests(result_json, 0)[0]
+    first_test_ids = set(throughput_stream_ids(num_streams or 0, first_id)) if num_streams else None
+    rows = [row for row in _throughput_rows(result_json) if first_test_ids is None or row["stream"] in first_test_ids]
     total_queries = sum(1 for row in rows if _is_success(row))
     scale_factor = (result_json.get("benchmark") or {}).get("scale_factor")
     duration_ms = ((result_json.get("phases") or {}).get("throughput_test") or {}).get("duration_ms")

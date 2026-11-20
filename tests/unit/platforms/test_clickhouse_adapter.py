@@ -1354,10 +1354,37 @@ class TestClickHouseWorkloadCoverage:
 
         assert result["status"] == "SUCCESS"
         assert result["row_count_validation"]["status"] == expected_status
-        assert result["row_count_validation"]["warning"] == "expected row count unavailable"
+        assert result["row_count_validation"].get("warning") == (
+            None if expected_status == "PASSED" else "expected row count unavailable"
+        )
         first_call = connection.execute.call_args_list[0]
         assert first_call.args == ("SELECT * FROM orders SETTINGS joined_subquery_requires_alias = 0",)
         assert first_call.kwargs["query_id"]
+
+    def test_execute_query_records_a_within_tolerance_count_as_skipped_so_the_bundle_exports(self):
+        from benchbox.core.expected_results.models import ValidationMode
+        from benchbox.core.results.query_execution import normalize_row_count_validation
+
+        adapter = self._adapter()
+        connection = Mock()
+        connection.execute.return_value = [(1,)] * 18233
+        validation_result = SimpleNamespace(
+            is_valid=True,
+            warning_message=None,
+            error_message=None,
+            expected_row_count=18314,
+            unvalidated=False,
+            validation_mode=ValidationMode.LOOSE,
+        )
+
+        with patch("benchbox.core.validation.query_validation.QueryValidator") as validator_cls:
+            validator_cls.return_value.validate_query_result.return_value = validation_result
+            result = adapter.execute_query(connection, "SELECT 1", "Q13", benchmark_type="tpch", scale_factor=1.0)
+
+        record = result["row_count_validation"]
+        assert record["status"] == "SKIPPED"
+        assert "18314" in record["warning"].replace(",", "")
+        assert normalize_row_count_validation(record, rows_returned=18233)["status"] == "SKIPPED"
 
     def test_execute_query_turns_validation_failures_into_failed_results(self):
         adapter = self._adapter()
