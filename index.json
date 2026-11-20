@@ -38347,7 +38347,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Run timeout: one optional limit for any run, replacing scattered timers (plan and decisions)"
     },
     "run-timeout-remote-cleanup-20261120": {
