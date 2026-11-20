@@ -12,6 +12,13 @@ pytestmark = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def clickhouse_dependencies():
+
+    with patch("benchbox.platforms.clickhouse.adapter.check_platform_dependencies", return_value=(True, [])):
+        yield
+
+
 class TestClickHouseAdapter:
     @patch("benchbox.platforms.clickhouse.setup.ClickHouseClient")
     def test_execute_query_success(self, mock_client_class):

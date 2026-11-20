@@ -510,8 +510,9 @@ A probe aimed at a real tag, a probe from a tag ref, and a real release of
 `scripts/release_probe_graph.py` evaluates the job conditions of the workflow
 under every combination of job outcomes and fails if `publish` is skipped after
 green gates, if `publish` runs after a red gate, or if any job that can publish
-runs in probe mode; `tests/unit/workflows/test_release_v2_probe.py` pins the
-probe's permissions and the issue-3947 graph shape.
+runs in probe mode; `tests/unit/workflows/test_release_v2_probe.py` and
+`tests/unit/workflows/test_release_v2_probe_medium.py` pin the probe's
+permissions and the issue-3947 graph shape.
 
 `release-v2-probe.yml` runs on every pull request and is asynchronous: its job
 `release-v2 probe dispatch` never waits for the probe runs, so it holds a runner

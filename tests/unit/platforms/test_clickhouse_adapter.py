@@ -24,6 +24,13 @@ CHDB_AVAILABLE = chdb_usable()
 CHDB_SKIP_REASON = chdb_skip_reason() or "chDB is usable"
 
 
+@pytest.fixture(autouse=True)
+def clickhouse_dependencies():
+
+    with patch("benchbox.platforms.clickhouse.adapter.check_platform_dependencies", return_value=(True, [])):
+        yield
+
+
 class TestClickHouseAdapter:
     def test_tpcds_q35_is_removed_from_local_memory_incompatibilities(self):
         assert 35 not in ClickHouseAdapter.KNOWN_INCOMPATIBLE_QUERIES["tpcds"]
