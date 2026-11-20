@@ -599,12 +599,9 @@ def _validate_initial_flags(s: types.SimpleNamespace) -> None:
 
     if s.official:
         benchmark = normalize_benchmark_name(s.benchmark) if s.benchmark else None
-        if benchmark == "tpch":
-            from benchbox.core.tpch.compliance import OFFICIAL_SCALE_POINTS as tpc_allowed
-        elif benchmark == "tpcds":
-            from benchbox.core.tpcds.compliance import OFFICIAL_SCALE_POINTS as tpc_allowed
-        else:
-            tpc_allowed = frozenset({1, 10, 30, 100, 300, 1000, 3000, 10000, 30000, 100000})
+        from benchbox.core.run_service import official_scale_points
+
+        tpc_allowed = official_scale_points(benchmark)
         if s.scale not in tpc_allowed:
             fatal(f"❌ Scale factor {s.scale} is not a TPC-specified scale factor")
             fatal(f"Allowed scale factors: {sorted(tpc_allowed)}")

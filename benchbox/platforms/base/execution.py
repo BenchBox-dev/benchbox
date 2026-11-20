@@ -33,7 +33,7 @@ from benchbox.core.throughput.entrypoints import (
     require_stream_minimum,
     warn_legacy_throughput_api,
 )
-from benchbox.core.throughput.result import THROUGHPUT_FIRST_STREAM_ID
+from benchbox.core.throughput.result import throughput_round_stream_ids
 from benchbox.core.tpch.platform_power import _power_query_result, _power_test_error_result
 from benchbox.platforms.base.connection_wrappers import (
     PlatformAdapterConnection,
@@ -312,7 +312,7 @@ class TestDriversMixin:
             cfg = TPCDSThroughputTestConfig(
                 scale_factor=scale_factor,
                 num_streams=num_streams,
-                first_stream_id=THROUGHPUT_FIRST_STREAM_ID + (run_config.get("_phase_round", 1) - 1) * num_streams,
+                first_stream_id=throughput_round_stream_ids(num_streams, run_config.get("_phase_round", 1)).start,
                 **_throughput_config_options(run_config),
             )
             console.print(f"[dim]{_describe_stream_timeout(cfg, run_config)}[/dim]")

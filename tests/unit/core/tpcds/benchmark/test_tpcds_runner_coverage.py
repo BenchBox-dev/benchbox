@@ -121,6 +121,19 @@ def test_q90_guard_leaves_other_denominators_unchanged(tpcds_benchmark):
     assert tpcds_benchmark._apply_target_dialect_overrides(90, query, "tsql") == query
 
 
+@pytest.mark.parametrize("dialect", ["postgres", "cedardb", "duckdb", "clickhouse", "datafusion"])
+def test_q75_guards_the_prior_year_divisor_in_every_dialect(tpcds_benchmark, dialect):
+    query = (
+        "SELECT prev_yr.d_year FROM all_sales AS curr_yr, all_sales AS prev_yr "
+        "WHERE CAST(curr_yr.sales_cnt AS DECIMAL(17, 2)) / CAST(prev_yr.sales_cnt AS DECIMAL(17, 2)) < 0.9"
+    )
+
+    rewritten = tpcds_benchmark._apply_target_dialect_overrides(75, query, dialect)
+
+    assert "/ nullif(cast(prev_yr.sales_cnt as decimal(17, 2)), 0) < 0.9" in rewritten.lower()
+    assert tpcds_benchmark._apply_target_dialect_overrides(75, rewritten, dialect) == rewritten
+
+
 @pytest.mark.parametrize("dialect", ["postgres", "cedardb"])
 def test_postgres_rollup_order_alias_rewrite_repeats_grouping_expression(tpcds_benchmark, dialect):
     query = (

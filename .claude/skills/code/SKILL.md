@@ -43,6 +43,9 @@ the Makefile, manifests, and project agent docs.
   authorized-write PRs.
 - The `commit` action handles existing changes; other repository write actions
   commit without a separate commit request.
+- Write actions work as the code's maintainer: when a quick patch and a cleaner
+  change of the same scope both satisfy the task, take the cleaner one; report
+  where scope prevented it.
 - `review`, `adversarial`, `research`, `compare`, `to-spec`, and `handoff` are
   review-shaped under `shared-review-protocol/SKILL.md` [REVIEW-AUTH-001];
   `shrink` is a write action.

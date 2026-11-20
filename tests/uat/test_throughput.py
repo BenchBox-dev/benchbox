@@ -289,7 +289,7 @@ def test_validate_stream_count_ignores_rows_without_throughput_test_type():
     assert "requested 3, executed 0" in reason
 
 
-def _two_test_result(second_test_streams: dict[int, int]) -> dict:
+def _two_test_result(second_test_streams: dict[int, int], *, second_test_first_stream_id: int = 5) -> dict:
     first = {1: 99, 2: 99, 3: 99, 4: 99}
     expected = TPCMetricsCalculator.calculate_throughput_at_size(
         total_queries=sum(first.values()), total_time_seconds=1000.0, scale_factor=1.0, num_streams=4
@@ -297,15 +297,10 @@ def _two_test_result(second_test_streams: dict[int, int]) -> dict:
     result = _result_json(streams={**first, **second_test_streams}, throughput_at_size=expected, benchmark_id="tpcds")
     numbering = {"basis": "tpc_spec_throughput_streams_1_to_s"}
     result["phases"] = {
-        "throughput_test": {
-            "duration_ms": 1_000_000,
-            "num_streams": 4,
-            "stream_numbering": {**numbering, "first_stream_id": 1},
-        },
+        "throughput_test": {"duration_ms": 1_000_000, "stream_numbering": {**numbering, "first_stream_id": 1}},
         "throughput_test_2": {
             "duration_ms": 1_000_000,
-            "num_streams": 4,
-            "stream_numbering": {**numbering, "first_stream_id": 5},
+            "stream_numbering": {**numbering, "first_stream_id": second_test_first_stream_id},
         },
     }
     return result
@@ -319,10 +314,17 @@ def test_tpcds_full_spec_run_counts_streams_per_throughput_test():
 def test_tpcds_second_throughput_test_missing_a_stream_is_reported_with_its_test():
     ok, reason = validate_stream_count(_two_test_result({5: 99, 6: 99, 7: 99}), requested_streams=4)
     assert ok is False
-    assert reason == "throughput stream count mismatch: requested 4, executed 3 in throughput_test_2"
+    assert reason == "throughput stream count mismatch: requested 4, executed 3 in throughput test 2"
 
 
-def test_tpcds_throughput_metric_is_checked_against_the_first_throughput_test_only():
+def test_tpcds_stream_numbering_is_checked_against_the_spec_not_the_result_claim():
+    result = _two_test_result({9: 99, 10: 99, 11: 99, 12: 99}, second_test_first_stream_id=9)
+    ok, reason = validate_stream_count(result, requested_streams=4)
+    assert ok is False
+    assert reason == "throughput stream count mismatch: requested 4, executed 0 in throughput test 2"
+
+
+def test_tpcds_throughput_metric_is_checked_across_both_throughput_tests():
     result = _two_test_result({5: 99, 6: 99, 7: 99, 8: 99})
     ok, reason = validate_throughput_metric(result)
     assert ok is True, reason

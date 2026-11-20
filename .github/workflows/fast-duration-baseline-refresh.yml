@@ -159,6 +159,19 @@ jobs:
             exit 1
           fi
 
+      - name: Find earlier refresh pull requests left open
+        id: earlier
+        env:
+          GH_TOKEN: ${{ secrets.CROSS_SURFACE_BASELINE_PR_TOKEN || github.token }}
+          HEAD_PREFIX: chore/fast-baseline-
+        shell: bash
+        run: |
+          set -euo pipefail
+          OPEN=$(gh pr list --state open --base develop --limit 100 \
+            --json number,headRefName,createdAt \
+            -q "[.[] | select(.headRefName | startswith(\"$HEAD_PREFIX\")) | \"#\(.number) (opened \(.createdAt[0:10]))\"] | join(\", \")")
+          echo "open=$OPEN" >> "$GITHUB_OUTPUT"
+
       - name: Create refresh PR
         if: steps.check.outputs.changed == 'true'
         env:
@@ -196,6 +209,15 @@ jobs:
             gh pr create --title "chore(ci): refresh the fast-tier duration baseline" \
               --body-file "$BODY_FILE" --base develop --head "$BRANCH"
           fi
+
+      - name: Fail when an earlier refresh was left unmerged
+        if: steps.earlier.outputs.open != ''
+        env:
+          EARLIER: ${{ steps.earlier.outputs.open }}
+        shell: bash
+        run: |
+          echo "::error::Fast-tier baseline refresh pull requests were still open when this run started: $EARLIER. A refresh merges only when someone arms it, and one the review bot marks too large to review also needs the owner's stand-in. Merge or close them."
+          exit 1
 
   medium:
     name: Refresh the medium-shard durations
@@ -330,6 +352,19 @@ jobs:
             exit 1
           fi
 
+      - name: Find earlier refresh pull requests left open
+        id: earlier
+        env:
+          GH_TOKEN: ${{ secrets.CROSS_SURFACE_BASELINE_PR_TOKEN || github.token }}
+          HEAD_PREFIX: chore/medium-durations-
+        shell: bash
+        run: |
+          set -euo pipefail
+          OPEN=$(gh pr list --state open --base develop --limit 100 \
+            --json number,headRefName,createdAt \
+            -q "[.[] | select(.headRefName | startswith(\"$HEAD_PREFIX\")) | \"#\(.number) (opened \(.createdAt[0:10]))\"] | join(\", \")")
+          echo "open=$OPEN" >> "$GITHUB_OUTPUT"
+
       - name: Create medium durations PR
         if: steps.check.outputs.changed == 'true'
         env:
@@ -367,3 +402,12 @@ jobs:
                 --comment "Superseded by #$NEW_NUMBER, which refreshes the medium-shard durations from newer Trunk runs."
             done
           fi
+
+      - name: Fail when an earlier refresh was left unmerged
+        if: steps.earlier.outputs.open != ''
+        env:
+          EARLIER: ${{ steps.earlier.outputs.open }}
+        shell: bash
+        run: |
+          echo "::error::Medium-shard durations refresh pull requests were still open when this run started: $EARLIER. A refresh merges only when someone arms it. When this run opened a newer one it closed them as superseded; arm the newer one."
+          exit 1

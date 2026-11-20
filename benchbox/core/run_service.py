@@ -18,6 +18,18 @@ from benchbox.core.constants import (
 TPC_ALLOWED_SCALE_FACTORS: frozenset[int | float] = frozenset({1, 10, 30, 100, 300, 1000, 3000, 10000, 30000, 100000})
 
 
+def official_scale_points(benchmark_id: str | None) -> frozenset[int | float]:
+    if benchmark_id == "tpch":
+        from benchbox.core.tpch.compliance import OFFICIAL_SCALE_POINTS as tpch_points
+
+        return tpch_points
+    if benchmark_id == "tpcds":
+        from benchbox.core.tpcds.compliance import OFFICIAL_SCALE_POINTS as tpcds_points
+
+        return tpcds_points
+    return TPC_ALLOWED_SCALE_FACTORS
+
+
 def begin_run() -> None:
     from benchbox.core.deprecation_notices import begin_run as reset_deprecation_notices
     from benchbox.core.option_notices import begin_run as reset_option_notices
@@ -473,6 +485,7 @@ __all__ = [
     "get_execution_mode",
     "is_dataframe_execution",
     "map_phases_to_execution_type",
+    "official_scale_points",
     "reject_unsupported_dataframe_benchmark",
     "reject_unsupported_dataframe_phases",
     "resolve_configured_compression",
