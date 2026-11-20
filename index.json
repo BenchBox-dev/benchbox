@@ -23003,7 +23003,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "blocked",
+      "status": "open",
       "title": "Owner decision: close the duration-gate redesign pull requests #4384 and #4385 and delete the normalizer branch"
     },
     "duration-refresh-workflow-closes-superseded-prs-20261110": {
