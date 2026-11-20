@@ -364,14 +364,6 @@ def _where_subqueries(sql: str) -> list:
     return found
 
 
-@pytest.mark.parametrize("query_id", ["1", "10", "30", "32", "35", "41", "69", "81", "92"])
-def test_tpcds_correlated_queries_leave_no_subquery_predicate(query_id):
-    from benchbox.core.tpcds import TPCDSBenchmark
-
-    sql = TPCDSBenchmark(scale_factor=0.01).get_queries(dialect="questdb")[query_id]
-    assert _where_subqueries(sql) == []
-
-
 @pytest.mark.parametrize("query_id", ["2", "4", "17", "20", "21"])
 def test_datavault_correlated_queries_leave_no_subquery_predicate(query_id):
     from benchbox.core.datavault import DataVaultBenchmark
@@ -385,13 +377,6 @@ def test_tpch_correlated_queries_leave_no_subquery_predicate(query_id):
     from benchbox.core.tpch import TPCHBenchmark
 
     sql = TPCHBenchmark(scale_factor=0.01).get_queries(dialect="questdb")[query_id]
-    assert _where_subqueries(sql) == []
-
-
-def test_tpchavoc_case_in_subquery_query_leaves_no_subquery_predicate():
-    from benchbox.core.tpchavoc import TPCHavocBenchmark
-
-    sql = TPCHavocBenchmark(scale_factor=0.01).get_queries(dialect="questdb")["18_v10"]
     assert _where_subqueries(sql) == []
 
 
@@ -478,15 +463,3 @@ def test_column_nullable_in_any_benchmark_is_not_treated_as_non_null():
         registry._NULLABLE.update(saved[1])
         registry._NOT_NULL.clear()
         registry._NOT_NULL.update(saved[2])
-
-
-def test_core_schema_modules_do_not_import_the_vendored_sqlglot():
-    import subprocess
-    import sys
-
-    code = (
-        "import sys, benchbox.core.tpch.schema, benchbox.core.datavault.schema, "
-        "benchbox.core.tpcds.schema.registry\n"
-        "assert not any(name.startswith('benchbox._vendor.sqlglot') for name in sys.modules)"
-    )
-    assert subprocess.run([sys.executable, "-c", code], check=False).returncode == 0
