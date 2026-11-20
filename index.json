@@ -44266,6 +44266,13 @@
       "status": "done",
       "title": "TPC-DI fact tables stop growing at fixed row caps, so data size does not follow the scale factor"
     },
+    "tpcdi-factmarkethistory-row-count-cause-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Explain the TPC-DI FactMarketHistory row count difference from the specification"
+    },
     "tpcdi-generator-ratios-and-speed-vs-spec-20261111": {
       "claim": null,
       "needs": [],

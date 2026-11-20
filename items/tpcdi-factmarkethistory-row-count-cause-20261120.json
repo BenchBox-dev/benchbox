@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The cause is recorded with code and specification references.",
+    "The owner approved the rationale or a fix."
+  ],
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "description": "## Problem\ntpcdi-remaining-spec-differences-20261112 requires an owner-approved rationale for each difference 'including 541550 versus 584800'. It was closed with that difference recorded as 'cause not investigated'. The site text on `next` gives the arithmetic as trading days although 584800 / 800 is 731 calendar days.\n\n## Change\nFind the cause in the generator and the specification clause; record the rationale; then either fix the generator or keep the difference with the owner's approval.\n\n## Decision gates\nChanging generated row counts changes TPC-DI data digests: owner approval before any generator change.\n\n## Verification rubric\nPass: the item records the specification clause, the generator code path and the arithmetic for both numbers, and the owner's keep-or-fix decision.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "links": [
+    "benchbox/core/tpcdi/generator"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:11:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c81ab9f55d1f4ca5898c5a96b8d304be",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    }
+  ]
+}
