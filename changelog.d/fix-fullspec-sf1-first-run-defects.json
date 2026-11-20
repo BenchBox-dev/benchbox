@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed full-specification runs on ClickHouse Local writing no result when a query's row count was within tolerance of the reference count, fixed TPC-DS Q75 failing with division by zero on PostgreSQL-compatible engines such as CedarDB, and fixed the UAT throughput checks rejecting TPC-DS full-specification results because they counted the second throughput test's streams against the first."
+    }
+  ]
+}

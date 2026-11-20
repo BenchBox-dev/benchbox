@@ -173,6 +173,58 @@ def test_validate_stream_count_rejects_zero_based_stream_ids():
     assert "spec numbering [1, 2]" in reason
 
 
+def _two_throughput_test_result(
+    *,
+    first_stream_ids: tuple[int, int] = (1, 5),
+    streams_per_test: int = 4,
+    durations_ms: tuple[int | None, int | None] = (43_108, 44_972),
+    throughput_at_size: float = 33_070.0,
+    missing_stream_ids: frozenset[int] = frozenset(),
+) -> dict:
+    streams = {
+        stream_id: 103
+        for first in first_stream_ids
+        for stream_id in range(first, first + streams_per_test)
+        if stream_id not in missing_stream_ids
+    }
+    result = _result_json(streams=streams, throughput_at_size=throughput_at_size, benchmark_id="tpcds")
+    result["phases"] = {
+        name: {
+            "duration_ms": duration_ms,
+            "num_streams": streams_per_test,
+            "stream_numbering": {"basis": "tpc_spec_throughput_streams_1_to_s", "first_stream_id": first},
+        }
+        for name, first, duration_ms in zip(("throughput_test", "throughput_test_2"), first_stream_ids, durations_ms)
+    }
+    return result
+
+
+def test_validate_throughput_result_accepts_both_tpcds_throughput_tests():
+    ok, reason = validate_throughput_result(_two_throughput_test_result(), requested_streams=4)
+    assert (ok, reason) == (True, "ok")
+
+
+def test_validate_stream_count_rejects_a_missing_stream_in_the_second_throughput_test():
+    result = _two_throughput_test_result(missing_stream_ids=frozenset({8}))
+    ok, reason = validate_stream_count(result, requested_streams=4)
+    assert ok is False
+    assert "requested 8 (4 in each of 2 throughput tests), executed 7" in reason
+
+
+def test_validate_stream_count_rejects_a_second_throughput_test_that_reuses_stream_ids():
+    result = _two_throughput_test_result(first_stream_ids=(1, 1))
+    ok, reason = validate_stream_count(result, requested_streams=4)
+    assert ok is False
+    assert "executed 4" in reason
+
+
+def test_validate_throughput_metric_needs_the_second_throughput_test_duration():
+    result = _two_throughput_test_result(durations_ms=(43_108, None))
+    ok, reason = validate_throughput_metric(result)
+    assert ok is False
+    assert "plausibility unavailable" in reason
+
+
 def test_validate_throughput_metric_ignores_stream_count():
     result = _result_json(streams={1: 22}, throughput_at_size=55.5)
     ok, reason = validate_throughput_metric(result)

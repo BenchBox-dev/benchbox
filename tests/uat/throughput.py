@@ -12,10 +12,11 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 from benchbox.core.results.metrics import TPCMetricsCalculator
-from benchbox.core.throughput.result import throughput_stream_ids
+from benchbox.core.throughput.result import THROUGHPUT_FIRST_STREAM_ID, throughput_stream_ids
 from tests.uat import throughput_baseline as baseline
 
 TPC_ALLOWED_SCALE_FACTORS = {1, 10, 30, 100, 300, 1000, 3000, 10000, 30000, 100000}
+THROUGHPUT_TEST_PHASES = ("throughput_test", "throughput_test_2")
 
 
 def resolve_official_result_path(results_dir: Path, *, emitted_path: str | None = None) -> Path | None:
@@ -36,6 +37,16 @@ def _throughput_rows(result_json: dict[str, Any]) -> list[dict[str, Any]]:
         for query in result_json.get("queries") or []
         if isinstance(query, dict) and query.get("test_type") == "throughput" and query.get("stream") is not None
     ]
+
+
+def _throughput_tests(result_json: dict[str, Any]) -> list[dict[str, Any]]:
+    phases = result_json.get("phases") or {}
+    return [phases[name] or {} for name in THROUGHPUT_TEST_PHASES if name in phases] or [{}]
+
+
+def _first_stream_id(throughput_test: dict[str, Any]) -> int:
+    first = (throughput_test.get("stream_numbering") or {}).get("first_stream_id")
+    return first if isinstance(first, int) else THROUGHPUT_FIRST_STREAM_ID
 
 
 def _is_success(query: dict[str, Any]) -> bool:
@@ -63,12 +74,17 @@ def validate_result_identity(
 def validate_stream_count(result_json: dict[str, Any], *, requested_streams: int) -> tuple[bool, str]:
     streams_seen = {row["stream"] for row in _throughput_rows(result_json)}
     executed = len(streams_seen)
-    if executed != requested_streams:
+    tests = _throughput_tests(result_json)
+    requested = requested_streams * len(tests)
+    if executed != requested:
+        per_test = f" ({requested_streams} in each of {len(tests)} throughput tests)" if len(tests) > 1 else ""
         return (
             False,
-            f"throughput stream count mismatch: requested {requested_streams}, executed {executed}",
+            f"throughput stream count mismatch: requested {requested}{per_test}, executed {executed}",
         )
-    expected_ids = set(throughput_stream_ids(requested_streams))
+    expected_ids = {
+        stream_id for test in tests for stream_id in throughput_stream_ids(requested_streams, _first_stream_id(test))
+    }
     if streams_seen != expected_ids:
         return (
             False,
@@ -96,9 +112,10 @@ def validate_throughput_metric(result_json: dict[str, Any]) -> tuple[bool, str]:
     rows = _throughput_rows(result_json)
     total_queries = sum(1 for row in rows if _is_success(row))
     scale_factor = (result_json.get("benchmark") or {}).get("scale_factor")
-    duration_ms = ((result_json.get("phases") or {}).get("throughput_test") or {}).get("duration_ms")
-    if not all(isinstance(value, (int, float)) and value > 0 for value in (scale_factor, duration_ms)):
-        return False, f"Throughput@Size plausibility unavailable: scale {scale_factor!r}, duration {duration_ms!r}"
+    durations = [test.get("duration_ms") for test in _throughput_tests(result_json)]
+    if not all(isinstance(value, (int, float)) and value > 0 for value in (scale_factor, *durations)):
+        return False, f"Throughput@Size plausibility unavailable: scale {scale_factor!r}, durations {durations!r}"
+    duration_ms = sum(durations)
 
     expected = TPCMetricsCalculator.calculate_throughput_at_size(
         total_queries=total_queries,

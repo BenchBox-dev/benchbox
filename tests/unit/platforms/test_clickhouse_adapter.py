@@ -10,6 +10,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from benchbox.core.results.query_execution import normalize_row_count_validation
 from benchbox.platforms.clickhouse import ClickHouseAdapter
 from benchbox.platforms.clickhouse.merge_settle import MergeSettleResult
 from tests.utilities.optional_engines import chdb_skip_reason, chdb_usable
@@ -1323,10 +1324,16 @@ class TestClickHouseWorkloadCoverage:
         assert "execute() method" in details["integrity_error"]
 
     @pytest.mark.parametrize(
-        ("mode", "unvalidated", "expected_status"),
-        [("exact", False, "PASSED"), ("skip", False, "SKIPPED"), ("skip", True, "UNVALIDATED")],
+        ("mode", "unvalidated", "expected_status", "expected_warning"),
+        [
+            ("exact", False, "PASSED", None),
+            ("skip", False, "SKIPPED", "expected row count unavailable"),
+            ("skip", True, "UNVALIDATED", "expected row count unavailable"),
+        ],
     )
-    def test_execute_query_adds_row_count_validation_metadata(self, mode, unvalidated, expected_status):
+    def test_execute_query_adds_row_count_validation_metadata(
+        self, mode, unvalidated, expected_status, expected_warning
+    ):
         adapter = self._adapter()
         adapter.verbose_enabled = True
         adapter.very_verbose = True
@@ -1354,10 +1361,32 @@ class TestClickHouseWorkloadCoverage:
 
         assert result["status"] == "SUCCESS"
         assert result["row_count_validation"]["status"] == expected_status
-        assert result["row_count_validation"]["warning"] == "expected row count unavailable"
+        assert result["row_count_validation"].get("warning") == expected_warning
         first_call = connection.execute.call_args_list[0]
         assert first_call.args == ("SELECT * FROM orders SETTINGS joined_subquery_requires_alias = 0",)
         assert first_call.kwargs["query_id"]
+
+    def test_execute_query_records_a_tolerated_row_count_mismatch_the_export_contract_accepts(self):
+        adapter = self._adapter()
+        connection = Mock()
+        connection.execute.return_value = [(1,), (2,), (3,), (4,)]
+        validation_result = SimpleNamespace(
+            is_valid=True,
+            warning_message=None,
+            error_message=None,
+            expected_row_count=5,
+            unvalidated=False,
+            validation_mode="exact",
+        )
+
+        with patch("benchbox.core.validation.query_validation.QueryValidator") as validator_cls:
+            validator_cls.return_value.validate_query_result.return_value = validation_result
+            result = adapter.execute_query(connection, "SELECT * FROM orders", "Q16", benchmark_type="tpch")
+
+        evidence = result["row_count_validation"]
+        assert evidence["status"] == "SKIPPED"
+        assert evidence["warning"].startswith("within tolerance:")
+        assert normalize_row_count_validation(evidence, rows_returned=4)["status"] == "SKIPPED"
 
     def test_execute_query_turns_validation_failures_into_failed_results(self):
         adapter = self._adapter()

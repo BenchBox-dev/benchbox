@@ -116,6 +116,19 @@ def test_translated_tsql_q90_guards_zero_without_changing_nonzero_ratio(tpcds_be
         assert connection.execute(executable).fetchone()[0] == expected
 
 
+@pytest.mark.parametrize("dialect", ["postgres", "duckdb"])
+def test_q75_guards_only_the_prior_year_sales_count_divisor(tpcds_benchmark, dialect):
+    query = (
+        "SELECT 1 FROM curr_yr, prev_yr "
+        "WHERE CAST(curr_yr.sales_cnt AS DECIMAL(17, 2)) / CAST(prev_yr.sales_cnt AS DECIMAL(17, 2)) < 0.9"
+    )
+
+    rewritten = tpcds_benchmark._apply_target_dialect_overrides(75, query, dialect)
+
+    assert "/ NULLIF(CAST(prev_yr.sales_cnt AS DECIMAL(17, 2)), 0)" in rewritten
+    assert "NULLIF(CAST(curr_yr.sales_cnt" not in rewritten
+
+
 def test_q90_guard_leaves_other_denominators_unchanged(tpcds_benchmark):
     query = "SELECT amc / CAST([other_pmc] AS NUMERIC(15, 4)) FROM counts"
     assert tpcds_benchmark._apply_target_dialect_overrides(90, query, "tsql") == query

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from benchbox.core.results.timer_scope import REQUEST_KIND_QUERY, RequestLedger, excluded_from_query_timer
 from benchbox.core.tuning.introspection import has_order_by_clause
 from benchbox.platforms.base.arrow_result import fetch_result
-from benchbox.platforms.base.result_capture import strip_leading_sql_comments
+from benchbox.platforms.base.result_capture import strip_leading_sql_comments, valid_row_count_evidence
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
 from benchbox.utils.dialect_utils import translate_ddl
@@ -823,20 +823,7 @@ class ClickHouseWorkloadMixin:
             }
 
             if validation_result:
-                row_count_validation = {
-                    "expected": validation_result.expected_row_count,
-                    "actual": actual_row_count,
-                    "status": (
-                        "UNVALIDATED"
-                        if validation_result.unvalidated
-                        else "SKIPPED"
-                        if validation_result.validation_mode == "skip"
-                        else "PASSED"
-                    ),
-                }
-                if validation_result.warning_message:
-                    row_count_validation["warning"] = validation_result.warning_message
-                result_dict["row_count_validation"] = row_count_validation
+                result_dict["row_count_validation"] = valid_row_count_evidence(validation_result, actual_row_count)
 
             self._apply_result_validation(result_dict, query_id, fetched.rows)
             result_dict.update(

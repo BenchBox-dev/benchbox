@@ -79,7 +79,7 @@ _DATE_COLUMNS = tuple(
 )
 
 _POSTGRES_ROLLUP_ORDER_QUERY_IDS = frozenset({36, 70, 86})
-_Q90_ZERO_DIVISOR_COLUMNS = ("pmc",)
+_ZERO_DIVISOR_COLUMNS_BY_QUERY = {75: ("sales_cnt",), 90: ("pmc",)}
 
 
 class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
@@ -214,8 +214,8 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
 
         if query_id in _POSTGRES_ROLLUP_ORDER_QUERY_IDS and resolved == "postgres":
             rewrites.append(("inline_order_by_aliases", {}))
-        if query_id == 90:
-            rewrites.append(("nullif_zero_divisors", {"columns": _Q90_ZERO_DIVISOR_COLUMNS}))
+        if query_id in _ZERO_DIVISOR_COLUMNS_BY_QUERY:
+            rewrites.append(("nullif_zero_divisors", {"columns": _ZERO_DIVISOR_COLUMNS_BY_QUERY[query_id]}))
         if "clickhouse" in target:
             if query_id in {47, 57}:
                 rewrites.append(("alias_qualified_projections", {}))
