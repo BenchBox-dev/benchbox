@@ -25590,6 +25590,15 @@
       "status": "open",
       "title": "Close the rename bypass in the generator-volume gate's CI path filter"
     },
+    "generator-volume-gate-ungated-schema-and-seed-inputs-20261120": {
+      "claim": null,
+      "needs": [
+        "feature-fix-ci-congestion-diagnostics-and-generator-gate-20261117"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Gate the remaining files that set pure-Python generator output volume"
+    },
     "geospatial-primitives-benchmark": {
       "claim": null,
       "needs": [],
