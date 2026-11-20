@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The owner approved the design recorded here.",
+    "Refresh pull requests carry machine-checked evidence while staying under review.",
+    "Scheduled refreshes notify the owner."
+  ],
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "description": "## Problem\nBaseline refresh pull requests rewrite tens of thousands of generated lines, so the review bot refuses them and they wait for an owner stand-in. Dispatched refreshes merged within hours; scheduled ones (#3928, #4066, #4283) sat unmerged. The baseline stays a soundness path.\n\n## Change\nDesign first: a `reproduce` command that rebuilds a refresh pull request's baseline from the artifacts its manifest names and reports byte identity and source-run provenance, run as a non-exempting check whose green result is the evidence for the owner's stand-in; a notification to the owner when a scheduled refresh pull request opens; and a refresh cadence. The provenance and byte-identity code written for #4385 may be reused after review.\n\n## Decision gates\nThe owner approves the design, the cadence and the notification channel before implementation. The baseline path stays in `.github/soundness-paths.txt` and out of `.github/inert-paths.txt`. No change to the 1.30 ratio or 360 s delta, to the normalizer, or to which tests are charged.\n\n## Verification rubric\nPass: on a real refresh pull request the check reports byte identity and lists source runs; a tampered baseline fails it; the path manifests are unchanged; a scheduled refresh produces the notification.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "links": [
+    "scripts/build_fast_duration_baseline.py",
+    ".github/workflows/fast-duration-baseline-refresh.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:13:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8a06c14a38c240ac96f19a223ee9484f",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    }
+  ]
+}

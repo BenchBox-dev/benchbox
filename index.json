@@ -24495,6 +24495,15 @@
       "status": "done",
       "title": "Architecture hardening: define fail-open vs fail-closed policy for translation and validation"
     },
+    "fast-baseline-reproduce-as-review-evidence-and-refresh-cadence-20261120": {
+      "claim": null,
+      "needs": [
+        "duration-gate-redesign-prs-owner-decision-20261120"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Keep review on the fast-tier baseline; add a reproduce check as evidence and make refreshes visible"
+    },
     "fast-duration-baseline-scheduled-refresh-never-lands-20261119": {
       "claim": null,
       "needs": [],
