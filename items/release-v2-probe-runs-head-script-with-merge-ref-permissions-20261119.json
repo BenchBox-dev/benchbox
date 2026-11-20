@@ -4,7 +4,7 @@
     "A PR cannot change the code that posts its own required status (the launcher runs from base), or the decision recorded explains why not.",
     "docs describing release-v2-probe.yml state which revision's scripts run."
   ],
-  "context": "2026-11-20 evidence: #4382 (branch from before #4390) failed run 44648125958 twice with the same 403 (`gh api --method POST failed: Resource not accessible by integration`), attempt 2 included, after `make pr-arm` closed and reopened the PR to start CI on a fresh merge ref. github-actions then disabled auto-merge (00:50:39Z). The checkout step takes `github.event.pull_request.head.sha`, so the merge ref's workflow (statuses: write) ran the head's older check-run script. Workaround used: merge origin/develop into the branch. At least nine failing runs from 2026-11-19T20:48Z to 2026-11-20T00:43Z were the same 403.",
+  "context": "2026-11-20 evidence: #4382 (branch from before #4390) failed run 44648125958 twice with the same 403 (`gh api --method POST failed: Resource not accessible by integration`), attempt 2 included, after `make pr-arm` closed and reopened the PR to start CI on a fresh merge ref. github-actions then disabled auto-merge (00:50:39Z). The checkout step takes `github.event.pull_request.head.sha`, so the merge ref's workflow (statuses: write) ran the head's older check-run script. Workaround used: merge origin/develop into the branch. At least nine failing runs from 2026-11-19T20:48Z to 2026-11-20T00:43Z were the same 403.\n\n2026-11-20 live check: the probe passes on every PR whose head contains #4390 (9da6e1c448), for example #4322 and #4393, and fails with HTTP 403 on heads that do not: #4340 (fc8766c7) and #4331 (41bc621c). Updating a branch from develop clears it.",
   "description": "#4390 (merge 9da6e1c4, 2026-11-19T20:48Z) switched the required 'release-v2 probe' from a check run to a commit status and changed the dispatch job's permissions from checks: write to statuses: write. For pull_request events the workflow definition (and so the token permissions) comes from the merge ref, which includes #4390, but release-v2-probe.yml checks out github.event.pull_request.head.sha and runs that tree's scripts/release_probe_launch.py. A branch based before 9da6e1c4 still POSTs repos/.../check-runs, which its statuses-only token refuses with 403 'Resource not accessible by integration', so the required status is never posted and an armed PR cannot merge. Observed on #4393 (feat/polars-matrix-2-1, attempts 1-3), fix/ci-congestion-diagnostics-and-generator-gate, feat/heavy-guard-attribution-engine-caps and feat/corpus-doris-lakesail-tpcds-obt; all four lack 9da6e1c4, and every branch that contains it passed in the same window. Immediate remedy for an affected PR: merge or rebase origin/develop and push. Not a token-settings or repository-rename problem.\n\nDecision gate: run the launch and verdict scripts from the base revision (a second checkout of github.event.pull_request.base.sha, or the merge ref) while the job graph check keeps reading the head's release-v2.yml; or keep head scripts and fail with a clear 'rebase onto develop' message when the head's launcher predates the workflow contract. Prefer the base checkout: it also stops a PR from changing the code that posts its own required status.\n\nGuardrails: the required context stays a commit status; do not grant checks: write back as a workaround; fork refusal unchanged; the graph check must still validate the head's release-v2.yml.",
   "links": [
     ".github/workflows/release-v2-probe.yml",
@@ -29,6 +29,14 @@
       "op": "update",
       "op_id": "b95e492b6fe843a286e336589ab72327",
       "session_id": "f7c6d1a3e9fa46029a0659abd3b59351"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1125961d008304f6050893ef",
+      "at": "2026-11-20T14:21:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f03e2c8109024b91b2155679de037c22",
+      "session_id": "3678ab0e75574974b0dc1dcda02267b3"
     }
   ]
 }
