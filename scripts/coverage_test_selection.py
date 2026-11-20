@@ -20,6 +20,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from _project.scripts import preflight_targets
+from scripts import gh_transient
 
 MAP_VERSION = 2
 UNIDENTIFIED_TESTCASE = "<unidentified testcase>"
@@ -994,8 +995,36 @@ def _split_row(line: str) -> tuple[str, str, str]:
     return parts[0], parts[1], parts[2]
 
 
+def _retry_budget() -> gh_transient.Budget:
+    return gh_transient.Budget(gh_transient.DEFAULT_BUDGET_SECONDS)
+
+
+def _run_gh(command: list[str], repo: Path, timeout: int) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(command, cwd=repo, text=True, capture_output=True, timeout=timeout)
+
+
+def _gh_read(repo: Path, command: list[str], timeout: int) -> tuple[int, str]:
+    expired: list[subprocess.TimeoutExpired] = []
+
+    def run(attempt: list[str]) -> tuple[int, str]:
+        try:
+            proc = _run_gh(attempt, repo, timeout)
+        except subprocess.TimeoutExpired as exc:
+            expired.append(exc)
+            return 124, "gh read exceeded its deadline"
+        if proc.returncode == 0:
+            return 0, proc.stdout
+        return proc.returncode, proc.stderr.strip() or proc.stdout.strip()
+
+    code, text = gh_transient.RetryingRunner(run, _retry_budget())(command)
+    if code != 0 and expired:
+        raise expired[-1]
+    return code, text
+
+
 def _trusted_run(repo: Path, slug: str, run_id: int) -> tuple[str, str] | None:
-    proc = subprocess.run(
+    code, text = _gh_read(
+        repo,
         [
             "gh",
             "api",
@@ -1003,16 +1032,11 @@ def _trusted_run(repo: Path, slug: str, run_id: int) -> tuple[str, str] | None:
             "--jq",
             ".head_sha, .path, .event, .head_branch, .head_repository.full_name",
         ],
-        cwd=repo,
-        text=True,
-        capture_output=True,
-        timeout=60,
+        60,
     )
-    if proc.returncode != 0:
-        raise SelectionError(
-            f"cannot query repos/{slug}/actions/runs/{run_id}: {proc.stderr.strip() or proc.stdout.strip()}"
-        )
-    fields = [line.strip() for line in proc.stdout.splitlines()]
+    if code != 0:
+        raise SelectionError(f"cannot query repos/{slug}/actions/runs/{run_id}: {text}")
+    fields = [line.strip() for line in text.splitlines()]
     if len(fields) != 5:
         return None
     sha, path, event, branch, head_slug = fields
@@ -1029,14 +1053,12 @@ def _is_ancestor(repo: Path, sha: str, base_sha: str) -> bool:
 
 
 def _download_artifact(repo: Path, slug: str, run_id: int, name: str, target: Path) -> bool:
-    proc = subprocess.run(
-        ["gh", "run", "download", str(run_id), "-R", slug, "-n", name, "--dir", str(target)],
-        cwd=repo,
-        text=True,
-        capture_output=True,
-        timeout=600,
+    code, detail = _gh_read(
+        repo, ["gh", "run", "download", str(run_id), "-R", slug, "-n", name, "--dir", str(target)], 600
     )
-    return proc.returncode == 0
+    if code != 0 and (gh_transient.ATTEMPTS_EXHAUSTED in detail or gh_transient.BEYOND_BUDGET in detail):
+        raise SelectionError(f"cannot download {name} of run {run_id}: {detail}")
+    return code == 0
 
 
 def _read_downloaded_map(target: Path, head: str) -> tuple[dict, Path] | None:

@@ -50,7 +50,7 @@ This document provides guidelines and instructions for contributing.
 
 `develop` is the long-lived development branch and the repository's default branch; **all changes land via PR**. Releases are tags on `develop` commits (see `docs/internal/release-guide.md`). PRs target `develop` and squash-merge with linear history.
 
-Required CI on `develop` reports five unit results (`core`, `explorer`, `results-data`, `docs` and `tooling` from `.github/workflows/ci.yml`), plus `hold` and `review-gate`. `review-gate` is posted by the `benchbox-oracle` app from `develop` code and passes on a result-affecting PR only when the app's latest review of its current head reports success (or a listed attester has posted the stand-in approval for that head) and the reviewer's threads are resolved. Soundness-path review applies even when the author uses the owner's account; once a finished branch is armed, auto-merge lands it when required checks are green and all review threads are resolved.
+Required CI on `develop` reports five unit results (`core`, `explorer`, `results-data`, `docs` and `tooling` from `.github/workflows/ci.yml`), plus `hold` and `review-gate`. `review-gate` is posted by the `benchbox-review` app from `develop` code and passes on a result-affecting PR only when the app's latest review of its current head reports success (or a listed attester has posted the stand-in approval for that head) and the reviewer's threads are resolved. Soundness-path review applies even when the author uses the owner's account; once a finished branch is armed, auto-merge lands it when required checks are green and all review threads are resolved.
 
 ### CI lanes
 

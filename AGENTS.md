@@ -97,7 +97,7 @@ For long output, write `/tmp/<slug>.log` (report status + short tail). UAT/stres
 Before publication, self-review with the `code` review action and fix all Critical and Required findings. `make pr-open` needs a `pr-preflight` receipt. Wait on CI with `make pr-arm WAIT=<min>`, never your own loop.
 
 - Dev PRs target `develop` (or `published-results`); squash-merge; never direct-push protected branches; force-push feature branches only with `--force-with-lease`.
-- Soundness paths: resolve `benchbox-oracle` threads; arm only on its success review of the current head (rerun if pending/absent). Land drift/pinning guards with required-CI wiring.
+- Soundness paths: resolve `benchbox-review` threads; arm only on its success review of the current head (rerun if pending/absent). Land drift/pinning guards with required-CI wiring.
 - Stacks: at most 3 PRs deep (caps chain depth, not PR count), one agent and tracker item; upper PRs are parent-branch drafts; never build on another agent's unmerged branch (batch members exempt); deeper work uses a batch. After the parent squash-merges, retarget to `develop`, `git rebase --onto origin/develop <old parent tip>`, mark ready, pass CI and review on that head, then arm.
 
 ## TODO tracker

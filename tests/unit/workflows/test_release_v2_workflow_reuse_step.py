@@ -25,7 +25,8 @@ def _decide_run() -> str:
 def checkout(tmp_path):
     root = tmp_path / "checkout"
     (root / "scripts").mkdir(parents=True)
-    shutil.copy(REPO_ROOT / "scripts" / "release_reuse_uat_evidence.py", root / "scripts")
+    for script in ("release_reuse_uat_evidence.py", "gh_transient.py"):
+        shutil.copy(REPO_ROOT / "scripts" / script, root / "scripts")
     (root / "pyproject.toml").write_text(
         '[project]\nname = "probe"\nversion = "0.0.0"\nrequires-python = ">=3.11"\ndependencies = []\n',
         encoding="utf-8",
