@@ -4,7 +4,7 @@
     "Prefilter equivalence test: the filtered scan finds exactly the full scan findings on the repository tree",
     "No assertion is removed or weakened"
   ],
-  "context": "Fast-tier summed time (tests/fixtures/fast_tier_baseline, sum of p50) grew from 1,423 s on 2026-10-26 to 2,118 s on 2026-11-19; 777 s of the 791 s came from new test files. The PR fast step wall time rose from about 500 s to 720-950 s. Owner decisions (2026-11-20): whole-file moves for test_heavy_choke_points.py and test_review_gateway_host.py; ceiling = post-cut total plus 10%; block when the projected total exceeds it; ceiling changes only by hand (no automatic lowering); a refresh over the ceiling opens no PR and opens or updates one issue; three PRs with tracker items.",
+  "context": "Fast-tier summed time (tests/fixtures/fast_tier_baseline, sum of p50) grew from 1,423 s on 2026-10-26 to 2,118 s on 2026-11-19; 777 s of the 791 s came from new test files. The PR fast step wall time rose from about 500 s to 720-950 s. Owner decisions (2026-11-20): whole-file moves for test_heavy_choke_points.py and test_review_gateway_host.py; ceiling = post-cut total plus 10%; block when the projected total exceeds it; ceiling changes only by hand (no automatic lowering); a refresh over the ceiling opens no PR and opens or updates one issue; three PRs with tracker items.\n\nMerged in #4419 (ffc4de7750). Local before/after: sqlglot bypass 36.5 s -> 1.4 s (fast selection; full-scan equivalence test is slow-marked), carried tests 25-36 s -> 2.1 s, doc inventory 24.2 s -> about 7 s, QuestDB 46 s -> about 5 s. The QuestDB fake server now joins only on the post-load count.",
   "description": "test_vendored_sqlglot_bypass.py (82 s): scan the tree once per process and skip ast.parse for files with none of the scanner tokens, with a test that the skip equals the full scan. test_release_line_carried_tests.py (27 s): build the regex and read tests/ once. test_doc_reference_inventory.py (23 s): generate the inventory once per module. test_questdb_adapter.py (40 s): four ILP tests wait out thread.join(timeout=10); shut the fake server down so the thread exits. Tests stay in the fast tier with unchanged verdicts.",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "generation": "9d1748015d3d48fe9c57a1f9f853ebca",
       "op": "take",
       "op_id": "971ab6369034441ca21b9c7fd6d72985",
+      "session_id": "15dd29d145b7431a900c1d2b20c686c2"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f5a04a89ab1412ae25ea9d7",
+      "at": "2026-11-20T19:25:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6e7a41968f3144dd8c22b5fddc2347b9",
       "session_id": "15dd29d145b7431a900c1d2b20c686c2"
     }
   ]
