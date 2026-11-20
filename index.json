@@ -24609,6 +24609,13 @@
       "status": "open",
       "title": "CI: release-v2 probe queue time, watchdog test race, duration re-run message, generator volume gate"
     },
+    "feature-fix-restore-tpcds-scale-range-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Restore the TPC-DS and TPC-DS-OBT scale range that #4335 cut to 3000"
+    },
     "feature-fix-tpcds-scale-bounds-20261117": {
       "claim": null,
       "needs": [],

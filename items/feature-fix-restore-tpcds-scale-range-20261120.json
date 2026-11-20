@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The feature pull request is merged and each member meets its own acceptance."
+  ],
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "description": "Umbrella for one feature branch and one pull request in core. Members: tpcds-restore-100000-maximum-and-official-points-20261120. The query 9 follow-up (tpcds-q9-generation-above-sf5000-owner-decision-20261120) is a separate owner decision and is not a member.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:10:24Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ecede846377045a9aaf7ad74e0cff045",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    }
+  ]
+}
