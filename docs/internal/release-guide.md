@@ -216,8 +216,12 @@ The procedure:
    exercised against `v0.5.1`. `verify-line` and admission check the reviewer
    files against `develop`, and the landing files against the lists the
    creation commit's `Develop-Source` tree declared, so a line made before a
-   file joined the carry stays admissible. Only tooling is carried; the commit
-   changes no product file and nothing the package ships.
+   file joined the carry stays admissible. Admission on a tag runs the consumer
+   in the tagged tree, which the creation commit does not carry, so it applies
+   these checks only once the line has `scripts/release_artifact_consumer.py`
+   from `develop` (step 3); run `verify-line` from `develop` before every tag.
+   Only tooling is carried; the commit changes no product file and nothing the
+   package ships.
    `tests/unit/scripts/test_release_line_carried_tests.py` fails when a test
    names a carried file and is neither listed there nor declared unrelated.
    Creation commits are immutable, so check the line again from `develop`
