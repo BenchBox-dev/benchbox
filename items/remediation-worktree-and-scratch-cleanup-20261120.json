@@ -2,7 +2,7 @@
   "acceptance": [
     "No worktree or scratch file from this work remains, and nothing unpushed was lost."
   ],
-  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).\n\nOwner decision 2026-11-20. Question: worktrees, branches and scratch left by the session. Answer: \"Recommended: remove a worktree and its local branch only once its pull request is merged or closed and it has nothing unpushed or uncommitted, using make worktree-remove. Delete the scratch files at the very end. I list everything removed.\" Source: owner's answer in the choice dialog, 2026-11-20. Never touched: ~/.benchbox/evidence/fast-duration-gate-20261119/ and everything under ~/Developer/benchmark_runs. Quote ~/.cache/closeout.sh into raw-run-evidence-deleted-and-4381-authorship-record-20261120 before deleting it. BenchBox.wt-heavyguard has 8 unpushed commits and BenchBox.wt-corpus-class 2 uncommitted files; neither is removed while that is true.\n\n## Guardrails (accepted by the owner, 2026-11-20)\nThe agent never posts a stand-in review, resolves a review thread, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. It arms with `make pr-arm` once per pull request and reports the result. Subagents are read-only. Any limit, default, threshold or label text is shown to the owner before it is committed. A blocked step stops this item; the agent moves to the next item and does not work around the block.",
   "description": "## Problem\nWorktrees wt-heavyguard, wt-ci-diag, wt-doris-lakesail, wt-tpcds-scale-bounds, wt-fastgate, wt-fast-baseline-review, wt-pr-rerun-msg, wt-fast-baseline-4381 and site worktrees wt-tpcds-scale-bounds and wt-read-model-20 remain, with scratch under /tmp (hg-b4, b5, fdrc*, tuat, scale-remediation, rv, audit) and ~/.cache (closeout.sh, arm-*.log, rerun-*.log, preflight-*.log and others).\n\n## Change\nFinish each worktree with `make worktree-finish` and EXPECTED_HEAD_OID once its pull request is merged. For closed, unmerged branches, list their commits to the owner first; never `git branch -D`. Delete scratch. Keep /tmp/fdrc* until fast-duration-gate-runner-class-spread-20261120 has its method recorded.\n\n## Decision gates\nNever remove a worktree with unpushed commits or uncommitted changes without listing them to the owner first. Do not delete anything under ~/Developer/benchmark_runs.\n\n## Verification rubric\nPass: `git worktree list` shows none of the named worktrees; the named scratch paths are gone.\n\n## Additions from the item review\n- Do not drop `stash@{0}` (item33-pre-rebase): it belongs to another session.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "op": "update",
       "op_id": "b4fdddc246344d77ae1bf408e4b0f032",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-20T14:56:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "717a463932d54f07b912d14dbc57e8b5",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
 }
