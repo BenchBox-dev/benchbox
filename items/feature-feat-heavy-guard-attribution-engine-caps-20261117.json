@@ -2,7 +2,7 @@
   "acceptance": [
     "The feature pull request is merged and each member item meets its own acceptance or records an owner-approved disposition."
   ],
-  "context": "Created 2026-11-17 to hold the related items on one feature branch.",
+  "context": "Created 2026-11-17 to hold the related items on one feature branch.\n\n2026-11-20 review of #4331: do not arm until heavy-guard-4331-owner-decisions-20261120 and heavy-guard-4331-review-repairs-20261120 are done.",
   "description": "Umbrella for one feature branch and one pull request (feat/heavy-guard-attribution-engine-caps). Members: heavy-run-admitted-then-killed-by-foreign-memory-pressure-20261112, heavy-guard-watchdog-20261030-deferral-1, uat-quiet-hides-first-failure-output-20261111. Owner decisions for every member were recorded on 2026-11-17.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "op": "create",
       "op_id": "c81b19be70ac43abad764ce76bb075d0",
       "session_id": "989657b059c44ae4bade82cb666c453c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:15:19Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a95280a066554c5b81d5fe20d79ee558",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
     }
   ]
 }
