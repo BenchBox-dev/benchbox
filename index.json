@@ -24649,15 +24649,10 @@
       "title": "Move the slowest fast-tier tests to the medium tier"
     },
     "fast-tier-speed-up-repo-scans": {
-      "claim": {
-        "expires_at": "2026-11-21T19:05:10Z",
-        "generation": "9d1748015d3d48fe9c57a1f9f853ebca",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f5a04a89ab1412ae25ea9d7"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Speed up the repository-scan tests and the QuestDB thread-join waits"
     },
     "feature-agent-docs-operational-facts-20261111": {
