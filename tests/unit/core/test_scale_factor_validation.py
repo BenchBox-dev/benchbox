@@ -44,6 +44,10 @@ def test_in_range_values_are_accepted(benchmark_id: str, sf: float) -> None:
     [
         ("ssb", 1.5),
         ("clickbench", 1.5),
+        ("tpcds", 1.5),
+        ("tpcds_obt", 2.5),
+        ("tpcds", 100001),
+        ("tpcds_obt", 100001),
         ("tpch", 200000),
         ("tpch", 0.001),
         ("tpch", 0),
@@ -57,29 +61,16 @@ def test_out_of_range_values_name_the_range(benchmark_id: str, sf: float) -> Non
     assert excinfo.value.scale_options == list(get_scale_factor_rule(benchmark_id).standard)
 
 
-@pytest.mark.parametrize(("benchmark_id", "sf"), [("tpcds", 1.5), ("tpcds_obt", 2.5)])
-def test_tpcds_fractional_values_above_one_name_the_range(benchmark_id: str, sf: float) -> None:
-    with pytest.raises(ScaleFactorOutOfRangeError, match="from 0.01 to 3000"):
-        validate_scale_factor(benchmark_id, sf)
+@pytest.mark.parametrize("benchmark_id", ["tpcds", "tpcds_obt"])
+@pytest.mark.parametrize("sf", [3000, 3001, 10000, 100000])
+def test_tpcds_scales_up_to_the_shared_maximum_are_accepted(benchmark_id: str, sf: float) -> None:
+    validate_scale_factor(benchmark_id, sf)
 
 
 @pytest.mark.parametrize("benchmark_id", ["tpcds", "tpcds_obt"])
-def test_tpcds_largest_scale_is_accepted(benchmark_id: str) -> None:
-    validate_scale_factor(benchmark_id, 3000)
-
-
-@pytest.mark.parametrize("benchmark_id", ["tpcds", "tpcds_obt"])
-@pytest.mark.parametrize("sf", [3001, 10000, 100000])
-def test_tpcds_above_the_maximum_is_refused_with_the_query_9_reason(benchmark_id: str, sf: float) -> None:
-    with pytest.raises(ValueError, match="exceeds maximum \\(3000\\).*query 9"):
-        validate_scale_factor(benchmark_id, sf)
-
-
-@pytest.mark.parametrize("benchmark_id", ["tpcds", "tpcds_obt"])
-def test_tpcds_standard_options_stay_within_the_maximum(benchmark_id: str) -> None:
+def test_tpcds_range_is_the_shared_range(benchmark_id: str) -> None:
     rule = get_scale_factor_rule(benchmark_id)
-    assert rule.maximum == 3000.0
-    assert max(rule.standard) <= rule.maximum
+    assert (rule.minimum, rule.maximum) == (0.01, 100000.0)
 
 
 @pytest.mark.parametrize("benchmark_id", [bid for bid in BENCHMARK_METADATA if bid not in FIXED])

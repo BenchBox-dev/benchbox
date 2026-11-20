@@ -403,20 +403,17 @@ def get_scale_factor_rule(benchmark_id: str) -> ScaleFactorRule:
         return ScaleFactorRule(minimum=options[0], maximum=options[-1], standard=options, exact=True)
 
     min_scale = meta.get("min_scale")
-    max_scale = MAX_SCALE_FACTOR
     if benchmark_id.lower() in ("tpcds", "tpcds_obt"):
-        from benchbox.core.tpcds.compliance import OFFICIAL_SCALE_POINTS, TPCDS_MAX_SCALE, TPCDS_MIN_SUBSCALE
+        from benchbox.core.tpcds.compliance import OFFICIAL_SCALE_POINTS, TPCDS_MIN_SUBSCALE
 
         min_scale = TPCDS_MIN_SUBSCALE
-        max_scale = TPCDS_MAX_SCALE
         if benchmark_id.lower() == "tpcds":
             options = tuple(sorted({*options, *OFFICIAL_SCALE_POINTS}))
-        options = tuple(opt for opt in options if opt <= max_scale)
     elif min_scale is None and options:
         min_scale = options[0]
     return ScaleFactorRule(
         minimum=float(min_scale if min_scale is not None else 0.01),
-        maximum=max_scale,
+        maximum=MAX_SCALE_FACTOR,
         standard=options,
         exact=False,
     )
@@ -459,12 +456,7 @@ def validate_scale_factor(
             raise ScaleFactorNotSupportedError(benchmark_id, scale_factor, list(rule.standard))
         return True
 
-    if (
-        benchmark_id.lower() in ("tpcds", "tpcds_obt")
-        and math.isfinite(sf)
-        and sf > 0
-        and not rule.minimum <= sf <= rule.maximum
-    ):
+    if benchmark_id.lower() in ("tpcds", "tpcds_obt") and math.isfinite(sf) and sf > 0 and sf < rule.minimum:
         from benchbox.core.tpcds.compliance import validate_tpcds_scale
 
         validate_tpcds_scale(sf)

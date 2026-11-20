@@ -8,13 +8,9 @@ class TpcdsComplianceClass(str, Enum):
 
 
 TPCDS_MIN_SUBSCALE: float = 0.01
-TPCDS_MAX_SCALE: float = 3000.0
 
-TPCDS_SPECIFIED_SCALE_POINTS: frozenset[float] = frozenset(
-    {1.0, 10.0, 100.0, 300.0, 1000.0, 3000.0, 10000.0, 30000.0, 100000.0}
-)
 OFFICIAL_SCALE_POINTS: frozenset[float] = frozenset(
-    point for point in TPCDS_SPECIFIED_SCALE_POINTS if point <= TPCDS_MAX_SCALE
+    {1.0, 10.0, 100.0, 300.0, 1000.0, 3000.0, 10000.0, 30000.0, 100000.0}
 )
 
 
@@ -33,12 +29,8 @@ def validate_tpcds_scale(
 ) -> TpcdsComplianceClass:
     if scale_factor <= 0:
         raise ValueError(f"TPC-DS scale factor must be positive, got {scale_factor}")
-    if scale_factor > TPCDS_MAX_SCALE:
-        raise ValueError(
-            f"TPC-DS scale factor {scale_factor:g} exceeds maximum ({TPCDS_MAX_SCALE:g}). The bundled dsqgen "
-            "cannot generate query 9 above this scale: it builds a key permutation of rowcount(store_sales)/5 "
-            "entries, which took over 45 s and 3.6 GiB at scale factor 10000 and over 14 GiB at 100000."
-        )
+    if scale_factor > 100000:
+        raise ValueError(f"TPC-DS scale factor {scale_factor} exceeds maximum (100000)")
 
     compliance = classify_tpcds_run(scale_factor, official=official)
 
