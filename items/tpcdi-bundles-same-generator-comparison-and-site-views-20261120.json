@@ -4,7 +4,7 @@
     "Site cohort views were checked against the deployed Explorer and the result recorded."
   ],
   "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
-  "description": "## Problem\nlocal-tpcdi-bundles-regenerate-current-generator was closed with acceptance 3 ('same-generator data/result-count comparisons') replaced by 'cross-generator comparison is prevented by the exclusion', and acceptance 4 ('site/cohort views checked') without evidence.\n\n## Change\nCompare row counts and query result counts across the 9 current-generator bundles from seed run 3096 at each scale and platform; check the Explorer cohort views show the new bundles and exclude the 12 flagged ones.\n\n## Decision gates\nNone; read-only checks. A discrepancy becomes a defect item, not an edit here.\n\n## Verification rubric\nPass: a table of per-table row counts and per-query result counts per bundle is recorded on this item with any differences explained; screenshots or fetched data from the deployed Explorer show the cohorts.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "description": "## Problem\nlocal-tpcdi-bundles-regenerate-current-generator was closed with acceptance 3 ('same-generator data/result-count comparisons') replaced by 'cross-generator comparison is prevented by the exclusion', and acceptance 4 ('site/cohort views checked') without evidence.\n\n## Change\nCompare row counts and query result counts across the 9 current-generator bundles from seed run 3096 at each scale and platform; check the Explorer cohort views show the new bundles and exclude all 21 flagged TPC-DI sidecars.\n\n## Decision gates\nNone; read-only checks. A discrepancy becomes a defect item, not an edit here.\n\n## Verification rubric\nPass: a table of per-table row counts and per-query result counts per bundle is recorded on this item with any differences explained; screenshots or fetched data from the deployed Explorer show the cohorts.\n\n## Additions from the item review\n- The earlier claim that these bundles ran with seed 42 is inferred from the default, not recorded; say so in the evidence.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4317"
   ],
@@ -15,6 +15,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "a03006810ec242de85a5615d154822e0",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:36:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "860cb9b0007e4018a301b08d87947f3c",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
     }
   ]
