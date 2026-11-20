@@ -3,7 +3,7 @@
     "Each of the five notes is fixed with a regression test where behavior changes, or dismissed with a recorded reason.",
     "Released in a Theseus version and locked by BenchBox and Theseus's self-lock."
   ],
-  "context": "2026-11-20: verified on main 97691757. Dropped a sixth note about 'starts with a wildcard' wording: it referred to a PR body, and docs/infra.md:78 already states the full rule.",
+  "context": "2026-11-20: verified on main 97691757. Dropped a sixth note about 'starts with a wildcard' wording: it referred to a PR body, and docs/infra.md:78 already states the full rule.\n\n2026-11-20: all five notes fixed in Theseus #102, merged as 08ed67d2. The reference-definition fix ended up escaping every line-start `[` after the container prefix, with CR normalisation and a hardened _indented_code_rows; six independent reviews and gh api markdown render checks back it. Residual pre-existing heading gap filed as theseus-neutralize-indented-heading-in-list-20261120. Remaining acceptance: release and locks.",
   "description": "Independent reviews of recent Theseus PRs left non-blocking notes. Each was re-checked on main 97691757 on 2026-11-20; line numbers drift.\n1. src/theseus_reviewer/layout.py:44: `_REFERENCE` only matches a reference label on one line (`[^\\]\\n]*\\]:`). CommonMark allows a label to span lines, so a split `[label\\n]: dest` passes through `neutralize` unchanged and can create a relative link. Impact is low because sanitizing already removes absolute URLs.\n2. src/theseus_reviewer/suggestions.py:50: `target.is_symlink()` is checked on the already-resolved path, so it is always False and a symlinked file inside the workspace is read through to its target. The containment check still blocks escapes outside the workspace.\n3. src/theseus_reviewer/dashboard.py:45: when one finding has several bot threads in the same cycle, `setdefault` keeps whichever comes first, which may be an older thread instead of the current one.\n4. src/theseus_reviewer/check_run.py:39: annotation messages are plain text, but `layout.neutralize` replaces raw tags with `&lt;`, so the entity appears literally in check-run annotations.\n5. src/theseus_reviewer/infra/rotate_command.py:56-64 reads the environment with its own `gh api` call and repeats the 'unreadable or open environment' refusal, while setup uses `github_env.get_environment` plus `is_restricted` (setup.py:417). Both refuse correctly; the duplication means the two paths can drift.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "f7f0844e162041be8097ea59bf7667a0",
+      "session_id": "3678ab0e75574974b0dc1dcda02267b3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1125961d008304f6050893ef",
+      "at": "2026-11-20T19:31:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d4422ec72dc640fdb52bdd3939865ddd",
       "session_id": "3678ab0e75574974b0dc1dcda02267b3"
     }
   ]
