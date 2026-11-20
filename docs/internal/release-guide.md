@@ -475,53 +475,65 @@ probe workflow, `scripts/release_*.py`, `scripts/release_requirements.txt`,
 `scripts/update_version.py`, `tests/uat/gate_summary.py`, `tests/uat/_cli.py`,
 `tests/uat/config.py`, `Makefile`, `make/uat.mk` or a release-gate UAT
 config (a rename counts under both its old and new path), it dispatches every probe variant
-from the pull request branch and creates the required check run `release-v2 probe`
-on the head commit as in progress, listing the three run links; its `external_id`
-records the three run ids. Otherwise it creates the check run as completed with
-success at once. It runs on every pull request from a branch of this repository so
-that the check can be required without leaving unrelated pull requests pending. If a dispatch fails, or the job
-graph check fails, the check run is created as a failure carrying the error.
+from the pull request branch and posts the required commit status `release-v2 probe`
+on the head commit as `pending`, its description `Probe running: reuse=<id>;fallback=<id>;guarded-change=<id>`
+recording the three run ids and its target URL the dispatch run. Otherwise it posts the
+status as `success` ("No release input changed") at once. It runs on every pull request
+from a branch of this repository so that the status can be required without leaving
+unrelated pull requests pending. If a dispatch fails, or the job graph check fails, the
+status is posted as `failure` carrying the error.
 
-The last job of `release-v2.yml`, `probe report` (job id `report-probe`), completes
-the check. It runs only in probe mode, with `if: always()`, after every other job, and
-holds `contents: read`, `actions: read` and `checks: write`; it cannot publish and
+The required context is a commit status, not a check run, because GitHub files a check
+run created with `GITHUB_TOKEN` into an arbitrary existing github-actions check suite of
+the commit, and one filed in the `CI` workflow's suite is not counted by the ruleset (the
+merge API answers 405 "Required status check is expected" although GraphQL reports it
+required and successful). A commit status carries no suite, and has no `external_id`,
+so the run ids live in the pending status description (about 100 of the 140 allowed
+characters), the one place the report job and a re-run already read.
+
+The last job of `release-v2.yml`, `probe report` (job id `report-probe`), settles
+the status. It runs only in probe mode, with `if: always()`, after every other job, and
+holds `contents: read`, `actions: read` and `statuses: write`; it cannot publish and
 `scripts/release_probe_graph.py` enforces that it needs every other job, runs in every
 probe outcome and never runs in a real release. (A `workflow_run` workflow cannot do
 this: the variants are dispatched with `GITHUB_TOKEN`, so GitHub raises no
-`workflow_run` event for them.) Each variant's report job finds the in-progress
-`release-v2 probe` check on its head commit whose recorded ids include its run and
+`workflow_run` event for them.) Each variant's report job reads the latest
+`release-v2 probe` status on its head commit and acts only when it is `pending` and its
+recorded ids include its run, then
 judges the three runs by their substantive jobs, not by run status, which still reads
 in progress while a report job runs. The current run is judged from its `needs`
 results; every other recorded run is judged from the jobs the API lists for it, and
 counts as finished once its `release outcome` job (the last substantive job, which
 every other job precedes) and every non-report job have completed, or once the run
-itself completed. When all three are finished the check completes: success only if no
-substantive job in any run failed, was cancelled or timed out (skipped jobs are fine),
-otherwise failure naming each variant, its failing jobs and the run link. While any
-substantive job is unfinished it changes nothing, and a completed check is left alone,
-so two reports finishing together reach the same verdict and the second finds the
-check completed. The logic lives in `scripts/release_probe_verdict.py`. A run cancelled
-by a newer push completes the old head's check as failure, which is harmless because
-only the current head counts. Expect the check to stay in progress for as long as the
-runs queue: under runner congestion that can be hours, and waiting is the remedy; do
-not re-dispatch the probe. A check records three distinct run ids and each must be a
-`release-v2.yml` dispatch at the check's head commit, otherwise the check fails. Right
-after creating the check, the dispatch job completes it itself if every recorded run
-has already finished.
+itself completed. When all three are finished the status is set: `success` ("Probe
+passed") only if no substantive job in any run failed, was cancelled or timed out
+(skipped jobs are fine), otherwise `failure` whose description names each failed variant and
+its failing jobs, clipped to the 140-character limit, with the first failing run linked as
+the target URL. While any substantive job is unfinished it changes nothing, the latest status
+per context wins, and a status that is already `success` or `failure` is never overwritten
+(it is re-read just before posting), so two reports finishing together reach the same
+verdict and the second finds the status final. The logic lives in
+`scripts/release_probe_verdict.py`. A run cancelled by a newer push settles the old
+head's status as `failure`, which is harmless because only the current head counts.
+Expect the status to stay pending for as long as the runs queue: under runner congestion
+that can be hours, and waiting is the remedy; do not re-dispatch the probe. A pending
+status records three distinct run ids and each must be a `release-v2.yml` dispatch at the
+status's head commit, otherwise the status fails. Right after posting the pending status,
+the dispatch job settles it itself if every recorded run has already finished.
 
-Re-running the `release-v2 probe dispatch` job reconciles a check whose report job did
-not complete it (for example because the report job itself failed): before dispatching,
-the job looks for an in-progress `release-v2 probe` check on the head commit that
-records run ids. If every recorded run has finished, by the same job-based rule, it
-completes that check through the verdict code and exits without dispatching; if any is
-still running it exits and changes nothing. When the check is already completed, or none
-exists, the job behaves as it always did: it dispatches the three variants and creates a
-new check run, so a deliberate re-run of a completed probe probes again.
+Re-running the `release-v2 probe dispatch` job reconciles a status whose report job did
+not settle it (for example because the report job itself failed): before dispatching,
+the job looks for a pending `release-v2 probe` status as the latest on the head commit
+that records run ids. If every recorded run has finished, by the same job-based rule, it
+settles that status through the verdict code and exits without dispatching; if any is
+still running it exits and changes nothing. When the latest status is already final, or
+none exists, the job behaves as it always did: it dispatches the three variants and posts
+a new pending status, so a deliberate re-run of a settled probe probes again.
 
 The probe builds its own
 distributions, so it does not execute the `dist-artifact` job of `trunk.yml`;
 a drift test keeps the build and verification commands aligned.
-A fork pull request cannot create check runs or dispatch workflows, so the dispatch
+A fork pull request cannot create commit statuses or dispatch workflows, so the dispatch
 job fails at once with a message and `release-v2 probe` is never reported for it;
 push the branch to the repository and open the pull request from there.
 
@@ -862,6 +874,24 @@ configs (`--stage-config`) still enumerate it.
 Tracker items filed from these reports use the title prefix `UAT envelope:` and
 list `uat-rubric` among their links, so the dashboard can count them. The
 `tracker_item` drafts in the proposals report already follow that shape.
+
+### Dev-loop dashboard
+
+`scripts/dev_loop_dashboard.py` writes one Markdown report for a date window from the
+read-only GitHub API, the nightly trunk UAT record artifacts and the tracker index. It
+sets each dev-loop v2 target next to its baseline in
+`_project/archive/dev-loop-v2/baseline.md` and adds the per-cell infrastructure-failure
+rate, the trunk UAT run history, the share of red shards with a product signature, the
+release lead time and the open `UAT envelope:` process blockers.
+
+```bash
+uv run -- python scripts/dev_loop_dashboard.py --days 30 --output /tmp/dev-loop-dashboard.md
+uv run -- python scripts/dev_loop_dashboard.py --since 2026-11-01 --until 2026-11-08 --output /tmp/week.md
+```
+
+The token comes from `GITHUB_TOKEN`, `GH_TOKEN` or `gh auth token`. The `Dev-loop dashboard`
+workflow runs it every Monday and uploads the report as the `dev-loop-dashboard-<run id>`
+artifact; dispatch it with a `days` input for another window.
 
 ## Release notes from fragments
 

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "ClickHouse Local runs TPC-Havoc query 5_v7 with the default hash join instead of a spilling grace hash join, which cut the TPC-Havoc scale factor 1 power phase from about 820 s to a few minutes; only 5_v8 still needs the spilling join."
+    }
+  ]
+}

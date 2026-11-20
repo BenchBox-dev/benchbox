@@ -28,7 +28,7 @@ STARROCKS_READINESS = (
 CEDARDB_READINESS = (
     "sh",
     "-c",
-    'PGPASSWORD="$CEDAR_PASSWORD" psql -h 127.0.0.1 -p 5432 -U "$CEDAR_USER" -d "$CEDAR_DB" -tAc "SELECT 1"',
+    'pg_isready -h localhost -U "$CEDAR_USER" -d "$CEDAR_DB"',
 )
 PG_MOONCAKE_READINESS = (
     "sh",
@@ -61,7 +61,7 @@ _APPLICATION_READINESS: dict[str, tuple[tuple[str, ...], float]] = {
     "trino": (TRINO_READINESS, 60.0),
 }
 
-_PROBE_TOOL_OPTIONAL = frozenset({"cedardb", "pg-mooncake", "presto", "trino"})
+_PROBE_TOOL_OPTIONAL = frozenset({"pg-mooncake", "presto", "trino"})
 _COMMAND_NOT_FOUND_EXIT_CODES = frozenset({126, 127})
 
 DockerRunner = Callable[..., docker_assets.DockerCommandResult]

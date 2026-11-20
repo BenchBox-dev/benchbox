@@ -357,7 +357,7 @@ def test_the_probe_distributions_are_built_with_the_commands_the_trunk_producer_
     assert '"uv", "build"' in source
 
 
-def test_the_dispatch_workflow_runs_on_pull_requests_with_checks_write_and_never_a_publishing_scope():
+def test_the_dispatch_workflow_runs_on_pull_requests_with_statuses_write_and_never_a_publishing_scope():
     workflow = _workflow(PROBE_WORKFLOW)
     triggers = workflow["on" if "on" in workflow else True]
     assert set(triggers) == {"pull_request"}
@@ -366,7 +366,7 @@ def test_the_dispatch_workflow_runs_on_pull_requests_with_checks_write_and_never
     assert job["permissions"] == {
         "contents": "read",
         "actions": "write",
-        "checks": "write",
+        "statuses": "write",
         "pull-requests": "read",
     }
     assert "environment" not in job
@@ -423,9 +423,9 @@ def test_the_probe_report_job_runs_only_in_probe_mode_and_even_after_a_failure(l
             assert graph.simulate(live, scenario)["report-probe"].result != "skipped"
 
 
-def test_the_probe_report_job_holds_only_checks_write_and_actions_read_and_cannot_publish(live):
+def test_the_probe_report_job_holds_only_statuses_write_and_actions_read_and_cannot_publish(live):
     job = live["jobs"]["report-probe"]
-    assert job["permissions"] == {"contents": "read", "actions": "read", "checks": "write"}
+    assert job["permissions"] == {"contents": "read", "actions": "read", "statuses": "write"}
     assert "environment" not in job
     assert not graph.job_can_publish(job)
     text = " ".join(_step_text(step) for step in job["steps"])
