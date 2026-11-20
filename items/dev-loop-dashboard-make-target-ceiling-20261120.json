@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The report shows the Make-target ceiling of 190 with the dlv2-82 decision cited, and the 211 same-method baseline.",
+    "A unit test pins the threshold and the pass/fail rendering at 189, 190 and 191."
+  ],
+  "description": "scripts/dev_loop_dashboard.py sets TARGET_MAKE_TARGETS = 90 and renders '<= 90', so the first live report (run 44646358143) shows 190 public Make targets as a miss. The owner decision recorded in dlv2-82 (2026-11-07) replaced the <= 90 threshold with a capability-preserving ceiling of 190, and the same-method baseline is 211 (dlv2-30day-metrics description).\n\nGuardrails: read the threshold from the recorded decision rather than a second hard-coded number if a machine-readable source exists; do not change the counting method (scripts/check_make_targets.py).",
+  "links": [
+    "scripts/dev_loop_dashboard.py",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/44646358143"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a",
+      "at": "2026-11-20T00:33:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "85ad008d675e4ab99a4b410e74856bce",
+      "session_id": "ad8ff63c31d0492faa7526a81e19db83"
+    }
+  ]
+}
