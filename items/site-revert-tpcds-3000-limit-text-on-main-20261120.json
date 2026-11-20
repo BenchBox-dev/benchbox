@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The five files on site main match their content before #209.",
+    "The deployed pages no longer state a 3000 maximum or a shortened official list."
+  ],
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "description": "## Problem\nbenchbox-site #209 (1f5a50f7e8) merged to `main` and deployed to benchbox.dev. Nine sentences on five pages say tpcds and tpcds_obt stop at scale factor 3000 and that TPC-DS official scale factors are 1 to 3000. Released v0.5.1 accepts up to 100000 including 10000, 30000 and 100000. The site's AGENTS.md sends documentation of unreleased behaviour to `next`, and the owner decided on 2026-11-17 to leave `main` alone until the next release pin.\n\n## Change\nOne pull request to benchbox-site `main` restoring the pre-#209 text in docs/benchmarks/index.md, docs/concepts/benchmark-methodology.md, docs/contributing-results.md, docs/reference/python-api/benchmarks/tpcds.md and tpcds-obt.md. Do not carry the 3000 text to `next`: core is restoring the range.\n\n## Decision gates\nNone: this restores text that matches the released version. Do not add new wording about query 9 or the dsdgen floor reason, which is unreleased.\n\n## Verification rubric\nPass: `git diff 1f5a50f7e8^ <new main>` is empty for the five files; `npm run lint:docs` and `npm run docs:check` pass; after deploy, the five live pages contain no '3000' limit statement (fetch and grep).\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/pull/209",
+    "/Users/joe/Developer/benchbox-site/docs/benchmarks/index.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:10:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "31eeff4c09c54afaa481a5505a5ecc56",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    }
+  ]
+}

@@ -39449,6 +39449,13 @@
       "status": "done",
       "title": "Site docs: document execution.translation.runtime and the sql_translator_version attestation"
     },
+    "site-revert-tpcds-3000-limit-text-on-main-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Revert the unreleased TPC-DS 3000 limit text from the site's production docs"
+    },
     "site-run-receipt-sql-translator-row": {
       "claim": null,
       "needs": [
