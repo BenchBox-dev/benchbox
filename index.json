@@ -38054,15 +38054,10 @@
       "title": "Review the soundness-path merge ceremony for proportionality and agent-workflow fit"
     },
     "review-verdict-prepare-fails-on-transient-503-20261112": {
-      "claim": {
-        "expires_at": "2026-11-21T03:51:33Z",
-        "generation": "cbed865b8be04e34b9cdd06ea736ccfb",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:50738e5478443e60088712f6"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "The hosted review job fails outright when GitHub returns a 503 while it prepares the review"
     },
     "revisit-extras-naming-topology-e-g-dataframe-pandas-vs-panda": {
