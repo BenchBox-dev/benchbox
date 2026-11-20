@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Both validators give the same verdict for off-list bundles, or the owner recorded an approved difference."
+  ],
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "description": "## Problem\ncorpus-nonstandard-scale-submission-policy-20261111 was closed although its acceptance says the policy is 'enforced consistently in both validators'. Its own closure note records that the published-results mirror validator still refuses off-list TPC-H and TPC-DS bundles that the core validator accepts unranked.\n\n## Change\nRe-read the current state on develop and published-results first. Make the mirror validator accept off-list bundles unranked with the same reason as core, or record with the owner why the mirror must differ.\n\n## Decision gates\nIf the two validators are meant to differ, that is an owner decision recorded here; do not close on a narrowed acceptance.\n\n## Verification rubric\nPass: the same off-list TPC-H and TPC-DS test bundles get the same verdict from both validators, shown by tests in each.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "links": [
+    "results-data/validate_corpus.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:11:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "94c91d41cad54a268b3bdc86728dc4fe",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    }
+  ]
+}
