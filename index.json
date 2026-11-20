@@ -40914,6 +40914,13 @@
       "status": "done",
       "title": "Make core SQLGlot delivery event-driven and verify App readiness"
     },
+    "sqlglot-delivery-readiness-windows-flake-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Investigate a possibly flaky Windows run of test_readiness_authenticates_without_repository_mutations"
+    },
     "sqlglot-delivery-schedules-start-hours-late-20261117": {
       "claim": null,
       "needs": [],

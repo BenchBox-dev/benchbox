@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The cause is identified from a failing run's log, or the test is shown to be stable across repeated Windows runs with the evidence recorded.",
+    "If a cause is found, the test is fixed without weakening what it checks."
+  ],
+  "description": "tests/unit/workflows/test_sqlglot_delivery_workflow.py::test_readiness_authenticates_without_repository_mutations failed once on the Windows CI job and passed on re-run, on a PR that did not touch the SQLGlot delivery workflow. Find whether the test depends on timing, path separators or environment state, and make it deterministic. Use the CI job history to find the failing run before changing anything.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b5abc8a4010555c0d8f96bb",
+      "at": "2026-11-20T01:02:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2f0384da39994dba8ea25a77a0c1dc6d",
+      "session_id": "045b6d4d12cf4622b6f5f4ab89e94f4e"
+    }
+  ]
+}
