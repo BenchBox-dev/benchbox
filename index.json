@@ -44502,6 +44502,13 @@
       "status": "done",
       "title": "TPC-DI parallel transform swallows failures; phases with no work report success"
     },
+    "tpcdi-queries-aq9-vq6-return-no-rows-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DI queries AQ9 and VQ6 return no rows at every scale on every platform"
+    },
     "tpcdi-remaining-spec-differences-20261112": {
       "claim": null,
       "needs": [

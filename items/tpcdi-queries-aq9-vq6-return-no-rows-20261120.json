@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The cause is confirmed by execution, not only by reading.",
+    "AQ9 and VQ6 return rows on current-generator data, with a test.",
+    "The owner approved the generator change and the handling of published TPC-DI bundles."
+  ],
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "description": "## Problem\nIn the nine TPC-DI bundles of seed run 3096, queries AQ9 and VQ6 return 0 rows at SF 0.01, 0.1 and 1 on DuckDB, DataFusion and ClickHouse Local. From reading the code: FactTrade.Type is written as names ('Market Buy', ...) in benchbox/core/tpcdi/generator/data.py, while TradeType.TT_ID is written as codes ('TMB', ...) in benchbox/core/tpcdi/financial_data.py, so the inner join `t.Type = tt.TT_ID` never matches and every query reading TT_IS_SELL through it is empty. The cause is not yet confirmed by executing the queries.\n\n## Change\nConfirm by running the two queries on a SF 0.01 DuckDB load and inspecting the join keys; then make the generator and the reference table agree with the TPC-DI specification's encoding.\n\n## Decision gates\nA generator change alters TPC-DI data digests and makes the 9 current bundles stale: the owner approves the fix and the plan for the published bundles before any generator change merges.\n\n## Verification rubric\nPass: both queries return rows at SF 0.01 on DuckDB with a test that fails on the current generator; the specification clause for the trade-type encoding is cited; the effect on committed TPC-DI bundles is listed.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "links": [
+    "benchbox/core/tpcdi/generator/data.py",
+    "benchbox/core/tpcdi/financial_data.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:59:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7912194740014272afc1866687831873",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    }
+  ]
+}
