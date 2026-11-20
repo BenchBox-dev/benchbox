@@ -29734,10 +29734,15 @@
       "title": "Verify the remediation on develop and close the nightly issues"
     },
     "nightly-slow-tier-test-failures-reported-as-success-20261119": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-21T01:05:00Z",
+        "generation": "15682fa0ffac4526a23b629682e8e440",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ddf0baaf19c0dc8f5268288c"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Nightly slow-tier test failures are recorded as durations and reported as success"
     },
     "nightly-throughput-gate-restoration": {
