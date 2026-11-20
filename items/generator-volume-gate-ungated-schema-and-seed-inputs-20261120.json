@@ -1,10 +1,10 @@
 {
   "acceptance": [
     "tsbs_devops/schema.py, joinorder/schema.py and the CoffeeShop seeds trigger the gate.",
-    "A test fails when a generator gains an ungated first-party import."
+    "A test fails when a generator gains an ungated first-party import, or the owner-approved alternative rule is recorded here and enforced."
   ],
   "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
-  "description": "## Problem\nThe gate table on #4322 misses inputs that change SF 1 bytes: `benchbox/core/tsbs_devops/schema.py` (TABLE_ORDER and schema imported by the generator), `benchbox/core/joinorder/schema.py` (imported by joinorder_synthetic's generator) and the CoffeeShop seed files under `benchbox/data/coffeeshop/`. `docs/internal/generator-volume-gate.md` does not list them as limits.\n\n## Change\nFor each of the nine gated benchmarks, list the generator's transitive first-party imports and data files and decide gate or documented limit; add the three known inputs to the table and the CI filter.\n\n## Decision gates\nIf the import closure is large for a benchmark, stop and propose a rule (for example a test that derives the table from imports) to the owner instead of hand-listing.\n\n## Verification rubric\nPass: the table, the filter and the doc agree; a test asserts each generator module's first-party imports are either gated or named in an explicit allowlist with a reason.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "description": "## Problem\nThe gate table on #4322 misses inputs that change SF 1 bytes: `benchbox/core/tsbs_devops/schema.py` (TABLE_ORDER and schema imported by the generator), `benchbox/core/joinorder/schema.py` (imported by joinorder_synthetic's generator) and the CoffeeShop seed files under `benchbox/data/coffeeshop/`. `docs/internal/generator-volume-gate.md` does not list them as limits.\n\n## Change\nFor each of the nine gated benchmarks, list the generator's transitive first-party imports and data files and decide gate or documented limit; add the three known inputs to the table and the CI filter.\n\n## Decision gates\nIf the import closure is large for a benchmark, stop and propose a rule (for example a test that derives the table from imports) to the owner instead of hand-listing.\n\n## Verification rubric\nPass: the table, the filter and the doc agree; a test asserts each generator module's first-party imports are either gated or named in an explicit allowlist with a reason.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
   "links": [
     "scripts/generator_volume_gate.py",
     "docs/internal/generator-volume-gate.md"
@@ -16,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "98440066081344f298f6abb1d54caad5",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:36:43Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9a25cd6fb07f43f3b222ac3b6a7a9f98",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
     }
   ]
