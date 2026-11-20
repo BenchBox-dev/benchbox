@@ -38296,6 +38296,15 @@
       "status": "done",
       "title": "benchbox.core.run_service exports three underscore-prefixed names in __all__"
     },
+    "run-timeout-execution-phases-20261120": {
+      "claim": null,
+      "needs": [
+        "tpc-generation-no-default-timeout-optional-user-timeout-20261120"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Run timeout step 2: execution phases honour the deadline; BenchBox's execution defaults removed"
+    },
     "run-timeout-plan-20261120": {
       "claim": null,
       "needs": [],
