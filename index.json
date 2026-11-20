@@ -44453,7 +44453,7 @@
         "feature-fix-tpcds-scale-error-reporting-20261120"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "TPC generators: no default timeout, one optional user timeout for every surface"
     },
     "tpc-h-stream-processing-implementation": {
