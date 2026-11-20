@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The owner's decision for #4384, #4385 and the normalizer branch is recorded and carried out."
+  ],
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "description": "## Problem\nThe redesign rested on the claim that baseline refresh pull requests never land. 6 of 10 `chore/fast-baseline-*` pull requests merged, with a longest gap of 8 days; scheduled ones were simply not merged. Review found: the unopened branch `feat/fast-duration-gate-normalization-and-refresh` lets a pull request change the collection time its own timings are divided by (a 40% slowdown passes if collection also slows 40%), stops charging new tests in untouched files, accepts failed runs as baseline sources and rescales the baseline up 3.7%; #4385 makes a file a blocking gate reads unreviewed, its `reproduce` job never ran in CI and refreshes would still need a person because of the unattributed-commit rule; #4384 states runner noise as the cause without establishing it.\n\n## Change\nRecommended: close #4384 and #4385 unmerged and delete the normalizer branch and the two stacked branches.\n\n## Decision gates\nBlocked until the owner confirms closing each of the three. Closing pull requests and deleting remote branches are hosted writes that need the owner's word.\n\n## Verification rubric\nPass: each named pull request is closed with a comment giving the reason, and the branches are deleted, or the owner's different instruction is recorded.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4384",
+    "https://github.com/BenchBox-dev/BenchBox/pull/4385"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:12:58Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9e5d175522424008a0f27536609044f6",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    }
+  ]
+}
