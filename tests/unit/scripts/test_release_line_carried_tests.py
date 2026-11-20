@@ -17,6 +17,7 @@ NOT_CARRIED = {
     "tests/unit/scripts/test_changelog_fragments.py": "tests the changelog fragment script",
     "tests/unit/scripts/test_changelog_gate_cli.py": "tests the changelog gate script",
     "tests/unit/scripts/test_comment_policy.py": "tests the comment-policy scripts",
+    "tests/unit/scripts/test_generator_volume_gate.py": "tests the generator volume gate script",
     "tests/unit/scripts/test_heavy_tier_needed.py": "tests the heavy-tier selector",
     "tests/unit/scripts/test_inert_paths.py": "checks every tracked path of the tree against the inert manifest",
     "tests/unit/scripts/batch_loop_world.py": "a batch-loop fixture; passes unchanged against the carried files on a v0.5.1 tree",

@@ -129,6 +129,11 @@ file	.github/workflows/ci.yml
 file	.github/ci-units.yml
 file	scripts/ci_units.py
 file	scripts/ci_unit_result.py
+file	scripts/generator_volume_gate.py
+file	tests/unit/generators/sf1_size_baseline.json
+file	tests/unit/scripts/test_generator_volume_gate.py
+file	scripts/measure_sf1_sizes.py
+file	benchbox/utils/datagen_manifest.py
 file	scripts/ci_text_edit_verdict.py
 file	.github/workflows/ci-text-edit-refresh.yml
 file	scripts/release_flow.py
