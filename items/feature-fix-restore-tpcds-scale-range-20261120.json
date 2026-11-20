@@ -2,7 +2,7 @@
   "acceptance": [
     "The feature pull request is merged and each member meets its own acceptance."
   ],
-  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).\n\n2026-11-20 done: BenchBox-dev/BenchBox#4401 merged as 7fd28f1cb5 (head b2abc40df6; local review SHIP, armed once with make pr-arm). develop now has OFFICIAL_SCALE_POINTS = 1, 10, 100, 300, 1000, 3000, 10000, 30000, 100000 and no TPCDS_MAX_SCALE. Tests added for 3001, 10000 and 100000 accepted and 100001 refused for tpcds and tpcds_obt through the registry rule, the CLI, MCP validate_only and the public constructors; 10000, 30000 and 100000 classify as official; the 0.001 refusal keeps the dsdgen reason and the no-spawn test. Not covered: no test runs `benchbox run --official --scale 10000` end to end; MCP is tested with validate_only only. The interactive prompt offering SF 30 for TPC-DS is unchanged (interactive-official-mode-offers-sf30-for-tpcds-20261120). Query 9 above about SF 5000 times out as before #4335 (tpcds-q9-generation-above-sf5000-owner-decision-20261120).",
   "description": "Umbrella for one feature branch and one pull request in core. Members: tpcds-restore-100000-maximum-and-official-points-20261120. The query 9 follow-up (tpcds-q9-generation-above-sf5000-owner-decision-20261120) is a separate owner decision and is not a member. The site follow-up on `next` (site-next-remove-tpcds-3000-limit-text-20261120) runs after this merges.",
   "sessions": [
     {
@@ -46,6 +46,14 @@
       "generation": "fe9383d0c190433ba5adc9a37f91bd9b",
       "op": "take",
       "op_id": "990164cdaa44458395f08da735f2a1f6",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T03:17:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "497fb9328b16497c87ec86cfa82de35b",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
     }
   ]
