@@ -38334,6 +38334,15 @@
       "status": "open",
       "title": "Run timeout step 2: execution phases honour the deadline; BenchBox's execution defaults removed"
     },
+    "run-timeout-generators-and-partial-data-20261120": {
+      "claim": null,
+      "needs": [
+        "tpc-generation-no-default-timeout-optional-user-timeout-20261120"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Run timeout step 1b: generator and compiler processes honour the deadline; fixed generation limits removed; partial data never reused"
+    },
     "run-timeout-plan-20261120": {
       "claim": null,
       "needs": [],
