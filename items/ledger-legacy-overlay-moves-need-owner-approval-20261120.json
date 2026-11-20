@@ -3,7 +3,7 @@
     "Each moved entry is listed with evidence and an owner decision.",
     "Before #4340 merges, the seed source equals the current published-results tip or the owner approved the pin."
   ],
-  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).\n\n2026-11-20: not asked in the decision rounds because the per-entry list does not exist yet. Next step is the list (entry, digest, published-results commit, ranking effect); the item stays blocked for the owner's answer on it.\n\n## Guardrails (accepted by the owner, 2026-11-20)\nThe agent never posts a stand-in review, resolves a review thread, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. It arms with `make pr-arm` once per pull request and reports the result. Subagents are read-only. Any limit, default, threshold or label text is shown to the owner before it is committed. A blocked step stops this item; the agent moves to the next item and does not work around the block.",
   "description": "## Problem\nledger-seed-recut-after-published-results-advance-20261111 requires that 'any removal or legacy-overlay change has owner approval'. #4317 moved 2 read_primitives entries from legacy_overlay to accepted and added 9 new TPC-DI bundles to legacy_overlay (2 to 9). #4340 moves those 9 to accepted and adds 3 Doris and LakeSail bundles (9 to 3). The earlier closure note's '9 to 12' is wrong. None of this has recorded approval, and the acceptance clause 'source currency checked again before publication' was never met. The moves follow published-results moving forward.\n\n## Change\nList each moved entry with its digest, the published-results commit that justifies it, and the effect on ranking. The owner approves, or the seed is recut against an owner-named source with `make ledger-seed-recut`; the seed is never hand-edited.\n\n## Decision gates\nBlocked until the owner answers per entry group (2 merged, 9 pending on #4340).\n\n## Verification rubric\nPass: every legacy-overlay change in the seed since the seed at 1543e39f85^ (source b111b206fb) has a recorded approval or is reverted; the seed check passes.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4317",
@@ -33,6 +33,14 @@
       "op": "update",
       "op_id": "20b567239a3e43d495e53bf611a90646",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-20T14:55:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e098404b8f344197a42d4017f7aebeb5",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
 }
