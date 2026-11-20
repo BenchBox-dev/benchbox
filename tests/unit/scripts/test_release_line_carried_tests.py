@@ -126,6 +126,8 @@ def _imported_modules(path: str) -> set[str]:
             for candidate in (
                 Path(module.replace(".", "/") + ".py"),
                 (Path(path).parent / module.split(".")[0]).with_suffix(".py"),
+                Path("scripts") / f"{module.split('.')[0]}.py",
+                Path("_project/scripts") / f"{module.split('.')[0]}.py",
             ):
                 if resolved := _first_party_python(candidate):
                     found.add(resolved)
@@ -144,12 +146,13 @@ def test_every_file_a_carried_test_reads_from_the_tree_is_carried_too() -> None:
         if not test.endswith(".py"):
             continue
         text = (ROOT / test).read_text(encoding="utf-8")
-        reads = {
-            "/".join(re.findall(r'"([^"]+)"', chain))
-            if base != "SCRIPTS"
-            else "_project/scripts/" + "/".join(re.findall(r'"([^"]+)"', chain))
-            for base, chain in _READ_FROM_ROOT.findall(text)
-        }
+        reads = set()
+        for base, chain in _READ_FROM_ROOT.findall(text):
+            relative = "/".join(re.findall(r'"([^"]+)"', chain))
+            if base == "SCRIPTS":
+                reads |= {f"scripts/{relative}", f"_project/scripts/{relative}"}
+            else:
+                reads.add(relative)
         for path in sorted(reads | _imported_modules(test)):
             is_review_workflow = consumer.CREATION_REVIEW_WORKFLOW.fullmatch(path) is not None
             if (ROOT / path).exists() and path not in carried and path not in READ_AT_TAG and not is_review_workflow:
@@ -186,7 +189,7 @@ READ_AT_TAG = {
     "make": "the line's own make directory, copied whole; make/pr-landing.mk in it is the carried copy",
     "scripts": "the line's own scripts directory; the carried files in it are the carried copies",
     "_project/scripts": "the line's own project scripts directory; the carried files in it are the carried copies",
-    ".github/workflows": "the line's own workflows directory; the reviewer workflows in it are the carried copies",
+    ".github/workflows": "the line's own workflows directory; the reviewer workflows in it are the carried copies and the others stay at the tag",
     ".github/ISSUE_TEMPLATE": "read as a tag document",
     "benchbox/platforms": "product code the line keeps",
     "benchbox/utils/host_lock.py": "product code the line keeps; the carried tests pass against the tag's copy",
@@ -262,6 +265,7 @@ def _local_dependencies(path: str) -> set[str]:
 
 def _landing_closure() -> set[str]:
     recipes = _recipes(LANDING_MAKEFILE)
+    assert all(recipes.get(target) for target in LANDING_TARGETS), "a landing recipe was not parsed"
     seen: set[str] = set()
     targets: set[str] = set()
     pending = {LANDING_MAKEFILE, *(path for path in consumer.CREATION_LANDING_PATHS if path.endswith((".py", ".sh")))}
