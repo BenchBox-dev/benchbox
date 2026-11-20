@@ -27620,7 +27620,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "blocked",
+      "status": "open",
       "title": "Owner decision: legacy-overlay entries moved to accepted during the ledger seed recuts"
     },
     "ledger-seed-recut-after-published-results-advance-20261111": {
