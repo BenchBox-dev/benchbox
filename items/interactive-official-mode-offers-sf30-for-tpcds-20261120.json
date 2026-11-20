@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The interactive prompt offers only the benchmark's official scale points, with a test."
+  ],
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "description": "## Problem\n`prompt_official_mode` in benchbox/cli/benchmarks.py offers 30 among TPC-DS official scale points; 30 is a TPC-H point, not a TPC-DS one. This predates #4335.\n\n## Change\nBuild the offered list from the benchmark's own official scale points.\n\n## Decision gates\nNone.\n\n## Verification rubric\nPass: a test shows the TPC-DS prompt offers exactly the TPC-DS official points and TPC-H's includes 30.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "links": [
+    "benchbox/cli/benchmarks.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:37:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b45301e141f94056bb9e7f0757fc4520",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    }
+  ]
+}

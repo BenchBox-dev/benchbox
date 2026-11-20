@@ -26988,6 +26988,13 @@
       "status": "done",
       "title": "Add open table format selection to CLI interactive mode"
     },
+    "interactive-official-mode-offers-sf30-for-tpcds-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Interactive official mode offers scale factor 30 for TPC-DS"
+    },
     "interactive-scale-prompt-treats-lists-as-limits-20261111": {
       "claim": null,
       "needs": [],
