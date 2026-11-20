@@ -26202,6 +26202,13 @@
       "status": "done",
       "title": "Make the shared host lock exclusive-safe, re-entrant and reusable outside the test harness"
     },
+    "heavy-guard-pause-design-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Design only: pause a small heavy-run under another session's memory pressure"
+    },
     "heavy-guard-sentinel-20261030": {
       "claim": null,
       "needs": [
