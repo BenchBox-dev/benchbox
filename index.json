@@ -25648,7 +25648,8 @@
     "generator-volume-gate-sf1-measurement-probe-and-budget-20261120": {
       "claim": null,
       "needs": [
-        "feature-fix-ci-congestion-diagnostics-and-generator-gate-20261117"
+        "feature-fix-ci-congestion-diagnostics-and-generator-gate-20261117",
+        "generator-volume-gate-rename-bypass-20261120"
       ],
       "priority": "medium",
       "status": "open",
