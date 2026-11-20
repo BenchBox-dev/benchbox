@@ -24499,7 +24499,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Owner setting: how refresh commits satisfy the unattributed-changes rule on develop"
     },
     "fast-baseline-reproduce-as-review-evidence-and-refresh-cadence-20261120": {
