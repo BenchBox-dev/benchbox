@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The owner's choice is recorded on this item before any code change.",
+    "The chosen behaviour is evidenced through both tpcds and tpcds_obt entry points, not from a raw binary run alone.",
+    "No change refuses a scale factor as a whole."
+  ],
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "description": "## Problem\ndsqgen builds a full key permutation for query 9's `ulist(random(1, rowcount(\"store_sales\")/5, uniform), 5)`. Measured on darwin-arm64 (dsqgen sha256 3225615e13a2..., seed 19620718): SF 3000 3.4-5.1 s, SF 5000 11.1-13.4 s, SF 7000 and 10000 killed at 45 s (2.5 and 3.6 GiB), SF 100000 killed above 14 GiB. Query 1 at SF 100000 takes 0.2 s; query 9 is the only template with this construct. The earlier item (tpcds-dsqgen-q9-timeout-sf10000-20261111) was closed against a 3000 cap the owner did not approve; this item replaces it.\n\n## Change\nAfter the owner chooses: (a) no change, query 9 times out as before; (b) fail only query 9 generation early above a measured scale with the cost-growth reason, leaving data generation and the other 98 queries working; or (c) generate query 9's five parameters without the full permutation, with a design and numbers shown first.\n\n## Decision gates\nBlocked until the owner chooses (a), (b) or (c). For (b) the owner approves the exact scale before it is committed. For (c) the owner approves the design before code merges; a kit patch changes the dsqgen digest and needs separate approval. No scale-wide limit under any option.\n\n## Verification rubric\nPass for (b): query 9 above the approved scale fails fast with the reason through tpcds and tpcds_obt entry points, both tested; every other query and dsdgen data generation at that scale are unaffected, shown by test. Pass for (c): generated SQL for query 9 matches dsqgen output at scales where dsqgen works, for at least three seeds.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "links": [
+    "benchbox/core/tpcds/c_tools.py",
+    "benchbox/core/tpcds_obt/benchmark.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:10:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ba7a1bf60234415bb7568d5792089142",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    }
+  ]
+}

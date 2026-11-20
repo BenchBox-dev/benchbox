@@ -44553,6 +44553,13 @@
       "status": "done",
       "title": "Remove the now-redundant NULL filter before `n_unique()` in TPC-DS DataFrame Q28"
     },
+    "tpcds-q9-generation-above-sf5000-owner-decision-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Owner decision: what TPC-DS query 9 generation does above the scale where dsqgen can produce it"
+    },
     "tpcds-qphds-nonspec-formula": {
       "claim": null,
       "needs": [],
