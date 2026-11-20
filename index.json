@@ -41159,7 +41159,7 @@
       "needs": [],
       "priority": "low",
       "status": "open",
-      "title": "Investigate a possibly flaky Windows run of test_readiness_authenticates_without_repository_mutations"
+      "title": "Windows CI: a readiness test's Node subprocess timed out at 20 seconds once"
     },
     "sqlglot-delivery-schedules-start-hours-late-20261117": {
       "claim": null,
