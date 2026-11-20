@@ -936,7 +936,7 @@ def _response_has_outstanding_work(value: object) -> bool:
 
 _ATTEST_ATTEMPTS = 6
 _FAILED_PHASE_STATUSES = frozenset({"FAILED", "ERROR"})
-_INCOMPLETE_RUN_STATUSES = frozenset({"no_results", "incomplete"})
+_INCOMPLETE_RUN_STATUSES = frozenset({"no_results", "incomplete", "timed_out"})
 
 
 def derive_job_outcome(response: Mapping[str, Any]) -> str:

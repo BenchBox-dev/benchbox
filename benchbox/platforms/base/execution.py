@@ -44,6 +44,7 @@ from benchbox.platforms.base.connection_wrappers import (
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import SQLTranslationError, UnknownSqlDialectError, expand_multi_statement_queries
 from benchbox.utils.printing import quiet_console
+from benchbox.utils.run_deadline import share_partial_query_results, stop_requested_before_query
 
 __all__ = ["TestDriversMixin", "_power_query_result", "_power_test_error_result"]
 
@@ -1295,6 +1296,7 @@ class TestDriversMixin:
         queries = self._filter_queries(queries, benchmark, benchmark_name, run_config)
 
         results = []
+        share_partial_query_results(results)
         total_queries = len(queries)
 
         cancelled = False
@@ -1316,7 +1318,7 @@ class TestDriversMixin:
             )
 
             for i, (query_id, query_sql) in enumerate(queries.items(), 1):
-                if cancelled:
+                if cancelled or stop_requested_before_query(query_id):
                     break
 
                 console.print(f"[blue]Executing query {i}/{total_queries}: {query_id}[/blue]")

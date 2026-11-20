@@ -21,6 +21,7 @@ from benchbox.core.results.schema_policy import (
     supports_capture_and_vendor_fields,
     supports_round_trip_timing_fields,
     supports_row_count_validation,
+    supports_run_timeout_marker,
 )
 from benchbox.core.results.timing_fields import (
     CLIENT_LINK_TIMING_FIELDS,
@@ -217,9 +218,18 @@ def _environment_schema() -> dict[str, Any]:
 
 
 def _execution_schema() -> dict[str, Any]:
+    timeout = _object(
+        ("timeout_seconds", "phase"),
+        {
+            "timeout_seconds": {"type": "integer", "minimum": 1},
+            "phase": {"type": "string", "minLength": 1},
+            "query_id": {"type": "string", "minLength": 1},
+        },
+        closed=True,
+    )
     return _object(
         (),
-        {"config_capture": {"type": "integer", "minimum": 1}},
+        {"config_capture": {"type": "integer", "minimum": 1}, "timeout": timeout},
     )
 
 
@@ -288,6 +298,14 @@ def _version_gates() -> list[dict[str, Any]]:
                         "provenance": _forbid_keys(VENDOR_PROVENANCE_FIELDS),
                     }
                 },
+            }
+        )
+    without_timeout_marker = _versions_where(lambda v: not supports_run_timeout_marker(v))
+    if without_timeout_marker:
+        gates.append(
+            {
+                "if": _version_in(without_timeout_marker),
+                "then": {"properties": {"execution": _forbid_keys(("timeout",))}},
             }
         )
     if with_timing:

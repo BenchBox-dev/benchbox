@@ -327,7 +327,7 @@ class TestLoadResultFile:
             load_result_file(result_file)
 
         assert message in str(exc_info.value)
-        assert "schema versions 2.0, 2.1, 2.2, 2.3, 2.4, and 2.5" in str(exc_info.value)
+        assert "schema versions 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, and 2.6" in str(exc_info.value)
 
 
 class TestReconstructBenchmarkResults:

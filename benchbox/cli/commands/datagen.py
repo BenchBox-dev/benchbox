@@ -73,9 +73,17 @@ from benchbox.core.run_service import resolve_lifecycle_phases
     is_flag=True,
     help="Enable verbose logging",
 )
+@click.option(
+    "--timeout",
+    "timeout",
+    type=click.IntRange(min=0),
+    default=None,
+    metavar="SECONDS",
+    help="Stop data generation after this many seconds (exit code 124). 0 means no limit. Default: no limit.",
+)
 @click.pass_context
 @host_guarded("datagen")
-def datagen(ctx, benchmark, scale, output_dir, data_format, seed, verbose):
+def datagen(ctx, benchmark, scale, output_dir, data_format, seed, verbose, timeout):
     console.print("[bold blue]Running data generation...[/bold blue]")
     console.print(f"Benchmark: {benchmark}, Scale: {scale}")
 
@@ -136,6 +144,7 @@ def datagen(ctx, benchmark, scale, output_dir, data_format, seed, verbose):
         publish_label="maintainer-run",
         funding=None,
         result_source=None,
+        timeout=timeout,
     )
 
 

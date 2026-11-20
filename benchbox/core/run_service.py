@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
@@ -132,6 +133,17 @@ from benchbox.core.schemas import reject_single_stream_throughput
 from benchbox.core.tpc_spec import min_streams_for_scale, refresh_functions_enabled, require_full_spec
 from benchbox.utils.compression import CompressionManager
 from benchbox.utils.disk_guard import ensure_run_output_space
+from benchbox.utils.run_deadline import (
+    RUN_TIMEOUT_OPTION_KEY,
+    TIMED_OUT_VALIDATION_STATUS,
+    RunDeadline,
+    RunTimeoutError,
+    active_run_deadline,
+    current_run_deadline,
+    mark_timed_out,
+    timeout_details,
+    validate_timeout_seconds,
+)
 from benchbox.utils.toggles import is_probe_requested
 
 if TYPE_CHECKING:
@@ -292,7 +304,107 @@ def stamp_requested_phases(config: BenchmarkConfig, phases_to_run: list[str] | N
     config.options = options
 
 
+def build_unfinished_result(
+    config: BenchmarkConfig,
+    *,
+    platform: str,
+    validation_status: str,
+    validation_details: dict[str, Any],
+    query_results: list[dict[str, Any]] | None = None,
+) -> BenchmarkResults:
+    import uuid
+    from datetime import datetime
+
+    from benchbox.core.results.models import BenchmarkResults, ExecutionPhases, SetupPhase
+
+    rows = list(query_results or [])
+    successful = len([row for row in rows if row.get("status") == "SUCCESS"])
+    return BenchmarkResults(
+        benchmark_name=getattr(config, "display_name", config.name.upper()),
+        platform=platform,
+        scale_factor=config.scale_factor,
+        execution_id=uuid.uuid4().hex[:8],
+        timestamp=datetime.now(),
+        duration_seconds=0.0,
+        total_queries=len(rows),
+        successful_queries=successful,
+        failed_queries=len(rows) - successful,
+        total_execution_time=0.0,
+        average_query_time=0.0,
+        query_results=rows,
+        query_definitions={},
+        execution_phases=ExecutionPhases(setup=SetupPhase()),
+        validation_status=validation_status,
+        validation_details=validation_details,
+        data_loading_time=0.0,
+        schema_creation_time=0.0,
+        total_rows_loaded=0,
+        data_size_mb=0.0,
+        table_statistics={},
+    )
+
+
+def build_timed_out_result(config: BenchmarkConfig, database_config: Any, deadline: RunDeadline) -> BenchmarkResults:
+    return build_unfinished_result(
+        config,
+        platform=str(getattr(database_config, "type", None) or "unknown"),
+        validation_status=TIMED_OUT_VALIDATION_STATUS,
+        validation_details={"timeout": timeout_details(deadline)},
+        query_results=deadline.partial_query_results,
+    )
+
+
 def execute_run(
+    *,
+    config: BenchmarkConfig,
+    benchmark_instance: Any,
+    database_config: Any,
+    system_profile: Any,
+    platform_config: Mapping[str, Any] | None,
+    output_root: Any,
+    phases_to_run: list[str] | None,
+    adapter_factory: AdapterFactory,
+    verbosity: VerbosityLike,
+    monitor: Any = None,
+    execution_context: ExecutionContext | None = None,
+) -> BenchmarkResults:
+    run = partial(
+        _execute_run,
+        config=config,
+        benchmark_instance=benchmark_instance,
+        database_config=database_config,
+        system_profile=system_profile,
+        platform_config=platform_config,
+        output_root=output_root,
+        phases_to_run=phases_to_run,
+        adapter_factory=adapter_factory,
+        verbosity=verbosity,
+        monitor=monitor,
+        execution_context=execution_context,
+    )
+    deadline = current_run_deadline()
+    if deadline is None:
+        timeout_seconds = validate_timeout_seconds((getattr(config, "options", None) or {}).get(RUN_TIMEOUT_OPTION_KEY))
+        if timeout_seconds is None:
+            return run()
+        deadline = RunDeadline(timeout_seconds)
+
+    with active_run_deadline(deadline):
+        try:
+            result = run()
+        except RunTimeoutError:
+            result = build_timed_out_result(config, database_config, deadline)
+        except Exception as exc:
+            if not deadline.expired:
+                raise
+            deadline.record_timeout(str(exc))
+            result = build_timed_out_result(config, database_config, deadline)
+    if deadline.timeout is not None:
+        mark_timed_out(result, deadline)
+    return result
+
+
+def _execute_run(
     *,
     config: BenchmarkConfig,
     benchmark_instance: Any,

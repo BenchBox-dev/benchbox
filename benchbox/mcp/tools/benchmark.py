@@ -54,6 +54,7 @@ from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dependencies import BENCHMARK_LOAD_ERRORS
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 from benchbox.utils.printing import get_quiet_console, silence_output
+from benchbox.utils.run_deadline import RUN_TIMEOUT_OPTION_KEY, TIMED_OUT_VALIDATION_STATUS, validate_timeout_seconds
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ def register_benchmark_tools(
     platform_policy: LocalPlatformPolicy = DEFAULT_LOCAL_PLATFORM_POLICY,
 ) -> None:
     @mcp.tool(
-        description="Run a benchmark on a database platform.\n\n        Args:\n            platform: Target platform (duckdb, polars-df, snowflake, etc.)\n            benchmark: Benchmark to run (tpch, tpcds, tpcds_obt, ssb, joinorder, clickbench, nyctaxi, tsbs_devops, h2odb, amplab, coffeeshop, tpch_skew, datavault, tpcdi, write_primitives, read_primitives, and more)\n            scale_factor: Data scale factor (0.01 for testing, 1+ for production; joinorder uses canonical IMDb 2013 data and only accepts 1.0)\n            queries: Comma-separated query IDs to run (e.g., \"1,3,6\")\n            phases: Comma-separated phases (default: \"load,power\")\n            mode: Execution mode: 'sql', 'dataframe', or 'data_only'\n            capture_plans: Capture query execution plans (3-8%% overhead). Supported: DuckDB, PostgreSQL, DataFusion.\n            dry_run: Preview execution plan without running\n            validate_only: Validate configuration without running\n            link_probe: Measure post-benchmark statement overhead (6 metered SELECT 1 statements on billable warehouses). Set false to skip; equivalent to the CLI --no-link-probe flag.\n            platform_options: Bounded, non-secret platform settings approved for the selected platform.\n            seed: RNG seed for query parameter generation, 0 to 2147483647 (default: unset; same as the CLI --seed). The effective value is reported in mcp_metadata.\n            iterations: Power test measurement iterations, at least 1 (default: 3; power or standard phase only; same as the CLI --iterations). The effective value is reported in mcp_metadata.\n\n        Returns:\n            Benchmark results, dry-run preview, or validation status.\n\n        Before reporting a run, call validate_results on its result file and report the WARN and FAIL findings. A completed run also carries that validator's verdict in its integrity field (overall_status PASS, WARN or FAIL, with the non-passing checks). A run that ends without a result file returns an MCP error (is_error true) with the cause. Compare two results only when their benchmark, scale, phase, configuration, tuning, hardware and evidence are compatible; a shared benchmark name alone is not enough.\n\n        Platform options are a deliberately smaller MCP contract than the CLI\n        ``--platform-option`` surface. Only bounded, non-secret execution\n        settings are accepted; credentials, endpoints, paths, and package\n        installation controls must remain server configuration.\n\n        JoinOrder note:\n            The public joinorder benchmark downloads and verifies the canonical IMDb 2013\n            Parquet archive on first use, then reuses BENCHBOX_OUTPUT_DIR/benchmark_runs/datagen/joinorder_sf1/.\n        ",
+        description="Run a benchmark on a database platform.\n\n        Args:\n            platform: Target platform (duckdb, polars-df, snowflake, etc.)\n            benchmark: Benchmark to run (tpch, tpcds, tpcds_obt, ssb, joinorder, clickbench, nyctaxi, tsbs_devops, h2odb, amplab, coffeeshop, tpch_skew, datavault, tpcdi, write_primitives, read_primitives, and more)\n            scale_factor: Data scale factor (0.01 for testing, 1+ for production; joinorder uses canonical IMDb 2013 data and only accepts 1.0)\n            queries: Comma-separated query IDs to run (e.g., \"1,3,6\")\n            phases: Comma-separated phases (default: \"load,power\")\n            mode: Execution mode: 'sql', 'dataframe', or 'data_only'\n            capture_plans: Capture query execution plans (3-8%% overhead). Supported: DuckDB, PostgreSQL, DataFusion.\n            dry_run: Preview execution plan without running\n            validate_only: Validate configuration without running\n            link_probe: Measure post-benchmark statement overhead (6 metered SELECT 1 statements on billable warehouses). Set false to skip; equivalent to the CLI --no-link-probe flag.\n            platform_options: Bounded, non-secret platform settings approved for the selected platform.\n            seed: RNG seed for query parameter generation, 0 to 2147483647 (default: unset; same as the CLI --seed). The effective value is reported in mcp_metadata.\n            iterations: Power test measurement iterations, at least 1 (default: 3; power or standard phase only; same as the CLI --iterations). The effective value is reported in mcp_metadata.\n            timeout_seconds: Stop the whole run (generate, load and execute) after this many seconds (default: unset, no limit; 0 also means no limit; same as the CLI --timeout). A run stopped at its limit returns mcp_metadata.status 'timed_out' with a partial result that must not be published or compared; do not retry it unchanged.\n\n        Returns:\n            Benchmark results, dry-run preview, or validation status.\n\n        Before reporting a run, call validate_results on its result file and report the WARN and FAIL findings. A completed run also carries that validator's verdict in its integrity field (overall_status PASS, WARN or FAIL, with the non-passing checks). A run that ends without a result file returns an MCP error (is_error true) with the cause. Compare two results only when their benchmark, scale, phase, configuration, tuning, hardware and evidence are compatible; a shared benchmark name alone is not enough.\n\n        Platform options are a deliberately smaller MCP contract than the CLI\n        ``--platform-option`` surface. Only bounded, non-secret execution\n        settings are accepted; credentials, endpoints, paths, and package\n        installation controls must remain server configuration.\n\n        JoinOrder note:\n            The public joinorder benchmark downloads and verifies the canonical IMDb 2013\n            Parquet archive on first use, then reuses BENCHBOX_OUTPUT_DIR/benchmark_runs/datagen/joinorder_sf1/.\n        ",
         annotations=RUN_BENCHMARK_ANNOTATIONS,
     )
     def run_benchmark(
@@ -133,6 +134,7 @@ def register_benchmark_tools(
         platform_options: dict[str, object] | None = None,
         seed: int | None = None,
         iterations: int | None = None,
+        timeout_seconds: int | None = None,
     ) -> dict[str, Any]:
         begin_run()
         try:
@@ -141,6 +143,7 @@ def register_benchmark_tools(
             selection = resolve_run_selection(platform, resolved_execution_engine, normalized_platform_options)
             validate_seed(seed)
             validate_iterations(iterations)
+            validate_timeout_seconds(timeout_seconds)
         except ValueError as exc:
             response = make_error(ErrorCode.VALIDATION_ERROR, str(exc), details={"platform": platform})
             response["status"] = "failed"
@@ -203,6 +206,7 @@ def register_benchmark_tools(
                 platform_options=normalized_platform_options,
                 seed=seed,
                 iterations=iterations,
+                timeout_seconds=timeout_seconds,
                 results_dir=resolve_path_provider(results_dir),
                 anonymize=anonymize_results,
             )
@@ -278,6 +282,7 @@ def _run_under_platform_policy(
     platform_options: Mapping[str, object],
     seed: int | None,
     iterations: int | None,
+    timeout_seconds: int | None,
     results_dir: Path,
     anonymize: bool,
 ) -> dict[str, Any]:
@@ -298,6 +303,7 @@ def _run_under_platform_policy(
         platform_options=platform_options,
         seed=seed,
         iterations=iterations,
+        timeout_seconds=timeout_seconds,
         results_dir=results_dir,
         anonymize=anonymize,
         billable_acknowledgement=acknowledgement,
@@ -332,7 +338,7 @@ def _apply_platform_policy(
     return None, policy.acknowledgement_record(selection.platform, selection.deployment, platform_options)
 
 
-_RUN_ERROR_STATUSES = frozenset({"incomplete", "no_results"})
+_RUN_ERROR_STATUSES = frozenset({"incomplete", "no_results", "timed_out"})
 
 
 def _as_tool_result(response: dict[str, Any]) -> dict[str, Any]:
@@ -442,6 +448,7 @@ def _execute_mcp_run_via_core(
     link_probe: bool = True,
     seed: int | None = None,
     iterations: int | None = None,
+    timeout_seconds: int | None = None,
     normalized_platform_options: Mapping[str, object],
     results_dir: Path,
     execution_id: str,
@@ -536,6 +543,7 @@ def _execute_mcp_run_via_core(
         options={
             **({"seed": seed} if seed is not None else {}),
             **({"power_iterations": iterations} if iterations is not None else {}),
+            **({RUN_TIMEOUT_OPTION_KEY: timeout_seconds} if timeout_seconds else {}),
         },
     )
     benchmark_config.test_execution_type = map_phases_to_execution_type(phases)
@@ -712,9 +720,13 @@ def _build_run_response(
         )
     elif result_payload:
         response["integrity"] = _integrity_verdict(result_payload)
+    timed_out = bool(result) and getattr(result, "validation_status", None) == TIMED_OUT_VALIDATION_STATUS
     response["mcp_metadata"] = {
         "execution_id": execution_id,
-        "status": "incomplete" if export_failed else ("completed" if result else "no_results"),
+        "status": "incomplete"
+        if export_failed
+        else ("timed_out" if timed_out else ("completed" if result else "no_results")),
+        **({"timeout": (result.validation_details or {}).get("timeout")} if timed_out else {}),
         "platform_requested": platform,
         "benchmark_requested": benchmark,
         "scale_factor_requested": scale_factor,
@@ -740,6 +752,7 @@ def _run_benchmark_impl(
     *,
     seed: int | None = None,
     iterations: int | None = None,
+    timeout_seconds: int | None = None,
     execution_engine: str = "default",
     platform_options: Mapping[str, object] | None = None,
     results_dir: Path,
@@ -789,6 +802,7 @@ def _run_benchmark_impl(
             link_probe=link_probe,
             seed=seed,
             iterations=iterations,
+            timeout_seconds=timeout_seconds,
             normalized_platform_options=normalized_platform_options,
             results_dir=results_dir,
             execution_id=execution_id,

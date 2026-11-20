@@ -31,6 +31,7 @@ def generate_cli_command(
     tuning: str | None = None,
     seed: int | None = None,
     iterations: int | None = None,
+    timeout: int | None = None,
     output: str | None = None,
     table_mode: str | None = None,
     table_format: str | None = None,
@@ -87,6 +88,7 @@ def generate_cli_command(
         (tuning, "--tuning", "notuning"),
         (seed, "--seed", None),
         (iterations, "--iterations", None),
+        (timeout, "--timeout", None),
         (output, "--output", None),
         (table_mode, "--table-mode", "native"),
         (table_format, "--table-format", None),
@@ -205,6 +207,7 @@ def display_interactive_preview(
     sorted_ingestion_method: str | None = None,
     global_cache: bool = False,
     benchmark_options: dict[str, str] | None = None,
+    timeout: int | None = None,
 ) -> None:
     display_console = console_obj or console
 
@@ -300,6 +303,7 @@ def display_interactive_preview(
         queries=benchmark_config.queries,
         tuning=tuning,
         seed=seed,
+        timeout=timeout,
         output=output,
         table_mode=table_mode,
         table_format=table_format,
