@@ -4,7 +4,7 @@
     "release-guide.md step 4 is correct for lines cut from tags before and after #4248, and the release skill matches.",
     "A test covers the chosen mechanism."
   ],
-  "context": "Owner decision 2026-11-19 (choice dialog): option A. release_line_create.py copies develop's landing tooling (make/pr-landing.mk, scripts/pr_*.py and their pinning tests) into the line's first commit and verify-line checks it. Proof by fixture-level test; no new live line.",
+  "context": "Owner decision 2026-11-19 (choice dialog): option A. release_line_create.py copies develop's landing tooling (make/pr-landing.mk, scripts/pr_*.py and their pinning tests) into the line's first commit and verify-line checks it. Proof by fixture-level test; no new live line.\n\n2026-11-20 done: #4402 merged (03b2c018). release_line_create.py carries develop's landing tooling (make/pr-landing.mk, the pr_* scripts, make_timing_shell.sh/make_timing.py, preflight receipt and selector, check_primary_clone_stale.py, worktree_lifecycle_metadata.py, gh_transient, local_review, trunk_revert and others) plus their pinning tests into the line's first commit. A closure guard follows recipes, sub-make targets, python -m modules, $(dirname \"$0\") siblings and path-built loads, and every file is carried or declared in LEFT_AT_TAG/READ_AT_TAG/NOT_CARRIED with a reason. verify-line and admission check the carry against the tuples the creation source itself declared (read with ast), so lines created before the carry stay admissible. Fixture test proves make pr-open/pr-arm BASE=release/0.4.x on a line cut from an old tag. release-guide states the tag-side precondition. Residual: a v0.5.1 overlay run of the carried tests gave 1363 passed / 43 failed, not fully classified (reviewer-workflow files missing from the overlay; 13 test_pr_landing batch tests pass alone); tracked by maintenance-line-carried-test-overlay-failures-20261120.",
   "description": "release/0.5.x was cut from v0.5.1, which predates #4248 (BASE=release/X.Y.x for pr-preflight, pr-open and pr-arm); v0.5.2rc3 has neither PR_OPEN_BASE nor scripts/pr_base.py. Every line PR in the rehearsal (#4249, #4250, #4303, #4363) was opened with raw `gh pr create --base release/0.5.x` and merged with `gh pr merge --squash --match-head-commit`, skipping pr-open's local review and preflight receipt; on #4303 a follow-up commit had no fresh preflight. docs/internal/release-guide.md step 4 prescribes make pr-open BASE=release/X.Y.x, which such lines do not have. scripts/release_line_create.py already copies develop's reviewer files and tests into a line's first commit, and step 3 lists files the first PR brings from develop; landing tooling is in neither. Lines cut from later tags include #4248, but any later landing-tooling fix still never reaches them. The rehearsal line has since been deleted.\n\nDecision gates (owner):\n- A: add the landing tooling (make/pr-landing.mk, scripts/pr_*.py and the tests that pin them) to the files release_line_create.py copies into the first commit, or to step 3's first-PR list; verify-line's creation rules change to match.\n- B: a new develop-side entry point that drives a line PR from a separate develop checkout (pr-open has no WORKTREE variable today).\n- C: document the raw gh path with an equivalent required-checks list. Not recommended: local review stays unenforced.\n- Live proof needs a line, and only the owner creates lines: the owner approves a rehearsal line or accepts a fixture-level test.\n\nGuardrails: no admin merge or check bypass; line PRs keep develop's CI, hosted review and posting checks; carried tooling must not change product files or shipped package content; verify-line keeps passing.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4248",
@@ -28,6 +28,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "b9af14e5c2be4f779c4434b9d6b47685",
+      "session_id": "ad8ff63c31d0492faa7526a81e19db83"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a",
+      "at": "2026-11-20T05:17:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "803f5c2dc7d54307ba77d043b39255c1",
       "session_id": "ad8ff63c31d0492faa7526a81e19db83"
     }
   ]
