@@ -24516,7 +24516,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "Keep review on the fast-tier baseline; add a reproduce check as evidence and make refreshes visible"
+      "title": "Fail the scheduled refresh visibly when the previous refresh pull request is still open"
     },
     "fast-duration-baseline-scheduled-refresh-never-lands-20261119": {
       "claim": null,
