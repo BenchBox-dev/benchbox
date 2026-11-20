@@ -44234,6 +44234,13 @@
       "status": "done",
       "title": "TPC Specification Compliance Issues ✅ COMPLETED"
     },
+    "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Finish the TPC-DI bundle regeneration evidence: same-generator comparison and site cohort views"
+    },
     "tpcdi-deterministic-generation-contract": {
       "claim": null,
       "needs": [
