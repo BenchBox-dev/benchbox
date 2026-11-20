@@ -42449,7 +42449,9 @@
     },
     "stored-bundle-class-must-not-follow-registry-edits-20261120": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-fix-corpus-classification-and-seed-provenance-20261120"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Stop a registry edit from silently reclassifying stored result bundles"
