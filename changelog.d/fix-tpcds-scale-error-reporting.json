@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "A TPC-DS or TPC-DS-OBT scale factor below 0.01 is refused with ScaleFactorOutOfRangeError again (it had become a plain ValueError), and the message now states what was observed: the bundled dsdgen did not finish at SF 0.001."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "When BenchBox stops dsqgen at its own 30-second limit, the error now names the query, the scale factor and that the limit is BenchBox's; one path previously reported a 60-second limit that did not exist."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The interactive official-mode prompt offers each benchmark's own TPC scale points; it no longer offers 30 for TPC-DS."
+    }
+  ]
+}
