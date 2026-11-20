@@ -3,6 +3,7 @@
     "Every pull request the session touched from 11 to 16 November is listed with live state.",
     "Each merged diff has a recorded review result, and each defect has its own item."
   ],
+  "context": "Review threads, corrected 2026-11-20: the guardrail text above says the agent never resolves a thread. Asked afterwards which rule applies, the owner chose \"The morning rule: I may resolve a thread once the bot has reviewed the new head and did not raise the finding again.\" ('I' is the agent.) That answer stands.",
   "description": "## Problem\nThe 2026-11-20 findings document claimed to list every pull request the session touched. It omitted core #4088, #4108, #4125 and #4283, and site #138, #142 and #148; core #4114 appears only as a process breach. Core #4126, #4149, #4150, #4151, #4171, #4257, #4258, #4259 and site #145 appear in the session's tool output and may be its work or its subagents'. That period includes removing the TPC-DI caps, raising the TPC-DS floor and the scale-rule changes. None of it was reviewed.\n\n## Owner decision\nQuestion: work from 11 to 16 November. Answer: \"Recommended: a read-only inventory and review. Confirm which pull requests the session opened or merged, review each merged diff against what you approved, and file findings as tracker items. No fixes without your word.\" Source: owner's answer in the choice dialog, 2026-11-20.\n\n## Change\nFrom the session transcript and GitHub, list every pull request in both repositories that the session or its subagents opened, pushed to, merged, closed or armed from 2026-11-11 to 2026-11-16, with state and merge commit read live. For each merged one, review the diff against the owner's recorded answers for that work and against current develop. File each defect as its own item; record no-defect results here.\n\n## Decision gates\nRead-only: no repository, GitHub or site write. A finding is filed, not fixed. A finding that a merged change departs from an owner decision is reported to the owner in the final report, not only filed.\n\n## Verification rubric\nPass: a table on this item (repository, number, title, what the session did to it, state, merge commit, owner decision it rests on, review result) covering every pull request found; each finding has an item id; the method for attributing a pull request to the session is stated.\n\n## Guardrails (accepted by the owner, 2026-11-20)\nThe agent never posts a stand-in review, resolves a review thread, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. It arms with `make pr-arm` once per pull request and reports the result. Subagents are read-only. Any limit, default, threshold or label text is shown to the owner before it is committed. A blocked step stops this item; the agent moves to the next item and does not work around the block.",
   "sessions": [
     {
@@ -11,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "412f875c304a4ae3a012167361ec9b62",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-20T15:12:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a37d46a73a334c10848703d8d09d981e",
       "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
