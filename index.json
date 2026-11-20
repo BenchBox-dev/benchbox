@@ -27436,6 +27436,13 @@
       "status": "done",
       "title": "Select the ledger test for ledger edits and align CONTRIBUTING with opt-in batches"
     },
+    "ledger-legacy-overlay-moves-need-owner-approval-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Owner decision: legacy-overlay entries moved to accepted during the ledger seed recuts"
+    },
     "ledger-seed-recut-after-published-results-advance-20261111": {
       "claim": null,
       "needs": [
