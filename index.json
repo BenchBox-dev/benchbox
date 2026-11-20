@@ -26092,6 +26092,13 @@
       "status": "done",
       "title": "Run the 50-repetition stability check for tests/unit/test_heavy_choke_points.py that was skipped when its flake item closed"
     },
+    "heavy-guard-4331-owner-decisions-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Owner decisions for the heavy-work guard pull request #4331"
+    },
     "heavy-guard-admission-20261030": {
       "claim": null,
       "needs": [
