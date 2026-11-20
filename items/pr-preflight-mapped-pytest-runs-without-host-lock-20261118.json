@@ -40,6 +40,17 @@
       "op": "take",
       "op_id": "587288a8ce7d40f38004b1e8c38f2202",
       "session_id": "9d7cd8ca6da14c539a81f76fc0281aa3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:50738e5478443e60088712f6",
+      "at": "2026-11-20T03:50:01Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f7e1d096d0cfe816679daa7",
+      "generation": "936a54511eb0465f99c9b6fbdac43bed",
+      "op": "takeover",
+      "op_id": "34275c1e501042ea8414b759ceba2344",
+      "reason": "Holder is this agent's own session before the operator restarted the tracker server (1.2.0 to 1.3.0); that server process no longer exists and cannot resume. The work merged in BenchBox #4382.",
+      "session_id": "f7c6d1a3e9fa46029a0659abd3b59351"
     }
   ]
 }

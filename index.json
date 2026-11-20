@@ -33327,10 +33327,10 @@
     },
     "pr-preflight-mapped-pytest-runs-without-host-lock-20261118": {
       "claim": {
-        "expires_at": "2026-11-20T13:24:06Z",
-        "generation": "1c79cce0f9d74aed9ffff5ab9cfbaa08",
+        "expires_at": "2026-11-21T03:50:01Z",
+        "generation": "936a54511eb0465f99c9b6fbdac43bed",
         "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f7e1d096d0cfe816679daa7"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:50738e5478443e60088712f6"
       },
       "needs": [],
       "priority": "high",
