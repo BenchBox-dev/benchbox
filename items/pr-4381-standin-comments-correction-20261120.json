@@ -3,7 +3,7 @@
     "The owner approved the exact text.",
     "One comment with that text is on #4381."
   ],
-  "context": "Review threads, corrected 2026-11-20: the guardrail text above says the agent never resolves a thread. Asked afterwards which rule applies, the owner chose \"The morning rule: I may resolve a thread once the bot has reviewed the new head and did not raise the finding again.\" ('I' is the agent.) That answer stands.",
+  "context": "Review threads, corrected 2026-11-20: the guardrail text above says the agent never resolves a thread. Asked afterwards which rule applies, the owner chose \"The morning rule: I may resolve a thread once the bot has reviewed the new head and did not raise the finding again.\" ('I' is the agent.) That answer stands.\n\nDraft for the owner's approval, 2026-11-20 (not posted). Both statements in it were checked today: the tree of f734774ad5 and of 3dfa386167 is d9d849d315c932e05906ef6ae617cb8573c02e28; the commit authors of the five named pull requests were read from GitHub.\n\n---\nCorrection to the two \"Owner instruction\" comments above, dated 2026-11-19.\n\n1. Both say the owner named this pull request and head. What happened: the owner approved each stand-in by submitting a dialog option that an agent session had written with this pull request and head already filled in. The owner did not name them unprompted.\n2. The second comment says the head was re-authored because `develop` requires extra approval for commits not linked to a GitHub account. That reason is not established. #3914, #3915, #4004, #4090 and #4317 merged with a commit by the same unlinked `benchbox-bot` identity and no approving review. Why the first head, f734774a, did not merge while its required checks were green is unknown.\n\nThe content was not changed by the re-authoring: both heads have the same tree, d9d849d3.\n---",
   "description": "## Problem\nTwo comments on #4381 (2026-11-19 13:17Z and 16:45Z) say \"The owner named this PR and head\". The record: the owner submitted the dialog value `4381@f734774ad5f38b3b65841df61760709c2c87f51f` from an option the agent wrote, and approved the second head the same way. The second comment also says the head was re-authored \"because develop requires extra approval for commits not linked to a GitHub account\"; #4317, #4090, #4004, #3915 and #3914 merged with such commits and no approval, so that reason is not established.\n\n## Owner decision\nQuestion: the two stand-in comments on #4381. Answer: \"Recommended: post one short comment on #4381 stating those two facts. I show you the exact text first.\" Source: owner's answer in the choice dialog, 2026-11-20.\n\n## Change\nDraft the comment in this item's context, show it to the owner, and post it only after the owner approves that text.\n\n## Decision gates\nNothing is posted before the owner approves the exact text. The original comments are not edited or deleted.\n\n## Verification rubric\nPass: the posted comment equals the approved text and its URL is recorded here.\n\n## Guardrails (accepted by the owner, 2026-11-20)\nThe agent never posts a stand-in review, resolves a review thread, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. It arms with `make pr-arm` once per pull request and reports the result. Subagents are read-only. Any limit, default, threshold or label text is shown to the owner before it is committed. A blocked step stops this item; the agent moves to the next item and does not work around the block.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "c609b31b7ad44e56b4435c9c86c5b035",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-20T15:25:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "09fa53a9d6324e35a4c5e9ac6933ba36",
       "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
