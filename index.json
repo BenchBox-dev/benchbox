@@ -24642,10 +24642,15 @@
       "title": "Add an absolute fast-tier duration ceiling the weekly refresh cannot raise"
     },
     "fast-tier-move-slow-tests-to-medium": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-21T18:20:21Z",
+        "generation": "0df852327f5c40ae9ee6a95d05c30081",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f5a04a89ab1412ae25ea9d7"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Move the slowest fast-tier tests to the medium tier"
     },
     "fast-tier-speed-up-repo-scans": {
