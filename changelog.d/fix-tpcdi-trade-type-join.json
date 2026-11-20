@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "TPC-DI queries AQ3, AQ4, AQ8, AQ9, VQ6 and VQ12 join trades to TradeType on the trade type name, as the specification stores it (clause 4.5.8.2). They joined on the type code, so AQ9 and VQ6 returned no rows and the others reported no buys or sells."
+    }
+  ]
+}

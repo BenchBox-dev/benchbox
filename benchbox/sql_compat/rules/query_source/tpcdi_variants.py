@@ -204,7 +204,7 @@ FROM (
                 CASE WHEN tt.TT_IS_SELL IS FALSE THEN t.TradePrice END AS buy_price
             FROM DimSecurity s
             JOIN FactTrade t ON s.SK_SecurityID = t.SK_SecurityID
-            JOIN TradeType tt ON t.Type = tt.TT_ID
+            JOIN TradeType tt ON t.Type = tt.TT_NAME
             JOIN FactMarketHistory mh ON s.SK_SecurityID = mh.SK_SecurityID
             JOIN DimDate d ON t.SK_CreateDateID = d.SK_DateID
             WHERE s.IsCurrent IS TRUE
@@ -257,7 +257,7 @@ FROM (
                 CASE WHEN tt.TT_IS_SELL IS TRUE THEN ft.Quantity ELSE 0 END AS sell_quantity,
                 CASE WHEN tt.TT_IS_SELL IS FALSE THEN ft.Quantity ELSE -ft.Quantity END AS signed_quantity
             FROM FactTrade ft
-            JOIN TradeType tt ON ft.Type = tt.TT_ID
+            JOIN TradeType tt ON ft.Type = tt.TT_NAME
             WHERE ft.Status = 'Completed'
         ) trade_rows
         LEFT JOIN FactHoldings fh ON trade_rows.SK_CustomerID = fh.SK_CustomerID
