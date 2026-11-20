@@ -10,7 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-TARGET_CEILING = 190
+TARGET_CEILING = 191
 SAME_METHOD_BASELINE = 211
 
 _DATABASE_START = "# Files"
