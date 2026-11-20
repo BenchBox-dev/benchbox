@@ -38908,7 +38908,9 @@
     },
     "seed-corpus-tpcdi-records-seed-and-engine-version-20261120": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "feature-fix-corpus-classification-and-seed-provenance-20261120"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Record the seed and the engine version in TPC-DI seed-corpus bundles"
