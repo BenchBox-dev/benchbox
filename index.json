@@ -43118,15 +43118,10 @@
       "title": "Freeze the synchronized Theseus source and prove installed-artifact parity before release"
     },
     "theseus-gate-transient-github-timeout-20261113": {
-      "claim": {
-        "expires_at": "2026-11-21T03:51:45Z",
-        "generation": "e22c8e6c7a8044a9b3b7d6d345922e55",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:50738e5478443e60088712f6"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Theseus: a single GitHub request timeout cancels the gate run, and its status text drops the endpoint"
     },
     "theseus-gateway-client-first-live-gate-20261102": {
