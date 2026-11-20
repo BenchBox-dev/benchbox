@@ -24609,6 +24609,13 @@
       "status": "open",
       "title": "CI: release-v2 probe queue time, watchdog test race, duration re-run message, generator volume gate"
     },
+    "feature-fix-corpus-classification-and-seed-provenance-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Corpus classification and seed provenance fixes from the remediation review"
+    },
     "feature-fix-restore-tpcds-scale-range-20261120": {
       "claim": null,
       "needs": [],
