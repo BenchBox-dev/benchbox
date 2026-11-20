@@ -26,9 +26,9 @@ Compare artifact behavior, contracts, and relationships, not wording alone.
 
 | Verdict | Condition |
 |---|---|
-| Equivalent | Every critical pair is preserved, and every item unique to A has a stated reason |
-| Review | Every critical pair is preserved; a non-critical pair is not, or an item unique to A is unexplained |
-| Not equivalent | A critical pair is not preserved |
+| Equivalent | Every critical pair is preserved, no critical item is unique to A, and every other item unique to A has a stated reason |
+| Review | Every critical pair is preserved and no critical item is unique to A; a non-critical pair is not preserved, or a non-critical item unique to A is unexplained |
+| Not equivalent | A critical pair is not preserved, or a critical item is unique to A |
 
 ### Limits
 
