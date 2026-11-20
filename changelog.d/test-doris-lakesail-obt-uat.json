@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "Launch the LakeSail UAT stack through mocker run so its 4 GiB memory limit applies, and run local Doris UAT cells at Doris's default parallel_pipeline_task_num; BENCHBOX_UAT_DORIS_PARALLEL_PIPELINE_TASK_NUM caps it when set to a positive integer."}
