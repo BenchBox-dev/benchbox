@@ -4,7 +4,7 @@
     "Union/overlay diff is reviewed; any removal or legacy-overlay change has owner approval before landing.",
     "The focused ledger-seed test passes and records the bound source/head."
   ],
-  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.\n\n2026-11-17 owner decision: recut if the union keeps every entry; otherwise stop and ask.\n\nDelivered by BenchBox#4317 (1543e39f85): seed recut with create_ledger_seed.py --accepted-ref origin/published-results to source 8aaa9921f7; union 491 -> 500 with no entries dropped; two read_primitives bundles moved legacy_overlay -> accepted (owner allowed a recut that keeps every union entry); make ledger-seed-gates passed. BenchBox#4340 recuts again for the Doris rerun bundles with make ledger-seed-recut: union 500 -> 503, none dropped, legacy_overlay 9 -> 12 (the new unmirrored bundles), gates 120 passed.",
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.\n\n2026-11-17 owner decision: recut if the union keeps every entry; otherwise stop and ask.\n\nDelivered by BenchBox#4317 (1543e39f85): seed recut with create_ledger_seed.py --accepted-ref origin/published-results to source 8aaa9921f7; union 491 -> 500 with no entries dropped; two read_primitives bundles moved legacy_overlay -> accepted (owner allowed a recut that keeps every union entry); make ledger-seed-gates passed. BenchBox#4340 recuts again for the Doris rerun bundles with make ledger-seed-recut: union 500 -> 503, none dropped, legacy_overlay 9 -> 12 (the new unmirrored bundles), gates 120 passed.\n\nCorrection 2026-11-20: closed without the owner approval its acceptance requires for legacy-overlay changes. Successor: ledger-legacy-overlay-moves-need-owner-approval-20261120.",
   "description": "## Problem\n`publication/ledger-seed.json` on `develop` has `source: 33e5eeb167da...` with `source_ref: origin/published-results`. On 2026-11-11 mirror PR #4114 merged to `published-results` as 4331a43a54, carrying the corpus changes made on `develop` since 2026-10-28 (about 137 files), so the seed no longer describes the archive branch's tip. Recutting the seed against a new archive tip is a separate, reviewed step in the corpus-refresh flow and was not done.\n\n## Change\nFollow `docs/internal/corpus-refresh.md`: recut the seed with `make ledger-seed-recut` against the current `origin/published-results`, review the diff in the union and overlay counts, and land it with the required checks.\n\n## Guardrails\n- Do not hand-edit the seed.\n- If the recut changes the legacy overlay or drops entries, stop and report before committing.\n\n## Decision gates\nRead live published-results and the recut runbook before choosing the source. Stop for owner disposition if union entries drop or legacy overlay changes; do not blindly pin a moving tip.\n\n## Verification rubric\nPass: capture fetched source SHA, recut command, union/overlay count diff and seed medium-test result. Verify ancestry/source binding at publication; if published-results advances, explicitly rebase/recut or document the approved source snapshot rather than claiming current tip.\n\n## Additional guardrails\nUse ledger-seed-recut, never hand-edit ledger or rewrite published history. Preserve all entries and immutable bundle references; no corpus refresh or deployment beyond the approved recut.",
   "links": [
     "publication/ledger-seed.json",
@@ -69,6 +69,14 @@
       "op": "finish",
       "op_id": "6386f8c326ce4e3e985d529143383bf2",
       "session_id": "d939b7271fc7472d81724a02f0794802"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:14:49Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6cccb5d2857c4576a89175488563aac4",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
     }
   ]
 }
