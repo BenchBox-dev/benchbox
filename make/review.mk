@@ -10,6 +10,7 @@ omp-candidate-check:
 
 .PHONY: review-infra
 review-infra:
-	@case "$(ACTION)" in status|setup|rotate) ;; *) echo "Usage: make review-infra ACTION=status|setup|rotate [ONLY=<names>] [APPLY=1 (setup and rotate only)]" >&2; exit 1;; esac
-	@if [ -n "$(APPLY)" ] && [ "$(ACTION)" = status ]; then echo "APPLY=1 applies only to ACTION=setup or ACTION=rotate; status is read-only" >&2; exit 1; fi
-	python3 scripts/theseus_cli.py run -- infra $(ACTION) --config .github/review.yml $${ONLY:+--only "$$ONLY"} $${APPLY:+--apply}
+	@case "$$ACTION" in status|setup|rotate) ;; *) echo "Usage: make review-infra ACTION=status|setup|rotate [ONLY=<names>] [APPLY=1 (setup and rotate only)]" >&2; exit 1;; esac
+	@case "$$APPLY" in ''|1) ;; *) echo "APPLY must be unset (dry run) or exactly 1 (apply)" >&2; exit 1;; esac
+	@if [ "$$APPLY" = 1 ] && [ "$$ACTION" = status ]; then echo "APPLY=1 applies only to ACTION=setup or ACTION=rotate; status is read-only" >&2; exit 1; fi
+	python3 scripts/theseus_cli.py run -- infra "$$ACTION" --config .github/review.yml $${ONLY:+--only "$$ONLY"} $${APPLY:+--apply}
