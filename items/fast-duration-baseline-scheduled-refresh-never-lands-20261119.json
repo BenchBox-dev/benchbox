@@ -9,6 +9,7 @@
   ],
   "context": "Related: ci-fast-duration-gate-rerun-and-baseline-drift-20261113, whose 2026-11-17 owner decision is to refresh the baseline through the existing workflow.\n\nEvidence from 2026-11-19. Committed baseline generated 2026-11-11T02:22Z (#4090) with 38,217 tests. 163 commits reached develop between it and the #4335 merge-base, adding 65 test files; across 55 recent CI verdicts the new-test count rose from 1,609 to 2,122 in under a day. On 41 runs on typical runners (speed factor about 0.95-1.2) the normalized sum ratio has a median of 1.19 (raw shared time about 20% above the baseline), leaving almost no headroom under the 1.30 gate. The drift is diffuse: the top 50 tests carry about a third of it (vendored sqlglot bypass scans, QuestDB, ClickHouse, release-probe graph tests). Refresh workflow history: scheduled runs 2026-11-02, 11-09 and 11-16 succeeded and opened PRs that never merged; dispatched runs 10-31, 11-01, 11-07 and 11-11 produced the merged baselines. 2026-11-19: owner approved a hand-dispatched refresh (run 44527917625) to replace the stale #4283.\n\n2026-11-19 owner decisions: hand-dispatched refresh run 44527917625 opened #4381; owner named #4381 at f734774ad5f38b3b65841df61760709c2c87f51f for a stand-in (posted with a preceding Owner instruction comment) and #4283 was closed as superseded. Owner chose the machine-checked exemption in review-gate (rebuild byte-for-byte from the manifest's artifacts) over moving the baseline out of git. The adversarial review found the refresh alone decays within about a week (about 12 ratio points in 8 days: about 7 drift plus 5 new-test charge) and run 44527917625 is red only because 'Refresh the medium-shard durations' failed at 'Fetch the five newest complete Trunk medium runs' while the fast job succeeded.\n\nCorrection 2026-11-20: the premise is false as titled: 6 of 10 refresh pull requests merged; scheduled ones were not merged. The unreviewed-path exemption in this item's acceptance is rejected. Replaced by fast-baseline-reproduce-as-review-evidence-and-refresh-cadence-20261120 and fast-baseline-refresh-commit-identity-owner-setting-20261120; whether to drop this item is the owner's decision.",
   "description": "`.github/workflows/fast-duration-baseline-refresh.yml` runs weekly (Mondays) and opens a refresh PR, but no scheduled refresh PR has merged: #3928 and #4066 were closed and #4283 (opened 2026-11-16) sat with review-verdict pending 'Not reviewed · too large to review' and review-gate failing. Only hand-dispatched refreshes landed (#3915, #4004, #4090). The baseline then ages while develop adds hundreds of tests a day, shared-test time drifts against it, and ordinary PRs sit near the 1.30 gate ratio with no headroom.",
+  "drop_reason": "Owner decision 2026-11-20 (choice dialog): \"close #4384 and #4385 unmerged, delete their branches and the normalizer branch, drop the two 19 Nov tracker items. Change nothing in the gate.\" This is one of those two items.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4283",
     "https://github.com/BenchBox-dev/benchbox/pull/4090",
@@ -38,6 +39,14 @@
       "op": "update",
       "op_id": "2201e32af9224a5d82ace794acf574af",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-20T15:13:09Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "23dd4d0ec4e74592816b9b44872c0a8a",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
 }

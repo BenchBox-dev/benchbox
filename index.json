@@ -24522,7 +24522,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Scheduled fast-tier duration baseline refreshes never merge because the review bot refuses them as too large"
     },
     "fast-duration-gate-calibration-skew-20261028": {
