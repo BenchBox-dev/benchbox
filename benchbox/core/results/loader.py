@@ -281,6 +281,7 @@ def reconstruct_benchmark_results(
         dataset_version=benchmark_section.get("dataset_version"),
         data_generation_version=_coerce_datagen_version(benchmark_section.get("data_generation_version")),
         data_generation_hash=_coerce_datagen_hash(benchmark_section.get("data_generation_hash")),
+        data_generation_seed=_coerce_datagen_version(benchmark_section.get("data_generation_seed")),
         power_stream_policy=_coerce_datagen_hash(benchmark_section.get("power_stream_policy")),
         flightdata_source_provenance=benchmark_section.get("source_provenance"),
         manifest_hash=benchmark_section.get("manifest_hash"),

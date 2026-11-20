@@ -423,6 +423,10 @@ def _attach_datagen_version(
             return result
         result.data_generation_version = manifest.get("data_generation_version")
         result.data_generation_hash = manifest.get("data_generation_identity_hash", manifest.get("base_constants_hash"))
+        if str(manifest.get("benchmark", "")).lower() == "tpcdi":
+            seed = manifest.get("seed")
+            if isinstance(seed, int) and not isinstance(seed, bool):
+                result.data_generation_seed = seed
         if str(manifest.get("benchmark", "")).lower() == "flightdata":
             result.flightdata_source_provenance = manifest.get("source_provenance")
     except Exception as exc:

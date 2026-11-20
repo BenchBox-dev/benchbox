@@ -67,6 +67,7 @@ except ImportError:
     is_standard_scale_factor = None
 
 NONSTANDARD_COMPLIANCE_CLASS = "unofficial_nonstandard"
+KNOWN_COMPLIANCE_CLASSES = frozenset({"official", "unofficial_nonstandard", "unofficial_subscale"})
 OFFICIAL_CLASS_BENCHMARKS = frozenset({"tpch", "tpcds"})
 
 
@@ -398,6 +399,7 @@ KNOWN_DEFECT_IDS = frozenset(
         "defective-tpchavoc-variant-divergence",
         "defective-variant-or-loader-wrong-result",
         "defective-windows-dsdgen-scale",
+        "superseded-data-generator",
     }
 )
 
@@ -409,6 +411,7 @@ KNOWN_DEFECT_REASONS = {
     "defective-tpchavoc-variant-divergence": "TPC-Havoc variants of one query returned differing row counts.",
     "defective-variant-or-loader-wrong-result": "A BenchBox query variant or data loader produced wrong values.",
     "defective-windows-dsdgen-scale": "Data came from a Windows dsdgen build with a wrong scale factor.",
+    "superseded-data-generator": "Produced by a superseded data generator; not comparable with current bundles.",
 }
 KNOWN_DEFECT_REASON_MAX_LEN = 200
 
@@ -1763,6 +1766,12 @@ def _validate_compliance_section(
     if not isinstance(benchmark, dict):
         return
     compliance = benchmark.get("compliance_class")
+    if compliance is not None and not (isinstance(compliance, str) and compliance in KNOWN_COMPLIANCE_CLASSES):
+        vr.error(
+            f"benchmark.compliance_class={compliance!r} is not a recognised compliance class; "
+            f"expected one of {sorted(KNOWN_COMPLIANCE_CLASSES)}"
+        )
+        return
     if _is_gateway_routed(platform):
         compliance = NONSTANDARD_COMPLIANCE_CLASS
     elif _is_nonstandard_scale(benchmark.get("id"), benchmark.get("scale_factor")) or (

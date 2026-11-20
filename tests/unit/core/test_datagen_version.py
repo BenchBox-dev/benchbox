@@ -556,3 +556,44 @@ def test_binary_defect_forces_regeneration_on_reuse_check(generator_binaries, tm
 
     _write(generator_binary_sha256=DEFECTIVE_DBGEN_SHA256[1])
     assert _validate_manifest_if_present(_Benchmark(), config)[::2] == (False, True)
+
+
+def test_tpcdi_result_records_generation_seed_from_manifest(tmp_path) -> None:
+    import json
+
+    from benchbox.core.results.loader import reconstruct_benchmark_results
+    from benchbox.core.results.schema import build_result_payload
+    from benchbox.core.runner.runner import _attach_datagen_version
+    from tests.fixtures.result_dict_fixtures import make_benchmark_results
+
+    (tmp_path / "_datagen_manifest.json").write_text(
+        json.dumps({"benchmark": "tpcdi", "seed": 42, **current_datagen_stamp("tpcdi")})
+    )
+
+    class _Benchmark:
+        output_dir = tmp_path
+
+    result = _attach_datagen_version(make_benchmark_results(benchmark_id="tpcdi", benchmark_name="tpcdi"), _Benchmark())
+    assert result.data_generation_seed == 42
+    payload = build_result_payload(result)
+    assert payload["benchmark"]["data_generation_seed"] == 42
+    assert reconstruct_benchmark_results(payload).data_generation_seed == 42
+
+
+def test_result_without_generation_seed_omits_the_field(tmp_path) -> None:
+    import json
+
+    from benchbox.core.results.schema import build_result_payload
+    from benchbox.core.runner.runner import _attach_datagen_version
+    from tests.fixtures.result_dict_fixtures import make_benchmark_results
+
+    (tmp_path / "_datagen_manifest.json").write_text(
+        json.dumps({"benchmark": "Test Benchmark", "seed": 7, **current_datagen_stamp("Test Benchmark")})
+    )
+
+    class _Benchmark:
+        output_dir = tmp_path
+
+    result = _attach_datagen_version(make_benchmark_results(), _Benchmark())
+    assert result.data_generation_seed is None
+    assert "data_generation_seed" not in build_result_payload(result)["benchmark"]

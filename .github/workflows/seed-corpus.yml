@@ -344,6 +344,9 @@ jobs:
       - name: Regenerate corpus inventory
         run: uv run -- python scripts/generate_corpus_inventory.py --write
 
+      - name: Regenerate the compliance class snapshot
+        run: uv run -- python scripts/corpus_compliance_snapshot.py --write
+
       - name: Validate corpus before opening a PR
         run: uv run -- python results-data/validate_corpus.py
 
@@ -363,7 +366,7 @@ jobs:
         id: check
         shell: bash
         run: |
-          git add results-data/bundles/ results-data/corpus-inventory.json
+          git add results-data/bundles/ results-data/corpus-inventory.json results-data/compliance-classes.json
           if git diff --cached --quiet; then
             echo "no_changes=true" >> "$GITHUB_OUTPUT"
           else

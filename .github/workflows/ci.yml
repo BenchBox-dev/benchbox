@@ -121,7 +121,9 @@ jobs:
         if: ${{ !cancelled() && steps.results-install.conclusion == 'success' }}
         env:
           UV_PYTHON: "3.12"
-        run: uv run -- python scripts/generate_corpus_inventory.py --check
+        run: |
+          uv run -- python scripts/generate_corpus_inventory.py --check
+          uv run -- python scripts/corpus_compliance_snapshot.py --check
       - name: Corpus validation
         id: results-corpus
         if: ${{ !cancelled() && steps.results-inventory.conclusion == 'success' }}
