@@ -43359,6 +43359,13 @@
       "status": "done",
       "title": "Theseus: promote its own reviewer lock to review-format release B"
     },
+    "theseus-neutralize-indented-heading-in-list-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Theseus neutralize: a heading indented 4+ spaces inside a list item still renders as a heading"
+    },
     "theseus-observation-disposition-20261102": {
       "claim": null,
       "needs": [

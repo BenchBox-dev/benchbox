@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "neutralize output for list-nested indented headings renders no <h1>-<h6> on gh api markdown (gfm), with regression tests.",
+    "Released in a Theseus version and locked by BenchBox and Theseus."
+  ],
+  "description": "Found by independent review of Theseus PR #102; present on main 97691757 too. `_HEADING` in src/theseus_reviewer/layout.py allows at most 3 spaces of indent, but inside a list item a `#` indented 4 or more spaces is still a heading. GitHub's renderer turns `x\\n\\n    # h\\n- a\\n\\n    # h2` into `<h1>h2</h1>`, which breaks neutralize's promise that model text cannot start a heading. Fix in the same spirit as the reference escape: escape a line-start `#` after the container prefix at any indent (a visible backslash in indented code is acceptable), and pin it with render-checked tests.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1125961d008304f6050893ef",
+      "at": "2026-11-20T19:00:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "80f5e6ef637542d0b8d89e542105a9e6",
+      "session_id": "3678ab0e75574974b0dc1dcda02267b3"
+    }
+  ]
+}
