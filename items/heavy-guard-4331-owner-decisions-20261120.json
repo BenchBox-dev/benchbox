@@ -1,10 +1,11 @@
 {
   "acceptance": [
     "The owner's decision on pause versus replay versus close is recorded.",
-    "The owner's decision on refusing default runs is recorded."
+    "The owner's decision on refusing default runs is recorded.",
+    "The owner's decision on the DuckDB allowance is recorded."
   ],
   "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
-  "description": "## Problem\n#4331 is open and unarmed. Two things need the owner before repair: (1) the owner chose 'pause and retry' on 2026-11-17 but kill-and-replay, off by default, was built; (2) default DuckDB and Spark runs now refuse to start when the heavy-run budget minus the allowance is under 1 GiB (DuckDB below 4.5 GiB, Spark below 5.5 GiB; on an 8 GiB host every default DuckDB run under a heavy-run fails), and the deferral item requires owner approval of reduced supported capacity.\n\n## Change\nRecord the owner's answers: repair as kill-and-replay, repair and build the true pause, or close the pull request; and whether a default run may ever be refused or must keep the earlier behaviour (DuckDB 4GB, Spark at least 1g).\n\n## Decision gates\nBlocked until the owner answers both.\n\n## Verification rubric\nPass: both answers are recorded here verbatim.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "description": "## Problem\n#4331 is open and unarmed. Two things need the owner before repair: (1) the owner chose 'pause and retry' on 2026-11-17 but kill-and-replay, off by default, was built; (2) default DuckDB and Spark runs now refuse to start when the heavy-run budget minus the allowance is under 1 GiB (DuckDB below 4.5 GiB, Spark below 5.5 GiB; on an 8 GiB host every default DuckDB run under a heavy-run fails), and the deferral item requires owner approval of reduced supported capacity.\n\n## Change\nQuote to the owner, verbatim, the 2026-11-17 form option chosen ('Also add pause and retry for small holder trees (relaxes the kill policy)') and the narrower tracker record ('under foreign pressure (bounded)'), with no preselected option. Record the owner's answers: repair as kill-and-replay, repair and build the true pause, or close the pull request; and whether a default run may ever be refused or must keep the earlier behaviour (DuckDB 4GB, Spark at least 1g).\n\n## Decision gates\nBlocked until the owner answers both.\n\n## Verification rubric\nPass: both answers are recorded here verbatim.\n\n## Additions from the item review\n- Third decision: the 3.5 GiB DuckDB non-heap allowance. The claimed evidence ('UAT cells peaked at 6.45 to 7.44 GiB') has no located artifact; the owner accepts it, asks for a measurement, or sets another value.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4331"
   ],
@@ -23,6 +24,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "2302e3a53b7a459c898d4038b2163f93",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:36:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e578229f26864b0cbc5245ae16803a2b",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
     }
   ]
