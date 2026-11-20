@@ -83,9 +83,16 @@ def test_calls_leave_template_tree_unchanged_and_threads_agree_with_serial(dsqge
     assert _tree_digest(dsqgen.templates_dir.parent) == before
 
 
-def test_stop_at_the_benchbox_limit_names_query_scale_and_whose_limit(dsqgen, monkeypatch):
+@pytest.mark.parametrize(
+    ("stderr", "expected"),
+    [
+        (None, "It had written nothing to stderr."),
+        (b"dsqgen: allocating permutation\n", "Stderr so far: dsqgen: allocating permutation"),
+    ],
+)
+def test_stop_at_the_benchbox_limit_names_query_scale_and_whose_limit(dsqgen, monkeypatch, stderr, expected):
     def never_finishes(cmd, *, cwd, timeout, env, discard_partial_output=None):
-        raise subprocess.TimeoutExpired(cmd, timeout)
+        raise subprocess.TimeoutExpired(cmd, timeout, stderr=stderr)
 
     monkeypatch.setattr(c_tools, "run_dsqgen_process", never_finishes)
     with pytest.raises(TPCDSError) as excinfo:
@@ -93,7 +100,7 @@ def test_stop_at_the_benchbox_limit_names_query_scale_and_whose_limit(dsqgen, mo
     message = str(excinfo.value)
     assert f"BenchBox stopped dsqgen after its own {DSQGEN_QUERY_TIMEOUT_SECONDS}-second limit" in message
     assert "query 9 at scale factor 10000" in message
-    assert "had reported no error" in message
+    assert message.endswith(expected)
 
 
 def test_dsqgen_failure_passes_its_stderr_through(dsqgen, monkeypatch):

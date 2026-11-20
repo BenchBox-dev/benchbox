@@ -403,11 +403,17 @@ class DSQGenBinary:
                     env=env,
                     discard_partial_output=lambda: log_path.unlink(missing_ok=True),
                 )
-            except subprocess.TimeoutExpired:
+            except subprocess.TimeoutExpired as exc:
+                written = exc.stderr.decode(errors="replace") if isinstance(exc.stderr, bytes) else exc.stderr
                 raise TPCDSError(
                     f"BenchBox stopped dsqgen after its own {DSQGEN_QUERY_TIMEOUT_SECONDS}-second limit while "
                     f"dsqgen was generating query {query_id}{variant or ''} at scale factor {scale_factor:g}. "
-                    "dsqgen had not finished and had reported no error."
+                    "dsqgen had not finished. "
+                    + (
+                        f"Stderr so far: {written.strip()}"
+                        if written and written.strip()
+                        else "It had written nothing to stderr."
+                    )
                 ) from None
             if capture_log and result.returncode == 0:
                 if not log_path.exists():
