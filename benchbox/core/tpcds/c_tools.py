@@ -110,6 +110,9 @@ class TPCDSError(Exception):
     pass
 
 
+DSQGEN_QUERY_TIMEOUT_SECONDS = 30
+
+
 SUBSCALE_TEMPLATE_OVERRIDES: dict[str, tuple[str, str]] = {
     "query93.tpl": (
         "define REASON= dist(return_reasons, 1, 1);",
@@ -273,8 +276,6 @@ class DSQGenBinary:
             _, log_text = self._run_dsqgen_with_log(
                 cmd, opt, base_query_id, variant, scale_factor=scale_factor, capture_log=True
             )
-        except subprocess.TimeoutExpired:
-            raise TPCDSError(f"dsqgen timed out for query {base_query_id}{variant or ''}") from None
         except FileNotFoundError:
             raise TPCDSError(f"dsqgen binary not found at {self.dsqgen_path}") from None
 
@@ -394,13 +395,20 @@ class DSQGenBinary:
             if capture_log:
                 cmd.extend([f"{opt}LOG", str(log_path)])
 
-            result = run_dsqgen_process(
-                cmd,
-                cwd=temp_dir,
-                timeout=30,
-                env=env,
-                discard_partial_output=lambda: log_path.unlink(missing_ok=True),
-            )
+            try:
+                result = run_dsqgen_process(
+                    cmd,
+                    cwd=temp_dir,
+                    timeout=DSQGEN_QUERY_TIMEOUT_SECONDS,
+                    env=env,
+                    discard_partial_output=lambda: log_path.unlink(missing_ok=True),
+                )
+            except subprocess.TimeoutExpired:
+                raise TPCDSError(
+                    f"BenchBox stopped dsqgen after its own {DSQGEN_QUERY_TIMEOUT_SECONDS}-second limit while "
+                    f"dsqgen was generating query {query_id}{variant or ''} at scale factor {scale_factor:g}. "
+                    "dsqgen had not finished and had reported no error."
+                ) from None
             if capture_log and result.returncode == 0:
                 if not log_path.exists():
                     raise TPCDSError(f"dsqgen wrote no parameter log for query {query_id}{variant or ''}")
@@ -485,8 +493,6 @@ class DSQGenBinary:
             return sql_query
         except subprocess.CalledProcessError as e:
             raise self._wrap_dsqgen_called_process_error(e, query_id, variant) from e
-        except subprocess.TimeoutExpired:
-            raise TPCDSError(f"dsqgen timed out for query {query_id}{variant or ''} (60s limit exceeded)") from None
         except FileNotFoundError:
             raise TPCDSError(f"dsqgen binary not found at {self.dsqgen_path}") from None
 
@@ -894,8 +900,6 @@ class DSQGenBinary:
                 capture_log=False,
                 edit_workdir=substitute,
             )
-        except subprocess.TimeoutExpired:
-            raise TPCDSError(f"dsqgen timed out for query {q}") from None
         except FileNotFoundError:
             raise TPCDSError(f"dsqgen binary not found at {self.dsqgen_path}") from None
 
