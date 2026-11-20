@@ -576,6 +576,8 @@ CREATION_LANDING_TESTS = (
     "tests/unit/scripts/test_pr_rerun.py",
     "tests/unit/scripts/test_pr_stale_base.py",
     "tests/unit/scripts/test_theseus_prefetch.py",
+    "tests/unit/scripts/test_trunk_revert.py",
+    "tests/fixtures/trunk_red_20261024.json",
     "tests/unit/test_agent_write_preflight_hook_interpreter.py",
     "tests/unit/test_check_primary_clone_stale.py",
     "tests/unit/scripts/test_pr_landing.py",

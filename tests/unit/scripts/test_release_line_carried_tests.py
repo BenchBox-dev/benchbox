@@ -27,7 +27,6 @@ NOT_CARRIED = {
     "tests/unit/scripts/test_release_line_carried_tests.py": "tests the carry declarations themselves",
     "tests/unit/scripts/test_release_line_landing_tooling.py": "tests the creation commit",
     "tests/unit/scripts/test_sqlglot_delivery.py": "tests the sqlglot delivery script, which the line keeps",
-    "tests/unit/scripts/test_trunk_revert.py": "tests the trunk revert script; passes unchanged on a v0.5.1 tree",
     "tests/unit/test_agent_write_preflight.py": "reads the line's own agent documents",
     "tests/integration/worktree/test_worktree_lifecycle_metadata.py": "tests the worktree lifecycle script through the line's Makefile; passes unchanged on a v0.5.1 tree",
     "tests/unit/scripts/test_worktree_session_ownership.py": "tests worktree ownership; passes unchanged against the carried script on a v0.5.1 tree",
@@ -337,6 +336,10 @@ def test_the_landing_declarations_exist_do_not_overlap_and_each_test_names_a_lan
     assert [path for path in (*paths, *tests) if not (ROOT / path).is_file()] == []
     names = {Path(path).name for path in paths}
     stems = {Path(path).stem for path in paths if path.endswith(".py")}
-    for test in tests:
-        text = (ROOT / test).read_text(encoding="utf-8")
+    sources = [(ROOT / test).read_text(encoding="utf-8") for test in tests if test.endswith(".py")]
+    for text, test in zip(sources, (test for test in tests if test.endswith(".py")), strict=True):
         assert any(name in text for name in names) or any(re.search(rf"\b{stem}\b", text) for stem in stems), test
+    unread = [
+        test for test in tests if not test.endswith(".py") and not any(Path(test).name in text for text in sources)
+    ]
+    assert not unread, unread
