@@ -38069,6 +38069,13 @@
       "status": "done",
       "title": "Prove in a scratch repository that minimising a superseded bot review is not an edit"
     },
+    "review-omp-roster-off-antigravity-removed-models-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Move the reviewer model roster off the google-antigravity models removed from omp 18.21+, so the pin can reach omp 19.x"
+    },
     "review-protocol-authority-single-source-cutover": {
       "claim": null,
       "needs": [],
