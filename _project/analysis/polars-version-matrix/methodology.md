@@ -60,7 +60,7 @@ Three rules mark a run `resource-policy-exceeded`. They are described here as th
 
 A run that exceeds 1800 s is stopped. A run that exits with an error is `execution-failure`. All of these cells are listed rather than imputed.
 
-Two host guards outside the runner also applied. The matrix ran under the BenchBox heavy-work lock, whose watchdog was set to warn rather than stop for this run. The host's heavy-work sentinel runs separately in kill mode: when memory pressure is critical and BenchBox processes together pass its 8 GiB budget, it sends SIGTERM to the largest. It stopped eight TPC-DS runs this way; they are recorded as `execution-failure` with exit code 143. All eight were in cells that did not qualify on other rounds for memory reasons (see `findings.md`).
+Two host guards outside the runner also applied. The matrix ran under the BenchBox heavy-work lock, whose watchdog was set to warn rather than stop for this run. The host's heavy-work sentinel runs separately in kill mode: when memory pressure is critical and BenchBox processes together pass its 8 GiB budget, it sends SIGTERM to the largest. It stopped eight TPC-DS runs this way; they are recorded as `execution-failure` with exit code 143. Every one had already passed the 1 GiB swap limit when it was stopped (swap growth 1.98 to 7.50 GiB), and the swap-out counter only grows, so each would have been ruled out by the swap limit had it finished. The sentinel therefore changed how those runs are labelled, not which cells qualified. For TPC-DS 1.40.1 default (A), all three rounds were stopped by the sentinel, so this is the only basis for that cell's outcome (see `findings.md`).
 
 ## Spill
 
