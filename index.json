@@ -25590,6 +25590,15 @@
       "status": "open",
       "title": "Close the rename bypass in the generator-volume gate's CI path filter"
     },
+    "generator-volume-gate-sf1-measurement-probe-and-budget-20261120": {
+      "claim": null,
+      "needs": [
+        "feature-fix-ci-congestion-diagnostics-and-generator-gate-20261117"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Prove the generator-volume gate measures correctly and get its CI budget approved"
+    },
     "generator-volume-gate-ungated-schema-and-seed-inputs-20261120": {
       "claim": null,
       "needs": [
