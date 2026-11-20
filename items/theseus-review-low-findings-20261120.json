@@ -1,9 +1,10 @@
 {
   "acceptance": [
-    "Each of the six notes is fixed with a regression test where behavior changes, or dismissed with a recorded reason.",
+    "Each of the five notes is fixed with a regression test where behavior changes, or dismissed with a recorded reason.",
     "Released in a Theseus version and locked by BenchBox and Theseus's self-lock."
   ],
-  "description": "Independent reviews of recent Theseus PRs left non-blocking notes. Re-verify each on current main before acting; line numbers drift.\n1. src/theseus_reviewer/layout.py:44: `_REFERENCE` only catches a reference label on one line. CommonMark allows a label to span lines, so a split `[label\\n]: dest` passes through `neutralize` unchanged and can create a relative link. Impact is low because sanitizing already removes absolute URLs.\n2. src/theseus_reviewer/suggestions.py:50: `target.is_symlink()` is checked after `.resolve()`, so it is always False and a symlinked file inside the workspace is read through to its target. The containment check still blocks escapes outside the workspace.\n3. src/theseus_reviewer/dashboard.py:44: when one finding has several bot threads in the same cycle, `setdefault` links whichever comes first, which may be an older thread instead of the current one.\n4. src/theseus_reviewer/check_run.py:39-40: annotation text is plain text, but `layout.neutralize` HTML-escapes it, so `&lt;` and similar entities appear literally in check-run annotations.\n5. `theseus infra rotate` repeats the environment guard that setup already applies (noted in review; confirm the duplication on main before changing it).\n6. Wording: docs that say a deployment-branch policy is open when it \"starts with a wildcard\" understate the rule in infra/github_env.py `is_open_pattern`: any glob character in the first path segment, or an empty pattern, counts as open (for example `rel*/x`).",
+  "context": "2026-11-20: verified on main 97691757. Dropped a sixth note about 'starts with a wildcard' wording: it referred to a PR body, and docs/infra.md:78 already states the full rule.",
+  "description": "Independent reviews of recent Theseus PRs left non-blocking notes. Each was re-checked on main 97691757 on 2026-11-20; line numbers drift.\n1. src/theseus_reviewer/layout.py:44: `_REFERENCE` only matches a reference label on one line (`[^\\]\\n]*\\]:`). CommonMark allows a label to span lines, so a split `[label\\n]: dest` passes through `neutralize` unchanged and can create a relative link. Impact is low because sanitizing already removes absolute URLs.\n2. src/theseus_reviewer/suggestions.py:50: `target.is_symlink()` is checked on the already-resolved path, so it is always False and a symlinked file inside the workspace is read through to its target. The containment check still blocks escapes outside the workspace.\n3. src/theseus_reviewer/dashboard.py:45: when one finding has several bot threads in the same cycle, `setdefault` keeps whichever comes first, which may be an older thread instead of the current one.\n4. src/theseus_reviewer/check_run.py:39: annotation messages are plain text, but `layout.neutralize` replaces raw tags with `&lt;`, so the entity appears literally in check-run annotations.\n5. src/theseus_reviewer/infra/rotate_command.py:56-64 reads the environment with its own `gh api` call and repeats the 'unreadable or open environment' refusal, while setup uses `github_env.get_environment` plus `is_restricted` (setup.py:417). Both refuse correctly; the duplication means the two paths can drift.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b5abc8a4010555c0d8f96bb",
@@ -12,6 +13,14 @@
       "op": "create",
       "op_id": "b80ffe51459040568866023a14ddc06f",
       "session_id": "045b6d4d12cf4622b6f5f4ab89e94f4e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1125961d008304f6050893ef",
+      "at": "2026-11-20T14:16:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f7f0844e162041be8097ea59bf7667a0",
+      "session_id": "3678ab0e75574974b0dc1dcda02267b3"
     }
   ]
 }
