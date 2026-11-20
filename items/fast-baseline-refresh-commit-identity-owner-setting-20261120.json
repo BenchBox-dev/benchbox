@@ -1,13 +1,15 @@
 {
   "acceptance": [
-    "The owner's chosen identity or approval path is recorded and a refresh pull request merges without a re-authored commit."
+    "A scheduled refresh pull request with an unrewritten bot commit is observed through one arm attempt after an owner stand-in, and the outcome is recorded with GitHub's merge state.",
+    "No refresh commit is re-authored."
   ],
   "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
-  "description": "## Problem\nThe refresh workflow commits as `benchbox-bot <bot@benchbox.dev>`, which is not linked to a GitHub account. The develop ruleset requires extra approval for unattributed changes, so a refresh pull request cannot merge without an approval; #4381 was merged only after its commit was re-authored under the owner's identity and force-pushed.\n\n## Change\nOwner-only: choose a GitHub-linked identity for the workflow (an App or machine account), an approval step, or keep manual handling. An agent may then update the workflow to use what the owner set up.\n\n## Decision gates\nBlocked: settings, secrets and rulesets are owner-only. No agent re-authors a refresh commit again.\n\n## Verification rubric\nPass: a refresh pull request reaches a mergeable state without rewriting its commit.\n\n## Additions from the item review\n- The owner chose re-authoring for #4381 on 2026-11-19; that choice does not extend to later refreshes.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "description": "## Problem\nThis item first said the develop ruleset's unattributed-commit rule blocks refresh pull requests because they commit as `benchbox-bot <bot@benchbox.dev>`. Evidence read on 2026-11-20 does not support that: #3914, #3915, #4004, #4090 and #4317 each merged with a sole commit by that identity and no linked account; #4090 and #4317 merged under the ruleset version last changed on 2026-11-10; #4317 merged by auto-merge on 2026-11-18. None had an approving review. What the stalled scheduled refreshes (#3928, #4066, #4283, and medium-shard #4284) share is that the review bot marks them too large to review, the required `review-gate` check fails, and nobody posts a stand-in. Why #4381's first head f734774a sat for 15 minutes with every required check green and auto-merge on (core green 16:29:30Z, force-push 16:45:20Z on 2026-11-19) is unexplained.\n\n## Owner decision\nQuestion: why refresh pull requests stall, and the bot identity. Answer: \"Recommended: leave the identity alone. Add only a visible failure when a scheduled refresh opens while the previous one is still open. On the next scheduled refresh (Monday 23 Nov) you post the stand-in, I arm once with no re-authoring, and we see whether it merges.\" Source: owner's answer in the choice dialog, 2026-11-20.\n\n## Change\nNo workflow identity change. When the scheduled fast-tier refresh pull request of 2026-11-23 opens, tell the owner its number and head. After the owner posts the stand-in, run `make pr-arm` once and record what GitHub reports: merged, or blocked with the merge state and every required check's state.\n\n## Decision gates\nHeld until 2026-11-23T17:00Z. The stand-in is the owner's to post, naming that pull request and head at the time. No agent re-authors, amends or force-pushes a refresh commit. If it does not merge, record the evidence and stop; a ruleset or identity change is owner-only.\n\n## Verification rubric\nPass: the item records the pull request number, head, the commit author, the stand-in comment's time, the single `make pr-arm` output and the final state read from GitHub.\n\n## Guardrails (accepted by the owner, 2026-11-20)\nThe agent never posts a stand-in review, resolves a review thread, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. It arms with `make pr-arm` once per pull request and reports the result. Subagents are read-only. Any limit, default, threshold or label text is shown to the owner before it is committed. A blocked step stops this item; the agent moves to the next item and does not work around the block.",
   "links": [
     ".github/workflows/fast-duration-baseline-refresh.yml",
     "docs/internal/repo-admin-settings.md"
   ],
+  "not_before": "2026-11-23T17:00:00Z",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
@@ -32,6 +34,14 @@
       "op": "update",
       "op_id": "c560e54f641f483bb1d068f825529742",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-20T14:55:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "460e17ba49474658a27247e3e762dccc",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
 }
