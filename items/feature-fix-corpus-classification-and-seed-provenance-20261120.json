@@ -3,7 +3,7 @@
     "The feature pull request is merged and each member meets its own acceptance."
   ],
   "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
-  "description": "Umbrella for one feature branch and one pull request in core. Members: bundle-validator-checks-compliance-before-offlist-return-20261120, seed-corpus-tpcdi-records-seed-and-engine-version-20261120. Items that wait on an owner decision or design approval are tracked separately and join the branch only if approved while it is open.",
+  "description": "Umbrella for one feature branch and one pull request in core. Members: bundle-validator-checks-compliance-before-offlist-return-20261120 and mirror-validator-refuses-offlist-tpch-tpcds-bundles-20261120 (both change `_validate_compliance_section` and the registry-import fallback in `benchbox/validation/bundle.py`). The seed-provenance, stored-bundle-class and old-generator-label items each get their own pull request.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
@@ -11,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "af4df9a31de1491584e8287be13e3f1f",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:35:35Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9ab4149eda0d405a98e1045523923fee",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
     }
   ]
