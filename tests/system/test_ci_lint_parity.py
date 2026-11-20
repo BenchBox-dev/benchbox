@@ -124,6 +124,11 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "A heavy SF 1 DuckDB run, so it has no Make target (the target count is capped); run it locally with "
         "make heavy-run CMD='uv run -- python -m scripts.generator_volume_gate --base-ref origin/develop'."
     ),
+    ("ci.yml", "ci-paths", "Guard SQLGlot adoption on a maintenance line"): (
+        "Hosted check on pull requests into a release/X.Y.x line; it reads the pull request base and body, "
+        "which exist only on the hosted event, and its logic is pinned by "
+        "tests/unit/scripts/test_check_line_sqlglot_adoption.py."
+    ),
     ("ci.yml", "short-checks", "Check user-facing text for contributor references"): (
         "A fast unit test, tests/unit/cli/test_shipped_docs_urls.py, that make test-fast and "
         "pr-preflight already run; the hosted step exists only so Markdown-only changes run it."

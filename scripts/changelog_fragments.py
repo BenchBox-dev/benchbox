@@ -43,6 +43,7 @@ PR_SUFFIX_RE = re.compile(r"\(#\d+\)\s*$")
 SQUASH_PR_RE = re.compile(r"\(#(\d+)\)\s*$")
 UNRELEASED_HEADER = "## [Unreleased]"
 TITLE_RE = re.compile(r"^(?P<type>[a-z]+)(?:\((?P<scope>[^()\r\n]*)\))?(?P<bang>!)?: \S.*")
+REVERTS_RE = re.compile(r"This reverts commit ([0-9a-f]{40})")
 
 EXEMPT_TYPES = frozenset({"build", "chore", "ci", "docs", "refactor", "style", "test"})
 REQUIRED_TYPES = frozenset({"feat", "fix", "perf"})
@@ -348,6 +349,105 @@ def is_fragment_path(path: str) -> bool:
     return directory == FRAGMENT_DIR and "/" not in name and is_fragment_name(name)
 
 
+@dataclass(frozen=True)
+class RevertedCommit:
+    paths: frozenset[str]
+    fragments: frozenset[str]
+    fragments_at_base: frozenset[str]
+
+
+def is_revert_title(title: str) -> bool:
+    match = TITLE_RE.fullmatch(title)
+    return title.startswith('Revert "') or bool(match and match.group("type") == "revert")
+
+
+def _git_lines(root: Path, *args: str) -> list[str]:
+    result = subprocess.run(
+        ["git", "-C", str(root), *args], capture_output=True, encoding="utf-8", errors="replace", check=True
+    )
+    return [line for line in result.stdout.splitlines() if line.strip()]
+
+
+def _git_succeeds(root: Path, *args: str) -> bool:
+    return subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=False).returncode == 0
+
+
+def _diff_bytes(root: Path, *args: str) -> bytes:
+    result = subprocess.run(
+        ["git", "-C", str(root), "diff", "--binary", "--no-renames", *args],
+        capture_output=True,
+        check=True,
+    )
+    return result.stdout
+
+
+def _patch_id(root: Path, diff: bytes) -> str | None:
+    result = subprocess.run(
+        ["git", "-C", str(root), "patch-id", "--verbatim"],
+        input=diff,
+        capture_output=True,
+        check=True,
+    )
+    fields = result.stdout.decode("ascii", errors="replace").split()
+    return fields[0] if fields else None
+
+
+def _inverts(root: Path, base: str, shas: Sequence[str], found: Sequence[RevertedCommit]) -> bool:
+    content = [sorted(path for path in commit.paths if not is_fragment_path(path)) for commit in found]
+    union = sorted({path for paths in content for path in paths})
+    if not union:
+        return True
+    reverse = b"".join(
+        _diff_bytes(root, sha, f"{sha}^", "--", *paths) for sha, paths in zip(shas, content, strict=True) if paths
+    )
+    net = _diff_bytes(root, base, "HEAD", "--", *union)
+    if not reverse.strip() or not net.strip():
+        return False
+    reverse_id = _patch_id(root, reverse)
+    return reverse_id is not None and reverse_id == _patch_id(root, net)
+
+
+def reverted_commits(root: Path, base: str) -> list[RevertedCommit]:
+    try:
+        message = "\n".join(_git_lines(root, "log", "--no-merges", "--format=%B", f"{base}..HEAD"))
+        shas = list(dict.fromkeys(REVERTS_RE.findall(message)))
+        found = []
+        for sha in shas:
+            if not _git_succeeds(root, "merge-base", "--is-ancestor", sha, base):
+                return []
+            paths = {
+                normalize_path(path) for path in _git_lines(root, "diff", "--name-only", "--no-renames", f"{sha}^", sha)
+            }
+            added = _git_lines(root, "diff", "--name-only", "--no-renames", "--diff-filter=A", f"{sha}^", sha)
+            fragments = {normalize_path(path) for path in added if is_fragment_path(path)}
+            at_base = {path for path in fragments if _git_succeeds(root, "cat-file", "-e", f"{base}:{path}")}
+            found.append(RevertedCommit(frozenset(paths), frozenset(fragments), frozenset(at_base)))
+        return found if _inverts(root, base, shas, found) else []
+    except (OSError, subprocess.SubprocessError):
+        return []
+
+
+def _revert_decision(
+    paths: Sequence[str], added: Sequence[str], deleted: set[str], reverted: Sequence[RevertedCommit]
+) -> Decision | None:
+    deleted = {normalize_path(path) for path in deleted}
+    if not set(paths) <= set().union(*(commit.paths for commit in reverted)):
+        return None
+    fragments = set().union(*(commit.fragments for commit in reverted))
+    at_base = set().union(*(commit.fragments_at_base for commit in reverted))
+    kept = sorted((fragments & at_base) - deleted)
+    if kept:
+        return Decision(True, False, f"the revert leaves the reverted change's fragment {kept[0]} in place")
+    if fragments - at_base:
+        return Decision(
+            True, any(is_fragment_path(path) for path in added), "the reverted change's fragment was released"
+        )
+    reason = (
+        "the revert deletes the reverted change's fragment" if fragments else "the reverted change added no fragment"
+    )
+    return Decision(False, True, reason)
+
+
 def decide_required(
     title: str,
     changed_paths: Iterable[str],
@@ -355,6 +455,8 @@ def decide_required(
     release_identity_changed: bool = False,
     user_entry_fragments: Iterable[str] = (),
     added_paths: Iterable[str] | None = None,
+    deleted_paths: Iterable[str] = (),
+    reverted: Sequence[RevertedCommit] = (),
 ) -> Decision:
     paths = [normalize_path(path) for path in changed_paths]
     user_entries = list(user_entry_fragments)
@@ -365,12 +467,19 @@ def decide_required(
     scope = match.group("scope") if match else None
     breaking_title = bool(match and match.group("bang"))
 
-    if title.startswith('Revert "'):
-        return Decision(False, satisfied, "revert pull request")
+    is_revert = is_revert_title(title)
+    if is_revert:
+        deleted = {normalize_path(path) for path in deleted_paths}
+        satisfying = [path for path in satisfying if path not in deleted]
+        satisfied = any(is_fragment_path(path) for path in satisfying)
     if release_identity_changed:
         return Decision(False, satisfied, "release identity changed")
     if not any(matches_manifest(path, rules) for path in paths):
         return Decision(False, satisfied, "no changed path is shipped in the package")
+    if is_revert and not breaking_title and reverted:
+        verdict = _revert_decision(paths, satisfying, set(deleted_paths), reverted)
+        if verdict is not None:
+            return verdict
 
     internal_type = pr_type in EXEMPT_TYPES and not breaking_title and not (pr_type == "chore" and scope == "deps")
     if internal_type:
@@ -378,10 +487,12 @@ def decide_required(
         if user_entries:
             warnings = (f"a '{pr_type}' pull request adds a user-facing changelog entry; use a user-facing title type",)
         return Decision(False, satisfied, f"title type '{pr_type}' needs no entry", warnings)
-    if match is None:
-        reason = "title is not a conventional commit title"
-    elif breaking_title:
+    if breaking_title:
         reason = "breaking title"
+    elif is_revert:
+        reason = "revert that cannot be matched to the commit it reverts"
+    elif match is None:
+        reason = "title is not a conventional commit title"
     elif pr_type == "chore":
         reason = "dependency update"
     elif pr_type in REQUIRED_TYPES:
@@ -551,15 +662,22 @@ def evaluate_required(args: argparse.Namespace) -> int:
         return EXIT_USAGE
     root = Path(args.root)
     user_entries = []
+    deleted = []
     for path in changed:
         if not is_fragment_path(path):
             continue
         candidate = root / normalize_path(path)
+        if not candidate.exists() and not candidate.is_symlink():
+            deleted.append(path)
+            continue
         if not candidate.is_file():
             continue
         fragment, _ = parse_fragment(candidate)
         if fragment is not None and fragment.entries:
             user_entries.append(path)
+    reverted: list[RevertedCommit] = []
+    if args.release_base_sha and is_revert_title(args.title):
+        reverted = reverted_commits(root, args.release_base_sha)
     decision = decide_required(
         args.title,
         changed,
@@ -567,6 +685,8 @@ def evaluate_required(args: argparse.Namespace) -> int:
         release_identity_changed=identity_changed,
         user_entry_fragments=user_entries,
         added_paths=added,
+        deleted_paths=deleted,
+        reverted=reverted,
     )
     for warning in decision.warnings:
         print(f"warning: {warning}", file=sys.stderr)

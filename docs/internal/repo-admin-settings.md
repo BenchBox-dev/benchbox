@@ -62,13 +62,17 @@ Required status checks:
 ```
 
 `review-gate` is bound to the `benchbox-review` App
-(`integration_id` 5201041). `release-v2 probe` is a check run that
-`.github/workflows/release-v2-probe.yml` creates on the pull request head
-(in progress after dispatching the probe runs, or completed at once when no
+(`integration_id` 5201041). `release-v2 probe` is a commit status that
+`.github/workflows/release-v2-probe.yml` posts on the pull request head
+(`pending` after dispatching the probe runs, or `success` at once when no
 release input changed) and that the `probe report` job of
-`.github/workflows/release-v2.yml` completes when the runs finish. It is created with `GITHUB_TOKEN`, so it is
-bound to the GitHub Actions App (`integration_id` 15368); it runs on every pull
-request regardless of base.
+`.github/workflows/release-v2.yml` settles to `success` or `failure` when the runs
+finish. It is posted with `GITHUB_TOKEN`, so it is set by the GitHub Actions App
+(`integration_id` 15368); it runs on every pull request regardless of base. It is a
+commit status rather than a check run because GitHub files a `GITHUB_TOKEN` check run
+into an arbitrary existing github-actions check suite of the commit, and a check run
+filed in the `CI` workflow's suite is not counted by the ruleset: the merge API
+refuses it as expected even while GraphQL lists it as required and successful.
 
 Five of these contexts are always-reporting result jobs in
 `.github/workflows/ci.yml`. `review-gate` is a commit status that
@@ -607,7 +611,7 @@ Required status checks:
 ```
 
 `review-gate` is bound to the `benchbox-review` App (`integration_id` 5201041)
-and the `release-v2 probe` check run to the GitHub Actions App (`integration_id` 15368),
+and the `release-v2 probe` commit status to the GitHub Actions App (`integration_id` 15368),
 as on `develop`; the drift check requires the two required-check lists to be
 identical. The `review` environment already admits `release/*`, and `trunk.yml`
 runs on pushes to `release/**`. The gate workflow, the review workflow and the

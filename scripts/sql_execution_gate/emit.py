@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
+import logging
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any, NamedTuple
 
 DIALECTS = ("sqlite", "duckdb", "datafusion", "postgres")
 TPCH_SEED = None
 TPCDS_SEED = 1001
 MULTI_PART_IDS = (14, 23, 24)
+TRANSLATION_SEED = 20260101
 
 
 def _runtime_pin() -> dict[str, str]:
@@ -42,6 +46,72 @@ def _emit(benchmark_name: str, benchmark, ids, seed, dialects, **options) -> dic
     return emitted
 
 
+class PlatformGroup(NamedTuple):
+    dialect: str
+    adapter: Any
+    platforms: list[str]
+
+
+def _platform_groups() -> dict[str, PlatformGroup]:
+    from benchbox.core.platform_registry import PlatformRegistry
+
+    keyed: dict[tuple, PlatformGroup] = {}
+    for platform in sorted(PlatformRegistry.get_sql_platforms()):
+        adapter_class = PlatformRegistry.get_adapter_class(platform)
+        adapter = object.__new__(adapter_class)
+        dialect = adapter.get_target_dialect()
+        key = (dialect, adapter_class._get_dialect_queries, adapter_class.get_tpc_base_dialect)
+        keyed.setdefault(key, PlatformGroup(dialect, adapter, [])).platforms.append(platform)
+    return {",".join(group.platforms): group for group in sorted(keyed.values(), key=lambda g: g.platforms)}
+
+
+def _benchmark_instance(benchmark_id: str, scale: float, scratch: Path):
+    from benchbox.core.benchmark_registry import get_benchmark_class
+
+    benchmark_class = get_benchmark_class(benchmark_id)
+    parameters = inspect.signature(benchmark_class.__init__).parameters
+    options: dict[str, object] = {}
+    if "scale_factor" in parameters:
+        options["scale_factor"] = 1.0 if benchmark_id == "joinorder" else scale
+    if "output_dir" in parameters:
+        options["output_dir"] = scratch / benchmark_id
+    try:
+        return benchmark_class(**options, seed=TRANSLATION_SEED)
+    except TypeError:
+        return benchmark_class(**options)
+
+
+def _emit_translations(scale: float, scratch: Path, shard: tuple[int, int]) -> dict[str, dict[str, dict[str, str]]]:
+    from benchbox.core.benchmark_registry import list_benchmark_ids
+
+    logging.disable(logging.CRITICAL)
+    groups = list(_platform_groups().items())
+    selected = [item for index, item in enumerate(groups) if index % shard[1] == shard[0]]
+    instances: dict[str, object] = {}
+    emitted: dict[str, dict[str, dict[str, str]]] = {}
+    for benchmark_id in sorted(list_benchmark_ids()):
+        try:
+            instances[benchmark_id] = _benchmark_instance(benchmark_id, scale, scratch)
+        except Exception as error:
+            instances[benchmark_id] = f"<{type(error).__name__}: {error}>"
+    for label, group in selected:
+        per_benchmark: dict[str, dict[str, str]] = {}
+        for benchmark_id, instance in instances.items():
+            if isinstance(instance, str):
+                per_benchmark[benchmark_id] = {"*": instance}
+                continue
+            try:
+                queries = group.adapter._get_dialect_queries(instance, benchmark_id, None, strict_translation=True)
+                per_benchmark[benchmark_id] = {}
+                for query_id, sql in queries.items():
+                    stage = _adapter_stage(benchmark_id, group.dialect, query_id)
+                    per_benchmark[benchmark_id][str(query_id)] = str(stage(sql) if stage else sql)
+            except Exception as error:
+                per_benchmark[benchmark_id] = {"*": f"<{type(error).__name__}: {error}>"}
+        emitted[label] = per_benchmark
+    return emitted
+
+
 def _augmented(name: str, benchmark, ids, seeds, dialects, **options) -> dict[str, dict[str, str]]:
     augmented: dict[str, dict[str, str]] = {}
     for seed in seeds:
@@ -60,9 +130,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dialects", default=",".join(DIALECTS))
     parser.add_argument("--augment-ids", default="")
     parser.add_argument("--augment-seeds", default="")
+    parser.add_argument("--translations", action="store_true")
+    parser.add_argument("--shard", default="0/1")
     args = parser.parse_args(argv)
 
     import benchbox
+
+    if args.translations:
+        index, _, count = args.shard.partition("/")
+        translations = _emit_translations(
+            args.scale, Path(tempfile.mkdtemp(prefix="sql_gate_emit_")), (int(index), int(count))
+        )
+        payload = {
+            "benchbox_root": str(Path(benchbox.__file__).resolve().parent.parent),
+            "runtime_pin": _runtime_pin(),
+            "translations": translations,
+        }
+        Path(args.out).write_text(json.dumps(payload, indent=1, sort_keys=True), encoding="utf-8")
+        return 0
 
     dialects = tuple(args.dialects.split(","))
     wanted = set(args.benchmarks.split(","))

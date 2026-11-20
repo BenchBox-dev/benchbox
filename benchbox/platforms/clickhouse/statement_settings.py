@@ -21,7 +21,7 @@ class StatementSettingRequirement:
 HARNESS_STATEMENT_SETTINGS: tuple[StatementSettingRequirement, ...] = (
     StatementSettingRequirement(
         benchmark=frozenset({"tpchavoc"}),
-        query_ids=frozenset({"5_v7", "5_v8"}),
+        query_ids=frozenset({"5_v8"}),
         deployment_mode="local",
         settings=GRACE_HASH_JOIN,
         reason="5_v8 exceeds the 8 GiB clickhouse-local query memory limit (Code 241) without a spilling join",

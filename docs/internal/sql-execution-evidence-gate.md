@@ -367,3 +367,23 @@ detect a translation defect on SQLite, PostgreSQL or DataFusion; that coverage
 belongs to this gate, which runs every OBT statement on every engine, compares
 it with the TPC-DS statement on the same engine and with DuckDB, and runs the
 vacuity proof on OBT data.
+
+## Translation report for platforms the gate cannot run
+
+The gate executes only on local engines, so a runtime adoption can change the
+SQL shipped to every other platform unseen. `scripts/sql_execution_gate/emit.py
+--translations` emits, for every SQL platform adapter, every query of every
+registered benchmark through the adapter's `_get_dialect_queries` path (the
+adapter's base dialect, `translate_sql_query` with its platform rewrites, and
+the DataFusion TPC-H stage), with benchmark seeds pinned so the output is
+deterministic. `scripts/sql_execution_gate/translation_report.py` runs it
+against two trees and diffs them; it never executes an engine or a cloud
+service. Adapters that share a target dialect and query path form one entry.
+A benchmark that fails to build or translate is recorded as a `*` entry with
+its error, so a new failure is a reported change. `platform_version` is
+passed as `None`, the value an adapter without a connection passes; only the
+vector-search benchmark reads it.
+
+The SQLGlot delivery automation writes the result into the adoption pull
+request body and `publish` refuses a body that differs from the recomputed
+list (see the release guide). The report is informational and gates nothing.

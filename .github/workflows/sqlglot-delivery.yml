@@ -192,6 +192,7 @@ jobs:
             ${{ runner.temp }}/sqlglot-delivery/prepared/plan.json
             ${{ runner.temp }}/sqlglot-delivery/prepared/pull-request.json
             ${{ runner.temp }}/sqlglot-delivery/prepared/adoption.bundle
+            ${{ runner.temp }}/sqlglot-delivery/prepared/translation-changes.json
           if-no-files-found: error
           retention-days: 3
 

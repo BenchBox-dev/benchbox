@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "TPC-DS and TPC-DS-OBT scale factors below 0.01 are now refused with an error that says the bundled dsdgen does not finish there (it loops in catalog_sales date scaling), before dsdgen is started."
+    },
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "TPC-DS and TPC-DS-OBT now accept scale factors only up to 3000 (previously 100000). The bundled dsqgen cannot generate query 9 above that: it builds a key permutation of rowcount(store_sales)/5 entries, taking over 45 s and 3.6 GiB at scale factor 10000 and over 14 GiB at 100000. Larger values are refused up front with this reason."
+    }
+  ]
+}

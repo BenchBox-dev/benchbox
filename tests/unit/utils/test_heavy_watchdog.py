@@ -65,11 +65,6 @@ def read_pid(path: Path) -> int:
     return int(path.read_text(encoding="utf-8"))
 
 
-def recorded_pid(path: Path) -> int | None:
-    text = path.read_text(encoding="utf-8").strip() if path.exists() else ""
-    return int(text) if text else None
-
-
 def start_driver(
     holder: subprocess.Popen, budget: int, mode: str, spawned: list[subprocess.Popen], stderr_path: Path
 ) -> subprocess.Popen:
@@ -407,9 +402,9 @@ def test_run_guard_subprocess_stops_a_runaway_command_with_the_watchdog_status(t
     assert result.returncode == hl.EXIT_WATCHDOG == 79, result.stderr
     assert "BREACH tree footprint" in result.stderr
     assert "exiting 79" in result.stderr
-    recorded = recorded_pid(tmp_path / "run.pid")
-    if recorded is not None:
-        assert not alive(recorded)
+    pid_file = tmp_path / "run.pid"
+    if pid_file.exists():
+        assert not alive(int(pid_file.read_text(encoding="utf-8")))
 
 
 def test_helper_pid_file_is_never_visible_empty_while_being_published(tmp_path: Path, monkeypatch) -> None:
@@ -611,12 +606,3 @@ def test_the_default_cleanup_budget_is_derived_from_the_stop_and_kill_bounds() -
     assert bound({}) == pytest.approx(86.0)
     assert bound({"BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS": "15"}) == pytest.approx(41.0)
     assert bound({"BENCHBOX_LINUX_STOP_TIMEOUT_SECONDS": "x"}) == pytest.approx(86.0)
-
-
-def test_a_pid_file_caught_between_truncate_and_write_reads_as_no_pid(tmp_path: Path) -> None:
-    pid_file = tmp_path / "run.pid"
-    pid_file.write_text("", encoding="utf-8")
-    assert recorded_pid(pid_file) is None
-    assert recorded_pid(tmp_path / "missing.pid") is None
-    pid_file.write_text("4242", encoding="utf-8")
-    assert recorded_pid(pid_file) == 4242

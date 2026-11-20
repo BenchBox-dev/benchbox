@@ -32,7 +32,7 @@ BUCKETS: list[tuple[str, list[str]]] = [
     ),
     (
         "Docker lifecycle (default-OFF, incl. `container_cleanup.py`)",
-        ["docker_assets.py", "docker_cleanup.py", "container_cleanup.py", "image_pins.py", "starrocks_evidence.py"],
+        ["docker_assets.py", "docker_cleanup.py", "container_cleanup.py", "image_pins.py", "engine_evidence.py"],
     ),
     (
         "chartered evidence artifacts (validate/report/package/cells_io/gate_summary)",

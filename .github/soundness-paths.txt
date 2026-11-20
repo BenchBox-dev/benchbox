@@ -161,6 +161,7 @@ file	scripts/changelog_fragments.py
 file	scripts/check_dependency_bounds.py
 file	scripts/check_sqlglot_upstream_freshness.py
 file	scripts/check_sqlglot_advisories.py
+file	scripts/check_line_sqlglot_adoption.py
 file	scripts/sqlglot_refresh_waiver.json
 prefix	benchbox/_vendor/
 file	benchbox/utils/dialect_utils.py
@@ -178,6 +179,7 @@ file	.github/sqlglot-delivery.json
 file	scripts/sqlglot_delivery.py
 file	.github/workflows/sqlglot-delivery.yml
 file	tests/unit/scripts/test_sqlglot_delivery.py
+file	tests/unit/scripts/test_check_line_sqlglot_adoption.py
 file	tests/unit/workflows/test_sqlglot_delivery_workflow.py
 file	tests/unit/utils/test_dialect_utils.py
 file	tests/unit/utils/test_apply_rewrite.py

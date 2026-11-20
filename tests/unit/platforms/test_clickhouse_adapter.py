@@ -1153,6 +1153,15 @@ class TestClickHouseWorkloadCoverage:
         assert "join_algorithm = 'grace_hash'" in statement
         assert "grace_hash_join_initial_buckets = 8" in statement
 
+    def test_local_tpchavoc_5_v7_uses_the_default_join(self):
+        adapter = self._adapter(deployment_mode="local")
+        connection = Mock()
+        connection.execute.return_value = [(1,)]
+
+        adapter.execute_query(connection, "SELECT 1", "5_v7", benchmark_type="tpchavoc", validate_row_count=False)
+
+        assert "join_algorithm" not in connection.execute.call_args.args[0]
+
     @pytest.mark.parametrize(
         ("deployment_mode", "query_id", "grace"),
         [

@@ -18,18 +18,21 @@ Do not add a second nightly UAT gate for this. Generation already lives in
 ## Recurring matrix
 
 The workflow is the canonical matrix. It uses only local DuckDB, DataFusion,
-Polars DataFrame, and ClickHouse Local identities. Cloud warehouses are not on this calendar.
+Polars DataFrame, ClickHouse Local and CedarDB (pinned container) identities.
+Cloud warehouses are not on this calendar.
 
 | Benchmark | Scales | Platforms | Notes |
 | --- | --- | --- | --- |
 | TPC-H | 0.01, 0.1 | DuckDB, DataFusion, Polars-DF | Power phase only |
+| TPC-H | 1.0 | DuckDB, ClickHouse Local, CedarDB | Full specification: power, 2-stream throughput, RF1/RF2 |
+| TPC-DS | 1 | DuckDB, ClickHouse Local, CedarDB | Full specification: load, power, 4-stream throughput, maintenance |
 | TPC-DI | 0.01, 0.1, 1.0 | DuckDB, DataFusion, ClickHouse Local | Power phase only |
 | SSB | 0.01, 0.1 | DuckDB, DataFusion, Polars-DF | Power phase only |
 
-The TPC-H SF 1 and TPC-DS SF 1 official cohorts are not regenerated. They stay
-frozen at their published bundles until DataFusion and ClickHouse Local support
-full-spec runs (throughput plus refresh or maintenance), then return as
-full-spec cells.
+The power-only TPC-H SF 1 and TPC-DS SF 1 cohorts published before
+full-specification runs are not regenerated and stay at their published
+bundles. A failed combined cell leaves its cohort below three identities, which
+blocks the seed PR at the corpus validator; rerun that cell before merging.
 
 TPC-H SF10 / SF100 and extra TPC-DS platforms stay operator-run (too large
 for a GitHub-hosted monthly job). They still publish through
