@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "No create-github-app-token step uses app-id in either repository, and the deprecation warning is gone from their runs.",
+    "theseus infra setup delivers the review App client ID, and a re-run plans no change.",
+    "A review run, a gate run and a SQLGlot delivery run succeed after the switch."
+  ],
+  "description": "actions/create-github-app-token warns that the `app-id` input is deprecated in favor of `client-id`. Current uses: Theseus .github/workflows/gate.yml (two steps) and review.yml (two steps), which read secrets.REVIEW_APP_ID; BenchBox .github/workflows/site-inputs.yml (SITE_BRIDGE_APP_ID) and sqlglot-delivery.yml (two steps, SQLGLOT_DELIVERY_APP_ID). Each App's client ID must be stored (secret or variable) before switching, and `theseus infra setup` should deliver the review App's client ID the same way it delivers REVIEW_APP_ID today. Changes to the review workflows are soundness paths and follow the review gate rules.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b5abc8a4010555c0d8f96bb",
+      "at": "2026-11-20T01:02:12Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "76ad7e58216243b6923982369c9ac974",
+      "session_id": "045b6d4d12cf4622b6f5f4ab89e94f4e"
+    }
+  ]
+}

@@ -25572,6 +25572,13 @@
       "status": "dropped",
       "title": "Reconcile the agent-authored stash record and confirm whether the identity writer is still live"
     },
+    "github-app-token-client-id-migration-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Move create-github-app-token steps from the deprecated app-id input to client-id"
+    },
     "github-archive-benchmark": {
       "claim": null,
       "needs": [],
