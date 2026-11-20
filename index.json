@@ -44632,12 +44632,17 @@
       "title": "Revisit TPC-DI standard scale factors, registry estimates and UAT settings now that one unit is 5,000 customers"
     },
     "tpcds-below-floor-error-type-and-wording-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-21T17:59:44Z",
+        "generation": "cdf7fced0ee4434d9ab6375696178dd9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840"
+      },
       "needs": [
         "feature-fix-tpcds-scale-error-reporting-20261120"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DS below-floor scale raises ScaleFactorOutOfRangeError with an observed reason"
     },
     "tpcds-can-never-be-published-official-flag-not-wired": {
