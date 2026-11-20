@@ -21990,10 +21990,15 @@
       "title": "Fix wrong install extras, options and stale claims in platform guides"
     },
     "docs-agent-edit-without-reader-escalates-full-heavy-tier-20261118": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-21T03:50:32Z",
+        "generation": "65a034c57dfe4bff9726169b9232ca84",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:50738e5478443e60088712f6"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "A one-paragraph edit to a docs/agent page with no registered reader runs the full heavy CI tier, reported as 'changed Python code'"
     },
     "docs-anchor-check-20261026": {
