@@ -2037,7 +2037,7 @@ dependence on the old names. In BenchBox:
 - The in-repo scripts, Makefile targets and tests carry review names:
   `scripts/local_review.py`, `_project/scripts/review_gateway_host.sh`,
   `_project/scripts/review_mutation.py` (`make review-mutation-test`),
-  `make review-backoff-reset`, `make omp-candidate-check` and `make review-infra-status|setup|rotate` in `make/review.mk`,
+  `make review-backoff-reset`, `make omp-candidate-check` and `make review-infra ACTION=status|setup|rotate` in `make/review.mk`,
   and the fixtures under `tests/fixtures/review_candidates/`. The benchmark
   correctness-oracle coverage map (`make/oracle.mk`) is a different subject and
   keeps its name.

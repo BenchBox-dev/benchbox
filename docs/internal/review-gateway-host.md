@@ -179,12 +179,11 @@ Then:
 
 ## Infra commands
 
-`make review-infra-status`, `make review-infra-setup` and
-`make review-infra-rotate` run `theseus infra status|setup|rotate` against
-`.github/review.yml` from the repository root, so the relative
+`make review-infra ACTION=status|setup|rotate` runs `theseus infra <action>`
+against `.github/review.yml` from the repository root, so the relative
 `infra.host_script` resolves. `status` is read-only. `setup` and `rotate` are
-dry runs unless `APPLY=1` is given. `ONLY=<names>` limits a run to the named
-steps (`--only`).
+dry runs unless `APPLY=1` is given (refused for `status`). `ONLY=<names>`
+limits a run to the named steps (`--only`).
 
 ## Routine changes
 
