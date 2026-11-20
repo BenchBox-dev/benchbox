@@ -39071,10 +39071,15 @@
       "title": "Opt a real server adapter into per-stream INDEPENDENT_CONNECTION so the throughput session seam is used in production"
     },
     "session-work-20261111-16-inventory-and-review-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-21T15:46:39Z",
+        "generation": "b8b481929b7e476fb5af6bf2aa1db631",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Inventory and review the session's work from 11 to 16 November (read-only)"
     },
     "set-a-ci-loc-budget-guard-that-fails-when-uat-exceeds-the-ag": {
