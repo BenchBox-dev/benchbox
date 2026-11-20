@@ -33041,7 +33041,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "blocked",
+      "status": "open",
       "title": "Post one correcting comment on #4381, with the text approved first"
     },
     "pr-arm-cut-repeated-github-reads-20261117": {
