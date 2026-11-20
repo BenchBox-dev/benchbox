@@ -28,11 +28,20 @@ PURE_PYTHON_GENERATORS: dict[str, tuple[str, ...]] = {
     ),
     "amplab": ("benchbox/core/amplab/generator.py", "benchbox/core/amplab/generator_specs.yaml"),
     "h2odb": ("benchbox/core/h2odb/generator.py", "benchbox/core/h2odb/generator_specs.yaml"),
-    "coffeeshop": ("benchbox/core/coffeeshop/generator.py", "benchbox/core/coffeeshop/generator_specs.yaml"),
-    "tsbs_devops": ("benchbox/core/tsbs_devops/generator.py", "benchbox/core/tsbs_devops/generator_specs.yaml"),
+    "coffeeshop": (
+        "benchbox/core/coffeeshop/generator.py",
+        "benchbox/core/coffeeshop/generator_specs.yaml",
+        "benchbox/data/coffeeshop/*",
+    ),
+    "tsbs_devops": (
+        "benchbox/core/tsbs_devops/generator.py",
+        "benchbox/core/tsbs_devops/generator_specs.yaml",
+        "benchbox/core/tsbs_devops/schema.py",
+    ),
     "joinorder_synthetic": (
         "benchbox/core/joinorder_synthetic/generator.py",
         "benchbox/core/joinorder_synthetic/generator_specs.yaml",
+        "benchbox/core/joinorder/schema.py",
     ),
     "vector_search": (
         "benchbox/core/vector_search/generator.py",

@@ -325,11 +325,27 @@ def test_every_gated_benchmark_has_a_committed_baseline_and_a_measurement_entry(
         assert benchmark in measured
 
 
-def test_every_gated_generator_path_exists_or_is_a_documented_pattern() -> None:
+PRECAUTIONARY_SPEC_PATTERNS = {
+    "benchbox/core/amplab/generator_specs.yaml",
+    "benchbox/core/h2odb/generator_specs.yaml",
+    "benchbox/core/coffeeshop/generator_specs.yaml",
+    "benchbox/core/joinorder_synthetic/generator_specs.yaml",
+    "benchbox/core/vector_search/generator_specs.yaml",
+    "benchbox/core/write_primitives/generator_specs.yaml",
+    "benchbox/core/transaction_primitives/generator_specs.yaml",
+}
+
+
+def test_every_gated_generator_path_exists_unless_it_is_a_precautionary_spec_pattern() -> None:
     for benchmark, patterns in gate.PURE_PYTHON_GENERATORS.items():
-        generator_pattern = patterns[0]
-        stem = generator_pattern.removesuffix("/*")
-        assert (REPO_ROOT / stem).exists(), f"{benchmark}: {generator_pattern}"
+        for pattern in patterns:
+            exists = (REPO_ROOT / pattern.removesuffix("/*")).exists()
+            if pattern in PRECAUTIONARY_SPEC_PATTERNS:
+                assert not exists, f"{benchmark}: {pattern} now exists; drop it from PRECAUTIONARY_SPEC_PATTERNS"
+            else:
+                assert exists, f"{benchmark}: {pattern}"
+    gated = {pattern for patterns in gate.PURE_PYTHON_GENERATORS.values() for pattern in patterns}
+    assert gated >= PRECAUTIONARY_SPEC_PATTERNS
 
 
 def ci_jobs() -> dict[str, Any]:
@@ -357,7 +373,7 @@ def test_the_generator_volume_job_runs_only_when_the_path_filter_fires() -> None
 
 def path_filter_regex() -> re.Pattern[str]:
     step = next(step for step in ci_jobs()["ci-paths"]["steps"] if step.get("id") == "path-flags")
-    match = re.search(r"if grep -qE '(\^[^']*)' \.ci-paths/changed\.txt; then generator_volume", step["run"])
+    match = re.search(r"if grep -qE '(\^[^']*)' \.ci-paths/trunk-lane-changed\.txt; then generator_volume", step["run"])
     assert match, "the generator-volume path filter is missing from ci-paths"
     return re.compile(match.group(1))
 
@@ -389,6 +405,7 @@ def test_the_workflow_path_filter_fires_only_for_paths_the_gate_selects() -> Non
             "ls-files",
             "--",
             "benchbox/core",
+            "benchbox/data/coffeeshop",
         ],
         check=True,
         capture_output=True,
@@ -491,3 +508,31 @@ def test_the_base_ref_command_skips_when_only_other_files_changed(
     args = ["--base-ref", "base", "--baseline", str(repo_with_base / "tests/unit/generators/sf1_size_baseline.json")]
     assert gate.main(args) == 0
     assert smoke.calls == []
+
+
+def path_flags_script() -> str:
+    step = next(step for step in ci_jobs()["ci-paths"]["steps"] if step.get("id") == "path-flags")
+    return step["run"]
+
+
+def test_the_generator_volume_flag_reads_the_list_built_without_rename_detection() -> None:
+    run = path_flags_script()
+    assert (
+        'git diff --name-only --no-renames --diff-filter=ACDMRT "$EVENT_BASE_SHA...HEAD" > .ci-paths/trunk-lane-changed.txt'
+        in run
+    )
+    assert ".ci-paths/trunk-lane-changed.txt; then generator_volume=true" in run
+
+
+def test_a_gated_file_renamed_and_edited_still_fires_the_filter(repo_with_base: Path) -> None:
+    git(repo_with_base, "checkout", "-q", "-b", "feature")
+    (repo_with_base / "benchbox/core/amplab/generator.py").write_text("VOLUME = 1\nROWS = 1\n", encoding="utf-8")
+    git(repo_with_base, "mv", "benchbox/core/amplab/generator.py", "benchbox/core/amplab/gen.py")
+    commit_all(repo_with_base, "rename and edit")
+    with_renames = git(repo_with_base, "diff", "--name-only", "--diff-filter=ACDMRT", "base...HEAD").splitlines()
+    without = git(
+        repo_with_base, "diff", "--name-only", "--no-renames", "--diff-filter=ACDMRT", "base...HEAD"
+    ).splitlines()
+    pattern = path_filter_regex()
+    assert not any(pattern.match(name) for name in with_renames)
+    assert any(pattern.match(name) for name in without)

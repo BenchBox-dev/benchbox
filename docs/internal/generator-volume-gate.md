@@ -3,7 +3,9 @@
 A change to a pure-Python generator or its `generator_specs.yaml` can multiply
 the data a benchmark emits without any test noticing. The `generator-volume`
 job in `ci.yml` catches that before merge. `core` requires it through its
-aggregate step, so no ruleset change is involved.
+aggregate step, so no ruleset change is involved. The filter reads a changed-file
+list built with `--no-renames`, so a gated file that is renamed and edited in
+one pull request still fires it under its old name.
 
 ## When it runs
 
@@ -15,7 +17,10 @@ fires on the `generator/` package, `source_generators.py`, `scaling.py` (the
 row-count formula) and `financial_data.py`; for vector_search on
 `benchmark.py`, which sets the default vector width; and for both primitives
 benchmarks on `benchbox/core/primitives/generator_base.py`, which generates
-their data. It also fires on `tests/unit/generators/sf1_size_baseline.json`:
+their data; for coffeeshop on the seed files under `benchbox/data/coffeeshop/`;
+for tsbs_devops on `benchbox/core/tsbs_devops/schema.py` (table order and
+schema); and for joinorder_synthetic on `benchbox/core/joinorder/schema.py`.
+It also fires on `tests/unit/generators/sf1_size_baseline.json`:
 a changed size entry selects its benchmark, so an entry cannot be raised in one
 pull request and matched by a larger generator in the next. Any other change
 skips the job and the aggregate accepts the skip.
@@ -67,6 +72,11 @@ the diff and the baseline are read from.
 - Native-binary generators (tpch, tpcds, ssb and the benchmarks built on them)
   and download-based ones (nyctaxi, flightdata, clickbench, joinorder) are not
   covered.
+- Shared modules a generator imports (`benchbox/utils/` helpers such as
+  `cloud_storage.py`, `compression_mixin.py`, `arrow_rows.py`,
+  `datagen_manifest.py`, `coffeeshop_seed_loader.py`, and
+  `benchbox/core/manifest_utils.py`) are not gated: they serve many
+  benchmarks, and a change there does not run this job.
 - DuckDB completing at SF 1 says nothing about Spark, DataFusion or other
   engines; platform timeouts at the new volume need the nightly or UAT runs.
 - A change that alters content but not size passes the size check.
