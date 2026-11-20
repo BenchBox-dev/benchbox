@@ -24495,6 +24495,13 @@
       "status": "done",
       "title": "Architecture hardening: define fail-open vs fail-closed policy for translation and validation"
     },
+    "fast-baseline-refresh-commit-identity-owner-setting-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Owner setting: how refresh commits satisfy the unattributed-changes rule on develop"
+    },
     "fast-baseline-reproduce-as-review-evidence-and-refresh-cadence-20261120": {
       "claim": null,
       "needs": [
