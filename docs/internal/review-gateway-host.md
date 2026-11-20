@@ -182,8 +182,9 @@ Then:
 `make review-infra ACTION=status|setup|rotate` runs `theseus infra <action>`
 against `.github/review.yml` from the repository root, so the relative
 `infra.host_script` resolves. `status` is read-only. `setup` and `rotate` are
-dry runs unless `APPLY=1` is given (refused for `status`). `ONLY=<names>`
-limits a run to the named steps (`--only`).
+dry runs unless `APPLY=1` is given; any other non-empty `APPLY` value is
+refused, as is `APPLY=1` with `status`. `ONLY=<names>` limits a run to the
+named steps (`--only`).
 
 ## Routine changes
 
