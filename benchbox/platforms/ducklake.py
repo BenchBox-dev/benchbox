@@ -19,7 +19,7 @@ from benchbox.platforms.base.data_loading import escape_sql_string_literal
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
 from benchbox.utils.dialect_utils import translate_ddl
 
-from .duckdb import DuckDBAdapter, DuckDBConnectionWrapper
+from .duckdb import DuckDBAdapter, DuckDBConnectionWrapper, memory_limit_config
 from .postgresql import _build_postgres_connection_kwargs
 
 logger = logging.getLogger(__name__)
@@ -260,7 +260,7 @@ class DuckLakeAdapter(DuckDBAdapter):
             if key in config:
                 adapter_config[key] = config[key]
 
-        adapter_config["memory_limit"] = config.get("memory_limit", "4GB")
+        adapter_config.update(memory_limit_config(config))
         adapter_config["force_recreate"] = bool(config.get("force") or _resolve_option("force_recreate", False))
         for key in [
             "tuning_config",

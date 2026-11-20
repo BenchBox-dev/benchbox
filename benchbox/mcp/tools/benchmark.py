@@ -497,9 +497,11 @@ def _execute_mcp_run_via_core(
                 adapter_input["port"] = profile["port"]
                 adapter_input["secure"] = profile["secure"]
                 adapter_input.pop("connection_profile", None)
+            explicit_options = translate_platform_options_for_adapter(platform_key, adapter_input)
             adapter_options = {
                 **PlatformHookRegistry.get_applied_default_options(platform_key),
-                **translate_platform_options_for_adapter(platform_key, adapter_input),
+                **explicit_options,
+                "_explicit_platform_options": dict(explicit_options),
             }
             if selection.selector_deployment is not None:
                 adapter_options["_deployment_selector"] = selection.selector_deployment
@@ -556,7 +558,7 @@ def _execute_mcp_run_via_core(
         )
     profiler = SystemProfiler()
     system_profile = profiler.get_system_profile()
-    from benchbox.core.platform_config import get_platform_config
+    from benchbox.core.platform_config import defers_memory_limit_to_budget, get_platform_config
 
     platform_config = None
     if database_config is not None:
@@ -580,7 +582,7 @@ def _execute_mcp_run_via_core(
             dataframe_options = (
                 {key: value for key, value in adapter_options.items() if key in registered}
                 if registered
-                else dict(adapter_options)
+                else {key: value for key, value in adapter_options.items() if key != "_explicit_platform_options"}
             )
             from benchbox.platforms import get_adapter
 
@@ -597,6 +599,8 @@ def _execute_mcp_run_via_core(
 
         adapter_kwargs = dict(platform_config or {})
         adapter_kwargs.update(adapter_options)
+        if defers_memory_limit_to_budget(database_config.type, adapter_options):
+            adapter_kwargs.pop("memory_limit", None)
         adapter_kwargs.pop("benchmark", None)
         adapter_kwargs.pop("scale_factor", None)
         adapter = _get_platform_adapter(

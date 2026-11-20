@@ -59,6 +59,22 @@ uv run -- python -m pytest tests/uat -q -m "fast or slow"
 
 The first command runs only the fast tests, which is the default for `make test-fast`. The second runs all tests, including the slow-marked replay assertion.
 
+## Cell logs and first-failure output
+
+`tests/uat/runner.py` owns one log per cell, named `<platform>_<benchmark>_<scale>_<timestamp>.log` in the
+cell's log directory (`LOG_DIR`, otherwise the dated default). The cell runs `benchbox run --quiet`, which prints
+nothing on success, so a passing cell's log holds only the command header, the child's stderr and the result path.
+When a quiet run fails, the CLI writes the tail (8000 characters) of the output it suppressed to stderr, and that,
+with the run's stdout, exit code and `UAT_TIMEOUT`, `UAT_MEMORY_LIMIT` or `UAT_PEAK_RSS_GIB` markers, is the first
+attempt's record. After a non-zero exit the harness scrubs credential-shaped text (`password=...`, URL userinfo,
+tokens) from the log in place; a passing cell's log is never rewritten. A cell that exits non-zero having printed
+nothing gets `# UAT_NO_OUTPUT exit_code=N`.
+
+The earlier verbose diagnostic re-run was removed: it ran the workload a second time for up to 180 s, showed a
+later symptom instead of the original one (a LakeSail cell failed with a different connection error), and the
+case it covered (no output at all) is now recorded by the marker. A process killed by a signal that the CLI
+cannot catch (SIGKILL, the heavy-work watchdog's SIGTERM) leaves only the stderr it had already written.
+
 ## Matrix And Connection Sources Of Truth
 
 `tests/uat/matrix.py` is the framework-owned source of truth for UAT

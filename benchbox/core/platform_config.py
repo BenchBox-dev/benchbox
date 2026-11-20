@@ -9,6 +9,7 @@ from typing import Any
 
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 from benchbox.core.schemas import DatabaseConfig, SystemProfile
+from benchbox.utils.engine_memory import DUCKDB_ENGINE_PLATFORMS, admitted_budget_gib
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,16 @@ def lift_explicit_options(platform: str, options: dict[str, Any], platform_confi
             platform_config[key] = value
 
 
+def defers_memory_limit_to_budget(platform_type: str, options: dict[str, Any]) -> bool:
+    marker = options.get("_explicit_platform_options")
+    return (
+        platform_type in DUCKDB_ENGINE_PLATFORMS
+        and isinstance(marker, dict)
+        and "memory_limit" not in marker
+        and admitted_budget_gib() is not None
+    )
+
+
 def get_platform_config(
     database_config: DatabaseConfig,
     system_profile: SystemProfile | None,
@@ -61,6 +72,9 @@ def get_platform_config(
     platform_config.update(db_config_dict)
     options = database_config.options if isinstance(database_config.options, dict) else {}
     lift_explicit_options(database_config.type, options, platform_config)
+    if defers_memory_limit_to_budget(database_config.type, options):
+        platform_config.pop("memory_limit", None)
+        options = {key: value for key, value in options.items() if key != "memory_limit"}
     if options.get("force_recreate"):
         platform_config["force_recreate"] = True
     if platform_config.get("force_recreate"):
@@ -90,7 +104,7 @@ def get_platform_config(
             configured_memory_limit = options.get("memory_limit")
         if configured_memory_limit is not None:
             platform_config["memory_limit"] = configured_memory_limit
-        else:
+        elif not (database_config.type in DUCKDB_ENGINE_PLATFORMS and admitted_budget_gib() is not None):
             max_memory_limit = options.get("max_memory_limit_gb", 16)
             platform_config["memory_limit"] = f"{min(int(total_memory_gb_val * 0.8), max_memory_limit)}GB"
 

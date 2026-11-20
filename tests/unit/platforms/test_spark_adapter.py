@@ -11,6 +11,7 @@ import pytest
 
 from benchbox.platforms._spark_helpers import default_spark_driver_memory
 from benchbox.platforms.spark import bounded_default_driver_memory
+from benchbox.utils.engine_memory import SPARK_NON_HEAP_ALLOWANCE_GIB, EngineMemoryBudgetError
 
 pytestmark = [
     pytest.mark.unit,
@@ -392,8 +393,8 @@ class TestSparkAdapter:
 
         adapter = SparkAdapter()
 
-        assert adapter.driver_memory == "4g"
-        assert adapter._get_spark_conf()["spark.driver.memory"] == "4g"
+        assert adapter.driver_memory == "3g"
+        assert adapter._get_spark_conf()["spark.driver.memory"] == "3g"
 
     def test_default_driver_memory_follows_the_configured_heavy_budget(self, monkeypatch):
         monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
@@ -402,15 +403,51 @@ class TestSparkAdapter:
         assert bounded_default_driver_memory("local[*]") == "12g"
 
     @pytest.mark.parametrize(
-        ("budget_gib", "expected"), [("8", "4g"), ("6", "3g"), ("4", "1g"), ("3.5", "1g"), ("1", "1g")]
+        ("budget_gib", "expected"), [("8", "3g"), ("7.5", "3g"), ("7", "2g"), ("6", "1g"), ("5.5", "1g")]
     )
-    def test_default_driver_memory_leaves_room_for_the_jvm_and_python_within_small_budgets(
+    def test_default_driver_memory_leaves_the_measured_non_heap_allowance_within_the_budget(
         self, monkeypatch, budget_gib, expected
     ):
         monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
         monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", budget_gib)
 
-        assert bounded_default_driver_memory("local[*]") == expected
+        heap = bounded_default_driver_memory("local[*]")
+
+        assert heap == expected
+        assert int(heap.removesuffix("g")) + SPARK_NON_HEAP_ALLOWANCE_GIB <= float(budget_gib)
+
+    @pytest.mark.parametrize("budget_gib", ["5", "4", "1"])
+    def test_default_driver_memory_fails_clearly_when_the_budget_cannot_hold_the_allowance(
+        self, monkeypatch, budget_gib
+    ):
+        monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
+        monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", budget_gib)
+
+        with pytest.raises(EngineMemoryBudgetError, match="admitted tree budget"):
+            bounded_default_driver_memory("local[*]")
+
+    @pytest.mark.parametrize(("driver_memory", "fits"), [("3g", True), ("3584m", True), ("4g", False), ("8g", False)])
+    def test_explicit_driver_memory_is_kept_when_it_fits_and_rejected_when_it_cannot(
+        self, mock_pyspark, monkeypatch, driver_memory, fits
+    ):
+        from benchbox.platforms.spark import SparkAdapter
+
+        monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
+        monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "8")
+
+        if fits:
+            assert SparkAdapter(driver_memory=driver_memory).driver_memory == driver_memory
+        else:
+            with pytest.raises(EngineMemoryBudgetError, match="Lower driver_memory"):
+                SparkAdapter(driver_memory=driver_memory)
+
+    def test_explicit_driver_memory_is_never_checked_outside_a_heavy_run(self, mock_pyspark, monkeypatch):
+        from benchbox.platforms.spark import SparkAdapter
+
+        monkeypatch.delenv("BENCHBOX_HEAVY_RUN_ID", raising=False)
+        monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "8")
+
+        assert SparkAdapter(driver_memory="16g").driver_memory == "16g"
 
     def test_default_driver_memory_is_unbounded_outside_heavy_run(self, monkeypatch):
         monkeypatch.delenv("BENCHBOX_HEAVY_RUN_ID", raising=False)
@@ -423,14 +460,6 @@ class TestSparkAdapter:
         monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "8")
 
         assert bounded_default_driver_memory("yarn") == "4g"
-
-    def test_explicit_driver_memory_overrides_the_heavy_budget_bound(self, mock_pyspark, monkeypatch):
-        from benchbox.platforms.spark import SparkAdapter
-
-        monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
-        monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "8")
-
-        assert SparkAdapter(driver_memory="3g").driver_memory == "3g"
 
     def test_baseline_records_cache_and_resource_settings_as_harness(self, mock_pyspark):
         from benchbox.core.tuning.applied_ledger import HARNESS_DEFAULT, AppliedTuningLedger

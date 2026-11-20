@@ -13,7 +13,8 @@ from benchbox.utils import host_lock as hl, resource_limits as rl
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
-POLICY = rl.AdmissionPolicy(need_gib=2.0, min_level=35.0, min_free_disk_gib=50.0)
+POLICY = rl.AdmissionPolicy(need_gib=2.0, min_level=35.0, min_free_disk_gib=50.0, hold_seconds=0.0)
+HELD = dataclasses.replace(POLICY, hold_seconds=30.0)
 DISK_OK = (rl.DiskReading("boot volume", "/", 200.0), rl.DiskReading("output root", "out", 200.0))
 
 
@@ -203,6 +204,55 @@ def test_a_reading_that_recovers_inside_the_window_admits(clock: FakeClock) -> N
     assert result.admitted
     assert result.samples == 3
     assert clock.sleeps == [5.0, 5.0]
+
+
+def test_a_condition_that_stays_good_for_the_hold_window_admits_after_the_window(clock: FakeClock) -> None:
+    result = rl.admit_heavy_work(HELD, reader=lambda: healthy())
+    assert result.admitted
+    assert result.samples == 7
+    assert sum(clock.sleeps) == pytest.approx(30.0)
+
+
+def test_a_condition_that_dips_inside_the_hold_window_restarts_the_hold(clock: FakeClock) -> None:
+    readings = iter([healthy(), healthy(), healthy(pressure_level=2)] + [healthy()] * 20)
+    result = rl.admit_heavy_work(HELD, reader=lambda: next(readings))
+    assert result.admitted
+    assert result.samples == 3 + 7
+    assert sum(clock.sleeps) == pytest.approx(10.0 + 5.0 + 30.0)
+
+
+def test_oscillating_foreign_pressure_is_never_admitted_and_names_the_unstable_hold(clock: FakeClock) -> None:
+    flip = iter(([healthy()] * 4 + [healthy(pressure_level=2)]) * 30)
+    result = rl.admit_heavy_work(HELD, reader=lambda: next(flip))
+    assert not result.admitted
+    assert any("did not hold for 30s" in refusal for refusal in result.refusals)
+    assert sum(clock.sleeps) <= 60.0 + HELD.hold_seconds
+
+
+def test_a_host_that_never_clears_is_refused_at_the_retry_window_without_the_hold(clock: FakeClock) -> None:
+    result = rl.admit_heavy_work(HELD, reader=lambda: healthy(pressure_level=4))
+    assert not result.admitted
+    assert sum(clock.sleeps) == pytest.approx(30.0)
+
+
+def test_force_skips_the_hold_window(clock: FakeClock) -> None:
+    result = rl.admit_heavy_work(HELD, reader=lambda: healthy(pressure_level=4), force=True)
+    assert result.admitted and result.forced
+    assert clock.sleeps == []
+
+
+def test_force_on_a_clean_host_admits_on_the_first_sample_without_waiting(clock: FakeClock) -> None:
+    result = rl.admit_heavy_work(HELD, reader=lambda: healthy(), force=True)
+    assert result.admitted and not result.forced and result.samples == 1
+    assert clock.sleeps == []
+
+
+def test_the_hold_window_is_configurable_from_the_environment() -> None:
+    assert rl.admission_policy_from_env({rl.ADMIT_HOLD_SECONDS_ENV: "90"}).hold_seconds == 90.0
+    assert rl.admission_policy_from_env({}).hold_seconds == rl.DEFAULT_ADMIT_HOLD_SECONDS
+    assert (
+        rl.admission_policy_from_env({rl.ADMIT_HOLD_SECONDS_ENV: "junk"}).hold_seconds == rl.DEFAULT_ADMIT_HOLD_SECONDS
+    )
 
 
 def test_a_reading_that_stays_bad_refuses_after_the_retry_window(clock: FakeClock) -> None:

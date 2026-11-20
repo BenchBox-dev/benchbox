@@ -83,3 +83,50 @@ def test_get_platform_config_keeps_non_adapter_options_nested() -> None:
 
     assert produced["options"] == options
     assert not {"type", "name", "connection_string", "custom_setting"} & produced.keys()
+
+
+@pytest.mark.parametrize(
+    ("platform", "in_heavy_run", "carries_profile_limit"),
+    [
+        ("duckdb", True, False),
+        ("ducklake", True, False),
+        ("duckdb", False, True),
+        ("ducklake", False, True),
+        ("datafusion", True, True),
+    ],
+)
+def test_profile_derived_memory_limit_defers_to_the_duckdb_budget_cap_only_inside_a_heavy_run(
+    monkeypatch: pytest.MonkeyPatch, platform: str, in_heavy_run: bool, carries_profile_limit: bool
+) -> None:
+    if in_heavy_run:
+        monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
+        monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "8")
+    system_profile = SimpleNamespace(memory_total_gb=16.0, cpu_cores_logical=10)
+
+    produced = get_platform_config(DatabaseConfig(type=platform, name="t"), system_profile)
+
+    assert ("memory_limit" in produced) is carries_profile_limit
+
+
+def test_an_explicit_duckdb_memory_limit_is_kept_inside_a_heavy_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
+    monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "8")
+    config = DatabaseConfig(type="duckdb", name="t", options={"memory_limit": "6GB"})
+
+    produced = get_platform_config(config, SimpleNamespace(memory_total_gb=16.0, cpu_cores_logical=10))
+
+    assert produced["memory_limit"] == "6GB"
+
+
+@pytest.mark.parametrize(("explicit", "expected"), [({}, None), ({"memory_limit": "6GB"}, "6GB")])
+def test_an_applied_default_duckdb_memory_limit_defers_to_the_budget_cap_inside_a_heavy_run(
+    monkeypatch: pytest.MonkeyPatch, explicit: dict[str, str], expected: str | None
+) -> None:
+    monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
+    monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "8")
+    options = {"memory_limit": explicit.get("memory_limit", "8GB"), "_explicit_platform_options": explicit}
+    config = DatabaseConfig(type="duckdb", name="t", options=options)
+
+    produced = get_platform_config(config, SimpleNamespace(memory_total_gb=16.0, cpu_cores_logical=10))
+
+    assert produced.get("memory_limit") == expected

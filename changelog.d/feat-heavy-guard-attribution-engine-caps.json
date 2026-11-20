@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Under a heavy-run, Spark and DuckDB now derive their default memory caps from the admitted memory budget less a measured non-heap allowance, and fail before starting when an explicit driver_memory or memory_limit cannot fit the budget."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "benchbox run --quiet now prints the captured error output to stderr when the run fails, so a failed quiet run no longer exits without a message."
+    },
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Heavy-work admission now requires a clean host for a hold window, the watchdog reports the largest processes outside a breaching tree, and make heavy-run accepts HEAVY_RETRY_IDEMPOTENT=1 for a bounded re-run after outside memory pressure stops a small tree."
+    }
+  ]
+}

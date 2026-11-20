@@ -157,7 +157,7 @@ def test_run_cell_sets_benchbox_output_dir_for_subprocess(tmp_path: Path):
     assert result.result_path == result_path
     assert captured["env"]["BENCHBOX_OUTPUT_DIR"] == str(tmp_path / "shared-runs")
     assert captured["argv"][-2:] == ["--output", str(tmp_path / "shared-runs" / "datagen")]
-    log_text = result.log_path.read_text()
+    log_text = result.log_path.read_text(encoding="utf-8")
     assert "BENCHBOX_OUTPUT_DIR=" in log_text
     assert "ignored stderr" in log_text
 
@@ -321,33 +321,47 @@ def test_load_failure_sidecar_scans_large_log_incrementally(tmp_path: Path, monk
     assert json.loads(sidecar.read_text(encoding="utf-8"))["table"] == "lineitem"
 
 
-def test_run_cell_diagnostic_rerun_fires_for_empty_stdout_failure(tmp_path: Path):
-    captured_quiet = []
-
-    def fake_benchbox_run_argv(*args, quiet=True, **kwargs):
-        captured_quiet.append(quiet)
-        return [sys.executable, "-c", "unused"]
-
-    outcomes = [
-        TimeoutResult(exit_code=2, timed_out=False, elapsed_s=0.1, stdout=b"", stderr=b""),
-        TimeoutResult(exit_code=2, timed_out=False, elapsed_s=0.1, stdout=b"diagnostic detail\n", stderr=None),
-    ]
+def test_run_cell_records_a_silent_failure_once_without_a_rerun(tmp_path: Path):
+    calls = []
 
     def fake_run_with_timeout(argv, timeout_s, *, stdout=None, stderr=None, env=None, cwd=None):
-        return outcomes.pop(0)
+        calls.append(argv)
+        return TimeoutResult(exit_code=2, timed_out=False, elapsed_s=0.1, stdout=b"", stderr=b"")
 
     with (
-        patch.object(runner, "benchbox_run_argv", side_effect=fake_benchbox_run_argv),
+        patch.object(runner, "benchbox_run_argv", return_value=[sys.executable, "-c", "unused"]),
         patch.object(runner, "run_with_timeout", side_effect=fake_run_with_timeout),
     ):
         result = runner.run_cell("duckdb", "tpch", 0.01, timeout_s=10, log_dir=tmp_path)
 
     assert result.status == "failed"
     assert result.exit_code == 2
-    assert captured_quiet == [True, False]
-    log_text = result.log_path.read_text()
-    assert "verbose diagnostic re-run" in log_text
-    assert "diagnostic detail" in log_text
+    assert len(calls) == 1
+    assert "# UAT_NO_OUTPUT exit_code=2" in result.log_path.read_text(encoding="utf-8")
+
+
+def test_run_cell_keeps_the_first_attempt_error_and_redacts_credentials(tmp_path: Path):
+    script = (
+        "import sys; sys.stderr.write('connection failed: password=hunter2hunter2 "
+        "postgresql://bench:s3cr3tpw@db.example/bench\\n'); sys.exit(1)"
+    )
+    with patch.object(runner, "benchbox_run_argv", return_value=[sys.executable, "-c", script]):
+        result = runner.run_cell("duckdb", "tpch", 0.01, timeout_s=10, log_dir=tmp_path)
+
+    log_text = result.log_path.read_text(encoding="utf-8")
+    assert result.status == "failed"
+    assert "connection failed" in log_text
+    assert "hunter2hunter2" not in log_text
+    assert "s3cr3tpw" not in log_text
+
+
+def test_run_cell_leaves_a_passing_cell_log_untouched(tmp_path: Path):
+    script = "import sys; sys.stderr.write('note: password=hunter2hunter2\\n')"
+    with patch.object(runner, "benchbox_run_argv", return_value=[sys.executable, "-c", script]):
+        result = runner.run_cell("duckdb", "tpch", 0.01, timeout_s=10, log_dir=tmp_path)
+
+    assert "password=hunter2hunter2" in result.log_path.read_text(encoding="utf-8")
+    assert "UAT_NO_OUTPUT" not in result.log_path.read_text(encoding="utf-8")
 
 
 def test_run_cell_skips_diagnostic_rerun_when_failure_has_stderr(tmp_path: Path):
@@ -376,7 +390,7 @@ def test_run_cell_skips_diagnostic_rerun_when_failure_has_stderr(tmp_path: Path)
 
     assert result.status == "failed"
     assert captured_quiet == [True]
-    log_text = result.log_path.read_text()
+    log_text = result.log_path.read_text(encoding="utf-8")
     assert "uv run warning on stderr" in log_text
     assert "verbose diagnostic re-run" not in log_text
 
@@ -398,35 +412,9 @@ def test_run_cell_skips_diagnostic_rerun_for_real_stderr_only_failure(tmp_path: 
     assert result.status == "failed"
     assert result.exit_code == 2
     assert captured_quiet == [True]
-    log_text = result.log_path.read_text()
+    log_text = result.log_path.read_text(encoding="utf-8")
     assert "stderr diagnostic" in log_text
     assert "verbose diagnostic re-run" not in log_text
-
-
-def test_run_cell_diagnostic_rerun_fires_when_failure_has_only_whitespace_stderr(tmp_path: Path):
-    captured_quiet = []
-
-    def fake_benchbox_run_argv(*args, quiet=True, **kwargs):
-        captured_quiet.append(quiet)
-        return [sys.executable, "-c", "unused"]
-
-    outcomes = [
-        TimeoutResult(exit_code=2, timed_out=False, elapsed_s=0.1, stdout=b"", stderr=b"\n"),
-        TimeoutResult(exit_code=2, timed_out=False, elapsed_s=0.1, stdout=b"diagnostic detail\n", stderr=None),
-    ]
-
-    def fake_run_with_timeout(argv, timeout_s, *, stdout=None, stderr=None, env=None, cwd=None):
-        return outcomes.pop(0)
-
-    with (
-        patch.object(runner, "benchbox_run_argv", side_effect=fake_benchbox_run_argv),
-        patch.object(runner, "run_with_timeout", side_effect=fake_run_with_timeout),
-    ):
-        result = runner.run_cell("duckdb", "tpch", 0.01, timeout_s=10, log_dir=tmp_path)
-
-    assert result.status == "failed"
-    assert captured_quiet == [True, False]
-    assert "diagnostic detail" in result.log_path.read_text()
 
 
 def test_run_cell_skips_diagnostic_rerun_when_failure_has_stdout(tmp_path: Path):
@@ -453,35 +441,10 @@ def test_run_cell_skips_diagnostic_rerun_when_failure_has_stdout(tmp_path: Path)
 
     assert result.status == "failed"
     assert captured_quiet == [True]
-    log_text = result.log_path.read_text()
+    log_text = result.log_path.read_text(encoding="utf-8")
     assert "already diagnostic stdout" in log_text
     assert "incidental stderr" in log_text
     assert "verbose diagnostic re-run" not in log_text
-
-
-def test_run_cell_diagnostic_rerun_error_does_not_mask_original_failure(tmp_path: Path):
-    def fake_benchbox_run_argv(*args, quiet=True, **kwargs):
-        return [sys.executable, "-c", "unused"]
-
-    calls = 0
-
-    def fake_run_with_timeout(argv, timeout_s, *, stdout=None, stderr=None, env=None, cwd=None):
-        nonlocal calls
-        calls += 1
-        if calls == 1:
-            return TimeoutResult(exit_code=2, timed_out=False, elapsed_s=0.1, stdout=b"", stderr=b"")
-        raise RuntimeError("diagnostic boom")
-
-    with (
-        patch.object(runner, "benchbox_run_argv", side_effect=fake_benchbox_run_argv),
-        patch.object(runner, "run_with_timeout", side_effect=fake_run_with_timeout),
-    ):
-        result = runner.run_cell("duckdb", "tpch", 0.01, timeout_s=10, log_dir=tmp_path)
-
-    assert result.status == "failed"
-    assert result.exit_code == 2
-    assert calls == 2
-    assert "diagnostic re-run error RuntimeError: diagnostic boom" in result.log_path.read_text()
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX timeout semantics")
@@ -491,7 +454,7 @@ def test_run_cell_marks_timeout(tmp_path: Path):
         result = runner.run_cell("duckdb", "tpch", 0.01, timeout_s=1, log_dir=tmp_path)
     assert result.status == "timed-out"
     assert result.exit_code == 124
-    assert "UAT_TIMEOUT timeout_s=1 exit_code=124" in result.log_path.read_text()
+    assert "UAT_TIMEOUT timeout_s=1 exit_code=124" in result.log_path.read_text(encoding="utf-8")
 
 
 def test_run_cell_flags_local_datagen_leak_under_external_root(monkeypatch, tmp_path: Path):
@@ -979,7 +942,7 @@ def test_run_cell_rejects_documented_exclusion_when_a_warmup_row_failed_row_coun
     assert result.status == "failed"
 
 
-def test_run_cell_logs_memory_limit_and_skips_diagnostic_rerun(tmp_path: Path):
+def test_run_cell_logs_memory_limit_without_a_second_attempt(tmp_path: Path):
     from tests.uat.timeouts import EXIT_MEMORY_LIMIT, TimeoutResult
 
     captured = {}
