@@ -36180,6 +36180,16 @@
       "status": "done",
       "title": "✅ Remediate unified_runner Lifecycle Regression Suite"
     },
+    "remediation-worktree-and-scratch-cleanup-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcds-restore-100000-maximum-and-official-points-20261120",
+        "site-revert-tpcds-3000-limit-text-on-main-20261120"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove the remediation session's worktrees, branches and scratch files"
+    },
     "remote-closeout-arm-landing-20261018": {
       "claim": null,
       "needs": [],
