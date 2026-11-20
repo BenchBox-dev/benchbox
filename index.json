@@ -24657,7 +24657,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "Heavy-work guard: breach attribution, admission hold, bounded pause-and-retry, engine memory caps, UAT first-failure output"
+      "title": "Heavy-work guard: breach attribution, admission hold, UAT first-failure output"
     },
     "feature-feat-tpcdi-current-generator-followups-20261117": {
       "claim": null,
