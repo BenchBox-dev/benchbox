@@ -33020,15 +33020,10 @@
       "title": "Report unresolved review threads when an armed PR sits blocked with green checks"
     },
     "pr-landing-targets-run-under-make-n-20261119": {
-      "claim": {
-        "expires_at": "2026-11-21T01:50:04Z",
-        "generation": "138f06913d0a4106811ef8c73b0a5575",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "`make -n` runs pr-open, pr-preflight and other landing targets for real because their recipe lines contain $(MAKE)"
     },
     "pr-local-validation-singleflight": {
