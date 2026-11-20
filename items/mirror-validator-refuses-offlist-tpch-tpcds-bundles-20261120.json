@@ -2,7 +2,7 @@
   "acceptance": [
     "Both validators give the same verdict for off-list bundles, or the owner recorded an approved difference."
   ],
-  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).\n\n2026-11-20: not asked in the decision rounds; the design has to be written first. This item ends at a written design shown to the owner and goes to blocked; no implementation in this run.\n\n## Guardrails (accepted by the owner, 2026-11-20)\nThe agent never posts a stand-in review, resolves a review thread, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. It arms with `make pr-arm` once per pull request and reports the result. Subagents are read-only. Any limit, default, threshold or label text is shown to the owner before it is committed. A blocked step stops this item; the agent moves to the next item and does not work around the block.",
   "description": "## Problem\ncorpus-nonstandard-scale-submission-policy-20261111 was closed although its acceptance says the policy is 'enforced consistently in both validators'. Its own closure note records that the published-results mirror validator still refuses off-list TPC-H and TPC-DS bundles that the core validator accepts unranked.\n\n## Change\nRe-read the current state on develop and published-results first. Make the mirror validator accept off-list bundles unranked with the same reason as core, or record with the owner why the mirror must differ.\n\n## Decision gates\nIf the two validators are meant to differ, that is an owner decision recorded here; do not close on a narrowed acceptance.\n\n## Verification rubric\nPass: the same off-list TPC-H and TPC-DS test bundles get the same verdict from both validators, shown by tests in each.\n\n## Additions from the item review\n- Constraint: the mirror cannot import `benchmark_registry`, and the original item forbids a second standard-scale list. Mirror the registry or a checked-in projection of it, with the design shown to the owner.\n- Rubric addition: `scripts/publication/validator_parity.py` shows identical verdicts for off-list TPC-H and TPC-DS fixtures.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
   "links": [
     "results-data/validate_corpus.py",
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "e23f9ddbbe5542e3b187bc904a670455",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-20T14:56:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9e8f72a264fa4ee1ac662992f0136387",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
 }
