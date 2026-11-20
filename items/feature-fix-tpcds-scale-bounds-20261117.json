@@ -2,7 +2,7 @@
   "acceptance": [
     "The feature pull request is merged and each member item meets its own acceptance or records an owner-approved disposition."
   ],
-  "context": "Created 2026-11-17 to hold the related items on one feature branch.\n\n2026-11-19: Feature PR BenchBox-dev/BenchBox#4335 merged as f37e1c090e (TPC-DS and TPC-DS-OBT refuse scale factors below 0.01 before dsdgen starts, with the nontermination reason; maximum lowered from 100000 to 3000 with the dsqgen Q9 reason; changelog.d/fix-tpcds-scale-bounds.json). Site docs: BenchBox-dev/benchbox-site#209 merged as 1f5a50f7e8 (benchmarks overview, methodology, contributing results, TPCDS and TPCDSOBT Python API pages now state the 3000 maximum and official points 1-3000). benchbox-site#210 (accept core read model 20) was a prerequisite for that site build. Both members meet their acceptance; details on each member.",
+  "context": "Created 2026-11-17 to hold the related items on one feature branch.\n\n2026-11-19: Feature PR BenchBox-dev/BenchBox#4335 merged as f37e1c090e (TPC-DS and TPC-DS-OBT refuse scale factors below 0.01 before dsdgen starts, with the nontermination reason; maximum lowered from 100000 to 3000 with the dsqgen Q9 reason; changelog.d/fix-tpcds-scale-bounds.json). Site docs: BenchBox-dev/benchbox-site#209 merged as 1f5a50f7e8 (benchmarks overview, methodology, contributing results, TPCDS and TPCDSOBT Python API pages now state the 3000 maximum and official points 1-3000). benchbox-site#210 (accept core read model 20) was a prerequisite for that site build. Both members meet their acceptance; details on each member.\n\nCorrection 2026-11-20: the dsqgen member's closure does not hold; see tpcds-restore-100000-maximum-and-official-points-20261120 and tpcds-q9-generation-above-sf5000-owner-decision-20261120. Site PR benchbox-site#209 put the unreleased limit on production; reverted under site-revert-tpcds-3000-limit-text-on-main-20261120.",
   "description": "Umbrella for one feature branch and one pull request (fix/tpcds-scale-bounds). Members: tpcds-dsdgen-hangs-below-sf001-20261112, tpcds-dsqgen-q9-timeout-sf10000-20261111. Owner decisions for every member were recorded on 2026-11-17.",
   "sessions": [
     {
@@ -37,6 +37,14 @@
       "generation": "048a6783b5e34f7b985fcf9944108f41",
       "op": "finish",
       "op_id": "54709723858c4f9b81d104c54121e2b3",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:14:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bc1c8092cd084660916f50bd2445efe2",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
     }
   ]
