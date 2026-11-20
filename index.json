@@ -29905,10 +29905,10 @@
     },
     "nightly-slow-tier-test-failures-reported-as-success-20261119": {
       "claim": {
-        "expires_at": "2026-11-21T01:05:00Z",
-        "generation": "15682fa0ffac4526a23b629682e8e440",
+        "expires_at": "2026-11-21T14:41:08Z",
+        "generation": "795081c8651e49fbad67212b7baf9491",
         "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ddf0baaf19c0dc8f5268288c"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b65a39861a3f1bb8f36fad05"
       },
       "needs": [],
       "priority": "high",

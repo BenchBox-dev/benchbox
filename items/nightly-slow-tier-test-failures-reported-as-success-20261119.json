@@ -29,6 +29,17 @@
       "op": "take",
       "op_id": "2096926b2a334320a4c6957db8b36a96",
       "session_id": "7d8b4b5a99724e4fb2f57b9d118569b5"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b65a39861a3f1bb8f36fad05",
+      "at": "2026-11-20T14:41:08Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:ddf0baaf19c0dc8f5268288c",
+      "generation": "795081c8651e49fbad67212b7baf9491",
+      "op": "takeover",
+      "op_id": "fbf9692f04816186376ab379e7347fb8",
+      "reason": "The holder is this same agent session's previous tractable-mcp server process, which exited when the owner restarted the session on 2026-11-20; it cannot resume. Taking over only to drop the item on the owner's decision.",
+      "session_id": "fc2a8eeda08b4e8daaa21748038ea848"
     }
   ]
 }
