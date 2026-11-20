@@ -24543,7 +24543,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Fast-tier duration gate: replace the CPU-calibration normalizer, rescale the baseline, and charge only a PR's own new tests"
     },
     "fast-lane-budget-doc-copy-stale-until-removal-20261028": {
