@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "The prompt's standard values equal the rule's for every benchmark, shown by a test."
+  ],
+  "description": "## Problem\nFound by the read-only review of the 11 to 16 November work. The interactive prompt prints `Standard values` from the registry `scale_options` (benchbox/cli/benchmarks.py, the scale prompt and its preview), but `get_scale_factor_rule` treats the TPC-DS official points (300, 1000 and above) as standard too. For `tpcds` the prompt omits values that run without a note. Not verified by running.\n\n## Change\nConfirm on current develop. Print the rule's standard values.\n\n## Decision gates\nNone. No change to which scales are accepted or noted.\n\n## Verification rubric\nPass: a test shows the prompt's standard values for tpcds equal `get_scale_factor_rule('tpcds').standard`.\n\n## Guardrails (owner, 2026-11-20)\nAccepted by the owner in the choice dialog: the agent never posts a stand-in review, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. It arms with `make pr-arm` once per pull request and reports the result. Subagents are read-only. Any limit, default, threshold or label text is shown to the owner before it is committed. A blocked step stops this item; the agent moves to the next item and does not work around the block.\nReview threads: the accepted text also said the agent never resolves a thread. Asked afterwards which rule applies, the owner chose: \"The morning rule: I may resolve a thread once the bot has reviewed the new head and did not raise the finding again.\" ('I' is the agent.) So the agent pushes the fix and replies, and resolves a thread only after the bot's review of the new head does not raise that finding again.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-20T15:23:55Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "208745669bc94facbcb3546183366aa9",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    }
+  ]
+}
