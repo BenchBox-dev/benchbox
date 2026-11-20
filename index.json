@@ -26149,7 +26149,8 @@
     "heavy-guard-4331-review-repairs-20261120": {
       "claim": null,
       "needs": [
-        "heavy-guard-4331-owner-decisions-20261120"
+        "heavy-guard-4331-owner-decisions-20261120",
+        "feature-feat-heavy-guard-attribution-engine-caps-20261117"
       ],
       "priority": "medium",
       "status": "open",
