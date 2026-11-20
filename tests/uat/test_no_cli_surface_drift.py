@@ -77,6 +77,7 @@ ALLOWED_INTERNAL_CLI_FILES = {
     "benchbox/cli/prompt_guard.py",
     "benchbox/cli/publication_guard.py",
     "benchbox/cli/vendor_provenance_options.py",
+    "benchbox/cli/run_time_limit.py",
     "benchbox/cli/exit_codes.py",
     "benchbox/cli/output.py",
     "benchbox/cli/platform_checks.py",

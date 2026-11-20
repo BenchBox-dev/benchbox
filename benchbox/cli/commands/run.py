@@ -5,7 +5,6 @@ import logging
 import os
 import sys
 import types
-from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +14,7 @@ from rich.panel import Panel
 from rich.prompt import Confirm
 from rich.text import Text
 
-from benchbox.cli import vendor_provenance_options as vendor_options
+from benchbox.cli import run_time_limit, vendor_provenance_options as vendor_options
 from benchbox.cli.benchmarks import BenchmarkConfig, BenchmarkManager
 from benchbox.cli.billable_guard import ACKNOWLEDGEMENT_FLAG_HELP, enforce_billable_acknowledgement
 from benchbox.cli.composite_params import (
@@ -107,16 +106,6 @@ from benchbox.utils.compression import CompressionManager
 from benchbox.utils.input_validation import MAX_QUERY_ID_LENGTH
 from benchbox.utils.output_path import normalize_output_root
 from benchbox.utils.printing import fatal
-from benchbox.utils.run_deadline import (
-    HARD_STOP_GRACE_SECONDS,
-    RUN_TIMEOUT_CONFIG_KEY,
-    TIMED_OUT_VALIDATION_STATUS,
-    RunDeadline,
-    active_run_deadline,
-    arm_hard_stop,
-    current_run_deadline,
-    resolve_timeout_seconds,
-)
 from benchbox.utils.runtime_env import DriverAutoInstallRefused, InvalidDriverVersion
 
 logger = logging.getLogger(__name__)
@@ -317,7 +306,8 @@ def _canonical_tuning_mode(s: types.SimpleNamespace) -> str | None:
     return tuning_modes.CUSTOM
 
 
-def _orchestrate_run(
+@run_time_limit.bounded_orchestrated_run
+def _execute_orchestrated_run(
     orchestrator: BenchmarkOrchestrator,
     benchmark_config: BenchmarkConfig,
     system_profile: Any,
@@ -356,47 +346,6 @@ def _orchestrate_run(
             progress=None,
             execution_context=execution_context,
         )
-
-
-def _execute_orchestrated_run(
-    orchestrator: BenchmarkOrchestrator,
-    benchmark_config: BenchmarkConfig,
-    system_profile: Any,
-    database_config: DatabaseConfig | None,
-    phases_to_run: list[str],
-    *,
-    quiet: bool,
-    no_progress: bool,
-    no_monitoring: bool,
-    execution_context: ExecutionContext | None = None,
-) -> Any:
-    run = partial(
-        _orchestrate_run,
-        orchestrator,
-        benchmark_config,
-        system_profile,
-        database_config,
-        phases_to_run,
-        quiet=quiet,
-        no_progress=no_progress,
-        no_monitoring=no_monitoring,
-        execution_context=execution_context,
-    )
-    deadline = current_run_deadline()
-    if deadline is None:
-        return run()
-
-    deadline.write_partial_result = partial(
-        _write_hard_stop_result, deadline, orchestrator, benchmark_config, database_config, execution_context, quiet
-    )
-    deadline.start()
-    disarm = arm_hard_stop(deadline, _hard_stop)
-    try:
-        result = run()
-    finally:
-        disarm()
-    deadline.run_timed_out = getattr(result, "validation_status", None) == TIMED_OUT_VALIDATION_STATUS
-    return result
 
 
 LOAD_FAILURE_MARKER = "BENCHBOX_LOAD_FAILURE_JSON="
@@ -1807,89 +1756,6 @@ def _data_or_load_handle_result(
         ctx.exit(1)
 
 
-def _dispatch_run(s: types.SimpleNamespace) -> None:
-    if s.test_execution_type not in {"data_only", "load_only"} and s.platform and s.benchmark:
-        _run_direct(s)
-        return
-
-    if s.test_execution_type in {"data_only", "load_only"}:
-        _run_data_or_load_only(s)
-        return
-
-    from benchbox.cli.run_interactive import _run_interactive
-
-    _run_interactive(s)
-
-
-def _report_timeout(deadline: RunDeadline) -> None:
-    console.print(f"\n[red]❌ {escape(str(deadline.record_timeout()))}[/red]")
-
-
-def _write_hard_stop_result(
-    deadline: RunDeadline,
-    orchestrator: BenchmarkOrchestrator,
-    benchmark_config: BenchmarkConfig,
-    database_config: DatabaseConfig | None,
-    execution_context: ExecutionContext | None,
-    quiet: bool,
-) -> None:
-    from benchbox.core.run_service import build_timed_out_result
-
-    result = build_timed_out_result(benchmark_config, database_config, deadline)
-    exported_files = _export_orchestrated_result(
-        orchestrator=orchestrator,
-        result=result,
-        benchmark=benchmark_config.name,
-        scale=benchmark_config.scale_factor,
-        platform_label=str(result.platform).lower(),
-        mode_label=getattr(execution_context, "mode", None) or "sql",
-        quiet=quiet,
-        export_formats=["json"],
-    )
-    for filepath in exported_files.values():
-        click.echo(filepath)
-
-
-def _hard_stop(deadline: RunDeadline) -> None:
-    _report_timeout(deadline)
-    console.print(
-        f"[red]The run did not stop within {HARD_STOP_GRACE_SECONDS:g} seconds of its limit; BenchBox is exiting. "
-        "Work on a remote platform may still be running.[/red]"
-    )
-    if deadline.write_partial_result is not None:
-        try:
-            deadline.write_partial_result()
-        except Exception as exc:
-            console.print(f"[red]The partial result could not be written: {escape(str(exc))}[/red]")
-    logging.shutdown()
-    os._exit(ExitCode.TIMEOUT)
-
-
-def _run_within_time_limit(s: types.SimpleNamespace) -> None:
-    try:
-        timeout_seconds = resolve_timeout_seconds(s.timeout, s.config.get(RUN_TIMEOUT_CONFIG_KEY))
-    except ValueError as exc:
-        raise click.UsageError(f"{RUN_TIMEOUT_CONFIG_KEY}: {exc}") from exc
-    if timeout_seconds is None:
-        _dispatch_run(s)
-        return
-
-    deadline = RunDeadline(timeout_seconds, started=False)
-    try:
-        with active_run_deadline(deadline):
-            _dispatch_run(s)
-    except (click.exceptions.Exit, SystemExit):
-        if not deadline.run_timed_out:
-            raise
-    except Exception as exc:
-        if not deadline.run_timed_out:
-            raise
-        console.print(f"[red]❌ {escape(str(exc))}[/red]")
-    if deadline.run_timed_out:
-        _report_timeout(deadline)
-        sys.exit(ExitCode.TIMEOUT)
-
-
 @click.command(
     "run",
     cls=BenchBoxCommand,
@@ -1994,17 +1860,6 @@ def _run_within_time_limit(s: types.SimpleNamespace) -> None:
 @click.option("-v", "--verbose", count=True, help="Verbose output (-vv for debug)")
 @click.option("-q", "--quiet", is_flag=True, help="Suppress output")
 @click.option("--non-interactive", is_flag=True, help="Non-interactive mode (CI/CD)")
-@click.option(
-    "--timeout",
-    "timeout",
-    type=click.IntRange(min=0),
-    default=None,
-    metavar="SECONDS",
-    help=(
-        "Stop the whole run (generate, load and execute) after this many seconds; exits with code 124 and keeps a "
-        "partial result marked timed_out. 0 means no limit. Default: no limit, or execution.timeout_seconds."
-    ),
-)
 @click.option(
     "--acknowledge-billable-platform",
     "acknowledge_billable_platform",
@@ -2194,6 +2049,7 @@ def _run_within_time_limit(s: types.SimpleNamespace) -> None:
     hidden=True,
     help="Concurrent streams for throughput (canonical; --concurrency accepted as alias for run-official forwarding)",
 )
+@run_time_limit.timeout_option(run_time_limit.RUN_TIMEOUT_HELP)
 @advanced_option(
     "--iterations",
     type=click.IntRange(min=1),
@@ -2304,6 +2160,7 @@ def run(
     seed: int | None,
     concurrency: int | None,
     iterations: int | None,
+    timeout: int | None,
     no_monitoring: bool,
     no_progress: bool,
     ignore_memory_warnings: bool,
@@ -2321,7 +2178,6 @@ def run(
     polars_streaming: bool = False,
     allow_greybeam_inline_load: bool = False,
     acknowledge_billable_platform: bool = False,
-    timeout: int | None = None,
 ) -> None:
     from benchbox.core.run_service import apply_polars_streaming_flag, begin_run
 
@@ -2351,7 +2207,6 @@ def run(
         verbose=verbose,
         quiet=quiet,
         non_interactive=non_interactive,
-        timeout=timeout,
         official=official,
         capture_plans=capture_plans,
         analyze_plans=analyze_plans,
@@ -2373,6 +2228,7 @@ def run(
         seed=seed,
         concurrency=concurrency,
         iterations=iterations,
+        timeout=timeout,
         no_monitoring=no_monitoring,
         no_progress=no_progress,
         ignore_memory_warnings=ignore_memory_warnings,
@@ -2398,7 +2254,7 @@ def run(
             _run_dry_run(s)
             return
 
-        _run_within_time_limit(s)
+        run_time_limit.run_within_time_limit(s)
     except DriverAutoInstallRefused as exc:
         console.print(f"[red]❌ {escape(str(exc))}[/red]")
         sys.exit(ExitCode.ACKNOWLEDGEMENT_REQUIRED)

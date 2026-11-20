@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 from click.testing import CliRunner
 
+from benchbox.cli import run_time_limit
 from benchbox.cli.commands.datagen import datagen
 from benchbox.cli.commands.run import run
 from benchbox.cli.commands.run_official import run_official
@@ -19,7 +20,7 @@ from benchbox.core import run_service
 from benchbox.core.schemas import BenchmarkConfig
 from benchbox.utils.run_deadline import RUN_TIMEOUT_CONFIG_KEY, TIMED_OUT_VALIDATION_STATUS, current_run_deadline
 
-_run_module = sys.modules["benchbox.cli.commands.run"]
+_run_module = run_time_limit
 
 pytestmark = [
     pytest.mark.unit,
@@ -34,6 +35,7 @@ DATAGEN_ARGS = ["--benchmark", "tpch", "--scale", "0.01"]
 HARD_STOP_SCRIPT = """
 import functools, sys, time
 from click.testing import CliRunner
+from benchbox.cli import run_time_limit
 from benchbox.cli.commands import run as _unused
 from benchbox.cli.config import ConfigManager
 from benchbox.cli.orchestrator import BenchmarkOrchestrator
@@ -63,8 +65,8 @@ def reaches_the_run(_s):
     )
 
 orchestrator.execute_benchmark = ignores_the_stop_request
-run_module._dispatch_run = reaches_the_run
-run_module.arm_hard_stop = functools.partial(arm_hard_stop, grace_seconds=0.3)
+run_time_limit.dispatch_run = reaches_the_run
+run_time_limit.arm_hard_stop = functools.partial(arm_hard_stop, grace_seconds=0.3)
 CliRunner().invoke(
     run_module.run,
     ["--platform", "duckdb", "--benchmark", "tpch", "--scale", "0.01", "--non-interactive", "--timeout", "1"],
@@ -89,7 +91,7 @@ def seen_limits(monkeypatch) -> list[int | None]:
         deadline = current_run_deadline()
         seen.append(None if deadline is None else deadline.timeout_seconds)
 
-    monkeypatch.setattr(_run_module, "_dispatch_run", record)
+    monkeypatch.setattr(_run_module, "dispatch_run", record)
     return seen
 
 
@@ -155,7 +157,7 @@ def test_a_run_that_stops_at_the_limit_exits_124(monkeypatch) -> None:
         deadline.run_timed_out = True
         sys.exit(1)
 
-    monkeypatch.setattr(_run_module, "_dispatch_run", stops)
+    monkeypatch.setattr(_run_module, "dispatch_run", stops)
 
     result = CliRunner().invoke(run, [*RUN_ARGS, "--timeout", "5"], obj=_obj())
 
@@ -175,7 +177,7 @@ def test_a_run_that_finished_before_the_limit_passed_keeps_exit_zero_and_the_clo
         remaining.append(deadline.remaining())
         deadline.record_timeout()
 
-    monkeypatch.setattr(_run_module, "_dispatch_run", finishes_then_the_limit_passes)
+    monkeypatch.setattr(_run_module, "dispatch_run", finishes_then_the_limit_passes)
 
     result = CliRunner().invoke(run, [*RUN_ARGS, "--timeout", "5"], obj=_obj())
 
@@ -184,7 +186,7 @@ def test_a_run_that_finished_before_the_limit_passed_keeps_exit_zero_and_the_clo
 
 
 def test_a_failure_before_the_limit_keeps_its_own_exit_code(monkeypatch) -> None:
-    monkeypatch.setattr(_run_module, "_dispatch_run", lambda _s: sys.exit(1))
+    monkeypatch.setattr(_run_module, "dispatch_run", lambda _s: sys.exit(1))
 
     result = CliRunner().invoke(run, [*RUN_ARGS, "--timeout", "600"], obj=_obj())
 

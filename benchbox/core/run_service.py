@@ -593,6 +593,8 @@ __all__ = [
     "apply_polars_streaming_flag",
     "begin_run",
     "build_databricks_clustering_intent",
+    "build_timed_out_result",
+    "build_unfinished_result",
     "execute_run",
     "get_execution_mode",
     "is_dataframe_execution",
