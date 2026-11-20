@@ -13917,15 +13917,10 @@
       "title": "BenchBox MCP Server for AI Agent Integration"
     },
     "benchbox-oracle-infra-names-20261108": {
-      "claim": {
-        "expires_at": "2026-11-21T01:02:44Z",
-        "generation": "0bdd05af07054e039dee21439407c411",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b5abc8a4010555c0d8f96bb"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Retire BenchBox's remaining oracle infrastructure names: the `oracle` environment, ORACLE_* secrets and tag:oracle-ci"
     },
     "benchbox-pr-open-preflight-receipt-20261107": {
