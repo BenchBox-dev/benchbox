@@ -38162,7 +38162,12 @@
       "title": "Cut the workflow count toward the dev-loop v2 intent after the legacy release path is gone"
     },
     "rv2r-13-verify-next-release-under-new-model": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-21T00:33:16Z",
+        "generation": "5d11ea0046d54814a6a1fb2c87eb471c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a"
+      },
       "needs": [
         "dlv2-52-release-rehearsal-and-first-release",
         "rv2r-03-release-evidence-check",
@@ -38174,7 +38179,7 @@
         "rv2r-11-loop-metrics-dashboard"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Verify the next release end to end under the evidence-check model and close the remediation"
     },
     "rv2r-14-maintenance-release-branches": {
