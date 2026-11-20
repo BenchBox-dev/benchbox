@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The owner approved the run list and saw the table.",
+    "An estimate labelled rough is printed before generation and says what it was measured on."
+  ],
+  "description": "## Problem\nA user starting TPC data or query generation at a large scale has no idea how long it will take. The only estimate shown today is a per-benchmark minutes range in the interactive prompt, which does not vary with scale.\n\n## Owner decisions, 2026-11-20\n\"We should also provide a rough estimate for the user about expected duration\". Chosen option: \"Recommended: measure first. Run dsdgen and dsqgen at a few scales through make heavy-run (I bring you the list and the table), then print an estimate before generation that is labelled rough and names the scales it was measured at.\"\n\n## Change\nFirst bring the owner the list of measurement runs (tool, benchmark, scales, expected disk and memory, host). After approval, run them through `make heavy-run` and bring the table. Then print an estimate before generation, labelled rough, naming the scales and host class it was measured on.\n\n## Decision gates\nNo measurement run before the owner approves the list. No estimate figure is committed before the owner has seen the table. Known so far, darwin-arm64 only: dsqgen query 9 about 5 s at SF 3000 and 11 to 13 s at SF 5000; nothing larger completed; no dsdgen durations by scale are in hand.\n\n## Verification rubric\nPass: the approved run list and the measured table are recorded here with heavy-run log paths; the printed estimate for a measured scale is within the measured range, and for an unmeasured scale it says it is extrapolated; a test covers both.\n\n## Guardrails (owner, 2026-11-20)\nAccepted by the owner in the choice dialog: the agent never posts a stand-in review, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. It arms with `make pr-arm` once per pull request and reports the result. Subagents are read-only. Any limit, default, threshold or label text is shown to the owner before it is committed. A blocked step stops this item; the agent moves to the next item and does not work around the block.\nReview threads: the accepted text also said the agent never resolves a thread. Asked afterwards which rule applies, the owner chose: \"The morning rule: I may resolve a thread once the bot has reviewed the new head and did not raise the finding again.\" ('I' is the agent.) So the agent pushes the fix and replies, and resolves a thread only after the bot's review of the new head does not raise that finding again.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-20T16:48:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5dfda891850a40b68840d7da0177713b",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    }
+  ]
+}

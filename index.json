@@ -44438,6 +44438,13 @@
       "status": "open",
       "title": "Dual-write conformance fields and rename unofficial publishing codes"
     },
+    "tpc-generation-duration-estimate-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Show a rough duration estimate before TPC data and query generation"
+    },
     "tpc-generation-no-default-timeout-optional-user-timeout-20261120": {
       "claim": null,
       "needs": [
