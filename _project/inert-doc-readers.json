@@ -96,6 +96,9 @@
   "_project/analysis/oracle-coverage-map.md": [
     "tests/unit/test_oracle_coverage_map.py"
   ],
+  "_project/archive/dev-loop-v2/baseline.md": [
+    "tests/unit/scripts/test_dev_loop_dashboard.py"
+  ],
   "_project/audits/results-explorer-hierarchy-usability-data-audit-20260507.md": [
     "tests/unit/explorer/test_results_explorer_audit_manifest.py"
   ],
