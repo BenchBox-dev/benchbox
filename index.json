@@ -36550,7 +36550,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "The 56 resource_heavy tests run in no CI job"
     },
     "resource-management": {
