@@ -13920,7 +13920,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "blocked",
+      "status": "open",
       "title": "Retire BenchBox's remaining oracle infrastructure names: the `oracle` environment, ORACLE_* secrets and tag:oracle-ci"
     },
     "benchbox-pr-open-preflight-receipt-20261107": {
