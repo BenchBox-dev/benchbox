@@ -26282,7 +26282,7 @@
         "feature-feat-heavy-guard-attribution-engine-caps-20261117"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "Engine-level memory caps (DuckDB memory_limit, -Xmx, Spark driver memory) and per-service Apple container limits derived from the budget"
     },
     "heavy-orphan-spin-report-has-no-reader-20261117": {

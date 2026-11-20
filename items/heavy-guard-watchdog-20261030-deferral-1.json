@@ -6,6 +6,7 @@
   ],
   "context": "2026-11-15 evidence: Spark TPC-DI SF 1 under `make uat-cell` on a 16 GiB host. `bounded_default_driver_memory` sized the heap from the 8 GiB budget less a 3 GiB allowance, yet the JVM footprint reached 7.80 GiB and the watchdog killed the tree at 8.08 GiB after 452 s. The same workload with `driver_memory=3g` finished in 451 s with all queries passing. The 3 GiB JVM-and-Python allowance in `benchbox/platforms/spark.py` is too small for this workload.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.\n\n2026-11-17 owner decision: size the Spark heap from a measured non-heap allowance; engine caps derived from the admitted budget.\n\n2026-11-17: implemented in #4331 (head f850df8e7, arming blocked by CI backlog). Spark default heap now derives from the admitted budget less measured allowances (4.5 and 3.5 GiB, measured worst-case constants). Not met yet: no engine over-limit failure was provoked, so graceful engine failure before the watchdog fires is untested.",
   "description": "Promoted from deferral 1 on heavy-guard-watchdog-20261030: Removed from the guard plan during review; watchdog bounds the tree but engines should fail gracefully before it fires.\n\n## Decision gates\nInvestigate the measured Spark overhead first: default JVM reached 7.80 GiB/tree 8.08 GiB under an 8 GiB budget; driver_memory=3g completed all 152 queries. Do not assume a universal 3 GiB fix. Implementer proposes per-engine budgeting and precedence; owner approves reduced supported capacity or resource-policy changes.\n\n## Verification rubric\nPass: specify a budget equation including JVM/native/Python/child-process overhead; test explicit user limits versus derived defaults for Spark, DuckDB and applicable JVM/container engines. Boundary tests prove derived caps cannot exceed the admitted tree budget. A bounded Spark SF 1 run demonstrates actual tree memory and graceful engine failure before watchdog intervention when limits are exceeded.\n\n## Additional guardrails\nKeep adapter imports lazy. Respect explicit user settings or fail clearly if inconsistent with the budget; never silently raise memory. Do not bypass watchdog or impose unsupported cross-platform container limits.",
+  "drop_reason": "Owner decision 2026-11-20 (choice dialog): \"drop the item, with the reason 'caps removed by owner decision 2026-11-20; evidence was one Spark measurement'. Anyone proposing caps again starts from measurements.\"",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:94e4d2f7dee4726eca194412",
@@ -62,6 +63,14 @@
       "op": "update",
       "op_id": "33650d54fdc446f883de826449062578",
       "session_id": "86b0e4ee68654aa992c62ae76dd23e81"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-20T15:13:15Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "24cba428e1854794885b8e8be048efab",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
 }
