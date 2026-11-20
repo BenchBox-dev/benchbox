@@ -20531,15 +20531,10 @@
       "title": "Recover dev host disk so make pr-preflight runs without lowering the floor"
     },
     "dev-loop-dashboard-make-target-ceiling-20261120": {
-      "claim": {
-        "expires_at": "2026-11-21T17:28:23Z",
-        "generation": "66c8f0c317e74a26b538472c6d61a987",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1c371c621b8c5cde7f121d86"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Dev-loop dashboard compares Make targets against the superseded <= 90 threshold"
     },
     "dev-loop-metrics-ci-failure-baseline": {
