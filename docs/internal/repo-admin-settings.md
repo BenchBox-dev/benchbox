@@ -582,7 +582,11 @@ instead and refuses a tag on a maintenance line unless:
   files and the fixture one of them reads). A line therefore cannot keep the
   tag's older reviewer workflows, carry only some of develop's, or carry
   develop's files without the tests that pin them, which the line's own CI
-  would then fail.
+  would then fail. The same commit must carry develop's landing tooling
+  (`CREATION_LANDING_PATHS`) and the tests that pin it
+  (`CREATION_LANDING_TESTS`), so a line cut from a tag that predates a landing
+  feature still takes `make pr-open` and `make pr-arm` with
+  `BASE=release/X.Y.x`.
 
 `scripts/release_line_create.py` builds the creation commit and runs these
 creation checks before pushing. `release_artifact_consumer.py verify-line

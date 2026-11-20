@@ -4118,6 +4118,22 @@
   {
    "disposition": "fixture-data",
    "kinds": {
+    "extra": 1
+   },
+   "occurrences": 1,
+   "path": "tests/unit/scripts/test_release_line_carried_tests.py",
+   "rule": "test-sample-data",
+   "target_count": 1,
+   "targets": [
+    {
+     "kind": "extra",
+     "target": "scripts/check_docs_ownership.py"
+    }
+   ]
+  },
+  {
+   "disposition": "fixture-data",
+   "kinds": {
     "file": 1
    },
    "occurrences": 1,
@@ -4411,7 +4427,7 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 41,
+   "fixture-data": 42,
    "governance-stays": 11,
    "historical-record": 118,
    "lock-test": 4,
@@ -4419,18 +4435,18 @@
    "site-pipeline-cutover": 4,
    "wiring-updated": 35
   },
-  "files": 231,
+  "files": 232,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
-   "extra": 43,
+   "extra": 44,
    "file": 1386,
    "generated": 3,
    "pattern": 339,
    "root": 204,
    "unresolved": 2084
   },
-  "references": 33259,
+  "references": 33260,
   "unclassified": 0
  }
 }

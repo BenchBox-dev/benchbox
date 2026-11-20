@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import ctypes
 import hashlib
 import importlib.util
@@ -17,7 +18,7 @@ import threading
 import time
 import tomllib
 import zipfile
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -539,6 +540,53 @@ CREATION_REVIEW_TESTS = (
     "tests/unit/workflows/test_theseus_pin_consistency.py",
 )
 CREATION_REVIEW_WORKFLOW = re.compile(r"\.github/workflows/(review|oracle)-[^/]+")
+CREATION_LANDING_PATHS = (
+    "make/pr-landing.mk",
+    "scripts/agent_write_preflight.sh",
+    "scripts/check_primary_clone_clean.sh",
+    "scripts/check_primary_clone_stale.py",
+    "scripts/make_timing.py",
+    "scripts/make_timing_shell.sh",
+    "scripts/ci_text_edit_verdict.py",
+    "scripts/gh_transient.py",
+    "scripts/local_review.py",
+    "scripts/pr_arm.py",
+    "scripts/pr_base.py",
+    "scripts/pr_landing.py",
+    "scripts/pr_open_rest.py",
+    "scripts/pr_rerun.py",
+    "scripts/pr_stale_base.py",
+    "scripts/preflight_receipt.py",
+    "scripts/trunk_revert.py",
+    "scripts/worktree_lifecycle_metadata.py",
+    "_project/scripts/check_suites.py",
+    "_project/scripts/inert_paths.py",
+    "_project/scripts/preflight_targets.py",
+    "_project/scripts/soundness_manifest.py",
+    "_project/scripts/theseus_prefetch.py",
+)
+CREATION_LANDING_TESTS = (
+    "tests/integration/worktree/test_pr_process.py",
+    "tests/unit/scripts/test_ci_text_edit_verdict.py",
+    "tests/unit/scripts/test_gh_transient.py",
+    "tests/unit/scripts/test_local_review.py",
+    "tests/unit/scripts/test_pr_arm.py",
+    "tests/unit/scripts/test_pr_base.py",
+    "tests/unit/scripts/test_pr_open_rest.py",
+    "tests/unit/scripts/test_pr_ready_make.py",
+    "tests/unit/scripts/test_pr_rerun.py",
+    "tests/unit/scripts/test_pr_stale_base.py",
+    "tests/unit/scripts/test_theseus_prefetch.py",
+    "tests/unit/scripts/test_trunk_revert.py",
+    "tests/fixtures/trunk_red_20261024.json",
+    "tests/unit/test_agent_write_preflight_hook_interpreter.py",
+    "tests/unit/test_check_primary_clone_stale.py",
+    "tests/unit/scripts/test_pr_landing.py",
+    "tests/unit/scripts/test_pr_open_base.py",
+    "tests/unit/scripts/test_pr_preflight_base.py",
+    "tests/unit/scripts/test_preflight_receipt.py",
+    "tests/unit/test_release_infrastructure.py",
+)
 
 
 def _creation_sources(root: Path, commit: str) -> list[str]:
@@ -584,8 +632,67 @@ def _state_at(root: Path, revision: str, path: str) -> str:
     return _run_git(root, "ls-tree", "-z", revision, "--", path, stdout=subprocess.PIPE, text=True, timeout=60).stdout
 
 
-def creation_review_paths(root: Path, *revisions: str) -> set[str]:
+def _plain_target(node: ast.stmt) -> ast.Name | None:
+    if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+        return node.targets[0]
+    if isinstance(node, ast.AnnAssign) and node.value is not None and isinstance(node.target, ast.Name):
+        return node.target
+    return None
+
+
+def _source_landing_paths(root: Path, source: str) -> set[str]:
+    result = _run_git(
+        root,
+        "show",
+        f"{source}:scripts/release_artifact_consumer.py",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=60,
+    )
+    if result.returncode != 0:
+        return set()
+    try:
+        module = ast.parse(result.stdout)
+    except SyntaxError as error:
+        raise ValueError(
+            f"{PRODUCER_BRANCH} at {source} has a release_artifact_consumer.py that does not parse"
+        ) from error
+    names = {"CREATION_LANDING_PATHS", "CREATION_LANDING_TESTS"}
+    declared: dict[str, tuple[str, ...]] = {}
+    for node in module.body:
+        target = _plain_target(node)
+        if target is None:
+            bound = {n.id for n in ast.walk(node) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)} & names
+            _require(
+                not bound,
+                f"{PRODUCER_BRANCH} at {source} declares {sorted(bound)[0] if bound else ''} in a form the creation "
+                "check cannot read; declare each as a plain assignment of a tuple of paths",
+            )
+            continue
+        if target.id not in names:
+            continue
+        try:
+            value = ast.literal_eval(node.value)
+        except ValueError as error:
+            raise ValueError(f"{PRODUCER_BRANCH} at {source} declares {target.id} as a non-literal") from error
+        _require(
+            isinstance(value, tuple) and all(isinstance(path, str) for path in value),
+            f"{PRODUCER_BRANCH} at {source} declares {target.id} as something other than a tuple of paths",
+        )
+        declared[target.id] = value
+    _require(
+        not declared or declared.keys() == names,
+        f"{PRODUCER_BRANCH} at {source} declares only one of {', '.join(sorted(names))}",
+    )
+    return {path for value in declared.values() for path in value}
+
+
+def creation_carried_paths(root: Path, *revisions: str, landing: Collection[str] | None = None) -> set[str]:
     paths = {*CREATION_REVIEW_PATHS, *CREATION_REVIEW_TESTS}
+    paths |= {*CREATION_LANDING_PATHS, *CREATION_LANDING_TESTS} if landing is None else set(landing)
     for revision in revisions:
         listing = _git_text(root, "ls-tree", "-r", "-z", "--name-only", revision, "--", ".github/workflows")
         paths.update(path for path in listing.split("\0") if CREATION_REVIEW_WORKFLOW.fullmatch(path))
@@ -646,7 +753,7 @@ def _verify_creation(root: Path, creation: str, base: str, branch: str) -> None:
             f"{branch} creation {'deletes' if status == 'D' else 'sets'} {path}, "
             f"which differs from {PRODUCER_BRANCH} at {source}",
         )
-    for path in sorted(creation_review_paths(root, creation, source)):
+    for path in sorted(creation_carried_paths(root, creation, source, landing=_source_landing_paths(root, source))):
         _require(
             _state_at(root, creation, path) == _state_at(root, source, path),
             f"{branch} creation does not carry {path} as {PRODUCER_BRANCH} has it at {source}",

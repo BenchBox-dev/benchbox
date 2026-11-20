@@ -204,7 +204,25 @@ The procedure:
    constants admission checks, so the two cannot drift. The commit also carries
    the tests in `CREATION_REVIEW_TESTS`, which pin those files; without them
    the line's required CI runs the tag's older tests against develop's newer
-   reviewer files and fails.
+   reviewer files and fails. It carries develop's landing tooling too, the
+   files in `CREATION_LANDING_PATHS` and the tests in `CREATION_LANDING_TESTS`,
+   so that `make pr-preflight`, `make pr-open` and `make pr-arm` accept
+   `BASE=release/X.Y.x` on a line cut from a tag that predates that support.
+   The carried recipes run inside the tag's own Makefile, so the tag must
+   include `make/pr-landing.mk` and define the targets and scripts the recipes
+   take from the tag: `changelog-check`, `docs-reference-inventory-check`,
+   `scripts/changelog_fragments.py` and `python -m benchbox.utils.host_lock run
+   --admit --guard`. A tag that lacks them gets a line whose
+   `make pr-open` fails; check before creating the line. The tooling was
+   exercised against `v0.5.1`. `verify-line` and admission check the reviewer
+   files against `develop`, and the landing files against the lists the
+   creation commit's `Develop-Source` tree declared, so a line made before a
+   file joined the carry stays admissible. Admission on a tag runs the consumer
+   in the tagged tree, which the creation commit does not carry, so it applies
+   these checks only once the line has `scripts/release_artifact_consumer.py`
+   from `develop` (step 3); run `verify-line` from `develop` before every tag.
+   Only tooling is carried; the commit changes no product file and nothing the
+   package ships.
    `tests/unit/scripts/test_release_line_carried_tests.py` fails when a test
    names a carried file and is neither listed there nor declared unrelated.
    Creation commits are immutable, so check the line again from `develop`
@@ -231,7 +249,12 @@ The procedure:
    the branch brings `.github/workflows/trunk.yml`, `release-canary.yml`,
    `ci.yml`, `release-v2.yml`, `scripts/release_artifact_consumer.py`,
    `scripts/release_canary_freshness.py` (and whatever they need) from
-   `develop`; `ci.yml` accepts a `release/X.Y.x` base.
+   `develop`; `ci.yml` accepts a `release/X.Y.x` base. The landing tooling
+   needs no such step on a line made by `release_line_create.py`, whose
+   creation commit already carries it. A line made before that commit carried
+   the tooling, or a later fix to it, reaches the line the same way: the first
+   pull request brings the `CREATION_LANDING_PATHS` files and
+   `CREATION_LANDING_TESTS` tests from `develop`.
 4. Land the fix by pull request into `release/X.Y.x`; the pull request
    squash-merges like any other. Branch the worktree from the line
    (`make worktree-create BRANCH=fix/<name> WORKTREE_PATH=../BenchBox.wt-<name>
@@ -244,7 +267,11 @@ The procedure:
    ```
 
    `pr-open` and `pr-arm` take `BASE` as `develop` (the default) or one
-   `release/X.Y.x` line and refuse any other value. `pr-preflight` reads
+   `release/X.Y.x` line and refuse any other value, on a line made by
+   `release_line_create.py`, whose creation commit carries the targets. Never
+   open or merge a line pull request with raw `gh pr create` or
+   `gh pr merge`: that skips the local review, the preflight receipt on the
+   final head and the live arming checks. `pr-preflight` reads
    `BASE` as a ref, as before, and takes the branch names `develop` and
    `release/*` as the fetched `origin/<branch>`; it refuses nothing, and
    `pr-open` refuses a receipt that does not cover its base. `pr-open` takes the branch-point check, the
