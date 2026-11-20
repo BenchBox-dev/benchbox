@@ -3,7 +3,7 @@
     "Neither allowlist contains GHSA-fc5q-39xc-vjpf and the audit gate passes."
   ],
   "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
-  "description": "## Problem\nGHSA-fc5q-39xc-vjpf was withdrawn on 2026-11-18. The entries in explorer/scripts/audit-high-allowlist.json and website/scripts/audit-high-allowlist.json on site `main` now match no finding and CI prints a notice to remove them.\n\n## Change\nDelete both entries on `main` (and on `next` if present).\n\n## Decision gates\nNone.\n\n## Verification rubric\nPass: `npm run audit:high` passes in both workspaces with no stale-entry notice; `ci` is green.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "description": "## Problem\nGHSA-fc5q-39xc-vjpf was withdrawn on 2026-11-18. The entries in explorer/scripts/audit-high-allowlist.json and website/scripts/audit-high-allowlist.json on site `main` now match no finding and CI prints a notice to remove them.\n\n## Change\nDelete both entries on `main` (present on `next` too; confirm it is gone there after the main-to-next sync).\n\n## Decision gates\nNone.\n\n## Verification rubric\nPass: `npm run audit:high` passes in both workspaces with no stale-entry notice; `ci` is green.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
   "links": [
     "/Users/joe/Developer/benchbox-site/explorer/scripts/audit-high-allowlist.json"
   ],
@@ -14,6 +14,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "8937d51ce0064f04bdfb09b5ad8396b4",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:36:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4c07d05c8f15451a9e292a58b084053c",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
     }
   ]
