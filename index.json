@@ -41774,7 +41774,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Validate SSB and the primitives generators at SF 100, or record an owner-approved narrowing"
     },
     "ssb-dataframe-row-count-validation-20261016": {
