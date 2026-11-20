@@ -44774,7 +44774,9 @@
     },
     "tpcds-q9-generation-above-sf5000-owner-decision-20261120": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "tpcds-restore-100000-maximum-and-official-points-20261120"
+      ],
       "priority": "medium",
       "status": "blocked",
       "title": "Owner decision: what TPC-DS query 9 generation does above the scale where dsqgen can produce it"
