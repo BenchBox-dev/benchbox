@@ -200,3 +200,29 @@ def test_medium_pr_supersedes_earlier_open_refresh_prs_after_opening_the_new_one
     assert 'select(.headRefName != \\"$BRANCH\\")' in text
     assert "Superseded by #$NEW_NUMBER" in text
     assert text.count("gh pr close") == 1
+
+
+@pytest.mark.parametrize(
+    ("name", "create", "prefix"),
+    [
+        ("refresh", "Create refresh PR", "chore/fast-baseline-"),
+        ("medium", "Create medium durations PR", "chore/medium-durations-"),
+    ],
+)
+def test_a_run_that_found_an_earlier_open_refresh_fails_after_its_own_work(name: str, create: str, prefix: str) -> None:
+    find_index = step_index("Find earlier refresh pull requests left open", name)
+    fail_index = step_index("Fail when an earlier refresh was left unmerged", name)
+    assert find_index < step_index(create, name) < fail_index == len(job(name)["steps"]) - 1
+
+    find = job(name)["steps"][find_index]
+    assert "if" not in find
+    assert find["env"]["HEAD_PREFIX"] == prefix
+    assert 'startswith(\\"$HEAD_PREFIX\\")' in find["run"]
+    assert "gh pr close" not in find["run"] and "gh pr create" not in find["run"]
+    assert 'echo "open=$OPEN" >> "$GITHUB_OUTPUT"' in find["run"]
+
+    fail = job(name)["steps"][fail_index]
+    assert fail["if"] == "steps.earlier.outputs.open != ''"
+    assert fail["env"]["EARLIER"] == "${{ steps.earlier.outputs.open }}"
+    assert "::error::" in fail["run"] and "$EARLIER" in fail["run"]
+    assert fail["run"].rstrip().endswith("exit 1")
