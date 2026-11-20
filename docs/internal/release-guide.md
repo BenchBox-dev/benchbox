@@ -210,8 +210,9 @@ The procedure:
    `BASE=release/X.Y.x` on a line cut from a tag that predates that support.
    The carried recipes run inside the tag's own Makefile, so the tag must
    include `make/pr-landing.mk` and define the targets and scripts the recipes
-   take from the tag: `changelog-check`, `docs-reference-inventory-check` and
-   `scripts/changelog_fragments.py`. A tag that lacks them gets a line whose
+   take from the tag: `changelog-check`, `docs-reference-inventory-check`,
+   `scripts/changelog_fragments.py` and `python -m benchbox.utils.host_lock run
+   --admit --guard`. A tag that lacks them gets a line whose
    `make pr-open` fails; check before creating the line. The tooling was
    exercised against `v0.5.1`. `verify-line` and admission check the reviewer
    files against `develop`, and the landing files against the lists the

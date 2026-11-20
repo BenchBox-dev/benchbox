@@ -167,6 +167,7 @@ LEFT_AT_TAG = {
     "scripts/changelog_fragments.py": "pr-open and the line's CI both run the line's copy, so they agree",
     "scripts/check_docs_ownership.py": "a guard of the line's own documents",
     "_project/scripts/check_project_references.py": "a guard of the line's own references",
+    "benchbox/utils/host_lock.py": "product code; pr-preflight runs it with run --admit --guard, which the tag already has",
     "benchbox/utils/clock.py": "product code; a creation commit never changes the shipped package",
     "scripts/linux_preflight_pytest.sh": "runs only when a change branches on platform and takes a list file, unchanged since the tag",
 }
