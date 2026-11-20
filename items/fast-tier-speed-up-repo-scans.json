@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Each named file runs at least 3x faster locally, measured before and after",
+    "Prefilter equivalence test: the filtered scan finds exactly the full scan findings on the repository tree",
+    "No assertion is removed or weakened"
+  ],
+  "context": "Fast-tier summed time (tests/fixtures/fast_tier_baseline, sum of p50) grew from 1,423 s on 2026-10-26 to 2,118 s on 2026-11-19; 777 s of the 791 s came from new test files. The PR fast step wall time rose from about 500 s to 720-950 s. Owner decisions (2026-11-20): whole-file moves for test_heavy_choke_points.py and test_review_gateway_host.py; ceiling = post-cut total plus 10%; block when the projected total exceeds it; ceiling changes only by hand (no automatic lowering); a refresh over the ceiling opens no PR and opens or updates one issue; three PRs with tracker items.",
+  "description": "test_vendored_sqlglot_bypass.py (82 s): scan the tree once per process and skip ast.parse for files with none of the scanner tokens, with a test that the skip equals the full scan. test_release_line_carried_tests.py (27 s): build the regex and read tests/ once. test_doc_reference_inventory.py (23 s): generate the inventory once per module. test_questdb_adapter.py (40 s): four ILP tests wait out thread.join(timeout=10); shut the fake server down so the thread exits. Tests stay in the fast tier with unchanged verdicts.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f5a04a89ab1412ae25ea9d7",
+      "at": "2026-11-20T18:19:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "fb1ef2900f4e440fa513dd0d8ea4c4e1",
+      "session_id": "15dd29d145b7431a900c1d2b20c686c2"
+    }
+  ]
+}

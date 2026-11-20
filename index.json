@@ -24638,6 +24638,13 @@
       "status": "open",
       "title": "Move the slowest fast-tier tests to the medium tier"
     },
+    "fast-tier-speed-up-repo-scans": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Speed up the repository-scan tests and the QuestDB thread-join waits"
+    },
     "feature-agent-docs-operational-facts-20261111": {
       "claim": null,
       "needs": [],
