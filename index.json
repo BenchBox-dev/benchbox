@@ -44876,12 +44876,17 @@
       "title": "Rebuild the TPC-DS binaries with a corrected scaling table so Q85/Q93 verify against official answers"
     },
     "tpcds-restore-100000-maximum-and-official-points-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-21T03:17:17Z",
+        "generation": "47e1db39be334447aa0284c65d8aaa45",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e"
+      },
       "needs": [
         "feature-fix-restore-tpcds-scale-range-20261120"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Restore the 100000 maximum and the full official scale-point list for tpcds and tpcds_obt"
     },
     "tpcds-stdout-fix-integrate-stdout-datagen": {
