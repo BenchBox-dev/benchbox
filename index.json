@@ -44456,12 +44456,10 @@
     },
     "tpc-generation-no-default-timeout-optional-user-timeout-20261120": {
       "claim": null,
-      "needs": [
-        "feature-fix-tpcds-scale-error-reporting-20261120"
-      ],
+      "needs": [],
       "priority": "high",
-      "status": "blocked",
-      "title": "TPC generators: no default timeout, one optional user timeout for every surface"
+      "status": "open",
+      "title": "Run timeout step 1: the deadline, --timeout on every surface, generators, backstop and result marking"
     },
     "tpc-h-stream-processing-implementation": {
       "claim": null,
