@@ -39701,10 +39701,15 @@
       "title": "Serve /docs/ from the latest release and add canonical tags from /docs/dev/"
     },
     "site-remove-withdrawn-picomatch-allowlist-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-21T15:02:43Z",
+        "generation": "6099f935addc4e32b16349fb351ea9cc",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Remove the audit allowlist entries for the withdrawn picomatch advisory"
     },
     "site-result-formats-translator-runtime-docs": {
