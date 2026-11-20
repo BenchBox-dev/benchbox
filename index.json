@@ -38296,6 +38296,13 @@
       "status": "done",
       "title": "benchbox.core.run_service exports three underscore-prefixed names in __all__"
     },
+    "run-timeout-plan-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Run timeout: one optional limit for any run, replacing scattered timers (plan and decisions)"
+    },
     "runtime-module-refactor-batch-two": {
       "claim": null,
       "needs": [],
