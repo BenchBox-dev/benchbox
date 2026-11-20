@@ -875,6 +875,24 @@ Tracker items filed from these reports use the title prefix `UAT envelope:` and
 list `uat-rubric` among their links, so the dashboard can count them. The
 `tracker_item` drafts in the proposals report already follow that shape.
 
+### Dev-loop dashboard
+
+`scripts/dev_loop_dashboard.py` writes one Markdown report for a date window from the
+read-only GitHub API, the nightly trunk UAT record artifacts and the tracker index. It
+sets each dev-loop v2 target next to its baseline in
+`_project/archive/dev-loop-v2/baseline.md` and adds the per-cell infrastructure-failure
+rate, the trunk UAT run history, the share of red shards with a product signature, the
+release lead time and the open `UAT envelope:` process blockers.
+
+```bash
+uv run -- python scripts/dev_loop_dashboard.py --days 30 --output /tmp/dev-loop-dashboard.md
+uv run -- python scripts/dev_loop_dashboard.py --since 2026-11-01 --until 2026-11-08 --output /tmp/week.md
+```
+
+The token comes from `GITHUB_TOKEN`, `GH_TOKEN` or `gh auth token`. The `Dev-loop dashboard`
+workflow runs it every Monday and uploads the report as the `dev-loop-dashboard-<run id>`
+artifact; dispatch it with a `days` input for another window.
+
 ## Release notes from fragments
 
 Each pull request that changes user-visible behavior adds one
