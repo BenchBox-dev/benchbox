@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "The owner approved a written design recorded on this item.",
+    "A registry scale-list edit can no longer change a committed bundle's class without a visible failure."
+  ],
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "description": "## Problem\nSince #4304 a bundle's effective compliance class is derived at read time from the current registry (`subscale_policy.effective_compliance_class`, used by the bundle validator and `results-data/validate_corpus.py`). Editing a benchmark's standard or official scale list therefore reclassifies every stored bundle at the affected scales, including ones stamped official; #4335 showed this for TPC-DS 10000 and above (latent: the corpus has none).\n\n## Change\nDesign first: either bind classification to the scale list in force when the bundle was produced (recorded in the bundle or by version), or add a check that fails when a registry change alters the class of any committed bundle. Implement only the approved design.\n\n## Decision gates\nStop after the written design (options, effect on the 503 committed bundles, migration) and get the owner's approval. No implementation before that.\n\n## Verification rubric\nPass: a test changes a scale list and shows either that stored bundles keep their class or that the change is refused with the affected bundle ids; corpus validation counts on develop are unchanged.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "links": [
+    "benchbox/core/benchmark_registry.py",
+    "benchbox/validation/bundle.py",
+    "results-data/validate_corpus.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:11:10Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b9e2bf496fe046579df60ec950daad17",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    }
+  ]
+}

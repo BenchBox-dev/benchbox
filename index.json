@@ -42219,6 +42219,13 @@
       "status": "done",
       "title": "Stop manufacturing zero durations in throughput result capture"
     },
+    "stored-bundle-class-must-not-follow-registry-edits-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop a registry edit from silently reclassifying stored result bundles"
+    },
     "stream-capability-single-source-of-truth": {
       "claim": null,
       "needs": [],
