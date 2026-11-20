@@ -246,6 +246,48 @@ def test_a_trunk_revert_of_a_change_that_added_a_fragment_passes_the_gate(tmp_pa
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+@pytest.mark.parametrize(("reverted", "status"), [(b"VALUE = \xff\n", 0), (b"VALUE = \xfd\n", 1)])
+def test_a_revert_of_non_utf8_text_must_match_byte_for_byte(tmp_path: Path, reverted: bytes, status: int) -> None:
+    runner = tmp_path / SHIPPED
+    _git(tmp_path, "init", "-q", "-b", "develop")
+    _write(tmp_path, "pyproject.toml", '[project]\nname = "x"\nversion = "1.0.0"\n')
+    runner.parent.mkdir(parents=True)
+    runner.write_bytes(b"VALUE = \xff\n")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-q", "-m", "base")
+    runner.write_bytes(b"VALUE = \xfe\n")
+    _git(tmp_path, "commit", "-q", "-am", "refactor: runner value (#5)")
+    culprit = _git(tmp_path, "rev-parse", "HEAD")
+    _git(tmp_path, "checkout", "-q", "-b", "revert")
+    runner.write_bytes(reverted)
+    _git(tmp_path, "commit", "-q", "-am", "Revert subject", "-m", f"This reverts commit {culprit}.")
+    (tmp_path / "changed.txt").write_text(SHIPPED + "\n", encoding="utf-8")
+    (tmp_path / "added.txt").write_text("", encoding="utf-8")
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--root",
+            str(tmp_path),
+            "required",
+            "--title",
+            "revert: undo the runner value",
+            "--manifest",
+            str(MANIFEST),
+            "--changed-files-from",
+            str(tmp_path / "changed.txt"),
+            "--added-files-from",
+            str(tmp_path / "added.txt"),
+            "--release-base-sha",
+            culprit,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == status, result.stdout + result.stderr
+
+
 def _repo_with_version(tmp_path: Path, before: str, after: str) -> str:
     def git(*args: str) -> str:
         done = subprocess.run(

@@ -372,27 +372,23 @@ def _git_succeeds(root: Path, *args: str) -> bool:
     return subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=False).returncode == 0
 
 
-def _diff_text(root: Path, *args: str) -> str:
+def _diff_bytes(root: Path, *args: str) -> bytes:
     result = subprocess.run(
         ["git", "-C", str(root), "diff", "--binary", "--no-renames", *args],
         capture_output=True,
-        encoding="utf-8",
-        errors="replace",
         check=True,
     )
     return result.stdout
 
 
-def _patch_id(root: Path, diff: str) -> str | None:
+def _patch_id(root: Path, diff: bytes) -> str | None:
     result = subprocess.run(
         ["git", "-C", str(root), "patch-id", "--verbatim"],
         input=diff,
         capture_output=True,
-        encoding="utf-8",
-        errors="replace",
         check=True,
     )
-    fields = result.stdout.split()
+    fields = result.stdout.decode("ascii", errors="replace").split()
     return fields[0] if fields else None
 
 
@@ -401,10 +397,10 @@ def _inverts(root: Path, base: str, shas: Sequence[str], found: Sequence[Reverte
     union = sorted({path for paths in content for path in paths})
     if not union:
         return True
-    reverse = "".join(
-        _diff_text(root, sha, f"{sha}^", "--", *paths) for sha, paths in zip(shas, content, strict=True) if paths
+    reverse = b"".join(
+        _diff_bytes(root, sha, f"{sha}^", "--", *paths) for sha, paths in zip(shas, content, strict=True) if paths
     )
-    net = _diff_text(root, base, "HEAD", "--", *union)
+    net = _diff_bytes(root, base, "HEAD", "--", *union)
     if not reverse.strip() or not net.strip():
         return False
     reverse_id = _patch_id(root, reverse)
