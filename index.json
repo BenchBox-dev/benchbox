@@ -27969,10 +27969,15 @@
       "title": "Maintenance lines carry the tag's landing tooling, so line PRs bypass make pr-open and make pr-arm"
     },
     "maintenance-line-sqlglot-freshness-forces-translator-upgrade-20261119": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-21T01:21:55Z",
+        "generation": "e5c0369a97294c1faa3a127e497f4668",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "The release SQLGlot freshness gate forces maintenance lines to take develop's translator upgrade"
     },
     "make-benchmark-query-tests-hermetic": {
