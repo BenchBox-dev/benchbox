@@ -31,17 +31,17 @@ retry:
   backoff_start_minutes: 60
   sweep_max_dispatches: 5
 omp:
-  version: 18.16.0
+  version: 18.20.0
   builds:
     linux-x64:
-      url: https://build.stencil.so/d/omp/20261102-194957-650f3a1/omp-linux-x64
-      sha256: 6498ed785bab00d2926e0387e0ec02362d6d45f1c3d0d1b57c1618b7f95c9264
+      url: https://build.stencil.so/d/omp/20261112-234053-c308970/omp-linux-x64
+      sha256: c8694be8c6e6a1f45e3636dd8a8e9eaa78878ad629a89000b403ec5e456d3f89
     linux-arm64:
-      url: https://build.stencil.so/d/omp/20261102-194957-650f3a1/omp-linux-arm64
-      sha256: c2be1ea85ce17c4270854b57efff2a7ea1d5a03c7557fd08721f2b9bb32698de
+      url: https://build.stencil.so/d/omp/20261112-234053-c308970/omp-linux-arm64
+      sha256: 8b5e197db7c58b7ebabf83c6f03597f89bae3a766a84c6481b3a942a125f5e22
     darwin-arm64:
-      url: https://build.stencil.so/d/omp/20261102-194957-650f3a1/omp-darwin-arm64
-      sha256: d4a10d97488d6054d2b18198bd24f461079952c7e0fb75ba66336ca0df0cb99e
+      url: https://build.stencil.so/d/omp/20261112-234053-c308970/omp-darwin-arm64
+      sha256: 2b1309b06a743ae939708f939b63f75c7a436ed08c7953309f0e387e0c793ead
 pools: [claude, codex]
 reviewers:
   trivial:
