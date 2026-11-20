@@ -24499,7 +24499,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "blocked",
+      "status": "open",
       "title": "Owner decision: keep the fast-tier baseline merged in #4381 or refresh again"
     },
     "fast-baseline-refresh-commit-identity-owner-setting-20261120": {
