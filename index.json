@@ -44849,11 +44849,11 @@
     "tpcds-q9-generation-above-sf5000-owner-decision-20261120": {
       "claim": null,
       "needs": [
-        "tpcds-restore-100000-maximum-and-official-points-20261120"
+        "feature-fix-tpcds-scale-error-reporting-20261120"
       ],
       "priority": "medium",
-      "status": "blocked",
-      "title": "Owner decision: what TPC-DS query 9 generation does above the scale where dsqgen can produce it"
+      "status": "open",
+      "title": "TPC-DS: report a dsqgen stop at BenchBox's own time limit as exactly that"
     },
     "tpcds-qphds-nonspec-formula": {
       "claim": null,
