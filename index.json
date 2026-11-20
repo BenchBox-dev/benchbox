@@ -44259,6 +44259,13 @@
       "status": "done",
       "title": "Refactor TPC-DI memory validation to check growth (delta) instead of absolute RSS"
     },
+    "tpcdi-old-generator-bundle-defect-label-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Give old-generator TPC-DI bundles a defect label that does not claim wrong values"
+    },
     "tpcdi-parallel-phase-truthful-outcome": {
       "claim": null,
       "needs": [

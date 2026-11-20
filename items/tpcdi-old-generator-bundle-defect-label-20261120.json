@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "The owner-approved label is recorded on this item.",
+    "The 12 sidecars use it and nothing else in the corpus changes."
+  ],
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "description": "## Problem\n#4307 flagged 12 TPC-DI bundles produced by an older generator with `defective-variant-or-loader-wrong-result`, whose canonical text says the run produced wrong values. They are only from an older generator; a custom `known_defect_reason` overrides the displayed text.\n\n## Change\nPropose a label id and text for 'produced by a superseded data generator; not comparable with current bundles', then relabel the 12 sidecars.\n\n## Decision gates\nThe owner approves the label id and text before anything is committed: defect labels are public corpus taxonomy and appear in the Explorer. Check how the site renders an unknown label before proposing an id.\n\n## Verification rubric\nPass: the 12 sidecars carry the approved label; bundle bytes and hashes are unchanged; corpus validation and the inventory check pass; ranking exclusion of the 12 is unchanged.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "links": [
+    "benchbox/validation/bundle.py",
+    "results-data/bundles"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:11:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3709301aba894e6ca722b863b5b8da7e",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    }
+  ]
+}
