@@ -24681,15 +24681,10 @@
       "title": "Corpus classification and seed provenance fixes from the remediation review"
     },
     "feature-fix-restore-tpcds-scale-range-20261120": {
-      "claim": {
-        "expires_at": "2026-11-21T03:17:08Z",
-        "generation": "fe9383d0c190433ba5adc9a37f91bd9b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Restore the TPC-DS and TPC-DS-OBT scale range that #4335 cut to 3000"
     },
     "feature-fix-tpcds-scale-bounds-20261117": {
