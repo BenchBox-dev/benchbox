@@ -566,6 +566,7 @@ CREATION_LANDING_PATHS = (
     "_project/scripts/theseus_prefetch.py",
 )
 CREATION_LANDING_TESTS = (
+    "tests/integration/worktree/test_pr_process.py",
     "tests/unit/scripts/test_ci_text_edit_verdict.py",
     "tests/unit/scripts/test_gh_transient.py",
     "tests/unit/scripts/test_local_review.py",

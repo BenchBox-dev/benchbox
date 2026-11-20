@@ -26,6 +26,9 @@ NOT_CARRIED = {
     "tests/unit/scripts/test_make_timing.py": "tests the timing recorder; passes unchanged against the carried wrapper",
     "tests/unit/scripts/test_release_line_carried_tests.py": "tests the carry declarations themselves",
     "tests/unit/scripts/test_release_line_landing_tooling.py": "tests the creation commit",
+    "tests/unit/scripts/test_check_suites.py": "also exercises green_unmerged_sweep.py, which the line keeps; passes unchanged against the carried check_suites.py on a v0.5.1 tree",
+    "tests/unit/scripts/test_trunk_red_disarm.py": "tests trunk_red_disarm.py, which the line keeps; passes unchanged against the carried trunk_revert.py on a v0.5.1 tree",
+    "tests/unit/workflows/test_sqlglot_delivery_workflow.py": "tests a workflow the line keeps",
     "tests/unit/scripts/test_sqlglot_delivery.py": "tests the sqlglot delivery script, which the line keeps",
     "tests/unit/test_agent_write_preflight.py": "reads the line's own agent documents",
     "tests/integration/worktree/test_worktree_lifecycle_metadata.py": "tests the worktree lifecycle script through the line's Makefile; passes unchanged on a v0.5.1 tree",
@@ -60,7 +63,15 @@ def _carried_names() -> set[str]:
 
 def _referencing_tests() -> set[str]:
     names = _carried_names()
-    pattern = re.compile("|".join(rf"(?<![\w.-]){re.escape(name)}(?![\w-])" for name in sorted(names)))
+    stems = {Path(name).stem for name in names if name.endswith(".py")}
+    pattern = re.compile(
+        "|".join(
+            [
+                *(rf"(?<![\w.-]){re.escape(name)}(?![\w-])" for name in sorted(names)),
+                *(rf"[\"']{re.escape(stem)}[\"']" for stem in sorted(stems)),
+            ]
+        )
+    )
     found = set()
     for path in (ROOT / "tests").rglob("*.py"):
         if "__pycache__" in path.parts:
