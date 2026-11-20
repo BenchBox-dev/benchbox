@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The owner's choice is recorded."
+  ],
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "description": "## Problem\n#4381 (59ad7aa1f6) is byte-for-byte the output of refresh run 44527917625. It loosens the gate by about 10%: the reference calibration fell from 1.4275 to 1.3435 (about 6.9% more allowance per test) and 2,123 new test ids (191.7 s) moved into the baseline; the median ratio on 22 recent runs went from 1.199 to 1.087, and #4335's run from 1.302 to 1.163. One source run is from #4363, which merged into release/0.5.x. The commit was re-authored under the owner's identity; the tree is identical (d9d849d3).\n\n## Change\nKeep, or dispatch a fresh refresh.\n\n## Decision gates\nBlocked until the owner chooses. Dispatching the workflow is a hosted write.\n\n## Verification rubric\nPass: the choice is recorded; if refreshed, the new pull request and its merge are linked.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "links": [
+    "https://github.com/BenchBox-dev/BenchBox/pull/4381"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:13:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c127f652f19a4ea393f5275e49ceeec6",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    }
+  ]
+}

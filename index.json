@@ -24495,6 +24495,13 @@
       "status": "done",
       "title": "Architecture hardening: define fail-open vs fail-closed policy for translation and validation"
     },
+    "fast-baseline-4381-keep-or-refresh-owner-decision-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Owner decision: keep the fast-tier baseline merged in #4381 or refresh again"
+    },
     "fast-baseline-refresh-commit-identity-owner-setting-20261120": {
       "claim": null,
       "needs": [],
