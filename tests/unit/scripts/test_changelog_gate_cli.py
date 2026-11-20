@@ -110,6 +110,7 @@ def _revert_gate(
     new_fragment: bool = False,
     revert_content: str = "VALUE = 1\n",
     cites_unrelated: bool = False,
+    dangling_own_fragment: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     _git(repo, "init", "-q", "-b", "develop")
     _write(repo, "pyproject.toml", '[project]\nname = "x"\nversion = "1.0.0"\n')
@@ -133,6 +134,9 @@ def _revert_gate(
     _write(repo, "benchbox/core/runner.py", revert_content)
     if culprit_fragment and not released and delete_own_fragment:
         _git(repo, "rm", "-q", "changelog.d/fix-runner.json")
+    if dangling_own_fragment:
+        (repo / "changelog.d/fix-runner.json").unlink()
+        (repo / "changelog.d/fix-runner.json").symlink_to(repo / "missing-target")
     if unrelated_deletion:
         _git(repo, "rm", "-q", "changelog.d/other-change.json")
     if extra_path:
@@ -385,14 +389,10 @@ def test_modified_or_deleted_fragments_do_not_satisfy_when_only_added_files_coun
     assert accepted.returncode == 0, accepted.stderr
 
 
-def test_a_broken_symlink_fragment_is_not_a_deleted_fragment(tmp_path: Path) -> None:
+@pytest.mark.parametrize("title", REVERT_TITLES)
+def test_a_revert_that_leaves_a_dangling_symlink_for_its_fragment_is_refused(tmp_path: Path, title: str) -> None:
     if sys.platform == "win32":
         pytest.skip("symlinks need privileges on Windows")
-    (tmp_path / "changelog.d").mkdir()
-    (tmp_path / "changelog.d/feat-thing.json").symlink_to(tmp_path / "missing-target")
-    added = tmp_path / "added.txt"
-    added.write_text("", encoding="utf-8")
-    result = _check(
-        tmp_path, "revert: undo a thing", [SHIPPED, "changelog.d/feat-thing.json"], "--added-files-from", str(added)
-    )
-    assert result.returncode == 1
+    result = _revert_gate(tmp_path, title, delete_own_fragment=False, dangling_own_fragment=True)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "leaves the reverted change's fragment" in result.stdout
