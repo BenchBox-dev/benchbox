@@ -41158,7 +41158,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Windows CI: a readiness test's Node subprocess timed out at 20 seconds once"
     },
     "sqlglot-delivery-schedules-start-hours-late-20261117": {

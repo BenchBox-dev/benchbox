@@ -4,6 +4,7 @@
     "The test's limit or the script is changed so a cold Windows runner passes, without weakening the assertions; or the item is dropped with the reason that one timeout in 100+ runs does not justify a change."
   ],
   "description": "tests/unit/workflows/test_sqlglot_delivery_workflow.py::test_readiness_authenticates_without_repository_mutations[ready-Verified configured App authentication] failed in CI run 43887923771 (2026-11-16, branch feat/bundle-schema-publication, head 8945ad89), job 'windows-tests (windows-latest, py3.12)': `subprocess.TimeoutExpired` when the test's `node -` child ran past its 20-second timeout. A scan of the 100 most recent failed CI runs since 2026-11-10 found no other failure of this test, so it is a single timeout on a Windows runner, not a repeating failure. Decide whether the 20-second limit is too tight for a cold Windows Node start, or whether the script can be made faster, without weakening what the test checks.",
+  "drop_reason": "Owner decision 2026-11-20: one Node subprocess timeout on a Windows runner (run 43887923771) in a scan of 100+ failed CI runs does not justify a change.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b5abc8a4010555c0d8f96bb",
@@ -19,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "daa84d24aa264716b4bb3444cd28a5e9",
+      "session_id": "3678ab0e75574974b0dc1dcda02267b3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1125961d008304f6050893ef",
+      "at": "2026-11-20T14:49:04Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "0d3b37b951994afaaf41111dd164d830",
       "session_id": "3678ab0e75574974b0dc1dcda02267b3"
     }
   ]
