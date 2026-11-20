@@ -547,9 +547,21 @@ class TestQuestDBAdapter:
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.bind(("127.0.0.1", 0))
         server.listen(1)
+        server.settimeout(0.05)
+        stop = threading.Event()
+        count_queries: list[str] = []
 
         def _serve():
-            conn, _ = server.accept()
+            while True:
+                try:
+                    conn, _ = server.accept()
+                    break
+                except TimeoutError:
+                    if stop.is_set():
+                        return
+                except OSError:
+                    return
+            conn.settimeout(None)
             with conn:
                 buffer = b""
                 while chunk := conn.recv(4096):
@@ -568,7 +580,9 @@ class TestQuestDBAdapter:
             if params["query"].startswith("SHOW COLUMNS"):
                 response.json.return_value = {"dataset": [[k, v, "false"] for k, v in self.LINEITEM_TYPES.items()]}
             else:
-                thread.join(timeout=10)
+                count_queries.append(params["query"])
+                if len(count_queries) > 1:
+                    thread.join(timeout=10)
                 response.json.return_value = {"dataset": [[len(received)]]}
             return response
 
@@ -588,8 +602,9 @@ class TestQuestDBAdapter:
             ):
                 result = adapter.load_data(benchmark, Mock(), tmp_path)
         finally:
-            server.close()
+            stop.set()
             thread.join(timeout=10)
+            server.close()
         return result, received, rejected
 
     def test_ilp_sends_non_designated_date_columns_as_timestamps(self, questdb_stubs, tmp_path):

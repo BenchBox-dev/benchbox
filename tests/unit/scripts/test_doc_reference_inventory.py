@@ -118,6 +118,9 @@ def test_unclassified_references_fail_the_build(monkeypatch: pytest.MonkeyPatch,
     rules_path = tmp_path / "rules.json"
     rules_path.write_text(json.dumps(rules), encoding="utf-8")
     monkeypatch.setattr(inventory, "RULES_PATH", rules_path)
+    committed = json.loads(inventory.INVENTORY_PATH.read_text(encoding="utf-8"))
+    referencing = sorted(entry["path"] for entry in committed["files"])
+    monkeypatch.setattr(inventory, "tracked_files", lambda: referencing)
     with pytest.raises(ValueError, match="unclassified references"):
         inventory.build_inventory()
 

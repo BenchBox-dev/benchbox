@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import functools
 import re
 from pathlib import Path
 
@@ -61,7 +62,8 @@ def _carried_names() -> set[str]:
     return names
 
 
-def _referencing_tests() -> set[str]:
+@functools.cache
+def _referencing_tests_cached() -> frozenset[str]:
     names = _carried_names()
     stems = {Path(name).stem for name in names if name.endswith(".py")}
     pattern = re.compile(
@@ -72,13 +74,19 @@ def _referencing_tests() -> set[str]:
             ]
         )
     )
+    needles = tuple(sorted({*stems, *(name for name in names if not name.endswith(".py"))}))
     found = set()
     for path in (ROOT / "tests").rglob("*.py"):
         if "__pycache__" in path.parts:
             continue
-        if pattern.search(path.read_text(encoding="utf-8", errors="replace")):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if any(needle in text for needle in needles) and pattern.search(text):
             found.add(path.relative_to(ROOT).as_posix())
-    return found
+    return frozenset(found)
+
+
+def _referencing_tests() -> set[str]:
+    return set(_referencing_tests_cached())
 
 
 def test_every_test_that_names_a_carried_file_is_carried_or_declared_unrelated() -> None:
