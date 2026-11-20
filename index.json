@@ -26152,10 +26152,15 @@
       "title": "Run the 50-repetition stability check for tests/unit/test_heavy_choke_points.py that was skipped when its flake item closed"
     },
     "heavy-guard-4331-owner-decisions-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-21T15:02:50Z",
+        "generation": "524d471877d44b3db76d8691f6d7736d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Owner decisions for the heavy-work guard pull request #4331"
     },
     "heavy-guard-4331-review-repairs-20261120": {
