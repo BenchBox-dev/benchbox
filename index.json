@@ -36203,7 +36203,13 @@
       "claim": null,
       "needs": [
         "tpcds-restore-100000-maximum-and-official-points-20261120",
-        "site-revert-tpcds-3000-limit-text-on-main-20261120"
+        "site-revert-tpcds-3000-limit-text-on-main-20261120",
+        "feature-fix-ci-congestion-diagnostics-and-generator-gate-20261117",
+        "feature-feat-heavy-guard-attribution-engine-caps-20261117",
+        "feature-feat-corpus-scale-policy-and-reruns-20261117",
+        "duration-gate-redesign-prs-owner-decision-20261120",
+        "fast-baseline-reproduce-as-review-evidence-and-refresh-cadence-20261120",
+        "site-next-remove-tpcds-3000-limit-text-20261120"
       ],
       "priority": "low",
       "status": "open",

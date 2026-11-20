@@ -3,7 +3,7 @@
     "No worktree or scratch file from this work remains, and nothing unpushed was lost."
   ],
   "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
-  "description": "## Problem\nWorktrees wt-heavyguard, wt-ci-diag, wt-doris-lakesail, wt-tpcds-scale-bounds, wt-fastgate, wt-fast-baseline-review, wt-pr-rerun-msg, wt-fast-baseline-4381 and site worktrees wt-tpcds-scale-bounds and wt-read-model-20 remain, with scratch under /tmp (hg-b4, b5, fdrc*, tuat, scale-remediation, rv, audit) and ~/.cache (closeout.sh, arm-*.log, rerun-*.log, preflight-*.log and others).\n\n## Change\nRemove each worktree with `make worktree-remove` once its pull request is merged or closed; delete scratch. Keep /tmp/fdrc* until fast-duration-gate-runner-class-spread-20261120 has its method recorded.\n\n## Decision gates\nNever remove a worktree with unpushed commits or uncommitted changes without listing them to the owner first. Do not delete anything under ~/Developer/benchmark_runs.\n\n## Verification rubric\nPass: `git worktree list` shows none of the named worktrees; the named scratch paths are gone.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "description": "## Problem\nWorktrees wt-heavyguard, wt-ci-diag, wt-doris-lakesail, wt-tpcds-scale-bounds, wt-fastgate, wt-fast-baseline-review, wt-pr-rerun-msg, wt-fast-baseline-4381 and site worktrees wt-tpcds-scale-bounds and wt-read-model-20 remain, with scratch under /tmp (hg-b4, b5, fdrc*, tuat, scale-remediation, rv, audit) and ~/.cache (closeout.sh, arm-*.log, rerun-*.log, preflight-*.log and others).\n\n## Change\nFinish each worktree with `make worktree-finish` and EXPECTED_HEAD_OID once its pull request is merged. For closed, unmerged branches, list their commits to the owner first; never `git branch -D`. Delete scratch. Keep /tmp/fdrc* until fast-duration-gate-runner-class-spread-20261120 has its method recorded.\n\n## Decision gates\nNever remove a worktree with unpushed commits or uncommitted changes without listing them to the owner first. Do not delete anything under ~/Developer/benchmark_runs.\n\n## Verification rubric\nPass: `git worktree list` shows none of the named worktrees; the named scratch paths are gone.\n\n## Additions from the item review\n- Do not drop `stash@{0}` (item33-pre-rebase): it belongs to another session.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
@@ -11,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "473faf362fe442dfb1c3b999dd7f329d",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:38:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b4fdddc246344d77ae1bf408e4b0f032",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
     }
   ]
