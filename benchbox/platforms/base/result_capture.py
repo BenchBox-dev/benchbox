@@ -73,6 +73,26 @@ def materialized_result_validation_active() -> bool:
     return _MATERIALIZED_RESULT_VALIDATOR.get() is not None
 
 
+def row_count_validation_record(validation_result: Any, actual_row_count: int) -> dict[str, Any]:
+    from benchbox.core.expected_results.models import ValidationMode
+
+    record: dict[str, Any] = {"expected": validation_result.expected_row_count, "actual": actual_row_count}
+    expected = validation_result.expected_row_count
+    if not validation_result.is_valid:
+        return {**record, "status": "FAILED", "error": validation_result.error_message}
+    if validation_result.unvalidated:
+        record["status"] = "UNVALIDATED"
+    elif validation_result.validation_mode == ValidationMode.SKIP:
+        record["status"] = "SKIPPED"
+    elif expected not in (None, actual_row_count):
+        return {**record, "status": "SKIPPED", "warning": within_tolerance_warning(actual_row_count, expected)}
+    else:
+        return {**record, "status": "PASSED"}
+    if validation_result.warning_message:
+        record["warning"] = validation_result.warning_message
+    return record
+
+
 def apply_materialized_result_validation(
     result: dict[str, Any],
     query_id: str,
@@ -1043,8 +1063,6 @@ class ResultCaptureMixin:
         fetch_mode: str | None = None,
         timing_fields: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
-        from benchbox.core.expected_results.models import ValidationMode
-
         result_dict = {
             "query_id": str(query_id),
             "status": "FAILED" if error else "SUCCESS",
@@ -1066,29 +1084,8 @@ class ResultCaptureMixin:
             result_dict["error"] = error
 
         if validation_result:
-            row_count_validation = {
-                "expected": validation_result.expected_row_count,
-                "actual": actual_row_count,
-            }
-
-            if validation_result.unvalidated and validation_result.is_valid:
-                row_count_validation["status"] = "UNVALIDATED"
-                if validation_result.warning_message:
-                    row_count_validation["warning"] = validation_result.warning_message
-            elif validation_result.validation_mode == ValidationMode.SKIP and validation_result.is_valid:
-                row_count_validation["status"] = "SKIPPED"
-                if validation_result.warning_message:
-                    row_count_validation["warning"] = validation_result.warning_message
-            elif validation_result.is_valid and validation_result.expected_row_count not in (None, actual_row_count):
-                row_count_validation["status"] = "SKIPPED"
-                row_count_validation["warning"] = within_tolerance_warning(
-                    actual_row_count, validation_result.expected_row_count
-                )
-            elif validation_result.is_valid:
-                row_count_validation["status"] = "PASSED"
-            else:
-                row_count_validation["status"] = "FAILED"
-                row_count_validation["error"] = validation_result.error_message
+            row_count_validation = row_count_validation_record(validation_result, actual_row_count)
+            if row_count_validation["status"] == "FAILED":
                 result_dict["status"] = "FAILED"
                 result_dict["error"] = validation_result.error_message
 

@@ -154,7 +154,9 @@ class TestClickHouseWorkloadCoverage:
 
         assert result["status"] == "SUCCESS"
         assert result["row_count_validation"]["status"] == expected_status
-        assert result["row_count_validation"]["warning"] == "expected row count unavailable"
+        assert result["row_count_validation"].get("warning") == (
+            None if expected_status == "PASSED" else "expected row count unavailable"
+        )
         first_call = connection.execute.call_args_list[0]
         assert first_call.args == ("SELECT * FROM orders SETTINGS joined_subquery_requires_alias = 0",)
         assert first_call.kwargs["query_id"]

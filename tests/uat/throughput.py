@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 from benchbox.core.results.metrics import TPCMetricsCalculator
-from benchbox.core.throughput.result import throughput_stream_ids
+from benchbox.core.throughput.result import throughput_round_stream_ids, throughput_stream_ids
 from tests.uat import throughput_baseline as baseline
 
 TPC_ALLOWED_SCALE_FACTORS = {1, 10, 30, 100, 300, 1000, 3000, 10000, 30000, 100000}
@@ -62,13 +62,14 @@ def validate_result_identity(
 
 def validate_stream_count(result_json: dict[str, Any], *, requested_streams: int) -> tuple[bool, str]:
     streams_seen = {row["stream"] for row in _throughput_rows(result_json)}
-    executed = len(streams_seen)
-    if executed != requested_streams:
-        return (
-            False,
-            f"throughput stream count mismatch: requested {requested_streams}, executed {executed}",
-        )
-    expected_ids = set(throughput_stream_ids(requested_streams))
+    rounds = 2 if "throughput_test_2" in (result_json.get("phases") or {}) else 1
+    for test in range(1, rounds + 1):
+        in_test = streams_seen & set(throughput_round_stream_ids(requested_streams, test))
+        executed = len(in_test if rounds > 1 else streams_seen)
+        if executed != requested_streams:
+            where = f" in throughput test {test}" if rounds > 1 else ""
+            return False, f"throughput stream count mismatch: requested {requested_streams}, executed {executed}{where}"
+    expected_ids = set(throughput_stream_ids(requested_streams * rounds))
     if streams_seen != expected_ids:
         return (
             False,
@@ -96,7 +97,8 @@ def validate_throughput_metric(result_json: dict[str, Any]) -> tuple[bool, str]:
     rows = _throughput_rows(result_json)
     total_queries = sum(1 for row in rows if _is_success(row))
     scale_factor = (result_json.get("benchmark") or {}).get("scale_factor")
-    duration_ms = ((result_json.get("phases") or {}).get("throughput_test") or {}).get("duration_ms")
+    phases = result_json.get("phases") or {}
+    duration_ms = sum(phase.get("duration_ms") or 0 for name, phase in phases.items() if "throughput_test" in name)
     if not all(isinstance(value, (int, float)) and value > 0 for value in (scale_factor, duration_ms)):
         return False, f"Throughput@Size plausibility unavailable: scale {scale_factor!r}, duration {duration_ms!r}"
 

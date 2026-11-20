@@ -11,6 +11,10 @@ def throughput_stream_ids(num_streams: int, first_stream_id: int = THROUGHPUT_FI
     return range(first_stream_id, first_stream_id + max(num_streams, 0))
 
 
+def throughput_round_stream_ids(num_streams: int, round_number: int) -> range:
+    return throughput_stream_ids(num_streams, THROUGHPUT_FIRST_STREAM_ID + (round_number - 1) * num_streams)
+
+
 def throughput_stream_numbering(first_stream_id: int = THROUGHPUT_FIRST_STREAM_ID) -> dict[str, Any]:
     return {
         "basis": THROUGHPUT_STREAM_NUMBERING_BASIS,
