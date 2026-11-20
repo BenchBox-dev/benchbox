@@ -3,7 +3,7 @@
     "The owner's chosen identity or approval path is recorded and a refresh pull request merges without a re-authored commit."
   ],
   "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
-  "description": "## Problem\nThe refresh workflow commits as `benchbox-bot <bot@benchbox.dev>`, which is not linked to a GitHub account. The develop ruleset requires extra approval for unattributed changes, so a refresh pull request cannot merge without an approval; #4381 was merged only after its commit was re-authored under the owner's identity and force-pushed.\n\n## Change\nOwner-only: choose a GitHub-linked identity for the workflow (an App or machine account), an approval step, or keep manual handling. An agent may then update the workflow to use what the owner set up.\n\n## Decision gates\nBlocked: settings, secrets and rulesets are owner-only. No agent re-authors a refresh commit again.\n\n## Verification rubric\nPass: a refresh pull request reaches a mergeable state without rewriting its commit.\n\n## Guardrails\n- Any limit, default, threshold or label text is shown to the owner before it is committed.\n- The implementer never resolves review threads on its own pull request; the reviewer or the owner does.\n- No polling loop around `make pr-arm`, no `--no-verify`, and no stand-in review unless the owner names the PR and head unprompted.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "description": "## Problem\nThe refresh workflow commits as `benchbox-bot <bot@benchbox.dev>`, which is not linked to a GitHub account. The develop ruleset requires extra approval for unattributed changes, so a refresh pull request cannot merge without an approval; #4381 was merged only after its commit was re-authored under the owner's identity and force-pushed.\n\n## Change\nOwner-only: choose a GitHub-linked identity for the workflow (an App or machine account), an approval step, or keep manual handling. An agent may then update the workflow to use what the owner set up.\n\n## Decision gates\nBlocked: settings, secrets and rulesets are owner-only. No agent re-authors a refresh commit again.\n\n## Verification rubric\nPass: a refresh pull request reaches a mergeable state without rewriting its commit.\n\n## Additions from the item review\n- The owner chose re-authoring for #4381 on 2026-11-19; that choice does not extend to later refreshes.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
   "links": [
     ".github/workflows/fast-duration-baseline-refresh.yml",
     "docs/internal/repo-admin-settings.md"
@@ -23,6 +23,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "e39f54dbb7be4877a69947a111f13ef5",
+      "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:cd28eedd3e689a102e29303e",
+      "at": "2026-11-20T02:37:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c560e54f641f483bb1d068f825529742",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
     }
   ]
