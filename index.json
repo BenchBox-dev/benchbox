@@ -28122,15 +28122,10 @@
       "title": "Classify the 43 carried-test failures on a v0.5.1 overlay of the maintenance-line landing tooling"
     },
     "maintenance-line-landing-tooling-frozen-at-tag-20261119": {
-      "claim": {
-        "expires_at": "2026-11-21T05:17:49Z",
-        "generation": "104c1d19cf5549c6bc4d48aaedb8f619",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5e266ad70969b63b166afa4a"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Maintenance lines carry the tag's landing tooling, so line PRs bypass make pr-open and make pr-arm"
     },
     "maintenance-line-sqlglot-freshness-forces-translator-upgrade-20261119": {
