@@ -45095,6 +45095,13 @@
       "status": "done",
       "title": "dsdgen never finishes below SF 0.01: it loops in catalog_sales date scaling"
     },
+    "tpcds-dsdgen-web-lineitem-item-wrap-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Patch dsdgen's web lineitem item cursor overflow that corrupts TPC-DS refresh data"
+    },
     "tpcds-dsqgen-q9-timeout-sf10000-20261111": {
       "claim": null,
       "needs": [
