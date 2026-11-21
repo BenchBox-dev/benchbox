@@ -44947,7 +44947,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Finish the TPC-DI bundle regeneration evidence: same-generator comparison and site cohort views"
     },
     "tpcdi-comment-policy-route-for-tpc-files-20261121": {

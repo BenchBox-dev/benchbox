@@ -5,6 +5,7 @@
   ],
   "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).\n\n2026-11-20 evidence. Across the 9 bundles of seed run 3096, per-table row counts are identical across DuckDB, DataFusion and ClickHouse Local at each scale (SF 0.01 / 0.1 / 1: FactTrade 1,300 / 13,000 / 130,000; FactMarketHistory 5,415 / 54,155 / 541,550; FactWatches 3,000 / 30,000 / 300,000; DimSecurity 8 / 80 / 800; DimBroker 100 at all; rows_loaded 18,499 / 128,626 / 1,229,884). Per-query result row counts are identical across the three platforms at each scale; scale differences are explained by LIMIT 50 saturating, HAVING thresholds and small dimensions at SF 0.01. No bundle records a seed; seed 42 is inferred from the generator default. Deployed Explorer (results.duckdb last-modified 2026-11-20T02:13Z, read model 20): 33 TPC-DI results, 9 ranked and 24 excluded as known_defective_data; cohorts tpcdi-sf0.01/0.1/1-power each rank exactly the three 2026-11-17 bundles; SF 10 cohort has no rankable results. Both acceptance criteria are met by this evidence. New defect found: queries AQ9 and VQ6 return 0 rows at every scale on every platform; see tpcdi-queries-aq9-vq6-return-no-rows-20261120.",
   "description": "## Problem\nlocal-tpcdi-bundles-regenerate-current-generator was closed with acceptance 3 ('same-generator data/result-count comparisons') replaced by 'cross-generator comparison is prevented by the exclusion', and acceptance 4 ('site/cohort views checked') without evidence.\n\n## Change\nCompare row counts and query result counts across the 9 current-generator bundles from seed run 3096 at each scale and platform; check the Explorer cohort views show the new bundles and exclude all 21 flagged TPC-DI sidecars.\n\n## Decision gates\nNone; read-only checks. A discrepancy becomes a defect item, not an edit here.\n\n## Verification rubric\nPass: a table of per-table row counts and per-query result counts per bundle is recorded on this item with any differences explained; screenshots or fetched data from the deployed Explorer show the cohorts.\n\n## Additions from the item review\n- The earlier claim that these bundles ran with seed 42 is inferred from the default, not recorded; say so in the evidence.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
+  "drop_reason": "Owner decision 2026-11-21 (choice dialog): \"Drop both as superseded by the rework.\" The TPC-DI workload these concern is withdrawn; see tpcdi-correction-plan-20261120.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4317"
   ],
@@ -32,6 +33,14 @@
       "op": "update",
       "op_id": "48588995ffbe468a986eecb9002600e3",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-21T15:40:41Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "2f7b89863f5f45d395ce66f7c5517b2c",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
 }
