@@ -147,8 +147,9 @@ def test_the_cleanup_starts_when_the_limit_passes_before_the_hard_stop_grace_is_
         disarm()
 
 
-def test_the_wait_is_what_is_left_of_the_grace_after_the_cleanup_started(monkeypatch) -> None:
-    monkeypatch.setattr(run_deadline, "HARD_STOP_GRACE_SECONDS", 0.5)
+def test_the_graceful_wait_ends_a_margin_before_the_hard_stop_so_the_result_can_be_exported(monkeypatch) -> None:
+    monkeypatch.setattr(run_deadline, "HARD_STOP_GRACE_SECONDS", 1.0)
+    monkeypatch.setattr(run_deadline, "HARD_STOP_EXPORT_MARGIN_SECONDS", 0.6, raising=False)
     deadline = RunDeadline(5)
     release = threading.Event()
     deadline.register_remote_cleanup(Owner(), lambda: release.wait(30))
@@ -161,9 +162,9 @@ def test_the_wait_is_what_is_left_of_the_grace_after_the_cleanup_started(monkeyp
     finally:
         release.set()
 
-    assert errors == ["Remote cleanup did not finish within 0.5 seconds"]
+    assert errors == ["Remote cleanup did not finish within 0.4 seconds"]
     assert again == errors
-    assert 0.3 < waited < 5
+    assert 0.2 < waited < 0.8
 
 
 def test_a_cleanup_that_started_long_ago_gets_no_further_wait(monkeypatch, clock) -> None:
@@ -178,5 +179,5 @@ def test_a_cleanup_that_started_long_ago_gets_no_further_wait(monkeypatch, clock
     finally:
         release.set()
 
-    assert errors == ["Remote cleanup did not finish within 30 seconds"]
+    assert errors == ["Remote cleanup did not finish within 25 seconds"]
     assert time.monotonic() - begun < 5

@@ -45,6 +45,7 @@ from benchbox.core.schemas import BenchmarkConfig, DatabaseConfig
 from benchbox.utils.run_deadline import arm_hard_stop, current_run_deadline, register_remote_cleanup
 
 run_deadline.HARD_STOP_GRACE_SECONDS = 0.3
+run_deadline.HARD_STOP_EXPORT_MARGIN_SECONDS = 0.1
 run_module = sys.modules["benchbox.cli.commands.run"]
 orchestrator = BenchmarkOrchestrator(base_dir=sys.argv[1])
 BLOCKS = sys.argv[2] == "blocks"
@@ -190,12 +191,50 @@ def test_the_configured_limit_also_prints_the_warning(printed) -> None:
     assert "A run time limit is set." in _output(printed)
 
 
-def test_a_run_whose_platform_is_chosen_interactively_reaches_the_same_wrapper() -> None:
-    import inspect
-
+def test_a_run_whose_platform_is_chosen_interactively_gets_the_warning_and_the_limit(monkeypatch, printed) -> None:
     from benchbox.cli import run_interactive
 
-    assert "_run._execute_orchestrated_run(" in inspect.getsource(run_interactive)
+    executed: list[tuple[Any, ...]] = []
+
+    class StubOrchestrator:
+        def __init__(self, **_kwargs: Any) -> None:
+            pass
+
+        def set_verbosity(self, _settings: Any) -> None:
+            pass
+
+        def execute_benchmark(self, *args: Any, **_kwargs: Any) -> Any:
+            executed.append(args)
+            return SimpleNamespace(validation_status="PASSED")
+
+    handled: list[Any] = []
+    monkeypatch.setattr(run_interactive._run, "BenchmarkOrchestrator", StubOrchestrator)
+    monkeypatch.setattr(run_interactive, "_run_stages_through_cloud_storage", lambda _s: False)
+    monkeypatch.setattr(run_interactive, "_build_execution_context_from_plan", lambda _s: None)
+    monkeypatch.setattr(run_interactive, "_interactive_handle_result", lambda _s, result, _o: handled.append(result))
+    state = SimpleNamespace(
+        ctx=None,
+        database_config=SimpleNamespace(type="quanton"),
+        benchmark_config=SimpleNamespace(name="tpch", scale_factor=0.01),
+        quick_restart_used=True,
+        output=None,
+        non_interactive=True,
+        verbosity_settings=None,
+        resolved_run_plan=SimpleNamespace(phases=["power"]),
+        quiet=True,
+        no_progress=True,
+        no_monitoring=True,
+        logger=None,
+    )
+
+    monkeypatch.setattr(
+        run_time_limit, "dispatch_run", lambda s: run_interactive._interactive_preflight_and_execute(s, None)
+    )
+    run_time_limit.run_within_time_limit(SimpleNamespace(**{**vars(state), **vars(_settings("quanton"))}))
+
+    assert len(executed) == 1
+    assert len(handled) == 1
+    assert remote_cleanup_warning("Onehouse Quanton", True) in _output(printed)
 
 
 class FailingAdapter:
@@ -283,7 +322,7 @@ def test_a_blocked_cleanup_does_not_move_the_hard_bound_and_is_reported_unfinish
     output = completed.stdout + completed.stderr
     assert completed.returncode == 124, output
     assert (tmp_path / "stuck.cancelled").exists(), output
-    assert "Remote cleanup did not finish within 0.3 seconds" in completed.stderr
+    assert "Remote cleanup did not finish within 0.2 seconds" in completed.stderr
     assert elapsed < 1 + 0.3 + 6, f"the hard stop took {elapsed:.1f}s with a blocked cleanup"
     bundles = [path for path in tmp_path.rglob("*.json") if "manifest" not in path.name]
     assert len(bundles) == 1, output

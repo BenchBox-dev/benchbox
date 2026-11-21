@@ -14,6 +14,7 @@ from benchbox.utils.process_group import kill_process_group
 from benchbox.utils.resource_limits import kill_started_group
 
 HARD_STOP_GRACE_SECONDS = 30.0
+HARD_STOP_EXPORT_MARGIN_SECONDS = 5.0
 RUN_TIMEOUT_CONFIG_KEY = "execution.timeout_seconds"
 RUN_TIMEOUT_OPTION_KEY = "timeout_seconds"
 TIMED_OUT_VALIDATION_STATUS = "TIMED_OUT"
@@ -108,8 +109,8 @@ class RunDeadline:
         worker = self._cleanup_worker
         assert worker is not None and self._cleanup_began is not None
         if wait_seconds is None:
-            wait_seconds = max(0.0, HARD_STOP_GRACE_SECONDS - elapsed_seconds(self._cleanup_began))
-            budget = HARD_STOP_GRACE_SECONDS
+            budget = max(0.0, HARD_STOP_GRACE_SECONDS - HARD_STOP_EXPORT_MARGIN_SECONDS)
+            wait_seconds = max(0.0, budget - elapsed_seconds(self._cleanup_began))
         else:
             budget = wait_seconds
         worker.join(wait_seconds)
@@ -399,6 +400,8 @@ def timeout_details(deadline: RunDeadline) -> dict[str, Any]:
         details["query_id"] = timeout.query_id
     if timeout.detail:
         details["detail"] = timeout.detail
+    if deadline.cleanup_errors:
+        details["cleanup_errors"] = list(deadline.cleanup_errors)
     return details
 
 
