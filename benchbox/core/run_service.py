@@ -20,8 +20,8 @@ from benchbox.core.results.subscale_policy import normalize_tpc_benchmark_id
 
 TPC_ALLOWED_SCALE_FACTORS: frozenset[int | float] = frozenset({1, 10, 30, 100, 300, 1000, 3000, 10000, 30000, 100000})
 
-P = ParamSpec("P")
-R = TypeVar("R")
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
 
 TPCDI_UNAVAILABLE_MESSAGE = (
     "TPC-DI is unavailable while BenchBox reworks it to run the specification's workload "
@@ -45,10 +45,10 @@ def refuse_unavailable_benchmark(benchmark_id: object) -> None:
         raise BenchmarkUnavailableError(message)
 
 
-def refuses_unavailable_benchmark(benchmark_id: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    def decorate(func: Callable[P, R]) -> Callable[P, R]:
+def refuses_unavailable_benchmark(benchmark_id: str) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
+    def decorate(func: Callable[_P, _R]) -> Callable[_P, _R]:
         @wraps(func)
-        def guarded(*args: P.args, **kwargs: P.kwargs) -> R:
+        def guarded(*args: _P.args, **kwargs: _P.kwargs) -> _R:
             refuse_unavailable_benchmark(benchmark_id)
             return func(*args, **kwargs)
 
@@ -624,6 +624,10 @@ def map_phases_to_execution_type(phases: list[str]) -> str:
 
 
 __all__ = [
+    "refuses_unavailable_benchmark",
+    "TPCDI_UNAVAILABLE_MESSAGE",
+    "unavailable_benchmark_message",
+    "UNAVAILABLE_BENCHMARK_MESSAGES",
     "AdapterFactory",
     "apply_polars_streaming_flag",
     "begin_run",
