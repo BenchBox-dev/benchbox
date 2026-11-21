@@ -1,5 +1,19 @@
 # Corpus Generation Notes - 2026-04-03
 
+## TPC-DI bundles from earlier generators carry their own label (2026-11-20)
+
+Eighteen TPC-DI bundles were flagged `defective-variant-or-loader-wrong-result`
+on 2026-11-14 and 2026-11-17 (both below). That label's text says a BenchBox
+query variant or data loader produced wrong values, which is not what happened:
+the bundles are correct for the generator that made them and are only not
+comparable with data the current generator produces. They now carry
+`known_defects: ["superseded-data-generator"]` instead ("Produced by a superseded
+data generator; not comparable with current bundles."). Their
+`known_defect_reason` text, which is what the Explorer shows, is unchanged, and
+they stay out of the rankings. No bundle file changed. The three older
+ClickHouse Local TPC-DI bundles flagged on 2026-10-28 for a query-variant bug keep
+`defective-variant-or-loader-wrong-result`.
+
 ## Snowflake bundles recorded the unapplied default warehouse size (2026-11-18)
 
 All 50 published Snowflake bundles recorded `platform.config.warehouse_size` and
