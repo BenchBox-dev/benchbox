@@ -44821,6 +44821,15 @@
       "status": "open",
       "title": "TPC-DI step 25: Trino: ETL, visibility and full audit"
     },
+    "tpcdi-26-platform-presto-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-25-platform-trino-20261120"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DI step 26: Presto: ETL, visibility and full audit"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
