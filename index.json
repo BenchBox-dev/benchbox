@@ -45008,6 +45008,15 @@
       "status": "blocked",
       "title": "TPC-DI plan based on shannon-barrow/databricks-tpc-di: full text (notes; not a work item)"
     },
+    "tpcdi-provenance-record-and-copy-guard-20261121": {
+      "claim": null,
+      "needs": [
+        "tpcdi-05-remove-benchbox-queries-20261120"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 6: record the source and licence of the Databricks project, and guard against copying forbidden files"
+    },
     "tpcdi-queries-aq9-vq6-return-no-rows-20261120": {
       "claim": null,
       "needs": [],
