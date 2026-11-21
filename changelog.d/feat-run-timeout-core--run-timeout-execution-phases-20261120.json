@@ -4,7 +4,7 @@
     {
       "category": "changed",
       "breaking": false,
-      "text": "Throughput streams no longer stop after 3600 seconds (TPC-H) or 7200 seconds (TPC-DS) unless you set a limit. Power, throughput and maintenance tests, SQL and DataFrame, now stop at the run time limit, which also signals running streams to stop and tells GizmoSQL how long a query may run. A query cut short by the limit is reported with status `TIMEOUT`. The unused `query_timeout` defaults of the TPC-H and TPC-DS benchmark configs and the load-testing executor are removed, and a query is no longer failed after it finishes for having taken longer than a timeout."
+      "text": "Throughput streams no longer stop after 3600 seconds (TPC-H) or 7200 seconds (TPC-DS) unless you set a limit. Power, throughput and maintenance tests, SQL and DataFrame, now stop at the run time limit, which also signals running streams to stop and tells GizmoSQL how long a query may run. A query cut short by the limit is reported with status `TIMEOUT`. A power test stopped at the limit is not a success and reports no Power@Size. The unused `query_timeout` defaults of the TPC-H and TPC-DS benchmark configs and the load-testing executor are removed, and a query is no longer failed after it finishes for having taken longer than a timeout."
     }
   ]
 }

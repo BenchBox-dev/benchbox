@@ -10,7 +10,7 @@ from benchbox.core.constants import (
     TPCH_POWER_DEFAULT_WARMUP_ITERATIONS,
 )
 from benchbox.core.plan_capture_phase import propagate_query_execution_metadata
-from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS, run_deadline_expired
+from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS, run_stop_requested
 
 TPCH_BENCHMARK_ID = "tpch"
 PowerConnectionAdapterFactory = Callable[[Any, str, float], Any]
@@ -132,7 +132,7 @@ def execute_tpch_power_test(
         validation_runs: list[dict[str, Any]] = []
 
         for i in range(warm_up_iterations):
-            if run_deadline_expired():
+            if run_stop_requested():
                 break
             current_stream_id = stream_id
             console.print(f"[cyan]--- Warm-up Run {i + 1}/{warm_up_iterations} ---[/cyan]")
@@ -162,7 +162,7 @@ def execute_tpch_power_test(
                 )
 
         for i in range(iterations):
-            if run_deadline_expired():
+            if run_stop_requested():
                 break
             current_stream_id = stream_id
             console.print(f"[cyan]--- Measurement Run {i + 1}/{iterations} ---[/cyan]")
@@ -216,7 +216,7 @@ def execute_tpch_power_test(
             if not power_test_result.success:
                 if power_test_result.queries_successful == 0:
                     console.print("[yellow]⚠️  All queries failed - aborting remaining measurement runs[/yellow]")
-                    if not query_results and not run_deadline_expired():
+                    if not query_results and not run_stop_requested():
                         all_results.append(
                             _power_test_error_result(
                                 "; ".join(power_test_result.errors)

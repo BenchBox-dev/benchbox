@@ -10,6 +10,7 @@ from typing import Any, Callable
 
 from benchbox.experimental.load_testing.patterns import SteadyPattern, WorkloadPattern, WorkloadPhase
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.run_deadline import limit_to_remaining, run_stop_requested
 
 logger = logging.getLogger(__name__)
 
@@ -287,14 +288,20 @@ class ConcurrentLoadExecutor:
         finally:
             executor.shutdown(wait=False, cancel_futures=True)
 
-    def _record_stream_future(self, future: Future, stream_id: int, role: str, *, abandoned: bool = False) -> None:
+    def _record_stream_future(
+        self,
+        future: Future,
+        stream_id: int,
+        role: str,
+        *,
+        abandoned: bool = False,
+        waited: float | None = None,
+    ) -> None:
         try:
             if abandoned:
                 self._stream_stops[stream_id].set()
                 self._abandoned[stream_id] = future
-                raise TimeoutError(
-                    f"Stream {stream_id} did not finish within {self._stream_wait_seconds():g}s; worker abandoned"
-                )
+                raise TimeoutError(f"Stream {stream_id} did not finish within {waited:g}s; worker abandoned")
             self._stream_results.append(future.result())
         except Exception as e:
             self._stream_results.append(
@@ -313,15 +320,19 @@ class ConcurrentLoadExecutor:
                 self._decrement_role_locked(role)
 
     def _stream_wait_seconds(self) -> float | None:
-        if self._config.query_timeout_seconds is None:
-            return None
-        return self._config.query_timeout_seconds * max(1, self._config.queries_per_stream)
+        configured = None
+        if self._config.query_timeout_seconds is not None:
+            configured = self._config.query_timeout_seconds * max(1, self._config.queries_per_stream)
+        return limit_to_remaining(configured)
 
     def _drain_streams(self, futures: dict[Future, tuple[int, str]], draining: list[Future]) -> None:
-        _, pending = wait(draining, timeout=self._stream_wait_seconds())
+        waited = self._stream_wait_seconds()
+        _, pending = wait(draining, timeout=waited)
+        if pending:
+            run_stop_requested()
         for future in draining:
             stream_id, role = futures.pop(future)
-            self._record_stream_future(future, stream_id, role, abandoned=future in pending)
+            self._record_stream_future(future, stream_id, role, abandoned=future in pending, waited=waited)
 
     def _decrement_role_locked(self, role: str) -> None:
         remaining = self._active_roles.get(role, 0) - 1

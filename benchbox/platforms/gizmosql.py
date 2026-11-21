@@ -18,7 +18,7 @@ from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import split_sql_statements
-from benchbox.utils.run_deadline import limit_to_remaining
+from benchbox.utils.run_deadline import current_run_deadline, limit_to_remaining
 
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.config_utils import build_adapter_config, make_platform_config_builder
@@ -244,6 +244,10 @@ def _scope_changes_server(sql: str) -> bool:
     return scope not in {"SESSION", "LOCAL", "VARIABLE"}
 
 
+def make_timer(interval: float, function: Any) -> threading.Timer:
+    return threading.Timer(interval, function)
+
+
 class GizmoSQLCursor:
     def __init__(self, raw: Any, connection: GizmoSQLConnection) -> None:
         self._raw = raw
@@ -256,10 +260,15 @@ class GizmoSQLCursor:
         self._disarm()
         self._timed_out.clear()
         query_timeout = self._connection.query_timeout or None
-        timeout = limit_to_remaining(query_timeout)
-        self._run_limited = timeout is not None and (query_timeout is None or timeout < query_timeout)
+        deadline = current_run_deadline()
+        if deadline is not None and deadline.expired:
+            timeout = query_timeout
+            self._run_limited = False
+        else:
+            timeout = limit_to_remaining(query_timeout)
+            self._run_limited = timeout is not None and (query_timeout is None or timeout < query_timeout)
         if timeout is not None:
-            self._timer = threading.Timer(timeout, self._fire)
+            self._timer = make_timer(timeout, self._fire)
             self._timer.daemon = True
             self._timer.start()
 

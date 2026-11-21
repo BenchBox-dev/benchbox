@@ -48,7 +48,7 @@ from benchbox.utils.run_deadline import (
     TIMED_OUT_QUERY_STATUS,
     failed_query_status,
     mark_cut_short_query,
-    run_deadline_expired,
+    run_stop_requested,
     share_partial_query_results,
     stop_requested_before_query,
 )
@@ -226,7 +226,7 @@ class TestDriversMixin:
         )
 
         for i in range(warm_up_iterations):
-            if run_deadline_expired():
+            if run_stop_requested():
                 break
             console.print(f"[cyan]--- Warm-up Run {i + 1}/{warm_up_iterations} ---[/cyan]")
             warmup_results = self._execute_all_queries(benchmark, connection, run_config, dialect_queries)
@@ -237,7 +237,7 @@ class TestDriversMixin:
                 all_measurement_results.append(result)
 
         for i in range(iterations):
-            if run_deadline_expired():
+            if run_stop_requested():
                 break
             console.print(f"[cyan]--- Measurement Run {i + 1}/{iterations} ---[/cyan]")
             iteration_results = self._execute_all_queries(benchmark, connection, run_config, dialect_queries)
@@ -950,7 +950,7 @@ class TestDriversMixin:
         }
         recorded: dict[tuple[str, int], Any] = {}
         for phase_key, phase_round in plan:
-            if run_deadline_expired():
+            if run_stop_requested():
                 break
             phase_label, method_name = labels[phase_key]
             phase_config = run_config

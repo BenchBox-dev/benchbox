@@ -24,6 +24,7 @@ from benchbox.core.validation import (
     DataValidationEngine,
     ValidationResult,
 )
+from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import UnknownSqlDialectError, apply_rewrites, resolve_sql_dialect
 from benchbox.utils.file_format import get_delimiter_for_file
 from benchbox.utils.printing import emit
@@ -928,10 +929,15 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             if warm_up:
                 self._run_power_test_warmup(connection, seed, dialect, verbose, logger)
 
-            test_start_time = time.time()
+            test_start_time = mono_time()
+            stopped_at_time_limit = False
 
             for query_id in range(1, 100):
                 if stop_requested_before_query(query_id):
+                    stopped_at_time_limit = True
+                    result["errors"].append(
+                        f"Power test stopped at the run time limit after {len(result['query_results'])} of 99 queries"
+                    )
                     break
                 if verbose:
                     logger.info(f"Executing Query {query_id}...")
@@ -940,12 +946,11 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
                     result["errors"].append(f"Query {query_id} failed: {query_result['error']}")
                 result["query_results"][query_id] = query_result
 
-            test_end_time = time.time()
-            result["total_time"] = test_end_time - test_start_time
+            result["total_time"] = elapsed_seconds(test_start_time)
             result["end_time"] = datetime.now().isoformat()
 
             successful_queries = sum(1 for qr in result["query_results"].values() if qr["status"] == "success")
-            result["success"] = successful_queries == len(result["query_results"])
+            result["success"] = not stopped_at_time_limit and successful_queries == len(result["query_results"])
 
             if result["success"] and result["total_time"] > 0:
                 result["power_at_size"] = (3600.0 * self.scale_factor) / result["total_time"]
@@ -997,9 +1002,7 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         verbose: bool,
         logger,
     ) -> dict[str, Any]:
-        import time
-
-        query_start = time.time()
+        query_start = mono_time()
         result: dict[str, Any] = {
             "query_id": query_id,
             "execution_time_seconds": 0.0,
@@ -1011,8 +1014,7 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             query_text = self.get_query(query_id, seed=seed, dialect=dialect)
             connection.execute(query_text)
             rows = connection.fetchall()
-            query_end = time.time()
-            execution_time = query_end - query_start
+            execution_time = elapsed_seconds(query_start)
             result.update(
                 {
                     "execution_time_seconds": execution_time,
@@ -1023,8 +1025,7 @@ class TPCDSBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             if verbose:
                 logger.info(f"Query {query_id} completed in {execution_time:.3f}s ({result['result_count']} rows)")
         except Exception as e:
-            query_end = time.time()
-            execution_time = query_end - query_start
+            execution_time = elapsed_seconds(query_start)
             error_msg = str(e)
             result.update({"execution_time_seconds": execution_time, "error": error_msg})
             if verbose:
