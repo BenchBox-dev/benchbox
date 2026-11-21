@@ -45012,7 +45012,7 @@
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "TPC-DI step 13: ETL scaffolding and Batch 1 ingestion on DuckDB"
+      "title": "TPC-DI step 14: ETL scaffolding and Batch 1 ingestion on DuckDB"
     },
     "tpcdi-fact-table-row-caps-20261111": {
       "claim": null,
