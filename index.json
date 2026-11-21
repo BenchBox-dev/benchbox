@@ -44858,11 +44858,11 @@
     "tpcdi-28-platform-bigquery-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-27-platform-lakesail-20261120"
+        "tpcdi-29-platform-snowflake-20261120"
       ],
       "priority": "medium",
       "status": "blocked",
-      "title": "TPC-DI step 28: BigQuery: ETL, visibility and full audit"
+      "title": "TPC-DI cloud step 3: BigQuery: ETL, visibility and full audit"
     },
     "tpcdi-29-platform-snowflake-20261120": {
       "claim": null,
