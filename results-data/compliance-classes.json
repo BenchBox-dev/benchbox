@@ -1,0 +1,2005 @@
+{
+  "schema_version": 1,
+  "classes": {
+    "amplab_sf001_clickhouse_local_sql_20260825_175441_e89a4de7.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf001_datafusion_sql_20260826_111320_d8167419.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf001_duckdb_sql_20260826_105810_c659ecff.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf001_pandas_df_20260826_214354_23f0647f.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf001_polars_df_20260826_204407_30de50e9.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf001_sqlite_sql_20260826_173848_2eff93c9.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf01_bigquery_sql_20260920_000055_35490af7.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf01_clickhouse_local_sql_20260826_113055_4d4d5bcd.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf01_databricks_sql_20261003_214137_2a7a0cdb.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf01_datafusion_sql_20260824_083211_fa4689a1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf01_duckdb_sql_20260826_105812_c6911989.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf01_pandas_df_20260826_214415_ce27d581.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf01_polars_df_20260826_204409_16bcf974.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf01_snowflake_sql_20260920_000319_c0a92e84.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf01_sqlite_sql_20260826_173851_fc7e8195.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf1_bigquery_sql_20260920_000619_033ba1cd.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf1_clickhouse_local_sql_20260824_090414_e3e40917.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf1_databricks_sql_20261003_214318_4d74e05e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf1_datafusion_sql_20260826_111328_9ec660c1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf1_duckdb_sql_20260824_081832_6c34d852.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf1_duckdb_sql_20260829_214117_d88b37e5.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf1_pandas_df_20260826_214740_b3ce3b8b.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf1_polars_df_20260826_204414_f27f59f4.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf1_snowflake_sql_20260920_000911_e1dbbcf8.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "amplab_sf1_sqlite_sql_20260826_173907_42b777c2.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "clickbench_sf01_bigquery_sql_20260919_185021_2730e66a.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "clickbench_sf01_databricks_sql_20261003_220608_70c9438e.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "clickbench_sf01_snowflake_sql_20260920_024607_616ff980.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "clickbench_sf10_bigquery_sql_20260919_211134_6c9c5414.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "clickbench_sf10_databricks_sql_20261003_231900_2437b487.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "clickbench_sf10_snowflake_sql_20260919_213657_c9c32b6f.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "clickbench_sf1_bigquery_sql_20260919_201018_dd899402.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "clickbench_sf1_clickhouse_local_sql_20260826_171228_3bd30206.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "clickbench_sf1_databricks_sql_20261003_230712_3a9e1d61.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "clickbench_sf1_datafusion_sql_20260826_095102_8014d1c9.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "clickbench_sf1_datafusion_sql_20261028_100525_093d2262.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "clickbench_sf1_duckdb_sql_20260826_092938_171d21fd.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "clickbench_sf1_duckdb_sql_20260829_214129_1d33783f.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "clickbench_sf1_pandas_df_20260826_214321_dc8a2b98.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "clickbench_sf1_polars_df_20260826_204353_032a315a.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "clickbench_sf1_snowflake_sql_20260920_025738_7ac21810.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "clickbench_sf1_sqlite_sql_20260824_101152_6eb94fe6.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "clickbench_sf1_sqlite_sql_20261026_123437_4bfe0dd1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf001_clickhouse_local_sql_20260824_090703_370b71e2.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf001_clickhouse_local_sql_20261028_140652_2594968f.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf001_datafusion_sql_20260826_112013_bb01b471.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf001_datafusion_sql_20261026_112837_95d5bdc8.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf001_duckdb_sql_20260826_093549_59592938.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf001_pandas_df_20260826_220156_691d70ce.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf001_polars_df_20260826_205651_e7002552.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf001_sqlite_sql_20260826_182548_16f67069.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf001_sqlite_sql_20261026_114744_3d030f43.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf01_bigquery_sql_20260919_215952_d90b07cc.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf01_clickhouse_local_sql_20260826_113300_975cb3a1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf01_clickhouse_local_sql_20261028_140704_da48d384.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf01_databricks_sql_20261003_232025_9d8852ef.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf01_datafusion_sql_20260824_083924_387c45c7.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf01_datafusion_sql_20261026_113201_001e082b.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf01_duckdb_sql_20260824_082354_21442642.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf01_pandas_df_20260826_220335_0e1c4ecf.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf01_polars_df_20260826_205654_48e58125.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf01_snowflake_sql_20260919_220303_a0040982.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf01_sqlite_sql_20260826_182615_3aadc9a8.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf01_sqlite_sql_20261026_114934_5f688a96.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf1_bigquery_sql_20260919_220733_e34b9d5d.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf1_clickhouse_local_sql_20260826_171552_4ce8154e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf1_clickhouse_local_sql_20261028_140731_2888c2d3.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf1_databricks_sql_20261003_232342_074127de.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf1_datafusion_sql_20260826_100331_e1266562.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf1_datafusion_sql_20261026_113447_c6832587.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf1_duckdb_sql_20260826_110251_51016466.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf1_polars_df_20260826_205707_d4bce0e2.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf1_snowflake_sql_20260919_221140_a33dc417.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf1_sqlite_sql_20260826_183039_5bd85b97.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "coffeeshop_sf1_sqlite_sql_20261026_123949_9953f53c.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf001_bigquery_sql_20260927_100530_5ec9efa0.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf001_clickhouse_local_sql_20260826_172319_c202ec05.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf001_clickhouse_local_sql_20261026_174057_3d2fa5e9.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf001_datafusion_sql_20260825_174206_a0f056fa.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf001_duckdb_sql_20260826_163426_e3781d0d.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf01_bigquery_sql_20260930_072535_d291326d.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf01_clickhouse_local_sql_20260826_172329_b4fd5612.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf01_clickhouse_local_sql_20261026_174254_ac9b732e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf01_databricks_sql_20260930_175402_7225e491.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf01_datafusion_sql_20260825_174216_497e5dd1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf01_duckdb_sql_20260826_163433_27308530.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf01_snowflake_sql_20260926_082823_c709896c.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf10_bigquery_sql_20261001_110327_d1328d05.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf10_databricks_sql_20261001_195104_c9a232ef.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf10_snowflake_sql_20260930_180120_db643832.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf1_bigquery_sql_20261001_091125_26fe04bf.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf1_databricks_sql_20260930_180331_e7b23724.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "datavault_sf1_snowflake_sql_20260925_224900_77db76a8.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "duckdb-version-matrix/clickbench_sf10_duckdb_v1_0_0_median.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "duckdb-version-matrix/clickbench_sf10_duckdb_v1_1_3_median.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "duckdb-version-matrix/clickbench_sf10_duckdb_v1_2_2_median.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "duckdb-version-matrix/clickbench_sf10_duckdb_v1_3_2_median.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "duckdb-version-matrix/clickbench_sf10_duckdb_v1_4_4_median.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "duckdb-version-matrix/clickbench_sf10_duckdb_v1_5_5_median.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "duckdb-version-matrix/clickbench_sf10_duckdb_v1_6_0_dev365_median.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "duckdb-version-matrix/ssb_sf10_duckdb_v1_0_0_median.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "duckdb-version-matrix/ssb_sf10_duckdb_v1_1_3_median.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "duckdb-version-matrix/ssb_sf10_duckdb_v1_2_2_median.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "duckdb-version-matrix/ssb_sf10_duckdb_v1_3_2_median.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "duckdb-version-matrix/ssb_sf10_duckdb_v1_4_4_median.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "duckdb-version-matrix/ssb_sf10_duckdb_v1_5_5_median.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "duckdb-version-matrix/ssb_sf10_duckdb_v1_6_0_dev365_median.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "duckdb-version-matrix/tpcds_sf10_duckdb_v1_0_0_median.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "duckdb-version-matrix/tpcds_sf10_duckdb_v1_1_3_median.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "duckdb-version-matrix/tpcds_sf10_duckdb_v1_2_2_median.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "duckdb-version-matrix/tpcds_sf10_duckdb_v1_3_2_median.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "duckdb-version-matrix/tpcds_sf10_duckdb_v1_4_4_median.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "duckdb-version-matrix/tpcds_sf10_duckdb_v1_5_5_median.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "duckdb-version-matrix/tpcds_sf10_duckdb_v1_6_0_dev365_median.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "duckdb-version-matrix/tpch_sf10_duckdb_v1_0_0_median.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "duckdb-version-matrix/tpch_sf10_duckdb_v1_1_3_median.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "duckdb-version-matrix/tpch_sf10_duckdb_v1_2_2_median.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "duckdb-version-matrix/tpch_sf10_duckdb_v1_3_2_median.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "duckdb-version-matrix/tpch_sf10_duckdb_v1_4_4_median.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "duckdb-version-matrix/tpch_sf10_duckdb_v1_5_5_median.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "duckdb-version-matrix/tpch_sf10_duckdb_v1_6_0_dev365_median.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf001_clickhouse_local_sql_20260826_172222_5f3f4c89.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf001_clickhouse_local_sql_20261026_174111_c1d5ea31.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf001_datafusion_sql_20260826_170231_7f81f4d8.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf001_duckdb_sql_20260826_163352_55f0b3f1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf01_bigquery_sql_20260920_115330_5dd56bc3.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf01_clickhouse_local_sql_20260826_172228_49be64a3.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf01_clickhouse_local_sql_20261026_174436_7ac18c39.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf01_databricks_sql_20261001_102859_b0afbbe8.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf01_datafusion_sql_20260826_170238_db37a951.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf01_duckdb_sql_20260826_163357_76fda453.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf01_snowflake_sql_20261001_102703_bb18d2c8.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf10_bigquery_sql_20260927_150859_7146e9c3.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf10_databricks_sql_20261001_151316_6644c94b.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf10_snowflake_sql_20261001_113621_e22fa5a3.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf1_bigquery_sql_20260927_123112_15864c7e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf1_clickhouse_local_sql_20260826_172315_1fe46258.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf1_clickhouse_local_sql_20261026_175001_3b8b6f57.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf1_databricks_sql_20261001_143909_6326e239.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf1_datafusion_sql_20260826_170316_28183319.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf1_duckdb_sql_20260826_163423_fd3b42c4.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "flightdata_sf1_snowflake_sql_20261001_111501_3a83168a.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf001_clickhouse_local_sql_20260826_113044_c45bba08.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf001_datafusion_sql_20260826_095104_070a3162.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf001_duckdb_sql_20260826_092940_c1acd649.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf001_pandas_df_20260826_214323_e4026556.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf001_polars_df_20260824_080453_ec048a58.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf001_sqlite_sql_20260824_101155_75c9d5df.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf01_bigquery_sql_20260919_221927_c38c03f2.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf01_clickhouse_local_sql_20260826_113046_9dcc57ae.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf01_databricks_sql_20261003_232445_0768c815.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf01_datafusion_sql_20260826_111303_14b4960d.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf01_duckdb_sql_20260826_105804_b1354257.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf01_pandas_df_20260826_214326_b8cb56ef.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf01_polars_df_20260826_204357_ef349725.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf01_snowflake_sql_20260919_222222_58b4e7b0.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf01_sqlite_sql_20260826_173507_2f578a88.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf1_bigquery_sql_20260919_222849_eae9a72b.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf1_clickhouse_local_sql_20260825_175439_252ba7d7.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf1_databricks_sql_20261003_232810_1c91848b.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf1_datafusion_sql_20260826_164731_03d5179d.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf1_duckdb_sql_20260826_162604_723ed963.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf1_pandas_df_20260826_214350_52eabdfd.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf1_polars_df_20260826_204405_5ff08b52.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf1_snowflake_sql_20260919_223457_01856170.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "h2odb_sf1_sqlite_sql_20260826_173846_911ddfd1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "joinorder_sf1_bigquery_sql_20260920_004131_ebcd21b8.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "joinorder_sf1_clickhouse_local_sql_20260825_175643_45832acd.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "joinorder_sf1_databricks_sql_20261003_220424_a39ae9d6.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "joinorder_sf1_datafusion_sql_20260826_165807_7e4fefa1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "joinorder_sf1_duckdb_sql_20260826_093546_ba71254a.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "joinorder_sf1_duckdb_sql_20260829_214636_56cf7846.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "joinorder_sf1_polars_df_20260826_205647_3a63a4cb.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "joinorder_sf1_snowflake_sql_20260920_012237_b41d3b54.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "joinorder_sf1_sqlite_sql_20260826_182543_788c3eb2.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "metadata_primitives_sf1_bigquery_sql_20260929_204456_e435b418.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "metadata_primitives_sf1_databricks_sql_20261001_191204_8daddf3b.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "metadata_primitives_sf1_snowflake_sql_20261001_111119_1ee8b07d.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf001_clickhouse_local_sql_20260826_172208_fd44405e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf001_clickhouse_local_sql_20261026_174117_ce89d00e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf001_datafusion_sql_20260826_170209_a82f9269.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf001_duckdb_sql_20260826_163341_b51bee79.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf01_bigquery_sql_20260925_221622_67c2e5e9.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf01_clickhouse_local_sql_20260826_172211_21bbf078.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf01_clickhouse_local_sql_20261026_174547_46bfd3fb.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf01_databricks_sql_20261001_101301_84fd0b4c.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf01_datafusion_sql_20260826_170213_7c79a921.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf01_duckdb_sql_20260826_163343_a9835026.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf01_snowflake_sql_20261001_101251_06190f1d.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf10_bigquery_sql_20260927_120407_fec02550.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf10_databricks_sql_20261001_102629_e82aa7d2.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf10_snowflake_sql_20261001_102124_4c662b94.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf1_bigquery_sql_20260923_091616_1f78ef99.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf1_clickhouse_local_sql_20260826_172218_45e02227.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf1_clickhouse_local_sql_20261026_175023_4d422b5f.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf1_databricks_sql_20261001_101715_c8b8cad2.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf1_datafusion_sql_20260826_170227_ccd26c8d.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf1_duckdb_sql_20260826_163349_6c37cd51.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "nyctaxi_sf1_snowflake_sql_20260925_092203_0cd1a463.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf001_bigquery_sql_20260930_081905_1a102885.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf001_clickhouse_local_sql_20260826_113104_3465d4f3.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf001_clickhouse_local_sql_20261026_174133_9f79ff77.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf001_clickhouse_local_sql_20261112_160015_8c2401a3.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf001_databricks_sql_20261001_152239_14b1d8d2.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf001_datafusion_sql_20260825_173248_cb4cfcba.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf001_datafusion_sql_20261028_155934_ac8474d7.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf001_duckdb_sql_20260825_172118_c9cb14d4.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf001_pandas_df_20260826_214757_e401da5d.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf001_polars_df_20260826_204417_398621ca.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf001_snowflake_sql_20261001_103832_16df8896.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf001_sqlite_sql_20260826_115059_7fa6915c.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf001_sqlite_sql_20261028_092829_fc04d558.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf01_bigquery_sql_20260929_184751_5bfa3d9b.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf01_clickhouse_local_sql_20260825_175504_c1aeca88.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf01_clickhouse_local_sql_20261026_174637_3f5c94e9.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf01_clickhouse_local_sql_20261112_160115_f3180de4.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf01_databricks_sql_20261001_143234_f068492b.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf01_datafusion_sql_20260826_095258_1cdd70ad.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf01_datafusion_sql_20261028_155941_a45d3e71.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf01_duckdb_sql_20260826_093016_78dfffa8.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf01_pandas_df_20260826_215034_c4051838.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf01_polars_df_20260826_204428_35d580c6.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf01_snowflake_sql_20261001_105057_79bd90a5.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf01_sqlite_sql_20260826_115513_688f04bb.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "read_primitives_sf01_sqlite_sql_20261028_092953_8edf1667.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb/datafusion/sf0.01/ssb_sf001_datafusion_sql_20260901_122859_98002c02.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb/datafusion/sf0.01/ssb_sf001_datafusion_sql_20261001_142147_85c82a85.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb/datafusion/sf0.1/ssb_sf01_datafusion_sql_20260901_122911_e8cf30ce.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb/datafusion/sf0.1/ssb_sf01_datafusion_sql_20261001_142101_770fd91a.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb/duckdb/sf0.01/ssb_sf001_duckdb_sql_20260901_122903_67933689.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb/duckdb/sf0.01/ssb_sf001_duckdb_sql_20261001_142059_e151da9c.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb/duckdb/sf0.1/ssb_sf01_duckdb_sql_20260901_122910_af7bd398.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb/duckdb/sf0.1/ssb_sf01_duckdb_sql_20261001_142059_8f6e0154.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb/polars-df/sf0.01/ssb_sf001_polars_df_20260901_122901_fbedf36d.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb/polars-df/sf0.01/ssb_sf001_polars_df_20261001_142048_043bda0b.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb/polars-df/sf0.1/ssb_sf01_polars_df_20260901_122915_6a5edb5a.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb/polars-df/sf0.1/ssb_sf01_polars_df_20261001_142057_7df99f74.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf001_clickhouse_local_sql_20260825_175415_374cef00.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf001_datafusion_sql_20260826_111238_82531925.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf001_duckdb_sql_20260825_172048_38133bb4.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf001_pandas_df_20260826_213835_c9150a2d.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf001_polars_df_20260824_080435_f630b76f.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf001_sqlite_sql_20260825_192615_dbc2a34e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf01_bigquery_sql_20260919_224527_9cb04d2f.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf01_clickhouse_local_sql_20260826_171214_5f654805.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf01_databricks_sql_20261003_212600_d10c5be1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf01_datafusion_sql_20260826_164648_81c32dbc.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf01_duckdb_sql_20260826_092930_fdc9380c.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf01_pandas_df_20260826_213846_b71ebc6d.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf01_polars_df_20260826_204340_362af719.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf01_snowflake_sql_20260919_224858_fb7ff357.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf01_sqlite_sql_20260825_192631_9f5ef60f.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf10_bigquery_sql_20260919_231739_a394ecad.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf10_databricks_sql_20261003_214042_3ee6078e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf10_snowflake_sql_20260919_233632_2df658e9.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf1_bigquery_sql_20260919_225336_2580eecf.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf1_clickhouse_local_sql_20260825_175425_7134f926.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf1_databricks_sql_20261003_212847_179f2636.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf1_datafusion_sql_20260826_111249_677be683.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf1_duckdb_sql_20260826_105755_0c58dd8e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf1_duckdb_sql_20260829_213516_5740ae6a.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf1_pandas_df_20260826_214148_96be5114.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf1_polars_df_20260826_204347_d84b9d93.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf1_snowflake_sql_20260919_225814_ec4b3865.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "ssb_sf1_sqlite_sql_20260826_173350_a6b8db82.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi/clickhouse-local/sf0.01/tpcdi_sf001_clickhouse_local_sql_20261117_203916_d5f90a36.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi/clickhouse-local/sf0.1/tpcdi_sf01_clickhouse_local_sql_20261117_203745_ffa60778.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi/clickhouse-local/sf1.0/tpcdi_sf1_clickhouse_local_sql_20261117_204913_e679167e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi/datafusion/sf0.01/tpcdi_sf001_datafusion_sql_20261117_203232_566468b4.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi/datafusion/sf0.1/tpcdi_sf01_datafusion_sql_20261117_211846_8c2098bb.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi/datafusion/sf1.0/tpcdi_sf1_datafusion_sql_20261117_205257_04d57c98.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi/duckdb/sf0.01/tpcdi_sf001_duckdb_sql_20261117_205606_057484ea.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi/duckdb/sf0.1/tpcdi_sf01_duckdb_sql_20261117_203521_a2815a70.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi/duckdb/sf1.0/tpcdi_sf1_duckdb_sql_20261117_211907_d6da4d14.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf001_clickhouse_local_sql_20260826_171147_01f31a9c.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf001_clickhouse_local_sql_20261028_140802_3c9d9330.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf001_datafusion_sql_20260826_164627_b9971b30.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf001_datafusion_sql_20261028_100544_328320ea.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf001_duckdb_sql_20260826_162441_115bd3b6.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf01_bigquery_sql_20260920_062227_ca696883.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf01_clickhouse_local_sql_20260826_171153_4d6e3213.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf01_clickhouse_local_sql_20261028_140831_61e36e9c.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf01_databricks_sql_20261003_201241_01329d67.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf01_datafusion_sql_20260826_164631_51f0bade.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf01_datafusion_sql_20261028_100554_fb67aa79.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf01_duckdb_sql_20260826_162507_1769a68f.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf01_snowflake_sql_20261003_134247_5dd95d51.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf10_bigquery_sql_20260920_070853_5d042935.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf10_databricks_sql_20261003_202752_92040a00.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf10_snowflake_sql_20261003_135304_9ec08998.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf1_bigquery_sql_20260920_064220_bc5850d1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf1_clickhouse_local_sql_20260826_171209_b6f8b467.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf1_clickhouse_local_sql_20261028_140913_30a5c9d1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf1_databricks_sql_20261003_201821_dbfb95fb.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf1_datafusion_sql_20260826_164643_85837db4.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf1_datafusion_sql_20261028_100615_ffe633e9.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf1_duckdb_sql_20260826_162542_1eb31887.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcdi_sf1_snowflake_sql_20261003_134837_b45dfad3.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds/clickhouse-local/sf1/tpcds_sf1_clickhouse_local_sql_20261001_142742_4eb148cf.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpcds/datafusion/sf1/tpcds_sf1_datafusion_sql_20260901_123155_6bed4cfc.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpcds/datafusion/sf1/tpcds_sf1_datafusion_sql_20261001_142302_754e0bfc.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpcds/duckdb/sf1/tpcds_sf1_duckdb_sql_20260901_123050_2e3c74db.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpcds/duckdb/sf1/tpcds_sf1_duckdb_sql_20261001_142219_17603c19.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf001_datafusion_sql_20261111_110035_78695483.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf001_doris_sql_20261111_110147_93ab6464.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf001_duckdb_sql_20261111_105936_37e7cc9b.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf001_lakesail_sql_20261111_110322_a1896614.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf01_datafusion_sql_20261111_110045_4a0d3139.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf01_doris_sql_20261111_110240_9315b4c2.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf01_duckdb_sql_20261111_110025_688df8f3.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf1_bigquery_sql_20260923_152357_480ffcea.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf1_clickhouse_local_sql_20260826_171140_836c988b.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf1_clickhouse_local_sql_20261026_132451_e8646728.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf1_databricks_sql_20261001_192224_d11b3297.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf1_datafusion_sql_20260826_164619_4e6d3fff.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf1_datafusion_sql_20261026_091037_b6577a1e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf1_duckdb_sql_20260826_162433_2a6932b1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf1_duckdb_sql_20261026_090851_b4cd9b9e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf1_snowflake_sql_20261001_173028_d35974f6.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_sf01_bigquery_sql_20260920_015238_a9f40f37.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpcds_sf01_databricks_sql_20261003_204005_294ed3a2.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpcds_sf01_snowflake_sql_20261003_140200_f5fd99c7.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpcds_sf10_bigquery_sql_20260920_050846_0fbf6500.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpcds_sf10_databricks_sql_20261003_212424_15e05c0c.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpcds_sf10_datafusion_sql_20260823_225543_15b41887.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpcds_sf10_datafusion_sql_20261026_114739_9b8837db.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpcds_sf10_duckdb_sql_20260823_173729_11fd39df.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpcds_sf10_snowflake_sql_20261003_143203_b8820a1d.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpcds_sf10_spark_sql_20260823_233540_e9faf36f.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpcds_sf1_bigquery_sql_20260920_034529_dab15f22.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpcds_sf1_clickhouse_local_sql_20260826_112830_c250741b.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpcds_sf1_clickhouse_local_sql_20261026_175530_4b9e5193.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpcds_sf1_databricks_sql_20261003_205449_cf4f01d0.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpcds_sf1_datafusion_sql_20260823_101453_f8619d78.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpcds_sf1_datafusion_sql_20260826_094401_5207d224.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpcds_sf1_datafusion_sql_20261026_113558_2fce59f7.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpcds_sf1_duckdb_sql_20260823_101350_f8fa74b3.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpcds_sf1_duckdb_sql_20260825_171849_be435b62.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpcds_sf1_pandas_df_20260826_213757_708c3f7a.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpcds_sf1_polars_df_20260826_204334_bda76dd1.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpcds_sf1_snowflake_sql_20261003_141435_27bd9f9c.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpcds_sf1_spark_sql_20260823_102343_1d9231a1.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpcds_sf1_spark_sql_20260826_193418_5bc78a3d.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpcds_sf1_sqlite_sql_20260824_083944_c6745a86.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpch/clickhouse-local/sf1.0/tpch_sf1_clickhouse_local_sql_20261001_142203_f22a0442.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpch/clickhouse-local/sf1.0/tpch_sf1_clickhouse_local_sql_20261013_011942_678507a6.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpch/datafusion/sf0.01/tpch_sf001_datafusion_sql_20260901_122904_3e852d75.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch/datafusion/sf0.01/tpch_sf001_datafusion_sql_20261001_142138_cfca5d59.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch/datafusion/sf0.01/tpch_sf001_datafusion_sql_20261013_011859_c5cbcc9f.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch/datafusion/sf0.1/tpch_sf01_datafusion_sql_20260901_122911_dcb84b62.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch/datafusion/sf0.1/tpch_sf01_datafusion_sql_20261001_142058_a41c5d64.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch/datafusion/sf0.1/tpch_sf01_datafusion_sql_20261013_011903_1965c33f.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch/duckdb/sf0.01/tpch_sf001_duckdb_sql_20260901_122921_a51203c2.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch/duckdb/sf0.01/tpch_sf001_duckdb_sql_20261001_142056_24c85934.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch/duckdb/sf0.01/tpch_sf001_duckdb_sql_20261013_011855_80365293.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch/duckdb/sf0.1/tpch_sf01_duckdb_sql_20260901_122912_b62c06e1.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch/duckdb/sf0.1/tpch_sf01_duckdb_sql_20261001_142059_bf079c59.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch/duckdb/sf0.1/tpch_sf01_duckdb_sql_20261013_011902_d286b8f0.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch/duckdb/sf1.0/tpch_sf1_duckdb_sql_20260901_122950_dad309b3.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch/duckdb/sf1.0/tpch_sf1_duckdb_sql_20261001_142148_a33c5b2c.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpch/duckdb/sf1.0/tpch_sf1_duckdb_sql_20261013_011919_e122b635.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpch/polars-df/sf0.01/tpch_sf001_polars_df_20260901_122908_f4c9a3b2.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch/polars-df/sf0.1/tpch_sf01_polars_df_20260901_122911_2244e405.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf001_cedardb_sql_20260825_095330_cf0d9e4d.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf001_clickhouse_local_sql_20260826_100627_7ae478d5.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf001_clickhouse_local_sql_20261026_174147_71dc6c6c.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf001_clickhouse_server_sql_20260825_092429_4cd12ac0.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf001_datafusion_sql_20260826_110608_e8a7d048.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf001_datafusion_sql_20261026_123955_8b8f54de.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf001_duckdb_sql_20260826_105325_8a57a5a8.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf001_lakesail_sql_20260825_092257_ede75588.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf001_pandas_df_20260826_210019_8bde2222.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf001_polars_df_20260824_074104_51ccc406.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf001_pyspark_df_20260825_184252_42abb28d.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf001_spark_sql_20260826_191913_2fd3b12b.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf001_sqlite_sql_20260825_180256_4eddc10f.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf001_sqlite_sql_20261026_155739_14b260b9.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf001_starrocks_sql_20260825_103226_5cefdc41.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf01_bigquery_sql_20261003_114214_37cecbba.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf01_clickhouse_local_sql_20260826_170326_1d1e2b2e.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf01_clickhouse_local_sql_20261026_174709_25806a27.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf01_databricks_sql_20261003_114031_fbaeb62c.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf01_datafusion_sql_20260824_082755_adcfb35e.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf01_datafusion_sql_20261026_124230_1bf2c529.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf01_duckdb_sql_20260826_092426_786dcba6.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf01_duckdb_sql_20261111_213030_d24969ea.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf01_pandas_df_20260826_210239_77598616.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf01_polars_df_20260826_204211_f659fcbf.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf01_polars_df_20261111_154204_3d7d3e84.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf01_snowflake_sql_20261003_113557_241439cc.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf01_spark_sql_20260826_192036_6f8737a4.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf01_sqlite_sql_20260826_113913_3bf2ac41.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf01_sqlite_sql_20261026_155723_93a0b6f9.json": {
+      "compliance_class": "unofficial_subscale",
+      "ranking_excluded": false
+    },
+    "tpch_sf10_bigquery_sql_20261003_120614_73b816d9.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpch_sf10_databricks_sql_20261003_120202_e83ea509.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpch_sf10_snowflake_sql_20261003_114454_2454b319.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpch_sf1_bigquery_sql_20261003_114700_6e0ec489.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpch_sf1_clickhouse_local_sql_20260825_174747_a4d8447f.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_sf1_clickhouse_local_sql_20261026_175754_f2bafd17.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpch_sf1_databricks_sql_20261003_114841_ab447f73.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpch_sf1_datafusion_sql_20260825_172912_1d62bd4f.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_sf1_datafusion_sql_20261026_113613_5ef63e23.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpch_sf1_doris_sql_20261007_172956_5e453c54.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpch_sf1_duckdb_sql_20260826_162117_67e59fb6.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_sf1_duckdb_sql_20260828_213108_3bd92bcc.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_sf1_duckdb_sql_20260829_211318_8b8d7c16.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_sf1_duckdb_sql_20261007_155030_c3a60388.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpch_sf1_ducklake_sql_20260828_091755_137bc87e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_sf1_polars_df_20260824_193005_54a9e53f.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_sf1_polars_df_20260825_184959_8ef4d6e2.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_sf1_pyspark_df_20260825_185531_14cd3451.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_sf1_snowflake_sql_20261003_113923_e545c1c5.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpch_sf1_spark_sql_20260826_192249_7478c401.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_sf1_spark_sql_20261007_152057_cc60a6b0.json": {
+      "compliance_class": "official",
+      "ranking_excluded": false
+    },
+    "tpch_sf1_sqlite_sql_20260825_180529_b9fdd7ba.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_sf1_sqlite_sql_20261026_124224_113a3ebe.json": {
+      "compliance_class": "unofficial_nonstandard",
+      "ranking_excluded": true
+    },
+    "tpch_skew_sf001_clickhouse_local_sql_20260824_091113_ff38aebf.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf001_clickhouse_local_sql_20261026_174152_3b4c54c2.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf001_datafusion_sql_20260824_084108_70eb699a.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf001_datafusion_sql_20261026_112859_e1a0a0b3.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf001_duckdb_sql_20260824_082549_fea46d50.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf001_polars_df_20260824_080528_4e7cd354.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf001_sqlite_sql_20260826_191236_5087d732.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf001_sqlite_sql_20261026_114905_d19931e6.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf01_bigquery_sql_20260925_224018_ec5b9708.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf01_clickhouse_local_sql_20260826_172139_d17b65c3.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf01_clickhouse_local_sql_20261026_174716_23306369.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf01_databricks_sql_20261001_103252_6c8936f3.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf01_datafusion_sql_20260825_174044_16785577.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf01_datafusion_sql_20261026_113343_b6e365e8.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf01_duckdb_sql_20260824_082553_b8859d6b.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf01_polars_df_20260826_205813_b3ba4437.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf01_snowflake_sql_20260925_220834_4a9526c3.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf01_sqlite_sql_20260826_191257_0792588d.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf01_sqlite_sql_20261026_123334_432838b7.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf10_bigquery_sql_20260927_104923_b3fc1da6.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf10_databricks_sql_20261001_104602_9f1d9a8b.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf10_snowflake_sql_20260929_124322_e9d6506c.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf1_bigquery_sql_20260925_225451_d1e9d2fd.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf1_clickhouse_local_sql_20260825_180038_276e9fdd.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf1_clickhouse_local_sql_20261026_175845_bb56ec24.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf1_databricks_sql_20261001_103719_61f8cbae.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf1_datafusion_sql_20260826_112159_2b46b000.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf1_datafusion_sql_20261026_113627_5441c82c.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf1_duckdb_sql_20260826_163325_957ad4d2.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf1_polars_df_20260826_205821_acce9704.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf1_snowflake_sql_20260925_221217_97d77ab8.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf1_sqlite_sql_20260826_191543_bf2bedb1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpch_skew_sf1_sqlite_sql_20261026_124453_dbf8bb59.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf001_clickhouse_local_sql_20260826_171608_ce266327.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf001_clickhouse_local_sql_20261026_174215_5de9fab8.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf001_datafusion_sql_20260826_165844_721d2f5e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf001_datafusion_sql_20261026_112944_70d6c9e1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf001_duckdb_sql_20260826_163147_d96baca2.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf01_bigquery_sql_20260929_141245_143d6f5e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf01_clickhouse_local_sql_20260826_171641_4d088e3c.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf01_clickhouse_local_sql_20261026_174755_d542bf14.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf01_databricks_sql_20261001_073813_8d9b08b5.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf01_datafusion_sql_20260826_165901_6b5bd124.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf01_datafusion_sql_20261026_113414_b7c3e0be.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf01_duckdb_sql_20260826_163204_98d64133.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf01_snowflake_sql_20260930_194734_9da55014.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf10_bigquery_sql_20261001_190554_ad5f29c8.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf10_databricks_sql_20261001_084206_6d92a08e.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf10_snowflake_sql_20260930_193124_48bb07c7.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf1_bigquery_sql_20261001_113358_53fc08cb.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf1_clickhouse_local_sql_20260826_172129_4f695fe1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf1_clickhouse_local_sql_20261026_181302_34b1129c.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf1_databricks_sql_20261001_075954_ffaa37ca.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf1_datafusion_sql_20260825_174039_28733b91.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf1_datafusion_sql_20261026_113807_7c126887.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf1_duckdb_sql_20260826_163310_7d7aeb6f.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpchavoc_sf1_snowflake_sql_20260930_200344_2761bdbc.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "transaction_primitives_sf001_bigquery_sql_20261001_205304_209908db.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "transaction_primitives_sf001_databricks_sql_20261001_165710_25cbf2c1.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "transaction_primitives_sf001_snowflake_sql_20261001_084848_c3e017eb.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "transaction_primitives_sf01_bigquery_sql_20261001_151409_dc7eeac0.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "transaction_primitives_sf01_databricks_sql_20261001_175853_773a7d29.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "transaction_primitives_sf01_snowflake_sql_20261001_090534_90566a67.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "transaction_primitives_sf1_bigquery_sql_20261001_154316_52129540.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "transaction_primitives_sf1_databricks_sql_20261001_190409_576d4969.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "transaction_primitives_sf1_snowflake_sql_20261001_092311_b4c0d6da.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tsbs_devops_sf01_bigquery_sql_20260929_192405_78305c52.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tsbs_devops_sf01_databricks_sql_20260930_173454_741f616c.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tsbs_devops_sf01_snowflake_sql_20260929_192425_ba04d0d6.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tsbs_devops_sf10_bigquery_sql_20261001_085654_76754d66.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tsbs_devops_sf10_databricks_sql_20260930_174638_397e236a.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tsbs_devops_sf10_snowflake_sql_20260929_224733_a340c633.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tsbs_devops_sf1_bigquery_sql_20260929_194803_b2f76dae.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tsbs_devops_sf1_databricks_sql_20260930_173958_176e523b.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tsbs_devops_sf1_snowflake_sql_20260929_192925_18bb194f.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "write_primitives_sf001_bigquery_sql_20261001_202950_88736ac2.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "write_primitives_sf001_databricks_sql_20261001_164226_94cc487b.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "write_primitives_sf001_snowflake_sql_20260930_212005_0fab9883.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "write_primitives_sf01_bigquery_sql_20261001_131148_b2d946ee.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "write_primitives_sf01_databricks_sql_20261001_174439_9055e7de.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "write_primitives_sf01_snowflake_sql_20260930_222159_5d085279.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "write_primitives_sf1_bigquery_sql_20261001_144917_922446ec.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "write_primitives_sf1_databricks_sql_20261001_184834_88ba12ba.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "write_primitives_sf1_snowflake_sql_20261001_083039_3c313d6f.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    }
+  }
+}
