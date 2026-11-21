@@ -18,6 +18,7 @@ from benchbox.core.results.timer_scope import (
     outside_query_timer,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.run_deadline import HARD_STOP_EXPORT_MARGIN_SECONDS, HARD_STOP_GRACE_SECONDS
 
 if TYPE_CHECKING:
     pass
@@ -49,6 +50,9 @@ except ImportError:
     BOTO3_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
+
+
+EMR_SERVERLESS_TERMINAL_STATES = frozenset({"SUCCESS", "FAILED", "CANCELLED"})
 
 
 class EMRServerlessJobState:
@@ -520,21 +524,51 @@ spark.stop()
                 "error_type": type(e).__name__,
             }
 
+    def _wait_for_runs_to_end(self, client: Any, job_run_ids: list[str], budget_seconds: float) -> None:
+        start_time = mono_time()
+        pending = list(job_run_ids)
+        while pending:
+            pending = [
+                job_run_id
+                for job_run_id in pending
+                if client.get_job_run(applicationId=self.application_id, jobRunId=job_run_id)["jobRun"]["state"]
+                not in EMR_SERVERLESS_TERMINAL_STATES
+            ]
+            if not pending:
+                return
+            if elapsed_seconds(start_time) >= budget_seconds:
+                raise RuntimeError(
+                    f"EMR Serverless job runs {', '.join(pending)} had not ended after {budget_seconds:g} seconds"
+                )
+            time.sleep(1)
+
     def cancel_remote_work(self) -> None:
         client = self._get_emr_serverless_client()
-        failure: Exception | None = None
+        budget_seconds = HARD_STOP_GRACE_SECONDS - HARD_STOP_EXPORT_MARGIN_SECONDS
+        start_time = mono_time()
+        job_run_ids = self._started_work.keys()
+        failures: list[str] = []
         try:
             self._started_work.cancel_all(
                 "EMR Serverless",
                 lambda job_run_id, _: client.cancel_job_run(applicationId=self.application_id, jobRunId=job_run_id),
             )
         except Exception as exc:
-            failure = exc
+            failures.append(str(exc))
+        cancelled = [job_run_id for job_run_id in job_run_ids if job_run_id not in self._started_work.keys()]
+        if cancelled:
+            try:
+                self._wait_for_runs_to_end(client, cancelled, max(0.0, budget_seconds - elapsed_seconds(start_time)))
+            except Exception as exc:
+                failures.append(str(exc))
         if self._application_created_by_us and self.application_id:
-            client.stop_application(applicationId=self.application_id)
-            self._application_created_by_us = False
-        if failure is not None:
-            raise failure
+            try:
+                client.stop_application(applicationId=self.application_id)
+                self._application_created_by_us = False
+            except Exception as exc:
+                failures.append(f"EMR Serverless application stop failed: {type(exc).__name__}: {exc}")
+        if failures:
+            raise RuntimeError("; ".join(failures))
 
     def close(self) -> None:
         if self._application_created_by_us and self.application_id:

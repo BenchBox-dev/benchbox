@@ -523,12 +523,15 @@ job.commit()
 
         return results
 
+    def _stop_job_run(self, client: Any, run_id: str) -> None:
+        response = client.batch_stop_job_run(JobName=self._job_name, JobRunIds=[run_id])
+        errors = [error for error in response.get("Errors") or [] if error.get("JobRunId") in (None, run_id)]
+        if errors:
+            raise RuntimeError(f"BatchStopJobRun refused to stop {run_id}: {errors}")
+
     def cancel_remote_work(self) -> None:
         client = self._get_glue_client()
-        self._started_work.cancel_all(
-            "AWS Glue",
-            lambda run_id, _: client.batch_stop_job_run(JobName=self._job_name, JobRunIds=[run_id]),
-        )
+        self._started_work.cancel_all("AWS Glue", lambda run_id, _: self._stop_job_run(client, run_id))
 
     def close(self) -> None:
         logger.info(f"AWS Glue adapter closed. Total DPU-hours: {self._total_dpu_hours:.2f}")

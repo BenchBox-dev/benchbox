@@ -110,6 +110,29 @@ def test_onehouse_keeps_cancelling_after_one_cancel_fails_and_names_the_job() ->
     assert ("POST", "/jobs/job-2/cancel") in requests_made
 
 
+def test_onehouse_reports_a_failed_cluster_terminate_and_keeps_the_id_so_close_can_retry() -> None:
+    client = _onehouse_client()
+    requests_made = _stub_onehouse(client)
+    client.provision_cluster()
+    plain = client._request
+
+    def request(method: str, path: str, data: Any = None) -> dict[str, Any]:
+        if method == "DELETE":
+            raise RuntimeError("API error: 503")
+        return plain(method, path, data)
+
+    client._request = request
+
+    with pytest.raises(RuntimeError, match="cluster cluster-1: API error: 503"):
+        client.cancel_started_work()
+
+    assert client._cluster_id == "cluster-1"
+    client._request = plain
+    client.close()
+    assert ("DELETE", "/clusters/cluster-1") in requests_made
+    assert client._cluster_id is None
+
+
 def test_quanton_hook_cancels_the_running_query_job_and_not_the_finished_one() -> None:
     with patch("benchbox.platforms.onehouse.quanton_adapter.CloudSparkStaging") as staging:
         staging.from_uri.return_value = MagicMock()
@@ -271,6 +294,46 @@ def test_emr_serverless_still_stops_its_application_when_a_job_cancel_fails(emr_
     client.stop_application.assert_called_once()
 
 
+def test_emr_serverless_waits_for_cancelled_runs_to_end_before_stopping_the_application(emr_adapter) -> None:
+    client = _emr_client(emr_adapter)
+    emr_adapter._submit_job_run("SELECT 1")
+    emr_adapter._application_created_by_us = True
+    states = iter(["CANCELLING", "CANCELLING", "CANCELLED"])
+    calls: list[str] = []
+
+    def poll(**_kwargs: Any) -> dict[str, Any]:
+        calls.append("poll")
+        return {"jobRun": {"state": next(states)}}
+
+    client.get_job_run.side_effect = poll
+    client.cancel_job_run.side_effect = lambda **_kwargs: calls.append("cancel")
+    client.stop_application.side_effect = lambda **_kwargs: calls.append("stop")
+
+    with patch("benchbox.platforms.aws.emr_serverless_adapter.time.sleep"):
+        emr_adapter.cancel_remote_work()
+
+    assert calls == ["cancel", "poll", "poll", "poll", "stop"]
+
+
+def test_emr_serverless_reports_runs_that_never_end_and_a_failed_application_stop(emr_adapter) -> None:
+    client = _emr_client(emr_adapter)
+    emr_adapter._submit_job_run("SELECT 1")
+    emr_adapter._application_created_by_us = True
+    client.get_job_run.return_value = {"jobRun": {"state": "CANCELLING"}}
+    client.stop_application.side_effect = RuntimeError("application has running jobs")
+
+    with (
+        patch("benchbox.platforms.aws.emr_serverless_adapter.HARD_STOP_GRACE_SECONDS", 0.0),
+        patch("benchbox.platforms.aws.emr_serverless_adapter.time.sleep"),
+        pytest.raises(RuntimeError) as excinfo,
+    ):
+        emr_adapter.cancel_remote_work()
+
+    assert "run-1 had not ended" in str(excinfo.value)
+    assert "application stop failed" in str(excinfo.value)
+    assert emr_adapter._application_created_by_us is True
+
+
 @pytest.fixture
 def glue_adapter():
     with (
@@ -301,6 +364,23 @@ def test_glue_stops_the_job_runs_in_flight_and_not_a_finished_one(glue_adapter) 
     glue_adapter.cancel_remote_work()
 
     client.batch_stop_job_run.assert_called_once_with(JobName="benchbox-job", JobRunIds=["jr-2"])
+
+
+def test_glue_reports_a_run_that_batch_stop_job_run_could_not_stop_and_keeps_tracking_it(glue_adapter) -> None:
+    client = MagicMock()
+    client.start_job_run.return_value = {"JobRunId": "jr-1"}
+    client.batch_stop_job_run.return_value = {
+        "SuccessfulSubmissions": [],
+        "Errors": [{"JobRunId": "jr-1", "ErrorDetail": {"ErrorCode": "InternalServiceException"}}],
+    }
+    glue_adapter._glue_client = client
+    glue_adapter._job_name = "benchbox-job"
+    glue_adapter._submit_job_run("SELECT 1")
+
+    with pytest.raises(RuntimeError, match="jr-1"):
+        glue_adapter.cancel_remote_work()
+
+    assert glue_adapter._started_work.keys() == ["jr-1"]
 
 
 @pytest.fixture
@@ -368,6 +448,24 @@ def test_dataproc_deletes_only_a_cluster_this_run_created(dataproc_adapter) -> N
     dataproc_adapter.cancel_remote_work()
     cluster_client.delete_cluster.assert_called_once()
     assert client.cancel_job.call_count == 0
+
+
+def test_dataproc_reports_a_failed_cluster_delete_and_keeps_the_flag_so_close_can_retry(dataproc_adapter) -> None:
+    _dataproc_client(dataproc_adapter)
+    cluster_client = MagicMock()
+    cluster_client.delete_cluster.return_value.result.side_effect = RuntimeError("quota service down")
+    dataproc_adapter._cluster_client = cluster_client
+    dataproc_adapter._cluster_created_by_us = True
+    dataproc_adapter.create_ephemeral_cluster = True
+
+    with pytest.raises(RuntimeError, match="quota service down"):
+        dataproc_adapter.cancel_remote_work()
+
+    assert dataproc_adapter._cluster_created_by_us is True
+    cluster_client.delete_cluster.return_value.result.side_effect = None
+    dataproc_adapter.close()
+    assert cluster_client.delete_cluster.call_count == 2
+    assert dataproc_adapter._cluster_created_by_us is False
 
 
 def test_the_base_adapter_hook_does_nothing() -> None:

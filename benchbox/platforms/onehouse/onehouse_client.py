@@ -223,13 +223,9 @@ class OnehouseClient:
 
     def terminate_cluster(self) -> None:
         if self._cluster_id:
-            try:
-                self._request("DELETE", f"/clusters/{self._cluster_id}")
-                logger.info(f"Terminated cluster: {self._cluster_id}")
-            except Exception as e:
-                logger.warning(f"Failed to terminate cluster: {e}")
-            finally:
-                self._cluster_id = None
+            self._request("DELETE", f"/clusters/{self._cluster_id}")
+            logger.info(f"Terminated cluster: {self._cluster_id}")
+            self._cluster_id = None
 
     def submit_sql_job(
         self,
@@ -355,7 +351,10 @@ class OnehouseClient:
                 self.cancel_job(job_id)
             except Exception as exc:
                 failures.append(f"job {job_id}: {exc}")
-        self.terminate_cluster()
+        try:
+            self.terminate_cluster()
+        except Exception as exc:
+            failures.append(f"cluster {self._cluster_id}: {exc}")
         if failures:
             raise RuntimeError("Could not cancel Onehouse " + "; ".join(failures))
 
@@ -372,7 +371,10 @@ class OnehouseClient:
         logger.info(f"Created database: {database}")
 
     def close(self) -> None:
-        self.terminate_cluster()
+        try:
+            self.terminate_cluster()
+        except Exception as e:
+            logger.warning(f"Failed to terminate cluster: {e}")
         if self._session:
             self._session.close()
             self._session = None

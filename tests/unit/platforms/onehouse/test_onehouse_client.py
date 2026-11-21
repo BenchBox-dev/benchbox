@@ -681,24 +681,28 @@ class TestOnehouseClientProvisionErrors:
 
 
 class TestOnehouseClientTerminateErrors:
-    def test_terminate_cluster_handles_exception(self):
+    def test_terminate_cluster_raises_and_keeps_the_id_on_error(self):
 
         with (
             patch("benchbox.platforms.onehouse.onehouse_client.REQUESTS_AVAILABLE", True),
             patch("benchbox.platforms.onehouse.onehouse_client.requests") as mock_requests,
         ):
-            mock_session = MagicMock()
-            mock_session.request.side_effect = Exception("Network error")
-            mock_requests.Session.return_value = mock_session
+            mock_requests.Session.return_value = MagicMock()
 
             from benchbox.platforms.onehouse import OnehouseClient
 
             client = OnehouseClient(api_key="test-key")
             client._cluster_id = "cluster-123"
+            client._request = MagicMock(side_effect=RuntimeError("Network error"))
 
-            client.terminate_cluster()
+            with pytest.raises(RuntimeError, match="Network error"):
+                client.terminate_cluster()
 
-            assert client._cluster_id is None
+            assert client._cluster_id == "cluster-123"
+
+            client.close()
+
+            assert client._session is None
 
 
 class TestOnehouseClientConnectionErrors:

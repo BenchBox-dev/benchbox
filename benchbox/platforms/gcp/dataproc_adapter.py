@@ -286,16 +286,14 @@ class DataprocAdapter(CloudSparkConfigMixin, SparkTuningMixin, PlatformAdapter):
         client = self._get_cluster_client()
         logger.info(f"Deleting ephemeral cluster: {self.cluster_name}")
 
-        try:
-            operation = client.delete_cluster(
-                project_id=self.project_id,
-                region=self.region,
-                cluster_name=self.cluster_name,
-            )
-            operation.result()
-            logger.info(f"Cluster deleted: {self.cluster_name}")
-        except Exception as e:
-            logger.warning(f"Failed to delete cluster: {e}")
+        operation = client.delete_cluster(
+            project_id=self.project_id,
+            region=self.region,
+            cluster_name=self.cluster_name,
+        )
+        operation.result()
+        self._cluster_created_by_us = False
+        logger.info(f"Cluster deleted: {self.cluster_name}")
 
     def create_schema(self, benchmark, connection: Any) -> float:
         start_time = mono_time()
@@ -499,14 +497,19 @@ spark.stop()
         except Exception as exc:
             failure = exc
         if self._cluster_created_by_us and self.create_ephemeral_cluster:
-            self._delete_cluster()
-            self._cluster_created_by_us = False
+            try:
+                self._delete_cluster()
+            except Exception as exc:
+                failure = exc if failure is None else RuntimeError(f"{failure}; Dataproc cluster delete failed: {exc}")
         if failure is not None:
             raise failure
 
     def close(self) -> None:
         if self._cluster_created_by_us and self.create_ephemeral_cluster:
-            self._delete_cluster()
+            try:
+                self._delete_cluster()
+            except Exception as e:
+                logger.warning(f"Failed to delete cluster: {e}")
 
         logger.info(f"Dataproc session closed. Executed {self._query_count} queries.")
         if self._total_job_time_seconds > 0:
