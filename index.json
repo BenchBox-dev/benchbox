@@ -45065,6 +45065,15 @@
       "status": "open",
       "title": "Give old-generator TPC-DI bundles a defect label that does not claim wrong values"
     },
+    "tpcdi-owner-action-ask-author-for-licence-file-20261121": {
+      "claim": null,
+      "needs": [
+        "tpcdi-provenance-record-and-copy-guard-20261121"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Owner action: ask the databricks-tpc-di author to add a LICENSE file"
+    },
     "tpcdi-parallel-phase-truthful-outcome": {
       "claim": null,
       "needs": [
