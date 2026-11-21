@@ -45061,7 +45061,7 @@
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "TPC-DI step 15: historical load, trade and fact tables"
+      "title": "TPC-DI step 16: historical load, trade and fact tables"
     },
     "tpcdi-incremental-dimensions-20261121": {
       "claim": null,
