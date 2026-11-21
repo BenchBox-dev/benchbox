@@ -45220,6 +45220,15 @@
       "status": "done",
       "title": "Revisit TPC-DI standard scale factors, registry estimates and UAT settings now that one unit is 5,000 customers"
     },
+    "tpcdi-validator-admission-and-results-database-20261121": {
+      "claim": null,
+      "needs": [
+        "tpcdi-metric-and-result-block-20261121"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 26: validator, publish admission, results database and corpus rules for TPC-DI"
+    },
     "tpcds-below-floor-error-type-and-wording-20261120": {
       "claim": null,
       "needs": [
