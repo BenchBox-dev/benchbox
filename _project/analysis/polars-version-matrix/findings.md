@@ -158,7 +158,7 @@ From the run manifest. Every run below exited 0 with every query successful.
 | 2.1.0 | C | 2 | 41.53 | 4.246 | 0.470 | resource-policy-exceeded |
 | 2.1.0 | C | 3 | 34.49 | 1.960 | 0.487 | resource-policy-exceeded |
 
-In the same matrix, on the same host, 2.0.0 swapped nothing and did not spill, while every 2.1.0 run spilled and the host swapped during each one. That pattern held in the 2026-11-19 run as well. It points to 2.1.0 using more memory than 2.0.0 for TPC-DS at scale factor 10 on this machine. The swap counter is host-wide, so this is not proof that the 2.1.0 process caused the swap.
+In the same matrix, on the same host, the host swapped at most 0.014 GiB during a 2.0.0 run and 2.0.0 did not spill, while every 2.1.0 run spilled and the host swapped 0.25 to 4.25 GiB during each one. That pattern held in the 2026-11-19 run as well. It points to 2.1.0 using more memory than 2.0.0 for TPC-DS at scale factor 10 on this machine. The swap counter is host-wide, so this is not proof that the 2.1.0 process caused the swap.
 
 ## Candidate movers
 
