@@ -44866,6 +44866,15 @@
       "status": "blocked",
       "title": "TPC-DI step 30: Databricks: ETL, visibility and full audit"
     },
+    "tpcdi-31-dataframe-mode-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-30-platform-databricks-20261120"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DI step 31: DataFrame mode on generated source files (Polars and pandas)"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
