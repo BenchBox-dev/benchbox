@@ -8571,7 +8571,8 @@
     },
     "run-timeout-core": {
       "accepted_members": {
-        "run-timeout-execution-phases-20261120": "f61687f663bf6d5b7a26a16d09b71ec64d6fd329"
+        "run-timeout-execution-phases-20261120": "f61687f663bf6d5b7a26a16d09b71ec64d6fd329",
+        "run-timeout-remote-cleanup-20261120": "b74eff15e9135d26b63beb0ed1bdba2a4f0ec011"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -8615,10 +8616,39 @@
           ],
           "integration_head": "cca29b6615111a2025132f61c0c266a14fa42665",
           "integration_seq": 1
+        },
+        "run-timeout-remote-cleanup-20261120": {
+          "accepted_head": "b74eff15e9135d26b63beb0ed1bdba2a4f0ec011",
+          "changed_files": [
+            "benchbox/cli/run_time_limit.py",
+            "benchbox/core/platform_manifest.py",
+            "benchbox/core/run_service.py",
+            "benchbox/mcp/jobs.py",
+            "benchbox/mcp/tools/benchmark.py",
+            "benchbox/platforms/aws/emr_serverless_adapter.py",
+            "benchbox/platforms/aws/glue_adapter.py",
+            "benchbox/platforms/base/adapter.py",
+            "benchbox/platforms/base/remote_work.py",
+            "benchbox/platforms/bigquery.py",
+            "benchbox/platforms/gcp/dataproc_adapter.py",
+            "benchbox/platforms/onehouse/onehouse_client.py",
+            "benchbox/platforms/onehouse/quanton_adapter.py",
+            "benchbox/utils/run_deadline.py",
+            "changelog.d/feat-run-timeout-core--run-timeout-remote-cleanup-20261120.json",
+            "docs/operations/run-safety.md",
+            "tests/integration/mcp/test_start_benchmark_run_limit_warning.py",
+            "tests/unit/cli/test_run_timeout_remote_cleanup.py",
+            "tests/unit/core/test_run_timeout_remote_cleanup.py",
+            "tests/unit/mcp/test_run_timeout_remote_cleanup.py",
+            "tests/unit/platforms/test_run_timeout_remote_cleanup.py",
+            "tests/unit/utils/test_run_deadline_remote_cleanup.py"
+          ],
+          "integration_head": "5b4ff71ab500fbfe87a9edfcc67914c583755567",
+          "integration_seq": 4
         }
       },
       "integration_branch": "feat/run-timeout-core",
-      "integration_head": "f946d0df00787a4e3f056b48019c1b79916a6448",
+      "integration_head": "5b4ff71ab500fbfe87a9edfcc67914c583755567",
       "integration_log": [
         {
           "at": "2026-11-21T17:38:21Z",
@@ -8790,6 +8820,15 @@
             "run-timeout-execution-phases-20261120"
           ],
           "seq": 3
+        },
+        {
+          "at": "2026-11-21T21:30:07Z",
+          "head": "5b4ff71ab500fbfe87a9edfcc67914c583755567",
+          "kind": "prepare",
+          "member": "run-timeout-remote-cleanup-20261120",
+          "op_id": "3f4e937fc27b4904b7b17f9398c62111",
+          "previous_head": "f946d0df00787a4e3f056b48019c1b79916a6448",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-core",
@@ -38903,17 +38942,12 @@
       "title": "Run timeout: one optional limit for any run, replacing scattered timers (plan and decisions)"
     },
     "run-timeout-remote-cleanup-20261120": {
-      "claim": {
-        "expires_at": "2026-11-22T21:20:53Z",
-        "generation": "61f1d70d55e94615a60528f7507490ac",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
-      },
+      "claim": null,
       "needs": [
         "run-timeout-execution-phases-20261120"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Run timeout step 3: cancel remote work on cloud platforms when a run times out"
     },
     "run-timeout-remove-unused-timers-20261120": {
