@@ -44731,6 +44731,15 @@
       "status": "open",
       "title": "TPC-DI step 15: delete the old generator, direct load, old ETL and old DataFrame path"
     },
+    "tpcdi-16-generator-incremental-batches-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-15-delete-old-generator-and-etl-20261120"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 16: generator and audit recount for the two incremental batches"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
