@@ -44839,6 +44839,15 @@
       "status": "open",
       "title": "TPC-DI step 27: LakeSail: ETL, visibility and full audit"
     },
+    "tpcdi-28-platform-bigquery-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-27-platform-lakesail-20261120"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DI step 28: BigQuery: ETL, visibility and full audit"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
