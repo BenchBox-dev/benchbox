@@ -3,7 +3,6 @@ from __future__ import annotations
 import csv
 import os
 import shutil
-import subprocess
 from collections.abc import Iterator
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
@@ -18,6 +17,7 @@ from benchbox.core.contracts.platform_capabilities import (
 )
 from benchbox.core.tpch.generator import TPCHDataGenerator
 from benchbox.core.tpch.schema import LINEITEM, ORDERS, DataType
+from benchbox.utils.run_deadline import current_run_deadline, run_child
 
 REFRESH_CHUNK_SIZE = 1000
 ORDERS_KEY_COLUMN = ORDERS.columns[0].name
@@ -107,8 +107,10 @@ def generate_refresh_update_sets(
     environment["PATH"] = os.pathsep.join((str(output_dir), environment.get("PATH", "")))
     environment["DSS_PATH"] = "."
     environment["DSS_CONFIG"] = "."
-    completed = subprocess.run(
+    completed = run_child(
         ["dbgen", "-s", format(scale_factor, "g"), "-U", str(last_set), "-f"],
+        tool=f"dbgen (refresh sets {first_set} to {last_set}, scale factor {scale_factor:g})",
+        deadline=current_run_deadline(),
         cwd=output_dir,
         env=environment,
         capture_output=True,

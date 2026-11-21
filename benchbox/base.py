@@ -13,6 +13,7 @@ from benchbox.core.connection import DatabaseConnection
 from benchbox.core.contracts import SQLBenchmarkExecutor, as_sql_benchmark_executor
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import create_path_handler
+from benchbox.utils.generation_marker import track_generation
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 from benchbox.utils.run_deadline import enter_run_phase, own_run_deadline
 from benchbox.utils.verbosity import VerbosityMixin, compute_verbosity
@@ -55,11 +56,12 @@ def _with_optional_timeout(generate_data: Any) -> Any:
     def bounded(self: Any, *args: Any, timeout_seconds: Optional[int] = None, **kwargs: Any) -> Any:
         with own_run_deadline(timeout_seconds) as deadline:
             enter_run_phase("generate")
-            generated = generate_data(self, *args, **kwargs)
-            if deadline is not None and deadline.expired:
-                timeout = deadline.record_timeout()
-                timeout.partial_result = generated
-                raise timeout
+            with track_generation(getattr(self, "output_dir", None)):
+                generated = generate_data(self, *args, **kwargs)
+                if deadline is not None and deadline.expired:
+                    timeout = deadline.record_timeout()
+                    timeout.partial_result = generated
+                    raise timeout
             return generated
 
     return bounded

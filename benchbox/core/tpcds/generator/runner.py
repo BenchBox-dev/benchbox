@@ -12,6 +12,12 @@ from pathlib import Path
 from benchbox.core.tpcds.c_tools import tpcds_option
 from benchbox.utils.filesystem_flush import flush_filesystem
 from benchbox.utils.printing import emit
+from benchbox.utils.run_deadline import (
+    RunTimeoutError,
+    bind_run_deadline,
+    current_run_deadline,
+    run_child,
+)
 from benchbox.utils.tpc_compilation import CompilationStatus, ensure_tpc_binaries
 
 
@@ -153,8 +159,10 @@ class DsdgenRunnerMixin:
             self._copy_distribution_files(output_dir)
 
             env = os.environ.copy()
-            subprocess.run(
+            run_child(
                 cmd,
+                tool="dsdgen",
+                deadline=current_run_deadline(),
                 cwd=output_dir,
                 check=True,
                 env=env,
@@ -232,13 +240,15 @@ class DsdgenRunnerMixin:
             futures = []
             for table_name in parent_table_names:
                 for chunk_id in range(1, self.parallel + 1):
-                    future = executor.submit(generate_table_chunk, (table_name, chunk_id))
+                    future = executor.submit(bind_run_deadline(generate_table_chunk), (table_name, chunk_id))
                     futures.append(future)
 
             errors = []
             for future in concurrent.futures.as_completed(futures):
                 try:
                     future.result()
+                except RunTimeoutError:
+                    raise
                 except Exception as e:
                     errors.append(str(e))
 
@@ -270,8 +280,10 @@ class DsdgenRunnerMixin:
 
             try:
                 env = os.environ.copy()
-                subprocess.run(
+                run_child(
                     cmd,
+                    tool="dsdgen",
+                    deadline=current_run_deadline(),
                     cwd=output_dir,
                     check=True,
                     env=env,
@@ -289,13 +301,15 @@ class DsdgenRunnerMixin:
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.parallel) as executor:
             futures = []
             for chunk_id in range(1, self.parallel + 1):
-                future = executor.submit(generate_chunk, chunk_id)
+                future = executor.submit(bind_run_deadline(generate_chunk), chunk_id)
                 futures.append(future)
 
             errors = []
             for future in concurrent.futures.as_completed(futures):
                 try:
                     future.result()
+                except RunTimeoutError:
+                    raise
                 except Exception as e:
                     errors.append(str(e))
 

@@ -73,6 +73,7 @@ from benchbox.utils.dialect_utils import (
     summarize_sql_translation_outcomes,
 )
 from benchbox.utils.format_converters import ConversionOptions
+from benchbox.utils.generation_marker import GENERATION_IN_PROGRESS_MARKER, generation_in_progress
 from benchbox.utils.printing import emit
 from benchbox.utils.run_deadline import enter_run_phase
 from benchbox.utils.toggles import is_probe_requested
@@ -2005,6 +2006,13 @@ def _validate_manifest_if_present(
         manifest_found = bool(hasattr(manifest_path, "exists") and manifest_path.exists())
         if not manifest_found:
             return False, None, False
+        if generation_in_progress(output_dir):
+            logger.warning(
+                "Data generation did not finish (%s is present); regenerating", GENERATION_IN_PROGRESS_MARKER
+            )
+            if not quiet:
+                emit("\u26a0\ufe0f Cached data is from a generation that did not finish; regenerating")
+            return False, None, True
         with manifest_path.open("r") as f:
             manifest = json.load(f)
 

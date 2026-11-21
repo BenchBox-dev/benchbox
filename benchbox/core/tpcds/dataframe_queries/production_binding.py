@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from benchbox.core.tpcds.dataframe_queries.parameter_adapters import ADAPTERS, ParameterBinding, bind_parameters
+from benchbox.utils.run_deadline import bind_run_deadline
 
 SQL_POWER_DSQGEN_STREAM = 0
 
@@ -70,7 +71,7 @@ def bind_power_stream(
 
         workers = max(1, min(8, os.cpu_count() or 1, len(missing)))
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            fresh = dict(zip(missing, pool.map(bind, missing)))
+            fresh = dict(zip(missing, pool.map(bind_run_deadline(bind), missing)))
         with _cache_lock:
             _cache.update({key(number): binding for number, binding in fresh.items()})
 
