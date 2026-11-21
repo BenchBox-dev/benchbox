@@ -88,6 +88,12 @@ def test_generate_single_table_chunk_streaming_counts_last_line_without_newline(
         def wait(self):
             return None
 
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc_info):
+            return False
+
     monkeypatch.setattr("benchbox.core.tpcds.generator.streaming.subprocess.Popen", lambda *a, **k: _Process())
 
     harness._generate_single_table_chunk_streaming(tmp_path, "call_center", 1)
@@ -108,6 +114,12 @@ def test_generate_single_table_chunk_streaming_raises_on_nonzero_exit_with_no_da
 
         def wait(self):
             return None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc_info):
+            return False
 
     monkeypatch.setattr("benchbox.core.tpcds.generator.streaming.subprocess.Popen", lambda *a, **k: _Process())
 

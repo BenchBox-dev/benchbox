@@ -12,6 +12,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from benchbox.utils import process_group
 from tests.uat import timeouts
 
 pytestmark = pytest.mark.medium
@@ -99,7 +100,7 @@ def test_kill_process_group_falls_back_to_proc_kill_without_os_killpg(monkeypatc
     monkeypatch.delattr(timeouts.os, "killpg", raising=False)
     mock_proc = Mock(pid=12345)
 
-    timeouts._kill_process_group(mock_proc)
+    process_group.kill_process_group(mock_proc)
 
     mock_proc.kill.assert_called_once()
 
@@ -113,11 +114,11 @@ def test_kill_process_group_uses_killpg_when_available(monkeypatch):
         calls.append((pid, sig))
 
     monkeypatch.setattr(timeouts.os, "killpg", fake_killpg, raising=False)
-    monkeypatch.setattr(timeouts.signal, "SIGTERM", sigterm, raising=False)
-    monkeypatch.setattr(timeouts.signal, "SIGKILL", sigkill, raising=False)
+    monkeypatch.setattr(signal, "SIGTERM", sigterm, raising=False)
+    monkeypatch.setattr(signal, "SIGKILL", sigkill, raising=False)
     mock_proc = Mock(pid=999)
 
-    timeouts._kill_process_group(mock_proc)
+    process_group.kill_process_group(mock_proc)
 
     assert calls == [(999, sigterm), (999, sigkill)]
     mock_proc.kill.assert_not_called()
@@ -147,8 +148,8 @@ def test_run_with_timeout_kills_group_on_base_exception_before_reraising(monkeyp
 
     monkeypatch.setattr(timeouts.subprocess, "Popen", lambda *a, **k: FakeProc())
     monkeypatch.setattr(timeouts.os, "killpg", lambda pid, sig: killpg_calls.append((pid, sig)), raising=False)
-    monkeypatch.setattr(timeouts.signal, "SIGTERM", sigterm, raising=False)
-    monkeypatch.setattr(timeouts.signal, "SIGKILL", sigkill, raising=False)
+    monkeypatch.setattr(signal, "SIGTERM", sigterm, raising=False)
+    monkeypatch.setattr(signal, "SIGKILL", sigkill, raising=False)
 
     with pytest.raises(_Cancelled):
         timeouts.run_with_timeout([sys.executable, "-c", "pass"], timeout_s=5)
@@ -181,8 +182,8 @@ def test_run_with_timeout_kills_group_on_a_non_keyboardinterrupt_base_exception(
 
     monkeypatch.setattr(timeouts.subprocess, "Popen", lambda *a, **k: FakeProc())
     monkeypatch.setattr(timeouts.os, "killpg", lambda pid, sig: killpg_calls.append((pid, sig)), raising=False)
-    monkeypatch.setattr(timeouts.signal, "SIGTERM", sigterm, raising=False)
-    monkeypatch.setattr(timeouts.signal, "SIGKILL", sigkill, raising=False)
+    monkeypatch.setattr(signal, "SIGTERM", sigterm, raising=False)
+    monkeypatch.setattr(signal, "SIGKILL", sigkill, raising=False)
 
     with pytest.raises(_Unwound):
         timeouts.run_with_timeout([sys.executable, "-c", "pass"], timeout_s=5)
@@ -222,8 +223,8 @@ def test_timeout_path_drains_using_the_reap_timeout_constant(monkeypatch):
 
     monkeypatch.setattr(timeouts.subprocess, "Popen", lambda *a, **k: FakeProc())
     monkeypatch.setattr(timeouts.os, "killpg", lambda pid, sig: None, raising=False)
-    monkeypatch.setattr(timeouts.signal, "SIGTERM", object(), raising=False)
-    monkeypatch.setattr(timeouts.signal, "SIGKILL", object(), raising=False)
+    monkeypatch.setattr(signal, "SIGTERM", object(), raising=False)
+    monkeypatch.setattr(signal, "SIGKILL", object(), raising=False)
 
     result = timeouts.run_with_timeout([sys.executable, "-c", "pass"], timeout_s=1)
 
@@ -250,7 +251,7 @@ def test_cancellation_cleanup_retries_wait_when_interrupted(monkeypatch):
             return 0
 
     proc = FakeProc()
-    monkeypatch.setattr(timeouts, "_kill_process_group", lambda _proc: None)
+    monkeypatch.setattr(timeouts, "kill_process_group", lambda _proc: None)
 
     timeouts._kill_and_reap_process_group(proc)
 
@@ -295,8 +296,8 @@ def test_run_with_timeout_zero_timeout_kills_group_on_base_exception(monkeypatch
 
     monkeypatch.setattr(timeouts.subprocess, "Popen", lambda *a, **k: FakeProc())
     monkeypatch.setattr(timeouts.os, "killpg", lambda pid, sig: killpg_calls.append((pid, sig)), raising=False)
-    monkeypatch.setattr(timeouts.signal, "SIGTERM", sigterm, raising=False)
-    monkeypatch.setattr(timeouts.signal, "SIGKILL", sigkill, raising=False)
+    monkeypatch.setattr(signal, "SIGTERM", sigterm, raising=False)
+    monkeypatch.setattr(signal, "SIGKILL", sigkill, raising=False)
 
     with pytest.raises(_Cancelled):
         timeouts.run_with_timeout([sys.executable, "-c", "pass"], timeout_s=0)
@@ -345,10 +346,10 @@ _MIN_GRACE_TO_TICK_RATIO = 5.0
 
 
 def test_cancel_probe_tick_leaves_margin_inside_the_kill_ladder_grace_window():
-    ratio = timeouts._KILL_GRACE_S / _PROBE_TICK_S
+    ratio = process_group.KILL_GRACE_SECONDS / _PROBE_TICK_S
     assert ratio >= _MIN_GRACE_TO_TICK_RATIO, (
         f"the cancellation probe ticks every {_PROBE_TICK_S * 1000:.0f} ms against a "
-        f"{timeouts._KILL_GRACE_S * 1000:.0f} ms kill-ladder grace window (ratio {ratio:.1f}, minimum "
+        f"{process_group.KILL_GRACE_SECONDS * 1000:.0f} ms kill-ladder grace window (ratio {ratio:.1f}, minimum "
         f"{_MIN_GRACE_TO_TICK_RATIO:.1f}). Gate 2's follow-up signal can no longer be relied on to land "
         "inside the grace window, so the interrupted-ladder tests would keep passing without exercising "
         "the path they exist to cover. Shorten _PROBE_TICK_S or restore the grace window."

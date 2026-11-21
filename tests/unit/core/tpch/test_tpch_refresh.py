@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import subprocess
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -212,7 +213,7 @@ def test_update_sets_are_backed_by_distinct_dbgen_output_files(tmp_path: Path, m
         return type("Completed", (), {"returncode": 0, "stderr": "", "stdout": ""})()
 
     monkeypatch.setattr(refresh, "TPCHDataGenerator", fake_generator)
-    monkeypatch.setattr(refresh.subprocess, "run", run)
+    monkeypatch.setattr(subprocess, "run", run)
     sets = refresh.generate_refresh_update_sets(0.01, 5, 2, output_dir)
 
     assert list(sets) == [5, 6]

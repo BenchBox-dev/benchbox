@@ -11,6 +11,7 @@ from typing import Optional, Union
 
 from benchbox.utils.datagen_version import describe_datagen_staleness, manifest_datagen_is_current
 from benchbox.utils.file_format import detect_compression, strip_compression_suffix
+from benchbox.utils.generation_marker import GENERATION_IN_PROGRESS_MARKER, generation_in_progress
 from benchbox.utils.printing import emit
 from benchbox.utils.tpcds_row_counts import TPCDS_LINEAR_TABLES, tpcds_spec_row_count, tpcds_subscale_row_count
 
@@ -131,6 +132,17 @@ class BenchmarkDataValidator:
                 file_size_info={},
                 validation_timestamp=datetime.now(),
                 issues=[f"Data directory does not exist: {data_path}"],
+            )
+
+        if generation_in_progress(data_path):
+            return DataValidationResult(
+                valid=False,
+                tables_validated={},
+                missing_tables=[],
+                row_count_mismatches={},
+                file_size_info={},
+                validation_timestamp=datetime.now(),
+                issues=[f"Data generation did not finish ({GENERATION_IN_PROGRESS_MARKER} is present); regenerating"],
             )
 
         manifest = self._read_manifest(data_path)

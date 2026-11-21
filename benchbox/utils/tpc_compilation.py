@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.run_deadline import RunTimeoutError, current_run_deadline, run_child
 
 logger = logging.getLogger(__name__)
 
@@ -459,6 +460,8 @@ class TPCCompiler:
 
             return result
 
+        except RunTimeoutError:
+            raise
         except Exception as e:
             return CompilationResult(
                 binary_name=binary_name,
@@ -478,12 +481,13 @@ class TPCCompiler:
         try:
             cmd = ["make", "-f", "Makefile.auto", binary_name]
 
-            result = subprocess.run(
+            result = run_child(
                 cmd,
+                tool=f"make {binary_name} (TPC-H tools build)",
+                deadline=current_run_deadline(),
                 cwd=binary_info.source_dir,
                 capture_output=True,
                 text=True,
-                timeout=300,
             )
 
             if result.returncode == 0 and binary_info.binary_path.exists():
@@ -503,12 +507,8 @@ class TPCCompiler:
                     stderr=result.stderr,
                 )
 
-        except subprocess.TimeoutExpired:
-            return CompilationResult(
-                binary_name=binary_name,
-                status=CompilationStatus.FAILED,
-                error_message="Compilation timed out after 5 minutes",
-            )
+        except RunTimeoutError:
+            raise
         except Exception as e:
             return CompilationResult(
                 binary_name=binary_name,
@@ -523,12 +523,13 @@ class TPCCompiler:
 
             cmd = ["make", "-f", makefile_name, binary_name]
 
-            result = subprocess.run(
+            result = run_child(
                 cmd,
+                tool=f"make {binary_name} (TPC-DS tools build)",
+                deadline=current_run_deadline(),
                 cwd=binary_info.source_dir,
                 capture_output=True,
                 text=True,
-                timeout=600,
             )
 
             if result.returncode == 0 and binary_info.binary_path.exists():
@@ -548,12 +549,8 @@ class TPCCompiler:
                     stderr=result.stderr,
                 )
 
-        except subprocess.TimeoutExpired:
-            return CompilationResult(
-                binary_name=binary_name,
-                status=CompilationStatus.FAILED,
-                error_message="Compilation timed out after 10 minutes",
-            )
+        except RunTimeoutError:
+            raise
         except Exception as e:
             return CompilationResult(
                 binary_name=binary_name,
