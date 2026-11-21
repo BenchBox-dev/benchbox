@@ -37897,6 +37897,13 @@
       "status": "dropped",
       "title": "Decide whether published results need a generated machine-readable index for readers without a browser"
     },
+    "results-no-validation-evidence-labelled-passed-other-benchmarks-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "A run with no validation evidence is labelled passed (benchmarks other than TPC-DI)"
+    },
     "results-normalized-cost-contract-cloud-facets": {
       "claim": null,
       "needs": [],

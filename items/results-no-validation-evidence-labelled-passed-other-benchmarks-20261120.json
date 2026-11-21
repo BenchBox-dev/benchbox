@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "An inventory of benchmarks that can read PASSED without evidence exists, with the owner's decision."
+  ],
+  "context": "Step of the TPC-DI correction plan. Full plan with file paths and line numbers: local://tpcdi-correction-plan.md (planner report, agent://TpcdiCorrectionPlan). Reviews: agent://TpcdiQuerySetReview, agent://TpcdiRootCause. Generator research: agent://TpcdiDatagenAlternatives. Every owner decision is quoted on tpcdi-correction-plan-20261120. The planner's step numbers (S1..S20) are given for cross-reference only; line numbers in the plan are as of origin/develop ffc4de7750 and must be re-read before editing.",
+  "description": "## Problem\nThe first TPC-DI review found that a result with no validation evidence is labelled PASSED. Step 4 fixes it for TPC-DI only.\n\n## Owner decisions (choice dialogs, 2026-11-20)\n- \"'No validation evidence means not passed' applies to TPC-DI now; the same rule for other benchmarks is filed as a separate item.\"\n\n## Change\nInventory which benchmarks produce PASSED with no row-count, answer or audit evidence, and how many published bundles that covers. Propose the rule and its effect on the corpus. No code change before the owner decides.\n\n## Decision gates\nOwner decides the rule and what happens to affected published bundles before any change.\n\n## Verification rubric\nPass: the inventory (benchmark, evidence kind, published bundle count) is recorded and the owner's decision is quoted here.\n\n## Guardrails (owner, 2026-11-20)\n- The agent never posts a stand-in review, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`.\n- Arming: `make pr-arm` once; one more attempt only when the refusal named a cause, the agent reported it and the cause is cleared; never a third without asking. `make pr-rerun` at most once and only for a job the runner never ran or cancelled, never for a failed test.\n- Review threads: reply; resolve only after the bot's review of the new head does not raise the finding again.\n- Subagents are read-only. No file edit by script; use the edit tool. Do not edit a pull request description while its CI is starting; post a comment.\n- Any limit, default, threshold, status token, message or label text the owner has not already chosen (see tpcdi-correction-plan-20261120) is shown to the owner before it is committed.\n- A blocked step stops this item; no workaround. No live cloud run. Heavy work only through `make heavy-run`. One pull request for this item, merged before the next item starts.\n- From the quarantine step until the reopening step, no TPC-DI entry point may produce a result that reads PASSED or is admitted for publication.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-21T01:30:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4bc90e181e2346a48f260b3c78a88ea3",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    }
+  ]
+}
