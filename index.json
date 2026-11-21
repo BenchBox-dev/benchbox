@@ -44785,6 +44785,15 @@
       "status": "open",
       "title": "TPC-DI step 21: PostgreSQL: ETL, visibility and full audit"
     },
+    "tpcdi-22-platform-doris-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-21-platform-postgresql-20261120"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DI step 22: Doris: ETL, visibility and full audit"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
