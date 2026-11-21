@@ -44876,11 +44876,12 @@
     "tpcdi-30-platform-databricks-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-29-platform-snowflake-20261120"
+        "tpcdi-18-metric-bundle-and-reopen-duckdb-20261120",
+        "tpcdi-14-milestone-report-owner-stop-20261120"
       ],
       "priority": "medium",
       "status": "blocked",
-      "title": "TPC-DI step 30: Databricks: ETL, visibility and full audit"
+      "title": "TPC-DI cloud step 1: Databricks: ETL, visibility and full audit"
     },
     "tpcdi-31-dataframe-mode-20261120": {
       "claim": null,
