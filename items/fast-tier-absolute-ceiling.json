@@ -4,7 +4,7 @@
     "The ceiling value comes from the first baseline refresh after both prerequisites merge, plus 10%, and the file records that reason; the refresh never edits it",
     "The PR carries a benchbox-oracle success review"
   ],
-  "context": "Fast-tier summed time (tests/fixtures/fast_tier_baseline, sum of p50) grew from 1,423 s on 2026-10-26 to 2,118 s on 2026-11-19; 777 s of the 791 s came from new test files. The PR fast step wall time rose from about 500 s to 720-950 s. Owner decisions (2026-11-20): whole-file moves for test_heavy_choke_points.py and test_review_gateway_host.py; ceiling = post-cut total plus 10%; block when the projected total exceeds it; ceiling changes only by hand (no automatic lowering); a refresh over the ceiling opens no PR and opens or updates one issue; three PRs with tracker items. Prior art: #2581 retired a test-count ceiling because the only response was raising it; this one is in seconds, composition-based, and only changes by hand under oracle review.",
+  "context": "Fast-tier summed time (tests/fixtures/fast_tier_baseline, sum of p50) grew from 1,423 s on 2026-10-26 to 2,118 s on 2026-11-19; 777 s of the 791 s came from new test files. The PR fast step wall time rose from about 500 s to 720-950 s. Owner decisions (2026-11-20): whole-file moves for test_heavy_choke_points.py and test_review_gateway_host.py; ceiling = post-cut total plus 10%; block when the projected total exceeds it; ceiling changes only by hand (no automatic lowering); a refresh over the ceiling opens no PR and opens or updates one issue; three PRs with tracker items. Prior art: #2581 retired a test-count ceiling because the only response was raising it; this one is in seconds, composition-based, and only changes by hand under oracle review.\n\nMerged in #4428 (17781bacab). Ceiling 1579 s at reference calibration 1.208 s: the baseline rebuilt from the five PR runs after the move and speed-up changes sums to 1435.4 s (old committed baseline 1630.0 s), plus 10%. The rebuilt fixture was not committed (about 3.8M tokens, beyond reviewer capacity); the next weekly refresh commits a baseline. The ceiling records its reference calibration and both checks rescale, since each refresh picks a new median reference (it moved 10% this time).",
   "description": "quality/fast-duration-ceiling.json holds the ceiling (normalized summed seconds) and its reason; list it in .github/soundness-paths.txt. Value: total of the first baseline refresh after both prerequisites merge, plus 10%. verify-fast-duration adds a projected total = baseline p50 of retained tests + normalized PR time of new tests, and blocks when it exceeds the ceiling. fast-duration-baseline-refresh.yml checks the rebuilt total: over the ceiling it opens no baseline PR and opens or updates one issue naming the files that grew most. The refresh never changes the ceiling. Update the CI docs and the dev-loop property ledger.",
   "sessions": [
     {
@@ -30,6 +30,14 @@
       "generation": "2b4a9638a89a4d1a9d049ea7a6053882",
       "op": "take",
       "op_id": "673c2a923e444c74818575e23f0d4a2b",
+      "session_id": "15dd29d145b7431a900c1d2b20c686c2"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f5a04a89ab1412ae25ea9d7",
+      "at": "2026-11-21T15:40:38Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a3707f8309b642f4ae1faf500ab85bf6",
       "session_id": "15dd29d145b7431a900c1d2b20c686c2"
     }
   ]
