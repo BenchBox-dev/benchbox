@@ -44677,6 +44677,15 @@
       "status": "open",
       "title": "TPC-DI step 9: generator: CustomerMgmt.xml and FINWIRE files with injected data-quality errors"
     },
+    "tpcdi-10-generator-trades-and-market-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-09-generator-customer-and-finwire-20261120"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 10: generator: trades, holdings, cash, watches and daily market files"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
