@@ -44875,6 +44875,15 @@
       "status": "open",
       "title": "TPC-DI step 31: DataFrame mode on generated source files (Polars and pandas)"
     },
+    "tpcdi-32-core-docs-and-adr-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-31-dataframe-mode-20261120"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DI step 32: core documentation and decision record"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
