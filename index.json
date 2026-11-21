@@ -44631,11 +44631,11 @@
     "tpcdi-03-site-rework-notice-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-02-withdraw-bundles-published-results-20261120"
+        "tpcdi-01-withdraw-bundles-develop-20261120"
       ],
       "priority": "high",
       "status": "open",
-      "title": "TPC-DI step 3: site notice that TPC-DI is being reworked (benchbox-site)"
+      "title": "TPC-DI step 3 (parallel with steps 4 and later): site notice that TPC-DI is being reworked (benchbox-site)"
     },
     "tpcdi-04-quarantine-run-path-20261120": {
       "claim": null,
