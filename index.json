@@ -44722,6 +44722,15 @@
       "status": "blocked",
       "title": "TPC-DI step 14: milestone report and owner stop"
     },
+    "tpcdi-15-delete-old-generator-and-etl-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-14-milestone-report-owner-stop-20261120"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 15: delete the old generator, direct load, old ETL and old DataFrame path"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
