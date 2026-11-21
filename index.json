@@ -8570,20 +8570,70 @@
       "terminal_outcome": "deliver"
     },
     "run-timeout-core": {
-      "accepted_members": {},
+      "accepted_members": {
+        "run-timeout-execution-phases-20261120": "f61687f663bf6d5b7a26a16d09b71ec64d6fd329"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "run-timeout-execution-phases-20261120": {
+          "accepted_head": "f61687f663bf6d5b7a26a16d09b71ec64d6fd329",
+          "changed_files": [
+            "benchbox/core/throughput/result.py",
+            "benchbox/core/throughput/runner.py",
+            "benchbox/core/tpcds/benchmark/config.py",
+            "benchbox/core/tpcds/benchmark/runner.py",
+            "benchbox/core/tpcds/maintenance_test.py",
+            "benchbox/core/tpcds/platform_power.py",
+            "benchbox/core/tpcds/power_test.py",
+            "benchbox/core/tpcds/throughput_test.py",
+            "benchbox/core/tpch/benchmark.py",
+            "benchbox/core/tpch/maintenance_test.py",
+            "benchbox/core/tpch/platform_power.py",
+            "benchbox/core/tpch/power_test.py",
+            "benchbox/core/tpch/throughput_test.py",
+            "benchbox/experimental/load_testing/executor.py",
+            "benchbox/platforms/base/execution.py",
+            "benchbox/platforms/dataframe/benchmark_mixin.py",
+            "benchbox/platforms/dataframe/tpch_full_spec.py",
+            "benchbox/platforms/gizmosql.py",
+            "benchbox/utils/run_deadline.py",
+            "changelog.d/feat-run-timeout-core--run-timeout-execution-phases-20261120.json",
+            "docs/internal/throughput-result-alignment.md",
+            "tests/integration/test_tpcds_throughput_test.py",
+            "tests/integration/test_tpch_throughput_test.py",
+            "tests/unit/core/load_testing/test_executor.py",
+            "tests/unit/core/test_concurrency_executor_and_joinorder.py",
+            "tests/unit/core/throughput/test_runner.py",
+            "tests/unit/core/tpcds/test_tpcds_maintenance_coverage.py",
+            "tests/unit/platforms/test_base_adapter.py",
+            "tests/unit/platforms/test_run_timeout_execution_phases.py",
+            "tests/unit/platforms/test_throughput_run_options.py",
+            "tests/unit/platforms/test_tpcds_maintenance_execution.py"
+          ],
+          "integration_head": "cca29b6615111a2025132f61c0c266a14fa42665",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/run-timeout-core",
-      "integration_head": "f3409b20ba5a2b7a7705b8c7a37c50da60400a3d",
+      "integration_head": "cca29b6615111a2025132f61c0c266a14fa42665",
       "integration_log": [
         {
           "at": "2026-11-21T17:38:21Z",
           "head": "f3409b20ba5a2b7a7705b8c7a37c50da60400a3d",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-21T20:09:27Z",
+          "head": "cca29b6615111a2025132f61c0c266a14fa42665",
+          "kind": "prepare",
+          "member": "run-timeout-execution-phases-20261120",
+          "op_id": "da0c9fc16f524db7bdaefc838ac3f2ca",
+          "previous_head": "f3409b20ba5a2b7a7705b8c7a37c50da60400a3d",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-core",
@@ -38561,15 +38611,10 @@
       "title": "benchbox.core.run_service exports three underscore-prefixed names in __all__"
     },
     "run-timeout-execution-phases-20261120": {
-      "claim": {
-        "expires_at": "2026-11-22T20:09:21Z",
-        "generation": "b3b1c90749ff4a6f98de164f7711958c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Run timeout step 2: execution phases honour the deadline; BenchBox's execution defaults removed"
     },
     "run-timeout-generators-and-partial-data-20261120": {
