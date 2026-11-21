@@ -21,7 +21,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 MEDIUM_MARKER = "medium and not (slow or stress or resource_heavy or live_integration)"
 MONITORING_TEST_FILE = "tests/unit/monitoring/test_resource_monitoring.py"
 KNOWN_REGRESSIONS = [
-    ("68fb5a071", "tests/integration/test_tpcdi_full_benchmark.py"),
     ("5e9284a2c", "tests/unit/core/flightdata/test_flightdata_benchmark_resource_heavy.py"),
     ("ed3e39a9c", "tests/unit/scripts/test_validate_submission_resource_heavy.py"),
     ("2384c3ee7", "tests/unit/scripts/test_validate_submission_resource_heavy.py"),

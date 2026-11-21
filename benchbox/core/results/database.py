@@ -31,6 +31,7 @@ from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.regression_policy import is_regression
 from benchbox.core.results.subscale_policy import result_compliance_class
+from benchbox.core.results.tpcdi_audit import audited_validation_status
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,11 @@ class StoredResult:
     config_hash: str
     metadata: dict[str, Any]
     compliance_class: str | None = None
+
+    def __post_init__(self) -> None:
+        self.validation_status = audited_validation_status(
+            (self.benchmark,), self.validation_status, (self.metadata or {}).get("validation_details")
+        )
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> StoredResult:

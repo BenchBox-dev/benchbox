@@ -5,6 +5,7 @@ import click
 from benchbox.cli.commands.run import run
 from benchbox.cli.host_lock_optin import host_guarded
 from benchbox.cli.shared import console
+from benchbox.cli.unavailable_benchmark import exit_if_benchmark_unavailable
 from benchbox.core.run_service import resolve_lifecycle_phases
 
 
@@ -84,6 +85,8 @@ from benchbox.core.run_service import resolve_lifecycle_phases
 @click.pass_context
 @host_guarded("datagen")
 def datagen(ctx, benchmark, scale, output_dir, data_format, seed, verbose, timeout):
+    exit_if_benchmark_unavailable(benchmark)
+
     console.print("[bold blue]Running data generation...[/bold blue]")
     console.print(f"Benchmark: {benchmark}, Scale: {scale}")
 

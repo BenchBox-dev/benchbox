@@ -59,7 +59,7 @@ def test_dataframe_mutation_compatibility_rules_cover_dataframe_group():
     benchmarks = matrix.load_benchmarks()
 
     for platform in matrix.DATAFRAME_PLATFORMS:
-        for benchmark in ("transaction_primitives", "tpcdi"):
+        for benchmark in ("transaction_primitives",):
             rule = compatibility.compatibility_rule_for(platform, benchmark, benchmarks[benchmark])
             assert rule is not None
             assert rule.rule_id == f"uat.compat.{platform}.{benchmark}.benchmark_gate"
