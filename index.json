@@ -38561,10 +38561,15 @@
       "title": "benchbox.core.run_service exports three underscore-prefixed names in __all__"
     },
     "run-timeout-execution-phases-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-22T20:09:21Z",
+        "generation": "b3b1c90749ff4a6f98de164f7711958c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Run timeout step 2: execution phases honour the deadline; BenchBox's execution defaults removed"
     },
     "run-timeout-generators-and-partial-data-20261120": {
