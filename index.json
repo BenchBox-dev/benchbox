@@ -44740,6 +44740,15 @@
       "status": "open",
       "title": "TPC-DI step 16: generator and audit recount for the two incremental batches"
     },
+    "tpcdi-17-duckdb-incremental-and-full-audit-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-16-generator-incremental-batches-20261120"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 17: DuckDB incremental updates, visibility queries and the full audit"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
