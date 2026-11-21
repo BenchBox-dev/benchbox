@@ -79,10 +79,14 @@ first. It calls one hook, `PlatformAdapter.cancel_remote_work`, on each adapter 
 only what this run started and has not seen finish: Onehouse jobs and a cluster it provisioned itself, BigQuery query
 jobs, EMR Serverless job runs and an application the run created, Glue job runs, and Dataproc jobs and an ephemeral
 cluster the run created. It never stops a warehouse, application, cluster or session that existed before the run. The
-hard stop waits for the cleanup only for what is left of its 30-second grace, so the hard bound stays the limit plus
-30 seconds. A cleanup that has not finished by then is reported as `Remote cleanup did not finish within 30 seconds`.
-A failed cleanup does not change the exit code (124) or the `timed_out` result; its error is printed to standard
-error as `Remote cleanup failed: ...`, also in a quiet run.
+run waits for the cleanup only until 5 seconds before the 30-second grace ends, so a run that stopped cleanly still
+exports its full result. The hard stop waits only for what is left of that time, and the hard bound stays the limit
+plus 30 seconds. A cleanup that has not finished by then is reported as
+`Remote cleanup did not finish within 25 seconds`. A failed cleanup does not change the exit code (124) or the
+`timed_out` result. Its error is printed to standard error as `Remote cleanup failed: ...` on the command line, also
+in a quiet run, logged as a warning by MCP runs and by `adapter.run_benchmark(timeout_seconds=...)`, and recorded in
+`validation_details["timeout"]["cleanup_errors"]` of the timed-out result. A resource whose stop failed stays marked
+as started, so the normal close of the adapter tries again.
 
 The warning is shown on every surface that takes a limit: the command line (once per run, from the platform the run
 uses, including a platform chosen interactively), the `warnings` list of the MCP `run_benchmark` and `start_benchmark`
