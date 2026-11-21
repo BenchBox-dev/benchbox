@@ -44699,7 +44699,7 @@
         "tpcdi-09-generator-customer-and-finwire-20261120"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "dropped",
       "title": "TPC-DI step 10: generator: trades, holdings, cash, watches and daily market files"
     },
     "tpcdi-11-audit-recount-batch1-20261120": {
