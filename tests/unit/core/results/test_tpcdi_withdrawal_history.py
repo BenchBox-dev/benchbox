@@ -32,19 +32,7 @@ def _commit_present() -> bool:
     return _git("cat-file", "-e", f"{LAST_COMMIT_WITH_TPCDI_BUNDLES}^{{commit}}").returncode == 0
 
 
-def _history_available() -> bool:
-    if _commit_present():
-        return True
-    if _ALLOW_MISSING_HISTORY:
-        return False
-    _git("fetch", "--no-tags", "origin", LAST_COMMIT_WITH_TPCDI_BUNDLES)
-    if _commit_present():
-        return True
-    _git("fetch", "--no-tags", "origin", "develop")
-    return _commit_present()
-
-
-HISTORY_AVAILABLE = _history_available()
+HISTORY_AVAILABLE = _commit_present()
 skip_no_history = pytest.mark.skipif(
     not HISTORY_AVAILABLE,
     reason="the commit that holds the withdrawn TPC-DI bundles is unreachable",
@@ -53,8 +41,9 @@ skip_no_history = pytest.mark.skipif(
 
 def test_history_suite_is_not_silently_skipped() -> None:
     assert HISTORY_AVAILABLE or _ALLOW_MISSING_HISTORY, (
-        f"commit {LAST_COMMIT_WITH_TPCDI_BUNDLES} is unreachable; set BENCHBOX_ALLOW_MISSING_PUBLISHED_REF=1 "
-        "to allow an offline run, otherwise fetch develop so the withdrawn bundles can be checked"
+        f"commit {LAST_COMMIT_WITH_TPCDI_BUNDLES} is not in this clone; use a full clone (or fetch develop) "
+        "so the withdrawn bundles can be checked, or set BENCHBOX_ALLOW_MISSING_PUBLISHED_REF=1 "
+        "to allow an offline run"
     )
 
 
