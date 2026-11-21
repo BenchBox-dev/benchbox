@@ -44887,7 +44887,8 @@
       "claim": null,
       "needs": [
         "tpcdi-18-metric-bundle-and-reopen-duckdb-20261120",
-        "tpcdi-14-milestone-report-owner-stop-20261120"
+        "tpcdi-14-milestone-report-owner-stop-20261120",
+        "tpcdi-first-publication-20261121"
       ],
       "priority": "medium",
       "status": "blocked",
