@@ -44605,6 +44605,15 @@
       "status": "open",
       "title": "TPC-DI step 1: withdraw the 33 published bundles on develop and refuse new ones"
     },
+    "tpcdi-02-withdraw-bundles-published-results-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-01-withdraw-bundles-develop-20261120"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "TPC-DI step 2: deletion-only pull request against published-results"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],

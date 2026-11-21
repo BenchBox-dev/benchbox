@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "published-results holds no TPC-DI bundle.",
+    "The diff was deletion-only apart from the inventory."
+  ],
+  "context": "Step of the TPC-DI correction plan. Full plan with file paths and line numbers: local://tpcdi-correction-plan.md (planner report, agent://TpcdiCorrectionPlan). Reviews: agent://TpcdiQuerySetReview, agent://TpcdiRootCause. Generator research: agent://TpcdiDatagenAlternatives. Every owner decision is quoted on tpcdi-correction-plan-20261120. The planner's step numbers (S1..S20) are given for cross-reference only; line numbers in the plan are as of origin/develop ffc4de7750 and must be re-read before editing.",
+  "description": "## Problem\nThe published-results branch still serves the 33 bundles to the site after step 1.\n\n## Owner decisions (choice dialogs, 2026-11-20)\nDecision 7 and \"Withdrawn bundles are deleted from develop and published-results\".\n\n## Change\nPlan S2. Open a pull request against `published-results` that deletes the same paths and updates that branch's inventory. Nothing else.\n\n## Decision gates\nIf a pending mirror pull request conflicts, stop and report; do not rebase someone else's pull request. The agent does not merge by hand; it follows the repository close-out for that branch.\n\n## Verification rubric\nPass: the diff contains only deletions plus the inventory change; the submission validation workflow passes; after merge `git ls-tree -r --name-only origin/published-results -- results-data/bundles | rg -c tpcdi` prints 0 (or rg exits 1 with no match); the item records the merge commit.\n\n## Guardrails (owner, 2026-11-20)\n- The agent never posts a stand-in review, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`.\n- Arming: `make pr-arm` once; one more attempt only when the refusal named a cause, the agent reported it and the cause is cleared; never a third without asking. `make pr-rerun` at most once and only for a job the runner never ran or cancelled, never for a failed test.\n- Review threads: reply; resolve only after the bot's review of the new head does not raise the finding again.\n- Subagents are read-only. No file edit by script; use the edit tool. Do not edit a pull request description while its CI is starting; post a comment.\n- Any limit, default, threshold, status token, message or label text the owner has not already chosen (see tpcdi-correction-plan-20261120) is shown to the owner before it is committed.\n- A blocked step stops this item; no workaround. No live cloud run. Heavy work only through `make heavy-run`. One pull request for this item, merged before the next item starts.\n- From the quarantine step until the reopening step, no TPC-DI entry point may produce a result that reads PASSED or is admitted for publication.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-21T01:26:52Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e19d9cff050a41528bc573b41cb05db9",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    }
+  ]
+}
