@@ -44790,7 +44790,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 20: ClickHouse Local: ETL, visibility and full audit"
+      "title": "TPC-DI step 30: ClickHouse Local: ETL, visibility and full audit"
     },
     "tpcdi-21-platform-postgresql-20261120": {
       "claim": null,
