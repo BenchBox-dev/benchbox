@@ -45121,9 +45121,7 @@
     },
     "tpcdi-owner-action-ask-author-for-licence-file-20261121": {
       "claim": null,
-      "needs": [
-        "tpcdi-provenance-record-and-copy-guard-20261121"
-      ],
+      "needs": [],
       "priority": "low",
       "status": "blocked",
       "title": "Owner action: ask the databricks-tpc-di author to add a LICENSE file"

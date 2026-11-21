@@ -3,7 +3,7 @@
     "The author's answer is recorded and the repository's copyright line matches it."
   ],
   "context": "Step of the TPC-DI plan based on shannon-barrow/databricks-tpc-di. The full plan (inventory of the project, the 34 departures from the specification with file and line, target architecture, step list) is the description of tpcdi-plan-databricks-base-20261121; every owner decision is quoted on tpcdi-correction-plan-20261120. Read both before starting. Item ids keep the number they were created with; the step number in the title is the order. File paths and line numbers in the plan were read on 2026-11-21 and must be re-read before editing.\n\nBlocked 2026-11-21: owner action: send the request.",
-  "description": "## Problem\nBenchBox treats shannon-barrow/databricks-tpc-di as MIT on the owner's instruction, but the repository has no LICENSE file, and most of its commits come from databricks.com addresses, so the copyright holder may be Databricks. The public record should match.\n\n## Owner decisions\n- 2026-11-21: \"You will consider the license to be MIT for the purposes of this effort and we will include the usual TPC caveats and limitations.\"\n- Nothing waits on this.\n\n## Action (owner)\nSend, or adapt, this request:\n\n> Hi Shannon. BenchBox (MIT, https://github.com/BenchBox-dev/BenchBox) is basing its TPC-DI implementation on the ETL SQL in shannon-barrow/databricks-tpc-di (commit 8e0f944), with attribution. The repository has no LICENSE file. Could you add one, MIT if possible (Apache-2.0 also works), covering at least `src/incremental_batches/**` (excluding the TPC appendix files)? Could you also tell us the copyright line to use (you, Databricks, Inc., or both), and whether Databricks needs to approve?\n\n## Decision gates\nThe agent does not contact the author. When the owner reports the answer, a one-line pull request corrects the copyright line in step 6's files if needed. If the answer is a refusal or a restrictive licence (for example the Databricks License, which limits use to Databricks services), stop all work that derives from the project and report.\n\n## Verification rubric\nPass: the owner's report of the answer is quoted on this item; the copyright line in the repository matches it.",
+  "description": "## Problem\nBenchBox treats shannon-barrow/databricks-tpc-di as MIT on the owner's instruction, but the repository has no LICENSE file, and most of its commits come from databricks.com addresses, so the copyright holder may be Databricks. The public record should match.\n\n## Owner decisions\n- 2026-11-21: \"You will consider the license to be MIT for the purposes of this effort and we will include the usual TPC caveats and limitations.\"\n- Nothing waits on this.\n\n## Action (owner)\nSend, or adapt, this request:\n\n> Hi Shannon. BenchBox (MIT, https://github.com/BenchBox-dev/BenchBox) is basing its TPC-DI implementation on the ETL SQL in shannon-barrow/databricks-tpc-di (commit 8e0f944), with attribution. The repository has no LICENSE file. Could you add one, MIT if possible (Apache-2.0 also works), covering at least `src/incremental_batches/**` (excluding the TPC appendix files)? Could you also tell us the copyright line to use (you, Databricks, Inc., or both), and whether Databricks needs to approve?\n\n## Decision gates\nThe agent does not contact the author. When the owner reports the answer, a one-line pull request corrects the copyright line in the provenance step's files if needed. If the answer is a refusal or a restrictive licence (for example the Databricks License, which limits use to Databricks services), stop all work that derives from the project and report.\n\n## Verification rubric\nPass: the owner's report of the answer is quoted on this item; the copyright line in the repository matches it.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
@@ -27,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "0068534b9484474abec86b78c58fafea",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-21T14:43:58Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5275f0ec7f274cf39df2b0af22c8383b",
       "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
