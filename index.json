@@ -44858,11 +44858,12 @@
     "tpcdi-27-platform-lakesail-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-26-platform-presto-20261120"
+        "tpcdi-26-platform-presto-20261120",
+        "tpcdi-first-publication-20261121"
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 37: LakeSail: ETL, visibility and full audit"
+      "title": "TPC-DI step 41: LakeSail: ETL, visibility and full audit"
     },
     "tpcdi-28-platform-bigquery-20261120": {
       "claim": null,
