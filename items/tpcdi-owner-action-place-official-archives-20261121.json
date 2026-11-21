@@ -3,7 +3,7 @@
     "Both official archives are present and their SHA-256 values are recorded."
   ],
   "context": "Step of the TPC-DI plan based on shannon-barrow/databricks-tpc-di. The full plan (inventory of the project, the 34 departures from the specification with file and line, target architecture, step list) is the description of tpcdi-plan-databricks-base-20261121; every owner decision is quoted on tpcdi-correction-plan-20261120. Read both before starting. Item ids keep the number they were created with; the step number in the title is the order. File paths and line numbers in the plan were read on 2026-11-21 and must be re-read before editing.\n\nBlocked 2026-11-21: owner action: download and place the archives.",
-  "description": "## Problem\nSteps 8, 9 and 10 need the official `TPC-DI_Tools_v1.1.0.zip` and the separate Appendix archive (specification page 117). Both are behind the TPC's request form, which the agent must not fill in.\n\n## Owner decisions\n- 2026-11-21: source of shipped tools: \"The official archive you place at ~/Developer/tpc-tools/, with SHA-256 recorded. The data and audit steps wait for it.\"\n\n## Action (owner)\nDownload both archives from tpc.org and place them under `~/Developer/tpc-tools/`. Tell the agent.\n\n## Decision gates\nThe agent never downloads from behind the form and never substitutes the copy in the Databricks project.\n\n## Verification rubric\nPass: both files exist at that path; the agent records each file's name, size and SHA-256 on this item and unblocks steps 8, 9 and 10.",
+  "description": "## Problem\nThe TPC-files, tools and runner steps need the official `TPC-DI_Tools_v1.1.0.zip` and the separate Appendix archive (specification page 117). Both are behind the TPC's request form, which the agent must not fill in.\n\n## Owner decisions\n- 2026-11-21: source of shipped tools: \"The official archive you place at ~/Developer/tpc-tools/, with SHA-256 recorded. The data and audit steps wait for it.\"\n\n## Action (owner)\nDownload both archives from tpc.org and place them under `~/Developer/tpc-tools/`. Tell the agent.\n\n## Decision gates\nThe agent never downloads from behind the form and never substitutes the copy in the Databricks project.\n\n## Verification rubric\nPass: both files exist at that path; the agent records each file's name, size and SHA-256 on this item. Early check (owner approved 2026-11-21): the agent unpacks the tools archive outside the repository, downloads a JDK 8 into `~/Developer/tpc-tools/` if none is installed, and runs DIGen at scale 3 twice through `make heavy-run` with output under `~/Developer/benchmark_runs`; it records on this item the Java version, time, disk use, whether the two outputs are byte-identical, whether PDGF writes files beside itself, and the archive's file count and unpacked size. Then it unblocks the TPC-files, tools and runner steps. If DIGen does not run or is not deterministic, it reports and unblocks nothing.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
@@ -27,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "9283ba873efc48b3bf58aebe2e0558d3",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-21T14:44:01Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "260d8cc49d594d5b80dbc6f90e576ee3",
       "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
