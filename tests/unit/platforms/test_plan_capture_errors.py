@@ -10,6 +10,7 @@ import pytest
 from benchbox.core.errors import PlanCaptureError
 from benchbox.core.plan_capture_phase import run_plan_capture_phase
 from benchbox.platforms.base.adapter import PlatformAdapter
+from benchbox.utils.run_deadline import RunDeadline, active_run_deadline, current_run_deadline
 
 pytestmark = [
     pytest.mark.unit,
@@ -461,3 +462,77 @@ def test_get_query_plan_from_cursor_returns_joined_rows_on_success() -> None:
 
     assert result == "row one\nrow two"
     assert cursor.closed is True
+
+
+def _hanging_adapter(setting_seconds: int, seen: list[Any]) -> tuple[DummyAdapter, threading.Event]:
+    release_explain = threading.Event()
+    adapter = DummyAdapter(capture_plans=True, plan_capture_timeout_seconds=setting_seconds)
+
+    def hanging_explain(connection: Any, query: str) -> str:
+        seen.append(current_run_deadline())
+        release_explain.wait(timeout=10)
+        return "PLAN"
+
+    adapter.get_query_plan = hanging_explain
+    return adapter, release_explain
+
+
+def test_plan_capture_is_bounded_by_the_time_left_on_the_run() -> None:
+    seen: list[Any] = []
+    adapter, release_explain = _hanging_adapter(30, seen)
+    deadline = RunDeadline(1)
+
+    start = time.monotonic()
+    try:
+        with active_run_deadline(deadline):
+            plan, _ = adapter.capture_query_plan(None, "SELECT 1", "q_left")
+        elapsed = time.monotonic() - start
+    finally:
+        release_explain.set()
+
+    assert plan is None
+    assert elapsed < 5
+    assert adapter.plan_capture_errors[0]["reason"] == "timeout"
+    assert seen == [deadline]
+
+
+def test_plan_capture_setting_wins_when_shorter_than_the_time_left() -> None:
+    adapter, release_explain = _hanging_adapter(1, [])
+
+    start = time.monotonic()
+    try:
+        with active_run_deadline(RunDeadline(60)):
+            plan, _ = adapter.capture_query_plan(None, "SELECT 1", "q_setting")
+        elapsed = time.monotonic() - start
+    finally:
+        release_explain.set()
+
+    assert plan is None
+    assert 1 <= elapsed < 5
+    assert adapter.plan_capture_errors[0]["message"] == "EXPLAIN query timed out after 1s"
+
+
+def test_plan_capture_does_not_start_once_the_run_time_is_used_up(monkeypatch: pytest.MonkeyPatch) -> None:
+    started: list[Any] = []
+    adapter, release_explain = _hanging_adapter(30, started)
+    deadline = RunDeadline(1)
+    monkeypatch.setattr(deadline, "remaining", lambda: 0.0)
+
+    try:
+        with active_run_deadline(deadline):
+            plan, _ = adapter.capture_query_plan(None, "SELECT 1", "q_spent")
+    finally:
+        release_explain.set()
+
+    assert plan is None
+    assert started == []
+    assert adapter.plan_capture_errors[0]["reason"] == "timeout"
+
+
+def test_plan_capture_without_a_run_deadline_uses_its_setting() -> None:
+    adapter = DummyAdapter(capture_plans=True, plan_capture_timeout_seconds=30)
+
+    plan, _ = adapter.capture_query_plan(None, "SELECT 1", "q_free")
+
+    assert plan is None
+    assert adapter.plan_capture_errors[0]["reason"] == "parser_unavailable"

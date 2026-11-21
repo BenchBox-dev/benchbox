@@ -19,12 +19,10 @@ def _make_config_manager(overrides: dict | None = None):
     defaults = {
         "execution.power_run.iterations": 4,
         "execution.power_run.warm_up_iterations": 0,
-        "execution.power_run.timeout_per_iteration_minutes": 60,
         "execution.power_run.fail_fast": False,
         "execution.power_run.collect_metrics": True,
         "execution.concurrent_queries.enabled": False,
         "execution.concurrent_queries.max_concurrent": 2,
-        "execution.concurrent_queries.query_timeout_seconds": 300,
         "execution.concurrent_queries.retry_failed_queries": True,
         "execution.concurrent_queries.max_retries": 3,
         "execution.max_workers": 4,
@@ -55,34 +53,27 @@ class TestPowerRunSettings:
         s = PowerRunSettings.from_config_manager(cm)
         assert s.iterations == 4
         assert s.warm_up_iterations == 0
-        assert s.timeout_per_iteration_minutes == 60
         assert s.fail_fast is False
         assert s.collect_metrics is True
 
     def test_to_dict(self):
-        s = PowerRunSettings(
-            iterations=3, warm_up_iterations=1, timeout_per_iteration_minutes=90, fail_fast=True, collect_metrics=False
-        )
+        s = PowerRunSettings(iterations=3, warm_up_iterations=1, fail_fast=True, collect_metrics=False)
         d = s.to_dict()
         assert d == {
             "iterations": 3,
             "warm_up_iterations": 1,
-            "timeout_per_iteration_minutes": 90,
             "fail_fast": True,
             "collect_metrics": False,
         }
 
     def test_apply_to_config_manager(self):
         cm = _make_config_manager()
-        s = PowerRunSettings(
-            iterations=5, warm_up_iterations=2, timeout_per_iteration_minutes=120, fail_fast=True, collect_metrics=True
-        )
+        s = PowerRunSettings(iterations=5, warm_up_iterations=2, fail_fast=True, collect_metrics=True)
         s.apply_to_config_manager(cm)
 
-        assert cm.set.call_count == 5
+        assert cm.set.call_count == 4
         cm.set.assert_any_call("execution.power_run.iterations", 5)
         cm.set.assert_any_call("execution.power_run.warm_up_iterations", 2)
-        cm.set.assert_any_call("execution.power_run.timeout_per_iteration_minutes", 120)
         cm.set.assert_any_call("execution.power_run.fail_fast", True)
         cm.set.assert_any_call("execution.power_run.collect_metrics", True)
 
@@ -93,7 +84,6 @@ class TestConcurrentQueriesSettings:
         s = ConcurrentQueriesSettings.from_config_manager(cm)
         assert s.enabled is False
         assert s.max_concurrent == 2
-        assert s.query_timeout_seconds == 300
         assert s.stream_timeout_seconds is None
         assert s.cancel_on_timeout is False
         assert s.retry_failed_queries is True
@@ -103,7 +93,6 @@ class TestConcurrentQueriesSettings:
         s = ConcurrentQueriesSettings(
             enabled=True,
             max_concurrent=8,
-            query_timeout_seconds=600,
             stream_timeout_seconds=7200,
             retry_failed_queries=False,
             max_retries=0,
@@ -118,13 +107,12 @@ class TestConcurrentQueriesSettings:
         s = ConcurrentQueriesSettings(
             enabled=True,
             max_concurrent=4,
-            query_timeout_seconds=600,
             stream_timeout_seconds=7200,
             retry_failed_queries=False,
             max_retries=5,
         )
         s.apply_to_config_manager(cm)
-        assert cm.set.call_count == 7
+        assert cm.set.call_count == 6
         cm.set.assert_any_call("execution.concurrent_queries.stream_timeout_seconds", 7200)
         cm.set.assert_any_call("execution.concurrent_queries.enabled", True)
         cm.set.assert_any_call("execution.concurrent_queries.max_concurrent", 4)
@@ -153,9 +141,7 @@ class TestExecutionConfigHelper:
     def test_update_power_run_settings(self):
         cm = _make_config_manager()
         helper = ExecutionConfigHelper(config_manager=cm)
-        s = PowerRunSettings(
-            iterations=7, warm_up_iterations=1, timeout_per_iteration_minutes=30, fail_fast=False, collect_metrics=True
-        )
+        s = PowerRunSettings(iterations=7, warm_up_iterations=1, fail_fast=False, collect_metrics=True)
         helper.update_power_run_settings(s)
         cm.set.assert_any_call("execution.power_run.iterations", 7)
 
@@ -165,7 +151,6 @@ class TestExecutionConfigHelper:
         s = ConcurrentQueriesSettings(
             enabled=True,
             max_concurrent=6,
-            query_timeout_seconds=120,
             stream_timeout_seconds=1800,
             retry_failed_queries=True,
             max_retries=2,
@@ -197,16 +182,15 @@ class TestExecutionConfigHelper:
         cm = _make_config_manager()
         helper = ExecutionConfigHelper(config_manager=cm)
         helper.optimize_for_system(cpu_cores=4, memory_gb=4.0)
-        cm.set.assert_any_call("execution.power_run.timeout_per_iteration_minutes", 120)
-        cm.set.assert_any_call("execution.concurrent_queries.query_timeout_seconds", 600)
+        written = {call.args[0] for call in cm.set.call_args_list}
+        assert "execution.power_run.timeout_per_iteration_minutes" not in written
+        assert "execution.concurrent_queries.query_timeout_seconds" not in written
         assert not _stream_timeout_writes(cm)
 
     def test_optimize_for_system_high_memory(self):
         cm = _make_config_manager()
         helper = ExecutionConfigHelper(config_manager=cm)
         helper.optimize_for_system(cpu_cores=32, memory_gb=64.0)
-        cm.set.assert_any_call("execution.power_run.timeout_per_iteration_minutes", 45)
-        cm.set.assert_any_call("execution.concurrent_queries.query_timeout_seconds", 180)
         cm.set.assert_any_call("execution.concurrent_queries.max_concurrent", 8)
 
     def test_optimize_for_system_mid_memory(self):
@@ -284,7 +268,7 @@ class TestExecutionConfigHelper:
 
         assert summary["power_run"]["enabled"] is True
         assert summary["power_run"]["total_iterations"] == 4
-        assert summary["power_run"]["estimated_duration_minutes"] == 4 * 60
+        assert "estimated_duration_minutes" not in summary["power_run"]
 
         assert summary["concurrent_queries"]["enabled"] is False
         assert summary["concurrent_queries"]["max_streams"] == 2
