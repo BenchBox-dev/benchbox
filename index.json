@@ -44668,6 +44668,15 @@
       "status": "open",
       "title": "TPC-DI step 8: clean-room source-file generator: core, scaling, reference files, HR, Prospect, row report"
     },
+    "tpcdi-09-generator-customer-and-finwire-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-08-generator-core-and-reference-files-20261120"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 9: generator: CustomerMgmt.xml and FINWIRE files with injected data-quality errors"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
