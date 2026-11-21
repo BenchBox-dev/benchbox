@@ -44749,6 +44749,15 @@
       "status": "open",
       "title": "TPC-DI step 17: DuckDB incremental updates, visibility queries and the full audit"
     },
+    "tpcdi-18-metric-bundle-and-reopen-duckdb-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-17-duckdb-incremental-and-full-audit-20261120"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 18: TPC_DI_RPS, bundle fields, publication gate, label, and reopening TPC-DI for DuckDB"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
