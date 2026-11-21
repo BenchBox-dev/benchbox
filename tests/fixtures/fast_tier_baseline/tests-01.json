@@ -5608,14 +5608,6 @@
     "p50_seconds": 0.012431
   },
   {
-    "id": "tests/unit/core/sql_compat/test_query_source_variants_c2.py::test_tpcdi_duckdb_has_no_rule[EQ7]",
-    "p50_seconds": 0.012453
-  },
-  {
-    "id": "tests/unit/core/sql_compat/test_query_source_variants_c2.py::test_tpcdi_rule_action_and_payload[datafusion-EQ7-quality_metrics]",
-    "p50_seconds": 0.012363
-  },
-  {
     "id": "tests/unit/core/sql_compat/test_query_source_variants_c3.py::test_starrocks_q2_version_ge_32_returns_versioned_variant",
     "p50_seconds": 0.012031
   },
@@ -6814,14 +6806,6 @@
   {
     "id": "tests/unit/core/tpcdi/test_tpcdi_clickhouse_overrides.py::test_eq3_clickhouse_flattens_nested_count",
     "p50_seconds": 0.297193
-  },
-  {
-    "id": "tests/unit/core/tpcdi/test_tpcdi_clickhouse_overrides.py::test_get_query_clickhouse_matches_bulk_variant[AQ10]",
-    "p50_seconds": 0.292584
-  },
-  {
-    "id": "tests/unit/core/tpcdi/test_tpcdi_clickhouse_overrides.py::test_get_query_clickhouse_matches_bulk_variant[AQ8]",
-    "p50_seconds": 0.300402
   },
   {
     "id": "tests/unit/core/tpcdi/test_tpcdi_etl_backend.py::test_dataframe_backend_delegates_insert_update",
@@ -18266,14 +18250,6 @@
   {
     "id": "tests/unit/test_tpcdi_phase2_queries.py::TestTPCDIBenchmarkIntegration::test_benchmark_query_statistics",
     "p50_seconds": 0.023645
-  },
-  {
-    "id": "tests/unit/test_tpcdi_phase2_queries.py::TestTPCDIQueryManager::test_base_query_support",
-    "p50_seconds": 0.023208
-  },
-  {
-    "id": "tests/unit/test_tpcdi_phase2_queries.py::TestTPCDIQueryManager::test_query_metadata_access",
-    "p50_seconds": 0.021891
   },
   {
     "id": "tests/unit/test_tpcdi_phase2_queries.py::TestTPCDIValidationQueries::test_invalid_validation_query_id",

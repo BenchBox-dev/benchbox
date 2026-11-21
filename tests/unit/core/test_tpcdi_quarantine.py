@@ -133,8 +133,7 @@ class TestPythonEntryPoints:
             ("calculate_official_metrics", (object(), object())),
             ("execute_dataframe_workload", ()),
             ("get_queries", ()),
-            ("get_query", ("AQ1",)),
-            ("run_benchmark", (object(),)),
+            ("get_query", ("Q1",)),
             ("run_etl_pipeline", (object(),)),
             ("generate_source_data", ()),
             ("load_data_to_database", (object(),)),
@@ -155,8 +154,7 @@ class TestPythonEntryPoints:
             ("run_etl_benchmark", (object(),)),
             ("calculate_official_metrics", (object(), object())),
             ("get_queries", ()),
-            ("get_query", ("AQ1",)),
-            ("run_benchmark", (object(),)),
+            ("get_query", ("Q1",)),
             ("run_etl_pipeline", (object(),)),
             ("generate_source_data", ()),
         ],
@@ -217,7 +215,7 @@ class TestMcpSurface:
         assert "tpc-di" not in description.lower()
 
     def test_query_detail_tool_returns_no_query_and_states_status(self, tools) -> None:
-        response = tools["get_query_details"](benchmark="tpcdi", query_id="AQ1")
+        response = tools["get_query_details"](benchmark="tpcdi", query_id="Q1")
 
         assert "sql" not in response
         assert OWNER_MESSAGE in json.dumps(response)

@@ -5500,26 +5500,6 @@
     "p50_seconds": 0.012884
   },
   {
-    "id": "tests/unit/core/sql_compat/test_query_source_variants_c2.py::test_tpcdi_duckdb_has_no_rule[AQ6]",
-    "p50_seconds": 0.012848
-  },
-  {
-    "id": "tests/unit/core/sql_compat/test_query_source_variants_c2.py::test_tpcdi_duckdb_has_no_rule[VQ6]",
-    "p50_seconds": 0.012458
-  },
-  {
-    "id": "tests/unit/core/sql_compat/test_query_source_variants_c2.py::test_tpcdi_rule_action_and_payload[clickhouse-AQ7-dateDiff]",
-    "p50_seconds": 0.012297
-  },
-  {
-    "id": "tests/unit/core/sql_compat/test_query_source_variants_c2.py::test_tpcdi_rule_action_and_payload[snowflake-EQ7-quality_metrics]",
-    "p50_seconds": 0.013274
-  },
-  {
-    "id": "tests/unit/core/sql_compat/test_query_source_variants_c2.py::test_tpcdi_rule_action_and_payload[starrocks-EQ7-quality_metrics]",
-    "p50_seconds": 0.012914
-  },
-  {
     "id": "tests/unit/core/sql_compat/test_query_source_variants_c3.py::test_starrocks_q2_non_pep440_engine_version_uses_versioned_variant",
     "p50_seconds": 0.011593
   },
@@ -6862,10 +6842,6 @@
   {
     "id": "tests/unit/core/tpcdi/test_tpcdi_etl_backend.py::test_sql_backend_rejects_unknown_table_name",
     "p50_seconds": 0.011815
-  },
-  {
-    "id": "tests/unit/core/tpcdi/test_tpcdi_postgres_overrides.py::test_get_query_datafusion_matches_bulk_variant[VQ6]",
-    "p50_seconds": 0.4457
   },
   {
     "id": "tests/unit/core/tpcdi/test_tpcdi_snowflake_overrides.py::test_eq7_snowflake_uses_derived_quality_relation",
@@ -18234,10 +18210,6 @@
   {
     "id": "tests/unit/test_tpc_validation.py::TestValidationReport::test_to_dict",
     "p50_seconds": 0.025366
-  },
-  {
-    "id": "tests/unit/test_tpcdi_phase2_queries.py::TestTPCDIQueryManager::test_query_routing",
-    "p50_seconds": 0.02131
   },
   {
     "id": "tests/unit/test_tpcds_dryrun_labels.py::test_maintenance_test_returns_labeled_keys",

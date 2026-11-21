@@ -5760,10 +5760,6 @@
     "p50_seconds": 0.012436
   },
   {
-    "id": "tests/unit/core/sql_compat/test_query_source_variants_c2.py::test_tpcdi_rule_action_and_payload[databricks-EQ7-quality_metrics]",
-    "p50_seconds": 0.013202
-  },
-  {
     "id": "tests/unit/core/sql_compat/test_query_source_variants_c2.py::test_tpcdi_variant_rules_registered",
     "p50_seconds": 0.013334
   },
@@ -7286,10 +7282,6 @@
   {
     "id": "tests/unit/core/tpcdi/test_tpcdi_no_values_row_source.py::test_etl_validation_queries_have_no_values_row_source",
     "p50_seconds": 0.012061
-  },
-  {
-    "id": "tests/unit/core/tpcdi/test_tpcdi_postgres_overrides.py::test_get_query_datafusion_matches_bulk_variant[EQ7]",
-    "p50_seconds": 0.481922
   },
   {
     "id": "tests/unit/core/tpcdi/test_tpcdi_snowflake_overrides.py::test_aq8_snowflake_replaces_julianday",

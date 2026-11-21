@@ -103,7 +103,6 @@ Clock readers that define no specification interval, listed so the grep count re
 
 | File and symbol | Reason |
 |---|---|
-| `tpcdi/benchmark.py` `TPCDIBenchmark.run_benchmark` | Per validation-query iteration; TPC-DI has no per-query timing and audit is untimed (1.2.2.4). |
 | `tpcdi/etl/data_quality_monitor.py` `DataQualityRuleEngine.execute_rule`, `DataQualityMonitor.run_quality_check_batch` | Quality monitor durations. |
 | `tpcdi/etl/incremental_loader.py` `IncrementalDataLoader._process_table_incremental_changes` | Per-table statistic. |
 | `tpcdi/etl/scd_processor.py` `EnhancedSCDType2Processor._analyze_dimension_changes` | Analysis duration statistic. |

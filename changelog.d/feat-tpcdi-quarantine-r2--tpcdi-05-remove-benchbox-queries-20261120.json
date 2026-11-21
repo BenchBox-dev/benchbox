@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "before-you-upgrade",
+      "breaking": true,
+      "lead": "TPC-DI queries removed",
+      "text": "The 38 BenchBox-written TPC-DI queries (V1-V3, A1-A5, VQ1-VQ12, AQ1-AQ10 and EQ1-EQ8) are removed together with their dialect variants, overrides and translation tests; none of them is in the TPC-DI specification, and TPCDIQueryManager no longer exists.",
+      "details": [
+        "Removed from benchbox.core.tpcdi: TPCDIQueryManager, TPCDIValidationQueries, TPCDIAnalyticalQueries and TPCDIETLQueries (queries.py, query_validation.py, query_analytics.py and query_etl.py are deleted).",
+        "Removed from TPCDIBenchmark: query_manager, get_all_queries, execute_query, run_benchmark, run_validation_queries, run_analytical_queries, run_etl_validation_queries, run_queries_by_category, get_query_execution_plan, get_platform_skip_queries, translate_query_text and the module constants TPCDI_FLAG_COLUMNS and BOOLEAN_FLAG_STYLES. get_query and get_queries remain only as the refusing methods that the benchmark base class requires, and TPCDI.run_benchmark and TPCDI.execute_query are removed. SQLETLBackend no longer takes execute_validation_query or validation_query_ids.",
+        "The SQL compatibility registry no longer holds the TPC-DI query-source variants or the LakeSail TPC-DI skip list, and the benchmark specification for tpcdi lists no query ids."
+      ],
+      "benchmarks": ["tpcdi"]
+    }
+  ]
+}

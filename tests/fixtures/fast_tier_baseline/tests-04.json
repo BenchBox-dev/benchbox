@@ -5896,10 +5896,6 @@
     "p50_seconds": 0.012297
   },
   {
-    "id": "tests/unit/core/sql_compat/test_query_source_variants_c2.py::test_tpcdi_rule_action_and_payload[clickhouse-AQ8-dateDiff]",
-    "p50_seconds": 0.012818
-  },
-  {
     "id": "tests/unit/core/sql_compat/test_query_source_variants_c3.py::test_starrocks_q2_version_lt_32_returns_skip",
     "p50_seconds": 0.012684
   },
