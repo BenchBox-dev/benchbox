@@ -441,6 +441,8 @@ PUBLIC_CLEAN_VALIDATION_STATUS = "passed"
 PUBLIC_MIRROR_ALLOWED_VALIDATION_STATUSES = frozenset({"passed", "partial", "not_run"})
 PUBLIC_NON_CLEAN_TRANSLATION_STATUSES = {"fallback", "failed"}
 CLI_REFUSED_COMPLIANCE_CLASSES = frozenset({"unofficial_nonstandard", "unofficial_subscale"})
+TPCDI_BENCHMARK_ID = "tpcdi"
+TPCDI_BUNDLE_REFUSAL = "TPC-DI bundles are not accepted while BenchBox reworks TPC-DI."
 
 CANONICAL_LOGICAL_QUERY_COUNTS: dict[str, int] = {
     "tpch": 22,
@@ -1345,6 +1347,9 @@ def _validate_benchmark_section(benchmark: Any, vr: ValidationResult) -> None:
     missing_bm = REQUIRED_BENCHMARK_KEYS - set(benchmark.keys())
     if missing_bm:
         vr.error(f"Missing keys in 'benchmark': {sorted(missing_bm)}")
+
+    if benchmark.get("id") == TPCDI_BENCHMARK_ID:
+        vr.error(TPCDI_BUNDLE_REFUSAL)
 
     bm_id = benchmark.get("id", "")
     if isinstance(bm_id, str) and bm_id and bm_id not in KNOWN_BENCHMARKS:

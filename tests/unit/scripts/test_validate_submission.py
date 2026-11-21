@@ -860,7 +860,7 @@ class TestValidateBundle:
         assert vr.ok
         assert any("Unknown benchmark id" in w for w in vr.warnings)
 
-    @pytest.mark.parametrize("benchmark_id", ["flightdata", "tsbs_devops", "tpcdi"])
+    @pytest.mark.parametrize("benchmark_id", ["flightdata", "tsbs_devops"])
     def test_current_benchmark_ids_do_not_warn(self, benchmark_id: str):
         data = _minimal_bundle()
         data["benchmark"]["id"] = benchmark_id
@@ -868,6 +868,14 @@ class TestValidateBundle:
         _validate_bundle(data, vr)
         assert vr.ok
         assert not any("Unknown benchmark id" in w for w in vr.warnings)
+
+    def test_tpcdi_bundle_is_refused_with_the_owner_text(self):
+        data = _minimal_bundle()
+        data["benchmark"]["id"] = "tpcdi"
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+        assert not vr.ok
+        assert "TPC-DI bundles are not accepted while BenchBox reworks TPC-DI." in vr.errors
 
     def test_unknown_platform_warns(self):
         data = _minimal_bundle()

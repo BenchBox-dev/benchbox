@@ -81,9 +81,6 @@ anywhere in the corpus until it is re-run.
 | ssb | 0.01 | Apache Doris, ClickHouse Local, Dask, DataFusion, DuckDB, Pandas, Polars, PostgreSQL, PySpark, SQLite, Spark, StarRocks |
 | ssb | 0.1 | Apache Doris, ClickHouse Local, Dask, DataFusion, DuckDB, Pandas, Polars, PostgreSQL, PySpark, SQLite, Spark, StarRocks |
 | ssb | 1.0 | Apache Doris, ClickHouse Local, Dask, DataFusion, DuckDB, Pandas, Polars, PostgreSQL, PySpark, SQLite, Spark, StarRocks |
-| tpcdi | 0.01 | Apache Doris, DuckDB, StarRocks |
-| tpcdi | 0.1 | Apache Doris, DuckDB, StarRocks |
-| tpcdi | 1.0 | Apache Doris, DuckDB, StarRocks |
 | tpcds | 0.01 | Polars |
 | tpcds | 0.1 | Polars |
 | tpcds | 1.0 | Polars |
@@ -167,7 +164,6 @@ Benchmarks with **no** checked-in primary bundles after the trust cut:
 | flightdata | SF 0.01 × >=3 local platforms | Same local platform set |
 | metadata_primitives | SF 1.0 × >=3 local platforms | Scale is unused for sizing; needs three validation-passed platforms |
 | nyctaxi | SF 0.01 × >=3 local platforms | |
-| tpcdi | SF 0.01 × >=3 local platforms | |
 | tpcds_obt | SF 0.01 × >=3 local platforms | Recorded as SF 1.0 when the benchmark accepted only SF 1; it has accepted the TPC-DS range (SF 0.01 to 100000) since 2026-11-11 |
 | tpchavoc | SF 0.01 × >=3 local platforms | Experimental; large query count |
 | write_primitives | SF 0.01 × >=3 local platforms | Needs three validation-passed local platforms |
@@ -200,7 +196,6 @@ and the inventory regenerated:
 | datavault | SF 0.01, SF 0.1 (DuckDB, DataFusion, ClickHouse Local) | SF 1.0 — no full-suite DataFusion validation-passed third platform in local output |
 | flightdata | SF 0.01, SF 0.1, SF 1.0 | — |
 | nyctaxi | SF 0.01, SF 0.1, SF 1.0 | — |
-| tpcdi | SF 0.01, SF 0.1, SF 1.0 | — |
 | tpcds_obt | SF 1.0; SF 0.01 and SF 0.1 added 2026-11-11 (DuckDB, DataFusion, Apache Doris, and LakeSail at SF 0.01) | LakeSail SF 0.1: the run failed, see `CORPUS_NOTES.md` |
 | tpchavoc | SF 0.01, SF 0.1, SF 1.0 | — |
 | vector_search | — (see deferral) | DEFERRED 2026-09-26: single DuckDB tuned-fallback SF 0.01 run (applied_unverified) withheld from promotion, never committed to the seed corpus — each committed cohort needs >=3 comparison identities per results-data/validate_corpus.py. Restore only with two more genuine validation-passed platform runs (ClickHouse Local and StarRocks per the dropped-cell list; DataFusion has no vector_search query path). SF 0.1, SF 1.0 — deferred, no tuned path run yet |
