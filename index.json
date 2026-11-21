@@ -44788,11 +44788,12 @@
     "tpcdi-20-platform-clickhouse-local-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-19-platform-datafusion-20261120"
+        "tpcdi-19-platform-datafusion-20261120",
+        "tpcdi-first-publication-20261121"
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 30: ClickHouse Local: ETL, visibility and full audit"
+      "title": "TPC-DI step 34: ClickHouse Local: ETL, visibility and full audit"
     },
     "tpcdi-21-platform-postgresql-20261120": {
       "claim": null,
