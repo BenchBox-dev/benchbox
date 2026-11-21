@@ -8992,6 +8992,59 @@
       "start_head": "f3409b20ba5a2b7a7705b8c7a37c50da60400a3d",
       "terminal_outcome": "deliver"
     },
+    "run-timeout-harness": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/run-timeout-harness",
+      "integration_head": "4a6fe5496bad1a4e651111363890dcb4dbdd1251",
+      "integration_log": [
+        {
+          "at": "2026-11-21T23:48:53Z",
+          "head": "4a6fe5496bad1a4e651111363890dcb4dbdd1251",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-harness",
+      "lifecycle": "active",
+      "members": [
+        "run-timeout-uat-cells-20261120",
+        "run-timeout-remove-unused-timers-20261120"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "owner_epoch": 0,
+      "owner_generation": "295b8d6474e5dd474c2e29f6aa13234e",
+      "project_id": "run-timeout-plan-20261120",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "run-timeout-remove-unused-timers-20261120": [
+          "benchbox/*",
+          "tests/*",
+          "docs/*",
+          "examples/*",
+          "quality/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "run-timeout-uat-cells-20261120": [
+          "tests/*",
+          "scripts/run_version_matrix.py",
+          "scripts/release_reuse_uat_evidence.py",
+          "docs/*",
+          "quality/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "5ee0573161d16669ebd38d78b8bb3fdfa1da90d1949f3854c5fce162cd1f9574",
+      "start_head": "4a6fe5496bad1a4e651111363890dcb4dbdd1251",
+      "terminal_outcome": "deliver"
+    },
     "server-engine-bulk-load": {
       "accepted_members": {},
       "batch_schema": 2,
