@@ -44928,7 +44928,7 @@
       ],
       "priority": "medium-high",
       "status": "blocked",
-      "title": "TPC-DI step 9: ship the TPC-DI tools (DIGen and PDGF) unmodified, with their licences and a sourcing file"
+      "title": "TPC-DI step 10: ship the official TPC-DI tools archive (DIGen and PDGF) byte-identical, with licences and a sourcing file"
     },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
