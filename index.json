@@ -45106,12 +45106,17 @@
       "title": "TPC-DI step 25: TPC_DI_RPS and the `benchmark.tpcdi` result block"
     },
     "tpcdi-old-generator-bundle-defect-label-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-22T16:20:53Z",
+        "generation": "7206c42d11814740aed5f5d607cdd6d8",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840"
+      },
       "needs": [
         "feature-fix-corpus-classification-and-seed-provenance-20261120"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Give old-generator TPC-DI bundles a defect label that does not claim wrong values"
     },
     "tpcdi-owner-action-ask-author-for-licence-file-20261121": {
