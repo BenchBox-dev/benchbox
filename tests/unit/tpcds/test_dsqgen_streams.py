@@ -210,7 +210,7 @@ class TestRunDsqgenStreams:
         monkeypatch.setattr(streams_mod.sys, "platform", "win32")
         monkeypatch.setattr(streams_mod.subprocess, "run", lambda *args, **kwargs: results.pop(0))
 
-        result = _run_dsqgen_streams(["dsqgen.exe"], temp_path=tmp_path, timeout=30, env={})
+        result = _run_dsqgen_streams(["dsqgen.exe"], temp_path=tmp_path, tool="dsqgen", env={})
 
         assert result.returncode == 0
         assert not results
@@ -230,7 +230,7 @@ class TestRunDsqgenStreams:
         monkeypatch.setattr(streams_mod.sys, "platform", "win32")
         monkeypatch.setattr(streams_mod.subprocess, "run", _fail_once)
 
-        result = _run_dsqgen_streams(["dsqgen.exe"], temp_path=tmp_path, timeout=30, env={})
+        result = _run_dsqgen_streams(["dsqgen.exe"], temp_path=tmp_path, tool="dsqgen", env={})
 
         assert result.returncode == 1
         assert calls == 1
@@ -249,7 +249,7 @@ class TestRunDsqgenStreams:
         monkeypatch.setattr("benchbox.core.tpcds.c_tools._WINDOWS_DSQGEN_MAX_ATTEMPTS", 3)
         monkeypatch.setattr(streams_mod.subprocess, "run", _always_overrun)
 
-        result = _run_dsqgen_streams(["dsqgen.exe"], temp_path=tmp_path, timeout=30, env={})
+        result = _run_dsqgen_streams(["dsqgen.exe"], temp_path=tmp_path, tool="dsqgen", env={})
 
         assert result.returncode == 1
         assert calls == 3
@@ -267,7 +267,7 @@ class TestRunDsqgenStreams:
         monkeypatch.setattr(streams_mod.sys, "platform", "linux")
         monkeypatch.setattr(streams_mod.subprocess, "run", _fail_once)
 
-        result = _run_dsqgen_streams(["dsqgen"], temp_path=tmp_path, timeout=30, env={})
+        result = _run_dsqgen_streams(["dsqgen"], temp_path=tmp_path, tool="dsqgen", env={})
 
         assert result.returncode == 1
         assert calls == 1

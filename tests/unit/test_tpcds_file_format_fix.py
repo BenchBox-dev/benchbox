@@ -7,7 +7,7 @@
 
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -35,7 +35,9 @@ class TestTPCDSFileFormatFix:
             )
 
             def mock_popen(cmd, **kwargs):
-                process = Mock()
+                process = MagicMock()
+                process.__enter__.return_value = process
+                process.__exit__.return_value = False
                 process.returncode = 0
                 process.stderr = None
 
