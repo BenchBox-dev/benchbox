@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import ast
-import inspect
 import subprocess
-import textwrap
+import time
 from pathlib import Path
 
 import pytest
@@ -15,6 +13,7 @@ from benchbox.core.tpch.generator import TPCHDataGenerator
 from benchbox.core.tpch.queries import QGenBinary
 from benchbox.utils import tpc_compilation
 from benchbox.utils.tpc_compilation import BinaryInfo, TPCCompiler
+from tests.unit.core.generator_stubs import make_stub
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
@@ -91,23 +90,26 @@ def test_a_compile_outliving_the_old_limits_is_not_stopped(long_running_stub, tm
     assert long_running_stub.timeouts == [None]
 
 
-def _timeout_literals(function) -> list[object]:
-    tree = ast.parse(textwrap.dedent(inspect.getsource(function)))
-    return [
-        keyword.value.value
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Call)
-        for keyword in node.keywords
-        if keyword.arg == "timeout" and isinstance(keyword.value, ast.Constant)
-    ]
+def test_the_executable_probe_keeps_its_fifteen_second_limit(tmp_path, monkeypatch):
+    stub = make_stub(tmp_path, monkeypatch, "probe-target", hang=30)
+
+    started = time.monotonic()
+    TPCCompiler(auto_compile=True)._verify_executable(stub.path)
+
+    assert 14.5 <= time.monotonic() - started < 25
 
 
-def test_the_executable_probe_keeps_its_fifteen_second_limit():
-    assert _timeout_literals(TPCCompiler._verify_executable) == [15]
+def test_the_dbgen_help_probe_keeps_its_five_second_limit(tmp_path, monkeypatch):
+    stub = make_stub(tmp_path, monkeypatch, "dbgen", hang=30)
+    generator = TPCHDataGenerator(scale_factor=0.01, output_dir=tmp_path / "out")
+    generator._dbgen_exe = stub.path
+    generator.dbgen_available = True
 
+    started = time.monotonic()
+    supported = generator._check_stdout_support()
 
-def test_the_dbgen_help_probe_keeps_its_five_second_limit():
-    assert _timeout_literals(TPCHDataGenerator._check_stdout_support) == [5]
+    assert supported is False
+    assert 4.5 <= time.monotonic() - started < 15
 
 
 @pytest.mark.parametrize(

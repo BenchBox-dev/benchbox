@@ -36,6 +36,7 @@ from benchbox.utils.datagen_manifest import (
     require_manifest_files,
     resolve_compression_metadata,
 )
+from benchbox.utils.generation_marker import generation_in_progress
 from benchbox.utils.verbosity import VerbosityMixin, compute_verbosity
 
 logger = logging.getLogger(__name__)
@@ -260,6 +261,8 @@ class FlightDataDownloader(CompressionMixin, VerbosityMixin):
 
     def download(self) -> dict[str, Path | list[Path]]:
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        if generation_in_progress(self.output_dir):
+            self.force_redownload = True
 
         if not self.force_redownload:
             persisted_id = self._persisted_source_contract_id()

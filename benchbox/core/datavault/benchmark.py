@@ -24,6 +24,7 @@ from benchbox.core.datavault.schema import (
     get_table_loading_order,
 )
 from benchbox.utils.cloud_storage import normalize_output_dir
+from benchbox.utils.generation_marker import generation_in_progress
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 from benchbox.utils.scale_factor import format_scale_factor
 
@@ -136,6 +137,8 @@ class DataVaultBenchmark(TranslatableQueryMixin, BaseBenchmark):
         return self._query_manager
 
     def _check_existing_manifest(self) -> Optional[dict[str, Path]]:
+        if generation_in_progress(self.output_dir):
+            return None
         from benchbox.utils.datagen_manifest import MANIFEST_FILENAME, get_table_files, load_manifest
 
         manifest_path = self.output_dir / MANIFEST_FILENAME

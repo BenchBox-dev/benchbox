@@ -11,6 +11,7 @@ from benchbox.core.ssb.generator import SSBDataGenerator
 from benchbox.core.tpcds.generator import TPCDSDataGenerator
 from benchbox.core.tpch.generator import TPCHDataGenerator
 from benchbox.ssb import SSB
+from benchbox.tpcds import TPCDS
 from benchbox.tsbs_devops import TSBSDevOps
 from benchbox.utils import run_deadline
 from benchbox.utils.data_validation import BenchmarkDataValidator
@@ -281,3 +282,57 @@ def test_primitives_bulk_load_files_are_not_reused_beside_a_stale_marker(tmp_pat
     (tmp_path / GENERATION_IN_PROGRESS_MARKER).touch()
 
     assert generator.check_bulk_load_files_exist() is False
+
+
+def test_the_tpcds_benchmark_regenerates_data_beside_a_stale_marker(tmp_path, monkeypatch):
+    stub = make_stub(tmp_path, monkeypatch, "dsdgen", files=_tpcds_files(False))
+    data = tmp_path / "data"
+
+    def build() -> TPCDS:
+        benchmark = TPCDS(scale_factor=0.01, output_dir=data, compress_data=False)
+        benchmark._impl.data_generator.dsdgen_exe = stub.path
+        benchmark._impl.data_generator.dsdgen_available = True
+        return benchmark
+
+    build().generate_data()
+    (data / GENERATION_IN_PROGRESS_MARKER).touch()
+    build().generate_data()
+
+    assert len(stub.invocations()) == 2
+    assert not (data / GENERATION_IN_PROGRESS_MARKER).exists()
+
+
+def test_tpch_skew_reuses_complete_data_but_not_beside_a_stale_marker(tmp_path, monkeypatch):
+    from benchbox.core.tpch_skew.generator import TPCHSkewDataGenerator
+
+    for name in ("customer", "lineitem", "nation", "orders", "part", "partsupp", "region", "supplier"):
+        (tmp_path / f"{name}.tbl").write_text("1|row|\n", encoding="utf-8")
+    (tmp_path / "_datagen_manifest.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr("benchbox.utils.datagen_version.manifest_datagen_is_current", lambda *a, **k: True)
+    skew = TPCHSkewDataGenerator.__new__(TPCHSkewDataGenerator)
+    skew.output_dir = tmp_path
+    skew.manifest_matches_datagen_identity = lambda manifest: True
+
+    assert skew._check_existing_data() is True
+    (tmp_path / GENERATION_IN_PROGRESS_MARKER).touch()
+    assert skew._check_existing_data() is False
+
+
+def test_every_reuse_check_refuses_files_beside_a_stale_marker(tmp_path):
+    from benchbox.core.datavault.benchmark import DataVaultBenchmark
+    from benchbox.core.tpcds_obt.benchmark import TPCDSOBTBenchmark
+    from benchbox.core.tpch_skew.generator import TPCHSkewDataGenerator
+
+    (tmp_path / GENERATION_IN_PROGRESS_MARKER).touch()
+
+    skew = TPCHSkewDataGenerator.__new__(TPCHSkewDataGenerator)
+    skew.output_dir = tmp_path
+    assert skew._check_existing_data() is False
+
+    vault = DataVaultBenchmark.__new__(DataVaultBenchmark)
+    vault.output_dir = tmp_path
+    assert vault._check_existing_manifest() is None
+
+    obt = TPCDSOBTBenchmark.__new__(TPCDSOBTBenchmark)
+    obt.output_dir = tmp_path
+    assert obt._existing_obt("parquet") is False
