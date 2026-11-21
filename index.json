@@ -8569,6 +8569,69 @@
       "start_head": "766364b8a32f55ac19a09feca8dead5008a2fd80",
       "terminal_outcome": "deliver"
     },
+    "run-timeout-core": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/run-timeout-core",
+      "integration_head": "f3409b20ba5a2b7a7705b8c7a37c50da60400a3d",
+      "integration_log": [
+        {
+          "at": "2026-11-21T17:38:21Z",
+          "head": "f3409b20ba5a2b7a7705b8c7a37c50da60400a3d",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-core",
+      "lifecycle": "active",
+      "members": [
+        "run-timeout-execution-phases-20261120",
+        "run-timeout-remote-cleanup-20261120"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "owner_epoch": 0,
+      "owner_generation": "f8064b1f53535354466aebecbd23fdea",
+      "project_id": "run-timeout-plan-20261120",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "run-timeout-execution-phases-20261120": [
+          "benchbox/base.py",
+          "benchbox/core/*",
+          "benchbox/platforms/*",
+          "benchbox/cli/*",
+          "benchbox/utils/*",
+          "benchbox/experimental/*",
+          "benchbox/mcp/*",
+          "tests/*",
+          "docs/*",
+          "examples/*",
+          "quality/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "run-timeout-remote-cleanup-20261120": [
+          "benchbox/base.py",
+          "benchbox/core/*",
+          "benchbox/platforms/*",
+          "benchbox/cli/*",
+          "benchbox/utils/*",
+          "benchbox/mcp/*",
+          "tests/*",
+          "docs/*",
+          "quality/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "8ba080dafeda4ee5b8b5b564ce7927700463541dd8084791190da55f2643ccb0",
+      "start_head": "f3409b20ba5a2b7a7705b8c7a37c50da60400a3d",
+      "terminal_outcome": "deliver"
+    },
     "server-engine-bulk-load": {
       "accepted_members": {},
       "batch_schema": 2,
