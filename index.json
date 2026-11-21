@@ -44667,7 +44667,7 @@
     "tpcdi-07-specification-schema-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120"
+        "tpcdi-provenance-record-and-copy-guard-20261121"
       ],
       "priority": "medium-high",
       "status": "open",
