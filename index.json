@@ -44695,6 +44695,15 @@
       "status": "open",
       "title": "TPC-DI step 11: audit files for Batch 1 by independent recount"
     },
+    "tpcdi-12-duckdb-historical-load-and-audit-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-11-audit-recount-batch1-20261120"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "TPC-DI step 12 (milestone): DuckDB initialization, historical load and the audit gate"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
