@@ -45179,7 +45179,7 @@
         "tpcdi-05-remove-benchbox-queries-20261120"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "TPC-DI step 25: site contract and support-status row when the site pins a core release without the old TPC-DI (benchbox-site)"
     },
     "tpcdi-standard-scales-and-estimates-after-unit-change-20261112": {
