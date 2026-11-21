@@ -44794,6 +44794,15 @@
       "status": "open",
       "title": "TPC-DI step 22: Doris: ETL, visibility and full audit"
     },
+    "tpcdi-23-platform-starrocks-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-22-platform-doris-20261120"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DI step 23: StarRocks: ETL, visibility and full audit"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
