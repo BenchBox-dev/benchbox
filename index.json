@@ -44989,7 +44989,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 39: DataFrame mode on pandas"
+      "title": "TPC-DI step 43: DataFrame mode on pandas"
     },
     "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121": {
       "claim": null,
