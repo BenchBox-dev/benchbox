@@ -44764,7 +44764,7 @@
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "TPC-DI step 22: visibility queries, the full audit and the validity rule on DuckDB"
+      "title": "TPC-DI step 24: visibility queries, the full audit and the validity rule on DuckDB"
     },
     "tpcdi-18-metric-bundle-and-reopen-duckdb-20261120": {
       "claim": null,
