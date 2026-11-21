@@ -44690,7 +44690,7 @@
         "tpcdi-08-generator-core-and-reference-files-20261120"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "dropped",
       "title": "TPC-DI step 9: generator: CustomerMgmt.xml and FINWIRE files with injected data-quality errors"
     },
     "tpcdi-10-generator-trades-and-market-20261120": {
