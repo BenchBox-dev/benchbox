@@ -44753,7 +44753,7 @@
         "tpcdi-15-delete-old-generator-and-etl-20261120"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "dropped",
       "title": "TPC-DI step 16: generator and audit recount for the two incremental batches"
     },
     "tpcdi-17-duckdb-incremental-and-full-audit-20261120": {
