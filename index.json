@@ -44626,7 +44626,7 @@
       ],
       "priority": "high",
       "status": "open",
-      "title": "TPC-DI step 2: deletion-only pull request against published-results"
+      "title": "TPC-DI step 2: deletion-only pull request against published-results, then recut the ledger seed"
     },
     "tpcdi-03-site-rework-notice-20261120": {
       "claim": null,
