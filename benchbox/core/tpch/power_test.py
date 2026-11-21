@@ -38,6 +38,7 @@ from benchbox.core.validation.query_validation import (
     set_reference_seed_context,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS, failed_query_status, stop_requested_before_query
 
 DATA_STATE_BASE = "base"
 DATA_STATE_REFRESHED = "refreshed"
@@ -384,6 +385,8 @@ class TPCHPowerTest:
         self, query_permutation: list[int], result: TPCHPowerTestResult, *, data_refreshed: bool = False
     ) -> None:
         for position, query_id in enumerate(query_permutation):
+            if stop_requested_before_query(query_id):
+                break
             query_start: float | None = None
             query_result = {
                 "query_id": query_id,
@@ -459,6 +462,7 @@ class TPCHPowerTest:
                     {
                         "execution_time_seconds": execution_time,
                         "success": False,
+                        "timed_out": failed_query_status() == TIMED_OUT_QUERY_STATUS,
                         "error": str(e),
                     }
                 )

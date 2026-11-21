@@ -574,9 +574,9 @@ class TestStreamTimeoutReporting:
         with patch("benchbox.core.tpcds.throughput_test.TPCDSThroughputTest.run", side_effect=RuntimeError("stop")):
             driver._execute_tpcds_throughput_test(Mock(), Mock(), {"scale_factor": 1.0, "num_streams": 2, **run_config})
 
-    def test_benchmark_defaults_are_reported_per_benchmark(self):
-        assert "Stream timeout: 3600s (benchmark default)" in self._printed({}, self._tpch)
-        assert "Stream timeout: 7200s (benchmark default)" in self._printed({}, self._tpcds)
+    def test_an_unset_stream_timeout_is_reported_as_no_timeout_for_every_benchmark(self):
+        assert "Stream timeout: no timeout (not set)" in self._printed({}, self._tpch)
+        assert "Stream timeout: no timeout (not set)" in self._printed({}, self._tpcds)
 
     def test_config_file_value_is_reported_with_its_source(self):
         printed = self._printed({"stream_timeout_seconds": 1800, "stream_timeout_source": "config file"}, self._tpch)

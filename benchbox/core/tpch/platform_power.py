@@ -10,6 +10,7 @@ from benchbox.core.constants import (
     TPCH_POWER_DEFAULT_WARMUP_ITERATIONS,
 )
 from benchbox.core.plan_capture_phase import propagate_query_execution_metadata
+from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS, run_deadline_expired
 
 TPCH_BENCHMARK_ID = "tpch"
 PowerConnectionAdapterFactory = Callable[[Any, str, float], Any]
@@ -26,7 +27,9 @@ def _power_query_result(
     platform_result = {
         "query_id": query_result["query_id"],
         "execution_time_seconds": query_result["execution_time_seconds"],
-        "status": "SUCCESS" if query_result["success"] else "FAILED",
+        "status": TIMED_OUT_QUERY_STATUS
+        if query_result.get("timed_out")
+        else ("SUCCESS" if query_result["success"] else "FAILED"),
         "rows_returned": query_result.get("result_count", 0),
         "test_type": "power",
         "stream_id": query_result.get("stream_id", stream_id),
@@ -129,6 +132,8 @@ def execute_tpch_power_test(
         validation_runs: list[dict[str, Any]] = []
 
         for i in range(warm_up_iterations):
+            if run_deadline_expired():
+                break
             current_stream_id = stream_id
             console.print(f"[cyan]--- Warm-up Run {i + 1}/{warm_up_iterations} ---[/cyan]")
             power_test = TPCHPowerTest(
@@ -157,6 +162,8 @@ def execute_tpch_power_test(
                 )
 
         for i in range(iterations):
+            if run_deadline_expired():
+                break
             current_stream_id = stream_id
             console.print(f"[cyan]--- Measurement Run {i + 1}/{iterations} ---[/cyan]")
             is_final_iteration = i == iterations - 1
@@ -209,7 +216,7 @@ def execute_tpch_power_test(
             if not power_test_result.success:
                 if power_test_result.queries_successful == 0:
                     console.print("[yellow]⚠️  All queries failed - aborting remaining measurement runs[/yellow]")
-                    if not query_results:
+                    if not query_results and not run_deadline_expired():
                         all_results.append(
                             _power_test_error_result(
                                 "; ".join(power_test_result.errors)

@@ -57,7 +57,7 @@ class TestThroughputConfig:
         assert config.scale_factor == 1.0
         assert config.num_streams == 2
         assert config.base_seed == 42
-        assert config.stream_timeout == 3600
+        assert config.stream_timeout == 0
         assert config.max_workers is None
         assert config.verbose is False
         assert config.min_success_rate == 0.99

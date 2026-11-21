@@ -397,7 +397,9 @@ class TestExecutorBoundedWaitsAndClocks:
         assert result.total_streams_succeeded == 0
         assert any("abandoned" in (stream.error or "") for stream in result.streams)
 
-    def test_query_over_the_timeout_is_recorded_as_failed(self, mock_connection_factory, mock_query_factory):
+    def test_a_query_that_finishes_is_never_failed_afterwards_for_taking_too_long(
+        self, mock_connection_factory, mock_query_factory
+    ):
         def slow_execute(connection, sql):
             time.sleep(0.15)
             return True, 1, None
@@ -414,9 +416,19 @@ class TestExecutorBoundedWaitsAndClocks:
         result = ConcurrentLoadExecutor(config).run()
 
         assert result.total_queries_executed > 0
-        assert result.total_queries_succeeded == 0
-        failures = [e for stream in result.streams for e in stream.query_executions]
-        assert all("timeout" in (execution.error or "") for execution in failures)
+        assert result.total_queries_succeeded == result.total_queries_executed
+        executions = [e for stream in result.streams for e in stream.query_executions]
+        assert all(execution.success and execution.error is None for execution in executions)
+
+    def test_the_query_timeout_has_no_default(self, mock_connection_factory, mock_query_factory):
+        config = ConcurrentLoadConfig(
+            query_factory=mock_query_factory,
+            connection_factory=mock_connection_factory,
+            execute_query=lambda connection, sql: (True, 1, None),
+        )
+
+        assert config.query_timeout_seconds is None
+        assert ConcurrentLoadExecutor(config)._stream_wait_seconds() is None
 
     def test_run_duration_ignores_wall_clock_steps(
         self, mock_connection_factory, mock_query_factory, mock_execute_query
