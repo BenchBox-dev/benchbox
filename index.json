@@ -44769,11 +44769,11 @@
     "tpcdi-18-metric-bundle-and-reopen-duckdb-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-17-duckdb-incremental-and-full-audit-20261120"
+        "tpcdi-validator-admission-and-results-database-20261121"
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "TPC-DI step 23: TPC_DI_RPS, result fields, publication gate and label; reopen TPC-DI for DuckDB"
+      "title": "TPC-DI step 27: reopen TPC-DI for DuckDB (run gate, registry, label)"
     },
     "tpcdi-19-platform-datafusion-20261120": {
       "claim": null,
