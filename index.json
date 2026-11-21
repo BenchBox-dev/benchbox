@@ -44540,15 +44540,10 @@
       "title": "Show a rough duration estimate before TPC data and query generation"
     },
     "tpc-generation-no-default-timeout-optional-user-timeout-20261120": {
-      "claim": {
-        "expires_at": "2026-11-21T18:41:49Z",
-        "generation": "1926eb1daecb48b1abbc65b320d070dc",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Run timeout step 1a: the deadline, --timeout on every surface, result marker, exit code and backstop"
     },
     "tpc-h-stream-processing-implementation": {
