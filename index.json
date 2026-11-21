@@ -44894,11 +44894,11 @@
     "tpcdi-32-core-docs-and-adr-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-31-dataframe-mode-20261120"
+        "tpcdi-18-metric-bundle-and-reopen-duckdb-20261120"
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 32: core documentation and decision record"
+      "title": "TPC-DI step 24: core documentation and decision record"
     },
     "tpcdi-33-site-pages-20261120": {
       "claim": null,
