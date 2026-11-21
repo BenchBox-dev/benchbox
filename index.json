@@ -42570,12 +42570,17 @@
       "title": "Stop manufacturing zero durations in throughput result capture"
     },
     "stored-bundle-class-must-not-follow-registry-edits-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-22T16:20:41Z",
+        "generation": "db766384a25040909407eb9136899615",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840"
+      },
       "needs": [
         "feature-fix-corpus-classification-and-seed-provenance-20261120"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Stop a registry edit from silently reclassifying stored result bundles"
     },
     "stream-capability-single-source-of-truth": {
