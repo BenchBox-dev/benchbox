@@ -44868,7 +44868,8 @@
     "tpcdi-28-platform-bigquery-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-29-platform-snowflake-20261120"
+        "tpcdi-29-platform-snowflake-20261120",
+        "tpcdi-first-publication-20261121"
       ],
       "priority": "medium",
       "status": "blocked",
