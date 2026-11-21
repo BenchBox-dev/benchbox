@@ -44623,6 +44623,15 @@
       "status": "open",
       "title": "TPC-DI step 3: site notice that TPC-DI is being reworked (benchbox-site)"
     },
+    "tpcdi-04-quarantine-run-path-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-03-site-rework-notice-20261120"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "TPC-DI step 4: quarantine: every TPC-DI entry point refuses, and no result can read passed"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
