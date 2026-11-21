@@ -45092,7 +45092,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Owner action: place the official TPC-DI Tools zip and Appendix archive under ~/Developer/tpc-tools/"
     },
     "tpcdi-parallel-phase-truthful-outcome": {
