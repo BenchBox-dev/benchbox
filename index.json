@@ -44650,6 +44650,15 @@
       "status": "open",
       "title": "TPC-DI step 6: ship the TPC EULA, legend and the specification's audit, validation and visibility SQL"
     },
+    "tpcdi-07-specification-schema-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 7: replace the schema with the specification's tables, columns and types"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
