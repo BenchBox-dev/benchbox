@@ -44641,6 +44641,15 @@
       "status": "open",
       "title": "TPC-DI step 5: remove the 38 BenchBox-written queries and everything built on them"
     },
+    "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-05-remove-benchbox-queries-20261120"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 6: ship the TPC EULA, legend and the specification's audit, validation and visibility SQL"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
