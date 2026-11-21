@@ -44909,8 +44909,8 @@
         "tpcdi-site-release-pin-contract-20261121"
       ],
       "priority": "medium",
-      "status": "open",
-      "title": "TPC-DI step 26: rewrite the site's TPC-DI pages (benchbox-site)"
+      "status": "blocked",
+      "title": "TPC-DI step 30: rewrite the site's TPC-DI pages (benchbox-site)"
     },
     "tpcdi-34-explorer-display-20261120": {
       "claim": null,
