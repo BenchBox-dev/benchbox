@@ -44682,7 +44682,7 @@
       ],
       "priority": "medium-high",
       "status": "blocked",
-      "title": "TPC-DI step 10: DIGen runner: generate the source files with the shipped tools and record what was generated"
+      "title": "TPC-DI step 11: DIGen runner: generate the source files with the shipped tools and record what was generated"
     },
     "tpcdi-09-generator-customer-and-finwire-20261120": {
       "claim": null,
