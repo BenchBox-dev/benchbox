@@ -171,6 +171,22 @@ class ResultIntegrityValidator:
     def __init__(self) -> None:
         self._schema_validator = SchemaV2Validator()
 
+    def _check_benchmark_available(self, raw: dict[str, Any], checks: list[CheckResult]) -> None:
+        from benchbox.core.run_service import unavailable_benchmark_message
+
+        benchmark = raw.get("benchmark", {})
+        for candidate in (benchmark.get("id"), benchmark.get("name")):
+            message = unavailable_benchmark_message(candidate)
+            if message is not None:
+                _fail(
+                    checks,
+                    _COMPLETENESS,
+                    "benchmark_available",
+                    f"Benchmark is unavailable, so this result cannot be validated: {message}",
+                    {"benchmark": candidate},
+                )
+                return
+
     def validate(self, raw: dict[str, Any], filepath: str = "") -> IntegrityReport:
         benchmark_id = raw.get("benchmark", {}).get("id", "unknown")
         platform = raw.get("platform", {}).get("name", "unknown")
@@ -178,6 +194,7 @@ class ResultIntegrityValidator:
 
         checks: list[CheckResult] = []
 
+        self._check_benchmark_available(raw, checks)
         schema_ok = self._check_schema(raw, checks)
         if schema_ok:
             self._check_required_keys(raw, checks)

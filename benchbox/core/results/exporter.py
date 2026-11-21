@@ -725,8 +725,16 @@ class ResultExporter:
         try:
             return legacy_tpcdi_note(reconstruct_benchmark_results(data)) is not None
         except Exception:
-            benchmark = data.get("benchmark") if isinstance(data, dict) else None
-            return isinstance(benchmark, dict) and is_tpcdi_id(benchmark.get("id"))
+            if not isinstance(data, dict):
+                return False
+            benchmark = data.get("benchmark")
+            execution = data.get("execution")
+            candidates = (
+                benchmark.get("id") if isinstance(benchmark, dict) else None,
+                benchmark.get("name") if isinstance(benchmark, dict) else None,
+                execution.get("benchmark_id") if isinstance(execution, dict) else None,
+            )
+            return any(is_tpcdi_id(candidate) for candidate in candidates)
 
     def compare_results(self, baseline_path: Path, current_path: Path) -> dict[str, Any]:
         baseline_result = self.load_result_from_file(baseline_path)

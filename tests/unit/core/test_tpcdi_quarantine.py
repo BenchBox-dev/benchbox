@@ -424,6 +424,33 @@ class TestLegacyBundles:
         for comparison in (ResultExporter().compare_results(*paths), compare_results(*paths)):
             assert OWNER_LEGACY_WORDING in comparison["error"]
 
+    def test_comparison_refuses_a_bundle_named_tpcdi_that_cannot_be_reconstructed(self, tmp_path: Path) -> None:
+        paths = []
+        for name in ("a.json", "b.json"):
+            path = tmp_path / name
+            path.write_text(json.dumps({"result_schema_version": "2.3", "benchmark": {"name": "TPC-DI"}}), "utf-8")
+            paths.append(path)
+
+        assert OWNER_LEGACY_WORDING in ResultExporter().compare_results(*paths)["error"]
+
+    def test_integrity_validator_never_passes_a_withdrawn_bundle(self, tmp_path: Path) -> None:
+        from benchbox.core.results.integrity_validator import ResultIntegrityValidator, report_payload
+
+        payload = json.loads(_legacy_bundle(tmp_path).read_text(encoding="utf-8"))
+
+        report = report_payload(ResultIntegrityValidator().validate(payload))
+
+        assert report["overall_status"] == "FAIL"
+        assert any(OWNER_MESSAGE in str(check) for check in report["checks"])
+
+    def test_lifecycle_entry_point_refuses(self) -> None:
+        from benchbox.core.runner.runner import run_benchmark_lifecycle
+
+        config = BenchmarkConfig(name="tpcdi", display_name="TPC-DI", scale_factor=0.01)
+
+        with pytest.raises(BenchmarkUnavailableError):
+            run_benchmark_lifecycle(config, None, None)
+
     def test_publish_refuses(self, tmp_path: Path) -> None:
         bundle = _legacy_bundle(tmp_path)
 
