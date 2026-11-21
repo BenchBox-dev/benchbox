@@ -23,7 +23,6 @@ pytestmark = [pytest.mark.unit, pytest.mark.slow, pytest.mark.timeout(900)]
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MEDIUM_MARKER = "medium and not (slow or stress or resource_heavy or live_integration)"
 EXACTNESS_TARGETS = [
-    "tests/integration/test_tpcdi_full_benchmark.py",
     "tests/unit/core/flightdata/test_flightdata_benchmark_resource_heavy.py",
     "tests/unit/scripts/test_validate_submission_resource_heavy.py",
 ]

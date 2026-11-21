@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
-from functools import partial
+from functools import partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, ParamSpec, Protocol, TypeVar
 
 from benchbox.core.config import BenchmarkConfig, RunConfig
 from benchbox.core.config_utils import load_config_file
@@ -15,8 +16,45 @@ from benchbox.core.constants import (
     NO_COMPRESSION_ENV_VAR,
     QUERY_PHASES,
 )
+from benchbox.core.results.subscale_policy import normalize_tpc_benchmark_id
 
 TPC_ALLOWED_SCALE_FACTORS: frozenset[int | float] = frozenset({1, 10, 30, 100, 300, 1000, 3000, 10000, 30000, 100000})
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+TPCDI_UNAVAILABLE_MESSAGE = (
+    "TPC-DI is unavailable while BenchBox reworks it to run the specification's workload "
+    "(historical load, two incremental updates, automated audit). Earlier BenchBox TPC-DI results were withdrawn."
+)
+
+UNAVAILABLE_BENCHMARK_MESSAGES: dict[str, str] = {"tpcdi": TPCDI_UNAVAILABLE_MESSAGE}
+
+
+class BenchmarkUnavailableError(RuntimeError):
+    pass
+
+
+def unavailable_benchmark_message(benchmark_id: object) -> str | None:
+    return UNAVAILABLE_BENCHMARK_MESSAGES.get(normalize_tpc_benchmark_id(benchmark_id))
+
+
+def refuse_unavailable_benchmark(benchmark_id: object) -> None:
+    message = unavailable_benchmark_message(benchmark_id)
+    if message is not None:
+        raise BenchmarkUnavailableError(message)
+
+
+def refuses_unavailable_benchmark(benchmark_id: str) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
+    def decorate(func: Callable[_P, _R]) -> Callable[_P, _R]:
+        @wraps(func)
+        def guarded(*args: _P.args, **kwargs: _P.kwargs) -> _R:
+            refuse_unavailable_benchmark(benchmark_id)
+            return func(*args, **kwargs)
+
+        return guarded
+
+    return decorate
 
 
 def official_scale_points(benchmark_id: str | None) -> frozenset[int | float]:
@@ -368,6 +406,7 @@ def execute_run(
     monitor: Any = None,
     execution_context: ExecutionContext | None = None,
 ) -> BenchmarkResults:
+    refuse_unavailable_benchmark(config.name)
     run = partial(
         _execute_run,
         config=config,
@@ -585,6 +624,10 @@ def map_phases_to_execution_type(phases: list[str]) -> str:
 
 
 __all__ = [
+    "refuses_unavailable_benchmark",
+    "TPCDI_UNAVAILABLE_MESSAGE",
+    "unavailable_benchmark_message",
+    "UNAVAILABLE_BENCHMARK_MESSAGES",
     "AdapterFactory",
     "apply_polars_streaming_flag",
     "begin_run",
@@ -592,6 +635,7 @@ __all__ = [
     "build_timed_out_result",
     "build_unfinished_result",
     "execute_run",
+    "BenchmarkUnavailableError",
     "get_execution_mode",
     "is_dataframe_execution",
     "map_phases_to_execution_type",
@@ -611,6 +655,7 @@ __all__ = [
     "UnsupportedExecutionMode",
     "validate_stream_count",
     "validate_tpc_scale_factor",
+    "refuse_unavailable_benchmark",
     "VerbosityLike",
     "warn_polars_streaming_flag",
 ]

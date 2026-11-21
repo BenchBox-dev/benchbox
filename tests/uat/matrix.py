@@ -183,6 +183,9 @@ def platform_is_reachable(platform: str) -> bool:
     return reachable
 
 
+UNAVAILABLE_SUPPORT_STATUS = "document_only"
+
+
 @dataclass(frozen=True)
 class BenchmarkInfo:
     benchmark_id: str
@@ -192,6 +195,7 @@ class BenchmarkInfo:
     scale_options: tuple[float, ...]
     supports_dataframe: bool
     surface: str = "public"
+    support_status: str = "stable"
 
 
 def load_benchmarks() -> dict[str, BenchmarkInfo]:
@@ -207,6 +211,7 @@ def load_benchmarks() -> dict[str, BenchmarkInfo]:
             min_scale=(float(meta["min_scale"]) if meta.get("min_scale") is not None else None),
             scale_options=tuple(float(s) for s in meta.get("scale_options", ())),
             supports_dataframe=bool(meta.get("supports_dataframe", True)),
+            support_status=str(meta["support_status"]),
         )
     return out
 
@@ -244,7 +249,7 @@ def resolve_benchmarks(
             seen.add(bid)
             resolved.append(bid)
     excluded = set(exclude)
-    return [b for b in resolved if b not in excluded]
+    return [b for b in resolved if b not in excluded and benchmarks[b].support_status != UNAVAILABLE_SUPPORT_STATUS]
 
 
 def missing_benchmarks_from_include(

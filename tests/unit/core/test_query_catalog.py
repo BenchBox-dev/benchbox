@@ -23,7 +23,9 @@ from benchbox.core.query_catalog import (
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
-_ALL_BENCHMARK_IDS = sorted(get_all_benchmarks())
+_ALL_BENCHMARK_IDS = sorted(
+    benchmark_id for benchmark_id, entry in get_all_benchmarks().items() if entry["support_status"] != "document_only"
+)
 
 
 class TestListQueryIds:
@@ -119,7 +121,7 @@ class TestGetDataframeRender:
         assert "pandas" in render.source.lower() or "def q1_pandas_impl" in render.source
 
     def test_benchmark_without_dataframe_impl_is_none(self):
-        assert get_dataframe_render("tpcdi", list_query_ids("tpcdi")[0]) is None
+        assert get_dataframe_render("tpcdi", "AQ1") is None
 
     def test_id_normalization_matches_q_prefixed_registry(self):
         assert get_dataframe_query("tpch", "6") is not None

@@ -29,6 +29,7 @@ import pandas as pd
 from benchbox.base import BaseBenchmark, GeneratorOutputDirMixin
 from benchbox.core.dataframe.maintenance_interface import get_maintenance_operations_for_platform
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
+from benchbox.core.run_service import refuses_unavailable_benchmark
 from benchbox.core.tpcdi.config import TPCDIConfig
 from benchbox.core.tpcdi.etl import (
     DataFrameETLBackend,
@@ -155,6 +156,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         self.staging_dir = config.staging_dir
         self.warehouse_dir = config.warehouse_dir
 
+    @refuses_unavailable_benchmark("tpcdi")
     def generate_data(
         self,
         tables: Optional[list[str]] = None,
@@ -181,6 +183,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         finally:
             self.data_generator.generation_seed = original_generation_seed
 
+    @refuses_unavailable_benchmark("tpcdi")
     def get_query(
         self,
         query_id: Union[int, str],
@@ -202,6 +205,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         translated_query = self.translate_query_text(query, dialect)
         return self._apply_query_source_variant(query_id, translated_query, dialect, params=params)
 
+    @refuses_unavailable_benchmark("tpcdi")
     def get_queries(self, dialect: Optional[str] = None) -> dict[str, str]:
         all_query_ids = list(self.query_manager._all_queries.keys())
 
@@ -379,9 +383,11 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             rewrites=rewrites,
         )
 
+    @refuses_unavailable_benchmark("tpcdi")
     def get_all_queries(self) -> dict[str, str]:
         return self.query_manager.get_all_queries()
 
+    @refuses_unavailable_benchmark("tpcdi")
     def execute_query(
         self,
         query_id: Union[int, str],
@@ -413,6 +419,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
 
         return get_all_create_table_sql(dialect, enable_primary_keys, enable_foreign_keys)
 
+    @refuses_unavailable_benchmark("tpcdi")
     def load_data_to_database(self, connection: Any, tables: Optional[list[str]] = None) -> None:
         if not self.tables:
             raise ValueError("No data generated. Call generate_data() first.")
@@ -491,6 +498,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
                 for row in reader:
                     cursor.execute(insert_sql, _convert_row(row))
 
+    @refuses_unavailable_benchmark("tpcdi")
     def run_benchmark(
         self, connection: Any, queries: Optional[list[str]] = None, iterations: int = 1
     ) -> dict[str, Any]:
@@ -605,6 +613,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             "notes": caps.notes,
         }
 
+    @refuses_unavailable_benchmark("tpcdi")
     def execute_dataframe_workload(
         self,
         *,
@@ -772,24 +781,29 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
                 )
         return stage_results
 
+    @refuses_unavailable_benchmark("tpcdi")
     def run_validation_queries(self, connection: Any, iterations: int = 1) -> dict[str, Any]:
         validation_query_ids = list(self.query_manager.get_validation_queries().keys())
         return self.run_benchmark(connection, validation_query_ids, iterations)
 
+    @refuses_unavailable_benchmark("tpcdi")
     def run_analytical_queries(self, connection: Any, iterations: int = 1) -> dict[str, Any]:
         analytical_query_ids = list(self.query_manager.get_analytical_queries().keys())
         return self.run_benchmark(connection, analytical_query_ids, iterations)
 
+    @refuses_unavailable_benchmark("tpcdi")
     def run_etl_validation_queries(self, connection: Any, iterations: int = 1) -> dict[str, Any]:
         etl_query_ids = list(self.query_manager.get_etl_queries().keys())
         return self.run_benchmark(connection, etl_query_ids, iterations)
 
+    @refuses_unavailable_benchmark("tpcdi")
     def run_queries_by_category(self, connection: Any, category: str, iterations: int = 1) -> dict[str, Any]:
         category_query_ids = self.query_manager.get_queries_by_category(category)
         if not category_query_ids:
             raise ValueError(f"No queries found for category: {category}")
         return self.run_benchmark(connection, category_query_ids, iterations)
 
+    @refuses_unavailable_benchmark("tpcdi")
     def get_query_execution_plan(self) -> list[tuple[str, str, list[str]]]:
         return self.query_manager.get_execution_plan()
 
@@ -816,6 +830,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             "scd": {"status": "pending"},
         }
 
+    @refuses_unavailable_benchmark("tpcdi")
     def generate_source_data(
         self,
         formats: Optional[list[str]] = None,
@@ -1081,6 +1096,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
 
         return json_files
 
+    @refuses_unavailable_benchmark("tpcdi")
     def run_etl_pipeline(
         self,
         connection: Any | None = None,
@@ -1587,10 +1603,12 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         if self.error_recovery_manager is None:
             self.error_recovery_manager = ErrorRecoveryManager(connection, dialect)
 
+    @refuses_unavailable_benchmark("tpcdi")
     def create_schema(self, connection: Any, dialect: str = "duckdb") -> None:
         self.schema_manager.create_schema(connection, dialect)
         emit(f"Created TPC-DI schema for {dialect}")
 
+    @refuses_unavailable_benchmark("tpcdi")
     def run_full_benchmark(self, connection: Any, dialect: str = "duckdb") -> dict[str, Any]:
         emit(f"Starting complete TPC-DI benchmark (scale factor: {self.config.scale_factor})")
         start_time = datetime.now()
@@ -1635,6 +1653,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
                 "execution_time_seconds": elapsed_seconds(start_mono),
             }
 
+    @refuses_unavailable_benchmark("tpcdi")
     def run_etl_benchmark(self, connection: Any, dialect: str = "duckdb") -> ETLResult:
         self._initialize_connection_dependent_systems(connection, dialect)
         stage_map = {
@@ -1713,6 +1732,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             return int(value)
         return int(stage.get("rows_returned", 0))
 
+    @refuses_unavailable_benchmark("tpcdi")
     def run_data_validation(self, connection: Any) -> DataQualityResult:
         if self.validator is None:
             raise ValueError("Validator not initialized. Call run_full_benchmark or initialize manually.")
@@ -1720,6 +1740,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         emit("Running data quality validation...")
         return self.validator.run_all_validations()
 
+    @refuses_unavailable_benchmark("tpcdi")
     def calculate_official_metrics(
         self, etl_result: ETLResult, validation_result: DataQualityResult
     ) -> BenchmarkMetrics:
@@ -1728,6 +1749,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
 
         return self.metrics_calculator.calculate_detailed_metrics(etl_result, validation_result, start_time, end_time)
 
+    @refuses_unavailable_benchmark("tpcdi")
     def optimize_database(self, connection: Any) -> dict[str, Any]:
         if self.data_loader is None:
             raise ValueError("Data loader not initialized")
@@ -1802,6 +1824,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             "performance_breakdown": report.performance_breakdown,
         }
 
+    @refuses_unavailable_benchmark("tpcdi")
     def run_enhanced_etl_pipeline(
         self,
         connection: Any,

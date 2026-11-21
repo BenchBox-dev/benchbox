@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "before-you-upgrade",
+      "breaking": true,
+      "lead": "TPC-DI is unavailable",
+      "text": "Every TPC-DI entry point now refuses with \"TPC-DI is unavailable while BenchBox reworks it to run the specification's workload (historical load, two incremental updates, automated audit). Earlier BenchBox TPC-DI results were withdrawn.\" and benchbox run, benchbox datagen and --dry-run exit 2; --official with TPC-DI is refused too.",
+      "details": [
+        "The refusal covers benchbox run (including --dry-run and --official), benchbox datagen, the MCP run_benchmark, start_benchmark and get_query_details tools, the benchbox.TPCDI facade and the public methods of TPCDIBenchmark. The registry lists tpcdi as document_only with 0 queries, and the MCP discovery tools report it as unavailable with no queries.",
+        "A TPC-DI result that carries no TPC-DI audit block is recorded as NOT_VALIDATED and cannot be published or submitted.",
+        "Old TPC-DI result files still load read-only; they show \"Legacy TPC-DI result from a withdrawn workload; not validated.\" and benchbox compare, benchbox publish and benchbox submit refuse them.",
+        "The TPC-DI tests of the old run path are deleted, and the release UAT matrix skips benchmarks whose registry status is document_only."
+      ],
+      "benchmarks": ["tpcdi"]
+    }
+  ]
+}
