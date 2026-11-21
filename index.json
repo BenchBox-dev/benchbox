@@ -44844,7 +44844,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 26: Presto: ETL, visibility and full audit"
+      "title": "TPC-DI step 36: Presto: ETL, visibility and full audit"
     },
     "tpcdi-27-platform-lakesail-20261120": {
       "claim": null,
