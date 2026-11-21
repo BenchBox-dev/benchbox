@@ -242,9 +242,9 @@ def stop_requested_before_query(query_id: Any) -> bool:
     return deadline.stop_requested()
 
 
-def run_deadline_expired() -> bool:
+def run_stop_requested() -> bool:
     deadline = current_run_deadline()
-    return deadline is not None and deadline.expired
+    return deadline is not None and deadline.stop_requested()
 
 
 def failed_query_status() -> str:

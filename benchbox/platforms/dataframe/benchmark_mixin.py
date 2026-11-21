@@ -70,7 +70,7 @@ from benchbox.utils.run_deadline import (
     enter_run_phase,
     failed_query_status,
     mark_cut_short_query,
-    run_deadline_expired,
+    run_stop_requested,
     share_partial_query_results,
     stop_requested_before_query,
 )
@@ -946,7 +946,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                     builder.set_power_refresh(plan.first_set, plan.power_functions)
                 if power_refresh is not None and power_refresh.error:
                     query_results.append(failed_power_row(power_refresh.error))
-            if phases.throughput and not run_deadline_expired():
+            if phases.throughput and not run_stop_requested():
                 console.print("\n[cyan]Running throughput phase...[/cyan]")
                 phase, throughput_rows = run_throughput(
                     self,
@@ -1273,7 +1273,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
         )
 
         for iteration in range(measurement_iterations):
-            if run_deadline_expired():
+            if run_stop_requested():
                 break
             measurement_stream_id = self._power_iteration_stream_id(benchmark_config, warmup_iterations + iteration)
             measurement_queries = self._filter_queries(

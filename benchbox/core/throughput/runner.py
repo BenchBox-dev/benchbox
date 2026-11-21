@@ -3,13 +3,14 @@ from __future__ import annotations
 import concurrent.futures
 import logging
 import threading
+from collections.abc import Iterator
 from datetime import datetime
 from typing import Any, Callable, Protocol
 
 from benchbox.core.results.metrics import TPCMetricsCalculator
 from benchbox.core.results.platform_timing import throughput_stream_context
 from benchbox.utils.clock import elapsed_seconds, mono_time
-from benchbox.utils.run_deadline import current_run_deadline, limit_to_remaining, run_deadline_expired
+from benchbox.utils.run_deadline import current_run_deadline, limit_to_remaining, run_stop_requested
 
 from .containment import record_outstanding_result
 from .executor import DaemonStreamExecutor
@@ -83,8 +84,14 @@ def _record_completed_future(
             logger.error(f"Stream {completed_stream_id} execution failed: {e}")
 
 
+def wait_for_completed(
+    futures: set[concurrent.futures.Future[Any]], timeout: float | None
+) -> Iterator[concurrent.futures.Future[Any]]:
+    return concurrent.futures.as_completed(futures, timeout=timeout)
+
+
 def stream_stop_requested(cancel_event: threading.Event | None) -> bool:
-    return (cancel_event is not None and cancel_event.is_set()) or run_deadline_expired()
+    return (cancel_event is not None and cancel_event.is_set()) or run_stop_requested()
 
 
 def mark_query_in_flight(config: Any, stream_id: int, query_id: Any) -> None:
@@ -214,7 +221,7 @@ class StreamRunner:
                     pending.add(future)
 
             try:
-                for future in concurrent.futures.as_completed(pending, timeout=timeout):
+                for future in wait_for_completed(pending, timeout):
                     pending.discard(future)
                     _record_completed_future(future, future_to_stream_id[future], result, config, logger)
             except concurrent.futures.TimeoutError:
