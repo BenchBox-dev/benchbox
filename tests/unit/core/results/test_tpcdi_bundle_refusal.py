@@ -52,9 +52,10 @@ def test_old_format_tpcdi_bundle_from_git_history_is_refused(tmp_path: Path) -> 
     assert not result.ok
 
 
-def test_current_format_tpcdi_bundle_is_refused(tmp_path: Path) -> None:
+@pytest.mark.parametrize("benchmark_id", ["tpcdi", "TPCDI", " tpcdi", "TPC-DI", "tpc_di"])
+def test_current_format_tpcdi_bundle_is_refused(tmp_path: Path, benchmark_id: str) -> None:
     payload = build_result_payload(make_benchmark_results(platform="duckdb"))
-    payload["benchmark"]["id"] = "tpcdi"
+    payload["benchmark"]["id"] = benchmark_id
     bundle = tmp_path / "tpcdi_sf001_duckdb_sql_20261121_000000_00000000.json"
     bundle.write_text(json.dumps(payload), encoding="utf-8")
 

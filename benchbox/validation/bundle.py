@@ -444,6 +444,19 @@ CLI_REFUSED_COMPLIANCE_CLASSES = frozenset({"unofficial_nonstandard", "unofficia
 TPCDI_BENCHMARK_ID = "tpcdi"
 TPCDI_BUNDLE_REFUSAL = "TPC-DI bundles are not accepted while BenchBox reworks TPC-DI."
 
+
+def _load_subscale_policy_module():
+    helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "subscale_policy.py"
+    spec = importlib.util.spec_from_file_location("_benchbox_subscale_policy", helper_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load benchmark id normalisation from {helper_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+normalize_tpc_benchmark_id = _load_subscale_policy_module().normalize_tpc_benchmark_id
+
 CANONICAL_LOGICAL_QUERY_COUNTS: dict[str, int] = {
     "tpch": 22,
     "tpch_skew": 22,
@@ -1348,7 +1361,7 @@ def _validate_benchmark_section(benchmark: Any, vr: ValidationResult) -> None:
     if missing_bm:
         vr.error(f"Missing keys in 'benchmark': {sorted(missing_bm)}")
 
-    if benchmark.get("id") == TPCDI_BENCHMARK_ID:
+    if normalize_tpc_benchmark_id(benchmark.get("id")) == TPCDI_BENCHMARK_ID:
         vr.error(TPCDI_BUNDLE_REFUSAL)
 
     bm_id = benchmark.get("id", "")

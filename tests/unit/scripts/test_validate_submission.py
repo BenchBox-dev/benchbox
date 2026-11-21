@@ -869,9 +869,10 @@ class TestValidateBundle:
         assert vr.ok
         assert not any("Unknown benchmark id" in w for w in vr.warnings)
 
-    def test_tpcdi_bundle_is_refused_with_the_owner_text(self):
+    @pytest.mark.parametrize("benchmark_id", ["tpcdi", "TPCDI", " tpcdi", "TPC-DI", "tpc_di"])
+    def test_tpcdi_bundle_is_refused_with_the_owner_text(self, benchmark_id: str):
         data = _minimal_bundle()
-        data["benchmark"]["id"] = "tpcdi"
+        data["benchmark"]["id"] = benchmark_id
         vr = ValidationResult("test")
         _validate_bundle(data, vr)
         assert not vr.ok
