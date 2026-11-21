@@ -18,6 +18,7 @@ from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import split_sql_statements
+from benchbox.utils.run_deadline import limit_to_remaining
 
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.config_utils import build_adapter_config, make_platform_config_builder
@@ -249,12 +250,15 @@ class GizmoSQLCursor:
         self._connection = connection
         self._timer: threading.Timer | None = None
         self._timed_out = threading.Event()
+        self._run_limited = False
 
     def _arm(self) -> None:
         self._disarm()
         self._timed_out.clear()
-        timeout = self._connection.query_timeout
-        if timeout:
+        query_timeout = self._connection.query_timeout or None
+        timeout = limit_to_remaining(query_timeout)
+        self._run_limited = timeout is not None and (query_timeout is None or timeout < query_timeout)
+        if timeout is not None:
             self._timer = threading.Timer(timeout, self._fire)
             self._timer.daemon = True
             self._timer.start()
@@ -272,6 +276,8 @@ class GizmoSQLCursor:
             logger.debug("GizmoSQL cancel after timeout failed: %s", type(exc).__name__)
 
     def _timeout_error(self) -> GizmoSQLQueryTimeout:
+        if self._run_limited:
+            return GizmoSQLQueryTimeout("Query was cancelled at the run time limit")
         return GizmoSQLQueryTimeout(
             f"Query exceeded the {self._connection.query_timeout}s query_timeout and was cancelled"
         )

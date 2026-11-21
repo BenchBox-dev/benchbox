@@ -18,6 +18,8 @@ TIMED_OUT_VALIDATION_STATUS = "TIMED_OUT"
 STARTUP_PHASE = "startup"
 OFFICIAL_COMPLIANCE_CLASS = "official"
 VERDICTS_KEPT_ON_TIMEOUT = frozenset({"FAILED", "ERROR", "INTERRUPTED"})
+TIMED_OUT_QUERY_STATUS = "TIMEOUT"
+FAILED_QUERY_STATUS = "FAILED"
 
 
 def validate_timeout_seconds(value: Any) -> int | None:
@@ -97,6 +99,13 @@ class RunDeadline:
             return False
         self.record_timeout()
         return True
+
+    def failed_query_status(self) -> str:
+        return TIMED_OUT_QUERY_STATUS if self.stop_requested() else FAILED_QUERY_STATUS
+
+    def limit_to_remaining(self, seconds: float | None) -> float | None:
+        remaining = self.remaining()
+        return remaining if seconds is None else min(seconds, remaining)
 
     def record_overrun(self) -> None:
         if self.timeout is None and self.expired:
@@ -198,6 +207,26 @@ def stop_requested_before_query(query_id: Any) -> bool:
         return False
     deadline.enter_query(query_id)
     return deadline.stop_requested()
+
+
+def run_deadline_expired() -> bool:
+    deadline = current_run_deadline()
+    return deadline is not None and deadline.expired
+
+
+def failed_query_status() -> str:
+    deadline = current_run_deadline()
+    return FAILED_QUERY_STATUS if deadline is None else deadline.failed_query_status()
+
+
+def mark_cut_short_query(result: dict[str, Any]) -> None:
+    if result.get("status") in {FAILED_QUERY_STATUS, "ERROR"} and failed_query_status() == TIMED_OUT_QUERY_STATUS:
+        result["status"] = TIMED_OUT_QUERY_STATUS
+
+
+def limit_to_remaining(seconds: float | None) -> float | None:
+    deadline = current_run_deadline()
+    return seconds if deadline is None else deadline.limit_to_remaining(seconds)
 
 
 def share_partial_query_results(results: list[dict[str, Any]]) -> None:

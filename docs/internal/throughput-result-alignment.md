@@ -238,7 +238,13 @@ honor the same options:
 - `stream_timeout_seconds` (0 disables the deadline) and `cancel_on_timeout`:
   carried from `RunConfig`, which reads them from `BenchmarkConfig.options`.
   `benchbox run` fills both from `execution.concurrent_queries` in the config
-  file; an unset timeout keeps the benchmark default.
+  file; an unset timeout means no stream limit (the former 3600 s TPC-H and
+  7200 s TPC-DS defaults are removed; `0` is the same as unset). The run time
+  limit (`--timeout`) always applies: the stream wait is the smaller of the
+  stream setting and the time remaining, and at the run limit every stream
+  event is set whatever `cancel_on_timeout` says, so streams stop before their
+  next query. A query in flight in a stream that does not return is reported
+  with status `TIMEOUT`.
 - Stream counts: `BenchmarkConfig.concurrency` and `RunConfig.concurrent_streams`
   default to `None` (not set), and an unset count runs the 2-stream default. An
   explicit count below 2 is rejected whenever throughput will run: in the

@@ -16,7 +16,13 @@ from benchbox.core.result_receipt import cursor_result_count
 from benchbox.core.results.fetch_mode import ConversionClock
 from benchbox.core.results.platform_timing import throughput_stream_context
 from benchbox.core.throughput.result import ThroughputResult, ThroughputStreamResult, throughput_stream_ids
-from benchbox.core.throughput.runner import StreamRunner
+from benchbox.core.throughput.runner import (
+    StreamRunner,
+    clear_query_in_flight,
+    mark_query_in_flight,
+    stream_cancel_event,
+    stream_stop_requested,
+)
 from benchbox.core.tpch.power_test import _parse_tpch_query_id
 from benchbox.core.tpch.refresh import (
     TPCHRefreshUpdateSet,
@@ -42,6 +48,7 @@ from benchbox.core.validation.query_validation import (
     set_reference_seed_context,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS, failed_query_status
 
 
 @dataclass
@@ -49,7 +56,7 @@ class TPCHThroughputTestConfig:
     scale_factor: float = 1.0
     num_streams: int = 2
     base_seed: int = 42
-    stream_timeout: int = 3600
+    stream_timeout: int = 0
     max_workers: Optional[int] = None
     verbose: bool = False
     cancel_on_timeout: bool = False
@@ -401,7 +408,7 @@ class TPCHThroughputTest:
             refresh_stream.start_monotonic = mono_time()
             refresh_stream.start_time = datetime.now().isoformat()
             for offset in range(num_streams):
-                if cancel_event is not None and cancel_event.is_set():
+                if stream_stop_requested(cancel_event):
                     refresh_stream.status = "FAILED"
                     refresh_stream.error = "refresh stream cancelled after timeout"
                     return refresh_stream
@@ -537,13 +544,7 @@ class TPCHThroughputTest:
         return self._get_stream_query(query_id, stream_seed, stream_id, config.scale_factor)
 
     def _resolve_cancel_event(self, config: TPCHThroughputTestConfig, stream_id: int) -> Optional[threading.Event]:
-        if getattr(config, "cancel_on_timeout", False) is not True:
-            return None
-        cancel_events = getattr(config, "_stream_cancel_events", None)
-        if not isinstance(cancel_events, dict):
-            return None
-        cancel_event = cancel_events.get(stream_id)
-        return cancel_event if isinstance(cancel_event, threading.Event) else None
+        return stream_cancel_event(config, stream_id)
 
     def _cooperative_cancel_requested(
         self,
@@ -553,7 +554,7 @@ class TPCHThroughputTest:
         position: int,
         total_queries: int,
     ) -> bool:
-        if cancel_event is None or not cancel_event.is_set():
+        if not stream_stop_requested(cancel_event):
             return False
         if config.verbose:
             self.logger.warning(
@@ -620,6 +621,7 @@ class TPCHThroughputTest:
                     cancelled = True
                     break
 
+                mark_query_in_flight(config, stream_id, query_id)
                 query_start = mono_time()
                 conversion_clock = ConversionClock().start()
                 query_result: dict[str, Any] = {
@@ -676,10 +678,12 @@ class TPCHThroughputTest:
 
                 except Exception as e:
                     execution_time = elapsed_seconds(query_start)
+                    timed_out = failed_query_status() == TIMED_OUT_QUERY_STATUS
                     query_result.update(
                         {
                             "execution_time_seconds": execution_time,
                             "success": False,
+                            "timed_out": timed_out,
                             "error": str(e),
                         }
                     )
@@ -691,6 +695,7 @@ class TPCHThroughputTest:
 
                 stream_result.query_results.append(query_result)
                 stream_result.queries_executed += 1
+                clear_query_in_flight(config, stream_id)
 
             self._finalize_stream_outcome(stream_result, cancelled, len(query_permutation))
 

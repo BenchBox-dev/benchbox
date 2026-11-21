@@ -70,7 +70,7 @@ class ConcurrentLoadConfig:
 
     queries_per_stream: int = 10
 
-    query_timeout_seconds: float = 300.0
+    query_timeout_seconds: float | None = None
 
     collect_resource_metrics: bool = True
 
@@ -79,7 +79,7 @@ class ConcurrentLoadConfig:
     track_queue_times: bool = True
 
     def __post_init__(self) -> None:
-        if not self.query_timeout_seconds > 0:
+        if self.query_timeout_seconds is not None and not self.query_timeout_seconds > 0:
             raise ValueError("query_timeout_seconds must be greater than zero")
 
 
@@ -312,7 +312,9 @@ class ConcurrentLoadExecutor:
                 self._active_streams -= 1
                 self._decrement_role_locked(role)
 
-    def _stream_wait_seconds(self) -> float:
+    def _stream_wait_seconds(self) -> float | None:
+        if self._config.query_timeout_seconds is None:
+            return None
         return self._config.query_timeout_seconds * max(1, self._config.queries_per_stream)
 
     def _drain_streams(self, futures: dict[Future, tuple[int, str]], draining: list[Future]) -> None:
@@ -370,9 +372,6 @@ class ConcurrentLoadExecutor:
                         success, rows, error = self._config.execute_query(connection, sql)
                         query_end = time.time()
                         query_seconds = elapsed_seconds(query_mono)
-                        if success and query_seconds > self._config.query_timeout_seconds:
-                            success = False
-                            error = f"Query exceeded the {self._config.query_timeout_seconds:g}s timeout"
 
                         if success:
                             queries_succeeded += 1

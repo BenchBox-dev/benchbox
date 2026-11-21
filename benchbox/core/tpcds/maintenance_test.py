@@ -24,6 +24,7 @@ from benchbox.core.tpcds.refresh_data import (
     load_refresh_file,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS, failed_query_status, stop_requested_before_query
 
 
 @dataclass
@@ -55,6 +56,7 @@ class TPCDSMaintenanceOperation:
     rows_by_table: dict[str, int] = field(default_factory=dict)
     statements_executed: int = 0
     transactional: bool = True
+    timed_out: bool = False
 
 
 @dataclass
@@ -136,6 +138,7 @@ class TPCDSMaintenanceTest:
             "success": True,
             "errors": [],
             "integrity_valid": None,
+            "stopped_at_time_limit": False,
         }
 
         try:
@@ -204,6 +207,9 @@ class TPCDSMaintenanceTest:
         for set_id in sorted(refresh_sets):
             result["refresh_sets"].append(set_id)
             for function in MAINTENANCE_FUNCTIONS:
+                if stop_requested_before_query(function.name):
+                    result["stopped_at_time_limit"] = True
+                    return
                 operation = self._execute_function(function, refresh_sets[set_id])
                 result["operations"].append(operation)
                 result["total_operations"] += 1
@@ -224,7 +230,9 @@ class TPCDSMaintenanceTest:
         result["end_time"] = datetime.now().isoformat()
         if result["total_time"] > 0:
             result["overall_throughput"] = result["successful_operations"] / result["total_time"]
-        result["success"] = result["total_operations"] > 0 and result["failed_operations"] == 0
+        result["success"] = (
+            result["total_operations"] > 0 and result["failed_operations"] == 0 and not result["stopped_at_time_limit"]
+        )
         if config.verbose:
             self.logger.info(f"Maintenance Test completed in {result['total_time']:.3f}s")
             self.logger.info(f"Successful operations: {result['successful_operations']}/{result['total_operations']}")
@@ -294,6 +302,7 @@ class TPCDSMaintenanceTest:
             self._verify_removals(function, expected_removals, before, after)
             operation.success = True
         except Exception as exc:
+            operation.timed_out = failed_query_status() == TIMED_OUT_QUERY_STATUS
             operation.error = str(exc)
             if connection is not None and not in_transaction:
                 self._rollback(connection)

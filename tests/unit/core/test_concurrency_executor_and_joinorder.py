@@ -106,7 +106,7 @@ class TestConcurrentLoadConfig:
             execute_query=lambda conn, sql: (True, 1, None),
         )
         assert config.queries_per_stream == 10
-        assert config.query_timeout_seconds == 300.0
+        assert config.query_timeout_seconds is None
         assert config.collect_resource_metrics is True
         assert config.track_queue_times is True
 

@@ -23,6 +23,7 @@ from benchbox.core.validation.query_validation import (
     set_reference_seed_context,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS, failed_query_status, stop_requested_before_query
 
 
 def power_parameter_seed(seed: Optional[int], stream_id: int) -> int:
@@ -172,6 +173,8 @@ class TPCDSPowerTest:
 
             with deferred_platform_timing() as deferred:
                 for position, query_info in enumerate(queries_to_execute):
+                    if stop_requested_before_query(self._query_display_id(query_info)):
+                        break
                     self._execute_one_query(position, query_info, connection, stream_param_seed, result)
                 self._finalize_power_metrics(result, start_time)
                 deferred.resolve()
@@ -242,6 +245,13 @@ class TPCDSPowerTest:
         if impl is not None and hasattr(impl, "query_manager"):
             return impl.query_manager
         return None
+
+    @staticmethod
+    def _query_display_id(query_info: Any) -> str:
+        if isinstance(query_info, tuple):
+            query_id, variant = query_info
+            return f"{query_id}{variant}" if variant else str(query_id)
+        return str(query_info)
 
     def _execute_one_query(
         self,
@@ -330,6 +340,7 @@ class TPCDSPowerTest:
                 {
                     "execution_time_seconds": execution_time,
                     "success": False,
+                    "timed_out": failed_query_status() == TIMED_OUT_QUERY_STATUS,
                     "error": str(e),
                 }
             )

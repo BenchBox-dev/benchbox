@@ -33,7 +33,7 @@ from benchbox.core.throughput.entrypoints import (
     require_stream_minimum,
     warn_legacy_throughput_api,
 )
-from benchbox.core.throughput.result import throughput_round_stream_ids
+from benchbox.core.throughput.result import throughput_round_stream_ids, timed_out_query_rows
 from benchbox.core.tpch.platform_power import _power_query_result, _power_test_error_result
 from benchbox.platforms.base.connection_wrappers import (
     PlatformAdapterConnection,
@@ -44,7 +44,14 @@ from benchbox.platforms.base.connection_wrappers import (
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import SQLTranslationError, UnknownSqlDialectError, expand_multi_statement_queries
 from benchbox.utils.printing import quiet_console
-from benchbox.utils.run_deadline import share_partial_query_results, stop_requested_before_query
+from benchbox.utils.run_deadline import (
+    TIMED_OUT_QUERY_STATUS,
+    failed_query_status,
+    mark_cut_short_query,
+    run_deadline_expired,
+    share_partial_query_results,
+    stop_requested_before_query,
+)
 
 __all__ = ["TestDriversMixin", "_power_query_result", "_power_test_error_result"]
 
@@ -119,12 +126,17 @@ def _format_throughput_metric(result: Any) -> str:
 
 
 def _describe_stream_timeout(cfg: Any, run_config: dict) -> str:
+    if cfg.stream_timeout == 0 and run_config.get("stream_timeout_seconds") is None:
+        return "Stream timeout: no timeout (not set)"
     timeout = "no timeout" if cfg.stream_timeout == 0 else f"{cfg.stream_timeout}s"
-    if run_config.get("stream_timeout_seconds") is None:
-        source = "benchmark default"
-    else:
-        source = run_config.get("stream_timeout_source") or "run option"
+    source = run_config.get("stream_timeout_source") or "run option"
     return f"Stream timeout: {timeout} ({source})"
+
+
+def _throughput_row_status(query_result: dict[str, Any]) -> str:
+    if query_result.get("timed_out"):
+        return TIMED_OUT_QUERY_STATUS
+    return "SUCCESS" if query_result.get("success") else "FAILED"
 
 
 def _throughput_config_options(run_config: dict) -> dict[str, Any]:
@@ -214,6 +226,8 @@ class TestDriversMixin:
         )
 
         for i in range(warm_up_iterations):
+            if run_deadline_expired():
+                break
             console.print(f"[cyan]--- Warm-up Run {i + 1}/{warm_up_iterations} ---[/cyan]")
             warmup_results = self._execute_all_queries(benchmark, connection, run_config, dialect_queries)
             for result in warmup_results:
@@ -223,6 +237,8 @@ class TestDriversMixin:
                 all_measurement_results.append(result)
 
         for i in range(iterations):
+            if run_deadline_expired():
+                break
             console.print(f"[cyan]--- Measurement Run {i + 1}/{iterations} ---[/cyan]")
             iteration_results = self._execute_all_queries(benchmark, connection, run_config, dialect_queries)
 
@@ -364,7 +380,7 @@ class TestDriversMixin:
                     platform_result = {
                         "query_id": query_result["query_id"],
                         "execution_time_seconds": query_result["execution_time_seconds"],
-                        "status": "SUCCESS" if query_result["success"] else "FAILED",
+                        "status": _throughput_row_status(query_result),
                         "rows_returned": query_result.get("result_count", 0),
                         "test_type": "throughput",
                         "stream_id": stream_result.stream_id,
@@ -374,6 +390,7 @@ class TestDriversMixin:
                     propagate_query_execution_metadata(query_result, platform_result)
                     query_results.append(platform_result)
 
+            query_results.extend(timed_out_query_rows(throughput_test_result))
             return query_results
 
         except Exception as e:
@@ -488,7 +505,7 @@ class TestDriversMixin:
                     platform_result = {
                         "query_id": qr.get("query_id"),
                         "execution_time_seconds": qr.get("execution_time_seconds", 0.0),
-                        "status": "SUCCESS" if qr.get("success") else "FAILED",
+                        "status": _throughput_row_status(qr),
                         "rows_returned": qr.get("result_count", 0),
                         "test_type": "throughput",
                         "stream_id": stream_result.stream_id,
@@ -498,6 +515,7 @@ class TestDriversMixin:
                     propagate_query_execution_metadata(qr, platform_result)
                     query_results.append(platform_result)
 
+            query_results.extend(timed_out_query_rows(throughput_test_result))
             return query_results
 
         except Exception as e:
@@ -603,7 +621,9 @@ class TestDriversMixin:
                 platform_result = {
                     "query_id": operation.function,
                     "execution_time_seconds": operation.duration,
-                    "status": "SUCCESS" if operation.success else "FAILED",
+                    "status": TIMED_OUT_QUERY_STATUS
+                    if operation.timed_out
+                    else ("SUCCESS" if operation.success else "FAILED"),
                     "rows_returned": operation.rows_affected,
                     "test_type": "maintenance",
                     "operation_type": operation.operation_type,
@@ -613,7 +633,11 @@ class TestDriversMixin:
                     platform_result["error"] = operation.error or "Unknown error"
                 query_results.append(platform_result)
 
-            if not maintenance_test_result["success"] and not any(row["status"] == "FAILED" for row in query_results):
+            if (
+                not maintenance_test_result["success"]
+                and not maintenance_test_result.get("stopped_at_time_limit")
+                and not any(row["status"] in {"FAILED", TIMED_OUT_QUERY_STATUS} for row in query_results)
+            ):
                 query_results.append(
                     {
                         "query_id": "maintenance_test_error",
@@ -719,7 +743,7 @@ class TestDriversMixin:
                     {
                         "query_id": op.operation_type,
                         "execution_time_seconds": op.duration,
-                        "status": "SUCCESS" if op.success else "FAILED",
+                        "status": TIMED_OUT_QUERY_STATUS if op.timed_out else ("SUCCESS" if op.success else "FAILED"),
                         "rows_returned": op.rows_affected,
                         "test_type": "maintenance",
                         **({} if op.success else {"error": getattr(op, "error", None) or "Unknown error"}),
@@ -926,6 +950,8 @@ class TestDriversMixin:
         }
         recorded: dict[tuple[str, int], Any] = {}
         for phase_key, phase_round in plan:
+            if run_deadline_expired():
+                break
             phase_label, method_name = labels[phase_key]
             phase_config = run_config
             if phase_round is not None:
@@ -1335,6 +1361,7 @@ class TestDriversMixin:
                     if "run_type" not in result or not result.get("run_type"):
                         result["run_type"] = QUERY_RUN_TYPE_MEASUREMENT
 
+                    mark_cut_short_query(result)
                     results.append(result)
                     self._log_query_result(result, i, total_queries, query_id)
 
@@ -1343,7 +1370,7 @@ class TestDriversMixin:
                 except Exception as e:
                     error_result = {
                         "query_id": str(query_id),
-                        "status": "FAILED",
+                        "status": failed_query_status(),
                         "execution_time_seconds": 0.0,
                         "rows_returned": 0,
                         "error": str(e),
