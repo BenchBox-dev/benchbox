@@ -44705,11 +44705,11 @@
     "tpcdi-11-audit-recount-batch1-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-10-generator-trades-and-market-20261120"
+        "tpcdi-08-generator-core-and-reference-files-20261120"
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "TPC-DI step 11: audit files for Batch 1 by independent recount"
+      "title": "TPC-DI step 11: independent recount for DIGen's known answer-key errors"
     },
     "tpcdi-12-duckdb-historical-load-and-audit-20261120": {
       "claim": null,
