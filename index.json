@@ -44673,10 +44673,15 @@
       "title": "TPC Specification Compliance Issues ✅ COMPLETED"
     },
     "tpcdi-01-withdraw-bundles-develop-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-22T18:13:57Z",
+        "generation": "62bc5275f7c6498aaffd934306487338",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI step 1: withdraw the 33 published bundles on develop and refuse new ones"
     },
     "tpcdi-02-withdraw-bundles-published-results-20261120": {
