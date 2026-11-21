@@ -89,6 +89,22 @@ increase exceeds **360 seconds**. New test IDs contribute only their duration
 above a 0.5-second allowance per ID; this is not a per-test speed limit.
 The metric is summed normalized test time, not job wall time or queue delay.
 
+A second, absolute rule is the fast-tier ceiling in
+`quality/fast-duration-ceiling.json`. The gate projects the fast-tier total as
+the committed baseline time of every test the PR shares with the baseline plus
+the normalized time of new tests; removed tests contribute nothing, and the
+PR's own measurement of a shared test never enters the projection, so runner
+noise cannot move it. The gate blocks when the projected total exceeds the
+ceiling, independently of the ratio and delta rule. A missing or invalid
+ceiling file rejects the run, which blocks.
+
+Baseline seconds are normalized to a reference runner speed, and each refresh
+picks that reference as the median calibration of its source runs. The ceiling
+file records the reference its seconds were set against, and both checks
+rescale the ceiling to the committed baseline's reference before comparing, so
+a refresh that happens to pick a faster or slower reference neither loosens nor
+tightens it.
+
 The gate also fails when evidence is rejected, nothing is comparable, or fewer
 than 95% of baseline test IDs are present. Inspect the `verify-fast-duration`
 step summary and `fast-duration-verdict-<pr>-<sha>` artifact for the verdict,
@@ -106,6 +122,13 @@ refreshes medium-shard weights from successful Trunk runs. Both regenerate
 `CROSS_SURFACE_BASELINE_PR_TOKEN` secret lets those PRs trigger normal CI;
 the fallback `GITHUB_TOKEN` cannot trigger the normal downstream PR workflows.
 These are reviewed baseline changes, not an automatic waiver for a failing PR.
+
+The refresh also sums the refreshed baseline over the currently collected fast
+tests and compares it with the ceiling. When the sum is over, the refresh opens
+no baseline PR, opens or updates one issue titled "Fast-tier duration is over
+its ceiling" with the test files that grew most against the previous baseline,
+and fails the job. The workflow never edits the ceiling: it changes only by
+hand, as a soundness-reviewed change to `quality/fast-duration-ceiling.json`.
 
 The earlier 0.5-second per-test budget and `duration_exempt` marker are retired.
 Collection enforces the quarantine marker contract (owner, issue and unexpired

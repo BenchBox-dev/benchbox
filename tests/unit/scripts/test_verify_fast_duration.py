@@ -49,6 +49,13 @@ def committed_baseline(root: Path, cases: dict[str, float], *, best_seconds: flo
     return output
 
 
+def generous_ceiling(root: Path) -> Path:
+    path = root / "ceiling.json"
+    payload = {"schema": 1, "ceiling_seconds": 1000000.0, "reference_calibration_best_seconds": 1.0, "reason": "test"}
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
 def ids(count: int, seconds: float) -> dict[str, float]:
     return {f"tests/test_sample.py::test_{index:04d}": seconds for index in range(count)}
 
@@ -167,7 +174,7 @@ def test_runner_speed_is_normalized_before_comparison(tmp_path: Path) -> None:
     baseline_dir = committed_baseline(tmp_path, cases(50, 2.0), best_seconds=0.5)
     slow = write_run(tmp_path, "slow", cases(50, 3.4), best_seconds=0.85)
 
-    report = baseline.verify_run(baseline_dir, slow)
+    report = baseline.verify_run(baseline_dir, slow, generous_ceiling(tmp_path))
 
     assert report["verdict"] == "pass"
     assert report["speed_factor"] == pytest.approx(0.5 / 0.85)
@@ -179,7 +186,7 @@ def test_real_overhead_on_a_slow_runner_still_would_block(tmp_path: Path) -> Non
     baseline_dir = committed_baseline(tmp_path, cases(1000, 0.4), best_seconds=0.5)
     slow = write_run(tmp_path, "slow", cases(1000, 0.4 * 1.7 + 0.713 * 1.7), best_seconds=0.85)
 
-    report = baseline.verify_run(baseline_dir, slow)
+    report = baseline.verify_run(baseline_dir, slow, generous_ceiling(tmp_path))
 
     assert report["verdict"] == "would-block"
     assert report["delta_seconds"] == pytest.approx(713.0)
@@ -195,7 +202,7 @@ def test_fixed_713_second_slowdown_blocks_after_runner_normalization(tmp_path: P
         best_seconds=0.5 / factor,
     )
 
-    report = baseline.verify_run(baseline_dir, run)
+    report = baseline.verify_run(baseline_dir, run, generous_ceiling(tmp_path))
 
     assert report["verdict"] == "would-block"
     assert report["delta_seconds"] == pytest.approx(713.0 * factor)
@@ -206,7 +213,7 @@ def test_run_without_calibration_is_rejected_not_passed(tmp_path: Path) -> None:
     baseline_dir = committed_baseline(tmp_path, cases(5, 2.0))
     run = write_run(tmp_path, "uncalibrated", cases(5, 2.0), best_seconds=None)
 
-    report = baseline.verify_run(baseline_dir, run)
+    report = baseline.verify_run(baseline_dir, run, generous_ceiling(tmp_path))
 
     assert report["verdict"] == "rejected"
     assert "calibration" in str(report["reason"])
@@ -217,7 +224,7 @@ def test_run_with_non_positive_calibration_is_rejected(tmp_path: Path, best: flo
     baseline_dir = committed_baseline(tmp_path, cases(5, 2.0))
     run = write_run(tmp_path, "bad", cases(5, 2.0), best_seconds=best)
 
-    assert baseline.verify_run(baseline_dir, run)["verdict"] == "rejected"
+    assert baseline.verify_run(baseline_dir, run, generous_ceiling(tmp_path))["verdict"] == "rejected"
 
 
 def test_missing_junit_is_rejected(tmp_path: Path) -> None:
@@ -225,13 +232,13 @@ def test_missing_junit_is_rejected(tmp_path: Path) -> None:
     run = write_run(tmp_path, "nojunit", cases(5, 2.0))
     (run / "junit.xml").unlink()
 
-    assert baseline.verify_run(baseline_dir, run)["verdict"] == "rejected"
+    assert baseline.verify_run(baseline_dir, run, generous_ceiling(tmp_path))["verdict"] == "rejected"
 
 
 def test_missing_baseline_is_a_rejected_verdict(tmp_path: Path) -> None:
     run = write_run(tmp_path, "run", cases(5, 2.0))
 
-    report = baseline.verify_run(tmp_path / "absent", run)
+    report = baseline.verify_run(tmp_path / "absent", run, generous_ceiling(tmp_path))
 
     assert report["verdict"] == "rejected"
     assert "baseline" in str(report["reason"])
@@ -241,7 +248,7 @@ def test_markdown_reports_ratio_median_collection_and_speed(tmp_path: Path) -> N
     baseline_dir = committed_baseline(tmp_path, cases(5, 2.0))
     run = write_run(tmp_path, "run", cases(5, 2.0), collection_max=7.5)
 
-    text = baseline.verify_markdown(baseline.verify_run(baseline_dir, run), mode="block")
+    text = baseline.verify_markdown(baseline.verify_run(baseline_dir, run, generous_ceiling(tmp_path)), mode="block")
 
     assert "### verify-fast-duration" in text
     assert "Verdict: **pass**" in text

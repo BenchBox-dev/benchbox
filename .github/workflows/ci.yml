@@ -1833,6 +1833,7 @@ jobs:
             tests/__init__.py
             tests/duration_policy.py
             tests/fixtures/fast_tier_baseline/
+            quality/fast-duration-ceiling.json
           sparse-checkout-cone-mode: false
 
       - name: Download complete medium shard evidence
@@ -1940,6 +1941,7 @@ jobs:
         run: |
           python -m scripts.build_fast_duration_baseline verify \
             --baseline tests/fixtures/fast_tier_baseline \
+            --ceiling quality/fast-duration-ceiling.json \
             --run-dir fast-junit \
             --summary "$GITHUB_STEP_SUMMARY" \
             --report-out fast-duration-verdict.json

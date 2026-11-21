@@ -578,3 +578,256 @@ def test_refreshed_medium_file_loads_in_every_consumer(tmp_path: Path) -> None:
         "tests/test_sample.py::TestSample::test_alpha": 1.0,
         "tests/test_sample.py::TestSample::test_beta": 2.0,
     }
+
+
+def write_ceiling(
+    path: Path, seconds: object = 100.0, *, reason: object = "Provisional", reference: object = 0.5
+) -> Path:
+    payload = {
+        "schema": 1,
+        "ceiling_seconds": seconds,
+        "reference_calibration_best_seconds": reference,
+        "reason": reason,
+    }
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
+def test_projected_total_under_the_ceiling_passes() -> None:
+    base = {"a": 10.0, "b": 20.0}
+    report = baseline.verify_durations(base, dict(base), ceiling_seconds=31.0)
+    assert report["verdict"] == "pass"
+    assert report["projected_sum_seconds"] == 30.0
+    assert report["ceiling_seconds"] == 31.0
+    assert report["over_ceiling"] is False
+
+
+def test_projected_total_over_the_ceiling_blocks_without_the_ratio_rule() -> None:
+    base = {"a": 10.0, "b": 20.0}
+    report = baseline.verify_durations(base, dict(base), ceiling_seconds=29.0)
+    assert report["verdict"] == "would-block"
+    assert report["over_ceiling"] is True
+    assert report["ratio_rule_fired"] is False
+
+
+def test_shared_tests_use_baseline_values_not_the_pr_measurement() -> None:
+    base = {"a": 10.0, "b": 20.0}
+    report = baseline.verify_durations(base, {"a": 1.0, "b": 2.0, "c": 5.0}, ceiling_seconds=34.0)
+    assert report["projected_sum_seconds"] == 35.0
+    assert report["verdict"] == "would-block"
+
+
+def test_removed_tests_do_not_count_toward_the_projection() -> None:
+    base = {"a": 10.0, "b": 20.0}
+    report = baseline.verify_durations(base, {"a": 10.0}, ceiling_seconds=10.0)
+    assert report["projected_sum_seconds"] == 10.0
+    assert report["over_ceiling"] is False
+
+
+def test_no_ceiling_never_flags_over() -> None:
+    report = baseline.verify_durations({"a": 10.0}, {"a": 10.0})
+    assert report["over_ceiling"] is False
+    assert report["ceiling_seconds"] is None
+
+
+def test_read_ceiling_accepts_a_valid_file(tmp_path: Path) -> None:
+    assert baseline.read_ceiling(write_ceiling(tmp_path / "c.json", 12, reference=0.4)) == (12.0, 0.4)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"schema": 2, "ceiling_seconds": 1, "reference_calibration_best_seconds": 1, "reason": "x"},
+        {"ceiling_seconds": 1, "reference_calibration_best_seconds": 1, "reason": "x"},
+        {"schema": 1, "ceiling_seconds": True, "reference_calibration_best_seconds": 1, "reason": "x"},
+        {"schema": 1, "ceiling_seconds": "5", "reference_calibration_best_seconds": 1, "reason": "x"},
+        {"schema": 1, "ceiling_seconds": 0, "reference_calibration_best_seconds": 1, "reason": "x"},
+        {"schema": 1, "ceiling_seconds": -3, "reference_calibration_best_seconds": 1, "reason": "x"},
+        {"schema": 1, "ceiling_seconds": float("inf"), "reference_calibration_best_seconds": 1, "reason": "x"},
+        {"schema": 1, "ceiling_seconds": float("nan"), "reference_calibration_best_seconds": 1, "reason": "x"},
+        {"schema": 1, "ceiling_seconds": 5, "reason": "x"},
+        {"schema": 1, "ceiling_seconds": 5, "reference_calibration_best_seconds": 0, "reason": "x"},
+        {"schema": 1, "ceiling_seconds": 5, "reference_calibration_best_seconds": "1", "reason": "x"},
+        {"schema": 1, "ceiling_seconds": 5, "reference_calibration_best_seconds": 1, "reason": "  "},
+        {"schema": 1, "ceiling_seconds": 5, "reference_calibration_best_seconds": 1},
+        [1],
+    ],
+)
+def test_read_ceiling_rejects_invalid_content(tmp_path: Path, payload: object) -> None:
+    path = tmp_path / "c.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(baseline.BaselineError):
+        baseline.read_ceiling(path)
+
+
+def test_read_ceiling_rejects_missing_and_unparseable_files(tmp_path: Path) -> None:
+    with pytest.raises(baseline.BaselineError):
+        baseline.read_ceiling(tmp_path / "absent.json")
+    bad = tmp_path / "bad.json"
+    bad.write_text("{", encoding="utf-8")
+    with pytest.raises(baseline.BaselineError):
+        baseline.read_ceiling(bad)
+
+
+def verify_fixture(tmp_path: Path, seconds: float = 1.0) -> tuple[Path, Path]:
+    source = write_run(tmp_path, "source", cases=cases_for(10, seconds))
+    entries = [{"run_id": 1, "pr": 1, "sha": "a", "artifact_id": 1, "dir": str(source)}]
+    built, _rejected = baseline.build_baseline(entries, GENERATED_AT)
+    baseline_dir = tmp_path / "baseline"
+    baseline.write_sharded_baseline(baseline_dir, built)
+    pr_run = write_run(tmp_path, "pr", cases=cases_for(10, seconds))
+    return baseline_dir, pr_run
+
+
+def cases_for(count: int, seconds: float) -> tuple[tuple[str, float], ...]:
+    return tuple((f"test_{index:04d}", seconds) for index in range(count))
+
+
+def test_verify_run_rejects_a_missing_or_invalid_ceiling(tmp_path: Path) -> None:
+    baseline_dir, pr_run = verify_fixture(tmp_path)
+    report = baseline.verify_run(baseline_dir, pr_run, tmp_path / "absent.json")
+    assert report["verdict"] == "rejected"
+    assert "ceiling" in str(report["reason"])
+    invalid = write_ceiling(tmp_path / "invalid.json", 0)
+    assert baseline.verify_run(baseline_dir, pr_run, invalid)["verdict"] == "rejected"
+
+
+def test_verify_cli_blocks_on_a_missing_ceiling(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    baseline_dir, pr_run = verify_fixture(tmp_path)
+    status = baseline.main(
+        [
+            "verify",
+            "--baseline",
+            str(baseline_dir),
+            "--run-dir",
+            str(pr_run),
+            "--ceiling",
+            str(tmp_path / "absent.json"),
+            "--mode",
+            "block",
+        ]
+    )
+    assert status == 1
+    assert "::error" in capsys.readouterr().out
+
+
+def test_verify_cli_names_the_ceiling_rule_when_it_fires(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    baseline_dir, pr_run = verify_fixture(tmp_path)
+    ceiling = write_ceiling(tmp_path / "ceiling.json", 5.0)
+    report_path = tmp_path / "verdict.json"
+    status = baseline.main(
+        [
+            "verify",
+            "--baseline",
+            str(baseline_dir),
+            "--run-dir",
+            str(pr_run),
+            "--ceiling",
+            str(ceiling),
+            "--report-out",
+            str(report_path),
+            "--mode",
+            "block",
+        ]
+    )
+    out = capsys.readouterr().out
+    assert status == 1
+    assert "::error title=verify-fast-duration::" in out
+    assert "ceiling" in out.split("::error", 1)[1]
+    assert "summed ratio" not in out
+    assert json.loads(report_path.read_text(encoding="utf-8"))["over_ceiling"] is True
+    assert "Projected fast-tier total" in out
+
+
+def test_verify_cli_passes_under_the_ceiling(tmp_path: Path) -> None:
+    baseline_dir, pr_run = verify_fixture(tmp_path)
+    ceiling = write_ceiling(tmp_path / "ceiling.json", 1000.0)
+    args = ["verify", "--baseline", str(baseline_dir), "--run-dir", str(pr_run), "--ceiling", str(ceiling)]
+    assert baseline.main([*args, "--mode", "block"]) == 0
+
+
+def ceiling_check_args(tmp_path: Path, ceiling_seconds: float, *extra: str, best_seconds: float = 0.5) -> list[str]:
+    baseline_dir = tmp_path / "baseline"
+    previous = tmp_path / "previous"
+    for target, cases in (
+        (baseline_dir, {"test_a": 10.0, "test_b": 5.0, "test_new": 7.0}),
+        (previous, {"test_a": 4.0, "test_b": 5.0}),
+    ):
+        run = write_run(tmp_path, f"src-{target.name}", best_seconds=best_seconds, cases=tuple(cases.items()))
+        entries = [{"run_id": 1, "pr": 1, "sha": "a", "artifact_id": 1, "dir": str(run)}]
+        built, _rejected = baseline.build_baseline(entries, GENERATED_AT)
+        baseline.write_sharded_baseline(target, built)
+    ids = tmp_path / "ids.txt"
+    ids.write_text(
+        "tests/test_sample.py::TestSample::test_a\ntests/test_sample.py::TestSample::test_new\n", encoding="utf-8"
+    )
+    ceiling = write_ceiling(tmp_path / "ceiling.json", ceiling_seconds)
+    return [
+        "ceiling-check",
+        "--baseline",
+        str(baseline_dir),
+        "--collected-ids",
+        str(ids),
+        "--ceiling",
+        str(ceiling),
+        *extra,
+    ]
+
+
+def test_ceiling_check_exits_zero_under_the_ceiling(tmp_path: Path) -> None:
+    report_path = tmp_path / "report.json"
+    assert baseline.main(ceiling_check_args(tmp_path, 17.0, "--report-out", str(report_path))) == 0
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["total"] == pytest.approx(17.0, rel=0.01)
+    assert report["over"] is False
+
+
+def test_ceiling_check_exits_three_over_the_ceiling(tmp_path: Path) -> None:
+    assert baseline.main(ceiling_check_args(tmp_path, 10.0)) == 3
+
+
+def test_ceiling_holds_when_a_refresh_picks_a_faster_reference_runner(tmp_path: Path) -> None:
+    assert baseline.main(ceiling_check_args(tmp_path, 17.0, best_seconds=0.25)) == 3
+
+
+def test_verify_scales_the_ceiling_to_the_committed_baseline_reference(tmp_path: Path) -> None:
+    baseline_dir, pr_run = verify_fixture(tmp_path)
+    assert baseline.verify_run(baseline_dir, pr_run, write_ceiling(tmp_path / "a.json", 11.0))["verdict"] == "pass"
+    slower_reference = write_ceiling(tmp_path / "b.json", 11.0, reference=1.0)
+    assert baseline.verify_run(baseline_dir, pr_run, slower_reference)["verdict"] == "would-block"
+
+
+def test_ceiling_check_exits_one_on_an_invalid_ceiling(tmp_path: Path) -> None:
+    args = ceiling_check_args(tmp_path, 10.0)
+    write_ceiling(tmp_path / "ceiling.json", -1)
+    assert baseline.main(args) == 1
+
+
+def test_ceiling_check_lists_the_files_that_grew_most(tmp_path: Path) -> None:
+    report_path = tmp_path / "report.json"
+    markdown_path = tmp_path / "ceiling.md"
+    args = ceiling_check_args(
+        tmp_path,
+        10.0,
+        "--previous",
+        str(tmp_path / "previous"),
+        "--report-out",
+        str(report_path),
+        "--markdown-out",
+        str(markdown_path),
+    )
+    assert baseline.main(args) == 3
+    growth = json.loads(report_path.read_text(encoding="utf-8"))["top_growth_files"]
+    assert growth[0]["file"] == "tests/test_sample.py"
+    assert growth[0]["growth_seconds"] > 0
+    assert "tests/test_sample.py" in markdown_path.read_text(encoding="utf-8")
+
+
+def test_ceiling_growth_counts_absent_files_from_zero_and_keeps_fifteen() -> None:
+    current = {f"tests/f{index:02d}.py::t": float(index + 1) for index in range(20)}
+    previous = {"tests/f19.py::t": 20.0}
+    growth = baseline.ceiling_growth(current, previous, set(current))
+    assert len(growth) == 15
+    assert growth[0]["file"] == "tests/f18.py"
+    assert growth[0]["growth_seconds"] == 19.0
+    assert all(row["file"] != "tests/f19.py" for row in growth)

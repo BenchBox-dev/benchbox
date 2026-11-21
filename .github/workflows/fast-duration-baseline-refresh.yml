@@ -20,6 +20,7 @@ jobs:
     permissions:
       actions: read
       contents: write
+      issues: write
       pull-requests: write
 
     steps:
@@ -115,6 +116,8 @@ jobs:
 
       - name: Build the refreshed baseline
         run: |
+          rm -rf fast-refresh/previous-baseline
+          cp -R tests/fixtures/fast_tier_baseline fast-refresh/previous-baseline
           uv run -- python -m scripts.build_fast_duration_baseline build \
             --manifest fast-refresh/manifest.json \
             --output tests/fixtures/fast_tier_baseline
@@ -135,6 +138,53 @@ jobs:
             --manifest fast-refresh/manifest.json \
             --collected-ids fast-refresh/collected-ids.txt \
             --report-out fast-refresh/gate-report.json
+
+      - name: Check the refreshed baseline against the ceiling
+        id: ceiling
+        shell: bash
+        run: |
+          set +e
+          uv run -- python -m scripts.build_fast_duration_baseline ceiling-check \
+            --baseline tests/fixtures/fast_tier_baseline \
+            --collected-ids fast-refresh/collected-ids.txt \
+            --ceiling quality/fast-duration-ceiling.json \
+            --previous fast-refresh/previous-baseline \
+            --report-out fast-refresh/ceiling-report.json \
+            --markdown-out fast-refresh/ceiling.md
+          status=$?
+          set -e
+          if [ "$status" -eq 3 ]; then
+            echo "over=true" >> "$GITHUB_OUTPUT"
+          elif [ "$status" -ne 0 ]; then
+            exit "$status"
+          else
+            echo "over=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report the over-ceiling baseline and stop
+        if: steps.ceiling.outputs.over == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.CROSS_SURFACE_BASELINE_PR_TOKEN || github.token }}
+          ISSUE_TITLE: Fast-tier duration is over its ceiling
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY_FILE="$(mktemp)"
+          {
+            cat fast-refresh/ceiling.md
+            echo ""
+            echo "Workflow run: $RUN_URL"
+          } > "$BODY_FILE"
+          EXISTING=$(gh issue list --state open --search 'in:title "Fast-tier duration is over its ceiling"' \
+            --json number,title -q '[.[] | select(.title == "Fast-tier duration is over its ceiling")] | .[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue edit "$EXISTING" --body-file "$BODY_FILE"
+          else
+            gh issue create --title "$ISSUE_TITLE" --body-file "$BODY_FILE"
+          fi
+          echo "::error::The refreshed fast-tier baseline is over the ceiling in quality/fast-duration-ceiling.json, so no baseline PR was opened. The over-ceiling issue holds the per-file growth; the ceiling changes only by hand."
+          exit 1
 
       - name: Check for baseline changes
         id: check
@@ -173,7 +223,7 @@ jobs:
           echo "open=$OPEN" >> "$GITHUB_OUTPUT"
 
       - name: Create refresh PR
-        if: steps.check.outputs.changed == 'true'
+        if: steps.check.outputs.changed == 'true' && steps.ceiling.outputs.over != 'true'
         env:
           GH_TOKEN: ${{ secrets.CROSS_SURFACE_BASELINE_PR_TOKEN || github.token }}
         shell: bash
