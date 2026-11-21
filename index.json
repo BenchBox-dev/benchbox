@@ -45088,6 +45088,15 @@
       "status": "done",
       "title": "Refactor TPC-DI memory validation to check growth (delta) instead of absolute RSS"
     },
+    "tpcdi-metric-and-result-block-20261121": {
+      "claim": null,
+      "needs": [
+        "tpcdi-17-duckdb-incremental-and-full-audit-20261120"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 25: TPC_DI_RPS and the `benchmark.tpcdi` result block"
+    },
     "tpcdi-old-generator-bundle-defect-label-20261120": {
       "claim": null,
       "needs": [
