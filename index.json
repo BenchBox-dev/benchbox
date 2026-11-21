@@ -44863,7 +44863,7 @@
         "tpcdi-29-platform-snowflake-20261120"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "TPC-DI step 30: Databricks: ETL, visibility and full audit"
     },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
