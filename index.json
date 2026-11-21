@@ -39015,12 +39015,17 @@
       "title": "Close Seed Corpus proof against the latest successful post-fix dispatch"
     },
     "seed-corpus-tpcdi-records-seed-and-engine-version-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-22T16:20:47Z",
+        "generation": "3768f6d7f03a4676adb040976e276ce7",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840"
+      },
       "needs": [
         "feature-fix-corpus-classification-and-seed-provenance-20261120"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Record the seed and the engine version in TPC-DI seed-corpus bundles"
     },
     "seed-corpus-tpch-official-20261016": {
