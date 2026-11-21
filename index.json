@@ -44828,7 +44828,7 @@
     "tpcdi-24-platform-cedardb-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-23-platform-starrocks-20261120",
+        "tpcdi-21-platform-postgresql-20261120",
         "tpcdi-first-publication-20261121"
       ],
       "priority": "medium",
