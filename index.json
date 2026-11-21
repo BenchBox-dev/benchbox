@@ -45052,7 +45052,7 @@
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "TPC-DI step 14: historical load, dimension tables, with alerts written inside the transformation"
+      "title": "TPC-DI step 15: historical load, dimension tables, with alerts written inside the transformation"
     },
     "tpcdi-historical-facts-20261121": {
       "claim": null,
