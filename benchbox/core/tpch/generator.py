@@ -33,6 +33,8 @@ from benchbox.utils.datagen_manifest import (
 )
 from benchbox.utils.file_format import COMPRESSION_EXTENSIONS, detect_data_format
 from benchbox.utils.filesystem_flush import flush_filesystem
+from benchbox.utils.generation_marker import GENERATION_IN_PROGRESS_MARKER, track_generation
+from benchbox.utils.run_deadline import bind_run_deadline, current_run_deadline, run_child, stream_child
 from benchbox.utils.scale_factor import format_scale_factor
 from benchbox.utils.stale_artifact_pruning import TableArtifactPattern, prune_stale_table_artifacts
 from benchbox.utils.tpc_compilation import CompilationStatus, ensure_tpc_binaries
@@ -275,8 +277,10 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
     def _check_stdout_support(self) -> bool:
         if not hasattr(self, "_stdout_support_cached"):
             try:
-                result = subprocess.run(
+                result = run_child(
                     [str(self.dbgen_exe), "-h"],
+                    tool="dbgen -h probe",
+                    deadline=None,
                     capture_output=True,
                     text=True,
                     timeout=5,
@@ -310,8 +314,10 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
         compressor = self.get_compressor()
 
         try:
-            with subprocess.Popen(
+            with stream_child(
                 cmd,
+                tool=f"dbgen (table {table_name})",
+                deadline=current_run_deadline(),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 cwd=work_dir,
@@ -363,7 +369,7 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
 
         if self.parallel > 1:
             with concurrent.futures.ThreadPoolExecutor(max_workers=min(self.parallel, len(tables))) as executor:
-                futures = {executor.submit(generate_table, table): table for table in tables}
+                futures = {executor.submit(bind_run_deadline(generate_table), table): table for table in tables}
 
                 for future in concurrent.futures.as_completed(futures):
                     table_name, file_path = future.result()
@@ -399,8 +405,10 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
                 "DATABASE=SQLSERVER",
                 f"MACHINE={machine_flag}",
             ]
-            subprocess.run(
+            run_child(
                 cmd,
+                tool="make (TPC-H dbgen build)",
+                deadline=current_run_deadline(),
                 cwd=dbgen_build_dir,
                 check=True,
                 stdout=subprocess.PIPE if not self.verbose else None,
@@ -435,8 +443,10 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
             env = os.environ.copy()
             env["DSS_PATH"] = "."
             env["DSS_CONFIG"] = "."
-            subprocess.run(
+            run_child(
                 cmd,
+                tool="dbgen",
+                deadline=current_run_deadline(),
                 cwd=resolved_work_dir,
                 check=True,
                 env=env,
@@ -553,8 +563,10 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
                 env = os.environ.copy()
                 env["DSS_PATH"] = "."
                 env["DSS_CONFIG"] = "."
-                subprocess.run(
+                run_child(
                     cmd,
+                    tool="dbgen",
+                    deadline=current_run_deadline(),
                     cwd=resolved_work_dir,
                     check=True,
                     env=env,
@@ -611,8 +623,10 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
                 env = os.environ.copy()
                 env["DSS_PATH"] = "."
                 env["DSS_CONFIG"] = "."
-                subprocess.run(
+                run_child(
                     cmd,
+                    tool="dbgen",
+                    deadline=current_run_deadline(),
                     cwd=resolved_work_dir,
                     check=True,
                     env=env,
@@ -630,7 +644,7 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.parallel) as executor:
             futures = []
             for chunk_id in range(1, self.parallel + 1):
-                future = executor.submit(generate_chunk, chunk_id)
+                future = executor.submit(bind_run_deadline(generate_chunk), chunk_id)
                 futures.append(future)
 
             for future in concurrent.futures.as_completed(futures):
@@ -673,6 +687,12 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
                 self._write_manifest(target_dir, existing_paths, stamp=False)
             return existing_paths
 
+        with track_generation(target_dir):
+            return self._regenerate(target_dir, output_dir, validation_result)
+
+    def _regenerate(
+        self, target_dir: Path, output_dir: Path | None, validation_result: Any
+    ) -> dict[str, Path | list[Path]]:
         removed_stale = self._prune_stale_table_artifacts(target_dir)
         if removed_stale and self.verbose_enabled:
             self.logger.info("Removed %d stale TPC-H table artifacts before regeneration", len(removed_stale))
@@ -874,6 +894,8 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
 
     def _copy_sample_dataset(self, sample_dir: Path, target_dir: Path) -> None:
         for child in target_dir.iterdir():
+            if child.name == GENERATION_IN_PROGRESS_MARKER:
+                continue
             if child.is_dir():
                 shutil.rmtree(child)
             else:

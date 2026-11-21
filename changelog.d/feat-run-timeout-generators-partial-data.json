@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The run time limit (`--timeout`, `timeout_seconds`) now ends the dsdgen, dbgen, dsqgen and qgen processes and the TPC tool builds a run starts, together with their process groups, and the error names the limit, the tool and, for query generation, the query and scale factor. BenchBox no longer stops these tools at limits of its own: the 30 second (per query) and 300 second (stream set) dsqgen limits, the 10 second qgen limit and the 300 and 600 second tool build limits are removed, so they follow `--timeout` only. The `-h` start-up probes keep their short limits."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Data left by a generator that was stopped part way is no longer reused. A generator writes `.benchbox-generation-in-progress` into the data directory before it starts and removes it only when it finishes; while the file is present, the manifest check, the directory scan and the TPC-H generator regenerate the data instead of reusing it."
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextvars
+import functools
 import subprocess
 import sys
 import threading
@@ -9,6 +10,7 @@ from contextlib import contextmanager
 from typing import Any
 
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.process_group import kill_process_group
 from benchbox.utils.resource_limits import kill_started_group
 
 HARD_STOP_GRACE_SECONDS = 30.0
@@ -144,7 +146,7 @@ class RunDeadline:
             try:
                 stdout, stderr = process.communicate(timeout=self.remaining())
             except subprocess.TimeoutExpired:
-                kill_started_group(process)
+                kill_process_group(process)
                 process.communicate()
                 raise self.record_timeout(f"BenchBox stopped {tool}") from None
             except BaseException:
@@ -156,6 +158,37 @@ class RunDeadline:
         if check and returncode:
             raise subprocess.CalledProcessError(returncode, list(cmd), output=stdout, stderr=stderr)
         return subprocess.CompletedProcess(list(cmd), returncode, stdout, stderr)
+
+    @contextmanager
+    def stream(self, cmd: Sequence[str], *, tool: str, **popen_kwargs: Any) -> Iterator[subprocess.Popen[Any]]:
+        if self.expired:
+            raise self.record_timeout(f"{tool} was not started")
+        if sys.platform != "win32":
+            popen_kwargs.setdefault("start_new_session", True)
+        ended = threading.Event()
+        with subprocess.Popen(list(cmd), **popen_kwargs) as process, self.tracking(process):
+
+            def end() -> None:
+                if process.poll() is None:
+                    ended.set()
+                    kill_process_group(process)
+
+            timer = threading.Timer(self.remaining(), end)
+            timer.daemon = True
+            timer.start()
+            try:
+                yield process
+            except BaseException as exc:
+                timer.cancel()
+                if process.poll() is None:
+                    kill_process_group(process)
+                if ended.is_set() or self.stopped(process):
+                    raise self.record_timeout(f"BenchBox stopped {tool}") from exc
+                raise
+            finally:
+                timer.cancel()
+            if ended.is_set():
+                raise self.record_timeout(f"BenchBox stopped {tool}")
 
 
 _ACTIVE: contextvars.ContextVar[RunDeadline | None] = contextvars.ContextVar("benchbox_run_deadline", default=None)
@@ -212,6 +245,29 @@ def run_child(
     if deadline is None:
         return subprocess.run(list(cmd), **kwargs)
     return deadline.run(cmd, tool=tool, **kwargs)
+
+
+@contextmanager
+def stream_child(
+    cmd: Sequence[str], *, tool: str, deadline: RunDeadline | None, **kwargs: Any
+) -> Iterator[subprocess.Popen[Any]]:
+    if deadline is None:
+        with subprocess.Popen(list(cmd), **kwargs) as process:
+            yield process
+        return
+    with deadline.stream(cmd, tool=tool, **kwargs) as process:
+        yield process
+
+
+def bind_run_deadline(function: Callable[..., Any]) -> Callable[..., Any]:
+    deadline = current_run_deadline()
+
+    @functools.wraps(function)
+    def bound(*args: Any, **kwargs: Any) -> Any:
+        with active_run_deadline(deadline):
+            return function(*args, **kwargs)
+
+    return bound
 
 
 def timeout_details(deadline: RunDeadline) -> dict[str, Any]:

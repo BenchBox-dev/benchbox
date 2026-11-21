@@ -15,6 +15,7 @@ from typing import Any, Callable, Optional, Union
 
 from benchbox.core.tpcds.parameter_log import TemplateParameters, parse_dsqgen_parameter_log
 from benchbox.utils.dialect_utils import split_sql_statements, translate_sql_query
+from benchbox.utils.run_deadline import current_run_deadline, run_child
 from benchbox.utils.tpc_compilation import (
     CompilationStatus,
     ensure_tpc_binaries,
@@ -42,19 +43,20 @@ def run_dsqgen_process(
     cmd: list[str],
     *,
     cwd: Union[str, Path],
-    timeout: int,
+    tool: str,
     env: dict[str, str],
     discard_partial_output: Optional[Callable[[], None]] = None,
 ) -> subprocess.CompletedProcess[str]:
     max_attempts = _WINDOWS_DSQGEN_MAX_ATTEMPTS if sys.platform == "win32" else 1
 
     for attempt in range(max_attempts):
-        result = subprocess.run(
+        result = run_child(
             cmd,
+            tool=tool,
+            deadline=current_run_deadline(),
             cwd=cwd,
             capture_output=True,
             text=True,
-            timeout=timeout,
             env=env,
         )
         is_transient_windows_overrun = sys.platform == "win32" and all(
@@ -108,9 +110,6 @@ def _substitute_parameters(template: str, parameters: dict[str, Any], query: str
 
 class TPCDSError(Exception):
     pass
-
-
-DSQGEN_QUERY_TIMEOUT_SECONDS = 30
 
 
 SUBSCALE_TEMPLATE_OVERRIDES: dict[str, tuple[str, str]] = {
@@ -395,26 +394,13 @@ class DSQGenBinary:
             if capture_log:
                 cmd.extend([f"{opt}LOG", str(log_path)])
 
-            try:
-                result = run_dsqgen_process(
-                    cmd,
-                    cwd=temp_dir,
-                    timeout=DSQGEN_QUERY_TIMEOUT_SECONDS,
-                    env=env,
-                    discard_partial_output=lambda: log_path.unlink(missing_ok=True),
-                )
-            except subprocess.TimeoutExpired as exc:
-                written = exc.stderr.decode(errors="replace") if isinstance(exc.stderr, bytes) else exc.stderr
-                raise TPCDSError(
-                    f"BenchBox stopped dsqgen after its own {DSQGEN_QUERY_TIMEOUT_SECONDS}-second limit while "
-                    f"dsqgen was generating query {query_id}{variant or ''} at scale factor {scale_factor:g}. "
-                    "dsqgen had not finished. "
-                    + (
-                        f"Stderr so far: {written.strip()}"
-                        if written and written.strip()
-                        else "It had written nothing to stderr."
-                    )
-                ) from None
+            result = run_dsqgen_process(
+                cmd,
+                cwd=temp_dir,
+                tool=f"dsqgen (query {query_id}{variant or ''}, scale factor {scale_factor:g})",
+                env=env,
+                discard_partial_output=lambda: log_path.unlink(missing_ok=True),
+            )
             if capture_log and result.returncode == 0:
                 if not log_path.exists():
                     raise TPCDSError(f"dsqgen wrote no parameter log for query {query_id}{variant or ''}")
