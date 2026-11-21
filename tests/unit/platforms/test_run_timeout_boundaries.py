@@ -206,6 +206,18 @@ def test_generate_data_keeps_its_own_error_before_the_limit() -> None:
         TinyBenchmark(fails_early).generate_data(timeout_seconds=600)
 
 
+def test_generate_data_that_finishes_after_the_limit_raises_the_timeout_with_its_output(clock) -> None:
+    def finishes_late(_tables: Any) -> list[str]:
+        clock.now += 5
+        return ["lineitem.tbl"]
+
+    with pytest.raises(RunTimeoutError) as excinfo:
+        TinyBenchmark(finishes_late).generate_data(timeout_seconds=2)
+
+    assert excinfo.value.phase == "generate"
+    assert excinfo.value.partial_result == ["lineitem.tbl"]
+
+
 def test_a_timed_out_mcp_run_is_an_error_result_and_an_incomplete_job_that_is_not_retried() -> None:
     response = {"mcp_metadata": {"status": "timed_out", "timeout": {"timeout_seconds": 5, "phase": "load"}}}
 

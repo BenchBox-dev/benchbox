@@ -5,7 +5,7 @@ import logging
 import os
 import sys
 from collections.abc import Callable
-from typing import Any
+from typing import IO, Any
 
 import click
 from rich.markup import escape
@@ -60,6 +60,7 @@ def write_hard_stop_result(
     database_config: Any,
     execution_context: Any,
     quiet: bool,
+    stdout: IO[str],
 ) -> None:
     from benchbox.cli.commands.run import _export_orchestrated_result
     from benchbox.core.run_service import build_timed_out_result
@@ -76,23 +77,26 @@ def write_hard_stop_result(
         export_formats=["json"],
     )
     for filepath in exported_files.values():
-        click.echo(filepath)
+        click.echo(filepath, file=stdout)
 
 
 def hard_stop(deadline: RunDeadline) -> None:
-    report_timeout(deadline)
-    console.print(
-        f"[red]The run did not stop within {HARD_STOP_GRACE_SECONDS:g} seconds of its limit; BenchBox is exiting. "
-        "Work on a remote platform may still be running.[/red]"
-    )
-    end_descendant_processes()
-    if deadline.write_partial_result is not None:
-        try:
-            deadline.write_partial_result()
-        except Exception as exc:
-            console.print(f"[red]The partial result could not be written: {escape(str(exc))}[/red]")
-    logging.shutdown()
-    os._exit(ExitCode.TIMEOUT)
+    try:
+        report_timeout(deadline)
+        console.print(
+            f"[red]The run did not stop within {HARD_STOP_GRACE_SECONDS:g} seconds of its limit; BenchBox is exiting. "
+            "Work on a remote platform may still be running.[/red]"
+        )
+        if deadline.write_partial_result is not None:
+            try:
+                deadline.write_partial_result()
+            except Exception as exc:
+                console.print(f"[red]The partial result could not be written: {escape(str(exc))}[/red]")
+        deadline.stop_children()
+        end_descendant_processes()
+        logging.shutdown()
+    finally:
+        os._exit(ExitCode.TIMEOUT)
 
 
 def bounded_orchestrated_run(execute: Callable[..., Any]) -> Callable[..., Any]:
@@ -120,6 +124,7 @@ def bounded_orchestrated_run(execute: Callable[..., Any]) -> Callable[..., Any]:
             database_config,
             options.get("execution_context"),
             bool(options.get("quiet")),
+            sys.stdout,
         )
         deadline.start()
         disarm = arm_hard_stop(deadline, hard_stop)

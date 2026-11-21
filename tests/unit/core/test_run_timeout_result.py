@@ -10,7 +10,8 @@ import pytest
 from benchbox.cli.output import ResultExporter
 from benchbox.core import run_service
 from benchbox.core.publishing.admission import publish_admission
-from benchbox.core.results.schema import SchemaV2ValidationError, SchemaV2Validator
+from benchbox.core.results.loader import reconstruct_benchmark_results
+from benchbox.core.results.schema import SchemaV2ValidationError, SchemaV2Validator, build_result_payload
 from benchbox.core.results.status import (
     bundle_non_clean_reason,
     result_cli_failure_reason,
@@ -215,6 +216,15 @@ def test_the_exported_bundle_carries_the_status_and_the_timeout_block(timed_out_
     assert bundle["summary"]["validation"] == "timed_out"
     assert bundle["execution"]["timeout"] == {"timeout_seconds": 5, "phase": "execute", "query_id": "Q5"}
     SchemaV2Validator().validate(bundle)
+
+
+def test_a_loaded_timed_out_bundle_keeps_its_timeout_block_when_exported_again(timed_out_result, tmp_path) -> None:
+    bundle = _export(timed_out_result, tmp_path)
+
+    again = build_result_payload(reconstruct_benchmark_results(bundle))
+
+    assert again["summary"]["validation"] == "timed_out"
+    assert again["execution"]["timeout"] == bundle["execution"]["timeout"]
 
 
 def test_a_run_that_was_not_stopped_has_no_timeout_block(tmp_path) -> None:

@@ -251,6 +251,7 @@ def arm_hard_stop(
     grace_seconds: float = HARD_STOP_GRACE_SECONDS,
 ) -> Callable[[], None]:
     finished = threading.Event()
+    hard_stopping = threading.Lock()
 
     def watch() -> None:
         if finished.wait(deadline.remaining()):
@@ -258,9 +259,16 @@ def arm_hard_stop(
         deadline.stop_children()
         if finished.wait(grace_seconds):
             return
-        deadline.record_overrun()
-        deadline.stop_children()
-        on_hard_stop(deadline)
+        with hard_stopping:
+            if finished.is_set():
+                return
+            deadline.record_overrun()
+            on_hard_stop(deadline)
+
+    def disarm() -> None:
+        finished.set()
+        with hard_stopping:
+            pass
 
     threading.Thread(target=watch, name="benchbox-run-deadline", daemon=True).start()
-    return finished.set
+    return disarm

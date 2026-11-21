@@ -211,6 +211,26 @@ def test_a_run_that_finishes_in_time_disarms_the_hard_stop() -> None:
     assert deadline.timeout is None
 
 
+def test_a_run_that_returns_during_the_hard_stop_waits_for_it_to_finish() -> None:
+    deadline = RunDeadline(1)
+    order: list[str] = []
+    entered = threading.Event()
+    release = threading.Event()
+
+    def slow_hard_stop(_deadline: RunDeadline) -> None:
+        entered.set()
+        release.wait(10)
+        order.append("hard stop finished")
+
+    disarm = arm_hard_stop(deadline, slow_hard_stop, grace_seconds=0.1)
+    assert entered.wait(10)
+    threading.Timer(0.3, release.set).start()
+    disarm()
+    order.append("run returned")
+
+    assert order == ["hard stop finished", "run returned"]
+
+
 def test_a_run_that_stops_within_the_grace_is_not_hard_stopped() -> None:
     deadline = RunDeadline(1)
     called = threading.Event()

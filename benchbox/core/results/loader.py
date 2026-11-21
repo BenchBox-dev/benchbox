@@ -248,6 +248,7 @@ def reconstruct_benchmark_results(
         geometric_mean_execution_time=tpc["geometric_mean_execution_time"],
         test_execution_type=benchmark_section.get("mode", "standard"),
         validation_status=summary_section.get("validation", "NOT_RUN"),
+        validation_details=_extract_timeout_details(execution_section),
         execution_metadata=execution_metadata,
         execution_environment=execution_environment,
         platform_deployment=platform_section.get("deployment"),
@@ -328,6 +329,11 @@ def _extract_execution_metadata(execution_section: dict[str, Any]) -> dict[str, 
     if isinstance(comparability, dict):
         metadata["variant_comparability"] = comparability
     return metadata or None
+
+
+def _extract_timeout_details(execution_section: dict[str, Any]) -> dict[str, Any] | None:
+    timeout = execution_section.get("timeout")
+    return {"timeout": dict(timeout)} if isinstance(timeout, dict) else None
 
 
 def _parse_timestamp(timestamp_str: str) -> datetime:

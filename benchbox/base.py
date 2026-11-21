@@ -53,9 +53,14 @@ class GeneratorOutputDirMixin:
 def _with_optional_timeout(generate_data: Any) -> Any:
     @functools.wraps(generate_data)
     def bounded(self: Any, *args: Any, timeout_seconds: Optional[int] = None, **kwargs: Any) -> Any:
-        with own_run_deadline(timeout_seconds):
+        with own_run_deadline(timeout_seconds) as deadline:
             enter_run_phase("generate")
-            return generate_data(self, *args, **kwargs)
+            generated = generate_data(self, *args, **kwargs)
+            if deadline is not None and deadline.expired:
+                timeout = deadline.record_timeout()
+                timeout.partial_result = generated
+                raise timeout
+            return generated
 
     return bounded
 

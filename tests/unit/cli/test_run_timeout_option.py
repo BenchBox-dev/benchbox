@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 import threading
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -55,7 +56,8 @@ def ignores_the_stop_request(*_args, **_kwargs):
     deadline.enter_phase("execute")
     deadline.enter_query("Q3")
     deadline.partial_query_results = [{"query_id": "Q1", "status": "SUCCESS", "execution_time_seconds": 0.1}]
-    time.sleep(120)
+    untracked.wait()
+    raise RuntimeError("the generator was ended")
 
 def reaches_the_run(_s):
     run_module._execute_orchestrated_run(
@@ -72,12 +74,10 @@ def reaches_the_run(_s):
 orchestrator.execute_benchmark = ignores_the_stop_request
 run_time_limit.dispatch_run = reaches_the_run
 run_time_limit.arm_hard_stop = functools.partial(arm_hard_stop, grace_seconds=0.3)
-CliRunner().invoke(
-    run_module.run,
+run_module.run.main(
     ["--platform", "duckdb", "--benchmark", "tpch", "--scale", "0.01", "--non-interactive", "--timeout", "1"],
     obj={"config": ConfigManager()},
 )
-sys.exit(0)
 """
 
 
@@ -232,6 +232,7 @@ def test_a_run_that_ignores_the_stop_request_is_ended_with_a_marked_partial_resu
     assert bundle["summary"]["validation"] == "timed_out"
     assert bundle["execution"]["timeout"] == {"timeout_seconds": 1, "phase": "execute"}
     assert len(bundle["queries"]) == 1
+    assert Path(completed.stdout.strip().splitlines()[-1]).name == bundles[0].name
     untracked = int((tmp_path / "untracked.pid").read_text(encoding="utf-8"))
     gone = threading.Event()
     for _ in range(100):
