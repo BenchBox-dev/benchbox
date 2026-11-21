@@ -8648,7 +8648,7 @@
         }
       },
       "integration_branch": "feat/run-timeout-core",
-      "integration_head": "5b4ff71ab500fbfe87a9edfcc67914c583755567",
+      "integration_head": "22566d25ff89a0b3c6b0205c3bd470e24b4b4804",
       "integration_log": [
         {
           "at": "2026-11-21T17:38:21Z",
@@ -8829,6 +8829,34 @@
           "op_id": "3f4e937fc27b4904b7b17f9398c62111",
           "previous_head": "f946d0df00787a4e3f056b48019c1b79916a6448",
           "seq": 4
+        },
+        {
+          "at": "2026-11-21T21:55:04Z",
+          "changed_files": [
+            "benchbox/core/run_service.py",
+            "benchbox/platforms/aws/emr_serverless_adapter.py",
+            "benchbox/platforms/aws/glue_adapter.py",
+            "benchbox/platforms/base/adapter.py",
+            "benchbox/platforms/gcp/dataproc_adapter.py",
+            "benchbox/platforms/onehouse/onehouse_client.py",
+            "benchbox/utils/run_deadline.py",
+            "docs/operations/run-safety.md",
+            "tests/unit/cli/test_run_timeout_remote_cleanup.py",
+            "tests/unit/core/test_run_timeout_remote_cleanup.py",
+            "tests/unit/platforms/gcp/test_dataproc_coverage.py",
+            "tests/unit/platforms/onehouse/test_onehouse_client.py",
+            "tests/unit/platforms/test_run_timeout_remote_cleanup.py",
+            "tests/unit/utils/test_run_deadline_remote_cleanup.py"
+          ],
+          "head": "22566d25ff89a0b3c6b0205c3bd470e24b4b4804",
+          "kind": "fix",
+          "op_id": "4f1a80c1a5524105a71c1e96e2fe8a1f",
+          "previous_head": "5b4ff71ab500fbfe87a9edfcc67914c583755567",
+          "requires_acceptance": [
+            "run-timeout-execution-phases-20261120",
+            "run-timeout-remote-cleanup-20261120"
+          ],
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-core",
