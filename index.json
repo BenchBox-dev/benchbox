@@ -44930,6 +44930,15 @@
       "status": "blocked",
       "title": "TPC-DI correction plan: owner decisions and step sequence (notes; not a work item)"
     },
+    "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121": {
+      "claim": null,
+      "needs": [
+        "tpcdi-15-delete-old-generator-and-etl-20261120"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 19: delete the old ETL, DataFrame path and metric, and correct stale TPC-DI claims across the repository"
+    },
     "tpcdi-deterministic-generation-contract": {
       "claim": null,
       "needs": [
