@@ -44835,7 +44835,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 25: Trino: ETL, visibility and full audit"
+      "title": "TPC-DI step 35: Trino: ETL, visibility and full audit"
     },
     "tpcdi-26-platform-presto-20261120": {
       "claim": null,
