@@ -44913,11 +44913,11 @@
     "tpcdi-34-explorer-display-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-33-site-pages-20261120"
+        "tpcdi-18-metric-bundle-and-reopen-duckdb-20261120"
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 34: Results Explorer shows TPC_DI_RPS and phase throughputs (benchbox-site)"
+      "title": "TPC-DI step 27: Results Explorer shows TPC_DI_RPS and phase throughputs"
     },
     "tpcdi-bundle-tpc-di-tools-20261121": {
       "claim": null,
