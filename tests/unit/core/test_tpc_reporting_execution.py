@@ -415,7 +415,7 @@ def test_tpch_throughput_and_maintenance_core_paths(monkeypatch: pytest.MonkeyPa
             "RF2", 1.0, 2.0, 1.0, 5, pair_id % 2 == 0, error="x" if pair_id % 2 else None
         ),
     )
-    monkeypatch.setattr("benchbox.core.tpch.maintenance_test.time.sleep", lambda _s: None)
+    monkeypatch.setattr("benchbox.core.tpch.maintenance_test.sleep", lambda _s: None)
     maint_result = maint.run_maintenance_test(
         maintenance_pairs=2, rf1_interval=0, rf2_interval=0, validate_integrity=False
     )
@@ -687,7 +687,7 @@ def test_tpch_maintenance_execution(monkeypatch: pytest.MonkeyPatch):
     assert rf2_fail.success is False
     assert rf2_fail.error == "missing order"
 
-    monkeypatch.setattr("benchbox.core.tpch.maintenance_test.time.sleep", lambda _s: None)
+    monkeypatch.setattr("benchbox.core.tpch.maintenance_test.sleep", lambda _s: None)
     monkeypatch.setattr(maint, "_execute_rf1", lambda _pid, _set: TPCHMaintenanceOperation("RF1", 0, 1, 1, 1, True))
     monkeypatch.setattr(
         maint,
