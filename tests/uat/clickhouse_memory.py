@@ -248,7 +248,7 @@ class ClickHouseMemoryTrace:
         return any(marker in failure for marker in _MEMORY_FAILURE_MARKERS)
 
     def finish(self, *, outcome: str, failure_reason: str | None = None) -> None:
-        if outcome not in {"passed", "failed", "timed-out", "aborted"}:
+        if outcome not in {"passed", "failed", "timed-out", "hung", "aborted"}:
             raise ValueError(f"unsupported trace outcome {outcome!r}")
         self.ended_at_utc = utc_now()
         self.outcome = outcome

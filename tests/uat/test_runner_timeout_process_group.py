@@ -82,6 +82,7 @@ def test_run_cell_timeout_kills_the_whole_process_group_not_just_the_child(tmp_p
     )
 
     monkeypatch.setattr(runner, "benchbox_run_argv", lambda *a, **k: ["bash", str(script)])
+    monkeypatch.setattr(runner, "OUTSIDE_KILL_MARGIN_S", 0)
 
     returned, outcome = _run_cell_bounded(tmp_path)
 
@@ -96,7 +97,7 @@ def test_run_cell_timeout_kills_the_whole_process_group_not_just_the_child(tmp_p
             raise AssertionError(f"run_cell raised: {outcome['error']!r}")
 
         result = outcome["result"]
-        assert result.status == "timed-out", f"fixture assumption: the cell must time out, got {result.status!r}"
+        assert result.status == "hung", f"fixture assumption: the runner must kill the cell, got {result.status!r}"
         assert grandchild is not None, "fixture assumption: the grandchild never recorded its pid"
         assert _await_death(grandchild), (
             f"grandchild pid {grandchild} survived a timed-out run_cell -- run_cell is not reaching the "
@@ -122,6 +123,7 @@ def test_run_cell_runs_the_child_in_its_own_session(tmp_path, monkeypatch):
     )
 
     monkeypatch.setattr(runner, "benchbox_run_argv", lambda *a, **k: ["bash", str(script)])
+    monkeypatch.setattr(runner, "OUTSIDE_KILL_MARGIN_S", 0)
 
     _returned, _outcome = _run_cell_bounded(tmp_path)
 
