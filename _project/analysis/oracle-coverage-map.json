@@ -269,9 +269,9 @@
     },
     {
       "benchmark": "tpcdi",
-      "cross_surface_applicable": true,
+      "cross_surface_applicable": false,
       "cross_surface_enforced": null,
-      "dual_surface": true,
+      "dual_surface": false,
       "guarded": false,
       "independence": "\u2014",
       "independence_rationale": "\u2014",
@@ -282,7 +282,6 @@
       "surface_provenance": "\u2014",
       "surface_provenance_rationale": "\u2014",
       "surfaces": [
-        "sql",
         "dataframe"
       ]
     },

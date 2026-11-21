@@ -4,6 +4,7 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from benchbox.core.results.status import validation_status_is_non_clean
+from benchbox.core.results.subscale_policy import normalize_tpc_benchmark_id
 
 TPCDI_BENCHMARK_ID = "tpcdi"
 TPCDI_AUDIT_BLOCK_KEY = "tpcdi_audit"
@@ -13,12 +14,8 @@ LEGACY_METADATA_KEY = "legacy_result_note"
 LEGACY_TPCDI_REFUSAL = f"{LEGACY_TPCDI_NOTE} It cannot be compared, published or submitted."
 
 
-def _normalize_id(value: Any) -> str:
-    return "".join(character for character in str(value or "").lower() if character.isalnum())
-
-
 def is_tpcdi_id(value: Any) -> bool:
-    return _normalize_id(value) == TPCDI_BENCHMARK_ID
+    return normalize_tpc_benchmark_id(value) == TPCDI_BENCHMARK_ID
 
 
 def has_tpcdi_audit_block(validation_details: Any) -> bool:

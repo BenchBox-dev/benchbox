@@ -16,6 +16,7 @@ from benchbox.core.constants import (
     NO_COMPRESSION_ENV_VAR,
     QUERY_PHASES,
 )
+from benchbox.core.results.subscale_policy import normalize_tpc_benchmark_id
 
 TPC_ALLOWED_SCALE_FACTORS: frozenset[int | float] = frozenset({1, 10, 30, 100, 300, 1000, 3000, 10000, 30000, 100000})
 
@@ -35,8 +36,7 @@ class BenchmarkUnavailableError(RuntimeError):
 
 
 def unavailable_benchmark_message(benchmark_id: object) -> str | None:
-    key = "".join(character for character in str(benchmark_id or "").lower() if character.isalnum())
-    return UNAVAILABLE_BENCHMARK_MESSAGES.get(key)
+    return UNAVAILABLE_BENCHMARK_MESSAGES.get(normalize_tpc_benchmark_id(benchmark_id))
 
 
 def refuse_unavailable_benchmark(benchmark_id: object) -> None:
