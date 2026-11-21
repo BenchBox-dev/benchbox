@@ -44714,11 +44714,11 @@
     "tpcdi-12-duckdb-historical-load-and-audit-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-11-audit-recount-batch1-20261120"
+        "tpcdi-historical-facts-20261121"
       ],
       "priority": "high",
       "status": "open",
-      "title": "TPC-DI step 12 (milestone): DuckDB initialization, historical load and the audit gate"
+      "title": "TPC-DI step 16 (milestone): DuckDB initialization and historical-load phases, completion records and the audit gate"
     },
     "tpcdi-13-digen-reference-path-and-comparison-20261120": {
       "claim": null,
