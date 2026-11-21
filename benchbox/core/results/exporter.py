@@ -47,7 +47,7 @@ from benchbox.core.results.schema_policy import (
     is_loader_supported_result_schema,
     result_schema_version_value,
 )
-from benchbox.core.results.tpcdi_audit import LEGACY_TPCDI_REFUSAL, legacy_tpcdi_bundle_note
+from benchbox.core.results.tpcdi_audit import LEGACY_TPCDI_REFUSAL, is_tpcdi_id, legacy_tpcdi_note
 from benchbox.core.runtime_paths import resolve_results_dir
 from benchbox.utils.cloud_storage import create_path_handler, is_cloud_path
 from benchbox.validation.bundle import COMPANION_SUFFIXES
@@ -718,6 +718,16 @@ class ResultExporter:
         outcome["warning"] = " ".join(w for w in (outcome["warning"], power["warning"]) if w)
         return outcome
 
+    @staticmethod
+    def _is_legacy_tpcdi_bundle(data: dict[str, Any]) -> bool:
+        from benchbox.core.results.loader import reconstruct_benchmark_results
+
+        try:
+            return legacy_tpcdi_note(reconstruct_benchmark_results(data)) is not None
+        except Exception:
+            benchmark = data.get("benchmark") if isinstance(data, dict) else None
+            return isinstance(benchmark, dict) and is_tpcdi_id(benchmark.get("id"))
+
     def compare_results(self, baseline_path: Path, current_path: Path) -> dict[str, Any]:
         baseline_result = self.load_result_from_file(baseline_path)
         current_result = self.load_result_from_file(current_path)
@@ -730,7 +740,7 @@ class ResultExporter:
             }
 
         for loaded in (baseline_result, current_result):
-            if legacy_tpcdi_bundle_note(loaded["data"]) is not None:
+            if self._is_legacy_tpcdi_bundle(loaded["data"]):
                 return {
                     "error": LEGACY_TPCDI_REFUSAL,
                     "error_code": "VALIDATION_ERROR",

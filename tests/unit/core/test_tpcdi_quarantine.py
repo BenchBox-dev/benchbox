@@ -398,6 +398,20 @@ class TestLegacyBundles:
 
         assert OWNER_LEGACY_WORDING in comparison["error"]
 
+    def test_top_level_audit_key_does_not_launder_a_withdrawn_bundle(self, tmp_path: Path) -> None:
+        from benchbox.core.results.analytics import compare_results
+
+        paths = []
+        for name in ("a.json", "b.json"):
+            path = _legacy_bundle(tmp_path, name)
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload["tpcdi_audit"] = True
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            paths.append(path)
+
+        for comparison in (ResultExporter().compare_results(*paths), compare_results(*paths)):
+            assert OWNER_LEGACY_WORDING in comparison["error"]
+
     def test_publish_refuses(self, tmp_path: Path) -> None:
         bundle = _legacy_bundle(tmp_path)
 

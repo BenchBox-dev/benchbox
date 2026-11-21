@@ -66,14 +66,3 @@ def legacy_tpcdi_note(result: Any) -> str | None:
         return None
     note = metadata.get(LEGACY_METADATA_KEY)
     return str(note) if note else None
-
-
-def legacy_tpcdi_bundle_note(data: Any) -> str | None:
-    if not isinstance(data, Mapping):
-        return None
-    benchmark = data.get("benchmark")
-    if not isinstance(benchmark, Mapping) or not is_tpcdi_id(benchmark.get("id")):
-        return None
-    if data.get(TPCDI_AUDIT_BLOCK_KEY):
-        return None
-    return LEGACY_TPCDI_NOTE

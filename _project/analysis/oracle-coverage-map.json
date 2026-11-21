@@ -268,24 +268,6 @@
       ]
     },
     {
-      "benchmark": "tpcdi",
-      "cross_surface_applicable": false,
-      "cross_surface_enforced": null,
-      "dual_surface": false,
-      "guarded": false,
-      "independence": "\u2014",
-      "independence_rationale": "\u2014",
-      "oracles": [],
-      "primary_oracle": "NONE",
-      "scale": "\u2014",
-      "strength": "\u2014",
-      "surface_provenance": "\u2014",
-      "surface_provenance_rationale": "\u2014",
-      "surfaces": [
-        "dataframe"
-      ]
-    },
-    {
       "benchmark": "tpcds",
       "cross_surface_applicable": false,
       "cross_surface_enforced": true,

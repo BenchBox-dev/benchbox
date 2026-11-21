@@ -224,6 +224,8 @@ def build_coverage_map() -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for benchmark_id in sorted(list_benchmark_ids()):
         metadata = get_benchmark_metadata(benchmark_id) or {}
+        if metadata.get("support_status") == "document_only":
+            continue
         has_sql, has_dataframe = _surfaces(metadata)
         surfaces = [s for s, present in (("sql", has_sql), ("dataframe", has_dataframe)) if present]
         oracles = classify_oracles(
@@ -401,8 +403,8 @@ def render_markdown(rows: list[dict[str, Any]]) -> str:
     lines.append("")
     lines.append(
         "> Caveat (w2 oracle choice): write/DML/nondeterministic benchmarks "
-        "(`write_primitives`, `transaction_primitives`, `metadata_primitives`, "
-        "`tpcdi`) are listed as dual-surface, but their two surfaces may not be "
+        "(`write_primitives`, `transaction_primitives`, `metadata_primitives`) "
+        "are listed as dual-surface, but their two surfaces may not be "
         "result-comparable; prefer structural-invariant oracles (row counts, "
         "post-state assertions) over cross-surface equality for those."
     )
