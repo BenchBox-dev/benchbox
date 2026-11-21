@@ -44777,11 +44777,11 @@
     "tpcdi-19-platform-datafusion-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-18-metric-bundle-and-reopen-duckdb-20261120"
+        "tpcdi-32-core-docs-and-adr-20261120"
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 19: DataFusion: ETL, visibility and full audit"
+      "title": "TPC-DI step 29: DataFusion: ETL, visibility and full audit"
     },
     "tpcdi-20-platform-clickhouse-local-20261120": {
       "claim": null,
