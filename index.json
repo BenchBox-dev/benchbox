@@ -44903,7 +44903,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 38: DataFrame mode on Polars"
+      "title": "TPC-DI step 42: DataFrame mode on Polars"
     },
     "tpcdi-32-core-docs-and-adr-20261120": {
       "claim": null,
