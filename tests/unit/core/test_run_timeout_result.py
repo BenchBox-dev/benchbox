@@ -148,24 +148,54 @@ def test_a_result_returned_after_a_stop_request_is_marked_and_keeps_its_queries(
     assert result.compliance_class is None
 
 
-def test_an_error_raised_after_the_limit_is_reported_as_the_timeout(monkeypatch) -> None:
+def test_an_error_raised_after_the_limit_stays_an_error(monkeypatch) -> None:
     def fails_late(**_kwargs: Any) -> Any:
-        deadline = current_run_deadline()
-        assert deadline is not None
-        deadline.enter_phase("load")
         monkeypatch.setattr(RunDeadline, "expired", property(lambda _self: True))
         raise RuntimeError("connection closed")
 
     monkeypatch.setattr(run_service, "_execute_run", fails_late)
 
+    with pytest.raises(RuntimeError, match="connection closed"):
+        _execute(_config(**{RUN_TIMEOUT_OPTION_KEY: 5}))
+
+
+@pytest.mark.parametrize("verdict", ["FAILED", "ERROR", "INTERRUPTED"])
+def test_a_failed_run_that_also_passed_the_limit_keeps_its_verdict_and_records_the_timeout(
+    monkeypatch, verdict
+) -> None:
+    def fails_validation_late(**_kwargs: Any) -> Any:
+        deadline = current_run_deadline()
+        assert deadline is not None
+        deadline.enter_phase("load")
+        monkeypatch.setattr(RunDeadline, "expired", property(lambda _self: True))
+        return SimpleNamespace(validation_status=verdict, validation_details={"error": "row counts differ"})
+
+    monkeypatch.setattr(run_service, "_execute_run", fails_validation_late)
+
+    result = _execute(_config(**{RUN_TIMEOUT_OPTION_KEY: 5}))
+
+    assert result.validation_status == verdict
+    assert result.validation_details == {
+        "error": "row counts differ",
+        "timeout": {"timeout_seconds": 5, "phase": "load"},
+    }
+
+
+def test_a_run_that_finished_its_work_after_the_limit_is_marked_without_a_query(monkeypatch) -> None:
+    def finishes_late(**_kwargs: Any) -> Any:
+        deadline = current_run_deadline()
+        assert deadline is not None
+        deadline.enter_phase("execute")
+        deadline.enter_query("Q22")
+        monkeypatch.setattr(RunDeadline, "expired", property(lambda _self: True))
+        return SimpleNamespace(validation_status="PASSED", validation_details=None)
+
+    monkeypatch.setattr(run_service, "_execute_run", finishes_late)
+
     result = _execute(_config(**{RUN_TIMEOUT_OPTION_KEY: 5}))
 
     assert result.validation_status == TIMED_OUT_VALIDATION_STATUS
-    assert result.validation_details["timeout"] == {
-        "timeout_seconds": 5,
-        "phase": "load",
-        "detail": "connection closed",
-    }
+    assert result.validation_details["timeout"] == {"timeout_seconds": 5, "phase": "execute"}
 
 
 def test_an_error_before_the_limit_is_still_an_error(monkeypatch) -> None:

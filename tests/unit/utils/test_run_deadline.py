@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import signal
 import subprocess
 import sys
 import threading
@@ -218,17 +217,17 @@ def test_a_run_that_stops_within_the_grace_is_not_hard_stopped() -> None:
     disarm = arm_hard_stop(deadline, lambda _deadline: called.set(), grace_seconds=5)
     waited = threading.Event()
     for _ in range(200):
-        if deadline.timeout is not None:
+        if deadline.expired:
             break
         waited.wait(0.05)
     disarm()
-    assert deadline.timeout is not None
+    assert deadline.expired
+    assert deadline.timeout is None
     assert called.wait(0.5) is False
 
 
-def test_without_process_groups_or_alarm_signals_the_direct_child_is_still_ended(monkeypatch) -> None:
-    monkeypatch.delattr(resource_limits.os, "killpg", raising=False)
-    monkeypatch.delattr(signal, "SIGALRM", raising=False)
+def test_without_process_groups_the_direct_child_is_still_ended(monkeypatch) -> None:
+    monkeypatch.setattr(resource_limits, "HAS_PROCESS_GROUPS", False)
     deadline = RunDeadline(1)
     stopped = threading.Event()
     child = subprocess.Popen(SLEEPER)

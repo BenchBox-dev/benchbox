@@ -45,6 +45,7 @@ from benchbox.mcp.tools.benchmark import (
     _resolve_mcp_mode_with_registry,
 )
 from benchbox.utils.clock import mono_time, utc_now
+from benchbox.utils.run_deadline import validate_timeout_seconds
 
 logger = logging.getLogger(__name__)
 
@@ -1090,6 +1091,7 @@ class DurableJobWorker:
         platform_options = request.get("platform_options")
         seed = request.get("seed")
         iterations = request.get("iterations")
+        timeout_seconds = request.get("timeout_seconds")
         results_dir = staging
         execution_id = job.execution_id
         anonymize = True
@@ -1176,6 +1178,7 @@ class DurableJobWorker:
             link_probe=link_probe,
             seed=seed,
             iterations=iterations,
+            timeout_seconds=timeout_seconds,
             normalized_platform_options=normalized_platform_options,
             results_dir=results_dir,
             execution_id=execution_id,
@@ -1521,7 +1524,7 @@ def _public_status(job: JobRecord) -> dict[str, Any]:
 def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> None:
 
     @mcp.tool(
-        description="Queue a tenant-owned benchmark and immediately return its durable handle. Optional seed and iterations have the same meaning as in run_benchmark; iterations is bounded by the server policy.",
+        description="Queue a tenant-owned benchmark and immediately return its durable handle. Optional seed, iterations and timeout_seconds have the same meaning as in run_benchmark; iterations is bounded by the server policy.",
         annotations=START_ANNOTATIONS,
     )
     async def start_benchmark(
@@ -1537,6 +1540,7 @@ def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> No
         platform_options: dict[str, object] | None = None,
         seed: int | None = None,
         iterations: int | None = None,
+        timeout_seconds: int | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         principal = authenticated_principal()
@@ -1548,6 +1552,7 @@ def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> No
             phases = validate_phases(phases)
             seed = validate_seed(seed)
             iterations = validate_iterations(iterations)
+            timeout_seconds = validate_timeout_seconds(timeout_seconds)
         except ValueError as exc:
             raise MCPError(-32602, str(exc)) from exc
         request = {
@@ -1567,6 +1572,8 @@ def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> No
             request["seed"] = seed
         if iterations is not None:
             request["iterations"] = iterations
+        if timeout_seconds is not None:
+            request["timeout_seconds"] = timeout_seconds
         job, created = await anyio.to_thread.run_sync(
             lambda: runtime.repository.submit(principal.principal_id, request, idempotency_key=idempotency_key)
         )

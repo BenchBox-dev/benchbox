@@ -394,11 +394,7 @@ def execute_run(
             result = run()
         except RunTimeoutError:
             result = build_timed_out_result(config, database_config, deadline)
-        except Exception as exc:
-            if not deadline.expired:
-                raise
-            deadline.record_timeout(str(exc))
-            result = build_timed_out_result(config, database_config, deadline)
+        deadline.record_overrun()
     if deadline.timeout is not None:
         mark_timed_out(result, deadline)
     return result

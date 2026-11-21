@@ -189,15 +189,13 @@ def test_generate_data_accepts_the_limit_on_every_benchmark_class() -> None:
     assert seen[-1] == 30
 
 
-def test_generate_data_raises_the_timeout_when_it_fails_after_the_limit(clock) -> None:
+def test_generate_data_keeps_its_own_error_after_the_limit(clock) -> None:
     def fails_late(_tables: Any) -> Any:
         clock.now += 5
-        raise OSError("dsdgen was stopped")
+        raise OSError("disk full")
 
-    with pytest.raises(RunTimeoutError) as excinfo:
+    with pytest.raises(OSError, match="disk full"):
         TinyBenchmark(fails_late).generate_data(timeout_seconds=2)
-
-    assert (excinfo.value.phase, excinfo.value.detail) == ("generate", "dsdgen was stopped")
 
 
 def test_generate_data_keeps_its_own_error_before_the_limit() -> None:
@@ -218,8 +216,8 @@ def test_a_timed_out_mcp_run_is_an_error_result_and_an_incomplete_job_that_is_no
 
 def test_a_timed_out_bundle_is_excluded_from_ranking_and_fails_corpus_validation() -> None:
     entry = SimpleNamespace(
-        visibility="public",
-        trust_label="verified",
+        visibility="public-curated",
+        trust_label="maintainer-run",
         compliance_class=None,
         failed_query_count=0,
         validation_status="timed_out",
@@ -232,5 +230,5 @@ def test_a_timed_out_bundle_is_excluded_from_ranking_and_fails_corpus_validation
     spec.loader.exec_module(validator)
     payload = {"summary": {"validation": "timed_out"}, "benchmark": {"id": "tpch", "scale_factor": 1}}
 
-    assert ranking_exclusion_reason(entry) in {"validation_not_clean", "visibility_not_rankable", "trust_not_rankable"}
+    assert ranking_exclusion_reason(entry) == "validation_not_clean"
     assert validator.exclusion_reason(payload) == "validation_not_clean"

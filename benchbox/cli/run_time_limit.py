@@ -20,6 +20,7 @@ from benchbox.utils.run_deadline import (
     active_run_deadline,
     arm_hard_stop,
     current_run_deadline,
+    end_descendant_processes,
     resolve_timeout_seconds,
 )
 
@@ -84,6 +85,7 @@ def hard_stop(deadline: RunDeadline) -> None:
         f"[red]The run did not stop within {HARD_STOP_GRACE_SECONDS:g} seconds of its limit; BenchBox is exiting. "
         "Work on a remote platform may still be running.[/red]"
     )
+    end_descendant_processes()
     if deadline.write_partial_result is not None:
         try:
             deadline.write_partial_result()

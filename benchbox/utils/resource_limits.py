@@ -450,9 +450,12 @@ def read_memory_snapshot() -> MemorySnapshot:
     return MemorySnapshot(free_gib=free_gib, swap_used_percent=swap_used_percent)
 
 
+HAS_PROCESS_GROUPS = hasattr(os, "killpg") and hasattr(signal, "SIGKILL")
+
+
 def kill_started_group(process: subprocess.Popen[Any]) -> None:
     try:
-        if hasattr(os, "killpg") and hasattr(signal, "SIGKILL"):
+        if HAS_PROCESS_GROUPS and hasattr(signal, "SIGKILL"):
             os.killpg(process.pid, signal.SIGKILL)
         else:
             process.kill()

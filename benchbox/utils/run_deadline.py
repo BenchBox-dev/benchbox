@@ -17,6 +17,7 @@ RUN_TIMEOUT_OPTION_KEY = "timeout_seconds"
 TIMED_OUT_VALIDATION_STATUS = "TIMED_OUT"
 STARTUP_PHASE = "startup"
 OFFICIAL_COMPLIANCE_CLASS = "official"
+VERDICTS_KEPT_ON_TIMEOUT = frozenset({"FAILED", "ERROR", "INTERRUPTED"})
 
 
 def validate_timeout_seconds(value: Any) -> int | None:
@@ -96,6 +97,10 @@ class RunDeadline:
             return False
         self.record_timeout()
         return True
+
+    def record_overrun(self) -> None:
+        if self.timeout is None and self.expired:
+            self.timeout = RunTimeoutError(self.timeout_seconds, self.phase)
 
     @contextmanager
     def tracking(self, process: subprocess.Popen[Any]) -> Iterator[None]:
@@ -219,8 +224,19 @@ def timeout_details(deadline: RunDeadline) -> dict[str, Any]:
     return details
 
 
+def end_descendant_processes() -> None:
+    import psutil
+
+    for child in psutil.Process().children(recursive=True):
+        try:
+            child.kill()
+        except psutil.Error:
+            pass
+
+
 def mark_timed_out(result: Any, deadline: RunDeadline) -> Any:
-    result.validation_status = TIMED_OUT_VALIDATION_STATUS
+    if str(getattr(result, "validation_status", "")).upper() not in VERDICTS_KEPT_ON_TIMEOUT:
+        result.validation_status = TIMED_OUT_VALIDATION_STATUS
     existing = result.validation_details if isinstance(result.validation_details, Mapping) else {}
     result.validation_details = {**existing, "timeout": timeout_details(deadline)}
     if getattr(result, "compliance_class", None) == OFFICIAL_COMPLIANCE_CLASS:
@@ -239,10 +255,10 @@ def arm_hard_stop(
     def watch() -> None:
         if finished.wait(deadline.remaining()):
             return
-        deadline.record_timeout()
         deadline.stop_children()
         if finished.wait(grace_seconds):
             return
+        deadline.record_overrun()
         deadline.stop_children()
         on_hard_stop(deadline)
 

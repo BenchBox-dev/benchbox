@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import threading
 from types import SimpleNamespace
 from typing import Any
 
+import psutil
 import pytest
 from click.testing import CliRunner
 
@@ -33,7 +35,8 @@ OFFICIAL_ARGS += ["--seed", "42"]
 DATAGEN_ARGS = ["--benchmark", "tpch", "--scale", "0.01"]
 
 HARD_STOP_SCRIPT = """
-import functools, sys, time
+import functools, subprocess, sys, time
+from pathlib import Path
 from click.testing import CliRunner
 from benchbox.cli import run_time_limit
 from benchbox.cli.commands import run as _unused
@@ -46,6 +49,8 @@ run_module = sys.modules["benchbox.cli.commands.run"]
 orchestrator = BenchmarkOrchestrator(base_dir=sys.argv[1])
 
 def ignores_the_stop_request(*_args, **_kwargs):
+    untracked = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(300)"])
+    Path(sys.argv[1], "untracked.pid").write_text(str(untracked.pid))
     deadline = current_run_deadline()
     deadline.enter_phase("execute")
     deadline.enter_query("Q3")
@@ -225,8 +230,16 @@ def test_a_run_that_ignores_the_stop_request_is_ended_with_a_marked_partial_resu
     assert len(bundles) == 1, completed.stdout + completed.stderr
     bundle = json.loads(bundles[0].read_text(encoding="utf-8"))
     assert bundle["summary"]["validation"] == "timed_out"
-    assert bundle["execution"]["timeout"] == {"timeout_seconds": 1, "phase": "execute", "query_id": "Q3"}
+    assert bundle["execution"]["timeout"] == {"timeout_seconds": 1, "phase": "execute"}
     assert len(bundle["queries"]) == 1
+    untracked = int((tmp_path / "untracked.pid").read_text(encoding="utf-8"))
+    gone = threading.Event()
+    for _ in range(100):
+        if not psutil.pid_exists(untracked) or psutil.Process(untracked).status() == psutil.STATUS_ZOMBIE:
+            gone.set()
+            break
+        gone.wait(0.1)
+    assert gone.is_set(), "the hard stop left a child process running"
 
 
 def test_no_option_or_config_key_changes_the_grace() -> None:

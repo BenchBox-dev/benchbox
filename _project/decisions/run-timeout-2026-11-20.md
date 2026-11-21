@@ -26,28 +26,36 @@ BenchBox must allow a user to set a limit and must not impose one.
    two calls has its own clock; a call made inside an already bounded run uses
    that run's clock.
 4. **At the limit BenchBox asks the run to stop.** It checks between phases and
-   between queries, never inside a timed section, and ends generator processes
-   it started. If the run has not stopped 30 seconds later, the command writes
-   the partial result and exits. The 30 seconds is a constant
-   (`HARD_STOP_GRACE_SECONDS`), not a setting. The hard bound is therefore the
-   limit plus 30 seconds.
+   between queries, never inside a timed section. In this change a generator
+   that is already running is not interrupted at the limit; the run stops at
+   the next check. If the run has not stopped 30 seconds later, the command
+   ends every child process it started, writes the partial result and exits.
+   The 30 seconds is a constant (`HARD_STOP_GRACE_SECONDS`), not a setting.
+   The hard bound is therefore the limit plus 30 seconds.
 5. **Exit code 124.** The value `timeout(1)` uses.
 6. **The partial result is kept and marked.** `summary.validation` is
-   `timed_out`, and `execution.timeout` records `timeout_seconds`, `phase` and,
-   when a query was reached, `query_id`. Result schema 2.6 adds the key; a 2.5
-   or older bundle that carries it is refused.
+   `timed_out`, and `execution.timeout` records `timeout_seconds`, `phase` and
+   `query_id`. `query_id` is the query that was about to start when the run
+   stopped; it did not run. It is absent when the run stopped between phases,
+   finished its work after the limit, or was ended by the hard stop. Result
+   schema 2.6 adds the key; a 2.5 or older bundle that carries it is refused.
+   A run that failed, errored or was interrupted keeps that verdict and its
+   exit code even when it also passed the limit; the timeout is recorded
+   beside it. An error raised after the limit is still reported as that
+   error, not as a timeout.
 7. **A timed-out result is never a benchmark result.** It loses an official
    compliance class, is refused by publish and submit, is excluded from
    ranking, and fails corpus validation. Each path refuses it because
    `timed_out` is a non-clean validation status.
 8. **Python does not exit the caller's process.** `adapter.run_benchmark()`
-   raises `RunTimeoutError`, which carries the partial result;
-   `generate_data()` raises it when generation fails after the limit. There is
+   raises `RunTimeoutError`, which carries the marked partial result. There is
    no hard stop in Python: a call that never reaches a check is not
-   interrupted.
-9. **MCP.** A timed-out run returns an error result with
-   `mcp_metadata.status = timed_out`. The job is recorded as incomplete and is
-   not retried. The server process is never exited.
+   interrupted, and `generate_data()` returns or raises as it would without a
+   limit until generators are routed through the deadline.
+9. **MCP.** `run_benchmark` and `start_benchmark` both take
+   `timeout_seconds`. A timed-out run returns an error result with
+   `mcp_metadata.status = timed_out`. A durable job is recorded as incomplete
+   and is not retried. The server process is never exited.
 
 ## What the limit does not cover
 
