@@ -65,12 +65,11 @@ def test_check_artifacts_fix_hint_names_exact_regen_command(rows, monkeypatch):
 
 
 def test_every_shipped_benchmark_is_classified(rows):
-    from benchbox.core.benchmark_registry import get_benchmark_metadata, list_benchmark_ids
+    from benchbox.core.benchmark_registry import list_benchmark_ids
+    from benchbox.core.run_service import unavailable_benchmark_message
 
     shipped = {
-        benchmark_id
-        for benchmark_id in list_benchmark_ids()
-        if (get_benchmark_metadata(benchmark_id) or {}).get("support_status") != "document_only"
+        benchmark_id for benchmark_id in list_benchmark_ids() if unavailable_benchmark_message(benchmark_id) is None
     }
     mapped = {r["benchmark"] for r in rows}
     assert mapped == shipped, "coverage map and registry disagree on benchmark set"

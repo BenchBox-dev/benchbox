@@ -1221,6 +1221,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         else:
             return None
 
+    @refuses_unavailable_benchmark("tpcdi")
     def validate_etl_results(self, connection: Any) -> dict[str, Any]:
 
         return self._create_sql_etl_backend(connection=connection).validate_results()

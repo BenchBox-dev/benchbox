@@ -216,6 +216,7 @@ def build_coverage_map() -> list[dict[str, Any]]:
     from benchbox.core.benchmark_registry import get_benchmark_metadata, list_benchmark_ids
     from benchbox.core.equivalence.cross_surface import GATES, STAGED_GATES
     from benchbox.core.expected_results.registry import get_registry
+    from benchbox.core.run_service import unavailable_benchmark_message
 
     expected_results_providers = set(get_registry().list_available_benchmarks())
     cross_surface_gates = set(GATES.keys())
@@ -224,7 +225,7 @@ def build_coverage_map() -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for benchmark_id in sorted(list_benchmark_ids()):
         metadata = get_benchmark_metadata(benchmark_id) or {}
-        if metadata.get("support_status") == "document_only":
+        if unavailable_benchmark_message(benchmark_id) is not None:
             continue
         has_sql, has_dataframe = _surfaces(metadata)
         surfaces = [s for s, present in (("sql", has_sql), ("dataframe", has_dataframe)) if present]

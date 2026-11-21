@@ -24,6 +24,7 @@ from benchbox.core.run_service import (
     BenchmarkUnavailableError,
     build_unfinished_result,
     refuse_unavailable_benchmark,
+    unavailable_benchmark_message,
 )
 from benchbox.core.schemas import BenchmarkConfig
 from benchbox.core.tpcdi.benchmark import TPCDIBenchmark
@@ -141,6 +142,7 @@ class TestPythonEntryPoints:
             ("generate_source_data", ()),
             ("load_data_to_database", (object(),)),
             ("create_schema", (object(),)),
+            ("validate_etl_results", (object(),)),
         ],
     )
     def test_core_class_refuses(self, core: TPCDIBenchmark, method: str, args: tuple) -> None:
@@ -255,6 +257,16 @@ class TestRegistry:
         assert entry["support_status"] == "document_only"
         assert entry["description"] == OWNER_REGISTRY_DESCRIPTION
         assert entry["num_queries"] == 0
+
+    def test_refused_benchmarks_are_exactly_the_document_only_ones(self) -> None:
+        registry = get_all_benchmarks()
+
+        refused = {benchmark_id for benchmark_id in registry if unavailable_benchmark_message(benchmark_id)}
+        document_only = {
+            benchmark_id for benchmark_id, entry in registry.items() if entry["support_status"] == "document_only"
+        }
+
+        assert refused == document_only == {"tpcdi"}
 
     def test_uat_resolver_omits_tpcdi(self) -> None:
         benchmarks = matrix.load_benchmarks()
