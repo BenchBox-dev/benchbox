@@ -45080,7 +45080,7 @@
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "TPC-DI step 21: incremental updates, trade and fact tables"
+      "title": "TPC-DI step 23: incremental updates, trade and fact tables"
     },
     "tpcdi-memory-test-delta-refactor": {
       "claim": null,
