@@ -44853,7 +44853,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 27: LakeSail: ETL, visibility and full audit"
+      "title": "TPC-DI step 37: LakeSail: ETL, visibility and full audit"
     },
     "tpcdi-28-platform-bigquery-20261120": {
       "claim": null,
