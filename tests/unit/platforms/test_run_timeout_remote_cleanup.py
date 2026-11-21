@@ -31,7 +31,7 @@ def _onehouse_client(**kwargs: Any) -> OnehouseClient:
         return OnehouseClient(api_key="key", **kwargs)
 
 
-def _stub_onehouse(client: OnehouseClient, finished: set[str] = frozenset()) -> list[tuple[str, str]]:
+def _stub_onehouse(client: OnehouseClient, finished: frozenset[str] = frozenset()) -> list[tuple[str, str]]:
     requests_made: list[tuple[str, str]] = []
     submitted = iter(["job-1", "job-2", "job-3", "job-4"])
 
