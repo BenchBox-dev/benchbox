@@ -14,6 +14,10 @@ _active: dict[Path, tuple[int, bool]] = {}
 
 
 def _local_directory(data_dir: Any) -> Path | None:
+    from benchbox.utils.cloud_storage import CloudStagingPath, DatabricksPath
+
+    if isinstance(data_dir, (DatabricksPath, CloudStagingPath)):
+        data_dir = Path(os.fspath(data_dir))
     if not isinstance(data_dir, Path):
         return None
     return Path(os.path.abspath(data_dir))

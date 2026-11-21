@@ -14,6 +14,7 @@ from benchbox.ssb import SSB
 from benchbox.tpcds import TPCDS
 from benchbox.tsbs_devops import TSBSDevOps
 from benchbox.utils import run_deadline
+from benchbox.utils.cloud_storage import CloudStagingPath, DatabricksPath
 from benchbox.utils.data_validation import BenchmarkDataValidator
 from benchbox.utils.generation_marker import (
     GENERATION_IN_PROGRESS_MARKER,
@@ -316,3 +317,16 @@ def test_tpch_skew_reuses_complete_data_but_not_beside_a_stale_marker(tmp_path, 
     assert skew._check_existing_data() is True
     (tmp_path / GENERATION_IN_PROGRESS_MARKER).touch()
     assert skew._check_existing_data() is False
+
+
+@pytest.mark.parametrize("wrapper", [CloudStagingPath, DatabricksPath], ids=["staging", "databricks"])
+def test_a_staging_path_output_dir_gets_a_marker_and_refuses_reuse(tmp_path, wrapper):
+    output_dir = wrapper(tmp_path, "s3://bucket/data")
+
+    with track_generation(output_dir):
+        assert (tmp_path / GENERATION_IN_PROGRESS_MARKER).exists()
+        assert not generation_in_progress(output_dir)
+    assert not (tmp_path / GENERATION_IN_PROGRESS_MARKER).exists()
+
+    (tmp_path / GENERATION_IN_PROGRESS_MARKER).touch()
+    assert generation_in_progress(output_dir)

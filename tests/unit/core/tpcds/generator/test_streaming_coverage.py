@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import io
 import threading
 from pathlib import Path
@@ -9,6 +10,12 @@ from types import SimpleNamespace
 import pytest
 
 from benchbox.core.tpcds.generator.streaming import StreamingGenerationMixin
+
+
+@contextlib.contextmanager
+def _stream_of(process):
+    yield process
+
 
 pytestmark = [
     pytest.mark.unit,
@@ -88,13 +95,7 @@ def test_generate_single_table_chunk_streaming_counts_last_line_without_newline(
         def wait(self):
             return None
 
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *exc_info):
-            return False
-
-    monkeypatch.setattr("benchbox.core.tpcds.generator.streaming.subprocess.Popen", lambda *a, **k: _Process())
+    monkeypatch.setattr("benchbox.core.tpcds.generator.streaming.stream_child", lambda *a, **k: _stream_of(_Process()))
 
     harness._generate_single_table_chunk_streaming(tmp_path, "call_center", 1)
 
@@ -115,13 +116,7 @@ def test_generate_single_table_chunk_streaming_raises_on_nonzero_exit_with_no_da
         def wait(self):
             return None
 
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *exc_info):
-            return False
-
-    monkeypatch.setattr("benchbox.core.tpcds.generator.streaming.subprocess.Popen", lambda *a, **k: _Process())
+    monkeypatch.setattr("benchbox.core.tpcds.generator.streaming.stream_child", lambda *a, **k: _stream_of(_Process()))
 
     with pytest.raises(RuntimeError, match="exit code 2"):
         harness._generate_single_table_chunk_streaming(tmp_path, "call_center", 2)
