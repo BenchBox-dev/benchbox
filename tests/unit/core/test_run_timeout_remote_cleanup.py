@@ -91,6 +91,18 @@ def test_a_failing_cleanup_does_not_hide_the_timeout_and_its_error_is_kept(monke
     assert deadline.cleanup_errors == ["StubAdapter: RuntimeError: the service refused"]
 
 
+def test_a_failing_cleanup_is_logged_and_recorded_on_the_timed_out_result(monkeypatch, caplog) -> None:
+    adapter = StubAdapter(RuntimeError("the service refused"))
+    monkeypatch.setattr(run_service, "_execute_run", _stops_at_the_limit(adapter))
+
+    with caplog.at_level(logging.WARNING, logger=run_service.logger.name):
+        result = _execute(_config(**{RUN_TIMEOUT_OPTION_KEY: 5}))
+
+    expected = "StubAdapter: RuntimeError: the service refused"
+    assert f"Remote cleanup failed: {expected}" in [record.getMessage() for record in caplog.records]
+    assert result.validation_details["timeout"]["cleanup_errors"] == [expected]
+
+
 def test_a_run_that_finishes_inside_the_limit_cancels_nothing(monkeypatch) -> None:
     adapter = StubAdapter()
 
@@ -166,6 +178,7 @@ class PythonRunAdapter:
         self.calls = 0
         self.error = error
         self.run_enhanced_benchmark = run
+        self.logger = logging.getLogger("test.python.run")
 
 
 def _python_run(adapter: PythonRunAdapter) -> Any:
@@ -201,6 +214,23 @@ def test_a_python_run_still_raises_the_timeout_when_the_cleanup_fails() -> None:
         _python_run(adapter)
 
     assert adapter.calls == 1
+
+
+def test_a_python_run_logs_the_cleanup_error_and_attaches_it_to_the_timed_out_result(caplog) -> None:
+    def runs(_benchmark: Any, **_kwargs: Any) -> Any:
+        deadline = current_run_deadline()
+        assert deadline is not None
+        deadline.record_timeout()
+        return SimpleNamespace(validation_status="PASSED", validation_details={}, compliance_class=None)
+
+    adapter = PythonRunAdapter(runs, RuntimeError("the service refused"))
+
+    with caplog.at_level(logging.WARNING, logger="test.python.run"), pytest.raises(RunTimeoutError) as excinfo:
+        _python_run(adapter)
+
+    expected = "PythonRunAdapter: RuntimeError: the service refused"
+    assert f"Remote cleanup failed: {expected}" in [record.getMessage() for record in caplog.records]
+    assert excinfo.value.partial_result.validation_details["timeout"]["cleanup_errors"] == [expected]
 
 
 def test_a_python_run_that_stops_with_the_timeout_error_cancels_remote_work() -> None:

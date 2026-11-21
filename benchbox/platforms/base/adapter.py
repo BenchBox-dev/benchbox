@@ -1095,7 +1095,8 @@ class PlatformAdapter(
                 result = self.run_enhanced_benchmark(benchmark, **run_config)
             finally:
                 if deadline is not None and (deadline.timeout is not None or deadline.expired):
-                    deadline.cancel_remote_work()
+                    for error in deadline.cancel_remote_work():
+                        self.logger.warning(f"Remote cleanup failed: {error}")
         if deadline is not None and deadline.timeout is not None:
             deadline.timeout.partial_result = mark_timed_out(result, deadline)
             raise deadline.timeout

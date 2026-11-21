@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from functools import partial
@@ -152,6 +153,8 @@ if TYPE_CHECKING:
 
     from benchbox.core.results.models import BenchmarkResults
     from benchbox.core.schemas import ExecutionContext
+
+logger = logging.getLogger(__name__)
 
 
 class VerbosityLike(Protocol):
@@ -399,7 +402,8 @@ def execute_run(
             deadline.record_overrun()
         finally:
             if deadline.timeout is not None or deadline.expired:
-                deadline.cancel_remote_work()
+                for error in deadline.cancel_remote_work():
+                    logger.warning(f"Remote cleanup failed: {error}")
     if deadline.timeout is not None:
         mark_timed_out(result, deadline)
     return result
