@@ -44798,11 +44798,12 @@
     "tpcdi-21-platform-postgresql-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-20-platform-clickhouse-local-20261120"
+        "tpcdi-20-platform-clickhouse-local-20261120",
+        "tpcdi-first-publication-20261121"
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 31: PostgreSQL: ETL, visibility and full audit"
+      "title": "TPC-DI step 35: PostgreSQL: ETL, visibility and full audit"
     },
     "tpcdi-22-platform-doris-20261120": {
       "claim": null,
