@@ -45001,6 +45001,13 @@
       "status": "done",
       "title": "TPC-DI parallel transform swallows failures; phases with no work report success"
     },
+    "tpcdi-plan-databricks-base-20261121": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "TPC-DI plan based on shannon-barrow/databricks-tpc-di: full text (notes; not a work item)"
+    },
     "tpcdi-queries-aq9-vq6-return-no-rows-20261120": {
       "claim": null,
       "needs": [],
