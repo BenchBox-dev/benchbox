@@ -5,6 +5,7 @@
     "SF 1 set 1 refresh files are byte-identical on macOS and Linux, and SF 1 base data is unchanged",
     "A nightly fullspec-cedardb run passes TPC-DS maintenance LF_WR"
   ],
+  "context": "2026-11-21: Sources obtained (owner-downloaded TPC-DS 4.0.0 tools zip). Reconstructed shipped tree = 4.0.0 + stdout-support.patch + subscale-support.patch + macos-build.patch; pre-fix darwin-arm64 rebuild reproduces the shipped binary's output byte for byte (SF0.01/SF1 base, SF1 refresh 1-2, 99 dsqgen queries, seed 20260709). Applied web-lineitem-item-wrap.patch; rebuilt all six platforms. Fixed output changes only s_web_order_lineitem (11 rows) and s_web_returns (2 rows) per SF1 refresh set; linux-arm64/x86_64 output identical to darwin-arm64. Regression test tests/unit/core/tpcds/test_refresh_web_lineitem_items.py. Branch fix/cedardb-tpcds-lf-wr-not-null commit c04b4da45, PR opening. Remaining: merge, nightly-v2 fullspec-cedardb LF_WR pass.",
   "description": "## Problem\nThe bundled TPC-DS 4.0.0 `dsdgen` writes corrupt item keys into the web-channel refresh data. Root cause, confirmed in the public tpcds-kit source (`tools/s_web_order_lineitem.c`, `mk_s_web_order_lineitem`):\n\n```c\nif (++nItemIndex  > nItemCount)\n   nItemIndex += 1;\n```\nWhen the per-order item cursor passes the end of the item permutation, it keeps counting instead of wrapping, so `getPermutationEntry` reads past the end of `pItemPermutation` (undefined behaviour). `s_catalog_order_lineitem.c` wraps correctly (`nItemIndex = 1`). At SF 1, refresh sets 1 and 2 (seed 20260709) contain one web order (152 in set 1) whose lines 2-12 take out-of-range entries: macOS reads item 1 for all of them (10 duplicate (order, item) pairs, which the web_sales primary key forbids); Linux reads garbage keys such as `AAAAAAAACICICICI` that match no item, and two web returns point at them. Catalog and store refresh files are byte-identical across platforms. SF 0.01 is not affected.\n\nConsequences: on Linux every engine enforcing NOT NULL fails TPC-DS maintenance step LF_WR (CedarDB nightly 44568679855 and 44832232783; reproduced with DuckDB on Linux), ClickHouse Local silently stores default keys, and refresh data differs between operating systems.\n\n## Fix\nChange the branch to `nItemIndex = 1;` (verified on a tpcds-kit 2.10 build: duplicates drop from 10 to 0 at SF 1 set 1, and only the 11 affected lineitems and 2 returns change). Patch file and evidence: `/tmp/tpcdskit/web-lineitem-item-wrap.patch` (to be committed as `_sources/tpc-ds/web-lineitem-item-wrap.patch` with a `_sources/tpc-ds/PATCHES.md` entry).\n\n## Decision gate\nThe 4.0.0 tools sources (`_sources/tpc-ds/tools/*.c`) are gitignored under the TPC EULA and not present on this machine. Owner supplies them (or confirms where they are) before the rebuild. Then: apply the patch, rebuild all six platforms with `_sources/compilation/scripts/compile-all-platforms.sh`, commit `benchbox/_binaries/tpc-ds/*`.\n\n## Guardrails\n- Patch only the wrap branch; no other generator change. Base data (non-refresh) must stay byte-identical: compare a full SF 1 base generation before and after on one platform.\n- No BenchBox-side filtering or repair of refresh rows.\n- Rebuild every shipped platform in one change, so no platform keeps the corrupt binary.\n\n## Verification rubric\nPass only if: a regression test generates SF 1 refresh sets 1 and 2 with the bundled dsdgen and asserts no duplicate (order, item) pair in `s_web_order_lineitem` and every web return's (order, line) matches a lineitem with the same item; macOS and Linux refresh files are byte-identical for SF 1 set 1 (seed 20260709); base data unchanged; and a nightly `fullspec-cedardb` run passes LF_WR.",
   "links": [
     "https://github.com/gregrahn/tpcds-kit/blob/master/tools/s_web_order_lineitem.c",
@@ -19,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "ff44adab26574100a2bd4d52e52d3d54",
+      "session_id": "c513634643a64739a36c63effd2bfe91"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a7a258a2d9eac99620687964",
+      "at": "2026-11-21T14:52:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cdca9cbee77447b3821b3ff61486dcf1",
       "session_id": "c513634643a64739a36c63effd2bfe91"
     }
   ]
