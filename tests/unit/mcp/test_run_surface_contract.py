@@ -72,6 +72,7 @@ EXPECTED_RUN_PARAMS = {
     "platform_options": {"type": "object or null", "required": False, "default": None},
     "seed": {"type": "integer or null", "required": False, "default": None},
     "iterations": {"type": "integer or null", "required": False, "default": None},
+    "timeout_seconds": {"type": "integer or null", "required": False, "default": None},
 }
 
 RUN_SURFACE = json.loads((REPO_ROOT / "quality/mcp-run-surface.json").read_text(encoding="utf-8"))

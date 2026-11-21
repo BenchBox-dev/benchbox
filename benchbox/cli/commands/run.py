@@ -14,7 +14,7 @@ from rich.panel import Panel
 from rich.prompt import Confirm
 from rich.text import Text
 
-from benchbox.cli import vendor_provenance_options as vendor_options
+from benchbox.cli import run_time_limit, vendor_provenance_options as vendor_options
 from benchbox.cli.benchmarks import BenchmarkConfig, BenchmarkManager
 from benchbox.cli.billable_guard import ACKNOWLEDGEMENT_FLAG_HELP, enforce_billable_acknowledgement
 from benchbox.cli.composite_params import (
@@ -306,6 +306,7 @@ def _canonical_tuning_mode(s: types.SimpleNamespace) -> str | None:
     return tuning_modes.CUSTOM
 
 
+@run_time_limit.bounded_orchestrated_run
 def _execute_orchestrated_run(
     orchestrator: BenchmarkOrchestrator,
     benchmark_config: BenchmarkConfig,
@@ -2048,6 +2049,7 @@ def _data_or_load_handle_result(
     hidden=True,
     help="Concurrent streams for throughput (canonical; --concurrency accepted as alias for run-official forwarding)",
 )
+@run_time_limit.timeout_option(run_time_limit.RUN_TIMEOUT_HELP)
 @advanced_option(
     "--iterations",
     type=click.IntRange(min=1),
@@ -2158,6 +2160,7 @@ def run(
     seed: int | None,
     concurrency: int | None,
     iterations: int | None,
+    timeout: int | None,
     no_monitoring: bool,
     no_progress: bool,
     ignore_memory_warnings: bool,
@@ -2225,6 +2228,7 @@ def run(
         seed=seed,
         concurrency=concurrency,
         iterations=iterations,
+        timeout=timeout,
         no_monitoring=no_monitoring,
         no_progress=no_progress,
         ignore_memory_warnings=ignore_memory_warnings,
@@ -2250,17 +2254,7 @@ def run(
             _run_dry_run(s)
             return
 
-        if s.test_execution_type not in {"data_only", "load_only"} and s.platform and s.benchmark:
-            _run_direct(s)
-            return
-
-        if s.test_execution_type in {"data_only", "load_only"}:
-            _run_data_or_load_only(s)
-            return
-
-        from benchbox.cli.run_interactive import _run_interactive
-
-        _run_interactive(s)
+        run_time_limit.run_within_time_limit(s)
     except DriverAutoInstallRefused as exc:
         console.print(f"[red]❌ {escape(str(exc))}[/red]")
         sys.exit(ExitCode.ACKNOWLEDGEMENT_REQUIRED)

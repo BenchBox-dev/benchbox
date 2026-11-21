@@ -450,9 +450,12 @@ def read_memory_snapshot() -> MemorySnapshot:
     return MemorySnapshot(free_gib=free_gib, swap_used_percent=swap_used_percent)
 
 
-def _kill_started_group(process: subprocess.Popen[str]) -> None:
+HAS_PROCESS_GROUPS = hasattr(os, "killpg") and hasattr(signal, "SIGKILL")
+
+
+def kill_started_group(process: subprocess.Popen[Any]) -> None:
     try:
-        if hasattr(os, "killpg") and hasattr(signal, "SIGKILL"):
+        if HAS_PROCESS_GROUPS and hasattr(signal, "SIGKILL"):
             os.killpg(process.pid, signal.SIGKILL)
         else:
             process.kill()
@@ -475,7 +478,7 @@ def run_text(argv: Sequence[str], timeout: float) -> str | None:
     try:
         output, _ = process.communicate(timeout=max(timeout, 0.0))
     except subprocess.TimeoutExpired:
-        _kill_started_group(process)
+        kill_started_group(process)
         try:
             process.communicate(timeout=1.0)
         except subprocess.TimeoutExpired:

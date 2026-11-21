@@ -74,6 +74,7 @@ from benchbox.utils.dialect_utils import (
 )
 from benchbox.utils.format_converters import ConversionOptions
 from benchbox.utils.printing import emit
+from benchbox.utils.run_deadline import enter_run_phase
 from benchbox.utils.toggles import is_probe_requested
 from benchbox.utils.verbosity import VerbosityMixin, VerbositySettings
 
@@ -1486,6 +1487,7 @@ def run_benchmark_lifecycle(
     freshly_generated = False
     manifest_reused = False
     if needs_data or phases.generate:
+        enter_run_phase("generate")
         datagen_duration, freshly_generated, manifest_reused = _run_data_generation_phase(
             benchmark=benchmark,
             benchmark_config=benchmark_config,
@@ -1524,6 +1526,7 @@ def run_benchmark_lifecycle(
     should_run_load_only = test_type == "load_only" or (phases.load and not phases.execute and adapter is not None)
 
     if should_run_load_only:
+        enter_run_phase("load")
         try:
             with sql_translation_context(strict=strict_translation) as translation_outcomes:
                 result_obj = _run_load_only_mode(
