@@ -6,7 +6,6 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import csv
-import importlib
 import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -48,29 +47,16 @@ from benchbox.core.tpcdi.etl.scd_processor import EnhancedSCDType2Processor
 from benchbox.core.tpcdi.generator import TPCDIDataGenerator
 from benchbox.core.tpcdi.loader import TPCDIDataLoader
 from benchbox.core.tpcdi.metrics import BenchmarkMetrics, BenchmarkReport, TPCDIMetrics
-from benchbox.core.tpcdi.queries import TPCDIQueryManager
 from benchbox.core.tpcdi.schema import (
     TABLES,
     TPCDISchemaManager,
     get_all_create_table_sql,
 )
 from benchbox.core.tpcdi.validation import DataQualityResult, TPCDIValidator
-from benchbox.sql_compat.rules.execution_filter.lakesail_tpcdi import LAKESAIL_TPCDI_SKIPS
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.printing import emit
 
 DATAFRAME_ETL_TABLE_DIR = "dataframe-etl-tables"
-
-TPCDI_FLAG_COLUMNS = ["IsCurrent", "TT_IS_SELL", "HolidayFlag"]
-BOOLEAN_FLAG_STYLES = {
-    "postgres": "is",
-    "postgresql": "is",
-    "datafusion": "is",
-    "databricks": "is",
-    "spark": "is",
-    "bigquery": "equals",
-    "questdb": "equals",
-}
 
 
 class TPCDITransformationError(RuntimeError):
@@ -119,7 +105,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         self.max_workers = self.config.max_workers
         self.scale_factor = self.config.scale_factor
 
-        self.query_manager = TPCDIQueryManager()
         generator_kwargs = dict(kwargs)
         generator_kwargs.setdefault("generation_seed", getattr(self.config, "generation_seed", 42))
         self.data_generator = TPCDIDataGenerator(self.config.scale_factor, self.output_dir, **generator_kwargs)
@@ -184,227 +169,22 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             self.data_generator.generation_seed = original_generation_seed
 
     @refuses_unavailable_benchmark("tpcdi")
-    def get_query(
-        self,
-        query_id: Union[int, str],
-        params: Optional[dict[str, Any]] = None,
-        dialect: Optional[str] = None,
-    ) -> str:
-        if isinstance(query_id, int) or (isinstance(query_id, str) and query_id.isdigit()):
-            numeric_id = int(query_id)
-            if numeric_id <= 12:
-                query_id = f"VQ{numeric_id}"
-            else:
-                query_id = f"AQ{numeric_id - 12}"
-
-        query_id = str(query_id)
-        query = self.query_manager.get_query(query_id, params, dialect=None)
-        if not dialect or dialect == "standard":
-            return query
-
-        translated_query = self.translate_query_text(query, dialect)
-        return self._apply_query_source_variant(query_id, translated_query, dialect, params=params)
+    def get_queries(self) -> dict[str, str]:
+        return {}
 
     @refuses_unavailable_benchmark("tpcdi")
-    def get_queries(self, dialect: Optional[str] = None) -> dict[str, str]:
-        all_query_ids = list(self.query_manager._all_queries.keys())
-
-        queries = {}
-        for query_id in all_query_ids:
-            queries[query_id] = self.query_manager.get_query(query_id, params=None, dialect=None)
-
-        if dialect:
-            translated_queries = {}
-            for query_id, query_sql in queries.items():
-                translated_queries[query_id] = self.translate_query_text(query_sql, dialect)
-
-            d = dialect.lower()
-            translated_queries = {
-                query_id: self._apply_query_source_variant(query_id, query_sql, dialect)
-                for query_id, query_sql in translated_queries.items()
-            }
-
-            if d in {"postgres", "postgresql"}:
-                translated_queries = {
-                    query_id: self._apply_postgres_query_overrides(query_id, query_sql)
-                    for query_id, query_sql in translated_queries.items()
-                }
-
-            return translated_queries
-
-        return queries
-
-    def _apply_query_source_variant(
-        self,
-        query_id: str,
-        query_sql: str,
-        dialect: str,
-        *,
-        params: Optional[dict[str, Any]] = None,
-    ) -> str:
-        importlib.import_module("benchbox.sql_compat.rules.query_source.tpcdi_variants")
-        from benchbox.sql_compat.actions import CompatAction
-        from benchbox.sql_compat.context import CompatibilityContext, Phase
-        from benchbox.sql_compat.registry import REGISTRY
-        from benchbox.sql_compat.rules.query_source.tpcdi_variants import (
-            BIGQUERY_EQ7_SQL,
-            CLICKHOUSE_AQ7_SQL,
-            CLICKHOUSE_AQ8_SQL,
-            CLICKHOUSE_AQ10_SQL,
-            CLICKHOUSE_EQ7_SQL,
-            DATABRICKS_EQ7_SQL,
-            DATAFUSION_AQ9_SQL,
-            DATAFUSION_EQ7_SQL,
-            DATAFUSION_VQ6_SQL,
-            DORIS_EQ7_SQL,
-            SNOWFLAKE_EQ7_SQL,
-            STARROCKS_EQ7_SQL,
-        )
-
-        variants: dict[str, dict[str, str]] = {
-            "bigquery": {
-                "EQ7": BIGQUERY_EQ7_SQL,
-            },
-            "databricks": {
-                "EQ7": DATABRICKS_EQ7_SQL,
-            },
-            "snowflake": {
-                "EQ7": SNOWFLAKE_EQ7_SQL,
-            },
-            "clickhouse": {
-                "AQ7": CLICKHOUSE_AQ7_SQL,
-                "AQ8": CLICKHOUSE_AQ8_SQL,
-                "AQ10": CLICKHOUSE_AQ10_SQL,
-                "EQ7": CLICKHOUSE_EQ7_SQL,
-            },
-            "datafusion": {
-                "AQ9": DATAFUSION_AQ9_SQL,
-                "EQ7": DATAFUSION_EQ7_SQL,
-                "VQ6": DATAFUSION_VQ6_SQL,
-            },
-            "starrocks": {"EQ7": STARROCKS_EQ7_SQL},
-            "doris": {"EQ7": DORIS_EQ7_SQL},
-        }
-        dialect_lower = dialect.lower()
-        for platform, platform_variants in variants.items():
-            if platform not in dialect_lower or query_id not in platform_variants:
-                continue
-
-            ctx = CompatibilityContext(
-                platform=platform,
-                platform_version=None,
-                benchmark="tpcdi",
-                query_id=query_id,
-                phase=Phase.QUERY_SOURCE,
-                mode="sql",
-                dialect=dialect,
-            )
-            registry_decision = REGISTRY.resolve(ctx)
-            if registry_decision is not None:
-                if registry_decision.action is not CompatAction.SELECT_VARIANT:
-                    return query_sql
-                variant_sql = registry_decision.payload.variant_sql
-            else:
-                variant_sql = platform_variants[query_id]
-
-            if platform == "clickhouse" and params is not None and query_id in {"AQ7", "AQ8", "AQ10"}:
-                from benchbox.sql_compat.rules.query_source.tpcdi_variants import build_clickhouse_metric_query
-
-                return build_clickhouse_metric_query(query_id, params)
-
-            if (
-                platform in ("bigquery", "clickhouse", "databricks", "snowflake")
-                and query_id == "EQ7"
-                and params is not None
-            ):
-                query_params = self.query_manager.etl_queries._generate_default_params(query_id)
-                query_params.update(params)
-                default_params = self.query_manager.etl_queries._generate_default_params(query_id)
-                for parameter in (
-                    "excellent_quality_threshold",
-                    "good_quality_threshold",
-                    "acceptable_quality_threshold",
-                ):
-                    variant_sql = variant_sql.replace(
-                        f") >= {default_params[parameter]} THEN",
-                        f") >= {query_params[parameter]} THEN",
-                    )
-
-            return variant_sql
-
-        return query_sql
-
-    def _apply_postgres_query_overrides(self, query_id: str, query_sql: str) -> str:
-        if query_id == "A5":
-            return query_sql.replace(
-                "HAVING customer_count > 10",
-                "HAVING COUNT(DISTINCT c.SK_CustomerID) > 10",
-            )
-        if query_id == "AQ10":
-            return query_sql.replace(
-                "ORDER BY CASE risk_profile WHEN 'HIGH RISK' THEN 1 WHEN 'CONCENTRATION RISK' THEN 2 "
-                "WHEN 'WASH SALE RISK' THEN 3 WHEN 'DAY TRADING RISK' THEN 4 ELSE 5 END, total_trade_value DESC",
-                "ORDER BY 15, total_trade_value DESC",
-            )
-        if query_id == "EQ7":
-            from benchbox.sql_compat.rules.query_source.tpcdi_variants import STARROCKS_EQ7_SQL
-            from benchbox.utils.dialect_utils import apply_rewrite
-
-            return apply_rewrite(
-                "flag_comparisons_to_boolean",
-                STARROCKS_EQ7_SQL,
-                "postgres",
-                columns=TPCDI_FLAG_COLUMNS,
-                use_is=True,
-            )
-        return query_sql
-
-    def get_platform_skip_queries(self, platform_name: str) -> list[str]:
-        if platform_name.lower() == "lakesail":
-            return list(LAKESAIL_TPCDI_SKIPS)
-        return []
-
-    def translate_query_text(self, query_text: str, target_dialect: str) -> str:
-        from benchbox.utils.dialect_utils import translate_sql_query
-
-        rewrites = []
-        flag_style = BOOLEAN_FLAG_STYLES.get(target_dialect.lower())
-        if flag_style is not None:
-            rewrites.append(
-                (
-                    "flag_comparisons_to_boolean",
-                    {"columns": TPCDI_FLAG_COLUMNS, "use_is": flag_style == "is"},
-                )
-            )
-        return translate_sql_query(
-            query=query_text,
-            target_dialect=target_dialect,
-            source_dialect="netezza",
-            rewrites=rewrites,
-        )
+    def get_query(self, query_id: Union[int, str], *, params: Optional[dict[str, Any]] = None) -> str:
+        raise ValueError(f"TPC-DI defines no BenchBox queries: {query_id}")
 
     @refuses_unavailable_benchmark("tpcdi")
-    def get_all_queries(self) -> dict[str, str]:
-        return self.query_manager.get_all_queries()
-
-    @refuses_unavailable_benchmark("tpcdi")
-    def execute_query(
+    def run_benchmark(
         self,
-        query_id: Union[int, str],
         connection: Any,
-        params: Optional[dict[str, Any]] = None,
-    ) -> Any:
-        sql = self.get_query(query_id, params)
-
-        if hasattr(connection, "execute"):
-            cursor = connection.execute(sql)
-            return cursor.fetchall()
-        elif hasattr(connection, "cursor"):
-            cursor = connection.cursor()
-            cursor.execute(sql)
-            return cursor.fetchall()
-        else:
-            raise ValueError("Unsupported connection type")
+        query_ids: Optional[list[Union[int, str]]] = None,
+        fetch_results: bool = False,
+        setup_database: bool = True,
+    ) -> dict[str, Any]:
+        raise ValueError("TPC-DI defines no BenchBox queries to run")
 
     def get_schema(self, dialect: str = "standard") -> dict[str, dict[str, Any]]:
         return TABLES
@@ -497,78 +277,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
                 cursor = connection.cursor()
                 for row in reader:
                     cursor.execute(insert_sql, _convert_row(row))
-
-    @refuses_unavailable_benchmark("tpcdi")
-    def run_benchmark(
-        self, connection: Any, queries: Optional[list[str]] = None, iterations: int = 1
-    ) -> dict[str, Any]:
-
-        if queries is None:
-            queries = list(self.query_manager.get_all_queries().keys())
-
-        results = {
-            "benchmark": "TPC-DI",
-            "scale_factor": self.scale_factor,
-            "iterations": iterations,
-            "total_queries": len(queries),
-            "query_statistics": self.query_manager.get_query_statistics(),
-            "queries": {},
-        }
-
-        for query_id in queries:
-            query_results: dict[str, Any] = {
-                "query_id": query_id,
-                "iterations": [],
-                "avg_time": 0,
-                "min_time": float("inf"),
-                "max_time": 0,
-                "sql_text": self.get_query(query_id),
-            }
-
-            for i in range(iterations):
-                start_time = mono_time()
-                try:
-                    result = self.execute_query(query_id, connection)
-                    end_time = mono_time()
-                    execution_time = end_time - start_time
-
-                    cast(list[dict[str, Any]], query_results["iterations"]).append(
-                        {
-                            "iteration": i + 1,
-                            "time": execution_time,
-                            "rows": len(result) if result else 0,
-                            "success": True,
-                        }
-                    )
-
-                    query_results["min_time"] = min(cast(float, query_results["min_time"]), execution_time)
-                    query_results["max_time"] = max(cast(float, query_results["max_time"]), execution_time)
-                except Exception as e:
-                    cast(list[dict[str, Any]], query_results["iterations"]).append(
-                        {
-                            "iteration": i + 1,
-                            "time": 0,
-                            "error": str(e),
-                            "success": False,
-                        }
-                    )
-
-            successful_iterations = [
-                iter_result
-                for iter_result in cast(list[dict[str, Any]], query_results["iterations"])
-                if iter_result["success"]
-            ]
-            if successful_iterations:
-                successful_times = [iter_result["time"] for iter_result in successful_iterations]
-                successful_rows = [iter_result.get("rows", 0) for iter_result in successful_iterations]
-                query_results["avg_time"] = sum(successful_times) / len(successful_times)
-                query_results["rows_returned"] = (
-                    int(sum(successful_rows) / len(successful_rows)) if successful_rows else 0
-                )
-
-            results["queries"][query_id] = query_results
-
-        return results
 
     def supports_dataframe_mode(self) -> bool:
         return True
@@ -780,32 +488,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
                     }
                 )
         return stage_results
-
-    @refuses_unavailable_benchmark("tpcdi")
-    def run_validation_queries(self, connection: Any, iterations: int = 1) -> dict[str, Any]:
-        validation_query_ids = list(self.query_manager.get_validation_queries().keys())
-        return self.run_benchmark(connection, validation_query_ids, iterations)
-
-    @refuses_unavailable_benchmark("tpcdi")
-    def run_analytical_queries(self, connection: Any, iterations: int = 1) -> dict[str, Any]:
-        analytical_query_ids = list(self.query_manager.get_analytical_queries().keys())
-        return self.run_benchmark(connection, analytical_query_ids, iterations)
-
-    @refuses_unavailable_benchmark("tpcdi")
-    def run_etl_validation_queries(self, connection: Any, iterations: int = 1) -> dict[str, Any]:
-        etl_query_ids = list(self.query_manager.get_etl_queries().keys())
-        return self.run_benchmark(connection, etl_query_ids, iterations)
-
-    @refuses_unavailable_benchmark("tpcdi")
-    def run_queries_by_category(self, connection: Any, category: str, iterations: int = 1) -> dict[str, Any]:
-        category_query_ids = self.query_manager.get_queries_by_category(category)
-        if not category_query_ids:
-            raise ValueError(f"No queries found for category: {category}")
-        return self.run_benchmark(connection, category_query_ids, iterations)
-
-    @refuses_unavailable_benchmark("tpcdi")
-    def get_query_execution_plan(self) -> list[tuple[str, str, list[str]]]:
-        return self.query_manager.get_execution_plan()
 
     def _initialize_etl_components(self) -> None:
         if self.source_dir:
@@ -1523,13 +1205,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         return backend.load_dataframes(staged_data, batch_type=batch_type)
 
     def _create_sql_etl_backend(self, *, connection: Any) -> SQLETLBackend:
-        validation_queries = list(self.query_manager.get_queries_by_type("validation"))
-        return SQLETLBackend(
-            connection=connection,
-            create_tables_sql=self.get_create_tables_sql(),
-            execute_validation_query=self.execute_query,
-            validation_query_ids=validation_queries,
-        )
+        return SQLETLBackend(connection=connection, create_tables_sql=self.get_create_tables_sql())
 
     def _load_warehouse_data(
         self, connection: Any, transformation_results: dict[str, Any], batch_type: str

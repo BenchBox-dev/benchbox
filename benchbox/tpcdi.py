@@ -30,12 +30,22 @@ class TPCDI(BaseBenchmark):
         return self._impl.generate_data()
 
     @refuses_unavailable_benchmark("tpcdi")
-    def get_queries(self, dialect: Optional[str] = None) -> dict[str, str]:
-        return self._impl.get_queries(dialect=dialect)
+    def get_queries(self) -> dict[str, str]:
+        return self._impl.get_queries()
 
     @refuses_unavailable_benchmark("tpcdi")
     def get_query(self, query_id: Union[int, str], *, params: Optional[dict[str, Any]] = None) -> str:
         return self._impl.get_query(query_id, params=params)
+
+    @refuses_unavailable_benchmark("tpcdi")
+    def run_benchmark(
+        self,
+        connection: Any,
+        query_ids: Optional[list[Union[int, str]]] = None,
+        fetch_results: bool = False,
+        setup_database: bool = True,
+    ) -> dict[str, Any]:
+        return self._impl.run_benchmark(connection, query_ids, fetch_results, setup_database)
 
     def get_schema(self, dialect: str = "standard") -> dict[str, dict[str, Any]]:
         return self._impl.get_schema(dialect)
@@ -78,21 +88,6 @@ class TPCDI(BaseBenchmark):
     @refuses_unavailable_benchmark("tpcdi")
     def load_data_to_database(self, connection: Any, tables: Optional[list[str]] = None) -> None:
         return self._impl.load_data_to_database(connection, tables)
-
-    @refuses_unavailable_benchmark("tpcdi")
-    def run_benchmark(
-        self, connection: Any, queries: Optional[list[str]] = None, iterations: int = 1
-    ) -> dict[str, Any]:
-        return self._impl.run_benchmark(connection, queries, iterations)
-
-    @refuses_unavailable_benchmark("tpcdi")
-    def execute_query(
-        self,
-        query_id: Union[int, str],
-        connection: Any,
-        params: Optional[dict[str, Any]] = None,
-    ) -> Any:
-        return self._impl.execute_query(query_id, connection, params)
 
     @refuses_unavailable_benchmark("tpcdi")
     def create_schema(self, connection: Any, dialect: str = "duckdb") -> None:

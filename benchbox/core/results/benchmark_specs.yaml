@@ -593,45 +593,7 @@ benchmark_specs:
     sf1_power_at_size_range: null
   tpcdi:
     benchmark_id: tpcdi
-    unique_query_ids:
-    - QA1
-    - QA2
-    - QA3
-    - QA4
-    - QA5
-    - QAQ1
-    - QAQ10
-    - QAQ2
-    - QAQ3
-    - QAQ4
-    - QAQ5
-    - QAQ6
-    - QAQ7
-    - QAQ8
-    - QAQ9
-    - QEQ1
-    - QEQ2
-    - QEQ3
-    - QEQ4
-    - QEQ5
-    - QEQ6
-    - QEQ7
-    - QEQ8
-    - QV1
-    - QV2
-    - QV3
-    - QVQ1
-    - QVQ10
-    - QVQ11
-    - QVQ12
-    - QVQ2
-    - QVQ3
-    - QVQ4
-    - QVQ5
-    - QVQ6
-    - QVQ7
-    - QVQ8
-    - QVQ9
+    unique_query_ids: []
     min_unique_queries: 0
     min_success_rate: 1.0
     high_failure_expected: false

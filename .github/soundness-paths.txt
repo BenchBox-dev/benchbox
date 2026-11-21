@@ -30,7 +30,6 @@ prefix	tests/fixtures/fast_tier_baseline/
 file	quality/fast-duration-ceiling.json
 file	benchbox/core/validation/engines.py
 file	benchbox/utils/data_validation.py
-file	benchbox/core/tpcdi/query_validation.py
 file	benchbox/core/tpchavoc/dataframe_equivalence.py
 file	benchbox/core/tpchavoc/equivalence.py
 file	benchbox/core/results/result_digest.py
