@@ -354,7 +354,7 @@ class TestMaintenanceTestsStopAtTheDeadline:
 
     def test_tpch_maintenance_sleeps_no_longer_than_the_time_remaining(self, monkeypatch, clock) -> None:
         slept: list[float] = []
-        monkeypatch.setattr(tpch_maintenance, "time", SimpleNamespace(sleep=slept.append))
+        monkeypatch.setattr(tpch_maintenance, "sleep", slept.append)
         _tpch_maintenance_ops(monkeypatch, clock)
         test = tpch_maintenance.TPCHMaintenanceTest(connection_factory=lambda: Mock(), first_set=1)
         result = tpch_maintenance.TPCHMaintenanceTestResult(
@@ -836,14 +836,6 @@ class TestDataFrameThroughputStopsAtTheDeadline:
         assert len(calls) == 2
 
 
-def _concurrent_with(as_completed: Any) -> Any:
-    return SimpleNamespace(
-        futures=SimpleNamespace(
-            as_completed=as_completed, TimeoutError=concurrent.futures.TimeoutError, Future=concurrent.futures.Future
-        )
-    )
-
-
 class TestEffectiveStreamLimit:
     def test_the_limit_is_the_smaller_of_the_setting_and_the_time_remaining(self, clock) -> None:
         deadline = RunDeadline(100)
@@ -865,7 +857,7 @@ class TestEffectiveStreamLimit:
             seen.append(timeout)
             return real(futures, timeout=timeout)
 
-        monkeypatch.setattr(throughput_runner, "concurrent", _concurrent_with(recording))
+        monkeypatch.setattr(throughput_runner, "wait_for_completed", recording)
         deadline = RunDeadline(100)
         clock.now = 30
 
@@ -932,7 +924,7 @@ class TestBenchBoxImposesNoStreamLimit:
             wait.gate.set()
             return real(futures, timeout=60)
 
-        monkeypatch.setattr(throughput_runner, "concurrent", _concurrent_with(simulated))
+        monkeypatch.setattr(throughput_runner, "wait_for_completed", simulated)
         return wait
 
     def test_a_tpch_stream_that_outlives_3600_seconds_is_not_stopped_when_nothing_is_set(
@@ -1006,8 +998,7 @@ class TestAfterTheFactChecksAreGone:
         benchmark = tpcds_runner.TPCDSBenchmark.__new__(tpcds_runner.TPCDSBenchmark)
         benchmark.get_query = lambda query_id, seed, dialect: "SELECT 1"
         connection = SimpleNamespace(execute=lambda sql: None, fetchall=lambda: [(1,)])
-        ticks = iter([0.0, 100000.0, 100000.0])
-        monkeypatch.setattr("time.time", lambda: next(ticks))
+        monkeypatch.setattr(tpcds_runner, "elapsed_seconds", lambda start, end=None: 100000.0)
 
         result = benchmark._execute_power_test_query(connection, 1, 1, "standard", False, logging.getLogger("t"))
 
@@ -1065,7 +1056,7 @@ class TestGizmoSQLReceivesTheRemainingTime:
             def cancel(self) -> None:
                 return None
 
-        monkeypatch.setattr(gizmosql.threading, "Timer", RecordingTimer)
+        monkeypatch.setattr(gizmosql, "make_timer", RecordingTimer)
         return started
 
     def test_the_cancel_timer_gets_the_time_remaining_when_no_query_timeout_is_set(self, timers, clock) -> None:
@@ -1144,3 +1135,265 @@ class TestCombinedTestStopsBetweenPhases:
         self._adapter(calls, None)._execute_combined_test(_benchmark(), Mock(), dict(self._CONFIG))
 
         assert sorted(calls) == ["maintenance", "power", "throughput"]
+
+
+def _tpch_power_test(monkeypatch, connection: Any) -> tpch_power.TPCHPowerTest:
+    monkeypatch.setattr(tpch_power.TPCHPowerTest, "_generate_query", lambda self, query_id, seed: f"q{query_id}")
+    monkeypatch.setattr(tpch_power.TPCHPowerTest, "_preflight_validate_generation", lambda self, permutation: None)
+    return tpch_power.TPCHPowerTest(
+        benchmark=Mock(),
+        connection=connection,
+        scale_factor=1.0,
+        seed=1,
+        validation=False,
+        query_subset=["1", "2", "3"],
+    )
+
+
+def _tpcds_power_test(monkeypatch, connection: Any) -> tpcds_power.TPCDSPowerTest:
+    monkeypatch.setattr(tpcds_power.TPCDSPowerTest, "_determine_available_query_ids", lambda self: [1, 2, 3])
+    monkeypatch.setattr(
+        tpcds_power.TPCDSPowerTest,
+        "_build_queries_to_execute",
+        lambda self, available: [(1, None), (2, None), (3, None)],
+    )
+    monkeypatch.setattr(tpcds_power.TPCDSPowerTest, "_preflight_validate_generation", lambda self, available: None)
+    monkeypatch.setattr(
+        tpcds_power.TPCDSPowerTest, "_generate_query", lambda self, query_id, variant, seed: f"q{query_id}"
+    )
+    return tpcds_power.TPCDSPowerTest(
+        benchmark=Mock(),
+        connection_factory=lambda: connection,
+        scale_factor=1.0,
+        seed=1,
+        validation=False,
+    )
+
+
+class _FetchingConnection(SlowConnection):
+    def fetchall(self) -> list[tuple[int]]:
+        return [(1,)]
+
+
+class TestAPowerTestStoppedAtTheLimitReportsNoPowerAtSize:
+    @pytest.mark.parametrize("build", [_tpch_power_test, _tpcds_power_test])
+    def test_a_stream_cut_off_by_the_deadline_is_not_a_success_and_has_no_power_at_size(
+        self, monkeypatch, clock, build
+    ) -> None:
+        with active_run_deadline(_deadline(10)):
+            result = build(monkeypatch, SlowConnection(clock)).run()
+
+        assert result.queries_executed == 2
+        assert result.power_at_size == 0.0
+        assert result.stopped_at_time_limit is True
+        assert result.success is False
+        assert any("run time limit" in error for error in result.errors)
+
+    @pytest.mark.parametrize("build", [_tpch_power_test, _tpcds_power_test])
+    def test_a_stream_that_finishes_inside_the_limit_keeps_its_power_at_size(self, monkeypatch, clock, build) -> None:
+        with active_run_deadline(_deadline(600)):
+            result = build(monkeypatch, SlowConnection(clock)).run()
+
+        assert result.queries_executed == 3
+        assert result.power_at_size > 0.0
+        assert result.stopped_at_time_limit is False
+        assert result.success is True
+
+    def test_the_legacy_tpcds_power_run_cut_off_by_the_deadline_is_not_a_success(self, clock) -> None:
+        from benchbox.core.tpcds.benchmark import runner as tpcds_runner
+
+        benchmark = tpcds_runner.TPCDSBenchmark.__new__(tpcds_runner.TPCDSBenchmark)
+        benchmark.scale_factor = 1.0
+        benchmark.verbose = False
+        benchmark.get_query = lambda query_id, seed, dialect: "SELECT 1"
+
+        with active_run_deadline(_deadline(10)):
+            result = benchmark.run_power_test(_FetchingConnection(clock), warm_up=False)
+
+        assert len(result["query_results"]) == 2
+        assert result["power_at_size"] == 0.0
+        assert result["success"] is False
+        assert any("run time limit" in error for error in result["errors"])
+
+    def test_the_legacy_tpcds_power_run_that_finishes_keeps_its_power_at_size(self, clock) -> None:
+        from benchbox.core.tpcds.benchmark import runner as tpcds_runner
+
+        benchmark = tpcds_runner.TPCDSBenchmark.__new__(tpcds_runner.TPCDSBenchmark)
+        benchmark.scale_factor = 1.0
+        benchmark.verbose = False
+        benchmark.get_query = lambda query_id, seed, dialect: "SELECT 1"
+
+        with active_run_deadline(_deadline(600)):
+            result = benchmark.run_power_test(_FetchingConnection(clock), warm_up=False)
+
+        assert len(result["query_results"]) == 99
+        assert result["power_at_size"] > 0.0
+        assert result["success"] is True
+
+
+class TestAStopAtTheLimitIsRecordedByTheGateThatTakesIt:
+    @pytest.mark.parametrize("iterations,warm_ups", [(2, 0), (1, 2)])
+    def test_tpch_power_records_the_timeout_when_it_skips_the_next_iteration(
+        self, monkeypatch, clock, iterations, warm_ups
+    ) -> None:
+        deadline = _deadline(17)
+
+        with active_run_deadline(deadline):
+            rows = _tpch_power(monkeypatch, SlowConnection(clock), iterations=iterations, warm_ups=warm_ups)
+
+        assert [row["status"] for row in rows] == ["SUCCESS"] * 3
+        assert deadline.timeout is not None
+
+    @pytest.mark.parametrize("iterations,warm_ups", [(2, 0), (1, 2)])
+    def test_tpcds_power_records_the_timeout_when_it_skips_the_next_iteration(
+        self, monkeypatch, clock, iterations, warm_ups
+    ) -> None:
+        deadline = _deadline(17)
+
+        with active_run_deadline(deadline):
+            rows = _tpcds_power(monkeypatch, SlowConnection(clock), iterations=iterations, warm_ups=warm_ups)
+
+        assert [row["status"] for row in rows] == ["SUCCESS"] * 3
+        assert deadline.timeout is not None
+
+    @pytest.mark.parametrize("iterations,warm_ups", [(2, 0), (1, 2)])
+    def test_generic_power_records_the_timeout_when_it_skips_the_next_iteration(
+        self, clock, iterations, warm_ups
+    ) -> None:
+        adapter = MockPlatformAdapter()
+        calls: list[str] = []
+
+        def slow_query(_benchmark: Any, _connection: Any, query_id: Any, _sql: str, **_kwargs: Any) -> dict[str, Any]:
+            calls.append(str(query_id))
+            clock.now += 11
+            return {"query_id": str(query_id), "status": "SUCCESS", "execution_time_seconds": 11.0, "rows_returned": 1}
+
+        adapter._execute_single_query = slow_query
+        benchmark = _benchmark()
+        benchmark.get_queries.return_value = {"1": "SELECT 1"}
+        deadline = _deadline(10)
+
+        with active_run_deadline(deadline):
+            adapter._execute_generic_power_test(
+                benchmark,
+                Mock(),
+                {
+                    "benchmark_name": "tpch",
+                    "iterations": iterations,
+                    "warm_up_iterations": warm_ups,
+                    "scale_factor": 1.0,
+                },
+            )
+
+        assert calls == ["1"]
+        assert deadline.timeout is not None
+
+    def test_a_combined_test_records_the_timeout_when_it_skips_a_phase(self, clock) -> None:
+        calls: list[str] = []
+        deadline = _deadline(10)
+
+        with active_run_deadline(deadline):
+            TestCombinedTestStopsBetweenPhases()._adapter(calls, clock)._execute_combined_test(
+                _benchmark(), Mock(), dict(TestCombinedTestStopsBetweenPhases._CONFIG)
+            )
+
+        assert calls == ["power"]
+        assert deadline.timeout is not None
+
+    def test_dataframe_power_records_the_timeout_when_it_skips_the_next_iteration(self, clock) -> None:
+        host = _DataFrameHost(clock, [])
+        deadline = _deadline(17)
+
+        with active_run_deadline(deadline):
+            rows = _dataframe_run(host, iterations=2)
+
+        assert [row["query_id"] for row in rows] == ["Q1", "Q2", "Q3"]
+        assert deadline.timeout is not None
+
+    def test_dataframe_run_records_the_timeout_when_it_skips_the_throughput_phase(self, monkeypatch, clock) -> None:
+        host = _DataFrameHost(clock, [])
+        host.supports_dataframe_throughput = True
+        ran: list[str] = []
+
+        def slow_power(**_kwargs: Any) -> list[dict[str, Any]]:
+            clock.now += 11
+            return []
+
+        host._execute_queries_phase = slow_power
+        monkeypatch.setattr(tpch_full_spec, "resolve_stream_count", lambda config: 2)
+        monkeypatch.setattr(tpch_full_spec, "resolve_refresh_plan", lambda *args, **kwargs: None)
+        monkeypatch.setattr(tpch_full_spec, "run_throughput", lambda *args, **kwargs: ran.append("throughput"))
+        deadline = _deadline(10)
+
+        with active_run_deadline(deadline):
+            host._execute_query_phases(
+                Mock(),
+                Mock(),
+                SimpleNamespace(load=True, execute=True, power=True, throughput=True),
+                SimpleNamespace(name="tpch", scale_factor=1.0),
+                None,
+                None,
+            )
+
+        assert ran == []
+        assert deadline.timeout is not None
+
+
+class TestGizmoSQLDoesNotCancelWorkAfterTheRunLimit:
+    def _cursor(self, query_timeout: int) -> Any:
+        from benchbox.platforms.gizmosql import GizmoSQLCursor
+
+        return GizmoSQLCursor(Mock(), SimpleNamespace(query_timeout=query_timeout, guard=lambda sql: None))
+
+    @pytest.fixture
+    def timers(self, monkeypatch) -> list[float]:
+        from benchbox.platforms import gizmosql
+
+        started: list[float] = []
+
+        class RecordingTimer:
+            def __init__(self, interval: float, function: Any) -> None:
+                started.append(interval)
+                self.daemon = False
+
+            def start(self) -> None:
+                return None
+
+            def cancel(self) -> None:
+                return None
+
+        monkeypatch.setattr(gizmosql, "make_timer", RecordingTimer)
+        return started
+
+    def test_no_timer_is_armed_for_a_statement_issued_after_the_deadline_passed(self, timers, clock) -> None:
+        cursor = self._cursor(0)
+        deadline = RunDeadline(100)
+        clock.now = 150
+
+        with active_run_deadline(deadline):
+            cursor._arm()
+
+        assert timers == []
+        assert cursor._run_limited is False
+
+    def test_the_query_timeout_still_bounds_a_statement_issued_after_the_deadline_passed(self, timers, clock) -> None:
+        cursor = self._cursor(30)
+        deadline = RunDeadline(100)
+        clock.now = 150
+
+        with active_run_deadline(deadline):
+            cursor._arm()
+
+        assert timers == [30]
+        assert "30s query_timeout" in str(cursor._timeout_error())
+
+    def test_a_statement_issued_just_before_the_deadline_is_still_bounded_by_the_time_left(self, timers, clock) -> None:
+        cursor = self._cursor(0)
+        deadline = RunDeadline(100)
+        clock.now = 99
+
+        with active_run_deadline(deadline):
+            cursor._arm()
+
+        assert timers == [pytest.approx(1)]
+        assert cursor._run_limited is True
