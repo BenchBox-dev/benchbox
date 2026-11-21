@@ -44916,6 +44916,16 @@
       "status": "open",
       "title": "TPC-DI step 34: Results Explorer shows TPC_DI_RPS and phase throughputs (benchbox-site)"
     },
+    "tpcdi-bundle-tpc-di-tools-20261121": {
+      "claim": null,
+      "needs": [
+        "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120",
+        "tpcdi-owner-action-place-official-archives-20261121"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 9: ship the TPC-DI tools (DIGen and PDGF) unmodified, with their licences and a sourcing file"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
