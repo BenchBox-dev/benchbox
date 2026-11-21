@@ -45005,7 +45005,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "TPC-DI plan based on shannon-barrow/databricks-tpc-di: full text (notes; not a work item)"
     },
     "tpcdi-queries-aq9-vq6-return-no-rows-20261120": {
