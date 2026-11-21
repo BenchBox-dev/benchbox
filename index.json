@@ -8618,7 +8618,7 @@
         }
       },
       "integration_branch": "feat/run-timeout-core",
-      "integration_head": "fab92838704e4a287d5a7a6d90ae7fc4b77615aa",
+      "integration_head": "f946d0df00787a4e3f056b48019c1b79916a6448",
       "integration_log": [
         {
           "at": "2026-11-21T17:38:21Z",
@@ -8761,6 +8761,35 @@
           "op_id": "f2eefb0dbb8b49de8e8cbc312d578a86",
           "previous_head": "cca29b6615111a2025132f61c0c266a14fa42665",
           "seq": 2
+        },
+        {
+          "at": "2026-11-21T20:41:17Z",
+          "changed_files": [
+            "benchbox/core/throughput/runner.py",
+            "benchbox/core/tpcds/benchmark/runner.py",
+            "benchbox/core/tpcds/platform_power.py",
+            "benchbox/core/tpcds/power_test.py",
+            "benchbox/core/tpch/maintenance_test.py",
+            "benchbox/core/tpch/platform_power.py",
+            "benchbox/core/tpch/power_test.py",
+            "benchbox/experimental/load_testing/executor.py",
+            "benchbox/platforms/base/execution.py",
+            "benchbox/platforms/dataframe/benchmark_mixin.py",
+            "benchbox/platforms/gizmosql.py",
+            "benchbox/utils/run_deadline.py",
+            "changelog.d/feat-run-timeout-core--run-timeout-execution-phases-20261120.json",
+            "tests/unit/core/load_testing/test_executor.py",
+            "tests/unit/core/test_tpc_reporting_execution.py",
+            "tests/unit/platforms/test_run_timeout_execution_phases.py"
+          ],
+          "head": "f946d0df00787a4e3f056b48019c1b79916a6448",
+          "kind": "fix",
+          "op_id": "120abd68d76544fe8132f363d3427585",
+          "previous_head": "fab92838704e4a287d5a7a6d90ae7fc4b77615aa",
+          "requires_acceptance": [
+            "run-timeout-execution-phases-20261120"
+          ],
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-core",
