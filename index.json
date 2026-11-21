@@ -44773,7 +44773,7 @@
         "tpcdi-01-withdraw-bundles-develop-20261120"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "TPC-DI step 2: deletion-only pull request against published-results, then recut the ledger seed"
     },
     "tpcdi-03-site-rework-notice-20261120": {
