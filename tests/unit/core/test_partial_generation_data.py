@@ -11,6 +11,7 @@ from benchbox.core.ssb.generator import SSBDataGenerator
 from benchbox.core.tpcds.generator import TPCDSDataGenerator
 from benchbox.core.tpch.generator import TPCHDataGenerator
 from benchbox.ssb import SSB
+from benchbox.tsbs_devops import TSBSDevOps
 from benchbox.utils import run_deadline
 from benchbox.utils.data_validation import BenchmarkDataValidator
 from benchbox.utils.generation_marker import (
@@ -238,3 +239,45 @@ def test_the_marker_survives_a_failed_generation_and_nested_calls_remove_it_once
 def test_a_directory_that_is_not_local_is_not_marked():
     with track_generation("s3://bucket/data"):
         assert not generation_in_progress("s3://bucket/data")
+
+
+def test_the_marker_stays_when_generation_returns_after_the_limit(tmp_path, monkeypatch):
+    data = tmp_path / "data"
+    state = {"done": False}
+    original = SSBDataGenerator._generate_lineorder_data
+
+    def finish(self):
+        result = original(self)
+        state["done"] = True
+        return result
+
+    monkeypatch.setattr(SSBDataGenerator, "_generate_lineorder_data", finish)
+    monkeypatch.setattr(RunDeadline, "expired", property(lambda self: state["done"]))
+
+    with pytest.raises(RunTimeoutError):
+        _ssb(data).generate_data(timeout_seconds=60)
+
+    assert (data / GENERATION_IN_PROGRESS_MARKER).exists()
+
+
+def test_tsbs_devops_regenerates_files_left_beside_a_stale_marker(tmp_path):
+    data = tmp_path / "data"
+    TSBSDevOps(scale_factor=0.01, output_dir=data, compress_data=False).generate_data()
+    sample = next(data.glob("*.csv"))
+    before = sample.stat().st_mtime_ns
+    (data / GENERATION_IN_PROGRESS_MARKER).touch()
+
+    TSBSDevOps(scale_factor=0.01, output_dir=data, compress_data=False).generate_data()
+
+    assert sample.stat().st_mtime_ns != before
+    assert not (data / GENERATION_IN_PROGRESS_MARKER).exists()
+
+
+def test_primitives_bulk_load_files_are_not_reused_beside_a_stale_marker(tmp_path):
+    from benchbox.core.primitives.generator_base import PrimitivesDataGeneratorBase
+
+    generator = PrimitivesDataGeneratorBase.__new__(PrimitivesDataGeneratorBase)
+    generator.output_dir = tmp_path
+    (tmp_path / GENERATION_IN_PROGRESS_MARKER).touch()
+
+    assert generator.check_bulk_load_files_exist() is False

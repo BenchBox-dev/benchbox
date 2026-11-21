@@ -58,10 +58,10 @@ def _with_optional_timeout(generate_data: Any) -> Any:
             enter_run_phase("generate")
             with track_generation(getattr(self, "output_dir", None)):
                 generated = generate_data(self, *args, **kwargs)
-            if deadline is not None and deadline.expired:
-                timeout = deadline.record_timeout()
-                timeout.partial_result = generated
-                raise timeout
+                if deadline is not None and deadline.expired:
+                    timeout = deadline.record_timeout()
+                    timeout.partial_result = generated
+                    raise timeout
             return generated
 
     return bounded

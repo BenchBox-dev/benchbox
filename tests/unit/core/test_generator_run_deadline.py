@@ -10,6 +10,7 @@ import pytest
 
 from benchbox.core.tpcds import streams as tpcds_streams
 from benchbox.core.tpcds.c_tools import DSQGenBinary
+from benchbox.core.tpcds.dataframe_queries import production_binding
 from benchbox.core.tpcds.generator import TPCDSDataGenerator
 from benchbox.core.tpch import refresh
 from benchbox.core.tpch.generator import TPCHDataGenerator
@@ -294,3 +295,21 @@ def test_a_failing_child_is_not_reported_as_the_run_limit(tmp_path, monkeypatch,
 
     with pytest.raises(RuntimeError, match="exit code 3"):
         generator._run_file_based_dsdgen(out)
+
+
+def test_the_tpcds_parameter_binding_pool_sees_the_deadline(monkeypatch, deadline):
+    seen: list[RunDeadline | None] = []
+
+    def bind(number, **kwargs):
+        seen.append(current_run_deadline())
+        return SimpleNamespace(query_id=number, parameters={})
+
+    monkeypatch.setattr(production_binding, "bind_parameters", bind)
+    monkeypatch.setattr(production_binding, "is_bound", lambda number: True)
+    production_binding.clear_binding_cache()
+    try:
+        production_binding.bind_power_stream([1, 2], scale_factor=1, seed=1, stream_id=0, dsqgen=object())
+    finally:
+        production_binding.clear_binding_cache()
+
+    assert seen == [deadline, deadline]

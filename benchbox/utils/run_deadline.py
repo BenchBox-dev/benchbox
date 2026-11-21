@@ -5,7 +5,7 @@ import functools
 import subprocess
 import sys
 import threading
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from typing import Any
 
@@ -268,12 +268,6 @@ def bind_run_deadline(function: Callable[..., Any]) -> Callable[..., Any]:
             return function(*args, **kwargs)
 
     return bound
-
-
-def raise_first_run_timeout(errors: Iterable[BaseException]) -> None:
-    for error in errors:
-        if isinstance(error, RunTimeoutError):
-            raise error
 
 
 def timeout_details(deadline: RunDeadline) -> dict[str, Any]:

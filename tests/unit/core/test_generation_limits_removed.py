@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import ast
+import inspect
 import subprocess
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -27,20 +30,20 @@ class _Calls:
 def long_running_stub(monkeypatch: pytest.MonkeyPatch) -> _Calls:
     calls = _Calls()
 
-    def run(cmd, **kwargs):
+    def run_child(cmd, *, tool, deadline, **kwargs):
         limit = kwargs.get("timeout")
         calls.timeouts.append(limit)
         if limit is not None and limit < STUB_RUNTIME_SECONDS:
             raise subprocess.TimeoutExpired(cmd, limit)
         return subprocess.CompletedProcess(cmd, 0, stdout="select 1;\n", stderr="")
 
-    monkeypatch.setattr(subprocess, "run", run)
+    for module in (c_tools, tpch_queries, tpc_compilation):
+        monkeypatch.setattr(module, "run_child", run_child)
     return calls
 
 
 def test_dsqgen_query_outliving_the_old_limit_is_not_stopped(long_running_stub):
     dsqgen = DSQGenBinary()
-    long_running_stub.timeouts.clear()
 
     sql = dsqgen.generate(9, seed=7, scale_factor=1)
 
@@ -49,14 +52,11 @@ def test_dsqgen_query_outliving_the_old_limit_is_not_stopped(long_running_stub):
 
 
 def test_dsqgen_stream_set_outliving_the_old_limit_is_not_stopped(long_running_stub, monkeypatch):
-    monkeypatch.setattr(
-        subprocess,
-        "run",
-        lambda cmd, **kwargs: (
-            long_running_stub.timeouts.append(kwargs.get("timeout"))
-            or subprocess.CompletedProcess(cmd, 1, stdout="", stderr="stub")
-        ),
-    )
+    def run_child(cmd, *, tool, deadline, **kwargs):
+        long_running_stub.timeouts.append(kwargs.get("timeout"))
+        return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="stub")
+
+    monkeypatch.setattr(c_tools, "run_child", run_child)
 
     with pytest.raises(tpcds_streams.DSQGenStreamsError) as excinfo:
         tpcds_streams.generate_dsqgen_streams(num_streams=2, scale_factor=1, seed=1)
@@ -91,23 +91,23 @@ def test_a_compile_outliving_the_old_limits_is_not_stopped(long_running_stub, tm
     assert long_running_stub.timeouts == [None]
 
 
-def test_the_executable_probe_keeps_its_fifteen_second_limit(long_running_stub, tmp_path):
-    binary = tmp_path / "probe-target"
-    binary.write_text("", encoding="utf-8")
+def _timeout_literals(function) -> list[object]:
+    tree = ast.parse(textwrap.dedent(inspect.getsource(function)))
+    return [
+        keyword.value.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        for keyword in node.keywords
+        if keyword.arg == "timeout" and isinstance(keyword.value, ast.Constant)
+    ]
 
-    TPCCompiler(auto_compile=True)._verify_executable(binary)
 
-    assert long_running_stub.timeouts == [15]
+def test_the_executable_probe_keeps_its_fifteen_second_limit():
+    assert _timeout_literals(TPCCompiler._verify_executable) == [15]
 
 
-def test_the_dbgen_help_probe_keeps_its_five_second_limit(long_running_stub, tmp_path):
-    generator = TPCHDataGenerator(scale_factor=0.01, output_dir=tmp_path)
-    generator._dbgen_exe = tmp_path / "dbgen"
-    generator.dbgen_available = True
-
-    generator._check_stdout_support()
-
-    assert long_running_stub.timeouts == [5]
+def test_the_dbgen_help_probe_keeps_its_five_second_limit():
+    assert _timeout_literals(TPCHDataGenerator._check_stdout_support) == [5]
 
 
 @pytest.mark.parametrize(
