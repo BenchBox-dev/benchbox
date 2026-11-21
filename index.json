@@ -44677,11 +44677,12 @@
     "tpcdi-08-generator-core-and-reference-files-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-07-specification-schema-20261120"
+        "tpcdi-bundle-tpc-di-tools-20261121",
+        "run-timeout-generators-and-partial-data-20261120"
       ],
       "priority": "medium-high",
-      "status": "open",
-      "title": "TPC-DI step 8: clean-room source-file generator: core, scaling, reference files, HR, Prospect, row report"
+      "status": "blocked",
+      "title": "TPC-DI step 10: DIGen runner: generate the source files with the shipped tools and record what was generated"
     },
     "tpcdi-09-generator-customer-and-finwire-20261120": {
       "claim": null,
