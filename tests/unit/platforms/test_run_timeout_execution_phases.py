@@ -1280,3 +1280,56 @@ class TestGizmoSQLDoesNotCancelWorkAfterTheRunLimit:
 
         assert timers == [pytest.approx(1)]
         assert cursor._run_limited is True
+
+
+class TestADataFramePowerRunStoppedAtTheLimitReportsNoPowerAtSize:
+    def _build(self, clock: FakeClock, limit: int) -> Any:
+        from benchbox.core.results.builder import BenchmarkInfoInput, PlatformInfoInput, ResultBuilder
+        from benchbox.core.results.query_normalizer import normalize_query_result
+
+        class Host(_DataFrameHost):
+            def _get_queries_for_benchmark(
+                self, benchmark_config: Any, benchmark_instance: Any, stream_id: int = 0
+            ) -> list[Any]:
+                return [SimpleNamespace(query_id=str(query_id)) for query_id in (1, 2, 3)]
+
+        builder = ResultBuilder(
+            benchmark=BenchmarkInfoInput(name="TPC-H", scale_factor=1.0, test_type="power", benchmark_id="tpch"),
+            platform=PlatformInfoInput(name="polars-df", execution_mode="dataframe"),
+        )
+        benchmark_config = SimpleNamespace(
+            name="tpch",
+            options={"power_iterations": 1, "power_warmup_iterations": 0},
+            capture_plans=False,
+            scale_factor=1.0,
+            queries=None,
+            concurrency=None,
+        )
+
+        with active_run_deadline(_deadline(limit)):
+            rows = Host(clock, [])._execute_query_phases(
+                Mock(),
+                builder,
+                SimpleNamespace(load=True, execute=True, power=True, throughput=False),
+                benchmark_config,
+                None,
+                None,
+            )
+
+        for row in rows:
+            builder.add_query_result(normalize_query_result({**row, "test_type": "power"}))
+        return rows, builder.build()
+
+    def test_a_deadline_that_passes_between_queries_leaves_no_power_at_size(self, clock) -> None:
+        rows, results = self._build(clock, 10)
+
+        assert [row["query_id"] for row in rows] == ["1", "2"]
+        assert {row["status"] for row in rows} == {"SUCCESS"}
+        assert results.power_at_size is None
+        assert results.qph_at_size is None
+
+    def test_a_run_that_finishes_inside_the_limit_keeps_its_power_at_size(self, clock) -> None:
+        rows, results = self._build(clock, 600)
+
+        assert len(rows) == 3
+        assert results.power_at_size is not None and results.power_at_size > 0

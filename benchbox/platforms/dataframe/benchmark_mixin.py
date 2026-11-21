@@ -67,6 +67,7 @@ from benchbox.utils.duckdb_extensions import THIRD_PARTY_EXTENSION_OPTION
 from benchbox.utils.printing import quiet_console
 from benchbox.utils.run_deadline import (
     RunTimeoutError,
+    current_run_deadline,
     enter_run_phase,
     failed_query_status,
     mark_cut_short_query,
@@ -108,6 +109,12 @@ def _benchmark_defines_hook(benchmark: Any | None, hook_name: str) -> bool:
         or getattr(child, "_mock_side_effect", None) is not None
         or getattr(child, "_mock_wraps", None) is not None
     )
+
+
+def _record_power_stop(builder: Any) -> None:
+    deadline = current_run_deadline()
+    if deadline is not None and deadline.timeout is not None:
+        builder.set_power_stopped_at_time_limit()
 
 
 def _refresh_requested(benchmark_config: Any, benchmark: Any | None) -> bool:
@@ -909,6 +916,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                 run_options=run_options,
             )
             builder.set_phase_status("power_test", "COMPLETED")
+            _record_power_stop(builder)
             return results
 
         from benchbox.platforms.dataframe.tpch_full_spec import (
@@ -942,6 +950,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                     power_refresh=power_refresh,
                 )
                 builder.set_phase_status("power_test", "COMPLETED")
+                _record_power_stop(builder)
                 if plan is not None:
                     builder.set_power_refresh(plan.first_set, plan.power_functions)
                 if power_refresh is not None and power_refresh.error:
