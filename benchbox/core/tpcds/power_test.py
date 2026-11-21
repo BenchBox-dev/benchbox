@@ -64,6 +64,7 @@ class TPCDSPowerTestResult:
     query_results: list[dict[str, Any]]
     success: bool
     errors: list[str]
+    stopped_at_time_limit: bool = False
 
     @property
     def scale_factor(self) -> float:
@@ -174,6 +175,11 @@ class TPCDSPowerTest:
             with deferred_platform_timing() as deferred:
                 for position, query_info in enumerate(queries_to_execute):
                     if stop_requested_before_query(self._query_display_id(query_info)):
+                        result.stopped_at_time_limit = True
+                        result.errors.append(
+                            f"Power test stopped at the run time limit after {result.queries_executed} of "
+                            f"{len(queries_to_execute)} queries"
+                        )
                         break
                     self._execute_one_query(position, query_info, connection, stream_param_seed, result)
                 self._finalize_power_metrics(result, start_time)
@@ -359,7 +365,7 @@ class TPCDSPowerTest:
             for qr in result.query_results
             if qr.get("success", True) and qr.get("execution_time_seconds", 0) > 0
         ]
-        if exec_times:
+        if exec_times and not result.stopped_at_time_limit:
             from benchbox.core.results.metrics import TPCMetricsCalculator
 
             result.power_at_size = TPCMetricsCalculator.calculate_power_at_size(exec_times, self.config.scale_factor)
@@ -367,7 +373,7 @@ class TPCDSPowerTest:
         result.total_time = total_execution_time
         result.end_time = datetime.now().isoformat()
         success_rate = result.queries_successful / max(result.queries_executed, 1)
-        result.success = success_rate >= 0.7
+        result.success = not result.stopped_at_time_limit and success_rate >= 0.7
 
         if self.config.verbose:
             self.logger.info(f"Power Test completed in {total_execution_time:.3f}s")
