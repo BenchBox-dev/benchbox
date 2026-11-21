@@ -11287,7 +11287,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-quarantine-r2",
-      "integration_head": "2570b3572044f0d3726f2443b40df623222d2df9",
+      "integration_head": "59a03d827649490d678c3cf8747b068130d256f9",
       "integration_log": [
         {
           "at": "2026-11-21T19:05:54Z",
@@ -11335,6 +11335,19 @@
             "tpcdi-05-remove-benchbox-queries-20261120"
           ],
           "seq": 3
+        },
+        {
+          "at": "2026-11-21T22:07:40Z",
+          "changed_files": [
+            "tests/README.md",
+            "tests/docs/test_strategy.md"
+          ],
+          "head": "59a03d827649490d678c3cf8747b068130d256f9",
+          "kind": "fix",
+          "op_id": "ac0c2ab455124a2bacb43ab6eb751620",
+          "previous_head": "2570b3572044f0d3726f2443b40df623222d2df9",
+          "requires_acceptance": [],
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-quarantine-r2",
