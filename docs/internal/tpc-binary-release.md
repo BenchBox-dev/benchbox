@@ -28,10 +28,12 @@ This calls `compile-all-platforms.sh --native`, which:
 3. **Deploys the four files to `benchbox/_binaries/tpc-ds/darwin-arm64/`
    and regenerates `checksums.md5`** (this is the tracked, shipped location)
 
-After running the command, commit the changed files in `benchbox/_binaries/`:
+After running the command, regenerate the bundled-tree hash manifest and
+commit the changed files in `benchbox/_binaries/`:
 
 ```bash
-git add benchbox/_binaries/tpc-ds/darwin-arm64/
+uv run -- python scripts/bundled_binary_manifest.py --write
+git add benchbox/_binaries/SHA256MANIFEST.json benchbox/_binaries/tpc-ds/darwin-arm64/
 git commit -m "fix(tpcds): rebuild darwin-arm64 binaries from patched sources"
 ```
 
@@ -43,10 +45,16 @@ cd _sources/compilation/scripts
 ```
 
 The Linux/Windows builds run in a container. The script auto-detects a
-Docker-compatible engine, preferring `mocker` (Apple Containerization on
-macOS) then `docker` then `podman`; override with
-`BENCHBOX_CONTAINER_ENGINE=<engine>`. The macOS `arm64`/`x86_64` binaries build
-natively (no engine needed).
+Docker-compatible engine, preferring `container` (Apple Containerization on
+macOS, which runs amd64 images under Rosetta) then `docker`, `podman` and
+`mocker`; override with `BENCHBOX_CONTAINER_ENGINE=<engine>`. The macOS
+`arm64`/`x86_64` binaries build natively (no engine needed); the `x86_64`
+cross build compiles its `mkheader` and `distcomp` host tools for the build
+host, so it does not need Rosetta on macOS.
+
+The TPC-DS C sources are not tracked (TPC EULA). To rebuild, download the
+TPC-DS 4.0.0 tools from tpc.org and apply the patches as described in
+`_sources/tpc-ds/REBUILD.md`.
 
 **Supported platforms:**
 
