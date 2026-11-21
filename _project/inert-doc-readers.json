@@ -360,6 +360,7 @@
   ],
   "results-data/CORPUS_NOTES.md": [
     "tests/unit/core/results/test_tpcdi_bundle_refusal.py",
+    "tests/unit/core/results/test_tpcdi_withdrawal_history.py",
     "tests/unit/scripts/test_annotate_sql_translator_version.py",
     "tests/unit/scripts/test_corpus_drift.py",
     "tests/unit/scripts/test_corpus_drift_canary.py",
