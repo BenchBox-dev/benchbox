@@ -42,6 +42,7 @@ from benchbox.core.results.schema_policy import (
     supports_capture_and_vendor_fields,
     supports_round_trip_timing_fields,
     supports_row_count_validation,
+    supports_run_timeout_marker,
 )
 from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
@@ -228,6 +229,8 @@ def _validate_capture_and_vendor_fields(payload: Mapping[str, Any], version: Any
         recorded.extend(f"provenance.{name}" for name in VENDOR_PROVENANCE_FIELDS if name in provenance)
     if recorded and not supports_capture_and_vendor_fields(version):
         raise SchemaV2ValidationError(f"{recorded[0]} requires schema version 2.5 or later")
+    if isinstance(execution, Mapping) and "timeout" in execution and not supports_run_timeout_marker(version):
+        raise SchemaV2ValidationError("execution.timeout requires schema version 2.6 or later")
 
 
 def _validate_timing_fields(payload: Mapping[str, Any], version: Any, run: Mapping[str, Any]) -> None:
@@ -841,6 +844,13 @@ def _add_execution_section(payload: dict[str, Any], result: BenchmarkResults, dr
             payload["execution"] = exec_block
 
     payload.setdefault("execution", {})["config_capture"] = CONFIG_CAPTURE_VERSION
+    details = getattr(result, "validation_details", None)
+    details = details if isinstance(details, Mapping) else {}
+    timeout = details.get("timeout")
+    if isinstance(timeout, Mapping):
+        payload["execution"]["timeout"] = {
+            key: timeout[key] for key in ("timeout_seconds", "phase", "query_id") if timeout.get(key) is not None
+        }
 
 
 _EXEC_CTX_PASSTHROUGH = [

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://benchbox.dev/schemas/result-bundle-2.schema.json",
   "title": "BenchBox result bundle",
-  "result_schema_version": "2.5",
+  "result_schema_version": "2.6",
   "description": "Compatibility promise for major version 2. Within major version 2 the schema changes only in ways that keep every bundle that was valid under an earlier 2.x version valid: new optional keys, new optional blocks, and new enum values on fields that consumers are told to treat as open. Such a change raises the minor version (2.5 to 2.6) and is published at this same URL. A change that removes or renames a required key, changes the type of an existing key, narrows an accepted value set, or changes the meaning of an existing key requires major version 3, which is published at a new URL with a 3 in its name; this URL keeps serving major version 2. Consumers of major version 2 must ignore keys they do not recognise and must not rely on key order. Checks the BenchBox validator (SchemaV2Validator) enforces that JSON Schema cannot express and that this schema therefore omits: row_count_validation.actual must equal the query's rows, and a PASSED row_count_validation with an integer expected must have equal expected and actual (both compare two values in the instance); the validator matches row_count_validation.status case-insensitively while this schema lists only the normalised upper-case form; JSON Schema cannot tell 2 from 2.0, while the validator rejects a float for run.timing_method (including the net-estimate check), request_count, result_bytes and platform_timing.requests[].attempt; row_count_validation.expected and actual are the reverse, because the validator also coerces integral floats and numeric strings while this schema requires JSON integers; the vendor publication rules over provenance (a free or trial plan_tier or any preview_features entry needs vendor_permission, preview_features are refused outright for Databricks, self_run must not be false for BigQuery, vendor_notice needs sent_on and reference on the platforms whose terms require notice) depend on the platform name and are enforced by the validator only.",
   "type": "object",
   "required": [
@@ -383,6 +383,28 @@
         "config_capture": {
           "type": "integer",
           "minimum": 1
+        },
+        "timeout": {
+          "type": "object",
+          "required": [
+            "timeout_seconds",
+            "phase"
+          ],
+          "properties": {
+            "timeout_seconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "phase": {
+              "type": "string",
+              "minLength": 1
+            },
+            "query_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
         }
       }
     },
@@ -733,7 +755,8 @@
         "2.2",
         "2.3",
         "2.4",
-        "2.5"
+        "2.5",
+        "2.6"
       ],
       "description": "Result schema version of this bundle. Legacy bundles may carry it as 'version' alone."
     },
@@ -815,7 +838,8 @@
         "2.2",
         "2.3",
         "2.4",
-        "2.5"
+        "2.5",
+        "2.6"
       ],
       "description": "Legacy spelling of result_schema_version; must match it when both are present."
     }
@@ -1080,6 +1104,10 @@
             "properties": {
               "result_schema_version": {
                 "enum": [
+                  "2.0",
+                  "2.1",
+                  "2.2",
+                  "2.3",
                   "2.4",
                   "2.5"
                 ]
@@ -1098,8 +1126,66 @@
             "properties": {
               "version": {
                 "enum": [
+                  "2.0",
+                  "2.1",
+                  "2.2",
+                  "2.3",
                   "2.4",
                   "2.5"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "then": {
+        "properties": {
+          "execution": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "timeout"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "anyOf": [
+          {
+            "required": [
+              "result_schema_version"
+            ],
+            "properties": {
+              "result_schema_version": {
+                "enum": [
+                  "2.4",
+                  "2.5",
+                  "2.6"
+                ]
+              }
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "result_schema_version"
+              ]
+            },
+            "required": [
+              "version"
+            ],
+            "properties": {
+              "version": {
+                "enum": [
+                  "2.4",
+                  "2.5",
+                  "2.6"
                 ]
               }
             }
@@ -1403,6 +1489,26 @@
         "properties": {
           "version": {
             "const": "2.5"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "result_schema_version",
+          "version"
+        ],
+        "properties": {
+          "result_schema_version": {
+            "const": "2.6"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "version": {
+            "const": "2.6"
           }
         }
       }

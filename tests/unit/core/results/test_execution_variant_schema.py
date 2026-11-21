@@ -128,7 +128,7 @@ def test_schema_fields_are_ordered_and_round_trip():
     )
     payload = build_result_payload(result)
     SchemaV2Validator().validate(payload)
-    assert payload["result_schema_version"] == payload["version"] == "2.5"
+    assert payload["result_schema_version"] == payload["version"] == "2.6"
     platform = payload["platform"]
     assert list(platform)[:6] == ["name", "version", "client_version", "variant", "execution_engine", "gateway"]
     assert list(platform["execution_engine"]) == [

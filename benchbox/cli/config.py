@@ -35,6 +35,12 @@ _CONFIG_VALIDATION_RULES: list[tuple[str, int, Any, str]] = [
     ("benchmarks.default_scale", 0, lambda v: v > 0, "Invalid default scale factor"),
     ("benchmarks.timeout_minutes", 0, lambda v: v > 0, "Invalid timeout value"),
     ("execution.max_workers", 0, lambda v: v > 0, "Invalid max workers value"),
+    (
+        "execution.timeout_seconds",
+        0,
+        lambda v: v is None or (isinstance(v, int) and not isinstance(v, bool) and v >= 0),
+        "Invalid run timeout value",
+    ),
     ("execution.power_run.iterations", 4, lambda v: v > 0, "Invalid power run iterations value"),
     ("execution.power_run.warm_up_iterations", 0, lambda v: v >= 0, "Invalid power run warm-up iterations value"),
     (

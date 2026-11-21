@@ -6,10 +6,10 @@ from typing import Any
 from benchbox.core.results.query_status import bundle_failed_query_count, has_failed_query_validation, int_or_none
 
 NON_CLEAN_VALIDATION_STATUSES: frozenset[str] = frozenset(
-    {"failed", "interrupted", "partial", "error", "not_run", "not_validated", "uncertain", "unknown"}
+    {"failed", "interrupted", "timed_out", "partial", "error", "not_run", "not_validated", "uncertain", "unknown"}
 )
 NON_CLEAN_TRANSLATION_STATUSES: frozenset[str] = frozenset({"fallback", "failed"})
-CLI_FAILURE_VALIDATION_STATUSES: frozenset[str] = frozenset({"failed", "interrupted", "partial", "error"})
+CLI_FAILURE_VALIDATION_STATUSES: frozenset[str] = frozenset({"failed", "interrupted", "timed_out", "partial", "error"})
 UNVALIDATED_VALIDATION_STATUSES: frozenset[str] = NON_CLEAN_VALIDATION_STATUSES - CLI_FAILURE_VALIDATION_STATUSES
 
 

@@ -58,6 +58,7 @@ from benchbox.platforms.base.tuning import TuningHooksMixin
 from benchbox.platforms.base.tuning_config import TuningConfigMixin
 from benchbox.utils.clock import elapsed_seconds, mono_time, utc_now
 from benchbox.utils.printing import quiet_console
+from benchbox.utils.run_deadline import RUN_TIMEOUT_OPTION_KEY, enter_run_phase, mark_timed_out, own_run_deadline
 from benchbox.utils.toggles import is_probe_requested
 from benchbox.utils.verbosity import VerbosityMixin, VerbositySettings
 
@@ -570,6 +571,7 @@ class PlatformAdapter(
                 quiet_console.print("✅ Unified tuning configuration validated")
 
             self._start_applied_tuning_ledger()
+            enter_run_phase("load")
 
             self.log_verbose(f"Checking database_was_reused flag before schema creation: {self.database_was_reused}")
             if self.database_was_reused:
@@ -649,6 +651,7 @@ class PlatformAdapter(
                     collect_per_table_timing=bool(run_config.get("stats_per_table_timing", False)),
                 )
 
+            enter_run_phase("execute")
             test_execution_type = run_config.get("test_execution_type", "standard")
             quiet_console.print(f"Executing benchmark queries ({test_execution_type} mode)...")
             self.capture_effective_session_config(connection, "run_start")
@@ -1072,4 +1075,9 @@ class PlatformAdapter(
         return schema_time, schema_creation_phase, loading_time, table_stats, data_loading_phase, tuning_metadata_saved
 
     def run_benchmark(self, benchmark, **run_config) -> EnhancedBenchmarkResults:
-        return self.run_enhanced_benchmark(benchmark, **run_config)
+        with own_run_deadline(run_config.pop(RUN_TIMEOUT_OPTION_KEY, None)) as deadline:
+            result = self.run_enhanced_benchmark(benchmark, **run_config)
+        if deadline is not None and deadline.timeout is not None:
+            deadline.timeout.partial_result = mark_timed_out(result, deadline)
+            raise deadline.timeout
+        return result

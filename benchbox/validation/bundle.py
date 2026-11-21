@@ -24,9 +24,15 @@ def _load_schema_policy_helpers():
             PUBLIC_SUBMISSION_SCHEMA_POLICY,
             result_schema_version_value,
             supports_capture_and_vendor_fields,
+            supports_run_timeout_marker,
         )
 
-        return PUBLIC_SUBMISSION_SCHEMA_POLICY, result_schema_version_value, supports_capture_and_vendor_fields
+        return (
+            PUBLIC_SUBMISSION_SCHEMA_POLICY,
+            result_schema_version_value,
+            supports_capture_and_vendor_fields,
+            supports_run_timeout_marker,
+        )
     except ImportError:
         pass
     helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "schema_policy.py"
@@ -40,12 +46,16 @@ def _load_schema_policy_helpers():
         module.PUBLIC_SUBMISSION_SCHEMA_POLICY,
         module.result_schema_version_value,
         module.supports_capture_and_vendor_fields,
+        module.supports_run_timeout_marker,
     )
 
 
-PUBLIC_SUBMISSION_SCHEMA_POLICY, result_schema_version_value, supports_capture_and_vendor_fields = (
-    _load_schema_policy_helpers()
-)
+(
+    PUBLIC_SUBMISSION_SCHEMA_POLICY,
+    result_schema_version_value,
+    supports_capture_and_vendor_fields,
+    supports_run_timeout_marker,
+) = _load_schema_policy_helpers()
 
 
 try:
@@ -1272,6 +1282,8 @@ def _validate_capture_and_vendor_fields(
             vr.error("execution.config_capture requires schema version 2.5 or later")
         elif isinstance(capture, bool) or not isinstance(capture, int) or capture < 1:
             vr.error(f"execution.config_capture must be a positive integer, got {capture!r}")
+    if isinstance(execution, dict) and "timeout" in execution and not supports_run_timeout_marker(version):
+        vr.error("execution.timeout requires schema version 2.6 or later")
 
     provenance = data.get("provenance")
     if not isinstance(provenance, dict):
