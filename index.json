@@ -44772,7 +44772,7 @@
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "TPC-DI step 18: TPC_DI_RPS, bundle fields, publication gate, label, and reopening TPC-DI for DuckDB"
+      "title": "TPC-DI step 23: TPC_DI_RPS, result fields, publication gate and label; reopen TPC-DI for DuckDB"
     },
     "tpcdi-19-platform-datafusion-20261120": {
       "claim": null,
