@@ -44867,11 +44867,11 @@
     "tpcdi-29-platform-snowflake-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-28-platform-bigquery-20261120"
+        "tpcdi-30-platform-databricks-20261120"
       ],
       "priority": "medium",
       "status": "blocked",
-      "title": "TPC-DI step 29: Snowflake: ETL, visibility and full audit"
+      "title": "TPC-DI cloud step 2: Snowflake: ETL, visibility and full audit"
     },
     "tpcdi-30-platform-databricks-20261120": {
       "claim": null,
