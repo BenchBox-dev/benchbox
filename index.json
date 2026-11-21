@@ -44980,6 +44980,16 @@
       "status": "done",
       "title": "Explain the TPC-DI FactMarketHistory row count difference from the specification"
     },
+    "tpcdi-first-publication-20261121": {
+      "claim": null,
+      "needs": [
+        "tpcdi-34-explorer-display-20261120",
+        "tpcdi-32-core-docs-and-adr-20261120"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DI step 28: first publication of a DuckDB TPC-DI result"
+    },
     "tpcdi-generator-ratios-and-speed-vs-spec-20261111": {
       "claim": null,
       "needs": [],
