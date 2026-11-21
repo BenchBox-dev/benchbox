@@ -22,6 +22,14 @@ OFFICIAL_COMPLIANCE_CLASS = "official"
 VERDICTS_KEPT_ON_TIMEOUT = frozenset({"FAILED", "ERROR", "INTERRUPTED"})
 TIMED_OUT_QUERY_STATUS = "TIMEOUT"
 FAILED_QUERY_STATUS = "FAILED"
+REMOTE_CLEANUP_WARNING = (
+    "A run time limit is set. If the run times out, BenchBox will try to cancel the work it started on {platform}. "
+    "This cleanup has not been checked against the live service, so work may keep running and billing."
+)
+NO_REMOTE_CLEANUP_WARNING = (
+    "A run time limit is set. If the run times out, work BenchBox started on {platform} may keep running and "
+    "billing: BenchBox cannot cancel it on this platform."
+)
 
 
 def validate_timeout_seconds(value: Any) -> int | None:
@@ -66,6 +74,37 @@ class RunDeadline:
         self._lock = threading.Lock()
         self._children: set[subprocess.Popen[Any]] = set()
         self._stopped_children: set[int] = set()
+        self._remote_cleanups: dict[int, tuple[Any, str, Callable[[], None]]] = {}
+        self._cleanup_started = False
+        self.cleanup_errors: list[str] = []
+
+    def register_remote_cleanup(self, owner: Any, cleanup: Callable[[], None], label: str | None = None) -> None:
+        with self._lock:
+            self._remote_cleanups.setdefault(id(owner), (owner, label or type(owner).__name__, cleanup))
+
+    def cancel_remote_work(self, wait_seconds: float = HARD_STOP_GRACE_SECONDS) -> list[str]:
+        with self._lock:
+            if self._cleanup_started:
+                return list(self.cleanup_errors)
+            self._cleanup_started = True
+            cleanups = list(self._remote_cleanups.values())
+
+        def cancel_all() -> None:
+            for _owner, label, cleanup in cleanups:
+                try:
+                    cleanup()
+                except Exception as exc:
+                    with self._lock:
+                        self.cleanup_errors.append(f"{label}: {type(exc).__name__}: {exc}")
+
+        worker = threading.Thread(target=cancel_all, name="benchbox-remote-cleanup", daemon=True)
+        worker.start()
+        worker.join(wait_seconds)
+        if worker.is_alive():
+            with self._lock:
+                self.cleanup_errors.append(f"Remote cleanup did not finish within {wait_seconds:g} seconds")
+        with self._lock:
+            return list(self.cleanup_errors)
 
     def start(self) -> None:
         if self._started is None:
@@ -297,6 +336,17 @@ def bind_run_deadline(function: Callable[..., Any]) -> Callable[..., Any]:
             return function(*args, **kwargs)
 
     return bound
+
+
+def register_remote_cleanup(owner: Any, cleanup: Callable[[], None], label: str | None = None) -> None:
+    deadline = current_run_deadline()
+    if deadline is not None:
+        deadline.register_remote_cleanup(owner, cleanup, label)
+
+
+def remote_cleanup_warning(platform: str, cleanup_implemented: bool) -> str:
+    template = REMOTE_CLEANUP_WARNING if cleanup_implemented else NO_REMOTE_CLEANUP_WARNING
+    return template.format(platform=platform)
 
 
 def timeout_details(deadline: RunDeadline) -> dict[str, Any]:

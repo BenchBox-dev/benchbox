@@ -12,6 +12,7 @@ from rich.markup import escape
 
 from benchbox.cli.exit_codes import ExitCode
 from benchbox.cli.shared import console
+from benchbox.core.platform_manifest import get_all_platform_aliases, get_platform_manifest_entry
 from benchbox.utils.run_deadline import (
     HARD_STOP_GRACE_SECONDS,
     RUN_TIMEOUT_CONFIG_KEY,
@@ -21,6 +22,7 @@ from benchbox.utils.run_deadline import (
     arm_hard_stop,
     current_run_deadline,
     end_descendant_processes,
+    remote_cleanup_warning,
     resolve_timeout_seconds,
 )
 
@@ -51,6 +53,22 @@ def dispatch_run(s: Any) -> None:
 
 def report_timeout(deadline: RunDeadline) -> None:
     console.print(f"\n[red]❌ {escape(str(deadline.record_timeout()))}[/red]")
+
+
+def report_cleanup_errors(deadline: RunDeadline) -> None:
+    for error in deadline.cleanup_errors:
+        console.print(f"[red]Remote cleanup failed: {escape(error)}[/red]")
+
+
+def cloud_cleanup_warning(platform: str | None) -> str | None:
+    if not platform:
+        return None
+    key = platform.lower()
+    entry = get_platform_manifest_entry(get_all_platform_aliases().get(key, key))
+    if entry is None or entry.metadata_dict().get("category") != "cloud":
+        return None
+    implemented = bool(entry.capabilities.get("run_timeout_cleanup", False))
+    return remote_cleanup_warning(str(entry.metadata_dict().get("display_name") or entry.key), implemented)
 
 
 def write_hard_stop_result(
@@ -92,6 +110,8 @@ def hard_stop(deadline: RunDeadline) -> None:
                 deadline.write_partial_result()
             except Exception as exc:
                 console.print(f"[red]The partial result could not be written: {escape(str(exc))}[/red]")
+        deadline.cancel_remote_work()
+        report_cleanup_errors(deadline)
         deadline.stop_children()
         end_descendant_processes()
         logging.shutdown()
@@ -147,6 +167,9 @@ def run_within_time_limit(s: Any) -> None:
         dispatch_run(s)
         return
 
+    warning = cloud_cleanup_warning(s.platform)
+    if warning:
+        console.print(f"[yellow]{escape(warning)}[/yellow]", soft_wrap=True)
     deadline = RunDeadline(timeout_seconds, started=False)
     try:
         with active_run_deadline(deadline):
@@ -160,4 +183,5 @@ def run_within_time_limit(s: Any) -> None:
         console.print(f"[red]❌ {escape(str(exc))}[/red]")
     if deadline.run_timed_out:
         report_timeout(deadline)
+        report_cleanup_errors(deadline)
         sys.exit(ExitCode.TIMEOUT)
