@@ -39756,7 +39756,7 @@
         "tpcdi-factmarkethistory-row-count-cause-20261120"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Correct the TPC-DI differences text on the site's next branch"
     },
     "site-parity-header-shrink-toggle": {
