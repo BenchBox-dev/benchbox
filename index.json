@@ -44886,11 +44886,11 @@
     "tpcdi-31-dataframe-mode-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-30-platform-databricks-20261120"
+        "tpcdi-27-platform-lakesail-20261120"
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 31: DataFrame mode on generated source files (Polars and pandas)"
+      "title": "TPC-DI step 38: DataFrame mode on Polars"
     },
     "tpcdi-32-core-docs-and-adr-20261120": {
       "claim": null,
