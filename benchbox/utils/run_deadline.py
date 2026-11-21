@@ -14,12 +14,23 @@ from benchbox.utils.process_group import kill_process_group
 from benchbox.utils.resource_limits import kill_started_group
 
 HARD_STOP_GRACE_SECONDS = 30.0
+HARD_STOP_EXPORT_MARGIN_SECONDS = 5.0
 RUN_TIMEOUT_CONFIG_KEY = "execution.timeout_seconds"
 RUN_TIMEOUT_OPTION_KEY = "timeout_seconds"
 TIMED_OUT_VALIDATION_STATUS = "TIMED_OUT"
 STARTUP_PHASE = "startup"
 OFFICIAL_COMPLIANCE_CLASS = "official"
 VERDICTS_KEPT_ON_TIMEOUT = frozenset({"FAILED", "ERROR", "INTERRUPTED"})
+TIMED_OUT_QUERY_STATUS = "TIMEOUT"
+FAILED_QUERY_STATUS = "FAILED"
+REMOTE_CLEANUP_WARNING = (
+    "A run time limit is set. If the run times out, BenchBox will try to cancel the work it started on {platform}. "
+    "This cleanup has not been checked against the live service, so work may keep running and billing."
+)
+NO_REMOTE_CLEANUP_WARNING = (
+    "A run time limit is set. If the run times out, work BenchBox started on {platform} may keep running and "
+    "billing: BenchBox cannot cancel it on this platform."
+)
 
 
 def validate_timeout_seconds(value: Any) -> int | None:
@@ -64,6 +75,52 @@ class RunDeadline:
         self._lock = threading.Lock()
         self._children: set[subprocess.Popen[Any]] = set()
         self._stopped_children: set[int] = set()
+        self._remote_cleanups: dict[int, tuple[Any, str, Callable[[], None]]] = {}
+        self._cleanup_worker: threading.Thread | None = None
+        self._cleanup_began: float | None = None
+        self._cleanup_unfinished_reported = False
+        self.cleanup_errors: list[str] = []
+
+    def register_remote_cleanup(self, owner: Any, cleanup: Callable[[], None], label: str | None = None) -> None:
+        with self._lock:
+            self._remote_cleanups.setdefault(id(owner), (owner, label or type(owner).__name__, cleanup))
+
+    def start_remote_cleanup(self) -> None:
+        with self._lock:
+            if self._cleanup_worker is not None:
+                return
+            cleanups = list(self._remote_cleanups.values())
+            began = mono_time()
+
+            def cancel_all() -> None:
+                _CLEANUP_WINDOW.ends_at = began + graceful_cleanup_window_seconds()
+                for _owner, label, cleanup in cleanups:
+                    try:
+                        cleanup()
+                    except Exception as exc:
+                        with self._lock:
+                            self.cleanup_errors.append(f"{label}: {type(exc).__name__}: {exc}")
+
+            worker = threading.Thread(target=cancel_all, name="benchbox-remote-cleanup", daemon=True)
+            self._cleanup_worker = worker
+            self._cleanup_began = began
+        worker.start()
+
+    def cancel_remote_work(self, wait_seconds: float | None = None) -> list[str]:
+        self.start_remote_cleanup()
+        worker = self._cleanup_worker
+        assert worker is not None and self._cleanup_began is not None
+        budget = graceful_cleanup_window_seconds()
+        if wait_seconds is None:
+            wait_seconds = max(0.0, budget - elapsed_seconds(self._cleanup_began))
+        else:
+            budget = wait_seconds
+        worker.join(wait_seconds)
+        with self._lock:
+            if worker.is_alive() and not self._cleanup_unfinished_reported:
+                self._cleanup_unfinished_reported = True
+                self.cleanup_errors.append(f"Remote cleanup did not finish within {budget:g} seconds")
+            return list(self.cleanup_errors)
 
     def start(self) -> None:
         if self._started is None:
@@ -88,6 +145,7 @@ class RunDeadline:
     def record_timeout(self, detail: str | None = None) -> RunTimeoutError:
         if self.timeout is None:
             self.timeout = RunTimeoutError(self.timeout_seconds, self.phase, self.query_id, detail)
+            self.start_remote_cleanup()
         return self.timeout
 
     def check(self) -> None:
@@ -99,6 +157,13 @@ class RunDeadline:
             return False
         self.record_timeout()
         return True
+
+    def failed_query_status(self) -> str:
+        return TIMED_OUT_QUERY_STATUS if self.stop_requested() else FAILED_QUERY_STATUS
+
+    def limit_to_remaining(self, seconds: float | None) -> float | None:
+        remaining = self.remaining()
+        return remaining if seconds is None else min(seconds, remaining)
 
     def record_overrun(self) -> None:
         if self.timeout is None and self.expired:
@@ -193,6 +258,17 @@ class RunDeadline:
 
 _ACTIVE: contextvars.ContextVar[RunDeadline | None] = contextvars.ContextVar("benchbox_run_deadline", default=None)
 
+_CLEANUP_WINDOW = threading.local()
+
+
+def graceful_cleanup_window_seconds() -> float:
+    return max(0.0, HARD_STOP_GRACE_SECONDS - HARD_STOP_EXPORT_MARGIN_SECONDS)
+
+
+def remote_cleanup_seconds_left() -> float | None:
+    ends_at = getattr(_CLEANUP_WINDOW, "ends_at", None)
+    return None if ends_at is None else max(0.0, ends_at - mono_time())
+
 
 def current_run_deadline() -> RunDeadline | None:
     return _ACTIVE.get()
@@ -233,6 +309,26 @@ def stop_requested_before_query(query_id: Any) -> bool:
     return deadline.stop_requested()
 
 
+def run_stop_requested() -> bool:
+    deadline = current_run_deadline()
+    return deadline is not None and deadline.stop_requested()
+
+
+def failed_query_status() -> str:
+    deadline = current_run_deadline()
+    return FAILED_QUERY_STATUS if deadline is None else deadline.failed_query_status()
+
+
+def mark_cut_short_query(result: dict[str, Any]) -> None:
+    if result.get("status") in {FAILED_QUERY_STATUS, "ERROR"} and failed_query_status() == TIMED_OUT_QUERY_STATUS:
+        result["status"] = TIMED_OUT_QUERY_STATUS
+
+
+def limit_to_remaining(seconds: float | None) -> float | None:
+    deadline = current_run_deadline()
+    return seconds if deadline is None else deadline.limit_to_remaining(seconds)
+
+
 def share_partial_query_results(results: list[dict[str, Any]]) -> None:
     deadline = current_run_deadline()
     if deadline is not None:
@@ -270,6 +366,17 @@ def bind_run_deadline(function: Callable[..., Any]) -> Callable[..., Any]:
     return bound
 
 
+def register_remote_cleanup(owner: Any, cleanup: Callable[[], None], label: str | None = None) -> None:
+    deadline = current_run_deadline()
+    if deadline is not None:
+        deadline.register_remote_cleanup(owner, cleanup, label)
+
+
+def remote_cleanup_warning(platform: str, cleanup_implemented: bool) -> str:
+    template = REMOTE_CLEANUP_WARNING if cleanup_implemented else NO_REMOTE_CLEANUP_WARNING
+    return template.format(platform=platform)
+
+
 def timeout_details(deadline: RunDeadline) -> dict[str, Any]:
     timeout = deadline.record_timeout()
     details: dict[str, Any] = {"timeout_seconds": timeout.timeout_seconds, "phase": timeout.phase}
@@ -277,6 +384,8 @@ def timeout_details(deadline: RunDeadline) -> dict[str, Any]:
         details["query_id"] = timeout.query_id
     if timeout.detail:
         details["detail"] = timeout.detail
+    if deadline.cleanup_errors:
+        details["cleanup_errors"] = list(deadline.cleanup_errors)
     return details
 
 
@@ -312,6 +421,7 @@ def arm_hard_stop(
     def watch() -> None:
         if finished.wait(deadline.remaining()):
             return
+        deadline.start_remote_cleanup()
         deadline.stop_children()
         if finished.wait(grace_seconds):
             return

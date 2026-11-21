@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from functools import partial
@@ -141,6 +142,7 @@ from benchbox.utils.run_deadline import (
     active_run_deadline,
     current_run_deadline,
     mark_timed_out,
+    register_remote_cleanup,
     timeout_details,
     validate_timeout_seconds,
 )
@@ -151,6 +153,8 @@ if TYPE_CHECKING:
 
     from benchbox.core.results.models import BenchmarkResults
     from benchbox.core.schemas import ExecutionContext
+
+_logger = logging.getLogger(__name__)
 
 
 class VerbosityLike(Protocol):
@@ -391,10 +395,15 @@ def execute_run(
 
     with active_run_deadline(deadline):
         try:
-            result = run()
-        except RunTimeoutError:
-            result = build_timed_out_result(config, database_config, deadline)
-        deadline.record_overrun()
+            try:
+                result = run()
+            except RunTimeoutError:
+                result = build_timed_out_result(config, database_config, deadline)
+            deadline.record_overrun()
+        finally:
+            if deadline.timeout is not None or deadline.expired:
+                for error in deadline.cancel_remote_work():
+                    _logger.warning(f"Remote cleanup failed: {error}")
     if deadline.timeout is not None:
         mark_timed_out(result, deadline)
     return result
@@ -435,6 +444,9 @@ def _execute_run(
     ensure_run_output_space(output_root)
 
     adapter = adapter_factory(execution_mode=execution_mode, output_root=output_root, phases=phases)
+    cleanup = getattr(adapter, "cancel_remote_work", None)
+    if callable(cleanup):
+        register_remote_cleanup(adapter, cleanup, type(adapter).__name__)
     reject_unsupported_dataframe_phases(execution_mode, phases_to_run, adapter)
     if execution_mode == "dataframe" and adapter is not None:
         reject_engine_bypassing_benchmark(

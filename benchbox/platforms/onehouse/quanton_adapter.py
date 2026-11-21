@@ -388,6 +388,9 @@ class QuantonAdapter(
 
         return results
 
+    def cancel_remote_work(self) -> None:
+        self._client.cancel_started_work()
+
     def close(self) -> None:
         try:
             self._client.close()

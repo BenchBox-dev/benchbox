@@ -31,6 +31,7 @@ from benchbox.platforms.base.cloud_spark import (
 )
 from benchbox.platforms.base.cloud_spark.config import CloudPlatform
 from benchbox.platforms.base.phase_tracking import _resolve_benchmark_table_names
+from benchbox.platforms.base.remote_work import StartedRemoteWork
 from benchbox.platforms.gcp._gcs_path import parse_gcs_staging_dir
 from benchbox.utils.dependencies import (
     check_platform_dependencies,
@@ -127,6 +128,7 @@ class DataprocAdapter(CloudSparkConfigMixin, SparkTuningMixin, PlatformAdapter):
         self._query_count = 0
         self._total_job_time_seconds = 0.0
         self._cluster_created_by_us = False
+        self._started_work = StartedRemoteWork()
 
         self._benchmark_type: str | None = None
         self._scale_factor: float = 1.0
@@ -284,16 +286,14 @@ class DataprocAdapter(CloudSparkConfigMixin, SparkTuningMixin, PlatformAdapter):
         client = self._get_cluster_client()
         logger.info(f"Deleting ephemeral cluster: {self.cluster_name}")
 
-        try:
-            operation = client.delete_cluster(
-                project_id=self.project_id,
-                region=self.region,
-                cluster_name=self.cluster_name,
-            )
-            operation.result()
-            logger.info(f"Cluster deleted: {self.cluster_name}")
-        except Exception as e:
-            logger.warning(f"Failed to delete cluster: {e}")
+        operation = client.delete_cluster(
+            project_id=self.project_id,
+            region=self.region,
+            cluster_name=self.cluster_name,
+        )
+        operation.result()
+        self._cluster_created_by_us = False
+        logger.info(f"Cluster deleted: {self.cluster_name}")
 
     def create_schema(self, benchmark, connection: Any) -> float:
         start_time = mono_time()
@@ -351,8 +351,16 @@ spark.stop()
             job=job,
         )
 
+        self._started_work.add(job_id)
         if wait_for_completion:
-            result = operation.result(timeout=self.timeout_minutes * 60)
+            try:
+                result = operation.result(timeout=self.timeout_minutes * 60)
+            except TimeoutError:
+                raise
+            except Exception:
+                self._started_work.discard(job_id)
+                raise
+            self._started_work.discard(job_id)
             return job_id, result.status.state.name
         else:
             return job_id, "PENDING"
@@ -478,9 +486,30 @@ spark.stop()
                 "error_type": type(e).__name__,
             }
 
+    def cancel_remote_work(self) -> None:
+        client = self._get_job_client()
+        failure: Exception | None = None
+        try:
+            self._started_work.cancel_all(
+                "Dataproc",
+                lambda job_id, _: client.cancel_job(project_id=self.project_id, region=self.region, job_id=job_id),
+            )
+        except Exception as exc:
+            failure = exc
+        if self._cluster_created_by_us and self.create_ephemeral_cluster:
+            try:
+                self._delete_cluster()
+            except Exception as exc:
+                failure = exc if failure is None else RuntimeError(f"{failure}; Dataproc cluster delete failed: {exc}")
+        if failure is not None:
+            raise failure
+
     def close(self) -> None:
         if self._cluster_created_by_us and self.create_ephemeral_cluster:
-            self._delete_cluster()
+            try:
+                self._delete_cluster()
+            except Exception as e:
+                logger.warning(f"Failed to delete cluster: {e}")
 
         logger.info(f"Dataproc session closed. Executed {self._query_count} queries.")
         if self._total_job_time_seconds > 0:

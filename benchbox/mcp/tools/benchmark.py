@@ -28,6 +28,7 @@ from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 from benchbox.core.results.exporter import ResultExporter
 from benchbox.core.results.integrity_validator import ResultIntegrityValidator, report_payload
 from benchbox.core.results.schema import build_result_payload
+from benchbox.core.run_cleanup_warning import cloud_cleanup_warning
 from benchbox.core.run_selection import RunSelection, resolve_run_selection
 from benchbox.core.tuning import modes as tuning_modes
 from benchbox.mcp.deprecations import attach_deprecations
@@ -54,7 +55,11 @@ from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dependencies import BENCHMARK_LOAD_ERRORS
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 from benchbox.utils.printing import get_quiet_console, silence_output
-from benchbox.utils.run_deadline import RUN_TIMEOUT_OPTION_KEY, TIMED_OUT_VALIDATION_STATUS, validate_timeout_seconds
+from benchbox.utils.run_deadline import (
+    RUN_TIMEOUT_OPTION_KEY,
+    TIMED_OUT_VALIDATION_STATUS,
+    validate_timeout_seconds,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -310,7 +315,16 @@ def _run_under_platform_policy(
     )
     if scale_note and response.get("status") not in ("error", "failed"):
         response.setdefault("warnings", []).append(scale_note)
+    limit_warning = run_limit_warning(platform, timeout_seconds)
+    if limit_warning:
+        response.setdefault("warnings", []).append(limit_warning)
     return response
+
+
+def run_limit_warning(platform: str, timeout_seconds: int | None) -> str | None:
+    if validate_timeout_seconds(timeout_seconds) is None:
+        return None
+    return cloud_cleanup_warning(platform)
 
 
 def _apply_platform_policy(

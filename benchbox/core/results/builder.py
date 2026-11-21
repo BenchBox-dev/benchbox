@@ -224,6 +224,7 @@ class ResultBuilder:
         self._execution_phases_override: ExecutionPhases | None = None
         self._power_refresh: tuple[int, list[dict[str, Any]]] | None = None
         self._throughput_phase: ThroughputTestPhase | None = None
+        self._power_stopped_at_time_limit: bool = False
         self._total_duration_seconds: float | None = None
 
     @staticmethod
@@ -369,6 +370,9 @@ class ResultBuilder:
     def set_power_refresh(self, first_set: int, functions: list[dict[str, Any]]) -> None:
         self._power_refresh = (first_set, list(functions))
 
+    def set_power_stopped_at_time_limit(self) -> None:
+        self._power_stopped_at_time_limit = True
+
     def set_throughput_phase(self, phase: ThroughputTestPhase) -> None:
         self._throughput_phase = phase
 
@@ -403,7 +407,11 @@ class ResultBuilder:
         compliance_class = routed_compliance_class(
             self._benchmark.compliance_class, platform_info_gateway(platform_info)
         )
-        metrics_suppressed = bool(failed_queries) or compliance_class == NONSTANDARD_COMPLIANCE_CLASS
+        metrics_suppressed = (
+            bool(failed_queries)
+            or compliance_class == NONSTANDARD_COMPLIANCE_CLASS
+            or self._power_stopped_at_time_limit
+        )
         if self._execution_phases_override is None and (self._power_refresh or self._throughput_phase):
             self._execution_phases_override = self._compose_refresh_phases(metrics_suppressed)
         if metrics_suppressed:

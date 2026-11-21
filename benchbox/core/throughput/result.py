@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS
+
 THROUGHPUT_FIRST_STREAM_ID = 1
 THROUGHPUT_STREAM_NUMBERING_BASIS = "tpc_spec_throughput_streams_1_to_s"
 
@@ -82,9 +84,25 @@ class ThroughputResult:
     outstanding_stream_ids: list[int] = field(default_factory=list)
     cancelled_stream_ids: list[int] = field(default_factory=list)
     outstanding_notes: list[str] = field(default_factory=list)
+    timed_out_queries: list[dict[str, Any]] = field(default_factory=list)
     cleanup_state: str = "complete"
     stream_numbering: dict[str, Any] = field(default_factory=throughput_stream_numbering)
 
     @property
     def has_outstanding_work(self) -> bool:
         return bool(self.outstanding_stream_ids)
+
+
+def timed_out_query_rows(result: Any, test_type: str = "throughput") -> list[dict[str, Any]]:
+    return [
+        {
+            "query_id": entry["query_id"],
+            "execution_time_seconds": 0.0,
+            "status": TIMED_OUT_QUERY_STATUS,
+            "rows_returned": 0,
+            "test_type": test_type,
+            "stream_id": entry["stream_id"],
+            "error": "Stopped at the run time limit while the query was running",
+        }
+        for entry in getattr(result, "timed_out_queries", None) or []
+    ]

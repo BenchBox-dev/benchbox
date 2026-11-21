@@ -73,8 +73,8 @@ class TPCHThroughputTestConfig:
     num_streams: int = 2
     scale_factor: float = 1.0
     base_seed: int = 42
-    query_timeout: int = 300
-    stream_timeout: int = 3600
+    query_timeout: int | None = None
+    stream_timeout: int | None = None
     max_retries: int = 3
     enable_validation: bool = True
     output_dir: Path | None = None

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -104,6 +105,16 @@ class OnehouseClient:
 
         self._session: Any = None
         self._cluster_id: str | None = None
+        self._started_jobs: set[str] = set()
+        self._jobs_lock = threading.Lock()
+
+    def _remember_job(self, job_id: str) -> None:
+        with self._jobs_lock:
+            self._started_jobs.add(job_id)
+
+    def _forget_job(self, job_id: str) -> None:
+        with self._jobs_lock:
+            self._started_jobs.discard(job_id)
 
     def _get_session(self) -> Any:
         if self._session is None:
@@ -212,13 +223,9 @@ class OnehouseClient:
 
     def terminate_cluster(self) -> None:
         if self._cluster_id:
-            try:
-                self._request("DELETE", f"/clusters/{self._cluster_id}")
-                logger.info(f"Terminated cluster: {self._cluster_id}")
-            except Exception as e:
-                logger.warning(f"Failed to terminate cluster: {e}")
-            finally:
-                self._cluster_id = None
+            self._request("DELETE", f"/clusters/{self._cluster_id}")
+            logger.info(f"Terminated cluster: {self._cluster_id}")
+            self._cluster_id = None
 
     def submit_sql_job(
         self,
@@ -248,6 +255,7 @@ class OnehouseClient:
 
         response = self._request("POST", "/jobs", data=data)
         submitted_job_id = response.get("job_id", job_id)
+        self._remember_job(submitted_job_id)
         logger.debug(f"Submitted SQL job: {submitted_job_id}")
         return submitted_job_id
 
@@ -281,6 +289,7 @@ class OnehouseClient:
 
         response = self._request("POST", "/jobs", data=data)
         submitted_job_id = response.get("job_id", job_id)
+        self._remember_job(submitted_job_id)
         logger.debug(f"Submitted PySpark job: {submitted_job_id}")
         return submitted_job_id
 
@@ -315,6 +324,7 @@ class OnehouseClient:
             result = self.get_job_status(job_id)
 
             if result.state.is_terminal:
+                self._forget_job(job_id)
                 if result.state.is_success:
                     logger.info(f"Job {job_id} succeeded in {result.duration_seconds:.1f}s")
                     return result
@@ -329,7 +339,24 @@ class OnehouseClient:
 
     def cancel_job(self, job_id: str) -> None:
         self._request("POST", f"/jobs/{job_id}/cancel")
+        self._forget_job(job_id)
         logger.info(f"Cancelled job: {job_id}")
+
+    def cancel_started_work(self) -> None:
+        with self._jobs_lock:
+            job_ids = sorted(self._started_jobs)
+        failures: list[str] = []
+        for job_id in job_ids:
+            try:
+                self.cancel_job(job_id)
+            except Exception as exc:
+                failures.append(f"job {job_id}: {exc}")
+        try:
+            self.terminate_cluster()
+        except Exception as exc:
+            failures.append(f"cluster {self._cluster_id}: {exc}")
+        if failures:
+            raise RuntimeError("Could not cancel Onehouse " + "; ".join(failures))
 
     def get_job_results(self, job_id: str) -> list[dict[str, Any]]:
         response = self._request("GET", f"/jobs/{job_id}/results")
@@ -344,7 +371,10 @@ class OnehouseClient:
         logger.info(f"Created database: {database}")
 
     def close(self) -> None:
-        self.terminate_cluster()
+        try:
+            self.terminate_cluster()
+        except Exception as e:
+            logger.warning(f"Failed to terminate cluster: {e}")
         if self._session:
             self._session.close()
             self._session = None

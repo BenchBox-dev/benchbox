@@ -12,6 +12,7 @@ from benchbox.core.tpch.platform_power import (
     _power_query_result,
     _power_test_error_result,
 )
+from benchbox.utils.run_deadline import run_stop_requested
 
 TPCDS_BENCHMARK_ID = "tpcds"
 
@@ -54,6 +55,8 @@ def execute_tpcds_power_test(
         all_results = []
 
         for i in range(warm_up_iterations):
+            if run_stop_requested():
+                break
             current_stream_id = i
             console.print(f"[cyan]--- Warm-up Run {i + 1}/{warm_up_iterations} ---[/cyan]")
             power_test = TPCDSPowerTest(
@@ -79,6 +82,8 @@ def execute_tpcds_power_test(
                 )
 
         for i in range(iterations):
+            if run_stop_requested():
+                break
             current_stream_id = warm_up_iterations + i
             console.print(f"[cyan]--- Measurement Run {i + 1}/{iterations} ---[/cyan]")
             power_test = TPCDSPowerTest(
@@ -135,7 +140,7 @@ def execute_tpcds_power_test(
             if not power_test_result.success:
                 if power_test_result.queries_successful == 0:
                     console.print("[yellow]⚠️  All queries failed - aborting remaining measurement runs[/yellow]")
-                    if not query_results:
+                    if not query_results and not run_stop_requested():
                         all_results.append(
                             _power_test_error_result(
                                 "; ".join(power_test_result.errors)

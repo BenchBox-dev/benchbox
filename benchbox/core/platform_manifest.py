@@ -1084,6 +1084,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "sql_dialect": "bigquery",
       "supports_dataframe": false,
       "default_mode": "sql",
+      "run_timeout_cleanup": true,
       "cost_class": "paid_credits"
     },
     "required_credentials": [
@@ -2774,6 +2775,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
+      "run_timeout_cleanup": true,
       "cost_class": "paid_compute"
     },
     "support_status": "experimental"
@@ -2813,6 +2815,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
+      "run_timeout_cleanup": true,
       "cost_class": "paid_compute",
       "compute": {
         "resource_kind": "application",
@@ -2908,6 +2911,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
+      "run_timeout_cleanup": true,
       "cost_class": "paid_compute",
       "compute": {
         "resource_kind": "cluster",
@@ -3412,6 +3416,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "supports_dataframe": true,
       "default_mode": "sql",
       "platform_family": "spark",
+      "run_timeout_cleanup": true,
       "cost_class": "paid_compute",
       "compute": {
         "resource_kind": null,

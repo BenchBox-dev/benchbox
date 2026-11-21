@@ -34,6 +34,7 @@ def _operation(function: str, operation_type: str, table: str, rows: int, succes
         rows_affected=rows,
         success=success,
         error=error,
+        timed_out=False,
     )
 
 

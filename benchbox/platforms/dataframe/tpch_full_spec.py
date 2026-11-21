@@ -9,13 +9,14 @@ from benchbox.core.plan_capture_phase import propagate_query_execution_metadata
 from benchbox.core.results.models import ThroughputTestPhase
 from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS
 from benchbox.core.throughput.entrypoints import finalize_throughput_metrics
+from benchbox.core.throughput.result import timed_out_query_rows
 from benchbox.core.tpc_spec import refresh_functions_enabled
 from benchbox.core.tpch.dataframe_refresh import DataFrameRefresher, execute_refresh_function
 from benchbox.core.tpch.dataframe_throughput import DataFrameTPCHThroughputTest
 from benchbox.core.tpch.platform_power import _power_test_error_result
 from benchbox.core.tpch.refresh import TPCHRefreshUpdateSet, generate_refresh_update_sets
 from benchbox.core.tpch.throughput_test import TPCHThroughputTestConfig
-from benchbox.platforms.base.execution import TestDriversMixin, _throughput_config_options
+from benchbox.platforms.base.execution import TestDriversMixin, _throughput_config_options, _throughput_row_status
 from benchbox.platforms.base.result_capture import ResultCaptureMixin
 
 
@@ -166,7 +167,7 @@ def run_throughput(
             row = {
                 "query_id": query_result.get("query_id"),
                 "execution_time_seconds": query_result.get("execution_time_seconds", 0.0),
-                "status": "SUCCESS" if query_result.get("success") else "FAILED",
+                "status": _throughput_row_status(query_result),
                 "rows_returned": query_result.get("result_count", 0),
                 "test_type": "throughput",
                 "stream_id": stream.stream_id,
@@ -178,4 +179,8 @@ def run_throughput(
                 row["error"] = query_result.get("error", "Unknown error")
             propagate_query_execution_metadata(query_result, row)
             rows.append(row)
+    rows.extend(
+        {**row, "iteration": 1, "run_type": "measurement", "data_refreshed": plan is not None}
+        for row in timed_out_query_rows(result)
+    )
     return phase, rows
