@@ -44848,11 +44848,12 @@
     "tpcdi-26-platform-presto-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-25-platform-trino-20261120"
+        "tpcdi-25-platform-trino-20261120",
+        "tpcdi-first-publication-20261121"
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 36: Presto: ETL, visibility and full audit"
+      "title": "TPC-DI step 40: Presto: ETL, visibility and full audit"
     },
     "tpcdi-27-platform-lakesail-20261120": {
       "claim": null,
