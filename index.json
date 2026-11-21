@@ -24701,7 +24701,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "blocked",
+      "status": "open",
       "title": "Corpus classification and seed provenance fixes from the remediation review"
     },
     "feature-fix-restore-tpcds-scale-range-20261120": {
