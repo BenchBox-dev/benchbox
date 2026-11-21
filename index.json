@@ -44927,7 +44927,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "TPC-DI correction plan: owner decisions and step sequence (notes; not a work item)"
     },
     "tpcdi-deterministic-generation-contract": {
