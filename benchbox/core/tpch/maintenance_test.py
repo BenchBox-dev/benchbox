@@ -7,10 +7,10 @@
 
 import logging
 import tempfile
-import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from time import sleep
 from typing import Any, Callable, Optional
 
 from benchbox.core.tpch.refresh import (
@@ -202,7 +202,7 @@ class TPCHMaintenanceTest:
             result.successful_operations += 1
 
             if rf1_interval > 0:
-                time.sleep(limit_to_remaining(rf1_interval))
+                sleep(limit_to_remaining(rf1_interval))
 
             if stop_requested_before_query("RF2"):
                 result.stopped_at_time_limit = True
@@ -218,7 +218,7 @@ class TPCHMaintenanceTest:
             result.successful_operations += 1
 
             if rf2_interval > 0 and pair_id < maintenance_pairs - 1:
-                time.sleep(limit_to_remaining(rf2_interval))
+                sleep(limit_to_remaining(rf2_interval))
 
         return self._finish_maintenance_test(result, start_time)
 
