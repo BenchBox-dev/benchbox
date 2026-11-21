@@ -1330,15 +1330,9 @@ edits bundle JSON.
 | `fc04d558` | SQLite read_primitives SF0.01 | 2026-10-28 09:28:29 EDT | `be144e04f` | 30.25.0.2 | C |
 | `8edf1667` | SQLite read_primitives SF0.1 | 2026-10-28 09:29:52 EDT | `be144e04f` | 30.25.0.2 | C |
 | `093d2262` | DataFusion clickbench SF1 | 2026-10-28 10:05:25 EDT | `6acbcee6f` | 30.25.0.2 | D |
-| `328320ea` | DataFusion tpcdi SF0.01 | 2026-10-28 10:05:44 EDT | `6acbcee6f` | 30.25.0.2 | D |
-| `fb67aa79` | DataFusion tpcdi SF0.1 | 2026-10-28 10:05:54 EDT | `6acbcee6f` | 30.25.0.2 | D |
-| `ffe633e9` | DataFusion tpcdi SF1 | 2026-10-28 10:06:15 EDT | `6acbcee6f` | 30.25.0.2 | D |
 | `2594968f` | ClickHouse Local coffeeshop SF0.01 | 2026-10-28 14:06:52 UTC | `6acbcee6f` | 30.25.0.2 | D |
 | `da48d384` | ClickHouse Local coffeeshop SF0.1 | 2026-10-28 14:07:04 UTC | `6acbcee6f` | 30.25.0.2 | D |
 | `2888c2d3` | ClickHouse Local coffeeshop SF1 | 2026-10-28 14:07:31 UTC | `6acbcee6f` | 30.25.0.2 | D |
-| `3c9d9330` | ClickHouse Local tpcdi SF0.01 | 2026-10-28 14:08:02 UTC | `6acbcee6f` | 30.25.0.2 | D |
-| `61e36e9c` | ClickHouse Local tpcdi SF0.1 | 2026-10-28 14:08:31 UTC | `6acbcee6f` | 30.25.0.2 | D |
-| `30a5c9d1` | ClickHouse Local tpcdi SF1 | 2026-10-28 14:09:13 UTC | `6acbcee6f` | 30.25.0.2 | D |
 | `ac8474d7` | DataFusion read_primitives SF0.01 | 2026-10-28 15:59:34 EDT | `a6a78db53` | 30.25.0.2 | E |
 | `a45d3e71` | DataFusion read_primitives SF0.1 | 2026-10-28 15:59:41 EDT | `a6a78db53` | 30.25.0.2 | E |
 
@@ -1921,3 +1915,54 @@ on the project's Apple M4 (10 cores). The attestation is a `cpu_attestation` obj
 with `cpu_identity_provenance: user_attested`; no bundle was edited, so no result id moved. The 27 that had a sidecar had it edited to carry the attestation; the other 18 had none, so a minimal one
 (`bundle_file`, `bundle_hash`, `manifest_version`, `funding`, `result_source`, `submitted_by`, as on every
 sibling run) was added. This is an operator attestation, not a measurement.
+
+## TPC-DI results withdrawn (2026-11-21)
+
+Reason: "Withdrawn: these results timed BenchBox-written queries on BenchBox-generated tables and did not measure the TPC-DI workload."
+
+All 33 published TPC-DI bundles were removed from the corpus with their 24 `.manifest.json` sidecars (57 files; the nine bundles
+under `tpcdi/<platform>/sf<scale>/` never had a sidecar). The bytes stay in Git history, and each row below lists the SHA-256
+of the deleted file as committed at `17781bacab05049c432152aeba495ba829455a48` (recover one with
+`git show 17781bacab05049c432152aeba495ba829455a48:results-data/bundles/<file>`).
+
+The owner released the A0 deletion restriction for these 33 bundles on 2026-11-21: "I release the A0 deletion restriction for these 33 TPC-DI bundles; delete them as the item says, and amend the runbook in the same PR to say this release exists". The release covers only these bundles; `docs/internal/results-phase-2-runbook.md` records it.
+
+The bundle validator now refuses any bundle whose benchmark is `tpcdi` with "TPC-DI bundles are not accepted while BenchBox reworks TPC-DI.", and the seed workflow no longer has TPC-DI cells. The same paths must also be removed from `published-results` by a deletion-only PR, because the mirror's union overlay does not propagate develop-side deletions. `publication/ledger-seed.json` was regenerated without the 9 withdrawn `tpcdi/<platform>/sf*` paths, which existed only on `develop`, and stays pinned to its recorded `published-results` snapshot (`8aaa9921f76e78a04b3d66fe93889c417d390346`). The 24 root-level withdrawn bundles still exist at that snapshot, so the seed now lists them as `published_only`. The seed is recut against the cleaned mirror after the `published-results` deletion lands. Restoring TPC-DI results means fresh runs of the reworked benchmark, not reverting this removal.
+
+Six of the 2026-10-28 rows of the per-bundle wheel table in "Wheel consistency" covered withdrawn TPC-DI bundles (ids `328320ea`, `fb67aa79`, `ffe633e9`, `3c9d9330`, `61e36e9c` and `30a5c9d1`, all fork 30.25.0.2). They were removed from that table with the bundles, so the table now covers 52 bundles: 44 on fork 30.24.0.17 and 8 on fork 30.25.0.2.
+
+| Result id | SHA-256 of the deleted file | File (under `results-data/bundles/`) |
+|-----------|-----------------------------|--------------------------------------|
+| `tpcdi-bigquery-sf0.1-20260920-50833ab1` | `50833ab1345beff8ae16e9ac79ab0a86dd31f339adab47089ef11c8555d5c1d9` | `tpcdi_sf01_bigquery_sql_20260920_062227_ca696883.json` |
+| `tpcdi-bigquery-sf1.0-20260920-880ddd44` | `880ddd4414db46e676be066f1d3d4f85031c1fff92c158b4ffb1b4674368de88` | `tpcdi_sf1_bigquery_sql_20260920_064220_bc5850d1.json` |
+| `tpcdi-bigquery-sf10.0-20260920-5405819b` | `5405819b8c4b1cad00ecd75b8e8173628c76c8195c675d3db6bc08cfc71a940a` | `tpcdi_sf10_bigquery_sql_20260920_070853_5d042935.json` |
+| `tpcdi-clickhouse-local-sf0.01-20260826-86adc960` | `86adc9601866782434decb140b6880a3bbdd32ef96a7605a8e4f5e29e1fe793b` | `tpcdi_sf001_clickhouse_local_sql_20260826_171147_01f31a9c.json` |
+| `tpcdi-clickhouse-local-sf0.01-20261028-eeca1e77` | `eeca1e7735a26fa202bf0f8141227157a0e90367c2896b77f871346400c5d011` | `tpcdi_sf001_clickhouse_local_sql_20261028_140802_3c9d9330.json` |
+| `tpcdi-clickhouse-local-sf0.01-20261117-8750c480` | `8750c4800ad9bf271c1b6794ac39448938bcb17a9c3d419709aaf0f824ce317d` | `tpcdi/clickhouse-local/sf0.01/tpcdi_sf001_clickhouse_local_sql_20261117_203916_d5f90a36.json` |
+| `tpcdi-clickhouse-local-sf0.1-20260826-8baa4788` | `8baa4788c4a734c79121974cd77be704e9b5ad9d5bf35a17ad2473121acd9608` | `tpcdi_sf01_clickhouse_local_sql_20260826_171153_4d6e3213.json` |
+| `tpcdi-clickhouse-local-sf0.1-20261028-dcf70cc7` | `dcf70cc74becd1679b3701f4c32b5478fbe3d6055bda70dc42bf3c7e3ee3fda5` | `tpcdi_sf01_clickhouse_local_sql_20261028_140831_61e36e9c.json` |
+| `tpcdi-clickhouse-local-sf0.1-20261117-9c150fdb` | `9c150fdb45a52a9079be9162dd6e46e6f4477bef44fff043d45a566a74397366` | `tpcdi/clickhouse-local/sf0.1/tpcdi_sf01_clickhouse_local_sql_20261117_203745_ffa60778.json` |
+| `tpcdi-clickhouse-local-sf1.0-20260826-2f4080c8` | `2f4080c8021b701921985a5a6c54fa2cf69bf8328a1cb3661a618ab51c6d72ce` | `tpcdi_sf1_clickhouse_local_sql_20260826_171209_b6f8b467.json` |
+| `tpcdi-clickhouse-local-sf1.0-20261028-60c7a071` | `60c7a071cae40452f4ac425c547c9330b2455d23c66a09a53aedffe2d2f0a6ac` | `tpcdi_sf1_clickhouse_local_sql_20261028_140913_30a5c9d1.json` |
+| `tpcdi-clickhouse-local-sf1.0-20261117-7491134d` | `7491134d3d53e0a2fa3abdbadd61575deda20824559a016eb754602f2936c540` | `tpcdi/clickhouse-local/sf1.0/tpcdi_sf1_clickhouse_local_sql_20261117_204913_e679167e.json` |
+| `tpcdi-databricks-sf0.1-20261003-7090665b` | `7090665b7c4004faae7df4f28ffa50839a049cedce62e6d5e3974c488070631a` | `tpcdi_sf01_databricks_sql_20261003_201241_01329d67.json` |
+| `tpcdi-databricks-sf1.0-20261003-79422891` | `79422891b9bb4dee3af75569b7ad91008ba3007e6510b22e7aaea038a84e3dce` | `tpcdi_sf1_databricks_sql_20261003_201821_dbfb95fb.json` |
+| `tpcdi-databricks-sf10.0-20261003-435a6a90` | `435a6a90b7fc3276ccad64e91b0fd7b402d7334f4c20fb474abf74d9911474a8` | `tpcdi_sf10_databricks_sql_20261003_202752_92040a00.json` |
+| `tpcdi-datafusion-sf0.01-20260826-64cf3dd6` | `64cf3dd658c2aee01c6976276bd32b7d9981bb6c14bdf855386dbdb28f5a1c1e` | `tpcdi_sf001_datafusion_sql_20260826_164627_b9971b30.json` |
+| `tpcdi-datafusion-sf0.01-20261028-91c82eeb` | `91c82eeb51bb2b968a372c5862a0df87706fc76ed1ac80584346ada78c9fda5f` | `tpcdi_sf001_datafusion_sql_20261028_100544_328320ea.json` |
+| `tpcdi-datafusion-sf0.01-20261117-165b73dd` | `165b73ddbb885e4f22277a67b331396bd70e321219a6034deaadbacc53ba3338` | `tpcdi/datafusion/sf0.01/tpcdi_sf001_datafusion_sql_20261117_203232_566468b4.json` |
+| `tpcdi-datafusion-sf0.1-20260826-6a52536a` | `6a52536a4506c00802b7bcc8db5fbeecd3666f5d42b1094f64c44bd60d2267ad` | `tpcdi_sf01_datafusion_sql_20260826_164631_51f0bade.json` |
+| `tpcdi-datafusion-sf0.1-20261028-a196b089` | `a196b089245355bf183d36038dd0ed057dd2e3f361b782ba6746acd37fc5b0e7` | `tpcdi_sf01_datafusion_sql_20261028_100554_fb67aa79.json` |
+| `tpcdi-datafusion-sf0.1-20261117-a802dd3e` | `a802dd3e8883e5f4829fe0a5704fca7a564e923a1c5a7dea74c979dde1c8a812` | `tpcdi/datafusion/sf0.1/tpcdi_sf01_datafusion_sql_20261117_211846_8c2098bb.json` |
+| `tpcdi-datafusion-sf1.0-20260826-e76e1eeb` | `e76e1eebe037f15dcd47df33a04198961c0f727e771352a5fc45428224990bf2` | `tpcdi_sf1_datafusion_sql_20260826_164643_85837db4.json` |
+| `tpcdi-datafusion-sf1.0-20261028-2c2b4be9` | `2c2b4be915212964d008f51e35a813551b991ed1dcdd9c3e48b1e53ac83d373f` | `tpcdi_sf1_datafusion_sql_20261028_100615_ffe633e9.json` |
+| `tpcdi-datafusion-sf1.0-20261117-7c3bddb0` | `7c3bddb087352bc012354c2e5823d60683235a1d7ff4fd204ebd005203418f35` | `tpcdi/datafusion/sf1.0/tpcdi_sf1_datafusion_sql_20261117_205257_04d57c98.json` |
+| `tpcdi-duckdb-sf0.01-20260826-d2855bbe` | `d2855bbe5b6aa5ed3e41d0de2ce1426677f0b115a82c98ed2e2fd7b592827814` | `tpcdi_sf001_duckdb_sql_20260826_162441_115bd3b6.json` |
+| `tpcdi-duckdb-sf0.01-20261117-600db931` | `600db931454b7cdc957aa42f99326590e49c550a072bf7badfefb5f598dc625f` | `tpcdi/duckdb/sf0.01/tpcdi_sf001_duckdb_sql_20261117_205606_057484ea.json` |
+| `tpcdi-duckdb-sf0.1-20260826-76655e8e` | `76655e8ef85764b9e47ff71c7b86a73de0861b91523703f9e5ea4d15f89c57d0` | `tpcdi_sf01_duckdb_sql_20260826_162507_1769a68f.json` |
+| `tpcdi-duckdb-sf0.1-20261117-99886293` | `998862933f1fd8a7df6ca46964dbddcf63b66ebefb108d8e02c7829c39c386e0` | `tpcdi/duckdb/sf0.1/tpcdi_sf01_duckdb_sql_20261117_203521_a2815a70.json` |
+| `tpcdi-duckdb-sf1.0-20260826-995ebac8` | `995ebac81101656fcd14ddcb77ba70ed9855354bfe5fd80189db96cb82ccdcab` | `tpcdi_sf1_duckdb_sql_20260826_162542_1eb31887.json` |
+| `tpcdi-duckdb-sf1.0-20261117-c1cdc1fe` | `c1cdc1fe1428df7f87bc59e21ebda6bce64859f753409ffe1341963fcf77c39d` | `tpcdi/duckdb/sf1.0/tpcdi_sf1_duckdb_sql_20261117_211907_d6da4d14.json` |
+| `tpcdi-snowflake-sf0.1-20261003-a2278dd3` | `a2278dd3c80e496e356656892aba794a439e2ed38dd6ae567f41f35ff61beb69` | `tpcdi_sf01_snowflake_sql_20261003_134247_5dd95d51.json` |
+| `tpcdi-snowflake-sf1.0-20261003-c07dfbfb` | `c07dfbfb958838ced93a8e6635b0a806cd0223ccda4735643d4d48a110a0bab1` | `tpcdi_sf1_snowflake_sql_20261003_134837_b45dfad3.json` |
+| `tpcdi-snowflake-sf10.0-20261003-629dab08` | `629dab0882992676c47046f42bf6746c7eb3c8bae785ebb8dd9527fc667ec6e0` | `tpcdi_sf10_snowflake_sql_20261003_135304_9ec08998.json` |
