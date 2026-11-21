@@ -44854,7 +44854,7 @@
         "tpcdi-28-platform-bigquery-20261120"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "TPC-DI step 29: Snowflake: ETL, visibility and full audit"
     },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
