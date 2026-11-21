@@ -44838,11 +44838,12 @@
     "tpcdi-25-platform-trino-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-24-platform-cedardb-20261120"
+        "tpcdi-24-platform-cedardb-20261120",
+        "tpcdi-first-publication-20261121"
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 35: Trino: ETL, visibility and full audit"
+      "title": "TPC-DI step 39: Trino: ETL, visibility and full audit"
     },
     "tpcdi-26-platform-presto-20261120": {
       "claim": null,
