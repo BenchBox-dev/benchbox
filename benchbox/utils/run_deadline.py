@@ -90,8 +90,10 @@ class RunDeadline:
             if self._cleanup_worker is not None:
                 return
             cleanups = list(self._remote_cleanups.values())
+            began = mono_time()
 
             def cancel_all() -> None:
+                _CLEANUP_WINDOW.ends_at = began + graceful_cleanup_window_seconds()
                 for _owner, label, cleanup in cleanups:
                     try:
                         cleanup()
@@ -101,15 +103,15 @@ class RunDeadline:
 
             worker = threading.Thread(target=cancel_all, name="benchbox-remote-cleanup", daemon=True)
             self._cleanup_worker = worker
-            self._cleanup_began = mono_time()
+            self._cleanup_began = began
         worker.start()
 
     def cancel_remote_work(self, wait_seconds: float | None = None) -> list[str]:
         self.start_remote_cleanup()
         worker = self._cleanup_worker
         assert worker is not None and self._cleanup_began is not None
+        budget = graceful_cleanup_window_seconds()
         if wait_seconds is None:
-            budget = max(0.0, HARD_STOP_GRACE_SECONDS - HARD_STOP_EXPORT_MARGIN_SECONDS)
             wait_seconds = max(0.0, budget - elapsed_seconds(self._cleanup_began))
         else:
             budget = wait_seconds
@@ -255,6 +257,17 @@ class RunDeadline:
 
 
 _ACTIVE: contextvars.ContextVar[RunDeadline | None] = contextvars.ContextVar("benchbox_run_deadline", default=None)
+
+_CLEANUP_WINDOW = threading.local()
+
+
+def graceful_cleanup_window_seconds() -> float:
+    return max(0.0, HARD_STOP_GRACE_SECONDS - HARD_STOP_EXPORT_MARGIN_SECONDS)
+
+
+def remote_cleanup_seconds_left() -> float | None:
+    ends_at = getattr(_CLEANUP_WINDOW, "ends_at", None)
+    return None if ends_at is None else max(0.0, ends_at - mono_time())
 
 
 def current_run_deadline() -> RunDeadline | None:

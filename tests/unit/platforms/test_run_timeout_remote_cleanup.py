@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import threading
+import time
 from contextlib import ExitStack
 from types import SimpleNamespace
 from typing import Any
@@ -13,6 +14,8 @@ from benchbox.core.platform_manifest import PLATFORM_MANIFEST
 from benchbox.platforms.base.adapter import PlatformAdapter
 from benchbox.platforms.base.remote_work import StartedRemoteWork
 from benchbox.platforms.onehouse.onehouse_client import JobResult, JobState, OnehouseClient
+from benchbox.utils import run_deadline
+from benchbox.utils.run_deadline import RunDeadline
 
 pytestmark = [
     pytest.mark.unit,
@@ -309,7 +312,7 @@ def test_emr_serverless_waits_for_cancelled_runs_to_end_before_stopping_the_appl
     client.cancel_job_run.side_effect = lambda **_kwargs: calls.append("cancel")
     client.stop_application.side_effect = lambda **_kwargs: calls.append("stop")
 
-    with patch("benchbox.platforms.aws.emr_serverless_adapter.time.sleep"):
+    with patch("benchbox.platforms.aws.emr_serverless_adapter._pause"):
         emr_adapter.cancel_remote_work()
 
     assert calls == ["cancel", "poll", "poll", "poll", "stop"]
@@ -323,8 +326,8 @@ def test_emr_serverless_reports_runs_that_never_end_and_a_failed_application_sto
     client.stop_application.side_effect = RuntimeError("application has running jobs")
 
     with (
-        patch("benchbox.platforms.aws.emr_serverless_adapter.HARD_STOP_GRACE_SECONDS", 0.0),
-        patch("benchbox.platforms.aws.emr_serverless_adapter.time.sleep"),
+        patch("benchbox.platforms.aws.emr_serverless_adapter.remote_cleanup_seconds_left", return_value=0.0),
+        patch("benchbox.platforms.aws.emr_serverless_adapter._pause"),
         pytest.raises(RuntimeError) as excinfo,
     ):
         emr_adapter.cancel_remote_work()
@@ -332,6 +335,31 @@ def test_emr_serverless_reports_runs_that_never_end_and_a_failed_application_sto
     assert "run-1 had not ended" in str(excinfo.value)
     assert "application stop failed" in str(excinfo.value)
     assert emr_adapter._application_created_by_us is True
+
+
+def test_emr_serverless_stops_the_application_inside_the_window_the_caller_waits(emr_adapter, monkeypatch) -> None:
+    emr_module = importlib.import_module("benchbox.platforms.aws.emr_serverless_adapter")
+    client = _emr_client(emr_adapter)
+    emr_adapter._submit_job_run("SELECT 1")
+    emr_adapter._application_created_by_us = True
+    client.get_job_run.return_value = {"jobRun": {"state": "CANCELLING"}}
+    stopped_at: list[float] = []
+    client.stop_application.side_effect = lambda **_kwargs: stopped_at.append(time.monotonic())
+    monkeypatch.setattr(run_deadline, "HARD_STOP_GRACE_SECONDS", 1.5)
+    monkeypatch.setattr(run_deadline, "HARD_STOP_EXPORT_MARGIN_SECONDS", 0.5, raising=False)
+    monkeypatch.setattr(emr_module, "EMR_SERVERLESS_STOP_RESERVE_SECONDS", 0.4, raising=False)
+    monkeypatch.setattr(emr_module, "_pause", lambda _seconds: time.sleep(0.05), raising=False)
+    deadline = RunDeadline(5)
+    deadline.register_remote_cleanup(emr_adapter, emr_adapter.cancel_remote_work, "EMR Serverless")
+    began = time.monotonic()
+
+    errors = deadline.cancel_remote_work()
+
+    assert len(stopped_at) == 1
+    assert stopped_at[0] - began < 1.0
+    assert len(errors) == 1
+    assert "run-1 had not ended" in errors[0]
+    assert emr_adapter._application_created_by_us is False
 
 
 @pytest.fixture

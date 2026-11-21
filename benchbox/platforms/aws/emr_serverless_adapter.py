@@ -18,7 +18,7 @@ from benchbox.core.results.timer_scope import (
     outside_query_timer,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
-from benchbox.utils.run_deadline import HARD_STOP_EXPORT_MARGIN_SECONDS, HARD_STOP_GRACE_SECONDS
+from benchbox.utils.run_deadline import graceful_cleanup_window_seconds, remote_cleanup_seconds_left
 
 if TYPE_CHECKING:
     pass
@@ -53,6 +53,11 @@ logger = logging.getLogger(__name__)
 
 
 EMR_SERVERLESS_TERMINAL_STATES = frozenset({"SUCCESS", "FAILED", "CANCELLED"})
+EMR_SERVERLESS_STOP_RESERVE_SECONDS = 5.0
+
+
+def _pause(seconds: float) -> None:
+    time.sleep(seconds)
 
 
 class EMRServerlessJobState:
@@ -540,12 +545,10 @@ spark.stop()
                 raise RuntimeError(
                     f"EMR Serverless job runs {', '.join(pending)} had not ended after {budget_seconds:g} seconds"
                 )
-            time.sleep(1)
+            _pause(1)
 
     def cancel_remote_work(self) -> None:
         client = self._get_emr_serverless_client()
-        budget_seconds = HARD_STOP_GRACE_SECONDS - HARD_STOP_EXPORT_MARGIN_SECONDS
-        start_time = mono_time()
         job_run_ids = self._started_work.keys()
         failures: list[str] = []
         try:
@@ -557,8 +560,11 @@ spark.stop()
             failures.append(str(exc))
         cancelled = [job_run_id for job_run_id in job_run_ids if job_run_id not in self._started_work.keys()]
         if cancelled:
+            window = remote_cleanup_seconds_left()
+            if window is None:
+                window = graceful_cleanup_window_seconds()
             try:
-                self._wait_for_runs_to_end(client, cancelled, max(0.0, budget_seconds - elapsed_seconds(start_time)))
+                self._wait_for_runs_to_end(client, cancelled, max(0.0, window - EMR_SERVERLESS_STOP_RESERVE_SECONDS))
             except Exception as exc:
                 failures.append(str(exc))
         if self._application_created_by_us and self.application_id:
