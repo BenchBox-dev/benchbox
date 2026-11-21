@@ -44986,7 +44986,7 @@
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "TPC-DI step 19: delete the old ETL, DataFrame path and metric, and correct stale TPC-DI claims across the repository"
+      "title": "TPC-DI step 20: delete the old ETL, DataFrame path and metric"
     },
     "tpcdi-deterministic-generation-contract": {
       "claim": null,
