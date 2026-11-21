@@ -44877,7 +44877,8 @@
     "tpcdi-29-platform-snowflake-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-30-platform-databricks-20261120"
+        "tpcdi-30-platform-databricks-20261120",
+        "tpcdi-first-publication-20261121"
       ],
       "priority": "medium",
       "status": "blocked",
