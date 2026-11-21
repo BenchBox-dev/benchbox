@@ -950,6 +950,8 @@ class TestDriversMixin:
         }
         recorded: dict[tuple[str, int], Any] = {}
         for phase_key, phase_round in plan:
+            if run_deadline_expired():
+                break
             phase_label, method_name = labels[phase_key]
             phase_config = run_config
             if phase_round is not None:

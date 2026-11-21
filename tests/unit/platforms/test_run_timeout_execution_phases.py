@@ -1076,3 +1076,39 @@ class TestGizmoSQLReceivesTheRemainingTime:
             cursor._arm()
 
         assert "30s query_timeout" in str(cursor._timeout_error())
+
+
+class TestCombinedTestStopsBetweenPhases:
+    def _adapter(self, calls: list[str], clock: FakeClock | None) -> MockPlatformAdapter:
+        adapter = MockPlatformAdapter()
+
+        def phase(name: str) -> Any:
+            def run(benchmark: Any, connection: Any, run_config: dict[str, Any]) -> list[dict[str, Any]]:
+                calls.append(name)
+                if clock is not None:
+                    clock.now += 11
+                return []
+
+            return run
+
+        adapter._execute_tpch_power_test = phase("power")
+        adapter._execute_tpch_throughput_test = phase("throughput")
+        adapter._execute_tpch_maintenance_test = phase("maintenance")
+        return adapter
+
+    _CONFIG = {"benchmark_name": "tpch", "options": {"requested_phases": ["power", "throughput", "maintenance"]}}
+
+    def test_a_phase_is_not_started_after_the_deadline(self, clock) -> None:
+        calls: list[str] = []
+
+        with active_run_deadline(_deadline(10)):
+            self._adapter(calls, clock)._execute_combined_test(_benchmark(), Mock(), dict(self._CONFIG))
+
+        assert calls == ["power"]
+
+    def test_every_phase_runs_without_a_deadline(self) -> None:
+        calls: list[str] = []
+
+        self._adapter(calls, None)._execute_combined_test(_benchmark(), Mock(), dict(self._CONFIG))
+
+        assert sorted(calls) == ["maintenance", "power", "throughput"]
