@@ -24632,18 +24632,13 @@
       "title": "DECISION GATE: adopt a wall-clock fast-lane budget once 4 weeks of WS9 duration data exist"
     },
     "fast-tier-absolute-ceiling": {
-      "claim": {
-        "expires_at": "2026-11-21T19:25:42Z",
-        "generation": "2b4a9638a89a4d1a9d049ea7a6053882",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f5a04a89ab1412ae25ea9d7"
-      },
+      "claim": null,
       "needs": [
         "fast-tier-move-slow-tests-to-medium",
         "fast-tier-speed-up-repo-scans"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Add an absolute fast-tier duration ceiling the weekly refresh cannot raise"
     },
     "fast-tier-move-slow-tests-to-medium": {
