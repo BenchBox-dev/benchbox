@@ -60,8 +60,8 @@ is dropped, except Snowflake (drops this benchmark's tables and tuning metadata,
 
 ## Run time limit and remote work
 
-When a run time limit is set (`--timeout`, `execution.timeout_seconds`, `timeout_seconds=`), BenchBox prints one
-warning for every platform in the registry category `cloud`. No warning is printed without a limit (unset or `0`), and
+When a run time limit is set (`--timeout`, `execution.timeout_seconds`, `timeout_seconds=`), BenchBox warns once for
+every platform in the registry category `cloud`. No warning is printed without a limit (unset or `0`), and
 none for a local platform. Cleanup is implemented for Onehouse Quanton, Google BigQuery, Amazon EMR Serverless, AWS Glue
 and Google Dataproc; those platforms print:
 
@@ -74,14 +74,19 @@ Every other cloud platform prints:
 Cleanup has not been checked against live services. It is verified only with stubbed clients: no cloud run was made
 and no credentials were used. Work may keep running and billing after a timeout until a live check has been done.
 
-On a timeout, including the hard stop that ends a run that did not stop within 30 seconds of its limit, BenchBox calls
-one hook, `PlatformAdapter.cancel_remote_work`, on each adapter the run created. An adapter cancels only what this run
-started and has not seen finish: Onehouse jobs and a cluster it provisioned itself, BigQuery query jobs, EMR Serverless
-job runs and an application the run created, Glue job runs, and Dataproc jobs and an ephemeral cluster the run
-created. It never stops a warehouse, application, cluster or session that existed before the run. A failed cleanup does
-not change the exit code (124) or the `timed_out` result; its error is printed as `Remote cleanup failed: ...`. The
-cleanup is given 30 seconds to finish, so the hard stop can take up to 30 seconds longer than the limit plus the
-30-second grace.
+The cleanup starts when the run times out: when the timeout is recorded, or when the limit passes, whichever comes
+first. It calls one hook, `PlatformAdapter.cancel_remote_work`, on each adapter the run created. An adapter cancels
+only what this run started and has not seen finish: Onehouse jobs and a cluster it provisioned itself, BigQuery query
+jobs, EMR Serverless job runs and an application the run created, Glue job runs, and Dataproc jobs and an ephemeral
+cluster the run created. It never stops a warehouse, application, cluster or session that existed before the run. The
+hard stop waits for the cleanup only for what is left of its 30-second grace, so the hard bound stays the limit plus
+30 seconds. A cleanup that has not finished by then is reported as `Remote cleanup did not finish within 30 seconds`.
+A failed cleanup does not change the exit code (124) or the `timed_out` result; its error is printed to standard
+error as `Remote cleanup failed: ...`, also in a quiet run.
+
+The warning is shown on every surface that takes a limit: the command line (once per run, from the platform the run
+uses, including a platform chosen interactively), the `warnings` list of the MCP `run_benchmark` and `start_benchmark`
+results, and a log warning from `adapter.run_benchmark(timeout_seconds=...)` in Python.
 
 | Platform | Cancel a statement | Stop a job, session or cluster | Run-started work is known | Implemented |
 |---|---|---|---|---|

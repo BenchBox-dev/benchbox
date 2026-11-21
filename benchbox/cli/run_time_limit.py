@@ -12,7 +12,6 @@ from rich.markup import escape
 
 from benchbox.cli.exit_codes import ExitCode
 from benchbox.cli.shared import console
-from benchbox.core.platform_manifest import get_all_platform_aliases, get_platform_manifest_entry
 from benchbox.utils.run_deadline import (
     HARD_STOP_GRACE_SECONDS,
     RUN_TIMEOUT_CONFIG_KEY,
@@ -20,9 +19,9 @@ from benchbox.utils.run_deadline import (
     RunDeadline,
     active_run_deadline,
     arm_hard_stop,
+    cloud_cleanup_warning,
     current_run_deadline,
     end_descendant_processes,
-    remote_cleanup_warning,
     resolve_timeout_seconds,
 )
 
@@ -57,18 +56,7 @@ def report_timeout(deadline: RunDeadline) -> None:
 
 def report_cleanup_errors(deadline: RunDeadline) -> None:
     for error in deadline.cleanup_errors:
-        console.print(f"[red]Remote cleanup failed: {escape(error)}[/red]")
-
-
-def cloud_cleanup_warning(platform: str | None) -> str | None:
-    if not platform:
-        return None
-    key = platform.lower()
-    entry = get_platform_manifest_entry(get_all_platform_aliases().get(key, key))
-    if entry is None or entry.metadata_dict().get("category") != "cloud":
-        return None
-    implemented = bool(entry.capabilities.get("run_timeout_cleanup", False))
-    return remote_cleanup_warning(str(entry.metadata_dict().get("display_name") or entry.key), implemented)
+        click.echo(f"Remote cleanup failed: {error}", file=sys.__stderr__ or sys.stderr)
 
 
 def write_hard_stop_result(
@@ -105,13 +93,13 @@ def hard_stop(deadline: RunDeadline) -> None:
             f"[red]The run did not stop within {HARD_STOP_GRACE_SECONDS:g} seconds of its limit; BenchBox is exiting. "
             "Work on a remote platform may still be running.[/red]"
         )
+        deadline.cancel_remote_work()
+        report_cleanup_errors(deadline)
         if deadline.write_partial_result is not None:
             try:
                 deadline.write_partial_result()
             except Exception as exc:
                 console.print(f"[red]The partial result could not be written: {escape(str(exc))}[/red]")
-        deadline.cancel_remote_work()
-        report_cleanup_errors(deadline)
         deadline.stop_children()
         end_descendant_processes()
         logging.shutdown()
@@ -136,6 +124,9 @@ def bounded_orchestrated_run(execute: Callable[..., Any]) -> Callable[..., Any]:
         if deadline is None:
             return run()
 
+        warning = cloud_cleanup_warning(getattr(database_config, "type", None))
+        if warning:
+            console.print(f"[yellow]{escape(warning)}[/yellow]", soft_wrap=True)
         deadline.write_partial_result = functools.partial(
             write_hard_stop_result,
             deadline,
@@ -167,9 +158,6 @@ def run_within_time_limit(s: Any) -> None:
         dispatch_run(s)
         return
 
-    warning = cloud_cleanup_warning(s.platform)
-    if warning:
-        console.print(f"[yellow]{escape(warning)}[/yellow]", soft_wrap=True)
     deadline = RunDeadline(timeout_seconds, started=False)
     try:
         with active_run_deadline(deadline):

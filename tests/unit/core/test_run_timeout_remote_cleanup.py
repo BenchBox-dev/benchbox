@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from types import SimpleNamespace
 from typing import Any
 
@@ -16,6 +17,7 @@ from benchbox.utils.run_deadline import (
     active_run_deadline,
     current_run_deadline,
     register_remote_cleanup,
+    remote_cleanup_warning,
 )
 
 pytestmark = [
@@ -221,3 +223,44 @@ def test_a_python_run_without_a_timeout_cancels_nothing() -> None:
 
     assert _python_run(adapter) is result
     assert adapter.calls == 0
+
+
+def _named_adapter(class_name: str) -> PythonRunAdapter:
+    result = SimpleNamespace(validation_status="PASSED", validation_details={}, compliance_class=None)
+    adapter = type(class_name, (PythonRunAdapter,), {})(lambda _benchmark, **_kwargs: result)
+    adapter.logger = logging.getLogger("test.python.run")
+    return adapter
+
+
+@pytest.mark.parametrize(
+    "class_name, display_name, implemented",
+    [("QuantonAdapter", "Onehouse Quanton", True), ("SnowflakeAdapter", "Snowflake", False)],
+)
+def test_a_python_run_with_a_limit_logs_the_warning_for_a_cloud_adapter(
+    caplog, class_name, display_name, implemented
+) -> None:
+    adapter = _named_adapter(class_name)
+
+    with caplog.at_level(logging.WARNING, logger="test.python.run"):
+        _python_run(adapter)
+
+    assert [record.getMessage() for record in caplog.records] == [remote_cleanup_warning(display_name, implemented)]
+
+
+@pytest.mark.parametrize("class_name", ["DuckDBAdapter", "SqliteAdapter", "Unknown"])
+def test_a_python_run_with_a_limit_logs_no_warning_for_a_local_adapter(caplog, class_name) -> None:
+    adapter = _named_adapter(class_name)
+
+    with caplog.at_level(logging.WARNING, logger="test.python.run"):
+        _python_run(adapter)
+
+    assert caplog.records == []
+
+
+def test_a_python_run_without_a_limit_logs_no_warning_for_a_cloud_adapter(caplog) -> None:
+    adapter = _named_adapter("QuantonAdapter")
+
+    with caplog.at_level(logging.WARNING, logger="test.python.run"):
+        PlatformAdapter.run_benchmark(adapter, object())
+
+    assert caplog.records == []

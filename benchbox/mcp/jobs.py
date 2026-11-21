@@ -43,6 +43,7 @@ from benchbox.mcp.tools.benchmark import (
     _check_scale_factor,
     _execute_mcp_run_via_core,
     _resolve_mcp_mode_with_registry,
+    run_limit_warning,
 )
 from benchbox.utils.clock import mono_time, utc_now
 from benchbox.utils.run_deadline import validate_timeout_seconds
@@ -1577,7 +1578,11 @@ def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> No
         job, created = await anyio.to_thread.run_sync(
             lambda: runtime.repository.submit(principal.principal_id, request, idempotency_key=idempotency_key)
         )
-        return {**_public_status(job), "created": created}
+        started = {**_public_status(job), "created": created}
+        limit_warning = run_limit_warning(platform, timeout_seconds)
+        if limit_warning:
+            started["warnings"] = [*started.get("warnings", []), limit_warning]
+        return started
 
     @mcp.tool(
         description="Read the status of a benchmark job owned by the current principal.", annotations=READ_ANNOTATIONS

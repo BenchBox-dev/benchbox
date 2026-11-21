@@ -60,6 +60,7 @@ from benchbox.utils.clock import elapsed_seconds, mono_time, utc_now
 from benchbox.utils.printing import quiet_console
 from benchbox.utils.run_deadline import (
     RUN_TIMEOUT_OPTION_KEY,
+    adapter_cleanup_warning,
     enter_run_phase,
     mark_timed_out,
     own_run_deadline,
@@ -1085,6 +1086,10 @@ class PlatformAdapter(
 
     def run_benchmark(self, benchmark, **run_config) -> EnhancedBenchmarkResults:
         with own_run_deadline(run_config.pop(RUN_TIMEOUT_OPTION_KEY, None)) as deadline:
+            if deadline is not None:
+                warning = adapter_cleanup_warning(self)
+                if warning:
+                    self.logger.warning(warning)
             register_remote_cleanup(self, self.cancel_remote_work, self.__class__.__name__)
             try:
                 result = self.run_enhanced_benchmark(benchmark, **run_config)
