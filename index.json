@@ -8673,7 +8673,7 @@
         }
       },
       "integration_branch": "feat/run-timeout-core",
-      "integration_head": "4b89034084c158d22e6929fe5320e1f3008d5c1f",
+      "integration_head": "ccbe4a7638d3a6d33b70bdee122aff31f6a42772",
       "integration_log": [
         {
           "at": "2026-11-21T17:38:21Z",
@@ -8922,6 +8922,22 @@
             "run-timeout-remote-cleanup-20261120"
           ],
           "seq": 7
+        },
+        {
+          "at": "2026-11-21T23:25:54Z",
+          "changed_files": [
+            "benchbox/core/results/builder.py",
+            "benchbox/platforms/dataframe/benchmark_mixin.py",
+            "tests/unit/platforms/test_run_timeout_execution_phases.py"
+          ],
+          "head": "ccbe4a7638d3a6d33b70bdee122aff31f6a42772",
+          "kind": "fix",
+          "op_id": "e86b7dbda44d40b7bd49593caae2cb28",
+          "previous_head": "4b89034084c158d22e6929fe5320e1f3008d5c1f",
+          "requires_acceptance": [
+            "run-timeout-execution-phases-20261120"
+          ],
+          "seq": 8
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-core",
