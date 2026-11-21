@@ -44799,7 +44799,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 21: PostgreSQL: ETL, visibility and full audit"
+      "title": "TPC-DI step 31: PostgreSQL: ETL, visibility and full audit"
     },
     "tpcdi-22-platform-doris-20261120": {
       "claim": null,
