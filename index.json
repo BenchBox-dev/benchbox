@@ -45067,11 +45067,11 @@
     "tpcdi-incremental-dimensions-20261121": {
       "claim": null,
       "needs": [
-        "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121"
+        "tpcdi-correct-stale-claims-and-surfaces-20261121"
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "TPC-DI step 20: incremental updates, dimension tables"
+      "title": "TPC-DI step 22: incremental updates, dimension tables"
     },
     "tpcdi-incremental-facts-20261121": {
       "claim": null,
