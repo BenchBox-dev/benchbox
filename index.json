@@ -10781,6 +10781,89 @@
       "start_head": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
       "terminal_outcome": "deliver"
     },
+    "tpcdi-quarantine": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/tpcdi-quarantine",
+      "integration_head": "2d697c4ebda521cf95061cbab64cd7ba4e1760ad",
+      "integration_log": [
+        {
+          "at": "2026-11-21T18:14:59Z",
+          "head": "2d697c4ebda521cf95061cbab64cd7ba4e1760ad",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-quarantine",
+      "lifecycle": "active",
+      "members": [
+        "tpcdi-04-quarantine-run-path-20261120",
+        "tpcdi-05-remove-benchbox-queries-20261120"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e",
+      "owner_epoch": 0,
+      "owner_generation": "03a5b327ee118a31fa2891c1b89a74a6",
+      "project_id": "tpcdi-correction-plan-20261120",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "tpcdi-04-quarantine-run-path-20261120": [
+          "benchbox/__init__.py",
+          "benchbox/tpcdi.py",
+          "benchbox/core/*.py",
+          "benchbox/core/benchmark_registry.yaml",
+          "benchbox/core/tpcdi/**",
+          "benchbox/core/results/**",
+          "benchbox/core/publishing/**",
+          "benchbox/core/runner/**",
+          "benchbox/core/comparison/**",
+          "benchbox/cli/**",
+          "benchbox/mcp/**",
+          "benchbox/platforms/base/**",
+          "benchbox/validation/**",
+          "benchbox/utils/**",
+          "scripts/**",
+          "tests/**",
+          "examples/**",
+          "quality/**",
+          "docs/**",
+          "_project/inert-doc-readers.json",
+          "pyproject.toml",
+          ".github/soundness-paths.txt",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "tpcdi-05-remove-benchbox-queries-20261120": [
+          "benchbox/__init__.py",
+          "benchbox/tpcdi.py",
+          "benchbox/core/*.py",
+          "benchbox/core/benchmark_registry.yaml",
+          "benchbox/core/tpcdi/**",
+          "benchbox/core/results/benchmark_specs.yaml",
+          "benchbox/core/expected_results/**",
+          "benchbox/sql_compat/**",
+          "benchbox/cli/**",
+          "benchbox/mcp/**",
+          "scripts/**",
+          "tests/**",
+          "examples/**",
+          "quality/**",
+          "docs/**",
+          "_project/inert-doc-readers.json",
+          "pyproject.toml",
+          ".github/soundness-paths.txt",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "6f39a2bcb6276add584d833f7ce845d3b62c4ad23844fb256da7c9852bca9102",
+      "start_head": "2d697c4ebda521cf95061cbab64cd7ba4e1760ad",
+      "terminal_outcome": "deliver"
+    },
     "tpcds-dsdgen-maintenance": {
       "accepted_members": {
         "tpcds-maintenance-dsdgen-refresh-data-20261103": "ccd6d219046a58d82ba8e0c8ca336066292a079b"
