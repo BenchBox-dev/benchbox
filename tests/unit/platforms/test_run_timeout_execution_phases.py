@@ -24,6 +24,7 @@ from benchbox.core.tpch.throughput_test import TPCHThroughputTestConfig
 from benchbox.platforms.base import execution
 from benchbox.platforms.base.connection_wrappers import StreamConnectionCapability
 from benchbox.platforms.base.execution import TestDriversMixin
+from benchbox.platforms.dataframe import tpch_full_spec
 from benchbox.platforms.dataframe.benchmark_mixin import BenchmarkExecutionMixin
 from benchbox.utils import run_deadline
 from benchbox.utils.run_deadline import RunDeadline, active_run_deadline, limit_to_remaining
@@ -802,6 +803,37 @@ class TestThroughputStopsAtTheDeadline:
 
         assert any("timed out after 1" in error for error in result.errors)
         assert deadline.timeout is None
+
+
+class TestDataFrameThroughputStopsAtTheDeadline:
+    def test_a_dataframe_throughput_run_stops_at_the_deadline_with_the_in_flight_query_marked(self) -> None:
+        gate = threading.Event()
+        calls: list[Any] = []
+        lock = threading.Lock()
+
+        def execute_query(snapshot: Any, query: Any) -> dict[str, Any]:
+            with lock:
+                calls.append(query)
+            gate.wait(timeout=30)
+            return {"query_id": "Q1", "status": "SUCCESS", "rows_returned": 1, "execution_time_seconds": 0.0}
+
+        adapter = SimpleNamespace(execute_query=execute_query, platform_name="polars-df")
+        ctx = SimpleNamespace(snapshot=lambda: object())
+        benchmark_config = SimpleNamespace(
+            name="tpch", scale_factor=1.0, options={}, queries=["1", "2", "3"], concurrency=2
+        )
+        deadline = RunDeadline(1)
+        deadline.enter_phase("execute")
+
+        try:
+            with active_run_deadline(deadline):
+                phase, rows = tpch_full_spec.run_throughput(adapter, ctx, benchmark_config, None, False)
+        finally:
+            gate.set()
+
+        assert deadline.timeout is not None
+        assert sorted((row["stream_id"], row["status"]) for row in rows) == [(1, "TIMEOUT"), (2, "TIMEOUT")]
+        assert len(calls) == 2
 
 
 def _concurrent_with(as_completed: Any) -> Any:
