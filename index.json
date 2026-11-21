@@ -45074,6 +45074,13 @@
       "status": "open",
       "title": "Owner action: ask the databricks-tpc-di author to add a LICENSE file"
     },
+    "tpcdi-owner-action-place-official-archives-20261121": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Owner action: place the official TPC-DI Tools zip and Appendix archive under ~/Developer/tpc-tools/"
+    },
     "tpcdi-parallel-phase-truthful-outcome": {
       "claim": null,
       "needs": [
