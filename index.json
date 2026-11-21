@@ -33033,10 +33033,15 @@
       "title": "#2761 merged while its head carried a hollow oracle success; review it after merge"
     },
     "pr-4381-standin-comments-correction-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-22T16:19:30Z",
+        "generation": "072f2a42e7774340a75dabe5d53edf44",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Post one correcting comment on #4381, with the text approved first"
     },
     "pr-arm-cut-repeated-github-reads-20261117": {
