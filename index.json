@@ -44723,11 +44723,11 @@
     "tpcdi-13-digen-reference-path-and-comparison-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-12-duckdb-historical-load-and-audit-20261120"
+        "tpcdi-11-audit-recount-batch1-20261120"
       ],
       "priority": "medium",
-      "status": "blocked",
-      "title": "TPC-DI step 13: optional user-supplied DIGen source path and the one-off comparison"
+      "status": "open",
+      "title": "TPC-DI step 12: comparison harness with the DuckDB implementation, and the early full run"
     },
     "tpcdi-14-milestone-report-owner-stop-20261120": {
       "claim": null,
