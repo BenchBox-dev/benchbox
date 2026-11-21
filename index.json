@@ -44709,7 +44709,7 @@
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "TPC-DI step 11: independent recount for DIGen's known answer-key errors"
+      "title": "TPC-DI step 12: independent recount for DIGen's known answer-key errors"
     },
     "tpcdi-12-duckdb-historical-load-and-audit-20261120": {
       "claim": null,
