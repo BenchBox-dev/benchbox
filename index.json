@@ -44919,7 +44919,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 27: Results Explorer shows TPC_DI_RPS and phase throughputs"
+      "title": "TPC-DI step 31: Results Explorer shows TPC_DI_RPS and phase throughputs (benchbox-site, with the core read-model check)"
     },
     "tpcdi-bundle-tpc-di-tools-20261121": {
       "claim": null,
