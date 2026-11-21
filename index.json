@@ -44930,6 +44930,15 @@
       "status": "blocked",
       "title": "TPC-DI correction plan: owner decisions and step sequence (notes; not a work item)"
     },
+    "tpcdi-dataframe-pandas-20261121": {
+      "claim": null,
+      "needs": [
+        "tpcdi-31-dataframe-mode-20261120"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DI step 39: DataFrame mode on pandas"
+    },
     "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121": {
       "claim": null,
       "needs": [
