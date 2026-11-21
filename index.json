@@ -44826,7 +44826,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 24: CedarDB: ETL, visibility and full audit"
+      "title": "TPC-DI step 34: CedarDB: ETL, visibility and full audit"
     },
     "tpcdi-25-platform-trino-20261120": {
       "claim": null,
