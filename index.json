@@ -44727,7 +44727,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 12: comparison harness with the DuckDB implementation, and the early full run"
+      "title": "TPC-DI step 13: comparison harness with the DuckDB implementation, and the early full run"
     },
     "tpcdi-14-milestone-report-owner-stop-20261120": {
       "claim": null,
