@@ -32,6 +32,7 @@ from benchbox.platforms.base.cloud_spark import (
 )
 from benchbox.platforms.base.cloud_spark.config import CloudPlatform
 from benchbox.platforms.base.phase_tracking import _resolve_benchmark_table_names
+from benchbox.platforms.base.remote_work import StartedRemoteWork
 from benchbox.utils.dependencies import (
     check_platform_dependencies,
     get_dependency_error_message,
@@ -133,6 +134,7 @@ class EMRServerlessAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExterna
         self._total_vcpu_hours = 0.0
         self._total_memory_gb_hours = 0.0
         self._application_created_by_us = False
+        self._started_work = StartedRemoteWork()
 
         self._benchmark_type: str | None = None
         self._scale_factor: float = 1.0
@@ -419,6 +421,7 @@ spark.stop()
         }
 
         response = client.start_job_run(**job_config)
+        self._started_work.add(response["jobRunId"])
         return response["jobRunId"]
 
     def _wait_for_job_run(self, job_run_id: str) -> tuple[str, dict[str, Any]]:
@@ -435,9 +438,11 @@ spark.stop()
             state = job_run["state"]
 
             if state == EMRServerlessJobState.SUCCESS:
+                self._started_work.discard(job_run_id)
                 resource_usage = job_run.get("totalResourceUtilization", {})
                 return state, resource_usage
             if state in [EMRServerlessJobState.FAILED, EMRServerlessJobState.CANCELLED]:
+                self._started_work.discard(job_run_id)
                 error_msg = job_run.get("stateDetails", "Unknown error")
                 raise RuntimeError(f"Job failed with state {state}: {error_msg}")
 
@@ -514,6 +519,22 @@ spark.stop()
                 "error": str(e),
                 "error_type": type(e).__name__,
             }
+
+    def cancel_remote_work(self) -> None:
+        client = self._get_emr_serverless_client()
+        failure: Exception | None = None
+        try:
+            self._started_work.cancel_all(
+                "EMR Serverless",
+                lambda job_run_id, _: client.cancel_job_run(applicationId=self.application_id, jobRunId=job_run_id),
+            )
+        except Exception as exc:
+            failure = exc
+        if self._application_created_by_us and self.application_id:
+            client.stop_application(applicationId=self.application_id)
+            self._application_created_by_us = False
+        if failure is not None:
+            raise failure
 
     def close(self) -> None:
         if self._application_created_by_us and self.application_id:

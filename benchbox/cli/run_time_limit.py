@@ -19,6 +19,7 @@ from benchbox.utils.run_deadline import (
     RunDeadline,
     active_run_deadline,
     arm_hard_stop,
+    cloud_cleanup_warning,
     current_run_deadline,
     end_descendant_processes,
     resolve_timeout_seconds,
@@ -51,6 +52,11 @@ def dispatch_run(s: Any) -> None:
 
 def report_timeout(deadline: RunDeadline) -> None:
     console.print(f"\n[red]❌ {escape(str(deadline.record_timeout()))}[/red]")
+
+
+def report_cleanup_errors(deadline: RunDeadline) -> None:
+    for error in deadline.cleanup_errors:
+        click.echo(f"Remote cleanup failed: {error}", file=sys.__stderr__ or sys.stderr)
 
 
 def write_hard_stop_result(
@@ -87,6 +93,8 @@ def hard_stop(deadline: RunDeadline) -> None:
             f"[red]The run did not stop within {HARD_STOP_GRACE_SECONDS:g} seconds of its limit; BenchBox is exiting. "
             "Work on a remote platform may still be running.[/red]"
         )
+        deadline.cancel_remote_work()
+        report_cleanup_errors(deadline)
         if deadline.write_partial_result is not None:
             try:
                 deadline.write_partial_result()
@@ -116,6 +124,9 @@ def bounded_orchestrated_run(execute: Callable[..., Any]) -> Callable[..., Any]:
         if deadline is None:
             return run()
 
+        warning = cloud_cleanup_warning(getattr(database_config, "type", None))
+        if warning:
+            console.print(f"[yellow]{escape(warning)}[/yellow]", soft_wrap=True)
         deadline.write_partial_result = functools.partial(
             write_hard_stop_result,
             deadline,
@@ -160,4 +171,5 @@ def run_within_time_limit(s: Any) -> None:
         console.print(f"[red]❌ {escape(str(exc))}[/red]")
     if deadline.run_timed_out:
         report_timeout(deadline)
+        report_cleanup_errors(deadline)
         sys.exit(ExitCode.TIMEOUT)

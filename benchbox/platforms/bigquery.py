@@ -25,6 +25,7 @@ from benchbox.core.results.timer_scope import (
 )
 from benchbox.platforms.base.config_utils import make_registered_platform_config_builder
 from benchbox.platforms.base.mysql_wire import split_sql_statements
+from benchbox.platforms.base.remote_work import StartedRemoteWork
 from benchbox.platforms.base.tuning import make_informational_constraint_applier
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
@@ -105,6 +106,7 @@ class BigQueryAdapter(PlatformAdapter):
 
     def __init__(self, **config):
         super().__init__(**config)
+        self._started_work = StartedRemoteWork()
 
         available, missing = check_platform_dependencies("bigquery")
         if not available:
@@ -1630,8 +1632,12 @@ class BigQueryAdapter(PlatformAdapter):
 
             start_time = mono_time()
             query_job = connection.query(translated_query, job_config=job_config)
-            ledger.add_request(REQUEST_KIND_QUERY, self._statement_id_of(query_job))
-            result = list(query_job.result())
+            self._started_work.add(query_job.job_id, query_job)
+            try:
+                ledger.add_request(REQUEST_KIND_QUERY, self._statement_id_of(query_job))
+                result = list(query_job.result())
+            finally:
+                self._started_work.discard(query_job.job_id)
 
             execution_time = elapsed_seconds(start_time)
             actual_row_count = len(result) if result else 0
@@ -2140,6 +2146,9 @@ class BigQueryAdapter(PlatformAdapter):
             "recordsWritten": getattr(entry, "records_written", None),
             "steps": steps,
         }
+
+    def cancel_remote_work(self) -> None:
+        self._started_work.cancel_all("BigQuery", lambda _job_id, query_job: query_job.cancel())
 
     def close_connection(self, connection: Any) -> None:
         if not connection:

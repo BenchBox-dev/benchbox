@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "When a run time limit is set, BenchBox warns on every cloud platform that work it started may keep running and billing, and says whether it can cancel that work. On a timeout, including the hard stop, Onehouse Quanton, BigQuery, EMR Serverless, AWS Glue and Dataproc now cancel the jobs and the application or cluster the run started; a failed cleanup is printed and does not change exit code 124. The cleanup has not been checked against live services."
+    }
+  ]
+}

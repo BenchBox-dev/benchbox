@@ -58,7 +58,14 @@ from benchbox.platforms.base.tuning import TuningHooksMixin
 from benchbox.platforms.base.tuning_config import TuningConfigMixin
 from benchbox.utils.clock import elapsed_seconds, mono_time, utc_now
 from benchbox.utils.printing import quiet_console
-from benchbox.utils.run_deadline import RUN_TIMEOUT_OPTION_KEY, enter_run_phase, mark_timed_out, own_run_deadline
+from benchbox.utils.run_deadline import (
+    RUN_TIMEOUT_OPTION_KEY,
+    adapter_cleanup_warning,
+    enter_run_phase,
+    mark_timed_out,
+    own_run_deadline,
+    register_remote_cleanup,
+)
 from benchbox.utils.toggles import is_probe_requested
 from benchbox.utils.verbosity import VerbosityMixin, VerbositySettings
 
@@ -1074,9 +1081,21 @@ class PlatformAdapter(
         self._last_per_table_timings = per_table_timings
         return schema_time, schema_creation_phase, loading_time, table_stats, data_loading_phase, tuning_metadata_saved
 
+    def cancel_remote_work(self) -> None:
+        return None
+
     def run_benchmark(self, benchmark, **run_config) -> EnhancedBenchmarkResults:
         with own_run_deadline(run_config.pop(RUN_TIMEOUT_OPTION_KEY, None)) as deadline:
-            result = self.run_enhanced_benchmark(benchmark, **run_config)
+            if deadline is not None:
+                warning = adapter_cleanup_warning(self)
+                if warning:
+                    self.logger.warning(warning)
+            register_remote_cleanup(self, self.cancel_remote_work, self.__class__.__name__)
+            try:
+                result = self.run_enhanced_benchmark(benchmark, **run_config)
+            finally:
+                if deadline is not None and (deadline.timeout is not None or deadline.expired):
+                    deadline.cancel_remote_work()
         if deadline is not None and deadline.timeout is not None:
             deadline.timeout.partial_result = mark_timed_out(result, deadline)
             raise deadline.timeout
