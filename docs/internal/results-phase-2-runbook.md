@@ -179,6 +179,13 @@ inventory Git history, workflow artifacts, caches, mirrors, and inventory conseq
 Only then may operators use a narrow reviewed deletion PR; a full-tree wipe remains
 forbidden, and the deletion merge is never proof that public bytes are gone.
 
+On 2026-11-21 the owner released the A0 deletion restriction for the 33 withdrawn TPC-DI
+bundles listed in `results-data/CORPUS_NOTES.md`, on `develop` and on `published-results`:
+"I release the A0 deletion restriction for these 33 TPC-DI bundles; delete them as the item
+says, and amend the runbook in the same PR to say this release exists". The release covers
+only those 33 bundles and their sidecars. Every other path stays under the restrictions
+above, and the rest of this runbook is unchanged.
+
 If the workflow's heuristics ever miss a path (or a one-off mirror is
 needed outside the trigger conditions), trigger it manually via
 `workflow_dispatch` from the Actions tab.

@@ -100,52 +100,6 @@ jobs:
             phases: generate,load,power,throughput,maintenance
             streams: 4
 
-          - benchmark: tpcdi
-            platform: duckdb
-            scale_factor: "0.01"
-            extras: duckdb
-            official: false
-          - benchmark: tpcdi
-            platform: datafusion
-            scale_factor: "0.01"
-            extras: datafusion
-            official: false
-          - benchmark: tpcdi
-            platform: clickhouse-local
-            scale_factor: "0.01"
-            extras: clickhouse-local
-            official: false
-          - benchmark: tpcdi
-            platform: duckdb
-            scale_factor: "0.1"
-            extras: duckdb
-            official: false
-          - benchmark: tpcdi
-            platform: datafusion
-            scale_factor: "0.1"
-            extras: datafusion
-            official: false
-          - benchmark: tpcdi
-            platform: clickhouse-local
-            scale_factor: "0.1"
-            extras: clickhouse-local
-            official: false
-          - benchmark: tpcdi
-            platform: duckdb
-            scale_factor: "1.0"
-            extras: duckdb
-            official: false
-          - benchmark: tpcdi
-            platform: datafusion
-            scale_factor: "1.0"
-            extras: datafusion
-            official: false
-          - benchmark: tpcdi
-            platform: clickhouse-local
-            scale_factor: "1.0"
-            extras: clickhouse-local
-            official: false
-
           - benchmark: ssb
             platform: duckdb
             scale_factor: "0.01"
