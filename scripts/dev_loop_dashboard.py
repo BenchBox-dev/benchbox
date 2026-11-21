@@ -70,7 +70,7 @@ RED_CONCLUSIONS = frozenset({"failure", "timed_out"})
 CLOSED_STATUSES = frozenset({"done", "dropped"})
 UAT_NIGHTLY_STREAK = 7
 WORKFLOW_PATH_PREFIX = ".github/workflows/"
-ATTEMPTED_STATUSES = frozenset({"passed", "failed", "timed-out"})
+ATTEMPTED_STATUSES = frozenset({"passed", "failed", "timed-out", "hung"})
 
 TARGET_T1_SECONDS = 7 * 60
 TARGET_T2_SECONDS = 15 * 60
