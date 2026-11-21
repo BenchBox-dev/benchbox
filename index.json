@@ -44704,6 +44704,15 @@
       "status": "open",
       "title": "TPC-DI step 12 (milestone): DuckDB initialization, historical load and the audit gate"
     },
+    "tpcdi-13-digen-reference-path-and-comparison-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-12-duckdb-historical-load-and-audit-20261120"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DI step 13: optional user-supplied DIGen source path and the one-off comparison"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
