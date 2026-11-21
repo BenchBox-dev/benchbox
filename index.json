@@ -44767,6 +44767,15 @@
       "status": "open",
       "title": "TPC-DI step 19: DataFusion: ETL, visibility and full audit"
     },
+    "tpcdi-20-platform-clickhouse-local-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-19-platform-datafusion-20261120"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DI step 20: ClickHouse Local: ETL, visibility and full audit"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
