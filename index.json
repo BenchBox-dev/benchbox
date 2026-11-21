@@ -44719,7 +44719,7 @@
         "tpcdi-13-digen-reference-path-and-comparison-20261120"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "TPC-DI step 14: milestone report and owner stop"
     },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
