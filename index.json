@@ -44937,6 +44937,15 @@
       "status": "open",
       "title": "Finish the TPC-DI bundle regeneration evidence: same-generator comparison and site cohort views"
     },
+    "tpcdi-comment-policy-route-for-tpc-files-20261121": {
+      "claim": null,
+      "needs": [
+        "tpcdi-07-specification-schema-20261120"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 8: a route for owner-approved TPC files through the comment policy"
+    },
     "tpcdi-controls-empty-query-and-all-zero-validator-20261121": {
       "claim": null,
       "needs": [],
