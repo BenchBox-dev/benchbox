@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -27,16 +28,43 @@ HISTORICAL_BUNDLE_PATH = "results-data/bundles/tpcdi_sf001_duckdb_sql_20260826_1
 HISTORICAL_BUNDLE_SHA256 = "d2855bbe5b6aa5ed3e41d0de2ce1426677f0b115a82c98ed2e2fd7b592827814"
 
 
-def _historical_bundle_bytes() -> bytes:
-    completed = subprocess.run(
-        ["git", "show", f"{LAST_COMMIT_WITH_TPCDI_BUNDLES}:{HISTORICAL_BUNDLE_PATH}"],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        check=False,
+def _git(*args: str) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True, check=False)
+
+
+def _history_available() -> bool:
+    if _git("cat-file", "-e", f"{LAST_COMMIT_WITH_TPCDI_BUNDLES}^{{commit}}").returncode == 0:
+        return True
+    _git("fetch", "--no-tags", "origin", LAST_COMMIT_WITH_TPCDI_BUNDLES)
+    if _git("cat-file", "-e", f"{LAST_COMMIT_WITH_TPCDI_BUNDLES}^{{commit}}").returncode == 0:
+        return True
+    _git("fetch", "--no-tags", "origin", "develop")
+    return _git("cat-file", "-e", f"{LAST_COMMIT_WITH_TPCDI_BUNDLES}^{{commit}}").returncode == 0
+
+
+HISTORY_AVAILABLE = _history_available()
+ALLOW_MISSING_HISTORY = os.environ.get("BENCHBOX_ALLOW_MISSING_PUBLISHED_REF") == "1"
+
+
+def test_history_suite_is_not_silently_skipped() -> None:
+    assert HISTORY_AVAILABLE or ALLOW_MISSING_HISTORY, (
+        f"commit {LAST_COMMIT_WITH_TPCDI_BUNDLES} is unreachable; set BENCHBOX_ALLOW_MISSING_PUBLISHED_REF=1 "
+        "to allow an offline run, otherwise fetch develop so the withdrawn bundles can be checked"
     )
-    if completed.returncode != 0:
-        pytest.skip("Git history that holds the withdrawn TPC-DI bundle is not available in this checkout")
+
+
+def _history_bytes(path: str) -> bytes:
+    if not HISTORY_AVAILABLE:
+        if ALLOW_MISSING_HISTORY:
+            pytest.skip("the commit that holds the withdrawn TPC-DI bundles is unreachable and the opt-out is set")
+        pytest.fail(f"commit {LAST_COMMIT_WITH_TPCDI_BUNDLES} is unreachable")
+    completed = _git("show", f"{LAST_COMMIT_WITH_TPCDI_BUNDLES}:{path}")
+    assert completed.returncode == 0, completed.stderr.decode(errors="replace")
     return completed.stdout
+
+
+def _historical_bundle_bytes() -> bytes:
+    return _history_bytes(HISTORICAL_BUNDLE_PATH)
 
 
 def test_old_format_tpcdi_bundle_from_git_history_is_refused(tmp_path: Path) -> None:
@@ -98,12 +126,4 @@ def test_corpus_notes_list_the_33_withdrawn_bundles_with_the_owner_reason() -> N
 
 def test_corpus_notes_hashes_match_the_bundles_in_git_history() -> None:
     for result_id, digest, file in _withdrawal_rows():
-        completed = subprocess.run(
-            ["git", "show", f"{LAST_COMMIT_WITH_TPCDI_BUNDLES}:results-data/bundles/{file}"],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            check=False,
-        )
-        if completed.returncode != 0:
-            pytest.skip("Git history that holds the withdrawn TPC-DI bundles is not available in this checkout")
-        assert hashlib.sha256(completed.stdout).hexdigest() == digest, result_id
+        assert hashlib.sha256(_history_bytes(f"results-data/bundles/{file}")).hexdigest() == digest, result_id
