@@ -44923,6 +44923,13 @@
       "status": "open",
       "title": "Finish the TPC-DI bundle regeneration evidence: same-generator comparison and site cohort views"
     },
+    "tpcdi-controls-empty-query-and-all-zero-validator-20261121": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Results checks accept an always-empty query and an all-zero validator (found in the TPC-DI review)"
+    },
     "tpcdi-correction-plan-20261120": {
       "claim": null,
       "needs": [],
