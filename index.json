@@ -44884,6 +44884,15 @@
       "status": "open",
       "title": "TPC-DI step 32: core documentation and decision record"
     },
+    "tpcdi-33-site-pages-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-32-core-docs-and-adr-20261120"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DI step 33: rewrite the site's TPC-DI pages (benchbox-site)"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],

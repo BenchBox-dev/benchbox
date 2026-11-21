@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The site's TPC-DI page describes the specification workload, the label and the generator's status.",
+    "The two guides are gone."
+  ],
+  "context": "Step of the TPC-DI correction plan. Full plan with file paths and line numbers: local://tpcdi-correction-plan.md (planner report, agent://TpcdiCorrectionPlan). Reviews: agent://TpcdiQuerySetReview, agent://TpcdiRootCause. Generator research: agent://TpcdiDatagenAlternatives. Every owner decision is quoted on tpcdi-correction-plan-20261120. The planner's step numbers (S1..S20) are given for cross-reference only; line numbers in the plan are as of origin/develop ffc4de7750 and must be re-read before editing.",
+  "description": "## Problem\nThe site pages carry the rework notice and describe the old implementation.\n\n## Owner decisions (choice dialogs, 2026-11-20)\n- \"The two site guides (ETL guide, deployment guide) are deleted and their essentials folded into the main TPC-DI page.\"\n- Label verbatim on the page.\n\n## Change\nPlan S19. Rewrite docs/benchmarks/tpc-di.md and the Python API page against the new release pin; delete the two guides; update support-status.md; remove the notice.\n\n## Decision gates\nThe notice is removed only when a release containing step 18 is the site's pin. New claims on the page each cite the specification clause or a BenchBox file.\n\n## Verification rubric\nPass: `npm run docs:check`, `npm run test:docs-contracts` and `npm run build` pass; the page states the label, that data is BenchBox-generated and non-compliant under Clause 6, and which platforms pass the audit.\n\n## Guardrails (owner, 2026-11-20)\n- The agent never posts a stand-in review, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`.\n- Arming: `make pr-arm` once; one more attempt only when the refusal named a cause, the agent reported it and the cause is cleared; never a third without asking. `make pr-rerun` at most once and only for a job the runner never ran or cancelled, never for a failed test.\n- Review threads: reply; resolve only after the bot's review of the new head does not raise the finding again.\n- Subagents are read-only. No file edit by script; use the edit tool. Do not edit a pull request description while its CI is starting; post a comment.\n- Any limit, default, threshold, status token, message or label text the owner has not already chosen (see tpcdi-correction-plan-20261120) is shown to the owner before it is committed.\n- A blocked step stops this item; no workaround. No live cloud run. Heavy work only through `make heavy-run`. One pull request for this item, merged before the next item starts.\n- From the quarantine step until the reopening step, no TPC-DI entry point may produce a result that reads PASSED or is admitted for publication.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-21T01:30:37Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9282f121e2e74dfca05ee878a76aaea6",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    }
+  ]
+}
