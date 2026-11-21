@@ -45085,7 +45085,7 @@
         "tpcdi-provenance-record-and-copy-guard-20261121"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Owner action: ask the databricks-tpc-di author to add a LICENSE file"
     },
     "tpcdi-owner-action-place-official-archives-20261121": {
