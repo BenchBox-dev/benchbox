@@ -45037,7 +45037,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 28: first publication of a DuckDB TPC-DI result"
+      "title": "TPC-DI step 32: first publication of a DuckDB TPC-DI result"
     },
     "tpcdi-generator-ratios-and-speed-vs-spec-20261111": {
       "claim": null,
