@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A pull request into benchbox-site `next` documents `--timeout` on the run, datagen, MCP and configuration pages and has merged.",
+    "Every documented surface, value and message matches BenchBox develop."
+  ],
+  "context": "Created by the run-timeout leader session, 2026-11-21, per the owner's delivery plan.",
+  "description": "## Problem\nThe optional run time limit (`--timeout SECONDS` on `run`, `run-official` and `datagen`; `timeout_seconds` on the MCP `run_benchmark` and `start_benchmark` tools; `execution.timeout_seconds` in the config file; `timeout_seconds=` on `benchmark.generate_data()` and `adapter.run_benchmark()`) is not documented on benchbox-site.\n\n## Owner decision\nDelivery plan on run-timeout-plan-20261120 (2026-11-21): \"Serial, in BenchBox-dev/benchbox-site: document `--timeout` on the run, datagen, MCP and configuration pages, on the branch that repository's rule names for unreleased features.\" That rule (benchbox-site AGENTS.md) names `next`.\n\n## Change\nOn a branch from `next`, with one pull request into `next`, document on the run, datagen, MCP and configuration pages: the setting on each surface; no limit unless set, 0 means no limit, negative or fractional values are usage errors; the command line wins over the config file; one clock for the whole invocation; at the limit the run stops at the next check and, if it has not stopped 30 seconds later, BenchBox writes the partial result and exits; exit code 124; the result is marked `timed_out` with `execution.timeout` and is never official, published, submitted or ranked; Python raises `RunTimeoutError` and does not exit the caller; MCP returns an error result with `mcp_metadata.status = timed_out`; time waiting for the host lock does not count toward the limit; plan capture keeps its own 30-second limit; streams no longer stop at 3600 or 7200 seconds unless the user sets a limit; on cloud platforms the remote-cleanup warning texts from run-timeout-remote-cleanup-20261120, verbatim, and that cleanup has not been checked against live services. Facts come from BenchBox develop after the run-timeout-core batch merges (decision record `_project/decisions/run-timeout-2026-11-20.md` and the merged docs), not from this item.\n\n## Verification rubric\nThe site repository's own checks pass on the pull request; every documented flag, key and message matches develop's code; the pull request targets `next`.\n\n## Guardrails\nAs on run-timeout-plan-20261120: no stand-in review, no close/reopen to restart CI, no `--no-verify`, no force-push, no author rewrite; arm once, a second time only after fixing a named cause; follow benchbox-site AGENTS.md for its close-out.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-21T17:39:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5a3b4c1e9d8f4a7b8c6d5e4f3a2b1c09",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    }
+  ]
+}

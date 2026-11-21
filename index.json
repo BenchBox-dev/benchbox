@@ -38436,6 +38436,15 @@
       "status": "open",
       "title": "Run timeout step 5: remove timers with no caller; plan capture on the deadline; one kill helper"
     },
+    "run-timeout-site-docs-20261121": {
+      "claim": null,
+      "needs": [
+        "run-timeout-remote-cleanup-20261120"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Run timeout: document --timeout on the benchbox-site run, datagen, MCP and configuration pages"
+    },
     "run-timeout-uat-cells-20261120": {
       "claim": null,
       "needs": [
