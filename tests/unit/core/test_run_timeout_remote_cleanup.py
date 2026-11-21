@@ -95,7 +95,7 @@ def test_a_failing_cleanup_is_logged_and_recorded_on_the_timed_out_result(monkey
     adapter = StubAdapter(RuntimeError("the service refused"))
     monkeypatch.setattr(run_service, "_execute_run", _stops_at_the_limit(adapter))
 
-    with caplog.at_level(logging.WARNING, logger=run_service.logger.name):
+    with caplog.at_level(logging.WARNING, logger="benchbox.core.run_service"):
         result = _execute(_config(**{RUN_TIMEOUT_OPTION_KEY: 5}))
 
     expected = "StubAdapter: RuntimeError: the service refused"
