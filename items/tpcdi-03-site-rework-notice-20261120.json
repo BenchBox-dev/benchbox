@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "All four TPC-DI pages carry the owner's notice verbatim.",
+    "No site page links to a TPC-DI query page."
+  ],
+  "context": "Step of the TPC-DI correction plan. Full plan with file paths and line numbers: local://tpcdi-correction-plan.md (planner report, agent://TpcdiCorrectionPlan). Reviews: agent://TpcdiQuerySetReview, agent://TpcdiRootCause. Generator research: agent://TpcdiDatagenAlternatives. Every owner decision is quoted on tpcdi-correction-plan-20261120. The planner's step numbers (S1..S20) are given for cross-reference only; line numbers in the plan are as of origin/develop ffc4de7750 and must be re-read before editing.",
+  "description": "## Problem\nThe site page says 'TPC-DI ships 38 queries that exercise the integration output' and nothing says the queries are BenchBox-written or that results were withdrawn.\n\n## Owner decisions (choice dialogs, 2026-11-20)\n- Notice text, exactly: \"TPC-DI in BenchBox is being reworked. Earlier results were withdrawn because they did not measure the TPC-DI workload.\"\n\n## Change\nPlan S3, in BenchBox-dev/benchbox-site. Put the notice at the top of docs/benchmarks/tpc-di.md, docs/guides/tpc/tpc-di-etl-guide.md, tpc-di-deployment-guide.md and docs/reference/python-api/benchmarks/tpcdi.md. Delete the 'Query Characteristics' section and every link to queries/tpcdi/* so the site build no longer depends on the query pages. Leave support-status.md alone (it is checked against the pinned core release).\n\n## Decision gates\nThe notice is the owner's text verbatim; any other new sentence on those pages is shown in the pull request description. Target branch follows the site repository's rule (the earlier TPC-DI page change, #222, went to `next`); confirm before opening.\n\n## Verification rubric\nPass: `npm run docs:check`, `npm run lint:docs` and `npm run build` pass; the rendered preview shows the notice on all four pages; `rg -n 'queries/tpcdi' docs` prints nothing; after the next site-inputs build, the item records what /results/tpcdi/ shows.\n\n## Guardrails (owner, 2026-11-20)\n- The agent never posts a stand-in review, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`.\n- Arming: `make pr-arm` once; one more attempt only when the refusal named a cause, the agent reported it and the cause is cleared; never a third without asking. `make pr-rerun` at most once and only for a job the runner never ran or cancelled, never for a failed test.\n- Review threads: reply; resolve only after the bot's review of the new head does not raise the finding again.\n- Subagents are read-only. No file edit by script; use the edit tool. Do not edit a pull request description while its CI is starting; post a comment.\n- Any limit, default, threshold, status token, message or label text the owner has not already chosen (see tpcdi-correction-plan-20261120) is shown to the owner before it is committed.\n- A blocked step stops this item; no workaround. No live cloud run. Heavy work only through `make heavy-run`. One pull request for this item, merged before the next item starts.\n- From the quarantine step until the reopening step, no TPC-DI entry point may produce a result that reads PASSED or is admitted for publication.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-21T01:26:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e5fbba75b0de4ddfbf629f3f1a8c05a9",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    }
+  ]
+}

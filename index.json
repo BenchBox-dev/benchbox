@@ -44614,6 +44614,15 @@
       "status": "open",
       "title": "TPC-DI step 2: deletion-only pull request against published-results"
     },
+    "tpcdi-03-site-rework-notice-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-02-withdraw-bundles-published-results-20261120"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "TPC-DI step 3: site notice that TPC-DI is being reworked (benchbox-site)"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
