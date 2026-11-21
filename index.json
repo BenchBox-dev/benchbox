@@ -44759,11 +44759,11 @@
     "tpcdi-17-duckdb-incremental-and-full-audit-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-16-generator-incremental-batches-20261120"
+        "tpcdi-incremental-facts-20261121"
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "TPC-DI step 17: DuckDB incremental updates, visibility queries and the full audit"
+      "title": "TPC-DI step 22: visibility queries, the full audit and the validity rule on DuckDB"
     },
     "tpcdi-18-metric-bundle-and-reopen-duckdb-20261120": {
       "claim": null,
