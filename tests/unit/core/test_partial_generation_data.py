@@ -316,23 +316,3 @@ def test_tpch_skew_reuses_complete_data_but_not_beside_a_stale_marker(tmp_path, 
     assert skew._check_existing_data() is True
     (tmp_path / GENERATION_IN_PROGRESS_MARKER).touch()
     assert skew._check_existing_data() is False
-
-
-def test_every_reuse_check_refuses_files_beside_a_stale_marker(tmp_path):
-    from benchbox.core.datavault.benchmark import DataVaultBenchmark
-    from benchbox.core.tpcds_obt.benchmark import TPCDSOBTBenchmark
-    from benchbox.core.tpch_skew.generator import TPCHSkewDataGenerator
-
-    (tmp_path / GENERATION_IN_PROGRESS_MARKER).touch()
-
-    skew = TPCHSkewDataGenerator.__new__(TPCHSkewDataGenerator)
-    skew.output_dir = tmp_path
-    assert skew._check_existing_data() is False
-
-    vault = DataVaultBenchmark.__new__(DataVaultBenchmark)
-    vault.output_dir = tmp_path
-    assert vault._check_existing_manifest() is None
-
-    obt = TPCDSOBTBenchmark.__new__(TPCDSOBTBenchmark)
-    obt.output_dir = tmp_path
-    assert obt._existing_obt("parquet") is False

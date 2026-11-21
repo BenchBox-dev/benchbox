@@ -309,8 +309,10 @@ class TPCCompiler:
         runnable = True
         try:
             with tempfile.TemporaryDirectory(prefix="benchbox-exec-probe-") as probe_cwd:
-                proc = subprocess.run(
+                proc = run_child(
                     [str(binary_path), "-h"],
+                    tool="exec probe",
+                    deadline=None,
                     cwd=probe_cwd,
                     stdin=subprocess.DEVNULL,
                     capture_output=True,

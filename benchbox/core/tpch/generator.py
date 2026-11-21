@@ -277,8 +277,10 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
     def _check_stdout_support(self) -> bool:
         if not hasattr(self, "_stdout_support_cached"):
             try:
-                result = subprocess.run(
+                result = run_child(
                     [str(self.dbgen_exe), "-h"],
+                    tool="dbgen -h probe",
+                    deadline=None,
                     capture_output=True,
                     text=True,
                     timeout=5,

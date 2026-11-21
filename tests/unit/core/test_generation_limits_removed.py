@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import subprocess
-import time
 from pathlib import Path
 
 import pytest
@@ -13,7 +12,6 @@ from benchbox.core.tpch.generator import TPCHDataGenerator
 from benchbox.core.tpch.queries import QGenBinary
 from benchbox.utils import tpc_compilation
 from benchbox.utils.tpc_compilation import BinaryInfo, TPCCompiler
-from tests.unit.core.generator_stubs import make_stub
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
@@ -36,7 +34,7 @@ def long_running_stub(monkeypatch: pytest.MonkeyPatch) -> _Calls:
             raise subprocess.TimeoutExpired(cmd, limit)
         return subprocess.CompletedProcess(cmd, 0, stdout="select 1;\n", stderr="")
 
-    for module in (c_tools, tpch_queries, tpc_compilation):
+    for module in (c_tools, tpch_queries, tpc_compilation, tpch_generator_module):
         monkeypatch.setattr(module, "run_child", run_child)
     return calls
 
@@ -90,26 +88,20 @@ def test_a_compile_outliving_the_old_limits_is_not_stopped(long_running_stub, tm
     assert long_running_stub.timeouts == [None]
 
 
-def test_the_executable_probe_keeps_its_fifteen_second_limit(tmp_path, monkeypatch):
-    stub = make_stub(tmp_path, monkeypatch, "probe-target", hang=30)
+def test_the_executable_probe_keeps_its_fifteen_second_limit(long_running_stub, tmp_path):
+    TPCCompiler(auto_compile=True)._verify_executable(tmp_path / "probe-target")
 
-    started = time.monotonic()
-    TPCCompiler(auto_compile=True)._verify_executable(stub.path)
-
-    assert 14.5 <= time.monotonic() - started < 25
+    assert long_running_stub.timeouts == [15]
 
 
-def test_the_dbgen_help_probe_keeps_its_five_second_limit(tmp_path, monkeypatch):
-    stub = make_stub(tmp_path, monkeypatch, "dbgen", hang=30)
+def test_the_dbgen_help_probe_keeps_its_five_second_limit(long_running_stub, tmp_path):
     generator = TPCHDataGenerator(scale_factor=0.01, output_dir=tmp_path / "out")
-    generator._dbgen_exe = stub.path
+    generator._dbgen_exe = tmp_path / "dbgen"
     generator.dbgen_available = True
 
-    started = time.monotonic()
-    supported = generator._check_stdout_support()
+    generator._check_stdout_support()
 
-    assert supported is False
-    assert 4.5 <= time.monotonic() - started < 15
+    assert long_running_stub.timeouts == [5]
 
 
 @pytest.mark.parametrize(
