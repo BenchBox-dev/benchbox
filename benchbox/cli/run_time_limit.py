@@ -12,6 +12,7 @@ from rich.markup import escape
 
 from benchbox.cli.exit_codes import ExitCode
 from benchbox.cli.shared import console
+from benchbox.core.run_cleanup_warning import cloud_cleanup_warning
 from benchbox.utils.run_deadline import (
     HARD_STOP_GRACE_SECONDS,
     RUN_TIMEOUT_CONFIG_KEY,
@@ -19,7 +20,6 @@ from benchbox.utils.run_deadline import (
     RunDeadline,
     active_run_deadline,
     arm_hard_stop,
-    cloud_cleanup_warning,
     current_run_deadline,
     end_descendant_processes,
     resolve_timeout_seconds,

@@ -377,35 +377,6 @@ def remote_cleanup_warning(platform: str, cleanup_implemented: bool) -> str:
     return template.format(platform=platform)
 
 
-def cloud_cleanup_warning(platform: str | None) -> str | None:
-    from benchbox.core.platform_manifest import get_all_platform_aliases, get_platform_manifest_entry
-
-    if not platform:
-        return None
-    key = str(platform).lower()
-    entry = get_platform_manifest_entry(get_all_platform_aliases().get(key, key))
-    return None if entry is None else _entry_cleanup_warning(entry)
-
-
-def adapter_cleanup_warning(adapter: Any) -> str | None:
-    from benchbox.core.platform_manifest import PLATFORM_MANIFEST
-
-    class_name = type(adapter).__name__
-    for entry in PLATFORM_MANIFEST:
-        if entry.adapter is not None and entry.adapter.class_name == class_name:
-            return _entry_cleanup_warning(entry)
-    return None
-
-
-def _entry_cleanup_warning(entry: Any) -> str | None:
-    metadata = entry.metadata_dict()
-    if metadata.get("category") != "cloud":
-        return None
-    return remote_cleanup_warning(
-        str(metadata.get("display_name") or entry.key), bool(entry.capabilities.get("run_timeout_cleanup", False))
-    )
-
-
 def timeout_details(deadline: RunDeadline) -> dict[str, Any]:
     timeout = deadline.record_timeout()
     details: dict[str, Any] = {"timeout_seconds": timeout.timeout_seconds, "phase": timeout.phase}

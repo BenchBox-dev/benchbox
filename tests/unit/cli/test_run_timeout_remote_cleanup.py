@@ -16,12 +16,12 @@ from benchbox.cli.config import ConfigManager
 from benchbox.cli.exit_codes import ExitCode
 from benchbox.core import run_service
 from benchbox.core.platform_manifest import PLATFORM_MANIFEST
+from benchbox.core.run_cleanup_warning import cloud_cleanup_warning
 from benchbox.core.schemas import BenchmarkConfig
 from benchbox.utils.run_deadline import (
     RUN_TIMEOUT_CONFIG_KEY,
     RunDeadline,
     active_run_deadline,
-    cloud_cleanup_warning,
     current_run_deadline,
     register_remote_cleanup,
     remote_cleanup_warning,

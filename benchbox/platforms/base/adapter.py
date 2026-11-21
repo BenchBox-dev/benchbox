@@ -13,6 +13,7 @@ from benchbox.core.loaded_tables import is_data_loading_skipped, require_loaded_
 from benchbox.core.results.fetch_mode import FETCH_MODE_ROWS, resolve_fetch_mode
 from benchbox.core.results.query_plan_models import DEFAULT_PLAN_MAX_DEPTH
 from benchbox.core.results.schema import compute_plan_capture_stats
+from benchbox.core.run_cleanup_warning import adapter_cleanup_warning
 from benchbox.core.throughput.containment import await_quiescence
 from benchbox.core.tuning.applied_ledger import (
     PHASE_DDL,
@@ -60,7 +61,6 @@ from benchbox.utils.clock import elapsed_seconds, mono_time, utc_now
 from benchbox.utils.printing import quiet_console
 from benchbox.utils.run_deadline import (
     RUN_TIMEOUT_OPTION_KEY,
-    adapter_cleanup_warning,
     enter_run_phase,
     mark_timed_out,
     own_run_deadline,

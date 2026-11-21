@@ -28,6 +28,7 @@ from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 from benchbox.core.results.exporter import ResultExporter
 from benchbox.core.results.integrity_validator import ResultIntegrityValidator, report_payload
 from benchbox.core.results.schema import build_result_payload
+from benchbox.core.run_cleanup_warning import cloud_cleanup_warning
 from benchbox.core.run_selection import RunSelection, resolve_run_selection
 from benchbox.core.tuning import modes as tuning_modes
 from benchbox.mcp.deprecations import attach_deprecations
@@ -57,7 +58,6 @@ from benchbox.utils.printing import get_quiet_console, silence_output
 from benchbox.utils.run_deadline import (
     RUN_TIMEOUT_OPTION_KEY,
     TIMED_OUT_VALIDATION_STATUS,
-    cloud_cleanup_warning,
     validate_timeout_seconds,
 )
 
