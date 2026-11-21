@@ -45014,6 +45014,15 @@
       "status": "open",
       "title": "TPC-DI step 20: incremental updates, dimension tables"
     },
+    "tpcdi-incremental-facts-20261121": {
+      "claim": null,
+      "needs": [
+        "tpcdi-incremental-dimensions-20261121"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 21: incremental updates, trade and fact tables"
+    },
     "tpcdi-memory-test-delta-refactor": {
       "claim": null,
       "needs": [],
