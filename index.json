@@ -14619,12 +14619,17 @@
       "title": "Attest the SQLGlot translator version of already-published bundles through their manifest sidecars"
     },
     "bundle-validator-checks-compliance-before-offlist-return-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-22T16:20:35Z",
+        "generation": "d35773900da54400b492cc9e13a9fc02",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840"
+      },
       "needs": [
         "feature-fix-corpus-classification-and-seed-provenance-20261120"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Validate a bundle's recorded compliance class before the off-list-scale early return"
     },
     "burn-down-baselined-broken-doc-links": {
