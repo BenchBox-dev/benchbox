@@ -44598,6 +44598,13 @@
       "status": "done",
       "title": "TPC Specification Compliance Issues ✅ COMPLETED"
     },
+    "tpcdi-01-withdraw-bundles-develop-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "TPC-DI step 1: withdraw the 33 published bundles on develop and refuse new ones"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
