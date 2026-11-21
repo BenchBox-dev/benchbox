@@ -18,14 +18,6 @@ def _rows(path: Path) -> list[list[str]]:
 
 
 @pytest.fixture(scope="module")
-def sf1_refresh_sets(tmp_path_factory: pytest.TempPathFactory) -> dict[int, RefreshSet]:
-    try:
-        return generate_refresh_sets(1.0, 1, 2, tmp_path_factory.mktemp("sf1-refresh"), seed=NIGHTLY_SEED)
-    except RuntimeError as exc:
-        pytest.skip(f"dsdgen unavailable: {exc}")
-
-
-@pytest.fixture(scope="module")
 def sf1_item_ids(tmp_path_factory: pytest.TempPathFactory) -> set[str]:
     from benchbox.core.tpcds.generator import TPCDSDataGenerator
 
@@ -35,6 +27,11 @@ def sf1_item_ids(tmp_path_factory: pytest.TempPathFactory) -> set[str]:
         pytest.skip("dsdgen unavailable")
     generator._run_file_based_dsdgen(output_dir, [tpcds_option("table"), "item"])
     return {row[1] for row in _rows(output_dir / "item.dat")}
+
+
+@pytest.fixture(scope="module")
+def sf1_refresh_sets(sf1_item_ids: set[str], tmp_path_factory: pytest.TempPathFactory) -> dict[int, RefreshSet]:
+    return generate_refresh_sets(1.0, 1, 2, tmp_path_factory.mktemp("sf1-refresh"), seed=NIGHTLY_SEED)
 
 
 @pytest.mark.parametrize("set_id", [1, 2])
