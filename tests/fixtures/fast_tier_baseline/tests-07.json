@@ -5676,6 +5676,10 @@
     "p50_seconds": 0.012431
   },
   {
+    "id": "tests/unit/core/sql_compat/test_query_source_variants_c2.py::test_tpcdi_rule_action_and_payload[datafusion-AQ9-avg_sell_price]",
+    "p50_seconds": 0.012724
+  },
+  {
     "id": "tests/unit/core/sql_compat/test_query_source_variants_c3.py::test_vector_search_registry_returns_variant[doris-Q1]",
     "p50_seconds": 0.012538
   },
@@ -7072,6 +7076,10 @@
     "p50_seconds": 0.034606
   },
   {
+    "id": "tests/unit/core/tpcdi/test_tpcdi_clickhouse_overrides.py::test_get_query_clickhouse_matches_bulk_variant[AQ7]",
+    "p50_seconds": 0.304887
+  },
+  {
     "id": "tests/unit/core/tpcdi/test_tpcdi_dataframe_mutation_execution.py::TestBackendContracts::test_empty_updates_short_circuit_without_ops_call",
     "p50_seconds": 0.015025
   },
@@ -7110,6 +7118,10 @@
   {
     "id": "tests/unit/core/tpcdi/test_tpcdi_no_values_row_source.py::test_eq7_base_query_executes_and_scores_each_table",
     "p50_seconds": 0.061114
+  },
+  {
+    "id": "tests/unit/core/tpcdi/test_tpcdi_postgres_overrides.py::test_get_query_datafusion_matches_bulk_variant[AQ9]",
+    "p50_seconds": 0.472135
   },
   {
     "id": "tests/unit/core/tpcdi/test_tpcdi_postgres_overrides.py::test_postgres_replaces_julianday_date_arithmetic",
@@ -18514,6 +18526,10 @@
   {
     "id": "tests/unit/test_tpcdi_phase2_queries.py::TestTPCDIAnalyticalQueries::test_analytical_query_retrieval",
     "p50_seconds": 0.021966
+  },
+  {
+    "id": "tests/unit/test_tpcdi_phase2_queries.py::TestTPCDIQueryManager::test_query_execution_plan",
+    "p50_seconds": 0.025347
   },
   {
     "id": "tests/unit/test_tpcds_file_format_consistency.py::test_prune_stale_table_artifacts_removes_conflicting_variants_only",

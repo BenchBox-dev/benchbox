@@ -37,6 +37,16 @@ class TPCDI(BaseBenchmark):
     def get_query(self, query_id: Union[int, str], *, params: Optional[dict[str, Any]] = None) -> str:
         return self._impl.get_query(query_id, params=params)
 
+    @refuses_unavailable_benchmark("tpcdi")
+    def run_benchmark(
+        self,
+        connection: Any,
+        query_ids: Optional[list[Union[int, str]]] = None,
+        fetch_results: bool = False,
+        setup_database: bool = True,
+    ) -> dict[str, Any]:
+        return self._impl.run_benchmark(connection, query_ids, fetch_results, setup_database)
+
     def get_schema(self, dialect: str = "standard") -> dict[str, dict[str, Any]]:
         return self._impl.get_schema(dialect)
 

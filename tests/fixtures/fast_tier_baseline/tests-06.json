@@ -5344,6 +5344,10 @@
     "p50_seconds": 0.012645
   },
   {
+    "id": "tests/unit/core/sql_compat/test_query_source_variants_c2.py::test_tpcdi_rule_action_and_payload[datafusion-VQ6-grouped_positions]",
+    "p50_seconds": 0.012431
+  },
+  {
     "id": "tests/unit/core/sql_compat/test_query_source_variants_c3.py::test_vector_search_all_platforms_registered",
     "p50_seconds": 0.014337
   },
@@ -6646,6 +6650,10 @@
   {
     "id": "tests/unit/core/tpcdi/test_tpcdi_bulk_load_parity.py::test_other_engines_keep_the_row_path",
     "p50_seconds": 0.011256
+  },
+  {
+    "id": "tests/unit/core/tpcdi/test_tpcdi_clickhouse_overrides.py::test_get_query_clickhouse_matches_bulk_variant[EQ7]",
+    "p50_seconds": 0.313832
   },
   {
     "id": "tests/unit/core/tpcdi/test_tpcdi_dataframe_mutation_execution.py::TestBackendContracts::test_dict_condition_passes_through_natively_for_non_sql_adapters",
@@ -17906,6 +17914,18 @@
   {
     "id": "tests/unit/test_tpcdi_phase2_queries.py::TestTPCDIETLQueries::test_etl_queries_by_category",
     "p50_seconds": 0.02131
+  },
+  {
+    "id": "tests/unit/test_tpcdi_phase2_queries.py::TestTPCDIQueryManager::test_extended_query_access",
+    "p50_seconds": 0.021844
+  },
+  {
+    "id": "tests/unit/test_tpcdi_phase2_queries.py::TestTPCDIQueryManager::test_invalid_query_handling",
+    "p50_seconds": 0.021891
+  },
+  {
+    "id": "tests/unit/test_tpcdi_phase2_queries.py::TestTPCDIQueryManager::test_queries_by_category",
+    "p50_seconds": 0.02197
   },
   {
     "id": "tests/unit/test_tpcdi_phase2_queries.py::TestTPCDIValidationQueries::test_validation_query_retrieval",

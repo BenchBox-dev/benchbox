@@ -176,6 +176,16 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
     def get_query(self, query_id: Union[int, str], *, params: Optional[dict[str, Any]] = None) -> str:
         raise ValueError(f"TPC-DI defines no BenchBox queries: {query_id}")
 
+    @refuses_unavailable_benchmark("tpcdi")
+    def run_benchmark(
+        self,
+        connection: Any,
+        query_ids: Optional[list[Union[int, str]]] = None,
+        fetch_results: bool = False,
+        setup_database: bool = True,
+    ) -> dict[str, Any]:
+        raise ValueError("TPC-DI defines no BenchBox queries to run")
+
     def get_schema(self, dialect: str = "standard") -> dict[str, dict[str, Any]]:
         return TABLES
 
