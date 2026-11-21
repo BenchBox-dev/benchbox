@@ -44808,11 +44808,12 @@
     "tpcdi-22-platform-doris-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-21-platform-postgresql-20261120"
+        "tpcdi-21-platform-postgresql-20261120",
+        "tpcdi-first-publication-20261121"
       ],
       "priority": "medium",
       "status": "open",
-      "title": "TPC-DI step 32: Doris: ETL, visibility and full audit"
+      "title": "TPC-DI step 36: Doris: ETL, visibility and full audit"
     },
     "tpcdi-23-platform-starrocks-20261120": {
       "claim": null,
