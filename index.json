@@ -44803,6 +44803,15 @@
       "status": "open",
       "title": "TPC-DI step 23: StarRocks: ETL, visibility and full audit"
     },
+    "tpcdi-24-platform-cedardb-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-23-platform-starrocks-20261120"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "TPC-DI step 24: CedarDB: ETL, visibility and full audit"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
