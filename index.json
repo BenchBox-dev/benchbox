@@ -44732,11 +44732,11 @@
     "tpcdi-14-milestone-report-owner-stop-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-13-digen-reference-path-and-comparison-20261120"
+        "tpcdi-12-duckdb-historical-load-and-audit-20261120"
       ],
       "priority": "high",
-      "status": "blocked",
-      "title": "TPC-DI step 14: milestone report and owner stop"
+      "status": "open",
+      "title": "TPC-DI step 17: milestone report and owner stop"
     },
     "tpcdi-15-delete-old-generator-and-etl-20261120": {
       "claim": null,
