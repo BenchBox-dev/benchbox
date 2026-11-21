@@ -44570,6 +44570,13 @@
       "status": "done",
       "title": "✅ TPC-Havoc Variant Modularization"
     },
+    "tpc-legend-missing-for-tpch-tpcds-20261120": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Add the TPC EULA legend beside the shipped TPC-H and TPC-DS files"
+    },
     "tpc-measured-intervals-reference-20261103": {
       "claim": null,
       "needs": [],
