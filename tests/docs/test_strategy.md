@@ -272,10 +272,6 @@ SQL IDs 1–22 to Q1–Q22. [TSBS DevOps](../unit/core/tsbs_devops/test_tsbs_dev
 uses each SQL catalog entry's numeric `id` to connect its slug to QN; do not
 infer the bridge from catalog position.
 
-The [TPC-DI mutation tests](../unit/core/tpcdi/test_tpcdi_dataframe_mutation_execution.py)
-run historical load, expiry, and insertion through `DataFrameETLBackend` and
-`PolarsMaintenanceOperations`, then inspect stored Parquet state. Faked condition
-rendering and table-root tests do not replace this execution check.
 The [TPC-DS-OBT comparison](../unit/core/tpcds_obt/test_tpcds_obt_dataframe_execution.py)
 uses ten deterministic rows for Q1–Q17 on both backends. Keep the fixture below
 query LIMITs so tied groups are not truncated differently; comparisons ignore
