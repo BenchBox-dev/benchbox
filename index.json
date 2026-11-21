@@ -44659,6 +44659,15 @@
       "status": "open",
       "title": "TPC-DI step 7: replace the schema with the specification's tables, columns and types"
     },
+    "tpcdi-08-generator-core-and-reference-files-20261120": {
+      "claim": null,
+      "needs": [
+        "tpcdi-07-specification-schema-20261120"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "TPC-DI step 8: clean-room source-file generator: core, scaling, reference files, HR, Prospect, row report"
+    },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
       "claim": null,
       "needs": [],
