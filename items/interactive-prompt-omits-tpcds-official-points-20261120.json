@@ -2,7 +2,7 @@
   "acceptance": [
     "The prompt's standard values equal the rule's for every benchmark, shown by a test."
   ],
-  "context": "Owner decision 2026-11-22 (choice dialog). Where it conflicts with the Decision gates text in the description, this wins. Deliver.",
+  "context": "Owner decision 2026-11-22 (choice dialog). Where it conflicts with the Decision gates text in the description, this wins. Deliver.\n\n2026-11-22: delivered by #4456 (merged as 16e3336667; head 0d1fcd742b). The interactive scale prompt and its estimate preview now use get_scale_factor_rule(benchmark).standard; test_prompt_scale_standard_values_match_rule shows the prompt's standard values equal the rule's for tpcds (including 300), tpch and clickbench. make pr-preflight exit 0 (tree ac5ff89299); benchbox-review SHIP; armed once, merged.",
   "description": "## Problem\nFound by the read-only review of the 11 to 16 November work. The interactive prompt prints `Standard values` from the registry `scale_options` (benchbox/cli/benchmarks.py, the scale prompt and its preview), but `get_scale_factor_rule` treats the TPC-DS official points (300, 1000 and above) as standard too. For `tpcds` the prompt omits values that run without a note. Not verified by running.\n\n## Change\nConfirm on current develop. Print the rule's standard values.\n\n## Decision gates\nNone. No change to which scales are accepted or noted.\n\n## Verification rubric\nPass: a test shows the prompt's standard values for tpcds equal `get_scale_factor_rule('tpcds').standard`.\n\n## Guardrails (owner, 2026-11-20)\nAccepted by the owner in the choice dialog: the agent never posts a stand-in review, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. It arms with `make pr-arm` once per pull request and reports the result. Subagents are read-only. Any limit, default, threshold or label text is shown to the owner before it is committed. A blocked step stops this item; the agent moves to the next item and does not work around the block.\nReview threads: the accepted text also said the agent never resolves a thread. Asked afterwards which rule applies, the owner chose: \"The morning rule: I may resolve a thread once the bot has reviewed the new head and did not raise the finding again.\" ('I' is the agent.) So the agent pushes the fix and replies, and resolves a thread only after the bot's review of the new head does not raise that finding again.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "op": "update",
       "op_id": "0b48f11c84ec4f87af827c7a576cb4e4",
       "session_id": "07ffce55d91d4769bb111de9401d9503"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6",
+      "at": "2026-11-22T21:43:13Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "471877a833014c66bb3d71be102e8f0f",
+      "session_id": "703e90baefd545ccb42540a47d1ce09e"
     }
   ]
 }
