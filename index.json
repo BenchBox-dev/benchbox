@@ -11623,7 +11623,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-foundation",
-      "lifecycle": "active",
+      "lifecycle": "completed",
       "members": [
         "tpcdi-provenance-record-and-copy-guard-20261121",
         "tpcdi-07-specification-schema-20261120",
@@ -46434,15 +46434,10 @@
       "title": "Finish the TPC-DI bundle regeneration evidence: same-generator comparison and site cohort views"
     },
     "tpcdi-comment-policy-route-for-tpc-files-20261121": {
-      "claim": {
-        "expires_at": "2026-11-23T07:09:01Z",
-        "generation": "c7b7fd250f0e48c3ba85d50ecee16c84",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "TPC-DI step 8: a route for owner-approved TPC files through the comment policy"
     },
     "tpcdi-controls-empty-query-and-all-zero-validator-20261121": {
