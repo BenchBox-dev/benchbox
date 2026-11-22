@@ -22709,12 +22709,17 @@
       "title": "Record the corpus rule decisions in the ADRs and tracker before any code changes"
     },
     "crr-a1-rule-module-and-snapshot": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T21:15:29Z",
+        "generation": "58caff2dc0da476b98e3d8cfddfb86fa",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2"
+      },
       "needs": [
         "crr-a0-decision-records"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Add the outcome rule as one stdlib-only module with an exhaustive test and a corpus outcome snapshot"
     },
     "crr-a2-writer-and-score-from-timings": {
