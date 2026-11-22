@@ -193,7 +193,7 @@ def test_cell_command_passes_the_cell_limit_and_the_outside_kill_waits_a_minute_
 
     assert POLARS.cell_timeout_s == 1800.0
     assert command[command.index("--timeout") + 1] == "1800"
-    assert runner.outside_kill_after_s(POLARS) == 1860.0
+    assert run_version_matrix.outside_kill_after_s(POLARS) == 1860.0
 
 
 def test_environment_check_rejects_stale_runtime_and_wrong_version() -> None:
