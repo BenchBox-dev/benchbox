@@ -22610,9 +22610,9 @@
     },
     "dev-loop-local-gates-20261122": {
       "claim": {
-        "expires_at": "2026-11-23T13:30:37Z",
-        "generation": "721ac79de5724f71b98b6b724776b0b6",
-        "renewals": 0,
+        "expires_at": "2026-11-23T16:44:21Z",
+        "generation": "6f407f8c5d3d413db2f8e70d5e360b7a",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
       },
       "needs": [],
