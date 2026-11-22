@@ -236,7 +236,7 @@ def test_pr_preflight_skips_marker_lint_and_typecheck_when_no_checked_file_chang
 
 
 def test_pr_preflight_skips_the_lint_guards_when_no_python_changed(tmp_path: Path) -> None:
-    _run_preflight(tmp_path, "abc1234", changed=("docs/a.md",))
+    _run_preflight(tmp_path, "abc1234", changed=("notes.txt",))
 
     assert _lint_calls(_uv_calls(tmp_path)) == []
 
@@ -293,6 +293,6 @@ def test_pr_preflight_typechecks_only_files_that_still_exist_beside_a_deletion(t
 
 
 def test_pr_preflight_runs_no_guards_for_a_deleted_non_python_file(tmp_path: Path) -> None:
-    _run_preflight(tmp_path, "abc1234", deleted=("docs/gone.md",))
+    _run_preflight(tmp_path, "abc1234", deleted=("gone.txt",))
 
     assert _lint_calls(_uv_calls(tmp_path)) == []
