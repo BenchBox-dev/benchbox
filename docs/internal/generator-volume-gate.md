@@ -66,6 +66,62 @@ Put `uv run -- python -m scripts.generator_volume_gate --base-ref origin/develop
 run the script through `make heavy-run` (heavy: SF 1 data generation). `--base-ref` names the base
 the diff and the baseline are read from.
 
+## Measured at SF 1
+
+Eight runs on 2026-11-22, one at a time through `make heavy-run`, each the
+gate's own command (`benchbox run --platform duckdb --scale 1 --phases
+generate,load,power --compression none --non-interactive --quiet`), timed with
+`/usr/bin/time -l` (wall seconds and maximum resident set size). Bytes are
+`sum_directory_bytes(<output>/datagen)`, the gate's own count. All eight runs
+exited 0 with no failed power query and rows loaded.
+
+| Benchmark | Measured bytes | Previous baseline bytes | Drift | Seconds | Peak GiB |
+|---|---|---|---|---|---|
+| amplab | 679784321 | 679784321 | 0.000% | 22.66 | 2.19 |
+| h2odb | 1413528658 | 1413528658 | 0.000% | 128.09 | 1.28 |
+| coffeeshop | 900141206 | 900141206 | 0.000% | 39.69 | 1.45 |
+| tsbs_devops | 919665111 | 919491614 | +0.019% | 61.53 | 1.21 |
+| joinorder_synthetic | 453176012 | 444365227 | +1.983% | 28.00 | 2.05 |
+| vector_search | 1342083621 | 1342083621 | 0.000% | 44.23 | 0.97 |
+| write_primitives | 1572580199 | 1572187172 | +0.025% | 120.17 | 1.75 |
+| transaction_primitives | 1572580199 | 1572187172 | +0.025% | 55.35 | 1.67 |
+
+The baseline entries of the four benchmarks that differ were set to the
+measured values. Causes:
+
+- joinorder_synthetic: the generator is seeded (`random.seed(42)`), and a direct
+  generator run today gives the same 453176012 bytes as the gate. The previous
+  entry, measured on 2026-09-26, predates the change that plants canonical JOB
+  predicate values and shifts year and kind distributions in the generated rows.
+- tsbs_devops: the generator is unseeded, so each run differs. A direct
+  generator run today gave 919818161 bytes and the gate run 919665111.
+- write_primitives and transaction_primitives: the direct generator writes each
+  TPC-H table as one file (25 counted files, 1572187172 bytes); the gate's run
+  writes ten chunk files per table (79 counted files: 65 table, staging and
+  reference files totalling 1330705764 bytes and 14 auxiliary CSV files totalling
+  241874435 bytes). The table files carry the same bytes in both layouts; the
+  staging and auxiliary files are unseeded and differ by 0.3 MB in total.
+
+## Time limits
+
+Each benchmark's time limit is twice its measured time, rounded up to a whole
+minute; the job limit is twice the measured total, rounded up to five minutes.
+
+| Benchmark | Measured seconds | Limit (minutes) |
+|---|---|---|
+| amplab | 22.66 | 1 |
+| h2odb | 128.09 | 5 |
+| coffeeshop | 39.69 | 2 |
+| tsbs_devops | 61.53 | 3 |
+| joinorder_synthetic | 28.00 | 1 |
+| vector_search | 44.23 | 2 |
+| write_primitives | 120.17 | 5 |
+| transaction_primitives | 55.35 | 2 |
+
+The eight runs total 499.72 s; twice that is 999.44 s (16.7 minutes), so the
+`generator-volume` job limit is 20 minutes. The limits come from runs on one
+local machine; a hosted runner can be slower.
+
 ## Coverage limits
 
 - Native-binary generators (tpch, tpcds, ssb and the benchmarks built on them)
@@ -80,3 +136,7 @@ the diff and the baseline are read from.
   engines; platform timeouts at the new volume need the nightly or UAT runs.
 - A change that alters content but not size passes the size check.
 - TPC-DI unavailable while reworked.
+- The smoke run of tsbs_devops is not seeded (`seed` defaults to `None`), so its
+  size differs by about 0.02% between runs; the 5% tolerance absorbs it.
+- write_primitives and transaction_primitives stage and auxiliary files with
+  unseeded random content; their sizes also vary by about 0.03% between runs.

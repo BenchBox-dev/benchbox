@@ -277,9 +277,11 @@ class FakeBenchboxRun:
         self.failed = failed
         self.bundle = bundle
         self.command: list[str] = []
+        self.timeout: float | None = None
 
     def __call__(self, command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
         self.command = command
+        self.timeout = kwargs["timeout"]
         output = Path(kwargs["env"]["BENCHBOX_OUTPUT_DIR"])
         (output / "datagen" / "amplab_sf1").mkdir(parents=True)
         (output / "datagen" / "amplab_sf1" / "rankings.tbl").write_bytes(b"x" * 1000)
@@ -313,6 +315,18 @@ def test_a_run_without_a_result_bundle_is_a_smoke_error() -> None:
 def test_the_smoke_surfaces_failed_power_queries() -> None:
     result = gate.run_smoke("amplab", runner=FakeBenchboxRun(failed=3))
     assert gate.evaluate_smoke(result) == "3 power-phase queries failed on DuckDB at SF 1"
+
+
+def test_every_gated_benchmark_has_a_timeout_and_the_smoke_passes_it_in_seconds() -> None:
+    assert set(gate.SMOKE_TIMEOUT_MINUTES) == set(gate.PURE_PYTHON_GENERATORS)
+    fake = FakeBenchboxRun()
+    gate.run_smoke("amplab", runner=fake)
+    assert fake.timeout == gate.SMOKE_TIMEOUT_MINUTES["amplab"] * 60
+
+
+def test_the_ci_job_limit_is_twice_the_measured_total_rounded_up_to_five_minutes() -> None:
+    workflow = yaml.safe_load(CI_WORKFLOW.read_text(encoding="utf-8"))
+    assert workflow["jobs"]["generator-volume"]["timeout-minutes"] == 20
 
 
 def test_every_gated_benchmark_has_a_committed_baseline_and_a_measurement_entry() -> None:

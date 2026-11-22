@@ -1668,7 +1668,7 @@ jobs:
     needs: ci-paths
     if: ${{ needs.ci-paths.outputs.generator-volume-needed == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09

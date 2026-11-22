@@ -16,7 +16,16 @@ from scripts.measure_sf1_sizes import sum_directory_bytes
 
 BASELINE_PATH = "tests/unit/generators/sf1_size_baseline.json"
 SMOKE_PHASES = "generate,load,power"
-SMOKE_TIMEOUT_SECONDS = 1500.0
+SMOKE_TIMEOUT_MINUTES: dict[str, int] = {
+    "amplab": 1,
+    "h2odb": 5,
+    "coffeeshop": 2,
+    "tsbs_devops": 3,
+    "joinorder_synthetic": 1,
+    "vector_search": 2,
+    "write_primitives": 5,
+    "transaction_primitives": 2,
+}
 
 PURE_PYTHON_GENERATORS: dict[str, tuple[str, ...]] = {
     "amplab": ("benchbox/core/amplab/generator.py", "benchbox/core/amplab/generator_specs.yaml"),
@@ -191,7 +200,7 @@ def run_smoke(benchmark: str, *, runner: CommandRunner = subprocess.run) -> Smok
             env={**os.environ, "BENCHBOX_OUTPUT_DIR": str(output)},
             capture_output=True,
             text=True,
-            timeout=SMOKE_TIMEOUT_SECONDS,
+            timeout=SMOKE_TIMEOUT_MINUTES[benchmark] * 60,
             check=False,
         )
         seconds = elapsed_seconds(start)
