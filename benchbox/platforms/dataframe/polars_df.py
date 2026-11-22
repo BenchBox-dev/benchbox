@@ -4,7 +4,9 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +48,30 @@ else:
     PolarsDF = Any
     PolarsLazyDF = Any
     PolarsExpr = Any
+
+
+_STREAMING_PLAN_MARK = "streaming engine node"
+_FALLBACK_LEGEND = re.compile(r'COLOR="([^"]+)">\u2b24</FONT> in-memory engine fallback')
+
+
+def classify_physical_plan(graph: str) -> str:
+    if _STREAMING_PLAN_MARK not in graph:
+        return "in-memory"
+    legend = _FALLBACK_LEGEND.search(graph)
+    if legend is not None and f'fillcolor="{legend.group(1)}"' in graph:
+        return "mixed"
+    return "streaming"
+
+
+def physical_plan_unavailable_reason() -> str | None:
+    parameters = inspect.signature(pl.LazyFrame.show_graph).parameters
+    missing = [name for name in ("engine", "plan_stage") if name not in parameters]
+    if missing:
+        return (
+            f"the installed Polars LazyFrame.show_graph has no {' or '.join(missing)} parameter, "
+            "so no physical plan can be read"
+        )
+    return None
 
 
 def _series_to_date(series: PolarsDF) -> PolarsDF:
@@ -171,8 +197,6 @@ class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, Pol
             applied_class=engines[selected].engine_class if selected in engines else None,
             applied_native=applied_native,
             resolution=resolution,
-            observed="not_captured",
-            observed_source="none",
         )
 
     def _apply_tuning(self) -> None:
@@ -202,6 +226,20 @@ class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, Pol
     @property
     def collect_engine(self) -> str:
         return self._engine_receipt.applied_native["collect_kwargs"].get("engine", DEFAULT_EXECUTION_ENGINE)
+
+    OBSERVED_ENGINE_SOURCE = "explain"
+
+    def engine_observation_gap(self) -> str | None:
+        return physical_plan_unavailable_reason()
+
+    def observe_execution_engine(self, lazy: Any) -> str | None:
+        engine = self.collect_engine
+        graph = lazy.show_graph(
+            engine="auto" if engine == DEFAULT_EXECUTION_ENGINE else engine,
+            raw_output=True,
+            plan_stage="physical",
+        )
+        return classify_physical_plan(str(graph))
 
     def materialize(self, df: PolarsLazyDF) -> PolarsDF:
         return collect_frame(df, self.collect_engine)

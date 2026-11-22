@@ -42,7 +42,12 @@ from benchbox.core.dataframe.query_validation import DataFrameQueryValidationSum
 from benchbox.core.dataframe.schema_utils import get_benchmark_schema_columns
 from benchbox.core.errors import PlanCaptureError
 from benchbox.core.exceptions import ConfigurationError, InsufficientMemoryError, RunTimeoutError
-from benchbox.core.execution_engine import DEFAULT_EXECUTION_ENGINE, ExecutionEngineHook
+from benchbox.core.execution_engine import (
+    DEFAULT_EXECUTION_ENGINE,
+    ExecutionEngineHook,
+    ExecutionEngineReceipt,
+    summarize_observed_engines,
+)
 from benchbox.core.results import (
     BenchmarkInfoInput,
     ResultBuilder,
@@ -281,6 +286,43 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
     def tpch_refresh_backend(self) -> Any | None:
         return None
 
+    def engine_observation_gap(self) -> str | None:
+        return None
+
+    def observe_execution_engine(self, lazy: Any) -> str | None:
+        return None
+
+    def _record_engine_observation(self, result: dict[str, Any], lazy: Any) -> None:
+        if self.OBSERVED_ENGINE_SOURCE == "none" or self.engine_observation_gap() is not None:
+            return
+        try:
+            observed = self.observe_execution_engine(lazy)
+        except Exception as exc:
+            logger.debug("Engine observation failed: %s", exc)
+            observed = None
+        observations = getattr(self, "_engine_observations", None)
+        if observations is None:
+            observations = self._engine_observations = []
+        observations.append(observed)
+        if observed:
+            result["execution_engine"] = observed
+
+    def _finalize_engine_observation(self, platform_info: Any) -> None:
+        recorded = platform_info.config.get("execution_engine")
+        if self.OBSERVED_ENGINE_SOURCE == "none" or not isinstance(recorded, dict):
+            return
+        summary = summarize_observed_engines(
+            ExecutionEngineReceipt(**recorded),
+            getattr(self, "_engine_observations", []),
+            self.OBSERVED_ENGINE_SOURCE,
+            unavailable=self.engine_observation_gap(),
+        )
+        recorded.update(
+            observed=summary.observed,
+            observed_source=summary.observed_source,
+            observed_reason=summary.observed_reason,
+        )
+
     @abstractmethod
     def create_context(self) -> Any:
         pass
@@ -359,6 +401,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
         logger.info(f"Platform: {platform_name}, Scale Factor: {scale_factor}")
 
         platform_info = build_platform_info(self, execution_mode="dataframe")
+        self._engine_observations = []
 
         builder = ResultBuilder(
             benchmark=BenchmarkInfoInput(
@@ -478,6 +521,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                     self._attach_applied_tuning_ledger(builder)
                     self._stamp_host_load(builder, host_load_start)
                     builder.mark_completed()
+                    self._finalize_engine_observation(platform_info)
                     return builder.build()
             elif phases.load and skip_data_loading:
                 logger.info("Skipping DataFrame table loading for benchmark-managed workload")
@@ -534,6 +578,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             self._attach_applied_tuning_ledger(builder)
             self._stamp_host_load(builder, host_load_start)
             builder.mark_completed()
+            self._finalize_engine_observation(platform_info)
             return builder.build()
 
         except (PlanCaptureError, RunTimeoutError):
@@ -548,6 +593,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             self._attach_applied_tuning_ledger(builder)
             self._stamp_host_load(builder, host_load_start)
             builder.mark_completed()
+            self._finalize_engine_observation(platform_info)
             return builder.build()
 
     @staticmethod
