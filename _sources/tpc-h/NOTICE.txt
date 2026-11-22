@@ -5,6 +5,6 @@ Licensed under the TPC End User License Agreement v2.2 (EULA.txt in this directo
 BenchBox charges no fee for them.
 
 This directory holds the TPC-H dbgen and qgen source, query templates and specification, with the
-BenchBox patch described in PATCHES.md.
+BenchBox patches described in PATCHES.md.
 
 TPC website: https://www.tpc.org
