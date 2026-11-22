@@ -21639,7 +21639,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "Replace the 28 stored DuckDB median files with their individual runs, or label them"
+      "title": "Replace the stored DuckDB median files with their individual runs where every run exists, under the owner's freeze release"
     },
     "crr-c1-validation-status-vocabulary": {
       "claim": null,
