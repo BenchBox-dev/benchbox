@@ -1626,6 +1626,7 @@ def run_gate(
         enforce_vacuity=gate.vacuity_classified,
         order_statuses=order_statuses,
         executed_cells=executed_cells,
+        flaky_cells=len(flaky),
     )
     if flaky:
         _report_flaky(gate.name, flaky, repeats, enforced=enforced)
@@ -1732,6 +1733,7 @@ def _report(
     enforce_vacuity: bool = True,
     order_statuses: dict[tuple[Any, str], OrderStatus] | None = None,
     executed_cells: set[str] | None = None,
+    flaky_cells: int = 0,
 ) -> int:
     legitimately_empty = legitimately_empty or {}
     reference_row_counts = reference_row_counts or {}
@@ -1829,17 +1831,23 @@ def _report(
             entry = known[key]
             assert isinstance(entry, ClassifiedDivergence)
             print(f"WAIVER REVIEW DUE - {key}: review_by {entry.review_by} has passed - {entry.reason}")
-    if (
-        not new
-        and not resolved
-        and not uncompared
-        and not missing_backends
-        and not unclassified_empty
-        and not stale_empty
-    ):
-        suffix = " (modulo classified exceptions)" if (known or classified_empty) else ""
-        print(f"SQL and DataFrame surfaces are equivalent{suffix}.")
-    return 1 if (new or resolved or uncompared or missing_backends or unclassified_empty or stale_empty) else 0
+    failed = bool(new or resolved or uncompared or missing_backends or unclassified_empty or stale_empty)
+    if not failed:
+        _print_equivalence_verdict(
+            flaky_cells, " (modulo classified exceptions)" if (known or classified_empty) else ""
+        )
+    return 1 if failed else 0
+
+
+def _print_equivalence_verdict(flaky_cells: int, suffix: str) -> None:
+    if flaky_cells:
+        verdict = (
+            f"Equivalence not established: {flaky_cells} cell(s) changed outcome between identical repeat runs "
+            "(see the flaky report below)."
+        )
+    else:
+        verdict = f"SQL and DataFrame surfaces are equivalent{suffix}."
+    print(verdict)
 
 
 def main(argv: list[str] | None = None) -> int:
