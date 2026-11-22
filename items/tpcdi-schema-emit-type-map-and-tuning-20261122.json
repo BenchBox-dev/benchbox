@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "TPC-DI type choices are SCHEMA_EMIT rules applied through translate_ddl type_map, with no governance-only dispatch.",
+    "get_create_tables_sql honours the tuning configuration."
+  ],
+  "description": "## Problem\nThe TPC-DI schema step registered its per-platform column-type rules (flag columns, TIME) in benchbox/sql_compat/rules/schema_emit/tpcdi_ddl.py under Phase.DDL_OPTIMIZE with ddl_optimize.* ids, moved there only so test_registry_integrity passed; the other files in that folder (nyctaxi, tsbs_devops, pk_capability_txn) use Phase.SCHEMA_EMIT. benchbox/core/tpcdi/schema.py chooses types by reading the transformer_id of governance_only rules, which sql_compat/README.md forbids ('not a dispatch target'), instead of translate_ddl(type_map=...) which already performs BOOLEAN->SMALLINT. TPCDIBenchmark.get_create_tables_sql ignores tuning_config, unlike TPC-H.\n\n## Owner decision\n- 2026-11-22: fix=[amend-items, schema-followup, guidance, lint], batch=resume-after (owner form answer 2026-11-22): 'New serial PR now: move the TPC-DI column-type rules to SCHEMA_EMIT, use translate_ddl(type_map=...), and restore the tuning configuration'.\n\n## Change\nRe-register the TPC-DI rules under Phase.SCHEMA_EMIT with schema_emit.<platform>.tpcdi.* ids following nyctaxi_ddl.py/tsbs_devops_ddl.py; drive the type mapping through translate_ddl(type_map=...) (TIME needs a type_map entry where the fork turns TIME into TIMESTAMP); remove the governance-only dispatch in schema.py; apply the standard tuning parameters in get_create_tables_sql as TPC-H does (core/tpch/benchmark.py). Generated DDL for every dialect stays identical except where tuning applies (prove with a before/after DDL diff per dialect in the PR).\n\n## Verification rubric\nPass: schema spec, DDL, sql_compat registry and compat-inventory tests; make compat-inventory-check; DuckDB DDL executes; per-dialect DDL diff shows no unintended change.\n\n## Guardrails\nTPC-DI stays unavailable; no result may read PASSED. Standard close-out; no stand-in review; arm rules as the umbrella states.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e",
+      "at": "2026-11-22T13:56:24Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "472e2b9f2e49407a87a5d04ad1e1caf3",
+      "session_id": "a8b92107f30e427f9def4483bf06f645"
+    }
+  ]
+}
