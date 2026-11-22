@@ -21542,6 +21542,15 @@
       "status": "open",
       "title": "Site: accept the next read-model version and render its new fields when present"
     },
+    "crr-c1-validation-status-vocabulary": {
+      "claim": null,
+      "needs": [
+        "crr-a1-rule-module-and-snapshot"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Use one validation status vocabulary for SQL and DataFrame runs and stop recording 'passed' without evidence"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],
