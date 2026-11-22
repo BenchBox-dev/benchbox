@@ -2,7 +2,7 @@
   "acceptance": [
     "The pandas-df trunk UAT shard completes without a watchdog memory kill, with the cause of the 13 GiB breach recorded."
   ],
-  "context": "Filed 2026-11-22 while closing out the run-timeout follow-ups (umbrella run-timeout-plan-20261120). Evidence was read on 2026-11-22; re-read run logs, file paths and line numbers before acting.",
+  "context": "Filed 2026-11-22 while closing out the run-timeout follow-ups (umbrella run-timeout-plan-20261120). Evidence was read on 2026-11-22; re-read run logs, file paths and line numbers before acting.\n\nOwner decisions 2026-11-22 (choice dialog): \"Fix forward; never raise the budget\": find the cell and cause (bisect locally under the lock at 13 GiB), fix it; budget, cells and scale stay; if the cause is outside BenchBox, record and block. Delivered as a serial item, not in a batch (\"Same, but UAT investigations separate\").",
   "description": "## Problem\nTrunk UAT run 45007293835 (2026-11-22) failed job `UAT stage 1 pandas-df` (137161944440; checkout d7197c9c12): at 10:51:18Z, about 15 minutes into the sweep and before any cell output was printed, the host-lock watchdog logged `BREACH tree footprint: measured 13.07 GiB, limit 13.00 GiB budget (BENCHBOX_HEAVY_MEMORY_BUDGET_GIB); action: kill` with one `benchbox` process (pid 4705) at 12.84 GiB, and the job ended with exit 79. The cell running at 10:51Z is not named in the job log; the shard artifact and the runner's `log_dir` `/home/runner/Developer/benchmark_runs/logs/uat_20261122_103636` hold the cell logs (the datavault cells printed later ran at 11:35Z).\nRegression window: pandas-df passed in Trunk UAT 44888589677 (3e09d4f43b, 2026-11-21). `git log 3e09d4f43b..d7197c9c12` has 10 commits, among them the run-timeout pull requests #4423, #4434, #4435, #4437 and #4439; check #4437 (stop UAT cells with the run time limit, remove unused timers) first. Related, not the same: release-uat-dataframe-runner-shutdown-20261030 (open), pandas-df-write-primitives-sf1-segfault (done).\n\n## Change\nFrom the shard artifact, name the killed cell and its peak memory, and compare with the 11-21 run. Bisect the 10-commit window for that cell (lock-taken local runs at the same 13 GiB budget) and fix the cause.\n\n## Decision gates\n- Do not raise `BENCHBOX_HEAVY_MEMORY_BUDGET_GIB`, drop the cell, or lower its scale without the owner's decision in a choice dialog, with the measured peak.\n- If a merge in the window is the cause, name it with evidence (peak before and after) before proposing a fix or revert; a revert of develop needs `make trunk-revert` rules, not a hand revert.\n- A larger or paid runner needs owner approval.\n\n## Verification rubric\nPass: the killed cell, its peak and the causing commit recorded on this item; a fix that keeps the cell under the budget, shown by its peak RSS in a trunk UAT pandas-df shard or a lock-taken local reproduction with the same budget, before and after; or the owner's recorded decision.\nFail: the shard passes only because the cell was skipped or the budget raised without the owner.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/actions/runs/45007293835"
@@ -23,6 +23,14 @@
       "op": "update",
       "op_id": "09a4f2c12ac94f6cbb28ddcd57b8fda0",
       "session_id": "e80ec8f825d244408f926415b43e3179"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18",
+      "at": "2026-11-22T20:59:29Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8c34fa3224b54ec7abf06e7664dcb0cd",
+      "session_id": "301a72f40ca84d7ab9668f9bdc47da3b"
     }
   ]
 }
