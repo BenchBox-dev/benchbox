@@ -96,6 +96,11 @@ def estimate_generation(kind: str, benchmark: str, scale: float) -> GenerationEs
     )
 
 
+def generation_estimate_messages(benchmark: str, scale: float) -> list[str]:
+    estimates = (estimate_generation(kind, benchmark, scale) for kind in (DATA_GENERATION, QUERY_GENERATION))
+    return [estimate.message() for estimate in estimates if estimate is not None]
+
+
 def announce_generation_estimate(kind: str, benchmark: str, scale: float) -> GenerationEstimate | None:
     estimate = estimate_generation(kind, benchmark, scale)
     if estimate is None:

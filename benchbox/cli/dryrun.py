@@ -13,6 +13,7 @@ from rich.table import Table
 from rich.text import Text
 
 from benchbox.core.dryrun import DryRunExecutor as CoreDryRunExecutor, DryRunQueryExtractionError
+from benchbox.core.generation_estimate import generation_estimate_messages
 from benchbox.core.schemas import BenchmarkConfig, DatabaseConfig, DryRunResult, SystemProfile
 from benchbox.utils.printing import quiet_console
 
@@ -281,6 +282,8 @@ def display_interactive_preview(
         table.add_row("Est. Time:", f"{time_range[0]}-{time_range[1]} minutes")
 
     display_console.print(table)
+    for message in generation_estimate_messages(benchmark_config.name, benchmark_config.scale_factor):
+        display_console.print(message)
 
     display_console.print()
     display_console.print("[bold]Equivalent CLI command:[/bold]")
@@ -368,6 +371,11 @@ class DryRunDisplay:
 
         if result.estimated_resources:
             self._display_resource_estimates(result.estimated_resources)
+
+        for message in generation_estimate_messages(
+            str(result.benchmark_config.get("name", "")), result.benchmark_config.get("scale_factor", 0)
+        ):
+            self.console.print(message)
 
         if result.warnings:
             self._display_warnings(result.warnings)

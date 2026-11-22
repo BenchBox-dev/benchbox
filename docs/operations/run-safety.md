@@ -70,8 +70,9 @@ Data generation was measured at scale 0.01, 0.1, 1 and 10; TPC-DS query generati
 1000, 3000 and 5000. Between measured scales the estimate interpolates linearly. A scale above the largest measured one
 scales the largest measurement linearly, and the line says so (`; extrapolated for scale 100, above the largest measured
 scale 10`). The figures describe that host class; other hardware will differ. No estimate is printed for benchmarks
-without measurements. The prompt's per-benchmark minutes range and the dry run's estimates cover the whole run, not
-generation, and are unchanged.
+without measurements. The same line is shown by the dry run, the interactive configuration preview and the interactive
+scale prompt, so every surface that talks about generation time reads this one measured source. The whole-run "Est. Time"
+ranges of the prompt and the dry run are run time, not generation time, and are unchanged.
 
 When a run limit is set and is shorter than the estimate, the run also prints:
 
