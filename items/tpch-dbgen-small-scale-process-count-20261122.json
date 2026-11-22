@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Small-scale TPC-H generation no longer pays dbgen's fixed text-pool cost once per CPU core, with unchanged generated data and the owner's chosen process-count rule."
+  ],
+  "context": "Filed 2026-11-22 while closing out the run-timeout follow-ups (umbrella run-timeout-plan-20261120). Evidence was read on 2026-11-22; re-read run logs, file paths and line numbers before acting.",
+  "description": "## Problem\nThe generation-estimate re-measure (#4446, run folder `~/Developer/benchmark_runs/generation-estimate/remeasure-20261122/`) found that TPC-H data generation takes about 4–5 s at SF 0.01 and 0.1, no faster than at SF 0.1. Cause, with evidence in that folder (`dbgen_direct`, `dbgen_fixed` logs, load below 3, Apple M4): the stock dbgen (`_sources/tpc-h/dbgen/text.c`) builds a fixed 300 MiB text pool (`TEXT_POOL_SIZE`) before writing its first comment, in every process, whatever the scale or table. A single `dbgen -vf -s 0.01` takes 1.57 s; every single-table run at SF 0.01 takes 1.40–1.49 s; peak RSS is about 316 MB. BenchBox passes `parallel=cpu_cores` (10 here), so the CLI starts 10 chunk processes that each pay the cost: an SF 0.01 run used 20 s of CPU in 4.7 s wall. In-process timings: parallel 1 = 2.60 s, 4 = 1.63 s, 10 = 2.29 s at SF 0.01; 2.92 / 1.89 / 2.74 s at SF 0.1. The rest is about 1 s of uv and CLI start-up, a 0.2 s sleep and `sync` (0.2–0.35 s).\n\n## Change\nInvestigate, then propose to the owner: cap the number of dbgen chunk processes at small scales (for example from scale and core count), so small-scale generation stops paying the pool cost many times. Find where the process count is chosen (start from the benchmark loader and the TPC-H generator) and whether the chunked-versus-single-file layout follows from it. Do not change dbgen's text pool.\n\n## Decision gates\n- STOP before implementing: present the measured options (process count per scale, wall and CPU time, file layout effect) to the owner in a choice dialog; the default process count and the file layout are owner decisions.\n- STOP if any option changes generated data: TPC-H table hashes at SF 0.01 and 0.1 must equal develop's (the TPC specification text must not change).\n- Re-measure on an idle host only (1-minute load below 3), through `make heavy-run`; if admission is refused or free disk would fall below 50 GiB, stop and report.\n\n## Verification rubric\nPass: the owner's chosen option implemented; TPC-H hashes at SF 0.01 and 0.1 equal develop's; before/after wall and CPU time at SF 0.01, 0.1, 1 and 10 in the pull request; `benchbox/core/generation_estimate.json` re-measured if the figures move by more than 10%; a test pins the process-count rule at its boundaries.\nFail: data differs, figures not measured, or a default changed without the owner's choice.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4446"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T19:34:23Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4ecf2892dc8642a1b661199f535114c7",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    }
+  ]
+}

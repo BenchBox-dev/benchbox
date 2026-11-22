@@ -49228,6 +49228,13 @@
       "status": "open",
       "title": "Find and regenerate TPC-H data generated before canonical addresses"
     },
+    "tpch-dbgen-small-scale-process-count-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Cut TPC-H generation time at small scales: dbgen pays a fixed text-pool cost per process and BenchBox starts one per CPU core"
+    },
     "tpch-dbgen-source-tree-hygiene": {
       "claim": null,
       "needs": [],
