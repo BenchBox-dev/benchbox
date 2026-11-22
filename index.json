@@ -46142,17 +46142,12 @@
       "title": "TPC-DI step 9: ship the TPC EULA, legend and the specification's audit, validation and visibility SQL"
     },
     "tpcdi-07-specification-schema-20261120": {
-      "claim": {
-        "expires_at": "2026-11-23T07:08:55Z",
-        "generation": "ca43e50cab2f4b4798ac240130e26788",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-provenance-record-and-copy-guard-20261121"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "TPC-DI step 7: replace the schema with the specification's tables, columns and types"
     },
     "tpcdi-07-specification-schema-20261120-deferral-1": {
