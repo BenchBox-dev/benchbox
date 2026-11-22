@@ -2,7 +2,7 @@
   "acceptance": [
     "Accepted step exit codes can no longer silently abort preflight: either step returns 0 for an accepted outcome, or a test enforces that every --ok-codes caller maps its codes, as the owner chose."
   ],
-  "context": "Filed 2026-11-22 while closing out the run-timeout follow-ups (umbrella run-timeout-plan-20261120). Evidence was read on 2026-11-22; re-read run logs, file paths and line numbers before acting.",
+  "context": "Filed 2026-11-22 while closing out the run-timeout follow-ups (umbrella run-timeout-plan-20261120). Evidence was read on 2026-11-22; re-read run logs, file paths and line numbers before acting.\n\nOwner decisions 2026-11-22 (choice dialog): \"Keep raw code, enforce mapping\": option (b), document the raw-code contract in step --help and add a test that every --ok-codes caller in make/ and scripts/ maps its accepted codes.",
   "description": "## Problem\n`scripts/preflight_receipt.py step --ok-codes 0,5` records a step as `passed` when the command exits with an accepted code, and returns the child's raw code. `test_pytest_exit_five_is_a_pass_with_its_raw_code` (`tests/unit/scripts/test_preflight_receipt.py`) pins that contract on purpose. Every caller must therefore map accepted codes itself: in `make/pr-landing.mk` the `lint-markers` step appends `|| [ \"$$?\" -eq 5 ]`, the `pytest` step stores the status and maps 5 to 0 (using the raw 5 to print \"Mapped tests are all deselected by the default markers.\"), and `scripts/linux_preflight_pytest.sh` maps 5 as well. A new step that passes `--ok-codes` but forgets the mapping aborts preflight although its receipt says passed; this happened during #4443 (fixed there by adding the `||` clause).\n\n## Change\nMake the contract hard to misuse: either (a) `step` exits 0 on an accepted outcome and exposes the raw code another way (for example in its output or a flag), with the pytest step's message kept; or (b) keep the raw code, document it in `step --help`, and add a test that every `--ok-codes` caller in `make/` and `scripts/` maps its accepted codes.\n\n## Decision gates\n- STOP and ask the owner (choice dialog) between (a) and (b): (a) rewrites a test that pins the current contract on purpose.\n- Do not change which outcomes count as passed, `unverified` or failed, or the receipt's required steps.\n\n## Verification rubric\nPass, under (a): a test shows `step --ok-codes 0,5` on an exit-5 command returns 0 and records `passed`, failing before the change; the `||`/status special cases are removed; the all-deselected message still prints. Under (b): a test that enumerates every `--ok-codes` caller fails on a caller without the mapping (shown failing on a deliberately broken copy) and passes on the tree. Either way `tests/unit/scripts/test_pr_preflight_base.py` and the receipt tests pass.\nFail: callers still silently depend on remembering the mapping.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4443"
@@ -23,6 +23,14 @@
       "op": "update",
       "op_id": "7f343e92f9a34b04b99c9d1eed54bba1",
       "session_id": "e80ec8f825d244408f926415b43e3179"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18",
+      "at": "2026-11-22T20:59:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "37b997c30e61428ca1fa12b58b2b5fb9",
+      "session_id": "301a72f40ca84d7ab9668f9bdc47da3b"
     }
   ]
 }
