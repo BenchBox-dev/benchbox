@@ -46991,7 +46991,8 @@
     "tpc-full-spec-result-schema": {
       "claim": null,
       "needs": [
-        "tpc-full-spec-cli-and-api-names"
+        "tpc-full-spec-cli-and-api-names",
+        "crr-a1-rule-module-and-snapshot"
       ],
       "priority": "medium",
       "status": "open",
