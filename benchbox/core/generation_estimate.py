@@ -21,6 +21,8 @@ EXTRAPOLATED_NOTE = "; extrapolated for scale {scale}, above the largest measure
 DATA_GENERATION = "data_generation"
 QUERY_GENERATION = "query_generation"
 SECONDS_KEYS = {DATA_GENERATION: "wall_seconds", QUERY_GENERATION: "total_seconds"}
+KIND_LABELS = {DATA_GENERATION: "data generation", QUERY_GENERATION: "query generation"}
+BENCHMARK_NAMES = {"tpch": "TPC-H", "tpcds": "TPC-DS"}
 
 
 @dataclass(frozen=True)
@@ -30,9 +32,15 @@ class GenerationEstimate:
     measured_scales: tuple[float, ...]
     extrapolated: bool
     scale: float
+    kind: str
+    benchmark: str
 
     def duration_text(self) -> str:
         return format_estimate_duration(self.seconds)
+
+    def label(self) -> str:
+        name = BENCHMARK_NAMES.get(self.benchmark, self.benchmark.upper())
+        return f"{name} {KIND_LABELS[self.kind]}, scale {self.scale:g}: "
 
     def message(self) -> str:
         note = (
@@ -40,7 +48,7 @@ class GenerationEstimate:
             if self.extrapolated
             else ""
         )
-        return ESTIMATE_TEXT.format(
+        return self.label() + ESTIMATE_TEXT.format(
             estimate=self.duration_text(),
             host_class=self.host_class,
             scales=", ".join(f"{scale:g}" for scale in self.measured_scales),
@@ -93,11 +101,15 @@ def estimate_generation(kind: str, benchmark: str, scale: float) -> GenerationEs
         measured_scales=tuple(scale_value for scale_value, _ in table),
         extrapolated=scale > largest_scale,
         scale=scale,
+        kind=kind,
+        benchmark=str(benchmark).lower(),
     )
 
 
-def generation_estimate_messages(benchmark: str, scale: float) -> list[str]:
-    estimates = (estimate_generation(kind, benchmark, scale) for kind in (DATA_GENERATION, QUERY_GENERATION))
+def generation_estimate_messages(
+    benchmark: str, scale: float, kinds: tuple[str, ...] = (DATA_GENERATION, QUERY_GENERATION)
+) -> list[str]:
+    estimates = (estimate_generation(kind, benchmark, scale) for kind in kinds)
     return [estimate.message() for estimate in estimates if estimate is not None]
 
 
@@ -109,3 +121,4 @@ def announce_generation_estimate(kind: str, benchmark: str, scale: float) -> Gen
     deadline = current_run_deadline()
     if deadline is not None and deadline.timeout_seconds < estimate.seconds:
         emit(LIMIT_WARNING_TEXT.format(limit=deadline.timeout_seconds, estimate=estimate.duration_text()))
+    return estimate

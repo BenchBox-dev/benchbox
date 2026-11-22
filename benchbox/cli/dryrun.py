@@ -13,7 +13,8 @@ from rich.table import Table
 from rich.text import Text
 
 from benchbox.core.dryrun import DryRunExecutor as CoreDryRunExecutor, DryRunQueryExtractionError
-from benchbox.core.generation_estimate import generation_estimate_messages
+from benchbox.core.generation_estimate import DATA_GENERATION, QUERY_GENERATION, generation_estimate_messages
+from benchbox.core.run_service import resolve_lifecycle_phases
 from benchbox.core.schemas import BenchmarkConfig, DatabaseConfig, DryRunResult, SystemProfile
 from benchbox.utils.printing import quiet_console
 
@@ -282,7 +283,13 @@ def display_interactive_preview(
         table.add_row("Est. Time:", f"{time_range[0]}-{time_range[1]} minutes")
 
     display_console.print(table)
-    for message in generation_estimate_messages(benchmark_config.name, benchmark_config.scale_factor):
+    lifecycle = resolve_lifecycle_phases(phases)
+    kinds = tuple(
+        kind
+        for kind, wanted in ((DATA_GENERATION, lifecycle.generate), (QUERY_GENERATION, lifecycle.execute))
+        if wanted
+    )
+    for message in generation_estimate_messages(benchmark_config.name, benchmark_config.scale_factor, kinds):
         display_console.print(message)
 
     display_console.print()

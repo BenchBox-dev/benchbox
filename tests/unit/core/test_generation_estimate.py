@@ -39,7 +39,7 @@ def test_estimate_text_is_the_owner_text_for_a_measured_scale(lines: list[str]) 
     announce_generation_estimate(DATA_GENERATION, "tpch", 1)
 
     assert lines == [
-        f"Rough estimate: generation will take about 12 seconds (measured on {HOST} at scale 0.01, 0.1, 1, 10)."
+        f"TPC-H data generation, scale 1: Rough estimate: generation will take about 12 seconds (measured on {HOST} at scale 0.01, 0.1, 1, 10)."
     ]
 
 
@@ -64,7 +64,7 @@ def test_unmeasured_larger_scale_is_labelled_extrapolated(lines: list[str]) -> N
     announce_generation_estimate(DATA_GENERATION, "tpcds", 100)
 
     assert lines == [
-        "Rough estimate: generation will take about 31 minutes "
+        "TPC-DS data generation, scale 100: Rough estimate: generation will take about 31 minutes "
         f"(measured on {HOST} at scale 0.01, 0.1, 1, 10; "
         "extrapolated for scale 100, above the largest measured scale 10)."
     ]
@@ -78,7 +78,7 @@ def test_query_generation_estimate_uses_the_dsqgen_measurements(lines: list[str]
     announce_generation_estimate(QUERY_GENERATION, "tpcds", 10000)
 
     assert lines[0] == (
-        f"Rough estimate: generation will take about 1 second (measured on {HOST} at scale 1, 100, 1000, 3000, 5000)."
+        f"TPC-DS query generation, scale 1000: Rough estimate: generation will take about 1 second (measured on {HOST} at scale 1, 100, 1000, 3000, 5000)."
     )
     assert "extrapolated for scale 10000, above the largest measured scale 5000" in lines[1]
 
@@ -121,3 +121,18 @@ def test_data_generation_prints_the_estimate_before_generating(
     assert runner._ensure_data_generated(benchmark, config) == (True, False)
 
     assert order == ["estimate", "generate"]
+
+
+def test_announce_returns_the_estimate_it_printed(lines: list[str]) -> None:
+    estimate = announce_generation_estimate(DATA_GENERATION, "tpcds", 10)
+
+    assert estimate is not None
+    assert estimate.seconds == pytest.approx(183.41)
+    assert lines[0] == estimate.message()
+
+
+def test_tpcds_data_and_query_lines_name_their_kind_and_scale() -> None:
+    data, query = generation_estimate.generation_estimate_messages("tpcds", 10)
+
+    assert data.startswith("TPC-DS data generation, scale 10: Rough estimate: ")
+    assert query.startswith("TPC-DS query generation, scale 10: Rough estimate: ")
