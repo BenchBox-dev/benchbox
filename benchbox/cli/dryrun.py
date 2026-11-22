@@ -186,11 +186,7 @@ def _resolve_cli_table_format(options: dict[str, Any]) -> str | None:
 
 def _phase_estimate_messages(benchmark: str, scale: float, phases: list[str] | None) -> list[str]:
     lifecycle = resolve_lifecycle_phases(phases)
-    kinds = tuple(
-        kind
-        for kind, wanted in ((DATA_GENERATION, lifecycle.generate), (QUERY_GENERATION, lifecycle.execute))
-        if wanted
-    )
+    kinds = (DATA_GENERATION, QUERY_GENERATION) if lifecycle.execute else (DATA_GENERATION,)
     return generation_estimate_messages(benchmark, scale, kinds)
 
 

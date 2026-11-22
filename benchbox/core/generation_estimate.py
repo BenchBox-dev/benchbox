@@ -23,6 +23,7 @@ QUERY_GENERATION = "query_generation"
 SECONDS_KEYS = {DATA_GENERATION: "wall_seconds", QUERY_GENERATION: "total_seconds"}
 KIND_LABELS = {DATA_GENERATION: "data generation", QUERY_GENERATION: "query generation"}
 BENCHMARK_NAMES = {"tpch": "TPC-H", "tpcds": "TPC-DS"}
+PREVIEW_DATA_CONDITION = " (if the data is not already present)"
 
 
 @dataclass(frozen=True)
@@ -38,17 +39,18 @@ class GenerationEstimate:
     def duration_text(self) -> str:
         return format_estimate_duration(self.seconds)
 
-    def label(self) -> str:
+    def label(self, *, preview: bool = False) -> str:
         name = BENCHMARK_NAMES.get(self.benchmark, self.benchmark.upper())
-        return f"{name} {KIND_LABELS[self.kind]}, scale {self.scale:g}: "
+        condition = PREVIEW_DATA_CONDITION if preview and self.kind == DATA_GENERATION else ""
+        return f"{name} {KIND_LABELS[self.kind]}{condition}, scale {self.scale:g}: "
 
-    def message(self) -> str:
+    def message(self, *, preview: bool = False) -> str:
         note = (
             EXTRAPOLATED_NOTE.format(scale=f"{self.scale:g}", largest=f"{self.measured_scales[-1]:g}")
             if self.extrapolated
             else ""
         )
-        return self.label() + ESTIMATE_TEXT.format(
+        return self.label(preview=preview) + ESTIMATE_TEXT.format(
             estimate=self.duration_text(),
             host_class=self.host_class,
             scales=", ".join(f"{scale:g}" for scale in self.measured_scales),
@@ -110,7 +112,7 @@ def generation_estimate_messages(
     benchmark: str, scale: float, kinds: tuple[str, ...] = (DATA_GENERATION, QUERY_GENERATION)
 ) -> list[str]:
     estimates = (estimate_generation(kind, benchmark, scale) for kind in kinds)
-    return [estimate.message() for estimate in estimates if estimate is not None]
+    return [estimate.message(preview=True) for estimate in estimates if estimate is not None]
 
 
 def announce_generation_estimate(kind: str, benchmark: str, scale: float) -> GenerationEstimate | None:

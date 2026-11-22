@@ -20,6 +20,7 @@ pytestmark = [
 ]
 
 HOST = "darwin-arm64 (Apple M4, 10 cores, 16 GiB)"
+PRESENT = " (if the data is not already present)"
 
 
 def wide_console() -> tuple[Console, StringIO]:
@@ -30,7 +31,7 @@ def wide_console() -> tuple[Console, StringIO]:
 def measured_line(kind: str, benchmark: str, scale: float) -> str:
     estimate = estimate_generation(kind, benchmark, scale)
     assert estimate is not None
-    return estimate.message()
+    return estimate.message(preview=True)
 
 
 def test_interactive_summary_shows_the_measured_generation_estimate(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -50,7 +51,7 @@ def test_interactive_summary_shows_the_measured_generation_estimate(monkeypatch:
     )
 
     assert (
-        f"TPC-H data generation, scale 1: Rough estimate: generation will take about 12 seconds (measured on {HOST} at scale 0.01, 0.1, 1, 10)."
+        f"TPC-H data generation{PRESENT}, scale 1: Rough estimate: generation will take about 12 seconds (measured on {HOST} at scale 0.01, 0.1, 1, 10)."
         in stream.getvalue()
     )
     assert "Est. Time:" in stream.getvalue()
@@ -128,17 +129,17 @@ def test_interactive_scale_lines_name_their_scale(monkeypatch: pytest.MonkeyPatc
     )
 
     output = stream.getvalue()
-    assert "TPC-H data generation, scale 0.1: Rough estimate" in output
-    assert "TPC-H data generation, scale 10: Rough estimate" in output
+    assert f"TPC-H data generation{PRESENT}, scale 0.1: Rough estimate" in output
+    assert f"TPC-H data generation{PRESENT}, scale 10: Rough estimate" in output
 
 
 @pytest.mark.parametrize(
     ("phases", "data", "query"),
     [
         (["generate"], True, False),
-        (["power"], False, True),
+        (["power"], True, True),
         (["generate", "power"], True, True),
-        (["load"], False, False),
+        (["load"], True, False),
     ],
 )
 def test_preview_shows_only_the_estimates_for_the_chosen_phases(phases: list[str], data: bool, query: bool) -> None:
@@ -152,13 +153,19 @@ def test_preview_shows_only_the_estimates_for_the_chosen_phases(phases: list[str
     )
 
     output = stream.getvalue()
-    assert ("TPC-DS data generation, scale 10:" in output) is data
+    assert (f"TPC-DS data generation{PRESENT}, scale 10:" in output) is data
     assert ("TPC-DS query generation, scale 10:" in output) is query
 
 
 @pytest.mark.parametrize(
     ("requested", "data", "query"),
-    [(["power"], False, True), (["generate"], True, False), (None, True, True), ([], True, True)],
+    [
+        (["power"], True, True),
+        (["generate"], True, False),
+        (None, True, True),
+        ([], True, True),
+        (["load"], True, False),
+    ],
 )
 def test_dry_run_result_shows_only_the_estimates_for_the_requested_phases(
     requested: list[str] | None, data: bool, query: bool
@@ -176,13 +183,13 @@ def test_dry_run_result_shows_only_the_estimates_for_the_requested_phases(
     DryRunDisplay(console=console).display_dry_run_results(result)
 
     output = stream.getvalue()
-    assert ("TPC-DS data generation, scale 10:" in output) is data
+    assert (f"TPC-DS data generation{PRESENT}, scale 10:" in output) is data
     assert ("TPC-DS query generation, scale 10:" in output) is query
 
 
 @pytest.mark.parametrize(
     ("phases", "data", "query"),
-    [("power", False, True), ("generate", True, False), ("generate,power", True, True)],
+    [("power", True, True), ("generate", True, False), ("generate,power", True, True), ("load", True, False)],
 )
 def test_dry_run_command_shows_only_the_estimates_for_the_phases_option(
     tmp_path: Path, phases: str, data: bool, query: bool
@@ -206,5 +213,5 @@ def test_dry_run_command_shows_only_the_estimates_for_the_phases_option(
     )
 
     assert result.exit_code == 0, result.output
-    assert ("TPC-DS data generation, scale 1:" in result.output) is data
+    assert (f"TPC-DS data generation{PRESENT}, scale 1:" in result.output) is data
     assert ("TPC-DS query generation, scale 1:" in result.output) is query

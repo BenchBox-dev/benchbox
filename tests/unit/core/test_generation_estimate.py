@@ -134,5 +134,5 @@ def test_announce_returns_the_estimate_it_printed(lines: list[str]) -> None:
 def test_tpcds_data_and_query_lines_name_their_kind_and_scale() -> None:
     data, query = generation_estimate.generation_estimate_messages("tpcds", 10)
 
-    assert data.startswith("TPC-DS data generation, scale 10: Rough estimate: ")
+    assert data.startswith("TPC-DS data generation (if the data is not already present), scale 10: Rough estimate: ")
     assert query.startswith("TPC-DS query generation, scale 10: Rough estimate: ")
