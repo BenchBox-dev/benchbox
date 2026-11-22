@@ -3,12 +3,14 @@ from __future__ import annotations
 import concurrent.futures
 import logging
 import threading
+from collections.abc import Iterator
 from datetime import datetime
 from typing import Any, Callable, Protocol
 
 from benchbox.core.results.metrics import TPCMetricsCalculator
 from benchbox.core.results.platform_timing import throughput_stream_context
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.run_deadline import current_run_deadline, limit_to_remaining, run_stop_requested
 
 from .containment import record_outstanding_result
 from .executor import DaemonStreamExecutor
@@ -82,6 +84,49 @@ def _record_completed_future(
             logger.error(f"Stream {completed_stream_id} execution failed: {e}")
 
 
+def wait_for_completed(
+    futures: set[concurrent.futures.Future[Any]], timeout: float | None
+) -> Iterator[concurrent.futures.Future[Any]]:
+    return concurrent.futures.as_completed(futures, timeout=timeout)
+
+
+def stream_stop_requested(cancel_event: threading.Event | None) -> bool:
+    return (cancel_event is not None and cancel_event.is_set()) or run_stop_requested()
+
+
+def mark_query_in_flight(config: Any, stream_id: int, query_id: Any) -> None:
+    inflight = getattr(config, "_stream_inflight_queries", None)
+    if isinstance(inflight, dict):
+        inflight[stream_id] = str(query_id)
+
+
+def clear_query_in_flight(config: Any, stream_id: int) -> None:
+    inflight = getattr(config, "_stream_inflight_queries", None)
+    if isinstance(inflight, dict):
+        inflight.pop(stream_id, None)
+
+
+def stream_cancel_event(config: Any, stream_id: int) -> threading.Event | None:
+    cancel_events = getattr(config, "_stream_cancel_events", None)
+    if not isinstance(cancel_events, dict):
+        return None
+    candidate = cancel_events.get(stream_id)
+    return candidate if isinstance(candidate, threading.Event) else None
+
+
+def _warn_if_streams_queue(
+    logger: logging.Logger, config: _RunnerConfig, max_workers: int, configured_timeout: float | None
+) -> None:
+    if max_workers < config.num_streams and configured_timeout is not None:
+        logger.warning(
+            f"max_workers ({max_workers}) < num_streams ({config.num_streams}) with a "
+            f"stream_timeout of {configured_timeout}s set: queued streams share the same overall "
+            "deadline as immediately-started ones and may be reported as timed-out before "
+            "executing a single query. Set max_workers >= num_streams (or leave it unset) "
+            "for the timeout to behave as a true per-stream timeout."
+        )
+
+
 class StreamRunner:
     @staticmethod
     def execute(
@@ -92,40 +137,34 @@ class StreamRunner:
         auxiliary_fn: Callable[[], Any] | None = None,
     ) -> None:
         max_workers = config.max_workers or config.num_streams
-        timeout: float | None = config.stream_timeout if config.stream_timeout > 0 else None
+        configured_timeout: float | None = config.stream_timeout if config.stream_timeout > 0 else None
+        timeout = limit_to_remaining(configured_timeout)
 
-        if max_workers < config.num_streams and timeout is not None:
-            logger.warning(
-                f"max_workers ({max_workers}) < num_streams ({config.num_streams}) with a "
-                f"stream_timeout of {timeout}s set: queued streams share the same overall "
-                "deadline as immediately-started ones and may be reported as timed-out before "
-                "executing a single query. Set max_workers >= num_streams (or leave it unset) "
-                "for the timeout to behave as a true per-stream timeout."
-            )
+        _warn_if_streams_queue(logger, config, max_workers, configured_timeout)
 
         cooperative_cancel = bool(getattr(config, "cancel_on_timeout", False))
         first_stream_id = getattr(config, "first_stream_id", THROUGHPUT_FIRST_STREAM_ID)
         if not isinstance(first_stream_id, int):
             first_stream_id = THROUGHPUT_FIRST_STREAM_ID
         stream_ids = throughput_stream_ids(config.num_streams, first_stream_id)
-        cancel_events: dict[int, threading.Event] = (
-            {stream_id: threading.Event() for stream_id in stream_ids} if cooperative_cancel else {}
-        )
-        if cooperative_cancel and auxiliary_fn is not None:
+        cancel_events: dict[int, threading.Event] = {stream_id: threading.Event() for stream_id in stream_ids}
+        if auxiliary_fn is not None:
             cancel_events[0] = threading.Event()
+        inflight_queries: dict[int, str] = {}
         config._stream_cancel_events = cancel_events
+        config._stream_inflight_queries = inflight_queries
 
         future_to_stream_id: dict[concurrent.futures.Future[Any], int] = {}
         pending: set[concurrent.futures.Future[Any]] = set()
         outstanding_futures: dict[int, concurrent.futures.Future[Any]] = {}
 
-        def _settle_pending(reason: str) -> None:
+        def _settle_pending(reason: str, *, signal: bool, record_inflight: bool = False) -> None:
             for future in sorted(pending, key=future_to_stream_id.__getitem__):
                 stream_id = future_to_stream_id[future]
                 label = "Refresh stream" if stream_id == 0 else f"Stream {stream_id}"
                 pending.discard(future)
 
-                if stream_id in cancel_events:
+                if signal:
                     cancel_events[stream_id].set()
 
                 if future.cancel():
@@ -145,6 +184,9 @@ class StreamRunner:
                         result.streams_executed += 1
                     result.outstanding_stream_ids.append(stream_id)
                     outstanding_futures[stream_id] = future
+                    inflight_query = inflight_queries.get(stream_id)
+                    if record_inflight and inflight_query is not None:
+                        result.timed_out_queries.append({"stream_id": stream_id, "query_id": inflight_query})
                     error_msg = (
                         f"{label} {reason} and has not completed. "
                         "Python cannot forcibly cancel a running thread, so this worker "
@@ -153,7 +195,7 @@ class StreamRunner:
                         + (
                             "; cooperative cancellation has been signalled and the stream should "
                             "stop before its next query"
-                            if stream_id in cancel_events
+                            if signal
                             else ""
                         )
                         + "."
@@ -161,11 +203,7 @@ class StreamRunner:
                     result.errors.append(error_msg)
                     result.outstanding_notes.append(
                         f"{label} worker still running when it was settled"
-                        + (
-                            "; cooperative cancellation signalled"
-                            if stream_id in cancel_events
-                            else "; no cooperative cancellation"
-                        )
+                        + ("; cooperative cancellation signalled" if signal else "; no cooperative cancellation")
                         + "."
                     )
                     logger.warning(error_msg)
@@ -183,13 +221,17 @@ class StreamRunner:
                     pending.add(future)
 
             try:
-                for future in concurrent.futures.as_completed(pending, timeout=timeout):
+                for future in wait_for_completed(pending, timeout):
                     pending.discard(future)
                     _record_completed_future(future, future_to_stream_id[future], result, config, logger)
             except concurrent.futures.TimeoutError:
-                _settle_pending(f"timed out after {timeout}s")
+                run_deadline = current_run_deadline()
+                if run_deadline is not None and run_deadline.stop_requested():
+                    _settle_pending("was stopped at the run time limit", signal=True, record_inflight=True)
+                else:
+                    _settle_pending(f"timed out after {timeout}s", signal=cooperative_cancel)
         except BaseException:
-            _settle_pending("was abandoned after the runner failed")
+            _settle_pending("was abandoned after the runner failed", signal=cooperative_cancel)
             raise
         finally:
             executor.shutdown(wait=False, cancel_futures=True)

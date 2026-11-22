@@ -133,6 +133,7 @@
       "match": [
         ".github/ci-units.yml",
         ".github/inert-paths.txt",
+        "_project/inert-doc-readers.json",
         ".github/soundness-paths.txt",
         ".github/path-filters.yml",
         ".pre-commit-config.yaml",
@@ -255,6 +256,7 @@
         "tests/unit/scripts/test_pr_review_followups.py",
         "tests/unit/scripts/test_preflight_targets.py",
         "tests/unit/scripts/test_reference_usage_audit.py",
+        "tests/unit/scripts/test_release_line_carried_tests.py",
         "tests/unit/scripts/test_release_probe.py",
         "tests/unit/scripts/test_release_probe_launch.py",
         "tests/unit/scripts/test_remote_closeout.py",

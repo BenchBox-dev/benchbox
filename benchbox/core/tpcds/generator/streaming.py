@@ -5,8 +5,10 @@ import os
 import subprocess
 from pathlib import Path
 
+from benchbox.core.exceptions import RunTimeoutError
 from benchbox.core.tpcds.c_tools import tpcds_option
 from benchbox.utils.printing import emit
+from benchbox.utils.run_deadline import current_run_deadline, run_child, stream_child
 
 
 class StreamingGenerationMixin:
@@ -41,8 +43,10 @@ class StreamingGenerationMixin:
         try:
             env = os.environ.copy()
             self._copy_distribution_files(output_dir)
-            subprocess.run(
+            run_child(
                 cmd,
+                tool="dsdgen",
+                deadline=current_run_deadline(),
                 cwd=output_dir,
                 check=True,
                 env=env,
@@ -83,6 +87,8 @@ class StreamingGenerationMixin:
                         dat_file.unlink()
                 if self.verbose:
                     emit(f"○ Skipped {table_name} (no data at scale factor {self.scale_factor})")
+        except RunTimeoutError:
+            raise
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to generate TPC-DS table {table_name} with exit code {e.returncode}") from e
         except Exception as e:
@@ -110,8 +116,10 @@ class StreamingGenerationMixin:
                 parent_table,
             ]
 
-            subprocess.run(
+            run_child(
                 cmd,
+                tool="dsdgen",
+                deadline=current_run_deadline(),
                 cwd=output_dir,
                 check=True,
                 env=env,
@@ -160,6 +168,8 @@ class StreamingGenerationMixin:
                 tables_str = f"{parent_table} + {', '.join(child_tables)}"
                 emit(f"○ Skipped {tables_str} (no data at scale factor {self.scale_factor})")
 
+        except RunTimeoutError:
+            raise
         except subprocess.CalledProcessError as e:
             error_msg = f"Failed to generate TPC-DS table {parent_table} with exit code {e.returncode}"
             if e.stderr:
@@ -197,31 +207,34 @@ class StreamingGenerationMixin:
             if self.verbose:
                 emit(f"Generating {table_name} chunk {chunk_id}/{self.parallel} with streaming compression...")
 
-            process = subprocess.Popen(
+            with stream_child(
                 cmd,
+                tool="dsdgen",
+                deadline=current_run_deadline(),
                 cwd=output_dir,
                 env=env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL if not self.verbose else None,
-            )
+            ) as process:
+                row_count, bytes_written = self._stream_process_output(process, output_file)
 
-            row_count, bytes_written = self._stream_process_output(process, output_file)
+                process.wait()
 
-            process.wait()
+                potential_dat_file = output_dir / expected_filename
+                self._handle_chunk_result(
+                    process,
+                    cmd,
+                    table_name,
+                    chunk_id,
+                    compressed_filename,
+                    output_file,
+                    potential_dat_file,
+                    row_count,
+                    bytes_written,
+                )
 
-            potential_dat_file = output_dir / expected_filename
-            self._handle_chunk_result(
-                process,
-                cmd,
-                table_name,
-                chunk_id,
-                compressed_filename,
-                output_file,
-                potential_dat_file,
-                row_count,
-                bytes_written,
-            )
-
+        except RunTimeoutError:
+            raise
         except subprocess.CalledProcessError as e:
             error_msg = f"Failed to generate TPC-DS table {table_name} chunk {chunk_id} with exit code {e.returncode}"
             if e.stderr:
@@ -330,8 +343,10 @@ class StreamingGenerationMixin:
                 str(self.parallel),
             ]
 
-            subprocess.run(
+            run_child(
                 cmd,
+                tool="dsdgen",
+                deadline=current_run_deadline(),
                 cwd=output_dir,
                 check=True,
                 env=env,
@@ -395,6 +410,8 @@ class StreamingGenerationMixin:
                 tables_str = f"{parent_table} + {', '.join(child_tables)}"
                 emit(f"○ Skipped {tables_str} chunk {chunk_id}/{self.parallel} (no data in this chunk)")
 
+        except RunTimeoutError:
+            raise
         except subprocess.CalledProcessError as e:
             error_msg = f"Failed to generate TPC-DS table {parent_table} chunk {chunk_id} with exit code {e.returncode}"
             if e.stderr:

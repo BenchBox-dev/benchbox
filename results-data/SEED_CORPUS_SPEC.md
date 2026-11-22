@@ -141,10 +141,10 @@ by stream count, because both composite metrics already contain the stream count
 | Workflow | `.github/workflows/seed-corpus.yml` |
 | Trigger | Monthly cron `0 7 1 * *` (07:00 UTC on the 1st) plus manual `workflow_dispatch` |
 | Producer identity | `benchbox-bot` via GitHub Actions |
-| Benchmark phases | `generate,load,power` |
+| Benchmark phases | `generate,load,power`; official TPC-H cells add `throughput` (2 streams, RF1/RF2), official TPC-DS cells add `throughput,maintenance` (4 streams) |
 | Trust label | `maintainer-run` |
 | Visibility | `public-curated` |
-| Supported identities | DuckDB, DataFusion, Polars DataFrame, and ClickHouse Local; no cloud credentials |
+| Supported identities | DuckDB, DataFusion, Polars DataFrame, ClickHouse Local and CedarDB (a pinned local container); no cloud credentials |
 
 The monthly schedule keeps published-results from stalling until someone remembers
 to dispatch. Maintainers can still run a full or single-benchmark refresh via
@@ -156,22 +156,24 @@ The authoritative cell list lives in `.github/workflows/seed-corpus.yml`
 (`strategy.matrix.include`). Do not treat a frozen table in this document as the
 source of truth; the workflow drifts as admitted coverage changes.
 
-The supported matrix contains four local, merge-ready cohorts: TPC-H SF 0.01
-and SF 0.1, and SSB SF 0.01 and SF 0.1. Each uses DuckDB, DataFusion, and
-Polars DataFrame. Every cohort has three local comparison identities and no
-cloud dependency.
+The supported matrix contains six local, merge-ready cohorts: TPC-H SF 0.01
+and SF 0.1, and SSB SF 0.01 and SF 0.1, each with DuckDB, DataFusion and
+Polars DataFrame; and the combined TPC-H SF 1 and TPC-DS SF 1 cohorts, each
+with DuckDB, ClickHouse Local and CedarDB. Every cohort has three local
+comparison identities and no cloud dependency.
 
-The TPC-H SF 1 and TPC-DS SF 1 official cohorts (DuckDB, DataFusion, and
-ClickHouse Local) are not in the monthly matrix. They are frozen at their
-published bundles until DataFusion and ClickHouse Local support full-spec runs
-(throughput plus refresh or maintenance), because `--official` TPC-H and TPC-DS
-runs require those phases and a cohort needs three identities. They return to
-the matrix as full-spec cells once all three engines support it. See
-[Official runs](#official-runs).
+The combined cells run the full specification under `--official`: TPC-H runs
+power and a 2-stream throughput phase with RF1/RF2, and TPC-DS runs load, power,
+a 4-stream throughput phase and data maintenance. CedarDB cells start the pinned
+image from `docker/cedardb/docker-compose.yml` before the run. The power-only
+TPC-H SF 1 and TPC-DS SF 1 cohorts published before full-specification runs
+(DuckDB, DataFusion and ClickHouse Local) are no longer regenerated and stay at
+their published bundles. See [Official runs](#official-runs).
 
 | Benchmark | Scale factors |
 |-----------|---------------|
-| TPC-H | 0.01, 0.1 |
+| TPC-H | 0.01, 0.1, 1 (combined) |
+| TPC-DS | 1 (combined) |
 | SSB | 0.01, 0.1 |
 
 Other checked-in cohorts are historical or operator-restored coverage, not a
@@ -212,19 +214,19 @@ are promoted.
 ### Local identity coverage
 
 The workflow includes `polars-df` for TPC-H SF 0.01/0.1 and SSB. The frozen
-TPC-H SF 1 and TPC-DS SF 1 cohorts use `clickhouse-local` as their local third
-identity because the admitted matrix does not rely on Polars DataFrame support there.
-Combined (full-specification) cohorts take their three identities from DuckDB,
-ClickHouse Local (chDB only) and CedarDB; see [Combined cohorts](#combined-cohorts).
+power-only TPC-H SF 1 and TPC-DS SF 1 cohorts use `clickhouse-local` as their
+local third identity. Combined (full-specification) cohorts take their three
+identities from DuckDB, ClickHouse Local (chDB only) and CedarDB; see
+[Combined cohorts](#combined-cohorts).
 
 ### Official runs
 
-A matrix entry marked `official: true` adds `--official --seed 42` to the
-generic local command. Only a TPC-H or TPC-DS run made with `--official` is
-classed `official`; without the flag a run at SF 1 or above is
-`unofficial_nonstandard` and is never admitted. No current matrix entry is marked
-`official: true`; the TPC-H SF 1 and TPC-DS SF 1 entries return marked, as
-full-spec cells, once all three engines support it.
+A matrix entry marked `official: true` adds `--official --seed 42` and its
+`streams` value to the generic local command and runs the phases the entry lists;
+official TPC-H entries also enable the refresh functions. Only a TPC-H or TPC-DS
+run made with `--official` is classed `official`; without the flag a run at SF 1
+or above is `unofficial_nonstandard` and is never admitted. The TPC-H SF 1 and
+TPC-DS SF 1 entries are the only ones marked `official: true`.
 
 The flag applies only at official scale points (SF 1, 10, 30, and so on).
 `benchbox run --official` refuses any other scale factor, and every TPC-H or

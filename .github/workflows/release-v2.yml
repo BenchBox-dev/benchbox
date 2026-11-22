@@ -115,7 +115,8 @@ jobs:
         run: |
           set -euo pipefail
           version="${RELEASE_TAG#v}"
-          make release-check VERSION="$version" RELEASE_PRE_TAG=1
+          line="$(uv run -- python scripts/release_artifact_consumer.py line --source . --tag "$RELEASE_TAG")"
+          make release-check VERSION="$version" RELEASE_PRE_TAG=1 RELEASE_LINE="$line"
 
       - name: Check ruleset drift without the readiness override
         if: ${{ github.event_name == 'push' || inputs.probe == 'none' }}
@@ -1148,14 +1149,14 @@ jobs:
     permissions:
       contents: read
       actions: read
-      checks: write
+      statuses: write
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           ref: ${{ needs.admit.outputs.head_sha }}
           persist-credentials: false
 
-      - name: Complete the release-v2 probe check once every variant run has finished
+      - name: Set the release-v2 probe status once every variant run has finished
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}

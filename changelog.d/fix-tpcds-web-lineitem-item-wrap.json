@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The bundled TPC-DS `dsdgen` no longer emits invalid or duplicate item keys in web order lineitems and web returns for SF 1 and larger refresh sets. Previously the generator read past the end of its item list, so `LF_WR` maintenance inserts failed on Linux engines that enforce `NOT NULL` keys (CedarDB, DuckDB) and stored default keys elsewhere. Only the affected refresh rows change; base data and queries are unchanged."
+    }
+  ]
+}

@@ -750,6 +750,7 @@ def _interactive_show_preview(s: types.SimpleNamespace) -> None:
         table_mode=plan.table_mode,
         tuning=plan.request.tuning if plan.request.tuning != "notuning" else None,
         seed=plan.seed,
+        timeout=getattr(s, "timeout", None),
         force=force_str,
         official=s.official,
         capture_plans=s.capture_plans,

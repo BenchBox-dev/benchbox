@@ -877,7 +877,6 @@ def test_starrocks_readiness_command_requires_alive_frontend_and_backend():
 @pytest.mark.parametrize(
     ("platform", "service", "needle"),
     [
-        ("cedardb", "cedardb", "psql"),
         ("pg-mooncake", "pg-mooncake", "psql"),
         ("presto", "presto", "X-Presto-User"),
         ("trino", "trino", "X-Trino-User"),
@@ -904,14 +903,19 @@ def test_coordinator_readiness_uses_only_tools_the_healthcheck_already_needs(pla
     assert "/v1/statement" in script and '"data":[[1]]' in script
 
 
-def test_cedardb_readiness_reads_credentials_from_the_container_environment():
+def test_cedardb_readiness_uses_the_tool_the_compose_healthcheck_already_needs():
     spec = docker_assets.docker_platform_spec("cedardb")
     argv = managed_runtime._readiness_command(spec, "benchbox-uat-cedardb")
     assert argv is not None
     script = argv[-1]
-    assert "$CEDAR_PASSWORD" in script and "$CEDAR_USER" in script and "$CEDAR_DB" in script
-    assert "Benchbox1!" not in script
-    assert "-h 127.0.0.1" in script
+    assert script.startswith("pg_isready ")
+    assert "$CEDAR_USER" in script and "$CEDAR_DB" in script
+    assert "psql" not in script and "$CEDAR_PASSWORD" not in script
+    healthcheck = yaml.safe_load(spec.compose_files[0].read_text(encoding="utf-8"))["services"]["cedardb"][
+        "healthcheck"
+    ]["test"]
+    assert "pg_isready" in " ".join(healthcheck)
+    assert "cedardb" not in managed_runtime._PROBE_TOOL_OPTIONAL
 
 
 @pytest.mark.parametrize(

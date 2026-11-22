@@ -10,7 +10,7 @@ from benchbox.core.benchmark_registry import (
     validate_scale_factor,
 )
 from benchbox.core.errors import ScaleFactorNotSupportedError, ScaleFactorOutOfRangeError
-from benchbox.core.tpcds.compliance import TpcdsComplianceClass, validate_tpcds_scale
+from benchbox.core.tpcds.compliance import TPCDS_BELOW_FLOOR_REASON, TpcdsComplianceClass, validate_tpcds_scale
 
 pytestmark = [
     pytest.mark.unit,
@@ -46,6 +46,8 @@ def test_in_range_values_are_accepted(benchmark_id: str, sf: float) -> None:
         ("clickbench", 1.5),
         ("tpcds", 1.5),
         ("tpcds_obt", 2.5),
+        ("tpcds", 100001),
+        ("tpcds_obt", 100001),
         ("tpch", 200000),
         ("tpch", 0.001),
         ("tpch", 0),
@@ -57,6 +59,18 @@ def test_out_of_range_values_name_the_range(benchmark_id: str, sf: float) -> Non
         validate_scale_factor(benchmark_id, sf)
     assert isinstance(excinfo.value, ValueError)
     assert excinfo.value.scale_options == list(get_scale_factor_rule(benchmark_id).standard)
+
+
+@pytest.mark.parametrize("benchmark_id", ["tpcds", "tpcds_obt"])
+@pytest.mark.parametrize("sf", [3000, 3001, 10000, 100000])
+def test_tpcds_scales_up_to_the_shared_maximum_are_accepted(benchmark_id: str, sf: float) -> None:
+    validate_scale_factor(benchmark_id, sf)
+
+
+@pytest.mark.parametrize("benchmark_id", ["tpcds", "tpcds_obt"])
+def test_tpcds_range_is_the_shared_range(benchmark_id: str) -> None:
+    rule = get_scale_factor_rule(benchmark_id)
+    assert (rule.minimum, rule.maximum) == (0.01, 100000.0)
 
 
 @pytest.mark.parametrize("benchmark_id", [bid for bid in BENCHMARK_METADATA if bid not in FIXED])
@@ -148,3 +162,17 @@ def test_no_registry_entry_goes_below_the_floor() -> None:
     for benchmark_id, meta in BENCHMARK_METADATA.items():
         values = [*meta["scale_options"], meta["default_scale"], meta.get("min_scale", 0.01)]
         assert min(values) >= 0.01, benchmark_id
+
+
+@pytest.mark.parametrize("benchmark_id", ["tpcds", "tpcds_obt"])
+def test_tpcds_floor_refusal_is_typed_and_states_what_was_observed(benchmark_id: str) -> None:
+    with pytest.raises(ScaleFactorOutOfRangeError, match="from 0.01 to 100000") as excinfo:
+        validate_scale_factor(benchmark_id, 0.001)
+    assert excinfo.value.reason == TPCDS_BELOW_FLOOR_REASON
+    assert "did not finish at SF 0.001" in str(excinfo.value)
+
+
+def test_range_errors_without_a_recorded_reason_carry_none() -> None:
+    with pytest.raises(ScaleFactorOutOfRangeError) as excinfo:
+        validate_scale_factor("tpcds", 100001)
+    assert excinfo.value.reason is None

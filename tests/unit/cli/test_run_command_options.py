@@ -403,8 +403,9 @@ class TestDryRunValidation:
         assert result.exit_code == 1
         assert "joinorder accepts scale_factor in [1.0]; got 0.01" in result.output
 
-    @pytest.mark.parametrize("scale", ["0.01", "0.1", "1", "10", "100000"])
-    def test_dry_run_tpcds_obt_accepts_tpcds_scale_range(self, tmp_path, scale):
+    @pytest.mark.parametrize("benchmark_id", ["tpcds", "tpcds_obt"])
+    @pytest.mark.parametrize("scale", ["0.01", "0.1", "1", "10", "3000", "3001", "10000", "100000"])
+    def test_dry_run_tpcds_obt_accepts_tpcds_scale_range(self, tmp_path, benchmark_id, scale):
         runner = CliRunner()
 
         with patch("benchbox.cli.dryrun.DryRunExecutor") as dry_run_executor:
@@ -419,7 +420,7 @@ class TestDryRunValidation:
                     "--platform",
                     "duckdb",
                     "--benchmark",
-                    "tpcds_obt",
+                    benchmark_id,
                     "--phases",
                     "generate",
                     "--scale",
@@ -431,7 +432,7 @@ class TestDryRunValidation:
 
         assert result.exit_code == 0, result.output
         benchmark_config = dry_run_executor.return_value.execute_dry_run.call_args.args[0]
-        assert benchmark_config.name == "tpcds_obt"
+        assert benchmark_config.name == benchmark_id
         assert benchmark_config.scale_factor == float(scale)
 
     @pytest.mark.parametrize(

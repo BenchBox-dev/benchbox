@@ -14,6 +14,7 @@ from benchbox.core.tpcds_obt.etl.transformer import SUPPORTED_CHANNELS, TPCDSOBT
 from benchbox.core.tpcds_obt.queries import TPCDSOBTQueryManager
 from benchbox.core.tpcds_obt.schema import OBT_TABLE_NAME, get_obt_columns
 from benchbox.utils.cloud_storage import normalize_output_dir
+from benchbox.utils.generation_marker import generation_in_progress
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 
 logger = logging.getLogger(__name__)
@@ -173,6 +174,8 @@ class TPCDSOBTBenchmark(BaseBenchmark):
         )
 
     def _existing_obt(self, output_format: str) -> bool:
+        if generation_in_progress(self.output_dir):
+            return False
         existing_path = self.output_dir / f"tpcds_sales_returns_obt.{output_format}"
         manifest_path = self.output_dir / "tpcds_sales_returns_obt_manifest.json"
         if existing_path.exists() and manifest_path.exists():

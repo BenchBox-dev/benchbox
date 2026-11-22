@@ -891,6 +891,17 @@ class TestPromptOfficialMode:
         assert result is True
         assert adjusted_scale == 100.0
 
+    @patch("benchbox.cli.benchmarks.Confirm.ask")
+    def test_thirty_is_official_for_tpch_only(self, mock_confirm):
+
+        mock_confirm.return_value = True
+        assert prompt_official_mode("tpch", 30.0) == (True, None)
+
+        mock_confirm.side_effect = [True, True]
+        result, adjusted_scale = prompt_official_mode("tpcds", 30.0)
+        assert result is True
+        assert adjusted_scale == 10.0
+
 
 class TestPromptSeed:
     @patch("benchbox.cli.benchmarks.Confirm.ask")

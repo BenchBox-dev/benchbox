@@ -14,6 +14,9 @@ from scripts.polars_matrix_spec import POLARS, SETUP_ENGINES, PolarsMatrixSpec, 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 GOLDEN_DRY_RUN = Path(__file__).resolve().parents[2] / "fixtures" / "version_matrix" / "polars_dry_run.txt"
+QUALIFICATION = (
+    Path(__file__).resolve().parents[3] / "_project" / "analysis" / "polars-version-matrix" / "qualification.json"
+)
 REFERENCE = {"tpch": {"0:1": 4, "0:2": 5}}
 PINS = {"benchbox_commit": "abc", "pyarrow": "1.0", "thread_count": 10, "datagen_manifests": {"tpch_sf10": "h"}}
 
@@ -122,17 +125,24 @@ def _cell(result: dict[str, Any], version: str, setup: str) -> dict[str, Any]:
 
 
 def test_spec_records_versions_scales_setups_and_qualification_hash() -> None:
-    assert POLARS.versions == ("1.31.0", "1.35.2", "1.40.1", "1.44.2", "2.0.0")
+    assert POLARS.versions == ("1.31.0", "1.35.2", "1.40.1", "1.44.2", "2.0.0", "2.1.0")
     assert POLARS.setups == {
-        "A": ("1.31.0", "1.35.2", "1.40.1", "1.44.2", "2.0.0"),
-        "B": ("2.0.0",),
-        "C": ("1.31.0", "1.40.1", "1.44.2", "2.0.0"),
+        "A": ("1.31.0", "1.35.2", "1.40.1", "1.44.2", "2.0.0", "2.1.0"),
+        "B": ("2.0.0", "2.1.0"),
+        "C": ("1.31.0", "1.40.1", "1.44.2", "2.0.0", "2.1.0"),
     }
     assert POLARS.benchmarks == (("tpch", 10.0), ("tpcds", 10.0), ("clickbench", 10.0), ("ssb", 10.0))
     assert POLARS.thread_count == 10
     assert POLARS.rounds == 3
     assert POLARS.iterations == 1
-    assert len(POLARS.qualification_sha256) == 64
+
+
+def test_committed_qualification_matches_the_pinned_hash_and_clears_every_cell() -> None:
+    assert hashlib.sha256(QUALIFICATION.read_bytes()).hexdigest() == POLARS.qualification_sha256
+    eligibility = json.loads(QUALIFICATION.read_text(encoding="utf-8"))["eligibility"]
+    assert [row for row in eligibility if row["clean"] is not True] == []
+    cleared = {(row["benchmark"], row["setup"], row["version"]) for row in eligibility}
+    assert {(cell.benchmark, cell.setup, cell.version) for cell in POLARS.cells()} <= cleared
 
 
 def test_dry_run_lists_every_invocation_and_matches_the_formula(capsys: pytest.CaptureFixture[str]) -> None:
@@ -141,7 +151,7 @@ def test_dry_run_lists_every_invocation_and_matches_the_formula(capsys: pytest.C
     lines = capsys.readouterr().out.splitlines()
     invocations = [line for line in lines if line.startswith("round ")]
     per_benchmark = len(POLARS.setups["A"]) + len(POLARS.setups["B"]) + len(POLARS.setups["C"])
-    assert len(invocations) == POLARS.rounds * per_benchmark * len(POLARS.benchmarks) == 120
+    assert len(invocations) == POLARS.rounds * per_benchmark * len(POLARS.benchmarks) == 156
     assert len(invocations) == POLARS.expected_invocations
     assert lines == GOLDEN_DRY_RUN.read_text(encoding="utf-8").splitlines()
 
@@ -175,6 +185,15 @@ def test_cell_command_pins_rechunk_engine_and_single_iteration() -> None:
     ]
     assert command[command.index("--execution-engine") + 1] == "in-memory"
     assert not any(part.startswith("engine=") for part in command)
+
+
+def test_cell_command_passes_the_cell_limit_and_the_outside_kill_waits_a_minute_longer() -> None:
+    cell = next(item for item in POLARS.cells() if item.setup == "B")
+    command = runner.cell_command(POLARS, cell)
+
+    assert POLARS.cell_timeout_s == 1800.0
+    assert command[command.index("--timeout") + 1] == "1800"
+    assert run_version_matrix.outside_kill_after_s(POLARS) == 1860.0
 
 
 def test_environment_check_rejects_stale_runtime_and_wrong_version() -> None:
@@ -219,6 +238,7 @@ def test_runner_refuses_to_continue_when_a_pinned_value_changes(key: str) -> Non
         ({"swap_growth_gib": 1.5}, "resource-policy-exceeded"),
         ({"safety_abort": True, "exit_code": -9}, "resource-policy-exceeded"),
         ({"timed_out": True, "exit_code": -9}, "timeout"),
+        ({"exit_code": 124}, "timeout"),
         ({"exit_code": -9}, "oom-killed"),
         ({"exit_code": 1}, "execution-failure"),
         ({"result_ok": False}, "execution-failure"),

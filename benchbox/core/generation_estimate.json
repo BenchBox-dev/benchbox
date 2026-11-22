@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "host_class": "darwin-arm64",
+  "host": "Apple M4, 10 cores, 16 GiB",
+  "measured_at_commit": "93f336032a",
+  "data_generation": {
+    "tpch": [
+      {"scale": 0.01, "wall_seconds": 4.74},
+      {"scale": 0.1, "wall_seconds": 4.13},
+      {"scale": 1, "wall_seconds": 11.48},
+      {"scale": 10, "wall_seconds": 81.8}
+    ],
+    "tpcds": [
+      {"scale": 0.01, "wall_seconds": 1.5},
+      {"scale": 0.1, "wall_seconds": 2.82},
+      {"scale": 1, "wall_seconds": 21.53},
+      {"scale": 10, "wall_seconds": 176.9}
+    ]
+  },
+  "query_generation": {
+    "tpch": [
+      {"scale": 1, "total_seconds": 0.068, "slowest_query_seconds": 0.004},
+      {"scale": 10, "total_seconds": 0.067, "slowest_query_seconds": 0.005},
+      {"scale": 100, "total_seconds": 0.069, "slowest_query_seconds": 0.004},
+      {"scale": 1000, "total_seconds": 0.064, "slowest_query_seconds": 0.006}
+    ],
+    "tpcds": [
+      {"scale": 1, "total_seconds": 0.589, "slowest_query_seconds": 0.013},
+      {"scale": 100, "total_seconds": 0.593, "slowest_query_seconds": 0.056},
+      {"scale": 1000, "total_seconds": 1.135, "slowest_query_seconds": 0.598},
+      {"scale": 3000, "total_seconds": 2.351, "slowest_query_seconds": 1.828},
+      {"scale": 5000, "total_seconds": 3.504, "slowest_query_seconds": 2.99}
+    ]
+  }
+}

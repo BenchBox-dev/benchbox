@@ -16,6 +16,9 @@ jobs:
     name: "${{ matrix.benchmark }} / ${{ matrix.platform }} / sf${{ matrix.scale_factor }}"
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: read
 
     strategy:
       fail-fast: false
@@ -53,51 +56,49 @@ jobs:
             extras: polars
             official: false
 
-          - benchmark: tpcdi
-            platform: duckdb
-            scale_factor: "0.01"
-            extras: duckdb
-            official: false
-          - benchmark: tpcdi
-            platform: datafusion
-            scale_factor: "0.01"
-            extras: datafusion
-            official: false
-          - benchmark: tpcdi
-            platform: clickhouse-local
-            scale_factor: "0.01"
-            extras: clickhouse-local
-            official: false
-          - benchmark: tpcdi
-            platform: duckdb
-            scale_factor: "0.1"
-            extras: duckdb
-            official: false
-          - benchmark: tpcdi
-            platform: datafusion
-            scale_factor: "0.1"
-            extras: datafusion
-            official: false
-          - benchmark: tpcdi
-            platform: clickhouse-local
-            scale_factor: "0.1"
-            extras: clickhouse-local
-            official: false
-          - benchmark: tpcdi
+          - benchmark: tpch
             platform: duckdb
             scale_factor: "1.0"
             extras: duckdb
-            official: false
-          - benchmark: tpcdi
-            platform: datafusion
-            scale_factor: "1.0"
-            extras: datafusion
-            official: false
-          - benchmark: tpcdi
+            official: true
+            phases: generate,load,power,throughput
+            streams: 2
+          - benchmark: tpch
             platform: clickhouse-local
             scale_factor: "1.0"
             extras: clickhouse-local
-            official: false
+            official: true
+            phases: generate,load,power,throughput
+            streams: 2
+          - benchmark: tpch
+            platform: cedardb
+            scale_factor: "1.0"
+            extras: postgresql
+            official: true
+            phases: generate,load,power,throughput
+            streams: 2
+
+          - benchmark: tpcds
+            platform: duckdb
+            scale_factor: "1"
+            extras: duckdb
+            official: true
+            phases: generate,load,power,throughput,maintenance
+            streams: 4
+          - benchmark: tpcds
+            platform: clickhouse-local
+            scale_factor: "1"
+            extras: clickhouse-local
+            official: true
+            phases: generate,load,power,throughput,maintenance
+            streams: 4
+          - benchmark: tpcds
+            platform: cedardb
+            scale_factor: "1"
+            extras: postgresql
+            official: true
+            phases: generate,load,power,throughput,maintenance
+            streams: 4
 
           - benchmark: ssb
             platform: duckdb
@@ -156,17 +157,41 @@ jobs:
         if: env.SELECTED == 'true'
         run: uv sync --extra ${{ matrix.extras }}
 
+      - name: Authenticate to GHCR
+        if: env.SELECTED == 'true' && matrix.platform == 'cedardb'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Start CedarDB
+        if: env.SELECTED == 'true' && matrix.platform == 'cedardb'
+        env:
+          CEDARDB_IMAGE: ghcr.io/benchbox-dev/cedardb@sha256:dbbacb16b24421a9a123cd1d065e2a049c60b7cc6060d7db2f3cccbf69f5ff62
+        run: docker compose -f docker/cedardb/docker-compose.yml up -d --wait
+
       - name: Run benchmark
         if: env.SELECTED == 'true'
+        env:
+          SEED_PHASES: ${{ matrix.phases || 'generate,load,power' }}
         run: |
           command=(uv run benchbox run \
             --platform "${{ matrix.platform }}" \
             --benchmark "${{ matrix.benchmark }}" \
             --scale "${{ matrix.scale_factor }}" \
-            --phases generate,load,power \
+            --phases "$SEED_PHASES" \
             --compression zstd:9)
           if [ "${{ matrix.official }}" = "true" ]; then
             command+=(--official --seed 42)
+            command+=(--streams "${{ matrix.streams }}")
+          fi
+          if [ "${{ matrix.official }}" = "true" ] && [ "${{ matrix.benchmark }}" = "tpch" ]; then
+            command+=(--benchmark-option tpch_refresh_functions=true)
+          fi
+          if [ "${{ matrix.platform }}" = "cedardb" ]; then
+            command+=(--platform-option port=5435)
+            command+=(--platform-option username=benchbox)
+            command+=(--platform-option 'password=Benchbox1!')
+            command+=(--platform-option admin_database=benchbox_test)
           fi
           "${command[@]}"
 
@@ -273,6 +298,9 @@ jobs:
       - name: Regenerate corpus inventory
         run: uv run -- python scripts/generate_corpus_inventory.py --write
 
+      - name: Regenerate the compliance class snapshot
+        run: uv run -- python scripts/corpus_compliance_snapshot.py --write
+
       - name: Validate corpus before opening a PR
         run: uv run -- python results-data/validate_corpus.py
 
@@ -292,7 +320,7 @@ jobs:
         id: check
         shell: bash
         run: |
-          git add results-data/bundles/ results-data/corpus-inventory.json
+          git add results-data/bundles/ results-data/corpus-inventory.json results-data/compliance-classes.json
           if git diff --cached --quiet; then
             echo "no_changes=true" >> "$GITHUB_OUTPUT"
           else

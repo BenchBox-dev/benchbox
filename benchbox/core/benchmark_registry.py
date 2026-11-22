@@ -458,7 +458,14 @@ def validate_scale_factor(
 
     in_range = math.isfinite(sf) and rule.minimum <= sf <= rule.maximum
     if not in_range or (sf >= 1 and sf != math.floor(sf)):
-        raise ScaleFactorOutOfRangeError(benchmark_id, scale_factor, rule.minimum, rule.maximum, list(rule.standard))
+        reason = None
+        if benchmark_id.lower() in ("tpcds", "tpcds_obt") and math.isfinite(sf) and 0 < sf < rule.minimum:
+            from benchbox.core.tpcds.compliance import TPCDS_BELOW_FLOOR_REASON
+
+            reason = TPCDS_BELOW_FLOOR_REASON
+        raise ScaleFactorOutOfRangeError(
+            benchmark_id, scale_factor, rule.minimum, rule.maximum, list(rule.standard), reason=reason
+        )
     if benchmark_id.lower() in ("tpcds", "tpcds_obt"):
         from benchbox.core.tpcds.compliance import validate_tpcds_scale
 

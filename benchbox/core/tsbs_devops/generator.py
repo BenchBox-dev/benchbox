@@ -20,6 +20,7 @@ from benchbox.core.tsbs_devops.schema import (
 from benchbox.utils.arrow_rows import ArrowRowWriter
 from benchbox.utils.cloud_storage import normalize_output_dir
 from benchbox.utils.compression_mixin import CompressionMixin
+from benchbox.utils.generation_marker import generation_in_progress
 from benchbox.utils.verbosity import VerbosityMixin, compute_verbosity
 
 DEFAULT_HOSTS = 100
@@ -139,6 +140,8 @@ class TSBSDevOpsDataGenerator(CompressionMixin, VerbosityMixin):
         return table_files
 
     def _check_existing_data(self) -> bool:
+        if generation_in_progress(self.output_dir):
+            return False
         for table in TABLE_ORDER:
             filename = self.get_compressed_filename(f"{table}.csv")
             if not (self.output_dir / filename).exists():

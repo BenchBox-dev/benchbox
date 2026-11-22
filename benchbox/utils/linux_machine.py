@@ -15,6 +15,7 @@ from typing import IO, Any
 
 from benchbox.utils import heavy_run_events, resource_limits
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.process_group import signal_process_group
 from benchbox.utils.vm_footprint import (
     DEFAULT_MACHINE as DEFAULT_MACHINE,
     MACHINE_ENV as MACHINE_ENV,
@@ -335,10 +336,7 @@ class MachineStop:
         return self._proc.poll()
 
     def _signal_group(self, sig: int) -> None:
-        try:
-            os.killpg(self._proc.pid, sig)
-        except (ProcessLookupError, PermissionError):
-            pass
+        signal_process_group(self._proc.pid, sig)
 
     def kill(self) -> None:
         for sig in (SIG_TERM, SIG_KILL):

@@ -27,6 +27,7 @@ from benchbox.core.nyctaxi.schema import (
     get_trips_columns,
 )
 from benchbox.utils.compression_mixin import CompressionMixin
+from benchbox.utils.generation_marker import generation_in_progress
 from benchbox.utils.tls import download_to_file
 from benchbox.utils.verbosity import VerbosityMixin, compute_verbosity
 
@@ -151,6 +152,8 @@ class _TripDataDownloader(CompressionMixin, VerbosityMixin):
             self._synthetic_fallback_months.append(label)
 
     def download(self) -> Path:
+        if generation_in_progress(self.output_dir):
+            self.force_redownload = True
         self.output_dir.mkdir(parents=True, exist_ok=True)
         return self._download_and_process_trips()
 
@@ -475,6 +478,8 @@ class NYCTaxiDataDownloader(_TripDataDownloader):
     _POPULAR_ZONES = (132, 138, 161, 162, 163, 164, 186, 230, 234, 236, 237, 239)
 
     def download(self) -> dict[str, Path]:
+        if generation_in_progress(self.output_dir):
+            self.force_redownload = True
         self.output_dir.mkdir(parents=True, exist_ok=True)
         return {"taxi_zones": self._generate_taxi_zones(), "trips": self._download_and_process_trips()}
 

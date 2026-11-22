@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 import pytest
 import yaml
 
-from benchbox.cli.config import BenchBoxConfig, ConfigManager
+from benchbox.cli.config import BenchBoxConfig, ConfigManager, load_config
 
 pytestmark = [
     pytest.mark.unit,
@@ -327,4 +327,49 @@ class TestConfigManagerEdgeCases:
 
         assert isinstance(config_manager.config, BenchBoxConfig)
         assert len(config_manager.config.system) == 53
-        assert len(config_manager.config.benchmarks) == 7
+        assert len(config_manager.config.benchmarks) == 6
+
+
+_REMOVED_KEYS = [
+    ("benchmarks", "timeout_minutes"),
+    ("execution", "timeout_minutes"),
+    ("execution.power_run", "timeout_per_iteration_minutes"),
+    ("execution.concurrent_queries", "query_timeout_seconds"),
+]
+
+
+@pytest.mark.unit
+class TestRemovedTimeoutKeys:
+    @pytest.mark.parametrize(("section", "leaf"), _REMOVED_KEYS)
+    def test_a_file_that_sets_a_removed_key_gets_the_message_and_still_loads(self, temp_dir, section, leaf):
+        key = f"{section}.{leaf}"
+        nested: dict = {leaf: 5}
+        for name in reversed(section.split(".")):
+            nested = {name: nested}
+        config_file = temp_dir / "removed.yaml"
+        config_file.write_text(yaml.dump(nested), encoding="utf-8")
+
+        with patch("benchbox.cli.config.console") as console:
+            config_manager = ConfigManager(config_path=config_file)
+            config = load_config(config_file=config_file)
+
+        printed = [str(call.args[0]) for call in console.print.call_args_list]
+        expected = f"`{key}` is no longer used and has no effect. Use `execution.timeout_seconds` to limit a run."
+        assert any(expected in line for line in printed)
+        assert config_manager.get(key) is None
+        assert isinstance(config, BenchBoxConfig)
+
+    def test_a_file_without_removed_keys_prints_no_removed_key_message(self, temp_dir):
+        config_file = temp_dir / "clean.yaml"
+        config_file.write_text(yaml.dump({"execution": {"timeout_seconds": 60}}), encoding="utf-8")
+
+        with patch("benchbox.cli.config.console") as console:
+            ConfigManager(config_path=config_file)
+
+        assert not any("no longer used" in str(call.args[0]) for call in console.print.call_args_list)
+
+    def test_defaults_no_longer_carry_the_removed_keys(self, temp_dir):
+        config_manager = ConfigManager(config_path=temp_dir / "absent.yaml")
+
+        for section, leaf in _REMOVED_KEYS:
+            assert config_manager.get(f"{section}.{leaf}") is None

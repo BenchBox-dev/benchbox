@@ -26,7 +26,6 @@ from benchbox.clickbench import ClickBench
 from benchbox.core.connection import DatabaseConnection, DatabaseError
 from benchbox.h2odb import H2ODB
 from benchbox.ssb import SSB
-from benchbox.tpcdi import TPCDI
 from benchbox.tpcds import TPCDS
 from benchbox.tpch import TPCH
 from benchbox.write_primitives import WritePrimitives
@@ -214,17 +213,6 @@ class TestQueryExecutionErrors:
 
 @pytest.mark.unit
 class TestFileSystemEdgeCases:
-    def test_extremely_long_file_paths(self, temp_dir):
-        long_path = temp_dir
-        for i in range(10):
-            long_path = long_path / (f"very_long_directory_name_{i}_" * 10)
-
-        try:
-            benchmark = TPCDI(scale_factor=0.01, output_dir=long_path)
-            benchmark.generate_data()
-        except (OSError, FileNotFoundError, ValueError):
-            pass
-
     def test_special_characters_in_paths(self, temp_dir):
         special_chars = [
             "spaces in name",
@@ -392,29 +380,3 @@ class TestRecoveryAndCleanupScenarios:
                 assert temp_dir.exists()
                 temp_files = list(temp_dir.glob("*"))
                 assert len(temp_files) < 100
-
-    def test_resource_cleanup_on_exception(self, temp_dir):
-        benchmark = TPCDI(scale_factor=0.01, output_dir=temp_dir)
-
-        original_open = open
-        opened_files = []
-
-        def tracking_open(*args, **kwargs):
-            file_handle = original_open(*args, **kwargs)
-            opened_files.append(file_handle)
-            return file_handle
-
-        with patch("builtins.open", side_effect=tracking_open):
-            try:
-                with patch.object(
-                    benchmark,
-                    "generate_data",
-                    side_effect=RuntimeError("Simulated error"),
-                ):
-                    benchmark.generate_data()
-            except RuntimeError:
-                pass
-
-            for file_handle in opened_files:
-                if not file_handle.closed:
-                    assert len([f for f in opened_files if not f.closed]) < 10

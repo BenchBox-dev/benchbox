@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import fnmatch
 import json
 import os
 import posixpath
@@ -258,6 +259,10 @@ def file_candidates(source: str, abs_path: str, repo_root: str) -> set[str]:
         tree = ast.parse(source)
     except SyntaxError:
         return set()
+    return tree_candidates(tree, abs_path, repo_root)
+
+
+def tree_candidates(tree: ast.AST, abs_path: str, repo_root: str) -> set[str]:
     bindings = _collect_bindings(tree)
     home = os.path.abspath(abs_path)
     base = os.path.abspath(repo_root)
@@ -333,16 +338,102 @@ def to_tracked(candidates: set[str], tracked: set[str], basenames: dict[str, lis
     return hits
 
 
+def _segment_glob_matches(path: str, pattern: str) -> bool:
+    if "**" in pattern:
+        return glob_matches(path, pattern)
+    parts = path.split("/")
+    pattern_parts = pattern.split("/")
+    return len(parts) == len(pattern_parts) and all(
+        fnmatch.fnmatchcase(part, piece) for part, piece in zip(parts, pattern_parts)
+    )
+
+
+def path_constants(tree: ast.AST) -> set[str]:
+    return {
+        node.value.removeprefix("./").rstrip("/")
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant)
+        and isinstance(node.value, str)
+        and "/" in node.value.strip("/")
+        and not any(char.isspace() for char in node.value)
+        and not node.value.startswith(("/", "~", "../"))
+        and len(node.value.split("/")) <= MAX_CANDIDATE_SEGMENTS
+    }
+
+
+def tracked_directories(tracked: set[str]) -> dict[str, list[str]]:
+    directories: dict[str, list[str]] = {}
+    for path in tracked:
+        parent = posixpath.dirname(path)
+        while parent:
+            directories.setdefault(parent, []).append(path)
+            parent = posixpath.dirname(parent)
+    return directories
+
+
+def expand_globs(constants: set[str], directories: dict[str, list[str]]) -> set[str]:
+    found: set[str] = set()
+    for constant in constants:
+        segments = constant.split("/")
+        first = segments[0]
+        if not any(char in constant for char in "*?[") or any(char in first for char in "*?[") or first == "..":
+            continue
+        if "**" in segments:
+            continue
+        found.update(path for path in directories.get(first, ()) if _segment_glob_matches(path, constant))
+    return found
+
+
+def _module_paths(dotted: str) -> tuple[str, ...]:
+    stem = dotted.replace(".", "/")
+    return (f"{stem}.py", f"{stem}/__init__.py")
+
+
+def imported_modules(tree: ast.AST, own: str, tracked: set[str]) -> set[str]:
+    package = posixpath.dirname(own)
+    names: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                anchor = package
+                for _ in range(node.level - 1):
+                    anchor = posixpath.dirname(anchor)
+                base = ".".join(filter(None, [anchor.replace("/", "."), node.module or ""]))
+            else:
+                base = node.module or ""
+            if base:
+                names.append(base)
+                names.extend(f"{base}.{alias.name}" for alias in node.names)
+    found: set[str] = set()
+    for name in names:
+        candidates = list(_module_paths(name))
+        if "." not in name:
+            candidates.extend(f"{folder}/{name}.py" for folder in ("scripts", "_project/scripts"))
+        found.update(candidate for candidate in candidates if candidate in tracked)
+    return found
+
+
 def _is_test_file(path: str) -> bool:
     name = path.rsplit("/", 1)[-1]
     return path == "tests" or path.startswith("tests/") and name.startswith("test_") and name.endswith(".py")
 
 
 def scan_tree(repo_root: str | Path) -> dict[str, list[str]]:
+    return scan_tree_reads(repo_root)[0]
+
+
+def scan_tree_reads(
+    repo_root: str | Path,
+) -> tuple[dict[str, list[str]], dict[str, list[str]], dict[str, list[str]]]:
     root = Path(repo_root)
     tracked = tracked_files(root)
     basenames = basename_index(tracked)
+    directories = tracked_directories(tracked)
     refs: dict[str, list[str]] = {}
+    reads: dict[str, list[str]] = {}
+    modules: dict[str, list[str]] = {}
     for scan in SCAN_DIRS:
         for path in sorted((root / scan).rglob("*.py")):
             if not path.is_file():
@@ -351,11 +442,24 @@ def scan_tree(repo_root: str | Path) -> dict[str, list[str]]:
                 source = path.read_text(encoding="utf-8")
             except OSError:
                 continue
-            hits = to_tracked(file_candidates(source, str(path), str(root)), tracked, basenames)
             own = path.relative_to(root).as_posix()
+            try:
+                tree = ast.parse(source)
+            except SyntaxError:
+                continue
+            candidates = tree_candidates(tree, str(path), str(root))
+            hits = to_tracked(candidates, tracked, basenames)
             hits.discard(own)
             if hits:
                 refs[own] = sorted(hits)
+            exact = (candidates | path_constants(tree)) & tracked
+            constants = expand_globs(path_constants(tree), directories)
+            indirect = (exact | constants) - {own}
+            if indirect:
+                reads[own] = sorted(indirect)
+            executed = (imported_modules(tree, own, tracked) | {path for path in exact if path.endswith(".py")}) - {own}
+            if executed:
+                modules[own] = sorted(executed)
     workflow_paths = sorted((root / ".github" / "workflows").glob("*.yml"))
     make_paths = [root / MAKEFILE] + sorted((root / "make").glob("*.mk"))
     for path in workflow_paths + make_paths:
@@ -368,17 +472,30 @@ def scan_tree(repo_root: str | Path) -> dict[str, list[str]]:
         hits = to_tracked(text_candidates(text, skip_echo_lines=path in make_paths), tracked, basenames)
         if hits:
             refs[path.relative_to(root).as_posix()] = sorted(hits)
-    return refs
+    return refs, reads, modules
 
 
-def doc_reader_index(repo_root: str | Path, refs: dict[str, list[str]] | None = None) -> dict[str, list[str]]:
+def doc_reader_index(
+    repo_root: str | Path,
+    refs: dict[str, list[str]] | None = None,
+    reads: dict[str, list[str]] | None = None,
+    modules: dict[str, list[str]] | None = None,
+) -> dict[str, list[str]]:
+    if refs is None:
+        refs, reads, modules = scan_tree_reads(repo_root)
+    indirect = reads or {}
+    executed = modules or {}
     index: dict[str, set[str]] = {}
-    for source, hits in (scan_tree(repo_root) if refs is None else refs).items():
-        if not _is_test_file(source):
+    for test in refs.keys() | indirect.keys() | executed.keys():
+        if not _is_test_file(test):
             continue
+        hits = {*refs.get(test, ()), *indirect.get(test, ())}
+        for module in executed.get(test, ()):
+            if not _is_test_file(module):
+                hits.update(indirect.get(module, ()))
         for hit in hits:
             if is_machine_read_doc(hit):
-                index.setdefault(hit, set()).add(source)
+                index.setdefault(hit, set()).add(test)
     return {doc: sorted(tests) for doc, tests in sorted(index.items())}
 
 

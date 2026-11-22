@@ -17,7 +17,6 @@ pytestmark = [
 ]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-TARGET_CEILING = 190
 
 
 def _copy_make_files(destination: Path) -> None:
@@ -112,9 +111,9 @@ def test_rules_read_a_target_and_its_variables_in_either_make_layout(
 def test_the_make_target_count_stays_within_the_ceiling() -> None:
     count = len(make_targets.targets(REPO_ROOT))
 
-    assert count <= TARGET_CEILING, (
-        f"{count} make targets exceed the ceiling of {TARGET_CEILING}: consolidate or remove a target instead of "
-        "adding one, or raise TARGET_CEILING with the owner's agreement"
+    assert count <= make_targets.TARGET_CEILING, (
+        f"{count} make targets exceed the ceiling of {make_targets.TARGET_CEILING}: consolidate or remove a target "
+        "instead of adding one, or raise TARGET_CEILING in scripts/check_make_targets.py with the owner's agreement"
     )
 
 

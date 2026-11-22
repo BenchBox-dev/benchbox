@@ -7,11 +7,16 @@ class TpcdsComplianceClass(str, Enum):
     UNOFFICIAL_SUBSCALE = "unofficial_subscale"
 
 
+TPCDS_MIN_SUBSCALE: float = 0.01
+
+TPCDS_BELOW_FLOOR_REASON: str = (
+    f"The bundled dsdgen did not finish at SF 0.001, so scale factors below {TPCDS_MIN_SUBSCALE} "
+    "are refused before dsdgen is started."
+)
+
 OFFICIAL_SCALE_POINTS: frozenset[float] = frozenset(
     {1.0, 10.0, 100.0, 300.0, 1000.0, 3000.0, 10000.0, 30000.0, 100000.0}
 )
-
-TPCDS_MIN_SUBSCALE: float = 0.01
 
 
 def classify_tpcds_run(scale_factor: float, *, official: bool = False) -> TpcdsComplianceClass:
@@ -37,8 +42,7 @@ def validate_tpcds_scale(
     if compliance is TpcdsComplianceClass.UNOFFICIAL_SUBSCALE and scale_factor < TPCDS_MIN_SUBSCALE:
         raise ValueError(
             f"TPC-DS scale_factor {scale_factor} is below the minimum subscale "
-            f"({TPCDS_MIN_SUBSCALE}). The patched dsdgen provides no row-count "
-            "guarantees below this threshold."
+            f"({TPCDS_MIN_SUBSCALE}). {TPCDS_BELOW_FLOOR_REASON}"
         )
 
     return compliance

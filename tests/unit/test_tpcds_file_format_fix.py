@@ -5,6 +5,7 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import contextlib
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -68,7 +69,11 @@ class TestTPCDSFileFormatFix:
                 process.wait = Mock(return_value=None)
                 return process
 
-            with patch("benchbox.core.tpcds.generator.streaming.subprocess.Popen", side_effect=mock_popen):
+            @contextlib.contextmanager
+            def mock_stream(cmd, **kwargs):
+                yield mock_popen(cmd, **kwargs)
+
+            with patch("benchbox.core.tpcds.generator.streaming.stream_child", side_effect=mock_stream):
                 generator._generate_single_table_chunk_streaming(output_dir, "call_center", 1)
                 generator._generate_single_table_chunk_streaming(output_dir, "call_center", 2)
                 generator._generate_single_table_chunk_streaming(output_dir, "call_center", 3)

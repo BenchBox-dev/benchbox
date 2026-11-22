@@ -228,13 +228,27 @@ def test_get_data_source_benchmark_declares_tpcds() -> None:
     assert benchmark.get_data_source_benchmark() == "tpcds"
 
 
-@pytest.mark.parametrize("scale_factor", [0.01, 0.1, 1, 10, 100000])
+@pytest.mark.parametrize("scale_factor", [0.01, 0.1, 1, 10, 3000, 3001, 10000, 100000])
 def test_public_api_accepts_the_tpcds_scale_range(tmp_path: Path, scale_factor: float) -> None:
     from benchbox import TPCDSOBT
 
     benchmark = TPCDSOBT(scale_factor=scale_factor, output_dir=tmp_path)
 
     assert benchmark.scale_factor == scale_factor
+
+
+@pytest.mark.parametrize("scale_factor", [3000, 3001, 10000, 100000])
+def test_public_api_tpcds_accepts_scales_up_to_the_maximum(tmp_path: Path, scale_factor: float) -> None:
+    from benchbox import TPCDS
+
+    assert TPCDS(scale_factor=scale_factor, output_dir=tmp_path).scale_factor == scale_factor
+
+
+def test_public_api_tpcds_rejects_scale_above_the_maximum(tmp_path: Path) -> None:
+    from benchbox import TPCDS
+
+    with pytest.raises(ValueError, match="exceeds maximum"):
+        TPCDS(scale_factor=100001, output_dir=tmp_path)
 
 
 @pytest.mark.parametrize(

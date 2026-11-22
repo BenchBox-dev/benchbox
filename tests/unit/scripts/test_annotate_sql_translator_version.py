@@ -103,7 +103,7 @@ def test_a_bundle_that_records_a_different_runtime_is_refused(tmp_path: Path) ->
 
 def test_the_published_corpus_attests_exactly_the_reconciled_wheel_table() -> None:
     rows = reconciled_wheels(DEFAULT_NOTES)
-    assert Counter(row["wheel"] for row in rows.values()) == {"30.24.0.17": 44, "30.25.0.2": 14}
+    assert Counter(row["wheel"] for row in rows.values()) == {"30.24.0.17": 44, "30.25.0.2": 8}
 
     assert annotate(DEFAULT_BUNDLES, DEFAULT_NOTES, write=False) == []
     for bundle_id, row in rows.items():

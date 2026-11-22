@@ -279,8 +279,42 @@ which paths it excludes; those are first scanned by the nightly run, not by a
 pull request.
 
 - **External exclusions:** each names its upstream owner and a provenance file.
-  A pull request cannot widen one. New files under an exclusion are still
-  checked in a base comparison.
+  A pull request cannot widen one, except to a path on the approved list
+  below. New files under an exclusion are still checked in a base comparison.
+- **Approved external paths:** `quality/comment-policy-approved-external.json`
+  lists the directory prefixes the owner has approved for externally owned
+  files that ship unmodified, with their comments. Today these are
+  `benchbox/_binaries/tpc-di/` and `_sources/tpc-di/`. The ratchet reads the
+  list from the base, never from your change, so a list change takes effect
+  only after it merges. A new external entry whose `path` equals a prefix on
+  the base list is accepted; an existing entry is never changed through the
+  list, and any other new entry fails the ratchet. The list is in
+  `.github/soundness-paths.txt`, so a change to it needs a soundness review
+  and makes the check scan the whole repository. Entries must be directory
+  prefixes of at least two path segments.
+- **Approved external hashes:**
+  `quality/comment-policy-approved-external-hashes.json` lists the SHA-256 of
+  every file the owner has approved to ship unmodified under an approved
+  prefix, with a label naming its source. A file under an approved prefix that
+  has an external entry is skipped from the scan only if its SHA-256 is in the
+  manifest at the base. An edited, renamed-with-change or new file there is
+  scanned like any other file, even if it existed at the base: the manifest
+  hash is the only way to skip a file under an approved prefix. The manifest
+  is read from the base, so a hash added in a pull request does not skip that
+  pull request's file; it takes
+  effect after it merges. The manifest is in `.github/soundness-paths.txt`, and
+  a change to it makes the check scan the whole repository. It holds hashes
+  only, never file content.
+  The first 99 entries are the SHA-256 of each file member of the official
+  `TPC-DI_Tools_v1.1.0.zip` (archive SHA-256
+  `d9c10de5dafa781ddd4df72453f50af2f0c9c7ccfa0cbae99ed0be70a2ede22b`), taken
+  from the member bytes read from the zip itself, with the nested
+  `Tools/DIGen_Build.zip` as one blob, plus the zip's own hash. The last four
+  are the appendix SQL files, taken from `SHA256SUMS` of the unofficial
+  shared copy `Appendix_v1.1.0-shared-copy` and recomputed. Those four hashes
+  are of that copy, not the official archive; a follow-up replaces them if the
+  official files differ. Some archive members are byte-identical, so the
+  103 entries hold 100 distinct hashes.
 - **Policy ratchet:** a base comparison (`--base` without `--bootstrap`, as
   `make comment-policy-check`, the hook, and CI run it) compares your policy
   with the base policy. It fails if enforcement moves from blocking to

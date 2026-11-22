@@ -8,6 +8,7 @@ from benchbox.core.query_plans.comparison import compare_query_plans, generate_p
 from benchbox.core.query_plans.visualization import render_comparison
 from benchbox.core.results.loader import iter_query_results, load_result_file
 from benchbox.core.results.query_normalizer import normalize_query_id
+from benchbox.core.results.tpcdi_audit import LEGACY_TPCDI_REFUSAL, legacy_tpcdi_note
 
 
 @click.command(
@@ -33,6 +34,8 @@ def compare_plans(
     try:
         results1, _ = load_result_file(run1_path)
         results2, _ = load_result_file(run2_path)
+        if legacy_tpcdi_note(results1) or legacy_tpcdi_note(results2):
+            raise ValueError(LEGACY_TPCDI_REFUSAL)
         if show_summary:
             _run_summary_mode(results1, results2, output_format, output_file, regression_threshold)
             return

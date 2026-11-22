@@ -38,6 +38,7 @@ from benchbox.core.validation.query_validation import (
     set_reference_seed_context,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS, failed_query_status, stop_requested_before_query
 
 DATA_STATE_BASE = "base"
 DATA_STATE_REFRESHED = "refreshed"
@@ -112,6 +113,7 @@ class TPCHPowerTestResult:
     refresh_functions: list[dict[str, Any]] | None = None
     validation: dict[str, Any] | None = None
     validation_runs: list[dict[str, Any]] | None = None
+    stopped_at_time_limit: bool = False
 
     @property
     def scale_factor(self) -> float:
@@ -126,6 +128,7 @@ class TPCHPowerTestResult:
             "queries_executed": self.queries_executed,
             "queries_successful": self.queries_successful,
             "query_results": self.query_results,
+            "stopped_at_time_limit": self.stopped_at_time_limit,
             "success": self.success,
             "errors": self.errors,
             "config": {
@@ -329,7 +332,7 @@ class TPCHPowerTest:
             ]
             from benchbox.core.results.metrics import TPCMetricsCalculator
 
-            if self.refresh_update_set is None and exec_times:
+            if self.refresh_update_set is None and exec_times and not result.stopped_at_time_limit:
                 result.power_at_size = TPCMetricsCalculator.calculate_power_at_size(
                     exec_times,
                     self.config.scale_factor,
@@ -351,8 +354,10 @@ class TPCHPowerTest:
                 )
             result.total_time = total_execution_time
             result.end_time = datetime.now().isoformat()
-            result.success = result.queries_successful == len(query_permutation) and all(
-                refresh["status"] == "SUCCESS" for refresh in result.refresh_functions or []
+            result.success = (
+                not result.stopped_at_time_limit
+                and result.queries_successful == len(query_permutation)
+                and all(refresh["status"] == "SUCCESS" for refresh in result.refresh_functions or [])
             )
 
             if self.config.verbose:
@@ -384,6 +389,13 @@ class TPCHPowerTest:
         self, query_permutation: list[int], result: TPCHPowerTestResult, *, data_refreshed: bool = False
     ) -> None:
         for position, query_id in enumerate(query_permutation):
+            if stop_requested_before_query(query_id):
+                result.stopped_at_time_limit = True
+                result.errors.append(
+                    f"Power test stopped at the run time limit after {result.queries_executed} of "
+                    f"{len(query_permutation)} queries"
+                )
+                break
             query_start: float | None = None
             query_result = {
                 "query_id": query_id,
@@ -459,6 +471,7 @@ class TPCHPowerTest:
                     {
                         "execution_time_seconds": execution_time,
                         "success": False,
+                        "timed_out": failed_query_status() == TIMED_OUT_QUERY_STATUS,
                         "error": str(e),
                     }
                 )

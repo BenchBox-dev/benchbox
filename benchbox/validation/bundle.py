@@ -24,9 +24,15 @@ def _load_schema_policy_helpers():
             PUBLIC_SUBMISSION_SCHEMA_POLICY,
             result_schema_version_value,
             supports_capture_and_vendor_fields,
+            supports_run_timeout_marker,
         )
 
-        return PUBLIC_SUBMISSION_SCHEMA_POLICY, result_schema_version_value, supports_capture_and_vendor_fields
+        return (
+            PUBLIC_SUBMISSION_SCHEMA_POLICY,
+            result_schema_version_value,
+            supports_capture_and_vendor_fields,
+            supports_run_timeout_marker,
+        )
     except ImportError:
         pass
     helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "schema_policy.py"
@@ -40,12 +46,16 @@ def _load_schema_policy_helpers():
         module.PUBLIC_SUBMISSION_SCHEMA_POLICY,
         module.result_schema_version_value,
         module.supports_capture_and_vendor_fields,
+        module.supports_run_timeout_marker,
     )
 
 
-PUBLIC_SUBMISSION_SCHEMA_POLICY, result_schema_version_value, supports_capture_and_vendor_fields = (
-    _load_schema_policy_helpers()
-)
+(
+    PUBLIC_SUBMISSION_SCHEMA_POLICY,
+    result_schema_version_value,
+    supports_capture_and_vendor_fields,
+    supports_run_timeout_marker,
+) = _load_schema_policy_helpers()
 
 
 try:
@@ -67,6 +77,7 @@ except ImportError:
     is_standard_scale_factor = None
 
 NONSTANDARD_COMPLIANCE_CLASS = "unofficial_nonstandard"
+KNOWN_COMPLIANCE_CLASSES = frozenset({"official", "unofficial_nonstandard", "unofficial_subscale"})
 OFFICIAL_CLASS_BENCHMARKS = frozenset({"tpch", "tpcds"})
 
 
@@ -399,6 +410,7 @@ KNOWN_DEFECT_IDS = frozenset(
         "defective-tpchavoc-variant-divergence",
         "defective-variant-or-loader-wrong-result",
         "defective-windows-dsdgen-scale",
+        "superseded-data-generator",
     }
 )
 
@@ -411,6 +423,7 @@ KNOWN_DEFECT_REASONS = {
     "defective-tpchavoc-variant-divergence": "TPC-Havoc variants of one query returned differing row counts.",
     "defective-variant-or-loader-wrong-result": "A BenchBox query variant or data loader produced wrong values.",
     "defective-windows-dsdgen-scale": "Data came from a Windows dsdgen build with a wrong scale factor.",
+    "superseded-data-generator": "Produced by a superseded data generator; not comparable with current bundles.",
 }
 KNOWN_DEFECT_REASON_MAX_LEN = 200
 
@@ -440,6 +453,21 @@ PUBLIC_CLEAN_VALIDATION_STATUS = "passed"
 PUBLIC_MIRROR_ALLOWED_VALIDATION_STATUSES = frozenset({"passed", "partial", "not_run"})
 PUBLIC_NON_CLEAN_TRANSLATION_STATUSES = {"fallback", "failed"}
 CLI_REFUSED_COMPLIANCE_CLASSES = frozenset({"unofficial_nonstandard", "unofficial_subscale"})
+TPCDI_BENCHMARK_ID = "tpcdi"
+TPCDI_BUNDLE_REFUSAL = "TPC-DI bundles are not accepted while BenchBox reworks TPC-DI."
+
+
+def _load_subscale_policy_module():
+    helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "subscale_policy.py"
+    spec = importlib.util.spec_from_file_location("_benchbox_subscale_policy", helper_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load benchmark id normalisation from {helper_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+normalize_tpc_benchmark_id = _load_subscale_policy_module().normalize_tpc_benchmark_id
 
 CANONICAL_LOGICAL_QUERY_COUNTS: dict[str, int] = {
     "tpch": 22,
@@ -1271,6 +1299,8 @@ def _validate_capture_and_vendor_fields(
             vr.error("execution.config_capture requires schema version 2.5 or later")
         elif isinstance(capture, bool) or not isinstance(capture, int) or capture < 1:
             vr.error(f"execution.config_capture must be a positive integer, got {capture!r}")
+    if isinstance(execution, dict) and "timeout" in execution and not supports_run_timeout_marker(version):
+        vr.error("execution.timeout requires schema version 2.6 or later")
 
     provenance = data.get("provenance")
     if not isinstance(provenance, dict):
@@ -1344,6 +1374,9 @@ def _validate_benchmark_section(benchmark: Any, vr: ValidationResult) -> None:
     missing_bm = REQUIRED_BENCHMARK_KEYS - set(benchmark.keys())
     if missing_bm:
         vr.error(f"Missing keys in 'benchmark': {sorted(missing_bm)}")
+
+    if normalize_tpc_benchmark_id(benchmark.get("id")) == TPCDI_BENCHMARK_ID:
+        vr.error(TPCDI_BUNDLE_REFUSAL)
 
     bm_id = benchmark.get("id", "")
     if isinstance(bm_id, str) and bm_id and bm_id not in KNOWN_BENCHMARKS:
@@ -1765,6 +1798,12 @@ def _validate_compliance_section(
     if not isinstance(benchmark, dict):
         return
     compliance = benchmark.get("compliance_class")
+    if compliance is not None and not (isinstance(compliance, str) and compliance in KNOWN_COMPLIANCE_CLASSES):
+        vr.error(
+            f"benchmark.compliance_class={compliance!r} is not a recognised compliance class; "
+            f"expected one of {sorted(KNOWN_COMPLIANCE_CLASSES)}"
+        )
+        return
     if _is_gateway_routed(platform):
         compliance = NONSTANDARD_COMPLIANCE_CLASS
     elif _is_nonstandard_scale(benchmark.get("id"), benchmark.get("scale_factor")) or (

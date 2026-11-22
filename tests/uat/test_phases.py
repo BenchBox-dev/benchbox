@@ -221,12 +221,15 @@ def test_enumerate_records_dataframe_pruned_mutation_and_maintenance_gates():
         assert pruned[(platform, "transaction_primitives")].rule_id == (
             f"uat.compat.{platform}.transaction_primitives.benchmark_gate"
         )
-        assert pruned[(platform, "tpcdi")].rule_id == f"uat.compat.{platform}.tpcdi.benchmark_gate"
-        assert "transaction" in pruned[(platform, "tpcdi")].reason.lower()
     for platform in ("dask-df", "datafusion-df"):
         assert pruned[(platform, "write_primitives")].rule_id == (
             f"uat.compat.{platform}.write_primitives.benchmark_gate"
         )
+    assert "tpcdi" not in {c.benchmark for c in result.cells}
+    tpcdi_rows = [c for c in result.compatibility_pruned if c.benchmark == "tpcdi"]
+    assert tpcdi_rows
+    assert {c.rule_id for c in tpcdi_rows} == {"benchmark-unavailable"}
+    assert all("TPC-DI is unavailable" in c.reason for c in tpcdi_rows)
     assert result.candidate_count == len(result.cells) + len(result.compatibility_pruned)
 
 
@@ -1336,7 +1339,7 @@ def test_execute_query_readiness_failure_is_one_startup_failure_with_container_l
     assert "coordinator booting" in (tmp_path / f"container-logs-{platform}.log").read_text(encoding="utf-8")
 
 
-@pytest.mark.parametrize("platform", ["cedardb", "presto", "trino"])
+@pytest.mark.parametrize("platform", ["presto", "trino"])
 def test_execute_missing_probe_tool_degrades_to_healthcheck_readiness(platform, tmp_path):
     def fake_docker(argv, **kwargs):
         action = "exec" if "exec" in argv else _docker_verb(argv)
@@ -1432,6 +1435,46 @@ def test_execute_starrocks_application_liveness_stops_after_runtime_wedge(monkey
     assert outcome.results and outcome.results[0].scale == 0.01
     assert [(cell.platform, cell.scale) for cell in outcome.died_mid_platform] == [("starrocks", 0.1)]
     assert any(event.action == "application-liveness" and event.status == "failed" for event in outcome.docker_events)
+
+
+def test_execute_cedardb_application_liveness_records_server_death(monkeypatch, tmp_path):
+    monkeypatch.setenv(docker_assets.CONTAINER_CLI_ENV_VAR, "mocker")
+    docker_assets.resolve_container_cli.cache_clear()
+    application_calls = 0
+
+    def fake_docker(argv, **kwargs):
+        nonlocal application_calls
+        call = tuple(argv)
+        if "ps" in call:
+            return _healthy_ps_result(argv)
+        if "exec" in call:
+            application_calls += 1
+            if application_calls >= 3:
+                return docker_assets.DockerCommandResult(call, 2, "localhost:5432 - no response", "")
+        if "stats" in call:
+            return _healthy_stats_result(argv, limit="8GiB")
+        return docker_assets.DockerCommandResult(call, 0, "", "")
+
+    cfg = _managed_docker_cfg(
+        "cedardb application liveness",
+        platforms={"include": ["cedardb"]},
+        scales={"rungs": [0.01, 0.1]},
+    )
+    with platform_reachability(True):
+        outcome = exec_phase.run_execute(
+            cfg,
+            log_dir=tmp_path,
+            databases_root=tmp_path / "databases",
+            runner=_stub_runner_factory({0.01: 1.0, 0.1: 1.0}, {0.01: True, 0.1: True}),
+            docker_runner=fake_docker,
+            memory_reader=_memory_reader(16.0),
+            sleep_fn=lambda _s: None,
+        )
+
+    assert outcome.results and outcome.results[0].scale == 0.01
+    assert [(cell.platform, cell.scale) for cell in outcome.died_mid_platform] == [("cedardb", 0.1)]
+    assert any(event.action == "application-liveness" and event.status == "failed" for event in outcome.docker_events)
+    assert not any(event.status == "skipped" for event in outcome.docker_events)
 
 
 def test_execute_starrocks_memory_admission_uses_measured_request(tmp_path):
@@ -2882,6 +2925,51 @@ def test_starrocks_evidence_survives_teardown_without_changing_cell_outcome(tmp_
     assert (destination / "manifest.json").exists()
 
 
+def test_cedardb_evidence_captures_server_log_and_state_before_teardown(tmp_path):
+    sequence = []
+    destination = tmp_path / "cedardb-evidence"
+
+    def fake_docker(argv, **kwargs):
+        if "-q" in argv:
+            sequence.append("capture")
+            return docker_assets.DockerCommandResult(tuple(argv), 0, "abc123", "")
+        if "logs" in argv:
+            return docker_assets.DockerCommandResult(tuple(argv), 0, "server process was terminated by signal 9", "")
+        if "down" in argv:
+            sequence.append("down")
+            assert "terminated by signal 9" in (destination / "container.log").read_text(encoding="utf-8")
+        if "stats" in argv:
+            return _healthy_stats_result(argv, limit="8GiB")
+        return _healthy_fake_docker(argv, **kwargs)
+
+    def failing_cell(platform, benchmark, scale, **kwargs):
+        return CellResult(
+            platform=platform,
+            benchmark=benchmark,
+            scale=scale,
+            status="failed",
+            exit_code=1,
+            elapsed_s=1.0,
+            log_path=tmp_path / "cell.log",
+            result_path=None,
+        )
+
+    cfg = _managed_docker_cfg("cedardb evidence", platforms={"include": ["cedardb"]})
+    with platform_reachability(True):
+        outcome = exec_phase.run_execute(
+            cfg,
+            log_dir=tmp_path,
+            runner=failing_cell,
+            docker_runner=fake_docker,
+            memory_reader=_memory_reader(16.0),
+            sleep_fn=lambda _: None,
+        )
+    assert outcome.exit_code() == 1
+    assert sequence == ["capture", "down"]
+    assert (destination / "manifest.json").exists()
+    assert not (tmp_path / "starrocks-evidence").exists()
+
+
 @pytest.mark.parametrize("startup_exception", [False, True])
 def test_starrocks_collector_exception_cannot_strand_container_or_replace_original_error(
     tmp_path, monkeypatch, capsys, startup_exception
@@ -2902,7 +2990,7 @@ def test_starrocks_collector_exception_cannot_strand_container_or_replace_origin
             return _healthy_stats_result(argv, limit="8GiB")
         return _healthy_fake_docker(argv, **kwargs)
 
-    monkeypatch.setattr(exec_phase.starrocks_evidence, "capture_starrocks_evidence", failing_collector)
+    monkeypatch.setattr(exec_phase.engine_evidence, "capture_engine_evidence", failing_collector)
     if startup_exception:
         monkeypatch.setattr(exec_phase, "_start_docker_platform_if_needed", original_error)
     cfg = _managed_docker_cfg("evidence error", platforms={"include": ["starrocks"]})

@@ -2,6 +2,7 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
+import functools
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -12,7 +13,9 @@ from benchbox.core.connection import DatabaseConnection
 from benchbox.core.contracts import SQLBenchmarkExecutor, as_sql_benchmark_executor
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.cloud_storage import create_path_handler
+from benchbox.utils.generation_marker import track_generation
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
+from benchbox.utils.run_deadline import enter_run_phase, own_run_deadline
 from benchbox.utils.verbosity import VerbosityMixin, compute_verbosity
 
 BENCHMARK_API_SURFACE = "beta-public"
@@ -48,6 +51,22 @@ class GeneratorOutputDirMixin:
                 nested.output_dir = path
 
 
+def _with_optional_timeout(generate_data: Any) -> Any:
+    @functools.wraps(generate_data)
+    def bounded(self: Any, *args: Any, timeout_seconds: Optional[int] = None, **kwargs: Any) -> Any:
+        with own_run_deadline(timeout_seconds) as deadline:
+            enter_run_phase("generate")
+            with track_generation(getattr(self, "output_dir", None)):
+                generated = generate_data(self, *args, **kwargs)
+                if deadline is not None and deadline.expired:
+                    timeout = deadline.record_timeout()
+                    timeout.partial_result = generated
+                    raise timeout
+            return generated
+
+    return bounded
+
+
 class BaseBenchmark(BenchmarkResultValidationMixin, VerbosityMixin, ABC):
     api_surface = BENCHMARK_API_SURFACE
     run_with_platform_api_surface = RUN_WITH_PLATFORM_API_SURFACE
@@ -57,6 +76,12 @@ class BaseBenchmark(BenchmarkResultValidationMixin, VerbosityMixin, ABC):
     SKIP_DATA_LOADING: ClassVar[bool] = False
 
     DATAFRAME_WORKLOAD_USES_PLATFORM_ENGINE: ClassVar[bool] = True
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        own = cls.__dict__.get("generate_data")
+        if callable(own) and not getattr(own, "__isabstractmethod__", False):
+            cls.generate_data = _with_optional_timeout(own)
 
     def __init__(
         self,

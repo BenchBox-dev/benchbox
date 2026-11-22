@@ -25,12 +25,10 @@ class SimpleConfigProvider(ConfigInterface):
         default_config = {
             "execution.power_run.iterations": 4,
             "execution.power_run.warm_up_iterations": 0,
-            "execution.power_run.timeout_per_iteration_minutes": 60,
             "execution.power_run.concurrent_streams": 1,
             "execution.throughput_test.duration_minutes": 60,
             "execution.throughput_test.concurrent_streams": 4,
             "execution.throughput_test.warm_up_minutes": 5,
-            "execution.timeout_minutes": 120,
             "execution.memory_limit_gb": 8,
             "execution.enable_profiling": False,
         }

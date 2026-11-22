@@ -33,6 +33,9 @@ planning depth, defect handling, capture, and remediation.
 - Is control flow direct, without nested ternaries or deep callbacks?
 - Does each abstraction justify its complexity?
 - Can dead code, compatibility shims, or stale comments be removed?
+- Does a growing keyword or regex list classify the meaning of free text?
+  Consider a typed judgment call (`implementation.md`, Implement) unless the
+  path must stay deterministic.
 
 **Deletion checks:** Apply `shared-change-framework/SKILL.md` Section 1.
 - For each finding, report `file:line`, what to cut, and its replacement.
@@ -42,6 +45,8 @@ planning depth, defect handling, capture, and remediation.
 - Are module boundaries clean and free of circular dependencies?
 - Should duplicated code be shared?
 - Is the abstraction neither over-engineered nor tightly coupled?
+- Is this the change a maintainer would choose, or the quickest one that
+  passes?
 
 ### 4. Security
 - Is user input validated at boundaries?

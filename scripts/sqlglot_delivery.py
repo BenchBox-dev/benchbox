@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import difflib
 import hashlib
 import io
 import json
@@ -19,6 +20,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Protocol
 
 from scripts import gh_transient
+from scripts.sql_execution_gate import translation_report
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = Path(".github/sqlglot-delivery.json")
@@ -28,6 +30,12 @@ LICENSE_NOTICE = "benchbox/_vendor/SQLGLOT_LICENSE.txt"
 CORPUS_DIR = "tests/unit/sql_compat/golden_corpus/recorded"
 CORPUS_MODULE = "tests.unit.sql_compat.golden_corpus"
 MAX_LISTED_CASES = 20
+MAX_DIFF_CHARS = 1500
+MAX_INDEX_CHARS = 12000
+MAX_TRANSLATION_SECTION_CHARS = 25000
+DIFF_CONTEXT_TOKENS = 8
+TRANSLATION_HEADING = "## Translated query changes"
+TRANSLATION_FILE = "translation-changes.json"
 MAX_OUTPUT_CHARS = 600
 MAX_SECTION_CHARS = 30000
 MAX_NAME_CHARS = 200
@@ -577,6 +585,8 @@ def marker_for(plan: Mapping[str, Any], head: str, base: str) -> dict[str, Any]:
 
 
 CorpusChange = dict[str, Any]
+TranslationChange = translation_report.TranslationChange
+TranslationReporter = Callable[[Path, str, str], list[TranslationChange]]
 
 
 def fence(text: str) -> str:
@@ -625,6 +635,74 @@ def render_corpus_changes(changes: Sequence[CorpusChange]) -> str:
     if listed < len(changes):
         note = f"\n\nThere are too many to list: the first {listed} follow, and the rest are in the diff."
     return head + note + "".join(blocks[:listed]) + "\n\n"
+
+
+def translation_diff(change: TranslationChange) -> str:
+    before, after = change["before"], change["after"]
+    if before is None or after is None:
+        added = before is None
+        return f"{'added' if added else 'removed'}:\n{fence(clip(after if added else before or '', MAX_DIFF_CHARS))}"
+    old, new = before.split(), after.split()
+    hunks: list[str] = []
+    for tag, old_start, old_end, new_start, new_end in difflib.SequenceMatcher(
+        None, old, new, autojunk=False
+    ).get_opcodes():
+        if tag == "equal":
+            continue
+        lead = " ".join(old[max(0, old_start - DIFF_CONTEXT_TOKENS) : old_start])
+        trail = " ".join(old[old_end : old_end + DIFF_CONTEXT_TOKENS])
+        removed, added = " ".join(old[old_start:old_end]), " ".join(new[new_start:new_end])
+        hunks.append(
+            f"- {' '.join(filter(None, (lead, removed, trail)))}\n+ {' '.join(filter(None, (lead, added, trail)))}"
+        )
+    return fence(clip("\n@@\n".join(hunks), MAX_DIFF_CHARS))
+
+
+def render_translation_changes(changes: Sequence[TranslationChange]) -> str:
+    if not changes:
+        return f"{TRANSLATION_HEADING}\n\nThe delivered runtime changes no translated query on any platform.\n\n"
+    per_platform: dict[str, int] = {}
+    for change in changes:
+        per_platform[change["platform"]] = per_platform.get(change["platform"], 0) + 1
+    counts = ", ".join(f"{platform}: {count}" for platform, count in sorted(per_platform.items()))
+    head = (
+        f"{TRANSLATION_HEADING}\n\n"
+        f"The delivered runtime changes the translated SQL of {len(changes)} (platform, benchmark, query) "
+        f"entr{'y' if len(changes) == 1 else 'ies'} ({counts}), computed through each platform adapter's production "
+        "query path without running any engine. This report is informational and acknowledges nothing."
+    )
+    index: list[str] = []
+    size = len(head)
+    for change in changes:
+        line = f"\n- `{clip(change['platform'], MAX_NAME_CHARS)}` / `{change['benchmark']}` / `{change['query']}`"
+        if size + len(line) > MAX_INDEX_CHARS:
+            break
+        size += len(line)
+        index.append(line)
+    note = ""
+    if len(index) < len(changes):
+        note = (
+            f"\n\nThere are too many to list: the first {len(index)} follow, and all of them are in "
+            f"`{TRANSLATION_FILE}` of the delivery artifact."
+        )
+    blocks: list[str] = []
+    for change in changes[:MAX_LISTED_CASES]:
+        block = (
+            f"\n### `{clip(change['platform'], MAX_NAME_CHARS)}` / `{change['benchmark']}` / `{change['query']}`"
+            f"\n\n{translation_diff(change)}"
+        )
+        if size + len(block) > MAX_TRANSLATION_SECTION_CHARS:
+            break
+        size += len(block)
+        blocks.append(block)
+    return head + note + "\n" + "".join(index) + "\n" + "".join(blocks) + "\n\n"
+
+
+def translation_section(body: str) -> str | None:
+    start, end = body.find(TRANSLATION_HEADING), body.find("<!-- sqlglot-delivery:")
+    if body.count(TRANSLATION_HEADING) != 1 or start < 0 or end < start:
+        return None
+    return body[start:end]
 
 
 def read_corpus(root: Path) -> dict[str, dict[str, Any]]:
@@ -679,6 +757,7 @@ def pull_request_text(
     head: str,
     base: str,
     corpus: Sequence[CorpusChange] = (),
+    translations: Sequence[TranslationChange] = (),
 ) -> tuple[str, str]:
     expected, producer = plan["expected"], plan["producer"]
     scope = (
@@ -698,6 +777,7 @@ def pull_request_text(
         "disables auto-merge or applies the `no-auto-merge` hold. To roll the adoption back, revert it and add "
         "its version and wheel hash to `suppressed` in `.github/sqlglot-delivery.json`.\n\n"
         f"{render_corpus_changes(corpus)}"
+        f"{render_translation_changes(translations)}"
         f"{render_marker(marker_for(plan, head, base))}\n"
     )
     return title_for(expected["version"]), body
@@ -762,6 +842,7 @@ def prepare(
     config: Config,
     checks: Callable[[Path], None] | None = default_checks,
     recorder: Callable[[Path, str], None] | None = record_corpus,
+    reporter: TranslationReporter = translation_report.translation_changes,
 ) -> dict[str, Any]:
     plan = json.loads((plan_dir / PLAN_FILE).read_text(encoding="utf-8"))
     require(plan.get("state") == "adopt", f"nothing to prepare: the plan state is {plan.get('state')!r}")
@@ -831,8 +912,13 @@ def prepare(
         git(root, "add", "--", path)
     git(root, "-c", "commit.gpgsign=false", "commit", "-m", title, env=identity)
     head = git(root, "rev-parse", "HEAD")
-    title, body = pull_request_text(plan, pinned["version"], head, base, corpus)
+    try:
+        translations = reporter(root, base, head)
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
+        raise DeliveryError(f"the translation report failed: {error}") from error
     out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / TRANSLATION_FILE).write_text(json.dumps(translations, indent=1, sort_keys=True), encoding="utf-8")
+    title, body = pull_request_text(plan, pinned["version"], head, base, corpus, translations)
     bundle = out_dir / BUNDLE_FILE
     bundle.unlink(missing_ok=True)
     git(root, "bundle", "create", str(bundle), branch, f"^{base}")
@@ -1019,6 +1105,7 @@ def publish(
     dry_run: bool = False,
     remote: str = "origin",
     environ: Mapping[str, str] | None = None,
+    reporter: TranslationReporter = translation_report.translation_changes,
 ) -> dict[str, Any]:
     if not enabled(environ):
         return {"outcome": "disabled", "actions": []}
@@ -1046,6 +1133,14 @@ def publish(
     require(
         listing in pull_request["body"],
         "the prepared pull request body does not list the corpus changes the commit makes",
+    )
+    try:
+        recomputed = reporter(clone, pull_request["base"], head)
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
+        raise DeliveryError(f"the translation report could not be recomputed: {error}") from error
+    require(
+        translation_section(pull_request["body"]) == render_translation_changes(recomputed),
+        "the prepared pull request body does not list the translated query changes the commit makes",
     )
 
     owned, foreign = open_adoptions(api, config, repo, login)

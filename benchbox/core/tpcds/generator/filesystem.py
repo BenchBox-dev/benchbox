@@ -7,6 +7,7 @@ from pathlib import Path
 
 from benchbox.utils.datagen_manifest import require_manifest_files
 from benchbox.utils.file_format import COMPRESSION_EXTENSIONS, detect_compression, strip_compression_suffix
+from benchbox.utils.generation_marker import GENERATION_IN_PROGRESS_MARKER
 from benchbox.utils.printing import emit
 from benchbox.utils.scale_factor import format_scale_factor
 from benchbox.utils.stale_artifact_pruning import TableArtifactPattern, prune_stale_table_artifacts
@@ -320,6 +321,8 @@ class FileArtifactMixin:
     def _copy_sample_dataset(self, sample_dir: Path, target_dir: Path) -> None:
 
         for child in target_dir.iterdir():
+            if child.name == GENERATION_IN_PROGRESS_MARKER:
+                continue
             if child.is_dir():
                 shutil.rmtree(child)
             else:

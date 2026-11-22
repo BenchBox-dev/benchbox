@@ -85,6 +85,10 @@ class TestValidateTpcdsScale:
         with pytest.raises(ValueError, match="exceeds maximum"):
             validate_tpcds_scale(100001.0)
 
+    @pytest.mark.parametrize("scale_factor", [3001.0, 10000.0, 30000.0, 100000.0])
+    def test_scales_above_3000_up_to_the_maximum_are_accepted(self, scale_factor):
+        assert validate_tpcds_scale(scale_factor) is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
+
     def test_official_scale_point_returns_nonstandard_without_official_flag(self):
         result = validate_tpcds_scale(1.0)
         assert result is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
@@ -179,3 +183,26 @@ class TestOfficialFlagReachesTheClassifier:
 
         wrapper = TPCDSOfficialBenchmark(scale_factor=1.0)
         assert wrapper.benchmark.compliance_class is TpcdsComplianceClass.OFFICIAL
+
+
+class TestSubscaleRefusalBeforeSpawn:
+    def test_message_states_what_was_observed(self):
+        with pytest.raises(ValueError, match="did not finish at SF 0.001"):
+            validate_tpcds_scale(0.001)
+
+    def test_generator_constructor_refuses_below_the_floor(self, tmp_path):
+        from benchbox.core.tpcds.generator import TPCDSDataGenerator
+
+        with pytest.raises(ValueError, match="did not finish at SF 0.001"):
+            TPCDSDataGenerator(scale_factor=0.005, output_dir=tmp_path)
+
+
+class TestOfficialPointsStayRunnable:
+    def test_every_official_point_passes_scale_validation(self):
+        for sf in OFFICIAL_SCALE_POINTS:
+            assert validate_tpcds_scale(sf, official=True) is TpcdsComplianceClass.OFFICIAL
+
+    @pytest.mark.parametrize("sf", [10000.0, 30000.0, 100000.0])
+    def test_specified_points_above_3000_are_official(self, sf):
+        assert sf in OFFICIAL_SCALE_POINTS
+        assert validate_tpcds_scale(sf, official=True) is TpcdsComplianceClass.OFFICIAL

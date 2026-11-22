@@ -11,6 +11,7 @@ class ExitCode(IntEnum):
     NOT_COMPARABLE = 4
     VALIDATION_FAILED = 5
     ACKNOWLEDGEMENT_REQUIRED = 6
+    TIMEOUT = 124
 
 
 RESERVED_BY_HOST_LOCK = range(75, 80)
@@ -29,6 +30,10 @@ EXIT_CODE_MEANINGS: dict[ExitCode, str] = {
         "an acknowledgement; publish: the maintainer-run label was refused without "
         "BENCHBOX_ALLOW_MAINTAINER_LABEL=1; setup --remove, export, publish remove: a confirmation prompt had "
         "no terminal to answer it; setup --platform: the credential wizard could read no answer"
+    ),
+    ExitCode.TIMEOUT: (
+        "run, run-official, datagen: the run reached the limit set with --timeout (or execution.timeout_seconds) "
+        "and was stopped; a partial result marked TIMED_OUT is kept and cannot be published"
     ),
 }
 

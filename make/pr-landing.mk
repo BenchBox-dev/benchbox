@@ -14,9 +14,25 @@ cloud-gateway:
 cloud-verify:
 	@sh scripts/cloud_verify.sh "$(or $(LEVEL),tests)"
 
+PR_LANDING_DRY_RUN_SKIP = dry_run=; word_index=0; set -f; \
+	for flag_word in $$MAKEFLAGS; do \
+		case "$$flag_word" in --) break ;; -*) ;; *=*) break ;; esac; \
+		word_index=$$((word_index + 1)); \
+		case "$$flag_word" in \
+			--dry-run|--just-print|--recon) dry_run=1 ;; \
+			--*) ;; \
+			-*[!bBdeikLnpqrRsStw]*) ;; \
+			-*[nqt]*) dry_run=1 ;; \
+			*[!a-zA-Z]*|"") ;; \
+			*[nqt]*) if [ "$$word_index" -eq 1 ]; then dry_run=1; fi ;; \
+		esac; \
+	done; \
+	set +f; \
+	if [ -n "$$dry_run" ]; then echo "dry-run (-n, -q or -t): skipping $(1)"; exit 0; fi;
+
 .PHONY: pr-preflight
 pr-preflight:
-	@set -eu; \
+	@$(call PR_LANDING_DRY_RUN_SKIP,pr-preflight) set -eu; \
 	if [ -n "$${BENCHBOX_TEST_SESSION_OWNER:-}" ]; then \
 		echo "pr-preflight: refusing to run inside a process that holds the host lock; run 'make pr-preflight' directly, never wrap the whole pipeline" >&2; \
 		exit 2; \
@@ -31,9 +47,10 @@ pr-preflight:
 	TEST_LIST=$$(mktemp); \
 	LINUX_LIST=$$(mktemp); \
 	GUARD_LIST=$$(mktemp); \
+	LINT_LIST=$$(mktemp); \
 	STAGE=$$(mktemp); \
 	ALLOW=$$(mktemp); \
-	trap 'RC=$$?; python3 scripts/preflight_receipt.py finalize --stage "$$STAGE" --exit-status "$$RC" --allowlist "$$ALLOW" || true; rm -f "$$PY_LIST" "$$TEST_LIST" "$$LINUX_LIST" "$$GUARD_LIST" "$$STAGE" "$$ALLOW"; exit "$$RC"' EXIT; \
+	trap 'RC=$$?; python3 scripts/preflight_receipt.py finalize --stage "$$STAGE" --exit-status "$$RC" --allowlist "$$ALLOW" || true; rm -f "$$PY_LIST" "$$TEST_LIST" "$$LINUX_LIST" "$$GUARD_LIST" "$$LINT_LIST" "$$STAGE" "$$ALLOW"; exit "$$RC"' EXIT; \
 	git show HEAD:.github/preflight-known-failures.json > "$$ALLOW" 2>/dev/null || rm -f "$$ALLOW"; \
 	python3 scripts/preflight_receipt.py begin --stage "$$STAGE" --base-ref "$$PREFLIGHT_BASE"; \
 	RECORD="python3 scripts/preflight_receipt.py step --stage $$STAGE --allowlist $$ALLOW"; \
@@ -51,6 +68,22 @@ pr-preflight:
 	else \
 		echo "No Python files changed; skipping ruff."; \
 	fi; \
+	uv run -- python _project/scripts/preflight_targets.py lint --base-ref "$$PREFLIGHT_BASE" > "$$LINT_LIST"; \
+	for STEP in $$(cat "$$LINT_LIST"); do \
+		case "$$STEP" in \
+			lint-imports) echo "==> lint-imports (layering contracts)"; $$RECORD --name lint-imports -- $(MAKE) -s lint-imports ;; \
+			typecheck) \
+				TY_FILES=$$(uv run -- python _project/scripts/preflight_targets.py typecheck-files --base-ref "$$PREFLIGHT_BASE"); \
+				echo "==> ty (changed benchbox/ and tests/ files; the whole project when only deletions)"; \
+				$$RECORD --name typecheck -- uv run -- python -m scripts.typecheck $$TY_FILES ;; \
+			lint-markers) \
+				MARKER_FILES=$$(uv run -- python _project/scripts/preflight_targets.py marker-files --base-ref "$$PREFLIGHT_BASE"); \
+				echo "==> lint-markers (changed test modules)"; \
+				$$RECORD --name lint-markers --ok-codes 0,5 -- uv run -- python -m pytest --collect-only -q -p no:warnings --assert=plain -p tests.utilities.marker_manifest $$MARKER_FILES || [ "$$?" -eq 5 ] ;; \
+			lint-markers-strategy) echo "==> lint-markers (tree-wide marker strategy)"; $$RECORD --name lint-markers-strategy -- uv run -- python -m pytest tests/unit/test_marker_strategy.py -q ;; \
+			*) echo "pr-preflight: unknown lint step $$STEP" >&2; exit 2 ;; \
+		esac; \
+	done; \
 	for GUARD in $$(cat "$$GUARD_LIST"); do \
 		echo "==> guard: $$GUARD"; \
 		case "$$GUARD" in \
@@ -67,7 +100,7 @@ pr-preflight:
 	echo "==> tests for changed files: $$(python3 scripts/preflight_receipt.py tests --stage "$$STAGE" --list "$$TEST_LIST")"; \
 	$$RECORD --name theseus-prefetch -- uv run -- python -m _project.scripts.theseus_prefetch; \
 	STATUS=0; \
-	$$RECORD --name pytest --ok-codes 0,5 -- env $$(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/-u \1/p') uv run -- python -m pytest -q -n 0 -rs --tb=short --ff $$(cat "$$TEST_LIST") || STATUS=$$?; \
+	$$RECORD --name pytest --ok-codes 0,5 -- env $$(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/-u \1/p') uv run -- python -m benchbox.utils.host_lock run --phase preflight-pytest --gate pr-preflight --admit --guard -- python -m pytest -q -n 0 -rs --tb=short --ff $$(cat "$$TEST_LIST") || STATUS=$$?; \
 	if [ "$$STATUS" -eq 5 ]; then echo "Mapped tests are all deselected by the default markers."; STATUS=0; fi; \
 	if [ "$$STATUS" -eq 0 ]; then \
 		uv run -- python _project/scripts/preflight_targets.py linux --base-ref "$$PREFLIGHT_BASE" > "$$LINUX_LIST"; \
@@ -81,7 +114,7 @@ pr-preflight:
 
 .PHONY: pr-preflight-fast-tests
 pr-preflight-fast-tests:
-	@set -eu; \
+	@$(call PR_LANDING_DRY_RUN_SKIP,pr-preflight-fast-tests) set -eu; \
 	if [ -n "$(PATH_DECISION)" ] || [ -n "$(PATH_LISTS)" ]; then \
 		[ -n "$(PATH_DECISION)" ] && [ -f "$(PATH_DECISION)" ] || { echo "PATH_DECISION is required" >&2; exit 2; }; \
 		[ -n "$(PATH_LISTS)" ] && [ -d "$(PATH_LISTS)" ] || { echo "PATH_LISTS is required" >&2; exit 2; }; \
@@ -134,7 +167,7 @@ pr-followup-resume:
 
 .PHONY: pr-content-guard
 pr-content-guard:
-	@set -eu; \
+	@$(call PR_LANDING_DRY_RUN_SKIP,pr-content-guard) set -eu; \
 	[ -n "$(PATH_LISTS)" ] || { echo "PATH_LISTS is required"; exit 2; }; \
 	EXISTING=$$(mktemp); \
 	trap 'rm -f "$$EXISTING"' EXIT; \
@@ -179,7 +212,7 @@ pr-open: export PR_OPEN_REBUTTALS := $(REBUTTALS_FILE)
 pr-open: override ADJUDICATE := $(value ADJUDICATE)
 pr-open: export PR_OPEN_ADJUDICATE := $(ADJUDICATE)
 pr-open:
-	@set -eu; \
+	@$(call PR_LANDING_DRY_RUN_SKIP,pr-open) set -eu; \
 	ROLE=$$(git config --worktree --get benchbox.batch.role 2>/dev/null || true); \
 	if [ "$$ROLE" = member ]; then \
 		echo "Refusing: this is a batch member worktree. Members never open pull requests; the leader lands the member with batch-land and opens the final PR." >&2; \
@@ -316,7 +349,7 @@ pr-open:
 
 .PHONY: pr-arm-auto-merge
 pr-arm-auto-merge:
-	@set -eu; \
+	@$(call PR_LANDING_DRY_RUN_SKIP,pr-arm-auto-merge) set -eu; \
 	[ -n "$(EVIDENCE)" ] || { echo "EVIDENCE is required; use pr-landing-ready with exact readiness evidence" >&2; exit 2; }; \
 	REPOSITORY="$(or $(REPO),BenchBox-dev/benchbox)"; \
 	CURRENT=$$(git branch --show-current); \
@@ -409,7 +442,7 @@ trunk-status:
 pr-ready:
 	@[ -n "$(PR)" ] || [ -n "$(URL)" ] || { echo "PR or URL is required" >&2; exit 2; }
 	@[ -n "$(HEAD)" ] || { echo "HEAD is required" >&2; exit 2; }
-	@if [ -n "$(EVIDENCE)" ]; then \
+	@$(call PR_LANDING_DRY_RUN_SKIP,pr-ready) if [ -n "$(EVIDENCE)" ]; then \
 		$(MAKE) -s pr-arm-auto-merge REPO="$(or $(REPO),BenchBox-dev/benchbox)" PR="$(PR)" URL="$(URL)" HEAD="$(HEAD)" EVIDENCE="$(EVIDENCE)" $(if $(BATCH),BATCH=1,); \
 	elif [ -n "$(URL)" ]; then \
 		[ -z "$(PR)" ] || { echo "PR and URL are mutually exclusive" >&2; exit 2; }; \
@@ -430,7 +463,7 @@ shrink-rollup:
 
 .PHONY: pr-fanout
 pr-fanout:
-	@ROLE=$$(git config --worktree --get benchbox.batch.role 2>/dev/null || true); \
+	@$(call PR_LANDING_DRY_RUN_SKIP,pr-fanout) ROLE=$$(git config --worktree --get benchbox.batch.role 2>/dev/null || true); \
 	if [ "$$ROLE" = member ]; then \
 		echo "Refusing: this is a batch member worktree. Members never open pull requests; the leader lands the member with batch-land and opens the final PR." >&2; \
 		exit 1; \
@@ -455,7 +488,7 @@ pr-fanout:
 
 .PHONY: pr-refresh
 pr-refresh:
-	@CURRENT=$$(git branch --show-current); \
+	@$(call PR_LANDING_DRY_RUN_SKIP,pr-refresh) CURRENT=$$(git branch --show-current); \
 	case "$$CURRENT" in \
 		develop|main|release|"") echo "Refusing to refresh $$CURRENT — switch to a feature branch worktree."; exit 1 ;; \
 	esac; \

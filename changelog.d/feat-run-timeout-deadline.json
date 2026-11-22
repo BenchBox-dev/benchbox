@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Added an optional run time limit: `--timeout SECONDS` on `benchbox run`, `run-official` and `datagen`, `timeout_seconds` on the MCP `run_benchmark` tool, `execution.timeout_seconds` in the config file, and `timeout_seconds=` on `generate_data()` and `adapter.run_benchmark()`. There is no default limit; 0 means no limit. A run that reaches its limit stops between phases or queries, exits with code 124, and keeps a partial result marked `timed_out` (result schema 2.6 adds `execution.timeout`), which cannot be official, published, submitted or ranked."
+    }
+  ]
+}

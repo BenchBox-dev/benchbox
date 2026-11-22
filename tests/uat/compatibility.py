@@ -110,16 +110,11 @@ _DATAFRAME_TRANSACTIONAL_BENCHMARK_GATES = {
         "Transaction primitives requires ACID transaction semantics. The UAT DataFrame selector set does "
         "not include a Delta Lake or Iceberg transactional table-format platform."
     ),
-    "tpcdi": (
-        "TPC-DI DataFrame ETL requires transactional maintenance capabilities for incremental/SCD2 writes; "
-        "the UAT DataFrame selector set does not provide a transactional table-format backend."
-    ),
 }
 
 _DATAFRAME_TRANSACTIONAL_EVIDENCE = (
     "benchbox/core/transaction_primitives/dataframe_operations.py "
     "validate_transaction_primitives_platform; "
-    "benchbox/core/tpcdi/benchmark.py execute_dataframe_workload transactional capability gate; "
     "benchbox/platforms/dataframe/pyspark_maintenance.py PySpark Parquet capability profile"
 )
 
@@ -352,17 +347,6 @@ _CEDARDB_STAGING_ABORT_REASON = (
     "aborted, commands ignored until end of transaction block' and reports the TPC-H 'orders' table as missing, so "
     "the error cascades through all of the cell's queries (trunk UAT run 43154678095)."
 )
-_CEDARDB_TPCDI_SMALL_REASON = (
-    "cedardb TPC-DI SF{scale} fails queries on CedarDB gaps: QAQ5 raises 'cannot take square root of a negative "
-    "number', QAQ7 is rejected for GROUP BY strictness ('column \"months_since_first_trade\" must appear in the "
-    "GROUP BY clause or be used in an aggregate function'), and QV1 hits 'current transaction is aborted' (trunk "
-    "UAT run 43154678095)."
-)
-_CEDARDB_TPCDI_SF1_REASON = (
-    "cedardb TPC-DI SF1 fails queries on CedarDB gaps: QAQ4 and QAQ5 exhaust working memory ('unable to allocate "
-    "working memory', workmemsize), QAQ6 raises 'numeric overflow', QAQ7 is rejected for GROUP BY strictness, "
-    "and QV1 hits 'current transaction is aborted' (trunk UAT run 43154678095)."
-)
 _CEDARDB_READ_PRIMITIVES_REASON = (
     "cedardb Read Primitives SF{scale} fails queries on CedarDB gaps: to_date(text, text) is missing, IS JSON is "
     "not implemented, RANGE PRECEDING needs a numeric order key, DISTINCT ORDER BY aggregates and DISTINCT "
@@ -391,10 +375,6 @@ _TRINO_PRESTO_TRUNK_UAT_REASONS = {
         "and date', 'Cannot apply operator: date = varchar(10)' and 'IN value and list items must be the same type "
         "or coercible to a common type', plus 'Column 'ca_county' cannot be resolved' and 'Column 'd_year' cannot be "
         "resolved' (trunk UAT run 43154678095)."
-    ),
-    ("trino", "tpcdi"): (
-        "Trino TPC-DI SF0.01 fails queries with TYPE_MISMATCH: 'Cannot apply operator: boolean = integer' and "
-        "'Cannot apply operator: date <= varchar(10)' (trunk UAT run 43154678095)."
     ),
     ("trino", "clickbench"): (
         "Trino ClickBench SF0.01 fails queries: TYPE_MISMATCH 'Cannot apply operator: date <= varchar(10)' and "
@@ -434,10 +414,6 @@ _TRINO_PRESTO_TRUNK_UAT_REASONS = {
         "SYNTAX_ERROR 'Mismatch at column 1: 'channel' is of type...', leaving the table empty ('Required benchmark "
         "tables are missing or empty'; trunk UAT run 43154678095)."
     ),
-    ("presto", "tpcdi"): (
-        "Presto TPC-DI SF0.01 fails queries with SYNTAX_ERROR: ''=' cannot be applied to boolean, integer' and "
-        "''>=' cannot be applied to date, varchar(10)' (trunk UAT run 43154678095)."
-    ),
     ("presto", "clickbench"): (
         "Presto ClickBench SF0.01 fails queries with SYNTAX_ERROR ''>=' cannot be applied to date, varchar(10)' "
         "(trunk UAT run 43154678095)."
@@ -475,8 +451,6 @@ _TRINO_PRESTO_TRUNK_UAT_REASONS = {
     ),
 }
 _TRUNK_UAT_PRUNES = {
-    **{("cedardb", "tpcdi", scale): _CEDARDB_TPCDI_SMALL_REASON.format(scale=f"{scale:g}") for scale in (0.01, 0.1)},
-    ("cedardb", "tpcdi", 1.0): _CEDARDB_TPCDI_SF1_REASON,
     **{
         ("cedardb", "read_primitives", scale): _CEDARDB_READ_PRIMITIVES_REASON.format(scale=f"{scale:g}")
         for scale in (0.01, 0.1)

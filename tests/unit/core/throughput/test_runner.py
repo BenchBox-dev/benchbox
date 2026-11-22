@@ -349,7 +349,7 @@ class TestStreamRunnerCooperativeCancellation:
     SLOW_STREAM_SLEEP = 0.1
     TINY_TIMEOUT = 0.01
 
-    def test_disabled_by_default_no_cancel_events_attached(self) -> None:
+    def test_events_are_always_attached_and_stay_unset_without_a_timeout(self) -> None:
         config = _FakeConfig(num_streams=2)
         result = _make_result()
         logger = logging.getLogger("test-throughput-runner")
@@ -357,7 +357,9 @@ class TestStreamRunnerCooperativeCancellation:
 
         StreamRunner.execute(stream_fn, config, result, logger)
 
-        assert getattr(config, "_stream_cancel_events", None) == {}
+        cancel_events = getattr(config, "_stream_cancel_events", None)
+        assert set(cancel_events) == {1, 2}
+        assert all(not event.is_set() for event in cancel_events.values())
 
     def test_enabled_but_streams_finish_normally_leaves_events_unset(self) -> None:
         config = _FakeConfig(num_streams=2, cancel_on_timeout=True, stream_timeout=5)
@@ -415,8 +417,8 @@ class TestStreamRunnerCooperativeCancellation:
         StreamRunner.execute(fast_stream_fn, config, result2, logger)
 
         refreshed_cancel_events = getattr(config, "_stream_cancel_events", None)
-        assert refreshed_cancel_events == {}
         assert refreshed_cancel_events is not stale_cancel_events
+        assert not refreshed_cancel_events[1].is_set()
         assert result2.streams_successful == 1
         assert result2.errors == []
 
@@ -504,7 +506,9 @@ class TestStreamRunnerNonBlockingShutdown:
 
         StreamRunner.execute(hung_stream_fn, config, result, logger)
 
-        assert getattr(config, "_stream_cancel_events", None) == {}
+        events = getattr(config, "_stream_cancel_events", None)
+        assert set(events) == {1}
+        assert not events[1].is_set()
 
     def test_mock_truthy_config_healthy_path_unaffected(self) -> None:
         stream_fn = Mock(side_effect=lambda stream_id, seed, cfg: _make_stream_result(stream_id))

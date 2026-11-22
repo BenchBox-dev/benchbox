@@ -171,16 +171,13 @@
       "WA003": 1
     },
     "tests/uat/test_runner.py": {
-      "WA003": 8
+      "WA003": 7
     },
     "tests/uat/test_runner_timeout_process_group.py": {
       "WA002": 2
     },
     "tests/uat/test_sweep_durability.py": {
       "WA002": 7
-    },
-    "tests/uat/timeouts.py": {
-      "WA002": 2
     },
     "tests/unit/benchmarks/test_write_primitives_generator.py": {
       "WA003": 1

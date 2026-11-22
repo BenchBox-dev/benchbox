@@ -47,6 +47,7 @@ from benchbox.core.results.schema_policy import (
     is_loader_supported_result_schema,
     result_schema_version_value,
 )
+from benchbox.core.results.tpcdi_audit import LEGACY_TPCDI_REFUSAL, is_legacy_tpcdi_bundle
 from benchbox.core.runtime_paths import resolve_results_dir
 from benchbox.utils.cloud_storage import create_path_handler, is_cloud_path
 from benchbox.validation.bundle import COMPANION_SUFFIXES
@@ -727,6 +728,14 @@ class ResultExporter:
                 "baseline_loaded": bool(baseline_result),
                 "current_loaded": bool(current_result),
             }
+
+        for loaded in (baseline_result, current_result):
+            if is_legacy_tpcdi_bundle(loaded["data"]):
+                return {
+                    "error": LEGACY_TPCDI_REFUSAL,
+                    "error_code": "VALIDATION_ERROR",
+                    "details": {"benchmark": "tpcdi", "legacy": True},
+                }
 
         baseline_data = baseline_result["data"]
         current_data = current_result["data"]

@@ -236,7 +236,7 @@ class PandasDataFrameAdapter(PandasFamilyAdapter[PandasDF]):
                 read_kwargs["parse_dates"] = datetime_columns
             string_columns = _pandas_string_columns(names, column_types, set(date_columns) | set(datetime_columns))
             if string_columns or date_columns:
-                read_kwargs["dtype"] = dict.fromkeys([*string_columns, *date_columns], "object")
+                read_kwargs["dtype"] = {**dict.fromkeys(string_columns, "str"), **dict.fromkeys(date_columns, "object")}
 
         if null_marker is not None and names and has_trailing_delimiter(path, delimiter, names):
             extended_names = names + [TRAILING_DUMMY_COLUMN]

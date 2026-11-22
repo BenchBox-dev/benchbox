@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "ClickHouse and ClickHouse Local runs with a non-default seed no longer fail to export their result: a row count accepted within the loose tolerance is now recorded as skipped with the tolerance warning, as on other platforms, instead of as a pass with unequal counts."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "TPC-DS query 75 no longer fails with a division by zero on PostgreSQL-compatible platforms such as CedarDB: the prior-year sales count divisor is guarded with NULLIF on every platform, as query 90 already is, so all platforms return the same rows."
+    }
+  ]
+}

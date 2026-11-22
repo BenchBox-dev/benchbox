@@ -330,15 +330,16 @@ kernel lock; it never removes the lock pathname.
 
 Runs that use xdist, and serial runs that select a heavy marker (slow, stress, resource_heavy, live_*, docker_integration),
 take the lock; heavy runs also pass host admission and run under the watchdog. `make pr-preflight` lints the changed
-Python files and runs the tests mapped from the changed paths serially
-(`-n 0`), so its pytest step never waits on the lock and writes no host-lock run receipt. (It does write the tree-bound preflight receipt that `make pr-open` requires; see `docs/agent/preflight-receipt.md`.) The one exception is
-the Linux container step it adds when the change branches on platform: that step boots the Linux machine under
-`python -m benchbox.utils.host_lock run --admit --guard` and waits on the lock like any heavy run. Use
+Python files and runs the tests mapped from the changed paths serially (`-n 0`) under
+`python -m benchbox.utils.host_lock run --admit --guard`, so concurrent preflights from different sessions queue on
+the lock instead of running together, and a lock refusal (75), admission refusal (76) or watchdog stop (79) is
+recorded in the tree-bound preflight receipt as a failed `pytest` step (see `docs/agent/preflight-receipt.md`). The
+Linux container step it adds when the change branches on platform boots the Linux machine the same way. Use
 `make pr-preflight-fast-tests` to run the full fast lane locally under the
 lock; CI runs that lane on every PR and is the authoritative check.
 
-Run `make pr-preflight` directly, never wrap the whole pipeline in `make heavy-run` or `host_lock run`: only its Linux
-container step takes the lock, so an outer wrapper would hold the global lock through ruff and the serial tests and
+Run `make pr-preflight` directly, never wrap the whole pipeline in `make heavy-run` or `host_lock run`: its test
+steps take the lock themselves, so an outer wrapper would hold the global lock through ruff and the guards and
 block other heavy runs. The wrapper refuses a command that invokes the `pr-preflight` goal (direct, `sh -c`, `bash -lc`,
 any `make` options or goal lists) with exit 2 before it requests the lock, and `make pr-preflight` exits 2 itself when
 it starts inside a process that holds the lock.

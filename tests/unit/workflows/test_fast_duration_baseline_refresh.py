@@ -37,10 +37,17 @@ def test_refresh_holds_only_contents_and_pull_request_write(name: str) -> None:
     permissions = job(name)["permissions"]
     assert permissions["contents"] == "write"
     assert permissions["pull-requests"] == "write"
+    allowed = {"contents", "pull-requests"} | ({"issues"} if name == "refresh" else set())
     for scope, access in permissions.items():
-        if scope in ("contents", "pull-requests"):
+        if scope in allowed:
             continue
         assert access != "write", scope
+
+
+def test_only_the_refresh_job_may_write_issues() -> None:
+    assert job("refresh")["permissions"]["issues"] == "write"
+    assert "issues" not in job("medium")["permissions"]
+    assert "issues" not in load()["permissions"]
 
 
 @pytest.mark.parametrize(
@@ -200,3 +207,77 @@ def test_medium_pr_supersedes_earlier_open_refresh_prs_after_opening_the_new_one
     assert 'select(.headRefName != \\"$BRANCH\\")' in text
     assert "Superseded by #$NEW_NUMBER" in text
     assert text.count("gh pr close") == 1
+
+
+@pytest.mark.parametrize(
+    ("name", "create", "prefix"),
+    [
+        ("refresh", "Create refresh PR", "chore/fast-baseline-"),
+        ("medium", "Create medium durations PR", "chore/medium-durations-"),
+    ],
+)
+def test_a_run_that_found_an_earlier_open_refresh_fails_after_its_own_work(name: str, create: str, prefix: str) -> None:
+    find_index = step_index("Find earlier refresh pull requests left open", name)
+    fail_index = step_index("Fail when an earlier refresh was left unmerged", name)
+    assert find_index < step_index(create, name) < fail_index == len(job(name)["steps"]) - 1
+
+    find = job(name)["steps"][find_index]
+    assert "if" not in find
+    assert find["env"]["HEAD_PREFIX"] == prefix
+    assert 'startswith(\\"$HEAD_PREFIX\\")' in find["run"]
+    assert "gh pr close" not in find["run"] and "gh pr create" not in find["run"]
+    assert 'echo "open=$OPEN" >> "$GITHUB_OUTPUT"' in find["run"]
+
+    fail = job(name)["steps"][fail_index]
+    assert fail["if"] == "steps.earlier.outputs.open != ''"
+    assert fail["env"]["EARLIER"] == "${{ steps.earlier.outputs.open }}"
+    assert "::error::" in fail["run"] and "$EARLIER" in fail["run"]
+    assert fail["run"].rstrip().endswith("exit 1")
+
+
+CEILING_PATH = "quality/fast-duration-ceiling.json"
+OVER_TITLE = "Fast-tier duration is over its ceiling"
+
+
+def test_refresh_pr_is_gated_on_the_ceiling_output() -> None:
+    assert "steps.ceiling.outputs.over != 'true'" in step_named("Create refresh PR")["if"]
+    ceiling = step_named("Check the refreshed baseline against the ceiling")
+    assert ceiling["id"] == "ceiling"
+    assert step_index("Gate-check the refreshed baseline") < step_index(
+        "Check the refreshed baseline against the ceiling"
+    )
+    assert step_index("Check the refreshed baseline against the ceiling") < step_index("Create refresh PR")
+    assert "ceiling-check" in ceiling["run"]
+    assert "--previous fast-refresh/previous-baseline" in ceiling["run"]
+    assert "over=true" in ceiling["run"]
+
+
+def test_previous_baseline_is_copied_before_the_build_overwrites_it() -> None:
+    build = step_named("Build the refreshed baseline")["run"]
+    assert build.index("fast-refresh/previous-baseline") < build.index("scripts.build_fast_duration_baseline build")
+
+
+def test_over_ceiling_opens_or_updates_one_issue_then_fails() -> None:
+    step = step_named("Report the over-ceiling baseline")
+    assert step["if"] == "steps.ceiling.outputs.over == 'true'"
+    assert step["env"]["GH_TOKEN"] == "${{ secrets.CROSS_SURFACE_BASELINE_PR_TOKEN || github.token }}"
+    text = step["run"]
+    assert text.count("gh issue create") == 1
+    assert "gh issue edit" in text
+    assert f'select(.title == "{OVER_TITLE}")' in text
+    assert OVER_TITLE in step["env"]["ISSUE_TITLE"]
+    assert "::error::" in text
+    assert "exit 1" in text
+    assert step_index("Check the refreshed baseline against the ceiling") < step_index(
+        "Report the over-ceiling baseline"
+    )
+
+
+def test_refresh_never_writes_the_ceiling_file() -> None:
+    for name in ("refresh", "medium"):
+        for line in all_run_text(name).splitlines():
+            if CEILING_PATH in line:
+                assert "--ceiling" in line or "::error::" in line, line
+            if line.strip().startswith("git add"):
+                assert CEILING_PATH not in line
+    assert not re.search(r">>?\s*\S*fast-duration-ceiling", all_run_text())

@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "TPC-H and TPC-DS runs now print a rough, measured estimate of generation time before data and query generation, naming the host class and scales it was measured on and marking larger scales as extrapolated; a run limit shorter than the estimate is warned about.",
+      "benchmarks": ["tpch", "tpcds"]
+    }
+  ]
+}

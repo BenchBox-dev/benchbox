@@ -31,25 +31,40 @@ from benchbox.utils.scale_factor import format_scale_factor
 
 console = quiet_console
 
+REMOVED_CONFIG_KEYS = (
+    "benchmarks.timeout_minutes",
+    "execution.timeout_minutes",
+    "execution.power_run.timeout_per_iteration_minutes",
+    "execution.concurrent_queries.query_timeout_seconds",
+)
+REMOVED_CONFIG_KEY_MESSAGE = (
+    "`{key}` is no longer used and has no effect. Use `execution.timeout_seconds` to limit a run."
+)
+
+
+def _drop_removed_config_keys(config_data: dict[str, Any]) -> None:
+    for key in REMOVED_CONFIG_KEYS:
+        *parents, leaf = key.split(".")
+        section: Any = config_data
+        for name in parents:
+            section = section.get(name) if isinstance(section, dict) else None
+        if isinstance(section, dict) and leaf in section:
+            del section[leaf]
+            console.print(f"[yellow]Warning: {REMOVED_CONFIG_KEY_MESSAGE.format(key=key)}[/yellow]")
+
+
 _CONFIG_VALIDATION_RULES: list[tuple[str, int, Any, str]] = [
     ("benchmarks.default_scale", 0, lambda v: v > 0, "Invalid default scale factor"),
-    ("benchmarks.timeout_minutes", 0, lambda v: v > 0, "Invalid timeout value"),
     ("execution.max_workers", 0, lambda v: v > 0, "Invalid max workers value"),
+    (
+        "execution.timeout_seconds",
+        0,
+        lambda v: v is None or (isinstance(v, int) and not isinstance(v, bool) and v >= 0),
+        "Invalid run timeout value",
+    ),
     ("execution.power_run.iterations", 4, lambda v: v > 0, "Invalid power run iterations value"),
     ("execution.power_run.warm_up_iterations", 0, lambda v: v >= 0, "Invalid power run warm-up iterations value"),
-    (
-        "execution.power_run.timeout_per_iteration_minutes",
-        60,
-        lambda v: v > 0,
-        "Invalid power run timeout value",
-    ),
     ("execution.concurrent_queries.max_concurrent", 2, lambda v: v > 0, "Invalid max concurrent queries value"),
-    (
-        "execution.concurrent_queries.query_timeout_seconds",
-        300,
-        lambda v: v > 0,
-        "Invalid concurrent query timeout value",
-    ),
     (
         "execution.concurrent_queries.stream_timeout_seconds",
         3600,
@@ -183,6 +198,7 @@ class ConfigManager:
                             )
                         return self._get_default_config()
 
+                    _drop_removed_config_keys(config_data)
                     default_config = self._get_default_config()
                     merged_config = deep_merge_dicts(default_config.model_dump(), config_data)
                     return BenchBoxConfig(**merged_config)
@@ -213,7 +229,6 @@ class ConfigManager:
             },
             benchmarks={
                 "default_scale": 0.01,
-                "timeout_minutes": 60,
                 "max_memory_gb": 8,
                 "continue_on_error": False,
             },
@@ -236,14 +251,12 @@ class ConfigManager:
                 "power_run": {
                     "iterations": 3,
                     "warm_up_iterations": 1,
-                    "timeout_per_iteration_minutes": 60,
                     "fail_fast": False,
                     "collect_metrics": True,
                 },
                 "concurrent_queries": {
                     "enabled": False,
                     "max_concurrent": 2,
-                    "query_timeout_seconds": 300,
                     "cancel_on_timeout": False,
                     "retry_failed_queries": True,
                     "max_retries": 3,
@@ -321,13 +334,6 @@ class ConfigManager:
 
         concurrent_max = min(max_workers, max(2, profile.cpu_cores_logical // 4))
         self.set("execution.concurrent_queries.max_concurrent", concurrent_max)
-
-        if profile.memory_total_gb < 8:
-            self.set("execution.power_run.timeout_per_iteration_minutes", 120)
-            self.set("execution.concurrent_queries.query_timeout_seconds", 600)
-        elif profile.memory_total_gb > 16:
-            self.set("execution.power_run.timeout_per_iteration_minutes", 45)
-            self.set("execution.concurrent_queries.query_timeout_seconds", 180)
 
         if "duckdb" in profile.available_databases:
             self.set("database.preferred", "duckdb")

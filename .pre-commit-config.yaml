@@ -126,6 +126,7 @@ repos:
       - id: check-added-large-files
         args: [--maxkb=1000]
         stages: [pre-commit]
+        exclude: ^benchbox/_binaries/
       - id: check-merge-conflict
         stages: [pre-commit]
       - id: detect-private-key

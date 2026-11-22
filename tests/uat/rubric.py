@@ -34,7 +34,7 @@ VALIDATOR_ROLLUP_FILENAME = "validator_rollup.tsv"
 CellKey = tuple[str, str, float]
 PairKey = tuple[str, str]
 
-_ATTEMPTED_STATUSES = frozenset({"passed", "failed", "timed-out"})
+_ATTEMPTED_STATUSES = frozenset({"passed", "failed", "timed-out", "hung"})
 
 
 @dataclass(frozen=True)

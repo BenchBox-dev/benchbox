@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Bundle validation refuses a compliance_class that is not official, unofficial_nonstandard or unofficial_subscale; an off-list scale previously let any value through."
+    },
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "TPC-DI result bundles record the data-generation seed in the optional field benchmark.data_generation_seed. Existing bundles are unchanged."
+    },
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Eighteen TPC-DI bundles made by earlier data generators are labelled superseded-data-generator instead of defective-variant-or-loader-wrong-result. They stay out of the rankings and their displayed reason is unchanged."
+    }
+  ]
+}

@@ -199,6 +199,35 @@ def test_run_checks_can_skip_the_network_dependent_freshness_check(tree: Path) -
     assert any("check_sqlglot_advisories" in call for call in seen)
 
 
+def test_run_checks_passes_the_line_to_freshness_and_keeps_the_advisory_check(tree: Path) -> None:
+    seen: list[list[str]] = []
+
+    def runner(argv, cwd):
+        seen.append([str(a) for a in argv])
+        return 0, ""
+
+    release_flow.run_checks(tree, VERSION, runner, line="release/0.5.x")
+    freshness = [call for call in seen if any("check_sqlglot_upstream_freshness" in a for a in call)]
+    advisories = [call for call in seen if any("check_sqlglot_advisories" in a for a in call)]
+    assert len(freshness) == 1 and freshness[0][-2:] == ["--line", "release/0.5.x"]
+    assert len(advisories) == 1 and "--line" not in advisories[0]
+    seen.clear()
+    release_flow.run_checks(tree, VERSION, runner)
+    assert not any("--line" in call for call in seen)
+
+
+def test_check_main_forwards_the_line_option(tree: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake(root: Path, version: str, **options: object) -> list[str]:
+        captured.update(options)
+        return []
+
+    monkeypatch.setattr(release_flow, "run_checks", fake)
+    assert release_flow.main(["check", "--version", VERSION, "--root", str(tree), "--line", "release/0.5.x"]) == 0
+    assert captured["line"] == "release/0.5.x"
+
+
 def test_check_pins_an_explicit_lock_baseline(tree: Path) -> None:
     expected = subprocess.check_output(["git", "rev-parse", "refs/tags/v1.2.2"], cwd=tree, text=True).strip()
     seen = []

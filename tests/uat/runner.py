@@ -19,7 +19,7 @@ from tests.uat.artifact_hygiene import (
 )
 from tests.uat.matrix import benchbox_run_argv, benchbox_run_official_argv
 from tests.uat.throughput import resolve_official_result_path, validate_throughput_result
-from tests.uat.timeouts import TimeoutResult, run_with_timeout
+from tests.uat.timeouts import EXIT_TIMEOUT, TimeoutResult, run_with_timeout
 
 __all__ = [
     "CellResult",
@@ -109,6 +109,13 @@ def _default_log_path(log_dir: Path, platform: str, benchmark: str, scale: float
 
 
 DIAGNOSTIC_RERUN_TIMEOUT_S = 180
+OUTSIDE_KILL_MARGIN_S = 60
+STATUS_TIMED_OUT = "timed-out"
+STATUS_HUNG = "hung"
+
+
+def outside_limit_s(timeout_s: int) -> int:
+    return timeout_s + OUTSIDE_KILL_MARGIN_S if timeout_s else 0
 
 
 def _append_diagnostic_rerun(log_fh, argv: list[str], *, timeout_s: int, env: dict[str, str]) -> None:
@@ -242,6 +249,7 @@ def _diagnostic_rerun_argv(
     local_managed_platform: bool,
     streams: int | None,
     seed: int | None,
+    timeout_s: int | None = None,
 ) -> list[str]:
     output_args = ("--output", str(runs_dir / "datagen"), *extra_args)
     if official:
@@ -255,6 +263,7 @@ def _diagnostic_rerun_argv(
             extra_args=output_args,
             local_managed_platform=local_managed_platform,
             quiet=False,
+            timeout_s=timeout_s,
         )
     return benchbox_run_argv(
         platform,
@@ -265,6 +274,7 @@ def _diagnostic_rerun_argv(
         extra_args=output_args,
         local_managed_platform=local_managed_platform,
         quiet=False,
+        timeout_s=timeout_s,
     )
 
 
@@ -294,6 +304,9 @@ def _write_exit_markers(log_fh, timeout_result: TimeoutResult, timeout_s: int, m
     if timeout_result.peak_rss_bytes is not None:
         log_fh.write(f"# UAT_PEAK_RSS_GIB={timeout_result.peak_rss_bytes / 1024**3:.2f}\n")
     if timeout_result.timed_out:
+        log_fh.write(f"# UAT_HUNG outside_limit_s={outside_limit_s(timeout_s)} exit_code={timeout_result.exit_code}\n")
+        return True
+    if timeout_result.exit_code == EXIT_TIMEOUT:
         log_fh.write(f"# UAT_TIMEOUT timeout_s={timeout_s} exit_code={timeout_result.exit_code}\n")
         return True
     if timeout_result.memory_exceeded:
@@ -342,6 +355,7 @@ def run_cell(
             seed=seed,
             extra_args=("--output", str(runs_dir / "datagen"), *extra_args),
             local_managed_platform=local_managed_platform,
+            timeout_s=timeout_s,
         )
     else:
         argv = benchbox_run_argv(
@@ -352,6 +366,7 @@ def run_cell(
             compression=compression,
             extra_args=("--output", str(runs_dir / "datagen"), *extra_args),
             local_managed_platform=local_managed_platform,
+            timeout_s=timeout_s,
         )
 
     with log_path.open("w", encoding="utf-8") as log_fh:
@@ -364,7 +379,7 @@ def run_cell(
         guard = {"memory_limit_bytes": int(memory_limit_gib * 1024**3)} if memory_limit_gib > 0 else {}
         timeout_result = run_with_timeout(
             argv,
-            timeout_s=timeout_s,
+            timeout_s=outside_limit_s(timeout_s),
             stdout=subprocess.PIPE,
             stderr=log_fh,
             env=env,
@@ -381,6 +396,7 @@ def run_cell(
             log_fh.write(stdout_text)
         killed = _write_exit_markers(log_fh, timeout_result, timeout_s, memory_limit_gib)
         if not killed and timeout_result.exit_code != 0 and not stdout_text.strip() and not stderr_has_content:
+            rerun_timeout_s = min(timeout_s, DIAGNOSTIC_RERUN_TIMEOUT_S)
             rerun_argv = _diagnostic_rerun_argv(
                 official=official,
                 platform=platform,
@@ -393,11 +409,12 @@ def run_cell(
                 local_managed_platform=local_managed_platform,
                 streams=streams,
                 seed=seed,
+                timeout_s=rerun_timeout_s,
             )
             _append_diagnostic_rerun(
                 log_fh,
                 rerun_argv,
-                timeout_s=min(timeout_s, DIAGNOSTIC_RERUN_TIMEOUT_S),
+                timeout_s=outside_limit_s(rerun_timeout_s),
                 env=env,
             )
 
@@ -453,7 +470,7 @@ def run_cell(
                 if not ok and status == "passed":
                     status = "failed"
                     exit_code = exit_code or 1
-        elif status == "timed-out":
+        elif status in {STATUS_TIMED_OUT, STATUS_HUNG}:
             throughput_check = "not validated: cell timed out"
         else:
             throughput_check = "no result JSON resolved for throughput validation"
@@ -510,7 +527,9 @@ def _log_region_has_nonempty_content(path: Path, start_offset: int, *, chunk_siz
 
 def _classify(timeout_result: TimeoutResult) -> str:
     if timeout_result.timed_out:
-        return "timed-out"
+        return STATUS_HUNG
+    if timeout_result.exit_code == EXIT_TIMEOUT:
+        return STATUS_TIMED_OUT
     if timeout_result.exit_code == 0:
         return "passed"
     return "failed"

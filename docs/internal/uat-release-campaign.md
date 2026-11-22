@@ -33,11 +33,14 @@ Run rules:
 - For slow Docker stacks (e.g. LakeSail), set `cleanup.docker_start_timeout_s`
   from a measured healthy startup (see "Managed Docker startup failures are
   non-fatal") before the stage-2 run.
+- Each `benchbox run` and `run-official` cell passes `--timeout` equal to its cell limit and is killed from outside only
+  60 seconds later. A cell BenchBox stopped is `timed-out` (exit 124); a cell the runner had to kill is `hung`. See
+  "Cell time limits" in `tests/uat/README.md`.
 
-### StarRocks teardown evidence
+### StarRocks and CedarDB teardown evidence
 
-Every non-dry-run managed StarRocks shard captures `starrocks-evidence/`
-inside its UAT run-log directory before container teardown, including failed
+Every non-dry-run managed StarRocks or CedarDB shard captures `starrocks-evidence/` or
+`cedardb-evidence/` inside its UAT run-log directory before container teardown, including failed
 cells and runtime/startup exceptions. Existing release and trunk shard uploads
 copy this directory with the other run logs; no separate diagnostic workflow
 or benchmark-path polling is needed.
@@ -58,6 +61,14 @@ truncation, unavailable commands and collection failures are recorded in
 engine timestamps to find the first blacklist insertion, then correlate
 FE RPC/GC and BE memory messages; `Alive: true` alone does not rule out a
 blacklisted backend.
+
+The CedarDB bundle contains the container's timestamped server log (the last
+50,000 lines, across restarts), the Docker events for the container over the
+previous six hours (`die`, `oom`, `restart` with exit codes), container state
+including `OOMKilled`, exit code, restart count, health history and memory
+limit, cgroup memory events/current/peak/limit, and the same host metadata.
+An `OOMKilled=true` state or `oom` event names a memory kill; a server log that
+ends mid-statement without either points at a server fault.
 
 An `action=evidence status=failed` lifecycle event and stderr warning make
 incomplete collection visible without changing the original sweep outcome.
