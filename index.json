@@ -29099,7 +29099,7 @@
         "generator-volume-gate-rename-bypass-20261120"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Prove the generator-volume gate measures correctly and get its CI budget approved"
     },
     "generator-volume-gate-ungated-schema-and-seed-inputs-20261120": {
