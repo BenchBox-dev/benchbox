@@ -2,6 +2,11 @@
   "acceptance": [
     "The throughput stream gate's timeout recording is covered by a test that fails if it regresses."
   ],
+  "batch": {
+    "batch_id": "run-timeout-followups",
+    "implementation_dependencies": [],
+    "member_id": "throughput-stream-gate-deadline-test-20261122"
+  },
   "context": "Gap noted by the review-fix implementer in the run-timeout effort.",
   "description": "## Problem\nIn #4435 the throughput runner's per-stream gate (benchbox/core/throughput/runner.py) was switched from the read-only `run_deadline_expired()` to `run_stop_requested()`, which records the timeout. Every other gate of that class got a dedicated test; this one did not, so a regression back to a read-only check (streams skipped with `deadline.timeout` left None, so `adapter.run_benchmark(timeout_seconds=...)` returns an unmarked short result) would not be caught.\n\n## Change\nAdd a test: a stream whose next query starts after the deadline passed stops, the deadline's timeout is recorded, and the result is marked timed out through the adapter path.\n\n## Decision gates\nTest only; if the test exposes a product defect, fix it in the same pull request and say so. Patch only seams the module owns (`wait_for_completed` etc.), never stdlib.\n\n## Verification rubric\nThe test fails when the gate is changed back to `run_deadline_expired()` (show it) and passes on develop; `make pr-preflight` exits 0.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
   "sessions": [
@@ -11,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "585d28a31a7b43708f21791c71e5d7a8",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T13:28:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b2b775f30dfa4eafb764261e688cfbfb",
       "session_id": "e80ec8f825d244408f926415b43e3179"
     }
   ]
