@@ -6,9 +6,10 @@ import argparse
 import ast
 import json
 import re
+import subprocess
 import sys
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 CLI_DESCRIPTION = (
     "Check for Windows anti-patterns in benchbox/, tests/, scripts/ and _project/.\n"
@@ -685,14 +686,39 @@ def _is_excluded(path: Path, repo_root: Path) -> bool:
     return any(key == ex or key.startswith(f"{ex}/") for ex in _DEFAULT_EXCLUDES)
 
 
+def _gitignored(repo_root: Path) -> frozenset[str]:
+    proc = subprocess.run(
+        ["git", "ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--directory"],
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return frozenset()
+    return frozenset(
+        entry.decode("utf-8", "surrogateescape").rstrip("/") for entry in proc.stdout.split(b"\0") if entry
+    )
+
+
+def _walk_python(root: Path, repo_root: Path) -> list[Path]:
+    ignored = _gitignored(repo_root)
+    found: list[Path] = []
+    for py_file in sorted(root.rglob("*.py")):
+        if _is_excluded(py_file, repo_root):
+            continue
+        key = PurePosixPath(_file_key(py_file, repo_root))
+        if any(str(parent) in ignored for parent in (key, *key.parents)):
+            continue
+        found.append(py_file)
+    return found
+
+
 def check_tree(roots: list[Path], repo_root: Path | None = None) -> tuple[list[Violation], int]:
     violations: list[Violation] = []
     file_count = 0
     repo_root = repo_root or Path(__file__).resolve().parent.parent
     for root in roots:
-        for py_file in sorted(root.rglob("*.py")):
-            if _is_excluded(py_file, repo_root):
-                continue
+        for py_file in _walk_python(root, repo_root):
             violations.extend(check_file(py_file))
             file_count += 1
     return violations, file_count
@@ -827,9 +853,7 @@ def main() -> int:
                 if p.suffix == ".py" and not _is_excluded(p, repo_root):
                     py_files.append(p)
             elif p.is_dir():
-                for f in sorted(p.rglob("*.py")):
-                    if not _is_excluded(f, repo_root):
-                        py_files.append(f)
+                py_files.extend(_walk_python(p, repo_root))
         violations: list[Violation] = []
         for f in py_files:
             violations.extend(check_file(f))
