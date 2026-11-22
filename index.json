@@ -42724,15 +42724,10 @@
       "title": "Accept any in-range scale factor and keep scale lists as the recommended set"
     },
     "scale-floor-not-enforced-in-direct-class-construction-20261120": {
-      "claim": {
-        "expires_at": "2026-11-23T22:00:21Z",
-        "generation": "c96725492d4946dead92db29ca169daf",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Check whether CoffeeShop and JoinOrder Synthetic classes accept a scale below 0.01 when constructed directly"
     },
     "scale-rule-stale-leftovers-20261111": {
