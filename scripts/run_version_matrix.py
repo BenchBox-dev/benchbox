@@ -141,7 +141,9 @@ def _clear_databases(spec: MatrixSpec, output_dir: Path, benchmark: str, scale: 
 
 def remove_regenerable_data(output_dir: Path) -> None:
     for name in REGENERABLE_SUBDIRS:
-        shutil.rmtree(output_dir / name, ignore_errors=True)
+        path = output_dir / name
+        if path.exists():
+            shutil.rmtree(path)
 
 
 def benchbox_command(
