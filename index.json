@@ -9047,6 +9047,7 @@
     },
     "run-timeout-harness2": {
       "accepted_members": {
+        "run-timeout-remove-unused-timers-20261120": "e93c2908cb2cc2f0e9f6ca0dcb2dd8efa067e40e",
         "run-timeout-uat-cells-20261120": "8bcaca7d6f3e3e2998a7dcc25f5c75c5443d88da"
       },
       "batch_schema": 2,
@@ -9054,6 +9055,34 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "run-timeout-remove-unused-timers-20261120": {
+          "accepted_head": "e93c2908cb2cc2f0e9f6ca0dcb2dd8efa067e40e",
+          "changed_files": [
+            "benchbox/cli/config.py",
+            "benchbox/core/tpcds/qualification/runner.py",
+            "benchbox/platforms/base/result_capture.py",
+            "benchbox/utils/__init__.py",
+            "benchbox/utils/config_helpers.py",
+            "benchbox/utils/config_interface.py",
+            "benchbox/utils/linux_machine.py",
+            "benchbox/utils/process_group.py",
+            "benchbox/utils/resource_limits.py",
+            "benchbox/utils/run_deadline.py",
+            "benchbox/utils/timeout_manager.py",
+            "changelog.d/feat-run-timeout-harness--run-timeout-remove-unused-timers-20261120.json",
+            "quality/comment-policy.json",
+            "tests/unit/cli/test_cli_config.py",
+            "tests/unit/platforms/test_plan_capture_errors.py",
+            "tests/unit/utils/test_config_helpers.py",
+            "tests/unit/utils/test_removed_timers.py",
+            "tests/unit/utils/test_resource_limits_config.py",
+            "tests/unit/utils/test_run_deadline.py",
+            "tests/unit/utils/test_timeout_manager.py",
+            "tests/unit/utils/test_timeout_manager_behavioral.py"
+          ],
+          "integration_head": "6c701c6ab116a7e2ced7260a48a412679f985610",
+          "integration_seq": 2
+        },
         "run-timeout-uat-cells-20261120": {
           "accepted_head": "8bcaca7d6f3e3e2998a7dcc25f5c75c5443d88da",
           "changed_files": [
@@ -9089,7 +9118,7 @@
         }
       },
       "integration_branch": "feat/run-timeout-harness2",
-      "integration_head": "d40fd21425fcd2b738ea80e85e42457800b9c673",
+      "integration_head": "6c701c6ab116a7e2ced7260a48a412679f985610",
       "integration_log": [
         {
           "at": "2026-11-22T00:45:42Z",
@@ -9105,6 +9134,15 @@
           "op_id": "d920ff4c9e8c45289a8d2b4022bcd7a4",
           "previous_head": "4a6fe5496bad1a4e651111363890dcb4dbdd1251",
           "seq": 1
+        },
+        {
+          "at": "2026-11-22T02:07:35Z",
+          "head": "6c701c6ab116a7e2ced7260a48a412679f985610",
+          "kind": "prepare",
+          "member": "run-timeout-remove-unused-timers-20261120",
+          "op_id": "804871da7fc54206b4c7b71510ec5c5f",
+          "previous_head": "d40fd21425fcd2b738ea80e85e42457800b9c673",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-harness2",
@@ -39384,15 +39422,10 @@
       "title": "Run timeout step 3: cancel remote work on cloud platforms when a run times out"
     },
     "run-timeout-remove-unused-timers-20261120": {
-      "claim": {
-        "expires_at": "2026-11-23T02:07:32Z",
-        "generation": "99337bde808e451183eeaa4161430f48",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Run timeout step 5: remove timers with no caller; plan capture on the deadline; one kill helper"
     },
     "run-timeout-site-docs-20261121": {
