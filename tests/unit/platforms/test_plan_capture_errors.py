@@ -10,7 +10,7 @@ import pytest
 from benchbox.core.errors import PlanCaptureError
 from benchbox.core.plan_capture_phase import run_plan_capture_phase
 from benchbox.platforms.base.adapter import PlatformAdapter
-from benchbox.utils.run_deadline import RunDeadline, active_run_deadline, current_run_deadline
+from benchbox.utils.run_deadline import RunDeadline, RunTimeoutError, active_run_deadline, current_run_deadline
 
 pytestmark = [
     pytest.mark.unit,
@@ -512,21 +512,49 @@ def test_plan_capture_setting_wins_when_shorter_than_the_time_left() -> None:
     assert adapter.plan_capture_errors[0]["message"] == "EXPLAIN query timed out after 1s"
 
 
-def test_plan_capture_does_not_start_once_the_run_time_is_used_up(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("strict", [False, True])
+def test_plan_capture_does_not_start_once_the_run_time_is_used_up(
+    monkeypatch: pytest.MonkeyPatch, strict: bool
+) -> None:
     started: list[Any] = []
     adapter, release_explain = _hanging_adapter(30, started)
+    adapter.strict_plan_capture = strict
     deadline = RunDeadline(1)
     monkeypatch.setattr(deadline, "remaining", lambda: 0.0)
 
     try:
-        with active_run_deadline(deadline):
-            plan, _ = adapter.capture_query_plan(None, "SELECT 1", "q_spent")
+        with active_run_deadline(deadline), pytest.raises(RunTimeoutError) as raised:
+            adapter.capture_query_plan(None, "SELECT 1", "q_spent")
     finally:
         release_explain.set()
 
-    assert plan is None
+    assert raised.value is deadline.timeout
     assert started == []
-    assert adapter.plan_capture_errors[0]["reason"] == "timeout"
+    assert adapter.plan_capture_errors == []
+    assert adapter.plan_capture_failures == 0
+
+
+@pytest.mark.parametrize("strict", [False, True])
+def test_spark_plan_capture_does_not_start_once_the_run_time_is_used_up(
+    monkeypatch: pytest.MonkeyPatch, strict: bool
+) -> None:
+    started: list[Any] = []
+    monkeypatch.setattr(
+        "benchbox.core.dataframe.profiling.capture_pyspark_plan",
+        lambda *args: started.append(args) or "PLAN",
+    )
+    adapter = DummyAdapter(capture_plans=True, plan_capture_timeout_seconds=30)
+    adapter.strict_plan_capture = strict
+    deadline = RunDeadline(1)
+    monkeypatch.setattr(deadline, "remaining", lambda: 0.0)
+
+    with active_run_deadline(deadline), pytest.raises(RunTimeoutError) as raised:
+        adapter.capture_spark_dataframe_plan(object(), "q_spent")
+
+    assert raised.value is deadline.timeout
+    assert started == []
+    assert adapter.plan_capture_errors == []
+    assert adapter.plan_capture_failures == 0
 
 
 def test_plan_capture_without_a_run_deadline_uses_its_setting() -> None:

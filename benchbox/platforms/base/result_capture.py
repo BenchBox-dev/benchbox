@@ -48,7 +48,7 @@ from benchbox.platforms.base.runtime_metadata import build_default_normalized_re
 from benchbox.platforms.base.utils import is_non_interactive
 from benchbox.utils.clock import elapsed_seconds
 from benchbox.utils.printing import quiet_console
-from benchbox.utils.run_deadline import bind_run_deadline, limit_to_remaining
+from benchbox.utils.run_deadline import bind_run_deadline, current_run_deadline, limit_to_remaining
 
 MaterializedRows = Sequence[Sequence[object]]
 MaterializedRowsSource = MaterializedRows | Callable[[], MaterializedRows]
@@ -150,6 +150,13 @@ _PLAN_CAPTURE_KEY_SUFFIX_RE = re.compile(r"#[0-9a-f]{16}$")
 
 def _plan_capture_public_id(query_id: str) -> str:
     return _PLAN_CAPTURE_KEY_SUFFIX_RE.sub("", query_id)
+
+
+def _plan_capture_budget(setting_seconds: float | None) -> float | None:
+    deadline = current_run_deadline()
+    if deadline is not None and deadline.expired:
+        raise deadline.record_timeout("plan capture was not started")
+    return limit_to_remaining(setting_seconds)
 
 
 def _call_abandoning_after(func: Callable[..., Any], seconds: float, *args: Any) -> tuple[Any, bool]:
@@ -694,7 +701,7 @@ class ResultCaptureMixin:
 
         start_time = time.perf_counter()
 
-        budget = limit_to_remaining(self.plan_capture_timeout_seconds)
+        budget = _plan_capture_budget(self.plan_capture_timeout_seconds)
         try:
             explain_output, timed_out = _call_abandoning_after(self.get_query_plan, budget, connection, query)
         except PlanCaptureError:
@@ -739,7 +746,7 @@ class ResultCaptureMixin:
         from benchbox.core.dataframe.profiling import capture_pyspark_plan, redact_plan_local_paths
 
         start_time = time.perf_counter()
-        budget = limit_to_remaining(self.plan_capture_timeout_seconds)
+        budget = _plan_capture_budget(self.plan_capture_timeout_seconds)
         try:
             captured, timed_out = _call_abandoning_after(
                 capture_pyspark_plan,
