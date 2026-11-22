@@ -2,7 +2,7 @@
   "acceptance": [
     "The owner has accepted or rejected the change, and the chosen behaviour is tested on macOS and Linux."
   ],
-  "context": "Behaviour change listed in #4437.",
+  "context": "Behaviour change listed in #4437.\n\nOwner decision 2026-11-22 (choice dialog): \"Accept TERM-then-KILL\": keep SIGTERM, 0.2 s, SIGKILL for run_text, RunDeadline.stop_children and _kill_worker; the item only adds macOS/Linux tests proving a TERM-ignoring child is killed and the hard bound holds. The STOP gate is satisfied.",
   "description": "## Problem\n#4437 moved product code onto the shared process-group helper (`benchbox/utils/process_group.py`). As a result `resource_limits.run_text`, `RunDeadline.stop_children` and the TPC-DS qualification worker's `_kill_worker` now send SIGTERM, wait 0.2 s, then SIGKILL, where before they sent SIGKILL at once. `run_text` serves `heavy_status` and `heavy_sentinel` probes. The owner's gate said the heavy watchdog's and host lock's kill behaviour must not change; those were left alone, but this neighbouring change was judged outside the gate by the implementer and has not been reviewed by the owner or exercised on Linux.\n\n## Change\nConfirm on macOS and Linux (`make ci-linux`) that: a child ignoring SIGTERM is still killed; the run hard stop still exits within limit + 30 s with stop_children's extra wait; heavy_status/heavy_sentinel probes keep their timing. Report findings; revert to immediate SIGKILL where the owner prefers.\n\n## Decision gates\nSTOP and ask the owner whether the TERM-then-KILL behaviour is accepted for these three callers before changing anything back. Host lock and heavy watchdog kill behaviour must not change.\n\n## Verification rubric\nTests (subprocess-based, never ending processes the test runner owns) for a SIGTERM-ignoring child on each caller; Linux evidence from `make ci-linux`; hard-stop timing test still within limit + 30 s; owner's answer recorded on this item.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
   "sessions": [
     {
@@ -11,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "c9cfe7636231452c954a6e5c10e4cbef",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T13:27:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "13dac0c9539c4742afba7e2712f129cd",
       "session_id": "e80ec8f825d244408f926415b43e3179"
     }
   ]
