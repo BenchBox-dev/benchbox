@@ -35686,17 +35686,12 @@
       "title": "Write preflight does not detect new untracked files written into the primary clone"
     },
     "preflight-misses-ci-lint-guards-20261122": {
-      "claim": {
-        "expires_at": "2026-11-23T16:44:33Z",
-        "generation": "4e8bbfe6890141feb91f7f3cc1c7dfa0",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
-      },
+      "claim": null,
       "needs": [
         "dev-loop-local-gates-20261122"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Catch CI lint-guard failures before pull request: lint-imports, lint-markers and ty in preflight"
     },
     "preflight-misses-source-scanning-guard-tests-20261112": {
