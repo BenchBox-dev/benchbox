@@ -54,3 +54,5 @@ At SF 1 with seed 20260709, web order 152 in refresh sets 1 and 2 is affected. E
 ## Verification
 
 On darwin-arm64, a build of the distribution plus the first three patches reproduces the previously shipped binary byte for byte: every SF 0.01 and SF 1 base table, SF 1 refresh sets 1 and 2, and all 99 `dsqgen` queries (seed 20260709). Adding the wrap fix changes only `s_web_order_lineitem` (11 rows) and `s_web_returns` (2 rows) in each SF 1 refresh set. The rebuilt linux-arm64 and linux-x86_64 binaries produce the same files as darwin-arm64.
+
+`tests/unit/core/tpcds/test_refresh_web_lineitem_items.py` generates SF 1 refresh sets 1 and 2 with the bundled binary and asserts that every web lineitem references a distinct, valid item and every web return references an ordered item.
