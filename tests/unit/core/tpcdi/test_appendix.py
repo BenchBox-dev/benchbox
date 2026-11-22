@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import date
 from pathlib import Path
 
 import duckdb
@@ -15,6 +16,7 @@ from benchbox.core.tpcdi.appendix import (
     stored_sha256,
 )
 from benchbox.core.tpcdi.schema import TPCDISchemaManager
+from benchbox.utils.dialect_utils import UnknownSqlDialectError
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -47,10 +49,11 @@ def test_source_and_runtime_copies_are_identical():
 
 def test_loading_leaves_the_stored_files_untouched():
     before = {name: appendix.appendix_path(name).read_bytes() for name in APPENDIX_FILES}
-    for platform in ("duckdb", "db2", "oracle", "sqlserver", "postgresql"):
+    for platform in ("duckdb", "postgresql", "snowflake"):
         load_all_appendix_sql(platform)
     after = {name: appendix.appendix_path(name).read_bytes() for name in APPENDIX_FILES}
     assert before == after
+    assert {name: stored_sha256(name) for name in APPENDIX_FILES} == SHARED_COPY_SHA256
 
 
 def test_unknown_name_is_refused():
@@ -58,46 +61,50 @@ def test_unknown_name_is_refused():
         load_appendix_sql("missing")
 
 
-def test_duckdb_records_dummy_table_and_date_duration_substitutions():
+@pytest.mark.parametrize("platform", ["duckdbb", "", "no-such-platform"])
+def test_unknown_platform_is_refused(platform: str):
+    with pytest.raises(UnknownSqlDialectError):
+        load_appendix_sql("audit", platform)
+
+
+def test_audit_translation_record_for_duckdb():
     loaded = load_appendix_sql("audit", "duckdb")
     raw = appendix.appendix_path("audit").read_text(encoding="utf-8")
-    by_token = {item.token: item for item in loaded.substitutions}
-    assert set(by_token) == {"FROM DUMMY TABLE", "Date-1 day"}
-    assert by_token["FROM DUMMY TABLE"].replacement == ""
-    assert by_token["FROM DUMMY TABLE"].occurrences == raw.upper().count("FROM DUMMY TABLE") == 103
-    assert by_token["FROM DUMMY TABLE"].in_specification_table is True
-    assert by_token["Date-1 day"].replacement == "Date - INTERVAL 1 DAY"
-    assert by_token["Date-1 day"].occurrences == 1
-    assert by_token["Date-1 day"].in_specification_table is False
-    assert "DUMMY TABLE" not in loaded.sql.upper().replace("DUMMY_TABLE", "")
+    assert loaded.translator == "sqlglot"
+    assert loaded.source_dialect == "postgres"
+    assert loaded.target_dialect == "duckdb"
     assert loaded.stored_sha256 == SHARED_COPY_SHA256["audit"]
+    assert len(loaded.pre_steps) == 1
+    step = loaded.pre_steps[0]
+    assert step.token == "FROM DUMMY TABLE"
+    assert step.replacement == ""
+    assert step.occurrences == raw.upper().count("FROM DUMMY TABLE") == 103
+    assert step.header_table_row == "SQLSERVER <blank>"
+    assert loaded.notes == (appendix.DATE_DURATION_NOTE,)
+    assert "Date - 1 AS day" in loaded.sql
+    assert "DUMMY TABLE" not in loaded.sql.upper()
+    record = loaded.translation_record()
+    assert record["source_dialect"] == "postgres"
+    assert record["target_dialect"] == "duckdb"
+    assert record["pre_steps"][0]["occurrences"] == 103
+    assert record["notes"] == [appendix.DATE_DURATION_NOTE]
 
 
-@pytest.mark.parametrize(
-    ("platform", "clause"),
-    [("db2", "from sysibm.sysdummy1"), ("oracle", "from dual"), ("sqlserver", "")],
-)
-def test_dummy_table_clause_per_platform(platform: str, clause: str):
-    loaded = load_appendix_sql("audit", platform)
-    dummy = next(item for item in loaded.substitutions if item.token == "FROM DUMMY TABLE")
-    assert dummy.replacement == clause
-    assert dummy.occurrences == 103
-    assert "Date-1 day" in loaded.sql
+def test_platform_names_resolve_to_the_fork_dialect():
+    assert load_appendix_sql("validation", "postgresql").target_dialect == "postgres"
+    assert load_appendix_sql("validation", "snowflake").target_dialect == "snowflake"
 
 
-def test_sqlserver_concatenation_is_recorded_and_header_comment_is_kept():
-    loaded = load_appendix_sql("audit", "sqlserver")
-    concat = next(item for item in loaded.substitutions if item.token == "||")
-    raw = appendix.appendix_path("audit").read_text(encoding="utf-8")
-    assert concat.replacement == "+"
-    assert concat.occurrences == raw.count("||") - 1
-    assert "[||] (String concatenation)" in loaded.sql
-    assert loaded.sql.count("||") == 1
-
-
-def test_files_without_dummy_table_record_no_substitution():
+def test_files_without_placeholders_record_no_pre_step_or_note():
     for name in ("validation", "visibility_1", "visibility_2"):
-        assert load_appendix_sql(name, "duckdb").substitutions == ()
+        loaded = load_appendix_sql(name, "duckdb")
+        assert loaded.pre_steps == ()
+        assert loaded.notes == ()
+
+
+def test_date_minus_integer_is_one_day_on_duckdb():
+    value = duckdb.connect(":memory:").execute("select DATE '2020-03-01' - 1 as day").fetchone()[0]
+    assert value == date(2020, 2, 29)
 
 
 def test_statement_counts():
@@ -127,4 +134,5 @@ def test_every_statement_binds_against_the_specification_schema_on_duckdb(schema
     assert len(statements) == EXPECTED_STATEMENTS[name]
     for statement in statements:
         schema_connection.execute(statement)
-    assert all(item.token in {"FROM DUMMY TABLE", "Date-1 day"} for item in loaded.substitutions)
+    assert loaded.source_dialect == "postgres"
+    assert loaded.target_dialect == "duckdb"

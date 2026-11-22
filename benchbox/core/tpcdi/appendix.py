@@ -5,6 +5,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from benchbox.utils.dialect_utils import resolve_sql_dialect, translate_sql_query
+
 APPENDIX_DIR = Path(__file__).resolve().parents[2] / "_binaries" / "tpc-di"
 
 APPENDIX_FILES = {
@@ -14,41 +16,62 @@ APPENDIX_FILES = {
     "visibility_2": "tpcdi_visibility_2.sql",
 }
 
-DUMMY_TABLE_TOKEN = "FROM DUMMY TABLE"
-CONCATENATION_TOKEN = "||"
+SOURCE_DIALECT = "postgres"
+TRANSLATOR = "sqlglot"
+
+DUMMY_TABLE_PLACEHOLDER = "FROM DUMMY TABLE"
 DATE_DURATION_TOKEN = "Date-1 day"
 
 _DUMMY_TABLE_PATTERN = re.compile(r"\bfrom\s+dummy\s+table\b", re.IGNORECASE)
-_CONCATENATION_PATTERN = re.compile(r"(?<!\[)\|\|(?!\])")
 _DATE_DURATION_PATTERN = re.compile(r"\bDate-1 day\b")
 
-_DUMMY_TABLE_CLAUSES = {
-    "db2": "from sysibm.sysdummy1",
-    "oracle": "from dual",
-    "sqlserver": "",
-}
-_CONCATENATION_OPERATORS = {"sqlserver": "+"}
-_DATE_DURATION_REPLACEMENTS = {"duckdb": "Date - INTERVAL 1 DAY"}
+DATE_DURATION_NOTE = (
+    "The translator reads the labelled duration 'Date-1 day' as the expression 'Date - 1' with the alias 'day'; "
+    "this is not a rule in the specification's header table. Where the target subtracts an integer from a date as one "
+    "day (verified on DuckDB), the value is the same."
+)
 
 
 @dataclass(frozen=True)
-class Substitution:
+class PreStep:
     token: str
     replacement: str
     occurrences: int
-    in_specification_table: bool = True
+    header_table_row: str
 
 
 @dataclass(frozen=True)
 class AppendixSql:
     name: str
     platform: str
+    source_dialect: str
+    target_dialect: str
+    translator: str
     sql: str
-    substitutions: tuple[Substitution, ...]
+    pre_steps: tuple[PreStep, ...]
+    notes: tuple[str, ...]
     stored_sha256: str
 
     def statements(self) -> list[str]:
         return split_statements(self.sql)
+
+    def translation_record(self) -> dict[str, object]:
+        return {
+            "translator": self.translator,
+            "source_dialect": self.source_dialect,
+            "target_dialect": self.target_dialect,
+            "pre_steps": [
+                {
+                    "token": step.token,
+                    "replacement": step.replacement,
+                    "occurrences": step.occurrences,
+                    "header_table_row": step.header_table_row,
+                }
+                for step in self.pre_steps
+            ],
+            "notes": list(self.notes),
+            "stored_sha256": self.stored_sha256,
+        }
 
 
 def appendix_path(name: str) -> Path:
@@ -62,33 +85,31 @@ def stored_sha256(name: str) -> str:
 
 
 def load_appendix_sql(name: str, platform: str = "duckdb") -> AppendixSql:
-    raw = appendix_path(name).read_bytes()
-    sql = raw.decode("utf-8")
-    key = platform.lower()
-    dummy_clause = _DUMMY_TABLE_CLAUSES.get(key, "")
-    substitutions: list[Substitution] = []
+    path = appendix_path(name)
+    target = resolve_sql_dialect(platform)
+    raw = path.read_bytes()
+    text = raw.decode("utf-8")
 
-    sql, count = _DUMMY_TABLE_PATTERN.subn(lambda _: dummy_clause, sql)
+    pre_steps: list[PreStep] = []
+    text, count = _DUMMY_TABLE_PATTERN.subn("", text)
     if count:
-        substitutions.append(Substitution(DUMMY_TABLE_TOKEN, dummy_clause, count))
+        pre_steps.append(PreStep(DUMMY_TABLE_PLACEHOLDER, "", count, "SQLSERVER <blank>"))
 
-    operator = _CONCATENATION_OPERATORS.get(key)
-    if operator is not None:
-        sql, count = _CONCATENATION_PATTERN.subn(lambda _: operator, sql)
-        if count:
-            substitutions.append(Substitution(CONCATENATION_TOKEN, operator, count))
+    notes: list[str] = []
+    if _DATE_DURATION_PATTERN.search(text):
+        notes.append(DATE_DURATION_NOTE)
 
-    duration = _DATE_DURATION_REPLACEMENTS.get(key)
-    if duration is not None:
-        sql, count = _DATE_DURATION_PATTERN.subn(lambda _: duration, sql)
-        if count:
-            substitutions.append(Substitution(DATE_DURATION_TOKEN, duration, count, in_specification_table=False))
+    sql = translate_sql_query(text, target, source_dialect=SOURCE_DIALECT, identify=False, strict=True)
 
     return AppendixSql(
         name=name,
-        platform=key,
+        platform=platform.lower(),
+        source_dialect=SOURCE_DIALECT,
+        target_dialect=target,
+        translator=TRANSLATOR,
         sql=sql,
-        substitutions=tuple(substitutions),
+        pre_steps=tuple(pre_steps),
+        notes=tuple(notes),
         stored_sha256=hashlib.sha256(raw).hexdigest(),
     )
 

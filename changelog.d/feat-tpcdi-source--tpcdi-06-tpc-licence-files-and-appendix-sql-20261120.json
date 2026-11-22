@@ -4,7 +4,7 @@
     {
       "category": "added",
       "breaking": false,
-      "text": "Ship the TPC End User License Agreement, a NOTICE with the TPC legend on line 1 and the TPC-DI specification's audit, validation and visibility SQL unmodified in the package. A loader returns that SQL with only the portability substitutions the specification permits, each recorded. The SQL is an unofficial shared copy until the official archive is obtained. TPC-DI stays unavailable."
+      "text": "Ship the TPC End User License Agreement, a NOTICE with the TPC legend on line 1 and the TPC-DI specification's audit, validation and visibility SQL, stored unmodified, in the package. A loader translates that SQL to a platform's dialect through the SQLGlot fork, as other benchmarks do, and records the source and target dialect and the one pre-step it applies. The SQL is an unofficial shared copy until the official archive is obtained. TPC-DI stays unavailable."
     }
   ]
 }

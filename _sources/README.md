@@ -99,14 +99,25 @@ _sources/tpc-ds/
 `EULA.txt`, `NOTICE.txt` (line 1 is the legend "THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC."),
 and the specification's audit (Appendix A), validation (Appendix B) and visibility (Appendix C) SQL:
 `tpcdi_audit.sql`, `tpcdi_validation.sql`, `tpcdi_visibility_1.sql`, `tpcdi_visibility_2.sql`.
-The SQL files are never edited. `benchbox/core/tpcdi/appendix.py` applies only the substitutions the
-specification permits (its portability table in each file header) at load time and records each one.
+The SQL files are never edited. `benchbox/core/tpcdi/appendix.py` translates them at load time with the
+SQLGlot fork through `translate_sql_query`, the entry point other BenchBox benchmarks use, reading them as the
+`postgres` dialect and emitting the target platform's dialect (an unknown platform is refused). The one
+pre-step is to remove the header's literal placeholder `FROM DUMMY TABLE`, which is not SQL (the parser reads
+it as a table named `DUMMY`); that is the header table's `SQLSERVER <blank>` row, and its count is recorded.
+The header placeholder `[||]` appears only inside the header comment and needs no pre-step. The labelled
+duration `Date-1 day` in `tpcdi_audit.sql` is parsed as `Date - 1` with the alias `day`; this is the
+translator's reading, not a rule from the header table. Each result records the source dialect, target
+dialect, pre-step and notes.
 
 **The appendix SQL is an unofficial shared copy.** The TPC site offers no separate Appendix download.
 The files are the copy shared by the abroniewski/TPC-DI-MS-SQL-Benchmark repository at commit
-`18eca39b128f5fcc86cbc9c1e53e30ed0e685fa7` (`Helpers/Scripts`), byte-identical to the copies in two other public
-repositories. The official archive is being sought, and a tracked follow-up will replace this copy
-once it is obtained. The Tools archive is not part of this copy.
+`18eca39b128f5fcc86cbc9c1e53e30ed0e685fa7` (`Helpers/Scripts`). The shannon-barrow/databricks-tpc-di
+repository at 8e0f944 holds byte-identical copies of the audit, validation and visibility_2 files; its
+visibility_1 file differs from the shipped one in whitespace and line breaks only (see
+`_sources/tpc-di/databricks-tpc-di/PROVENANCE.md`). The shipped files are unmodified from the abroniewski
+copy; the shipped visibility_1 is that repository's version, not the Databricks one. The official archive
+is being sought, and a tracked follow-up will replace this copy once it is obtained. The Tools archive is
+not part of this copy.
 
 | File | SHA-256 |
 |------|---------|
