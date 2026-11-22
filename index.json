@@ -31594,7 +31594,9 @@
     },
     "migrate-core-sql-text-rewrites-to-translator-20261122": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "sql-translation-single-entry-guidance-and-check-20261122"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Migrate the ten existing per-platform SQL text rewrites in benchbox/core to translate_sql_query / apply_rewrite"
