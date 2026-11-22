@@ -5,7 +5,7 @@
     "If bundles were promoted: validate_corpus.py passes, the allowlist test covers both folders and rejects other *-version-matrix folders, every bundle has a sidecar with a matching SHA-256, and corpus-inventory.json is regenerated",
     "The PR is merged through the repo's normal checks"
   ],
-  "context": "Done 2026-10-09. PR #2804 merged as 9cfdc2c30 (head ba1fa912f): _project/analysis/polars-version-matrix/{findings.md, methodology.md, polars-version-matrix-comparisons.csv}. Scope per pvm-d1 option (a): no bundles promoted to results-data/. Traceability: a fresh analyzer run over the 2026-10-09 manifest reproduced the committed CSV byte for byte, and all 51 median (min-max) triples and every comparison percentage in findings.md match the analysis JSON (the two fastest-round figures, -35.6% and -52.6%, are computed separately and labelled as such). Known follow-ups: the methodology names the Polars `engine` option, which core-exec-polars-matrix-docs-refresh renames; the 2026-10-09 adversarial review found methodology inaccuracies (non-functional 14 GiB RSS limit, 6 GiB safety-limit overshoot, 1.35.2 attribution) that are not yet filed.",
+  "context": "Done 2026-10-09. PR #2804 merged as 9cfdc2c30 (head ba1fa912f): _project/analysis/polars-version-matrix/{findings.md, methodology.md, polars-version-matrix-comparisons.csv}. Scope per pvm-d1 option (a): no bundles promoted to results-data/. Traceability: a fresh analyzer run over the 2026-10-09 manifest reproduced the committed CSV byte for byte, and all 51 median (min-max) triples and every comparison percentage in findings.md match the analysis JSON (the two fastest-round figures, -35.6% and -52.6%, are computed separately and labelled as such). Known follow-ups: the methodology names the Polars `engine` option, which core-exec-polars-matrix-docs-refresh renames; the 2026-10-09 adversarial review found methodology inaccuracies (non-functional 14 GiB RSS limit, 6 GiB safety-limit overshoot, 1.35.2 attribution) that are not yet filed.\n\n2026-11-22 owner decision: this decision is reversed. All three Polars engine settings enter the corpus, published by the maintainer path. See crr-00-corpus-rule-remediation-plan and pvm-p1 to pvm-p7.",
   "description": "Publish the results as decided in pvm-d1-publication-scope-decision.\n\nDefault scope (option a): make the analysis durable and reviewable without touching the ranked corpus. Commit the findings summary, the analysis CSV and the methodology (versions, setups, controls, correctness rule, abort rule, disclosures) to a documented location agreed in review. The raw repetitions stay external.\n\nIf option (b) was chosen, also:\n- Write setup A median bundles to results-data/bundles/polars-version-matrix/, each with a .manifest.json sidecar carrying a SHA-256 hash and the operator CPU attestation.\n- Replace the hard-coded duckdb-version-matrix check in validate_corpus.py with an explicit allowlist (duckdb-version-matrix, polars-version-matrix), and update SEED_CORPUS_SPEC.md and tests/unit/scripts/test_corpus_cohort_depth.py in the same change.\n- Add a CORPUS_NOTES.md section and regenerate corpus-inventory.json.\n- Run validate_corpus.py.\n\nGuardrails:\n- Bundles are anonymized like the DuckDB matrix (no local paths or hostnames).\n- No setup B or C bundles enter the corpus, because they would share an identity with setup A.\n- Stage files explicitly by path; follow the repo PR workflow.\n- Commit text describes results and methods, not session process.",
   "links": [
     "results-data/validate_corpus.py",
@@ -83,6 +83,14 @@
       "op": "finish",
       "op_id": "074adb5d08cb4ef5ab532b8bc72fa1d4",
       "session_id": "ece27cd7b1e84cfdb901409d637eabe8"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6fbef61b8c1a450fbecb672",
+      "at": "2026-11-22T17:07:33Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bb46ad63e8be4be691f1085dec8aebcf",
+      "session_id": "c07e5ac3266b4133b46582fc1e496cdf"
     }
   ]
 }
