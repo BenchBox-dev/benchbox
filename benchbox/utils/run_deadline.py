@@ -9,7 +9,6 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from typing import Any
 
-from benchbox.core.exceptions import RunTimeoutError
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.process_group import kill_process_group
 
@@ -45,6 +44,18 @@ def validate_timeout_seconds(value: Any) -> int | None:
 
 def resolve_timeout_seconds(explicit: Any, configured: Any = None) -> int | None:
     return validate_timeout_seconds(configured if explicit is None else explicit)
+
+
+class RunTimeoutError(Exception):
+    def __init__(self, timeout_seconds: int, phase: str, query_id: str | None = None, detail: str | None = None):
+        self.timeout_seconds = timeout_seconds
+        self.phase = phase
+        self.query_id = query_id
+        self.detail = detail
+        self.partial_result: Any = None
+        where = phase if query_id is None else f"{phase}, at query {query_id}"
+        message = f"The run reached its {timeout_seconds}-second limit (timeout_seconds) during {where}"
+        super().__init__(f"{message}: {detail}" if detail else message)
 
 
 class RunDeadline:

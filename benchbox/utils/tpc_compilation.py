@@ -14,9 +14,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
 
-from benchbox.core.exceptions import RunTimeoutError
 from benchbox.utils.clock import elapsed_seconds, mono_time
-from benchbox.utils.run_deadline import current_run_deadline, run_child
+from benchbox.utils.run_deadline import RunTimeoutError, current_run_deadline, run_child
 
 logger = logging.getLogger(__name__)
 
