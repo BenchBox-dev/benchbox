@@ -174,6 +174,8 @@ def _name(node: ast.AST) -> str | None:
         return node.id
     if isinstance(node, ast.Attribute):
         return node.attr
+    if isinstance(node, ast.Subscript):
+        return _name(node.value)
     return None
 
 
@@ -182,32 +184,64 @@ def _is_sql_variable(node: ast.AST) -> bool:
     return name is not None and _is_sql_name(name)
 
 
-def _is_regex_substitution(func: ast.Attribute) -> bool:
-    return func.attr in {"sub", "subn"} and _name(func.value) == "re"
+@dataclass(frozen=True)
+class ReAliases:
+    modules: frozenset[str]
+    functions: frozenset[str]
 
 
-def _is_compiled_substitution(func: ast.Attribute) -> bool:
-    receiver = _name(func.value)
-    return func.attr in {"sub", "subn"} and receiver is not None and COMPILED_PATTERN.search(receiver) is not None
+def _re_aliases(tree: ast.Module) -> ReAliases:
+    modules = {"re"}
+    functions: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules.update(alias.asname or alias.name for alias in node.names if alias.name == "re")
+        elif isinstance(node, ast.ImportFrom) and node.module == "re" and node.level == 0:
+            functions.update(alias.asname or alias.name for alias in node.names if alias.name in {"sub", "subn"})
+    return ReAliases(frozenset(modules), frozenset(functions))
 
 
-def _text_rewrite_kind(node: ast.Call) -> str | None:
+def _is_regex_substitution(node: ast.Call, aliases: ReAliases) -> bool:
     func = node.func
-    if not isinstance(func, ast.Attribute):
-        return None
-    if func.attr == "replace" and _is_sql_variable(func.value):
+    if isinstance(func, ast.Name):
+        return func.id in aliases.functions
+    return (
+        isinstance(func, ast.Attribute)
+        and func.attr in {"sub", "subn"}
+        and isinstance(func.value, ast.Name)
+        and func.value.id in aliases.modules
+    )
+
+
+def _is_compiled_substitution(node: ast.Call) -> bool:
+    func = node.func
+    if not isinstance(func, ast.Attribute) or func.attr not in {"sub", "subn"}:
+        return False
+    receiver = _name(func.value)
+    return receiver is not None and COMPILED_PATTERN.search(receiver) is not None
+
+
+def _string_keyword_is_sql(node: ast.Call) -> bool:
+    return any(keyword.arg == "string" and _is_sql_variable(keyword.value) for keyword in node.keywords)
+
+
+def _text_rewrite_kind(node: ast.Call, aliases: ReAliases) -> str | None:
+    func = node.func
+    if isinstance(func, ast.Attribute) and func.attr == "replace" and _is_sql_variable(func.value):
         return KIND_REPLACE
-    if _is_regex_substitution(func) and len(node.args) >= 3 and _is_sql_variable(node.args[2]):
-        return KIND_REGEX
-    if _is_compiled_substitution(func) and any(_is_sql_variable(arg) for arg in node.args):
-        return KIND_REGEX
+    if _is_regex_substitution(node, aliases):
+        if (len(node.args) >= 3 and _is_sql_variable(node.args[2])) or _string_keyword_is_sql(node):
+            return KIND_REGEX
+    elif _is_compiled_substitution(node):
+        if any(_is_sql_variable(arg) for arg in node.args) or _string_keyword_is_sql(node):
+            return KIND_REGEX
     return None
 
 
-def _is_any_rewrite(node: ast.Call) -> bool:
+def _is_any_rewrite(node: ast.Call, aliases: ReAliases) -> bool:
     func = node.func
-    return isinstance(func, ast.Attribute) and (
-        func.attr == "replace" or _is_regex_substitution(func) or _is_compiled_substitution(func)
+    return (isinstance(func, ast.Attribute) and func.attr == "replace") or (
+        _is_regex_substitution(node, aliases) or _is_compiled_substitution(node)
     )
 
 
@@ -317,12 +351,14 @@ def _direct_definitions(owner: ast.AST) -> list[ast.AST]:
 
 def scan_source(source: str, path: str) -> set[Finding]:
     findings: set[Finding] = set()
-    for scope_name, nodes in _scopes(ast.parse(source)):
+    tree = ast.parse(source)
+    aliases = _re_aliases(tree)
+    for scope_name, nodes in _scopes(tree):
         calls = [node for node in nodes if isinstance(node, ast.Call)]
-        rewrite_kinds = {kind for call in calls if (kind := _text_rewrite_kind(call))}
+        rewrite_kinds = {kind for call in calls if (kind := _text_rewrite_kind(call, aliases))}
         if rewrite_kinds and _is_dialect_aware(nodes):
             findings.update(Finding(path, scope_name, kind) for kind in rewrite_kinds)
-        if any(_is_any_rewrite(call) for call in calls) and any(
+        if any(_is_any_rewrite(call, aliases) for call in calls) and any(
             isinstance(node, ast.Dict) and _is_platform_keyed_sql_dict(node) for node in nodes
         ):
             findings.add(Finding(path, scope_name, KIND_DICT))
@@ -383,6 +419,41 @@ class Adapter:
         return self.sql_text.replace("TIMESTAMP", "DATETIME2")
 """
 
+KEYWORD_MODULE_FIXTURE = """
+import re
+
+def adapt(sql, dialect):
+    return re.sub(pattern=r"\\bLIMIT\\b", repl="TOP", string=sql)
+"""
+
+KEYWORD_COMPILED_FIXTURE = """
+import re
+
+_LIMIT_PATTERN = re.compile("LIMIT")
+
+def adapt(sql, dialect):
+    return _LIMIT_PATTERN.sub(repl="TOP", string=sql)
+"""
+
+MODULE_ALIAS_FIXTURE = """
+import re as rx
+
+def adapt(sql, dialect):
+    return rx.sub(r"\\bLIMIT\\b", "TOP", sql)
+"""
+
+FROM_IMPORT_FIXTURE = """
+from re import sub as substitute
+
+def adapt(sql, dialect):
+    return substitute(r"\\bLIMIT\\b", "TOP", sql)
+"""
+
+SUBSCRIPT_FIXTURE = """
+def adapt(queries, platform):
+    return queries[platform].replace("LAG(x, 1)", "lag(x, 1)")
+"""
+
 CLEAN_PARAMETER_FIXTURE = """
 def render(sql, params):
     for key, value in params.items():
@@ -408,6 +479,11 @@ def adapt(query, platform):
         (PLATFORM_TABLE_FIXTURE, KIND_REGEX),
         (QUERY_TEXT_FIXTURE, KIND_REPLACE),
         (SQL_TEXT_FIXTURE, KIND_REPLACE),
+        (KEYWORD_MODULE_FIXTURE, KIND_REGEX),
+        (KEYWORD_COMPILED_FIXTURE, KIND_REGEX),
+        (MODULE_ALIAS_FIXTURE, KIND_REGEX),
+        (FROM_IMPORT_FIXTURE, KIND_REGEX),
+        (SUBSCRIPT_FIXTURE, KIND_REPLACE),
     ],
 )
 def test_fixture_with_per_platform_text_rewrite_is_flagged(source: str, kind: str) -> None:
