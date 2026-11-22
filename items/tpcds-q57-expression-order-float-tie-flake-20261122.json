@@ -3,7 +3,7 @@
     "Q57 no longer diverges across repeats in tpcds-cross-surface-draws-report."
   ],
   "context": "2026-11-22: recurred on trunk run 45045080621 (develop at fb80a2717b, PR #4443): 57_expression diverged in 1 of 2 runs; failed job rerun once. Second occurrence in one day; it blocks arming across the repository.\n\n2026-11-22 recurrences, same Q57 signature (`57_expression: diverged in 1 of 2 runs; Q57: returned row 73 breaks the ORDER BY: sort key (-109.64909090909092, Decimal('20.18')), expected (-109.64909090909093, Decimal('265.34'))`): trunk 45045080621 on fb80a2717b (#4443, developer tooling only) and trunk 45045478512 on 070a4eefe2 (#4442). Each turned develop red and blocked every `make pr-arm` repo-wide until attempt 2 of the same run passed. tpcds-parity-draws-fails-with-all-draws-equivalent-20261119 records the earlier exit-status question on the same job.",
-  "description": "## Problem\nTrunk run 44996878729 (develop at 93f336032a) failed in tpcds-parity-draws: `57_expression: diverged in 1 of 2 runs; Q57: returned row 73 breaks the ORDER BY: sort key (-109.64909090909092, Decimal('20.18')), expected (-109.64909090909093, Decimal('265.34'))`. The two sort keys differ only in the last float digit, so floating-point summation order makes the order check non-deterministic. A failed-job rerun passed.\n\n## Change\nFind whether the expression backend's float aggregation is order-dependent, or whether the cross-surface ORDER BY check should compare float sort keys with a tolerance (treating near-equal keys as ties). Fix the cause; do not add Q57 to a skip list.\n\n## Verification rubric\nPass: `make tpcds-cross-surface-draws-report` passes repeatedly (for example, 10 runs) with no Q57 divergence, and a test pins the tie behaviour.",
+  "description": "## Problem\nTrunk run 44996878729 (develop at 93f336032a) failed in tpcds-parity-draws: `57_expression: diverged in 1 of 2 runs; Q57: returned row 73 breaks the ORDER BY: sort key (-109.64909090909092, Decimal('20.18')), expected (-109.64909090909093, Decimal('265.34'))`. The two sort keys differ only in the last float digit, so floating-point summation order makes the order check non-deterministic. A failed-job rerun passed.\n\n## Change\nFind whether the expression backend's float aggregation is order-dependent, or whether the cross-surface ORDER BY check should compare float sort keys with a tolerance (treating near-equal keys as ties). Fix the cause; do not add Q57 to a skip list.\n\n## Decision gates\n- Decide from evidence which side is wrong: if the SQL reference and the expression backend legitimately produce different float sums, a tie tolerance in the ORDER BY check is the fix; the tolerance value and its scope (sort keys only, never result values) go to the owner in a choice dialog if it is wider than one unit in the last place.\n- Never weaken value comparisons, add retries to the target, or narrow the draws or backends.\n\n## Verification rubric\nPass: `make tpcds-cross-surface-draws-report` passes repeatedly (for example, 10 runs) with no Q57 divergence, and a test pins the tie behaviour.\nFail: Q57 skipped, retried, or value tolerances widened.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e",
@@ -27,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "9894796ae15445578fea80d3a457d1f4",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T19:51:00Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "51a8536e7d764229ae9f3e1480935cbe",
       "session_id": "e80ec8f825d244408f926415b43e3179"
     }
   ]

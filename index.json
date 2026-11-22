@@ -49115,7 +49115,7 @@
     "tpcds-q57-expression-order-float-tie-flake-20261122": {
       "claim": null,
       "needs": [],
-      "priority": "medium",
+      "priority": "high",
       "status": "open",
       "title": "Fix the TPC-DS Q57 expression-backend ORDER BY check failing on a last-digit float tie"
     },
