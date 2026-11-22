@@ -90,20 +90,6 @@ def test_cli_loader_still_rejects_unknown_benchmarks():
         get_core_benchmark_class("definitely_not_a_benchmark")
 
 
-def test_mcp_run_tool_returns_dependency_missing_with_install_command(pandas_blocked, tmp_path):
-    from benchbox.mcp.tools import benchmark as benchmark_tools
-
-    response = benchmark_tools._run_benchmark_impl(
-        "duckdb", "tpcdi", 0.01, None, "load,power", "sql", results_dir=tmp_path, anonymize=False
-    )
-
-    assert response["status"] == "failed"
-    assert response["error_code"] == "DEPENDENCY_MISSING"
-    assert response["details"]["module"] == "pandas"
-    assert response["details"]["extras"] == ["tpcdi"]
-    assert "benchbox[tpcdi]" in response["suggestion"] or "--extra tpcdi" in response["suggestion"]
-
-
 def test_mcp_job_worker_returns_dependency_missing_with_install_command(pandas_blocked, tmp_path):
     from benchbox.mcp.jobs import DurableJobWorker, JobRecord
 

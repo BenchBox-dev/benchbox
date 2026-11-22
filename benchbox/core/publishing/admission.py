@@ -9,6 +9,7 @@ from typing import Any
 from benchbox.core.results.status import result_non_clean_reason
 from benchbox.core.results.submit_classification import result_refused_at_submission
 from benchbox.core.results.subscale_policy import normalize_tpc_benchmark_id, result_compliance_class
+from benchbox.core.results.tpcdi_audit import LEGACY_TPCDI_REFUSAL, legacy_tpcdi_note
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,8 @@ class PublishAdmissionDecision:
 
 
 def publish_admission(result: Any, label: str) -> PublishAdmissionDecision:
+    if legacy_tpcdi_note(result) is not None:
+        return PublishAdmissionDecision(allowed=False, code="legacy_tpcdi", reason=LEGACY_TPCDI_REFUSAL)
     compliance_class = result_compliance_class(result)
     if result_refused_at_submission(result) and label.lower() != "unofficial-research":
         return PublishAdmissionDecision(

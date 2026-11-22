@@ -10,6 +10,7 @@ import pytest
 from benchbox.core.errors import PlanCaptureError
 from benchbox.core.plan_capture_phase import run_plan_capture_phase
 from benchbox.platforms.base.adapter import PlatformAdapter
+from benchbox.utils.run_deadline import RunDeadline, active_run_deadline, current_run_deadline
 
 pytestmark = [
     pytest.mark.unit,
@@ -461,3 +462,157 @@ def test_get_query_plan_from_cursor_returns_joined_rows_on_success() -> None:
 
     assert result == "row one\nrow two"
     assert cursor.closed is True
+
+
+def _hanging_adapter(setting_seconds: int, seen: list[Any]) -> tuple[DummyAdapter, threading.Event]:
+    release_explain = threading.Event()
+    adapter = DummyAdapter(capture_plans=True, plan_capture_timeout_seconds=setting_seconds)
+
+    def hanging_explain(connection: Any, query: str) -> str:
+        seen.append(current_run_deadline())
+        release_explain.wait(timeout=10)
+        return "PLAN"
+
+    adapter.get_query_plan = hanging_explain
+    return adapter, release_explain
+
+
+@pytest.mark.parametrize("strict", [False, True])
+def test_plan_capture_cut_off_by_the_run_time_records_the_run_timeout(strict: bool) -> None:
+    seen: list[Any] = []
+    adapter, release_explain = _hanging_adapter(30, seen)
+    adapter.strict_plan_capture = strict
+    deadline = RunDeadline(1)
+
+    start = time.monotonic()
+    try:
+        with active_run_deadline(deadline):
+            plan, _ = adapter.capture_query_plan(None, "SELECT 1", "q_left")
+        elapsed = time.monotonic() - start
+    finally:
+        release_explain.set()
+
+    assert plan is None
+    assert elapsed < 5
+    assert deadline.timeout is not None
+    assert adapter.plan_capture_errors == []
+    assert adapter.plan_capture_failures == 0
+    assert seen == [deadline]
+
+
+def test_plan_capture_setting_wins_when_shorter_than_the_time_left() -> None:
+    adapter, release_explain = _hanging_adapter(1, [])
+
+    start = time.monotonic()
+    try:
+        with active_run_deadline(RunDeadline(60)):
+            plan, _ = adapter.capture_query_plan(None, "SELECT 1", "q_setting")
+        elapsed = time.monotonic() - start
+    finally:
+        release_explain.set()
+
+    assert plan is None
+    assert 1 <= elapsed < 5
+    assert adapter.plan_capture_errors[0]["message"] == "EXPLAIN query timed out after 1s"
+
+
+@pytest.mark.parametrize("strict", [False, True])
+def test_plan_capture_does_not_start_once_the_run_time_is_used_up(
+    monkeypatch: pytest.MonkeyPatch, strict: bool
+) -> None:
+    started: list[Any] = []
+    adapter, release_explain = _hanging_adapter(30, started)
+    adapter.strict_plan_capture = strict
+    deadline = RunDeadline(1)
+    monkeypatch.setattr(deadline, "remaining", lambda: 0.0)
+
+    try:
+        with active_run_deadline(deadline):
+            plan, _ = adapter.capture_query_plan(None, "SELECT 1", "q_spent")
+    finally:
+        release_explain.set()
+
+    assert plan is None
+    assert started == []
+    assert deadline.timeout is not None
+    assert adapter.plan_capture_errors == []
+    assert adapter.plan_capture_failures == 0
+
+
+@pytest.mark.parametrize("strict", [False, True])
+def test_spark_plan_capture_does_not_start_once_the_run_time_is_used_up(
+    monkeypatch: pytest.MonkeyPatch, strict: bool
+) -> None:
+    started: list[Any] = []
+    monkeypatch.setattr(
+        "benchbox.core.dataframe.profiling.capture_pyspark_plan",
+        lambda *args: started.append(args) or "PLAN",
+    )
+    adapter = DummyAdapter(capture_plans=True, plan_capture_timeout_seconds=30)
+    adapter.strict_plan_capture = strict
+    deadline = RunDeadline(1)
+    monkeypatch.setattr(deadline, "remaining", lambda: 0.0)
+
+    with active_run_deadline(deadline):
+        plan, _ = adapter.capture_spark_dataframe_plan(object(), "q_spent")
+
+    assert plan is None
+    assert started == []
+    assert deadline.timeout is not None
+    assert adapter.plan_capture_errors == []
+    assert adapter.plan_capture_failures == 0
+
+
+@pytest.mark.parametrize("strict", [False, True])
+def test_spark_plan_capture_cut_off_by_the_run_time_records_the_run_timeout(
+    monkeypatch: pytest.MonkeyPatch, strict: bool
+) -> None:
+    release_explain = threading.Event()
+    monkeypatch.setattr(
+        "benchbox.core.dataframe.profiling.capture_pyspark_plan",
+        lambda *args: release_explain.wait(timeout=10) and "PLAN",
+    )
+    adapter = DummyAdapter(capture_plans=True, plan_capture_timeout_seconds=30)
+    adapter.strict_plan_capture = strict
+    deadline = RunDeadline(1)
+
+    try:
+        with active_run_deadline(deadline):
+            plan, _ = adapter.capture_spark_dataframe_plan(object(), "q_cut")
+    finally:
+        release_explain.set()
+
+    assert plan is None
+    assert deadline.timeout is not None
+    assert adapter.plan_capture_errors == []
+    assert adapter.plan_capture_failures == 0
+
+
+@pytest.mark.parametrize("strict", [False, True])
+def test_inline_plan_capture_after_a_measured_query_keeps_its_result(
+    monkeypatch: pytest.MonkeyPatch, strict: bool
+) -> None:
+    adapter = DummyAdapter(capture_plans=True, plan_capture_timeout_seconds=30)
+    adapter.strict_plan_capture = strict
+    deadline = RunDeadline(1)
+    monkeypatch.setattr(deadline, "remaining", lambda: 0.0)
+    result: dict[str, Any] = {"status": "SUCCESS", "execution_time_seconds": 0.5, "rows_returned": 3}
+
+    with active_run_deadline(deadline):
+        adapter._merge_plan_capture_into_result(result, None, "SELECT 1", "q_measured")
+
+    assert result["status"] == "SUCCESS"
+    assert result["execution_time_seconds"] == 0.5
+    assert result["rows_returned"] == 3
+    assert "query_plan" not in result
+    assert deadline.timeout is not None
+    assert adapter.plan_capture_errors == []
+
+
+def test_plan_capture_without_a_run_deadline_uses_its_setting() -> None:
+    adapter = DummyAdapter(capture_plans=True, plan_capture_timeout_seconds=30)
+
+    plan, _ = adapter.capture_query_plan(None, "SELECT 1", "q_free")
+
+    assert plan is None
+    assert adapter.plan_capture_errors[0]["reason"] == "parser_unavailable"

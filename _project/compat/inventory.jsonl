@@ -10,7 +10,6 @@
 {"file": "benchbox/core/nyctaxi/spatial.py", "line": 129, "kind": "ddl", "platforms": ["clickhouse"], "suggested_phase": "schema_emit", "description": "Dialect branch: dialect == ['clickhouse']"}
 {"file": "benchbox/core/read_primitives/benchmark.py", "line": 681, "kind": "skip", "platforms": ["lakesail"], "suggested_phase": "execution_filter", "description": "Skip-query predicate: get_platform_skip_queries()"}
 {"file": "benchbox/core/read_primitives/benchmark.py", "line": 719, "kind": "skip", "platforms": ["datafusion", "polars"], "suggested_phase": "dataframe_filter", "description": "Skip-query predicate: get_df_platform_skip_queries()"}
-{"file": "benchbox/core/tpcdi/benchmark.py", "line": 393, "kind": "skip", "platforms": ["lakesail"], "suggested_phase": "execution_filter", "description": "Skip-query predicate: get_platform_skip_queries()"}
 {"file": "benchbox/core/tpchavoc/benchmark.py", "line": 122, "kind": "skip", "platforms": ["datafusion", "lakesail", "timescaledb"], "suggested_phase": "execution_filter", "description": "Skip-query predicate: get_platform_skip_queries()"}
 {"file": "benchbox/core/transaction_primitives/schema.py", "line": 55, "kind": "ddl", "platforms": [], "suggested_phase": "schema_emit", "description": "PK support predicate: _supports_primary_keys()"}
 {"file": "benchbox/core/tsbs_devops/schema.py", "line": 93, "kind": "ddl", "platforms": ["clickhouse"], "suggested_phase": "schema_emit", "description": "Dialect branch: dialect == ['clickhouse']"}

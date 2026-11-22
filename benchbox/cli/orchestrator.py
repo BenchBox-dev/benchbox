@@ -25,6 +25,7 @@ from benchbox.core.platform_manifest import get_all_platform_aliases
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.run_service import (
+    BenchmarkUnavailableError,
     build_unfinished_result,
     execute_run,
     resolve_lifecycle_phases,
@@ -203,6 +204,8 @@ class BenchmarkOrchestrator:
                 execution_context=execution_context,
             )
 
+        except BenchmarkUnavailableError:
+            raise
         except Exception as e:
             if database_config and self._should_offer_credential_setup(database_config, e):
                 if self._offer_and_run_credential_setup(database_config.type):

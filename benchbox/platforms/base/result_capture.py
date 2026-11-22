@@ -48,7 +48,7 @@ from benchbox.platforms.base.runtime_metadata import build_default_normalized_re
 from benchbox.platforms.base.utils import is_non_interactive
 from benchbox.utils.clock import elapsed_seconds
 from benchbox.utils.printing import quiet_console
-from benchbox.utils.timeout_manager import run_with_timeout
+from benchbox.utils.run_deadline import bind_run_deadline, current_run_deadline, limit_to_remaining
 
 MaterializedRows = Sequence[Sequence[object]]
 MaterializedRowsSource = MaterializedRows | Callable[[], MaterializedRows]
@@ -150,6 +150,39 @@ _PLAN_CAPTURE_KEY_SUFFIX_RE = re.compile(r"#[0-9a-f]{16}$")
 
 def _plan_capture_public_id(query_id: str) -> str:
     return _PLAN_CAPTURE_KEY_SUFFIX_RE.sub("", query_id)
+
+
+def _plan_capture_budget(setting_seconds: float | None) -> tuple[float | None, bool]:
+    budget = limit_to_remaining(setting_seconds)
+    run_limited = current_run_deadline() is not None and (setting_seconds is None or budget < setting_seconds)
+    return budget, run_limited
+
+
+def _record_run_limited_plan_capture() -> None:
+    deadline = current_run_deadline()
+    if deadline is not None:
+        deadline.record_timeout("plan capture was cut off by the run time limit")
+
+
+def _call_abandoning_after(func: Callable[..., Any], seconds: float, *args: Any) -> tuple[Any, bool]:
+    if seconds <= 0:
+        return None, True
+    outcome: dict[str, Any] = {}
+
+    def run() -> None:
+        try:
+            outcome["result"] = func(*args)
+        except Exception as exc:
+            outcome["error"] = exc
+
+    worker = threading.Thread(target=bind_run_deadline(run), daemon=True)
+    worker.start()
+    worker.join(timeout=seconds)
+    if worker.is_alive():
+        return None, True
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome.get("result"), False
 
 
 def _has_top_level_keyword(statement: str, keyword: str, followed_by: re.Pattern[str] | None = None) -> bool:
@@ -673,14 +706,9 @@ class ResultCaptureMixin:
 
         start_time = time.perf_counter()
 
+        budget, run_limited = _plan_capture_budget(self.plan_capture_timeout_seconds)
         try:
-            explain_output, timed_out = run_with_timeout(
-                self.get_query_plan,
-                self.plan_capture_timeout_seconds,
-                f"plan capture EXPLAIN (query_id={query_id})",
-                connection,
-                query,
-            )
+            explain_output, timed_out = _call_abandoning_after(self.get_query_plan, budget, connection, query)
         except PlanCaptureError:
             raise
         except Exception as exc:
@@ -694,17 +722,20 @@ class ResultCaptureMixin:
 
         if timed_out:
             capture_time_ms = (time.perf_counter() - start_time) * 1000
+            if run_limited:
+                _record_run_limited_plan_capture()
+                return None, capture_time_ms
             self.logger.warning(
-                "Query plan capture timed out for %s after %ds (%.2fms elapsed); "
+                "Query plan capture timed out for %s after %gs (%.2fms elapsed); "
                 "the EXPLAIN may still be running on the connection until the database returns",
                 query_id,
-                self.plan_capture_timeout_seconds,
+                budget,
                 capture_time_ms,
             )
             self._record_plan_capture_failure(
                 query_id,
                 reason="timeout",
-                message=f"EXPLAIN query timed out after {self.plan_capture_timeout_seconds}s",
+                message=f"EXPLAIN query timed out after {budget:g}s",
                 log_warning=False,
             )
             return None, capture_time_ms
@@ -723,11 +754,11 @@ class ResultCaptureMixin:
         from benchbox.core.dataframe.profiling import capture_pyspark_plan, redact_plan_local_paths
 
         start_time = time.perf_counter()
+        budget, run_limited = _plan_capture_budget(self.plan_capture_timeout_seconds)
         try:
-            captured, timed_out = run_with_timeout(
+            captured, timed_out = _call_abandoning_after(
                 capture_pyspark_plan,
-                self.plan_capture_timeout_seconds,
-                f"plan capture explain (query_id={query_id})",
+                budget,
                 dataframe,
                 self.platform_name.lower().removesuffix("-df"),
             )
@@ -738,12 +769,15 @@ class ResultCaptureMixin:
             return None, (time.perf_counter() - start_time) * 1000
 
         if timed_out:
-            self._record_plan_capture_failure(
-                query_id,
-                reason="timeout",
-                message=f"explain timed out after {self.plan_capture_timeout_seconds}s",
-                log_warning=False,
-            )
+            if run_limited:
+                _record_run_limited_plan_capture()
+            else:
+                self._record_plan_capture_failure(
+                    query_id,
+                    reason="timeout",
+                    message=f"explain timed out after {budget:g}s",
+                    log_warning=False,
+                )
             return None, (time.perf_counter() - start_time) * 1000
 
         local_roots = [

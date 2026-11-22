@@ -112,7 +112,9 @@ def _public_benchmark(benchmark_id: str):
 
 def _public_benchmark_ids() -> list[str]:
     return [
-        benchmark_id for benchmark_id in sorted(get_all_benchmarks()) if get_benchmark_surface(benchmark_id) == "public"
+        benchmark_id
+        for benchmark_id, entry in sorted(get_all_benchmarks().items())
+        if get_benchmark_surface(benchmark_id) == "public" and entry["support_status"] != "document_only"
     ]
 
 

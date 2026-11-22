@@ -752,13 +752,6 @@ ignore_rules = [
         "benchbox/core/tpcds/generator/manager.py",
     ] },
 
-    { function_names = ["_load_base_queries", "_load_etl_queries", "get_queries_by_complexity", "get_queries_by_frequency", "get_queries_by_severity", "_load_base_query_metadata", "_load_etl_metadata", "get_queries_by_category"], path_contains = [
-        "benchbox/core/tpcdi/queries.py",
-        "benchbox/core/tpcdi/query_etl.py",
-        "benchbox/core/tpcdi/query_analytics.py",
-        "benchbox/core/tpcdi/query_validation.py",
-    ] },
-
     { function_names = ["q33_expression_impl", "q60_expression_impl", "q33_pandas_impl", "q60_pandas_impl"], path_contains = ["benchbox/core/tpcds/dataframe_queries/queries.py"] },
 
     { function_names = ["__init__", "execute_query"], path_contains = [

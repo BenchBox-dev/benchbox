@@ -104,6 +104,18 @@ def test_timeout_retries_once_and_a_passing_retry_passes_the_cell(tmp_path):
     assert result.first_attempt_elapsed_s == float(CELL_LIMIT_S)
 
 
+def test_a_cell_the_runner_killed_is_retried_once_like_a_timed_out_cell(tmp_path):
+    hung = {"status": "hung", "exit_code": -9, "elapsed_s": float(CELL_LIMIT_S + 60)}
+    attempts = _Attempts(tmp_path, [hung, PASSED])
+    result = _run(attempts)
+
+    assert len(attempts.calls) == 2
+    assert result.status == "passed"
+    assert result.retry_signature == "timeout"
+    assert result.retry_outcome == infrastructure_retry.RETRY_PASSED
+    assert result.first_attempt_status == "hung"
+
+
 def test_second_infrastructure_failure_fails_the_cell_without_a_third_attempt(tmp_path):
     attempts = _Attempts(tmp_path, [TIMEOUT, TIMEOUT, PASSED])
     result = _run(attempts)
@@ -432,3 +444,52 @@ def test_a_timeout_or_kill_without_product_evidence_stays_infrastructure(termina
     )
     assert result is not None
     assert (result.kind, result.signature) == (failure_signature.KIND_INFRASTRUCTURE, signature)
+
+
+def _classify_row(terminal_state, failed_queries):
+    from tests.uat import failure_signature
+
+    return failure_signature.classify_failure(
+        failure_signature.evidence_from_row(
+            {"status": "timed-out", "terminal_state": terminal_state, "failed_queries": failed_queries}
+        )
+    )
+
+
+def test_a_cell_stopped_at_its_limit_with_only_timeout_query_rows_is_a_timeout():
+    from tests.uat import failure_signature
+
+    result = _classify_row("timeout", [{"query_id": "Q7", "status": "TIMEOUT", "error": ""}])
+
+    assert result is not None
+    assert (result.kind, result.signature) == (failure_signature.KIND_INFRASTRUCTURE, "timeout")
+
+
+def test_a_real_query_failure_beside_a_timeout_query_row_stays_a_product_failure():
+    from tests.uat import failure_signature
+
+    result = _classify_row(
+        "timeout",
+        [
+            {"query_id": "Q3", "status": "ERROR", "error": "Result mismatch: expected 4 rows, got 5"},
+            {"query_id": "Q7", "status": "TIMEOUT", "error": ""},
+        ],
+    )
+
+    assert result is not None
+    assert (result.kind, result.signature) == (
+        failure_signature.KIND_PRODUCT,
+        failure_signature.SIGNATURE_QUERY_FAILURE,
+    )
+
+
+def test_a_timeout_query_row_in_a_cell_that_did_not_time_out_stays_a_product_failure():
+    from tests.uat import failure_signature
+
+    result = _classify_row("no_json_nonzero", [{"query_id": "Q7", "status": "TIMEOUT", "error": ""}])
+
+    assert result is not None
+    assert (result.kind, result.signature) == (
+        failure_signature.KIND_PRODUCT,
+        failure_signature.SIGNATURE_QUERY_FAILURE,
+    )

@@ -276,32 +276,3 @@ def test_mcp_write_primitives_with_non_default_engine_fails_before_work(
 
     assert "write_primitives benchmark does not run its timed DataFrame operations" in json.dumps(response)
     assert not any(path.is_file() and path.suffix in {".parquet", ".tbl", ".csv"} for path in tmp_path.rglob("*"))
-
-
-def test_tpcdi_dataframe_workload_passes_adapter_engine_to_maintenance(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    import benchbox.core.tpcdi.benchmark as tpcdi_module
-    from benchbox.platforms import get_adapter
-
-    created: list[Any] = []
-    factory = tpcdi_module.get_maintenance_operations_for_platform
-
-    def recording_factory(*args: Any, **kwargs: Any) -> Any:
-        operations = factory(*args, **kwargs)
-        created.append(operations)
-        return operations
-
-    monkeypatch.setattr(tpcdi_module, "get_maintenance_operations_for_platform", recording_factory)
-    adapter = get_adapter("polars-df", mode="dataframe", working_dir=tmp_path, execution_engine="streaming")
-    benchmark = tpcdi_module.TPCDIBenchmark(scale_factor=0.01, output_dir=tmp_path / "data")
-
-    benchmark.execute_dataframe_workload(
-        ctx=adapter.create_context(),
-        adapter=adapter,
-        benchmark_config=types.SimpleNamespace(options={}),
-        query_filter={"__none__"},
-    )
-
-    assert created
-    assert {operations.execution_engine for operations in created} == {"streaming"}

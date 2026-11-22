@@ -11,16 +11,16 @@ KILL_GRACE_SECONDS = 0.2
 def kill_process_group(proc: subprocess.Popen) -> None:
     if hasattr(os, "killpg") and hasattr(signal, "SIGTERM") and hasattr(signal, "SIGKILL"):
         try:
-            if not _killpg(proc.pid, signal.SIGTERM):
+            if not signal_process_group(proc.pid, signal.SIGTERM):
                 return
             time.sleep(KILL_GRACE_SECONDS)
         finally:
-            _killpg(proc.pid, signal.SIGKILL)
+            signal_process_group(proc.pid, signal.SIGKILL)
         return
     proc.kill()
 
 
-def _killpg(pgid: int, sig: int) -> bool:
+def signal_process_group(pgid: int, sig: int) -> bool:
     try:
         os.killpg(pgid, sig)
     except (ProcessLookupError, PermissionError):

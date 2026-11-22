@@ -221,12 +221,15 @@ def test_enumerate_records_dataframe_pruned_mutation_and_maintenance_gates():
         assert pruned[(platform, "transaction_primitives")].rule_id == (
             f"uat.compat.{platform}.transaction_primitives.benchmark_gate"
         )
-        assert pruned[(platform, "tpcdi")].rule_id == f"uat.compat.{platform}.tpcdi.benchmark_gate"
-        assert "transaction" in pruned[(platform, "tpcdi")].reason.lower()
     for platform in ("dask-df", "datafusion-df"):
         assert pruned[(platform, "write_primitives")].rule_id == (
             f"uat.compat.{platform}.write_primitives.benchmark_gate"
         )
+    assert "tpcdi" not in {c.benchmark for c in result.cells}
+    tpcdi_rows = [c for c in result.compatibility_pruned if c.benchmark == "tpcdi"]
+    assert tpcdi_rows
+    assert {c.rule_id for c in tpcdi_rows} == {"benchmark-unavailable"}
+    assert all("TPC-DI is unavailable" in c.reason for c in tpcdi_rows)
     assert result.candidate_count == len(result.cells) + len(result.compatibility_pruned)
 
 

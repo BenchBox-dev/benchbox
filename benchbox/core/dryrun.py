@@ -15,6 +15,7 @@ from benchbox.core.deployment import configured_deployment
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.builder import normalize_benchmark_id
 from benchbox.core.results.platform_options import sanitize_platform_options
+from benchbox.core.run_service import refuse_unavailable_benchmark
 from benchbox.core.schemas import (
     BenchmarkConfig,
     DatabaseConfig,
@@ -102,6 +103,7 @@ class DryRunExecutor:
         preview_platform: str | None = None,
         preview_platform_note: str | None = None,
     ) -> DryRunResult:
+        refuse_unavailable_benchmark(benchmark_config.name)
         execution_mode = self._resolve_execution_mode(database_config)
 
         result = DryRunResult(

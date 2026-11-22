@@ -216,6 +216,7 @@ def build_coverage_map() -> list[dict[str, Any]]:
     from benchbox.core.benchmark_registry import get_benchmark_metadata, list_benchmark_ids
     from benchbox.core.equivalence.cross_surface import GATES, STAGED_GATES
     from benchbox.core.expected_results.registry import get_registry
+    from benchbox.core.run_service import unavailable_benchmark_message
 
     expected_results_providers = set(get_registry().list_available_benchmarks())
     cross_surface_gates = set(GATES.keys())
@@ -224,6 +225,8 @@ def build_coverage_map() -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for benchmark_id in sorted(list_benchmark_ids()):
         metadata = get_benchmark_metadata(benchmark_id) or {}
+        if unavailable_benchmark_message(benchmark_id) is not None:
+            continue
         has_sql, has_dataframe = _surfaces(metadata)
         surfaces = [s for s, present in (("sql", has_sql), ("dataframe", has_dataframe)) if present]
         oracles = classify_oracles(
@@ -401,8 +404,8 @@ def render_markdown(rows: list[dict[str, Any]]) -> str:
     lines.append("")
     lines.append(
         "> Caveat (w2 oracle choice): write/DML/nondeterministic benchmarks "
-        "(`write_primitives`, `transaction_primitives`, `metadata_primitives`, "
-        "`tpcdi`) are listed as dual-surface, but their two surfaces may not be "
+        "(`write_primitives`, `transaction_primitives`, `metadata_primitives`) "
+        "are listed as dual-surface, but their two surfaces may not be "
         "result-comparable; prefer structural-invariant oracles (row counts, "
         "post-state assertions) over cross-surface equality for those."
     )

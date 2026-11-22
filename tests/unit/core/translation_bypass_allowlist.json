@@ -464,42 +464,6 @@
       ]
     }
   },
-  "tpcdi": {
-    "reason": "Hand-written per-platform variants (derived-table wraps for sibling subquery aliases on ClickHouse/StarRocks/BigQuery/Doris; DataFusion/Postgres specifics). Kept verbatim per G1.",
-    "dialects": {
-      "bigquery": [
-        "EQ7"
-      ],
-      "clickhouse": [
-        "AQ10",
-        "AQ7",
-        "AQ8",
-        "EQ7"
-      ],
-      "databricks": [
-        "EQ7"
-      ],
-      "datafusion": [
-        "AQ9",
-        "EQ7",
-        "VQ6"
-      ],
-      "doris": [
-        "EQ7"
-      ],
-      "postgres": [
-        "A5",
-        "AQ10",
-        "EQ7"
-      ],
-      "snowflake": [
-        "EQ7"
-      ],
-      "starrocks": [
-        "EQ7"
-      ]
-    }
-  },
   "tpcds": {
     "reason": "Rewrite-only paths that apply sqlglot rewrites without translate_sql_query: Q75 and Q90 nullif_zero_divisors on every dialect, ClickHouse alias/exists/qualify rewrites (10, 35, 47, 57, 66), Postgres inline_order_by_aliases (36, 70, 86).",
     "dialects": {

@@ -59,7 +59,7 @@ def test_dataframe_mutation_compatibility_rules_cover_dataframe_group():
     benchmarks = matrix.load_benchmarks()
 
     for platform in matrix.DATAFRAME_PLATFORMS:
-        for benchmark in ("transaction_primitives", "tpcdi"):
+        for benchmark in ("transaction_primitives",):
             rule = compatibility.compatibility_rule_for(platform, benchmark, benchmarks[benchmark])
             assert rule is not None
             assert rule.rule_id == f"uat.compat.{platform}.{benchmark}.benchmark_gate"
@@ -221,11 +221,15 @@ def test_missing_benchmarks_from_include_empty_when_all_known():
 
 def test_missing_benchmarks_from_include_matches_resolve_benchmarks_drop():
     benchmarks = matrix.load_benchmarks()
-    include = ["tpch", "totally_bogus_benchmark_xyz"]
+    include = ["tpch", "tpcdi", "totally_bogus_benchmark_xyz"]
     resolved = matrix.resolve_benchmarks(include=include, benchmarks=benchmarks)
     missing = matrix.missing_benchmarks_from_include(include, benchmarks)
-    assert set(include) == set(resolved) | set(missing)
+    unavailable = matrix.unavailable_benchmarks(include=include, benchmarks=benchmarks)
+    assert set(include) == set(resolved) | set(missing) | set(unavailable)
     assert set(resolved) & set(missing) == set()
+    assert set(resolved) & set(unavailable) == set()
+    assert set(missing) & set(unavailable) == set()
+    assert unavailable == ["tpcdi"]
 
 
 def test_known_platform_ids_covers_curated_groups():
@@ -411,6 +415,18 @@ def test_benchbox_run_argv_includes_local_managed_postgres_password_when_request
 def test_benchbox_run_argv_appends_extra_args():
     argv = matrix.benchbox_run_argv("duckdb", "tpch", 0.01, extra_args=["--tuning", "tuned"])
     assert argv[-2:] == ["--tuning", "tuned"]
+
+
+def test_benchbox_run_argv_passes_the_cell_limit_as_timeout():
+    argv = matrix.benchbox_run_argv("duckdb", "tpch", 0.01, timeout_s=600)
+    assert argv[argv.index("--timeout") + 1] == "600"
+    assert "--timeout" not in matrix.benchbox_run_argv("duckdb", "tpch", 0.01)
+
+
+def test_benchbox_run_official_argv_passes_the_cell_limit_as_timeout():
+    argv = matrix.benchbox_run_official_argv("duckdb", "tpch", 1.0, phases="power", streams=3, timeout_s=900)
+    assert argv[argv.index("--timeout") + 1] == "900"
+    assert "--timeout" not in matrix.benchbox_run_official_argv("duckdb", "tpch", 1.0, phases="power", streams=3)
 
 
 def test_benchbox_run_argv_velox_iterations_one():

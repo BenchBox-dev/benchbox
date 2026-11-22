@@ -40,11 +40,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 CORE_ONLY_BENCHMARK_IDS = {"ai_primitives", "joinorder_synthetic"}
 BENCHMARK_SUPPORT_STATUS_COUNTS = {
     "stable": 6,
-    "beta": 11,
+    "beta": 10,
     "experimental": 5,
     "repo_only": 1,
     "deprecated": 0,
-    "document_only": 0,
+    "document_only": 1,
 }
 
 

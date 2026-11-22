@@ -37,6 +37,7 @@ from benchbox.core.results.schema_policy import (
     supports_row_count_validation,
 )
 from benchbox.core.results.timing_fields import bundle_timing_field_paths, net_estimate_problems, run_timing_problems
+from benchbox.core.results.tpcdi_audit import mark_legacy_tpcdi_result
 from benchbox.validation.bundle import COMPANION_SUFFIXES
 
 logger = logging.getLogger(__name__)
@@ -222,7 +223,7 @@ def reconstruct_benchmark_results(
     execution_phases = _reconstruct_execution_phases(data.get("phases", {}), summary_section)
     native_comparison = _reconstruct_native_comparison(data.get("comparisons", {}))
 
-    return BenchmarkResults(
+    result = BenchmarkResults(
         benchmark_name=benchmark_section.get("name", "Unknown"),
         platform=platform_section.get("name", "Unknown"),
         scale_factor=benchmark_section.get("scale_factor", 1.0),
@@ -296,6 +297,8 @@ def reconstruct_benchmark_results(
         self_run=provenance_section.get("self_run"),
         execution_engine=read_execution_engine(data),
     )
+    mark_legacy_tpcdi_result(result)
+    return result
 
 
 def _coerce_datagen_version(value: object) -> int | None:

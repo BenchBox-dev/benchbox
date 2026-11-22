@@ -21,7 +21,6 @@ benchmarks:
     - metadata_primitives
     - nyctaxi
     - read_primitives
-    - tpcdi
     - tpcds
     - tpcds_obt
     - tpch_skew

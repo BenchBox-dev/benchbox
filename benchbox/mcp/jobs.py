@@ -23,6 +23,7 @@ from mcp.types import ToolAnnotations
 from benchbox.core.benchmark_registry import get_all_benchmarks
 from benchbox.core.deprecation_notices import begin_run, run_scope
 from benchbox.core.run_selection import resolve_run_selection
+from benchbox.core.run_service import unavailable_benchmark_message
 from benchbox.core.throughput.containment import await_quiescence, track_outstanding_results, tracked_stream_ids
 from benchbox.mcp.deprecations import attach_deprecations, request_deprecations
 from benchbox.mcp.schemas import (
@@ -1545,6 +1546,8 @@ def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> No
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         principal = authenticated_principal()
+        if (unavailable := unavailable_benchmark_message(benchmark)) is not None:
+            raise MCPError(-32602, unavailable)
         try:
             normalized_platform_options = validate_platform_options(platform, platform_options)
             resolved_execution_engine = validate_execution_engine(platform, execution_engine)

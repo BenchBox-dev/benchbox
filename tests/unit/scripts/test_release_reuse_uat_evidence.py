@@ -544,6 +544,11 @@ def test_verify_gate_accepts_a_cell_whose_infrastructure_failure_passed_on_attem
     assert _verify_gate(tmp_path, _evidence(tmp_path, [_cell(), _cell(**RETRY_ABSORBED)])) == 0
 
 
+def test_verify_gate_accepts_a_cell_whose_first_attempt_was_killed_from_outside_and_passed_on_attempt_two(tmp_path):
+    hung_then_passed = {**RETRY_ABSORBED, "first_attempt_status": "hung"}
+    assert _verify_gate(tmp_path, _evidence(tmp_path, [_cell(), _cell(**hung_then_passed)])) == 0
+
+
 @pytest.mark.parametrize(
     "retried",
     [

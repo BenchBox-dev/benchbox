@@ -30,6 +30,7 @@ from benchbox.core.results.integrity_validator import ResultIntegrityValidator, 
 from benchbox.core.results.schema import build_result_payload
 from benchbox.core.run_cleanup_warning import cloud_cleanup_warning
 from benchbox.core.run_selection import RunSelection, resolve_run_selection
+from benchbox.core.run_service import unavailable_benchmark_message
 from benchbox.core.tuning import modes as tuning_modes
 from benchbox.mcp.deprecations import attach_deprecations
 from benchbox.mcp.errors import (
@@ -121,7 +122,7 @@ def register_benchmark_tools(
     platform_policy: LocalPlatformPolicy = DEFAULT_LOCAL_PLATFORM_POLICY,
 ) -> None:
     @mcp.tool(
-        description="Run a benchmark on a database platform.\n\n        Args:\n            platform: Target platform (duckdb, polars-df, snowflake, etc.)\n            benchmark: Benchmark to run (tpch, tpcds, tpcds_obt, ssb, joinorder, clickbench, nyctaxi, tsbs_devops, h2odb, amplab, coffeeshop, tpch_skew, datavault, tpcdi, write_primitives, read_primitives, and more)\n            scale_factor: Data scale factor (0.01 for testing, 1+ for production; joinorder uses canonical IMDb 2013 data and only accepts 1.0)\n            queries: Comma-separated query IDs to run (e.g., \"1,3,6\")\n            phases: Comma-separated phases (default: \"load,power\")\n            mode: Execution mode: 'sql', 'dataframe', or 'data_only'\n            capture_plans: Capture query execution plans (3-8%% overhead). Supported: DuckDB, PostgreSQL, DataFusion.\n            dry_run: Preview execution plan without running\n            validate_only: Validate configuration without running\n            link_probe: Measure post-benchmark statement overhead (6 metered SELECT 1 statements on billable warehouses). Set false to skip; equivalent to the CLI --no-link-probe flag.\n            platform_options: Bounded, non-secret platform settings approved for the selected platform.\n            seed: RNG seed for query parameter generation, 0 to 2147483647 (default: unset; same as the CLI --seed). The effective value is reported in mcp_metadata.\n            iterations: Power test measurement iterations, at least 1 (default: 3; power or standard phase only; same as the CLI --iterations). The effective value is reported in mcp_metadata.\n            timeout_seconds: Stop the whole run (generate, load and execute) after this many seconds (default: unset, no limit; 0 also means no limit; same as the CLI --timeout). A run stopped at its limit returns mcp_metadata.status 'timed_out' with a partial result that must not be published or compared; do not retry it unchanged.\n\n        Returns:\n            Benchmark results, dry-run preview, or validation status.\n\n        Before reporting a run, call validate_results on its result file and report the WARN and FAIL findings. A completed run also carries that validator's verdict in its integrity field (overall_status PASS, WARN or FAIL, with the non-passing checks). A run that ends without a result file returns an MCP error (is_error true) with the cause. Compare two results only when their benchmark, scale, phase, configuration, tuning, hardware and evidence are compatible; a shared benchmark name alone is not enough.\n\n        Platform options are a deliberately smaller MCP contract than the CLI\n        ``--platform-option`` surface. Only bounded, non-secret execution\n        settings are accepted; credentials, endpoints, paths, and package\n        installation controls must remain server configuration.\n\n        JoinOrder note:\n            The public joinorder benchmark downloads and verifies the canonical IMDb 2013\n            Parquet archive on first use, then reuses BENCHBOX_OUTPUT_DIR/benchmark_runs/datagen/joinorder_sf1/.\n        ",
+        description="Run a benchmark on a database platform.\n\n        Args:\n            platform: Target platform (duckdb, polars-df, snowflake, etc.)\n            benchmark: Benchmark to run (tpch, tpcds, tpcds_obt, ssb, joinorder, clickbench, nyctaxi, tsbs_devops, h2odb, amplab, coffeeshop, tpch_skew, datavault, write_primitives, read_primitives, and more)\n            scale_factor: Data scale factor (0.01 for testing, 1+ for production; joinorder uses canonical IMDb 2013 data and only accepts 1.0)\n            queries: Comma-separated query IDs to run (e.g., \"1,3,6\")\n            phases: Comma-separated phases (default: \"load,power\")\n            mode: Execution mode: 'sql', 'dataframe', or 'data_only'\n            capture_plans: Capture query execution plans (3-8%% overhead). Supported: DuckDB, PostgreSQL, DataFusion.\n            dry_run: Preview execution plan without running\n            validate_only: Validate configuration without running\n            link_probe: Measure post-benchmark statement overhead (6 metered SELECT 1 statements on billable warehouses). Set false to skip; equivalent to the CLI --no-link-probe flag.\n            platform_options: Bounded, non-secret platform settings approved for the selected platform.\n            seed: RNG seed for query parameter generation, 0 to 2147483647 (default: unset; same as the CLI --seed). The effective value is reported in mcp_metadata.\n            iterations: Power test measurement iterations, at least 1 (default: 3; power or standard phase only; same as the CLI --iterations). The effective value is reported in mcp_metadata.\n            timeout_seconds: Stop the whole run (generate, load and execute) after this many seconds (default: unset, no limit; 0 also means no limit; same as the CLI --timeout). A run stopped at its limit returns mcp_metadata.status 'timed_out' with a partial result that must not be published or compared; do not retry it unchanged.\n\n        Returns:\n            Benchmark results, dry-run preview, or validation status.\n\n        Before reporting a run, call validate_results on its result file and report the WARN and FAIL findings. A completed run also carries that validator's verdict in its integrity field (overall_status PASS, WARN or FAIL, with the non-passing checks). A run that ends without a result file returns an MCP error (is_error true) with the cause. Compare two results only when their benchmark, scale, phase, configuration, tuning, hardware and evidence are compatible; a shared benchmark name alone is not enough.\n\n        Platform options are a deliberately smaller MCP contract than the CLI\n        ``--platform-option`` surface. Only bounded, non-secret execution\n        settings are accepted; credentials, endpoints, paths, and package\n        installation controls must remain server configuration.\n\n        JoinOrder note:\n            The public joinorder benchmark downloads and verifies the canonical IMDb 2013\n            Parquet archive on first use, then reuses BENCHBOX_OUTPUT_DIR/benchmark_runs/datagen/joinorder_sf1/.\n        ",
         annotations=RUN_BENCHMARK_ANNOTATIONS,
     )
     def run_benchmark(
@@ -142,6 +143,8 @@ def register_benchmark_tools(
         timeout_seconds: int | None = None,
     ) -> dict[str, Any]:
         begin_run()
+        if (unavailable := _unavailable_benchmark_response(benchmark)) is not None:
+            return attach_deprecations(unavailable)
         try:
             normalized_platform_options = validate_platform_options(platform, platform_options)
             resolved_execution_engine = validate_execution_engine(platform, execution_engine)
@@ -230,8 +233,8 @@ def register_benchmark_tools(
         benchmark_lower = benchmark.lower()
         all_benchmarks = get_all_benchmarks()
 
-        if benchmark_lower not in all_benchmarks:
-            return make_not_found_error("benchmark", benchmark, available=list(all_benchmarks.keys()))
+        if (refusal := _query_details_refusal(benchmark, all_benchmarks)) is not None:
+            return refusal
 
         try:
             resolved_mode = _resolve_query_details_mode(platform, mode)
@@ -373,6 +376,33 @@ def _as_tool_result(response: dict[str, Any]) -> dict[str, Any]:
             is_error=True,
         ),
     )
+
+
+def _query_details_refusal(benchmark: str, all_benchmarks: Mapping[str, Any]) -> dict[str, Any] | None:
+    unavailable = _unavailable_benchmark_response(benchmark)
+    if unavailable is not None:
+        return unavailable
+    if benchmark.lower() not in all_benchmarks:
+        return make_not_found_error("benchmark", benchmark, available=list(all_benchmarks.keys()))
+    return None
+
+
+def _unavailable_benchmark_response(benchmark: str) -> dict[str, Any] | None:
+    message = unavailable_benchmark_message(benchmark)
+    if message is None:
+        return None
+    metadata = get_all_benchmarks().get(benchmark.lower().replace("-", "").replace("_", ""), {})
+    response = make_error(
+        ErrorCode.VALIDATION_ERROR,
+        message,
+        details={
+            "benchmark": benchmark,
+            "support_status": metadata.get("support_status"),
+            "query_count": metadata.get("num_queries", 0),
+        },
+    )
+    response["status"] = "failed"
+    return response
 
 
 def _make_failed_response(error_response: dict[str, Any], execution_id: str) -> dict[str, Any]:
@@ -775,6 +805,8 @@ def _run_benchmark_impl(
     billable_acknowledgement: Mapping[str, object] | None = None,
 ) -> dict[str, Any]:
     execution_id = execution_id or f"mcp_{uuid.uuid4().hex[:8]}"
+    if (unavailable := _unavailable_benchmark_response(benchmark)) is not None:
+        return _make_failed_response(unavailable, execution_id)
     start_time = mono_time()
 
     try:

@@ -1465,6 +1465,9 @@ def run_benchmark_lifecycle(
     enable_resource_monitoring: bool = True,
     execution_context: ExecutionContext | None = None,
 ) -> BenchmarkResults:
+    from benchbox.core.run_service import refuse_unavailable_benchmark
+
+    refuse_unavailable_benchmark(benchmark_config.name)
     phases = phases or LifecyclePhases()
     validation_opts = validation_opts or ValidationOptions()
     _enforce_gateway_lifecycle(benchmark_config, database_config, platform_adapter, phases)

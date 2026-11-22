@@ -288,12 +288,7 @@ See [Platform Documentation](https://benchbox.dev/docs/platforms/index.html) for
 **Tuning:** [`tunings/duckdb/tpcds_tuned.yaml`](tunings/duckdb/tpcds_tuned.yaml), [`tunings/databricks/tpcds_tuned.yaml`](tunings/databricks/tpcds_tuned.yaml)
 
 ### TPC-DI (Data Integration)
-**Best for:** ETL performance, data warehouse loading, data transformation
-
-**Examples:**
-- **Advanced**: [`unified_runner.py`](unified_runner.py) with `--benchmark tpcdi`
-
-**Note:** TPC-DI is more complex and requires specific setup. See documentation for details.
+TPC-DI is unavailable while BenchBox reworks it to run the specification's workload (historical load, two incremental updates, automated audit). Earlier BenchBox TPC-DI results were withdrawn.
 
 ### SSB (Star Schema Benchmark)
 **Best for:** Star schema queries, data warehouse analytics, BI workloads

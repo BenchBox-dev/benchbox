@@ -405,18 +405,6 @@ def query_source_path(benchmark_id: str, query_id: str) -> str | None:
             path = f"benchbox/core/tpchavoc/variant_sets/q{int(base_id):02d}.py"
             if (_REPO_ROOT / path).exists():
                 return path
-    if benchmark_id == "tpcdi":
-        qid = query_id.upper()
-        if qid.startswith("AQ"):
-            path = "benchbox/core/tpcdi/query_analytics.py"
-        elif qid.startswith("EQ"):
-            path = "benchbox/core/tpcdi/query_etl.py"
-        elif qid.startswith("VQ"):
-            path = "benchbox/core/tpcdi/query_validation.py"
-        else:
-            path = "benchbox/core/tpcdi/queries.py"
-        if (_REPO_ROOT / path).exists():
-            return path
 
     candidates: list[str] = [
         f"benchbox/core/{benchmark_id}/queries.py",
