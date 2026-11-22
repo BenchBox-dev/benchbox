@@ -7,7 +7,8 @@
   "links": [
     "results-data/validate_corpus.py",
     "benchbox/validation/bundle.py",
-    "scripts/publication/validator_parity.py"
+    "scripts/publication/validator_parity.py",
+    "/Users/joe/.tractable/finding-drafts/benchbox/2026-11-22-mirror-validator-nonstandard-scale-design.md"
   ],
   "sessions": [
     {
@@ -57,6 +58,14 @@
       "op": "update",
       "op_id": "9aaf302f90a4419ba1b3847ec89657d7",
       "session_id": "07ffce55d91d4769bb111de9401d9503"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6ace4eb729d47ce80d54f1e",
+      "at": "2026-11-22T17:47:19Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "da46b3bca8ea4184b3c849e1bf2c5281",
+      "session_id": "82293ce1c4134e7b8c22e7e87ba5dfc1"
     }
   ]
 }
