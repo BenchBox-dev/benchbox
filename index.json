@@ -21524,6 +21524,19 @@
       "status": "open",
       "title": "Make the published-results validator run the same rule"
     },
+    "crr-a6-reader-allowlist-guard": {
+      "claim": null,
+      "needs": [
+        "crr-a4-database-metrics-and-cli-readers",
+        "crr-a5-published-results-mirror",
+        "crr-b4-site-renders-rule-outcome-and-labels",
+        "crr-c1-validation-status-vocabulary",
+        "crr-d1-observed-engine-contract-and-dataframe"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Add the guard that keeps class, lane and identity logic in one place"
+    },
     "crr-b1-identity-and-comparison-version": {
       "claim": null,
       "needs": [
