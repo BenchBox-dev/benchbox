@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Every listed adapter either has stub-verified cleanup with the manifest capability set, or a recorded reason in the capability table."
+  ],
+  "context": "Follow-up from the run-timeout effort (run-timeout-plan-20261120).",
+  "description": "## Problem\nOnly five cloud adapters cancel remote work on a run timeout (Onehouse Quanton, BigQuery, EMR Serverless, Glue, Dataproc). The survey in #4435 / docs/operations/run-safety.md lists adapters whose clients do offer cancel or stop but that were left without cleanup because they do not track what the run started: Athena and Athena Spark (stop query/calculation, terminate session), Databricks (cursor cancel), Snowflake (abort by query id), Starburst (cursor cancel), Synapse / Fabric Warehouse / Fabric Lakehouse (ODBC cancel), Fabric Spark and Synapse Spark (Livy statement cancel, delete a session the run created), ClickHouse Cloud (`KILL QUERY` by query id), Dataproc Serverless (no batch cancel in the Python client). Users on those platforms see the \"BenchBox cannot cancel it on this platform\" warning.\n\n## Change\nFor each listed adapter, decide whether it can reliably record what this run started (statement/query/session ids at submission, not after completion). Where it can, implement `cancel_remote_work()` through the existing hook and `StartedRemoteWork`, set the manifest capability `run_timeout_cleanup`, and update the capability table. Where it cannot, record why in the table. Adapter SDK imports stay lazy.\n\n## Decision gates\n- Only stop what this run started; if an adapter cannot tell what it started from what pre-existed, implement nothing for it and say so in the table.\n- Warnings use the two owner texts verbatim (see run-timeout-plan-20261120).\n- No live cloud run: stubbed clients only (live checks belong to run-timeout-remote-cleanup-live-check-20261122).\n\n## Verification rubric\nPer adapter implemented, a stubbed-client test that fails before: cancel/stop called for started work on timeout, never for pre-existing work, a failure reported without hiding exit 124. `make platform-manifest-check` and `make pr-preflight` exit 0; the updated table is in the pull request.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T13:13:02Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "010c402156c140bd857e6a96944037e8",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    }
+  ]
+}
