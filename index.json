@@ -18384,10 +18384,15 @@
       "title": "Restore CedarDB to the release UAT gate"
     },
     "cedardb-server-crash-mid-shard-nightly-20261119": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T21:59:06Z",
+        "generation": "e2d6196e8bbe4bd39b453827dc78cebf",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "CedarDB server terminates mid-shard in nightly trunk UAT, failing 11 cells"
     },
     "cedardb-tpcds-maintenance-unsupported-20261117": {
