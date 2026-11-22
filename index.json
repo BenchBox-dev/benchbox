@@ -21563,6 +21563,15 @@
       "status": "open",
       "title": "Site: render class, lane and labels from the read model and delete the TypeScript copies of the rule"
     },
+    "crr-b5-site-median-rows-version-view-and-trend": {
+      "claim": null,
+      "needs": [
+        "crr-b4-site-renders-rule-outcome-and-labels"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Site: show median rows, a version view with a version chart, and a trend view keyed by identity"
+    },
     "crr-c1-validation-status-vocabulary": {
       "claim": null,
       "needs": [
