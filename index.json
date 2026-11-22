@@ -16573,6 +16573,13 @@
       "status": "done",
       "title": "Integrate verified batch commits through one owned feature branch"
     },
+    "batch-finish-cursor-stale-reread-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "batch-finish refuses with E_CURSOR_STALE when the tracker changes during its paged reads; re-read instead"
+    },
     "batch-finish-integration-worktree-20261102": {
       "claim": null,
       "needs": [],
