@@ -21472,6 +21472,13 @@
       "status": "open",
       "title": "Plan: one admission and ranking rule for the results corpus, then publish the Polars matrix through it"
     },
+    "crr-a0-decision-records": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Record the corpus rule decisions in the ADRs and tracker before any code changes"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],
