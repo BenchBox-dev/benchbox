@@ -279,8 +279,20 @@ which paths it excludes; those are first scanned by the nightly run, not by a
 pull request.
 
 - **External exclusions:** each names its upstream owner and a provenance file.
-  A pull request cannot widen one. New files under an exclusion are still
-  checked in a base comparison.
+  A pull request cannot widen one, except to a path on the approved list
+  below. New files under an exclusion are still checked in a base comparison.
+- **Approved external paths:** `quality/comment-policy-approved-external.json`
+  lists the directory prefixes the owner has approved for externally owned
+  files that ship unmodified, with their comments. Today these are
+  `benchbox/_binaries/tpc-di/` and `_sources/tpc-di/`. An external entry
+  whose `path` equals a listed prefix is accepted in a pull request; any other
+  new entry fails the ratchet. Files under a prefix that is on the list and
+  has an external entry are not scanned, new files included. The list is in
+  `.github/soundness-paths.txt`, so a change to it needs a soundness review,
+  and a change to it makes the check scan the whole repository. Entries must
+  be directory prefixes of at least two path segments. Add a path to the list
+  only on the owner's approval, naming the owner's decision in the pull
+  request.
 - **Policy ratchet:** a base comparison (`--base` without `--bootstrap`, as
   `make comment-policy-check`, the hook, and CI run it) compares your policy
   with the base policy. It fails if enforcement moves from blocking to

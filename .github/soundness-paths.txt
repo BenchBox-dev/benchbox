@@ -189,6 +189,7 @@ file	benchbox/utils/binary_manifest.py
 file	scripts/bundled_binary_manifest.py
 file	scripts/verify_distribution_binaries.py
 file	quality/comment-policy.json
+file	quality/comment-policy-approved-external.json
 file	quality/comment-policy-requirements.txt
 file	scripts/check_comment_policy.py
 file	scripts/check_comment_cleanup_scope.py

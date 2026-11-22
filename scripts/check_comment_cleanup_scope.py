@@ -20,6 +20,7 @@ from typing import Any
 
 POLICY_PATH = "quality/comment-cleanup-scope.json"
 COMMENT_POLICY_PATH = "quality/comment-policy.json"
+APPROVED_EXTERNAL_PATH = "quality/comment-policy-approved-external.json"
 PINNED_NOTICE_DRIFT_PATHS = frozenset({"LICENSE", "COPYRIGHT.md"})
 
 COMMENT_POLICY_ENFORCEMENT_MODES = {"advisory", "blocking"}
@@ -1451,11 +1452,33 @@ def is_wheel_bump(candidate_entry: dict, baseline_entry: dict) -> bool:
     return _normalized_name(cand_dist) == _normalized_name(base_dist)
 
 
-def check_ratchet(policy: dict, baseline: dict) -> None:
+def load_approved_external(raw: bytes | None) -> frozenset[str]:
+    if raw is None:
+        return frozenset()
+    data = json.loads(raw)
+    if not isinstance(data, dict) or set(data) != {"version", "paths"} or data["version"] != 1:
+        raise ValueError("invalid approved external schema")
+    paths = data["paths"]
+    if not isinstance(paths, list) or len(set(paths)) != len(paths):
+        raise ValueError("approved external paths must be a list without duplicates")
+    for path in paths:
+        if not isinstance(path, str) or not path.endswith("/"):
+            raise ValueError("approved external paths must be directory prefixes")
+        validate_comment_policy_path(path)
+        if len(PurePosixPath(path).parts) < 2:
+            raise ValueError(f"approved external path is too broad: {path}")
+    return frozenset(paths)
+
+
+def approved_external_paths(root: Path, staged: bool) -> frozenset[str]:
+    return load_approved_external(head_blob(root, APPROVED_EXTERNAL_PATH, staged))
+
+
+def check_ratchet(policy: dict, baseline: dict, approved: frozenset[str] = frozenset()) -> None:
     if baseline.get("enforcement", "blocking") == "blocking" and policy.get("enforcement", "blocking") == "advisory":
         raise ValueError("enforcement cannot be relaxed from blocking to advisory")
     for entry in policy["external"]:
-        if entry in baseline["external"]:
+        if entry in baseline["external"] or entry["path"] in approved:
             continue
         matched_base = [b for b in baseline["external"] if is_wheel_bump(entry, b)]
         if matched_base and not any(b in policy["external"] for b in matched_base):
@@ -1470,7 +1493,7 @@ def bumped_by_head_policy(root: Path, base: str, entry: dict[str, str], staged: 
     try:
         base_policy = load_comment_policy(base_blob(root, base, COMMENT_POLICY_PATH))
         head_policy = load_comment_policy(raw_head)
-        check_ratchet(head_policy, base_policy)
+        check_ratchet(head_policy, base_policy, approved_external_paths(root, staged))
         head_external = head_policy["external"]
         if entry in head_external:
             return False
