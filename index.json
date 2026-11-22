@@ -46262,10 +46262,15 @@
       "title": "Finish the TPC-DI bundle regeneration evidence: same-generator comparison and site cohort views"
     },
     "tpcdi-comment-policy-route-for-tpc-files-20261121": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T04:45:03Z",
+        "generation": "fb1a66e3e5ef4db390e60e16b106f01b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI step 8: a route for owner-approved TPC files through the comment policy"
     },
     "tpcdi-controls-empty-query-and-all-zero-validator-20261121": {
