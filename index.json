@@ -3278,52 +3278,12 @@
       "terminal_outcome": "deliver"
     },
     "corpus-rule-r3": {
-      "accepted_members": {
-        "crr-a0-decision-records": "e075afca00b4c22b5756123f7a119e70ad12f7a9",
-        "crr-a1-rule-module-and-snapshot": "f7824661a6a890dfedb3544125290af210db544d"
-      },
+      "accepted_members": {},
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {
-        "crr-a0-decision-records": {
-          "accepted_head": "e075afca00b4c22b5756123f7a119e70ad12f7a9",
-          "changed_files": [
-            "docs/internal/adr/adr-benchmark-methodology-provisional-policy.md",
-            "docs/internal/adr/adr-corpus-derived-outcome-rule.md",
-            "docs/internal/adr/adr-published-results-slim-corpus-branch.md",
-            "quality/docs-ownership.json"
-          ],
-          "integration_head": "9b95d6928a3886691d891c3eae172ef568b9c062",
-          "integration_seq": 1
-        },
-        "crr-a1-rule-module-and-snapshot": {
-          "accepted_head": "f7824661a6a890dfedb3544125290af210db544d",
-          "changed_files": [
-            ".github/ci-units.yml",
-            ".github/workflows/ci.yml",
-            ".github/workflows/sync-results-data-to-published.yml",
-            "benchbox/core/results/corpus_rule.py",
-            "benchbox/core/results/corpus_rule_data.json",
-            "changelog.d/feat-corpus-rule-r3--crr-a1-rule-module-and-snapshot.json",
-            "docs/internal/adr/adr-published-results-slim-corpus-branch.md",
-            "pyproject.toml",
-            "results-data/compliance-classes.json",
-            "scripts/corpus_compliance_snapshot.py",
-            "scripts/corpus_drift.py",
-            "scripts/generate_corpus_rule_data.py",
-            "tests/fixtures/corpus_rule_isolated_probe.py",
-            "tests/unit/core/results/test_corpus_rule.py",
-            "tests/unit/scripts/test_ci_units.py",
-            "tests/unit/scripts/test_corpus_compliance_snapshot.py",
-            "tests/unit/scripts/test_generate_corpus_rule_data.py",
-            "tests/unit/test_sync_results_workflow.py"
-          ],
-          "integration_head": "8ba08c93a7378465e2122d3b30f07777338d83f0",
-          "integration_seq": 2
-        }
-      },
+      "integrated_members": {},
       "integration_branch": "feat/corpus-rule-r3",
       "integration_head": "8ba08c93a7378465e2122d3b30f07777338d83f0",
       "integration_log": [
@@ -3353,7 +3313,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r3",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "crr-a0-decision-records",
         "crr-a1-rule-module-and-snapshot",
