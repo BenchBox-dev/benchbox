@@ -2,7 +2,7 @@
   "acceptance": [
     "Known gate inputs cannot be listed as inert without a failing check."
   ],
-  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).\n\nOwner decision 2026-11-22 (choice dialog). Where it conflicts with the Decision gates text in the description, this wins. Approach: \"keep an explicit list of gate input files, with a test.\"",
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).\n\nOwner decision 2026-11-22 (choice dialog). Where it conflicts with the Decision gates text in the description, this wins. Approach: \"keep an explicit list of gate input files, with a test.\"\n\n2026-11-22: delivered by #4453 (merged as ; head 7b4f11f43f). Owner approach applied: GATE_INPUT_FILES in _project/scripts/inert_paths.py lists the gate input files (fast-tier baseline manifest and shards, fast-duration ceiling, medium shard durations, SF1 size baseline, ledger seed, corpus inventory, compliance classes, Windows antipattern baseline, project references baseline) with the gate that reads each; is_inert_path is false for them and a manifest declaring any of them inert fails to load. Tests in tests/unit/scripts/test_inert_paths.py (96 passed); make pr-preflight exit 0 (tree 0a19dabfd7); benchbox-review SHIP with no findings. Arming: first make pr-arm refused (TPC-H binary framing on Windows was cancelled by the runner at its 20-minute limit); make pr-rerun once; second arm armed; merged.",
   "description": "## Problem\n`_project/scripts/inert_paths.py` decides a path is machine-read by scanning for references. It cannot resolve a path built as `input_dir / NAME`, so a file a blocking gate reads (the fast-tier baseline) passed as inert on #4385 once its manifest was renamed.\n\n## Change\nDecide with the owner whether to extend the scan, or to keep an explicit list of gate inputs that can never be inert.\n\n## Decision gates\nThe owner picks the approach; this guard is part of the review gate.\n\n## Verification rubric\nPass: a test lists the fast-tier baseline and other known gate inputs and asserts none can be declared inert.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
   "links": [
     "_project/scripts/inert_paths.py",
@@ -24,6 +24,14 @@
       "op": "update",
       "op_id": "27bb7f449189478fa9513eb4ec16a7f0",
       "session_id": "07ffce55d91d4769bb111de9401d9503"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6",
+      "at": "2026-11-22T21:38:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8c5f213f6e514eaa96239943bcc6d613",
+      "session_id": "703e90baefd545ccb42540a47d1ce09e"
     }
   ]
 }
