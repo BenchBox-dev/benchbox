@@ -46048,6 +46048,13 @@
       "status": "open",
       "title": "TPC-DI step 7: replace the schema with the specification's tables, columns and types"
     },
+    "tpcdi-07-specification-schema-20261120-deferral-1": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "TPC-DI: update the SF1 integrity row-count spec to the specification's table set before reopening"
+    },
     "tpcdi-08-generator-core-and-reference-files-20261120": {
       "claim": null,
       "needs": [

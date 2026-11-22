@@ -18,7 +18,9 @@
       "from_item": "tpcdi-07-specification-schema-20261120",
       "id": 1,
       "reason": "Landing review of the schema member (Medium): the integrity spec still lists FactTrade and none of the new tables, so a new SF1 tpcdi result would fail 'expected tables missing'. benchbox/core/results/** is outside the frozen scopes of batch tpcdi-foundation. No effect while TPC-DI is unavailable (no run produces a result); must be fixed before the reopening step, with counts taken from real DIGen/ETL runs.",
-      "resolution": "open",
+      "resolution": "promoted",
+      "resolved_at": "2026-11-22T04:58:45Z",
+      "resolved_item": "tpcdi-07-specification-schema-20261120-deferral-1",
       "summary": "Update tpcdi sf1_row_counts in benchbox/core/results/benchmark_specs.yaml to the Clause 3.2 table set (FactTrade gone) before reopening"
     }
   ],
@@ -169,6 +171,14 @@
       "client": "omp-coding-agent",
       "op": "defer",
       "op_id": "8e20695c13694edda0aae70a4454cb2d",
+      "session_id": "a8b92107f30e427f9def4483bf06f645"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e",
+      "at": "2026-11-22T04:58:46Z",
+      "client": "omp-coding-agent",
+      "op": "promote",
+      "op_id": "3a18de66c8604a1596be2538247b889f",
       "session_id": "a8b92107f30e427f9def4483bf06f645"
     }
   ]
