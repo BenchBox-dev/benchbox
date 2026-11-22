@@ -2,7 +2,7 @@
   "acceptance": [
     "Both official archives are present and their SHA-256 values are recorded."
   ],
-  "context": "Step of the TPC-DI plan based on shannon-barrow/databricks-tpc-di. The full plan (inventory of the project, the 34 departures from the specification with file and line, target architecture, step list) is the description of tpcdi-plan-databricks-base-20261121; every owner decision is quoted on tpcdi-correction-plan-20261120. Read both before starting. Item ids keep the number they were created with; the step number in the title is the order. File paths and line numbers in the plan were read on 2026-11-21 and must be re-read before editing.\n\nBlocked 2026-11-21: owner action: download and place the archives.\n\n2026-11-21: owner supplied a download link from the TPC form; leader fetched it. ~/Developer/tpc-tools/TPC-DI_Tools_v1.1.0.zip, 6676639 bytes, SHA-256 d9c10de5dafa781ddd4df72453f50af2f0c9c7ccfa0cbae99ed0be70a2ede22b (read-only; hash also in TPC-DI_Tools_v1.1.0.zip.sha256). 108 entries, 8587504 bytes unpacked; DIGen 1.1.0. It does NOT contain the Appendix files (tpcdi_audit.sql, tpcdi_validation.sql, tpcdi_visibility_1/2.sql; spec p.117). Appendix archive still outstanding.",
+  "context": "Step of the TPC-DI plan based on shannon-barrow/databricks-tpc-di. The full plan (inventory of the project, the 34 departures from the specification with file and line, target architecture, step list) is the description of tpcdi-plan-databricks-base-20261121; every owner decision is quoted on tpcdi-correction-plan-20261120. Read both before starting. Item ids keep the number they were created with; the step number in the title is the order. File paths and line numbers in the plan were read on 2026-11-21 and must be re-read before editing.\n\nBlocked 2026-11-21: owner action: download and place the archives.\n\n2026-11-21: owner supplied a download link from the TPC form; leader fetched it. ~/Developer/tpc-tools/TPC-DI_Tools_v1.1.0.zip, 6676639 bytes, SHA-256 d9c10de5dafa781ddd4df72453f50af2f0c9c7ccfa0cbae99ed0be70a2ede22b (read-only; hash also in TPC-DI_Tools_v1.1.0.zip.sha256). 108 entries, 8587504 bytes unpacked; DIGen 1.1.0. It does NOT contain the Appendix files (tpcdi_audit.sql, tpcdi_validation.sql, tpcdi_visibility_1/2.sql; spec p.117). Appendix archive still outstanding.\n\n2026-11-21 owner decision (form answer): \"Yes: I accept the bankmark EULA. Answer YES in the harness and run DIGen twice at scale 3.\" Note for later steps: bankmark PDGF EULA §1.6/§1.8 forbid redistributing PDGF (alone or merged/integrated) and modifying/decompiling it; §1.3 limits use to TPC-DI results or internal, academic and research purposes. PDGF rewrites PDGF/logs/pdgf.log beside itself. First attempt exited at the EULA prompt with no data.",
   "description": "## Problem\nThe TPC-files, tools and runner steps need the official `TPC-DI_Tools_v1.1.0.zip` and the separate Appendix archive (specification page 117). Both are behind the TPC's request form, which the agent must not fill in.\n\n## Owner decisions\n- 2026-11-21: source of shipped tools: \"The official archive you place at ~/Developer/tpc-tools/, with SHA-256 recorded. The data and audit steps wait for it.\"\n\n## Action (owner)\nDownload both archives from tpc.org and place them under `~/Developer/tpc-tools/`. Tell the agent.\n\n## Decision gates\nThe agent never downloads from behind the form and never substitutes the copy in the Databricks project.\n\n## Verification rubric\nPass: both files exist at that path; the agent records each file's name, size and SHA-256 on this item. Early check (owner approved 2026-11-21): the agent unpacks the tools archive outside the repository, downloads a JDK 8 into `~/Developer/tpc-tools/` if none is installed, and runs DIGen at scale 3 twice through `make heavy-run` with output under `~/Developer/benchmark_runs`; it records on this item the Java version, time, disk use, whether the two outputs are byte-identical, whether PDGF writes files beside itself, and the archive's file count and unpacked size. Then it unblocks the TPC-files, tools and runner steps. If DIGen does not run or is not deterministic, it reports and unblocks nothing.",
   "sessions": [
     {
@@ -51,6 +51,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "57fc306b8fc2477c9547e791e7e79bd5",
+      "session_id": "a8b92107f30e427f9def4483bf06f645"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e",
+      "at": "2026-11-22T02:14:58Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ae41def8dfbd491db330890922c1e438",
       "session_id": "a8b92107f30e427f9def4483bf06f645"
     }
   ]
