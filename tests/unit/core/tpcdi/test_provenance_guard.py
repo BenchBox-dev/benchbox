@@ -18,7 +18,29 @@ DECISION_RECORD = REPO_ROOT / "_project" / "decisions" / "tpcdi-databricks-base-
 TOOLS_DIR = "benchbox/_binaries/tpc-di/tools/"
 ETL_DIR = "benchbox/core/tpcdi/etl/"
 ETL_PROVENANCE = "benchbox/core/tpcdi/etl/PROVENANCE.json"
-FORBIDDEN_NAMES = frozenset({"pdgf.jar", "digen.jar"})
+TPC_DIRS = ("benchbox/_binaries/tpc-di/", "_sources/tpc-di/")
+APPROVED_HASHES = REPO_ROOT / "quality" / "comment-policy-approved-external-hashes.json"
+FORBIDDEN_NAMES = frozenset(
+    {
+        "pdgf.jar",
+        "digen.jar",
+        "digen.asp",
+        "digen_build.zip",
+        "tpc-di.jar",
+        "tpc-di_src.jar",
+        "commons-net-3.3.jar",
+        "commons.lang3.time.jar",
+        "javassist.jar",
+        "log4j-1.2.15.jar",
+        "xercesimpl.jar",
+        "xml-apis.jar",
+        "constants.properties",
+        "pseudotextgenerator.properties",
+        "log4j.xml",
+        "pdgf.log",
+    }
+)
+FORBIDDEN_NAME_PATTERNS = (re.compile(r"tpc-di-.*\.xml"), re.compile(r".*-audit\.xml"))
 TOOLS_ZIP_MARKERS = ("tpc-di", "tpcdi", "digen", "pdgf")
 COPYRIGHT_LINE = "Copyright (c) 2023-2026 Shannon Barrow and the databricks-tpc-di contributors"
 ATTRIBUTION_SENTENCE = "BenchBox's TPC-DI ETL is based on Shannon Barrow's databricks-tpc-di (MIT)."
@@ -39,9 +61,13 @@ def load_hash_list() -> dict:
     return json.loads(HASH_LIST.read_text(encoding="utf-8"))
 
 
-def forbidden_index(hash_list: dict) -> dict[str, set]:
+def forbidden_hashes(hash_list: dict) -> tuple[set[str], int]:
     entries = [entry for group in FORBIDDEN_GROUPS for entry in hash_list["forbidden_by_content"][group]]
-    return {"sha256": {entry["sha256"] for entry in entries}, "bytes": {entry["bytes"] for entry in entries}}
+    return {entry["sha256"] for entry in entries}, max(entry["bytes"] for entry in entries)
+
+
+def official_hashes() -> set[str]:
+    return {entry["sha256"] for entry in json.loads(APPROVED_HASHES.read_text(encoding="utf-8"))["files"]}
 
 
 def tree_files(root: Path) -> list[str]:
@@ -53,17 +79,29 @@ def tree_files(root: Path) -> list[str]:
     return sorted(name for name in listed.decode("utf-8").split("\0") if name and (root / name).is_file())
 
 
-def recorded_hash_violations(root: Path, files: list[str], index: dict) -> list[str]:
-    found = []
+def file_digests(root: Path, files: list[str], max_bytes: int) -> dict[str, str]:
+    digests = {}
     for name in files:
-        if name.startswith(TOOLS_DIR):
-            continue
         path = root / name
-        if path.stat().st_size not in index["bytes"]:
-            continue
-        if hashlib.sha256(path.read_bytes()).hexdigest() in index["sha256"]:
-            found.append(name)
-    return found
+        if path.stat().st_size <= max_bytes:
+            digests[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return digests
+
+
+def recorded_hash_violations(digests: dict[str, str], forbidden: set[str], official: set[str]) -> list[str]:
+    return [
+        name
+        for name, digest in digests.items()
+        if digest in forbidden and not (name.startswith(TOOLS_DIR) and digest in official)
+    ]
+
+
+def official_misplaced_violations(digests: dict[str, str], official: set[str]) -> list[str]:
+    return [
+        name
+        for name, digest in digests.items()
+        if digest in official and not any(name.startswith(directory) for directory in TPC_DIRS)
+    ]
 
 
 def misplaced_tool_violations(files: list[str]) -> list[str]:
@@ -72,10 +110,21 @@ def misplaced_tool_violations(files: list[str]) -> list[str]:
         if name.startswith(TOOLS_DIR):
             continue
         base = name.rsplit("/", 1)[-1].lower()
-        is_tools_zip = base.endswith(".zip") and any(marker in base for marker in TOOLS_ZIP_MARKERS)
-        if base in FORBIDDEN_NAMES or base.endswith(".dict") or is_tools_zip:
+        marked = base.replace("_", "-")
+        is_tools_zip = base.endswith(".zip") and any(marker in marked for marker in TOOLS_ZIP_MARKERS)
+        is_named = base in FORBIDDEN_NAMES or any(pattern.fullmatch(base) for pattern in FORBIDDEN_NAME_PATTERNS)
+        if is_named or base.endswith(".dict") or is_tools_zip:
             found.append(name)
     return found
+
+
+def gitlink_entries(root: Path) -> list[str]:
+    listed = subprocess.run(
+        ["git", "-C", str(root), "ls-files", "-s", "-z"], check=True, capture_output=True
+    ).stdout.decode("utf-8")
+    return sorted(
+        entry.split("\t", 1)[1] for entry in listed.split("\0") if entry.startswith("160000 ") and "\t" in entry
+    )
 
 
 def listed_etl_sql(root: Path) -> set[str]:
@@ -123,12 +172,27 @@ def test_hash_list_covers_the_projects_files():
         assert appendix[name] == digest
 
 
-def test_tree_has_no_recorded_file_outside_the_tools_directory():
-    assert recorded_hash_violations(REPO_ROOT, tree_files(REPO_ROOT), forbidden_index(load_hash_list())) == []
+@pytest.fixture(scope="module")
+def tree_digests() -> dict[str, str]:
+    _, max_bytes = forbidden_hashes(load_hash_list())
+    return file_digests(REPO_ROOT, tree_files(REPO_ROOT), max_bytes)
+
+
+def test_tree_has_no_recorded_file_that_is_not_an_official_tool_file(tree_digests):
+    forbidden, _ = forbidden_hashes(load_hash_list())
+    assert recorded_hash_violations(tree_digests, forbidden, official_hashes()) == []
+
+
+def test_tree_has_no_official_archive_file_outside_the_tpc_directories(tree_digests):
+    assert official_misplaced_violations(tree_digests, official_hashes()) == []
 
 
 def test_tree_has_no_tool_file_outside_the_tools_directory():
     assert misplaced_tool_violations(tree_files(REPO_ROOT)) == []
+
+
+def test_tree_has_no_gitlink():
+    assert gitlink_entries(REPO_ROOT) == []
 
 
 def test_tree_has_no_unlisted_etl_sql():
@@ -138,14 +202,47 @@ def test_tree_has_no_unlisted_etl_sql():
 def test_guard_fails_on_a_recorded_hash(tmp_path):
     content = b"generator text taken from the project\n"
     name = write(tmp_path, "benchbox/core/tpcdi/copied.txt", content)
-    write(tmp_path, "benchbox/core/tpcdi/original.txt", b"different\n")
-    assert recorded_hash_violations(tmp_path, [name, "benchbox/core/tpcdi/original.txt"], index_of(content)) == [name]
+    other = write(tmp_path, "benchbox/core/tpcdi/original.txt", b"different\n")
+    digests = file_digests(tmp_path, [name, other], 1000)
+    forbidden = {hashlib.sha256(content).hexdigest()}
+    assert recorded_hash_violations(digests, forbidden, set()) == [name]
 
 
-def test_guard_allows_a_recorded_hash_in_the_tools_directory(tmp_path):
+def test_guard_allows_a_recorded_hash_in_the_tools_directory_only_when_official(tmp_path):
     content = b"official tool bytes\n"
     name = write(tmp_path, TOOLS_DIR + "DIGen.jar", content)
-    assert recorded_hash_violations(tmp_path, [name], index_of(content)) == []
+    digests = file_digests(tmp_path, [name], 1000)
+    forbidden = {hashlib.sha256(content).hexdigest()}
+    assert recorded_hash_violations(digests, forbidden, set(forbidden)) == []
+    assert recorded_hash_violations(digests, forbidden, set()) == [name]
+
+
+def test_guard_fails_on_a_recorded_hash_in_the_tools_directory_without_an_official_match(tmp_path):
+    content = b"generator code copied into the tools directory\n"
+    name = write(tmp_path, TOOLS_DIR + "tpcdi_gen/audit.py", content)
+    digests = file_digests(tmp_path, [name], 1000)
+    assert recorded_hash_violations(digests, {hashlib.sha256(content).hexdigest()}, {"0" * 64}) == [name]
+
+
+def test_guard_fails_on_an_official_archive_file_outside_the_tpc_directories(tmp_path):
+    content = b"bytes of a file of the official archive\n"
+    outside = write(tmp_path, "benchbox/core/tpcdi/renamed.bin", content)
+    in_tools = write(tmp_path, TOOLS_DIR + "renamed.bin", content)
+    in_sources = write(tmp_path, "_sources/tpc-di/renamed.bin", content)
+    digests = file_digests(tmp_path, [outside, in_tools, in_sources], 1000)
+    assert official_misplaced_violations(digests, {hashlib.sha256(content).hexdigest()}) == [outside]
+
+
+def test_guard_fails_on_a_gitlink(tmp_path):
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    commit = "1" * 40
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "update-index", "--add", "--cacheinfo", f"160000,{commit},vendor/tools"],
+        check=True,
+    )
+    write(tmp_path, "plain.txt", b"x\n")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "plain.txt"], check=True)
+    assert gitlink_entries(tmp_path) == ["vendor/tools"]
 
 
 @pytest.mark.parametrize(
@@ -156,6 +253,14 @@ def test_guard_allows_a_recorded_hash_in_the_tools_directory(tmp_path):
         "benchbox/core/tpcdi/generator/city.dict",
         "benchbox/_binaries/tpc-di/TPC-DI_Tools_v1.1.0.zip",
         "_sources/tpc-di/tpc-di-tool.zip",
+        "vendor/tpc_di_tools.zip",
+        "vendor/tpc-di.jar",
+        "vendor/tpc-di_src.jar",
+        "vendor/extlib/xercesImpl.jar",
+        "vendor/extlib/commons.lang3.time.jar",
+        "benchbox/core/tpcdi/config/tpc-di-generation.xml",
+        "benchbox/core/tpcdi/config/Account-Audit.xml",
+        "vendor/Constants.properties",
     ],
 )
 def test_guard_fails_on_a_forbidden_file_name_outside_the_tools_directory(name):
@@ -169,6 +274,7 @@ def test_guard_fails_on_a_forbidden_file_name_outside_the_tools_directory(name):
         TOOLS_DIR + "DIGen.jar",
         TOOLS_DIR + "city.dict",
         TOOLS_DIR + "TPC-DI_Tools_v1.1.0.zip",
+        TOOLS_DIR + "tpc-di.jar",
         "benchbox/core/tpcdi/schema.py",
         "benchbox/_binaries/tpc-h/dists.dss",
     ],
