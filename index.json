@@ -46791,12 +46791,17 @@
       "title": "TPC-DI step 1: withdraw the 33 published bundles on develop and refuse new ones"
     },
     "tpcdi-02-withdraw-bundles-published-results-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T16:43:59Z",
+        "generation": "0e4ce66ab3f4442486993ddef5e1686d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e"
+      },
       "needs": [
         "tpcdi-01-withdraw-bundles-develop-20261120"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI step 2: deletion-only pull request against published-results, then recut the ledger seed"
     },
     "tpcdi-03-site-rework-notice-20261120": {
