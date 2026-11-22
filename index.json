@@ -21506,6 +21506,15 @@
       "status": "open",
       "title": "Move the validators, staging and the public admission path to the rule"
     },
+    "crr-a4-database-metrics-and-cli-readers": {
+      "claim": null,
+      "needs": [
+        "crr-a2-writer-and-score-from-timings"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Move the results database, metrics and CLI readers to the rule"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],
