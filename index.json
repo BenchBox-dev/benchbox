@@ -36647,6 +36647,17 @@
       "status": "open",
       "title": "Run the Polars version matrix for SSB and ClickBench with three measured iterations"
     },
+    "pvm-p2-publish-ssb-clickbench": {
+      "claim": null,
+      "needs": [
+        "pvm-p1-run-ssb-clickbench",
+        "crr-a5-published-results-mirror",
+        "crr-b5-site-median-rows-version-view-and-trend"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Publish the Polars SSB and ClickBench results to the corpus by the maintainer path"
+    },
     "pvm-polars-2-version-matrix": {
       "claim": null,
       "needs": [
