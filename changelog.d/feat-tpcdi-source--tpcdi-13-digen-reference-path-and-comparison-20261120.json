@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Added the TPC-DI warehouse comparison harness, its expected-differences list and the procedure for the DuckDB implementation, none of which ships in the package"
+}
