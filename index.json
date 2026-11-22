@@ -13761,7 +13761,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-source",
-      "integration_head": "0aad9dc689ebe62db90702ee667916d5f79ae54c",
+      "integration_head": "878c5a4f24bfe1424dd11e514f0b7ce3e7431f76",
       "integration_log": [
         {
           "at": "2026-11-22T07:11:35Z",
@@ -14000,6 +14000,21 @@
           "op_id": "95b9e75b49c24e61a8f6c5877315f6d4",
           "previous_head": "5f76f868e5bba2d887c81f041123a2aa814627e4",
           "seq": 10
+        },
+        {
+          "at": "2026-11-22T21:31:29Z",
+          "changed_files": [
+            "changelog.d/feat-tpcdi-source--tpcdi-06-tpc-licence-files-and-appendix-sql-20261120.json",
+            "changelog.d/tpcdi-licence-files-and-appendix-sql.json"
+          ],
+          "head": "878c5a4f24bfe1424dd11e514f0b7ce3e7431f76",
+          "kind": "fix",
+          "op_id": "f7b3307f2f48486789dc170f621a30c5",
+          "previous_head": "0aad9dc689ebe62db90702ee667916d5f79ae54c",
+          "requires_acceptance": [
+            "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120"
+          ],
+          "seq": 11
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-source",
