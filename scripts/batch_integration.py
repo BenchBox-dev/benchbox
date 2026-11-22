@@ -14,6 +14,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -708,6 +709,42 @@ def _validate_verification_command(command: object) -> list[str]:
     return list(command)
 
 
+def _preflight_refusal(repo: Path, proc, started: float) -> str:
+    import preflight_receipt
+
+    path = None
+    receipt = None
+    try:
+        path = preflight_receipt.receipt_dir() / f"{_git(repo, 'rev-parse', 'HEAD^{tree}')}.json"
+        if path.stat().st_mtime >= started:
+            receipt = json.loads(path.read_text(encoding="utf-8"))
+    except (BatchError, OSError, ValueError):
+        receipt = None
+    steps = receipt.get("steps") if isinstance(receipt, dict) else None
+    if not isinstance(steps, list):
+        tail = (proc.stderr or proc.stdout).strip()[-400:]
+        where = f" at {path}" if path is not None else ""
+        return f"preflight failed (exit {proc.returncode}), no receipt for this tree{where}; output tail: {tail}"
+    failed = [
+        step
+        for step in steps
+        if isinstance(step, dict) and step.get("outcome") not in preflight_receipt.ACCEPTED_OUTCOMES
+    ]
+    names = ", ".join(f"{step.get('name')} (exit {step.get('exit_code')})" for step in failed)
+    test = next(
+        (
+            test_id
+            for step in failed
+            for test_id in preflight_receipt.failed_ids([str(line) for line in step.get("output_tail") or []])
+        ),
+        None,
+    )
+    detail = f"failed step {names}" if names else f"exit {proc.returncode} with no failed step recorded"
+    if test is not None:
+        detail += f"; first failing test {test}"
+    return f"preflight failed: {detail}; receipt {path}"
+
+
 def check_member(
     repo: Path,
     tests: list[str],
@@ -748,9 +785,10 @@ def check_member(
         if not (repo / test.split("::", 1)[0]).exists():
             raise BatchError(f"named test {test!r} does not exist in this worktree")
     preflight = [*(preflight_command or DEFAULT_PREFLIGHT_COMMAND), f"BASE={integration_head}"]
+    preflight_started = time.time()
     proc = _run(preflight, repo)
     if proc.returncode != 0:
-        raise BatchError(f"preflight failed: {(proc.stderr or proc.stdout).strip()[-400:]}")
+        raise BatchError(_preflight_refusal(repo, proc, preflight_started))
     proc = _run(["make", "-s", "changelog-check"], repo)
     if proc.returncode != 0:
         raise BatchError(f"changelog check failed: {(proc.stderr or proc.stdout).strip()[-400:]}")
