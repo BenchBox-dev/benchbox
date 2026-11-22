@@ -39973,6 +39973,13 @@
       "status": "done",
       "title": "Consolidate run-official into run --official flag"
     },
+    "run-official-timeout-config-usage-exit-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Make an invalid execution.timeout_seconds a usage error in run-official"
+    },
     "run-output-flag-does-not-place-result-files-20261117": {
       "claim": null,
       "needs": [],
