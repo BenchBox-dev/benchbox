@@ -27942,10 +27942,15 @@
       "title": "Generate seed corpus of benchmark results for the results explorer"
     },
     "generation-estimate-remeasure-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T17:20:13Z",
+        "generation": "3c0cfee72d144bda8d8dd96ea9ecce27",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Re-measure the generation estimate on an idle host and cover the missing cases"
     },
     "generator-validation-large-scales-20261111": {
