@@ -15,7 +15,8 @@ constraints:
 2. An existing helper or established pattern.
 3. A standard-library or native platform feature.
 4. A declared, direct dependency supported by the project.
-5. The smallest clear new implementation.
+5. The smallest clear new implementation, sized by the code left to maintain
+   rather than by the diff.
 
 Do not trade correctness, compatibility, validation, security, accessibility,
 or explicit requirements for an earlier option. When a simplification has a

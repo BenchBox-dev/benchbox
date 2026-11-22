@@ -691,6 +691,68 @@ def test_a_receipt_lacks_the_ownership_guard_when_docs_changed_and_is_accepted_w
     assert _verify(root, env, None, "--base-ref", "origin/develop").returncode == 0
 
 
+LINT_STEPS = [
+    ("lint-imports", "ok", 0),
+    ("typecheck", "ok", 0),
+    ("lint-markers", "ok", 0),
+    ("lint-markers-strategy", "ok", 0),
+]
+
+
+def _commit_nested(repo: Path, env: dict[str, str], name: str) -> None:
+    (repo / name).parent.mkdir(parents=True, exist_ok=True)
+    _commit(repo, env, name, "x = 1\n")
+
+
+def test_a_receipt_lacking_the_lint_steps_a_changed_test_module_requires_is_refused(repo, tmp_path: Path) -> None:
+    root, env = repo
+    _commit_nested(root, env, "tests/unit/test_new.py")
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    refused = _verify(root, env, None, "--base-ref", "origin/develop")
+    assert refused.returncode == 1
+    assert "lacks required step(s) lint-imports, typecheck, lint-markers, lint-markers-strategy" in refused.stderr
+    (tmp_path / "stage").unlink()
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0), *LINT_STEPS], None)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    assert _verify(root, env, None, "--base-ref", "origin/develop").returncode == 0
+
+
+def test_a_receipt_for_a_support_module_change_requires_the_strategy_but_not_collection(repo, tmp_path: Path) -> None:
+    root, env = repo
+    _commit_nested(root, env, "tests/conftest.py")
+    steps = [("changelog-check", "ok", 0), ("lint-imports", "ok", 0), ("typecheck", "ok", 0)]
+    stage, _ = _steps(root, env, tmp_path, steps, None)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    refused = _verify(root, env, None, "--base-ref", "origin/develop")
+    assert refused.returncode == 1
+    assert "lacks required step(s) lint-markers-strategy" in refused.stderr
+    (tmp_path / "stage").unlink()
+    stage, _ = _steps(root, env, tmp_path, [*steps, ("lint-markers-strategy", "ok", 0)], None)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    assert _verify(root, env, None, "--base-ref", "origin/develop").returncode == 0
+
+
+def test_a_receipt_for_a_deleted_python_file_requires_the_lint_steps_but_not_collection(repo, tmp_path: Path) -> None:
+    root, env = repo
+    _commit_nested(root, env, "tests/unit/test_gone.py")
+    _git(root, env, "update-ref", "refs/remotes/origin/develop", "HEAD")
+    _git(root, env, "rm", "-q", "tests/unit/test_gone.py")
+    _git(root, env, "commit", "-q", "-m", "delete")
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    refused = _verify(root, env, None, "--base-ref", "origin/develop")
+    assert refused.returncode == 1
+    assert "lacks required step(s) lint-imports, typecheck, lint-markers-strategy" in refused.stderr
+
+
+def test_a_receipt_for_a_non_python_change_needs_no_lint_steps(repo, tmp_path: Path) -> None:
+    root, env = repo
+    stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)
+    assert _finalize(root, env, stage, 0, None).returncode == 0
+    assert _verify(root, env, None, "--base-ref", "origin/develop").returncode == 0
+
+
 def test_a_receipt_written_before_guards_were_recorded_is_refused_with_its_own_message(repo, tmp_path: Path) -> None:
     root, env = repo
     stage, _ = _steps(root, env, tmp_path, [("changelog-check", "ok", 0)], None)

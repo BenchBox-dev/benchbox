@@ -13,7 +13,7 @@ import scripts.check_make_targets as make_targets
 
 pytestmark = [
     pytest.mark.unit,
-    pytest.mark.fast,
+    pytest.mark.medium,
     pytest.mark.skipif(os.name == "nt", reason="exercises shell stubs"),
 ]
 

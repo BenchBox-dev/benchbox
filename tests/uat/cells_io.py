@@ -53,7 +53,7 @@ def _render_cell_row(cell: CellResult, *, source_info: SourceInfo) -> str:
         "status": cell.status,
         "terminal_state": cell_terminal_state,
         "submit_terminal_state": cell.submit_terminal_state,
-        "timed_out": cell.status == "timed-out",
+        "timed_out": cell.status in {"timed-out", "hung"},
         "exit_code": cell.exit_code,
         "elapsed_s": cell.elapsed_s,
         "log_path": str(cell.log_path),

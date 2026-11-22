@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "ceiling_seconds": 1579,
+  "reference_calibration_best_seconds": 1.2084116550001909,
+  "reason": "The fast-tier baseline rebuilt from the first five pull-request runs after the slowest fast tests moved to the medium tier and the repository-scan tests were sped up sums to 1435.4 s over the collected fast tier at this reference; the ceiling is that total plus 10%, rounded up. It changes only by hand."
+}

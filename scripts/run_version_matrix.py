@@ -31,6 +31,8 @@ from scripts.version_matrix_specs import GIB, SPECS, Cell, MatrixSpec, round_ord
 
 RUNTIME_DISTRIBUTIONS = ("polars-runtime-32", "polars-runtime-64", "polars-runtime-compat")
 OOM_EXIT_CODES = (-9, 137)
+TIMEOUT_EXIT_CODE = 124
+OUTSIDE_KILL_MARGIN_S = 60
 CRITICAL_PRESSURE = 4
 CRITICAL_SAMPLES = 3
 
@@ -256,7 +258,7 @@ def classify_outcome(
 ) -> str:
     if safety_abort:
         return "resource-policy-exceeded"
-    if timed_out:
+    if timed_out or exit_code == TIMEOUT_EXIT_CODE:
         return "timeout"
     if exit_code in OOM_EXIT_CODES:
         return "oom-killed"
@@ -309,6 +311,10 @@ def prime_command(spec: MatrixSpec, benchmark: str, scale: float) -> list[str]:
     return [*base, *cell_options(spec, benchmark, scale, "default")]
 
 
+def outside_kill_after_s(spec: MatrixSpec) -> float | None:
+    return None if spec.cell_timeout_s is None else spec.cell_timeout_s + OUTSIDE_KILL_MARGIN_S
+
+
 def cell_command(spec: MatrixSpec, cell: Cell) -> list[str]:
     base = [
         "uv",
@@ -322,6 +328,8 @@ def cell_command(spec: MatrixSpec, cell: Cell) -> list[str]:
         "--iterations",
         str(spec.iterations),
     ]
+    if spec.cell_timeout_s is not None:
+        base += ["--timeout", str(int(spec.cell_timeout_s))]
     return [*base, *cell_options(spec, cell.benchmark, spec.scales[cell.benchmark], cell.engine)]
 
 
@@ -526,7 +534,7 @@ def monitor(
                 _kill_group(process)
                 break
         samples += 1
-        if elapsed_seconds(started) > spec.cell_timeout_s:
+        if (limit := outside_kill_after_s(spec)) is not None and elapsed_seconds(started) > limit:
             timed_out = True
             _kill_group(process)
             break

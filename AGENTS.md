@@ -78,6 +78,7 @@ A disposable clone (remote session, CI runner) declares `BENCHBOX_EPHEMERAL_CLON
 
 ## Tooling and implementation
 
+- `[MAINTAINER-001]` Work as this code's maintainer: you inherit every change. Within the task's scope, choose the change that leaves the touched code easier to maintain (reuse or extend what exists, delete what the change makes obsolete, keep the result small), even when a quicker patch would pass.
 - Prefer repository `make` targets and existing helpers.
 - Python tooling is `uv` only: `uv run -- ...`, `uv add`, `uv sync`, `uv lock`.
 - `[COMMENT-POLICY-001]` Follow the comment and docstring policy (`docs/internal/comment-policy.md`). Maintained first-party code has no explanatory comments or docstrings: clarify intent with structure, names, and types. Put public contracts in API docs, not source prose. Permitted directives, notices, and fixtures must be registered in `quality/comment-policy.json`. Verify with `make comment-policy-check`; resolve every finding. Enforcement is blocking.
@@ -126,6 +127,7 @@ controls, and cannot certify or unlock the changes that make it possible.
 - Timing durations use `benchbox.utils.clock.mono_time()` and `elapsed_seconds()`; wall clocks are event/audit only.
 - Adapter SDK imports stay lazy. New platforms follow https://benchbox.dev/docs/development/adding-new-platforms.html and pass `make platform-manifest-check`.
 - CREATE TABLE rewrites are registered under `benchbox.sql_compat.context.Phase.DDL_OPTIMIZE`; `make compat-inventory-check` covers their drift.
+- Query text reaches a platform only through `translate_sql_query`; translator gaps are named fork rewrites through `apply_rewrite`, never text replacement or per-platform SQL (`tests/unit/sql_compat/test_core_sql_text_rewrite.py` guards `benchbox/core`).
 - CLI dry runs must propagate explicit phases; deterministic runs use a seed.
 - Green focused/fast tests are not UAT or production certification.
 

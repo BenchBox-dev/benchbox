@@ -412,24 +412,6 @@ def _doc_readers(repo: Path, inert_paths: Any) -> dict[str, list[str]]:
     return readers
 
 
-def _reads_differ_from_index(
-    repo: Path,
-    path: str,
-    readers: dict[str, list[str]],
-    tracked: set[str],
-    basenames: dict[str, list[str]],
-    inert_paths: Any,
-) -> bool:
-    recorded = {doc for doc, tests in readers.items() if path in tests}
-    try:
-        source = (repo / path).read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return bool(recorded)
-    hits = inert_paths.to_tracked(inert_paths.file_candidates(source, str(repo / path), str(repo)), tracked, basenames)
-    hits.discard(path)
-    return recorded != {hit for hit in hits if inert_paths.is_machine_read_doc(hit)}
-
-
 def _reader_tests(repo: Path, paths: list[str], test_files: list[str]) -> set[str]:
     if not paths:
         return set()
@@ -440,14 +422,15 @@ def _reader_tests(repo: Path, paths: list[str], test_files: list[str]) -> set[st
     if not readers:
         return index_check
     selected = {test for path in paths for test in readers.get(path, ()) if test in known}
-    changed_tests = [path for path in paths if _is_test_file(path)]
-    stale = READERS_INDEX in paths
-    if not stale and changed_tests:
-        tracked = inert_paths.tracked_files(repo)
-        basenames = inert_paths.basename_index(tracked)
-        stale = any(
-            _reads_differ_from_index(repo, path, readers, tracked, basenames, inert_paths) for path in changed_tests
-        )
+    scanned = tuple(f"{folder}/" for folder in inert_paths.SCAN_DIRS)
+    stale = any(
+        path in (READERS_INDEX, ".github/inert-paths.txt", "Makefile")
+        or (path.endswith(".py") and path.startswith(scanned))
+        or (path.startswith(".github/workflows/") and path.endswith(".yml"))
+        or (path.startswith("make/") and path.endswith(".mk"))
+        or inert_paths.is_machine_read_doc(path)
+        for path in paths
+    )
     return selected | index_check if stale else selected
 
 
@@ -457,6 +440,41 @@ def guards(paths: list[str]) -> list[str]:
         selected.extend(REFERENCE_GUARDS)
     if any(path.startswith(DOCS_ROOT) or path in OWNERSHIP_PATHS for path in paths):
         selected.append(OWNERSHIP_GUARD)
+    return selected
+
+
+def _changed_python_including_deleted(paths: list[str]) -> list[str]:
+    return [path for path in paths if path.endswith(".py")]
+
+
+def _typechecked(path: str) -> bool:
+    return path.startswith(("benchbox/", "tests/")) and not path.startswith("tests/fixtures/")
+
+
+def _collectable_module(path: str) -> bool:
+    name = PurePosixPath(path).name
+    return path.startswith("tests/") and (name.startswith("test_") or name.endswith("_test.py"))
+
+
+def typecheck_files(repo: Path, paths: list[str]) -> list[str]:
+    return [path for path in changed_python(repo, paths) if _typechecked(path)]
+
+
+def marker_files(repo: Path, paths: list[str]) -> list[str]:
+    return [path for path in changed_python(repo, paths) if _collectable_module(path)]
+
+
+def lint_steps(repo: Path, paths: list[str]) -> list[str]:
+    python = _changed_python_including_deleted(paths)
+    selected: list[str] = []
+    if python:
+        selected.append("lint-imports")
+    if any(_typechecked(path) for path in python):
+        selected.append("typecheck")
+    if marker_files(repo, paths):
+        selected.append("lint-markers")
+    if any(path.startswith("tests/") for path in python):
+        selected.append("lint-markers-strategy")
     return selected
 
 
@@ -527,7 +545,9 @@ def linux_tests(repo: Path, paths: list[str]) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("kind", choices=("python", "tests", "linux", "guards"))
+    parser.add_argument(
+        "kind", choices=("python", "tests", "linux", "guards", "lint", "typecheck-files", "marker-files")
+    )
     parser.add_argument("--base-ref", default="origin/develop")
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     args = parser.parse_args(argv)
@@ -540,6 +560,12 @@ def main(argv: list[str] | None = None) -> int:
         selected = changed_python(args.repo_root, paths)
     elif args.kind == "guards":
         selected = guards(paths)
+    elif args.kind == "lint":
+        selected = lint_steps(args.repo_root, paths)
+    elif args.kind == "typecheck-files":
+        selected = typecheck_files(args.repo_root, paths)
+    elif args.kind == "marker-files":
+        selected = marker_files(args.repo_root, paths)
     elif args.kind == "linux":
         selected = linux_tests(args.repo_root, paths)
     else:

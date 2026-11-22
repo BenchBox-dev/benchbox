@@ -41,7 +41,7 @@ from benchbox.core.dataframe.query_resolution import (
 from benchbox.core.dataframe.query_validation import DataFrameQueryValidationSummary, validate_dataframe_query_results
 from benchbox.core.dataframe.schema_utils import get_benchmark_schema_columns
 from benchbox.core.errors import PlanCaptureError
-from benchbox.core.exceptions import ConfigurationError, InsufficientMemoryError
+from benchbox.core.exceptions import ConfigurationError, InsufficientMemoryError, RunTimeoutError
 from benchbox.core.execution_engine import DEFAULT_EXECUTION_ENGINE, ExecutionEngineHook
 from benchbox.core.results import (
     BenchmarkInfoInput,
@@ -65,6 +65,15 @@ from benchbox.platforms.base.result_capture import ResultCaptureMixin
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.duckdb_extensions import THIRD_PARTY_EXTENSION_OPTION
 from benchbox.utils.printing import quiet_console
+from benchbox.utils.run_deadline import (
+    current_run_deadline,
+    enter_run_phase,
+    failed_query_status,
+    mark_cut_short_query,
+    run_stop_requested,
+    share_partial_query_results,
+    stop_requested_before_query,
+)
 
 if TYPE_CHECKING:
     from benchbox.core.dataframe.query import DataFrameQuery
@@ -99,6 +108,12 @@ def _benchmark_defines_hook(benchmark: Any | None, hook_name: str) -> bool:
         or getattr(child, "_mock_side_effect", None) is not None
         or getattr(child, "_mock_wraps", None) is not None
     )
+
+
+def _record_power_stop(builder: Any) -> None:
+    deadline = current_run_deadline()
+    if deadline is not None and deadline.timeout is not None:
+        builder.set_power_stopped_at_time_limit()
 
 
 def _refresh_requested(benchmark_config: Any, benchmark: Any | None) -> bool:
@@ -416,6 +431,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             skip_data_loading = _benchmark_manages_dataframe_loading(benchmark)
 
             if phases.load and not skip_data_loading:
+                enter_run_phase("load")
                 load_start = mono_time()
                 try:
                     table_stats, per_table_stats = self._load_data_phase(
@@ -468,6 +484,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                 builder.set_phase_status("data_loading", "SKIPPED")
 
             if phases.execute:
+                enter_run_phase("execute")
                 query_results = self._execute_query_phases(
                     ctx=ctx,
                     builder=builder,
@@ -519,7 +536,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             builder.mark_completed()
             return builder.build()
 
-        except PlanCaptureError:
+        except (PlanCaptureError, RunTimeoutError):
             raise
         except Exception as e:
             logger.error(f"DataFrame benchmark failed: {e}")
@@ -898,6 +915,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                 run_options=run_options,
             )
             builder.set_phase_status("power_test", "COMPLETED")
+            _record_power_stop(builder)
             return results
 
         from benchbox.platforms.dataframe.tpch_full_spec import (
@@ -931,11 +949,12 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                     power_refresh=power_refresh,
                 )
                 builder.set_phase_status("power_test", "COMPLETED")
+                _record_power_stop(builder)
                 if plan is not None:
                     builder.set_power_refresh(plan.first_set, plan.power_functions)
                 if power_refresh is not None and power_refresh.error:
                     query_results.append(failed_power_row(power_refresh.error))
-            if phases.throughput:
+            if phases.throughput and not run_stop_requested():
                 console.print("\n[cyan]Running throughput phase...[/cyan]")
                 phase, throughput_rows = run_throughput(
                     self,
@@ -1037,6 +1056,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
         logger.info(f"Warmup iterations: {warmup_iterations}, Measurement iterations: {measurement_iterations}")
 
         query_results: list[dict[str, Any]] = list(skipped_results)
+        share_partial_query_results(query_results)
         executed_query_ids: list[str] = []
 
         self._run_warmup_iterations(
@@ -1192,6 +1212,8 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             console.print(f"[dim]Warmup {warmup_iter + 1}/{warmup_iterations} (stream {warmup_stream_id})[/dim]")
             with self._stream_parameter_scope(benchmark_config, warmup_stream_id):
                 for query in warmup_queries:
+                    if stop_requested_before_query(query.query_id):
+                        return
                     try:
                         result = self.execute_query(ctx, query)
                         result = dict(result)
@@ -1199,7 +1221,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                         logger.warning(f"Warmup query {query.query_id} failed: {e}")
                         result = {
                             "query_id": query.query_id,
-                            "status": "FAILED",
+                            "status": failed_query_status(),
                             "error": str(e),
                             "execution_time_seconds": 0.0,
                         }
@@ -1259,6 +1281,8 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
         )
 
         for iteration in range(measurement_iterations):
+            if run_stop_requested():
+                break
             measurement_stream_id = self._power_iteration_stream_id(benchmark_config, warmup_iterations + iteration)
             measurement_queries = self._filter_queries(
                 self._get_queries_for_benchmark(benchmark_config, benchmark_instance, stream_id=measurement_stream_id),
@@ -1277,6 +1301,8 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             try:
                 with self._stream_parameter_scope(benchmark_config, measurement_stream_id):
                     for i, query in enumerate(measurement_queries, 1):
+                        if stop_requested_before_query(query.query_id):
+                            break
                         if run_options and (run_options.verbose or run_options.very_verbose):
                             console.print(f"[blue]Executing query {i}/{total_queries}: {query.query_id}[/blue]")
 
@@ -1352,10 +1378,11 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                 logger.error(f"Query {query.query_id} failed: {e}")
                 raw_result = {
                     "query_id": query.query_id,
-                    "status": "FAILED",
+                    "status": failed_query_status(),
                     "error": str(e),
                     "execution_time_seconds": 0.0,
                 }
+            mark_cut_short_query(raw_result)
             raw_result["iteration"] = iteration
             raw_result["stream_id"] = stream_id
             raw_result["run_type"] = "measurement"

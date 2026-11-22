@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import dataclasses
 import importlib.util
 import io
 import json
@@ -261,6 +262,12 @@ def test_cell_observation_uses_the_recorded_failure_class():
     unclassified = dash.cell_observation(_row("a", "failed"), "1", "t")
     assert unclassified is not None and unclassified.outcome == "product"
     assert dash.cell_observation(_row("a", "skipped"), "1", "t") is None
+
+
+def test_cell_observation_counts_a_cell_the_runner_killed_as_attempted():
+    row = _row("a", "hung", failure_kind="infrastructure", failure_signature="timeout")
+    hung = dash.cell_observation(row, "1", "t")
+    assert hung is not None and hung.outcome == "infrastructure"
 
 
 def _evidence(run_id: int, day: int, rows: list[dict], **record):
@@ -530,7 +537,7 @@ def test_collect_and_render_report_end_to_end(monkeypatch):
     report = dash.render_report(dashboard)
     assert "| T1 fast tier job p95 (incl. setup) | <= 7 min | 5.0 min (n=1) | met | 1,108 s / 1,458 s" in report
     assert "| T2 PR required-check time-to-green p95 | <= 15 min | 8.0 min (n=1) | met | not recorded |" in report
-    assert "| Public Make targets | <= 90 | 88 | met | 216 targets |" in report
+    assert "| Public Make targets | <= 191 (ceiling) | 88 | met | 211 targets (same method) |" in report
     assert "| Red trunk incidents | 0 | 1 (1 red of 1 runs) | missed | 0 incidents |" in report
     assert "| Workflow files | no numeric target | 21 | reported | 46 files |" in report
     assert "## Nightly trunk UAT" in report
@@ -615,7 +622,14 @@ def test_report_with_no_data_says_so():
     assert "| Red trunk incidents | 0 | 0 (0 red of 0 runs) | no data | not recorded |" in report
     assert "No release tags were pushed in the window." in report
     assert "No trunk UAT runs in the window." in report
-    assert "| Public Make targets | <= 90 | 190 | missed | not recorded |" in report
+    assert "| Public Make targets | <= 191 (ceiling) | 190 | met | 211 targets (same method) |" in report
+
+
+@pytest.mark.parametrize(("count", "verdict"), [(190, "met"), (191, "met"), (192, "missed")])
+def test_make_targets_are_judged_against_the_191_ceiling(count: int, verdict: str) -> None:
+    dashboard = dataclasses.replace(_empty_dashboard(dash.Window(T0, T0 + timedelta(days=1)), REPO), make_targets=count)
+    report = dash.render_report(dashboard)
+    assert f"| Public Make targets | <= 191 (ceiling) | {count} | {verdict} | 211 targets (same method) |" in report
 
 
 class _FakeResponse:

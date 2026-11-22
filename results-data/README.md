@@ -74,7 +74,7 @@ throughput cohort (`tpch@sf1.0#throughput#3streams`, DuckDB only) has one
 identity and does not meet that floor. Covered families include the
 local set (amplab, clickbench, coffeeshop, h2odb, joinorder, read_primitives,
 ssb, tpcds, tpch, tpch_skew), the admitted datavault, flightdata, nyctaxi,
-tpcdi, tpcds_obt, and tpchavoc cohorts, and 150 live cloud bundles (BigQuery,
+tpcds_obt, and tpchavoc cohorts, and 150 live cloud bundles (BigQuery,
 Snowflake, Databricks; added 2026-10-02 and 2026-10-03) that also add
 metadata_primitives, write_primitives, transaction_primitives and tsbs_devops.
 See `CORPUS_NOTES.md`

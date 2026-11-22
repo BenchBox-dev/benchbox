@@ -27,12 +27,14 @@ file	scripts/fast_tier_calibration.py
 file	tests/duration_policy.py
 file	tests/__init__.py
 prefix	tests/fixtures/fast_tier_baseline/
+file	quality/fast-duration-ceiling.json
 file	benchbox/core/validation/engines.py
 file	benchbox/utils/data_validation.py
-file	benchbox/core/tpcdi/query_validation.py
 file	benchbox/core/tpchavoc/dataframe_equivalence.py
 file	benchbox/core/tpchavoc/equivalence.py
 file	benchbox/core/results/result_digest.py
+file	benchbox/core/results/tpcdi_audit.py
+file	benchbox/core/run_service.py
 file	_project/scripts/regenerate_correctness_gate_digests.py
 file	benchbox/core/dataframe/query_validation.py
 file	benchbox/core/datavault/validation_specs.yaml
@@ -192,6 +194,8 @@ file	benchbox/utils/binary_manifest.py
 file	scripts/bundled_binary_manifest.py
 file	scripts/verify_distribution_binaries.py
 file	quality/comment-policy.json
+file	quality/comment-policy-approved-external.json
+file	quality/comment-policy-approved-external-hashes.json
 file	quality/comment-policy-requirements.txt
 file	scripts/check_comment_policy.py
 file	scripts/check_comment_cleanup_scope.py
@@ -209,3 +213,6 @@ file	.gitattributes
 glob	*/.gitattributes
 file	tests/unit/scripts/test_review_provider_diversity.py
 file	tests/fixtures/review_provider_diversity/omp_catalog_windows.json
+file	tests/unit/core/tpcdi/test_provenance_guard.py
+file	_sources/tpc-di/databricks-tpc-di/FORBIDDEN_HASHES.json
+file	scripts/check_tpcdi_copy_guard.py

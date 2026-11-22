@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
@@ -197,8 +198,10 @@ def test_guard_resolves_the_joined_path_consumers(inert_scan: dict[str, list[str
     assert "_project/scripts/prompts/pr_review_followup.md" in refs["_project/scripts/pr_review_followups.py"]
 
 
-def test_checked_in_readers_match_the_rebuilt_index(inert_scan: dict[str, list[str]]) -> None:
-    assert json.loads(READERS_FILE.read_text(encoding="utf-8")) == inert.doc_reader_index(ROOT, inert_scan), (
+def test_checked_in_readers_match_the_rebuilt_index(
+    inert_scan_reads: tuple[dict[str, list[str]], ...],
+) -> None:
+    assert json.loads(READERS_FILE.read_text(encoding="utf-8")) == inert.doc_reader_index(ROOT, *inert_scan_reads), (
         "_project/inert-doc-readers.json is stale; regenerate it with "
         "`uv run -- python _project/scripts/inert_paths.py --regenerate-readers`"
     )
@@ -354,6 +357,101 @@ def test_scan_tree_resolves_references_in_a_tracked_repo(tmp_path: Path) -> None
 def test_reader_index_keeps_only_test_readers_of_machine_read_docs(tmp_path: Path) -> None:
     repo = _git_repo(tmp_path / "repo", READER_FILES)
     assert inert.doc_reader_index(repo) == {"AGENTS.md": ["tests/unit/test_reads.py"]}
+
+
+GLOB_READER_FILES = {
+    "docs/agent/one.md": "one\n",
+    "docs/agent/two.md": "two\n",
+    "docs/agent/nested/three.md": "three\n",
+    ".claude/commands/pr.md": "pr\n",
+    "rules/agent/one.md": "rule\n",
+    "AGENTS.md": "agents\n",
+    "scripts/audit.py": 'PATTERNS = ("docs/agent/*.md", ".claude/commands/*.md")\nEVERYTHING = "**/*"\n',
+    "scripts/export.py": 'RULE_PATHS = ("AGENTS.md", "rules/agent")\nTOP = "rules"\n',
+    "_project/scripts/loader.py": 'NAMES = ("AGENTS.md",)\nfrom pathlib import Path\nA = Path("AGENTS.md")\n',
+    "tests/unit/test_audit.py": "from scripts.audit import PATTERNS\n",
+    "tests/unit/test_export.py": "import export\n",
+    "tests/unit/test_loader.py": "import loader\n",
+    "tests/unit/test_unrelated.py": 'GLOB = "**/*.md"\n',
+    "scripts/wrapper.py": "from scripts.audit import PATTERNS\n",
+    "tests/unit/test_wrapper.py": "import wrapper\n",
+    "README.md": "readme\n",
+    "docs/README.md": "docs readme\n",
+    "scripts/version.py": 'from pathlib import Path\nREADME = Path("README.md")\n',
+    "tests/unit/test_version.py": "import version\n",
+    "tests/unit/test_text_scan.py": 'SCAN_GLOBS = ("scripts/*.py",)\n',
+    "tests/unit/test_routes.py": 'FILTERS = ("docs/**", "docs/agent/**/*.md")\n',
+}
+
+
+def test_reader_index_follows_globs_in_modules_a_test_imports(tmp_path: Path) -> None:
+    repo = _git_repo(tmp_path / "repo", GLOB_READER_FILES)
+    assert inert.doc_reader_index(repo) == {
+        ".claude/commands/pr.md": ["tests/unit/test_audit.py"],
+        "AGENTS.md": ["tests/unit/test_loader.py"],
+        "README.md": ["tests/unit/test_version.py"],
+        "docs/agent/one.md": ["tests/unit/test_audit.py"],
+        "docs/agent/two.md": ["tests/unit/test_audit.py"],
+    }
+
+
+def test_reader_index_ignores_globs_without_a_literal_first_segment(tmp_path: Path) -> None:
+    repo = _git_repo(tmp_path / "repo", GLOB_READER_FILES)
+    refs, reads, modules = inert.scan_tree_reads(repo)
+    assert "tests/unit/test_unrelated.py" not in refs | reads | modules
+    assert "tests/unit/test_routes.py" not in reads
+    assert reads["scripts/audit.py"] == [".claude/commands/pr.md", "docs/agent/one.md", "docs/agent/two.md"]
+    assert "scripts/export.py" not in reads
+    assert modules["tests/unit/test_audit.py"] == ["scripts/audit.py"]
+    assert "scripts/audit.py" not in refs
+
+
+def test_merge_authority_is_read_by_the_instruction_audit_test() -> None:
+    readers = inert.load_readers(ROOT)
+    assert "tests/unit/scripts/test_agent_instruction_audit.py" in readers["docs/agent/merge-authority.md"]
+    assert "tests/unit/scripts/test_agent_instruction_audit.py" in readers[".claude/commands/blind-spot.md"]
+
+
+DOCS_AGENT_MENTIONS_WITHOUT_READS = {
+    "scripts/remote_review.py": "exports the docs/agent directory from a review checkout as reviewer rules",
+    "scripts/worktree_lifecycle_metadata.py": "names docs/agent/handoffs.md in a refusal message",
+    "tests/conftest.py": "names docs/agent/heavy-work.md in the lock refusal message",
+    "tests/unit/cli/test_shipped_docs_urls.py": "uses docs/agent paths as link-checker sample input",
+    "tests/unit/scripts/test_coverage_test_selection.py": "writes docs/agent pages into a fixture repository",
+    "tests/unit/scripts/test_doc_reference_inventory.py": "uses docs/agent paths as reference-classifier sample input",
+    "tests/unit/scripts/test_preflight_targets.py": "writes a docs/agent glob into a fixture repository module",
+    "tests/unit/scripts/test_remote_closeout.py": "builds docs/agent pages in a fixture repository",
+}
+
+
+def test_every_docs_agent_mention_is_an_indexed_read_or_named_here(
+    inert_scan_reads: tuple[dict[str, list[str]], ...],
+) -> None:
+    refs, reads, modules = inert_scan_reads
+    mention = re.compile(r"docs/agent|[\"']docs[\"']\s*[/,]\s*[\"']agent[\"']")
+    tests = {source for source in refs.keys() | reads.keys() | modules.keys() if inert._is_test_file(source)}
+    reached = tests.union(*(modules.get(test, ()) for test in tests))
+    unindexed = []
+    unreached = []
+    for scan in inert.SCAN_DIRS:
+        for path in sorted((ROOT / scan).rglob("*.py")):
+            own = path.relative_to(ROOT).as_posix()
+            if own in DOCS_AGENT_MENTIONS_WITHOUT_READS or own == "tests/unit/scripts/test_inert_paths.py":
+                continue
+            if not mention.search(path.read_text(encoding="utf-8", errors="replace")):
+                continue
+            hits = set(refs.get(own, ())) | set(reads.get(own, ()))
+            if not any(hit.startswith("docs/agent/") for hit in hits):
+                unindexed.append(own)
+            elif own not in reached:
+                unreached.append(own)
+    assert not unindexed, (
+        "these files mention docs/agent but the reader index records no docs/agent read for them, so a "
+        f"docs/agent-only change would not select their tests: {unindexed}"
+    )
+    assert not unreached, (
+        f"these files read docs/agent but no test reaches them through imports or path references: {unreached}"
+    )
 
 
 def test_regenerate_readers_writes_the_index_and_load_readers_reads_it(tmp_path: Path) -> None:

@@ -607,6 +607,20 @@ def test_shadow_mode_records_would_escalate_reasons(repo: Path) -> None:
     assert result["reason"].startswith("shadow mode:")
 
 
+def test_reader_less_machine_read_document_is_not_reported_as_python(repo: Path) -> None:
+    map_sha = _head(repo)
+    _write(repo, "docs/agent/new-rule.md", "rule\n")
+    _commit_all(repo)
+    files = sel.changed_files(repo, map_sha)
+    result = sel.select_tests(repo, _mapping(repo, map_sha), files, map_sha)
+    reasons = result["would_escalate_reasons"]
+    assert (
+        "machine-read documents with no recorded reader test: docs/agent/new-rule.md"
+        " (regenerate _project/inert-doc-readers.json if a test reads them)"
+    ) in reasons
+    assert not any("Python code" in reason for reason in reasons)
+
+
 def test_shadow_off_restores_the_computed_selection(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sel, "SELECTION_SHADOW", False)
     map_sha = _head(repo)

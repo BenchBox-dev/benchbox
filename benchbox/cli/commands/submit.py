@@ -57,6 +57,7 @@ from benchbox.core.results.submit_classification import (
     classify_loaded_result,
 )
 from benchbox.core.results.subscale_policy import result_compliance_class
+from benchbox.core.results.tpcdi_audit import LEGACY_TPCDI_REFUSAL, legacy_tpcdi_note
 from benchbox.validation.bundle import (
     COMPANION_SUFFIXES,
     PLAN_TIERS,
@@ -357,6 +358,12 @@ def _unofficial_refusal_message(result: object) -> str:
     if name == "TPC-DS":
         message += "\n   See _sources/tpcds-subscale-contract.md for details."
     return message
+
+
+def _refuse_legacy_tpcdi_result(ctx: click.Context, result: object) -> None:
+    if legacy_tpcdi_note(result) is not None:
+        console.print(f"\n[red]❌ Submission refused: {LEGACY_TPCDI_REFUSAL}[/red]")
+        ctx.exit(1)
 
 
 def _refuse_non_submittable_result(ctx: click.Context, result: object, submit_state: SubmitTerminalState) -> None:
@@ -890,6 +897,8 @@ def submit(
         return
 
     submit_state = classify_loaded_result(result)
+
+    _refuse_legacy_tpcdi_result(ctx, result)
 
     if submit_state is SubmitTerminalState.unofficial:
         console.print(_unofficial_refusal_message(result))

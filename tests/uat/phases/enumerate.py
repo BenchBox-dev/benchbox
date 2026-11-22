@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+from benchbox.core.run_service import unavailable_benchmark_message
 from tests.uat.compatibility import CompatibilityRule, compatibility_rule_for
 from tests.uat.config import UATConfig
 from tests.uat.matrix import (
@@ -13,11 +14,14 @@ from tests.uat.matrix import (
     missing_platforms_from_include,
     resolve_benchmarks,
     resolve_platforms,
+    unavailable_benchmarks,
 )
 
 REGISTRY_PRUNE_STATUS = "pruned-registry"
 BENCHMARK_NOT_IN_REGISTRY_RULE_ID = "benchmark-not-in-registry"
 PLATFORM_NOT_IN_REGISTRY_RULE_ID = "platform-not-in-registry"
+BENCHMARK_UNAVAILABLE_RULE_ID = "benchmark-unavailable"
+UNAVAILABLE_PRUNE_STATUS = "blocked"
 
 
 @dataclass(frozen=True)
@@ -107,6 +111,19 @@ def enumerate_cells_with_pruning(
                 _registry_absent_rows(platform=platform, benchmark=missing_benchmark, requested=requested)
             )
 
+    unavailable_list = unavailable_benchmarks(
+        groups=config.benchmarks.groups if config.benchmarks.groups is not None else benchmark_groups_default,
+        include=config.benchmarks.include,
+        exclude=config.benchmarks.exclude,
+        benchmarks=benchmarks,
+    )
+    accounting_benchmarks.extend(unavailable_list)
+    for unavailable_benchmark in unavailable_list:
+        for platform in accounting_platforms:
+            compatibility_pruned.extend(
+                _unavailable_rows(platform=platform, benchmark=unavailable_benchmark, requested=requested)
+            )
+
     for missing_platform in missing_platforms:
         for benchmark in accounting_benchmarks:
             compatibility_pruned.extend(
@@ -169,6 +186,26 @@ def enumerate_cells_with_pruning(
             for scale in filtered:
                 cells.append(Cell(platform=platform, benchmark=benchmark, scale=scale))
     return EnumerationResult(cells=tuple(cells), compatibility_pruned=tuple(compatibility_pruned))
+
+
+def _unavailable_rows(
+    *,
+    platform: str,
+    benchmark: str,
+    requested: list[float],
+) -> list[CompatibilityPrunedCell]:
+    return [
+        CompatibilityPrunedCell(
+            platform=platform,
+            benchmark=benchmark,
+            scale=scale,
+            rule_id=BENCHMARK_UNAVAILABLE_RULE_ID,
+            status=UNAVAILABLE_PRUNE_STATUS,
+            reason=unavailable_benchmark_message(benchmark) or "",
+            evidence="benchbox.core.run_service.unavailable_benchmark_message",
+        )
+        for scale in requested
+    ]
 
 
 def _registry_absent_rows(

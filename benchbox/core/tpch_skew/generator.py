@@ -21,6 +21,7 @@ from benchbox.core.tpch_skew.distributions import (
     ZipfianDistribution,
 )
 from benchbox.utils.cloud_storage import normalize_output_dir
+from benchbox.utils.generation_marker import generation_in_progress
 from benchbox.utils.verbosity import VerbosityMixin, compute_verbosity
 
 if TYPE_CHECKING:
@@ -122,6 +123,8 @@ class TPCHSkewDataGenerator(VerbosityMixin):
         return skewed_tables
 
     def _check_existing_data(self) -> bool:
+        if generation_in_progress(self.output_dir):
+            return False
         from benchbox.utils.datagen_version import manifest_datagen_is_current
 
         expected_files = [

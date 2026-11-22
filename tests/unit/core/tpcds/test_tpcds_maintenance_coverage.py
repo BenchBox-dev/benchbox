@@ -42,6 +42,7 @@ RESULT_KEYS = {
     "success",
     "errors",
     "integrity_valid",
+    "stopped_at_time_limit",
 }
 
 

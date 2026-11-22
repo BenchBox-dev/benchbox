@@ -70,6 +70,10 @@ def _copy_slim_validator(repo_root: Path, slim_root: Path) -> None:
         repo_root / "benchbox" / "core" / "results" / "schema_policy.py",
         slim_root / "benchbox" / "core" / "results" / "schema_policy.py",
     )
+    shutil.copy2(
+        repo_root / "benchbox" / "core" / "results" / "subscale_policy.py",
+        slim_root / "benchbox" / "core" / "results" / "subscale_policy.py",
+    )
 
 
 @pytest.fixture

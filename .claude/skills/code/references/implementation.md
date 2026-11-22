@@ -4,6 +4,15 @@
 
 Apply the configured checks above and `shared-change-framework/SKILL.md`.
 
+When code must classify the meaning of free text (error messages, prose, user
+input) and a keyword or regex list would keep growing, use a typed judgment
+call such as TypeSafe Jev (the `typesafe-ai` skill covers the API), with a
+labelled calibration set kept as a test, a fixed threshold, recorded answers
+so tests run offline, a defined fallback when no key is set, and the user's
+approval before private data leaves the machine. Keep parsers, exact or
+numeric comparisons, and code that must be reproducible or run offline (such
+as benchmark paths) deterministic.
+
 ## Commit
 
 Apply `shared-change-framework/SKILL.md` §4 to the files changed in this

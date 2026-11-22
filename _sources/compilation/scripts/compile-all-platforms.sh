@@ -245,19 +245,21 @@ compile_tpcds_macos_cross() {
 
     make clean || true
 
-    make distcomp \
-        CC="clang $cross_flags" \
-        CFLAGS="-O2 -DMACOS -DMAXINT=INT_MAX -fcommon $cross_flags" \
-        LDFLAGS="$cross_flags" \
+    make mkheader distcomp \
+        CC="clang" \
+        CFLAGS="-O2 -DMACOS -DMAXINT=INT_MAX -fcommon" \
+        LDFLAGS="" \
         || {
-            log_error "TPC-DS distcomp cross-compilation failed for macOS ${target_arch}"
+            log_error "TPC-DS host tool compilation failed for macOS ${target_arch}"
             rm -rf "$build_dir"
             return 1
         }
 
+    ./mkheader column_list.txt
     ./distcomp -i tpcds.dst -o tpcds.idx
+    rm -f ./*.o
 
-    make dsdgen dsqgen \
+    make -o mkheader -o distcomp dsdgen dsqgen \
         CC="clang $cross_flags" \
         CFLAGS="-O2 -DMACOS -DMAXINT=INT_MAX -fcommon $cross_flags" \
         LDFLAGS="$cross_flags" \

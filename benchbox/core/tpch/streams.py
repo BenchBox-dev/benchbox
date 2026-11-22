@@ -16,6 +16,8 @@ import tempfile
 from pathlib import Path
 from typing import Any, ClassVar, Union
 
+from benchbox.core.exceptions import RunTimeoutError
+from benchbox.utils.run_deadline import current_run_deadline, run_child
 from benchbox.utils.verbosity import VerbosityMixin, compute_verbosity
 
 
@@ -107,8 +109,10 @@ class TPCHStreams(VerbosityMixin):
                 env["CFLAGS"] = '-O -DDBNAME=\\"dss\\" -DLINUX -DORACLE -DTPCH'
 
             cmd = ["make", "qgen", f"MACHINE={machine_flag}"]
-            result = subprocess.run(
+            result = run_child(
                 cmd,
+                tool="make qgen",
+                deadline=current_run_deadline(),
                 cwd=tools_build_dir,
                 env=env,
                 check=True,
@@ -167,7 +171,15 @@ class TPCHStreams(VerbosityMixin):
         ]
 
         try:
-            result = subprocess.run(cmd, cwd=work_dir, check=True, capture_output=True, text=True)
+            result = run_child(
+                cmd,
+                tool=f"qgen (stream {stream_id}, scale factor {self.scale_factor:g})",
+                deadline=current_run_deadline(),
+                cwd=work_dir,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
 
             self.log_verbose(f"qgen completed for stream {stream_id}")
             if result.stdout:
@@ -225,6 +237,8 @@ class TPCHStreams(VerbosityMixin):
 
             try:
                 qgen_exe = self._compile_qgen(work_dir)
+            except RunTimeoutError:
+                raise
             except Exception as e:
                 raise RuntimeError(
                     f"TPC-H streams generation requires qgen compilation, but it failed: {e}. "
@@ -238,6 +252,8 @@ class TPCHStreams(VerbosityMixin):
                 try:
                     stream_file = self._generate_stream_queries_qgen(stream_id, qgen_exe, work_dir)
                     stream_files.append(stream_file)
+                except RunTimeoutError:
+                    raise
                 except Exception as e:
                     self.logger.error("Error generating stream %s: %s", stream_id, e)
                     continue

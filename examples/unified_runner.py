@@ -42,7 +42,6 @@ from benchbox.utils.printing import (
 _BENCHMARK_NAMES = [
     "TPCH",
     "TPCDS",
-    "TPCDI",
     "SSB",
     "ClickBench",
     "H2ODB",

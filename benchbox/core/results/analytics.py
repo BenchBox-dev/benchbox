@@ -23,6 +23,7 @@ from benchbox.core.results.regression_policy import (
     classify_trend,
     percent_change,
 )
+from benchbox.core.results.tpcdi_audit import is_legacy_tpcdi_bundle
 from benchbox.validation.bundle import COMPANION_SUFFIXES
 
 logger = logging.getLogger(__name__)
@@ -140,6 +141,9 @@ def _load_regression_runs(
             with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
 
+            if is_legacy_tpcdi_bundle(data):
+                continue
+
             run_platform, benchmark_block, run_benchmark = _extract_run_identity(data)
 
             if not _matches_filters(run_platform, run_benchmark, platform, benchmark):
@@ -194,6 +198,8 @@ def _load_trend_data_point(
             data = json.load(f)
     except Exception as e:
         logger.warning("Could not parse result file %s (%s)", file_path.name, type(e).__name__)
+        return None
+    if is_legacy_tpcdi_bundle(data):
         return None
 
     run_platform = data.get("platform", {}).get("name", "unknown")
@@ -489,6 +495,9 @@ def aggregate_results(
         try:
             with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
+
+            if is_legacy_tpcdi_bundle(data):
+                continue
 
             run_platform, benchmark_block, run_benchmark = _extract_run_identity(data)
 

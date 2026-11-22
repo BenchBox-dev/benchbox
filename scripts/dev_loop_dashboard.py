@@ -70,20 +70,18 @@ RED_CONCLUSIONS = frozenset({"failure", "timed_out"})
 CLOSED_STATUSES = frozenset({"done", "dropped"})
 UAT_NIGHTLY_STREAK = 7
 WORKFLOW_PATH_PREFIX = ".github/workflows/"
-ATTEMPTED_STATUSES = frozenset({"passed", "failed", "timed-out"})
+ATTEMPTED_STATUSES = frozenset({"passed", "failed", "timed-out", "hung"})
 
 TARGET_T1_SECONDS = 7 * 60
 TARGET_T2_SECONDS = 15 * 60
 TARGET_RED_TRUNK = 0
 TARGET_FLAKE_RATE = 0.02
 TEXT_EDIT_DISPLAY_TITLE = "CI (text edit)"
-TARGET_MAKE_TARGETS = 90
 
 BASELINE_ROWS = {
     "fast_p95": "Fast-test CI job seconds (avg / p95)",
     "medium_p95": "Medium-test CI job seconds (avg / p95)",
     "red_trunk": "Develop-red incidents (last 30 days)",
-    "make_targets": "Makefile declared targets",
     "workflows": "Active GitHub Actions workflows",
     "first_pass": "First-pass required-lane green rate",
     "pr_cycle": "Median PR open->merge wall time",
@@ -730,10 +728,10 @@ def render_targets(dashboard: Dashboard) -> list[str]:
         ),
         (
             "Public Make targets",
-            "<= 90",
+            f"<= {check_make_targets.TARGET_CEILING} (ceiling)",
             str(dashboard.make_targets),
-            _verdict(float(dashboard.make_targets), TARGET_MAKE_TARGETS),
-            _baseline(dashboard, "make_targets"),
+            _verdict(float(dashboard.make_targets), check_make_targets.TARGET_CEILING),
+            f"{check_make_targets.SAME_METHOD_BASELINE} targets (same method)",
         ),
         (
             "Workflow files",
@@ -831,7 +829,9 @@ def render_report(dashboard: Dashboard) -> str:
         "- Job-based metrics (tier p95, job runner-hours, release lead time) read the job listing of up to"
         " `--max-job-runs` evenly sampled runs per workflow, so the table gives runs sampled next to runs.",
         "- Runs whose job listing GitHub kept refusing are left out of job-based metrics and counted above.",
-        "- Make targets use `scripts/check_make_targets.py`, the dlv2-84 counting method.",
+        "- Make targets use `scripts/check_make_targets.py`, the dlv2-84 counting method. The capability-preserving"
+        " consolidation decision replaced the original <= 90 goal with this ceiling; the baseline is the same"
+        " method re-run on the baseline commit (docs/internal/dev-loop-retirement-audit.md).",
         "",
     ]
     return "\n".join(out)

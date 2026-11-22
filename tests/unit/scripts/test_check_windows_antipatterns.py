@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -183,6 +184,50 @@ def test_check_tree_empty_directory(tmp_path: Path) -> None:
     violations, file_count = check_tree([tmp_path])
     assert violations == []
     assert file_count == 0
+
+
+_VIOLATION = "import os\nos.access('/tmp/x', os.X_OK)\n"
+
+
+def _git_repo(path: Path) -> None:
+    subprocess.run(["git", "init", "-q", str(path)], check=True)
+
+
+def test_check_tree_skips_gitignored_virtualenv(tmp_path: Path) -> None:
+    _git_repo(tmp_path)
+    (tmp_path / ".gitignore").write_text(".venv/\n")
+    (tmp_path / "ok.py").write_text("x = 1\n")
+    venv = tmp_path / "_project" / "scripts" / ".venv" / "lib"
+    venv.mkdir(parents=True)
+    (venv / "dep.py").write_text(_VIOLATION)
+    (tmp_path / ".venv").mkdir()
+    (tmp_path / ".venv" / "dep.py").write_text(_VIOLATION)
+    violations, file_count = check_tree([tmp_path], tmp_path)
+    assert violations == []
+    assert file_count == 1
+
+
+def test_check_tree_still_scans_tracked_files(tmp_path: Path) -> None:
+    _git_repo(tmp_path)
+    (tmp_path / ".gitignore").write_text(".venv/\n")
+    (tmp_path / ".venv").mkdir()
+    (tmp_path / ".venv" / "dep.py").write_text(_VIOLATION)
+    (tmp_path / "tracked.py").write_text(_VIOLATION)
+    subprocess.run(["git", "add", ".gitignore", "tracked.py"], cwd=tmp_path, check=True)
+    violations, file_count = check_tree([tmp_path], tmp_path)
+    assert [v.code for v in violations] == ["WA001"]
+    assert violations[0].file.name == "tracked.py"
+    assert file_count == 1
+
+
+def test_check_tree_scans_a_tracked_file_that_matches_gitignore(tmp_path: Path) -> None:
+    _git_repo(tmp_path)
+    (tmp_path / ".gitignore").write_text("kept/\n")
+    (tmp_path / "kept").mkdir()
+    (tmp_path / "kept" / "bad.py").write_text(_VIOLATION)
+    subprocess.run(["git", "add", "-f", "kept/bad.py"], cwd=tmp_path, check=True)
+    violations, _ = check_tree([tmp_path], tmp_path)
+    assert [v.code for v in violations] == ["WA001"]
 
 
 def _violation(root: Path, relative: str, code: str = "WA003") -> Violation:

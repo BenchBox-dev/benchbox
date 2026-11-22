@@ -31,6 +31,7 @@ from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.regression_policy import is_regression
 from benchbox.core.results.subscale_policy import result_compliance_class
+from benchbox.core.results.tpcdi_audit import audited_validation_status
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,12 @@ _STORED_TIMING_METHOD_SQL = (
     "AND json_extract(metadata_json, '$.timing_method') >= 1 "
     "THEN json_extract(metadata_json, '$.timing_method') ELSE 1 END"
 )
+
+
+def _benchmark_unavailable(benchmark: str) -> bool:
+    from benchbox.core.run_service import unavailable_benchmark_message
+
+    return unavailable_benchmark_message(benchmark) is not None
 
 
 def _validate_backup_table_name(table_name: str) -> str:
@@ -82,6 +89,11 @@ class StoredResult:
     config_hash: str
     metadata: dict[str, Any]
     compliance_class: str | None = None
+
+    def __post_init__(self) -> None:
+        self.validation_status = audited_validation_status(
+            (self.benchmark,), self.validation_status, (self.metadata or {}).get("validation_details")
+        )
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> StoredResult:
@@ -669,6 +681,8 @@ class ResultDatabase:
         fetch_mode: str | None = None,
         timing_method: int | None = None,
     ) -> list[PlatformRanking]:
+        if _benchmark_unavailable(benchmark):
+            return []
         config = config or RankingConfig()
 
         cutoff = datetime.now(timezone.utc)
@@ -878,6 +892,8 @@ class ResultDatabase:
         period_days: int = 30,
         variant: ExecutionVariant | None = None,
     ) -> list[PerformanceTrend]:
+        if _benchmark_unavailable(benchmark):
+            return []
         rows = self._variant_rows(platform, benchmark, scale_factor)
         if variant is None and rows:
             variant = rows[0][2]

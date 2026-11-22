@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "Test-only: subprocess tests prove a child tree that ignores SIGTERM is killed by run_text, RunDeadline.stop_children and the TPC-DS qualification worker kill, and that the run hard stop still exits within its limit plus 30 seconds"}

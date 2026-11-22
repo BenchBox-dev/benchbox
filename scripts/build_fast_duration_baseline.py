@@ -529,10 +529,7 @@ VERIFY_MODE = "block"
 
 def normalized_pr_samples(run_dir: Path, baseline: dict[str, object]) -> tuple[dict[str, float], float, float]:
     best, _metadata = read_calibration_best(run_dir)
-    reference = baseline.get("reference_calibration_best_seconds")
-    if isinstance(reference, bool) or not isinstance(reference, (int, float)) or reference <= 0:
-        raise BaselineError("baseline has no usable reference_calibration_best_seconds")
-    factor = float(reference) / best
+    factor = baseline_reference(baseline) / best
     samples = read_run_samples(run_dir)
     tests = {nodeid: _percentile([raw * factor for raw in values], 50) for nodeid, values in samples.items()}
     return tests, factor, best
@@ -556,6 +553,7 @@ def verify_durations(
     ratio_threshold: float = VERIFY_RATIO_THRESHOLD,
     delta_seconds: float = VERIFY_DELTA_SECONDS,
     new_test_allowance: float = VERIFY_NEW_TEST_ALLOWANCE_SECONDS,
+    ceiling_seconds: float | None = None,
 ) -> dict[str, object]:
     shared = sorted(set(baseline_tests) & set(pr_tests))
     new_ids = sorted(set(pr_tests) - set(baseline_tests))
@@ -571,8 +569,10 @@ def verify_durations(
     median_ratio = float(statistics.median(per_test)) if per_test else None
     coverage = len(shared) / len(baseline_tests) if baseline_tests else None
     slower = ratio is not None and ratio > 1 + ratio_threshold and delta > delta_seconds
+    projected_sum = baseline_sum + new_sum
+    over_ceiling = ceiling_seconds is not None and projected_sum > ceiling_seconds
     return {
-        "verdict": "would-block" if slower else ("pass" if ratio is not None else "neutral"),
+        "verdict": "would-block" if slower or over_ceiling else ("pass" if ratio is not None else "neutral"),
         **(
             {}
             if ratio is not None
@@ -594,6 +594,10 @@ def verify_durations(
         "coverage_warning": coverage is not None and coverage < GATE_COVERAGE_MINIMUM,
         "ratio_threshold": ratio_threshold,
         "delta_threshold_seconds": delta_seconds,
+        "ratio_rule_fired": slower,
+        "projected_sum_seconds": projected_sum,
+        "ceiling_seconds": ceiling_seconds,
+        "over_ceiling": over_ceiling,
     }
 
 
@@ -640,17 +644,58 @@ def measurement_note(report: dict[str, object]) -> str | None:
     return f"Timings were measured in this attempt ({where})."
 
 
-def verify_run(baseline_dir: Path, run_dir: Path) -> dict[str, object]:
+def _positive_number(payload: dict[str, object], key: str, path: Path) -> float:
+    value = payload.get(key)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise BaselineError(f"ceiling file {path} must contain a numeric {key}")
+    number = float(value)
+    if not math.isfinite(number) or number <= 0:
+        raise BaselineError(f"ceiling file {path} must contain a finite positive {key}")
+    return number
+
+
+def read_ceiling(path: Path) -> tuple[float, float]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise BaselineError(f"missing or unreadable ceiling file {path}: {exc}") from exc
+    if not isinstance(payload, dict) or payload.get("schema") != 1 or isinstance(payload.get("schema"), bool):
+        raise BaselineError(f"ceiling file {path} must be an object with schema 1")
+    ceiling = _positive_number(payload, "ceiling_seconds", path)
+    reference = _positive_number(payload, "reference_calibration_best_seconds", path)
+    reason = payload.get("reason")
+    if not isinstance(reason, str) or not reason.strip():
+        raise BaselineError(f"ceiling file {path} must contain a non-empty reason")
+    return ceiling, reference
+
+
+def baseline_reference(baseline: dict[str, object]) -> float:
+    reference = baseline.get("reference_calibration_best_seconds")
+    if isinstance(reference, bool) or not isinstance(reference, (int, float)) or reference <= 0:
+        raise BaselineError("baseline has no usable reference_calibration_best_seconds")
+    return float(reference)
+
+
+def ceiling_in_baseline_scale(path: Path, baseline: dict[str, object]) -> float:
+    ceiling, ceiling_reference = read_ceiling(path)
+    return ceiling * baseline_reference(baseline) / ceiling_reference
+
+
+def verify_run(baseline_dir: Path, run_dir: Path, ceiling_path: Path) -> dict[str, object]:
     try:
         baseline = read_sharded_baseline(baseline_dir)
         baseline_tests = baseline_tests_map(baseline)
     except BaselineError as exc:
         return {"verdict": "rejected", "reason": f"no usable committed baseline: {exc}"}
     try:
+        ceiling = ceiling_in_baseline_scale(ceiling_path, baseline)
+    except BaselineError as exc:
+        return {"verdict": "rejected", "reason": f"no usable fast-duration ceiling: {exc}"}
+    try:
         pr_tests, factor, best = normalized_pr_samples(run_dir, baseline)
     except BaselineError as exc:
         return {"verdict": "rejected", "reason": str(exc)}
-    report = verify_durations(baseline_tests, pr_tests)
+    report = verify_durations(baseline_tests, pr_tests, ceiling_seconds=ceiling)
     report["speed_factor"] = factor
     report["calibration_best_seconds"] = best
     report["collection_max_seconds"] = read_collection_max(run_dir)
@@ -684,6 +729,9 @@ def verify_markdown(report: dict[str, object], *, mode: str | None = None) -> st
         f"| New tests | {report['new_test_count']} ({fmt(report['new_test_seconds'], '.1f')} s, "
         f"{fmt(report['new_test_excess_seconds'], '.1f')} s over allowance) |",
         f"| Delta | {fmt(report['delta_seconds'], '+.1f')} s |",
+        f"| Projected fast-tier total (baseline for shared tests plus new tests) | "
+        f"{fmt(report['projected_sum_seconds'], '.1f')} s |",
+        f"| Absolute ceiling | {fmt(report['ceiling_seconds'], '.1f')} s |",
         f"| Summed-time ratio | {fmt(report['sum_ratio'], '.3f')} |",
         f"| Median per-test ratio | {fmt(report['median_test_ratio'], '.3f')} |",
         f"| Coverage of baseline ids | {fmt(report['coverage'], '.1%')} |",
@@ -691,16 +739,12 @@ def verify_markdown(report: dict[str, object], *, mode: str | None = None) -> st
         f"| Pytest collection time (max) | {fmt(report['collection_max_seconds'], '.1f')} s |",
         "",
     ]
-    if effective_mode == "block":
-        lines.append(
-            f"Blocks when the ratio exceeds {1 + float(report['ratio_threshold']):.2f} and the delta exceeds "
-            f"{float(report['delta_threshold_seconds']):.0f} s (provisional thresholds; job wall time is not a metric)."
-        )
-    else:
-        lines.append(
-            f"Would block when the ratio exceeds {1 + float(report['ratio_threshold']):.2f} and the delta exceeds "
-            f"{float(report['delta_threshold_seconds']):.0f} s (provisional thresholds; job wall time is not a metric)."
-        )
+    verb = "Blocks" if effective_mode == "block" else "Would block"
+    lines.append(
+        f"{verb} when the ratio exceeds {1 + float(report['ratio_threshold']):.2f} and the delta exceeds "
+        f"{float(report['delta_threshold_seconds']):.0f} s (provisional thresholds; job wall time is not a metric), "
+        f"or when the projected total exceeds the ceiling of {fmt(report['ceiling_seconds'], '.1f')} s."
+    )
     if report["coverage_warning"]:
         lines.append(f"Warning: coverage is under {GATE_COVERAGE_MINIMUM:.0%} of baseline ids.")
     if report["new_test_count"]:
@@ -714,7 +758,7 @@ def verify_command(args: argparse.Namespace) -> int:
     mode = getattr(args, "mode", VERIFY_MODE)
     baseline_path = Path(args.baseline)
     run_path = Path(args.run_dir)
-    report = verify_run(baseline_path, run_path)
+    report = verify_run(baseline_path, run_path, Path(args.ceiling))
     attach_measurement(report, run_path, getattr(args, "run_id", None), getattr(args, "run_attempt", None))
     report["mode"] = mode
     text = verify_markdown(report, mode=mode)
@@ -727,10 +771,17 @@ def verify_command(args: argparse.Namespace) -> int:
     verdict = report["verdict"]
     if verdict == "would-block":
         if mode == "block":
-            ratio_str = f"{report['sum_ratio']:.3f}" if isinstance(report.get("sum_ratio"), (int, float)) else "n/a"
-            delta_str = (
-                f"{report['delta_seconds']:+.1f}" if isinstance(report.get("delta_seconds"), (int, float)) else "n/a"
-            )
+            reasons = []
+            if report.get("over_ceiling"):
+                reasons.append(
+                    f"projected total {float(report['projected_sum_seconds']):.1f} s > "
+                    f"ceiling {float(report['ceiling_seconds']):.1f} s"
+                )
+            if report.get("ratio_rule_fired"):
+                reasons.append(
+                    f"summed ratio {float(report['sum_ratio']):.3f} > {1 + float(report['ratio_threshold']):.2f} and "
+                    f"delta {float(report['delta_seconds']):+.1f} s > {float(report['delta_threshold_seconds']):.0f} s"
+                )
             rerun_hint = (
                 " The timings came from an earlier attempt and were re-read, not re-measured: re-run the whole "
                 "workflow (not only this job or the failed jobs) to re-measure."
@@ -738,9 +789,8 @@ def verify_command(args: argparse.Namespace) -> int:
                 else ""
             )
             print(
-                f"::error title=verify-fast-duration::fast-tier time exceeded the duration gate thresholds "
-                f"(summed ratio {ratio_str} > {1 + float(report['ratio_threshold']):.2f}, "
-                f"delta {delta_str} s > {float(report['delta_threshold_seconds']):.0f} s).{rerun_hint}"
+                f"::error title=verify-fast-duration::fast-tier time exceeded the duration gate "
+                f"({'; '.join(reasons)}).{rerun_hint}"
             )
             return 1
         print(
@@ -760,6 +810,78 @@ def verify_command(args: argparse.Namespace) -> int:
         return 1
     print(f"::warning title=verify-fast-duration::{incomplete}")
     return 0
+
+
+def file_sums(tests: dict[str, float], ids: set[str]) -> dict[str, float]:
+    sums: dict[str, float] = {}
+    for nodeid in ids:
+        if nodeid in tests:
+            path = nodeid.split("::", 1)[0]
+            sums[path] = sums.get(path, 0.0) + tests[nodeid]
+    return sums
+
+
+def ceiling_growth(
+    current: dict[str, float], previous: dict[str, float], ids: set[str], limit: int = 15
+) -> list[dict[str, object]]:
+    now = file_sums(current, ids)
+    before = file_sums(previous, ids)
+    rows = [
+        {
+            "file": path,
+            "previous_seconds": before.get(path, 0.0),
+            "current_seconds": total,
+            "growth_seconds": total - before.get(path, 0.0),
+        }
+        for path, total in now.items()
+    ]
+    rows.sort(key=lambda row: (-float(row["growth_seconds"]), str(row["file"])))
+    return rows[:limit]
+
+
+def ceiling_markdown(report: dict[str, object]) -> str:
+    state = "over" if report["over"] else "within"
+    lines = [
+        f"The refreshed fast-tier baseline sums to {float(report['total']):.1f} s over the currently collected "
+        f"tests, {state} the ceiling of {float(report['ceiling']):.1f} s.",
+        "",
+    ]
+    growth = report.get("top_growth_files")
+    if isinstance(growth, list):
+        lines += [
+            "Top test files by growth against the previous baseline:",
+            "",
+            "| File | Previous | Refreshed | Growth |",
+            "| --- | --- | --- | --- |",
+        ]
+        for row in growth:
+            lines.append(
+                f"| `{row['file']}` | {row['previous_seconds']:.1f} s | {row['current_seconds']:.1f} s | "
+                f"{row['growth_seconds']:+.1f} s |"
+            )
+    return "\n".join(lines) + "\n"
+
+
+def ceiling_check_command(args: argparse.Namespace) -> int:
+    current_baseline = read_sharded_baseline(Path(args.baseline))
+    current = baseline_tests_map(current_baseline)
+    collected = read_collected_ids(Path(args.collected_ids))
+    ceiling = ceiling_in_baseline_scale(Path(args.ceiling), current_baseline)
+    total = float(sum(current[nodeid] for nodeid in collected if nodeid in current))
+    over = total > ceiling
+    report: dict[str, object] = {"total": total, "ceiling": ceiling, "over": over}
+    if args.previous:
+        previous_baseline = read_sharded_baseline(Path(args.previous))
+        scale = baseline_reference(current_baseline) / baseline_reference(previous_baseline)
+        previous = {nodeid: value * scale for nodeid, value in baseline_tests_map(previous_baseline).items()}
+        report["top_growth_files"] = ceiling_growth(current, previous, collected)
+    if args.report_out:
+        Path(args.report_out).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    text = ceiling_markdown(report)
+    if args.markdown_out:
+        Path(args.markdown_out).write_text(text, encoding="utf-8")
+    print(text)
+    return 3 if over else 0
 
 
 def build_command(args: argparse.Namespace) -> int:
@@ -837,12 +959,21 @@ def main(argv: list[str] | None = None) -> int:
     verify_parser = subparsers.add_parser("verify", help="Report a PR fast-tier run against the committed baseline.")
     verify_parser.add_argument("--baseline", required=True)
     verify_parser.add_argument("--run-dir", required=True)
+    verify_parser.add_argument("--ceiling", default="quality/fast-duration-ceiling.json")
     verify_parser.add_argument("--summary", default=None)
     verify_parser.add_argument("--report-out", default=None)
     verify_parser.add_argument("--run-id", default=None)
     verify_parser.add_argument("--run-attempt", default=None)
     verify_parser.add_argument("--mode", choices=["report", "block"], default=VERIFY_MODE)
     verify_parser.set_defaults(handler=verify_command)
+    ceiling_parser = subparsers.add_parser("ceiling-check", help="Check a baseline against the absolute ceiling.")
+    ceiling_parser.add_argument("--baseline", required=True)
+    ceiling_parser.add_argument("--collected-ids", required=True)
+    ceiling_parser.add_argument("--ceiling", required=True)
+    ceiling_parser.add_argument("--previous", default=None)
+    ceiling_parser.add_argument("--report-out", default=None)
+    ceiling_parser.add_argument("--markdown-out", default=None)
+    ceiling_parser.set_defaults(handler=ceiling_check_command)
     args = parser.parse_args(argv)
     try:
         return int(args.handler(args))

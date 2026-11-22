@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "TPC-DI is not runnable yet; its column-type rules move to the schema-emit phase and the schema code takes its type choices from translate_ddl's type_map, with no change to the generated DDL"}

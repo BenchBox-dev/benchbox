@@ -10,12 +10,12 @@ import time
 from dataclasses import dataclass
 from typing import Any, Mapping
 
+from benchbox.utils.process_group import kill_process_group
 from benchbox.utils.process_tree import tree_footprint_bytes
 
 EXIT_TIMEOUT = 124
 EXIT_MEMORY_LIMIT = 137
 
-_KILL_GRACE_S = 0.2
 _REAP_TIMEOUT_S = 1.0
 _MEMORY_POLL_S = 0.25
 
@@ -101,15 +101,16 @@ def run_with_timeout(
     except (subprocess.TimeoutExpired, _MemoryLimitExceeded) as exc:
         if proc is None:
             raise
-        _kill_process_group(proc)
+        kill_process_group(proc)
         try:
             out, err = proc.communicate(timeout=_REAP_TIMEOUT_S)
         except subprocess.TimeoutExpired:
             _reap_in_background(proc)
             out, err = None, None
         memory_exceeded = isinstance(exc, _MemoryLimitExceeded)
+        killed_exit_code = proc.returncode if proc.returncode is not None else -int(getattr(signal, "SIGKILL", 9))
         return TimeoutResult(
-            exit_code=EXIT_MEMORY_LIMIT if memory_exceeded else EXIT_TIMEOUT,
+            exit_code=EXIT_MEMORY_LIMIT if memory_exceeded else killed_exit_code,
             timed_out=not memory_exceeded,
             elapsed_s=time.monotonic() - start,
             stdout=out,
@@ -125,7 +126,7 @@ def run_with_timeout(
 
 def _kill_and_reap_process_group(proc: subprocess.Popen) -> None:
     try:
-        _kill_process_group(proc)
+        kill_process_group(proc)
     except BaseException:
         pass
 
@@ -150,23 +151,3 @@ def _reap_in_background(proc: subprocess.Popen) -> None:
 
     target = proc.wait if sys.platform == "win32" else reap
     threading.Thread(target=target, name=f"reap-{proc.pid}", daemon=True).start()
-
-
-def _kill_process_group(proc: subprocess.Popen) -> None:
-    if not hasattr(os, "killpg"):
-        proc.kill()
-        return
-    try:
-        if not _killpg(proc.pid, signal.SIGTERM):
-            return
-        time.sleep(_KILL_GRACE_S)
-    finally:
-        _killpg(proc.pid, signal.SIGKILL)
-
-
-def _killpg(pgid: int, sig: int) -> bool:
-    try:
-        os.killpg(pgid, sig)
-    except (ProcessLookupError, PermissionError):
-        return False
-    return True

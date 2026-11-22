@@ -273,14 +273,28 @@ def test_delete_cluster_calls_client() -> None:
     operation.result.assert_called_once()
 
 
-def test_delete_cluster_logs_warning_on_error() -> None:
+def test_delete_cluster_raises_and_keeps_the_flag_on_error() -> None:
     adapter = _adapter()
     adapter._cluster_created_by_us = True
     client = MagicMock()
     client.delete_cluster.side_effect = RuntimeError("forbidden")
 
-    with patch.object(adapter, "_get_cluster_client", return_value=client):
+    with (
+        patch.object(adapter, "_get_cluster_client", return_value=client),
+        pytest.raises(RuntimeError, match="forbidden"),
+    ):
         adapter._delete_cluster()
+
+    assert adapter._cluster_created_by_us is True
+
+
+def test_close_logs_a_failed_cluster_delete_instead_of_raising() -> None:
+    adapter = _adapter()
+    adapter._cluster_created_by_us = True
+    adapter.create_ephemeral_cluster = True
+
+    with patch.object(adapter, "_delete_cluster", side_effect=RuntimeError("forbidden")):
+        adapter.close()
 
 
 def test_delete_cluster_skips_when_not_created_by_us() -> None:

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import json
-import shutil
 from pathlib import Path
 
 import duckdb
@@ -13,16 +12,15 @@ from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
-REPO_BUNDLES = Path(__file__).resolve().parents[4] / "results-data" / "bundles"
-SCALE_CORRECTION = "Generated before the TPC-DI scale correction; the data is about ten times the specification's SF1."
-SIX_TPCDI_SF1_SIDECARS = [
-    "tpcdi_sf1_bigquery_sql_20260920_064220_bc5850d1",
-    "tpcdi_sf1_clickhouse_local_sql_20261028_140913_30a5c9d1",
-    "tpcdi_sf1_databricks_sql_20261003_201821_dbfb95fb",
-    "tpcdi_sf1_datafusion_sql_20261028_100615_ffe633e9",
-    "tpcdi_sf1_duckdb_sql_20260826_162542_1eb31887",
-    "tpcdi_sf1_snowflake_sql_20261003_134837_b45dfad3",
-]
+SCALE_CORRECTION = "Generated before a data generator correction; the data is about ten times the specification's SF1."
+KNOWN_DEFECT_PLATFORMS = {
+    "defective_duckdb": "duckdb",
+    "defective_datafusion": "datafusion",
+    "defective_clickhouse_local": "clickhouse-local",
+    "defective_sqlite": "sqlite",
+    "defective_polars": "polars-df",
+    "defective_postgresql": "postgresql",
+}
 
 
 def _bundle(name: str, *, environment: dict, compute: dict | None = None, platform: str = "duckdb") -> dict:
@@ -140,9 +138,18 @@ def test_two_cpu_models_in_one_tier_share_a_group_and_a_faster_tier_splits(tmp_p
 def test_published_sidecars_carry_the_known_defect_reason_into_the_read_model(tmp_path: Path) -> None:
     bundles = tmp_path / "data" / "bundles"
     bundles.mkdir(parents=True)
-    for stem in SIX_TPCDI_SF1_SIDECARS:
-        for suffix in (".json", ".manifest.json"):
-            shutil.copy(REPO_BUNDLES / f"{stem}{suffix}", bundles / f"{stem}{suffix}")
+    environment = {"os": "Linux 6.8", "arch": "x86_64", "cpu_model": "AMD EPYC 7763 64-Core Processor", "cpu_count": 4}
+    for name, platform in KNOWN_DEFECT_PLATFORMS.items():
+        sidecar = {
+            "bundle_file": f"{name}.json",
+            "funding": "unspecified",
+            "manifest_version": "1.0",
+            "result_source": "internal",
+            "submitted_by": "maintainer",
+            "known_defects": ["superseded-data-generator"],
+            "known_defect_reason": SCALE_CORRECTION,
+        }
+        _write(bundles, name, _bundle(name, environment=environment, platform=platform), sidecar)
     out = tmp_path / "out"
 
     ExplorerPipeline().run(tmp_path / "data", out)
@@ -151,7 +158,7 @@ def test_published_sidecars_carry_the_known_defect_reason_into_the_read_model(tm
         results = con.execute("SELECT known_defect_reason, ranking_exclusion_reason FROM results").fetchall()
         detail = con.execute("SELECT DISTINCT known_defect_reason FROM result_detail_metrics").fetchall()
 
-    assert len(results) == 6
+    assert len(results) == len(KNOWN_DEFECT_PLATFORMS)
     assert {row[0] for row in results} == {SCALE_CORRECTION}
     assert {row[1] for row in results} == {"known_defective_data"}
     assert detail == [(SCALE_CORRECTION,)]

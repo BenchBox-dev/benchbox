@@ -96,3 +96,20 @@ def test_fixed_benchmark_rejects_other_values(server) -> None:
 
     assert response["error"] is True
     assert json.dumps(response).count("joinorder accepts scale_factor") >= 1
+
+
+@pytest.mark.parametrize("benchmark_id", ["tpcds", "tpcds_obt"])
+@pytest.mark.parametrize("scale_factor", [3001, 10000, 100000])
+def test_tpcds_scale_up_to_100000_is_accepted(server, benchmark_id, scale_factor) -> None:
+    response = _run(server, benchmark=benchmark_id, scale_factor=scale_factor, validate_only=True)
+
+    assert not response.get("error")
+    assert response.get("valid", True) is True
+
+
+@pytest.mark.parametrize("benchmark_id", ["tpcds", "tpcds_obt"])
+def test_tpcds_scale_above_100000_is_rejected(server, benchmark_id) -> None:
+    response = _run(server, benchmark=benchmark_id, scale_factor=100001, dry_run=True)
+
+    assert response["error"] is True
+    assert "100000" in response["message"]

@@ -59,6 +59,23 @@ uv run -- python -m pytest tests/uat -q -m "fast or slow"
 
 The first command runs only the fast tests, which is the default for `make test-fast`. The second runs all tests, including the slow-marked replay assertion.
 
+## Cell time limits
+
+`benchbox run` and `benchbox run-official` cells pass `--timeout <cell limit>` (`execute.per_cell_timeout_s`), so a slow
+cell is stopped by BenchBox itself: it exits 124 and keeps a result bundle marked `timed_out`. The runner kills the
+process group from outside only at the cell limit plus 60 seconds (`runner.OUTSIDE_KILL_MARGIN_S`). The diagnostic
+re-run gets the same treatment with its own 180-second limit.
+
+| Cell status | Meaning |
+| --- | --- |
+| `timed-out` | The product stopped the cell at its limit and exited 124. |
+| `hung` | The runner had to kill the cell from outside, whatever the exit code (a real signal exit code, never a synthetic 124). |
+
+A `hung` cell counts everywhere a `timed-out` cell counts: the attempted and timed-out totals, the `timeout` terminal state,
+the single infrastructure retry and the retry-evidence reuse check. The cell log marks them `# UAT_TIMEOUT` and
+`# UAT_HUNG`. `scripts/run_version_matrix.py` passes the same `--timeout` and kills from outside at the limit plus 60
+seconds.
+
 ## Matrix And Connection Sources Of Truth
 
 `tests/uat/matrix.py` is the framework-owned source of truth for UAT

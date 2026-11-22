@@ -17,6 +17,7 @@ from benchbox.experimental.load_testing.executor import (
     StreamResult,
 )
 from benchbox.experimental.load_testing.patterns import SteadyPattern, StepPattern
+from benchbox.utils.run_deadline import RunDeadline, active_run_deadline
 
 pytestmark = [
     pytest.mark.unit,
@@ -397,7 +398,9 @@ class TestExecutorBoundedWaitsAndClocks:
         assert result.total_streams_succeeded == 0
         assert any("abandoned" in (stream.error or "") for stream in result.streams)
 
-    def test_query_over_the_timeout_is_recorded_as_failed(self, mock_connection_factory, mock_query_factory):
+    def test_a_query_that_finishes_is_never_failed_afterwards_for_taking_too_long(
+        self, mock_connection_factory, mock_query_factory
+    ):
         def slow_execute(connection, sql):
             time.sleep(0.15)
             return True, 1, None
@@ -414,9 +417,87 @@ class TestExecutorBoundedWaitsAndClocks:
         result = ConcurrentLoadExecutor(config).run()
 
         assert result.total_queries_executed > 0
-        assert result.total_queries_succeeded == 0
-        failures = [e for stream in result.streams for e in stream.query_executions]
-        assert all("timeout" in (execution.error or "") for execution in failures)
+        assert result.total_queries_succeeded == result.total_queries_executed
+        executions = [e for stream in result.streams for e in stream.query_executions]
+        assert all(execution.success and execution.error is None for execution in executions)
+
+    def test_the_query_timeout_has_no_default(self, mock_connection_factory, mock_query_factory):
+        config = ConcurrentLoadConfig(
+            query_factory=mock_query_factory,
+            connection_factory=mock_connection_factory,
+            execute_query=lambda connection, sql: (True, 1, None),
+        )
+
+        assert config.query_timeout_seconds is None
+        assert ConcurrentLoadExecutor(config)._stream_wait_seconds() is None
+
+    def test_the_drain_wait_is_bounded_by_the_run_deadline_when_no_query_timeout_is_set(
+        self, mock_connection_factory, mock_query_factory
+    ):
+        release = threading.Event()
+
+        def hung_execute(connection, sql):
+            release.wait(30)
+            return True, 1, None
+
+        config = ConcurrentLoadConfig(
+            query_factory=mock_query_factory,
+            connection_factory=mock_connection_factory,
+            execute_query=hung_execute,
+            pattern=SteadyPattern(concurrency=1, duration_seconds=0.3),
+            queries_per_stream=1,
+            collect_resource_metrics=False,
+        )
+        executor = ConcurrentLoadExecutor(config)
+        deadline = RunDeadline(1)
+        outcome = {}
+
+        def target():
+            with active_run_deadline(deadline):
+                outcome["result"] = executor.run()
+
+        thread = threading.Thread(target=target, daemon=True)
+        thread.start()
+        try:
+            thread.join(15)
+            assert not thread.is_alive(), "run() was not bounded by the run deadline"
+        finally:
+            release.set()
+
+        assert any("abandoned" in (stream.error or "") for stream in outcome["result"].streams)
+        assert deadline.timeout is not None
+
+    def test_the_drain_wait_is_the_smaller_of_the_query_timeout_and_the_time_remaining(
+        self, mock_connection_factory, mock_query_factory
+    ):
+        def executor_with(query_timeout_seconds):
+            return ConcurrentLoadExecutor(
+                ConcurrentLoadConfig(
+                    query_factory=mock_query_factory,
+                    connection_factory=mock_connection_factory,
+                    execute_query=lambda connection, sql: (True, 1, None),
+                    queries_per_stream=2,
+                    query_timeout_seconds=query_timeout_seconds,
+                )
+            )
+
+        with active_run_deadline(RunDeadline(100)):
+            assert 0 < executor_with(None)._stream_wait_seconds() <= 100
+            assert 0 < executor_with(500)._stream_wait_seconds() <= 100
+            assert executor_with(10)._stream_wait_seconds() == 20
+
+    def test_without_a_run_deadline_the_drain_wait_has_no_limit_unless_a_query_timeout_is_set(
+        self, mock_connection_factory, mock_query_factory
+    ):
+        config = ConcurrentLoadConfig(
+            query_factory=mock_query_factory,
+            connection_factory=mock_connection_factory,
+            execute_query=lambda connection, sql: (True, 1, None),
+            queries_per_stream=2,
+            query_timeout_seconds=10,
+        )
+
+        assert ConcurrentLoadExecutor(config)._stream_wait_seconds() == 20
 
     def test_run_duration_ignores_wall_clock_steps(
         self, mock_connection_factory, mock_query_factory, mock_execute_query

@@ -61,20 +61,7 @@ python unified_runner.py --platform duckdb --benchmark tpcds --scale 1.0 --phase
 ---
 
 ### 3. TPC-DI (Data Integration)
-**Best for:** ETL performance, data warehouse loading
-
-```bash
-python unified_runner.py --platform duckdb --benchmark tpcdi --scale 0.01 --phases generate,load
-
-python unified_runner.py --platform duckdb --benchmark tpcdi --scale 1.0 --phases generate,load
-```
-
-**Note:** TPC-DI focuses on data loading rather than query execution. The scale 0.01 command is the standard test (data loading and transformation); the scale 1.0 command is the full workflow.
-
-**Scale Factor Guide:**
-- `0.01` = Tiny (< 1 min)
-- `1.0` = Small (5-10 min)
-- `10.0` = Medium (30-60 min)
+TPC-DI is unavailable while BenchBox reworks it to run the specification's workload (historical load, two incremental updates, automated audit). Earlier BenchBox TPC-DI results were withdrawn.
 
 ---
 

@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import hashlib
 import os
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
 
-from benchbox.core.tpcds.c_tools import SUBSCALE_TEMPLATE_OVERRIDES, DSQGenBinary
+from benchbox.core.tpcds import c_tools
+from benchbox.core.tpcds.c_tools import (
+    SUBSCALE_TEMPLATE_OVERRIDES,
+    DSQGenBinary,
+    TPCDSError,
+)
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium, pytest.mark.tpcds]
 
@@ -74,3 +80,13 @@ def test_calls_leave_template_tree_unchanged_and_threads_agree_with_serial(dsqge
         )
     assert dict(zip(jobs, results)) == expected
     assert _tree_digest(dsqgen.templates_dir.parent) == before
+
+
+def test_dsqgen_failure_passes_its_stderr_through(dsqgen, monkeypatch):
+    def fails(cmd, *, cwd, tool, env, discard_partial_output=None):
+        return subprocess.CompletedProcess(cmd, 3, stdout="", stderr="dsqgen says: out of memory")
+
+    monkeypatch.setattr(c_tools, "run_dsqgen_process", fails)
+    with pytest.raises(TPCDSError, match=r"(?s)exit code 3.*dsqgen says: out of memory") as excinfo:
+        dsqgen.generate(9, seed=8, scale_factor=10000)
+    assert "BenchBox stopped" not in str(excinfo.value)

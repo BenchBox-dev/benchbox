@@ -133,6 +133,10 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "A fast unit test, tests/unit/cli/test_shipped_docs_urls.py, that make test-fast and "
         "pr-preflight already run; the hosted step exists only so Markdown-only changes run it."
     ),
+    ("ci.yml", "short-checks", "Fail on copied project files and misplaced TPC-DI tool files"): (
+        "A fast unit test, tests/unit/core/tpcdi/test_provenance_guard.py, that make test-fast and "
+        "pr-preflight already run; the hosted step exists only so changes to paths that skip the unit tiers run it."
+    ),
     ("ci.yml", "medium-test", "Verify the locked Theseus commit passed its required checks"): (
         "Hosted check; it queries the check runs of the locked Theseus commit through the Actions "
         "token, which has no local equivalent, and its logic is pinned by "

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, ParamSpec, Protocol, TypeVar
 
 from benchbox.core.config import BenchmarkConfig, RunConfig
 from benchbox.core.config_utils import load_config_file
@@ -14,8 +17,57 @@ from benchbox.core.constants import (
     NO_COMPRESSION_ENV_VAR,
     QUERY_PHASES,
 )
+from benchbox.core.results.subscale_policy import normalize_tpc_benchmark_id
 
 TPC_ALLOWED_SCALE_FACTORS: frozenset[int | float] = frozenset({1, 10, 30, 100, 300, 1000, 3000, 10000, 30000, 100000})
+
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+TPCDI_UNAVAILABLE_MESSAGE = (
+    "TPC-DI is unavailable while BenchBox reworks it to run the specification's workload "
+    "(historical load, two incremental updates, automated audit). Earlier BenchBox TPC-DI results were withdrawn."
+)
+
+UNAVAILABLE_BENCHMARK_MESSAGES: dict[str, str] = {"tpcdi": TPCDI_UNAVAILABLE_MESSAGE}
+
+
+class BenchmarkUnavailableError(RuntimeError):
+    pass
+
+
+def unavailable_benchmark_message(benchmark_id: object) -> str | None:
+    return UNAVAILABLE_BENCHMARK_MESSAGES.get(normalize_tpc_benchmark_id(benchmark_id))
+
+
+def refuse_unavailable_benchmark(benchmark_id: object) -> None:
+    message = unavailable_benchmark_message(benchmark_id)
+    if message is not None:
+        raise BenchmarkUnavailableError(message)
+
+
+def refuses_unavailable_benchmark(benchmark_id: str) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
+    def decorate(func: Callable[_P, _R]) -> Callable[_P, _R]:
+        @wraps(func)
+        def guarded(*args: _P.args, **kwargs: _P.kwargs) -> _R:
+            refuse_unavailable_benchmark(benchmark_id)
+            return func(*args, **kwargs)
+
+        return guarded
+
+    return decorate
+
+
+def official_scale_points(benchmark_id: str | None) -> frozenset[int | float]:
+    if benchmark_id == "tpch":
+        from benchbox.core.tpch.compliance import OFFICIAL_SCALE_POINTS as tpch_points
+
+        return tpch_points
+    if benchmark_id == "tpcds":
+        from benchbox.core.tpcds.compliance import OFFICIAL_SCALE_POINTS as tpcds_points
+
+        return tpcds_points
+    return TPC_ALLOWED_SCALE_FACTORS
 
 
 def begin_run() -> None:
@@ -107,6 +159,7 @@ def reject_unsupported_dataframe_phases(
     )
 
 
+from benchbox.core.exceptions import RunTimeoutError
 from benchbox.core.execution_engine import reject_engine_bypassing_benchmark
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.platform_registry import PlatformRegistry
@@ -120,6 +173,17 @@ from benchbox.core.schemas import reject_single_stream_throughput
 from benchbox.core.tpc_spec import min_streams_for_scale, refresh_functions_enabled, require_full_spec
 from benchbox.utils.compression import CompressionManager
 from benchbox.utils.disk_guard import ensure_run_output_space
+from benchbox.utils.run_deadline import (
+    RUN_TIMEOUT_OPTION_KEY,
+    TIMED_OUT_VALIDATION_STATUS,
+    RunDeadline,
+    active_run_deadline,
+    current_run_deadline,
+    mark_timed_out,
+    register_remote_cleanup,
+    timeout_details,
+    validate_timeout_seconds,
+)
 from benchbox.utils.toggles import is_probe_requested
 
 if TYPE_CHECKING:
@@ -127,6 +191,8 @@ if TYPE_CHECKING:
 
     from benchbox.core.results.models import BenchmarkResults
     from benchbox.core.schemas import ExecutionContext
+
+_logger = logging.getLogger(__name__)
 
 
 class VerbosityLike(Protocol):
@@ -280,7 +346,109 @@ def stamp_requested_phases(config: BenchmarkConfig, phases_to_run: list[str] | N
     config.options = options
 
 
+def build_unfinished_result(
+    config: BenchmarkConfig,
+    *,
+    platform: str,
+    validation_status: str,
+    validation_details: dict[str, Any],
+    query_results: list[dict[str, Any]] | None = None,
+) -> BenchmarkResults:
+    import uuid
+    from datetime import datetime
+
+    from benchbox.core.results.models import BenchmarkResults, ExecutionPhases, SetupPhase
+
+    rows = list(query_results or [])
+    successful = len([row for row in rows if row.get("status") == "SUCCESS"])
+    return BenchmarkResults(
+        benchmark_name=getattr(config, "display_name", config.name.upper()),
+        platform=platform,
+        scale_factor=config.scale_factor,
+        execution_id=uuid.uuid4().hex[:8],
+        timestamp=datetime.now(),
+        duration_seconds=0.0,
+        total_queries=len(rows),
+        successful_queries=successful,
+        failed_queries=len(rows) - successful,
+        total_execution_time=0.0,
+        average_query_time=0.0,
+        query_results=rows,
+        query_definitions={},
+        execution_phases=ExecutionPhases(setup=SetupPhase()),
+        validation_status=validation_status,
+        validation_details=validation_details,
+        data_loading_time=0.0,
+        schema_creation_time=0.0,
+        total_rows_loaded=0,
+        data_size_mb=0.0,
+        table_statistics={},
+    )
+
+
+def build_timed_out_result(config: BenchmarkConfig, database_config: Any, deadline: RunDeadline) -> BenchmarkResults:
+    return build_unfinished_result(
+        config,
+        platform=str(getattr(database_config, "type", None) or "unknown"),
+        validation_status=TIMED_OUT_VALIDATION_STATUS,
+        validation_details={"timeout": timeout_details(deadline)},
+        query_results=deadline.partial_query_results,
+    )
+
+
 def execute_run(
+    *,
+    config: BenchmarkConfig,
+    benchmark_instance: Any,
+    database_config: Any,
+    system_profile: Any,
+    platform_config: Mapping[str, Any] | None,
+    output_root: Any,
+    phases_to_run: list[str] | None,
+    adapter_factory: AdapterFactory,
+    verbosity: VerbosityLike,
+    monitor: Any = None,
+    execution_context: ExecutionContext | None = None,
+) -> BenchmarkResults:
+    refuse_unavailable_benchmark(config.name)
+    run = partial(
+        _execute_run,
+        config=config,
+        benchmark_instance=benchmark_instance,
+        database_config=database_config,
+        system_profile=system_profile,
+        platform_config=platform_config,
+        output_root=output_root,
+        phases_to_run=phases_to_run,
+        adapter_factory=adapter_factory,
+        verbosity=verbosity,
+        monitor=monitor,
+        execution_context=execution_context,
+    )
+    deadline = current_run_deadline()
+    if deadline is None:
+        timeout_seconds = validate_timeout_seconds((getattr(config, "options", None) or {}).get(RUN_TIMEOUT_OPTION_KEY))
+        if timeout_seconds is None:
+            return run()
+        deadline = RunDeadline(timeout_seconds)
+
+    with active_run_deadline(deadline):
+        try:
+            try:
+                result = run()
+            except RunTimeoutError:
+                result = build_timed_out_result(config, database_config, deadline)
+            deadline.record_overrun()
+        finally:
+            if deadline.timeout is not None or deadline.expired:
+                for error in deadline.cancel_remote_work():
+                    _logger.warning(f"Remote cleanup failed: {error}")
+    if deadline.timeout is not None:
+        mark_timed_out(result, deadline)
+    return result
+
+
+def _execute_run(
     *,
     config: BenchmarkConfig,
     benchmark_instance: Any,
@@ -315,6 +483,9 @@ def execute_run(
     ensure_run_output_space(output_root)
 
     adapter = adapter_factory(execution_mode=execution_mode, output_root=output_root, phases=phases)
+    cleanup = getattr(adapter, "cancel_remote_work", None)
+    if callable(cleanup):
+        register_remote_cleanup(adapter, cleanup, type(adapter).__name__)
     reject_unsupported_dataframe_phases(execution_mode, phases_to_run, adapter)
     if execution_mode == "dataframe" and adapter is not None:
         reject_engine_bypassing_benchmark(
@@ -465,14 +636,22 @@ def map_phases_to_execution_type(phases: list[str]) -> str:
 
 
 __all__ = [
+    "refuses_unavailable_benchmark",
+    "TPCDI_UNAVAILABLE_MESSAGE",
+    "unavailable_benchmark_message",
+    "UNAVAILABLE_BENCHMARK_MESSAGES",
     "AdapterFactory",
     "apply_polars_streaming_flag",
     "begin_run",
     "build_databricks_clustering_intent",
+    "build_timed_out_result",
+    "build_unfinished_result",
     "execute_run",
+    "BenchmarkUnavailableError",
     "get_execution_mode",
     "is_dataframe_execution",
     "map_phases_to_execution_type",
+    "official_scale_points",
     "reject_unsupported_dataframe_benchmark",
     "reject_unsupported_dataframe_phases",
     "resolve_configured_compression",
@@ -488,6 +667,7 @@ __all__ = [
     "UnsupportedExecutionMode",
     "validate_stream_count",
     "validate_tpc_scale_factor",
+    "refuse_unavailable_benchmark",
     "VerbosityLike",
     "warn_polars_streaming_flag",
 ]

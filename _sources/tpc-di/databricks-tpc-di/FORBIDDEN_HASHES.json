@@ -1,0 +1,1939 @@
+{
+ "repository": "https://github.com/shannon-barrow/databricks-tpc-di",
+ "commit": "8e0f944612b2919ba0a3f47e70969faa8cc38c68",
+ "forbidden_by_content": {
+  "generator_and_tools": [
+   {
+    "path": "src/tools/_workflow_utils.py",
+    "bytes": 692,
+    "sha256": "c71a548de09b9c32f8a6ec899a989b0d9e14747fa3e7e79eaedfa8c9526f7224"
+   },
+   {
+    "path": "src/tools/augmented_staging/_stage_ingestion.py",
+    "bytes": 3528,
+    "sha256": "30af644681bc27b8bb377016f83a4925add685211cc5377259c232ae84d6b0b0"
+   },
+   {
+    "path": "src/tools/augmented_staging/cleanup_stage0.py",
+    "bytes": 1981,
+    "sha256": "20a8763a6c5144160d32973af067d0cfa1b2a9ceeec1711b1c0b3cd328099dc2"
+   },
+   {
+    "path": "src/tools/augmented_staging/stage_files/Account.py",
+    "bytes": 2234,
+    "sha256": "feaf85465635633e6d900b208705c5670cf1c7c4398e88cc14b6e76430ddf34a"
+   },
+   {
+    "path": "src/tools/augmented_staging/stage_files/CashTransaction.py",
+    "bytes": 1923,
+    "sha256": "121cf41dfcec8c417383995e2e893df9727ba7bccd2eedc704edc39e25971620"
+   },
+   {
+    "path": "src/tools/augmented_staging/stage_files/Customer.py",
+    "bytes": 3063,
+    "sha256": "160c51db3dfa4bdea5f09a2db4e840914245a7fc441998722769281f6f7df5e3"
+   },
+   {
+    "path": "src/tools/augmented_staging/stage_files/DailyMarket.py",
+    "bytes": 2456,
+    "sha256": "7a13280d0bb7aac344ca77d0ce5e2d977096028d6fcf5d59c111ea3e4311e99f"
+   },
+   {
+    "path": "src/tools/augmented_staging/stage_files/HoldingHistory.py",
+    "bytes": 1975,
+    "sha256": "ef40ab19014d48cda75423847226c360f0d791da78831e2e7f51984cb41f04c2"
+   },
+   {
+    "path": "src/tools/augmented_staging/stage_files/Trade.py",
+    "bytes": 2649,
+    "sha256": "87c803916d7c327098e0d2221b72349ebbfd3c84c9f589b855cebd7c845e200c"
+   },
+   {
+    "path": "src/tools/augmented_staging/stage_files/WatchHistory.py",
+    "bytes": 1862,
+    "sha256": "41c90fb3339f35d3897d6563ad810aeb7a15149d9ea9abbdac20c9c8e5bf3521"
+   },
+   {
+    "path": "src/tools/cleanup_after_benchmark.sql",
+    "bytes": 2095,
+    "sha256": "12c149a13de26d53c2caaf22a70e62f13bb51e9295a1859fadcef6ca7dd0ae58"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/__init__.py",
+    "bytes": 929,
+    "sha256": "4ca6dc0893ad8e2979e73ef30cee2ef64f6a8efb634b1889bf7544e1086ee3bf"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/_copy_helper.py",
+    "bytes": 2616,
+    "sha256": "7aa9b967f455388d75fdd4472709716694066e163ea4bbbfceafdac0c08991ac"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/_shared.py",
+    "bytes": 12858,
+    "sha256": "b89bf786a8a76d78dde16c87b50fdae017ae9567b2088b7b80367813e41901a6"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/audit_emit.py",
+    "bytes": 3399,
+    "sha256": "06d2ae8c4eaef27b943835a5f424859875f8134cbc434a5d5813f35cb1d98e6c"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/cleanup_intermediates.py",
+    "bytes": 3933,
+    "sha256": "3e7284eee0f43e89ab5ed1e8d4108fdeab0ea2051afd71a54dd220a2d0bcf9d0"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/copy_cashtransaction.py",
+    "bytes": 2033,
+    "sha256": "077851aedd6a47258b03fdf0c7da201b9ac4a426578876abfdfc1d91f838b53e"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/copy_customer.py",
+    "bytes": 2187,
+    "sha256": "d9af64c4524ae356f506a67bcc7c0d49e311eea6cb5f60d98c7b714fce847eac"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/copy_daily_market.py",
+    "bytes": 2026,
+    "sha256": "a33a1bc53863e974d76dc3d0002e8cbffa35ac43340f261d11f346926bd138fd"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/copy_finwire.py",
+    "bytes": 3022,
+    "sha256": "a6788b54548066531b87fa82659be3da28ab111544b0b0d7e41a9b7e77a786e9"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/copy_holdinghistory.py",
+    "bytes": 2029,
+    "sha256": "ed9a799e76c3e30f3d5727e145813977b662b3980074a1f3824a27e18f792373"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/copy_hr.py",
+    "bytes": 2354,
+    "sha256": "8ddc3c453ef6e004c9a82aa0d89cd570f9409da9a0ed77765da7e2bec70a8a7e"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/copy_prospect.py",
+    "bytes": 2023,
+    "sha256": "37b15a13588e1079e60624a6d77ac2d34579823b3217abeaa8b06c23d46b1ebd"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/copy_trade.py",
+    "bytes": 2196,
+    "sha256": "a68da8152618f4cff4bfaf0eb95d66ac00e61a59f0309f08ea5aeade44d740a4"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/copy_tradehistory.py",
+    "bytes": 2173,
+    "sha256": "d6338ce458116c25cd9ca319634b336ef027cff5d9eb062820e387e9abbed893"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/copy_watch_history.py",
+    "bytes": 2031,
+    "sha256": "552c2aa5b997475df39d9a6c5bc9c7ec71918051aa682b6744a2bcf7c1aa1a5d"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/data_gen.py",
+    "bytes": 12267,
+    "sha256": "19b19f5f799d4119b00d0589a4de7d50ae87f68a4c796032a1b1fc5501c4dd63"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/gen_cashtransaction.py",
+    "bytes": 3013,
+    "sha256": "e8301d0419b5e049d2f01a0ff5b906d30b1b9348645e8b661d6f7ad5b75a3e7a"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/gen_customer.py",
+    "bytes": 5078,
+    "sha256": "e74d2726f1542f660f073abfd71e68ced45649c35d63855cf685a89a424a0395"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/gen_daily_market.py",
+    "bytes": 3470,
+    "sha256": "fbc6a0a177b94091dc63e34a219216eeb33c979da4fcdb9bb4820706909196bf"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/gen_finwire.py",
+    "bytes": 4042,
+    "sha256": "08009e5f5bb842ecadeab72351c8492f706841cd62c088fcfffe10b24d5d1cb4"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/gen_holdinghistory.py",
+    "bytes": 3657,
+    "sha256": "9d50b2ec80b8118ad1cc576f2d79f75827a6f5e128bf25528d06e7307b9c04a2"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/gen_hr.py",
+    "bytes": 3897,
+    "sha256": "3a88960a1a9ce613b5f176c8d338cfb78f52ea5bf32733050d507f81a1b83c8d"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/gen_prospect.py",
+    "bytes": 2891,
+    "sha256": "e9936b71b2897e12d03343f22ddcca35f7425aafbba4484957ecd681bcca42c3"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/gen_reference.py",
+    "bytes": 3190,
+    "sha256": "e7002d8e8326b750f0b24135be4c34777f7df27860bb1b025c9c2b75474e2ea2"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/gen_trade.py",
+    "bytes": 3678,
+    "sha256": "80b57b5e9f8060ef119c9347e10f56efb1e9e92f96e11315d05d63ebb9168320"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/gen_trade_base.py",
+    "bytes": 3836,
+    "sha256": "fb473041e44c57b2873e8b06537031733811cf66893c5727d98231c1b730b22e"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/gen_tradehistory.py",
+    "bytes": 2989,
+    "sha256": "9bfc29b73f654ebc2664674ed45d249497b803ffc6f0c94df2b399a99e474cb0"
+   },
+   {
+    "path": "src/tools/data_gen_tasks/gen_watch_history.py",
+    "bytes": 4330,
+    "sha256": "e55ce1304cbefd9f7f55d2a67e92e58381eec2b85f4ffb12c8cff713ddaba9f0"
+   },
+   {
+    "path": "src/tools/datagen/66a2b600-af36-4198-bfbc-c94c40cc22af-tpc-di-tool.zip",
+    "bytes": 6676639,
+    "sha256": "d9c10de5dafa781ddd4df72453f50af2f0c9c7ccfa0cbae99ed0be70a2ede22b"
+   },
+   {
+    "path": "src/tools/datagen/DIGen.asp",
+    "bytes": 5391,
+    "sha256": "8e77580d96161d7090b95bd734a4e5f526e073c5e1783a6d93271a35b4c4cdb5"
+   },
+   {
+    "path": "src/tools/datagen/DIGen.jar",
+    "bytes": 55895,
+    "sha256": "39ac04392f0e26dfe939a8836cc5e704fd26bb5acab7fe63ea6ea3c31fb3c2f4"
+   },
+   {
+    "path": "src/tools/datagen/DIGen_Build.zip",
+    "bytes": 535128,
+    "sha256": "e0c4f2752477c5772397f7a0ed865052d5290991fa23e3feac6c96a66839e177"
+   },
+   {
+    "path": "src/tools/datagen/Note.txt",
+    "bytes": 65,
+    "sha256": "b4c766f40348c3e90d501ffee2a6df46d394e19c748a9036929b20c8956c3fec"
+   },
+   {
+    "path": "src/tools/datagen/README.txt",
+    "bytes": 1181,
+    "sha256": "00a7e0ee5ae35408a000775c9908cb8da492fd5019651339cc7996d0880db643"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/Constants.properties",
+    "bytes": 296,
+    "sha256": "bc08972966dd10f9b7c4a9bb53371bcab845a622f6080cb0fbeda9b606879323"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/LICENSE.txt",
+    "bytes": 24243,
+    "sha256": "d79e303bddf1da09e3b3f970b14a83ea5191052e8a45d4b968f340a7972052ee"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/Log4j.xml",
+    "bytes": 3443,
+    "sha256": "117bed406f2b4180332e202db7b785f2dab2070c4518f70eb624fac2602f5b1f"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/THIRD-PARTY-LICENSE.txt",
+    "bytes": 43180,
+    "sha256": "6d420afa41c58b5a9160dad2a1d5e71349adb00d809d2abe8270819933b40c01"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/Version.txt",
+    "bytes": 25,
+    "sha256": "a5d20b01215f74e3800b1fbd6dbbc0f2b6c53187870ecaef694be80e3b3f5f32"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/PseudoTextGenerator.properties",
+    "bytes": 824,
+    "sha256": "66e5bbc43142edc7555b0af3ec73187d85d508c03625499195aad77f20b53d21"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-Audit/Account-Audit.xml",
+    "bytes": 4068,
+    "sha256": "d3aa63541c19f5fc2fbcd5da712fc82b833cc697b095153d42db8522347e9b70"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-Audit/Customer-Audit.xml",
+    "bytes": 7760,
+    "sha256": "4b04183cd03a583d1a045b5ce4fa6dab3100e375e6cb8a6267002bc8121bb7cb"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-Audit/CustomerMgmt-audit.xml",
+    "bytes": 13371,
+    "sha256": "aa7e1730f5fb5d5ee8252898ebcaaa4cf93a662c4ee4872bf4a68a5205fa6f48"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-Audit/DailyMarket-Audit.xml",
+    "bytes": 3215,
+    "sha256": "0883b41be64533b7cd0f5f352be9b326729b47602f0c1d3d23f37e7e33b25f65"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-Audit/Date-Audit.xml",
+    "bytes": 1977,
+    "sha256": "7b4b0401476e1016316370a48ba69f15360d7d32f120a14c9395281b3daf444a"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-Audit/FINWIRE-Audit.xml",
+    "bytes": 5389,
+    "sha256": "d994b9a305ecb088bec365354c24b3ffdab116b80f4d28eff7d74a96d1bea65d"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-Audit/General-Audit.xml",
+    "bytes": 55837,
+    "sha256": "1702e16f56c8bf2143f0e227476bc4d7074e16663f67789a9f39acd8435d13b0"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-Audit/HR-Audit.xml",
+    "bytes": 2710,
+    "sha256": "de49b75a2089a2999f2d34b3b5df6e1bd67c7adcc760c4f990c1372530d878ff"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-Audit/Industry-Audit.xml",
+    "bytes": 1983,
+    "sha256": "4559d885d2ce0c9408a70d047329cbace3c90c09f675c77dc5a38bf597a5557b"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-Audit/Prospect-Audit.xml",
+    "bytes": 4308,
+    "sha256": "60f0b86f4c7e997f20f8d76d429eb9a8305fa435a5696b228ebd04af731ca120"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-Audit/StatusType-Audit.xml",
+    "bytes": 2170,
+    "sha256": "81b07ca256b833deeb9712d54809e5bc48b85084fe58a2e390c33b4dd5689e49"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-Audit/TaxRate-Audit.xml",
+    "bytes": 1977,
+    "sha256": "7b4b0401476e1016316370a48ba69f15360d7d32f120a14c9395281b3daf444a"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-Audit/Time-Audit.xml",
+    "bytes": 1976,
+    "sha256": "30c52dbbae7e0e0dde19ce427b3ef0cbeed32ecb8386503ee2e02ab4c66f76c2"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-Audit/TradeType-Audit.xml",
+    "bytes": 1978,
+    "sha256": "9453c2b029f41ecd7b3116783a4157877506c35fb41328f3afe96ec3286039cf"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-Audit/WatchHistory-Audit.xml",
+    "bytes": 3719,
+    "sha256": "7a87ed6022184d0c7c098209ec38c13c39f65523fd69a7a046fe1f44ab8e5ff2"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-generation-noComments.xml",
+    "bytes": 50731,
+    "sha256": "b9e254d852643298cc2a3ce38a668ec29e12ec45a80d7a5daf53fbbf8adceded"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-generation.xml",
+    "bytes": 65780,
+    "sha256": "8b1b350547a67e246d7ed7d742466c86215ae54bf21509b47a6409216a51e2da"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-schema-noComments.xml",
+    "bytes": 105172,
+    "sha256": "79992bf999fcf3195d3b86c1a52b1eb4f3b880698d0dc70901ed12ba8829b2df"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/config/tpc-di-schema.xml",
+    "bytes": 132588,
+    "sha256": "9952f62308af6a8f5aead4209ea2891b9f3a2abe3ed02c257ab1727ee317b5af"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/Family-Names.dict",
+    "bytes": 106773,
+    "sha256": "953a9a0895416f654c7cb2c01c99254166443577d1634ef0be00a1e15fc405a9"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/Given-Names.dict",
+    "bytes": 60271,
+    "sha256": "20bcd3274014c60826ee47612d54df405691f42742d388589a761b6cb0340837"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/city.dict",
+    "bytes": 2631,
+    "sha256": "bedccf3bdf965f35c46cf0c0409666aa3c9e5e383d063c9e1c32c869e820f117"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/country.dict",
+    "bytes": 2040,
+    "sha256": "0699663ed5f0a6119029597d45e8dc9cf5a5eee0af6e13f56d0f3208b986c1d6"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/county.dict",
+    "bytes": 28135,
+    "sha256": "e97ae761adfe756a446eff4d0b4a9771d9925c5f8dfe5ca2f67b4353f489c77d"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/degree.dict",
+    "bytes": 1542,
+    "sha256": "81821f4161262bb424c18fbcd708125d18a699df5b1302ca675d668195026a12"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/female.dict",
+    "bytes": 2183,
+    "sha256": "d914ad4ecdfe11a6380108e024437ef42362eed63462131c228086cbbd9611c5"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/languages.dict",
+    "bytes": 797,
+    "sha256": "b483f44a4d63ee260f8c7d8cdfa39a66bcdf978a9be8859f5e6d7b31e5517b9c"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/lastnames.dict",
+    "bytes": 12,
+    "sha256": "c281e5e989cfac8fadd3b707bec1d9133430429a4d2fe98d0ec08b4a6fa9888d"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/mail_provider.dict",
+    "bytes": 1116,
+    "sha256": "1ae89851301b2911f4ee0167df807ded2caf624adca3d49bdbaab74b5dcdfb95"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/male.dict",
+    "bytes": 2402,
+    "sha256": "16a90c93cde827079b4862c024b9e18b7f275d6df9814e98725a6230f0dd80eb"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/pseudoTextGenerator/adjectives.dict",
+    "bytes": 166,
+    "sha256": "e01d94e261ce5ebc5f226e6d330cadc6c1a850f61a7b8d6aa72f33c526b7be91"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/pseudoTextGenerator/adverbs.dict",
+    "bytes": 239,
+    "sha256": "88d66d692a6d0d00e89588019df727e0e7816e79e245eca76a006b26e020012f"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/pseudoTextGenerator/auxiliaries.dict",
+    "bytes": 144,
+    "sha256": "4bf06e53ea97dcdf7eff3018b602c17ba3f850d763d7c2b72472884165beede6"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/pseudoTextGenerator/nouns.dict",
+    "bytes": 356,
+    "sha256": "6324efecb6daeae33108c19543af3e3eb2ebf762cec8e23a4127cfb521d3eb16"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/pseudoTextGenerator/prepositions.dict",
+    "bytes": 310,
+    "sha256": "4e32dfad41720797e87b748962a8ff4b7732538ff1cb994892c44c03cf641062"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/pseudoTextGenerator/terminators.dict",
+    "bytes": 12,
+    "sha256": "c1a0f116e970014c2af04cfcf9acb6a6be14d418691ba1df1e1e46b877a55e4d"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/pseudoTextGenerator/verbs.dict",
+    "bytes": 244,
+    "sha256": "8822ebd6a45e4058211525fa9b2f00d6d5a571c35dc218bbff88e7f27a60796b"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/seminarnames.dict",
+    "bytes": 70,
+    "sha256": "029d5d291db33c4dd995f9b32b50ce2379bfd7bb146ac28e3545c795f9eed1eb"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/state.dict",
+    "bytes": 472,
+    "sha256": "a635998be5be60a9cd793d47ed26942d43baaa6a77b5cf748481780f88e68499"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/state_abbreviation.dict",
+    "bytes": 154,
+    "sha256": "19fabf62bcbc28e28d5648a9b360f561306d39ec7f8b0c4b8e4d8907c6bd778a"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tld.dict",
+    "bytes": 1136,
+    "sha256": "621233e653851777cbc478fc99b64ea51f59b41e4c209a9074fddcd4df45cab4"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/address.csv",
+    "bytes": 175754,
+    "sha256": "de12855e282585eb27078707e18e50f4122d894f082d0c52b63d376200563a9f"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/address_country.dict",
+    "bytes": 11,
+    "sha256": "be3a3a9f415194b2811ad2b30834449c1af49267021984cc234a04d4119fae4d"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/address_line1.dict",
+    "bytes": 69378,
+    "sha256": "0f52c04d2aea14950a26addb08dcd270f8905aab76b1948f09bce774069361f5"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/address_line2.dict",
+    "bytes": 3283,
+    "sha256": "89c5f8048d0a398f8514c808ecbc0203e976ab1493fdfa59ed5a137729f3ffa3"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/cities.dict",
+    "bytes": 2631,
+    "sha256": "bedccf3bdf965f35c46cf0c0409666aa3c9e5e383d063c9e1c32c869e820f117"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/customer.csv",
+    "bytes": 179430,
+    "sha256": "40629b8613c1eae50851649e4c00bfd4ebd2c70429c54c5f949a74ae713717b4"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/customer_area_phone_codes.dict",
+    "bytes": 740,
+    "sha256": "cb569dcbf5cae2911359ea70fdbbaf51e9de4ed652594d5a35cd5012cfb049fb"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/customer_c_tax_id.dict",
+    "bytes": 15000,
+    "sha256": "9765063ec042cb639da88f7a40f25cfda66c62e83a0fa8a82626630df2714f7d"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/customer_country_phone_codes.dict",
+    "bytes": 4,
+    "sha256": "6e51ddb76121099b68e09ec47ad90391a21992b8f1fff129cde371da4a266455"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/customer_extension_phone_numbers.dict",
+    "bytes": 916,
+    "sha256": "37845d1aa2d361345c79c7e21f401f89fa1909324fffbcb15b0cb721eef270ec"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/customer_local_phone_numbers.dict",
+    "bytes": 8000,
+    "sha256": "100cfa6960373be1f5fad1a77e8c50f0df54e375f856389b3f6a1d9683542707"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/employers.dict",
+    "bytes": 15042,
+    "sha256": "b301da6cd3a518f16c96135fb226b22c6bdf4e3b3cae59011ffa2e308052d34e"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/first_names.dict",
+    "bytes": 4168,
+    "sha256": "adab796ba300ccc0f3a2146ec3e4e6b22e4aad50d2a041098bf20ebd5ecac7b2"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/industry_id.dict",
+    "bytes": 306,
+    "sha256": "01b572ab8b8ad7f435772ea4ef23f11afb77c220e3a81dd3ad43160dff8b9344"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/industry_name.dict",
+    "bytes": 2052,
+    "sha256": "c9dd3183089ff1b1d6089296fb6bc7081a1f16fc81a6695cfcec7faae4b64bec"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/industry_sc_id.dict",
+    "bytes": 306,
+    "sha256": "14450515aa21ffd33615bb5c20f204b4c705e916ae1494469bbdd3718fcd8609"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/last_names.dict",
+    "bytes": 7545,
+    "sha256": "876abb1bd38e71cae2151c4541709b31dd1bdc1e2debf447da320dc17f857680"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/mail_adresses.dict",
+    "bytes": 38459,
+    "sha256": "8a83ccbd5a2b9d1da89454a5bdae1e621daeb6e8b8ecaac336deeee6b5ab55ba"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/mail_provider.dict",
+    "bytes": 1116,
+    "sha256": "1ae89851301b2911f4ee0167df807ded2caf624adca3d49bdbaab74b5dcdfb95"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/middle_name_abbreviation.dict",
+    "bytes": 52,
+    "sha256": "e4e76ed00d9b1701fb1a0eb648450ce9037d94893a880ac9d02765dbb531dc9b"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/provinces.dict",
+    "bytes": 274,
+    "sha256": "25af2a5ccfea9a553a13dc8c784e6bcf41bab24afb5d0e46883dc61688129a9b"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/status_id.dict",
+    "bytes": 29,
+    "sha256": "73e2573d0d8f31dec08db98dfc62ed1d2a8686d129e697c6740255b000281295"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/status_name.dict",
+    "bytes": 52,
+    "sha256": "e19c52e178458e1625fc7795d8d44d4e69e7615c00302558870d373bb20e85b4"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/status_type.csv",
+    "bytes": 69,
+    "sha256": "5bfb790be2252d1f5d6146c537ca09906aa5a1d9da60c63a025c116107455a23"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/taxrate.csv",
+    "bytes": 16719,
+    "sha256": "80c11a531a800ea7c6406dbea5af794507e1a5cb1825d4c39e65cc7dc52d2eb2"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/taxrate_id.dict",
+    "bytes": 1285,
+    "sha256": "e06dc00a310ab7e2f5db7fd05f9cb8270b8d95caa3f057a7c0d49304d99fc61f"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/taxrate_name.dict",
+    "bytes": 12874,
+    "sha256": "e612c00c8c628c63b5040f44dd3f2149b80c4134359450b55e9b8ae3d8a47d48"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/taxrate_rate.dict",
+    "bytes": 2560,
+    "sha256": "5fe6193373c72705a6fb4dfa1a3bbf9dc2ad9866f95463d6609b34b4d7cb4713"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/tradetype_id.dict",
+    "bytes": 19,
+    "sha256": "9e55b2a971dca88438b19b19b82c6843aa1f6d54ce952c604f441e2734de97c0"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/tradetype_name.dict",
+    "bytes": 53,
+    "sha256": "d252b8716fc5f95cdf14818a4a9e963a0c60f73121db465bb518cb16eff1277c"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/zip_code.csv",
+    "bytes": 284001,
+    "sha256": "3901e7e03a6d07bfdd2dd32356ad52435a90348de8de3b101a622ced4dde6f63"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/zip_code_code.dict",
+    "bytes": 99498,
+    "sha256": "23593bfc0f1a8e1912553ff867fb1f0cda1187fb4bfe0b730193ad9039bbd814"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/zip_code_div.dict",
+    "bytes": 44223,
+    "sha256": "b7c7265b713d84058012f37835c8bfe4a3e7e0b9ba76a91d56aa9c939974aadd"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/tpc-e/zip_code_town.dict",
+    "bytes": 140280,
+    "sha256": "335e4509529e4995b9c22b0ec1d5932bf56eac008c2fe866d4c2b6c0fe9d412a"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/usernames.dict",
+    "bytes": 36,
+    "sha256": "941914f428e68aa6b2b55bb8453d543af8adcc1e85350451567c6ca659b76bda"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/dicts/weekdays.dict",
+    "bytes": 59,
+    "sha256": "5c42bc1ee7c0f077f9543054e13ab703584efbf60a3d1fa32066dff755d059b3"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/extlib/commons-net-3.3.jar",
+    "bytes": 280983,
+    "sha256": "b35ad597f17a6f221575df2f729a9de8f70390509e047680771e713bad713fb9"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/extlib/commons.lang3.time.jar",
+    "bytes": 58473,
+    "sha256": "77cf983703ba0edb952b71436d0fea1108ecda3aa82b2970936c3c4041192d3b"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/extlib/javassist.jar",
+    "bytes": 707278,
+    "sha256": "c2d70c57c309a4ec1ea665e8d6715bb64ba8fbd18895ff726243d34f43819d9d"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/extlib/log4j-1.2.15.jar",
+    "bytes": 391834,
+    "sha256": "9f5f5799707881451a39c1b2dd22b4e43b97a80698db7daf1c9697f545e24387"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/extlib/xercesImpl.jar",
+    "bytes": 1367760,
+    "sha256": "175bbbd9def7a22a30e05f9c8db629c88fa5bdfc57d5658791901b54222abe1c"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/extlib/xml-apis.jar",
+    "bytes": 220536,
+    "sha256": "a840968176645684bb01aed376e067ab39614885f9eee44abe35a5f20ebe7fad"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/logs/pdgf.log",
+    "bytes": 44,
+    "sha256": "1e467ff34863ad7c8d2c4fbec24ae377cb0a9989968825e1f2d35e9b2e3331b0"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/pdgf.jar",
+    "bytes": 2795002,
+    "sha256": "a1d50984c5d3b6139180359784ebf3bde07b51a9b95d468c65b5810a834f76fd"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/plugins/tpc-di.jar",
+    "bytes": 176716,
+    "sha256": "600a5a586a1fa372aaebdb22d81bccd7d88215b3178c019038e66afad750eca4"
+   },
+   {
+    "path": "src/tools/datagen/pdgf/plugins/tpc-di_src.jar",
+    "bytes": 104141,
+    "sha256": "b88793daaa1732cb78fc28e04dc6a90d8865cac6e6e616ef3a4f4db08746950e"
+   },
+   {
+    "path": "src/tools/digen_runner.py",
+    "bytes": 16184,
+    "sha256": "decf605a0c9e345ea42032fa97bc1169efea8b44b32cccd813a8192cbf84c144"
+   },
+   {
+    "path": "src/tools/generate_benchmark_workflow.py",
+    "bytes": 17281,
+    "sha256": "68422d41efdb95992d0392b736518d187cb5ee327860843f5578fe58efc000da"
+   },
+   {
+    "path": "src/tools/generate_competitor_workflow.py",
+    "bytes": 8197,
+    "sha256": "7cd04d744e5c6bcf9ca1173ee4f776d77ab7bb02ef05e84a2d30687ea19792a0"
+   },
+   {
+    "path": "src/tools/generate_datagen_workflow.py",
+    "bytes": 4867,
+    "sha256": "a340e2ac80d126fdcb0917e3569d4b8edd3d86825b066f3f2ea839a847b0adb8"
+   },
+   {
+    "path": "src/tools/incremental_file_splitting/Account.sql",
+    "bytes": 2486,
+    "sha256": "77231e360f391402b21f0ed75574062d05b05108a3ad1e15b6d5813de97ee9e9"
+   },
+   {
+    "path": "src/tools/incremental_file_splitting/CashTransaction.sql",
+    "bytes": 1292,
+    "sha256": "fca7d7287bb2474dd4644ea923c474374f222abe6e11309b7dcbb6c1673b44ec"
+   },
+   {
+    "path": "src/tools/incremental_file_splitting/Customer.sql",
+    "bytes": 9653,
+    "sha256": "8905d659037a1e2f69119ce7687511fc2de2613e0b83a10c28e00ecc0f96bc3a"
+   },
+   {
+    "path": "src/tools/incremental_file_splitting/DailyMarket.sql",
+    "bytes": 1205,
+    "sha256": "e9a846118fef8b513a66aa9febb4a7b782b69910e70dbdab026c52a3a6347773"
+   },
+   {
+    "path": "src/tools/incremental_file_splitting/Holdings.sql",
+    "bytes": 1449,
+    "sha256": "21b391bf9466c7b01d49d8638de5b73e37089a69f2c118cc753940ed7726a4df"
+   },
+   {
+    "path": "src/tools/incremental_file_splitting/Optimize.py",
+    "bytes": 928,
+    "sha256": "4a0c47c5a00cb0eedd66a1862b33f2b4610ca1968ec70141c21e3ab6e62ed9bf"
+   },
+   {
+    "path": "src/tools/incremental_file_splitting/Trade.sql",
+    "bytes": 2466,
+    "sha256": "4d03c1d7cc609e5388df0e6c220a65560d157bbfcb6ab1ccd8c8a49b19122f92"
+   },
+   {
+    "path": "src/tools/incremental_file_splitting/Watches.sql",
+    "bytes": 1530,
+    "sha256": "e45334bcd1923515c5704e11aff70439eb7c21dd91ea1bfacbffc52012a03ef3"
+   },
+   {
+    "path": "src/tools/incremental_file_splitting/stage_ingestion.py",
+    "bytes": 2068,
+    "sha256": "b59e5ab3c420be5ff3f3c93c5b70f236d94c5eb57ded4bd50ad264f1b7407113"
+   },
+   {
+    "path": "src/tools/parquet_splitting.ipynb",
+    "bytes": 24088,
+    "sha256": "eb643ff638aad9f206a624517d4315b85e976388e90b7131f37f4e7ed98a83ca"
+   },
+   {
+    "path": "src/tools/readme_images/data_gen.png",
+    "bytes": 270644,
+    "sha256": "6abe0c51389d9f6d97b7a4e95a03eb0ffa9071bb793056ed6ba54bfb573eaaf0"
+   },
+   {
+    "path": "src/tools/readme_images/tpcdi_execution_journey.png",
+    "bytes": 148382,
+    "sha256": "58817e5b0c781fcf31dea73ad885849ca0e25c5c66a7730db2f863290b17da83"
+   },
+   {
+    "path": "src/tools/readme_images/tpcdi_flow.mmd",
+    "bytes": 1808,
+    "sha256": "f9bb619025f3cefa7346d7010a9ada04484da4f2fe9993686bde2b0644a9c759"
+   },
+   {
+    "path": "src/tools/readme_images/tpcdi_flow.png",
+    "bytes": 126920,
+    "sha256": "85577aa86ea4a781827ebc0df1ad2b3e61719b9f6e7ce0bd08bf2a32e3fa2672"
+   },
+   {
+    "path": "src/tools/readme_images/tpcdi_flow.svg",
+    "bytes": 29868,
+    "sha256": "5ae33d7f5ca9196e688dd3f2bf4f78b0559494954abd4edea43bf0bb308f7f07"
+   },
+   {
+    "path": "src/tools/readme_images/workflow.png",
+    "bytes": 368836,
+    "sha256": "bdf69588151f53a51ffeace65f0584aea8a17c1027eb7d1a79ca258ccab66be6"
+   },
+   {
+    "path": "src/tools/readme_images/workflow_created.png",
+    "bytes": 506644,
+    "sha256": "e22aa1fc93ca7b823e2e0db44b7eaef6e760d78788bbc43d9eac3f9ce7f339c5"
+   },
+   {
+    "path": "src/tools/readme_images/workflow_run.png",
+    "bytes": 838913,
+    "sha256": "2d5e49669f284ed0b4f957d90e6cee761871781b5cae632073b98b4ef2fe637d"
+   },
+   {
+    "path": "src/tools/regenerate_audits.py",
+    "bytes": 28438,
+    "sha256": "ddce4f683de27c6db11c47034a3d988572e0af82855766ff42940a1b2e929089"
+   },
+   {
+    "path": "src/tools/setup.py",
+    "bytes": 1386,
+    "sha256": "2516ef9fd680daa94652ac645951965c55aaa873bd3cb9d23963af3c61aadf7e"
+   },
+   {
+    "path": "src/tools/setup_context.py",
+    "bytes": 9020,
+    "sha256": "aefda44e0ab41cb32c48a6c9333975a52eebd7df2b9f47132d44e7b7e0003cf9"
+   },
+   {
+    "path": "src/tools/streaming_tables_config.json",
+    "bytes": 26251,
+    "sha256": "2c78ef6c5093c2094147f013f8e2915c1af585cd8d27c151da065cf063fffda2"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/__init__.py",
+    "bytes": 36,
+    "sha256": "bcf9f73f9c605c13e7feba316b99d039569eb927457b58a1eec07a7fa206de3c"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/audit.py",
+    "bytes": 21055,
+    "sha256": "c76b586d48d2e53bd63b1d5c11633afff830746a84a7af4685932e29973448a1"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/config.py",
+    "bytes": 23386,
+    "sha256": "da7f0fb181ca80ed52cb984c89019f354d5d9cb5309781369426718d98c39e6c"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/customer.py",
+    "bytes": 90257,
+    "sha256": "0e4615a6deb1dd4d4a050835988d1293a6cb6c1530691a2b697cf05e3443eabb"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/customer_scheduler_v2.py",
+    "bytes": 14688,
+    "sha256": "ea0d7f5117a3646d8773c40532a4a7be809946046ba2af132d59c885ae7a5e67"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/dictionaries.py",
+    "bytes": 12477,
+    "sha256": "0ac6857febd3bc8ed52ac4fb365443e8ecd633e8540dff2a1f51d3418c6e94b8"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/finwire.py",
+    "bytes": 38424,
+    "sha256": "1d5f1c6a03fd062cf39490e24819cffd79c6d1319c95bf5e14674291e5f35f5c"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/hr.py",
+    "bytes": 7813,
+    "sha256": "99ba65e10bb8922f295fbad35d47577ec2263d78cebb25ddc47020f0c1453da9"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/market_data.py",
+    "bytes": 13288,
+    "sha256": "29b7be690f587d8f6fb4a3d35ba80458a839bad8956d033f27fd99c4725b1639"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/prospect.py",
+    "bytes": 25893,
+    "sha256": "0536fe1ff47e03f32f41850ba4d62e42f8dc6147429dee4c2589b19a37a8daad"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/reference_tables.py",
+    "bytes": 4384,
+    "sha256": "d11c63c5eedaa8d9799f18bb5803fa446ac1b330ac2144bca1033dd4229c8fa6"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/trade_split.py",
+    "bytes": 38407,
+    "sha256": "425b7afb31a3558c0b736b205127892f21d4df53383e1cd7cca81ca6c03d5b79"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/utils.py",
+    "bytes": 38142,
+    "sha256": "44b3f7c8057c49062843d7dfcba4aa913611b692dc130ab21f3b0f8862fb2119"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/watch_history.py",
+    "bytes": 35179,
+    "sha256": "bef922b2a517bf909dd241ca9bbb452b92b8b5fc8278e54863bba14f146234c7"
+   },
+   {
+    "path": "src/tools/traditional_config.json",
+    "bytes": 42716,
+    "sha256": "9fb669449fcc8c9ead1c688419b323fc9b516e544795b1341fd22f812314d740"
+   },
+   {
+    "path": "src/tools/uc_secret_utils.py",
+    "bytes": 3736,
+    "sha256": "a54d66d5f68c1ea4e043c298a0016e4eb162690dc3c63dc01fa3ffa18cd9921f"
+   },
+   {
+    "path": "src/tools/workflow_builders/__init__.py",
+    "bytes": 523,
+    "sha256": "90f561580855af9dd78f5129ab93028552cc3560fdf4967d7a9d4f8b74ce69dc"
+   },
+   {
+    "path": "src/tools/workflow_builders/_node_picker.py",
+    "bytes": 6902,
+    "sha256": "5eb604724dd247544d08a747689539b02771ed2b992a99c1b2eeaf6e61745f89"
+   },
+   {
+    "path": "src/tools/workflow_builders/_workflow_common.py",
+    "bytes": 10910,
+    "sha256": "47636306feebc5809f030c71ca971ac2a80d339f5bca3e615ffb5a1c71450fe9"
+   },
+   {
+    "path": "src/tools/workflow_builders/augmented_bigquery.py",
+    "bytes": 16022,
+    "sha256": "748fd3b4e0095dc6b987534a626eb0e6d83bb4973aa11301b2aab818c791fd4b"
+   },
+   {
+    "path": "src/tools/workflow_builders/augmented_classic.py",
+    "bytes": 14956,
+    "sha256": "68ce0708406d5aae5c811b4c0653755d4175e39233590f3b7a157fbf7055253d"
+   },
+   {
+    "path": "src/tools/workflow_builders/augmented_dbt.py",
+    "bytes": 11874,
+    "sha256": "1936ed0f61aac0e024cfc014d7e7baaae06678625e83745b72bfcd0462f544f3"
+   },
+   {
+    "path": "src/tools/workflow_builders/augmented_fabric.py",
+    "bytes": 13704,
+    "sha256": "1382613aaa7d44add56e417ad5de8da51c08926761aa9ff2d0da3e07f063c84e"
+   },
+   {
+    "path": "src/tools/workflow_builders/augmented_fabric_spark.py",
+    "bytes": 14286,
+    "sha256": "7e936cb1942633e3e38687ffbebd65f0b1af24a31217a22fcd13c545411304e4"
+   },
+   {
+    "path": "src/tools/workflow_builders/augmented_redshift.py",
+    "bytes": 18171,
+    "sha256": "0725748e58bbd0b166cbfd2766016a3976527745437979f13667e4de7ffb31c8"
+   },
+   {
+    "path": "src/tools/workflow_builders/augmented_sdp.py",
+    "bytes": 13535,
+    "sha256": "f8f77bef6c3fb46c7ef6ae17e05ddf159efc953b57cfff2e64726a6f4e449624"
+   },
+   {
+    "path": "src/tools/workflow_builders/augmented_snowflake.py",
+    "bytes": 18483,
+    "sha256": "eb6b2ef45b3d479b7c0d657ba0f07bc7383666a0d38300d25ccabf2b116ccf0e"
+   },
+   {
+    "path": "src/tools/workflow_builders/augmented_snowflake_dt.py",
+    "bytes": 15659,
+    "sha256": "ff24f1fab60cd392338d9ce95b060ac0cae0ca847420b2718a048ffbd04b5db1"
+   },
+   {
+    "path": "src/tools/workflow_builders/augmented_snowflake_dt_parallel.py",
+    "bytes": 13262,
+    "sha256": "5dc7faee8bbe8a956e7e1c9aa870c513d24cd1fb15dd385949797f069ba7b31c"
+   },
+   {
+    "path": "src/tools/workflow_builders/augmented_staging.py",
+    "bytes": 38752,
+    "sha256": "5f7c6fe24966203a566f69b46781921960bd4307b3d3aee42289317dc5afd5fa"
+   },
+   {
+    "path": "src/tools/workflow_builders/datagen_digen.py",
+    "bytes": 5714,
+    "sha256": "6e1bfa0e94e130e13659501fd5481bb8baf65c102e5c4196ec41cec2324179e6"
+   },
+   {
+    "path": "src/tools/workflow_builders/datagen_spark.py",
+    "bytes": 17411,
+    "sha256": "d79d652784b13973232227cfa22f9d1683a4cfd731bad0e19db06321f33be8d5"
+   },
+   {
+    "path": "src/tools/workflow_builders/sdp_pipeline.py",
+    "bytes": 33394,
+    "sha256": "6214a915e0ab1f9a3d73b9e5c48dd1a053b9ce0e4a94b297387412e13bad776a"
+   },
+   {
+    "path": "src/tools/workflow_builders/sdp_workflow.py",
+    "bytes": 9689,
+    "sha256": "83790d0105c94600a28348dd83a2791b7913b62ec5384aaad4ebaf0b53676694"
+   },
+   {
+    "path": "src/tools/workflow_builders/warehouse.py",
+    "bytes": 521,
+    "sha256": "8ac8190d3fac2716e8d81052be63e9cf70bde3f2bdf548d7bc31e705a33ab2a7"
+   },
+   {
+    "path": "src/tools/workflow_builders/workflows_incremental.py",
+    "bytes": 17915,
+    "sha256": "d8419aad683b2831610c0ed82ce3f2f1b96cb95855d7b64fe498f6e2e1315e81"
+   },
+   {
+    "path": "src/tools/workflow_builders/workflows_single_batch.py",
+    "bytes": 33557,
+    "sha256": "ad4d4e33076d360fea28718d14acbcd3515ec1c9f17a9a423327484f508e5fe3"
+   }
+  ],
+  "audit_snapshots": [
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch1/CustomerMgmt_audit.csv",
+    "bytes": 375,
+    "sha256": "bcf1b771bda76ce66f644d8c4b853498a74235d579f311c8fefd2f1462ade124"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch1/DailyMarket_audit.csv",
+    "bytes": 92,
+    "sha256": "c2035bd1318fe5eb125d53b858c49095705e7fee66ecd9947d117148ba4db681"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch1/FINWIRE_audit.csv",
+    "bytes": 221,
+    "sha256": "533173a00614fbcf8b821006ad07fe2841a7347bec8d5a8ced2ba407e00acda2"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch1/HR_audit.csv",
+    "bytes": 82,
+    "sha256": "e16519e188e4c327ef13e388d450d248afeac4c32f9abd4b58683bc7a0139ed1"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch1/HoldingHistory_audit.csv",
+    "bytes": 87,
+    "sha256": "71c20d9df3d5a812b7683680301ac7d0fef276d4a2f43847e06185eeb094a552"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch1/Prospect_audit.csv",
+    "bytes": 137,
+    "sha256": "8cff4126cac436302f24084df4624b6ab3da7f8ae246a8d565b84fe97daa478e"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch1/TradeHistory_audit.csv",
+    "bytes": 374,
+    "sha256": "d6ed55a74bfe70ff312c57179af264f418b3151e46bcf8c7b36bad8fdd0995a7"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch1/Trade_audit.csv",
+    "bytes": 210,
+    "sha256": "bee423c5f8830315990f570193a45d93ed9d4b0424c5cbbb283a82945947d90d"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch1/WatchHistory_audit.csv",
+    "bytes": 120,
+    "sha256": "d0df08e1c2270e9f847d8ea139e243799937ab17ab386917533f3da226a53bfe"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch1_audit.csv",
+    "bytes": 110,
+    "sha256": "accdfd128c7881ed6d090316fb039feefa9b32587c3df9d1d450d5036eb2f399"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch2/Account_audit.csv",
+    "bytes": 169,
+    "sha256": "95cd9cb5d2a0a7d43ea46048605739b7c547b797816ad2535b4e8674cf2f26b9"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch2/Customer_audit.csv",
+    "bytes": 242,
+    "sha256": "7c91df14f9ade840433ea18d1e76de94eb399f3aeb12a456e27bd9b3ffef89c0"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch2/DailyMarket_audit.csv",
+    "bytes": 89,
+    "sha256": "0fc3e037845cbded4719f655aa7ac84cc77d2d9cda06806913586238ad76efc1"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch2/HoldingHistory_audit.csv",
+    "bytes": 83,
+    "sha256": "88baecdf76631f03d9ffd17492138abcdd84d73c9d9c994250cba27dc1523368"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch2/Prospect_audit.csv",
+    "bytes": 134,
+    "sha256": "b98c790a1d2235ec520419222555f0213d58cf43ac7b4dc2fee1df86f5880f1d"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch2/TradeHistory_audit.csv",
+    "bytes": 120,
+    "sha256": "40f00618c07a7358cd5f1e98aa51990acfb09af30fdef4aee47f384cef7a5b87"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch2/Trade_audit.csv",
+    "bytes": 200,
+    "sha256": "77066e508f662386d2e26af50c060e7b7959ebba6ba3fdda0d78a043ce9ada2b"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch2/WatchHistory_audit.csv",
+    "bytes": 114,
+    "sha256": "83499aeeeb35ec7b0e268e90286abaf42736476bc747047fb70636efc4fd57ab"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch2_audit.csv",
+    "bytes": 110,
+    "sha256": "ea0abf475141640550a57a01d8b7874f306992a928696286fc381afe30e8f142"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch3/Account_audit.csv",
+    "bytes": 169,
+    "sha256": "d838a883ad515d8b3ea2f6dd9ef0fe2c8a75b31901e64bee22eb3accbc6e64b1"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch3/Customer_audit.csv",
+    "bytes": 241,
+    "sha256": "87ad9afb6edea4a64a61bf79928b4ef39c14209993649a0ae4d2dbb9a721116e"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch3/DailyMarket_audit.csv",
+    "bytes": 89,
+    "sha256": "81ce88a1374ccb6fea22a764db62b240925db19aaafbac1d9265440c28317e39"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch3/HoldingHistory_audit.csv",
+    "bytes": 83,
+    "sha256": "6c1d62b3126bd4caebcfadc086d822e43e8c87f6b47eaf5c28de696597b1b2fc"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch3/Prospect_audit.csv",
+    "bytes": 134,
+    "sha256": "89ca5f4067e946a65d671bcc3c05c3cde34ae74b4510be2ea5b28b9c5eff3443"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch3/TradeHistory_audit.csv",
+    "bytes": 120,
+    "sha256": "aa7594735ebecc1a586b7162cb9bd03990e746b3fcf285bded0e45e50ba7a35c"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch3/Trade_audit.csv",
+    "bytes": 200,
+    "sha256": "ae22fc1c4e7470885979a3dee9fb4aa728973f8948d3c6d12c82ca1e1f7ae61b"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch3/WatchHistory_audit.csv",
+    "bytes": 114,
+    "sha256": "672d349cb4e20c61bc658326e2fa1bc784d083e56de03b70439ee1b619286fa3"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Batch3_audit.csv",
+    "bytes": 110,
+    "sha256": "eadadee958315275630a7b44217e90b599b203612ef8d48c4f69c27da3406cb6"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10/Generator_audit.csv",
+    "bytes": 1084,
+    "sha256": "87f1b18365ecd07f422a36ed47ccd1133568d5fb7942344c9cf8564c4e1868d2"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch1/CustomerMgmt_audit.csv",
+    "bytes": 381,
+    "sha256": "ca1d527563d70d87015b83c6842144bc6d928d5a2aceb464aafb899e7a81bb3f"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch1/DailyMarket_audit.csv",
+    "bytes": 93,
+    "sha256": "8d74a5cc5c6fe7cff9494f91c9700bc26d6d2ce33bbaf54afe32af0d35e8f4e7"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch1/FINWIRE_audit.csv",
+    "bytes": 224,
+    "sha256": "1c318826ed765e2edfcafba677df267d63583cfe3911063f6ea2fe96a3992c90"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch1/HR_audit.csv",
+    "bytes": 83,
+    "sha256": "c138e5cc9c1bac3a7f94581c5e85f10c23f5e061afffa7f34eef813bac3de136"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch1/HoldingHistory_audit.csv",
+    "bytes": 88,
+    "sha256": "59c8e5895d8382f259b391b0d00dfb3eda6f849b3acadced0c47c50d0820b4ce"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch1/Prospect_audit.csv",
+    "bytes": 140,
+    "sha256": "30f0bd167f8cb8b1347599e30d5f26a0ce057ad6cdcb475f6daa2c443a8322bf"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch1/TradeHistory_audit.csv",
+    "bytes": 382,
+    "sha256": "272ff6ee7904cddd36f66725aeb910ede84777a524d9867e146a03a8d0a7308e"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch1/Trade_audit.csv",
+    "bytes": 213,
+    "sha256": "09d3b654edbd4b79043ba9102a03cfd0580ffb0367cf0c94ad95e77ee5c45b72"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch1/WatchHistory_audit.csv",
+    "bytes": 122,
+    "sha256": "febb3a2aa9cfdecfd6d5b27a3ab0d8e92910e0f42ca0701c5df6cbf4fa7762aa"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch1_audit.csv",
+    "bytes": 110,
+    "sha256": "accdfd128c7881ed6d090316fb039feefa9b32587c3df9d1d450d5036eb2f399"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch2/Account_audit.csv",
+    "bytes": 172,
+    "sha256": "0e145cdedbe9ad3c4655f569b286a3a3067a8b65b883f25ef2a71c5b0af95beb"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch2/Customer_audit.csv",
+    "bytes": 245,
+    "sha256": "f5c7c909ef51f4d297c21dbe3e58e66a1a0938e0ff24da76710573808cdd8505"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch2/DailyMarket_audit.csv",
+    "bytes": 90,
+    "sha256": "a5ca336d163485a79e3c54ffca16d12a697e834f8e9215fedf26518475788a43"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch2/HoldingHistory_audit.csv",
+    "bytes": 84,
+    "sha256": "9d44ef9723525e4cbc1c735c12d662c6bf1e9ab47160442ee4c2e0cb1a480a97"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch2/Prospect_audit.csv",
+    "bytes": 137,
+    "sha256": "6d0bdbcf11c60601b126a5fcfbba334959dbeadb046a67668e78d13b9df4b66b"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch2/TradeHistory_audit.csv",
+    "bytes": 122,
+    "sha256": "ebcda5c84b618500ea844728ff1e8d6464f77973f015471c4ff4fa2d02e783d5"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch2/Trade_audit.csv",
+    "bytes": 203,
+    "sha256": "4652bcc1c10dd7241d895fb57d2049a39dc12f4d86716438dfb516b2eed57f0d"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch2/WatchHistory_audit.csv",
+    "bytes": 116,
+    "sha256": "dfa55ad89c084ec779cd3567a6ec3f366389a40b8202829513e4187f94377743"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch2_audit.csv",
+    "bytes": 110,
+    "sha256": "ea0abf475141640550a57a01d8b7874f306992a928696286fc381afe30e8f142"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch3/Account_audit.csv",
+    "bytes": 172,
+    "sha256": "c3b6c2dbccfab0df2af5dbfe7c1260a41ee36165fc5b444ac360f59faccc1e63"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch3/Customer_audit.csv",
+    "bytes": 245,
+    "sha256": "2874b7cc5c37de87218fe1dc1338dcf9a3e9353b30c79cf33142e45029e20a80"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch3/DailyMarket_audit.csv",
+    "bytes": 90,
+    "sha256": "fd0fdd800b5da4a0629327d7450c07d1ea17b50508e7f0c47ae0e04906beccf7"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch3/HoldingHistory_audit.csv",
+    "bytes": 84,
+    "sha256": "d87fc2cb783c51f1dd6de138ac9ee4cd9cec427c20a7b88cb02efc55e4b88b86"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch3/Prospect_audit.csv",
+    "bytes": 137,
+    "sha256": "7ecae15ddccbcb5b9ebed5f4cfa1361e75c463a83bb6e5dd265a8641af4836be"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch3/TradeHistory_audit.csv",
+    "bytes": 122,
+    "sha256": "316c73321cf3636e9fc496f6e025b45526da69636c0677834dde8eb79bb1aa0b"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch3/Trade_audit.csv",
+    "bytes": 203,
+    "sha256": "e2756d093f5232147180f12af324c3449d4d4e925f31c067a3db3f2e516a7353"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch3/WatchHistory_audit.csv",
+    "bytes": 116,
+    "sha256": "800e7d92510a5e2875701c8bd6bc4f1f475187e5bf70a1aeccaa5b7d2b62a5e0"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Batch3_audit.csv",
+    "bytes": 110,
+    "sha256": "eadadee958315275630a7b44217e90b599b203612ef8d48c4f69c27da3406cb6"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=100/Generator_audit.csv",
+    "bytes": 1087,
+    "sha256": "a54e82d2a24f8b4a21e5d02263680353a54c18804f8fcca76f5f49f9417fcf88"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch1/CustomerMgmt_audit.csv",
+    "bytes": 387,
+    "sha256": "3e63f204cd729ef2d6d11cf76491a30d67cc0102d898fc934d3efd613d94d7cd"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch1/DailyMarket_audit.csv",
+    "bytes": 94,
+    "sha256": "2d294d90cea7a1699b726da19fd03a4a90e6e3ba2e6f389f5c411480ffdc3bf4"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch1/FINWIRE_audit.csv",
+    "bytes": 227,
+    "sha256": "916a9b9963f6512d19e8104fc47da8d11519a424d569471e921d2f88d483d192"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch1/HR_audit.csv",
+    "bytes": 84,
+    "sha256": "8ceccecf1c6989eca1c1147bc6987aa042c53cf1abf35deea79e55165a65826a"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch1/HoldingHistory_audit.csv",
+    "bytes": 89,
+    "sha256": "716fe6647872c25e2416140df5294fb4e4b91f3d11bd79e2c36ddf3729463c76"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch1/Prospect_audit.csv",
+    "bytes": 143,
+    "sha256": "58bebbbc9769f1db1b270e6d9e62a3a95a6ced54a5551af92615ad1a4be2f655"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch1/TradeHistory_audit.csv",
+    "bytes": 390,
+    "sha256": "9b209afb4e8e06fc95f50519f7a95c2a1d919968af56f5aa38a73eda39fb8440"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch1/Trade_audit.csv",
+    "bytes": 216,
+    "sha256": "a033f0b81ff84825ef1a9cd86c2a7669966d15fd0c73edf7bba5549ea3585c87"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch1/WatchHistory_audit.csv",
+    "bytes": 124,
+    "sha256": "857283b7665d7a686c6a7a74c55d7d1687addf985cd4fe8773fdcf09f990caf0"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch1_audit.csv",
+    "bytes": 110,
+    "sha256": "accdfd128c7881ed6d090316fb039feefa9b32587c3df9d1d450d5036eb2f399"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch2/Account_audit.csv",
+    "bytes": 175,
+    "sha256": "5e49fba6909a161370c98e30a21c05b2df2409f937895c789d753d191e628f8a"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch2/Customer_audit.csv",
+    "bytes": 249,
+    "sha256": "28b1fc9d08637b2d15d2de73bfdc34635b3c077848902051b04acdf40b1eba63"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch2/DailyMarket_audit.csv",
+    "bytes": 91,
+    "sha256": "c5f33441e57b2c262ef170e42fa688d87c897de95421a66f4fd2025cdc8521ae"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch2/HoldingHistory_audit.csv",
+    "bytes": 85,
+    "sha256": "7afb2eb5bb0e265d1906e26306f706e84f3d30c138fef9fb5e8de8f256cac705"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch2/Prospect_audit.csv",
+    "bytes": 140,
+    "sha256": "faf43460a1f299a58c2e44634012f725913f756675470ff48377f548ce2fa36c"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch2/TradeHistory_audit.csv",
+    "bytes": 124,
+    "sha256": "72b1f4bf628f5b214b15c2514577d6d4c8c5d2b5fd31a4c36b4a72ee8b589e92"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch2/Trade_audit.csv",
+    "bytes": 206,
+    "sha256": "4ab17e880c05702fe345fdf523fe5a0828f388390da6e0cbc73d50b86773eaa4"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch2/WatchHistory_audit.csv",
+    "bytes": 118,
+    "sha256": "1334ee559bd40a623ab054d16f85616d20da3cdcbd241b170bd975b385b9a4f2"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch2_audit.csv",
+    "bytes": 110,
+    "sha256": "ea0abf475141640550a57a01d8b7874f306992a928696286fc381afe30e8f142"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch3/Account_audit.csv",
+    "bytes": 175,
+    "sha256": "779191f284dd4076fbb50617933565d23991d0b9ba48141f44f4b860594207ae"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch3/Customer_audit.csv",
+    "bytes": 249,
+    "sha256": "9805d60f5ab2ffb9c15d6fd483b992721b6ef68b9db6495c1da5777e4e19cada"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch3/DailyMarket_audit.csv",
+    "bytes": 91,
+    "sha256": "094e0315f4e598b557ebded37cc13fc785516095b6fa4e93415a94f31d681123"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch3/HoldingHistory_audit.csv",
+    "bytes": 85,
+    "sha256": "3d16059504db66709c36334265960babbf47017521651de852099e7d44d9fdfb"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch3/Prospect_audit.csv",
+    "bytes": 140,
+    "sha256": "70d8df3781215e6f114897899c487bc06254083fd542d70728d28ef8b32cbec3"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch3/TradeHistory_audit.csv",
+    "bytes": 124,
+    "sha256": "0b154f47042f589b626a44021560146364a3732bb061f8a4ec50ecb9d0b82a61"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch3/Trade_audit.csv",
+    "bytes": 206,
+    "sha256": "4b118ad348310ab01e8b12dc9e89dcf7db7c31478f13f035d12d3d966d9ae574"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch3/WatchHistory_audit.csv",
+    "bytes": 118,
+    "sha256": "e0d3fe799bc17478d46a401168d4ec117e5de0488b394748f2f2ca53cecf791c"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Batch3_audit.csv",
+    "bytes": 110,
+    "sha256": "eadadee958315275630a7b44217e90b599b203612ef8d48c4f69c27da3406cb6"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=1000/Generator_audit.csv",
+    "bytes": 1090,
+    "sha256": "52a7c0dd7e2e023a0138db7c568c46b55942c6674dff272134d735d5fb757e69"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch1/CustomerMgmt_audit.csv",
+    "bytes": 393,
+    "sha256": "8beded4555cc54051116a154126b3bf1d50bb71b12d90b9594e8ea717c4b939f"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch1/DailyMarket_audit.csv",
+    "bytes": 95,
+    "sha256": "81241acf4accf9e081ded8d2d13f53d6d685e987fd594c6c052ead385dda99dd"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch1/FINWIRE_audit.csv",
+    "bytes": 230,
+    "sha256": "a6f7a09d6dd075b92cd6193d402bf03afcff49d7f54548c12e3384e6d0263370"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch1/HR_audit.csv",
+    "bytes": 85,
+    "sha256": "4ab07587ec829e4bcb0fe09b3d80b2a8dc0ff8ca213c98dd13a776b10f9dda3e"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch1/HoldingHistory_audit.csv",
+    "bytes": 90,
+    "sha256": "8e790ba2c309250079fd3aed08e4c2da1f13c498f886bc274e6284b5f67e462d"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch1/Prospect_audit.csv",
+    "bytes": 146,
+    "sha256": "9f19eb38cebd4d775ee19ef0d9a455682617f4330564faabc76512f33f451e7f"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch1/TradeHistory_audit.csv",
+    "bytes": 398,
+    "sha256": "630af2d7c632a14e4bbfc9dbd3b6cdba24f067753078be3e4a2d7264e9d91d32"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch1/Trade_audit.csv",
+    "bytes": 219,
+    "sha256": "3ebaf67caf6e04f1aa13713914f377cc135aebe17285badf50c543c555c277b5"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch1/WatchHistory_audit.csv",
+    "bytes": 126,
+    "sha256": "4fbb4c857262b69dca9bac79ae31e6978c8e01073a1730903ccc720a85f87182"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch1_audit.csv",
+    "bytes": 110,
+    "sha256": "accdfd128c7881ed6d090316fb039feefa9b32587c3df9d1d450d5036eb2f399"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch2/Account_audit.csv",
+    "bytes": 178,
+    "sha256": "65ef3eb99c7f69f2cea49df9ef525481ddd8e5e6b6b24b26ac1b7cc35eac2e30"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch2/Customer_audit.csv",
+    "bytes": 253,
+    "sha256": "ef43a0b4fe5b470b482f26a322ccbcadee852c47fa564033b937c7000a3c5da0"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch2/DailyMarket_audit.csv",
+    "bytes": 92,
+    "sha256": "23ff253dc5c6b7b8332c4d89cf80f38312a94db08771c7d7914f0382e12d4c92"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch2/HoldingHistory_audit.csv",
+    "bytes": 86,
+    "sha256": "8f46f17f009a14c5b020b1a337a56a5b737a2f5bf1f4ae74e6f16103cf2fb687"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch2/Prospect_audit.csv",
+    "bytes": 143,
+    "sha256": "0a40b812ebb2f17fdc521b8d6310cb1a008af1217bb6ce55d43e77b615213637"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch2/TradeHistory_audit.csv",
+    "bytes": 126,
+    "sha256": "ec50373819191b8aa0c350927e4cdd2afb9c42d28c9f0d5cf571b131c148000e"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch2/Trade_audit.csv",
+    "bytes": 209,
+    "sha256": "df765e584781a2bad8e0613fb9f746a47f4bae4aaf67c321d42e97974dc7db49"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch2/WatchHistory_audit.csv",
+    "bytes": 120,
+    "sha256": "45ce5584f334d4b819b5cc5b11d199780612f1cbe7602fad44690eb5e609141d"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch2_audit.csv",
+    "bytes": 110,
+    "sha256": "ea0abf475141640550a57a01d8b7874f306992a928696286fc381afe30e8f142"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch3/Account_audit.csv",
+    "bytes": 178,
+    "sha256": "f053cf014e61e8846ad370ea7b17202c28fc5e94861b12dff9ebae9415398a80"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch3/Customer_audit.csv",
+    "bytes": 253,
+    "sha256": "d8595b305590082b114ceecc7fec52af05792fd3bf3f9e8229ea4415c4025d83"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch3/DailyMarket_audit.csv",
+    "bytes": 92,
+    "sha256": "5ad129101808699a507ed166167897ebf3855aeaca62b69be52bca7431ab2fd3"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch3/HoldingHistory_audit.csv",
+    "bytes": 86,
+    "sha256": "a60047d4521f1ff422cfeb4886c95aadd1d1f28d84c0266432d427e5802f494d"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch3/Prospect_audit.csv",
+    "bytes": 143,
+    "sha256": "09e7e318ec1c197a06bb2b4f9f5d03c8437aa85a0b7a37de51e79d5b8a2e1689"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch3/TradeHistory_audit.csv",
+    "bytes": 126,
+    "sha256": "b825445801e3effffcb8c5a12b548b43b18fbbe52f84ec7b9639740b4a930c1a"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch3/Trade_audit.csv",
+    "bytes": 209,
+    "sha256": "19d83521cca6de15404827982ba8b20e4af2360fb86d109682c74a10c3414344"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch3/WatchHistory_audit.csv",
+    "bytes": 120,
+    "sha256": "e2221f9a5dfaf1a47b9856cec7494bb396bcac9c48ac7a7f52c77822e51133fa"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Batch3_audit.csv",
+    "bytes": 110,
+    "sha256": "eadadee958315275630a7b44217e90b599b203612ef8d48c4f69c27da3406cb6"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=10000/Generator_audit.csv",
+    "bytes": 1093,
+    "sha256": "5391422d7f2aebc1395fdce6caa34fb9f056e234106aff6990833ab54a571a3f"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch1/CustomerMgmt_audit.csv",
+    "bytes": 394,
+    "sha256": "7f6ef27bef48d770e3bbfda957282744dcf8ba005494d392347285c17198a955"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch1/DailyMarket_audit.csv",
+    "bytes": 96,
+    "sha256": "43bdb2f59585df3184e2f72d7c779aa8ca80f6158a78e61321a308c6e9e1313d"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch1/FINWIRE_audit.csv",
+    "bytes": 232,
+    "sha256": "3251147f764f772bf60a21ad417b661276a53de87472d16b47f6ecdac9b93d25"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch1/HR_audit.csv",
+    "bytes": 85,
+    "sha256": "5d16511e3cd944c360638bf1e90acd6ef1b57a7f5662f563e48aa749744ee8b1"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch1/HoldingHistory_audit.csv",
+    "bytes": 90,
+    "sha256": "6333f205ec98e301e8fd8feb2609d68769974bf40554d0498b8e9d2f40dfeacc"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch1/Prospect_audit.csv",
+    "bytes": 146,
+    "sha256": "c4b16eb3cc0e13ca82bf90c9b9b7eb28d3bb80f3bdaee9845aff23daa56405fe"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch1/TradeHistory_audit.csv",
+    "bytes": 401,
+    "sha256": "47b2c27ea25a2cdafac43d84fb26bdeb8b999618191a969f64b5a3825a2cf0e2"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch1/Trade_audit.csv",
+    "bytes": 220,
+    "sha256": "6dd9a92c09682786266e6db61f841f55f9a853c092a3183c700dd98d21fb957a"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch1/WatchHistory_audit.csv",
+    "bytes": 126,
+    "sha256": "d5907bbf78eaebf936ba404a18e5c6e88fba5f2229fa1bc31d382c6c1a196c03"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch1_audit.csv",
+    "bytes": 110,
+    "sha256": "accdfd128c7881ed6d090316fb039feefa9b32587c3df9d1d450d5036eb2f399"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch2/Account_audit.csv",
+    "bytes": 179,
+    "sha256": "2cb4751bdc00f3c5c447aff35e9e5e2b7a7aa51139bcce86c8ca8b8d2fbbbd97"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch2/Customer_audit.csv",
+    "bytes": 254,
+    "sha256": "2cc65be6e77e6ee0f6cbd3a8184b2ebea51bc8fbd54bc12da546836d3835da1d"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch2/DailyMarket_audit.csv",
+    "bytes": 93,
+    "sha256": "29e47d5325c1f810403742b7eab4c2fabca7e81ab94773a4b8c1dec25456f595"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch2/HoldingHistory_audit.csv",
+    "bytes": 87,
+    "sha256": "bfb149d0e55dbb7207f44b721b5a3ef49c208782b94b6cc5291450fde663ec3c"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch2/Prospect_audit.csv",
+    "bytes": 144,
+    "sha256": "a52ac41201df396d7ed588db90cfe92d4dbbd584870b51e8d16628013605f463"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch2/TradeHistory_audit.csv",
+    "bytes": 128,
+    "sha256": "8b273e12b0554a267a4786a1af209ad1463578c5ea667addd599f81fd0c58af5"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch2/Trade_audit.csv",
+    "bytes": 210,
+    "sha256": "2b6952cf62bffa1ec869ee0da2119c39053995be9269b67c0639f091cf2bfe10"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch2/WatchHistory_audit.csv",
+    "bytes": 122,
+    "sha256": "53a14652ee3d7cdd91320a3c78088cf4aed57afa50e10df1cc6487cd6081834a"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch2_audit.csv",
+    "bytes": 110,
+    "sha256": "ea0abf475141640550a57a01d8b7874f306992a928696286fc381afe30e8f142"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch3/Account_audit.csv",
+    "bytes": 179,
+    "sha256": "a007f79d7ad72478c2a7a90bdc83ea6f89888f567a9b380e53ab0d761b71e547"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch3/Customer_audit.csv",
+    "bytes": 254,
+    "sha256": "325f53bf2a5f535b4930ffdb6222e57ec6225e8510e4c454e7ab676fbf31c4f3"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch3/DailyMarket_audit.csv",
+    "bytes": 93,
+    "sha256": "1e475734490449534dd7668912f686c553cbc3ac90bab20d5ea3e657ae8288e3"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch3/HoldingHistory_audit.csv",
+    "bytes": 87,
+    "sha256": "0772e833db14226c0e464a586dc566aaeafb17de7bde502670c9192662ec9ecd"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch3/Prospect_audit.csv",
+    "bytes": 144,
+    "sha256": "d9500c0c1afd7c804106b0403e8d844ca8cc2d047cb2101872613c0fede6f573"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch3/TradeHistory_audit.csv",
+    "bytes": 128,
+    "sha256": "845cea3c9744423a754469da258c48184c4d0bf38632564fa692a7ef86fe2af7"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch3/Trade_audit.csv",
+    "bytes": 210,
+    "sha256": "6e321ca8dfd56879edb1ccdecbb7b090540f0c0ede0209d5c2cf0bd1d880b167"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch3/WatchHistory_audit.csv",
+    "bytes": 122,
+    "sha256": "8fcc33635482bcce73e5256ea5003b1862709a875dcc3fb132bafe7e5ffae9bc"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Batch3_audit.csv",
+    "bytes": 110,
+    "sha256": "eadadee958315275630a7b44217e90b599b203612ef8d48c4f69c27da3406cb6"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=20000/Generator_audit.csv",
+    "bytes": 1095,
+    "sha256": "5fdec8988bf3f4f165205503d1cb068705f6b084c52ff2c3b292e61b50137298"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch1/CustomerMgmt_audit.csv",
+    "bytes": 391,
+    "sha256": "174c340f0b2fd81e7ebee5390f5a4048c3df49b1084f2bd70358abec01587912"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch1/DailyMarket_audit.csv",
+    "bytes": 95,
+    "sha256": "1eb3c9a65c18c93e1bdb39a5bb0fe0953992ff5b940b9ec6c590143f81de618a"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch1/FINWIRE_audit.csv",
+    "bytes": 230,
+    "sha256": "568d30aae2bd396544b4b0c76d1e7f4252cf7ef108f3d991c57f0f4b7c635336"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch1/HR_audit.csv",
+    "bytes": 84,
+    "sha256": "0acffba8adafe2a5f3aa382e5100ad8bc1a5d84d51e2e0a03d698f8b3894b966"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch1/HoldingHistory_audit.csv",
+    "bytes": 89,
+    "sha256": "848d0e80f22f2e613e7c161feb8f6e875af69bbd0de938a6f5a0a81d40da03dc"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch1/Prospect_audit.csv",
+    "bytes": 145,
+    "sha256": "08ba66a3269a842a16ada2ce26d4adae9a16ad184b1d4f2e94938f76ebb707ab"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch1/TradeHistory_audit.csv",
+    "bytes": 394,
+    "sha256": "33df24cd8c1df8fd69305a9e0d414c5f4f6d3f0b4f3c4dc4b6a84e82a722f256"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch1/Trade_audit.csv",
+    "bytes": 217,
+    "sha256": "8c7f685a009845be3a89e84100a236ea6b4bf7cf9113d3c33f79aa6c3322e7f3"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch1/WatchHistory_audit.csv",
+    "bytes": 126,
+    "sha256": "d47b8988c82a3c6a2cc284ef8f82e08896eae2872b921072e9baa0ad3ddb9736"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch1_audit.csv",
+    "bytes": 110,
+    "sha256": "accdfd128c7881ed6d090316fb039feefa9b32587c3df9d1d450d5036eb2f399"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch2/Account_audit.csv",
+    "bytes": 177,
+    "sha256": "33bef845c3319c6b5ed082b68139545ca589e5a6c96be0460e2cac23d25b4bb7"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch2/Customer_audit.csv",
+    "bytes": 253,
+    "sha256": "b09f5f0753c86bfbe5eedec9c4e1b769dd00ecc74e8baee69a26dc0da4352ecf"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch2/DailyMarket_audit.csv",
+    "bytes": 92,
+    "sha256": "498185cd54c2ae5f1f5448cddd18fc720a8a0057d45907893001302f0f25dad6"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch2/HoldingHistory_audit.csv",
+    "bytes": 86,
+    "sha256": "713c10fbd6322cae9fa541d85ca2534c6758faa66335dc6edb90d6030acaadba"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch2/Prospect_audit.csv",
+    "bytes": 142,
+    "sha256": "a0d1264d55972e514eb580c685c58c92eb9b1a77f1b3c3f55eba26a87d2e57b3"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch2/TradeHistory_audit.csv",
+    "bytes": 126,
+    "sha256": "5e8079cecf9331e9ee57a73bab25e3d3fe2536d7e7a9faee2ea1b8eb7af4ff4d"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch2/Trade_audit.csv",
+    "bytes": 208,
+    "sha256": "201f53572b64d2597fb3ffdc2f17285b2fa3c08fcb1dc396847055f44f07fe5f"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch2/WatchHistory_audit.csv",
+    "bytes": 120,
+    "sha256": "9a80b82652587c45cb8b7c81be41a21c089e3a3b9fa0f353431df8881724163a"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch2_audit.csv",
+    "bytes": 110,
+    "sha256": "ea0abf475141640550a57a01d8b7874f306992a928696286fc381afe30e8f142"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch3/Account_audit.csv",
+    "bytes": 177,
+    "sha256": "44ac4e9589663c0c46243d4839e34105d860a04a60d73ca5c4fe36c850edb2a0"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch3/Customer_audit.csv",
+    "bytes": 253,
+    "sha256": "1f59b53abc9d574e2cbffd7a1bc4d1ce21f0c514c98d7ebe5eebaecb51a118d7"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch3/DailyMarket_audit.csv",
+    "bytes": 92,
+    "sha256": "6304dcc1afb0c3d3cb631f7dd320c6235c74e7e6c12db273dfc6f38550cb9ea9"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch3/HoldingHistory_audit.csv",
+    "bytes": 86,
+    "sha256": "91f59e524ac5c7fb7f326fefdddb0007f7ba176d80f25c69840d197fb53c11a2"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch3/Prospect_audit.csv",
+    "bytes": 142,
+    "sha256": "bfbf65f4ca43e3c4809cca8ac245b768cb63571d5466f9c53db7df5afaa2b8be"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch3/TradeHistory_audit.csv",
+    "bytes": 126,
+    "sha256": "9d8e2eab9ce9a1c72161b3f344f05cc79874a7e7d0c63b9232779e22d0549046"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch3/Trade_audit.csv",
+    "bytes": 208,
+    "sha256": "f6751bacc5163cc50295271b1fabfb66e04d800b02710599492bf3a9313ed47b"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch3/WatchHistory_audit.csv",
+    "bytes": 120,
+    "sha256": "78c5455fb9607a5b7c2ac290aa7a51430f9c474c273995661930133774f8d788"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Batch3_audit.csv",
+    "bytes": 110,
+    "sha256": "eadadee958315275630a7b44217e90b599b203612ef8d48c4f69c27da3406cb6"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_audits/.bak_sf=5000/Generator_audit.csv",
+    "bytes": 1092,
+    "sha256": "86199cde9326284ef2af6fda31ac982cecba4faf58749bb1530ecca6ef040a95"
+   }
+  ],
+  "digen_output": [
+   {
+    "path": "src/tools/tpcdi_gen/static_files/Date.txt",
+    "bytes": 3501598,
+    "sha256": "a84341b9e6d9c732b5104956b7d8da7966a01cdba3371736266d7cbb92412daa"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_files/Industry.txt",
+    "bytes": 2680,
+    "sha256": "67934cb0fea1c6d5ce20990e400adc7f4b2bf03c6260b53ffa140530352280cc"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_files/StatusType.txt",
+    "bytes": 89,
+    "sha256": "f4ca8eefa64abebcdb3cd47c226d04268a9dbad0f8faf6476cda1bea001481f6"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_files/TaxRate.txt",
+    "bytes": 17039,
+    "sha256": "8607cf2b53449a013d21888e694feb63e97e686ea73a701668262f309a3381f2"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_files/Time.txt",
+    "bytes": 4782598,
+    "sha256": "642a0b45bbc941d5cd57d8e76d4e576e2060434916cac3a9a7fee546d5032910"
+   },
+   {
+    "path": "src/tools/tpcdi_gen/static_files/TradeType.txt",
+    "bytes": 99,
+    "sha256": "8cd4388b9be9bb1ccd30f96715f80143fc78794aac641f898aa6ec90c9f2dfe6"
+   }
+  ]
+ },
+ "appendix_v1_1_0": [
+  {
+   "path": "src/incremental_batches/audit_validation/Appendix_v1.1.0/AppendixA/tpcdi_audit.sql",
+   "bytes": 60761,
+   "sha256": "32eb0f55a08b8cf5a906d4aff563539d42c873c72d6dc662798218b2bc3107fc"
+  },
+  {
+   "path": "src/incremental_batches/audit_validation/Appendix_v1.1.0/AppendixB/tpcdi_validation.sql",
+   "bytes": 5944,
+   "sha256": "9ee9ef8144c7f53bb6fb0d4ac489dda2379e7aa1b8e24d7a12df1539b7f86c02"
+  },
+  {
+   "path": "src/incremental_batches/audit_validation/Appendix_v1.1.0/AppendixC/tpcdi_visibility_1.sql",
+   "bytes": 5164,
+   "sha256": "a95eb53868fa42cf234ecf6899fa3ce3a87839a66f21945f87a9ff0d94e58526"
+  },
+  {
+   "path": "src/incremental_batches/audit_validation/Appendix_v1.1.0/AppendixC/tpcdi_visibility_2.sql",
+   "bytes": 3362,
+   "sha256": "a22645d5c9d2095d8d77549db3e7ecbc8d5d5417e8f0973fbd92150347ea894a"
+  }
+ ]
+}

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import itertools
 import os
 import shutil
@@ -71,8 +72,37 @@ def test_selection_since_a_commit_excludes_paths_changed_before_it(repo: Path) -
     assert _select(repo, "python", integration) == ["scripts/beta.py"]
 
 
+def _write_selection(tmp_path: Path, changed: tuple[str, ...], deleted: tuple[str, ...]) -> dict[str, Path]:
+    spec = importlib.util.spec_from_file_location("preflight_targets_under_test", SCRIPT)
+    assert spec is not None and spec.loader is not None
+    targets = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(targets)
+    tree = tmp_path / "selection-tree"
+    for name in changed:
+        (tree / name).parent.mkdir(parents=True, exist_ok=True)
+        (tree / name).write_text("x = 1\n", encoding="utf-8")
+    paths = [*changed, *deleted]
+    selected = {
+        "python": targets.changed_python(tree, paths),
+        "lint": targets.lint_steps(tree, paths),
+        "typecheck-files": targets.typecheck_files(tree, paths),
+        "marker-files": targets.marker_files(tree, paths),
+    }
+    files: dict[str, Path] = {}
+    for kind, lines in selected.items():
+        files[kind] = tmp_path / f"selected-{kind}.txt"
+        files[kind].write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
+    return files
+
+
 def _run_preflight(
-    tmp_path: Path, base: str | None, extra_env: dict[str, str] | None = None, expect_code: int = 0
+    tmp_path: Path,
+    base: str | None,
+    extra_env: dict[str, str] | None = None,
+    expect_code: int = 0,
+    changed: tuple[str, ...] = (),
+    deleted: tuple[str, ...] = (),
+    collect_exit: int = 0,
 ) -> tuple[list[str], str]:
     work = tmp_path / "work"
     (work / "scripts").mkdir(parents=True)
@@ -85,7 +115,10 @@ def _run_preflight(
     bin_dir.mkdir()
     log = tmp_path / "uv.log"
     stub = bin_dir / "uv"
-    stub.write_text(f'#!/bin/sh\necho "$*" >> {log}\n', encoding="utf-8")
+    selection = _write_selection(tmp_path, changed, deleted)
+    cases = "".join(f'*"preflight_targets.py {kind} "*) cat {path};; ' for kind, path in selection.items())
+    cases += f'*"pytest --collect-only"*) exit {collect_exit};; '
+    stub.write_text(f'#!/bin/sh\necho "$*" >> {log}\ncase "$*" in {cases}esac\n', encoding="utf-8")
     stub.chmod(0o755)
     git_log = tmp_path / "git.log"
     real_git = shutil.which("git")
@@ -121,7 +154,7 @@ def test_pr_preflight_selects_against_base_without_fetching_develop(tmp_path: Pa
     selections, fetches = _run_preflight(tmp_path, "abc1234")
 
     assert {line.split()[-1] for line in selections} == {"abc1234"}
-    assert {line.split()[-3] for line in selections} == {"python", "tests", "guards"}
+    assert {line.split()[-3] for line in selections} == {"python", "tests", "guards", "lint"}
     assert fetches == ""
 
 
@@ -162,3 +195,114 @@ def test_pr_preflight_takes_a_branch_name_as_that_branchs_fetched_origin_ref(tmp
 
     assert {line.split()[-1] for line in selections} == {f"origin/{branch}"}
     assert fetches.split() == ["fetch", "origin", branch, "--quiet"]
+
+
+def _uv_calls(tmp_path: Path) -> list[str]:
+    return (tmp_path / "uv.log").read_text(encoding="utf-8").splitlines()
+
+
+STRATEGY_CALL = "run -- python -m pytest tests/unit/test_marker_strategy.py -q"
+
+
+def _collect_calls(calls: list[str]) -> list[str]:
+    return [call for call in calls if "pytest --collect-only" in call]
+
+
+def _lint_calls(calls: list[str]) -> list[str]:
+    return [call for call in calls if "lint-imports" in call or "scripts.typecheck" in call or "marker" in call]
+
+
+def test_pr_preflight_runs_the_cheap_lint_guards_for_changed_python(tmp_path: Path) -> None:
+    _run_preflight(
+        tmp_path,
+        "abc1234",
+        changed=("benchbox/utils/a.py", "tests/unit/test_a.py", "scripts/b.py", "tests/fixtures/f.py"),
+    )
+    calls = _uv_calls(tmp_path)
+
+    assert "run -- lint-imports" in calls
+    assert "run -- python -m scripts.typecheck benchbox/utils/a.py tests/unit/test_a.py" in calls
+    assert any(
+        "pytest --collect-only" in call and call.endswith("tests.utilities.marker_manifest tests/unit/test_a.py")
+        for call in calls
+    )
+    assert STRATEGY_CALL in calls
+
+
+def test_pr_preflight_skips_marker_lint_and_typecheck_when_no_checked_file_changed(tmp_path: Path) -> None:
+    _run_preflight(tmp_path, "abc1234", changed=("scripts/b.py",))
+    calls = _uv_calls(tmp_path)
+
+    assert "run -- lint-imports" in calls
+    assert not [call for call in calls if "scripts.typecheck" in call or "marker" in call]
+
+
+def test_pr_preflight_skips_the_lint_guards_when_no_python_changed(tmp_path: Path) -> None:
+    _run_preflight(tmp_path, "abc1234", changed=("notes.txt",))
+
+    assert _lint_calls(_uv_calls(tmp_path)) == []
+
+
+@pytest.mark.parametrize("support_file", ["tests/conftest.py", "tests/utilities/helper.py"])
+def test_pr_preflight_runs_the_marker_strategy_without_collecting_a_support_module(
+    tmp_path: Path, support_file: str
+) -> None:
+    _run_preflight(tmp_path, "abc1234", changed=(support_file,))
+    calls = _uv_calls(tmp_path)
+
+    assert STRATEGY_CALL in calls
+    assert _collect_calls(calls) == []
+
+
+def test_pr_preflight_collects_a_changed_fixture_test_module_pytest_would_collect(tmp_path: Path) -> None:
+    _run_preflight(tmp_path, "abc1234", changed=("tests/fixtures/test_sample.py",))
+    calls = _uv_calls(tmp_path)
+
+    assert STRATEGY_CALL in calls
+    assert [call.split()[-1] for call in _collect_calls(calls)] == ["tests/fixtures/test_sample.py"]
+    assert not [call for call in calls if "scripts.typecheck" in call]
+
+
+def test_pr_preflight_collects_only_test_modules_among_changed_test_tree_files(tmp_path: Path) -> None:
+    _run_preflight(
+        tmp_path,
+        "abc1234",
+        changed=("tests/conftest.py", "tests/unit/test_a.py", "tests/unit/b_test.py", "tests/fixtures/test_f.py"),
+    )
+    calls = _uv_calls(tmp_path)
+
+    assert STRATEGY_CALL in calls
+    assert len(_collect_calls(calls)) == 1
+    assert _collect_calls(calls)[0].endswith(
+        "tests.utilities.marker_manifest tests/unit/test_a.py tests/unit/b_test.py tests/fixtures/test_f.py"
+    )
+
+
+def test_pr_preflight_runs_the_guards_for_a_deleted_test_module(tmp_path: Path) -> None:
+    _run_preflight(tmp_path, "abc1234", deleted=("tests/unit/test_gone.py",))
+    calls = _uv_calls(tmp_path)
+
+    assert "run -- lint-imports" in calls
+    assert STRATEGY_CALL in calls
+    assert "run -- python -m scripts.typecheck" in calls
+    assert _collect_calls(calls) == []
+
+
+def test_pr_preflight_typechecks_only_files_that_still_exist_beside_a_deletion(tmp_path: Path) -> None:
+    _run_preflight(tmp_path, "abc1234", changed=("benchbox/utils/a.py",), deleted=("benchbox/utils/gone.py",))
+
+    assert "run -- python -m scripts.typecheck benchbox/utils/a.py" in _uv_calls(tmp_path)
+
+
+def test_pr_preflight_runs_no_guards_for_a_deleted_non_python_file(tmp_path: Path) -> None:
+    _run_preflight(tmp_path, "abc1234", deleted=("gone.txt",))
+
+    assert _lint_calls(_uv_calls(tmp_path)) == []
+
+
+def test_pr_preflight_accepts_a_collection_that_deselects_every_test(tmp_path: Path) -> None:
+    _run_preflight(tmp_path, "abc1234", changed=("tests/unit/test_slow_only.py",), collect_exit=5)
+    calls = _uv_calls(tmp_path)
+
+    assert len(_collect_calls(calls)) == 1
+    assert STRATEGY_CALL in calls

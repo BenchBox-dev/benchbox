@@ -27,6 +27,7 @@ from benchbox.core.contracts import (
     as_sql_benchmark_executor,
     as_statistics_phase_runner,
 )
+from benchbox.core.generation_estimate import DATA_GENERATION, QUERY_GENERATION, announce_generation_estimate
 from benchbox.core.loaded_tables import require_loaded_tables
 from benchbox.core.results.driver_metadata import apply_driver_metadata
 from benchbox.core.results.models import (
@@ -73,7 +74,9 @@ from benchbox.utils.dialect_utils import (
     summarize_sql_translation_outcomes,
 )
 from benchbox.utils.format_converters import ConversionOptions
+from benchbox.utils.generation_marker import GENERATION_IN_PROGRESS_MARKER, generation_in_progress
 from benchbox.utils.printing import emit
+from benchbox.utils.run_deadline import enter_run_phase
 from benchbox.utils.toggles import is_probe_requested
 from benchbox.utils.verbosity import VerbosityMixin, VerbositySettings
 
@@ -423,6 +426,10 @@ def _attach_datagen_version(
             return result
         result.data_generation_version = manifest.get("data_generation_version")
         result.data_generation_hash = manifest.get("data_generation_identity_hash", manifest.get("base_constants_hash"))
+        if str(manifest.get("benchmark", "")).lower() == "tpcdi":
+            seed = manifest.get("seed")
+            if isinstance(seed, int) and not isinstance(seed, bool):
+                result.data_generation_seed = seed
         if str(manifest.get("benchmark", "")).lower() == "flightdata":
             result.flightdata_source_provenance = manifest.get("source_provenance")
     except Exception as exc:
@@ -1458,6 +1465,9 @@ def run_benchmark_lifecycle(
     enable_resource_monitoring: bool = True,
     execution_context: ExecutionContext | None = None,
 ) -> BenchmarkResults:
+    from benchbox.core.run_service import refuse_unavailable_benchmark
+
+    refuse_unavailable_benchmark(benchmark_config.name)
     phases = phases or LifecyclePhases()
     validation_opts = validation_opts or ValidationOptions()
     _enforce_gateway_lifecycle(benchmark_config, database_config, platform_adapter, phases)
@@ -1486,6 +1496,7 @@ def run_benchmark_lifecycle(
     freshly_generated = False
     manifest_reused = False
     if needs_data or phases.generate:
+        enter_run_phase("generate")
         datagen_duration, freshly_generated, manifest_reused = _run_data_generation_phase(
             benchmark=benchmark,
             benchmark_config=benchmark_config,
@@ -1524,6 +1535,7 @@ def run_benchmark_lifecycle(
     should_run_load_only = test_type == "load_only" or (phases.load and not phases.execute and adapter is not None)
 
     if should_run_load_only:
+        enter_run_phase("load")
         try:
             with sql_translation_context(strict=strict_translation) as translation_outcomes:
                 result_obj = _run_load_only_mode(
@@ -1596,6 +1608,9 @@ def run_benchmark_lifecycle(
         table_format=table_format,
         gather_statistics=phases.statistics,
     )
+
+    if phases.execute:
+        announce_generation_estimate(QUERY_GENERATION, benchmark_config.name, benchmark_config.scale_factor)
 
     try:
         with sql_translation_context(strict=strict_translation) as translation_outcomes:
@@ -1789,6 +1804,7 @@ def _ensure_data_generated(benchmark: Any, config: BenchmarkConfig) -> tuple[boo
     if manifest_found and not manifest_valid:
         emit("⚠️ Manifest validation failed; regenerating benchmark data")
 
+    announce_generation_estimate(DATA_GENERATION, config.name, config.scale_factor)
     emit("Generating benchmark data...")
     _gen_start = time.monotonic()
     benchmark.generate_data()
@@ -1998,6 +2014,13 @@ def _validate_manifest_if_present(
         manifest_found = bool(hasattr(manifest_path, "exists") and manifest_path.exists())
         if not manifest_found:
             return False, None, False
+        if generation_in_progress(output_dir):
+            logger.warning(
+                "Data generation did not finish (%s is present); regenerating", GENERATION_IN_PROGRESS_MARKER
+            )
+            if not quiet:
+                emit("\u26a0\ufe0f Cached data is from a generation that did not finish; regenerating")
+            return False, None, True
         with manifest_path.open("r") as f:
             manifest = json.load(f)
 

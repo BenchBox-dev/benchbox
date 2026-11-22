@@ -18,6 +18,7 @@ from benchbox.core.results.timer_scope import (
     outside_query_timer,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.run_deadline import graceful_cleanup_window_seconds, remote_cleanup_seconds_left
 
 if TYPE_CHECKING:
     pass
@@ -32,6 +33,7 @@ from benchbox.platforms.base.cloud_spark import (
 )
 from benchbox.platforms.base.cloud_spark.config import CloudPlatform
 from benchbox.platforms.base.phase_tracking import _resolve_benchmark_table_names
+from benchbox.platforms.base.remote_work import StartedRemoteWork
 from benchbox.utils.dependencies import (
     check_platform_dependencies,
     get_dependency_error_message,
@@ -48,6 +50,14 @@ except ImportError:
     BOTO3_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
+
+
+EMR_SERVERLESS_TERMINAL_STATES = frozenset({"SUCCESS", "FAILED", "CANCELLED"})
+EMR_SERVERLESS_STOP_RESERVE_SECONDS = 5.0
+
+
+def _pause(seconds: float) -> None:
+    time.sleep(seconds)
 
 
 class EMRServerlessJobState:
@@ -133,6 +143,7 @@ class EMRServerlessAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExterna
         self._total_vcpu_hours = 0.0
         self._total_memory_gb_hours = 0.0
         self._application_created_by_us = False
+        self._started_work = StartedRemoteWork()
 
         self._benchmark_type: str | None = None
         self._scale_factor: float = 1.0
@@ -419,6 +430,7 @@ spark.stop()
         }
 
         response = client.start_job_run(**job_config)
+        self._started_work.add(response["jobRunId"])
         return response["jobRunId"]
 
     def _wait_for_job_run(self, job_run_id: str) -> tuple[str, dict[str, Any]]:
@@ -435,9 +447,11 @@ spark.stop()
             state = job_run["state"]
 
             if state == EMRServerlessJobState.SUCCESS:
+                self._started_work.discard(job_run_id)
                 resource_usage = job_run.get("totalResourceUtilization", {})
                 return state, resource_usage
             if state in [EMRServerlessJobState.FAILED, EMRServerlessJobState.CANCELLED]:
+                self._started_work.discard(job_run_id)
                 error_msg = job_run.get("stateDetails", "Unknown error")
                 raise RuntimeError(f"Job failed with state {state}: {error_msg}")
 
@@ -514,6 +528,53 @@ spark.stop()
                 "error": str(e),
                 "error_type": type(e).__name__,
             }
+
+    def _wait_for_runs_to_end(self, client: Any, job_run_ids: list[str], budget_seconds: float) -> None:
+        start_time = mono_time()
+        pending = list(job_run_ids)
+        while pending:
+            pending = [
+                job_run_id
+                for job_run_id in pending
+                if client.get_job_run(applicationId=self.application_id, jobRunId=job_run_id)["jobRun"]["state"]
+                not in EMR_SERVERLESS_TERMINAL_STATES
+            ]
+            if not pending:
+                return
+            if elapsed_seconds(start_time) >= budget_seconds:
+                raise RuntimeError(
+                    f"EMR Serverless job runs {', '.join(pending)} had not ended after {budget_seconds:g} seconds"
+                )
+            _pause(1)
+
+    def cancel_remote_work(self) -> None:
+        client = self._get_emr_serverless_client()
+        job_run_ids = self._started_work.keys()
+        failures: list[str] = []
+        try:
+            self._started_work.cancel_all(
+                "EMR Serverless",
+                lambda job_run_id, _: client.cancel_job_run(applicationId=self.application_id, jobRunId=job_run_id),
+            )
+        except Exception as exc:
+            failures.append(str(exc))
+        cancelled = [job_run_id for job_run_id in job_run_ids if job_run_id not in self._started_work.keys()]
+        if cancelled:
+            window = remote_cleanup_seconds_left()
+            if window is None:
+                window = graceful_cleanup_window_seconds()
+            try:
+                self._wait_for_runs_to_end(client, cancelled, max(0.0, window - EMR_SERVERLESS_STOP_RESERVE_SECONDS))
+            except Exception as exc:
+                failures.append(str(exc))
+        if self._application_created_by_us and self.application_id:
+            try:
+                client.stop_application(applicationId=self.application_id)
+                self._application_created_by_us = False
+            except Exception as exc:
+                failures.append(f"EMR Serverless application stop failed: {type(exc).__name__}: {exc}")
+        if failures:
+            raise RuntimeError("; ".join(failures))
 
     def close(self) -> None:
         if self._application_created_by_us and self.application_id:

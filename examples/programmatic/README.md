@@ -76,7 +76,7 @@ benchmark = TPCDS(scale_factor=0.1, output_dir="./data")
 
 ```
 
-Other benchmarks are available: TPCDI, SSB, ClickBench, AMPLab, H2ODB, JoinOrder, ReadPrimitives, WritePrimitives, TPCHavoc and CoffeeShop.
+Other benchmarks are available: SSB, ClickBench, AMPLab, H2ODB, JoinOrder, ReadPrimitives, WritePrimitives, TPCHavoc and CoffeeShop.
 
 ### Platform Adapters
 

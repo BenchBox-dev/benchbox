@@ -241,17 +241,6 @@ class TestOtherWrapperClasses:
 
         assert isinstance(read_primitives, BaseBenchmark)
 
-    @pytest.mark.skipif(not PANDAS_AVAILABLE, reason="pandas not installed (required for TPCDI)")
-    def test_tpcdi_wrapper(self, temp_dir):
-        from benchbox.tpcdi import TPCDI
-
-        tpcdi = TPCDI(output_dir=temp_dir)
-        assert tpcdi.output_dir == temp_dir
-
-        from benchbox.base import BaseBenchmark
-
-        assert isinstance(tpcdi, BaseBenchmark)
-
     def test_joinorder_wrapper(self, temp_dir):
         from benchbox.joinorder import JoinOrder
 

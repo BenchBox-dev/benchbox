@@ -1199,7 +1199,6 @@ class TPCResultValidator:
                     "required_queries": {
                         "TPC-H": list(range(1, 23)),
                         "TPC-DS": list(range(1, 100)),
-                        "TPC-DI": ["etl_queries"],
                     },
                     "required_tables": [],
                     "required_maintenance_ops": [],

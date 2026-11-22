@@ -647,7 +647,7 @@ def test_the_creation_script_builds_a_commit_that_verify_line_accepts(created_li
     develop = fixture_sha(created_line, "tip")
     assert git(created_line, "log", "-1", "--format=%(trailers:key=Develop-Source,valueonly)", commit) == develop
     assert git(created_line, "rev-parse", f"{commit}^") == fixture_sha(created_line, "released")
-    for path in consumer.creation_review_paths(created_line, commit, develop):
+    for path in consumer.creation_carried_paths(created_line, commit, develop):
         assert git(created_line, "ls-tree", commit, "--", path) == git(created_line, "ls-tree", develop, "--", path)
 
 

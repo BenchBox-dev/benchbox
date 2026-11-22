@@ -29,7 +29,7 @@ DOCUMENTED_SHALLOW_COHORTS = {
     ("tpchavoc", "1.0"): frozenset({"datafusion"}),
 }
 NON_CLEAN_VALIDATION_STATUSES = frozenset(
-    {"failed", "interrupted", "partial", "error", "not_run", "not_validated", "uncertain", "unknown"}
+    {"failed", "interrupted", "timed_out", "partial", "error", "not_run", "not_validated", "uncertain", "unknown"}
 )
 NON_CLEAN_TRANSLATION_STATUSES = frozenset({"fallback", "failed"})
 PHASE_ALIASES = {"standard": "power"}
