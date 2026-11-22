@@ -217,7 +217,10 @@ def _waiting_full_run(runs: Sequence[CiRun], url: str, now: datetime, refresh: S
     if rerunning is not None:
         return Wait(rerunning.id, PLACEHOLDER_RERUNNING)
     if not full_runs:
-        return Wait(failed.id, FULL_RUN_NOT_LISTED)
+        if failed.updated_at is None:
+            return None
+        age = (now - failed.updated_at).total_seconds()
+        return Wait(failed.id, FULL_RUN_NOT_LISTED) if 0 <= age < PLACEHOLDER_REFRESH_SECONDS else None
     return _placeholder_refresh_pending(failed, full_runs, refresh, now)
 
 
