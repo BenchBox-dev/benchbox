@@ -121,8 +121,7 @@ that enumerate them should use `resolve_all()`.
 ## Query translation
 
 Query text reaches a platform through one entry point,
-`benchbox.utils.dialect_utils.translate_sql_query`, backed by the SQLGlot fork
-(`_project/decisions/sqlglot-fork-transpilation-plan.md`). A dialect gap the
+`benchbox.utils.dialect_utils.translate_sql_query`, backed by the SQLGlot fork. A dialect gap the
 translator does not cover is closed by a named fork rewrite applied with
 `apply_rewrite` in the same module, never by text replacement or per-platform
 SQL strings.
