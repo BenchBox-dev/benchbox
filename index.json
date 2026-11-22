@@ -43101,6 +43101,13 @@
       "status": "open",
       "title": "Publish the tiny SQL translation feasibility verdict"
     },
+    "sql-translation-single-entry-guidance-and-check-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "State that query text reaches platforms only through translate_sql_query/apply_rewrite, and add a check that flags text-level SQL rewriting in benchbox/core"
+    },
     "sql-transpiler-comparison-evidence": {
       "claim": null,
       "needs": [],

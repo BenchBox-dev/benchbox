@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "AGENTS.md and sql_compat/README.md state the single query-translation entry point.",
+    "A blocking check flags text-level SQL rewriting in benchbox/core."
+  ],
+  "description": "## Problem\nThe rule that BenchBox query text reaches a platform only through translate_sql_query (and named fork rewrites via apply_rewrite) is recorded in an ADR that left the core repository in #3545 and in _project/decisions/sqlglot-fork-transpilation-plan.md, but AGENTS.md's BenchBox invariants and benchbox/sql_compat/README.md describe only DDL governance. A new benchmark loader therefore shipped hand-written per-platform token substitution of SQL text, and no automated check flags text-level SQL rewriting (tests/unit/sql_compat/test_vendored_sqlglot_bypass.py covers only direct vendored-SQLGlot calls; compat_lint covers only CREATE TABLE rewrites).\n\n## Owner decision\n- 2026-11-22: fix=[amend-items, schema-followup, guidance, lint], batch=resume-after (owner form answer 2026-11-22): 'New serial PR: state in AGENTS.md and sql_compat/README.md that query text reaches platforms only through translate_sql_query/apply_rewrite' and 'Add an automated check that flags text-level SQL rewriting in benchbox/core (the guidance PR would add it)'.\n\n## Change\nAdd one invariant line to AGENTS.md (BenchBox invariants; keep the file compact) and a query-translation section to benchbox/sql_compat/README.md. Add a blocking check (test or make target wired into existing CI) that flags text-level rewriting of SQL in benchbox/core (e.g. str.replace/re.sub on SQL-bearing values, per-platform SQL substitution tables) outside the sanctioned modules, with a reviewed allowlist for legitimate existing cases (each listed with a reason in the PR). If the existing tree has violations that cannot be allowlisted with a reason, list them in the PR and file follow-ups instead of weakening the check.\n\n## Verification rubric\nPass: the check fails on a fixture that does per-platform str.replace on SQL and passes on the tree; make comment-policy-check and pr-preflight pass.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e",
+      "at": "2026-11-22T13:56:28Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e94b3faff1264f0b92f50ef8df67471e",
+      "session_id": "a8b92107f30e427f9def4483bf06f645"
+    }
+  ]
+}
