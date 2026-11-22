@@ -42,7 +42,7 @@ class TestDefaultMergedSurface:
     def test_benchmark_info_distributions_cover_total_queries(self):
         from benchbox.core.joinorder_synthetic.benchmark import JoinOrderSyntheticBenchmark
 
-        benchmark = JoinOrderSyntheticBenchmark(scale_factor=0.001)
+        benchmark = JoinOrderSyntheticBenchmark(scale_factor=0.01)
         info = benchmark.get_benchmark_info()
         complexity_total = sum(len(ids) for ids in info["query_complexity_distribution"].values())
         pattern_total = sum(len(ids) for ids in info["join_pattern_distribution"].values())
