@@ -260,8 +260,12 @@ def test_build_mirror_carries_shared_schema_policy() -> None:
     assert "'benchbox/core/results/schema_policy.py'" in build
 
 
-def test_corpus_rule_module_and_data_file_travel_in_every_mirror_list() -> None:
-    pair = {"benchbox/core/results/corpus_rule.py", "benchbox/core/results/corpus_rule_data.json"}
+def test_corpus_rule_module_data_file_and_score_function_travel_in_every_mirror_list() -> None:
+    pair = {
+        "benchbox/core/results/corpus_rule.py",
+        "benchbox/core/results/corpus_rule_data.json",
+        "benchbox/core/results/corpus_score.py",
+    }
     triggers, compare_paths, copy_paths = _mirrored_runtime_paths()
 
     for paths in (triggers, compare_paths, copy_paths, _git_add_targets()):

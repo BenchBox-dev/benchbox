@@ -1679,18 +1679,19 @@ def _subscale_bundle(directory: Path, name: str, platform: str, tpc_metrics: dic
 
 
 @pytest.mark.parametrize(
-    ("tpc_metrics", "benchmark_fields", "expected_power"),
+    ("tpc_metrics", "benchmark_fields"),
     [
-        ({"power_at_size": 1820.0, "unofficial": True}, {"compliance_class": "unofficial_subscale"}, 1820.0),
-        ({"power_at_size": 1820.0}, {}, 1820.0),
-        ({"suppressed": True}, {"compliance_class": "unofficial_subscale"}, 0.01 * 3600 / 0.02),
-        ({"suppressed": True}, {"id": "TPC-H", "compliance_class": "official"}, 0.01 * 3600 / 0.02),
+        ({"power_at_size": 1820.0, "unofficial": True}, {"compliance_class": "unofficial_subscale"}),
+        ({"power_at_size": 1820.0}, {}),
+        ({"suppressed": True}, {"compliance_class": "unofficial_subscale"}),
+        ({"suppressed": True}, {"id": "TPC-H", "compliance_class": "official"}),
     ],
-    ids=["recorded-unofficial", "legacy-null-class", "suppressed-back-filled", "id-variant-recorded-official"],
+    ids=["recorded-unofficial", "legacy-null-class", "suppressed-marker", "id-variant-recorded-official"],
 )
-def test_subscale_tpc_bundles_rank_on_recorded_or_derived_power(
-    tmp_path: Path, tpc_metrics: dict, benchmark_fields: dict, expected_power: float
+def test_subscale_tpc_bundles_rank_on_power_recomputed_from_timings(
+    tmp_path: Path, tpc_metrics: dict, benchmark_fields: dict
 ) -> None:
+    expected_power = 0.01 * 3600 / 0.02
     validator = _load_validator()
     path = _subscale_bundle(tmp_path, "duckdb.json", "DuckDB", tpc_metrics, **benchmark_fields)
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -1701,7 +1702,7 @@ def test_subscale_tpc_bundles_rank_on_recorded_or_derived_power(
     assert entry.ranking_exclusion_reason is None
     assert entry.compliance_class == "unofficial_subscale"
     assert entry.power_score == pytest.approx(expected_power)
-    assert entry.power_score_source == ("derived_from_timings" if "suppressed" in tpc_metrics else "recorded")
+    assert entry.power_score_source == "derived_from_timings"
 
 
 def test_subscale_bundle_without_iteration_numbers_has_no_primary_metric(tmp_path: Path) -> None:

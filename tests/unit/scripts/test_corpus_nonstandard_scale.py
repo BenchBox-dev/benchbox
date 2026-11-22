@@ -21,7 +21,6 @@ from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
     effective_compliance_class,
     is_nonstandard_scale,
-    result_recorded_compliance_class,
 )
 from benchbox.validation.bundle import ValidationResult, validate_bundles
 
@@ -332,7 +331,16 @@ def _result(benchmark_name: str, scale: float, compliance_class: str | None = No
         total_queries=1,
         successful_queries=1,
         failed_queries=0,
-        query_results=[],
+        query_results=[
+            {
+                "query_id": "1",
+                "execution_time_ms": 1.0,
+                "status": "SUCCESS",
+                "iteration": 1,
+                "stream_id": 0,
+                "run_type": "measurement",
+            }
+        ],
         total_execution_time=1.0,
         average_query_time=1.0,
         validation_status="PASSED",
@@ -345,32 +353,37 @@ def _result(benchmark_name: str, scale: float, compliance_class: str | None = No
 def test_new_bundles_at_an_off_list_scale_record_the_unranked_class(benchmark_name: str) -> None:
     result = _result(benchmark_name, _off_list_scale(benchmark_name))
 
-    assert result_recorded_compliance_class(result) == NONSTANDARD_COMPLIANCE_CLASS
     payload = build_result_payload(result)
     assert payload["benchmark"]["compliance_class"] == NONSTANDARD_COMPLIANCE_CLASS
 
 
 @pytest.mark.parametrize(
-    ("benchmark_name", "recorded"), [("ssb", None), ("tpch", "unofficial_subscale"), ("tpch", "official")]
+    ("benchmark_name", "scale", "recorded_class"),
+    [
+        ("ssb", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
+        ("tpch", 0.5, "unofficial_subscale"),
+        ("tpch", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
+    ],
 )
-def test_off_list_bundles_suppress_tpc_metrics_in_step_with_the_recorded_class(
-    benchmark_name: str, recorded: str | None
+def test_off_list_bundles_keep_their_scores_and_never_suppress_them(
+    benchmark_name: str, scale: float, recorded_class: str
 ) -> None:
-    result = _result(benchmark_name, 2.0 if recorded != "unofficial_subscale" else 0.5, recorded)
+    result = _result(benchmark_name, scale)
     result.power_at_size = 10.0
 
-    summary = build_result_payload(result)["summary"]
+    payload = build_result_payload(result)
 
-    assert summary["tpc_metrics"] == {
-        "suppressed": True,
-        "reason": f"compliance_class={NONSTANDARD_COMPLIANCE_CLASS}",
+    assert payload["benchmark"]["compliance_class"] == recorded_class
+    assert payload["summary"]["tpc_metrics"] == {
+        "unofficial": True,
+        "reason": f"compliance_class={recorded_class}",
+        "power_at_size": 10.0,
     }
 
 
 def test_new_bundles_at_a_standard_scale_record_no_class() -> None:
     result = _result("ssb", 1.0)
 
-    assert result_recorded_compliance_class(result) is None
     assert "compliance_class" not in build_result_payload(result)["benchmark"]
 
 

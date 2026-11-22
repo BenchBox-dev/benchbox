@@ -30,12 +30,8 @@ from _project.scripts.explorer_pipeline.models import (
     ranking_exclusion_reason,
 )
 from _project.scripts.explorer_pipeline.ranking import rank_platforms
-from benchbox.core.results import corpus_rule
-from benchbox.core.results.subscale_policy import (
-    POWER_QUERY_COUNTS,
-    RANKING_EXCLUDED_COMPLIANCE_CLASSES,
-    derive_power_at_size,
-)
+from benchbox.core.results import corpus_rule, corpus_score
+from benchbox.core.results.subscale_policy import RANKING_EXCLUDED_COMPLIANCE_CLASSES
 from benchbox.validation.bundle import discover_bundles
 
 CLI_DESCRIPTION = (
@@ -47,6 +43,7 @@ LANE_PHASES = {
     corpus_rule.LANE_COMBINED: "combined",
     corpus_rule.LANE_POWER_ONLY: "power",
     corpus_rule.LANE_SUBSCALE: "power",
+    corpus_rule.LANE_OWN: "power",
     corpus_rule.LANE_THROUGHPUT: "throughput",
 }
 POWER_LANES = frozenset({corpus_rule.LANE_COMBINED, corpus_rule.LANE_POWER_ONLY, corpus_rule.LANE_SUBSCALE})
@@ -64,21 +61,6 @@ def cohort_label(key: CohortKey) -> str:
     benchmark, scale_factor, phase, streams = key
     label = f"{benchmark}/sf{scale_factor:g}/{phase}"
     return label if streams is None else f"{label}/streams={streams}"
-
-
-def throughput_at_size_from_timings(data: Mapping[str, Any], scale_factor: float) -> float | None:
-    block = (data.get("phases") or {}).get("throughput_test")
-    duration_ms = block.get("duration_ms") if isinstance(block, Mapping) else None
-    if isinstance(duration_ms, bool) or not isinstance(duration_ms, int | float) or duration_ms <= 0:
-        return None
-    executed = sum(
-        1
-        for query in data.get("queries") or []
-        if isinstance(query, Mapping)
-        and query.get("test_type") == "throughput"
-        and query.get("run_type") == "measurement"
-    )
-    return executed * scale_factor * 3600 / (duration_ms / 1000) if executed else None
 
 
 class _Loaded:
@@ -142,11 +124,9 @@ def _rule_entry(item: _Loaded, lane: str, outcome: corpus_rule.Outcome) -> tuple
         updates["test_type"] = phase
         updates["power_score_source"] = outcome.score_source
     if lane in POWER_LANES:
-        updates["power_score"] = derive_power_at_size(
-            item.data.get("queries") or [], item.entry.scale_factor, POWER_QUERY_COUNTS.get(item.slug, 1)
-        )
+        updates["power_score"] = corpus_score.power_at_size(item.data)
     if lane == corpus_rule.LANE_THROUGHPUT:
-        updates["throughput_at_size"] = throughput_at_size_from_timings(item.data, item.entry.scale_factor)
+        updates["throughput_at_size"] = corpus_score.throughput_at_size(item.data)
     candidate = item.entry.model_copy(update=updates)
     metric = get_ranking_config(item.slug, phase).primary_metric
     reason = ranking_exclusion_reason(candidate, metric)

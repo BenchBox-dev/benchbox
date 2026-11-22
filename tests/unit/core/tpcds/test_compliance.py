@@ -31,11 +31,11 @@ class TestClassifyTpcdsRun:
             result = classify_tpcds_run(sf, official=True)
             assert result is TpcdsComplianceClass.OFFICIAL, f"SF={sf} should be OFFICIAL"
 
-    def test_sf1_without_official_flag_is_nonstandard(self):
-        assert classify_tpcds_run(1.0, official=False) is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
+    def test_sf1_without_official_flag_has_no_class(self):
+        assert classify_tpcds_run(1.0, official=False) is None
 
-    def test_sf10_without_official_flag_is_nonstandard(self):
-        assert classify_tpcds_run(10.0, official=False) is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
+    def test_sf10_without_official_flag_has_no_class(self):
+        assert classify_tpcds_run(10.0, official=False) is None
 
     def test_non_official_scale_point_with_official_flag_is_nonstandard(self):
         assert classify_tpcds_run(2.0, official=True) is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
@@ -51,7 +51,7 @@ class TestClassifyTpcdsRun:
         assert classify_tpcds_run(TPCDS_MIN_SUBSCALE) is TpcdsComplianceClass.UNOFFICIAL_SUBSCALE
 
     def test_default_official_flag_is_false(self):
-        assert classify_tpcds_run(1.0) is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
+        assert classify_tpcds_run(1.0) is None
         assert classify_tpcds_run(0.5) is TpcdsComplianceClass.UNOFFICIAL_SUBSCALE
 
 
@@ -60,9 +60,9 @@ class TestValidateTpcdsScale:
         result = validate_tpcds_scale(0.5)
         assert result is TpcdsComplianceClass.UNOFFICIAL_SUBSCALE
 
-    def test_sf_above_one_returns_nonstandard_class(self):
+    def test_standard_scale_without_official_flag_returns_no_class(self):
         result = validate_tpcds_scale(1.0)
-        assert result is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
+        assert result is None
 
     def test_minimum_subscale_accepted(self):
         result = validate_tpcds_scale(TPCDS_MIN_SUBSCALE)
@@ -85,13 +85,21 @@ class TestValidateTpcdsScale:
         with pytest.raises(ValueError, match="exceeds maximum"):
             validate_tpcds_scale(100001.0)
 
-    @pytest.mark.parametrize("scale_factor", [3001.0, 10000.0, 30000.0, 100000.0])
-    def test_scales_above_3000_up_to_the_maximum_are_accepted(self, scale_factor):
-        assert validate_tpcds_scale(scale_factor) is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
+    @pytest.mark.parametrize(
+        ("scale_factor", "expected"),
+        [
+            (3001.0, TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD),
+            (10000.0, None),
+            (30000.0, None),
+            (100000.0, None),
+        ],
+    )
+    def test_scales_above_3000_up_to_the_maximum_are_accepted(self, scale_factor, expected):
+        assert validate_tpcds_scale(scale_factor) is expected
 
-    def test_official_scale_point_returns_nonstandard_without_official_flag(self):
+    def test_official_scale_point_returns_no_class_without_official_flag(self):
         result = validate_tpcds_scale(1.0)
-        assert result is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
+        assert result is None
 
 
 class TestTpcdsComplianceClassEnum:
@@ -114,7 +122,7 @@ class TestTpcdsComplianceClassEnum:
 class TestOfficialFlagReachesTheClassifier:
     def test_validate_tpcds_scale_forwards_official(self):
         assert validate_tpcds_scale(1.0, official=True) is TpcdsComplianceClass.OFFICIAL
-        assert validate_tpcds_scale(1.0) is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
+        assert validate_tpcds_scale(1.0) is None
 
     def test_official_only_applies_at_official_scale_points(self):
         assert validate_tpcds_scale(2.0, official=True) is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
@@ -124,7 +132,7 @@ class TestOfficialFlagReachesTheClassifier:
         from benchbox.core.tpcds.benchmark.runner import TPCDSBenchmark
 
         assert TPCDSBenchmark(scale_factor=1.0, official=True).compliance_class is TpcdsComplianceClass.OFFICIAL
-        assert TPCDSBenchmark(scale_factor=1.0).compliance_class is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
+        assert TPCDSBenchmark(scale_factor=1.0).compliance_class is None
 
     def test_loader_forwards_official_from_the_benchmark_config(self):
         from benchbox.core.benchmark_loader import get_benchmark_instance
@@ -134,7 +142,7 @@ class TestOfficialFlagReachesTheClassifier:
         assert get_benchmark_instance(config, None).compliance_class is TpcdsComplianceClass.OFFICIAL
 
         default = BenchmarkConfig(name="tpcds", display_name="TPC-DS", scale_factor=1.0)
-        assert get_benchmark_instance(default, None).compliance_class is TpcdsComplianceClass.UNOFFICIAL_NONSTANDARD
+        assert get_benchmark_instance(default, None).compliance_class is None
 
     def test_an_official_run_is_not_refused_by_submit_classification(self):
         from benchbox.validation.bundle import CLI_REFUSED_COMPLIANCE_CLASSES

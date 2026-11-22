@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Result files now always record the timings that Power@Size and throughput are recomputed from, together with the executed stream count, and the compliance class stored in a result is informational. A TPC result at a standard scale that is not a full specification run keeps its scores, and the results corpus and the Explorer pipeline recompute every score from timings."
+    }
+  ]
+}

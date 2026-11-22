@@ -161,12 +161,11 @@ def dataframe_compliance_class(benchmark_instance: object | None, benchmark_conf
 
         classify = classify_tpcds_run
 
-    return _compliance_value(
-        classify(
-            float(getattr(benchmark_config, "scale_factor", 0) or 0),
-            official=bool(getattr(benchmark_config, "official", False)),
-        )
+    classified = classify(
+        float(getattr(benchmark_config, "scale_factor", 0) or 0),
+        official=bool(getattr(benchmark_config, "official", False)),
     )
+    return None if classified is None else _compliance_value(classified)
 
 
 def _compliance_value(compliance_class: object) -> str:

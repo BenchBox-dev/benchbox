@@ -80,13 +80,15 @@ def test_native_result_is_unaffected() -> None:
     assert result_compliance_class(_result(None, compliance_class=None)) is None
 
 
-def test_routed_bundle_payload_is_not_official_and_has_no_tpc_metrics() -> None:
+def test_routed_bundle_payload_is_not_official_and_marks_its_metrics_unofficial() -> None:
     result = _result(ROUTED)
     result.power_at_size = 1234.0
     payload = build_result_payload(result)
     assert payload["benchmark"]["compliance_class"] == NONSTANDARD_COMPLIANCE_CLASS
     assert payload["tpc_compliant"] is False
-    assert payload["summary"]["tpc_metrics"]["suppressed"] is True
+    assert "suppressed" not in payload["summary"]["tpc_metrics"]
+    assert payload["summary"]["tpc_metrics"]["unofficial"] is True
+    assert payload["summary"]["tpc_metrics"]["power_at_size"] == 1234.0
 
 
 def test_native_bundle_payload_keeps_official() -> None:
@@ -191,7 +193,8 @@ def test_routed_result_built_by_result_builder_is_non_official_everywhere(tmp_pa
     payload = build_result_payload(result)
     assert payload["benchmark"]["compliance_class"] == NONSTANDARD_COMPLIANCE_CLASS
     assert payload["tpc_compliant"] is False
-    assert payload["summary"]["tpc_metrics"]["suppressed"] is True
+    assert "suppressed" not in payload["summary"]["tpc_metrics"]
+    assert payload["summary"]["tpc_metrics"]["unofficial"] is True
     assert payload["platform"]["gateway"] == ROUTED
 
     assert publish_admission(result, "official").allowed is False

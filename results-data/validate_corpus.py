@@ -104,6 +104,7 @@ def _load_repo_module(name: str, relative_path: str):
 
 
 SUBSCALE_POLICY = _load_repo_module("_benchbox_subscale_policy", "benchbox/core/results/subscale_policy.py")
+CORPUS_SCORE = _load_repo_module("_benchbox_corpus_score", "benchbox/core/results/corpus_score.py")
 
 
 @functools.cache
@@ -536,18 +537,7 @@ def _tpc_metric(payload: dict, name: str) -> float | None:
 
 
 def _power_score(payload: dict) -> float | None:
-    recorded = _tpc_metric(payload, "power_at_size")
-    benchmark = _mapping(payload.get("benchmark"))
-    compliance = SUBSCALE_POLICY.effective_compliance_class(
-        benchmark.get("id"), benchmark.get("scale_factor"), benchmark.get("compliance_class")
-    )
-    if compliance != SUBSCALE_POLICY.SUBSCALE_COMPLIANCE_CLASS:
-        return recorded
-    queries = payload.get("queries")
-    power, _ = SUBSCALE_POLICY.subscale_power_at_size(
-        benchmark.get("id"), recorded, queries if isinstance(queries, list) else [], benchmark.get("scale_factor")
-    )
-    return power
+    return CORPUS_SCORE.power_at_size(payload)
 
 
 def _throughput_phase_clean(payload: dict) -> bool:
@@ -569,7 +559,7 @@ def _throughput_phase_clean(payload: dict) -> bool:
 def _throughput_score(payload: dict) -> float | None:
     if not _throughput_phase_clean(payload):
         return None
-    return _tpc_metric(payload, "throughput_at_size")
+    return CORPUS_SCORE.throughput_at_size(payload)
 
 
 COMBINED_PHASE = "combined"

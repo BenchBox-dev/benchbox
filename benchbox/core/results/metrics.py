@@ -208,9 +208,6 @@ class TPCMetricsCalculator:
     @staticmethod
     def metrics_refusal_reason(data: dict, label: str) -> str | None:
         summary = data.get("summary", {})
-        tpc_metrics = summary.get("tpc_metrics") or {}
-        if tpc_metrics.get("suppressed"):
-            return f"{label} results have suppressed TPC metrics ({tpc_metrics.get('reason', 'suppressed')})"
         compliance_class = bundle_compliance_class(data)
         if compliance_class in UNOFFICIAL_COMPLIANCE_CLASSES:
             return f"{label} results are {compliance_class} and carry no official TPC metrics"
