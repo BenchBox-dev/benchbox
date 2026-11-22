@@ -47711,7 +47711,7 @@
     "tpcds-expression-q41-row-count-differs-from-sql": {
       "claim": null,
       "needs": [],
-      "priority": "medium-high",
+      "priority": "high",
       "status": "open",
       "title": "TPC-DS Q41 on the Polars expression surface returns fewer rows than the DuckDB SQL reference at SF10"
     },
