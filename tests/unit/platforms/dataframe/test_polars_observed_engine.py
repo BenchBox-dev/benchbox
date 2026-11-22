@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import asdict
 from types import SimpleNamespace
 
@@ -130,3 +131,43 @@ def test_failed_observation_is_not_silently_replaced_by_an_engine(scan, monkeypa
     assert rows[0]["status"] == "SUCCESS"
     assert receipt["observed"] == "not_captured"
     assert "1 of 1" in receipt["observed_reason"]
+
+
+@pytest.mark.parametrize(
+    "graph",
+    [
+        "",
+        "digraph other {\n}",
+        'digraph polars {\nlabel=<streaming engine node>\n4294967297 [label="x"];\n}',
+        "graph of an unrelated future format",
+        "graph polars_query_v2",
+    ],
+)
+def test_unrecognized_physical_plan_is_not_classified(graph):
+    assert classify_physical_plan(graph) is None
+
+
+def test_unrecognized_physical_plan_is_not_captured_with_a_reason(scan, monkeypatch):
+    monkeypatch.setattr(pl.LazyFrame, "show_graph", lambda self, **kwargs: "digraph future {\n}")
+    adapter = PolarsDataFrameAdapter(execution_engine="streaming")
+    rows, receipt = _run_queries(adapter, scan, [("Q1", lambda ctx: _aggregate(ctx.get_table("t")))])
+    assert "execution_engine" not in rows[0]
+    assert (receipt["observed"], receipt["observed_source"]) == ("not_captured", "none")
+    assert receipt["observed_reason"]
+
+
+def test_observation_time_is_excluded_from_the_query_timer(scan, monkeypatch):
+    from benchbox.core.results.fetch_mode import ConversionClock
+
+    def slow(self, lazy):
+        time.sleep(0.05)
+        return "streaming"
+
+    monkeypatch.setattr(PolarsDataFrameAdapter, "observe_execution_engine", slow)
+    adapter = PolarsDataFrameAdapter(execution_engine="streaming")
+    clock = ConversionClock().start()
+    try:
+        _run_queries(adapter, scan, [("Q1", lambda ctx: _aggregate(ctx.get_table("t")))])
+    finally:
+        excluded = clock.finish()
+    assert excluded >= 0.05

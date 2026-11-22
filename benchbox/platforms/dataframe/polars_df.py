@@ -51,16 +51,19 @@ else:
 
 
 _STREAMING_PLAN_MARK = "streaming engine node"
+_IN_MEMORY_PLAN_HEADER = re.compile(r"\s*(?:di)?graph\s+polars_query\s*\{")
 _FALLBACK_LEGEND = re.compile(r'COLOR="([^"]+)">\u2b24</FONT> in-memory engine fallback')
 
 
-def classify_physical_plan(graph: str) -> str:
-    if _STREAMING_PLAN_MARK not in graph:
+def classify_physical_plan(graph: str) -> str | None:
+    if _STREAMING_PLAN_MARK in graph:
+        legend = _FALLBACK_LEGEND.search(graph)
+        if legend is None:
+            return None
+        return "mixed" if f'fillcolor="{legend.group(1)}"' in graph else "streaming"
+    if _IN_MEMORY_PLAN_HEADER.match(graph):
         return "in-memory"
-    legend = _FALLBACK_LEGEND.search(graph)
-    if legend is not None and f'fillcolor="{legend.group(1)}"' in graph:
-        return "mixed"
-    return "streaming"
+    return None
 
 
 def physical_plan_unavailable_reason() -> str | None:

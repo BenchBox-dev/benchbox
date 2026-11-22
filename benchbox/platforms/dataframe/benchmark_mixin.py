@@ -62,7 +62,7 @@ from benchbox.core.results.models import (
 )
 from benchbox.core.results.query_plan_models import QueryPlanDAG
 from benchbox.core.results.schema import compute_plan_capture_stats
-from benchbox.core.results.timer_scope import TIMING_METHOD_LEGACY
+from benchbox.core.results.timer_scope import TIMING_METHOD_LEGACY, outside_query_timer
 from benchbox.core.schemas import BenchmarkConfig, SystemProfile
 from benchbox.platforms.base.adapter import DriverIsolationCapability
 from benchbox.platforms.base.client_region import discover_client_region
@@ -290,7 +290,8 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
         if self.OBSERVED_ENGINE_SOURCE == "none" or self.engine_observation_gap() is not None:
             return
         try:
-            observed = self.observe_execution_engine(lazy)
+            with outside_query_timer():
+                observed = self.observe_execution_engine(lazy)
         except Exception as exc:
             logger.debug("Engine observation failed: %s", exc)
             observed = None
