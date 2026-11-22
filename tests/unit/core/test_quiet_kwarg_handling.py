@@ -129,7 +129,7 @@ class TestQuietKwargHandling:
         from benchbox.core.coffeeshop import CoffeeShopBenchmark
 
         benchmark = CoffeeShopBenchmark(
-            scale_factor=0.001,
+            scale_factor=0.01,
             output_dir=tmp_path / "coffeeshop",
             quiet=True,
         )
