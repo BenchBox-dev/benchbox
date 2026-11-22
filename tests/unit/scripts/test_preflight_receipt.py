@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -864,3 +865,49 @@ def test_a_theseus_prefetch_that_could_not_fetch_is_recorded_as_not_verified(rep
     summary = tmp_path / "summary.md"
     assert _verify(root, env, None, "--summary-out", str(summary)).returncode == 0
     assert "was not verified: Theseus install not verified locally" in summary.read_text(encoding="utf-8")
+
+
+def _unmapped_ok_codes(text: str) -> list[tuple[int, str]]:
+    problems = []
+    for match in re.finditer(r"--ok-codes[ =]+([0-9,]+)", text):
+        codes = [int(code) for code in match.group(1).split(",") if code and int(code) != 0]
+        block = re.split(r"\n(?=\S)", text[match.start() :], maxsplit=1)[0]
+        for code in codes:
+            if not re.search(rf"-eq {code}\b", block):
+                problems.append((text.count("\n", 0, match.start()) + 1, f"exit code {code}"))
+    return problems
+
+
+def _ok_codes_callers() -> list[Path]:
+    candidates = [ROOT / "Makefile", *sorted((ROOT / "make").glob("*.mk")), *sorted((ROOT / "scripts").rglob("*"))]
+    return [
+        path
+        for path in candidates
+        if path.is_file()
+        and path != SCRIPT
+        and path.suffix in {"", ".mk", ".sh", ".py"}
+        and "--ok-codes" in path.read_text(encoding="utf-8", errors="ignore")
+    ]
+
+
+def test_every_ok_codes_caller_maps_its_accepted_codes() -> None:
+    callers = _ok_codes_callers()
+    assert ROOT / "make" / "pr-landing.mk" in callers
+    problems = {
+        str(path.relative_to(ROOT)): _unmapped_ok_codes(path.read_text(encoding="utf-8", errors="ignore"))
+        for path in callers
+    }
+    assert {path: found for path, found in problems.items() if found} == {}
+
+
+def test_an_ok_codes_caller_without_the_mapping_is_reported() -> None:
+    text = (ROOT / "make" / "pr-landing.mk").read_text(encoding="utf-8")
+    broken = text.replace('|| [ "$$?" -eq 5 ] ;;', ";;").replace('"$$STATUS" -eq 5', '"$$STATUS" -eq 6')
+    assert broken != text
+    assert len(_unmapped_ok_codes(broken)) == 2
+    assert _unmapped_ok_codes(text) == []
+
+
+def test_step_help_documents_that_the_raw_exit_code_is_returned() -> None:
+    done = subprocess.run([sys.executable, str(SCRIPT), "step", "--help"], capture_output=True, text=True, check=True)
+    assert "raw exit code" in " ".join(done.stdout.split())

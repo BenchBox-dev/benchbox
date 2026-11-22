@@ -508,10 +508,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     begin = sub.add_parser("begin")
     begin.add_argument("--stage", required=True)
     begin.add_argument("--base-ref", required=True)
-    step = sub.add_parser("step")
+    step = sub.add_parser(
+        "step",
+        description="Run a command and record its outcome in the receipt.",
+        epilog=(
+            "Exit status: the command's raw exit code, even when --ok-codes accepts it and the step is recorded as "
+            "passed. A caller that passes --ok-codes must map every accepted non-zero code to success itself."
+        ),
+    )
     step.add_argument("--stage", required=True)
     step.add_argument("--name", required=True)
-    step.add_argument("--ok-codes", default="0")
+    step.add_argument(
+        "--ok-codes",
+        default="0",
+        help="comma-separated exit codes recorded as passed; step still exits with the raw code",
+    )
     step.add_argument("--allowlist", default="")
     step.add_argument("command", nargs=argparse.REMAINDER)
     note = sub.add_parser("note")
