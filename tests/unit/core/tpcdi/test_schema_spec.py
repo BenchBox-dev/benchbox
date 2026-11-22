@@ -331,6 +331,19 @@ STAGING_TABLE_NAMES = [
 
 FLOAT_TYPES = re.compile(r"\b(DOUBLE|FLOAT|REAL)\b", re.IGNORECASE)
 
+FINWIRE_RECORD_FIELD_WIDTHS = {
+    "CMP": [15, 3, 60, 10, 4, 2, 4, 8, 80, 80, 12, 25, 20, 24, 46, 150],
+    "SEC": [15, 3, 15, 6, 4, 70, 6, 13, 8, 8, 12, 60],
+    "FIN": [15, 3, 4, 1, 8, 8, 17, 17, 12, 12, 12, 17, 17, 17, 13, 13, 60],
+}
+
+
+def test_finwire_value_holds_the_longest_finwire_record():
+    sums = {record: sum(widths) for record, widths in FINWIRE_RECORD_FIELD_WIDTHS.items()}
+    assert sums == {"CMP": 543, "SEC": 220, "FIN": 246}
+    value = next(col for col in TABLES["FinWire"]["columns"] if col["name"] == "value")
+    assert value["type"] == f"VARCHAR({max(sums.values())})"
+
 
 def parse_transcription(text: str) -> dict[str, list[tuple[str, str, bool]]]:
     tables: dict[str, list[tuple[str, str, bool]]] = {}

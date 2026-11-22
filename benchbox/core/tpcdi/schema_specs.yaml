@@ -348,7 +348,7 @@ staging_tables:
     columns:
     - {name: rectype, type: VARCHAR(3)}
     - {name: recdate, type: DATE}
-    - {name: value, type: VARCHAR(1024)}
+    - {name: value, type: VARCHAR(543)}
 - id: WATCHINCREMENTAL
   key: WatchIncremental
   schema:
