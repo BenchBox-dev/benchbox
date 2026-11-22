@@ -149,7 +149,7 @@ class TestOfficialFlagReachesTheClassifier:
 
         official = validate_tpcds_scale(1.0, official=True)
         assert official.value not in CLI_REFUSED_COMPLIANCE_CLASSES
-        assert validate_tpcds_scale(1.0).value in CLI_REFUSED_COMPLIANCE_CLASSES
+        assert validate_tpcds_scale(1.0) is None
 
     def test_both_construction_paths_carry_compliance_mode(self):
         import inspect

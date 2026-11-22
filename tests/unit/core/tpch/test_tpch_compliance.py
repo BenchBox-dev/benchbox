@@ -132,7 +132,7 @@ class TestOfficialFlagReachesTheClassifier:
 
         official = validate_tpch_scale(1.0, official=True)
         assert official.value not in CLI_REFUSED_COMPLIANCE_CLASSES
-        assert validate_tpch_scale(1.0).value in CLI_REFUSED_COMPLIANCE_CLASSES
+        assert validate_tpch_scale(1.0) is None
         assert validate_tpch_scale(0.01).value in CLI_REFUSED_COMPLIANCE_CLASSES
 
     def test_dataframe_fallback_classifies_tpch_from_config(self):
@@ -143,4 +143,4 @@ class TestOfficialFlagReachesTheClassifier:
         assert dataframe_compliance_class(None, official) == "official"
 
         casual = BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=1.0)
-        assert dataframe_compliance_class(None, casual) == "unofficial_nonstandard"
+        assert dataframe_compliance_class(None, casual) is None

@@ -91,9 +91,9 @@ def test_routed_bundle_payload_is_not_official_and_marks_its_metrics_unofficial(
     assert payload["summary"]["tpc_metrics"]["power_at_size"] == 1234.0
 
 
-def test_native_bundle_payload_keeps_official() -> None:
+def test_native_bundle_payload_is_not_marked_non_standard() -> None:
     payload = build_result_payload(_result(None))
-    assert payload["benchmark"]["compliance_class"] == "official"
+    assert payload["benchmark"].get("compliance_class") != NONSTANDARD_COMPLIANCE_CLASS
 
 
 def test_publish_admission_rejects_routed_result_claiming_official() -> None:
@@ -204,20 +204,19 @@ def test_routed_result_built_by_result_builder_is_non_official_everywhere(tmp_pa
     assert classify_result_path(written) is SubmitTerminalState.unofficial
 
 
-def test_native_result_built_by_result_builder_stays_official() -> None:
+def test_native_result_built_by_result_builder_is_not_marked_non_standard() -> None:
     result = _built_like_a_real_run(None)
     assert result_compliance_class(result) == "official"
-    assert build_result_payload(result)["benchmark"]["compliance_class"] == "official"
+    assert "compliance_class" not in build_result_payload(result)["benchmark"]
 
 
-def test_routed_result_built_by_result_builder_carries_no_tpc_metrics() -> None:
+def test_routed_result_built_by_result_builder_keeps_scores_and_has_no_composite() -> None:
     routed = _built_like_a_real_run(ROUTED)
-    assert routed.power_at_size is None
-    assert routed.throughput_at_size is None
+    assert routed.power_at_size is not None
     assert routed.qph_at_size is None
     assert routed.compliance_class == NONSTANDARD_COMPLIANCE_CLASS
     payload = build_result_payload(routed)
-    assert "power_at_size" not in payload["summary"]["tpc_metrics"]
+    assert payload["summary"]["tpc_metrics"]["power_at_size"] == routed.power_at_size
     assert "qphh_at_size" not in payload["summary"]["tpc_metrics"]
 
 

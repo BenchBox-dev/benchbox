@@ -54,17 +54,28 @@ def _load_validator() -> ModuleType:
     return module
 
 
-def _rankable_body() -> dict:
+TPC_QUERY_COUNTS = {"tpch": 22, "tpcds": 99}
+
+
+def _rankable_body(benchmark: str = "tpch") -> dict:
+    count = TPC_QUERY_COUNTS.get(benchmark)
+    if count is None:
+        queries = [
+            {"id": "Q1", "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"},
+            {"id": "Q2", "ms": 12.0, "run_type": "measurement", "status": "SUCCESS"},
+        ]
+    else:
+        queries = [
+            {"id": str(number), "iter": 1, "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"}
+            for number in range(1, count + 1)
+        ]
     return {
         "summary": {
-            "queries": {"total": 2, "passed": 2, "failed": 0},
+            "queries": {"total": len(queries), "passed": len(queries), "failed": 0},
             "validation": "passed",
             "tpc_metrics": {"power_at_size": 1.0},
         },
-        "queries": [
-            {"id": "Q1", "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"},
-            {"id": "Q2", "ms": 12.0, "run_type": "measurement", "status": "SUCCESS"},
-        ],
+        "queries": queries,
     }
 
 
@@ -95,7 +106,7 @@ def _write_bundle(
         "platform": platform_payload,
         "run": {"timestamp": run_timestamp},
         "export": {"anonymized": True},
-        **_rankable_body(),
+        **_rankable_body(benchmark),
     }
     if test_type is not None:
         payload["benchmark"]["test_type"] = test_type
@@ -425,13 +436,14 @@ def _write_phase_bundle(
         benchmark["test_type"] = test_type
     throughput_phase: dict = {"status": throughput}
     if throughput != "NOT_RUN":
+        throughput_phase["duration_ms"] = 60000
         throughput_phase["stream_results"] = [{"stream_id": index, "success": True} for index in range(1, streams + 1)]
     tpc_metrics = {}
     if power_score is not None:
         tpc_metrics["power_at_size"] = power_score
     if throughput_score is not None and throughput != "NOT_RUN":
         tpc_metrics["throughput_at_size"] = throughput_score
-    query_count = _FULL_QUERY_COUNTS.get(benchmark_id) if throughput != "NOT_RUN" else None
+    query_count = _FULL_QUERY_COUNTS.get(benchmark_id)
     if query_count is None:
         queries = [
             {"id": "Q1", "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"},
@@ -444,18 +456,24 @@ def _write_phase_bundle(
             for number in range(1, query_count + 1)
             for suffix in (("a", "b") if number in variant_bases else ("",))
         ]
-        queries = [
-            {
-                "id": query_id,
-                "ms": 10.0 + index,
-                "run_type": "measurement",
-                "status": "SUCCESS",
-                "stream": stream,
-                "test_type": "throughput",
-            }
-            for stream in range(1, streams + 1)
-            for index, query_id in enumerate(query_ids)
-        ]
+        if throughput == "NOT_RUN":
+            queries = [
+                {"id": query_id, "iter": 1, "ms": 10.0 + index, "run_type": "measurement", "status": "SUCCESS"}
+                for index, query_id in enumerate(query_ids)
+            ]
+        else:
+            queries = [
+                {
+                    "id": query_id,
+                    "ms": 10.0 + index,
+                    "run_type": "measurement",
+                    "status": "SUCCESS",
+                    "stream": stream,
+                    "test_type": "throughput",
+                }
+                for stream in range(1, streams + 1)
+                for index, query_id in enumerate(query_ids)
+            ]
     payload = {
         "benchmark": benchmark,
         "platform": {"name": platform},
