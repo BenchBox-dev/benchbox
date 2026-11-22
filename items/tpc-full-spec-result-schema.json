@@ -4,6 +4,7 @@
     "Old corpus bundles validate and render unchanged",
     "Schema policy and contract docs record the change"
   ],
+  "context": "2026-11-22 constraint from crr-00-corpus-rule-remediation-plan (owner decided to rank query-only TPC results at standard scale with a label, and to derive the class from facts on read): (1) any stored conformance field written by this item is informational; no reader may decide admission, ranking, score or label from it. (2) The mapping unofficial_nonstandard -> nonstandard_scale is wrong for query-only results at a standard scale (26 stored results); those derive to power_only, throughput_only or partial. Re-plan this item against crr-a1-rule-module-and-snapshot before starting.",
   "description": "Result JSON carries benchmark.compliance_class (official / unofficial_nonstandard / unofficial_subscale; core/tpch/compliance.py, core/tpcds/compliance.py) and execution.official (core/results/schema.py ~597), already persisted in the published corpus. New bundles write conformance_class (full_spec / nonstandard_scale / subscale) and execution.full_spec alongside the legacy fields; every reader accepts either (validation/bundle.py, core/results/database.py, scripts/validate_submission.py, Explorer duckdbQueries.ts, localResult.ts, utils.ts); stored corpus values stay readable. Rename the admission code unofficial_compliance (core/publishing/admission.py) and SubmitTerminalState.unofficial, keeping the old values accepted; Explorer \"Unofficial\" badge and \"(unofficial)\" suffix become \"Non-standard\"/\"(subscale)\". Record the change in schema_policy.py, hosted-results-contract.md and result-formats.md.",
   "sessions": [
     {
@@ -13,6 +14,14 @@
       "op": "create",
       "op_id": "3c2c7f975d9f4c6985139fdee775d67a",
       "session_id": "bcebd139f88a4c38a6dc9549b9b03523"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6fbef61b8c1a450fbecb672",
+      "at": "2026-11-22T16:52:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7e73c95dd716416d829fb937b0869e21",
+      "session_id": "c07e5ac3266b4133b46582fc1e496cdf"
     }
   ]
 }
