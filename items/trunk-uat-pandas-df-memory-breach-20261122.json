@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The pandas-df trunk UAT shard completes without a watchdog memory kill, with the cause of the 13 GiB breach recorded."
+  ],
+  "context": "Filed 2026-11-22 while closing out the run-timeout follow-ups (umbrella run-timeout-plan-20261120). Evidence was read on 2026-11-22; re-read run logs, file paths and line numbers before acting.",
+  "description": "## Problem\nTrunk UAT run 45007293835 (develop 93f336032a, 2026-11-22) failed job `UAT stage 1 pandas-df` (137161944440): after the `datavault` SF 0.1 pandas-df cell published, the host-lock watchdog logged `BREACH tree footprint: measured 13.07 GiB, limit 13.00 GiB budget (BENCHBOX_HEAVY_MEMORY_BUDGET_GIB); action: kill`, with one `benchbox` process at 12.84 GiB, and exited 79; `make uat-sweep` failed. The killed cell is not named in the job log; the shard artifact and the runner's `log_dir` `/home/runner/Developer/benchmark_runs/logs/uat_20261122_103636` hold the cell log. Trunk UAT failed on 4 of the 6 runs from 2026-11-17 to 2026-11-22 (50fedc718f, 3d7619eef9, 3e09d4f43b, 93f336032a). Related, not the same: release-uat-dataframe-runner-shutdown-20261030 (runner shutdowns, open), pandas-df-write-primitives-sf1-segfault (done).\n\n## Change\nDownload the run's shard artifact, name the cell that was killed and its peak memory, and compare with the last green pandas-df shard. Find why it needs more than 13 GiB (data size, a regression in the pandas loader or a query, or a recent change) and fix the cause.\n\n## Decision gates\n- Do not raise `BENCHBOX_HEAVY_MEMORY_BUDGET_GIB`, drop the cell, or lower its scale without the owner's decision in a choice dialog, with the measured peak.\n- If the cause is a recent merge, name it with evidence before proposing a revert.\n- A larger or paid runner needs owner approval.\n\n## Verification rubric\nPass: the killed cell and its measured peak recorded on this item; a fix that keeps the cell under the budget, shown by its peak RSS in a trunk UAT pandas-df shard run or a lock-taken local reproduction with the same budget; or the owner's recorded decision.\nFail: the shard passes only because the cell was skipped or the budget raised without the owner.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/45007293835"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T19:35:55Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a59b5e9ed17942b0b37ab553a5c8c6df",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    }
+  ]
+}

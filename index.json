@@ -50010,6 +50010,13 @@
       "status": "open",
       "title": "Evaluate whether trimming post-merge Trunk work is worthwhile after coverage selection stabilizes"
     },
+    "trunk-uat-pandas-df-memory-breach-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Trunk UAT pandas-df shard killed by the heavy-work watchdog at 13.07 GiB (budget 13 GiB)"
+    },
     "tsbs-devops-dataframe-sql-id-mapping": {
       "claim": null,
       "needs": [],
