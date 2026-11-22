@@ -38061,7 +38061,7 @@
       "needs": [],
       "priority": "low",
       "status": "open",
-      "title": "Decide whether to remove the unread config key execution.timeout_minutes"
+      "title": "Remove the config leftovers the unused-timer removal kept: execution.timeout_minutes and the unused memory_gb parameter"
     },
     "remove-or-integrate-legacy-cudf-platform-module": {
       "claim": null,
