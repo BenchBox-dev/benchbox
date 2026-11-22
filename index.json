@@ -12195,20 +12195,62 @@
       "terminal_outcome": "deliver"
     },
     "tpcdi-source": {
-      "accepted_members": {},
+      "accepted_members": {
+        "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120": "2d94734a5bb1bb8a70afb9ce9ec81fcf9ecd5309"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120": {
+          "accepted_head": "2d94734a5bb1bb8a70afb9ce9ec81fcf9ecd5309",
+          "changed_files": [
+            "MANIFEST.in",
+            "README.md",
+            "_project/inert-doc-readers.json",
+            "_sources/README.md",
+            "_sources/tpc-di/EULA.txt",
+            "_sources/tpc-di/NOTICE.txt",
+            "_sources/tpc-di/databricks-tpc-di/PROVENANCE.md",
+            "_sources/tpc-di/tpcdi_audit.sql",
+            "_sources/tpc-di/tpcdi_validation.sql",
+            "_sources/tpc-di/tpcdi_visibility_1.sql",
+            "_sources/tpc-di/tpcdi_visibility_2.sql",
+            "benchbox/_binaries/SHA256MANIFEST.json",
+            "benchbox/_binaries/tpc-di/EULA.txt",
+            "benchbox/_binaries/tpc-di/NOTICE.txt",
+            "benchbox/_binaries/tpc-di/tpcdi_audit.sql",
+            "benchbox/_binaries/tpc-di/tpcdi_validation.sql",
+            "benchbox/_binaries/tpc-di/tpcdi_visibility_1.sql",
+            "benchbox/_binaries/tpc-di/tpcdi_visibility_2.sql",
+            "benchbox/core/tpcdi/appendix.py",
+            "changelog.d/feat-tpcdi-source--tpcdi-06-tpc-licence-files-and-appendix-sql-20261120.json",
+            "quality/comment-policy.json",
+            "tests/unit/core/test_tpc_notices.py",
+            "tests/unit/core/tpcdi/test_appendix.py"
+          ],
+          "integration_head": "8f56a1625bc742bc7cf0bac2dde2211f6945f693",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/tpcdi-source",
-      "integration_head": "93f336032a16c82b37544b527b203e2b5187a593",
+      "integration_head": "8f56a1625bc742bc7cf0bac2dde2211f6945f693",
       "integration_log": [
         {
           "at": "2026-11-22T07:11:35Z",
           "head": "93f336032a16c82b37544b527b203e2b5187a593",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-22T13:12:34Z",
+          "head": "8f56a1625bc742bc7cf0bac2dde2211f6945f693",
+          "kind": "prepare",
+          "member": "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120",
+          "op_id": "6bd7c929a3ba4475b1a29b952e7f2862",
+          "previous_head": "93f336032a16c82b37544b527b203e2b5187a593",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-source",
@@ -46281,18 +46323,13 @@
       "title": "TPC-DI step 5: remove the 38 BenchBox-written queries and everything built on them"
     },
     "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120": {
-      "claim": {
-        "expires_at": "2026-11-23T13:12:30Z",
-        "generation": "967fc543386c454a916a9874b058a269",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-comment-policy-route-for-tpc-files-20261121",
         "tpcdi-owner-action-place-official-archives-20261121"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 9: ship the TPC EULA, legend and the specification's audit, validation and visibility SQL"
     },
     "tpcdi-07-specification-schema-20261120": {
