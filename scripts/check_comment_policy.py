@@ -128,7 +128,7 @@ def verify_wheel_bumps(
 
 def ratchet_against_base(root: Path, policy: dict, base: str, staged: bool) -> tuple[dict, set[str]]:
     baseline = load_policy(git(root, "show", f"{base}:{POLICY_PATH}"))
-    check_ratchet(policy, baseline, approved_external_paths(root, staged))
+    check_ratchet(policy, baseline, approved_external_paths(root, base))
     return baseline, verify_wheel_bumps(root, policy, baseline, staged, base=base)
 
 
@@ -351,9 +351,6 @@ def scan_sources(root: Path, sources: dict[str, bytes], policy: dict) -> list[Fi
     decoded = {}
     errors = []
     for path, raw in sources.items():
-        approved = policy.get("approved_external", frozenset())
-        if any(entry["path"] in approved and matches(path, entry["path"]) for entry in policy["external"]):
-            continue
         ownership_members = policy.get("ownership_excluded_members")
         if ownership_members is not None:
             if path in ownership_members:
@@ -574,7 +571,6 @@ def main(argv: list[str] | None = None) -> int:
                 policy, baseline_policy, reviewed, args.accept_same_commit_fixtures, committed
             ),
             "ownership_excluded_members": owned_exclusions,
-            "approved_external": approved_external_paths(root, args.staged),
         }
         if compared:
             base_paths = git(root, "ls-tree", "-r", "--name-only", "-z", args.base).decode().split("\0")

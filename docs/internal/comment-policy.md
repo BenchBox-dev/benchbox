@@ -284,15 +284,16 @@ pull request.
 - **Approved external paths:** `quality/comment-policy-approved-external.json`
   lists the directory prefixes the owner has approved for externally owned
   files that ship unmodified, with their comments. Today these are
-  `benchbox/_binaries/tpc-di/` and `_sources/tpc-di/`. An external entry
-  whose `path` equals a listed prefix is accepted in a pull request; any other
-  new entry fails the ratchet. Files under a prefix that is on the list and
-  has an external entry are not scanned, new files included. The list is in
-  `.github/soundness-paths.txt`, so a change to it needs a soundness review,
-  and a change to it makes the check scan the whole repository. Entries must
-  be directory prefixes of at least two path segments. Add a path to the list
-  only on the owner's approval, naming the owner's decision in the pull
-  request.
+  `benchbox/_binaries/tpc-di/` and `_sources/tpc-di/`. The ratchet reads the
+  list from the base, never from your change, so a list change takes effect
+  only after it merges. A new external entry whose `path` equals a prefix on
+  the base list is accepted; an existing entry is never changed through the
+  list, and any other new entry fails the ratchet. The list is in
+  `.github/soundness-paths.txt`, so a change to it needs a soundness review
+  and makes the check scan the whole repository. Entries must be directory
+  prefixes of at least two path segments. The list does not exempt files from
+  scanning: files under an approved prefix are bounded like any other
+  external exclusion, so a file added after the base is still scanned.
 - **Policy ratchet:** a base comparison (`--base` without `--bootstrap`, as
   `make comment-policy-check`, the hook, and CI run it) compares your policy
   with the base policy. It fails if enforcement moves from blocking to

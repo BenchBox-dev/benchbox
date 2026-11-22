@@ -1470,15 +1470,20 @@ def load_approved_external(raw: bytes | None) -> frozenset[str]:
     return frozenset(paths)
 
 
-def approved_external_paths(root: Path, staged: bool) -> frozenset[str]:
-    return load_approved_external(head_blob(root, APPROVED_EXTERNAL_PATH, staged))
+def approved_external_paths(root: Path, base: str) -> frozenset[str]:
+    try:
+        raw = base_blob(root, base, APPROVED_EXTERNAL_PATH)
+    except subprocess.CalledProcessError:
+        return frozenset()
+    return load_approved_external(raw)
 
 
 def check_ratchet(policy: dict, baseline: dict, approved: frozenset[str] = frozenset()) -> None:
     if baseline.get("enforcement", "blocking") == "blocking" and policy.get("enforcement", "blocking") == "advisory":
         raise ValueError("enforcement cannot be relaxed from blocking to advisory")
+    base_paths = {b["path"] for b in baseline["external"]}
     for entry in policy["external"]:
-        if entry in baseline["external"] or entry["path"] in approved:
+        if entry in baseline["external"] or (entry["path"] in approved and entry["path"] not in base_paths):
             continue
         matched_base = [b for b in baseline["external"] if is_wheel_bump(entry, b)]
         if matched_base and not any(b in policy["external"] for b in matched_base):
@@ -1493,7 +1498,7 @@ def bumped_by_head_policy(root: Path, base: str, entry: dict[str, str], staged: 
     try:
         base_policy = load_comment_policy(base_blob(root, base, COMMENT_POLICY_PATH))
         head_policy = load_comment_policy(raw_head)
-        check_ratchet(head_policy, base_policy, approved_external_paths(root, staged))
+        check_ratchet(head_policy, base_policy, approved_external_paths(root, base))
         head_external = head_policy["external"]
         if entry in head_external:
             return False
