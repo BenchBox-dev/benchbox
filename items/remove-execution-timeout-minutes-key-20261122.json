@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "`execution.timeout_minutes` is either removed with the removed-key message and a breaking-change changelog entry, or kept with its real reader recorded."
+  ],
+  "context": "Raised during the run-timeout effort (owner asked for this follow-up, 2026-11-22). See run-timeout-plan-20261120.",
+  "description": "## Problem\n`execution.timeout_minutes` (default 120) is set in `SimpleConfigProvider` defaults but has no reader outside tests. It promises a limit that nothing enforces, the same defect the run-timeout effort removed for `benchmarks.timeout_minutes`, `execution.power_run.timeout_per_iteration_minutes` and `execution.concurrent_queries.query_timeout_seconds`. It was not one of those three named keys, so the removal of unused timers left it in place.\n\n## Change\n1. Re-verify on current develop that nothing reads or enforces `execution.timeout_minutes` (product code, scripts, docs, examples; its own tests do not count), with language-server references and grep, and list the evidence.\n2. If it has no real reader, remove the key and its default, add it to the removed-key handling so a config file that still sets it gets the existing message verbatim: \"`{key}` is no longer used and has no effect. Use `execution.timeout_seconds` to limit a run.\", and add a breaking-change changelog fragment naming it.\n3. If it has a real reader, keep it and record what reads it.\n\n## Verification rubric\nThe references evidence is in the pull request; loading a config file that sets the key prints the message and does not crash (test); `make pr-preflight` exits 0.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T02:24:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c3d4e5f6a7b8091a2b3c4d5e6f708192",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    }
+  ]
+}

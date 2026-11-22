@@ -37416,6 +37416,13 @@
       "status": "done",
       "title": "Remove Excessive Adjective/Adverb Usage"
     },
+    "remove-execution-timeout-minutes-key-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide whether to remove the unread config key execution.timeout_minutes"
+    },
     "remove-or-integrate-legacy-cudf-platform-module": {
       "claim": null,
       "needs": [
