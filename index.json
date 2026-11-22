@@ -48409,13 +48409,18 @@
       "title": "TPC-DI step 17 (milestone): DuckDB initialization and historical-load phases, completion records and the audit gate"
     },
     "tpcdi-13-digen-reference-path-and-comparison-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T21:01:17Z",
+        "generation": "f60e5367e9004d6cba713f471668ef38",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5d4e220f613a3ab3ee8f830c"
+      },
       "needs": [
         "tpcdi-11-audit-recount-batch1-20261120",
         "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI step 13: comparison harness with the DuckDB implementation, and the early full run"
     },
     "tpcdi-14-milestone-report-owner-stop-20261120": {
