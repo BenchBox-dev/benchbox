@@ -48274,12 +48274,17 @@
       "title": "TPC-DI step 10: generator: trades, holdings, cash, watches and daily market files"
     },
     "tpcdi-11-audit-recount-batch1-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T20:25:29Z",
+        "generation": "4791784ba3764339a234d082ec318078",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5d4e220f613a3ab3ee8f830c"
+      },
       "needs": [
         "tpcdi-08-generator-core-and-reference-files-20261120"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI step 12: independent recount for DIGen's known answer-key errors"
     },
     "tpcdi-12-duckdb-historical-load-and-audit-20261120": {
