@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "ClickBench scale factors 0.1 and 10 and Read Primitives scale factors 1 and 10 are now standard scales, so runs at them no longer carry the not-comparable note and their results can be ranked. Data generation at each of these scales was checked first."
+    }
+  ]
+}
