@@ -2,7 +2,7 @@
   "acceptance": [
     "The stale-skills warning no longer appears in pr-preflight."
   ],
-  "context": "Observed throughout the run-timeout effort, 2026-11-21.\n\nBlocked 2026-11-22: owner-only action (`make skill-sync` in the primary clone); agents may not write there.",
+  "context": "Observed throughout the run-timeout effort, 2026-11-21.\n\nBlocked 2026-11-22: owner-only action (`make skill-sync` in the primary clone); agents may not write there.\n\nOwner decision 2026-11-22 (choice dialog): \"Authorize one command\": the leader runs only `make skill-sync` in the primary clone, once, with BENCHBOX_ALLOW_MAIN_CLONE_WRITE=1, and reports what changed.",
   "description": "## Problem\nEvery `make pr-preflight` in the run-timeout effort printed: \"the primary clone's .agents/skills copy is not at the catalog revisions this branch pins in skill-sync.conf ... Agents may not refresh it. Owner: run 'make skill-sync' in /Users/joe/Developer/BenchBox.\" Codex, Gemini and Antigravity sessions started in the primary clone read outdated skills, and the warning was misread by an agent as a preflight failure.\n\n## Change\nOwner runs `make skill-sync` in the primary clone.\n\n## Decision gates\nOwner-only: agents must not write to the primary clone (AGENTS.md). Blocked until the owner acts.\n\n## Verification rubric\n`make pr-preflight` in any worktree no longer prints the stale-skills warning.\n\n## Guardrails\nAgents make no change in the primary clone and do not run `make skill-sync` there.",
   "sessions": [
     {
@@ -27,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "85f046069f5b461092ae7124d6a44853",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T13:27:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d9d22c150fe744b390915fe79c09e639",
       "session_id": "e80ec8f825d244408f926415b43e3179"
     }
   ]
