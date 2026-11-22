@@ -206,3 +206,44 @@ def test_pr_preflight_skips_the_lint_guards_when_no_python_changed(tmp_path: Pat
     _run_preflight(tmp_path, "abc1234")
 
     assert "run -- lint-imports" not in _uv_calls(tmp_path)
+
+
+STRATEGY_CALL = "run -- python -m pytest tests/unit/test_marker_strategy.py -q"
+
+
+def _collect_calls(calls: list[str]) -> list[str]:
+    return [call for call in calls if "pytest --collect-only" in call]
+
+
+@pytest.mark.parametrize("support_file", ["tests/conftest.py", "tests/utilities/helper.py"])
+def test_pr_preflight_runs_the_marker_strategy_without_collecting_a_support_module(
+    tmp_path: Path, support_file: str
+) -> None:
+    _run_preflight(tmp_path, "abc1234", python_files=(support_file,))
+    calls = _uv_calls(tmp_path)
+
+    assert STRATEGY_CALL in calls
+    assert _collect_calls(calls) == []
+
+
+def test_pr_preflight_runs_the_marker_strategy_for_a_changed_fixture_test_module(tmp_path: Path) -> None:
+    _run_preflight(tmp_path, "abc1234", python_files=("tests/fixtures/test_sample.py",))
+    calls = _uv_calls(tmp_path)
+
+    assert STRATEGY_CALL in calls
+    assert _collect_calls(calls) == []
+
+
+def test_pr_preflight_collects_only_test_modules_among_changed_test_tree_files(tmp_path: Path) -> None:
+    _run_preflight(
+        tmp_path,
+        "abc1234",
+        python_files=("tests/conftest.py", "tests/unit/test_a.py", "tests/unit/b_test.py", "tests/fixtures/test_f.py"),
+    )
+    calls = _uv_calls(tmp_path)
+
+    assert STRATEGY_CALL in calls
+    assert len(_collect_calls(calls)) == 1
+    assert _collect_calls(calls)[0].endswith(
+        "tests.utilities.marker_manifest tests/unit/test_a.py tests/unit/b_test.py"
+    )

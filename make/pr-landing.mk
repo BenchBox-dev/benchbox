@@ -71,10 +71,14 @@ pr-preflight:
 			echo "==> ty (changed benchbox/ and tests/ files)"; \
 			$$RECORD --name typecheck -- uv run -- python -m scripts.typecheck $$TY_FILES; \
 		fi; \
-		MARKER_FILES=$$(printf '%s\n' $$TY_FILES | grep '^tests/' || true); \
-		if [ -n "$$MARKER_FILES" ]; then \
-			echo "==> lint-markers (changed test files, tree-wide decorator scan)"; \
-			$$RECORD --name lint-markers -- uv run -- python -m pytest --collect-only -q -p no:warnings --assert=plain -p tests.utilities.marker_manifest $$MARKER_FILES; \
+		MARKER_TREE=$$(grep '^tests/' "$$PY_LIST" || true); \
+		if [ -n "$$MARKER_TREE" ]; then \
+			MARKER_FILES=$$(printf '%s\n' $$MARKER_TREE | grep -E '/(test_[^/]*|[^/]*_test)\.py$$' | grep -v '^tests/fixtures/' || true); \
+			if [ -n "$$MARKER_FILES" ]; then \
+				echo "==> lint-markers (changed test modules)"; \
+				$$RECORD --name lint-markers -- uv run -- python -m pytest --collect-only -q -p no:warnings --assert=plain -p tests.utilities.marker_manifest $$MARKER_FILES; \
+			fi; \
+			echo "==> lint-markers (tree-wide marker strategy)"; \
 			$$RECORD --name lint-markers-strategy -- uv run -- python -m pytest tests/unit/test_marker_strategy.py -q; \
 		fi; \
 	else \
