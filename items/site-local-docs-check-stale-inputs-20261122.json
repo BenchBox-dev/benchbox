@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Local site docs checks name their inputs and warn when they are older than the bundle CI uses, so local and CI results agree after a refresh."
+  ],
+  "context": "Filed 2026-11-22 while closing out the run-timeout follow-ups (umbrella run-timeout-plan-20261120). Evidence was read on 2026-11-22; re-read run logs, file paths and line numbers before acting.",
+  "description": "## Problem\nOn 2026-11-22 in a fresh worktree of benchbox-site `next` (7e90968), `npm run docs:check` reported 11 blocking docs-contract violations, for example \"option --timeout is not an option of benchbox run\", \"run_benchmark.timeout_seconds is documented but not a parameter\" and \"Current result schema version: `2.4`\". CI on the same commit reported a different set of 3 (TPC-DI support status and query count). CI fetches the newest certified core bundle into `.site-inputs` (`npm run bundle:fetch`, `.github/workflows/ci.yml`); the local run used whatever inputs were on disk, which predate the run-time-limit release. A local check that disagrees with CI sends contributors after violations that are not real and hides the real ones.\n\n## Change\nMake the local docs check say which inputs it used (bundle version or core commit), and warn when they are older than the newest certified bundle; document the one command that refreshes them. Keep CI behaviour unchanged.\n\n## Decision gates\n- Do not make the check pass by skipping contracts.\n- Fetching the bundle needs network access and a GitHub token; when that is unavailable, warn and continue, and say so.\n\n## Verification rubric\nPass: with stale inputs, `npm run docs:check` names the inputs and their age; after the documented refresh, the local result matches CI's for the same commit; a test covers the staleness check.\nFail: local and CI results still differ silently.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again. This is the benchbox-site repository: work in a linked worktree of it.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T19:36:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "77ece04d710a40bdbcab083ea5010a1f",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    }
+  ]
+}
