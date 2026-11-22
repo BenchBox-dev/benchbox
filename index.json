@@ -21551,6 +21551,15 @@
       "status": "open",
       "title": "Use one validation status vocabulary for SQL and DataFrame runs and stop recording 'passed' without evidence"
     },
+    "crr-c2-row-count-references-tpc-and-ssb": {
+      "claim": null,
+      "needs": [
+        "crr-c1-validation-status-vocabulary"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Add row-count references for TPC-H, TPC-DS and SSB at every scale that ranks, per query stream"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],

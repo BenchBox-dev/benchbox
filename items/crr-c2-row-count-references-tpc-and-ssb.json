@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "A TPC-H and a TPC-DS run at scale factor 10 on a SQL platform and on a DataFrame platform record per-query pass or fail against the reference, for the stream that ran",
+    "Each reference file carries its provenance, and the validator output names the reference kind",
+    "The guard fails when a reference for a ranked cohort is removed",
+    "Two-engine comparison results are in the pull request, with any disagreement reported and not resolved by choice"
+  ],
+  "context": "Step of the corpus rule remediation plan (crr-00-corpus-rule-remediation-plan). Plan written 2026-11-22 and reviewed twice by an independent adversarial reviewer; counts marked (R) were measured by that reviewer and must be re-measured, not trusted. Owner decisions were given by choice dialog on 2026-11-22 and are quoted in crr-00.",
+  "description": "## Problem\nReferences exist only for TPC-H 0.01, 0.1, 1; TPC-DS 0.01, 0.1; SSB 0.01 to 10 (R). Ranked cohorts exist above those. TPC-DS parameters depend on the stream: the DataFrame validator accepts only stream 0 as reference, while measured iterations run on streams 1 and up (dataframe/query_validation.py ~194; tpcds/power_test.py ~29) (R).\n\n## Change\n- List the benchmark and scale pairs that hold a ranked cohort (from the snapshot). For TPC-H, TPC-DS and SSB at those scales, add references through the shared loader, for each stream a measured iteration can use.\n- Each reference records how it was made: generator, data checksum, reference engine and version, date. Above the scales the TPC answer sets cover it is labelled \"agreement with <engine>\", not the specification's answer.\n- Guard: a ranked cohort for these three benchmarks without a reference fails CI.\n\n## Decision gates\n- Reference engine default: DuckDB SQL on the same generated data. Where a second engine is available at that scale, compare the two; if they disagree on any query, stop and report the query; do not pick one.\n- Generating references at scale factor 10 is heavy work: make heavy-run only, announce command, maximum run time and log path.\n- TPC-H scale factor 10 data from the defective generator (known_defects defective-macdbgen-addresses) must not be used.\n\n## Guardrails (apply to every item of this plan)\n- Fix the root cause for every platform and benchmark. No rule, exception, label or test may name a platform or a version matrix. Only the pvm-p* items may name Polars, and only to run and stage that run's files.\n- Never edit a stored result file to make it pass. Outcomes change only through the rule.\n- Any change to the outcome of a stored result must show in the committed outcome snapshot diff in the same pull request and be explained in its body.\n- No new stored class value. No reader may decide anything from benchmark.compliance_class, conformance_class or summary.tpc_metrics.suppressed.\n- Paths, line numbers and counts in this plan were read on 2026-11-22 at develop 93f3360. Re-read before editing; report drift, do not guess.\n- AGENTS.md applies: linked worktree, one pull request per item, close at the merged pull request, heavy work only through make heavy-run, no live cloud run without owner approval in that task.\n- At a decision gate, follow the recorded default. If its stop condition is met, stop and report to the owner. Never substitute a different owner decision.\n- Read crr-00-corpus-rule-remediation-plan first: it holds the owner decisions, the rule table and the fault types (T1 to T5).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6fbef61b8c1a450fbecb672",
+      "at": "2026-11-22T16:51:06Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "43c2ea31da4f404a8d87b9feed049634",
+      "session_id": "c07e5ac3266b4133b46582fc1e496cdf"
+    }
+  ]
+}
