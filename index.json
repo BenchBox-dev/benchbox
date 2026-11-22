@@ -8995,6 +8995,7 @@
     "run-timeout-followups": {
       "accepted_members": {
         "run-official-timeout-config-usage-exit-20261122": "1f10d4e8d0fd57f9423d8879b59a94222900cbed",
+        "run-timeout-error-public-import-20261122": "bb46a9353480afe4e0a304b0fc010900b1dca681",
         "throughput-stream-gate-deadline-test-20261122": "1267b271717c1c243eece39d5efd488c147befbd",
         "uat-retry-budget-outside-kill-margin-20261122": "c86059056e19791a683ee5176e21c89aed35bcfb"
       },
@@ -9012,6 +9013,28 @@
           ],
           "integration_head": "ac7999047f2a85d61772c650960be83a38c5f0a5",
           "integration_seq": 1
+        },
+        "run-timeout-error-public-import-20261122": {
+          "accepted_head": "bb46a9353480afe4e0a304b0fc010900b1dca681",
+          "changed_files": [
+            "benchbox/core/exceptions.py",
+            "benchbox/core/run_service.py",
+            "benchbox/core/tpcds/generator/runner.py",
+            "benchbox/core/tpcds/generator/streaming.py",
+            "benchbox/core/tpch/streams.py",
+            "benchbox/platforms/dataframe/benchmark_mixin.py",
+            "changelog.d/feat-run-timeout-followups--run-timeout-error-public-import-20261122.json",
+            "docs/operations/run-safety.md",
+            "tests/unit/core/test_generator_run_deadline.py",
+            "tests/unit/core/test_partial_generation_data.py",
+            "tests/unit/core/test_run_timeout_public_import.py",
+            "tests/unit/core/test_run_timeout_remote_cleanup.py",
+            "tests/unit/core/test_run_timeout_result.py",
+            "tests/unit/platforms/test_run_timeout_boundaries.py",
+            "tests/unit/utils/test_run_deadline.py"
+          ],
+          "integration_head": "11786384aaccec90afe04e44bcff06d1192e6c65",
+          "integration_seq": 4
         },
         "throughput-stream-gate-deadline-test-20261122": {
           "accepted_head": "1267b271717c1c243eece39d5efd488c147befbd",
@@ -9035,7 +9058,7 @@
         }
       },
       "integration_branch": "feat/run-timeout-followups",
-      "integration_head": "8566368a694e0ae8b5f6133f5eae324d90b5b350",
+      "integration_head": "11786384aaccec90afe04e44bcff06d1192e6c65",
       "integration_log": [
         {
           "at": "2026-11-22T13:28:47Z",
@@ -9069,6 +9092,15 @@
           "op_id": "4273d450303d4b6b9246713a16d26071",
           "previous_head": "6d93d877637520491aba57065ae1736372d39178",
           "seq": 3
+        },
+        {
+          "at": "2026-11-22T14:54:15Z",
+          "head": "11786384aaccec90afe04e44bcff06d1192e6c65",
+          "kind": "prepare",
+          "member": "run-timeout-error-public-import-20261122",
+          "op_id": "5842257723124d4cbf9d244d0831fefe",
+          "previous_head": "8566368a694e0ae8b5f6133f5eae324d90b5b350",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-followups",
@@ -40261,15 +40293,10 @@
       "title": "Bring the run-timeout decision record up to date with the delivered steps"
     },
     "run-timeout-error-public-import-20261122": {
-      "claim": {
-        "expires_at": "2026-11-23T14:54:11Z",
-        "generation": "e828c65609374fb4bf9aadfbb3497a97",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Give RunTimeoutError a documented public import path"
     },
     "run-timeout-execution-phases-20261120": {
