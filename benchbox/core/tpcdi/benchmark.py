@@ -194,6 +194,19 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         dialect: str = "standard",
         tuning_config: Optional["UnifiedTuningConfiguration"] = None,
     ) -> str:
+        if tuning_config is not None:
+            try:
+                enable_primary_keys = tuning_config.primary_keys.enabled
+                enable_foreign_keys = tuning_config.foreign_keys.enabled
+            except AttributeError as e:
+                raise RuntimeError(
+                    f"Invalid tuning_config object (missing primary_keys or foreign_keys attributes): {e}"
+                ) from e
+            if enable_primary_keys or enable_foreign_keys:
+                self.log_very_verbose(
+                    "TPC-DI declares no primary or foreign keys, so the requested key constraints add nothing "
+                    f"to the schema: primary_keys={enable_primary_keys}, foreign_keys={enable_foreign_keys}"
+                )
         return get_all_create_table_sql(dialect)
 
     @refuses_unavailable_benchmark("tpcdi")

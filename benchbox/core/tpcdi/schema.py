@@ -1,21 +1,17 @@
-import importlib
 import logging
 from pathlib import Path
 from typing import Any, cast
 
 import yaml
 
-from benchbox.sql_compat.context import CompatibilityContext, Phase
-from benchbox.sql_compat.registry import REGISTRY
-from benchbox.utils.dialect_utils import SCHEMA_DDL_SCOPE, translate_sql_query
+from benchbox.sql_compat.rules.schema_emit.tpcdi_ddl import FLAG_BOOLEAN_PLATFORMS, TIME_AS_STRING_TYPES
+from benchbox.utils.dialect_utils import translate_ddl
 
 logger = logging.getLogger(__name__)
 
-_RULES_MODULE = "benchbox.sql_compat.rules.schema_emit.tpcdi_ddl"
 _FLAG_TYPE = "BOOLEAN"
 _FLAG_INTEGER_TYPE = "SMALLINT"
 _TIME_TYPE = "TIME"
-_TIME_TYPE_BY_TRANSFORMER = {"tpcdi_time_as_string": "STRING", "tpcdi_time_as_clickhouse_string": "String"}
 
 
 def _load_schema_specs() -> dict[str, Any]:
@@ -36,37 +32,20 @@ STAGING_TABLE_ORDER = list(STAGING_TABLES)
 TABLE_ORDER = CORE_TABLE_ORDER + STAGING_TABLE_ORDER
 
 
-def _tpcdi_decisions(dialect: str) -> list[Any]:
-    importlib.import_module(_RULES_MODULE)
-    ctx = CompatibilityContext(
-        platform=dialect.lower(),
-        platform_version=None,
-        benchmark="tpcdi",
-        query_id=None,
-        phase=Phase.DDL_OPTIMIZE,
-        mode="sql",
-        dialect=dialect,
-    )
-    return [decision for decision in REGISTRY.resolve_all(ctx) if ".tpcdi." in decision.rule_id]
+def _flag_type_map(platform: str) -> dict[str, str]:
+    return {} if platform in FLAG_BOOLEAN_PLATFORMS else {_FLAG_TYPE: _FLAG_INTEGER_TYPE}
 
 
-def flag_columns_are_boolean(dialect: str) -> bool:
-    return any(decision.rule_id.endswith(".tpcdi.flag_columns_boolean") for decision in _tpcdi_decisions(dialect))
+def _time_type_map(platform: str) -> dict[str, str]:
+    return {_TIME_TYPE: TIME_AS_STRING_TYPES[platform]} if platform in TIME_AS_STRING_TYPES else {}
 
 
-def _column_type_for_dialect(column: dict[str, Any], dialect: str) -> str:
-    column_type = cast(str, column["type"])
-    if column_type == _FLAG_TYPE and not flag_columns_are_boolean(dialect):
-        return _FLAG_INTEGER_TYPE
-    if column_type == _TIME_TYPE:
-        for decision in _tpcdi_decisions(dialect):
-            transformer_id = getattr(decision.payload, "transformer_id", None)
-            if transformer_id in _TIME_TYPE_BY_TRANSFORMER:
-                return _TIME_TYPE_BY_TRANSFORMER[transformer_id]
-    return column_type
+def type_map_for_dialect(dialect: str) -> dict[str, str]:
+    platform = dialect.lower()
+    return _flag_type_map(platform) | _time_type_map(platform)
 
 
-def get_create_table_sql(table_name: str, dialect: str = "standard") -> str:
+def _create_table_sql(table_name: str, type_map: dict[str, str]) -> str:
     if table_name not in TABLES:
         raise ValueError(f"Unknown table: {table_name}")
 
@@ -74,7 +53,8 @@ def get_create_table_sql(table_name: str, dialect: str = "standard") -> str:
     columns = []
 
     for col in cast(list, table["columns"]):
-        col_def = f"{cast(str, col['name'])} {_column_type_for_dialect(col, dialect)}"
+        column_type = cast(str, col["type"])
+        col_def = f"{cast(str, col['name'])} {type_map.get(column_type, column_type)}"
         if col.get("not_null"):
             col_def += " NOT NULL"
         columns.append(col_def)
@@ -85,8 +65,30 @@ def get_create_table_sql(table_name: str, dialect: str = "standard") -> str:
     return sql
 
 
+def get_create_table_sql(table_name: str, dialect: str = "standard") -> str:
+    return _create_table_sql(table_name, type_map_for_dialect(dialect))
+
+
 def get_all_create_table_sql(dialect: str = "standard") -> str:
     return "\n\n".join(get_create_table_sql(table_name, dialect) for table_name in TABLE_ORDER)
+
+
+def _translate_create_table(table_name: str, dialect: str) -> str:
+    platform = dialect.lower()
+    portable = translate_ddl(
+        _create_table_sql(table_name, {}),
+        "postgres",
+        "postgres",
+        identify=False,
+        type_map=_flag_type_map(platform),
+    )[0]
+    return translate_ddl(
+        portable,
+        dialect,
+        "postgres",
+        identify=False,
+        type_map=_time_type_map(platform),
+    )[0]
 
 
 class TPCDISchemaManager:
@@ -117,14 +119,10 @@ class TPCDISchemaManager:
         statements = []
 
         for table_name in self.table_order:
-            sql = get_create_table_sql(table_name, dialect)
-
             if dialect != "standard":
-                statements.append(
-                    translate_sql_query(sql, dialect, source_dialect="postgres", identify=False, scope=SCHEMA_DDL_SCOPE)
-                )
+                statements.append(_translate_create_table(table_name, dialect))
             else:
-                statements.append(sql)
+                statements.append(get_create_table_sql(table_name, dialect))
 
         return statements
 
