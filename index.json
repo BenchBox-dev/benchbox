@@ -8994,7 +8994,8 @@
     },
     "run-timeout-followups": {
       "accepted_members": {
-        "run-official-timeout-config-usage-exit-20261122": "1f10d4e8d0fd57f9423d8879b59a94222900cbed"
+        "run-official-timeout-config-usage-exit-20261122": "1f10d4e8d0fd57f9423d8879b59a94222900cbed",
+        "throughput-stream-gate-deadline-test-20261122": "1267b271717c1c243eece39d5efd488c147befbd"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -9010,10 +9011,19 @@
           ],
           "integration_head": "ac7999047f2a85d61772c650960be83a38c5f0a5",
           "integration_seq": 1
+        },
+        "throughput-stream-gate-deadline-test-20261122": {
+          "accepted_head": "1267b271717c1c243eece39d5efd488c147befbd",
+          "changed_files": [
+            "changelog.d/feat-run-timeout-followups--throughput-stream-gate-deadline-test-20261122.json",
+            "tests/unit/platforms/test_run_timeout_execution_phases.py"
+          ],
+          "integration_head": "6d93d877637520491aba57065ae1736372d39178",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/run-timeout-followups",
-      "integration_head": "ac7999047f2a85d61772c650960be83a38c5f0a5",
+      "integration_head": "6d93d877637520491aba57065ae1736372d39178",
       "integration_log": [
         {
           "at": "2026-11-22T13:28:47Z",
@@ -9029,6 +9039,15 @@
           "op_id": "8645e59de1f24fd5b6be6d7e1fb3c944",
           "previous_head": "93f336032a16c82b37544b527b203e2b5187a593",
           "seq": 1
+        },
+        {
+          "at": "2026-11-22T14:34:47Z",
+          "head": "6d93d877637520491aba57065ae1736372d39178",
+          "kind": "prepare",
+          "member": "throughput-stream-gate-deadline-test-20261122",
+          "op_id": "bf0474b9afc14a8e8daeafb0cd9a2752",
+          "previous_head": "ac7999047f2a85d61772c650960be83a38c5f0a5",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-followups",
@@ -45781,15 +45800,10 @@
       "title": "Throughput stream-coverage check trips on a sub-millisecond query timing at small scale"
     },
     "throughput-stream-gate-deadline-test-20261122": {
-      "claim": {
-        "expires_at": "2026-11-23T14:34:43Z",
-        "generation": "a32de07c52fe4652aaaff3243db54250",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Add a test for the throughput stream gate that records the run timeout"
     },
     "throughput-stream-success-propagation": {

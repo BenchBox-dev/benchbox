@@ -9,6 +9,53 @@
   },
   "context": "Gap noted by the review-fix implementer in the run-timeout effort.",
   "description": "## Problem\nIn #4435 the throughput runner's per-stream gate (benchbox/core/throughput/runner.py) was switched from the read-only `run_deadline_expired()` to `run_stop_requested()`, which records the timeout. Every other gate of that class got a dedicated test; this one did not, so a regression back to a read-only check (streams skipped with `deadline.timeout` left None, so `adapter.run_benchmark(timeout_seconds=...)` returns an unmarked short result) would not be caught.\n\n## Change\nAdd a test: a stream whose next query starts after the deadline passed stops, the deadline's timeout is recorded, and the result is marked timed out through the adapter path.\n\n## Decision gates\nTest only; if the test exposes a product defect, fix it in the same pull request and say so. Patch only seams the module owns (`wait_for_completed` etc.), never stdlib.\n\n## Verification rubric\nThe test fails when the gate is changed back to `run_deadline_expired()` (show it) and passes on develop; `make pr-preflight` exits 0.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "prepared": {
+    "accepted_head": "1267b271717c1c243eece39d5efd488c147befbd",
+    "batch_id": "run-timeout-followups",
+    "changed_files": [
+      "changelog.d/feat-run-timeout-followups--throughput-stream-gate-deadline-test-20261122.json",
+      "tests/unit/platforms/test_run_timeout_execution_phases.py"
+    ],
+    "integration_head": "6d93d877637520491aba57065ae1736372d39178",
+    "integration_seq": 2,
+    "member_id": "throughput-stream-gate-deadline-test-20261122",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "1e24758d5a1c450128be0a6d65e8f15cea99c0357c3390b24474b623b6770cb5",
+    "source_base": "ac7999047f2a85d61772c650960be83a38c5f0a5",
+    "source_revision": "1267b271717c1c243eece39d5efd488c147befbd",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-fu-streamgate",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/platforms/test_run_timeout_execution_phases.py",
+        "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index"
+      ],
+      "review": {
+        "base_sha": "ac7999047f2a85d61772c650960be83a38c5f0a5",
+        "head_sha": "1267b271717c1c243eece39d5efd488c147befbd",
+        "head_tree": "240b29aa2125774788855b6c9140e9a649df67ed",
+        "outcome": "clear",
+        "patch_digest": "b2f586d4adf85f71e791f57bfe4d9df3",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "93f336032a16c82b37544b527b203e2b5187a593"
+      },
+      "revision": "1267b271717c1c243eece39d5efd488c147befbd",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
@@ -33,6 +80,15 @@
       "generation": "a32de07c52fe4652aaaff3243db54250",
       "op": "take",
       "op_id": "1e4baa7ff57a436e99404edd749ef8ae",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T14:34:47Z",
+      "client": "omp-coding-agent",
+      "generation": "a32de07c52fe4652aaaff3243db54250",
+      "op": "prepare",
+      "op_id": "bf0474b9afc14a8e8daeafb0cd9a2752",
       "session_id": "e80ec8f825d244408f926415b43e3179"
     }
   ]
