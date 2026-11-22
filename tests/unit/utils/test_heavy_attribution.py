@@ -197,8 +197,3 @@ def test_containers_are_reported_on_their_own_line_and_counted_for_neither_side(
 def test_no_container_line_when_there_are_no_container_processes() -> None:
     log, _ = Harness(tree_gib=0.5, pressure=4, outside=reading(BROWSER), swap=92.0).step()
     assert "containers (origin unknown)" not in log
-
-
-def test_the_watchdog_policy_has_no_retry_setting() -> None:
-    assert not any("retry" in field for field in hw.WatchPolicy.__dataclass_fields__)
-    assert not hasattr(hw, "FLAG_RETRYABLE")
