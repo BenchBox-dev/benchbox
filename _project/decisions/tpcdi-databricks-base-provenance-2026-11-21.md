@@ -78,10 +78,6 @@ Decision on the appendix SQL source of 2026-11-21:
 
 > "rely on the shared common versions for now and file a tracker to follow up on this later and settle it"
 
-Decision on the arming of one pull request of 2026-11-21:
-
-> "Approve one more arm after CI and the hosted review pass on the fixed head"
-
 ## Licence texts the decision to ship the tools rests on
 
 The TPC-DI tools are shipped as the TPC distributes them. The owner chose that after being told what the two licence texts below say. They are quoted from the TPC-DI Tools v1.1.0 archive (`PDGF/LICENSE.txt`) and from the TPC End User License Agreement in `_sources/tpc-ds/EULA.txt`.

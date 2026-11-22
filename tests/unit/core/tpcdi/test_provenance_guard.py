@@ -26,7 +26,7 @@ MIT_INSTRUCTION = (
     "You will consider the license to be MIT for the purposes of this effort and we will include the usual "
     "TPC caveats and limitations"
 )
-DECISIONS_SHA256 = "cd5b92e5df4fc32ab4c0c30f151318e99f49b351f1d68afb96fb9f0b21a862ea"
+DECISIONS_SHA256 = "e1a09a4e668fe9c66461b270c021f9f19627308c42ffd811bc06545afcdf9de5"
 APPENDIX_SHARED_COPY = {
     "AppendixA/tpcdi_audit.sql": "32eb0f55a08b8cf5a906d4aff563539d42c873c72d6dc662798218b2bc3107fc",
     "AppendixB/tpcdi_validation.sql": "9ee9ef8144c7f53bb6fb0d4ac489dda2379e7aa1b8e24d7a12df1539b7f86c02",
