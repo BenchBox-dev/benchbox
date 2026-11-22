@@ -12334,7 +12334,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-source",
-      "integration_head": "8f56a1625bc742bc7cf0bac2dde2211f6945f693",
+      "integration_head": "726e13aa60559c79b52231c4061ecc5ff7516f6f",
       "integration_log": [
         {
           "at": "2026-11-22T07:11:35Z",
@@ -12350,6 +12350,30 @@
           "op_id": "6bd7c929a3ba4475b1a29b952e7f2862",
           "previous_head": "93f336032a16c82b37544b527b203e2b5187a593",
           "seq": 1
+        },
+        {
+          "at": "2026-11-22T13:56:21Z",
+          "changed_files": [
+            "_sources/README.md",
+            "_sources/tpc-di/NOTICE.txt",
+            "_sources/tpc-di/databricks-tpc-di/PROVENANCE.md",
+            "benchbox/_binaries/SHA256MANIFEST.json",
+            "benchbox/_binaries/tpc-di/NOTICE.txt",
+            "benchbox/core/tpcdi/appendix.py",
+            "changelog.d/feat-tpcdi-source--tpcdi-06-tpc-licence-files-and-appendix-sql-20261120.json",
+            "tests/unit/core/tpcdi/test_appendix.py",
+            "tests/unit/sql_compat/golden_corpus/area_tpcdi_appendix.py",
+            "tests/unit/sql_compat/golden_corpus/frozen/area_tpcdi_appendix.json",
+            "tests/unit/sql_compat/golden_corpus/recorded/area_tpcdi_appendix.json"
+          ],
+          "head": "726e13aa60559c79b52231c4061ecc5ff7516f6f",
+          "kind": "fix",
+          "op_id": "6af7845145ed4909bd1bd272a2e1647b",
+          "previous_head": "8f56a1625bc742bc7cf0bac2dde2211f6945f693",
+          "requires_acceptance": [
+            "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120"
+          ],
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-source",
