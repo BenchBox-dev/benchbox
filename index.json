@@ -3307,11 +3307,22 @@
         "crr-c1-validation-status-vocabulary",
         "crr-d1-observed-engine-contract-and-dataframe"
       ],
-      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fe4873e1ab4511a8ff69ca5f",
-      "owner_epoch": 0,
-      "owner_generation": "769326805b073e7cbe21bd9af4277a17",
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2",
+      "owner_epoch": 1,
+      "owner_generation": "3165ec8906be1e23752f2e443d2046b2",
       "project_id": "benchbox",
-      "recoveries": [],
+      "recoveries": [
+        {
+          "at": "2026-11-22T20:39:58Z",
+          "client": "omp-coding-agent",
+          "epoch": 1,
+          "new_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2",
+          "op_id": "df0b94dcdf9c4af2b177a357f8c4c58a",
+          "previous_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fe4873e1ab4511a8ff69ca5f",
+          "reason": "host restart at 2026-11-22 14:55 ended the leader's MCP server process; the same session resumed under a new worker identity",
+          "session_id": "c3ab3ca8623044e288c13bc910904e98"
+        }
+      ],
       "repository": "https://github.com/BenchBox-dev/BenchBox.git",
       "scope": {
         "crr-a0-decision-records": [
