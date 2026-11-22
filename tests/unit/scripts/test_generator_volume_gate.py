@@ -20,7 +20,7 @@ AMPLAB_GENERATOR = "benchbox/core/amplab/generator.py"
 
 
 def baseline_with(**sizes: int) -> dict[str, object]:
-    return {"tolerance": 0.05, "sizes": {"amplab": 1_000_000, "tpcdi": 2_000_000, **sizes}}
+    return {"tolerance": 0.05, "sizes": {"amplab": 1_000_000, "tsbs_devops": 2_000_000, **sizes}}
 
 
 def healthy(dataset_bytes: int) -> gate.SmokeResult:
@@ -42,12 +42,11 @@ def test_a_generator_module_change_selects_its_benchmark() -> None:
 
 
 def test_a_generator_spec_change_selects_its_benchmark() -> None:
-    assert gate.affected_benchmarks(["benchbox/core/tpcdi/generator_specs.yaml"]) == ["tpcdi"]
     assert gate.affected_benchmarks(["benchbox/core/tsbs_devops/generator_specs.yaml"]) == ["tsbs_devops"]
 
 
-def test_a_package_generator_change_selects_tpcdi() -> None:
-    assert gate.affected_benchmarks(["benchbox/core/tpcdi/generator/facts.py"]) == ["tpcdi"]
+def test_tpcdi_generator_paths_select_nothing_while_it_is_outside_the_gate() -> None:
+    assert gate.affected_benchmarks(["benchbox/core/tpcdi/generator/facts.py", "benchbox/core/tpcdi/scaling.py"]) == []
 
 
 def test_a_shared_primitives_generator_change_selects_both_primitives_benchmarks() -> None:
@@ -198,13 +197,13 @@ def test_a_baseline_without_a_usable_tolerance_is_rejected(tolerance: Any) -> No
 
 
 def test_every_affected_benchmark_is_checked_and_runtime_is_reported() -> None:
-    changed = [AMPLAB_GENERATOR, "benchbox/core/tpcdi/generator_specs.yaml"]
-    smoke = RecordingSmoke({"amplab": healthy(1_000_000), "tpcdi": healthy(9_000_000)})
+    changed = [AMPLAB_GENERATOR, "benchbox/core/tsbs_devops/generator_specs.yaml"]
+    smoke = RecordingSmoke({"amplab": healthy(1_000_000), "tsbs_devops": healthy(9_000_000)})
     report = gate.run_gate(changed, baseline_with(), baseline_with(), smoke=smoke)
-    assert smoke.calls == ["tpcdi", "amplab"]
+    assert smoke.calls == ["amplab", "tsbs_devops"]
     assert report["status"] == "fail"
     text = gate.render_markdown(report)
-    assert "| amplab | pass |" in text and "| tpcdi | fail |" in text
+    assert "| amplab | pass |" in text and "| tsbs_devops | fail |" in text
     assert "Total runtime:" in text
 
 
@@ -319,7 +318,6 @@ def test_the_smoke_surfaces_failed_power_queries() -> None:
 def test_every_gated_benchmark_has_a_committed_baseline_and_a_measurement_entry() -> None:
     committed = json.loads((REPO_ROOT / gate.BASELINE_PATH).read_text(encoding="utf-8"))
     measured = {entry[0] for entry in GENERATORS}
-    measured |= {"tpcdi"}
     for benchmark in gate.PURE_PYTHON_GENERATORS:
         assert gate.baseline_size(committed, benchmark) is not None
         assert benchmark in measured

@@ -11,11 +11,9 @@ one pull request still fires it under its old name.
 
 `ci-paths` sets `generator-volume-needed` when the diff touches
 `benchbox/core/<benchmark>/generator.py` or `generator_specs.yaml` of one of:
-tpcdi, amplab, h2odb, coffeeshop, tsbs_devops, joinorder_synthetic,
-vector_search, write_primitives, transaction_primitives. For tpcdi it also
-fires on the `generator/` package, `source_generators.py`, `scaling.py` (the
-row-count formula) and `financial_data.py`; for vector_search on
-`benchmark.py`, which sets the default vector width; and for both primitives
+amplab, h2odb, coffeeshop, tsbs_devops, joinorder_synthetic,
+vector_search, write_primitives, transaction_primitives. For vector_search it
+also fires on `benchmark.py`, which sets the default vector width; and for both primitives
 benchmarks on `benchbox/core/primitives/generator_base.py`, which generates
 their data; for coffeeshop on the seed files under `benchbox/data/coffeeshop/`
 and on `benchbox/utils/coffeeshop_seed_loader.py`, which reads them;
@@ -81,3 +79,4 @@ the diff and the baseline are read from.
 - DuckDB completing at SF 1 says nothing about Spark, DataFusion or other
   engines; platform timeouts at the new volume need the nightly or UAT runs.
 - A change that alters content but not size passes the size check.
+- TPC-DI unavailable while reworked.

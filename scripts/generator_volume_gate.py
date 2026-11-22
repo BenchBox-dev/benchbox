@@ -19,13 +19,6 @@ SMOKE_PHASES = "generate,load,power"
 SMOKE_TIMEOUT_SECONDS = 1500.0
 
 PURE_PYTHON_GENERATORS: dict[str, tuple[str, ...]] = {
-    "tpcdi": (
-        "benchbox/core/tpcdi/generator/*",
-        "benchbox/core/tpcdi/generator_specs.yaml",
-        "benchbox/core/tpcdi/source_generators.py",
-        "benchbox/core/tpcdi/scaling.py",
-        "benchbox/core/tpcdi/financial_data.py",
-    ),
     "amplab": ("benchbox/core/amplab/generator.py", "benchbox/core/amplab/generator_specs.yaml"),
     "h2odb": ("benchbox/core/h2odb/generator.py", "benchbox/core/h2odb/generator_specs.yaml"),
     "coffeeshop": (

@@ -412,7 +412,7 @@ jobs:
           echo "trunk-lane-coverage-needed=$trunk_coverage" >> "$GITHUB_OUTPUT"
           echo "sql-evidence-paths-changed=$sql_evidence" >> "$GITHUB_OUTPUT"
           generator_volume=false
-          if grep -qE '^(benchbox/core/(tpcdi/(generator/.*|generator_specs\.yaml|source_generators\.py|scaling\.py|financial_data\.py)|vector_search/(generator\.py|generator_specs\.yaml|benchmark\.py)|(amplab|h2odb|coffeeshop|tsbs_devops|joinorder_synthetic|write_primitives|transaction_primitives)/generator(\.py|_specs\.yaml)|tsbs_devops/schema\.py|joinorder/schema\.py|primitives/generator_base\.py)|benchbox/data/coffeeshop/.*|benchbox/utils/coffeeshop_seed_loader\.py|tests/unit/generators/sf1_size_baseline\.json)$' .ci-paths/trunk-lane-changed.txt; then generator_volume=true; fi
+          if grep -qE '^(benchbox/core/(vector_search/(generator\.py|generator_specs\.yaml|benchmark\.py)|(amplab|h2odb|coffeeshop|tsbs_devops|joinorder_synthetic|write_primitives|transaction_primitives)/generator(\.py|_specs\.yaml)|tsbs_devops/schema\.py|joinorder/schema\.py|primitives/generator_base\.py)|benchbox/data/coffeeshop/.*|benchbox/utils/coffeeshop_seed_loader\.py|tests/unit/generators/sf1_size_baseline\.json)$' .ci-paths/trunk-lane-changed.txt; then generator_volume=true; fi
           echo "generator-volume-needed=$generator_volume" >> "$GITHUB_OUTPUT"
 
       - name: Classify merge units
