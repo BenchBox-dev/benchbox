@@ -228,11 +228,9 @@ class TestGenerateInventory:
 
         inventory = script.generate_inventory(tmp_path)
 
-        assert inventory["cohorts"] == {
-            "tpch@sf0.1": ["DataFusion v1.0.0", "DuckDB v1.0.0", "Polars v1.0.0"],
-        }
+        assert inventory["cohorts"] == {"tpch@sf0.1": ["DataFusion", "DuckDB", "Polars"]}
 
-    def test_duckdb_cohort_uses_resolved_package_version(self, tmp_path: Path) -> None:
+    def test_duckdb_dev_wheel_resolves_to_a_pre_release_package_version(self, tmp_path: Path) -> None:
         bundle = _minimal_bundle(benchmark_id="tpch", scale_factor=10.0)
         bundle["platform"].update({"version": "2.0.0-alpha38615", "client_version": "1.6.0.dev365"})
         bundle["execution"] = {
@@ -243,8 +241,31 @@ class TestGenerateInventory:
 
         inventory = script.generate_inventory(tmp_path)
 
-        assert inventory["bundles"][0]["platform_version"] == "1.6.0.dev365"
-        assert inventory["cohorts"] == {"tpch@sf10.0": ["DuckDB v1.6.0.dev365"]}
+        entry = inventory["bundles"][0]
+        assert entry["comparison_version"] == "1.6.0.dev365"
+        assert entry["version_is_release"] is False
+        assert inventory["cohorts"] == {"tpch@sf10.0": ["DuckDB"]}
+
+    def test_unrecorded_version_is_one_identity_and_never_a_release(self, tmp_path: Path) -> None:
+        bundle = _minimal_bundle(benchmark_id="tpch", scale_factor=1.0)
+        bundle["platform"]["version"] = "unknown"
+        (tmp_path / "unrecorded.json").write_text(json.dumps(bundle), encoding="utf-8")
+
+        entry = script.generate_inventory(tmp_path)["bundles"][0]
+
+        assert entry["comparison_version"] == "version not recorded"
+        assert entry["version_is_release"] is False
+
+    def test_versions_of_one_platform_are_one_cohort_identity(self, tmp_path: Path) -> None:
+        for version in ("1.0.0", "1.1.0", "1.2.0"):
+            bundle = _minimal_bundle(benchmark_id="tpch", scale_factor=1.0, platform="DuckDB")
+            bundle["platform"]["version"] = version
+            (tmp_path / f"duckdb-{version}.json").write_text(json.dumps(bundle), encoding="utf-8")
+
+        inventory = script.generate_inventory(tmp_path)
+
+        assert inventory["cohorts"] == {"tpch@sf1.0": ["DuckDB"]}
+        assert {entry["comparison_version"] for entry in inventory["bundles"]} == {"1.0.0", "1.1.0", "1.2.0"}
 
     def test_internal_benchmark_bundles_are_hidden(self, tmp_path: Path) -> None:
         _write_bundle(tmp_path / "joinorder.json", benchmark_id="joinorder", scale_factor=1.0, platform="DuckDB")
@@ -305,7 +326,7 @@ class TestMain:
 
         inventory = script.generate_inventory(tmp_path)
 
-        assert inventory["cohorts"] == {"tpch@sf1.0": ["DataFusion v1.0.0", "DuckDB v1.0.0"]}
+        assert inventory["cohorts"] == {"tpch@sf1.0": ["DataFusion", "DuckDB"]}
 
     def test_throughput_runs_do_not_pollute_power_cohorts(self, tmp_path: Path) -> None:
         power = _minimal_bundle(benchmark_id="tpch", scale_factor=1.0, platform="DuckDB")
@@ -317,8 +338,8 @@ class TestMain:
 
         inventory = script.generate_inventory(tmp_path)
 
-        assert inventory["cohorts"]["tpch@sf1.0"] == ["DuckDB v1.0.0"]
-        assert inventory["cohorts"]["tpch@sf1.0#throughput"] == ["DataFusion v1.0.0"]
+        assert inventory["cohorts"]["tpch@sf1.0"] == ["DuckDB"]
+        assert inventory["cohorts"]["tpch@sf1.0#throughput"] == ["DataFusion"]
 
     def test_phase_is_recorded_per_bundle_and_summarised(self, tmp_path: Path) -> None:
         power = _minimal_bundle(benchmark_id="tpch", scale_factor=1.0, platform="DuckDB")
@@ -349,7 +370,7 @@ class TestMain:
             "undeclared.json": "unknown",
         }
         assert inventory["summary"]["by_phase"] == {"power": 2, "throughput": 2, "unknown": 1}
-        assert inventory["cohorts"]["tpch@sf1.0#throughput#3streams"] == ["Doris v1.0.0"]
+        assert inventory["cohorts"]["tpch@sf1.0#throughput#3streams"] == ["Doris"]
 
 
 class TestMirrorFallback:
