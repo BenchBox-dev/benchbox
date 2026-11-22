@@ -19,11 +19,15 @@ from pathlib import Path
 from typing import Any
 
 from check_comment_cleanup_scope import (
+    APPROVED_EXTERNAL_HASHES_PATH,
+    APPROVED_EXTERNAL_PATH,
     COMMENT_POLICY_DIRECTIVES,
     COMMENT_POLICY_ENFORCEMENT_MODES,
     POLICY_PATH as SCOPE_POLICY_PATH,
     _extract_version_from_path,
     _parse_version,
+    approved_external_hashes,
+    approved_external_paths,
     check_ratchet,
     comment_policy_matches as matches,
     directive_suppresses,
@@ -126,7 +130,7 @@ def verify_wheel_bumps(
 
 def ratchet_against_base(root: Path, policy: dict, base: str, staged: bool) -> tuple[dict, set[str]]:
     baseline = load_policy(git(root, "show", f"{base}:{POLICY_PATH}"))
-    check_ratchet(policy, baseline)
+    check_ratchet(policy, baseline, approved_external_paths(root, base))
     return baseline, verify_wheel_bumps(root, policy, baseline, staged, base=base)
 
 
@@ -349,14 +353,22 @@ def scan_sources(root: Path, sources: dict[str, bytes], policy: dict) -> list[Fi
     decoded = {}
     errors = []
     for path, raw in sources.items():
-        ownership_members = policy.get("ownership_excluded_members")
-        if ownership_members is not None:
-            if path in ownership_members:
+        approved = policy.get("approved_external", frozenset())
+        if any(matches(path, prefix) for prefix in approved):
+            has_entry = any(
+                entry["path"] == prefix and matches(path, prefix) for entry in policy["external"] for prefix in approved
+            )
+            if has_entry and hashlib.sha256(raw).hexdigest() in policy.get("approved_hashes", frozenset()):
                 continue
         else:
-            excluded = any(matches(path, e["path"]) for e in policy["external"])
-            if excluded and ("external_members" not in policy or path in policy["external_members"]):
-                continue
+            ownership_members = policy.get("ownership_excluded_members")
+            if ownership_members is not None:
+                if path in ownership_members:
+                    continue
+            else:
+                excluded = any(matches(path, e["path"]) for e in policy["external"])
+                if excluded and ("external_members" not in policy or path in policy["external_members"]):
+                    continue
         if language(path) or raw.startswith(b"#!"):
             try:
                 decoded[path] = decode(path, raw)
@@ -547,7 +559,17 @@ def main(argv: list[str] | None = None) -> int:
                 args.full
                 or bool(revoked)
                 or trusted is None
-                or bool(changed & {POLICY_PATH, SCOPE_POLICY_PATH, LAUNCHER_PATH, *trusted})
+                or bool(
+                    changed
+                    & {
+                        POLICY_PATH,
+                        SCOPE_POLICY_PATH,
+                        APPROVED_EXTERNAL_PATH,
+                        APPROVED_EXTERNAL_HASHES_PATH,
+                        LAUNCHER_PATH,
+                        *trusted,
+                    }
+                )
             )
             if not global_change:
                 changed.update(entry["path"] for entry in policy["exceptions"] if entry["consumer"] in changed)
@@ -573,6 +595,8 @@ def main(argv: list[str] | None = None) -> int:
         if compared:
             base_paths = git(root, "ls-tree", "-r", "--name-only", "-z", args.base).decode().split("\0")
             effective_policy["external_members"] = set(base_paths) | bumped_wheels
+            effective_policy["approved_external"] = approved_external_paths(root, args.base)
+            effective_policy["approved_hashes"] = approved_external_hashes(root, args.base)
         failed = expired_policy_findings(policy) + scan_sources(root, sources, effective_policy)
         warnings = expiring_policy_warnings(policy)
         if args.json_out:
