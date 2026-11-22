@@ -8997,6 +8997,7 @@
         "process-group-term-then-kill-verify-20261122": "17e5475d5ff9f4048ddff8e18d5efbec6843426b",
         "remove-execution-timeout-minutes-key-20261122": "f4cf4f7a291376e6028732c4e5d178cb95a7494b",
         "run-official-timeout-config-usage-exit-20261122": "1f10d4e8d0fd57f9423d8879b59a94222900cbed",
+        "run-timeout-decision-record-refresh-20261122": "c4c300c70ec0c0b7c8faa8a8507a1b7b874317f6",
         "run-timeout-error-public-import-20261122": "bb46a9353480afe4e0a304b0fc010900b1dca681",
         "throughput-stream-gate-deadline-test-20261122": "1267b271717c1c243eece39d5efd488c147befbd",
         "uat-retry-budget-outside-kill-margin-20261122": "c86059056e19791a683ee5176e21c89aed35bcfb"
@@ -9038,6 +9039,14 @@
           ],
           "integration_head": "ac7999047f2a85d61772c650960be83a38c5f0a5",
           "integration_seq": 1
+        },
+        "run-timeout-decision-record-refresh-20261122": {
+          "accepted_head": "c4c300c70ec0c0b7c8faa8a8507a1b7b874317f6",
+          "changed_files": [
+            "_project/decisions/run-timeout-2026-11-20.md"
+          ],
+          "integration_head": "63f86dc61301d2ae76276b0c02854ca8bbf381c9",
+          "integration_seq": 7
         },
         "run-timeout-error-public-import-20261122": {
           "accepted_head": "bb46a9353480afe4e0a304b0fc010900b1dca681",
@@ -9083,7 +9092,7 @@
         }
       },
       "integration_branch": "feat/run-timeout-followups",
-      "integration_head": "975e16764f633464b7f8e47fc0e102ba84af157a",
+      "integration_head": "63f86dc61301d2ae76276b0c02854ca8bbf381c9",
       "integration_log": [
         {
           "at": "2026-11-22T13:28:47Z",
@@ -9144,6 +9153,15 @@
           "op_id": "20cf9701735b4ea1b8c6e358e602ab2e",
           "previous_head": "df6a7a6c28dd1d663ec14e3e7a72e77859346f9b",
           "seq": 6
+        },
+        {
+          "at": "2026-11-22T15:09:53Z",
+          "head": "63f86dc61301d2ae76276b0c02854ca8bbf381c9",
+          "kind": "prepare",
+          "member": "run-timeout-decision-record-refresh-20261122",
+          "op_id": "22cf2304c001437cbf512314505ba81d",
+          "previous_head": "975e16764f633464b7f8e47fc0e102ba84af157a",
+          "seq": 7
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-followups",
@@ -40345,15 +40363,10 @@
       "title": "benchbox.core.run_service exports three underscore-prefixed names in __all__"
     },
     "run-timeout-decision-record-refresh-20261122": {
-      "claim": {
-        "expires_at": "2026-11-23T15:09:50Z",
-        "generation": "93e1e62a38864f7d863776041c71caa7",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Bring the run-timeout decision record up to date with the delivered steps"
     },
     "run-timeout-error-public-import-20261122": {

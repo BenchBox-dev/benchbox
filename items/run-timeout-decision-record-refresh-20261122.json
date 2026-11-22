@@ -9,6 +9,51 @@
   },
   "context": "Follow-up from the run-timeout effort (run-timeout-plan-20261120).",
   "description": "## Problem\n`_project/decisions/run-timeout-2026-11-20.md` describes only step 1a. It is now wrong in places: line ~30 says a running generator is not interrupted at the limit and line ~57 says `generate_data()` is not stopped until generators are routed through the deadline (both changed by #4434: dbgen, dsdgen, qgen, dsqgen and the tool builds are ended at the limit); the Delivery section (~90) lists the later changes as future work. Not recorded: remote cleanup and its 25-second graceful wait within the 30-second grace (#4435), power tests stopped at the limit report no Power@Size (#4435), plan capture bounded by min(setting, remaining) and raising/recording the run timeout (#4437), UAT `timed-out` vs `hung` (#4437), removal of the unused timers and config keys (#4437), and the generation estimate (#4439).\n\n## Change\nUpdate the decision record so it states the decisions as delivered, with the owner's quoted decisions from run-timeout-plan-20261120, and link the pull requests. Keep rejected alternatives that still apply.\n\n## Decision gates\nRecord only decisions the owner made or the merged code implements; anything else is a question for the owner, not a new decision. Owner texts and limits verbatim.\n\n## Verification rubric\nEach statement in the record checked against develop code (cite file paths); no statement contradicts the merged behaviour; `make docs-reference-inventory-check` and `make pr-preflight` exit 0.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "prepared": {
+    "accepted_head": "c4c300c70ec0c0b7c8faa8a8507a1b7b874317f6",
+    "batch_id": "run-timeout-followups",
+    "changed_files": [
+      "_project/decisions/run-timeout-2026-11-20.md"
+    ],
+    "integration_head": "63f86dc61301d2ae76276b0c02854ca8bbf381c9",
+    "integration_seq": 7,
+    "member_id": "run-timeout-decision-record-refresh-20261122",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "1e24758d5a1c450128be0a6d65e8f15cea99c0357c3390b24474b623b6770cb5",
+    "source_base": "975e16764f633464b7f8e47fc0e102ba84af157a",
+    "source_revision": "c4c300c70ec0c0b7c8faa8a8507a1b7b874317f6",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-fu-decisionrec",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/scripts/test_inert_paths.py"
+      ],
+      "review": {
+        "base_sha": "975e16764f633464b7f8e47fc0e102ba84af157a",
+        "head_sha": "c4c300c70ec0c0b7c8faa8a8507a1b7b874317f6",
+        "head_tree": "089a78c7903c3f35cb33e087ac8e4031bda4066d",
+        "outcome": "not-reviewed",
+        "patch_digest": "5d2939526736c632e6a8451ae7a5f5ae",
+        "reason": "only exempt paths changed",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "1a6fce3c2baaf0f46cd00bad19df8d9dbda6fd92"
+      },
+      "revision": "c4c300c70ec0c0b7c8faa8a8507a1b7b874317f6",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
@@ -33,6 +78,15 @@
       "generation": "93e1e62a38864f7d863776041c71caa7",
       "op": "take",
       "op_id": "eb7661ec7dbe43988cfa13bde45ff627",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T15:09:53Z",
+      "client": "omp-coding-agent",
+      "generation": "93e1e62a38864f7d863776041c71caa7",
+      "op": "prepare",
+      "op_id": "22cf2304c001437cbf512314505ba81d",
       "session_id": "e80ec8f825d244408f926415b43e3179"
     }
   ]
