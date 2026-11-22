@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import runpy
 import subprocess
 import sys
@@ -17,6 +18,7 @@ from tests.unit.scripts.batch_loop_world import (
     World,
     bi,
     build_world,
+    done,
     git,
 )
 
@@ -277,6 +279,106 @@ def test_member_check_records_nothing_when_preflight_fails(world: World) -> None
     with _raises("preflight failed"):
         world.check(member, ["tests/test_zeta.py"])
     assert bi._read_check(member, head, git(integration, "rev-parse", "HEAD")) is None
+
+
+PRIMARY_CLONE_WARNING = "WARNING: the primary clone's .agents/skills copy is not at the catalog revisions"
+
+
+def _preflight_that_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    member: Path,
+    steps: list[dict] | None,
+    *,
+    before_run: bool = False,
+) -> Path:
+    receipts = tmp_path / "receipts"
+    monkeypatch.setenv("BENCHBOX_PREFLIGHT_RECEIPT_DIR", str(receipts))
+    path = receipts / f"{git(member, 'rev-parse', 'HEAD^{tree}')}.json"
+
+    def write() -> None:
+        receipts.mkdir(exist_ok=True)
+        path.write_text(json.dumps({"steps": steps}), encoding="utf-8")
+
+    if steps is not None and before_run:
+        write()
+        old = path.stat().st_mtime - 60
+        os.utime(path, (old, old))
+    original = bi._run
+
+    def run(argv, cwd, **kwargs):
+        if list(argv)[:2] == ["make", "pr-preflight"]:
+            if steps is not None and not before_run:
+                write()
+            return done(2, stderr=PRIMARY_CLONE_WARNING)
+        return original(argv, cwd, **kwargs)
+
+    monkeypatch.setattr(bi, "_run", run)
+    return path
+
+
+FAILED_PYTEST_STEP = {
+    "name": "pytest",
+    "exit_code": 1,
+    "outcome": "failed",
+    "output_tail": [
+        "FAILED tests/unit/test_first.py::test_one - assert 1 == 2",
+        "FAILED tests/unit/test_second.py::test_two - assert 3 == 4",
+        "2 failed, 5 passed in 1.0s",
+    ],
+}
+PASSED_RUFF_STEP = {"name": "ruff-check", "exit_code": 0, "outcome": "passed", "output_tail": []}
+
+
+def test_member_check_refusal_names_the_failed_step_and_first_failing_test(
+    world: World, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    world.start()
+    member = world.member("zeta")
+    world.commit(member, {"src/a.py": "member\n"})
+    path = _preflight_that_fails(monkeypatch, tmp_path, member, [PASSED_RUFF_STEP, FAILED_PYTEST_STEP])
+    with pytest.raises(bi.BatchError) as refusal:
+        world.check(member, ["tests/test_zeta.py"])
+    message = str(refusal.value)
+    assert "failed step pytest (exit 1)" in message
+    assert "first failing test tests/unit/test_first.py::test_one" in message
+    assert str(path) in message
+    assert "ruff-check" not in message and "test_second" not in message
+    assert "WARNING" not in message and "primary clone" not in message
+
+
+def test_member_check_refusal_names_every_failed_step(
+    world: World, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    world.start()
+    member = world.member("zeta")
+    world.commit(member, {"src/a.py": "member\n"})
+    lint = {"name": "lint-imports", "exit_code": 1, "outcome": "failed", "output_tail": ["Contracts: 1 broken."]}
+    _preflight_that_fails(monkeypatch, tmp_path, member, [lint, FAILED_PYTEST_STEP])
+    with _raises(r"failed step lint-imports \(exit 1\), pytest \(exit 1\); first failing test"):
+        world.check(member, ["tests/test_zeta.py"])
+
+
+def test_member_check_refusal_without_a_receipt_says_so_and_keeps_the_output_tail(
+    world: World, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    world.start()
+    member = world.member("zeta")
+    world.commit(member, {"src/a.py": "member\n"})
+    _preflight_that_fails(monkeypatch, tmp_path, member, None)
+    with _raises(r"preflight failed \(exit 2\), no receipt for this tree at .*; output tail: WARNING"):
+        world.check(member, ["tests/test_zeta.py"])
+
+
+def test_member_check_refusal_ignores_a_receipt_left_by_an_earlier_run(
+    world: World, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    world.start()
+    member = world.member("zeta")
+    world.commit(member, {"src/a.py": "member\n"})
+    _preflight_that_fails(monkeypatch, tmp_path, member, [FAILED_PYTEST_STEP], before_run=True)
+    with _raises(r"no receipt for this tree"):
+        world.check(member, ["tests/test_zeta.py"])
 
 
 def test_member_check_runs_no_review_and_succeeds_when_the_review_would_fail(world: World) -> None:
