@@ -58,6 +58,27 @@ Deleting the target database means: a local database file or directory is delete
 is dropped, except Snowflake (drops this benchmark's tables and tuning metadata, keeps the database) and Databricks
 (truncates every table in the schema). Platforms that cannot drop a database refuse the run instead.
 
+## Generation time estimate
+
+Before TPC-H or TPC-DS data generation, and before TPC-DS query generation, BenchBox prints a rough estimate read from
+`benchbox/core/generation_estimate.json`, which holds wall times measured with `benchbox datagen` (parquet) and `dsqgen`
+on a darwin-arm64 Apple M4 (10 cores, 16 GiB) at commit 4a6fe5496b:
+
+> Rough estimate: generation will take about {estimate} (measured on {host_class} at scale {scales}{extrapolated_note}).
+
+Data generation was measured at scale 0.01, 0.1, 1 and 10; TPC-DS query generation (all 99 queries) at scale 1, 100,
+1000, 3000 and 5000. Between measured scales the estimate interpolates linearly. A scale above the largest measured one
+scales the largest measurement linearly, and the line says so (`; extrapolated for scale 100, above the largest measured
+scale 10`). The figures describe that host class; other hardware will differ. No estimate is printed for benchmarks
+without measurements. The prompt's per-benchmark minutes range and the dry run's estimates cover the whole run, not
+generation, and are unchanged.
+
+When a run limit is set and is shorter than the estimate, the run also prints:
+
+> The run limit of {limit} seconds is shorter than the estimated generation time of about {estimate}.
+
+Nothing is printed when no limit is set or the limit is larger. The limit is not changed.
+
 ## Run time limit and remote work
 
 When a run time limit is set (`--timeout`, `execution.timeout_seconds`, `timeout_seconds=`), BenchBox warns once for
