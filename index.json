@@ -45824,12 +45824,17 @@
       "title": "TPC-DI step 3 (parallel with steps 4 and later): site notice that TPC-DI is being reworked (benchbox-site)"
     },
     "tpcdi-04-quarantine-run-path-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T03:53:04Z",
+        "generation": "3ef27a1c98904fe3a71cbe95756b0a2e",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e"
+      },
       "needs": [
         "tpcdi-01-withdraw-bundles-develop-20261120"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI step 4: quarantine: every TPC-DI entry point refuses, and no result without an audit block can pass"
     },
     "tpcdi-05-remove-benchbox-queries-20261120": {
