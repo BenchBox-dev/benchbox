@@ -30813,7 +30813,7 @@
         "feature-feat-corpus-scale-policy-and-reruns-20261117"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Decide and evidence LakeSail's container memory default"
     },
     "lakesail-honoured-spark-keys-20261017": {
