@@ -21488,6 +21488,15 @@
       "status": "open",
       "title": "Add the outcome rule as one stdlib-only module with an exhaustive test and a corpus outcome snapshot"
     },
+    "crr-a2-writer-and-score-from-timings": {
+      "claim": null,
+      "needs": [
+        "crr-a1-rule-module-and-snapshot"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Make the result writer use the rule and recompute every lane's score from timings"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],
