@@ -36596,6 +36596,17 @@
       "status": "done",
       "title": "Gate: user decides how Polars matrix results are published"
     },
+    "pvm-p1-run-ssb-clickbench": {
+      "claim": null,
+      "needs": [
+        "crr-a2-writer-and-score-from-timings",
+        "crr-c1-validation-status-vocabulary",
+        "crr-d1-observed-engine-contract-and-dataframe"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Run the Polars version matrix for SSB and ClickBench with three measured iterations"
+    },
     "pvm-polars-2-version-matrix": {
       "claim": null,
       "needs": [
