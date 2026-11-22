@@ -14,12 +14,12 @@ _BENCHMARK_SPECS_FILES: dict[str, tuple[str, ...]] = {
         "benchbox/core/tpch/generator_specs.yaml",
         "benchbox/core/tpch_skew/generator_specs.yaml",
     ),
+    "tpcdi": ("benchbox/core/tpcdi/generator_specs.yaml",),
     "tsbs_devops": ("benchbox/core/tsbs_devops/generator_specs.yaml",),
     "tsbs": ("benchbox/core/tsbs_devops/generator_specs.yaml",),
 }
 
 _GENERATOR_BINARIES: dict[str, str] = {
-    "tpcdi": "digen",
     "tpch": "dbgen",
     "tpchavoc": "dbgen",
     "tpch_skew": "dbgen",
@@ -58,21 +58,10 @@ def _generator_binary_name(benchmark: str | None) -> str | None:
     return _GENERATOR_BINARIES.get(str(benchmark).lower()) if benchmark else None
 
 
-_BUNDLED_GENERATOR_TOOLS = frozenset({"digen"})
-
-
-def _bundled_tools_digest() -> str:
-    from benchbox.core.tpcdi.tools import TOOLS_ARCHIVE_SHA256
-
-    return TOOLS_ARCHIVE_SHA256
-
-
 def generator_binary_digest(benchmark: str | None) -> str | None:
     binary_name = _generator_binary_name(benchmark)
     if binary_name is None:
         return None
-    if binary_name in _BUNDLED_GENERATOR_TOOLS:
-        return _bundled_tools_digest()
     try:
         from benchbox.utils.tpc_compilation import get_tpc_compiler
 
@@ -120,8 +109,6 @@ def compute_datagen_identity_hash(benchmark: str | None, configuration: Mapping[
         "configuration": dict(configuration) if configuration is not None else None,
         "data_generation_version": DATA_GENERATION_VERSION,
     }
-    if _generator_binary_name(benchmark) in _BUNDLED_GENERATOR_TOOLS:
-        payload["generator_binary_sha256"] = _bundled_tools_digest()
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
@@ -148,8 +135,6 @@ def _generator_binary_staleness(manifest: Mapping[str, Any], benchmark: str | No
             f"this dataset does not record which {binary_name} binary wrote it; "
             "it regenerates once to establish provenance"
         )
-    if binary_name in _BUNDLED_GENERATOR_TOOLS and recorded != _bundled_tools_digest():
-        return f"this dataset was written by different {binary_name} tools than the ones BenchBox now ships"
     if recorded in _DEFECTIVE_GENERATOR_BINARIES.get(binary_name, frozenset()):
         return f"this dataset was written by a known-defective {binary_name} build"
     return None

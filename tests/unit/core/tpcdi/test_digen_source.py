@@ -23,12 +23,6 @@ from benchbox.core.tpcdi.compliance import (
 )
 from benchbox.core.tpcdi.sources import digen
 from benchbox.utils.datagen_manifest import MANIFEST_FILENAME
-from benchbox.utils.datagen_version import (
-    compute_datagen_identity_hash,
-    current_datagen_stamp,
-    describe_datagen_staleness,
-    manifest_datagen_is_current,
-)
 from benchbox.utils.generation_marker import GENERATION_IN_PROGRESS_MARKER
 from benchbox.utils.run_deadline import RunTimeoutError, own_run_deadline
 
@@ -102,6 +96,17 @@ def tools_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return unpacked
 
 
+def write_customer_management(path: Path, actions: int) -> None:
+    body = "".join(
+        f'<TPCDI:Action ActionType="NEW" ActionTS="2007-07-07T16:07:49"><Customer C_ID="{n}"/></TPCDI:Action>\n'
+        for n in range(actions)
+    )
+    path.write_text(
+        f'<?xml version="1.0" encoding="UTF-8"?>\n<TPCDI:Actions xmlns:TPCDI="http://www.tpc.org/tpc-di">\n{body}</TPCDI:Actions>\n',
+        encoding="utf-8",
+    )
+
+
 def fake_digen_output(command: list[str], *, scale: int | None = None) -> Path:
     out = Path(command[command.index("-o") + 1])
     sf = int(command[command.index("-sf") + 1]) if scale is None else scale
@@ -112,7 +117,7 @@ def fake_digen_output(command: list[str], *, scale: int | None = None) -> Path:
         (out / f"{batch}_audit.csv").write_text("a,b\n1,2\n")
     (out / "Batch1" / "FINWIRE1967Q1").write_text("finwire\n")
     (out / "Batch1" / "FINWIRE1967Q1_audit.csv").write_text("a,b\n")
-    (out / "Batch1" / "CustomerMgmt.xml").write_text("<x/>\n")
+    write_customer_management(out / "Batch1" / "CustomerMgmt.xml", 996)
     (out / "Generator_audit.csv").write_text("g\n")
     (out / digen.REPORT_NAME).write_text(REPORT.format(sf=sf, out=out, rate="1230775.87", space=" "))
     return out
@@ -269,7 +274,8 @@ def test_manifest_is_written_with_a_checksum_per_file(
     assert manifest["manifest_hash"] == result.manifest_hash
     assert manifest["source"]["provider"] == "digen"
     assert manifest["source"]["tools_sha256"] == tools.TOOLS_ARCHIVE_SHA256
-    assert manifest["generator_binary_sha256"] == tools.TOOLS_ARCHIVE_SHA256
+    assert "generator_binary_sha256" not in manifest
+    assert "base_constants_hash" not in manifest
     entries = {
         entry["path"]: entry
         for table in manifest["tables"].values()
@@ -288,11 +294,17 @@ def test_manifest_is_written_with_a_checksum_per_file(
     assert {"DailyMarket", "FINWIRE", "FINWIRE_audit", "Batch1_audit", "CustomerMgmt", "digen_report"} <= set(
         manifest["tables"]
     )
-    assert entries["Batch2/DailyMarket.txt"]["metadata"] == {"batch": "Batch2", "line_count": 20}
-    assert all(entry["row_count"] == 0 for entry in entries.values())
+    assert entries["Batch2/DailyMarket.txt"]["metadata"] == {"batch": "Batch2"}
+    assert entries["Batch2/DailyMarket.txt"]["row_count"] == 20
+    assert entries["Batch1/CustomerMgmt.xml"]["row_count"] == 996
+    assert entries["Batch1/BatchDate.txt"]["row_count"] == 1
+    assert entries["Batch1/FINWIRE1967Q1"]["row_count"] == 1
+    assert entries["Batch1_audit.csv"]["row_count"] == 1
+    assert entries["Batch1/FINWIRE1967Q1_audit.csv"]["row_count"] == 0
     report_path = out.resolve() / digen.REPORT_NAME
     assert entries[digen.REPORT_NAME]["size_bytes"] == report_path.stat().st_size
-    assert "line_count" not in entries[digen.REPORT_NAME].get("metadata", {})
+    assert entries[digen.REPORT_NAME]["row_count"] == len(report_path.read_text(encoding="utf-8").splitlines())
+    assert all("line_count" not in entry.get("metadata", {}) for entry in entries.values())
     assert not (out / GENERATION_IN_PROGRESS_MARKER).exists()
     digen.verify_staging(out)
 
@@ -400,29 +412,25 @@ def test_staging_from_other_tools_is_not_reused(
 ) -> None:
     out = tmp_path / "out"
     digen.generate(3, out, environ=environment)
-    monkeypatch.setattr(tools, "TOOLS_ARCHIVE_SHA256", "f" * 64)
-    manifest = json.loads((out / MANIFEST_FILENAME).read_text(encoding="utf-8"))
-    assert manifest_datagen_is_current(manifest, "tpcdi") is False
-    assert "different digen tools" in str(describe_datagen_staleness(manifest, "tpcdi"))
+    monkeypatch.setattr(digen, "TOOLS_ARCHIVE_SHA256", "f" * 64)
+    result = digen.generate(3, out, environ=environment)
+    assert result.reused is False
+    assert len(child.calls) == 2
 
 
 def test_cache_key_changes_with_the_scale_and_the_tools_hash(monkeypatch: pytest.MonkeyPatch) -> None:
     assert digen.datagen_cache_key(3) != digen.datagen_cache_key(5)
     assert digen.datagen_cache_key(3) == digen.datagen_cache_key(3.0)
     before = digen.datagen_cache_key(3)
-    monkeypatch.setattr(tools, "TOOLS_ARCHIVE_SHA256", "f" * 64)
+    monkeypatch.setattr(digen, "TOOLS_ARCHIVE_SHA256", "f" * 64)
     assert digen.datagen_cache_key(3) != before
-    assert current_datagen_stamp("tpcdi")["generator_binary_sha256"] == "f" * 64
-    assert compute_datagen_identity_hash("tpcdi", {"scale_factor": 3}) != compute_datagen_identity_hash(
-        "tpcdi", {"scale_factor": 5}
-    )
 
 
-def test_stamp_records_the_shipped_tools_digest() -> None:
-    assert current_datagen_stamp("tpcdi")["generator_binary_sha256"] == tools.TOOLS_ARCHIVE_SHA256
-    assert manifest_datagen_is_current({"benchmark": "tpcdi", **current_datagen_stamp("tpcdi")}, "tpcdi")
-    unrecorded = {"benchmark": "tpcdi", **current_datagen_stamp(None)}
-    assert manifest_datagen_is_current(unrecorded, "tpcdi") is False
+def test_the_legacy_tpcdi_stamp_is_not_relabelled_as_digen_output() -> None:
+    from benchbox.utils.datagen_version import current_datagen_stamp, generator_binary_digest
+
+    assert generator_binary_digest("tpcdi") is None
+    assert "generator_binary_sha256" not in current_datagen_stamp("tpcdi")
 
 
 def test_java_options_reach_the_child_command_line(
@@ -538,7 +546,7 @@ def test_missing_required_entries_are_refused(
 
 
 @pytest.mark.parametrize(
-    "damage", ["empty-batch", "missing-batch-date", "empty-file", "count-mismatch", "short-batch1"]
+    "damage", ["empty-batch", "missing-batch-date", "empty-file", "count-mismatch", "short-batch1", "truncated-xml"]
 )
 def test_incomplete_or_inconsistent_output_is_refused_before_the_manifest(
     tmp_path: Path, tools_dir: Path, environment: dict[str, str], monkeypatch: pytest.MonkeyPatch, damage: str
@@ -554,15 +562,16 @@ def test_incomplete_or_inconsistent_output_is_refused_before_the_manifest(
             (out / "Batch1" / "DailyMarket.txt").write_text("")
         elif damage == "count-mismatch":
             (out / "Batch3" / "DailyMarket.txt").write_text("row\n" * 29)
+        elif damage == "short-batch1":
+            write_customer_management(out / "Batch1" / "CustomerMgmt.xml", 995)
         else:
-            (out / digen.REPORT_NAME).write_text(
-                (out / digen.REPORT_NAME).read_text(encoding="utf-8").replace("Batch1: 1000", "Batch1: 2")
-            )
+            xml = out / "Batch1" / "CustomerMgmt.xml"
+            xml.write_text(xml.read_text(encoding="utf-8")[:-200], encoding="utf-8")
         return subprocess.CompletedProcess(command, 0, "", "")
 
     patch_child(monkeypatch, run)
     out = tmp_path / "out"
-    with pytest.raises(digen.DigenOutputError, match="Batch"):
+    with pytest.raises(digen.DigenOutputError, match=r"Batch\d|well-formed"):
         digen.generate(3, out, environ=environment)
     assert not (out / MANIFEST_FILENAME).exists()
     assert (out / GENERATION_IN_PROGRESS_MARKER).exists()

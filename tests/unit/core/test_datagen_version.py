@@ -258,9 +258,9 @@ def test_skew_fingerprint_covers_both_specs() -> None:
     assert manifest_datagen_is_current(dict(stamp), benchmark="tpch_skew") is True
 
 
-def test_tpcdi_data_that_records_no_tools_digest_is_stale() -> None:
-    unrecorded = {"benchmark": "tpcdi", **current_datagen_stamp(None)}
-    assert manifest_datagen_is_current(unrecorded, benchmark="tpcdi") is False
+def test_tpcdi_data_stamped_before_its_spec_was_fingerprinted_is_stale() -> None:
+    unfingerprinted = {"benchmark": "tpcdi", **current_datagen_stamp(None)}
+    assert manifest_datagen_is_current(unfingerprinted, benchmark="tpcdi") is False
     assert manifest_datagen_is_current({"benchmark": "tpcdi", **current_datagen_stamp("tpcdi")}, benchmark="tpcdi")
 
 
@@ -464,7 +464,7 @@ def test_stamp_records_the_generator_binary(generator_binaries, name: str, binar
     assert current_datagen_stamp(name)["generator_binary_sha256"] == expected
 
 
-@pytest.mark.parametrize("name", ["ssb", "clickbench", "tsbs_devops", "Test Benchmark", None])
+@pytest.mark.parametrize("name", ["ssb", "clickbench", "tpcdi", "tsbs_devops", "Test Benchmark", None])
 def test_other_benchmarks_record_no_generator_binary(generator_binaries, name: str | None) -> None:
     assert generator_binary_digest(name) is None
     assert "generator_binary_sha256" not in current_datagen_stamp(name)

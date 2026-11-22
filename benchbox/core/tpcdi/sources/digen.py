@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from xml.etree import ElementTree
 
 from benchbox.core.tpcdi.compliance import validate_digen_scale
 from benchbox.core.tpcdi.tools import (
@@ -21,10 +22,7 @@ from benchbox.core.tpcdi.tools import (
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.datagen_manifest import MANIFEST_FILENAME, DataGenerationManifest, load_manifest
-from benchbox.utils.datagen_version import (
-    compute_datagen_identity_hash,
-    manifest_datagen_is_current,
-)
+from benchbox.utils.datagen_version import DATA_GENERATION_VERSION
 from benchbox.utils.generation_marker import GENERATION_IN_PROGRESS_MARKER, generation_in_progress, track_generation
 from benchbox.utils.printing import get_console
 from benchbox.utils.run_deadline import current_run_deadline, run_child
@@ -48,6 +46,7 @@ JAVA_REQUIREMENT_MESSAGE = (
 
 REPORT_NAME = "digen_report.txt"
 BATCH_DATE_FILE = "BatchDate.txt"
+_ACTION_TAG = "{http://www.tpc.org/tpc-di}Action"
 REQUIRED_ENTRIES = ("Batch1", "Batch2", "Batch3", REPORT_NAME)
 LICENCE_ANSWER = b"\nYES\n"
 JAVA_PROBE_SECONDS = 10
@@ -259,15 +258,22 @@ def _file_format(file_name: str) -> str:
     return Path(file_name).suffix.lstrip(".") or "text"
 
 
-def _count_newlines(path: Path) -> int:
-    total = 0
-    with path.open("rb") as stream:
-        while chunk := stream.read(_HASH_CHUNK_BYTES):
-            total += chunk.count(b"\n")
-    return total
+def _count_actions(path: Path) -> int:
+    count = 0
+    root = None
+    try:
+        for event, element in ElementTree.iterparse(path, events=("start", "end")):
+            if root is None:
+                root = element
+            if event == "end" and element.tag == _ACTION_TAG:
+                count += 1
+                root.clear()
+    except ElementTree.ParseError as error:
+        raise DigenOutputError(f"{path} is not well-formed XML: {error}") from None
+    return count
 
 
-def check_payload(output_dir: Path, report: DigenReport) -> None:
+def check_payload(output_dir: Path, report: DigenReport, records: Mapping[str, int]) -> None:
     expected = {
         "Batch1": report.historical_rows,
         "Batch2": report.incremental_1_rows,
@@ -286,25 +292,34 @@ def check_payload(output_dir: Path, report: DigenReport) -> None:
             or any(path.stat().st_size == 0 for path in payload)
         ):
             raise DigenOutputError(f"{name} in {output_dir} does not hold the data files DIGen writes")
-        records = sum(_count_newlines(path) for path in payload if path.suffix != ".xml") - 1
-        if records > rows or (name != "Batch1" and records != rows):
-            raise DigenOutputError(f"{name} in {output_dir} holds {records} records but {REPORT_NAME} states {rows}")
+        total = sum(records[f"{name}/{path.name}"] for path in payload if path.name != BATCH_DATE_FILE)
+        if total != rows:
+            raise DigenOutputError(f"{name} in {output_dir} holds {total} records but {REPORT_NAME} states {rows}")
 
 
 def _digest_file(path: Path, *, is_report: bool) -> tuple[str, int, int]:
     if is_report:
         text = path.read_text(encoding="utf-8", errors="replace")
         normalised = normalise_report(text).encode("utf-8")
-        return hashlib.sha256(normalised).hexdigest(), path.stat().st_size, 0
+        return hashlib.sha256(normalised).hexdigest(), path.stat().st_size, len(text.splitlines())
     digest = hashlib.sha256()
-    lines = 0
+    newlines = 0
     size = 0
+    last = b"\n"
     with path.open("rb") as stream:
         while chunk := stream.read(_HASH_CHUNK_BYTES):
             digest.update(chunk)
-            lines += chunk.count(b"\n")
+            newlines += chunk.count(b"\n")
             size += len(chunk)
-    return digest.hexdigest(), size, lines
+            last = chunk[-1:]
+    lines = newlines + (0 if last == b"\n" else 1)
+    if path.suffix == ".xml":
+        records = _count_actions(path)
+    elif path.name.endswith("_audit.csv"):
+        records = max(lines - 1, 0)
+    else:
+        records = lines
+    return digest.hexdigest(), size, records
 
 
 def _staging_files(output_dir: Path) -> list[Path]:
@@ -327,7 +342,14 @@ def _identity(scale_factor: int, files: list[tuple[str, int, str]]) -> str:
 
 
 def datagen_cache_key(scale_factor: Any) -> str:
-    return compute_datagen_identity_hash(BENCHMARK_ID, {"scale_factor": validate_digen_scale(scale_factor)})
+    payload = {
+        "benchmark": BENCHMARK_ID,
+        "provider": PROVIDER,
+        "scale_factor": validate_digen_scale(scale_factor),
+        "tools_sha256": TOOLS_ARCHIVE_SHA256,
+        "data_generation_version": DATA_GENERATION_VERSION,
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
 def write_staging_manifest(
@@ -347,16 +369,19 @@ def write_staging_manifest(
         entries.append((path, checksum, size, lines))
         listed.append((relative, 0 if relative == REPORT_NAME else size, checksum))
         size_bytes += size
+    check_payload(output_dir, report, {path.relative_to(output_dir).as_posix(): rows for path, _, _, rows in entries})
     manifest_hash = _identity(report.scale_factor, listed)
     manifest = DataGenerationManifest(
         output_dir=output_dir,
         benchmark=BENCHMARK_ID,
         scale_factor=report.scale_factor,
         formats=["csv"],
+        stamp=False,
         extra_metadata={
             "manifest_hash": manifest_hash,
             "source": {
                 "provider": PROVIDER,
+                "data_generation_version": DATA_GENERATION_VERSION,
                 "digen_version": report.digen_version,
                 "pdgf_version": report.pdgf_version,
                 "tools_sha256": TOOLS_ARCHIVE_SHA256,
@@ -368,23 +393,17 @@ def write_staging_manifest(
             },
         },
     )
-    for path, checksum, size, lines in entries:
+    for path, checksum, size, records in entries:
         relative = path.relative_to(output_dir)
         batch = relative.parts[0] if relative.parts[0].startswith("Batch") and len(relative.parts) > 1 else None
-        is_report = relative.as_posix() == REPORT_NAME
-        metadata: dict[str, Any] = {}
-        if batch:
-            metadata["batch"] = batch
-        if not is_report:
-            metadata["line_count"] = lines
         manifest.add_entry(
             _table_name(path.name),
             path,
-            row_count=0,
+            row_count=records,
             size_bytes=size,
             checksum=checksum,
             format=_file_format(path.name),
-            metadata=metadata or None,
+            metadata={"batch": batch} if batch else None,
         )
     return manifest.write(), manifest_hash, len(entries), size_bytes
 
@@ -457,7 +476,13 @@ def _reusable_staging(output_dir: Path, scale_factor: int) -> Mapping[str, Any] 
         manifest = load_manifest(manifest_path)
         if float(manifest.get("scale_factor", -1)) != float(scale_factor):
             return None
-        if not manifest_datagen_is_current(manifest, BENCHMARK_ID):
+        source = manifest.get("source")
+        if (
+            not isinstance(source, Mapping)
+            or source.get("provider") != PROVIDER
+            or source.get("tools_sha256") != TOOLS_ARCHIVE_SHA256
+            or source.get("data_generation_version") != DATA_GENERATION_VERSION
+        ):
             return None
         return verify_staging(output_dir)
     except (OSError, ValueError, KeyError, DigenError):
@@ -542,7 +567,6 @@ def generate(
             if missing:
                 raise DigenOutputError(f"{TOOL_NAME} did not produce {', '.join(missing)} in {output}")
             report = parse_report((output / REPORT_NAME).read_text(encoding="utf-8", errors="replace"))
-            check_payload(output, report)
             if report.scale_factor != scale:
                 raise DigenOutputError(
                     f"{REPORT_NAME} states scale factor {report.scale_factor}, but {scale} was requested"
