@@ -40750,10 +40750,15 @@
       "title": "benchbox.core.run_service exports three underscore-prefixed names in __all__"
     },
     "run-timeout-decision-record-refresh-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T17:20:20Z",
+        "generation": "2c62a20a5705466380149f0ac99aa14b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Bring the run-timeout decision record up to date with the delivered steps"
     },
     "run-timeout-error-public-import-20261122": {
