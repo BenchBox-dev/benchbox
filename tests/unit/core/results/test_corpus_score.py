@@ -24,6 +24,7 @@ from benchbox.core.results.schema import build_result_payload
 from benchbox.core.tpch.compliance import validate_tpch_scale
 from benchbox.platforms.dataframe.benchmark_mixin import dataframe_compliance_class
 from tests.fixtures.result_dict_fixtures import make_benchmark_results
+from tests.unit.scripts.explorer_pipeline.conftest import combined_bundle
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -248,3 +249,118 @@ def test_a_ranked_standard_scale_result_recomputes_within_tolerance_of_its_recor
             compared += 1
             assert abs(recomputed / recorded - 1) <= RANKED_TOLERANCE, name
     assert compared > 0
+
+
+def _independent_qphh(power: float, throughput: float) -> float:
+    return round((power * throughput) ** 0.5, 1)
+
+
+def _independent_qphds(data: dict) -> float:
+    phases = data["phases"]
+    streams = phases["throughput_test"]["num_streams"]
+    load_seconds = (
+        sum(phases[name]["duration_ms"] for name in ("schema_creation", "data_loading") if name in phases) / 1000.0
+    )
+    hours = (
+        phases["power_test"]["duration_ms"] / 1000.0 * streams / 3600.0,
+        (phases["throughput_test"]["duration_ms"] + phases["throughput_test_2"]["duration_ms"]) / 3600000.0,
+        (phases["maintenance_test"]["duration_ms"] + phases["maintenance_test_2"]["duration_ms"]) / 3600000.0,
+        0.01 * streams * load_seconds / 3600.0,
+    )
+    product = hours[0] * hours[1] * hours[2] * hours[3]
+    return float(int(data["benchmark"]["scale_factor"] * 99 * streams / product**0.25))
+
+
+def test_tpch_combined_score_is_the_square_root_of_power_times_throughput() -> None:
+    data = combined_bundle(benchmark="tpch", qph=321.5, power=1234.5)
+
+    power = corpus_score.power_at_size(data)
+    throughput = corpus_score.throughput_at_size(data)
+
+    assert power == pytest.approx(1234.5)
+    assert corpus_score.combined_score(data) == _independent_qphh(power, throughput) == pytest.approx(321.5)
+
+
+def test_tpcds_combined_score_follows_the_load_power_throughput_and_maintenance_timings() -> None:
+    data = combined_bundle(benchmark="tpcds", qph=321.5)
+
+    assert corpus_score.combined_score(data) == _independent_qphds(data) == 321.0
+
+
+@pytest.mark.parametrize("family", ["tpch", "tpcds"])
+def test_combined_score_ignores_recorded_metrics(family: str) -> None:
+    data = combined_bundle(benchmark=family, qph=300.0)
+    expected = corpus_score.combined_score(data)
+    data["summary"]["tpc_metrics"] = {"qphh_at_size": 1.0, "qphds_at_size": 1.0, "refresh_included": False}
+
+    assert expected is not None
+    assert corpus_score.combined_score(data) == expected
+
+
+def _drop_throughput_duration(data: dict) -> None:
+    data["phases"]["throughput_test"].pop("duration_ms")
+
+
+def _drop_refresh_evidence(data: dict) -> None:
+    data["phases"]["power_test"].pop("refresh_functions")
+
+
+def _drop_power_queries(data: dict) -> None:
+    data["queries"] = [query for query in data["queries"] if query.get("test_type") == "throughput"]
+
+
+@pytest.mark.parametrize("mutate", [_drop_throughput_duration, _drop_refresh_evidence, _drop_power_queries])
+def test_tpch_combined_score_is_undetermined_when_a_timing_or_refresh_fact_is_missing(mutate) -> None:
+    data = combined_bundle(benchmark="tpch")
+    mutate(data)
+
+    assert corpus_score.combined_score(data) is None
+
+
+def _drop_load(data: dict) -> None:
+    data["phases"].pop("data_loading")
+
+
+def _drop_second_throughput_duration(data: dict) -> None:
+    data["phases"]["throughput_test_2"].pop("duration_ms")
+
+
+def _drop_maintenance_duration(data: dict) -> None:
+    data["phases"]["maintenance_test_2"].pop("duration_ms")
+
+
+def _drop_power_duration(data: dict) -> None:
+    data["phases"]["power_test"].pop("duration_ms")
+
+
+def _odd_streams(data: dict) -> None:
+    data["phases"]["throughput_test"]["num_streams"] = 3
+
+
+def _partial_power_statements(data: dict) -> None:
+    data["phases"]["power_test"]["query_count"] = 99
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        _drop_load,
+        _drop_second_throughput_duration,
+        _drop_maintenance_duration,
+        _drop_power_duration,
+        _odd_streams,
+        _partial_power_statements,
+    ],
+)
+def test_tpcds_combined_score_is_undetermined_when_a_timing_fact_is_missing(mutate) -> None:
+    data = combined_bundle(benchmark="tpcds")
+    mutate(data)
+
+    assert corpus_score.combined_score(data) is None
+
+
+def test_combined_score_is_undetermined_for_a_non_tpc_benchmark() -> None:
+    data = combined_bundle(benchmark="tpch")
+    data["benchmark"]["id"] = "ssb"
+
+    assert corpus_score.combined_score(data) is None

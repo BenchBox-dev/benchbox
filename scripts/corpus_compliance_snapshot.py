@@ -127,6 +127,8 @@ def _rule_entry(item: _Loaded, lane: str, outcome: corpus_rule.Outcome) -> tuple
         updates["power_score"] = corpus_score.power_at_size(item.data)
     if lane == corpus_rule.LANE_THROUGHPUT:
         updates["throughput_at_size"] = corpus_score.throughput_at_size(item.data)
+    if lane == corpus_rule.LANE_COMBINED:
+        updates.update(explorer_transformer._qph_columns(item.data, phase, item.slug))
     candidate = item.entry.model_copy(update=updates)
     metric = get_ranking_config(item.slug, phase).primary_metric
     reason = ranking_exclusion_reason(candidate, metric)

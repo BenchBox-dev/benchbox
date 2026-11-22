@@ -373,13 +373,12 @@ def test_validator_fails_closed_when_the_identity_module_is_not_mirrored(
         "run": {"timestamp": "2026-08-01T12:00:00"},
         "export": {"anonymized": True},
         "summary": {
-            "queries": {"total": 2, "passed": 2, "failed": 0},
+            "queries": {"total": 22, "passed": 22, "failed": 0},
             "validation": "passed",
-            "tpc_metrics": {"power_at_size": 1.0},
         },
         "queries": [
-            {"id": "Q1", "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"},
-            {"id": "Q2", "ms": 12.0, "run_type": "measurement", "status": "SUCCESS"},
+            {"id": str(number), "ms": 10.0 + number, "iter": 1, "run_type": "measurement", "status": "SUCCESS"}
+            for number in range(1, 23)
         ],
     }
     (tmp_path / "rankable.json").write_text(json.dumps(bundle), encoding="utf-8")

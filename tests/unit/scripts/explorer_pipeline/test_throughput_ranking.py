@@ -22,7 +22,7 @@ from _project.scripts.explorer_pipeline.pipeline import (
 from _project.scripts.explorer_pipeline.ranking import rank_platforms
 from _project.scripts.explorer_pipeline.transformer import BundleTransformer
 from _project.scripts.results_explorer_snapshot_invariants import check_snapshot
-from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE, throughput_bundle
+from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE, scored_minimal_bundle, throughput_bundle
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -81,7 +81,7 @@ def test_throughput_bundle_exposes_throughput_at_size_and_stream_count(tmp_path:
 
 
 def test_power_bundle_has_no_throughput_fields(tmp_path: Path) -> None:
-    ((entry, detail),) = _pairs(tmp_path, {"duckdb": copy.deepcopy(MINIMAL_BUNDLE)})
+    ((entry, detail),) = _pairs(tmp_path, {"duckdb": scored_minimal_bundle()})
 
     assert entry.power_score == pytest.approx(1234.56)
     assert entry.throughput_at_size is None
@@ -319,8 +319,8 @@ def test_completed_phase_with_empty_error_fields_keeps_its_score(tmp_path: Path)
     ("changes", "reason"),
     [
         ({"throughput_at_size": None}, "missing_primary_metric"),
-        ({"throughput_at_size": 0.0}, "non_positive_primary_metric"),
-        ({"throughput_at_size": -5.0}, "non_positive_primary_metric"),
+        ({"throughput_at_size": 0.0}, "missing_primary_metric"),
+        ({"throughput_at_size": -5.0}, "missing_primary_metric"),
         ({"throughput_at_size": None, "power_at_size": 1234.0}, "missing_primary_metric"),
     ],
 )
@@ -333,7 +333,7 @@ def test_throughput_cohort_requires_a_positive_throughput_at_size(tmp_path: Path
 
 def test_unparseable_throughput_at_size_is_missing(tmp_path: Path) -> None:
     payload = throughput_bundle("spark")
-    payload["summary"]["tpc_metrics"]["throughput_at_size"] = "abc"
+    payload["phases"]["throughput_test"]["duration_ms"] = "abc"
     ((entry, _),) = _pairs(tmp_path, {"spark": payload})
 
     assert entry.throughput_at_size is None
@@ -461,10 +461,9 @@ def test_meta_leaderboard_has_one_cohort_per_stream_count(tmp_path: Path) -> Non
 
 
 def test_power_cohort_label_and_key_are_unchanged(tmp_path: Path) -> None:
-    payload = copy.deepcopy(MINIMAL_BUNDLE)
-    other = copy.deepcopy(MINIMAL_BUNDLE)
+    payload = scored_minimal_bundle()
+    other = scored_minimal_bundle(500.0)
     other["platform"] = {"name": "sqlite", "version": "3.0"}
-    other["summary"]["tpc_metrics"] = {"power_at_size": 500.0}
     pairs = _pairs(tmp_path, {"duckdb": payload, "sqlite": other})
     accum = {("tpch", 0.1, "power", None): pairs}
     full_to_short = {entry.result_id: entry.result_id[-8:] for entry, _ in pairs}
@@ -483,11 +482,10 @@ def test_power_cohort_label_and_key_are_unchanged(tmp_path: Path) -> None:
 def throughput_db(tmp_path_factory: pytest.TempPathFactory) -> Path:
     base = tmp_path_factory.mktemp("throughput_pipeline")
     bundles_dir = base / "data" / "bundles"
-    power = copy.deepcopy(MINIMAL_BUNDLE)
+    power = scored_minimal_bundle()
     power["benchmark"]["scale_factor"] = 1.0
-    power_other = copy.deepcopy(power)
+    power_other = scored_minimal_bundle(900.0)
     power_other["platform"] = {"name": "sqlite", "version": "3.0"}
-    power_other["summary"]["tpc_metrics"] = {"power_at_size": 900.0}
     bundles = {
         "power-duckdb": power,
         "power-sqlite": power_other,

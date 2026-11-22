@@ -50,21 +50,28 @@ def _off_list_scale(benchmark_id: str) -> float:
     return candidate
 
 
+def _timed_queries(benchmark: str) -> list[dict]:
+    from benchbox.validation.bundle import CANONICAL_LOGICAL_QUERY_IDS
+
+    canonical = sorted(CANONICAL_LOGICAL_QUERY_IDS.get(benchmark, frozenset({"Q1", "Q2"})))
+    return [
+        {"id": query_id, "ms": 10.0 + index, "iter": 1, "run_type": "measurement", "status": "SUCCESS"}
+        for index, query_id in enumerate(canonical)
+    ]
+
+
 def _bundle_payload(benchmark: str, scale: float, platform: str, *, compliance_class: str | None = None) -> dict:
+    queries = _timed_queries(benchmark)
     payload = {
         "benchmark": {"id": benchmark, "scale_factor": scale, "test_type": "power"},
         "platform": {"name": platform},
         "run": {"timestamp": "2026-11-01T12:00:00"},
         "export": {"anonymized": True},
         "summary": {
-            "queries": {"total": 2, "passed": 2, "failed": 0},
+            "queries": {"total": len(queries), "passed": len(queries), "failed": 0},
             "validation": "passed",
-            "tpc_metrics": {"power_at_size": 1.0},
         },
-        "queries": [
-            {"id": "Q1", "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"},
-            {"id": "Q2", "ms": 12.0, "run_type": "measurement", "status": "SUCCESS"},
-        ],
+        "queries": queries,
     }
     if compliance_class is not None:
         payload["benchmark"]["compliance_class"] = compliance_class

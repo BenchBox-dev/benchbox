@@ -53,7 +53,7 @@ def _write_bundle(
     result = BenchmarkResults(
         benchmark_name="TPC-H",
         platform=platform,
-        scale_factor=0.01,
+        scale_factor=1.0,
         execution_id=run_id,
         timestamp=timestamp or datetime.now(timezone.utc),
         duration_seconds=1.0,
@@ -249,7 +249,7 @@ def test_report_trends_follow_the_latest_runs_variant(tmp_path: Path) -> None:
     db_path = tmp_path / "results.db"
     _import_and_report(results, db_path)
 
-    trends = ResultDatabase(db_path).get_performance_trends("Polars", "TPC-H", 0.01, periods=2, period_days=30)
+    trends = ResultDatabase(db_path).get_performance_trends("Polars", "TPC-H", 1.0, periods=2, period_days=30)
 
     assert [(t.sample_count, t.variant) for t in trends] == [
         (1, "deployment=default, execution engine=streaming, gateway=native")

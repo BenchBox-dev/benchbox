@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import math
 import statistics
-from decimal import ROUND_FLOOR, Decimal
 from typing import TYPE_CHECKING
 
+from benchbox.core.results import corpus_score
 from benchbox.core.results.subscale_policy import bundle_compliance_class
 
 if TYPE_CHECKING:
@@ -100,9 +100,7 @@ class TPCMetricsCalculator:
 
     @staticmethod
     def calculate_qphh_at_size(power_at_size: float, throughput_at_size: float) -> float:
-        if power_at_size <= 0 or throughput_at_size <= 0:
-            return 0.0
-        return round(math.sqrt(power_at_size * throughput_at_size), 1)
+        return corpus_score.qphh_at_size(power_at_size, throughput_at_size)
 
     @staticmethod
     def qphds_input_problems(
@@ -149,13 +147,9 @@ class TPCMetricsCalculator:
         )
         if problems:
             raise ValueError("; ".join(problems))
-        return {
-            "q": float(TPC_QUERIES_PER_STREAM["tpcds"] * num_streams),
-            "t_pt_hours": power_seconds * num_streams / 3600.0,
-            "t_tt_hours": sum(throughput_seconds) / 3600.0,
-            "t_dm_hours": sum(maintenance_seconds) / 3600.0,
-            "t_ld_hours": 0.01 * num_streams * load_seconds / 3600.0,
-        }
+        return corpus_score.qphds_terms(
+            num_streams, power_seconds, throughput_seconds, maintenance_seconds, load_seconds
+        )
 
     @staticmethod
     def calculate_qphds_at_size(
@@ -166,20 +160,18 @@ class TPCMetricsCalculator:
         maintenance_seconds: Sequence[float],
         load_seconds: float,
     ) -> float:
-        terms = TPCMetricsCalculator.calculate_qphds_terms(
+        problems = TPCMetricsCalculator.qphds_input_problems(
             scale_factor, num_streams, power_seconds, throughput_seconds, maintenance_seconds, load_seconds
         )
-        product = terms["t_pt_hours"] * terms["t_tt_hours"] * terms["t_dm_hours"] * terms["t_ld_hours"]
-        return TPCMetricsCalculator.floor_qphds(scale_factor, terms["q"], product)
+        if problems:
+            raise ValueError("; ".join(problems))
+        return corpus_score.qphds_at_size(
+            scale_factor, num_streams, power_seconds, throughput_seconds, maintenance_seconds, load_seconds
+        )
 
     @staticmethod
     def floor_qphds(scale_factor: float, q: float, hours_product: float) -> float:
-        value = (
-            Decimal(repr(float(scale_factor)))
-            * Decimal(repr(float(q)))
-            / Decimal(repr(float(hours_product))).sqrt().sqrt()
-        )
-        return float(value.to_integral_value(rounding=ROUND_FLOOR))
+        return corpus_score.floor_qphds(scale_factor, q, hours_product)
 
     @staticmethod
     def calculate_geometric_mean(times: Sequence[float]) -> float:
@@ -221,113 +213,18 @@ class TPCMetricsCalculator:
 
     @staticmethod
     def _power_refresh_evidence(power_phase: dict | None) -> tuple[bool, int | None]:
-        if not isinstance(power_phase, dict):
-            return False, None
-        first_set = power_phase.get("refresh_first_set")
-        functions = power_phase.get("refresh_functions")
-        if isinstance(first_set, bool) or not isinstance(first_set, int) or first_set < 1:
-            return False, None
-        if not isinstance(functions, list) or len(functions) != 2:
-            return False, first_set
-        for expected, function in zip(("RF1", "RF2"), functions, strict=True):
-            update_set = function.get("update_set") if isinstance(function, dict) else None
-            duration_ms = function.get("duration_ms") if isinstance(function, dict) else None
-            if (
-                not isinstance(function, dict)
-                or function.get("function") != expected
-                or isinstance(update_set, bool)
-                or update_set != first_set
-                or function.get("status") != "SUCCESS"
-                or isinstance(duration_ms, bool)
-                or not isinstance(duration_ms, (int, float))
-                or not math.isfinite(duration_ms)
-                or duration_ms < 0
-            ):
-                return False, first_set
-        return True, first_set
+        return corpus_score.power_refresh_evidence(power_phase)
 
     @staticmethod
     def _throughput_refresh_evidence(
         throughput_phase: dict | None,
         expected_streams: int | None = None,
     ) -> tuple[bool, int | None, int]:
-        if not isinstance(throughput_phase, dict):
-            return False, None, 0
-        refresh_stream = throughput_phase.get("refresh_stream")
-        if not isinstance(refresh_stream, dict):
-            return False, None, 0
-        first_set = refresh_stream.get("first_set")
-        if isinstance(first_set, bool) or not isinstance(first_set, int) or first_set < 1:
-            return False, None, 0
-        pairs = refresh_stream.get("pairs")
-        if not isinstance(pairs, list):
-            return False, first_set, 0
-        stream_count = throughput_phase.get("num_streams")
-        if isinstance(stream_count, bool) or not isinstance(stream_count, int):
-            stream_count = (
-                expected_streams
-                if isinstance(expected_streams, int) and not isinstance(expected_streams, bool)
-                else len(throughput_phase.get("stream_results") or [])
-            )
-        pair_count = refresh_stream.get("pair_count")
-        start_time = refresh_stream.get("start_time")
-        end_time = refresh_stream.get("end_time")
-        valid = (
-            refresh_stream.get("status") == "COMPLETED"
-            and isinstance(start_time, str)
-            and bool(start_time)
-            and isinstance(end_time, str)
-            and bool(end_time)
-            and stream_count > 0
-            and len(pairs) == stream_count
-            and isinstance(pair_count, int)
-            and not isinstance(pair_count, bool)
-            and pair_count == len(pairs)
-        )
-        for offset, pair in enumerate(pairs):
-            set_id = first_set + offset
-            functions = pair.get("functions") if isinstance(pair, dict) else None
-            pair_set = pair.get("update_set") if isinstance(pair, dict) else None
-            if (
-                not isinstance(pair, dict)
-                or isinstance(pair_set, bool)
-                or pair_set != set_id
-                or pair.get("status") != "SUCCESS"
-                or not isinstance(functions, list)
-                or len(functions) != 2
-            ):
-                valid = False
-                continue
-            for expected, function in zip(("RF1", "RF2"), functions, strict=True):
-                update_set = function.get("update_set") if isinstance(function, dict) else None
-                duration_ms = function.get("duration_ms") if isinstance(function, dict) else None
-                if (
-                    not isinstance(function, dict)
-                    or function.get("function") != expected
-                    or isinstance(update_set, bool)
-                    or update_set != set_id
-                    or function.get("status") != "SUCCESS"
-                    or isinstance(duration_ms, bool)
-                    or not isinstance(duration_ms, (int, float))
-                    or not math.isfinite(duration_ms)
-                    or duration_ms < 0
-                ):
-                    valid = False
-        return valid, first_set, stream_count
+        return corpus_score.throughput_refresh_evidence(throughput_phase, expected_streams)
 
     @staticmethod
     def refresh_included(power_phase: dict | None, throughput_phase: dict | None) -> bool:
-        power_present = isinstance(power_phase, dict)
-        throughput_present = isinstance(throughput_phase, dict)
-        if power_present and throughput_present:
-            power_valid, _power_set = TPCMetricsCalculator._power_refresh_evidence(power_phase)
-            throughput_valid, _first_set, _streams = TPCMetricsCalculator._throughput_refresh_evidence(throughput_phase)
-            return power_valid and throughput_valid
-        if power_present:
-            return TPCMetricsCalculator._power_refresh_evidence(power_phase)[0]
-        if throughput_present:
-            return TPCMetricsCalculator._throughput_refresh_evidence(throughput_phase)[0]
-        return False
+        return corpus_score.refresh_included(power_phase, throughput_phase)
 
     @staticmethod
     def qphh_unavailable_reasons(power_data: dict, throughput_data: dict) -> list[str]:

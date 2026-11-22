@@ -432,15 +432,6 @@ def _driver_version(bundle: BundleDocument) -> str | None:
     return None
 
 
-def _tpc_metric(value: Any) -> float | None:
-    if value is None:
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
 def _power_score(bundle_data: Mapping[str, Any]) -> tuple[float | None, str | None]:
     power = corpus_score.power_at_size(bundle_data)
     return power, corpus_score.SCORE_DERIVED_FROM_TIMINGS if power is not None else None
@@ -533,10 +524,7 @@ def _qph_columns(bundle_data: Mapping[str, Any], test_type: str | None, benchmar
     metric = _COMBINED_QPH_BY_BENCHMARK.get(canonical_benchmark_slug(benchmark))
     if metric is None or canonical_phase(test_type) != COMBINED_PHASE or _combined_defects(bundle_data, test_type):
         return columns
-    raw = _raw_tpc_metrics(bundle_data)
-    if metric == "qphh_at_size" and raw.get("refresh_included") is not True:
-        return columns
-    columns[metric] = _tpc_metric(raw.get(metric))
+    columns[metric] = corpus_score.combined_score(bundle_data)
     return columns
 
 

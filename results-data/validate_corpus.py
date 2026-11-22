@@ -525,17 +525,6 @@ def _tuning_applied(payload: dict) -> bool:
     return bool(status) and str(status) in APPLIED_TUNING_STATUSES
 
 
-def _tpc_metric(payload: dict, name: str) -> float | None:
-    metrics = _mapping(_mapping(payload.get("summary")).get("tpc_metrics"))
-    value = metrics.get(name)
-    if value is None:
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
 def _power_score(payload: dict) -> float | None:
     return CORPUS_SCORE.power_at_size(payload)
 
@@ -566,13 +555,10 @@ COMBINED_PHASE = "combined"
 COMBINED_QPH_METRICS = {"tpch": "qphh_at_size", "tpcds": "qphds_at_size"}
 
 
-def _combined_score(payload: dict, benchmark_id: str) -> float | None:
+def _combined_score(payload: dict) -> float | None:
     if _combined_evidence_defects(payload):
         return None
-    metrics = _mapping(_mapping(payload.get("summary")).get("tpc_metrics"))
-    if benchmark_id == "tpch" and metrics.get("refresh_included") is not True:
-        return None
-    return _tpc_metric(payload, COMBINED_QPH_METRICS[benchmark_id])
+    return CORPUS_SCORE.combined_score(payload)
 
 
 def _combined_evidence_defects(payload: dict) -> list[str]:
@@ -583,7 +569,7 @@ def _primary_metric_value(payload: dict, display: list[tuple[str, float | None, 
     benchmark_id = str(_mapping(payload.get("benchmark")).get("id", "unknown"))
     phase = bundle_phase(payload)
     if phase == COMBINED_PHASE and benchmark_id in COMBINED_QPH_METRICS:
-        return _combined_score(payload, benchmark_id)
+        return _combined_score(payload)
     if phase == THROUGHPUT_PHASE and benchmark_id in THROUGHPUT_SCORE_BENCHMARKS:
         return _throughput_score(payload)
     if benchmark_id in POWER_SCORE_BENCHMARKS:

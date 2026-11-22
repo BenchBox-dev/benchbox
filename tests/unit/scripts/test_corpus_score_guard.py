@@ -20,6 +20,7 @@ REPO_ROOT = script.CHECKOUT_ROOT
 ROOTS = {
     "corpus": REPO_ROOT / "results-data" / "bundles",
     "fixtures": REPO_ROOT / "tests" / "fixtures" / "explorer_browser" / "source" / "bundles",
+    "combined": REPO_ROOT / "tests" / "fixtures" / "corpus_score_guard" / "combined" / "bundles",
 }
 CLASS_VALUES = ("official", "unofficial_subscale", "unofficial_nonstandard")
 TEST_TYPES = ("power", "throughput", "combined", "standard")
@@ -61,7 +62,14 @@ def _change_tpc_metrics_to_suppressed(data: dict[str, Any]) -> None:
 
 
 def _change_tpc_metrics_to_other_scores(data: dict[str, Any]) -> None:
-    _section(data, "summary")["tpc_metrics"] = {"power_at_size": 1.0, "throughput_at_size": 1.0, "unofficial": True}
+    _section(data, "summary")["tpc_metrics"] = {
+        "power_at_size": 1.0,
+        "throughput_at_size": 1.0,
+        "qphh_at_size": 1.0,
+        "qphds_at_size": 1.0,
+        "refresh_included": False,
+        "unofficial": True,
+    }
 
 
 def _remove_tpc_metrics(data: dict[str, Any]) -> None:
@@ -199,11 +207,13 @@ def test_validator_scores_ignore_every_recorded_field(root_name: str, label: str
         MUTATIONS[label](mutated)
         assert validator._power_score(mutated) == validator._power_score(data), path.name
         assert validator._throughput_score(mutated) == validator._throughput_score(data), path.name
+        assert validator._combined_score(mutated) == validator._combined_score(data), path.name
 
 
 @pytest.mark.parametrize("label", sorted(MUTATIONS))
-def test_score_functions_ignore_every_recorded_field(label: str) -> None:
-    for path in _result_files(ROOTS["corpus"]):
+@pytest.mark.parametrize("root_name", sorted(ROOTS))
+def test_score_functions_ignore_every_recorded_field(root_name: str, label: str) -> None:
+    for path in _result_files(ROOTS[root_name]):
         data = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(data, dict) or "benchmark" not in data:
             continue
@@ -211,6 +221,17 @@ def test_score_functions_ignore_every_recorded_field(label: str) -> None:
         MUTATIONS[label](mutated)
         assert corpus_score.power_at_size(mutated) == corpus_score.power_at_size(data), path.name
         assert corpus_score.throughput_at_size(mutated) == corpus_score.throughput_at_size(data), path.name
+        assert corpus_score.combined_score(mutated) == corpus_score.combined_score(data), path.name
+
+
+def test_the_combined_fixtures_have_a_score_for_every_result() -> None:
+    scores = {
+        path.name: corpus_score.combined_score(json.loads(path.read_text(encoding="utf-8")))
+        for path in _result_files(ROOTS["combined"])
+    }
+
+    assert len(scores) == 4
+    assert all(score is not None and score > 0 for score in scores.values()), scores
 
 
 def _throughput_fixture() -> tuple[Path, dict[str, Any]]:

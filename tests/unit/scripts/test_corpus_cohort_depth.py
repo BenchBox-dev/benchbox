@@ -27,7 +27,12 @@ from benchbox.core.results.status import NON_CLEAN_TRANSLATION_STATUSES, NON_CLE
 from benchbox.core.tuning.modes import MODES
 
 try:
-    from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE, combined_bundle, throughput_bundle
+    from tests.unit.scripts.explorer_pipeline.conftest import (
+        MINIMAL_BUNDLE,
+        combined_bundle,
+        scored_minimal_bundle,
+        throughput_bundle,
+    )
 
     _EXPLORER_FIXTURES_PRESENT = True
 except ImportError:
@@ -436,7 +441,8 @@ def _write_phase_bundle(
         benchmark["test_type"] = test_type
     throughput_phase: dict = {"status": throughput}
     if throughput != "NOT_RUN":
-        throughput_phase["duration_ms"] = 60000
+        if throughput_score is not None:
+            throughput_phase["duration_ms"] = 60000
         throughput_phase["stream_results"] = [{"stream_id": index, "success": True} for index in range(1, streams + 1)]
     tpc_metrics = {}
     if power_score is not None:
@@ -1405,7 +1411,7 @@ def _parity_variants() -> dict[str, dict]:
             lambda data: data["phases"]["throughput_test"]["refresh_stream"]["pairs"][0].update(status="FAILED"),
         ),
         "combined-tpch-refresh-not-included": _mutated_combined(
-            "tpch", lambda data: data["summary"]["tpc_metrics"].update(refresh_included=False)
+            "tpch", lambda data: data["phases"]["throughput_test"]["refresh_stream"].pop("start_time")
         ),
         "combined-tpch-no-refresh-evidence": _mutated_combined(
             "tpch", lambda data: data["phases"]["power_test"].pop("refresh_functions")
@@ -1739,7 +1745,7 @@ def test_subscale_bundle_without_iteration_numbers_has_no_primary_metric(tmp_pat
     )
 
 
-def test_nonstandard_bundle_is_not_back_filled(tmp_path: Path) -> None:
+def test_nonstandard_bundle_keeps_its_timing_score_but_is_not_ranked(tmp_path: Path) -> None:
     validator = _load_validator()
     path = _subscale_bundle(
         tmp_path,
@@ -1752,10 +1758,10 @@ def test_nonstandard_bundle_is_not_back_filled(tmp_path: Path) -> None:
     payload = json.loads(path.read_text(encoding="utf-8"))
 
     assert validator.exclusion_reason(payload) == "unofficial_compliance"
-    assert validator._power_score(payload) is None
+    assert validator._power_score(payload) == pytest.approx(1.0 * 3600 / 0.02)
     entry = BundleTransformer().to_manifest_entry(path, result_id="r")
     assert entry.ranking_exclusion_reason == "unofficial_compliance"
-    assert entry.power_score is None
+    assert entry.power_score == pytest.approx(1.0 * 3600 / 0.02)
 
 
 def test_a_recorded_official_class_below_sf1_is_read_as_subscale(tmp_path: Path) -> None:
@@ -1764,7 +1770,7 @@ def test_a_recorded_official_class_below_sf1_is_read_as_subscale(tmp_path: Path)
     assert BundleTransformer().to_manifest_entry(path, result_id="r").compliance_class == "unofficial_subscale"
 
 
-def test_recorded_subscale_power_that_disagrees_with_timings_is_not_ranked(tmp_path: Path) -> None:
+def test_recorded_subscale_power_that_disagrees_with_timings_is_ignored(tmp_path: Path) -> None:
     validator = _load_validator()
     path = _subscale_bundle(
         tmp_path,
@@ -1775,10 +1781,11 @@ def test_recorded_subscale_power_that_disagrees_with_timings_is_not_ranked(tmp_p
     )
     payload = json.loads(path.read_text(encoding="utf-8"))
 
-    assert validator.exclusion_reason(payload) == "missing_primary_metric"
+    expected_power = 0.01 * 3600 / 0.02
+    assert validator.exclusion_reason(payload) is None
     entry = BundleTransformer().to_manifest_entry(path, result_id="r")
-    assert entry.ranking_exclusion_reason == "missing_primary_metric"
-    assert entry.power_score is None
+    assert entry.ranking_exclusion_reason is None
+    assert entry.power_score == pytest.approx(expected_power)
 
 
 def test_partial_final_iteration_is_not_back_filled(tmp_path: Path) -> None:
@@ -1804,8 +1811,8 @@ def test_combined_cohorts_rank_on_the_composite_qph_not_the_power_score(benchmar
     payload = combined_bundle(benchmark=benchmark_id, qph=qph)
 
     assert validator.bundle_phase(payload) == "combined"
-    assert payload["summary"]["tpc_metrics"]["power_at_size"] == 1234.5
-    assert _combined_ranking_value(validator, payload) == pytest.approx(qph)
+    assert validator._power_score(payload) == pytest.approx(1234.5)
+    assert _combined_ranking_value(validator, payload) == pytest.approx(qph, abs=1.0)
     assert validator.exclusion_reason(payload) is None
 
 
@@ -1848,7 +1855,7 @@ def test_non_transactional_refresh_does_not_stop_a_combined_bundle_ranking(name:
 
 def test_power_cohorts_keep_ranking_on_the_power_score() -> None:
     validator = _load_validator()
-    payload = json.loads(json.dumps(MINIMAL_BUNDLE))
+    payload = scored_minimal_bundle()
     payload["summary"]["tpc_metrics"]["qphh_at_size"] = 5.0
 
     assert validator.bundle_phase(payload) == "power"
