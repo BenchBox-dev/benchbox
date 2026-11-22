@@ -47792,9 +47792,9 @@
     },
     "tpcds-expression-q41-row-count-differs-from-sql": {
       "claim": {
-        "expires_at": "2026-11-23T17:23:11Z",
-        "generation": "738fd1f2325a4105bf9534fa5939e5b1",
-        "renewals": 0,
+        "expires_at": "2026-11-23T17:23:22Z",
+        "generation": "c4740d7ad90749f6a4cd77578f76fe9c",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fe4873e1ab4511a8ff69ca5f"
       },
       "needs": [],
