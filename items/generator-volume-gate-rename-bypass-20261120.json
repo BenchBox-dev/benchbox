@@ -3,7 +3,7 @@
     "Renaming a gated file in a pull request still triggers the gate, with a test.",
     "Every path pattern in the gate table is checked to exist."
   ],
-  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).",
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).\n\n2026-11-22: still met at #4322 head febdd4ea17 (after merging develop): test_a_gated_file_renamed_and_edited_still_fires_the_filter, test_the_generator_volume_flag_reads_the_list_built_without_rename_detection, the every-pattern existence test and the two-way filter equality test pass (208 targeted tests; make pr-preflight exit 0, 4465 passed).",
   "description": "## Problem\nOn #4322 the `ci-paths` step greps `.ci-paths/changed.txt`, which `scripts/path_filter_decision.py` builds with rename detection on. A gated file that is renamed and edited in one pull request appears only under its new name, the filter does not match, the job is skipped and `core` accepts the skip. Reproduced on a scratch repository by renaming `tpcdi/scaling.py` and multiplying a row constant. The gate itself uses `--no-renames`, so the two sides compute different lists. `test_every_gated_generator_path_exists_or_is_a_documented_pattern` checks only the first pattern of each entry, so a renamed-away path silently leaves the table.\n\n## Change\nMake the generator-volume flag read a changed-file list built with `--no-renames` (old and new names), and make the existence test cover every pattern of every entry.\n\n## Decision gates\nDo not change what other flags in `ci-paths` read without checking each consumer.\n\n## Verification rubric\nPass: a test builds a repository where a gated file is renamed and edited and asserts the flag is true; deleting or renaming any gated path fails the existence test; the two-way filter equality test still passes.\n\n## Additions from the item review\n- Precedent in the same CI step: `trunk-lane-changed.txt` is already built with `--no-renames`.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
   "links": [
     "scripts/generator_volume_gate.py",
@@ -27,6 +27,14 @@
       "op": "update",
       "op_id": "9f20baf9b62b407f8cbf9a5790a6cf6c",
       "session_id": "13b8eb99694c43d7946f317f84d12203"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6ace4eb729d47ce80d54f1e",
+      "at": "2026-11-22T17:53:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "eee05383336a4ace8fec85fa856e1d35",
+      "session_id": "82293ce1c4134e7b8c22e7e87ba5dfc1"
     }
   ]
 }
