@@ -61,8 +61,11 @@ The owner's rule: BenchBox must allow a user to set a limit and must not impose 
    before the child processes are ended, and a run that returns while this is
    happening waits for it, so the exit code and the result do not depend on
    which finishes first. The 30 seconds is a constant
-   (`HARD_STOP_GRACE_SECONDS`), not a setting. The hard bound is therefore the
-   limit plus 30 seconds.
+   (`HARD_STOP_GRACE_SECONDS`), not a setting. The 30 seconds is a start bound,
+   not an exit bound: stopping starts at the limit plus 30 seconds, and the
+   process exits after the partial-result export and the child kill, which
+   takes a few seconds (the tests allow 5), longer only if remote cleanup had
+   not started at the limit. The owner's words: "Start bound, docs say so".
 5. **Exit code 124.** The value `timeout(1)` uses.
 6. **The partial result is kept and marked.** The owner's words: "a new status
    value `timed_out` in `summary.validation`, plus a new optional key
@@ -158,8 +161,10 @@ The owner's rule: BenchBox must allow a user to set a limit and must not impose 
 15. **Process stopping.** A child tree is stopped with SIGTERM, a 0.2-second
     wait, then SIGKILL (`benchbox/utils/process_group.py`). A test starts child
     trees that ignore SIGTERM and shows each caller still ends them and that the
-    hard stop still exits 124 within the limit plus 30 seconds (this change,
-    `tests/unit/utils/test_process_group_term_ignoring_children.py`).
+    hard stop starts at the limit plus 30 seconds (plus or minus 0.5 second) and
+    exits 124 within 5 seconds of starting
+    (`tests/unit/utils/test_process_group_term_ignoring_children.py`,
+    `tests/unit/cli/test_run_timeout_remote_cleanup.py`).
 16. **No new CI check** against hard-coded timeouts. Container start-up,
     health-check and credential limits and the 5 and 15 second generator `-h`
     probes stay.
