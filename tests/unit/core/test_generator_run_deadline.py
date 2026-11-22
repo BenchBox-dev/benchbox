@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from benchbox.core.exceptions import RunTimeoutError
 from benchbox.core.tpcds import streams as tpcds_streams
 from benchbox.core.tpcds.c_tools import DSQGenBinary
 from benchbox.core.tpcds.dataframe_queries import production_binding

@@ -4,6 +4,8 @@
 
 from typing import Any
 
+from benchbox.utils.run_deadline import RunTimeoutError as RunTimeoutError
+
 
 class BenchBoxError(Exception):
     pass

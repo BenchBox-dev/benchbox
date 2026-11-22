@@ -159,6 +159,7 @@ def reject_unsupported_dataframe_phases(
     )
 
 
+from benchbox.core.exceptions import RunTimeoutError
 from benchbox.core.execution_engine import reject_engine_bypassing_benchmark
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.platform_registry import PlatformRegistry
@@ -176,7 +177,6 @@ from benchbox.utils.run_deadline import (
     RUN_TIMEOUT_OPTION_KEY,
     TIMED_OUT_VALIDATION_STATUS,
     RunDeadline,
-    RunTimeoutError,
     active_run_deadline,
     current_run_deadline,
     mark_timed_out,

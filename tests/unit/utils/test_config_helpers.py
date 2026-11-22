@@ -181,7 +181,7 @@ class TestExecutionConfigHelper:
     def test_optimize_for_system_low_memory(self):
         cm = _make_config_manager()
         helper = ExecutionConfigHelper(config_manager=cm)
-        helper.optimize_for_system(cpu_cores=4, memory_gb=4.0)
+        helper.optimize_for_system(cpu_cores=4)
         written = {call.args[0] for call in cm.set.call_args_list}
         assert "execution.power_run.timeout_per_iteration_minutes" not in written
         assert "execution.concurrent_queries.query_timeout_seconds" not in written
@@ -190,13 +190,13 @@ class TestExecutionConfigHelper:
     def test_optimize_for_system_high_memory(self):
         cm = _make_config_manager()
         helper = ExecutionConfigHelper(config_manager=cm)
-        helper.optimize_for_system(cpu_cores=32, memory_gb=64.0)
+        helper.optimize_for_system(cpu_cores=32)
         cm.set.assert_any_call("execution.concurrent_queries.max_concurrent", 8)
 
     def test_optimize_for_system_mid_memory(self):
         cm = _make_config_manager()
         helper = ExecutionConfigHelper(config_manager=cm)
-        helper.optimize_for_system(cpu_cores=8, memory_gb=12.0)
+        helper.optimize_for_system(cpu_cores=8)
         cm.set.assert_any_call("execution.concurrent_queries.max_concurrent", 2)
 
     def test_create_performance_profile_quick(self):
@@ -339,11 +339,11 @@ class TestStreamTimeoutIsOnlyWrittenWhenSet:
 
         assert not _stream_timeout_writes(cm)
 
-    @pytest.mark.parametrize("memory_gb", [4.0, 12.0, 64.0])
-    def test_system_optimization_never_writes_a_stream_timeout(self, memory_gb):
+    @pytest.mark.parametrize("cpu_cores", [4, 8, 64])
+    def test_system_optimization_never_writes_a_stream_timeout(self, cpu_cores):
         cm = _make_config_manager()
 
-        ExecutionConfigHelper(config_manager=cm).optimize_for_system(cpu_cores=8, memory_gb=memory_gb)
+        ExecutionConfigHelper(config_manager=cm).optimize_for_system(cpu_cores=cpu_cores)
 
         assert not _stream_timeout_writes(cm)
 

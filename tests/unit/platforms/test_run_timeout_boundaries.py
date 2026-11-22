@@ -10,12 +10,13 @@ import pytest
 
 from _project.scripts.explorer_pipeline.models import ranking_exclusion_reason
 from benchbox.base import BaseBenchmark
+from benchbox.core.exceptions import RunTimeoutError
 from benchbox.mcp.jobs import derive_job_outcome
 from benchbox.mcp.tools import benchmark as mcp_benchmark
 from benchbox.platforms.base import execution
 from benchbox.tpch import TPCH
 from benchbox.utils import run_deadline
-from benchbox.utils.run_deadline import RunDeadline, RunTimeoutError, active_run_deadline, current_run_deadline
+from benchbox.utils.run_deadline import RunDeadline, active_run_deadline, current_run_deadline
 from tests.unit.platforms.test_base_adapter import MockPlatformAdapter
 
 pytestmark = [
