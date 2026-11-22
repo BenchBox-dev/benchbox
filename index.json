@@ -3278,20 +3278,43 @@
       "terminal_outcome": "deliver"
     },
     "corpus-rule-r3": {
-      "accepted_members": {},
+      "accepted_members": {
+        "crr-a0-decision-records": "e075afca00b4c22b5756123f7a119e70ad12f7a9"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "crr-a0-decision-records": {
+          "accepted_head": "e075afca00b4c22b5756123f7a119e70ad12f7a9",
+          "changed_files": [
+            "docs/internal/adr/adr-benchmark-methodology-provisional-policy.md",
+            "docs/internal/adr/adr-corpus-derived-outcome-rule.md",
+            "docs/internal/adr/adr-published-results-slim-corpus-branch.md",
+            "quality/docs-ownership.json"
+          ],
+          "integration_head": "9b95d6928a3886691d891c3eae172ef568b9c062",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/corpus-rule-r3",
-      "integration_head": "c3c7cf47b19bf5041a024e115b0c355c292353a1",
+      "integration_head": "9b95d6928a3886691d891c3eae172ef568b9c062",
       "integration_log": [
         {
           "at": "2026-11-22T18:52:05Z",
           "head": "c3c7cf47b19bf5041a024e115b0c355c292353a1",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-22T20:40:23Z",
+          "head": "9b95d6928a3886691d891c3eae172ef568b9c062",
+          "kind": "prepare",
+          "member": "crr-a0-decision-records",
+          "op_id": "c7d18b9ea9e348168755fdc28ef42aa4",
+          "previous_head": "c3c7cf47b19bf5041a024e115b0c355c292353a1",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r3",
@@ -22617,15 +22640,10 @@
       "title": "Plan: one admission and ranking rule for the results corpus, then publish the Polars matrix through it"
     },
     "crr-a0-decision-records": {
-      "claim": {
-        "expires_at": "2026-11-23T20:40:20Z",
-        "generation": "98f5a190441c40f78c2baccec7f800a1",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Record the corpus rule decisions in the ADRs and tracker before any code changes"
     },
     "crr-a1-rule-module-and-snapshot": {
