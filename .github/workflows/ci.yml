@@ -102,7 +102,34 @@ jobs:
         if: ${{ !cancelled() && steps.copy-guard-install.conclusion == 'success' }}
         env:
           UV_PYTHON: "3.11"
-        run: uv run -- python -m pytest -q -p no:cacheprovider tests/unit/core/tpcdi/test_provenance_guard.py
+          BASE_REF: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          : "${BASE_REF:?BASE_REF is required}"
+          guard=tests/unit/core/tpcdi/test_provenance_guard.py
+          trusted="$RUNNER_TEMP/trusted_test_provenance_guard.py"
+          if git cat-file -e "${BASE_REF}:${guard}" 2>/dev/null; then
+            git show "${BASE_REF}:${guard}" > "$trusted"
+            echo "Running the base copy of ${guard}"
+          else
+            cp "$guard" "$trusted"
+            echo "The base has no ${guard}; running the head copy that this pull request adds"
+          fi
+          export PROVENANCE_GUARD_ROOT="$PWD"
+          export PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+          flags="--noconftest -c /dev/null --rootdir $PWD -p no:cacheprovider -W ignore::pytest.PytestUnknownMarkWarning"
+          uv run -- python -m pytest $flags --collect-only -q "$trusted" > "$RUNNER_TEMP/copy-guard-collected.txt"
+          expected="$(grep -c '::' "$RUNNER_TEMP/copy-guard-collected.txt")"
+          if [ "$expected" -lt 1 ]; then
+            echo "The trusted guard collected no tests" >&2
+            exit 1
+          fi
+          uv run -- python -m pytest $flags -q "$trusted" | tee "$RUNNER_TEMP/copy-guard.log"
+          passed="$(sed -n -E 's/^([0-9]+) passed in .*/\1/p' "$RUNNER_TEMP/copy-guard.log" | tail -n 1)"
+          if [ "$passed" != "$expected" ]; then
+            echo "Expected $expected passed guard tests and nothing else, got: ${passed:-no passed summary}" >&2
+            exit 1
+          fi
       - name: Install uv for the path-gated checks
         id: uv
         if: ${{ !cancelled() && steps.checkout.conclusion == 'success' && (needs.ci-paths.outputs.unit-docs == 'true' || needs.ci-paths.outputs.unit-results-data == 'true') }}

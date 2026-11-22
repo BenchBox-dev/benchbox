@@ -112,6 +112,12 @@ def test_copy_guard_runs_on_every_pull_request_whatever_the_path_filter_decides(
     steps = _steps()
     for step_id in CHECK_STEPS["copy-guard"]:
         assert "needs.ci-paths" not in steps[step_id].get("if", ""), step_id
-    assert steps["copy-guard"]["run"] == (
-        "uv run -- python -m pytest -q -p no:cacheprovider tests/unit/core/tpcdi/test_provenance_guard.py"
-    )
+    run = steps["copy-guard"]["run"]
+    assert 'git show "${BASE_REF}:${guard}"' in run
+    assert "guard=tests/unit/core/tpcdi/test_provenance_guard.py" in run
+    assert "--noconftest -c /dev/null" in run
+    assert "--rootdir $PWD" in run
+    assert "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1" in run
+    assert "--collect-only" in run
+    assert '[ "$passed" != "$expected" ]' in run
+    assert steps["copy-guard"]["env"]["BASE_REF"] == "${{ github.event.pull_request.base.sha }}"
