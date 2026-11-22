@@ -3,7 +3,7 @@
     "`execution.timeout_minutes` is removed with the removed-key message and a breaking-change entry, or kept with its real reader recorded.",
     "`optimize_for_system` has no unused parameter."
   ],
-  "context": "Raised during the run-timeout effort (owner asked for this follow-up, 2026-11-22). See run-timeout-plan-20261120.",
+  "context": "Raised during the run-timeout effort (owner asked for this follow-up, 2026-11-22). See run-timeout-plan-20261120.\n\nOwner decision 2026-11-22 (choice dialog): \"Remove both\": remove execution.timeout_minutes (with the removed-key message and a breaking-change entry) and the unused memory_gb parameter, unless a real reader turns up.",
   "description": "## Problem\n#4437 removed three unenforced timer keys but, by scope, left two dead config surfaces:\n- `execution.timeout_minutes` (default 120) is set in `SimpleConfigProvider` defaults (benchbox/utils/config_interface.py) but has no reader outside tests. Like the removed keys, it promises a limit nothing enforces.\n- `ExecutionConfigHelper.optimize_for_system` (benchbox/utils/config_helpers.py) keeps a `memory_gb` parameter it no longer uses.\n\n## Owner decisions\nFor the three keys removed in #4437 (2026-11-20): \"re-verify that nothing enforces them, then remove all three and say so in the breaking-change changelog entry. A config file that still sets one gets a clear message pointing to `execution.timeout_seconds`.\" The owner asked for this follow-up on 2026-11-22. Removed-key message, verbatim: \"`{key}` is no longer used and has no effect. Use `execution.timeout_seconds` to limit a run.\"\n\n## Change\n1. Re-verify on current develop, with language-server references (or jedi plus an AST scan if no language server is available) and grep over benchbox/, scripts/, docs/, examples/, that nothing reads or enforces `execution.timeout_minutes` and that no caller passes `memory_gb`; list the evidence.\n2. If unread, remove the key and its default and add it to `REMOVED_CONFIG_KEYS` in benchbox/cli/config.py so a config file that sets it gets the message above; remove the unused `memory_gb` parameter and update its callers.\n3. One breaking-change changelog fragment naming the key (and the parameter if public).\n\n## Decision gates\n- A real reader or caller (its own tests do not count): STOP, keep it, and record what reads it on this item.\n- The message text is the owner's, verbatim.\n\n## Verification rubric\nThe references evidence is in the pull request; a test loads a config file setting `execution.timeout_minutes` and gets the message without crashing (fails before); `optimize_for_system` callers still pass; `make duplicate-check-delta` and `make pr-preflight` exit 0.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "69e831a151fb479ca395b08318cd3b6b",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T13:27:40Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cfac8187521d4acab310590b335dd25a",
       "session_id": "e80ec8f825d244408f926415b43e3179"
     }
   ]
