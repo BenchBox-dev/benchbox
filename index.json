@@ -35476,7 +35476,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Refresh the primary clone's stale .agents/skills copy (owner action)"
     },
     "primary-clone-agents-skills-materialization-stale-20261115": {
