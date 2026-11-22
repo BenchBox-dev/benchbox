@@ -8994,6 +8994,7 @@
     },
     "run-timeout-followups": {
       "accepted_members": {
+        "process-group-term-then-kill-verify-20261122": "17e5475d5ff9f4048ddff8e18d5efbec6843426b",
         "remove-execution-timeout-minutes-key-20261122": "f4cf4f7a291376e6028732c4e5d178cb95a7494b",
         "run-official-timeout-config-usage-exit-20261122": "1f10d4e8d0fd57f9423d8879b59a94222900cbed",
         "run-timeout-error-public-import-20261122": "bb46a9353480afe4e0a304b0fc010900b1dca681",
@@ -9005,6 +9006,15 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "process-group-term-then-kill-verify-20261122": {
+          "accepted_head": "17e5475d5ff9f4048ddff8e18d5efbec6843426b",
+          "changed_files": [
+            "changelog.d/feat-run-timeout-followups--process-group-term-then-kill-verify-20261122.json",
+            "tests/unit/utils/test_process_group_term_ignoring_children.py"
+          ],
+          "integration_head": "975e16764f633464b7f8e47fc0e102ba84af157a",
+          "integration_seq": 6
+        },
         "remove-execution-timeout-minutes-key-20261122": {
           "accepted_head": "f4cf4f7a291376e6028732c4e5d178cb95a7494b",
           "changed_files": [
@@ -9073,7 +9083,7 @@
         }
       },
       "integration_branch": "feat/run-timeout-followups",
-      "integration_head": "df6a7a6c28dd1d663ec14e3e7a72e77859346f9b",
+      "integration_head": "975e16764f633464b7f8e47fc0e102ba84af157a",
       "integration_log": [
         {
           "at": "2026-11-22T13:28:47Z",
@@ -9125,6 +9135,15 @@
           "op_id": "19248470a97f40f8bf90ea62152ced8c",
           "previous_head": "11786384aaccec90afe04e44bcff06d1192e6c65",
           "seq": 5
+        },
+        {
+          "at": "2026-11-22T15:05:04Z",
+          "head": "975e16764f633464b7f8e47fc0e102ba84af157a",
+          "kind": "prepare",
+          "member": "process-group-term-then-kill-verify-20261122",
+          "op_id": "20cf9701735b4ea1b8c6e358e602ab2e",
+          "previous_head": "df6a7a6c28dd1d663ec14e3e7a72e77859346f9b",
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-followups",
@@ -35827,15 +35846,10 @@
       "title": "Correct the registry query counts for write and transaction primitives"
     },
     "process-group-term-then-kill-verify-20261122": {
-      "claim": {
-        "expires_at": "2026-11-23T15:05:01Z",
-        "generation": "b63ab2d01fa84c81a22047b6786d872a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Verify the SIGTERM-then-SIGKILL change in run_text, run-deadline child cleanup and the qualification worker"
     },
     "process-spend-versus-product-spend-decision": {
