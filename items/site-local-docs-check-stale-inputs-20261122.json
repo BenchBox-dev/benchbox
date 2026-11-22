@@ -2,7 +2,7 @@
   "acceptance": [
     "Local site docs checks name the inputs they used and, on next, give the CI-equivalent command, so local and CI results can be matched."
   ],
-  "context": "Filed 2026-11-22 while closing out the run-timeout follow-ups (umbrella run-timeout-plan-20261120). Evidence was read on 2026-11-22; re-read run logs, file paths and line numbers before acting.",
+  "context": "Filed 2026-11-22 while closing out the run-timeout follow-ups (umbrella run-timeout-plan-20261120). Evidence was read on 2026-11-22; re-read run logs, file paths and line numbers before acting.\n\nOwner decisions 2026-11-22 (choice dialog): \"Keep site-local item in core tracker\"; implement it in the same site PR as tpcdi-site-next-contract-red-20261122.",
   "description": "## Problem\nOn 2026-11-22 in a fresh worktree of benchbox-site `next` (7e90968), `npm run docs:check` reported 11 blocking docs-contract violations, for example \"option --timeout is not an option of benchbox run\", \"run_benchmark.timeout_seconds is documented but not a parameter\" and \"Current result schema version: `2.4`\". CI on the same commit reported a different set of 3 (TPC-DI support status and query count). Locally, `docs:check` reads `DOCS_INPUTS` or, if unset, the committed `release-pin/` (`docsInputsRoot`, `website/src/lib/site-inputs.ts`), which is the `main` contract and predates the run-time-limit release; CI on `next` sets `DOCS_INPUTS=.site-inputs` after `npm run bundle:fetch` (`.github/workflows/ci.yml`). On a `next` branch, a contributor running the obvious command checks against the wrong contract, chases violations that are not real, and misses the real ones.\n\n## Change\nMake `docs:check` print which inputs it used (release pin or fetched bundle, with version or core commit). On a branch based on `next` with `DOCS_INPUTS` unset, also say that CI uses the fetched bundle and give the exact commands (`npm run bundle:fetch && DOCS_INPUTS=.site-inputs npm run docs:check`). Keep CI unchanged.\n\n## Decision gates\n- Placement: benchbox-site's AGENTS.md puts site-only work in benchbox-site's own tracker. Ask the owner whether to move this item there (then drop this copy with that reason) before implementing.\n- Do not make the check pass by skipping contracts; fetching the bundle needs network access and a GitHub token, so never make the plain command fail offline.\n\n## Verification rubric\nPass: on a `next` worktree with `DOCS_INPUTS` unset, `npm run docs:check` names the release-pin inputs and prints the CI-equivalent command; following it reproduces CI's result for the same commit; a test covers the message for both input sources.\nFail: the inputs used are still not shown.\n\n## Guardrails\nWork in a linked worktree of BenchBox-dev/benchbox-site (`git -C /Users/joe/Developer/benchbox-site worktree add ../benchbox-site.wt-<slug> <branch>`); never edit `/Users/joe/Developer/benchbox-site` itself. benchbox-site has no Makefile; its checks are `npm run` scripts. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
   "sessions": [
     {
@@ -20,6 +20,14 @@
       "op": "update",
       "op_id": "c5643e694f0e4e53a666d87bb339da31",
       "session_id": "e80ec8f825d244408f926415b43e3179"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18",
+      "at": "2026-11-22T20:59:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c0fb7e2484e1445793129a1551020414",
+      "session_id": "301a72f40ca84d7ab9668f9bdc47da3b"
     }
   ]
 }
