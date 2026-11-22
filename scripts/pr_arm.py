@@ -123,6 +123,7 @@ FULL_RUN = "full"
 PLACEHOLDER_BEHIND_FULL_RUN = "placeholder-behind-full"
 PLACEHOLDER_REFRESH = "placeholder-refresh"
 PLACEHOLDER_RERUNNING = "placeholder-rerunning"
+FULL_RUN_NOT_LISTED = "full-run-not-listed"
 
 
 def _now() -> datetime:
@@ -183,8 +184,6 @@ def _refresh_runs(run: Runner, repo: str, head: str) -> list[CiRun]:
 def _placeholder_refresh_pending(
     failed: CiRun, full_runs: Sequence[CiRun], refresh: Sequence[CiRun], now: datetime
 ) -> Wait | None:
-    if not full_runs:
-        return None
     newest = max(full_runs, key=lambda item: item.id)
     if newest.conclusion != "success" or newest.updated_at is None or failed.updated_at is None:
         return None
@@ -217,6 +216,8 @@ def _waiting_full_run(runs: Sequence[CiRun], url: str, now: datetime, refresh: S
     rerunning = next((item for item in placeholders if item.status != "completed"), None)
     if rerunning is not None:
         return Wait(rerunning.id, PLACEHOLDER_RERUNNING)
+    if not full_runs:
+        return Wait(failed.id, FULL_RUN_NOT_LISTED)
     return _placeholder_refresh_pending(failed, full_runs, refresh, now)
 
 
@@ -230,6 +231,12 @@ def _waiting_reason(name: str, run_id: int, kind: str) -> str:
         return (
             f"waiting for the placeholder re-run of CI run {run_id}: the required {name!r} check is a placeholder "
             f"failure that is being re-run on its own; arm again in a few minutes"
+        )
+    if kind == FULL_RUN_NOT_LISTED:
+        return (
+            f"waiting for full CI run to be listed: the required {name!r} check is a placeholder failure from run "
+            f"{run_id} and no full CI run exists for this head yet; a pull request that was just marked ready starts "
+            f"one within seconds; arm again in a minute"
         )
     if kind == PLACEHOLDER_REFRESH:
         return (
