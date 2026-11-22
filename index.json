@@ -50029,7 +50029,7 @@
     "trunk-uat-pandas-df-memory-breach-20261122": {
       "claim": null,
       "needs": [],
-      "priority": "medium-high",
+      "priority": "high",
       "status": "open",
       "title": "Trunk UAT pandas-df shard killed by the heavy-work watchdog at 13.07 GiB (budget 13 GiB)"
     },
