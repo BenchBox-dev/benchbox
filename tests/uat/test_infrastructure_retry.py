@@ -226,11 +226,27 @@ def test_no_retry_starts_when_remaining_job_time_is_below_the_cell_limit(tmp_pat
     assert result.retry_outcome == infrastructure_retry.RETRY_SKIPPED_INSUFFICIENT_TIME
 
 
-def test_retry_starts_when_remaining_job_time_equals_the_cell_limit(tmp_path):
+@pytest.mark.parametrize("elapsed_s", [1741.0, 1799.0, 1800.0])
+def test_no_retry_starts_when_remaining_job_time_is_between_the_cell_limit_and_its_outside_kill_limit(
+    tmp_path, elapsed_s
+):
     clock = _Clock()
     attempts = _Attempts(tmp_path, [TIMEOUT, PASSED])
     wrapped = infrastructure_retry.with_infrastructure_retry(attempts, job_budget_s=3000, clock=clock)
-    clock.now += 1800.0
+    clock.now += elapsed_s
+    result = wrapped("singlestore", "tpch", 0.1, timeout_s=CELL_LIMIT_S)
+
+    assert len(attempts.calls) == 1
+    assert result.status == "timed-out"
+    assert result.retry_outcome == infrastructure_retry.RETRY_SKIPPED_INSUFFICIENT_TIME
+
+
+@pytest.mark.parametrize("elapsed_s", [1740.0, 1000.0])
+def test_retry_starts_when_remaining_job_time_covers_the_cell_limit_and_the_outside_kill_margin(tmp_path, elapsed_s):
+    clock = _Clock()
+    attempts = _Attempts(tmp_path, [TIMEOUT, PASSED])
+    wrapped = infrastructure_retry.with_infrastructure_retry(attempts, job_budget_s=3000, clock=clock)
+    clock.now += elapsed_s
     result = wrapped("singlestore", "tpch", 0.1, timeout_s=CELL_LIMIT_S)
 
     assert len(attempts.calls) == 2

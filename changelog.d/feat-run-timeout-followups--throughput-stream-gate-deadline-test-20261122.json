@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "Test-only: cover the throughput stream gate recording the run time limit when a stream skips its next query."}

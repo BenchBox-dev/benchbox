@@ -988,14 +988,16 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
 
     @staticmethod
     def _read_source_csv(file_path: str) -> pd.DataFrame:
-        df = pd.read_csv(file_path, engine="pyarrow")
+        df = pd.read_csv(file_path, engine="pyarrow", keep_default_na=False, na_values=[""])
         temporal = [
             column
             for column in df.columns
             if df[column].dtype == object or pd.api.types.is_datetime64_any_dtype(df[column])
         ]
         if temporal:
-            df[temporal] = pd.read_csv(file_path, usecols=temporal, dtype=str)[temporal]
+            df[temporal] = pd.read_csv(file_path, usecols=temporal, dtype=str, keep_default_na=False, na_values=[""])[
+                temporal
+            ]
         return df
 
     def _transform_csv_file(self, file_path: str, batch_type: str) -> dict[str, Any]:

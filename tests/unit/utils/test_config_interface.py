@@ -138,7 +138,7 @@ class TestSimpleConfigProvider:
         config = SimpleConfigProvider()
 
         assert isinstance(config._config, dict)
-        assert "execution.timeout_minutes" in config._config
+        assert "execution.timeout_minutes" not in config._config
 
     def test_get_all_with_data(self):
         data = {"key1": "value1", "key2": 42, "nested": {"inner": "value"}}
@@ -247,7 +247,7 @@ class TestConfigProviderRegistration:
         assert isinstance(get_config_provider(), SimpleConfigProvider)
 
     def test_registered_provider_wins(self):
-        provider = SimpleConfigProvider({"execution.timeout_minutes": 7})
+        provider = SimpleConfigProvider({"execution.memory_limit_gb": 7})
         set_config_provider(provider)
 
         assert get_config_provider() is provider
@@ -257,7 +257,7 @@ class TestConfigProviderRegistration:
         set_config_provider(None)
 
         assert isinstance(get_config_provider(), SimpleConfigProvider)
-        assert get_config_provider().get("execution.timeout_minutes") == 120
+        assert "execution.timeout_minutes" not in get_config_provider()._config
 
     def test_utils_does_not_import_the_cli_to_find_a_provider(self):
         import ast

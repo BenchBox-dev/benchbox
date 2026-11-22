@@ -16,7 +16,8 @@ import tempfile
 from pathlib import Path
 from typing import Any, ClassVar, Union
 
-from benchbox.utils.run_deadline import RunTimeoutError, current_run_deadline, run_child
+from benchbox.core.exceptions import RunTimeoutError
+from benchbox.utils.run_deadline import current_run_deadline, run_child
 from benchbox.utils.verbosity import VerbosityMixin, compute_verbosity
 
 

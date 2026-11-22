@@ -9,6 +9,7 @@ import pytest
 
 from benchbox.cli.output import ResultExporter
 from benchbox.core import run_service
+from benchbox.core.exceptions import RunTimeoutError
 from benchbox.core.publishing.admission import publish_admission
 from benchbox.core.results.loader import reconstruct_benchmark_results
 from benchbox.core.results.schema import SchemaV2ValidationError, SchemaV2Validator, build_result_payload
@@ -23,7 +24,6 @@ from benchbox.utils.run_deadline import (
     RUN_TIMEOUT_OPTION_KEY,
     TIMED_OUT_VALIDATION_STATUS,
     RunDeadline,
-    RunTimeoutError,
     active_run_deadline,
     current_run_deadline,
     mark_timed_out,

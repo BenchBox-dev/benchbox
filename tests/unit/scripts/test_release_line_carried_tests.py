@@ -191,6 +191,7 @@ LEFT_AT_TAG = {
     "benchbox/utils/host_lock.py": "product code; pr-preflight runs it with run --admit --guard, which the tag already has",
     "benchbox/utils/clock.py": "product code; a creation commit never changes the shipped package",
     "scripts/linux_preflight_pytest.sh": "runs only when a change branches on platform and takes a list file, unchanged since the tag",
+    "scripts/typecheck.py": "the line's own type check: it runs the line's ty configuration over the files pr-preflight passes it",
 }
 READ_AT_TAG = {
     "Makefile": "a line keeps its own Makefile; carried tests passed against the v0.5.1 one",
@@ -221,6 +222,7 @@ READ_AT_TAG = {
 TAG_TARGETS = {
     "changelog-check": "the line's own changelog gate",
     "docs-reference-inventory-check": "the line's own document guard",
+    "lint-imports": "the line's own layering contracts",
 }
 _SCRIPT_REFERENCE = re.compile(r"(?<![\w.-])((?:_project/)?scripts/[\w/.-]+\.(?:py|sh))")
 _SIBLING_REFERENCE = re.compile(r'\$\(dirname "\$0"\)/([\w/.-]+\.(?:py|sh))')

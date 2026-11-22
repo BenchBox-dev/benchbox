@@ -443,6 +443,41 @@ def guards(paths: list[str]) -> list[str]:
     return selected
 
 
+def _changed_python_including_deleted(paths: list[str]) -> list[str]:
+    return [path for path in paths if path.endswith(".py")]
+
+
+def _typechecked(path: str) -> bool:
+    return path.startswith(("benchbox/", "tests/")) and not path.startswith("tests/fixtures/")
+
+
+def _collectable_module(path: str) -> bool:
+    name = PurePosixPath(path).name
+    return path.startswith("tests/") and (name.startswith("test_") or name.endswith("_test.py"))
+
+
+def typecheck_files(repo: Path, paths: list[str]) -> list[str]:
+    return [path for path in changed_python(repo, paths) if _typechecked(path)]
+
+
+def marker_files(repo: Path, paths: list[str]) -> list[str]:
+    return [path for path in changed_python(repo, paths) if _collectable_module(path)]
+
+
+def lint_steps(repo: Path, paths: list[str]) -> list[str]:
+    python = _changed_python_including_deleted(paths)
+    selected: list[str] = []
+    if python:
+        selected.append("lint-imports")
+    if any(_typechecked(path) for path in python):
+        selected.append("typecheck")
+    if marker_files(repo, paths):
+        selected.append("lint-markers")
+    if any(path.startswith("tests/") for path in python):
+        selected.append("lint-markers-strategy")
+    return selected
+
+
 def map_tests(repo: Path, paths: list[str], *, doc_readers: bool = False) -> list[str]:
     test_files = _test_files(repo)
     index = _test_index(test_files)
@@ -510,7 +545,9 @@ def linux_tests(repo: Path, paths: list[str]) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("kind", choices=("python", "tests", "linux", "guards"))
+    parser.add_argument(
+        "kind", choices=("python", "tests", "linux", "guards", "lint", "typecheck-files", "marker-files")
+    )
     parser.add_argument("--base-ref", default="origin/develop")
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     args = parser.parse_args(argv)
@@ -523,6 +560,12 @@ def main(argv: list[str] | None = None) -> int:
         selected = changed_python(args.repo_root, paths)
     elif args.kind == "guards":
         selected = guards(paths)
+    elif args.kind == "lint":
+        selected = lint_steps(args.repo_root, paths)
+    elif args.kind == "typecheck-files":
+        selected = typecheck_files(args.repo_root, paths)
+    elif args.kind == "marker-files":
+        selected = marker_files(args.repo_root, paths)
     elif args.kind == "linux":
         selected = linux_tests(args.repo_root, paths)
     else:

@@ -30,7 +30,7 @@ from benchbox.platforms.dataframe.pandas_df import _pandas_string_columns
 from benchbox.platforms.dataframe.pandas_family import (
     PandasFamilyAdapter,
 )
-from benchbox.platforms.dataframe.shared_loading import coerce_empty_string_columns
+from benchbox.platforms.dataframe.shared_loading import coerce_empty_string_columns, csv_null_options
 from benchbox.utils.file_format import TRAILING_DUMMY_COLUMN, has_trailing_delimiter
 
 logger = logging.getLogger(__name__)
@@ -150,7 +150,7 @@ class CuDFDataFrameAdapter(PandasFamilyAdapter[CuDFDF]):
             extended_names = names + [TRAILING_DUMMY_COLUMN]
             read_kwargs["names"] = extended_names
 
-        df = cudf.read_csv(path, **read_kwargs)
+        df = cudf.read_csv(path, **read_kwargs, **csv_null_options(null_marker))
 
         df = coerce_empty_string_columns(df, string_columns, null_marker)
 

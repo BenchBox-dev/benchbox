@@ -122,8 +122,7 @@ class ExecutionConfigHelper:
         settings.enabled = False
         self.update_concurrent_queries_settings(settings)
 
-    def optimize_for_system(self, cpu_cores: int, memory_gb: float) -> None:
-
+    def optimize_for_system(self, cpu_cores: int) -> None:
         concurrent_settings = self.get_concurrent_queries_settings()
         concurrent_settings.max_concurrent = min(8, max(2, cpu_cores // 4))
 
