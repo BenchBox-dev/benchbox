@@ -46356,7 +46356,8 @@
     "tpcdi-13-digen-reference-path-and-comparison-20261120": {
       "claim": null,
       "needs": [
-        "tpcdi-11-audit-recount-batch1-20261120"
+        "tpcdi-11-audit-recount-batch1-20261120",
+        "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120"
       ],
       "priority": "medium",
       "status": "open",
