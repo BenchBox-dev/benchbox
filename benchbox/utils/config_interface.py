@@ -29,7 +29,6 @@ class SimpleConfigProvider(ConfigInterface):
             "execution.throughput_test.duration_minutes": 60,
             "execution.throughput_test.concurrent_streams": 4,
             "execution.throughput_test.warm_up_minutes": 5,
-            "execution.timeout_minutes": 120,
             "execution.memory_limit_gb": 8,
             "execution.enable_profiling": False,
         }
