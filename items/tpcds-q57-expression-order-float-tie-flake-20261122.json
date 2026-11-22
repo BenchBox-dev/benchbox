@@ -2,6 +2,11 @@
   "acceptance": [
     "Q57 no longer diverges across repeats in tpcds-cross-surface-draws-report."
   ],
+  "batch": {
+    "batch_id": "run-timeout-hardening",
+    "implementation_dependencies": [],
+    "member_id": "tpcds-q57-expression-order-float-tie-flake-20261122"
+  },
   "context": "2026-11-22: recurred on trunk run 45045080621 (develop at fb80a2717b, PR #4443): 57_expression diverged in 1 of 2 runs; failed job rerun once. Second occurrence in one day; it blocks arming across the repository.\n\n2026-11-22 recurrences, same Q57 signature (`57_expression: diverged in 1 of 2 runs; Q57: returned row 73 breaks the ORDER BY: sort key (-109.64909090909092, Decimal('20.18')), expected (-109.64909090909093, Decimal('265.34'))`): trunk 45045080621 on fb80a2717b (#4443, developer tooling only) and trunk 45045478512 on 070a4eefe2 (#4442). Each turned develop red and blocked every `make pr-arm` repo-wide until attempt 2 of the same run passed. tpcds-parity-draws-fails-with-all-draws-equivalent-20261119 records the earlier exit-status question on the same job.\n\nCorrection 2026-11-22: there were three occurrences on 2026-11-22 (44996878729, 45045080621, 45045478512) and one on 2026-11-20 (44646356309, recorded on tpcds-parity-draws-fails-with-all-draws-equivalent-20261119); each turned develop red and blocked make pr-arm repo-wide until attempt 2 passed, so priority raised to high. Decision gates and guardrails added.\n\nOwner decisions 2026-11-22 (choice dialog): \"Yes, 1e-9 relative, sort keys only\": if evidence shows both sums are legitimate, the ORDER BY check treats float sort keys within 1e-9 relative as tied; value comparisons unchanged.",
   "description": "## Problem\nTrunk run 44996878729 (develop at 93f336032a) failed in tpcds-parity-draws: `57_expression: diverged in 1 of 2 runs; Q57: returned row 73 breaks the ORDER BY: sort key (-109.64909090909092, Decimal('20.18')), expected (-109.64909090909093, Decimal('265.34'))`. The two sort keys differ only in the last float digit, so floating-point summation order makes the order check non-deterministic. A failed-job rerun passed.\n\n## Change\nFind whether the expression backend's float aggregation is order-dependent, or whether the cross-surface ORDER BY check should compare float sort keys with a tolerance (treating near-equal keys as ties). Fix the cause; do not add Q57 to a skip list.\n\n## Decision gates\n- Decide from evidence which side is wrong: if the SQL reference and the expression backend legitimately produce different float sums, a tie tolerance in the ORDER BY check is the fix; the tolerance value and its scope (sort keys only, never result values) go to the owner in a choice dialog if it is wider than one unit in the last place.\n- Never weaken value comparisons, add retries to the target, or narrow the draws or backends.\n\n## Verification rubric\nPass: `make tpcds-cross-surface-draws-report` passes repeatedly (for example, 10 runs) with no Q57 divergence, and a test pins the tie behaviour.\nFail: Q57 skipped, retried, or value tolerances widened.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
   "sessions": [
@@ -51,6 +56,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "a79a49137b5e44ddb55ebdedcc0a7045",
+      "session_id": "301a72f40ca84d7ab9668f9bdc47da3b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18",
+      "at": "2026-11-22T21:01:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e686badacf47400e9eddbc86ac5d3689",
       "session_id": "301a72f40ca84d7ab9668f9bdc47da3b"
     }
   ]
