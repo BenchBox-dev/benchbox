@@ -26,7 +26,7 @@ pytestmark = [
     pytest.mark.medium,
 ]
 
-_W2_FALLBACK_BENCHMARKS = {"metadata_primitives", "tpcdi", "transaction_primitives", "write_primitives"}
+_W2_FALLBACK_BENCHMARKS = {"metadata_primitives", "transaction_primitives", "write_primitives"}
 
 
 @pytest.fixture(scope="module")

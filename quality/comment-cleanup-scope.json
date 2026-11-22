@@ -270,18 +270,6 @@
           "path": "benchbox/core/tpcdi/metrics.py"
         },
         {
-          "path": "benchbox/core/tpcdi/queries.py"
-        },
-        {
-          "path": "benchbox/core/tpcdi/query_analytics.py"
-        },
-        {
-          "path": "benchbox/core/tpcdi/query_etl.py"
-        },
-        {
-          "path": "benchbox/core/tpcdi/query_validation.py"
-        },
-        {
           "path": "benchbox/core/tpcdi/schema.py"
         },
         {

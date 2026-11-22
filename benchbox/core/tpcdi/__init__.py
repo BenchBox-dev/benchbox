@@ -7,7 +7,6 @@
 
 from .benchmark import TPCDIBenchmark
 from .generator import TPCDIDataGenerator
-from .queries import TPCDIQueryManager
 from .schema import (
     DIMACCOUNT,
     DIMCOMPANY,
@@ -24,7 +23,6 @@ from .schema import (
 __all__ = [
     "TPCDIBenchmark",
     "TPCDIDataGenerator",
-    "TPCDIQueryManager",
     "DIMCUSTOMER",
     "DIMACCOUNT",
     "DIMSECURITY",

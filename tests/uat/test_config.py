@@ -505,9 +505,6 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
             ("cedardb", "tpch_skew", 0.01),
             ("cedardb", "tpch_skew", 0.1),
             ("cedardb", "tpch_skew", 1.0),
-            ("cedardb", "tpcdi", 0.01),
-            ("cedardb", "tpcdi", 0.1),
-            ("cedardb", "tpcdi", 1.0),
             ("cedardb", "read_primitives", 0.01),
             ("cedardb", "read_primitives", 0.1),
             ("cedardb", "write_primitives", 0.01),
@@ -538,7 +535,6 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
             ("trino", "tpcds", 0.01),
             ("presto", "tpcds", 0.01),
             ("trino", "tpcds_obt", 0.01),
-            ("trino", "tpcdi", 0.01),
             ("trino", "clickbench", 0.01),
             ("trino", "amplab", 0.01),
             ("trino", "read_primitives", 0.01),
@@ -548,7 +544,6 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
             ("trino", "flightdata", 0.01),
             ("trino", "vector_search", 0.01),
             ("presto", "tpcds_obt", 0.01),
-            ("presto", "tpcdi", 0.01),
             ("presto", "clickbench", 0.01),
             ("presto", "amplab", 0.01),
             ("presto", "coffeeshop", 0.01),
@@ -564,9 +559,6 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
 _DOCKER_NON_TIMEOUT_ENVELOPE_CELLS = frozenset(
     {
         ("cedardb", "tpcds_obt", 1.0),
-        ("cedardb", "tpcdi", 0.01),
-        ("cedardb", "tpcdi", 0.1),
-        ("cedardb", "tpcdi", 1.0),
         ("cedardb", "read_primitives", 0.01),
         ("cedardb", "read_primitives", 0.1),
         ("cedardb", "write_primitives", 0.01),
@@ -585,7 +577,6 @@ _DOCKER_NON_TIMEOUT_ENVELOPE_CELLS = frozenset(
         ("trino", "tpcds", 0.01),
         ("presto", "tpcds", 0.01),
         ("trino", "tpcds_obt", 0.01),
-        ("trino", "tpcdi", 0.01),
         ("trino", "clickbench", 0.01),
         ("trino", "amplab", 0.01),
         ("trino", "read_primitives", 0.01),
@@ -595,7 +586,6 @@ _DOCKER_NON_TIMEOUT_ENVELOPE_CELLS = frozenset(
         ("trino", "flightdata", 0.01),
         ("trino", "vector_search", 0.01),
         ("presto", "tpcds_obt", 0.01),
-        ("presto", "tpcdi", 0.01),
         ("presto", "clickbench", 0.01),
         ("presto", "amplab", 0.01),
         ("presto", "coffeeshop", 0.01),
@@ -675,8 +665,8 @@ def test_release_gate_stage1_prunes_measured_runtime_envelopes():
     for cell in result.cells:
         by_pair.setdefault((cell.platform, cell.benchmark), set()).add(cell.scale)
     eligible = sum(1 for scales in by_pair.values() if set(stage1.scales.rungs).issubset(scales))
-    assert eligible == 117
-    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 93
+    assert eligible == 112
+    assert stage1.report.cross_scale_coverage_min_pairs == int(0.8 * eligible) == 89
 
 
 def test_release_gate_cross_scale_floors_are_tuned_and_achievable():

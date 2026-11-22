@@ -1291,21 +1291,13 @@ asserted contracts; they do not certify live platforms or benchmark compliance.
   NULL warehouse name and preserve input frames. Q78 distinguishes all-NULL sums
   from partial-NULL and complete groups. Dask mixed-direction sorting and its
   available Series operations need explicit coverage.
-- [SCD string comparisons](unit/core/tpcdi/test_etl_scd_processor.py) trim padded
-  text for object and newer pandas string dtypes so whitespace-only changes do
-  not create dimension versions. [Ingest tests](unit/core/tpcdi/test_tpcdi_ingest_dtypes.py)
-  keep date-like CSV, fixed-width and JSON payloads as text; the literal date
-  column is an adversarial inference case. Packaging declares the pandas floor.
 - [TPC-DS streams](unit/core/tpcds/test_throughput_test_coverage.py) use the run's
   stream count and seed, not stream_id-dependent substitutes, and batch dsqgen
   generation once before per-stream translation. The disconnected single-stream
   helper in [runner tests](unit/core/tpcds/benchmark/test_tpcds_runner_streams.py)
   raises NotImplementedError; counting SQL comments cannot establish execution.
-- [TPC-DI dialect tests](unit/core/tpcdi/test_tpcdi_clickhouse_overrides.py) preserve
-  base SQL while checking platform-specific date, derived-relation and aggregate
-  rewrites, parameter substitution and single/bulk retrieval parity. TPC-DS
-  ClickHouse tests reject unexpected generator shapes rather than restoring an
-  unbounded plan silently. These string/translation checks are not live-engine runs.
+- TPC-DS ClickHouse tests reject unexpected generator shapes rather than restoring
+  an unbounded plan silently. These string/translation checks are not live-engine runs.
 - [JoinOrder plan tests](unit/core/joinorder/test_dataframe_join_plan_shape.py)
   check fixed syntactic join topology and the executor's consumed plan, not just
   equal rows. This measures multi-join execution rather than optimizer reordering;
@@ -1477,9 +1469,3 @@ asserted contracts; they do not certify live platforms or benchmark compliance.
   retain the explicit Redshift approximate-percentile parser limitation. Reassess
   that narrow allowlist when the pinned SQLGlot release recognizes the syntax;
   static parser limitations do not certify or prevent adapter execution.
-- [Error recovery fixtures](unit/core/tpcdi/test_error_recovery_coverage.py) use
-  distinct checkpoint identities because time-based IDs can collide within one
-  second. Error-report tests inject log records and substitute statistics, so they
-  do not test the nested statistics call itself. The current manager uses a
-  reentrant lock; the removed comment's deadlock claim is stale. Retry tests
-  retain explicit arithmetic/caps and fresh-manager state isolation.

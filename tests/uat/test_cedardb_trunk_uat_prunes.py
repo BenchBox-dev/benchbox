@@ -5,9 +5,6 @@ from tests.uat import compatibility, matrix
 pytestmark = pytest.mark.medium
 
 _PRUNED_CELLS = {
-    ("tpcdi", 0.01): "square root of a negative number",
-    ("tpcdi", 0.1): "square root of a negative number",
-    ("tpcdi", 1.0): "unable to allocate working memory",
     ("read_primitives", 0.01): "to_date(text, text)",
     ("read_primitives", 0.1): "IS JSON is not implemented",
     ("write_primitives", 0.01): "current transaction is aborted",
@@ -23,7 +20,6 @@ _PRUNED_CELLS = {
 
 _TRINO_PRESTO_PRUNED_CELLS = {
     ("trino", "tpcds_obt"): "Column 'd_year' cannot be resolved",
-    ("trino", "tpcdi"): "boolean = integer",
     ("trino", "clickbench"): "Column 'm' cannot be resolved",
     ("trino", "amplab"): "date <= varchar(10)",
     ("trino", "read_primitives"): "approx_most_frequent",
@@ -33,7 +29,6 @@ _TRINO_PRESTO_PRUNED_CELLS = {
     ("trino", "flightdata"): "date <= varchar(10)",
     ("trino", "vector_search"): "array_cosine_similarity",
     ("presto", "tpcds_obt"): "'channel'",
-    ("presto", "tpcdi"): "boolean, integer",
     ("presto", "clickbench"): "date, varchar(10)",
     ("presto", "amplab"): "date, varchar(10)",
     ("presto", "coffeeshop"): "dim_locations",
@@ -117,12 +112,6 @@ def test_trino_and_presto_failing_sf001_cells_are_pruned_with_run_evidence(platf
 @pytest.mark.parametrize("platform", ["trino", "presto"])
 def test_trino_and_presto_keep_tpcds_and_other_scales(platform):
     assert _rule(platform, "tpch", 0.01) is None
-    assert _rule(platform, "tpcdi", 0.1) is None
-
-
-@pytest.mark.parametrize("platform", ["spark", "datafusion", "clickhouse-local"])
-def test_tpcdi_sf1_stays_in_the_gate(platform):
-    assert _rule(platform, "tpcdi", 1.0) is None
 
 
 @pytest.mark.parametrize(("platform", "detail"), [("trino", "date + integer"), ("presto", "QUERY_HAS_TOO_MANY_STAGES")])

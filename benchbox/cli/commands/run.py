@@ -2179,7 +2179,10 @@ def run(
     allow_greybeam_inline_load: bool = False,
     acknowledge_billable_platform: bool = False,
 ) -> None:
-    from benchbox.core.run_service import apply_polars_streaming_flag, begin_run
+    from benchbox.cli.unavailable_benchmark import exit_if_benchmark_unavailable, exit_unavailable_benchmark
+    from benchbox.core.run_service import BenchmarkUnavailableError, apply_polars_streaming_flag, begin_run
+
+    exit_if_benchmark_unavailable(benchmark)
 
     if publish:
         enforce_maintainer_label(publish_label)
@@ -2261,6 +2264,8 @@ def run(
     except InvalidDriverVersion as exc:
         console.print(f"[red]❌ {escape(str(exc))}[/red]")
         sys.exit(ExitCode.USAGE)
+    except BenchmarkUnavailableError as exc:
+        exit_unavailable_benchmark(exc)
 
 
 __all__ = ["run", "BenchmarkOptionParamType", "PlatformOptionParamType", "setup_verbose_logging"]

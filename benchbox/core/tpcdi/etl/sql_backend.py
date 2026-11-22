@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import re
 from datetime import date, datetime, timedelta
-from typing import Any, Callable
+from typing import Any
 
 import pandas as pd
 
@@ -54,18 +54,9 @@ def bulk_insert_dataframe(cursor: Any, quoted_table: str, quoted_columns: list[s
 
 
 class SQLETLBackend:
-    def __init__(
-        self,
-        *,
-        connection: Any,
-        create_tables_sql: str,
-        execute_validation_query: Callable[[str, Any], Any],
-        validation_query_ids: list[str],
-    ) -> None:
+    def __init__(self, *, connection: Any, create_tables_sql: str) -> None:
         self.connection = connection
         self._create_tables_sql = create_tables_sql
-        self._execute_validation_query = execute_validation_query
-        self._validation_query_ids = validation_query_ids
 
     def create_schema(self) -> None:
         if hasattr(self.connection, "executescript"):
@@ -99,20 +90,6 @@ class SQLETLBackend:
             "consistency_checks": {},
             "accuracy_checks": {},
         }
-
-        for query_id in self._validation_query_ids:
-            try:
-                result = self._execute_validation_query(query_id, self.connection)
-                validation_results["validation_queries"][query_id] = {
-                    "success": True,
-                    "row_count": len(result) if result else 0,
-                    "result": result[:10] if result else [],
-                }
-            except Exception as exc:
-                validation_results["validation_queries"][query_id] = {"success": False, "error": str(exc)}
-                validation_results["data_quality_issues"].append(
-                    {"type": "query_execution_error", "query_id": query_id, "error": str(exc)}
-                )
 
         validation_results["completeness_checks"] = self._check_data_completeness()
         validation_results["consistency_checks"] = self._check_data_consistency()

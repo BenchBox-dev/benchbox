@@ -169,11 +169,11 @@ benchmark_metadata:
     supports_dataframe: true
   tpcdi:
     display_name: TPC-DI
-    description: Data Integration Benchmark
+    description: TPC-DI data integration benchmark. Unavailable while BenchBox reworks it to run the specification's workload.
     category: TPC
-    support_status: beta
-    num_queries: 38
-    query_description: ETL Pipeline
+    support_status: document_only
+    num_queries: 0
+    query_description: Unavailable
     supports_streams: false
     default_scale: 0.01
     scale_options:

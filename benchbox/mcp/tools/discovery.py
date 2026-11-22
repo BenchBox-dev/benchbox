@@ -19,6 +19,7 @@ from benchbox.core.benchmark_registry import (
     get_scale_factor_rule,
     list_public_benchmark_ids,
 )
+from benchbox.core.run_service import unavailable_benchmark_message
 from benchbox.mcp.errors import ErrorCode, make_error
 from benchbox.utils.dependencies import get_extra_install_message
 
@@ -56,6 +57,8 @@ def _list_available_impl(category: str) -> dict[str, Any]:
 
 def _collect_benchmark_queries_and_tables(benchmark_lower: str) -> tuple[list[dict[str, Any]], list[str]]:
     queries: list[dict[str, Any]] = []
+    if unavailable_benchmark_message(benchmark_lower) is not None:
+        return [], []
     tables: list[str] = []
     try:
         benchmark_class = get_public_benchmark_class(benchmark_lower)
@@ -88,7 +91,7 @@ def build_benchmark_payload(benchmark: str) -> dict[str, Any]:
     queries, tables = _collect_benchmark_queries_and_tables(benchmark_lower)
     query_ids = [q["id"] for q in queries]
 
-    return {
+    payload: dict[str, Any] = {
         "found": True,
         "name": benchmark_lower,
         "display_name": meta.get("display_name", benchmark_lower),
@@ -110,6 +113,10 @@ def build_benchmark_payload(benchmark: str) -> dict[str, Any]:
         "supports_streams": meta.get("supports_streams", False),
         "dataframe_support": meta.get("supports_dataframe", False),
     }
+    unavailable = unavailable_benchmark_message(benchmark_lower)
+    if unavailable is not None:
+        payload["unavailable"] = unavailable
+    return payload
 
 
 def _get_benchmark_info_impl(benchmark: str) -> dict[str, Any]:
@@ -123,7 +130,7 @@ def _get_benchmark_info_impl(benchmark: str) -> dict[str, Any]:
     query_ids = payload["query_ids"]
     tables = payload["tables"]
 
-    return {
+    info: dict[str, Any] = {
         "name": payload["name"],
         "display_name": payload["display_name"],
         "description": payload["description"],
@@ -140,6 +147,9 @@ def _get_benchmark_info_impl(benchmark: str) -> dict[str, Any]:
         "supports_streams": payload["supports_streams"],
         "dataframe_support": payload["dataframe_support"],
     }
+    if "unavailable" in payload:
+        info["unavailable"] = payload["unavailable"]
+    return info
 
 
 def _system_profile_impl() -> dict[str, Any]:
