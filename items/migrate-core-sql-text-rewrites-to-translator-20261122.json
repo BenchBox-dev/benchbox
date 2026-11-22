@@ -2,6 +2,7 @@
   "acceptance": [
     "UNRESOLVED_VIOLATIONS is empty and each former rewrite uses the standard translation path."
   ],
+  "context": "The broadened name match found an eleventh case: NYCTaxiBenchmark.translate_query_text (benchbox/core/nyctaxi/benchmark.py) rewrites query_text by regex per dialect (day-of-week, epoch difference) for bigquery, databricks/spark, singlestore, sqlite and snowflake. It is listed in UNRESOLVED_VIOLATIONS and is in scope here.",
   "description": "## Problem\nThe text-level SQL rewrite check (tests/unit/sql_compat/test_core_sql_text_rewrite.py) found ten existing per-platform rewrites of SQL text in benchbox/core, listed in its UNRESOLVED_VIOLATIONS: ClickHouse LAG (read_primitives/queries.py), MySQL CAST (tpcds/maintenance_functions.py), Doris/StarRocks GROUP BY () (tpchavoc/dialect_compat.py), SQLite series and typed dates (transaction_primitives/benchmark.py), per-platform transactional rewrites and StarRocks BEGIN (transactional/benchmark_base.py), QuestDB CURRENT_TIMESTAMP (transactional/questdb_sql.py), T-SQL TOP 1 and per-platform column types (tuning/metadata.py), SingleStore function replacement (vector_search/queries.py).\n\n## Change\nMove each to the standard path: translate_sql_query, or a named fork rewrite through apply_rewrite, or SCHEMA_EMIT/type_map for column types; remove its UNRESOLVED_VIOLATIONS entry in the same change. One PR per area is fine.\n\n## Verification rubric\nPass: UNRESOLVED_VIOLATIONS is empty; the affected benchmarks' golden corpus and translation tests show no unintended output change.",
   "sessions": [
     {
@@ -10,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "fd73271b595d4cd7b60d06838923ff84",
+      "session_id": "a8b92107f30e427f9def4483bf06f645"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e",
+      "at": "2026-11-22T14:23:39Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6a1959f612164364aa0f05dd65c85968",
       "session_id": "a8b92107f30e427f9def4483bf06f645"
     }
   ]
