@@ -145,11 +145,18 @@ def test_negative_and_fractional_values_are_usage_errors(command, args, value, s
     assert seen_limits == []
 
 
-def test_an_invalid_config_value_is_a_usage_error_naming_the_key(seen_limits) -> None:
-    result = CliRunner().invoke(run, RUN_ARGS, obj=_obj(-5))
+@pytest.mark.parametrize("configured", [-1, -5, 1.5])
+@pytest.mark.parametrize(
+    ("command", "args"),
+    [(run, RUN_ARGS), (run_official, OFFICIAL_ARGS), (datagen, DATAGEN_ARGS)],
+    ids=["run", "run-official", "datagen"],
+)
+def test_an_invalid_config_value_is_a_usage_error_naming_the_key(command, args, configured, seen_limits) -> None:
+    result = CliRunner().invoke(command, args, obj=_obj(configured))
 
     assert result.exit_code == ExitCode.USAGE
     assert RUN_TIMEOUT_CONFIG_KEY in result.output
+    assert "Benchmark execution failed" not in result.output
     assert seen_limits == []
 
 
