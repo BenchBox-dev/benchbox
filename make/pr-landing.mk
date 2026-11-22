@@ -47,9 +47,10 @@ pr-preflight:
 	TEST_LIST=$$(mktemp); \
 	LINUX_LIST=$$(mktemp); \
 	GUARD_LIST=$$(mktemp); \
+	LINT_LIST=$$(mktemp); \
 	STAGE=$$(mktemp); \
 	ALLOW=$$(mktemp); \
-	trap 'RC=$$?; python3 scripts/preflight_receipt.py finalize --stage "$$STAGE" --exit-status "$$RC" --allowlist "$$ALLOW" || true; rm -f "$$PY_LIST" "$$TEST_LIST" "$$LINUX_LIST" "$$GUARD_LIST" "$$STAGE" "$$ALLOW"; exit "$$RC"' EXIT; \
+	trap 'RC=$$?; python3 scripts/preflight_receipt.py finalize --stage "$$STAGE" --exit-status "$$RC" --allowlist "$$ALLOW" || true; rm -f "$$PY_LIST" "$$TEST_LIST" "$$LINUX_LIST" "$$GUARD_LIST" "$$LINT_LIST" "$$STAGE" "$$ALLOW"; exit "$$RC"' EXIT; \
 	git show HEAD:.github/preflight-known-failures.json > "$$ALLOW" 2>/dev/null || rm -f "$$ALLOW"; \
 	python3 scripts/preflight_receipt.py begin --stage "$$STAGE" --base-ref "$$PREFLIGHT_BASE"; \
 	RECORD="python3 scripts/preflight_receipt.py step --stage $$STAGE --allowlist $$ALLOW"; \
@@ -64,26 +65,25 @@ pr-preflight:
 		echo "==> ruff (changed Python files)"; \
 		$$RECORD --name ruff-check -- uv run -- ruff check --force-exclude $$(cat "$$PY_LIST"); \
 		$$RECORD --name ruff-format -- uv run -- ruff format --check --force-exclude $$(cat "$$PY_LIST"); \
-		echo "==> lint-imports (layering contracts)"; \
-		$$RECORD --name lint-imports -- $(MAKE) -s lint-imports; \
-		TY_FILES=$$(grep -E '^(benchbox|tests)/' "$$PY_LIST" | grep -v '^tests/fixtures/' || true); \
-		if [ -n "$$TY_FILES" ]; then \
-			echo "==> ty (changed benchbox/ and tests/ files)"; \
-			$$RECORD --name typecheck -- uv run -- python -m scripts.typecheck $$TY_FILES; \
-		fi; \
-		MARKER_TREE=$$(grep '^tests/' "$$PY_LIST" || true); \
-		if [ -n "$$MARKER_TREE" ]; then \
-			MARKER_FILES=$$(printf '%s\n' $$MARKER_TREE | grep -E '/(test_[^/]*|[^/]*_test)\.py$$' | grep -v '^tests/fixtures/' || true); \
-			if [ -n "$$MARKER_FILES" ]; then \
-				echo "==> lint-markers (changed test modules)"; \
-				$$RECORD --name lint-markers -- uv run -- python -m pytest --collect-only -q -p no:warnings --assert=plain -p tests.utilities.marker_manifest $$MARKER_FILES; \
-			fi; \
-			echo "==> lint-markers (tree-wide marker strategy)"; \
-			$$RECORD --name lint-markers-strategy -- uv run -- python -m pytest tests/unit/test_marker_strategy.py -q; \
-		fi; \
 	else \
 		echo "No Python files changed; skipping ruff."; \
 	fi; \
+	uv run -- python _project/scripts/preflight_targets.py lint --base-ref "$$PREFLIGHT_BASE" > "$$LINT_LIST"; \
+	for STEP in $$(cat "$$LINT_LIST"); do \
+		case "$$STEP" in \
+			lint-imports) echo "==> lint-imports (layering contracts)"; $$RECORD --name lint-imports -- $(MAKE) -s lint-imports ;; \
+			typecheck) \
+				TY_FILES=$$(uv run -- python _project/scripts/preflight_targets.py typecheck-files --base-ref "$$PREFLIGHT_BASE"); \
+				echo "==> ty (changed benchbox/ and tests/ files; the whole project when only deletions)"; \
+				$$RECORD --name typecheck -- uv run -- python -m scripts.typecheck $$TY_FILES ;; \
+			lint-markers) \
+				MARKER_FILES=$$(uv run -- python _project/scripts/preflight_targets.py marker-files --base-ref "$$PREFLIGHT_BASE"); \
+				echo "==> lint-markers (changed test modules)"; \
+				$$RECORD --name lint-markers -- uv run -- python -m pytest --collect-only -q -p no:warnings --assert=plain -p tests.utilities.marker_manifest $$MARKER_FILES ;; \
+			lint-markers-strategy) echo "==> lint-markers (tree-wide marker strategy)"; $$RECORD --name lint-markers-strategy -- uv run -- python -m pytest tests/unit/test_marker_strategy.py -q ;; \
+			*) echo "pr-preflight: unknown lint step $$STEP" >&2; exit 2 ;; \
+		esac; \
+	done; \
 	for GUARD in $$(cat "$$GUARD_LIST"); do \
 		echo "==> guard: $$GUARD"; \
 		case "$$GUARD" in \
