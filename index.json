@@ -21515,6 +21515,15 @@
       "status": "open",
       "title": "Move the results database, metrics and CLI readers to the rule"
     },
+    "crr-a5-published-results-mirror": {
+      "claim": null,
+      "needs": [
+        "crr-a3-validators-staging-and-admission"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Make the published-results validator run the same rule"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],
