@@ -36486,9 +36486,9 @@
     "pr-arm-text-edit-core-placeholder-misread-20261122": {
       "claim": null,
       "needs": [],
-      "priority": "medium",
+      "priority": "low",
       "status": "open",
-      "title": "pr-arm treats the CI (text edit) placeholder `core` failure as final while the full CI run is still in progress"
+      "title": "pr-arm refused a just-readied PR on a CI (text edit) placeholder core failure before its full CI run was listed"
     },
     "pr-arm-wait-mode-20261111": {
       "claim": null,
