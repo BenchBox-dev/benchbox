@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "TPC-DI can now recount, from DIGen's staging files alone, the DimCustomer audit values that DIGen is shown to get wrong, and lists each difference with the specification clause its rule comes from.",
+      "details": [
+        "The recount reads the staging files directly, shares no code with the ETL and writes nothing into staging."
+      ],
+      "benchmarks": ["tpcdi"]
+    }
+  ]
+}
