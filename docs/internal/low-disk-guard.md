@@ -62,7 +62,10 @@ benchmarks.
 ## Retention recommendations
 
 These are recommendations only. Deleting anything is the owner's decision, and
-exact paths need owner approval first.
+exact paths need owner approval first. One exception: a session deletes the
+`datagen` and `databases` directories it created under a run root of its own
+(`[RUN-DATA-001]` in `AGENTS.md`), because nothing else reads them and they can
+be regenerated.
 
 1. Worktrees: remove worktrees of merged branches with the existing worktree
    lifecycle tooling. Each carries its own virtual environment.
