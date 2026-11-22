@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "A layering, marker or type error in changed code fails `make pr-preflight` locally, within the agreed time budget."
+  ],
+  "context": "Observed in the run-timeout effort (#4435 lint failures).",
+  "description": "## Problem\nIn the run-timeout batch PR #4435, `make batch-member-check` and `make pr-preflight` both passed, but CI's `lint` job then failed on three guards the local gates do not run: `make lint-imports` (benchbox.utils imported benchbox.core), `make lint-markers` (`@pytest.mark.medium` decorator), and `make typecheck` (an invalid default). Each cost a fix commit, a new head and a fresh CI cycle.\n\n## Change\nRun the lint job's cheap guards that apply to changed paths (at least lint-imports, lint-markers, typecheck on changed files) in `make pr-preflight` and therefore in `batch-member-check`, or document why one cannot run locally.\n\n## Decision gates\n- `pr-preflight` has a performance budget: measure its duration before and after on a typical change and report it; if a guard adds more than the budget allows or the budget is unknown, STOP and ask the owner.\n- No CI check is weakened or skipped; local gates only add.\n\n## Verification rubric\nA change that introduces each of the three violations fails `make pr-preflight` locally (shown); the before/after preflight timing is in the pull request; `make pr-preflight` exits 0 on a clean change.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T13:13:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "22a654c051684cf7bdbc73a7e525337d",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    }
+  ]
+}
