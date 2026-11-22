@@ -7,7 +7,7 @@ import re
 import shutil
 import subprocess
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -61,6 +61,7 @@ _REPORT_THROUGHPUT = re.compile(r"(TotalRecords all Batches: \d+) .*$")
 _JAVA_VERSION = re.compile(r'version "(\d+)(?:\.(\d+))?')
 _FINWIRE_QUARTER = re.compile(r"^FINWIRE\d{4}Q[1-4]")
 _HASH_CHUNK_BYTES = 1 << 20
+_DEADLINE_CHECK_ACTIONS = 4096
 
 
 class DigenError(RuntimeError):
@@ -180,35 +181,28 @@ def probe_java_major(executable: Path) -> int | None:
     return major
 
 
-def _java_candidates(environ: Mapping[str, str]) -> list[Path]:
-    candidates: list[Path] = []
-    for name in JAVA_HOME_ENVIRONMENT:
-        home = environ.get(name)
-        if home:
-            candidate = Path(home) / "bin" / "java"
-            if candidate.is_file():
-                candidates.append(candidate)
-    on_path = shutil.which("java", path=environ.get("PATH"))
-    if on_path:
-        candidates.append(Path(on_path))
-    unique: list[Path] = []
+def _java_candidates(environ: Mapping[str, str]) -> Iterator[Path]:
+    locations = [str(Path(home) / "bin") for name in JAVA_HOME_ENVIRONMENT if (home := environ.get(name))]
+    locations.append(environ.get("PATH"))
     seen: set[Path] = set()
-    for candidate in candidates:
+    for location in locations:
+        found = shutil.which("java", path=location)
+        if found is None:
+            continue
+        candidate = Path(found)
         key = candidate.resolve()
         if key not in seen:
             seen.add(key)
-            unique.append(candidate)
-    return unique
+            yield candidate
 
 
 def find_supported_java(environ: Mapping[str, str] | None = None) -> JavaRuntime:
-    found = [
-        JavaRuntime(candidate, probe_java_major(candidate))
-        for candidate in _java_candidates(os.environ if environ is None else environ)
-    ]
-    for runtime in found:
+    found: list[JavaRuntime] = []
+    for candidate in _java_candidates(os.environ if environ is None else environ):
+        runtime = JavaRuntime(candidate, probe_java_major(candidate))
         if runtime.major in SUPPORTED_JAVA_MAJORS:
             return runtime
+        found.append(runtime)
     raise DigenJavaError(
         JAVA_REQUIREMENT_MESSAGE.format(
             versions=" or ".join(str(major) for major in SUPPORTED_JAVA_MAJORS),
@@ -258,6 +252,12 @@ def _file_format(file_name: str) -> str:
     return Path(file_name).suffix.lstrip(".") or "text"
 
 
+def _check_deadline() -> None:
+    deadline = current_run_deadline()
+    if deadline is not None:
+        deadline.check()
+
+
 def _count_actions(path: Path) -> int:
     count = 0
     root = None
@@ -268,6 +268,8 @@ def _count_actions(path: Path) -> int:
             if event == "end" and element.tag == _ACTION_TAG:
                 count += 1
                 root.clear()
+                if count % _DEADLINE_CHECK_ACTIONS == 0:
+                    _check_deadline()
     except ElementTree.ParseError as error:
         raise DigenOutputError(f"{path} is not well-formed XML: {error}") from None
     return count
@@ -298,6 +300,7 @@ def check_payload(output_dir: Path, report: DigenReport, records: Mapping[str, i
 
 
 def _digest_file(path: Path, *, is_report: bool) -> tuple[str, int, int]:
+    _check_deadline()
     if is_report:
         text = path.read_text(encoding="utf-8", errors="replace")
         normalised = normalise_report(text).encode("utf-8")
@@ -308,6 +311,7 @@ def _digest_file(path: Path, *, is_report: bool) -> tuple[str, int, int]:
     last = b"\n"
     with path.open("rb") as stream:
         while chunk := stream.read(_HASH_CHUNK_BYTES):
+            _check_deadline()
             digest.update(chunk)
             newlines += chunk.count(b"\n")
             size += len(chunk)
@@ -330,11 +334,12 @@ def _staging_files(output_dir: Path) -> list[Path]:
     )
 
 
-def _identity(scale_factor: int, files: list[tuple[str, int, str]]) -> str:
+def _identity(scale_factor: int, files: list[tuple[str, int, str, int]], row_counts: Mapping[str, int]) -> str:
     payload = {
         "benchmark": BENCHMARK_ID,
         "scale_factor": scale_factor,
         "tools_sha256": TOOLS_ARCHIVE_SHA256,
+        "row_counts": dict(row_counts),
         "files": [list(entry) for entry in files],
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
@@ -361,16 +366,16 @@ def write_staging_manifest(
     licence_notice_text: str | None,
 ) -> tuple[Path, str, int, int]:
     entries: list[tuple[Path, str, int, int]] = []
-    listed: list[tuple[str, int, str]] = []
+    listed: list[tuple[str, int, str, int]] = []
     size_bytes = 0
     for path in _staging_files(output_dir):
         relative = path.relative_to(output_dir).as_posix()
         checksum, size, lines = _digest_file(path, is_report=relative == REPORT_NAME)
         entries.append((path, checksum, size, lines))
-        listed.append((relative, 0 if relative == REPORT_NAME else size, checksum))
+        listed.append((relative, 0 if relative == REPORT_NAME else size, checksum, lines))
         size_bytes += size
     check_payload(output_dir, report, {path.relative_to(output_dir).as_posix(): rows for path, _, _, rows in entries})
-    manifest_hash = _identity(report.scale_factor, listed)
+    manifest_hash = _identity(report.scale_factor, listed, report.row_counts)
     manifest = DataGenerationManifest(
         output_dir=output_dir,
         benchmark=BENCHMARK_ID,
@@ -414,26 +419,34 @@ def verify_staging(output_dir: Path | str) -> dict[str, Any]:
     if not manifest_path.is_file():
         raise StagingTamperedError(f"{root} has no {MANIFEST_FILENAME}")
     manifest = load_manifest(manifest_path)
-    expected: dict[str, tuple[int, str]] = {}
+    expected: dict[str, tuple[int, str, int]] = {}
     for table in manifest.get("tables", {}).values():
         for entries in table.get("formats", {}).values():
             for entry in entries:
-                expected[entry["path"]] = (int(entry["size_bytes"]), str(entry.get("checksum")))
+                expected[entry["path"]] = (
+                    int(entry["size_bytes"]),
+                    str(entry.get("checksum")),
+                    int(entry["row_count"]),
+                )
     actual = {path.relative_to(root).as_posix(): path for path in _staging_files(root)}
     problems: list[str] = []
     problems.extend(f"missing {name}" for name in sorted(expected.keys() - actual.keys()))
     problems.extend(f"unlisted {name}" for name in sorted(actual.keys() - expected.keys()))
     for name in sorted(expected.keys() & actual.keys()):
-        checksum, size, _ = _digest_file(actual[name], is_report=name == REPORT_NAME)
-        if (size, checksum) != expected[name]:
+        checksum, size, records = _digest_file(actual[name], is_report=name == REPORT_NAME)
+        if (size, checksum, records) != expected[name]:
             problems.append(f"changed {name}")
     if problems:
         raise StagingTamperedError(
             f"DIGen staging in {root} differs from its manifest: {', '.join(problems[:10])}"
             + (f" and {len(problems) - 10} more" if len(problems) > 10 else "")
         )
-    listed = sorted((name, 0 if name == REPORT_NAME else size, checksum) for name, (size, checksum) in expected.items())
-    if _identity(int(manifest["scale_factor"]), listed) != manifest.get("manifest_hash"):
+    listed = sorted(
+        (name, 0 if name == REPORT_NAME else size, checksum, records)
+        for name, (size, checksum, records) in expected.items()
+    )
+    row_counts = manifest.get("source", {}).get("row_counts", {})
+    if _identity(int(manifest["scale_factor"]), listed, row_counts) != manifest.get("manifest_hash"):
         raise StagingTamperedError(f"{manifest_path} does not match its manifest_hash")
     return manifest
 
@@ -575,6 +588,7 @@ def generate(
                 output, report, java=java, licence_notice_shown=True, licence_notice_text=notice
             )
             verify_staging(output)
+            _check_deadline()
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
     return DigenResult(

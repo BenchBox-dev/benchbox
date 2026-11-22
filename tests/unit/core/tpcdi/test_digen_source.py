@@ -173,6 +173,49 @@ def test_java_on_path_is_found_after_an_unsupported_java_home(tmp_path: Path) ->
     assert runtime.executable == supported
 
 
+def test_java_home_is_resolved_through_the_executable_lookup_of_its_bin_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "jdk"
+    (home / "bin").mkdir(parents=True)
+    windows_style = home / "bin" / "java.exe"
+    windows_style.write_text("x", encoding="utf-8")
+    lookups: list[str | None] = []
+
+    def which(name: str, path: str | None = None) -> str | None:
+        lookups.append(path)
+        return str(windows_style) if path == str(home / "bin") else None
+
+    monkeypatch.setattr(digen.shutil, "which", which)
+    candidates = list(digen._java_candidates({"JAVA_HOME": str(home), "PATH": "elsewhere"}))
+    assert candidates == [windows_style]
+    assert lookups == [str(home / "bin"), "elsewhere"]
+
+
+def test_a_java_home_without_an_executable_java_is_skipped(tmp_path: Path) -> None:
+    home = tmp_path / "jdk"
+    (home / "bin").mkdir(parents=True)
+    (home / "bin" / "java").write_text("not executable", encoding="utf-8")
+    assert list(digen._java_candidates({"JAVA_HOME": str(home), "PATH": str(tmp_path / "none")})) == []
+
+
+def test_later_candidates_are_not_probed_once_a_supported_java_is_found(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first = write_fake_java(tmp_path / "first", "1.8.0_1")
+    second = write_fake_java(tmp_path / "second", "1.8.0_2")
+    probed: list[Path] = []
+
+    def probe(executable: Path) -> int:
+        probed.append(executable)
+        return 8
+
+    monkeypatch.setattr(digen, "probe_java_major", probe)
+    runtime = digen.find_supported_java({"JAVA_HOME": str(first.parent.parent), "PATH": str(second.parent)})
+    assert runtime.executable == first
+    assert probed == [first]
+
+
 def test_benchbox_java_home_is_looked_up_before_java_home(tmp_path: Path) -> None:
     first = write_fake_java(tmp_path / "first", "1.8.0_1")
     write_fake_java(tmp_path / "second", "1.8.0_2")
@@ -347,6 +390,51 @@ def test_tampered_staging_is_refused(
         expected = f"changed {digen.REPORT_NAME}"
     with pytest.raises(digen.StagingTamperedError, match=expected):
         digen.verify_staging(root)
+
+
+def test_edited_row_counts_are_refused(
+    tmp_path: Path, tools_dir: Path, environment: dict[str, str], child: Child
+) -> None:
+    result = digen.generate(3, tmp_path / "out", environ=environment)
+    original = result.manifest_path.read_text(encoding="utf-8")
+    manifest = json.loads(original)
+    manifest["source"]["row_counts"]["historical"] += 1
+    result.manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(digen.StagingTamperedError, match="manifest_hash"):
+        digen.verify_staging(result.output_dir)
+
+    manifest = json.loads(original)
+    manifest["tables"]["DailyMarket"]["formats"]["txt"][0]["row_count"] += 1
+    result.manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(digen.StagingTamperedError, match="changed Batch1/DailyMarket.txt"):
+        digen.verify_staging(result.output_dir)
+
+
+def test_a_deadline_that_expires_after_the_child_ends_the_run_and_keeps_the_marker(
+    tmp_path: Path, tools_dir: Path, environment: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        fake_digen_output(command)
+        time.sleep(1.2)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    patch_child(monkeypatch, run)
+    out = tmp_path / "out"
+    with own_run_deadline(1):
+        with pytest.raises(RunTimeoutError):
+            digen.generate(3, out, environ=environment)
+    assert (out / GENERATION_IN_PROGRESS_MARKER).exists()
+    assert not (out / MANIFEST_FILENAME).exists()
+
+
+def test_verification_checks_the_run_deadline_per_file(
+    tmp_path: Path, tools_dir: Path, environment: dict[str, str], child: Child
+) -> None:
+    result = digen.generate(3, tmp_path / "out", environ=environment)
+    with own_run_deadline(1) as deadline:
+        deadline._started -= 10
+        with pytest.raises(RunTimeoutError):
+            digen.verify_staging(result.output_dir)
 
 
 def test_tampered_manifest_hash_is_refused(
