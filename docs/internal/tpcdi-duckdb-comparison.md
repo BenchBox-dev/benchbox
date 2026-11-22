@@ -53,7 +53,8 @@ output directory made by BenchBox.
    to the Zulu 8 JDK under `~/Developer/tpc-tools`), through the heavy-work lock:
 
    ```
-   make heavy-run CMD='BENCHBOX_JAVA_HOME=<zulu8-home> uv run python gen.py <run-dir>'
+   GEN='BENCHBOX_JAVA_HOME=<zulu8-home> uv run python gen.py <run-dir>'
+   make heavy-run CMD="$GEN"
    ```
 
    where `gen.py` calls `TPCDIBenchmark(scale_factor=SF, output_dir=...).generate_digen_source_data()`.
@@ -112,7 +113,8 @@ output directory made by BenchBox.
 6. Run the official audit over the exported file:
 
    ```
-   make heavy-run CMD='uv run python scripts/tpcdi/compare_warehouses.py <export.duckdb> --audit-only --memory-limit 5GB --json <out.json>'
+   AUDIT='uv run python scripts/tpcdi/compare_warehouses.py <export.duckdb> --audit-only --memory-limit 5GB --json <out.json>'
+   make heavy-run CMD="$AUDIT"
    ```
 
    The text is the unmodified `tpcdi_audit.sql`, loaded through
