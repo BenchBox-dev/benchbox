@@ -40261,10 +40261,15 @@
       "title": "Bring the run-timeout decision record up to date with the delivered steps"
     },
     "run-timeout-error-public-import-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T14:54:11Z",
+        "generation": "e828c65609374fb4bf9aadfbb3497a97",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Give RunTimeoutError a documented public import path"
     },
     "run-timeout-execution-phases-20261120": {
