@@ -11403,20 +11403,53 @@
       "terminal_outcome": "deliver"
     },
     "tpcdi-foundation": {
-      "accepted_members": {},
+      "accepted_members": {
+        "tpcdi-provenance-record-and-copy-guard-20261121": "dfe7c5a1f0fd06b14f3908dfce486d716b5c6453"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "tpcdi-provenance-record-and-copy-guard-20261121": {
+          "accepted_head": "dfe7c5a1f0fd06b14f3908dfce486d716b5c6453",
+          "changed_files": [
+            ".github/ci-units.yml",
+            ".github/inert-paths.txt",
+            ".github/path-filters.yml",
+            "COPYRIGHT.md",
+            "_project/decisions/tpcdi-databricks-base-provenance-2026-11-21.md",
+            "_project/inert-doc-readers.json",
+            "_sources/tpc-di/databricks-tpc-di/FORBIDDEN_HASHES.json",
+            "_sources/tpc-di/databricks-tpc-di/LICENSE",
+            "_sources/tpc-di/databricks-tpc-di/PROVENANCE.md",
+            "_sources/tpc-di/djouallah-tpcdi/LICENSE",
+            "_sources/tpc-di/djouallah-tpcdi/PROVENANCE.md",
+            "changelog.d/feat-tpcdi-foundation--tpcdi-provenance-record-and-copy-guard-20261121.json",
+            "quality/comment-cleanup-scope.json",
+            "tests/unit/core/tpcdi/test_provenance_guard.py"
+          ],
+          "integration_head": "720cbc650ec714c2bed8c24766a81bcb4f83a4ff",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/tpcdi-foundation",
-      "integration_head": "af413ef6ae1f347a7532a4fe0a3adf1c109e3d6d",
+      "integration_head": "720cbc650ec714c2bed8c24766a81bcb4f83a4ff",
       "integration_log": [
         {
           "at": "2026-11-22T03:55:11Z",
           "head": "af413ef6ae1f347a7532a4fe0a3adf1c109e3d6d",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-22T04:24:40Z",
+          "head": "720cbc650ec714c2bed8c24766a81bcb4f83a4ff",
+          "kind": "prepare",
+          "member": "tpcdi-provenance-record-and-copy-guard-20261121",
+          "op_id": "30ddfece094d493ebcdd698834dae480",
+          "previous_head": "af413ef6ae1f347a7532a4fe0a3adf1c109e3d6d",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-foundation",
@@ -46433,17 +46466,12 @@
       "title": "TPC-DI plan based on shannon-barrow/databricks-tpc-di: full text (notes; not a work item)"
     },
     "tpcdi-provenance-record-and-copy-guard-20261121": {
-      "claim": {
-        "expires_at": "2026-11-23T04:24:36Z",
-        "generation": "e394c56a06604d8bb21c98b1371a7eb3",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-05-remove-benchbox-queries-20261120"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 6: record the source and licence of the Databricks project, and guard against copying forbidden files"
     },
     "tpcdi-queries-aq9-vq6-return-no-rows-20261120": {
