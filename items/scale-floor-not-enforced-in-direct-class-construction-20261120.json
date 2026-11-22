@@ -3,6 +3,7 @@
     "The behaviour of both classes at 0.001 is recorded from a run.",
     "Any change follows a recorded owner answer."
   ],
+  "context": "Owner decision 2026-11-22 (choice dialog). Where it conflicts with the Decision gates text in the description, this wins. \"if CoffeeShop and JoinOrder Synthetic accept a scale below 0.01 when constructed directly, add the same refusal the command line gives.\"",
   "description": "## Problem\nFound by the read-only review of the 11 to 16 November work, from reading only: the 0.01 floor (owner, 2026-11-11: \"Just raise the floor to `0.01` everywhere\") is enforced through the registry and the TPC-DS constant. No matching check was found in benchbox/core/coffeeshop or joinorder_synthetic, so constructing those classes directly may accept a smaller scale. The session told the owner about this limit before the owner said proceed. Unverified at runtime.\n\n## Change\nConstruct each class at 0.001 on current develop and record what happens. If it is accepted, ask the owner whether direct construction is in scope of 'everywhere'.\n\n## Decision gates\nNo code change before the owner answers.\n\n## Verification rubric\nPass: the observed behaviour is recorded for both classes with the command used.\n\n## Guardrails (owner, 2026-11-20)\nAccepted by the owner in the choice dialog: the agent never posts a stand-in review, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. It arms with `make pr-arm` once per pull request and reports the result. Subagents are read-only. Any limit, default, threshold or label text is shown to the owner before it is committed. A blocked step stops this item; the agent moves to the next item and does not work around the block.\nReview threads: the accepted text also said the agent never resolves a thread. Asked afterwards which rule applies, the owner chose: \"The morning rule: I may resolve a thread once the bot has reviewed the new head and did not raise the finding again.\" ('I' is the agent.) So the agent pushes the fix and replies, and resolves a thread only after the bot's review of the new head does not raise that finding again.",
   "sessions": [
     {
@@ -11,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "227cc5f1ab4f44778b51401de71b6ba0",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-22T17:30:05Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d4c1a709fa8a4c1291c243125a19f97a",
       "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
