@@ -1116,3 +1116,29 @@ class TestDataclasses:
         assert config.min_samples == 1
         assert config.lookback_days == 90
         assert config.require_success is True
+
+
+class TestUnavailableBenchmarkRows:
+    @pytest.mark.parametrize(("benchmark", "stored"), [("TPC-DI", False), ("TPC-H", True)])
+    def test_stored_pairs_are_compared_only_for_available_benchmarks(self, tmp_path, benchmark, stored):
+        db = ResultDatabase(tmp_path / "test.db")
+        now = datetime.now(timezone.utc)
+        for execution_id, geometric_mean_ms, age_days in (("current", 150.0, 5), ("previous", 100.0, 35)):
+            db.store_result(
+                create_test_result(
+                    execution_id=execution_id,
+                    platform="DuckDB",
+                    benchmark=benchmark,
+                    scale_factor=1.0,
+                    geometric_mean_ms=geometric_mean_ms,
+                    timestamp=now - timedelta(days=age_days),
+                )
+            )
+
+        regressions = db.detect_regressions(threshold_pct=10.0, lookback_days=30)
+        trends = db.get_performance_trends("DuckDB", benchmark, 1.0, periods=2, period_days=30)
+        rankings = db.calculate_rankings(benchmark, 1.0, RankingConfig(lookback_days=90))
+
+        assert bool(regressions) is stored
+        assert bool(trends) is stored
+        assert bool(rankings) is stored

@@ -55,6 +55,12 @@ _STORED_TIMING_METHOD_SQL = (
 )
 
 
+def _benchmark_unavailable(benchmark: str) -> bool:
+    from benchbox.core.run_service import unavailable_benchmark_message
+
+    return unavailable_benchmark_message(benchmark) is not None
+
+
 def _validate_backup_table_name(table_name: str) -> str:
     if _BACKUP_TABLE_NAME_PATTERN.fullmatch(table_name) is None:
         raise ValueError(f"Unsafe SQLite backup table name: {table_name!r}")
@@ -675,6 +681,8 @@ class ResultDatabase:
         fetch_mode: str | None = None,
         timing_method: int | None = None,
     ) -> list[PlatformRanking]:
+        if _benchmark_unavailable(benchmark):
+            return []
         config = config or RankingConfig()
 
         cutoff = datetime.now(timezone.utc)
@@ -884,6 +892,8 @@ class ResultDatabase:
         period_days: int = 30,
         variant: ExecutionVariant | None = None,
     ) -> list[PerformanceTrend]:
+        if _benchmark_unavailable(benchmark):
+            return []
         rows = self._variant_rows(platform, benchmark, scale_factor)
         if variant is None and rows:
             variant = rows[0][2]
