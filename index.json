@@ -21567,6 +21567,15 @@
       "status": "open",
       "title": "Record the execution engine that actually ran, starting with the DataFrame platforms"
     },
+    "crr-d2-observed-engine-sql-platforms": {
+      "claim": null,
+      "needs": [
+        "crr-d1-observed-engine-contract-and-dataframe"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Record the observed execution engine on the SQL platforms that declare engines"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],
