@@ -11402,6 +11402,93 @@
       "start_head": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
       "terminal_outcome": "deliver"
     },
+    "tpcdi-foundation": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/tpcdi-foundation",
+      "integration_head": "af413ef6ae1f347a7532a4fe0a3adf1c109e3d6d",
+      "integration_log": [
+        {
+          "at": "2026-11-22T03:55:11Z",
+          "head": "af413ef6ae1f347a7532a4fe0a3adf1c109e3d6d",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-foundation",
+      "lifecycle": "active",
+      "members": [
+        "tpcdi-provenance-record-and-copy-guard-20261121",
+        "tpcdi-07-specification-schema-20261120",
+        "tpcdi-comment-policy-route-for-tpc-files-20261121"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e",
+      "owner_epoch": 0,
+      "owner_generation": "16ce8ad25d8eb63f8daa044f55730d5f",
+      "project_id": "tpcdi-correction-plan-20261120",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "tpcdi-07-specification-schema-20261120": [
+          "benchbox/core/tpcdi/**",
+          "benchbox/sql_compat/**",
+          "benchbox/core/*.py",
+          "_sources/tpc-di/**",
+          "tests/**",
+          "scripts/**",
+          "quality/**",
+          "docs/**",
+          "pyproject.toml",
+          "_project/**",
+          ".github/**",
+          "Makefile",
+          "make/**",
+          "changelog.d/**",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "tpcdi-comment-policy-route-for-tpc-files-20261121": [
+          "scripts/**",
+          "quality/**",
+          "docs/internal/comment-policy.md",
+          "docs/**",
+          "tests/**",
+          ".github/**",
+          "Makefile",
+          "make/**",
+          "_project/**",
+          "changelog.d/**",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "tpcdi-provenance-record-and-copy-guard-20261121": [
+          "_sources/tpc-di/**",
+          "COPYRIGHT.md",
+          "_project/decisions/**",
+          "benchbox/core/tpcdi/**",
+          "tests/**",
+          "scripts/**",
+          "quality/**",
+          ".github/**",
+          "docs/**",
+          "pyproject.toml",
+          "MANIFEST.in",
+          "_project/**",
+          "Makefile",
+          "make/**",
+          "changelog.d/**",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "61e46cd628854022ebea6787b3ad50652bddf8b288f6a010c31b53033bec6068",
+      "start_head": "af413ef6ae1f347a7532a4fe0a3adf1c109e3d6d",
+      "terminal_outcome": "deliver"
+    },
     "tpcdi-quarantine": {
       "accepted_members": {},
       "batch_schema": 2,
