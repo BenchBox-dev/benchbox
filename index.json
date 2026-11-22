@@ -15336,7 +15336,9 @@
     },
     "batch-member-check-refusal-message-20261122": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "dev-loop-local-gates-20261122"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Make batch-member-check name the failing preflight step instead of the stderr tail"
