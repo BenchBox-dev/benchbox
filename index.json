@@ -38763,10 +38763,15 @@
       "title": "Remove Excessive Adjective/Adverb Usage"
     },
     "remove-execution-timeout-minutes-key-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T17:19:57Z",
+        "generation": "fc19dece880043ffa4b8bc131a85aa7f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Remove the config leftovers the unused-timer removal kept: execution.timeout_minutes and the unused memory_gb parameter"
     },
     "remove-or-integrate-legacy-cudf-platform-module": {
