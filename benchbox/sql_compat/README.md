@@ -118,6 +118,23 @@ governance queries on these platforms.
 Every `DDL_OPTIMIZE` rule on such a platform is a governance anchor, so callers
 that enumerate them should use `resolve_all()`.
 
+## Query translation
+
+Query text reaches a platform through one entry point,
+`benchbox.utils.dialect_utils.translate_sql_query`, backed by the SQLGlot fork
+(`_project/decisions/sqlglot-fork-transpilation-plan.md`). A dialect gap the
+translator does not cover is closed by a named fork rewrite applied with
+`apply_rewrite` in the same module, never by text replacement or per-platform
+SQL strings.
+
+- `split_sql_statements(sql, source_dialect)` splits multi-statement scripts
+  before translation.
+- `sql_translation_context()` collects a `SqlTranslationOutcome` per call; the
+  result is recorded in a run's `execution.translation`.
+- Golden corpus areas live in `tests/unit/sql_compat/golden_corpus`.
+- `tests/unit/sql_compat/test_core_sql_text_rewrite.py` flags text-level SQL
+  rewriting in `benchbox/core`; legitimate cases sit in its reviewed allowlist.
+
 ## compat_lint enforcement
 
 `benchbox/sql_compat/inventory.py` walks platform source files and flags DDL
