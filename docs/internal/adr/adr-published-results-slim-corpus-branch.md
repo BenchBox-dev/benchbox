@@ -207,7 +207,9 @@ not make `develop` authoritative for published-only archive bundles.
 ### Corpus rule file set
 
 The corpus-rule module and its data file are vendored together, as one unit,
-under the same sync workflow. Mirror-ordering rule:
+under the same sync workflow. The ordering below is the delivery order the
+corpus rule requires so the slim branch never runs a mismatched rule; it is
+not an owner decision. Mirror-ordering rule:
 
 - The module and its data file always travel in the same mirror pull request;
   neither is mirrored without the other, so the branch never holds a module
