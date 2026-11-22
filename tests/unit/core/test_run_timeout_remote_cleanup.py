@@ -7,13 +7,13 @@ from typing import Any
 import pytest
 
 from benchbox.core import run_service
+from benchbox.core.exceptions import RunTimeoutError
 from benchbox.core.schemas import BenchmarkConfig
 from benchbox.platforms.base.adapter import PlatformAdapter
 from benchbox.utils.run_deadline import (
     RUN_TIMEOUT_OPTION_KEY,
     TIMED_OUT_VALIDATION_STATUS,
     RunDeadline,
-    RunTimeoutError,
     active_run_deadline,
     current_run_deadline,
     register_remote_cleanup,

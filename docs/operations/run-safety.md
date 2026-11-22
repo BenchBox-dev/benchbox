@@ -60,13 +60,15 @@ is dropped, except Snowflake (drops this benchmark's tables and tuning metadata,
 
 ## Generation time estimate
 
-Before TPC-H or TPC-DS data generation, and before TPC-DS query generation, BenchBox prints a rough estimate read from
-`benchbox/core/generation_estimate.json`, which holds wall times measured with `benchbox datagen` (parquet) and `dsqgen`
-on a darwin-arm64 Apple M4 (10 cores, 16 GiB) at commit 4a6fe5496b:
+Before TPC-H or TPC-DS data generation, and before TPC-H or TPC-DS query generation, BenchBox prints a rough estimate
+read from `benchbox/core/generation_estimate.json`, which holds wall times measured with `benchbox run --phases
+generate` (parquet), `qgen` and `dsqgen` on a darwin-arm64 Apple M4 (10 cores, 16 GiB) at commit 93f336032a, with the
+host's one-minute load average below 3 at the start of every measurement:
 
 > Rough estimate: generation will take about {estimate} (measured on {host_class} at scale {scales}{extrapolated_note}).
 
-Data generation was measured at scale 0.01, 0.1, 1 and 10; TPC-DS query generation (all 99 queries) at scale 1, 100,
+Data generation was measured at scale 0.01, 0.1, 1 and 10; TPC-H query generation (all 22 queries) at scale 1, 10, 100
+and 1000; TPC-DS query generation (all 99 queries) at scale 1, 100,
 1000, 3000 and 5000. Between measured scales the estimate interpolates linearly. A scale above the largest measured one
 scales the largest measurement linearly, and the line says so (`; extrapolated for scale 100, above the largest measured
 scale 10`). The figures describe that host class; other hardware will differ. No estimate is printed for benchmarks
@@ -113,6 +115,15 @@ as started, so the normal close of the adapter tries again.
 The warning is shown on every surface that takes a limit: the command line (once per run, from the platform the run
 uses, including a platform chosen interactively), the `warnings` list of the MCP `run_benchmark` and `start_benchmark`
 results, and a log warning from `adapter.run_benchmark(timeout_seconds=...)` in Python.
+
+From Python, `adapter.run_benchmark(timeout_seconds=...)` and `benchmark.generate_data(timeout_seconds=...)` raise
+`RunTimeoutError` when the limit is reached. Import it from the public module:
+
+```python
+from benchbox.core.exceptions import RunTimeoutError
+```
+
+The error carries `timeout_seconds`, `phase`, `query_id` and `detail`. It derives from `Exception`, not `BenchBoxError`.
 
 | Platform | Cancel a statement | Stop a job, session or cluster | Run-started work is known | Implemented |
 |---|---|---|---|---|

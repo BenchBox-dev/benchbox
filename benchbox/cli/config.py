@@ -33,6 +33,7 @@ console = quiet_console
 
 REMOVED_CONFIG_KEYS = (
     "benchmarks.timeout_minutes",
+    "execution.timeout_minutes",
     "execution.power_run.timeout_per_iteration_minutes",
     "execution.concurrent_queries.query_timeout_seconds",
 )

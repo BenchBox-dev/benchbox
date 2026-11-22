@@ -124,6 +124,8 @@ def run_official(
         )
     except click.exceptions.Exit:
         raise
+    except click.UsageError:
+        raise
     except Exception as e:
         fatal(f"Benchmark execution failed: {e}")
         sys.exit(1)

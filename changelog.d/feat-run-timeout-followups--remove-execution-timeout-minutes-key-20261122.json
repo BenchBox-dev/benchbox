@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "before-you-upgrade",
+      "breaking": true,
+      "lead": "execution.timeout_minutes removed",
+      "text": "The execution.timeout_minutes configuration key is removed: it never limited a run. A config file that still sets it loads, and prints that the key is no longer used and has no effect, and to use execution.timeout_seconds to limit a run.",
+      "details": [
+        "ExecutionConfigHelper.optimize_for_system no longer takes the unused memory_gb argument; call it with cpu_cores only."
+      ]
+    }
+  ]
+}
