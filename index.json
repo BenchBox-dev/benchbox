@@ -47791,10 +47791,15 @@
       "title": "TPC-DS and TPC-DS-OBT accept SF 10000 and above, where dsqgen times out on Q9"
     },
     "tpcds-expression-q41-row-count-differs-from-sql": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T17:23:11Z",
+        "generation": "738fd1f2325a4105bf9534fa5939e5b1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fe4873e1ab4511a8ff69ca5f"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DS Q41 on the Polars expression surface returns fewer rows than the DuckDB SQL reference at SF10"
     },
     "tpcds-gate-setup-time": {
