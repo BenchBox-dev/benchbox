@@ -37,3 +37,14 @@ Site and documentation sentence: "BenchBox's TPC-DI ETL is based on Shannon Barr
 ## Guard
 
 `FORBIDDEN_HASHES.json` records the SHA-256 of every non-empty file under the project's `src/tools/**` at the commit above, grouped as generator and tools, audit snapshots and DIGen output, and of the four files of `Appendix_v1.1.0/`. `tests/unit/core/tpcdi/test_provenance_guard.py` fails if a file from the first three groups is in the tree outside `benchbox/_binaries/tpc-di/tools/`. The `Appendix_v1.1.0/` hashes are for comparison with the shipped appendix SQL and are not forbidden.
+
+## Appendix SQL comparison
+
+The project's copy of each appendix file next to the shipped file (`benchbox/_binaries/tpc-di/`, an unofficial shared copy; see `_sources/README.md`). BenchBox takes nothing from the project's copy; the comparison only records whether they are identical.
+
+| File | Project's copy (SHA-256) | Shipped (SHA-256) | Identical |
+|------|--------------------------|-------------------|-----------|
+| `tpcdi_audit.sql` | `32eb0f55a08b8cf5a906d4aff563539d42c873c72d6dc662798218b2bc3107fc` | `32eb0f55a08b8cf5a906d4aff563539d42c873c72d6dc662798218b2bc3107fc` | yes |
+| `tpcdi_validation.sql` | `9ee9ef8144c7f53bb6fb0d4ac489dda2379e7aa1b8e24d7a12df1539b7f86c02` | `9ee9ef8144c7f53bb6fb0d4ac489dda2379e7aa1b8e24d7a12df1539b7f86c02` | yes |
+| `tpcdi_visibility_1.sql` | `a95eb53868fa42cf234ecf6899fa3ce3a87839a66f21945f87a9ff0d94e58526` | `209454549598d8147a2a0eb9ced8bd86eb3548f32fc90c1765975b0076e8bde7` | no (5164 and 5028 bytes) |
+| `tpcdi_visibility_2.sql` | `a22645d5c9d2095d8d77549db3e7ecbc8d5d5417e8f0973fbd92150347ea894a` | `a22645d5c9d2095d8d77549db3e7ecbc8d5d5417e8f0973fbd92150347ea894a` | yes |

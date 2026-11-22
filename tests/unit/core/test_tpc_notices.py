@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import re
 from pathlib import Path
 
 import pytest
@@ -52,3 +54,75 @@ def test_query_catalog_resolves_templates_beside_notices() -> None:
     assert len(list_query_ids("tpcds")) == 99
     assert query_source_path("tpcds", "1") == "_sources/tpc-ds/query_templates/query1.tpl"
     assert "select" in get_sql_render("tpcds", "1").sql.lower()
+
+
+TPC_LEGEND = "THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC."
+TPCDI_SOURCE_DIR = ROOT / "_sources" / "tpc-di"
+TPCDI_RUNTIME_DIR = ROOT / "benchbox" / "_binaries" / "tpc-di"
+TPCDI_EULA_SHA256 = "017bd9dbc4c332ac433fc0cc018f3691b330f8aca82a05a20274512de423576e"
+TPCDI_SHIPPED_FILES = (
+    "EULA.txt",
+    "NOTICE.txt",
+    "tpcdi_audit.sql",
+    "tpcdi_validation.sql",
+    "tpcdi_visibility_1.sql",
+    "tpcdi_visibility_2.sql",
+)
+
+
+def _legend_is_line_one(notice: Path) -> bool:
+    lines = notice.read_text(encoding="utf-8").splitlines()
+    return bool(lines) and lines[0] == TPC_LEGEND
+
+
+@pytest.mark.parametrize("directory", [TPCDI_RUNTIME_DIR, TPCDI_SOURCE_DIR], ids=["runtime", "source-tree"])
+def test_tpcdi_notice_has_the_legend_on_line_one(directory: Path) -> None:
+    assert _legend_is_line_one(directory / "NOTICE.txt")
+
+
+def test_tpcdi_notice_check_fails_when_the_legend_is_removed(tmp_path: Path) -> None:
+    original = (TPCDI_RUNTIME_DIR / "NOTICE.txt").read_text(encoding="utf-8")
+    stripped = tmp_path / "NOTICE.txt"
+    stripped.write_text(original.removeprefix(TPC_LEGEND + "\n"), encoding="utf-8")
+    assert not _legend_is_line_one(stripped)
+    moved = tmp_path / "MOVED.txt"
+    moved.write_text("TPC-DI notice\n" + original, encoding="utf-8")
+    assert not _legend_is_line_one(moved)
+
+
+@pytest.mark.parametrize("filename", TPCDI_SHIPPED_FILES)
+def test_tpcdi_source_and_runtime_files_are_byte_identical(filename: str) -> None:
+    source = TPCDI_SOURCE_DIR / filename
+    runtime = TPCDI_RUNTIME_DIR / filename
+    assert source.is_file(), f"missing: {source}"
+    assert runtime.is_file(), f"missing: {runtime}"
+    assert runtime.read_bytes() == source.read_bytes()
+
+
+def test_tpcdi_eula_is_the_published_text() -> None:
+    assert hashlib.sha256((TPCDI_RUNTIME_DIR / "EULA.txt").read_bytes()).hexdigest() == TPCDI_EULA_SHA256
+
+
+def test_tpcdi_eula_wording_equals_the_tpch_eula() -> None:
+    def words(path: Path) -> list[str]:
+        text = path.read_bytes().decode("cp1252", errors="replace")
+        text = re.sub(r"[\u2018\u2019\u201c\u201d\ufffd\"']", "", text)
+        text = re.sub(r"(?m)^\s*(\d+|[a-z])[.\t ]", "", text)
+        return re.sub(r"\W+", " ", text).lower().split()
+
+    assert words(TPCDI_RUNTIME_DIR / "EULA.txt") == words(CANONICAL_TPCH_EULA)
+
+
+def test_tpcdi_notice_names_the_unofficial_appendix_source() -> None:
+    text = (TPCDI_RUNTIME_DIR / "NOTICE.txt").read_text(encoding="utf-8")
+    assert "unofficial third-party copy" in text
+    assert "18eca39b128f5fcc86cbc9c1e53e30ed0e685fa7" in text
+    assert TPCDI_EULA_SHA256 in text
+    for filename in TPCDI_SHIPPED_FILES[2:]:
+        digest = hashlib.sha256((TPCDI_RUNTIME_DIR / filename).read_bytes()).hexdigest()
+        assert f"{digest}  {filename}" in text
+
+
+def test_readme_licence_section_carries_the_legend() -> None:
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert TPC_LEGEND in text.replace("\n", " ")
