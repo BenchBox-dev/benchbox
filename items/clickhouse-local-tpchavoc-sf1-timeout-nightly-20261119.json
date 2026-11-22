@@ -4,7 +4,7 @@
     "Fix merged with a test that would have caught it where practical, or an owner decision recorded.",
     "The cell passes in two consecutive nightly trunk UAT runs with no rerun (run ids recorded)."
   ],
-  "context": "2026-11-19: root cause and fix #4396 (merge 5637766a). benchbox/platforms/clickhouse/statement_settings.py forced the spilling grace hash join on tpchavoc 5_v7 as well as 5_v8; only 5_v8 exceeds the 8 GiB query limit. Local SF1 power phase 818 s -> 123 s; 5_v7 167-221 s x4 -> 12-14 s; default join passes 5_v7 under a 3 GiB limit. Faulthandler dumps showed one long chdb query, not a hang. Ruled out: chdb 4.1.6 vs 4.5.0 (both ~200 s for 5_v7 under grace hash), SQL translation (all 220 tpchavoc final SQL identical 50fedc71 vs develop). The setting predates 50fedc71; best reading is the cell was already ~418 s and a slower hosted runner pushed it past 1200 s. Remaining: two consecutive green nightlies.",
+  "context": "2026-11-19: root cause and fix #4396 (merge 5637766a). benchbox/platforms/clickhouse/statement_settings.py forced the spilling grace hash join on tpchavoc 5_v7 as well as 5_v8; only 5_v8 exceeds the 8 GiB query limit. Local SF1 power phase 818 s -> 123 s; 5_v7 167-221 s x4 -> 12-14 s; default join passes 5_v7 under a 3 GiB limit. Faulthandler dumps showed one long chdb query, not a hang. Ruled out: chdb 4.1.6 vs 4.5.0 (both ~200 s for 5_v7 under grace hash), SQL translation (all 220 tpchavoc final SQL identical 50fedc71 vs develop). The setting predates 50fedc71; best reading is the cell was already ~418 s and a slower hosted runner pushed it past 1200 s. Remaining: two consecutive green nightlies.\n\n2026-11-22 closing evidence, read live from GitHub: the shard passed on attempt 1, with no rerun, in three consecutive scheduled trunk UAT runs: 44712884700 (2026-11-20, 03b2c0186e), 44888589677 (2026-11-21, 3e09d4f43b) and 45007293835 (2026-11-22, 93f336032a). Owner decision 2026-11-22 (choice dialog): finish this item with the three run ids recorded.",
   "description": "Nightly trunk UAT 44500662749 (develop 3d7619ee, 2026-11-19) stage 1 datafusion-clickhouse-local: clickhouse-local tpchavoc 1.0 hit the 1200 s UAT timeout twice (in-harness retry at 11:37), peak RSS 2.22 GiB, no subprocess output captured. tpchavoc 0.01 and 0.1 passed in 23 s and 43 s. The cell passed in the previous nightly 44278856759 (50fedc71) and in release-v2 44417177182 (v0.5.2rc3). A hang or a large slowdown on develop between 50fedc71 and 3d7619ee is likely; chdb-embedded-server-recursive-mutex-flake may be related.\n\nDecision gate: raising the 1200 s timeout or pruning the cell needs explicit owner approval; fixing a BenchBox regression does not.\n\nGuardrails: no timeout increase, retry or prune to make it green; reproduce locally through make heavy-run with the same command (benchbox run --platform clickhouse-local --benchmark tpchavoc --scale 1.0 --phases load,power) and capture a stack dump (py-spy or faulthandler) of the hang before fixing; bisect develop commits between 50fedc71 and 3d7619ee touching clickhouse-local, chdb, tpchavoc or the load path.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/actions/runs/44500662749",
@@ -26,6 +26,14 @@
       "op": "update",
       "op_id": "fad02f08b5f84dd3bfdaaf75dab39777",
       "session_id": "ad8ff63c31d0492faa7526a81e19db83"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3",
+      "at": "2026-11-22T21:59:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e08211a0a9094441bac6d7de2bf7a66f",
+      "session_id": "80e0302416054591a591cf3adefee19a"
     }
   ]
 }
