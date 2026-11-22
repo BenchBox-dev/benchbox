@@ -1,0 +1,1 @@
+{"schema":1,"internal":"batch-finish and the other batch tooling read the tracker again from the start, up to five times, when its revision changes between paged reads, instead of refusing at once with E_CURSOR_STALE."}
