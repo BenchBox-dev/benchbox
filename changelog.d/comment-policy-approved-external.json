@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "Let the comment policy accept new external exclusions for paths on an owner-approved list kept in a soundness-protected file, and skip files under them; the list starts with the TPC-DI directories; no user-facing effect"}
