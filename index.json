@@ -37235,15 +37235,10 @@
       "title": "Confirm vendor pricing data may be redistributed in the BenchBox wheel"
     },
     "primary-clone-agent-skills-stale-20261122": {
-      "claim": {
-        "expires_at": "2026-11-23T21:00:00Z",
-        "generation": "3e6d3473e28b415c83b21ad225a370ad",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Refresh the primary clone's stale .agents/skills copy (owner action)"
     },
     "primary-clone-agents-skills-materialization-stale-20261115": {
