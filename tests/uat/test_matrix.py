@@ -221,11 +221,15 @@ def test_missing_benchmarks_from_include_empty_when_all_known():
 
 def test_missing_benchmarks_from_include_matches_resolve_benchmarks_drop():
     benchmarks = matrix.load_benchmarks()
-    include = ["tpch", "totally_bogus_benchmark_xyz"]
+    include = ["tpch", "tpcdi", "totally_bogus_benchmark_xyz"]
     resolved = matrix.resolve_benchmarks(include=include, benchmarks=benchmarks)
     missing = matrix.missing_benchmarks_from_include(include, benchmarks)
-    assert set(include) == set(resolved) | set(missing)
+    unavailable = matrix.unavailable_benchmarks_from_include(include, benchmarks=benchmarks)
+    assert set(include) == set(resolved) | set(missing) | set(unavailable)
     assert set(resolved) & set(missing) == set()
+    assert set(resolved) & set(unavailable) == set()
+    assert set(missing) & set(unavailable) == set()
+    assert unavailable == ["tpcdi"]
 
 
 def test_known_platform_ids_covers_curated_groups():

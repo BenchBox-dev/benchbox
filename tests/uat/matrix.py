@@ -263,6 +263,23 @@ def missing_benchmarks_from_include(
     return missing
 
 
+def unavailable_benchmarks_from_include(
+    include: Iterable[str],
+    exclude: Iterable[str] = (),
+    benchmarks: dict[str, BenchmarkInfo] | None = None,
+) -> list[str]:
+    if benchmarks is None:
+        benchmarks = load_benchmarks()
+    excluded = set(exclude)
+    seen: set[str] = set()
+    unavailable: list[str] = []
+    for bid in include:
+        if bid in benchmarks and bid not in excluded and bid not in seen and unavailable_benchmark_message(bid):
+            seen.add(bid)
+            unavailable.append(bid)
+    return unavailable
+
+
 def smoke_scale_for(benchmark_id: str, info: BenchmarkInfo | None = None) -> float:
     if info is None:
         info = load_benchmarks()[benchmark_id]
