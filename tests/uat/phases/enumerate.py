@@ -14,7 +14,7 @@ from tests.uat.matrix import (
     missing_platforms_from_include,
     resolve_benchmarks,
     resolve_platforms,
-    unavailable_benchmarks_from_include,
+    unavailable_benchmarks,
 )
 
 REGISTRY_PRUNE_STATUS = "pruned-registry"
@@ -111,11 +111,14 @@ def enumerate_cells_with_pruning(
                 _registry_absent_rows(platform=platform, benchmark=missing_benchmark, requested=requested)
             )
 
-    unavailable_benchmarks = unavailable_benchmarks_from_include(
-        config.benchmarks.include, config.benchmarks.exclude, benchmarks
+    unavailable_list = unavailable_benchmarks(
+        groups=config.benchmarks.groups if config.benchmarks.groups is not None else benchmark_groups_default,
+        include=config.benchmarks.include,
+        exclude=config.benchmarks.exclude,
+        benchmarks=benchmarks,
     )
-    accounting_benchmarks.extend(unavailable_benchmarks)
-    for unavailable_benchmark in unavailable_benchmarks:
+    accounting_benchmarks.extend(unavailable_list)
+    for unavailable_benchmark in unavailable_list:
         for platform in accounting_platforms:
             compatibility_pruned.extend(
                 _unavailable_rows(platform=platform, benchmark=unavailable_benchmark, requested=requested)

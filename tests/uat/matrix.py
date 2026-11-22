@@ -222,14 +222,11 @@ CATEGORY_GROUPS: dict[str, tuple[str, ...]] = {
 CATEGORY_GROUPS["all"] = tuple(CATEGORY_ORDER)
 
 
-def resolve_benchmarks(
-    groups: Iterable[str] = (),
-    include: Iterable[str] = (),
-    exclude: Iterable[str] = (),
-    benchmarks: dict[str, BenchmarkInfo] | None = None,
+def _select_benchmarks(
+    groups: Iterable[str],
+    include: Iterable[str],
+    benchmarks: dict[str, BenchmarkInfo],
 ) -> list[str]:
-    if benchmarks is None:
-        benchmarks = load_benchmarks()
     seen: set[str] = set()
     resolved: list[str] = []
     for group in groups:
@@ -244,8 +241,23 @@ def resolve_benchmarks(
         if bid in benchmarks and bid not in seen:
             seen.add(bid)
             resolved.append(bid)
+    return resolved
+
+
+def resolve_benchmarks(
+    groups: Iterable[str] = (),
+    include: Iterable[str] = (),
+    exclude: Iterable[str] = (),
+    benchmarks: dict[str, BenchmarkInfo] | None = None,
+) -> list[str]:
+    if benchmarks is None:
+        benchmarks = load_benchmarks()
     excluded = set(exclude)
-    return [b for b in resolved if b not in excluded and unavailable_benchmark_message(b) is None]
+    return [
+        b
+        for b in _select_benchmarks(groups, include, benchmarks)
+        if b not in excluded and unavailable_benchmark_message(b) is None
+    ]
 
 
 def missing_benchmarks_from_include(
@@ -263,21 +275,20 @@ def missing_benchmarks_from_include(
     return missing
 
 
-def unavailable_benchmarks_from_include(
-    include: Iterable[str],
+def unavailable_benchmarks(
+    groups: Iterable[str] = (),
+    include: Iterable[str] = (),
     exclude: Iterable[str] = (),
     benchmarks: dict[str, BenchmarkInfo] | None = None,
 ) -> list[str]:
     if benchmarks is None:
         benchmarks = load_benchmarks()
     excluded = set(exclude)
-    seen: set[str] = set()
-    unavailable: list[str] = []
-    for bid in include:
-        if bid in benchmarks and bid not in excluded and bid not in seen and unavailable_benchmark_message(bid):
-            seen.add(bid)
-            unavailable.append(bid)
-    return unavailable
+    return [
+        bid
+        for bid in _select_benchmarks(groups, include, benchmarks)
+        if bid not in excluded and unavailable_benchmark_message(bid)
+    ]
 
 
 def smoke_scale_for(benchmark_id: str, info: BenchmarkInfo | None = None) -> float:

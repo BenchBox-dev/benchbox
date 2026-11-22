@@ -28,7 +28,7 @@ from benchbox.core.run_service import (
 )
 from benchbox.core.schemas import BenchmarkConfig
 from benchbox.core.tpcdi.benchmark import TPCDIBenchmark
-from tests.fixtures.result_dict_fixtures import make_benchmark_results
+from tests.fixtures.result_dict_fixtures import make_benchmark_results, make_v2_result_dict
 from tests.uat import matrix
 from tests.unit.mcp.public_api import get_tool, get_tool_functions
 
@@ -268,6 +268,27 @@ class TestRegistry:
 
         assert refused == document_only == {"tpcdi"}
 
+    def test_group_selected_unavailable_benchmark_is_recorded_as_pruned(self) -> None:
+        from tests.uat.config import validate_config
+        from tests.uat.phases import enumerate as enum_phase
+
+        config = validate_config(
+            {
+                "name": "group-accounting",
+                "platforms": {"include": ["duckdb"]},
+                "benchmarks": {"groups": ["tpc"]},
+                "scales": {"rungs": [0.01]},
+            }
+        )
+
+        result = enum_phase.enumerate_cells_with_pruning(config)
+
+        assert "tpcdi" not in {cell.benchmark for cell in result.cells}
+        rows = [row for row in result.compatibility_pruned if row.benchmark == "tpcdi"]
+        assert rows
+        assert {row.rule_id for row in rows} == {"benchmark-unavailable"}
+        assert all(row.reason == OWNER_MESSAGE for row in rows)
+
     def test_uat_resolver_omits_tpcdi(self) -> None:
         benchmarks = matrix.load_benchmarks()
 
@@ -466,3 +487,64 @@ class TestLegacyBundles:
 
         assert result.exit_code == 1
         assert OWNER_LEGACY_WORDING in _flat(result.output)
+
+
+def _timed_bundle(directory: Path, name: str, benchmark_id: str, benchmark_name: str, stamp: str) -> Path:
+    queries = [
+        {"id": "Q1", "ms": 100.0, "rows": 1, "iter": 1, "stream": 0, "run_type": "measurement", "status": "SUCCESS"}
+    ]
+    payload = make_v2_result_dict(
+        benchmark_id=benchmark_id, benchmark_name=benchmark_name, queries=queries, timestamp=stamp
+    )
+    path = directory / name
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
+class TestOtherComparisonPaths:
+    @pytest.mark.parametrize(
+        ("benchmark_id", "benchmark_name", "expected_runs"),
+        [("tpcdi", "TPC-DI", 0), ("tpch", "TPC-H", 2)],
+    )
+    def test_results_directory_analytics(
+        self, tmp_path: Path, benchmark_id: str, benchmark_name: str, expected_runs: int
+    ) -> None:
+        from benchbox.core.results.analytics import aggregate_results, get_performance_trends
+
+        _timed_bundle(tmp_path, "a.json", benchmark_id, benchmark_name, "2026-01-01T12:00:00")
+        _timed_bundle(tmp_path, "b.json", benchmark_id, benchmark_name, "2026-01-02T12:00:00")
+
+        aggregates = aggregate_results(tmp_path)
+        trends = get_performance_trends(tmp_path)
+
+        assert aggregates.get("summary", {}).get("total_runs", 0) == expected_runs
+        assert len(trends.get("data_points", [])) == expected_runs
+
+    def test_regression_detection_skips_withdrawn_bundles(self, tmp_path: Path) -> None:
+        from benchbox.core.results.analytics import detect_regressions
+
+        _timed_bundle(tmp_path, "a.json", "tpcdi", "TPC-DI", "2026-01-01T12:00:00")
+        _timed_bundle(tmp_path, "b.json", "tpcdi", "TPC-DI", "2026-01-02T12:00:00")
+
+        report = detect_regressions(tmp_path)
+
+        assert report["status"] != "ok"
+        assert report["regressions"] == []
+
+    def test_compare_plans_refuses(self, tmp_path: Path) -> None:
+        first = _legacy_bundle(tmp_path, "a.json")
+        second = _legacy_bundle(tmp_path, "b.json")
+
+        result = CliRunner().invoke(cli, ["compare-plans", "--run1", str(first), "--run2", str(second)])
+
+        assert result.exit_code == 1
+        assert OWNER_LEGACY_WORDING in _flat(result.output)
+
+    def test_platform_comparison_refuses(self, tmp_path: Path) -> None:
+        from benchbox.core.analysis.comparison import PlatformComparison
+
+        first = _timed_bundle(tmp_path, "a.json", "tpcdi", "TPC-DI", "2026-01-01T12:00:00")
+        second = _timed_bundle(tmp_path, "b.json", "tpcdi", "TPC-DI", "2026-01-02T12:00:00")
+
+        with pytest.raises(ValueError, match="Legacy TPC-DI result"):
+            PlatformComparison.from_files([first, second])

@@ -66,3 +66,21 @@ def legacy_tpcdi_note(result: Any) -> str | None:
         return None
     note = metadata.get(LEGACY_METADATA_KEY)
     return str(note) if note else None
+
+
+def is_legacy_tpcdi_bundle(data: Any) -> bool:
+    from benchbox.core.results.loader import reconstruct_benchmark_results
+
+    try:
+        return legacy_tpcdi_note(reconstruct_benchmark_results(data)) is not None
+    except Exception:
+        if not isinstance(data, Mapping):
+            return False
+        benchmark = data.get("benchmark")
+        execution = data.get("execution")
+        candidates = (
+            benchmark.get("id") if isinstance(benchmark, Mapping) else None,
+            benchmark.get("name") if isinstance(benchmark, Mapping) else None,
+            execution.get("benchmark_id") if isinstance(execution, Mapping) else None,
+        )
+        return any(is_tpcdi_id(candidate) for candidate in candidates)

@@ -47,7 +47,7 @@ from benchbox.core.results.schema_policy import (
     is_loader_supported_result_schema,
     result_schema_version_value,
 )
-from benchbox.core.results.tpcdi_audit import LEGACY_TPCDI_REFUSAL, is_tpcdi_id, legacy_tpcdi_note
+from benchbox.core.results.tpcdi_audit import LEGACY_TPCDI_REFUSAL, is_legacy_tpcdi_bundle
 from benchbox.core.runtime_paths import resolve_results_dir
 from benchbox.utils.cloud_storage import create_path_handler, is_cloud_path
 from benchbox.validation.bundle import COMPANION_SUFFIXES
@@ -718,24 +718,6 @@ class ResultExporter:
         outcome["warning"] = " ".join(w for w in (outcome["warning"], power["warning"]) if w)
         return outcome
 
-    @staticmethod
-    def _is_legacy_tpcdi_bundle(data: dict[str, Any]) -> bool:
-        from benchbox.core.results.loader import reconstruct_benchmark_results
-
-        try:
-            return legacy_tpcdi_note(reconstruct_benchmark_results(data)) is not None
-        except Exception:
-            if not isinstance(data, dict):
-                return False
-            benchmark = data.get("benchmark")
-            execution = data.get("execution")
-            candidates = (
-                benchmark.get("id") if isinstance(benchmark, dict) else None,
-                benchmark.get("name") if isinstance(benchmark, dict) else None,
-                execution.get("benchmark_id") if isinstance(execution, dict) else None,
-            )
-            return any(is_tpcdi_id(candidate) for candidate in candidates)
-
     def compare_results(self, baseline_path: Path, current_path: Path) -> dict[str, Any]:
         baseline_result = self.load_result_from_file(baseline_path)
         current_result = self.load_result_from_file(current_path)
@@ -748,7 +730,7 @@ class ResultExporter:
             }
 
         for loaded in (baseline_result, current_result):
-            if self._is_legacy_tpcdi_bundle(loaded["data"]):
+            if is_legacy_tpcdi_bundle(loaded["data"]):
                 return {
                     "error": LEGACY_TPCDI_REFUSAL,
                     "error_code": "VALIDATION_ERROR",
