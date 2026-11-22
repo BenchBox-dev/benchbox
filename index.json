@@ -12472,7 +12472,8 @@
     },
     "tpcdi-source": {
       "accepted_members": {
-        "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120": "2d94734a5bb1bb8a70afb9ce9ec81fcf9ecd5309"
+        "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120": "2d94734a5bb1bb8a70afb9ce9ec81fcf9ecd5309",
+        "tpcdi-bundle-tpc-di-tools-20261121": "12c11c70351f99283f10c2032dde6a0754360b7f"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -12508,10 +12509,30 @@
           ],
           "integration_head": "8f56a1625bc742bc7cf0bac2dde2211f6945f693",
           "integration_seq": 1
+        },
+        "tpcdi-bundle-tpc-di-tools-20261121": {
+          "accepted_head": "12c11c70351f99283f10c2032dde6a0754360b7f",
+          "changed_files": [
+            "COPYRIGHT.md",
+            "README.md",
+            "_project/inert-doc-readers.json",
+            "benchbox/_binaries/SHA256MANIFEST.json",
+            "benchbox/_binaries/tpc-di/tools/EULA.txt",
+            "benchbox/_binaries/tpc-di/tools/PDGF-LICENSE.txt",
+            "benchbox/_binaries/tpc-di/tools/PDGF-THIRD-PARTY-LICENSE.txt",
+            "benchbox/_binaries/tpc-di/tools/SOURCING.md",
+            "benchbox/_binaries/tpc-di/tools/TPC-DI_Tools_v1.1.0.zip",
+            "benchbox/core/tpcdi/tools.py",
+            "changelog.d/feat-tpcdi-tools-archive.json",
+            "quality/comment-cleanup-scope.json",
+            "tests/unit/core/tpcdi/test_tools_bundle.py"
+          ],
+          "integration_head": "bb7c7f68d4364ac9eeb62387ebf5a4392fb9e80c",
+          "integration_seq": 5
         }
       },
       "integration_branch": "feat/tpcdi-source",
-      "integration_head": "7556bb485df5577558818b6ee88abe8fcc975cdc",
+      "integration_head": "bb7c7f68d4364ac9eeb62387ebf5a4392fb9e80c",
       "integration_log": [
         {
           "at": "2026-11-22T07:11:35Z",
@@ -12579,6 +12600,15 @@
           "op_id": "6d4bf62684d74c18a5e455d648015427",
           "previous_head": "7fb82540ea6a6ec9fa1202d3a569c5e95a859ec3",
           "seq": 4
+        },
+        {
+          "at": "2026-11-22T16:27:29Z",
+          "head": "bb7c7f68d4364ac9eeb62387ebf5a4392fb9e80c",
+          "kind": "prepare",
+          "member": "tpcdi-bundle-tpc-di-tools-20261121",
+          "op_id": "a135330e92554a078df3f1232d6f83f9",
+          "previous_head": "7556bb485df5577558818b6ee88abe8fcc975cdc",
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-source",
@@ -47046,18 +47076,13 @@
       "title": "TPC-DI step 31: Results Explorer shows TPC_DI_RPS and phase throughputs (benchbox-site, with the core read-model check)"
     },
     "tpcdi-bundle-tpc-di-tools-20261121": {
-      "claim": {
-        "expires_at": "2026-11-23T16:18:40Z",
-        "generation": "e97a5d2f9e944098befa9de3085d6d2b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120",
         "tpcdi-owner-action-place-official-archives-20261121"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 10: ship the official TPC-DI tools archive (DIGen and PDGF) byte-identical, with licences and a sourcing file"
     },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
