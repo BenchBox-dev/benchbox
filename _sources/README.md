@@ -101,13 +101,16 @@ and the specification's audit (Appendix A), validation (Appendix B) and visibili
 `tpcdi_audit.sql`, `tpcdi_validation.sql`, `tpcdi_visibility_1.sql`, `tpcdi_visibility_2.sql`.
 The SQL files are never edited. `benchbox/core/tpcdi/appendix.py` translates them at load time with the
 SQLGlot fork through `translate_sql_query`, the entry point other BenchBox benchmarks use, reading them as the
-`postgres` dialect and emitting the target platform's dialect (an unknown platform is refused). The one
-pre-step is to remove the header's literal placeholder `FROM DUMMY TABLE`, which is not SQL (the parser reads
-it as a table named `DUMMY`); that is the header table's `SQLSERVER <blank>` row, and its count is recorded.
+`postgres` dialect and emitting the target platform's dialect (an unknown platform is refused). The
+translation is the dialect translation that clause 3.4.11.1.1 of the specification permits as minor
+modifications, including date expressions (c), string concatenation (n) and table-less queries (o); the
+translator's outcomes are recorded through the standard translation recording
+(`sql_translation_context`). The one pre-step is to remove the header's literal placeholder
+`FROM DUMMY TABLE`, which is not SQL (the parser reads it as a table named `DUMMY`); its count is recorded.
 The header placeholder `[||]` appears only inside the header comment and needs no pre-step. The labelled
-duration `Date-1 day` in `tpcdi_audit.sql` is parsed as `Date - 1` with the alias `day`; this is the
-translator's reading, not a rule from the header table. Each result records the source dialect, target
-dialect, pre-step and notes.
+duration `Date-1 day` in `tpcdi_audit.sql` is parsed by the translator as `Date - 1` with the alias `day`,
+which equals a one-day subtraction on DuckDB (tested); each later platform needs the same proof. The
+translated output is pinned in the golden translation corpus (`area_tpcdi_appendix`).
 
 **The appendix SQL is an unofficial shared copy.** The TPC site offers no separate Appendix download.
 The files are the copy shared by the abroniewski/TPC-DI-MS-SQL-Benchmark repository at commit

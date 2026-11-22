@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import tempfile
 from datetime import date
 from pathlib import Path
 
@@ -12,11 +13,15 @@ from benchbox.core.tpcdi.appendix import (
     APPENDIX_FILES,
     load_all_appendix_sql,
     load_appendix_sql,
-    split_statements,
     stored_sha256,
 )
-from benchbox.core.tpcdi.schema import TPCDISchemaManager
-from benchbox.utils.dialect_utils import UnknownSqlDialectError
+from benchbox.core.tpcdi.benchmark import TPCDIBenchmark
+from benchbox.platforms.duckdb import DuckDBAdapter
+from benchbox.utils.dialect_utils import (
+    UnknownSqlDialectError,
+    sql_translation_context,
+    summarize_sql_translation_outcomes,
+)
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -67,10 +72,9 @@ def test_unknown_platform_is_refused(platform: str):
         load_appendix_sql("audit", platform)
 
 
-def test_audit_translation_record_for_duckdb():
+def test_audit_load_records_the_placeholder_pre_step_and_dialects():
     loaded = load_appendix_sql("audit", "duckdb")
     raw = appendix.appendix_path("audit").read_text(encoding="utf-8")
-    assert loaded.translator == "sqlglot"
     assert loaded.source_dialect == "postgres"
     assert loaded.target_dialect == "duckdb"
     assert loaded.stored_sha256 == SHARED_COPY_SHA256["audit"]
@@ -79,15 +83,19 @@ def test_audit_translation_record_for_duckdb():
     assert step.token == "FROM DUMMY TABLE"
     assert step.replacement == ""
     assert step.occurrences == raw.upper().count("FROM DUMMY TABLE") == 103
-    assert step.header_table_row == "SQLSERVER <blank>"
-    assert loaded.notes == (appendix.DATE_DURATION_NOTE,)
-    assert "Date - 1 AS day" in loaded.sql
     assert "DUMMY TABLE" not in loaded.sql.upper()
-    record = loaded.translation_record()
-    assert record["source_dialect"] == "postgres"
-    assert record["target_dialect"] == "duckdb"
-    assert record["pre_steps"][0]["occurrences"] == 103
-    assert record["notes"] == [appendix.DATE_DURATION_NOTE]
+
+
+def test_translation_is_recorded_by_the_standard_outcome_mechanism():
+    with sql_translation_context(strict=True) as outcomes:
+        load_appendix_sql("audit", "duckdb")
+        load_appendix_sql("validation", "snowflake")
+    summary = summarize_sql_translation_outcomes(outcomes)
+    assert summary["status"] == "success"
+    assert summary["translators"] == ["sqlglot"]
+    assert summary["source_dialects"] == ["postgres"]
+    assert summary["target_dialects"] == ["duckdb", "snowflake"]
+    assert summary["attempt_count"] == 2
 
 
 def test_platform_names_resolve_to_the_fork_dialect():
@@ -95,44 +103,43 @@ def test_platform_names_resolve_to_the_fork_dialect():
     assert load_appendix_sql("validation", "snowflake").target_dialect == "snowflake"
 
 
-def test_files_without_placeholders_record_no_pre_step_or_note():
+def test_files_without_placeholders_record_no_pre_step():
     for name in ("validation", "visibility_1", "visibility_2"):
-        loaded = load_appendix_sql(name, "duckdb")
-        assert loaded.pre_steps == ()
-        assert loaded.notes == ()
+        assert load_appendix_sql(name, "duckdb").pre_steps == ()
 
 
-def test_date_minus_integer_is_one_day_on_duckdb():
-    value = duckdb.connect(":memory:").execute("select DATE '2020-03-01' - 1 as day").fetchone()[0]
-    assert value == date(2020, 2, 29)
-
-
-def test_statement_counts():
+def test_statement_counts_use_the_standard_splitter():
     for name, expected in EXPECTED_STATEMENTS.items():
         assert len(load_appendix_sql(name).statements()) == expected
 
 
-def test_split_statements_ignores_semicolons_in_quotes_and_comments():
-    line_comment = "-" * 2 + " c; d\n"
-    block_comment = "/" + "* e; f *" + "/"
-    sql = f"select 'a;b' as x; {line_comment}{block_comment} select 2;\n{block_comment}\n"
-    assert split_statements(sql) == ["select 'a;b' as x", f"{line_comment}{block_comment} select 2"]
+def test_translated_date_expression_equals_a_one_day_subtraction_on_duckdb():
+    connection = duckdb.connect(":memory:")
+    try:
+        translated = load_appendix_sql("audit", "duckdb").sql
+        assert "Date - 1 AS day" in translated
+        value = connection.execute("select DATE '2020-03-01' - 1 as day").fetchone()[0]
+        interval = connection.execute("select DATE '2020-03-01' - INTERVAL 1 DAY as day").fetchone()[0]
+    finally:
+        connection.close()
+    assert value == date(2020, 2, 29)
+    assert interval.date() == value
 
 
 @pytest.fixture(scope="module")
 def schema_connection():
-    connection = duckdb.connect(":memory:")
-    TPCDISchemaManager().create_schema(connection, "duckdb")
+    adapter = DuckDBAdapter(database_path=":memory:")
+    connection = adapter.create_connection()
+    benchmark = TPCDIBenchmark(scale_factor=3, output_dir=tempfile.mkdtemp(prefix="tpcdi_appendix_bind_"))
+    adapter.create_schema(benchmark, connection)
     yield connection
     connection.close()
 
 
 @pytest.mark.parametrize("name", list(APPENDIX_FILES))
-def test_every_statement_binds_against_the_specification_schema_on_duckdb(schema_connection, name: str):
+def test_every_statement_binds_against_the_adapter_created_schema_on_duckdb(schema_connection, name: str):
     loaded = load_appendix_sql(name, "duckdb")
     statements = loaded.statements()
     assert len(statements) == EXPECTED_STATEMENTS[name]
     for statement in statements:
         schema_connection.execute(statement)
-    assert loaded.source_dialect == "postgres"
-    assert loaded.target_dialect == "duckdb"
