@@ -15235,6 +15235,13 @@
       "status": "done",
       "title": "Add the absolute-path rule to the batch member brief template in the skill catalog"
     },
+    "batch-member-check-refusal-message-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Make batch-member-check name the failing preflight step instead of the stderr tail"
+    },
     "batch-member-dispatch-prompt-20261113": {
       "claim": null,
       "needs": [
