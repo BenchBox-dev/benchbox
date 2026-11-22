@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from io import StringIO
+from pathlib import Path
 
 import pytest
+from click.testing import CliRunner
 from rich.console import Console
 
 import benchbox.cli.benchmarks as bench_mod
 from benchbox.cli.benchmarks import BenchmarkManager
 from benchbox.cli.dryrun import DryRunDisplay, display_interactive_preview
+from benchbox.cli.main import cli
 from benchbox.core.generation_estimate import DATA_GENERATION, QUERY_GENERATION, estimate_generation
 from benchbox.core.schemas import BenchmarkConfig, DatabaseConfig, DryRunResult
 
@@ -175,3 +178,33 @@ def test_dry_run_result_shows_only_the_estimates_for_the_requested_phases(
     output = stream.getvalue()
     assert ("TPC-DS data generation, scale 10:" in output) is data
     assert ("TPC-DS query generation, scale 10:" in output) is query
+
+
+@pytest.mark.parametrize(
+    ("phases", "data", "query"),
+    [("power", False, True), ("generate", True, False), ("generate,power", True, True)],
+)
+def test_dry_run_command_shows_only_the_estimates_for_the_phases_option(
+    tmp_path: Path, phases: str, data: bool, query: bool
+) -> None:
+    result = CliRunner().invoke(
+        cli,
+        [
+            "run",
+            "--dry-run",
+            str(tmp_path),
+            "--platform",
+            "duckdb",
+            "--benchmark",
+            "tpcds",
+            "--scale",
+            "1",
+            "--phases",
+            phases,
+            "--non-interactive",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert ("TPC-DS data generation, scale 1:" in result.output) is data
+    assert ("TPC-DS query generation, scale 1:" in result.output) is query

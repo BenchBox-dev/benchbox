@@ -1271,6 +1271,10 @@ def _run_dry_run(s: types.SimpleNamespace) -> None:
 
     benchmark_config = _build_benchmark_config(s, benchmark_info)
 
+    from benchbox.core.run_service import stamp_requested_phases
+
+    stamp_requested_phases(benchmark_config, s.phases_to_run)
+
     if logger:
         logger.debug(f"Benchmark config created: {benchmark_config}")
         logger.debug("Getting system profile for dry run")
