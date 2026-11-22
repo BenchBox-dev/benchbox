@@ -102,6 +102,7 @@ def _run_preflight(
     expect_code: int = 0,
     changed: tuple[str, ...] = (),
     deleted: tuple[str, ...] = (),
+    collect_exit: int = 0,
 ) -> tuple[list[str], str]:
     work = tmp_path / "work"
     (work / "scripts").mkdir(parents=True)
@@ -116,6 +117,7 @@ def _run_preflight(
     stub = bin_dir / "uv"
     selection = _write_selection(tmp_path, changed, deleted)
     cases = "".join(f'*"preflight_targets.py {kind} "*) cat {path};; ' for kind, path in selection.items())
+    cases += f'*"pytest --collect-only"*) exit {collect_exit};; '
     stub.write_text(f'#!/bin/sh\necho "$*" >> {log}\ncase "$*" in {cases}esac\n', encoding="utf-8")
     stub.chmod(0o755)
     git_log = tmp_path / "git.log"
@@ -296,3 +298,11 @@ def test_pr_preflight_runs_no_guards_for_a_deleted_non_python_file(tmp_path: Pat
     _run_preflight(tmp_path, "abc1234", deleted=("gone.txt",))
 
     assert _lint_calls(_uv_calls(tmp_path)) == []
+
+
+def test_pr_preflight_accepts_a_collection_that_deselects_every_test(tmp_path: Path) -> None:
+    _run_preflight(tmp_path, "abc1234", changed=("tests/unit/test_slow_only.py",), collect_exit=5)
+    calls = _uv_calls(tmp_path)
+
+    assert len(_collect_calls(calls)) == 1
+    assert STRATEGY_CALL in calls

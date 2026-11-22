@@ -79,7 +79,7 @@ pr-preflight:
 			lint-markers) \
 				MARKER_FILES=$$(uv run -- python _project/scripts/preflight_targets.py marker-files --base-ref "$$PREFLIGHT_BASE"); \
 				echo "==> lint-markers (changed test modules)"; \
-				$$RECORD --name lint-markers -- uv run -- python -m pytest --collect-only -q -p no:warnings --assert=plain -p tests.utilities.marker_manifest $$MARKER_FILES ;; \
+				$$RECORD --name lint-markers --ok-codes 0,5 -- uv run -- python -m pytest --collect-only -q -p no:warnings --assert=plain -p tests.utilities.marker_manifest $$MARKER_FILES || [ "$$?" -eq 5 ] ;; \
 			lint-markers-strategy) echo "==> lint-markers (tree-wide marker strategy)"; $$RECORD --name lint-markers-strategy -- uv run -- python -m pytest tests/unit/test_marker_strategy.py -q ;; \
 			*) echo "pr-preflight: unknown lint step $$STEP" >&2; exit 2 ;; \
 		esac; \
