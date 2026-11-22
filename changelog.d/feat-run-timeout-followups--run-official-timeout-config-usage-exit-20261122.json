@@ -1,0 +1,1 @@
+{"schema": 1, "entries": [{"category": "fixed", "text": "`benchbox run-official` now exits 2 with a usage message naming `execution.timeout_seconds` when the config file holds a negative or fractional run time limit, as `run` and `datagen` do; it exited 1 with \"Benchmark execution failed\" before."}]}
