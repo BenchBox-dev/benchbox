@@ -46,6 +46,7 @@ from benchbox.core.execution_engine import (
     DEFAULT_EXECUTION_ENGINE,
     ExecutionEngineHook,
     ExecutionEngineReceipt,
+    ObservationNotRecognizedError,
     summarize_observed_engines,
 )
 from benchbox.core.results import (
@@ -292,6 +293,10 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
         try:
             with outside_query_timer():
                 observed = self.observe_execution_engine(lazy)
+        except ObservationNotRecognizedError as exc:
+            logger.debug("Engine observation not recognized: %s", exc)
+            observed = None
+            self._unrecognized_observations = getattr(self, "_unrecognized_observations", 0) + 1
         except Exception as exc:
             logger.debug("Engine observation failed: %s", exc)
             observed = None
@@ -312,10 +317,17 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             self.OBSERVED_ENGINE_SOURCE,
             unavailable=self.engine_observation_gap(),
         )
+        reason = summary.observed_reason
+        unrecognized = getattr(self, "_unrecognized_observations", 0)
+        if unrecognized and self.engine_observation_gap() is None:
+            reason = (
+                f"physical plan format not recognized for {unrecognized} of "
+                f"{len(getattr(self, '_engine_observations', []))} queries"
+            )
         recorded.update(
             observed=summary.observed,
             observed_source=summary.observed_source,
-            observed_reason=summary.observed_reason,
+            observed_reason=reason,
         )
 
     @abstractmethod
@@ -397,6 +409,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
 
         platform_info = build_platform_info(self, execution_mode="dataframe")
         self._engine_observations = []
+        self._unrecognized_observations = 0
 
         builder = ResultBuilder(
             benchmark=BenchmarkInfoInput(

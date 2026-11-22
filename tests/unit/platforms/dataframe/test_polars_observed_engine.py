@@ -148,12 +148,15 @@ def test_unrecognized_physical_plan_is_not_classified(graph):
 
 
 def test_unrecognized_physical_plan_is_not_captured_with_a_reason(scan, monkeypatch):
-    monkeypatch.setattr(pl.LazyFrame, "show_graph", lambda self, **kwargs: "digraph future {\n}")
+    def future_graph(self, engine=None, raw_output=False, plan_stage=None):
+        return "digraph future {\n}"
+
+    monkeypatch.setattr(pl.LazyFrame, "show_graph", future_graph)
     adapter = PolarsDataFrameAdapter(execution_engine="streaming")
     rows, receipt = _run_queries(adapter, scan, [("Q1", lambda ctx: _aggregate(ctx.get_table("t")))])
     assert "execution_engine" not in rows[0]
     assert (receipt["observed"], receipt["observed_source"]) == ("not_captured", "none")
-    assert receipt["observed_reason"]
+    assert receipt["observed_reason"] == "physical plan format not recognized for 1 of 1 queries"
 
 
 def test_observation_time_is_excluded_from_the_query_timer(scan, monkeypatch):

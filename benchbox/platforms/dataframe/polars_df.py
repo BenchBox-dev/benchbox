@@ -19,7 +19,11 @@ except ImportError:
     POLARS_AVAILABLE = False
 
 from benchbox.core.dataframe.tuning import DataFrameTuningConfiguration
-from benchbox.core.execution_engine import ExecutionEngineReceipt, ExecutionEngineUnavailableError
+from benchbox.core.execution_engine import (
+    ExecutionEngineReceipt,
+    ExecutionEngineUnavailableError,
+    ObservationNotRecognizedError,
+)
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.platforms.dataframe.expression_family import (
     ExpressionFamilyAdapter,
@@ -242,7 +246,10 @@ class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, Pol
             raw_output=True,
             plan_stage="physical",
         )
-        return classify_physical_plan(str(graph))
+        observed = classify_physical_plan(str(graph))
+        if observed is None:
+            raise ObservationNotRecognizedError("physical plan format not recognized")
+        return observed
 
     def materialize(self, df: PolarsLazyDF) -> PolarsDF:
         return collect_frame(df, self.collect_engine)

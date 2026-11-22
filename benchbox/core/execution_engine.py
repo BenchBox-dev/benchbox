@@ -172,6 +172,10 @@ def platform_default_receipt(platform: str, requested: str) -> ExecutionEngineRe
     )
 
 
+class ObservationNotRecognizedError(Exception):
+    pass
+
+
 class ExecutionEngineHook:
     OBSERVED_ENGINE_SOURCE: ObservedSource = "none"
 
