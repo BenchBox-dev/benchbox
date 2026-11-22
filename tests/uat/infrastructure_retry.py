@@ -16,7 +16,7 @@ RETRY_PASSED = "retry_passed"
 RETRY_FAILED = "retry_failed"
 RETRY_SKIPPED_INSUFFICIENT_TIME = "skipped_insufficient_time"
 
-_RETRYABLE_STATUSES = frozenset({"failed", "timed-out"})
+_RETRYABLE_STATUSES = frozenset({"failed", "timed-out", "hung"})
 
 CellRunner = Callable[..., CellResult]
 

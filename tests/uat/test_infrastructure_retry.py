@@ -104,6 +104,18 @@ def test_timeout_retries_once_and_a_passing_retry_passes_the_cell(tmp_path):
     assert result.first_attempt_elapsed_s == float(CELL_LIMIT_S)
 
 
+def test_a_cell_the_runner_killed_is_retried_once_like_a_timed_out_cell(tmp_path):
+    hung = {"status": "hung", "exit_code": -9, "elapsed_s": float(CELL_LIMIT_S + 60)}
+    attempts = _Attempts(tmp_path, [hung, PASSED])
+    result = _run(attempts)
+
+    assert len(attempts.calls) == 2
+    assert result.status == "passed"
+    assert result.retry_signature == "timeout"
+    assert result.retry_outcome == infrastructure_retry.RETRY_PASSED
+    assert result.first_attempt_status == "hung"
+
+
 def test_second_infrastructure_failure_fails_the_cell_without_a_third_attempt(tmp_path):
     attempts = _Attempts(tmp_path, [TIMEOUT, TIMEOUT, PASSED])
     result = _run(attempts)

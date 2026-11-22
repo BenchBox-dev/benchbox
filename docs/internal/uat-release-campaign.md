@@ -33,6 +33,9 @@ Run rules:
 - For slow Docker stacks (e.g. LakeSail), set `cleanup.docker_start_timeout_s`
   from a measured healthy startup (see "Managed Docker startup failures are
   non-fatal") before the stage-2 run.
+- Each `benchbox run` and `run-official` cell passes `--timeout` equal to its cell limit and is killed from outside only
+  60 seconds later. A cell BenchBox stopped is `timed-out` (exit 124); a cell the runner had to kill is `hung`. See
+  "Cell time limits" in `tests/uat/README.md`.
 
 ### StarRocks and CedarDB teardown evidence
 
