@@ -46276,6 +46276,13 @@
       "status": "done",
       "title": "Make the TPC-DI SCD Type 2 expire step actually update expired rows"
     },
+    "tpcdi-settle-appendix-sql-source-20261121": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Settle the source of the TPC-DI appendix SQL (audit, validation, visibility) before any release"
+    },
     "tpcdi-sf1-slowdown-after-linear-fact-scaling": {
       "claim": null,
       "needs": [],

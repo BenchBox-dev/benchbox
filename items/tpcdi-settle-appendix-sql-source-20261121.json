@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "The appendix SQL source is settled by an official archive or a recorded owner decision, and the shipped sourcing file says which."
+  ],
+  "description": "## Problem\nSpecification v1.1.0 page 117 says the appendix SQL ships as a separate archive from the TPC download section. The TPC site offers only the Tools zip (current page and Wayback snapshots 2014-2017), and the Tools zip does not contain the appendix. BenchBox currently relies on an unofficial third-party copy.\n\n## Owner decisions\n- 2026-11-21: \"rely on the shared common versions for now and file a tracker to follow up on this later and settle it\"\n\n## Current source\n~/Developer/tpc-tools/Appendix_v1.1.0-shared-copy/ (read-only files, SHA256SUMS, PROVENANCE.txt), fetched from github.com/abroniewski/TPC-DI-MS-SQL-Benchmark@18eca39b128f5fcc86cbc9c1e53e30ed0e685fa7 Helpers/Scripts (not from the Databricks project):\n- AppendixA/tpcdi_audit.sql 60761 bytes 32eb0f55a08b8cf5a906d4aff563539d42c873c72d6dc662798218b2bc3107fc\n- AppendixB/tpcdi_validation.sql 5944 bytes 9ee9ef8144c7f53bb6fb0d4ac489dda2379e7aa1b8e24d7a12df1539b7f86c02\n- AppendixC/tpcdi_visibility_1.sql 5028 bytes 209454549598d8147a2a0eb9ced8bd86eb3548f32fc90c1765975b0076e8bde7\n- AppendixC/tpcdi_visibility_2.sql 3362 bytes a22645d5c9d2095d8d77549db3e7ecbc8d5d5417e8f0973fbd92150347ea894a\nByte-identical across three unrelated public repos (abroniewski 2021, SonyShrestha 2023, shannon-barrow 2023; the last differs only in visibility_1). No copyright or licence notice in the files. The TPC site offers no separate Appendix download (current page and Wayback 2014-2017 checked).\n\n## Action\n1. Owner asks the TPC (info@tpc.org or a member contact) for the TPC-DI v1.1.0 appendix archive; agents never contact the TPC.\n2. If it arrives: place it under ~/Developer/tpc-tools/, record name, size and SHA-256, compare the four files with the hashes above, and replace or confirm whatever BenchBox ships, updating its sourcing file.\n3. If the TPC does not supply it: owner decides whether BenchBox may keep shipping the shared copy, ship it only as a local reference, or not ship it, and how the sourcing file and licence notice describe it.\n\n## Decision gates\nNo BenchBox release that includes the appendix SQL until this item is done. Never source the files from the Databricks or DuckDB TPC-DI projects.\n\n## Verification rubric\nPass: the official archive's hashes are recorded and the shipped files match it, or an owner decision on the unofficial copy is quoted here and reflected in the shipped sourcing file.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e",
+      "at": "2026-11-22T02:30:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9f6de022a9aa4c12bbbc72e5d5c3a8d5",
+      "session_id": "a8b92107f30e427f9def4483bf06f645"
+    }
+  ]
+}
