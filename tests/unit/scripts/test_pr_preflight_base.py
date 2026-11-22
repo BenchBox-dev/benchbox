@@ -72,7 +72,11 @@ def test_selection_since_a_commit_excludes_paths_changed_before_it(repo: Path) -
 
 
 def _run_preflight(
-    tmp_path: Path, base: str | None, extra_env: dict[str, str] | None = None, expect_code: int = 0
+    tmp_path: Path,
+    base: str | None,
+    extra_env: dict[str, str] | None = None,
+    expect_code: int = 0,
+    python_files: tuple[str, ...] = (),
 ) -> tuple[list[str], str]:
     work = tmp_path / "work"
     (work / "scripts").mkdir(parents=True)
@@ -85,7 +89,12 @@ def _run_preflight(
     bin_dir.mkdir()
     log = tmp_path / "uv.log"
     stub = bin_dir / "uv"
-    stub.write_text(f'#!/bin/sh\necho "$*" >> {log}\n', encoding="utf-8")
+    changed = tmp_path / "python-files.txt"
+    changed.write_text("".join(f"{name}\n" for name in python_files), encoding="utf-8")
+    stub.write_text(
+        f'#!/bin/sh\necho "$*" >> {log}\ncase "$*" in *"preflight_targets.py python"*) cat {changed};; esac\n',
+        encoding="utf-8",
+    )
     stub.chmod(0o755)
     git_log = tmp_path / "git.log"
     real_git = shutil.which("git")
@@ -162,3 +171,38 @@ def test_pr_preflight_takes_a_branch_name_as_that_branchs_fetched_origin_ref(tmp
 
     assert {line.split()[-1] for line in selections} == {f"origin/{branch}"}
     assert fetches.split() == ["fetch", "origin", branch, "--quiet"]
+
+
+def _uv_calls(tmp_path: Path) -> list[str]:
+    return (tmp_path / "uv.log").read_text(encoding="utf-8").splitlines()
+
+
+def test_pr_preflight_runs_the_cheap_lint_guards_for_changed_python(tmp_path: Path) -> None:
+    _run_preflight(
+        tmp_path,
+        "abc1234",
+        python_files=("benchbox/utils/a.py", "tests/unit/test_a.py", "scripts/b.py", "tests/fixtures/f.py"),
+    )
+    calls = _uv_calls(tmp_path)
+
+    assert "run -- lint-imports" in calls
+    assert "run -- python -m scripts.typecheck benchbox/utils/a.py tests/unit/test_a.py" in calls
+    assert any(
+        "pytest --collect-only" in call and call.endswith("tests.utilities.marker_manifest tests/unit/test_a.py")
+        for call in calls
+    )
+    assert "run -- python -m pytest tests/unit/test_marker_strategy.py -q" in calls
+
+
+def test_pr_preflight_skips_marker_lint_and_typecheck_when_no_checked_file_changed(tmp_path: Path) -> None:
+    _run_preflight(tmp_path, "abc1234", python_files=("scripts/b.py",))
+    calls = _uv_calls(tmp_path)
+
+    assert "run -- lint-imports" in calls
+    assert not [call for call in calls if "scripts.typecheck" in call or "marker" in call]
+
+
+def test_pr_preflight_skips_the_lint_guards_when_no_python_changed(tmp_path: Path) -> None:
+    _run_preflight(tmp_path, "abc1234")
+
+    assert "run -- lint-imports" not in _uv_calls(tmp_path)

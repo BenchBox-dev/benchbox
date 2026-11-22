@@ -142,8 +142,11 @@ independently to each member.
    make pr-open TITLE="fix(scope): what the change does" PR_BODY_FILE=pr-body.md
    ```
 
-   `make pr-preflight` checks changelog fragments, runs Ruff on changed Python files and runs
-   mapped tests, with a conditional Linux run for platform-sensitive mapped tests. It does not
+   `make pr-preflight` checks changelog fragments, runs Ruff, `lint-imports` and ty (on changed `benchbox/` and
+   `tests/` files) on changed Python files, the marker lint when test files changed, and runs
+   mapped tests, with a conditional Linux run for platform-sensitive mapped tests. The marker lint covers the
+   changed test files plus the tree-wide decorator scan rather than collecting the whole suite; `make lint-markers`
+   and `make typecheck` stay the full checks that CI's `lint` job runs. It does not
    run the CI content guard or the full fast lane. It also writes a receipt for the tree it ran on
    (see [Preflight receipt](#preflight-receipt)); `make pr-open` refuses to push without a passing receipt
    for the tree being pushed, so commit first, run preflight, then open the PR. `make pr-open` pushes and

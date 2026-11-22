@@ -64,6 +64,19 @@ pr-preflight:
 		echo "==> ruff (changed Python files)"; \
 		$$RECORD --name ruff-check -- uv run -- ruff check --force-exclude $$(cat "$$PY_LIST"); \
 		$$RECORD --name ruff-format -- uv run -- ruff format --check --force-exclude $$(cat "$$PY_LIST"); \
+		echo "==> lint-imports (layering contracts)"; \
+		$$RECORD --name lint-imports -- $(MAKE) -s lint-imports; \
+		TY_FILES=$$(grep -E '^(benchbox|tests)/' "$$PY_LIST" | grep -v '^tests/fixtures/' || true); \
+		if [ -n "$$TY_FILES" ]; then \
+			echo "==> ty (changed benchbox/ and tests/ files)"; \
+			$$RECORD --name typecheck -- uv run -- python -m scripts.typecheck $$TY_FILES; \
+		fi; \
+		MARKER_FILES=$$(printf '%s\n' $$TY_FILES | grep '^tests/' || true); \
+		if [ -n "$$MARKER_FILES" ]; then \
+			echo "==> lint-markers (changed test files, tree-wide decorator scan)"; \
+			$$RECORD --name lint-markers -- uv run -- python -m pytest --collect-only -q -p no:warnings --assert=plain -p tests.utilities.marker_manifest $$MARKER_FILES; \
+			$$RECORD --name lint-markers-strategy -- uv run -- python -m pytest tests/unit/test_marker_strategy.py -q; \
+		fi; \
 	else \
 		echo "No Python files changed; skipping ruff."; \
 	fi; \
