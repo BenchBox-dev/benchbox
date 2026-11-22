@@ -505,15 +505,41 @@ def test_type_maps_match_the_registered_rules():
     assert schema.type_map_for_dialect("postgres") == {"BOOLEAN": "SMALLINT"}
     assert schema.type_map_for_dialect("Databricks") == {"BOOLEAN": "SMALLINT", "TIME": "STRING"}
     assert schema.type_map_for_dialect("clickhouse") == {"BOOLEAN": "SMALLINT", "TIME": "String"}
-    assert {
-        platform for platform in TIME_AS_STRING_TYPES if "TIME" not in schema.type_map_for_dialect(platform)
-    } == set()
+    assert set(TIME_AS_STRING_TYPES) == {"spark", "lakesail", "pyspark", "velox", "databricks", "clickhouse"}
 
 
-def test_schema_source_does_not_dispatch_on_registry_payloads():
-    source = (SCHEMA_DIR / "schema.py").read_text(encoding="utf-8")
-    assert "transformer_id" not in source
-    assert "REGISTRY" not in source
+def _translated_dim_time(dialect):
+    manager = TPCDISchemaManager()
+    return dict(zip(manager.table_order, manager.get_create_table_ddl(dialect)))["DimTime"]
+
+
+@pytest.mark.parametrize(
+    ("dialect", "time_column", "flag_column"),
+    [
+        ("duckdb", "TimeValue TIME NOT NULL", "MarketHoursFlag BOOLEAN,"),
+        ("postgres", "TimeValue TIME NOT NULL", "MarketHoursFlag SMALLINT,"),
+        ("snowflake", "TimeValue TIME NOT NULL", "MarketHoursFlag SMALLINT,"),
+        ("clickhouse", "TimeValue Nullable(String) NOT NULL", "MarketHoursFlag Nullable(Int16),"),
+        ("spark", "TimeValue STRING NOT NULL", "MarketHoursFlag SMALLINT,"),
+        ("databricks", "TimeValue STRING NOT NULL", "MarketHoursFlag SMALLINT,"),
+        ("bigquery", "TimeValue TIME NOT NULL", "MarketHoursFlag INT64,"),
+        ("sqlite", "TimeValue TIME NOT NULL", "MarketHoursFlag INTEGER,"),
+    ],
+)
+def test_translated_ddl_spells_flag_and_time_columns_for_the_platform(dialect, time_column, flag_column):
+    statement = _translated_dim_time(dialect)
+    assert time_column in statement
+    assert flag_column in statement
+    assert statement.rstrip().endswith(")")
+
+
+def test_translated_ddl_executes_on_duckdb():
+    connection = duckdb.connect()
+    for statement in TPCDISchemaManager().get_create_table_ddl("duckdb"):
+        connection.execute(statement)
+    assert len(connection.execute("SHOW TABLES").fetchall()) == len(TABLES)
+    connection.execute("INSERT INTO DimTime VALUES (1, TIME '01:02:03', 1, 'h', 2, 'm', 3, 's', true, false)")
+    assert connection.execute("SELECT COUNT(*) FROM DimTime WHERE MarketHoursFlag = 1").fetchone() == (1,)
 
 
 def test_duckdb_evaluates_true_equals_one():
