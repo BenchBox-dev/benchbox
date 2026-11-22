@@ -15063,6 +15063,88 @@
       "scope_hash": "95f9d1c071f4d57df7ecb3cb56232dc23a8d8d56bcbbbdcd5eed995736304d71",
       "start_head": "3a3ee9826a6ab939d6235d31e69056c789ac365e",
       "terminal_outcome": "deliver"
+    },
+    "trunk-stability": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/trunk-stability",
+      "integration_head": "3e72b74aac395a2bc5e5e4d04b764239226b344c",
+      "integration_log": [
+        {
+          "at": "2026-11-22T22:00:51Z",
+          "head": "3e72b74aac395a2bc5e5e4d04b764239226b344c",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-trunk-stability",
+      "lifecycle": "active",
+      "members": [
+        "df-memory-guard-generation-check-runs-after-generation-20261118",
+        "tpcds-parity-draws-fails-with-all-draws-equivalent-20261119",
+        "flaky-bigquery-credential-defaults-confirm-prompt",
+        "chdb-embedded-server-recursive-mutex-flake",
+        "uat-regression-doris-clickbench-mooncake-flightdata"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3",
+      "owner_epoch": 0,
+      "owner_generation": "2c179d57f2ee97ce66905459ef65b20c",
+      "project_id": "feature-fix-trunk-stability-20261122",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "chdb-embedded-server-recursive-mutex-flake": [
+          "benchbox/platforms/clickhouse_local.py",
+          "benchbox/platforms/clickhouse/*",
+          "tests/*",
+          "docs/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "df-memory-guard-generation-check-runs-after-generation-20261118": [
+          "benchbox/core/runner/*",
+          "benchbox/core/dataframe/*",
+          "benchbox/platforms/dataframe/*",
+          "tests/*",
+          "docs/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "flaky-bigquery-credential-defaults-confirm-prompt": [
+          "benchbox/platforms/credentials/*",
+          "tests/*",
+          "docs/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "tpcds-parity-draws-fails-with-all-draws-equivalent-20261119": [
+          "make/reports.mk",
+          "benchbox/core/equivalence/*",
+          "tests/*",
+          "docs/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "uat-regression-doris-clickbench-mooncake-flightdata": [
+          "benchbox/platforms/pg_mooncake*",
+          "benchbox/platforms/postgres*",
+          "benchbox/platforms/base/*",
+          "benchbox/core/flightdata/*",
+          "benchbox/sql_compat/*",
+          "docker/postgres-extensions/*",
+          "tests/*",
+          "docs/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "3b7251e9000d98e196666438b73f01c853f2fa044c8586221a3bd51536c2dc51",
+      "start_head": "3e72b74aac395a2bc5e5e4d04b764239226b344c",
+      "terminal_outcome": "deliver"
     }
   },
   "items": {
