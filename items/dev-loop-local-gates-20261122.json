@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The one PR carrying all three dev-loop fixes has merged, and each member item is finished."
+  ],
+  "context": "Created 2026-11-22 by the run-timeout remediation leader.",
+  "description": "## Purpose\nUmbrella for one feature branch and one pull request delivering three related fixes to the local development loop (owner decision 2026-11-22, choice dialog: dev-loop items on one feature branch with one PR; a change to the batch/preflight loop cannot certify itself through a batch):\n- preflight-misses-ci-lint-guards-20261122\n- batch-member-check-refusal-message-20261122\n- windows-antipatterns-check-scans-worktree-venv-20261028\n\n## Change\nImplement the three items on branch `feat/dev-loop-local-gates`, one PR to develop. Each item's own Change, Decision gates, Verification rubric and Guardrails bind.\n\n## Decision gates\n- Preflight may grow by at most 60 s (owner, 2026-11-22: \"Up to 60 s more\"); measure before/after and stop and report above that.\n- No CI check is weakened or skipped.\n\n## Verification rubric\nEach member item's rubric met; `make pr-preflight` exits 0; before/after preflight timing in the PR.\n\n## Guardrails\nSerial feature-branch mode per docs/agent/batch-feature-delivery.md. Edit tool only; no `--no-verify`, force-push, stand-in review or author rewrite; arm once, twice only after fixing a named cause.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T13:30:24Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d0e1f2a3b4c5678d9e0f123456789012",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    }
+  ]
+}
