@@ -21497,6 +21497,15 @@
       "status": "open",
       "title": "Make the result writer use the rule and recompute every lane's score from timings"
     },
+    "crr-a3-validators-staging-and-admission": {
+      "claim": null,
+      "needs": [
+        "crr-a2-writer-and-score-from-timings"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Move the validators, staging and the public admission path to the rule"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],

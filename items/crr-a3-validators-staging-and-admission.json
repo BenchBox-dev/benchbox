@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "The parity test covers submit, publish, staging, validate_submission (public and trusted) and validate_corpus, and fails when one path's condition is changed alone",
+    "The lane canary fails when a lane cannot be reached from the CLI (shown by removing the power-only row locally)",
+    "A non-standard-scale result stages and validates as admitted, unranked",
+    "The snapshot diff equals the difference report accepted in crr-a1",
+    "No class string comparison remains in the listed files (grep output in the pull request)"
+  ],
+  "context": "Step of the corpus rule remediation plan (crr-00-corpus-rule-remediation-plan). Plan written 2026-11-22 and reviewed twice by an independent adversarial reviewer; counts marked (R) were measured by that reviewer and must be re-measured, not trusted. Owner decisions were given by choice dialog on 2026-11-22 and are quoted in crr-00.",
+  "description": "## Problem\nbenchbox submit, benchbox publish, scripts/stage_seed_corpus_bundle.py, scripts/validate_submission.py and results-data/validate_corpus.py each decide admission and ranking themselves and disagree (T3). Staging treats \"not ranked\" as \"not admitted\", so non-standard-scale results never stage. Query-only TPC results have no way into their lane (T2).\n\n## Change\n- core/results/submit_classification.py, subscale_policy.py, core/publishing/admission.py, validation bundle.py, both validators and the staging script call the rule and delete their own class conditions. Vendor terms, anonymization, tuning and timing-coverage checks stay, behind the same entry point.\n- Public and maintainer admission follow the rule table (owner decisions 1 and 2). Rankings for the 19 stored results change here.\n- Parity test: one table of cases run through every path, asserting the same admitted, lane and label.\n- Lane canary: for each lane (combined, power-only, throughput, subscale, unranked), build a result through the CLI argument and classification path with a stubbed executor and assert it enters that lane.\n- Update results-data/SEED_CORPUS_SPEC.md and CORPUS_NOTES.md.\n\n## Decision gates\n- The ranking change reaches the public site at the next site build. This item must not merge before crr-b4 is ready to merge (labels for the power-only lane). If crr-b4 is not ready, keep the pipeline's ranked output unchanged behind the read-model version and merge only the validator and staging parts.\n- If validate-submission-parity-rejects-bundle-paths-20261117 is still open, read it first; if it blocks the mirror, record that on crr-a5.\n\n## Guardrails (apply to every item of this plan)\n- Fix the root cause for every platform and benchmark. No rule, exception, label or test may name a platform or a version matrix. Only the pvm-p* items may name Polars, and only to run and stage that run's files.\n- Never edit a stored result file to make it pass. Outcomes change only through the rule.\n- Any change to the outcome of a stored result must show in the committed outcome snapshot diff in the same pull request and be explained in its body.\n- No new stored class value. No reader may decide anything from benchmark.compliance_class, conformance_class or summary.tpc_metrics.suppressed.\n- Paths, line numbers and counts in this plan were read on 2026-11-22 at develop 93f3360. Re-read before editing; report drift, do not guess.\n- AGENTS.md applies: linked worktree, one pull request per item, close at the merged pull request, heavy work only through make heavy-run, no live cloud run without owner approval in that task.\n- At a decision gate, follow the recorded default. If its stop condition is met, stop and report to the owner. Never substitute a different owner decision.\n- Read crr-00-corpus-rule-remediation-plan first: it holds the owner decisions, the rule table and the fault types (T1 to T5).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6fbef61b8c1a450fbecb672",
+      "at": "2026-11-22T16:50:42Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d1865c1a9aa44d31af19fc8f6d99050c",
+      "session_id": "c07e5ac3266b4133b46582fc1e496cdf"
+    }
+  ]
+}
