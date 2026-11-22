@@ -11404,6 +11404,7 @@
     },
     "tpcdi-foundation": {
       "accepted_members": {
+        "tpcdi-07-specification-schema-20261120": "8ba30ed5b1fd246d332da4cdb29a4f7f9f06f96f",
         "tpcdi-comment-policy-route-for-tpc-files-20261121": "36ae13423880a140244c1b6b42a9d80664ce7d22",
         "tpcdi-provenance-record-and-copy-guard-20261121": "dfe7c5a1f0fd06b14f3908dfce486d716b5c6453"
       },
@@ -11412,6 +11413,25 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "tpcdi-07-specification-schema-20261120": {
+          "accepted_head": "8ba30ed5b1fd246d332da4cdb29a4f7f9f06f96f",
+          "changed_files": [
+            "_sources/tpc-di/databricks-tpc-di/PROVENANCE.md",
+            "benchbox/core/tpcdi/__init__.py",
+            "benchbox/core/tpcdi/benchmark.py",
+            "benchbox/core/tpcdi/schema.py",
+            "benchbox/core/tpcdi/schema_extension_specs.yaml",
+            "benchbox/core/tpcdi/schema_extensions.py",
+            "benchbox/core/tpcdi/schema_specs.yaml",
+            "benchbox/sql_compat/rules/schema_emit/tpcdi_ddl.py",
+            "changelog.d/feat-tpcdi-foundation--tpcdi-07-specification-schema-20261120.json",
+            "pyproject.toml",
+            "quality/comment-cleanup-scope.json",
+            "tests/unit/core/tpcdi/test_schema_spec.py"
+          ],
+          "integration_head": "9853c6c7f10e505c1a5a54e6eab1c01d000aa3dd",
+          "integration_seq": 4
+        },
         "tpcdi-comment-policy-route-for-tpc-files-20261121": {
           "accepted_head": "36ae13423880a140244c1b6b42a9d80664ce7d22",
           "changed_files": [
@@ -11450,7 +11470,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-foundation",
-      "integration_head": "3804ae6e392cb5526e1e347b0c6073dcca4a7c2b",
+      "integration_head": "9853c6c7f10e505c1a5a54e6eab1c01d000aa3dd",
       "integration_log": [
         {
           "at": "2026-11-22T03:55:11Z",
@@ -11489,6 +11509,15 @@
             "tpcdi-provenance-record-and-copy-guard-20261121"
           ],
           "seq": 3
+        },
+        {
+          "at": "2026-11-22T04:57:06Z",
+          "head": "9853c6c7f10e505c1a5a54e6eab1c01d000aa3dd",
+          "kind": "prepare",
+          "member": "tpcdi-07-specification-schema-20261120",
+          "op_id": "72c656147fc74c918c1f45092bd103aa",
+          "previous_head": "3804ae6e392cb5526e1e347b0c6073dcca4a7c2b",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-foundation",
@@ -46016,17 +46045,12 @@
       "title": "TPC-DI step 9: ship the TPC EULA, legend and the specification's audit, validation and visibility SQL"
     },
     "tpcdi-07-specification-schema-20261120": {
-      "claim": {
-        "expires_at": "2026-11-23T04:50:36Z",
-        "generation": "0272c228234a4a41ae99f8faf0e34c79",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-provenance-record-and-copy-guard-20261121"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 7: replace the schema with the specification's tables, columns and types"
     },
     "tpcdi-08-generator-core-and-reference-files-20261120": {

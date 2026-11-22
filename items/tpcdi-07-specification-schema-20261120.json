@@ -13,6 +13,87 @@
   },
   "context": "Step of the TPC-DI plan based on shannon-barrow/databricks-tpc-di. The full plan (inventory of the project, the 34 departures from the specification with file and line, target architecture, step list) is the description of tpcdi-plan-databricks-base-20261121; every owner decision is quoted on tpcdi-correction-plan-20261120. Read both before starting. Item ids keep the number they were created with; the step number in the title is the order. File paths and line numbers in the plan were read on 2026-11-21 and must be re-read before editing.",
   "description": "## Problem\nBenchBox's schema departs from the specification: DimTrade exists as FactTrade, there are no DImessages, Audit, Prospect or Financial tables, FactHoldings lacks TradeID and CurrentTradeID, and two schema sources exist. The Databricks project's DDL (`src/incremental_batches/dw_init.sql`) uses DOUBLE and FLOAT for money and BOOLEAN flags; the specification requires exact numerics (Clause 3.2 note, Table 3.2.1), and the official audit compares flags with 1.\n\n## Owner decisions (choice dialogs, 2026-11-20 and 2026-11-21)\n- \"Replace: schema follows the specification exactly (DimTrade, DImessages, Prospect, Financial, FactHoldings keys, official vocabularies)\" (decision 9).\n- Old generator and ETL remain until after the milestone, unreachable and excluded from tests.\n- 2026-11-21: where the project and the specification differ, \"The specification wins without asking. Every difference, and any behaviour of the project that is kept, goes in a catalogue I approve at the milestone stop. A difference from the DuckDB implementation not in the catalogue is a finding that blocks the step.\"\n\n## Change\nRewrite schema_specs.yaml with the tables of Clause 3.2 in the specification's column order, types and NOT NULL, with DECIMAL(p,s) wherever the specification gives NUM(p,s); delete schema_extension_specs.yaml and schema_extensions.py; schema.py TABLES, type mapping and DDL through get_create_tables_sql; platform DDL changes go through sql_compat DDL_OPTIMIZE. Add the staging tables the ETL will load into (one per source file type), taking table and column names from the project's `dw_init.sql` with the types replaced; list that file in the provenance record as 'names only'. Flag columns are stored through a per-platform representation rule: BOOLEAN where the platform evaluates `true = 1`, otherwise a 0/1 integer, as Clauses 3.2.1 and 8.2.1.2 allow, so the audit text runs unmodified. Add tests/unit/core/tpcdi/test_schema_spec.py with a fixture transcribed from the specification's tables. Tests of the unreachable old modules that depend on the old schema are removed here; the old modules must still import. Changelog fragment.\n\n## Decision gates\nThe table list, each type mapping the specification leaves open, and the flag representation chosen for DuckDB (decided by running `SELECT true = 1` and recording the result) are listed in the pull request description. Vocabulary values (trade types, status types, tax rates, industries) are not hard-coded anywhere in the schema: they arrive in DIGen's files at run time.\n\n## Verification rubric\nPass: the fixture test compares every table, column, order, type and nullability with the transcription and fails on the old schema; no warehouse money or quantity column is DOUBLE or FLOAT (a test over the generated DDL); the DDL executes on DuckDB; an import smoke test for the retained old modules passes; `make compat-inventory-check` and `make pr-preflight` pass; the pull request lists each removed old-path test file.\n\n## Guardrails (owner, 2026-11-20 and 2026-11-21)\n- The agent never posts a stand-in review, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`.\n- Arming: `make pr-arm` once; one more attempt only when the refusal named a cause, the agent reported it and the cause is cleared; never a third without asking. `make pr-rerun` at most once and only for a job the runner never ran or cancelled, never for a failed test.\n- Review threads: reply; resolve only after the bot's review of the new head does not raise the finding again.\n- Subagents are read-only. No file edit by script; use the edit tool. Do not edit a pull request description while its CI is starting; post a comment.\n- Any limit, default, threshold, status token, message, label text or name (option, configuration key, result field, file name, test hook) the owner has not already chosen is chosen by the implementer following existing BenchBox conventions and the specification, and is listed in the pull request (owner, 2026-11-21: no stop for these). Texts the owner has chosen (see tpcdi-correction-plan-20261120) are used verbatim.\n- A blocked step stops this item; no workaround. No live cloud run. Heavy work only through `make heavy-run`. Delivery follows the batch plan on tpcdi-correction-plan-20261120: a batch member ends at a landing report and its batch has one final pull request; a serial item has its own pull request.\n- From the quarantine step until the reopening step, no TPC-DI entry point may produce a result that reads PASSED or is admitted for publication.\n- Sources. SQL derived from the Databricks project (`src/incremental_batches/**` at commit 8e0f944, treated as MIT on the owner's instruction) may be committed only after the provenance step has merged, only under `benchbox/core/tpcdi/etl/`, with every file listed in `PROVENANCE.json` and with all comments removed.\n- TPC and bankmark files (DIGen, PDGF, dictionaries, configuration, EULA, appendix SQL) come only from the official archive the owner supplies, are committed unmodified and only in `_sources/tpc-di/`, `benchbox/_binaries/tpc-di/` and `benchbox/_binaries/tpc-di/tools/`. Never copy from the Databricks project or the DuckDB implementation: their copies of the tools or the tools zip, DIGen output, generated reference files, audit snapshots, their copy or rewrite of the appendix SQL, or any generator code (`src/tools/**`). Never commit DIGen output.\n- The specification wins over the Databricks project without asking. Each behaviour of the project that is kept and each change made to follow the specification is one row in `benchbox/core/tpcdi/etl/DEPARTURES.yaml`, which the owner approves at the milestone stop.\n- Owner, 2026-11-21: \"The specification wins without asking. Every difference, and any behaviour of the project that is kept, goes in a catalogue I approve at the milestone stop. A difference from the DuckDB implementation not in the catalogue is a finding that blocks the step.\" The catalogue is `DEPARTURES.yaml`; every entry of the comparison's expected-differences list must cite a catalogue row. After the milestone stop, a new catalogue row in which BenchBox follows the specification is listed in the pull request; a row that would keep behaviour of the Databricks project that departs from the specification stops for the owner's approval (owner, 2026-11-21).\n- The agent never contacts bankmark, the TPC or the Databricks project's author.\n- Staging files produced by DIGen are never edited. The official audit, validation and visibility SQL is never edited in the repository.",
+  "prepared": {
+    "accepted_head": "8ba30ed5b1fd246d332da4cdb29a4f7f9f06f96f",
+    "batch_id": "tpcdi-foundation",
+    "changed_files": [
+      "_sources/tpc-di/databricks-tpc-di/PROVENANCE.md",
+      "benchbox/core/tpcdi/__init__.py",
+      "benchbox/core/tpcdi/benchmark.py",
+      "benchbox/core/tpcdi/schema.py",
+      "benchbox/core/tpcdi/schema_extension_specs.yaml",
+      "benchbox/core/tpcdi/schema_extensions.py",
+      "benchbox/core/tpcdi/schema_specs.yaml",
+      "benchbox/sql_compat/rules/schema_emit/tpcdi_ddl.py",
+      "changelog.d/feat-tpcdi-foundation--tpcdi-07-specification-schema-20261120.json",
+      "pyproject.toml",
+      "quality/comment-cleanup-scope.json",
+      "tests/unit/core/tpcdi/test_schema_spec.py"
+    ],
+    "integration_head": "9853c6c7f10e505c1a5a54e6eab1c01d000aa3dd",
+    "integration_seq": 4,
+    "member_id": "tpcdi-07-specification-schema-20261120",
+    "overlaps": [
+      {
+        "kind": "member",
+        "member": "tpcdi-provenance-record-and-copy-guard-20261121",
+        "paths": [
+          "_sources/tpc-di/databricks-tpc-di/PROVENANCE.md",
+          "quality/comment-cleanup-scope.json"
+        ]
+      }
+    ],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "61e46cd628854022ebea6787b3ad50652bddf8b288f6a010c31b53033bec6068",
+    "source_base": "3804ae6e392cb5526e1e347b0c6073dcca4a7c2b",
+    "source_revision": "8ba30ed5b1fd246d332da4cdb29a4f7f9f06f96f",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-f-07",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/unit/cli/test_benchmark_hooks.py",
+        "tests/unit/cli/test_output_control_static.py",
+        "tests/unit/cli/test_shipped_docs_urls.py",
+        "tests/unit/core/ai_primitives/test_benchmark.py",
+        "tests/unit/core/test_benchmark_output_root_propagation.py",
+        "tests/unit/core/test_quiet_kwarg_handling.py",
+        "tests/unit/core/test_tpcdi_quarantine.py",
+        "tests/unit/core/test_verbosity_rollout.py",
+        "tests/unit/core/tpcdi/test_provenance_guard.py",
+        "tests/unit/core/tpcdi/test_schema_spec.py",
+        "tests/unit/core/tpcdi/test_tpcdi_no_values_row_source.py",
+        "tests/unit/platforms/test_credential_error_messages.py",
+        "tests/unit/scripts/test_comment_cleanup_scope.py",
+        "tests/unit/scripts/test_inert_paths.py",
+        "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index",
+        "tests/unit/test_standardized_benchmark_apis.py"
+      ],
+      "review": {
+        "base_sha": "3804ae6e392cb5526e1e347b0c6073dcca4a7c2b",
+        "head_sha": "8ba30ed5b1fd246d332da4cdb29a4f7f9f06f96f",
+        "head_tree": "138066cb9e343243b79976c566fe07e773178b96",
+        "outcome": "clear",
+        "patch_digest": "30b16b6e9d21f698435cf4ce056bdd08",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "8af3540be1558deeb3fa32f83f0f5c4067d114f0"
+      },
+      "revision": "8ba30ed5b1fd246d332da4cdb29a4f7f9f06f96f",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
@@ -61,6 +142,15 @@
       "generation": "0272c228234a4a41ae99f8faf0e34c79",
       "op": "take",
       "op_id": "be88548c0c5a44ffb0804412d2376283",
+      "session_id": "a8b92107f30e427f9def4483bf06f645"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e",
+      "at": "2026-11-22T04:57:06Z",
+      "client": "omp-coding-agent",
+      "generation": "0272c228234a4a41ae99f8faf0e34c79",
+      "op": "prepare",
+      "op_id": "72c656147fc74c918c1f45092bd103aa",
       "session_id": "a8b92107f30e427f9def4483bf06f645"
     }
   ]
