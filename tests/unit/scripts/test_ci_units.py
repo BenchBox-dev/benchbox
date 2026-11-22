@@ -36,7 +36,7 @@ def needed(paths: list[str], rules: dict[str, list[str]]) -> set[str]:
         (["landing/prompts/catalog.yaml"], {"docs", "tooling"}),
         (["website/src/pages/index.astro"], {"core"}),
         (["results-explorer/src/App.tsx"], {"core"}),
-        (["_project/scripts/explorer_pipeline/pipeline.py"], {"explorer", "tooling"}),
+        (["_project/scripts/explorer_pipeline/pipeline.py"], {"explorer", "results-data", "tooling"}),
         (["results-data/bundles/x.json"], {"explorer", "results-data"}),
         (["docs/guides/intro.md"], {"docs"}),
         (["docs/conf.py"], {"core", "docs"}),
