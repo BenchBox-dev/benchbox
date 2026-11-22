@@ -4154,14 +4154,69 @@
     },
     {
       "path": "COPYRIGHT.md",
-      "blob_sha256": "b9e4d5dee0b9f819bec2bf27b91861c39fbd69cf659d10412bd9552aaaf706fe",
+      "blob_sha256": "0219f8b184bb6cb9cfbe8fbe6a5735dc04baa435885f73e30b3069a0dc00472b",
       "byte_start": 0,
-      "byte_end": 6913,
-      "retained_sha256": "b9e4d5dee0b9f819bec2bf27b91861c39fbd69cf659d10412bd9552aaaf706fe",
+      "byte_end": 8335,
+      "retained_sha256": "0219f8b184bb6cb9cfbe8fbe6a5735dc04baa435885f73e30b3069a0dc00472b",
       "governing_requirement": "This authored summary repeats legal and benchmark acknowledgements but is not independently established as a governing instrument.",
       "source_identity": "ed5c263c513ba65499f4918d3a7de607f280c65b:COPYRIGHT.md",
       "owner": "comment-cleanup-scope-policy",
       "blocking_disposition": "Keep distinct from governing license files; do not infer blanket retention or removal."
+    },
+    {
+      "path": "_sources/tpc-di/EULA.txt",
+      "blob_sha256": "017bd9dbc4c332ac433fc0cc018f3691b330f8aca82a05a20274512de423576e",
+      "byte_start": 0,
+      "byte_end": 18323,
+      "retained_sha256": "017bd9dbc4c332ac433fc0cc018f3691b330f8aca82a05a20274512de423576e",
+      "governing_requirement": "TPC End User License Agreement v2.2 shipped unmodified with the TPC-DI files.",
+      "source_identity": "https://www.tpc.org/TPC_Documents_Current_Versions/txt/EULA_v2.2.0.txt",
+      "owner": "comment-cleanup-scope-policy",
+      "blocking_disposition": "Preserve these exact bytes."
+    },
+    {
+      "path": "_sources/tpc-di/NOTICE.txt",
+      "blob_sha256": "6b2cdb563ec3ec2611da682f694f8b64c157cdf037232036dd0877e05ca8bdf4",
+      "byte_start": 0,
+      "byte_end": 1907,
+      "retained_sha256": "6b2cdb563ec3ec2611da682f694f8b64c157cdf037232036dd0877e05ca8bdf4",
+      "governing_requirement": "TPC legend that accompanies the TPC-DI files under the EULA.",
+      "source_identity": "_sources/tpc-di/NOTICE.txt",
+      "owner": "comment-cleanup-scope-policy",
+      "blocking_disposition": "Preserve these exact bytes."
+    },
+    {
+      "path": "benchbox/_binaries/tpc-di/EULA.txt",
+      "blob_sha256": "017bd9dbc4c332ac433fc0cc018f3691b330f8aca82a05a20274512de423576e",
+      "byte_start": 0,
+      "byte_end": 18323,
+      "retained_sha256": "017bd9dbc4c332ac433fc0cc018f3691b330f8aca82a05a20274512de423576e",
+      "governing_requirement": "TPC End User License Agreement v2.2 shipped unmodified with the TPC-DI files.",
+      "source_identity": "https://www.tpc.org/TPC_Documents_Current_Versions/txt/EULA_v2.2.0.txt",
+      "owner": "comment-cleanup-scope-policy",
+      "blocking_disposition": "Preserve these exact bytes."
+    },
+    {
+      "path": "benchbox/_binaries/tpc-di/NOTICE.txt",
+      "blob_sha256": "6b2cdb563ec3ec2611da682f694f8b64c157cdf037232036dd0877e05ca8bdf4",
+      "byte_start": 0,
+      "byte_end": 1907,
+      "retained_sha256": "6b2cdb563ec3ec2611da682f694f8b64c157cdf037232036dd0877e05ca8bdf4",
+      "governing_requirement": "TPC legend that accompanies the TPC-DI files under the EULA.",
+      "source_identity": "_sources/tpc-di/NOTICE.txt",
+      "owner": "comment-cleanup-scope-policy",
+      "blocking_disposition": "Preserve these exact bytes."
+    },
+    {
+      "path": "benchbox/_binaries/tpc-di/tools/EULA.txt",
+      "blob_sha256": "017bd9dbc4c332ac433fc0cc018f3691b330f8aca82a05a20274512de423576e",
+      "byte_start": 0,
+      "byte_end": 18323,
+      "retained_sha256": "017bd9dbc4c332ac433fc0cc018f3691b330f8aca82a05a20274512de423576e",
+      "governing_requirement": "TPC End User License Agreement v2.2 shipped beside the TPC-DI tools archive.",
+      "source_identity": "benchbox/_binaries/tpc-di/EULA.txt",
+      "owner": "comment-cleanup-scope-policy",
+      "blocking_disposition": "Preserve these exact bytes."
     }
   ],
   "obligations": [],

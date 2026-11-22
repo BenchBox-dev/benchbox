@@ -301,3 +301,11 @@ unmodified in `benchbox/_binaries/tpc-di/` under the TPC End User License
 Agreement (`EULA.txt` beside it). THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE
 FROM TPC. The SQL comes from an unofficial shared copy until the official
 archive is obtained; see `_sources/README.md`.
+
+The official TPC-DI tools archive (DIGen and PDGF, `TPC-DI_Tools_v1.1.0.zip`) ships
+unmodified in `benchbox/_binaries/tpc-di/tools/` with the TPC End User License
+Agreement, the bankmark PDGF licence (`PDGF-LICENSE.txt`: use limited to
+generating TPC-DI data for "internal, academic, and research purposes only"; no
+modification, decompilation or redistribution) and `SOURCING.md`. The package
+licence stays MIT. BenchBox unpacks the archive into its cache directory on
+first use and runs it with your Java.
