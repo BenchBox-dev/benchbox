@@ -25,7 +25,7 @@ pytestmark = [
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 TERM_IGNORING_TREE = (
-    "import os, pathlib, signal, subprocess, sys, time\n"
+    "import os, pathlib, psutil, signal, subprocess, sys, time\n"
     "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
     "grandchild = subprocess.Popen([sys.executable, '-c', "
     "'import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); print(1, flush=True); time.sleep(300)'], "
@@ -33,7 +33,8 @@ TERM_IGNORING_TREE = (
     "grandchild.stdout.readline()\n"
     "target = pathlib.Path(sys.argv[1])\n"
     "staging = target.with_name(target.name + '.tmp')\n"
-    "staging.write_text(f'{os.getpid()} {grandchild.pid}')\n"
+    "staging.write_text(f'{os.getpid()} {psutil.Process().create_time()} "
+    "{grandchild.pid} {psutil.Process(grandchild.pid).create_time()}')\n"
     "os.replace(staging, target)\n"
     "time.sleep(300)\n"
 )
@@ -41,7 +42,7 @@ TERM_IGNORING_TREE = (
 HARD_STOP_LIMIT = 1
 
 HARD_STOP_DRIVER = (
-    "import subprocess, sys, time\n"
+    "import psutil, subprocess, sys, time\n"
     "from benchbox.cli.run_time_limit import hard_stop\n"
     "from benchbox.utils.run_deadline import RunDeadline, arm_hard_stop\n"
     "deadline = RunDeadline(1)\n"
@@ -51,44 +52,55 @@ HARD_STOP_DRIVER = (
     "child.stdout.readline()\n"
     "with deadline.tracking(child):\n"
     "    arm_hard_stop(deadline, hard_stop)\n"
-    "    print(f'armed {child.pid}', flush=True)\n"
+    "    print(f'armed {child.pid} {psutil.Process(child.pid).create_time()}', flush=True)\n"
     "    time.sleep(300)\n"
 )
 
 SIGKILL = signal.SIGKILL if hasattr(signal, "SIGKILL") else 9
 
 
-def _wait_for_pids(marker: Path, seconds: float = 30.0) -> list[int]:
+def _wait_for_pids(marker: Path, seconds: float = 30.0) -> list[tuple[int, float]]:
     started = mono_time()
     while not marker.exists():
         assert elapsed_seconds(started) < seconds, "the child never reported that it ignores SIGTERM"
         time.sleep(0.05)
-    return [int(value) for value in marker.read_text(encoding="utf-8").split()]
+    fields = marker.read_text(encoding="utf-8").split()
+    return [(int(pid), float(created)) for pid, created in zip(fields[::2], fields[1::2], strict=True)]
 
 
-def _is_gone(pid: int) -> bool:
+def _owned(pid: int, created: float) -> psutil.Process | None:
     try:
-        return psutil.Process(pid).status() == psutil.STATUS_ZOMBIE
+        process = psutil.Process(pid)
+        return process if process.create_time() == created else None
+    except psutil.NoSuchProcess:
+        return None
+
+
+def _is_gone(pid: int, created: float) -> bool:
+    process = _owned(pid, created)
+    try:
+        return process is None or process.status() == psutil.STATUS_ZOMBIE
     except psutil.NoSuchProcess:
         return True
 
 
-def _wait_until_gone(pids: list[int], seconds: float = 10.0) -> bool:
+def _wait_until_gone(owned: list[tuple[int, float]], seconds: float = 10.0) -> bool:
     started = mono_time()
-    while not all(_is_gone(pid) for pid in pids):
+    while not all(_is_gone(pid, created) for pid, created in owned):
         if elapsed_seconds(started) >= seconds:
             return False
         time.sleep(0.05)
     return True
 
 
-def _reap(*pids: int) -> None:
-    for pid in pids:
-        if pid <= 1:
+def _reap(*owned: tuple[int, float]) -> None:
+    for pid, created in owned:
+        process = _owned(pid, created)
+        if process is None:
             continue
         try:
-            os.kill(pid, SIGKILL)
-        except (ProcessLookupError, PermissionError):
+            process.kill()
+        except psutil.Error:
             pass
 
 
@@ -167,12 +179,12 @@ def test_the_hard_stop_exits_within_the_limit_plus_grace_when_a_child_ignores_si
         stdout=subprocess.PIPE,
         text=True,
     )
-    child_pid = 0
+    child_pid: tuple[int, float] | None = None
     try:
         assert driver.stdout is not None
         armed = driver.stdout.readline().split()
         assert armed[0] == "armed"
-        child_pid = int(armed[1])
+        child_pid = (int(armed[1]), float(armed[2]))
         started = mono_time()
         assert _wait_until_gone([child_pid], limit + 5.0)
         assert elapsed_seconds(started) < limit + 5.0
@@ -180,7 +192,8 @@ def test_the_hard_stop_exits_within_the_limit_plus_grace_when_a_child_ignores_si
         assert driver.wait(limit + HARD_STOP_GRACE_SECONDS + 15.0) == ExitCode.TIMEOUT
         assert elapsed_seconds(started) < limit + HARD_STOP_GRACE_SECONDS + 2.0
     finally:
-        _reap(child_pid)
+        if child_pid is not None:
+            _reap(child_pid)
         if driver.poll() is None:
             driver.kill()
         driver.wait()
