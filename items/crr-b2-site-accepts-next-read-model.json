@@ -2,10 +2,11 @@
   "acceptance": [
     "The site builds and its browser suite passes against both the current read model and the fixture",
     "With the current read model, every Explorer page is pixel-equivalent to main (visual comparison job)",
-    "explorer-build-contract accepts exactly one more version"
+    "explorer-build-contract accepts exactly one more version",
+    "A browser test on the fixture asserts each label on each score surface, including an embed, and fails when one is removed"
   ],
   "context": "Step of the corpus rule remediation plan (crr-00-corpus-rule-remediation-plan). Plan written 2026-11-22 and reviewed twice by an independent adversarial reviewer; counts marked (R) were measured by that reviewer and must be re-measured, not trusted. Owner decisions were given by choice dialog on 2026-11-22 and are quoted in crr-00.",
-  "description": "## Problem\nThe site accepts read-model versions up to 20. A core bump that lands first breaks the site build (tracker autogen-site-contract-bump-sequencing-20261018).\n\n## Change (benchbox-site)\n- Accept the next version using the contract fixture from crr-b1. Render the new fields when present; keep today's behaviour when they are absent. No TypeScript derivation is removed yet.\n\n## Decision gates\n- If the fixture and the site's types disagree, fix the fixture in core first; do not loosen the site's validation.\n\n## Guardrails (apply to every item of this plan)\n- Fix the root cause for every platform and benchmark. No rule, exception, label or test may name a platform or a version matrix. Only the pvm-p* items may name Polars, and only to run and stage that run's files.\n- Never edit a stored result file to make it pass. Outcomes change only through the rule.\n- Any change to the outcome of a stored result must show in the committed outcome snapshot diff in the same pull request and be explained in its body.\n- No new stored class value. No reader may decide anything from benchmark.compliance_class, conformance_class or summary.tpc_metrics.suppressed.\n- Paths, line numbers and counts in this plan were read on 2026-11-22 at develop 93f3360. Re-read before editing; report drift, do not guess.\n- AGENTS.md applies: linked worktree, one pull request per item, close at the merged pull request, heavy work only through make heavy-run, no live cloud run without owner approval in that task.\n- At a decision gate, follow the recorded default. If its stop condition is met, stop and report to the owner. Never substitute a different owner decision.\n- Read crr-00-corpus-rule-remediation-plan first: it holds the owner decisions, the rule table and the fault types (T1 to T5).",
+  "description": "## Problem\nThe site accepts read-model versions up to 20. A core bump that lands first breaks the site build (tracker autogen-site-contract-bump-sequencing-20261018).\n\n## Change (benchbox-site)\n- Accept the next version using the contract fixture from crr-b1. When the new fields are present, render on every surface that shows a score (leaderboard, detail, comparison, receipts, benchbox-result embeds, meta-leaderboard): the derived-result wording, the class in plain words, \"row counts not checked\" and \"single iteration\". Keep today's behaviour when the fields are absent. This is what lets crr-b3 change rankings without a window that has no labels. No TypeScript derivation is removed yet.\n\n## Decision gates\n- If the fixture and the site's types disagree, fix the fixture in core first; do not loosen the site's validation.\n\n## Guardrails (apply to every item of this plan)\n- Fix the root cause for every platform and benchmark. No rule, exception, label or test may name a platform or a version matrix. Only the pvm-p* items may name Polars, and only to run and stage that run's files.\n- Never edit a stored result file to make it pass. Outcomes change only through the rule.\n- Any change to the outcome of a stored result must show in the committed outcome snapshot diff in the same pull request and be explained in its body.\n- No new stored class value. No reader may decide anything from benchmark.compliance_class, conformance_class or summary.tpc_metrics.suppressed.\n- Paths, line numbers and counts in this plan were read on 2026-11-22 at develop 93f3360. Re-read before editing; report drift, do not guess.\n- AGENTS.md applies: linked worktree, one pull request per item, close at the merged pull request, heavy work only through make heavy-run, no live cloud run without owner approval in that task.\n- At a decision gate, follow the recorded default. If its stop condition is met, stop and report to the owner. Never substitute a different owner decision.\n- Read crr-00-corpus-rule-remediation-plan first: it holds the owner decisions, the rule table and the fault types (T1 to T5).",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6fbef61b8c1a450fbecb672",
@@ -13,6 +14,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "b1f514337e0841ceb339f25b024b101b",
+      "session_id": "c07e5ac3266b4133b46582fc1e496cdf"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6fbef61b8c1a450fbecb672",
+      "at": "2026-11-22T17:06:19Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a48fc6514f4b413f8e494570dd8ae94c",
       "session_id": "c07e5ac3266b4133b46582fc1e496cdf"
     }
   ]
