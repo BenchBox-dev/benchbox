@@ -39656,10 +39656,15 @@
       "title": "Run timeout: document --timeout on the benchbox-site run, datagen, MCP and configuration pages"
     },
     "run-timeout-uat-cells-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T04:12:21Z",
+        "generation": "b9dd1b38fb8741129c1e59c52692cdca",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Run timeout step 4: UAT cells pass --timeout; the outside kill becomes the backstop"
     },
     "runtime-module-refactor-batch-two": {
