@@ -19726,10 +19726,15 @@
       "title": "ClickHouse Local fails TPC-DS query 35 at SF1, blocking it from the public corpus"
     },
     "clickhouse-local-tpchavoc-sf1-timeout-nightly-20261119": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T21:59:31Z",
+        "generation": "006db186e31a4723bfcdcb90182628d1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "clickhouse-local tpchavoc SF1 times out at 1200 s in nightly trunk UAT"
     },
     "clickhouse-macos-homebrew-gatekeeper": {
