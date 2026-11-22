@@ -31320,6 +31320,15 @@
       "status": "done",
       "title": "Migrate ClickHouse/Firebolt to Deployment Registry"
     },
+    "migrate-core-sql-text-rewrites-to-translator-20261122": {
+      "claim": null,
+      "needs": [
+        "sql-translation-single-entry-guidance-and-check-20261122"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Migrate the ten existing per-platform SQL text rewrites in benchbox/core to translate_sql_query / apply_rewrite"
+    },
     "migrate-emits-no-audit-event": {
       "claim": null,
       "needs": [],
