@@ -50036,9 +50036,9 @@
     "trunk-uat-timeseries-execute-failure-20261122": {
       "claim": null,
       "needs": [],
-      "priority": "medium",
+      "priority": "medium-high",
       "status": "open",
-      "title": "Trunk UAT timeseries shard fails its execute phase with no failing cell in the job log"
+      "title": "Trunk UAT timeseries (3 of 6 runs) and query-engines shards fail execute with no failing cell named in the job log"
     },
     "tsbs-devops-dataframe-sql-id-mapping": {
       "claim": null,
