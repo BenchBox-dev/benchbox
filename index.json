@@ -22313,10 +22313,15 @@
       "title": "Dev-loop dashboard compares Make targets against the superseded <= 90 threshold"
     },
     "dev-loop-local-gates-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T13:30:37Z",
+        "generation": "721ac79de5724f71b98b6b724776b0b6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Local gates that match CI: preflight lint guards, clear member-check refusals, windows check skips venvs"
     },
     "dev-loop-metrics-ci-failure-baseline": {
