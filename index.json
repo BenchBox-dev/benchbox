@@ -36874,9 +36874,9 @@
     "pvm-s6b-polars-2-blog-draft": {
       "claim": null,
       "needs": [
-        "pvm-s5-analyze-polars-matrix",
-        "pvm-d1-publication-scope-decision",
-        "core-exec-polars-matrix-docs-refresh"
+        "pvm-p5-post-and-findings-from-published-runs",
+        "pvm-p6-post-tpch-from-published-run",
+        "pvm-p7-post-tpcds-from-published-run"
       ],
       "priority": "medium",
       "status": "open",
