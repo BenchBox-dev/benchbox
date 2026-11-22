@@ -27,7 +27,7 @@ GATE_CHECKS = {
 }
 CHECK_STEPS = {
     "comment-policy": ["comment-policy", "notice-drift"],
-    "copy-guard": ["copy-guard-install", "copy-guard"],
+    "copy-guard": ["copy-guard"],
     "spellcheck": ["spellcheck"],
     "results-data-check": [
         "results-python",
@@ -114,10 +114,10 @@ def test_copy_guard_runs_on_every_pull_request_whatever_the_path_filter_decides(
         assert "needs.ci-paths" not in steps[step_id].get("if", ""), step_id
     run = steps["copy-guard"]["run"]
     assert 'git show "${BASE_REF}:${guard}"' in run
-    assert "guard=tests/unit/core/tpcdi/test_provenance_guard.py" in run
-    assert "--noconftest -c /dev/null" in run
-    assert "--rootdir $PWD" in run
-    assert "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1" in run
-    assert "--collect-only" in run
-    assert '[ "$passed" != "$expected" ]' in run
+    assert "guard=scripts/check_tpcdi_copy_guard.py" in run
+    assert 'cd "$RUNNER_TEMP"' in run
+    assert 'python -I -S copy_guard.py --root "$GITHUB_WORKSPACE"' in run
+    for forbidden in ("uv ", "pytest", "pip ", "pip3"):
+        assert forbidden not in run
+    assert "UV_PYTHON" not in steps["copy-guard"].get("env", {})
     assert steps["copy-guard"]["env"]["BASE_REF"] == "${{ github.event.pull_request.base.sha }}"

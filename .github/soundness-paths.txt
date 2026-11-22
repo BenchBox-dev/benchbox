@@ -210,3 +210,4 @@ file	tests/unit/scripts/test_review_provider_diversity.py
 file	tests/fixtures/review_provider_diversity/omp_catalog_windows.json
 file	tests/unit/core/tpcdi/test_provenance_guard.py
 file	_sources/tpc-di/databricks-tpc-di/FORBIDDEN_HASHES.json
+file	scripts/check_tpcdi_copy_guard.py

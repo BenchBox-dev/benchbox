@@ -1,128 +1,26 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
-import os
-import re
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
-REPO_ROOT = Path(os.environ.get("PROVENANCE_GUARD_ROOT") or Path(__file__).parents[4])
-HASH_LIST = REPO_ROOT / "_sources" / "tpc-di" / "databricks-tpc-di" / "FORBIDDEN_HASHES.json"
-TOOLS_DIR = "benchbox/_binaries/tpc-di/tools/"
-ETL_DIR = "benchbox/core/tpcdi/etl/"
-ETL_PROVENANCE = "benchbox/core/tpcdi/etl/PROVENANCE.json"
-TPC_DIRS = ("benchbox/_binaries/tpc-di/", "_sources/tpc-di/")
-APPROVED_HASHES = REPO_ROOT / "quality" / "comment-policy-approved-external-hashes.json"
-FORBIDDEN_NAMES = frozenset(
-    {
-        "pdgf.jar",
-        "digen.jar",
-        "digen.asp",
-        "digen_build.zip",
-        "tpc-di.jar",
-        "tpc-di_src.jar",
-        "commons-net-3.3.jar",
-        "commons.lang3.time.jar",
-        "javassist.jar",
-        "log4j-1.2.15.jar",
-        "xercesimpl.jar",
-        "xml-apis.jar",
-        "constants.properties",
-        "pseudotextgenerator.properties",
-        "log4j.xml",
-        "pdgf.log",
-    }
-)
-FORBIDDEN_NAME_PATTERNS = (re.compile(r"tpc-di-.*\.xml"), re.compile(r".*-audit\.xml"))
-TOOLS_ZIP_MARKERS = ("tpc-di", "tpcdi", "digen", "pdgf")
-FORBIDDEN_GROUPS = ("generator_and_tools", "audit_snapshots", "digen_output")
+REPO_ROOT = Path(__file__).parents[4]
+SCRIPT = REPO_ROOT / "scripts" / "check_tpcdi_copy_guard.py"
 
+_spec = importlib.util.spec_from_file_location("check_tpcdi_copy_guard", SCRIPT)
+guard = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(guard)
 
-def load_hash_list() -> dict:
-    return json.loads(HASH_LIST.read_text(encoding="utf-8"))
-
-
-def forbidden_hashes(hash_list: dict) -> tuple[set[str], int]:
-    entries = [entry for group in FORBIDDEN_GROUPS for entry in hash_list["forbidden_by_content"][group]]
-    return {entry["sha256"] for entry in entries}, max(entry["bytes"] for entry in entries)
-
-
-def official_hashes() -> set[str]:
-    return {entry["sha256"] for entry in json.loads(APPROVED_HASHES.read_text(encoding="utf-8"))["files"]}
-
-
-def tree_files(root: Path) -> list[str]:
-    listed = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-        check=True,
-        capture_output=True,
-    ).stdout
-    return sorted(name for name in listed.decode("utf-8").split("\0") if name and (root / name).is_file())
-
-
-def file_digests(root: Path, files: list[str], max_bytes: int) -> dict[str, str]:
-    digests = {}
-    for name in files:
-        path = root / name
-        if path.stat().st_size <= max_bytes:
-            digests[name] = hashlib.sha256(path.read_bytes()).hexdigest()
-    return digests
-
-
-def recorded_hash_violations(digests: dict[str, str], forbidden: set[str], official: set[str]) -> list[str]:
-    return [
-        name
-        for name, digest in digests.items()
-        if digest in forbidden and not (name.startswith(TOOLS_DIR) and digest in official)
-    ]
-
-
-def official_misplaced_violations(digests: dict[str, str], official: set[str]) -> list[str]:
-    return [
-        name
-        for name, digest in digests.items()
-        if digest in official and not any(name.startswith(directory) for directory in TPC_DIRS)
-    ]
-
-
-def misplaced_tool_violations(files: list[str]) -> list[str]:
-    found = []
-    for name in files:
-        if name.startswith(TOOLS_DIR):
-            continue
-        base = name.rsplit("/", 1)[-1].lower()
-        marked = base.replace("_", "-")
-        is_tools_zip = base.endswith(".zip") and any(marker in marked for marker in TOOLS_ZIP_MARKERS)
-        is_named = base in FORBIDDEN_NAMES or any(pattern.fullmatch(base) for pattern in FORBIDDEN_NAME_PATTERNS)
-        if is_named or base.endswith(".dict") or is_tools_zip:
-            found.append(name)
-    return found
-
-
-def gitlink_entries(root: Path) -> list[str]:
-    listed = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "-s", "-z"], check=True, capture_output=True
-    ).stdout.decode("utf-8")
-    return sorted(
-        entry.split("\t", 1)[1] for entry in listed.split("\0") if entry.startswith("160000 ") and "\t" in entry
-    )
-
-
-def listed_etl_sql(root: Path) -> set[str]:
-    path = root / ETL_PROVENANCE
-    if not path.is_file():
-        return set()
-    return {entry["path"] for entry in json.loads(path.read_text(encoding="utf-8"))["files"]}
-
-
-def unlisted_sql_violations(root: Path, files: list[str]) -> list[str]:
-    listed = listed_etl_sql(root)
-    return [name for name in files if name.startswith(ETL_DIR) and name.endswith(".sql") and name not in listed]
+TOOLS_DIR = guard.TOOLS_DIR
+ETL_DIR = guard.ETL_DIR
+ETL_PROVENANCE = guard.ETL_PROVENANCE
 
 
 def write(root: Path, name: str, content: bytes) -> str:
@@ -132,90 +30,128 @@ def write(root: Path, name: str, content: bytes) -> str:
     return name
 
 
-def index_of(content: bytes) -> dict:
-    return {"sha256": {hashlib.sha256(content).hexdigest()}, "bytes": {len(content)}}
+def digest(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
+
+
+def make_tree(root: Path, hashes: list[dict], official: list[str]) -> None:
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    write(
+        root,
+        guard.HASH_LIST,
+        json.dumps(
+            {"forbidden_by_content": {"generator_and_tools": hashes, "audit_snapshots": [], "digen_output": []}}
+        ).encode(),
+    )
+    write(
+        root,
+        guard.APPROVED_HASHES,
+        json.dumps({"files": [{"sha256": value, "label": "x"} for value in official]}).encode(),
+    )
+
+
+def run_script(root: Path) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [sys.executable, "-I", "-S", str(SCRIPT), "--root", str(root)], capture_output=True, text=True, cwd=root
+    )
+
+
+def test_real_tree_passes():
+    assert guard.check(REPO_ROOT) == []
+
+
+def test_script_reports_ok_on_the_real_tree():
+    result = run_script(REPO_ROOT)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "copy guard: OK"
 
 
 def test_hash_list_is_not_empty():
-    hash_list = load_hash_list()
-    for group in FORBIDDEN_GROUPS:
-        assert hash_list["forbidden_by_content"][group]
-    forbidden, max_bytes = forbidden_hashes(hash_list)
+    forbidden, max_bytes = guard.load_forbidden(REPO_ROOT)
     assert len(forbidden) > 300
     assert max_bytes > 0
 
 
-@pytest.fixture(scope="module")
-def tree_digests() -> dict[str, str]:
-    _, max_bytes = forbidden_hashes(load_hash_list())
-    return file_digests(REPO_ROOT, tree_files(REPO_ROOT), max_bytes)
+def test_empty_hash_list_is_refused(tmp_path):
+    make_tree(tmp_path, [], [])
+    assert run_script(tmp_path).returncode == 2
 
 
-def test_tree_has_no_recorded_file_that_is_not_an_official_tool_file(tree_digests):
-    forbidden, _ = forbidden_hashes(load_hash_list())
-    assert recorded_hash_violations(tree_digests, forbidden, official_hashes()) == []
-
-
-def test_tree_has_no_official_archive_file_outside_the_tpc_directories(tree_digests):
-    assert official_misplaced_violations(tree_digests, official_hashes()) == []
-
-
-def test_tree_has_no_tool_file_outside_the_tools_directory():
-    assert misplaced_tool_violations(tree_files(REPO_ROOT)) == []
-
-
-def test_tree_has_no_gitlink():
-    assert gitlink_entries(REPO_ROOT) == []
-
-
-def test_tree_has_no_unlisted_etl_sql():
-    assert unlisted_sql_violations(REPO_ROOT, tree_files(REPO_ROOT)) == []
-
-
-def test_guard_fails_on_a_recorded_hash(tmp_path):
+def test_script_fails_on_a_recorded_hash(tmp_path):
     content = b"generator text taken from the project\n"
-    name = write(tmp_path, "benchbox/core/tpcdi/copied.txt", content)
-    other = write(tmp_path, "benchbox/core/tpcdi/original.txt", b"different\n")
-    digests = file_digests(tmp_path, [name, other], 1000)
-    forbidden = {hashlib.sha256(content).hexdigest()}
-    assert recorded_hash_violations(digests, forbidden, set()) == [name]
+    make_tree(tmp_path, [{"sha256": digest(content), "bytes": len(content)}], [])
+    write(tmp_path, "benchbox/core/tpcdi/copied.txt", content)
+    result = run_script(tmp_path)
+    assert result.returncode == 1
+    assert "benchbox/core/tpcdi/copied.txt" in result.stderr
 
 
 def test_guard_allows_a_recorded_hash_in_the_tools_directory_only_when_official(tmp_path):
     content = b"official tool bytes\n"
     name = write(tmp_path, TOOLS_DIR + "DIGen.jar", content)
-    digests = file_digests(tmp_path, [name], 1000)
-    forbidden = {hashlib.sha256(content).hexdigest()}
-    assert recorded_hash_violations(digests, forbidden, set(forbidden)) == []
-    assert recorded_hash_violations(digests, forbidden, set()) == [name]
+    digests = guard.file_digests(tmp_path, [name], 1000)
+    forbidden = {digest(content)}
+    assert guard.recorded_hash_violations(digests, forbidden, set(forbidden)) == []
+    assert guard.recorded_hash_violations(digests, forbidden, set()) == [name]
 
 
-def test_guard_fails_on_a_recorded_hash_in_the_tools_directory_without_an_official_match(tmp_path):
+def test_script_fails_on_a_recorded_hash_in_the_tools_directory_without_an_official_match(tmp_path):
     content = b"generator code copied into the tools directory\n"
-    name = write(tmp_path, TOOLS_DIR + "tpcdi_gen/audit.py", content)
-    digests = file_digests(tmp_path, [name], 1000)
-    assert recorded_hash_violations(digests, {hashlib.sha256(content).hexdigest()}, {"0" * 64}) == [name]
+    make_tree(tmp_path, [{"sha256": digest(content), "bytes": len(content)}], ["0" * 64])
+    write(tmp_path, TOOLS_DIR + "tpcdi_gen/audit.py", content)
+    result = run_script(tmp_path)
+    assert result.returncode == 1
+    assert TOOLS_DIR + "tpcdi_gen/audit.py" in result.stderr
 
 
-def test_guard_fails_on_an_official_archive_file_outside_the_tpc_directories(tmp_path):
+def test_script_passes_a_recorded_official_hash_in_the_tools_directory(tmp_path):
+    content = b"official tool bytes\n"
+    make_tree(tmp_path, [{"sha256": digest(content), "bytes": len(content)}], [digest(content)])
+    write(tmp_path, TOOLS_DIR + "DIGen.jar", content)
+    assert run_script(tmp_path).returncode == 0
+
+
+def test_script_fails_on_an_official_archive_file_outside_the_tpc_directories(tmp_path):
     content = b"bytes of a file of the official archive\n"
-    outside = write(tmp_path, "benchbox/core/tpcdi/renamed.bin", content)
-    in_tools = write(tmp_path, TOOLS_DIR + "renamed.bin", content)
-    in_sources = write(tmp_path, "_sources/tpc-di/renamed.bin", content)
-    digests = file_digests(tmp_path, [outside, in_tools, in_sources], 1000)
-    assert official_misplaced_violations(digests, {hashlib.sha256(content).hexdigest()}) == [outside]
+    make_tree(tmp_path, [{"sha256": "1" * 64, "bytes": 1000}], [digest(content)])
+    write(tmp_path, "benchbox/core/tpcdi/renamed.bin", content)
+    write(tmp_path, TOOLS_DIR + "renamed.bin", content)
+    write(tmp_path, "_sources/tpc-di/renamed.bin", content)
+    result = run_script(tmp_path)
+    assert result.returncode == 1
+    assert "benchbox/core/tpcdi/renamed.bin" in result.stderr
+    assert "_sources/tpc-di/renamed.bin" not in result.stderr
+    assert TOOLS_DIR + "renamed.bin" not in result.stderr
 
 
-def test_guard_fails_on_a_gitlink(tmp_path):
-    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
-    commit = "1" * 40
+def test_script_fails_on_a_planted_tool_file(tmp_path):
+    make_tree(tmp_path, [{"sha256": "1" * 64, "bytes": 1}], [])
+    write(tmp_path, "vendor/pdgf.jar", b"x")
+    result = run_script(tmp_path)
+    assert result.returncode == 1
+    assert "vendor/pdgf.jar" in result.stderr
+
+
+def test_script_fails_on_a_gitlink(tmp_path):
+    make_tree(tmp_path, [{"sha256": "1" * 64, "bytes": 1}], [])
     subprocess.run(
-        ["git", "-C", str(tmp_path), "update-index", "--add", "--cacheinfo", f"160000,{commit},vendor/tools"],
+        ["git", "-C", str(tmp_path), "update-index", "--add", "--cacheinfo", f"160000,{'1' * 40},vendor/tools"],
+        check=True,
+    )
+    result = run_script(tmp_path)
+    assert result.returncode == 1
+    assert "vendor/tools" in result.stderr
+
+
+def test_gitlink_entries_lists_only_mode_160000(tmp_path):
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "update-index", "--add", "--cacheinfo", f"160000,{'1' * 40},vendor/tools"],
         check=True,
     )
     write(tmp_path, "plain.txt", b"x\n")
     subprocess.run(["git", "-C", str(tmp_path), "add", "plain.txt"], check=True)
-    assert gitlink_entries(tmp_path) == ["vendor/tools"]
+    assert guard.gitlink_entries(tmp_path) == ["vendor/tools"]
 
 
 @pytest.mark.parametrize(
@@ -237,7 +173,7 @@ def test_guard_fails_on_a_gitlink(tmp_path):
     ],
 )
 def test_guard_fails_on_a_forbidden_file_name_outside_the_tools_directory(name):
-    assert misplaced_tool_violations([name]) == [name]
+    assert guard.misplaced_tool_violations([name]) == [name]
 
 
 @pytest.mark.parametrize(
@@ -253,21 +189,38 @@ def test_guard_fails_on_a_forbidden_file_name_outside_the_tools_directory(name):
     ],
 )
 def test_guard_allows_tool_files_in_the_tools_directory_and_other_files(name):
-    assert misplaced_tool_violations([name]) == []
+    assert guard.misplaced_tool_violations([name]) == []
 
 
-def test_guard_fails_on_an_unlisted_sql_file(tmp_path):
-    unlisted = write(tmp_path, ETL_DIR + "dimensions/dim_customer.sql", b"SELECT 1\n")
-    assert unlisted_sql_violations(tmp_path, [unlisted]) == [unlisted]
+def test_script_fails_on_an_unlisted_sql_file(tmp_path):
+    make_tree(tmp_path, [{"sha256": "1" * 64, "bytes": 1}], [])
+    write(tmp_path, ETL_DIR + "dimensions/dim_customer.sql", b"SELECT 1\n")
+    result = run_script(tmp_path)
+    assert result.returncode == 1
+    assert "dim_customer.sql" in result.stderr
 
 
-def test_guard_accepts_a_listed_sql_file(tmp_path):
+def test_script_accepts_a_listed_sql_file(tmp_path):
+    make_tree(tmp_path, [{"sha256": "1" * 64, "bytes": 1}], [])
     listed = write(tmp_path, ETL_DIR + "dimensions/dim_customer.sql", b"SELECT 1\n")
     other = write(tmp_path, ETL_DIR + "dimensions/dim_account.sql", b"SELECT 2\n")
     write(tmp_path, ETL_PROVENANCE, json.dumps({"files": [{"path": listed}]}).encode())
-    assert unlisted_sql_violations(tmp_path, [listed, other]) == [other]
+    result = run_script(tmp_path)
+    assert result.returncode == 1
+    assert other in result.stderr
+    assert listed not in result.stderr
 
 
-def test_guard_ignores_sql_outside_the_etl_directory(tmp_path):
-    name = write(tmp_path, "benchbox/core/tpch/queries/q1.sql", b"SELECT 1\n")
-    assert unlisted_sql_violations(tmp_path, [name]) == []
+def test_script_ignores_sql_outside_the_etl_directory(tmp_path):
+    make_tree(tmp_path, [{"sha256": "1" * 64, "bytes": 1}], [])
+    write(tmp_path, "benchbox/core/tpch/queries/q1.sql", b"SELECT 1\n")
+    assert run_script(tmp_path).returncode == 0
+
+
+def test_script_ignores_planted_python_modules_and_conftests(tmp_path):
+    make_tree(tmp_path, [{"sha256": "1" * 64, "bytes": 1}], [])
+    write(tmp_path, "json.py", b"raise SystemExit(0)\n")
+    write(tmp_path, "pytest.py", b"raise SystemExit(0)\n")
+    write(tmp_path, "conftest.py", b"raise SystemExit(0)\n")
+    write(tmp_path, "vendor/pdgf.jar", b"x")
+    assert run_script(tmp_path).returncode == 1
