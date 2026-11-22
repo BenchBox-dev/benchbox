@@ -45760,7 +45760,7 @@
         "run-timeout-generators-and-partial-data-20261120"
       ],
       "priority": "medium-high",
-      "status": "blocked",
+      "status": "open",
       "title": "TPC-DI step 11: DIGen runner: generate the source files with the shipped tools and record what was generated"
     },
     "tpcdi-09-generator-customer-and-finwire-20261120": {
