@@ -18,6 +18,7 @@ from benchbox.core.benchmark_registry import (
     nonstandard_scale_note,
 )
 from benchbox.core.constants import VALID_PHASES
+from benchbox.core.generation_estimate import generation_estimate_messages
 from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS, BenchmarkConfig
 from benchbox.utils.printing import quiet_console
 from benchbox.utils.verbosity import VerbositySettings
@@ -638,6 +639,8 @@ class BenchmarkManager:
         table.add_row("Est. Time:", f"~{est_time:.0f} minutes")
 
         console.print(table)
+        for message in generation_estimate_messages(benchmark_id, scale_factor):
+            console.print(message)
         console.print()
 
     def _get_system_profile(self) -> dict[str, Any]:
@@ -700,6 +703,10 @@ class BenchmarkManager:
             )
 
         console.print(table)
+
+        for scale in scale_options:
+            for message in generation_estimate_messages(benchmark_id, scale):
+                console.print(message)
 
     def _estimate_memory_usage(self, benchmark_id: str, scale: float) -> float:
         base = float(self.benchmarks[benchmark_id]["base_memory_gb"])

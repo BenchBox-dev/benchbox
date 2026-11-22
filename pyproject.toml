@@ -407,7 +407,7 @@ pytest_add_cli_args = ["-n", "0", "-p", "no:cacheprovider"]
 
 [tool.setuptools.package-data]
 "benchbox._vendor" = ["*.zip", "sqlglot.json", "SQLGLOT_LICENSE.txt"]
-"benchbox.core" = ["benchmark_registry.yaml"]
+"benchbox.core" = ["benchmark_registry.yaml", "generation_estimate.json"]
 "benchbox.core.equivalence" = ["cross_surface_baseline.yaml"]
 "benchbox.core.flightdata" = ["query_catalog.yaml"]
 "benchbox.core.nyctaxi" = ["query_catalog.yaml"]

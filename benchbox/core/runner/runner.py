@@ -27,6 +27,7 @@ from benchbox.core.contracts import (
     as_sql_benchmark_executor,
     as_statistics_phase_runner,
 )
+from benchbox.core.generation_estimate import DATA_GENERATION, QUERY_GENERATION, announce_generation_estimate
 from benchbox.core.loaded_tables import require_loaded_tables
 from benchbox.core.results.driver_metadata import apply_driver_metadata
 from benchbox.core.results.models import (
@@ -1608,6 +1609,9 @@ def run_benchmark_lifecycle(
         gather_statistics=phases.statistics,
     )
 
+    if phases.execute:
+        announce_generation_estimate(QUERY_GENERATION, benchmark_config.name, benchmark_config.scale_factor)
+
     try:
         with sql_translation_context(strict=strict_translation) as translation_outcomes:
             result_obj = _execute_via_adapter(
@@ -1800,6 +1804,7 @@ def _ensure_data_generated(benchmark: Any, config: BenchmarkConfig) -> tuple[boo
     if manifest_found and not manifest_valid:
         emit("⚠️ Manifest validation failed; regenerating benchmark data")
 
+    announce_generation_estimate(DATA_GENERATION, config.name, config.scale_factor)
     emit("Generating benchmark data...")
     _gen_start = time.monotonic()
     benchmark.generate_data()
