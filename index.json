@@ -11404,6 +11404,7 @@
     },
     "tpcdi-foundation": {
       "accepted_members": {
+        "tpcdi-comment-policy-route-for-tpc-files-20261121": "36ae13423880a140244c1b6b42a9d80664ce7d22",
         "tpcdi-provenance-record-and-copy-guard-20261121": "dfe7c5a1f0fd06b14f3908dfce486d716b5c6453"
       },
       "batch_schema": 2,
@@ -11411,6 +11412,21 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "tpcdi-comment-policy-route-for-tpc-files-20261121": {
+          "accepted_head": "36ae13423880a140244c1b6b42a9d80664ce7d22",
+          "changed_files": [
+            ".github/soundness-paths.txt",
+            "changelog.d/comment-policy-approved-external.json",
+            "docs/internal/comment-policy.md",
+            "quality/comment-policy-approved-external-hashes.json",
+            "quality/comment-policy-approved-external.json",
+            "scripts/check_comment_cleanup_scope.py",
+            "scripts/check_comment_policy.py",
+            "tests/unit/scripts/test_comment_policy.py"
+          ],
+          "integration_head": "fac5f6d321d85daebc0a99e980feca9a1201b9fc",
+          "integration_seq": 2
+        },
         "tpcdi-provenance-record-and-copy-guard-20261121": {
           "accepted_head": "dfe7c5a1f0fd06b14f3908dfce486d716b5c6453",
           "changed_files": [
@@ -11434,7 +11450,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-foundation",
-      "integration_head": "720cbc650ec714c2bed8c24766a81bcb4f83a4ff",
+      "integration_head": "fac5f6d321d85daebc0a99e980feca9a1201b9fc",
       "integration_log": [
         {
           "at": "2026-11-22T03:55:11Z",
@@ -11450,6 +11466,15 @@
           "op_id": "30ddfece094d493ebcdd698834dae480",
           "previous_head": "af413ef6ae1f347a7532a4fe0a3adf1c109e3d6d",
           "seq": 1
+        },
+        {
+          "at": "2026-11-22T04:45:07Z",
+          "head": "fac5f6d321d85daebc0a99e980feca9a1201b9fc",
+          "kind": "prepare",
+          "member": "tpcdi-comment-policy-route-for-tpc-files-20261121",
+          "op_id": "938f20078e444c31ad8ca09274b5ab53",
+          "previous_head": "720cbc650ec714c2bed8c24766a81bcb4f83a4ff",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-foundation",
@@ -46262,15 +46287,10 @@
       "title": "Finish the TPC-DI bundle regeneration evidence: same-generator comparison and site cohort views"
     },
     "tpcdi-comment-policy-route-for-tpc-files-20261121": {
-      "claim": {
-        "expires_at": "2026-11-23T04:45:03Z",
-        "generation": "fb1a66e3e5ef4db390e60e16b106f01b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 8: a route for owner-approved TPC files through the comment policy"
     },
     "tpcdi-controls-empty-query-and-all-zero-validator-20261121": {
