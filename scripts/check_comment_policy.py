@@ -354,18 +354,21 @@ def scan_sources(root: Path, sources: dict[str, bytes], policy: dict) -> list[Fi
     errors = []
     for path, raw in sources.items():
         approved = policy.get("approved_external", frozenset())
-        if any(
-            entry["path"] in approved and matches(path, entry["path"]) for entry in policy["external"]
-        ) and hashlib.sha256(raw).hexdigest() in policy.get("approved_hashes", frozenset()):
-            continue
-        ownership_members = policy.get("ownership_excluded_members")
-        if ownership_members is not None:
-            if path in ownership_members:
+        if any(matches(path, prefix) for prefix in approved):
+            has_entry = any(
+                entry["path"] == prefix and matches(path, prefix) for entry in policy["external"] for prefix in approved
+            )
+            if has_entry and hashlib.sha256(raw).hexdigest() in policy.get("approved_hashes", frozenset()):
                 continue
         else:
-            excluded = any(matches(path, e["path"]) for e in policy["external"])
-            if excluded and ("external_members" not in policy or path in policy["external_members"]):
-                continue
+            ownership_members = policy.get("ownership_excluded_members")
+            if ownership_members is not None:
+                if path in ownership_members:
+                    continue
+            else:
+                excluded = any(matches(path, e["path"]) for e in policy["external"])
+                if excluded and ("external_members" not in policy or path in policy["external_members"]):
+                    continue
         if language(path) or raw.startswith(b"#!"):
             try:
                 decoded[path] = decode(path, raw)

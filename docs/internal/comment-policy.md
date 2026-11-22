@@ -298,8 +298,10 @@ pull request.
   prefix, with a label naming its source. A file under an approved prefix that
   has an external entry is skipped from the scan only if its SHA-256 is in the
   manifest at the base. An edited, renamed-with-change or new file there is
-  scanned like any other file. The manifest is read from the base, so a hash
-  added in a pull request does not skip that pull request's file; it takes
+  scanned like any other file, even if it existed at the base: the manifest
+  hash is the only way to skip a file under an approved prefix. The manifest
+  is read from the base, so a hash added in a pull request does not skip that
+  pull request's file; it takes
   effect after it merges. The manifest is in `.github/soundness-paths.txt`, and
   a change to it makes the check scan the whole repository. It holds hashes
   only, never file content.

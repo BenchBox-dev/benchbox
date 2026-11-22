@@ -352,6 +352,23 @@ def test_the_same_path_with_one_byte_changed_is_reported(tmp_path: Path, capsys:
     assert "_sources/tpc-di/appendix.sql:1" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("edit", [b"\n", b"-- added\n"])
+def test_a_manifested_file_present_at_the_base_is_reported_once_edited(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], edit: bytes
+) -> None:
+    git_repo(tmp_path, "x = 1\n")
+    write_list(tmp_path, APPROVED_LIST["paths"])
+    write_hashes(tmp_path, [COMMENTED_SQL_SHA])
+    add_external_route(tmp_path)
+    base = commit_all(tmp_path)
+    args = ["--root", str(tmp_path), "--mode", "strict", "--base", base]
+    capsys.readouterr()
+    assert main(args) == 0
+    (tmp_path / "_sources/tpc-di/appendix.sql").write_bytes(COMMENTED_SQL + edit)
+    assert main(args) == 1
+    assert "_sources/tpc-di/appendix.sql:1" in capsys.readouterr().out
+
+
 @pytest.mark.parametrize("staged", [False, True])
 def test_a_candidate_cannot_add_a_hash_for_its_own_file(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], staged: bool
