@@ -34,6 +34,7 @@ jobs:
       actions: read
     outputs:
       comment-policy: ${{ steps.comment-policy.conclusion == 'success' && steps.notice-drift.conclusion == 'success' && 'success' || 'failure' }}
+      copy-guard: ${{ steps.copy-guard-install.conclusion == 'success' && steps.copy-guard.conclusion == 'success' && 'success' || 'failure' }}
       spellcheck: ${{ steps.spellcheck.conclusion || 'skipped' }}
       results-data-check: ${{ contains(format('{0} {1} {2} {3} {4} {5}', steps.results-python.conclusion, steps.results-install.conclusion, steps.results-inventory.conclusion, steps.results-corpus.conclusion, steps.results-validator.conclusion, steps.results-tests.conclusion), 'failure') && 'failure' || steps.results-tests.conclusion == 'success' && 'success' || 'skipped' }}
       example-validation: ${{ contains(format('{0} {1} {2} {3} {4}', steps.docs-python.conclusion, steps.docs-install.conclusion, steps.docs-validate.conclusion, steps.docs-urls.conclusion, steps.docs-generate.conclusion), 'failure') && 'failure' || steps.docs-generate.conclusion == 'success' && 'success' || 'skipped' }}
@@ -90,6 +91,18 @@ jobs:
           fi
           git show "${BASE_REF}:scripts/check_comment_cleanup_scope.py" > "$RUNNER_TEMP/trusted_check_scope.py"
           python -I "$RUNNER_TEMP/trusted_check_scope.py" --check-drift --base "$BASE_REF"
+      - name: Install dependencies
+        id: copy-guard-install
+        if: ${{ !cancelled() && steps.checkout.conclusion == 'success' }}
+        env:
+          UV_PYTHON: "3.11"
+        run: uv sync --group dev
+      - name: Fail on copied project files and misplaced TPC-DI tool files
+        id: copy-guard
+        if: ${{ !cancelled() && steps.copy-guard-install.conclusion == 'success' }}
+        env:
+          UV_PYTHON: "3.11"
+        run: uv run -- python -m pytest -q -p no:cacheprovider tests/unit/core/tpcdi/test_provenance_guard.py
       - name: Install uv for the path-gated checks
         id: uv
         if: ${{ !cancelled() && steps.checkout.conclusion == 'success' && (needs.ci-paths.outputs.unit-docs == 'true' || needs.ci-paths.outputs.unit-results-data == 'true') }}
@@ -2131,6 +2144,7 @@ jobs:
             --needs "$NEEDS_JSON" \
             --always ci-paths \
             --always short-checks.comment-policy \
+            --always short-checks.copy-guard \
             --expect content-guard=${{ needs.ci-paths.outputs.content-guard-needed == 'true' }} \
             --expect skill-integrity=${{ needs.ci-paths.outputs.skill-integrity-needed == 'true' }} \
             --expect audit-sha=${{ needs.ci-paths.outputs.audit-paths-changed == 'true' }} || {

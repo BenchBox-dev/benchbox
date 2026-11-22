@@ -12,7 +12,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 WORKFLOW = Path(__file__).resolve().parents[3] / ".github" / "workflows" / "ci.yml"
 JOB = "short-checks"
 GATE_CHECKS = {
-    "tooling": {"always": {"comment-policy"}, "expect": {}},
+    "tooling": {"always": {"comment-policy", "copy-guard"}, "expect": {}},
     "docs": {
         "always": set(),
         "expect": {
@@ -27,6 +27,7 @@ GATE_CHECKS = {
 }
 CHECK_STEPS = {
     "comment-policy": ["comment-policy", "notice-drift"],
+    "copy-guard": ["copy-guard-install", "copy-guard"],
     "spellcheck": ["spellcheck"],
     "results-data-check": [
         "results-python",
@@ -105,3 +106,12 @@ def test_each_check_keeps_its_python_version() -> None:
         assert steps[step_id]["env"]["UV_PYTHON"] == "3.12", step_id
     for step_id in CHECK_STEPS["example-validation"][1:]:
         assert steps[step_id]["env"]["UV_PYTHON"] == "3.11", step_id
+
+
+def test_copy_guard_runs_on_every_pull_request_whatever_the_path_filter_decides() -> None:
+    steps = _steps()
+    for step_id in CHECK_STEPS["copy-guard"]:
+        assert "needs.ci-paths" not in steps[step_id].get("if", ""), step_id
+    assert steps["copy-guard"]["run"] == (
+        "uv run -- python -m pytest -q -p no:cacheprovider tests/unit/core/tpcdi/test_provenance_guard.py"
+    )
