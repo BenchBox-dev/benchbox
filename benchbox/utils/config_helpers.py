@@ -11,7 +11,6 @@ from typing import Any, Optional, Union
 class PowerRunSettings:
     iterations: int
     warm_up_iterations: int
-    timeout_per_iteration_minutes: int
     fail_fast: bool
     collect_metrics: bool
 
@@ -20,7 +19,6 @@ class PowerRunSettings:
         return cls(
             iterations=config_manager.get("execution.power_run.iterations", 4),
             warm_up_iterations=config_manager.get("execution.power_run.warm_up_iterations", 0),
-            timeout_per_iteration_minutes=config_manager.get("execution.power_run.timeout_per_iteration_minutes", 60),
             fail_fast=config_manager.get("execution.power_run.fail_fast", False),
             collect_metrics=config_manager.get("execution.power_run.collect_metrics", True),
         )
@@ -29,7 +27,6 @@ class PowerRunSettings:
         return {
             "iterations": self.iterations,
             "warm_up_iterations": self.warm_up_iterations,
-            "timeout_per_iteration_minutes": self.timeout_per_iteration_minutes,
             "fail_fast": self.fail_fast,
             "collect_metrics": self.collect_metrics,
         }
@@ -37,10 +34,6 @@ class PowerRunSettings:
     def apply_to_config_manager(self, config_manager: Any) -> None:
         config_manager.set("execution.power_run.iterations", self.iterations)
         config_manager.set("execution.power_run.warm_up_iterations", self.warm_up_iterations)
-        config_manager.set(
-            "execution.power_run.timeout_per_iteration_minutes",
-            self.timeout_per_iteration_minutes,
-        )
         config_manager.set("execution.power_run.fail_fast", self.fail_fast)
         config_manager.set("execution.power_run.collect_metrics", self.collect_metrics)
 
@@ -49,7 +42,6 @@ class PowerRunSettings:
 class ConcurrentQueriesSettings:
     enabled: bool
     max_concurrent: int
-    query_timeout_seconds: int
     stream_timeout_seconds: Optional[int]
     retry_failed_queries: bool
     max_retries: int
@@ -60,7 +52,6 @@ class ConcurrentQueriesSettings:
         return cls(
             enabled=config_manager.get("execution.concurrent_queries.enabled", False),
             max_concurrent=config_manager.get("execution.concurrent_queries.max_concurrent", 2),
-            query_timeout_seconds=config_manager.get("execution.concurrent_queries.query_timeout_seconds", 300),
             stream_timeout_seconds=config_manager.get("execution.concurrent_queries.stream_timeout_seconds"),
             retry_failed_queries=config_manager.get("execution.concurrent_queries.retry_failed_queries", True),
             max_retries=config_manager.get("execution.concurrent_queries.max_retries", 3),
@@ -71,7 +62,6 @@ class ConcurrentQueriesSettings:
         return {
             "enabled": self.enabled,
             "max_concurrent": self.max_concurrent,
-            "query_timeout_seconds": self.query_timeout_seconds,
             "stream_timeout_seconds": self.stream_timeout_seconds,
             "retry_failed_queries": self.retry_failed_queries,
             "max_retries": self.max_retries,
@@ -81,10 +71,6 @@ class ConcurrentQueriesSettings:
     def apply_to_config_manager(self, config_manager: Any) -> None:
         config_manager.set("execution.concurrent_queries.enabled", self.enabled)
         config_manager.set("execution.concurrent_queries.max_concurrent", self.max_concurrent)
-        config_manager.set(
-            "execution.concurrent_queries.query_timeout_seconds",
-            self.query_timeout_seconds,
-        )
         if self.stream_timeout_seconds is not None:
             config_manager.set(
                 "execution.concurrent_queries.stream_timeout_seconds",
@@ -138,21 +124,9 @@ class ExecutionConfigHelper:
 
     def optimize_for_system(self, cpu_cores: int, memory_gb: float) -> None:
 
-        power_settings = self.get_power_run_settings()
-        if memory_gb < 8:
-            power_settings.timeout_per_iteration_minutes = 120
-        elif memory_gb > 16:
-            power_settings.timeout_per_iteration_minutes = 45
-
         concurrent_settings = self.get_concurrent_queries_settings()
         concurrent_settings.max_concurrent = min(8, max(2, cpu_cores // 4))
 
-        if memory_gb < 8:
-            concurrent_settings.query_timeout_seconds = 600
-        elif memory_gb > 16:
-            concurrent_settings.query_timeout_seconds = 180
-
-        self.update_power_run_settings(power_settings)
         self.update_concurrent_queries_settings(concurrent_settings)
 
     def create_performance_profile(self, profile_name: str) -> dict[str, Any]:
@@ -161,14 +135,12 @@ class ExecutionConfigHelper:
                 "power_run": PowerRunSettings(
                     iterations=1,
                     warm_up_iterations=0,
-                    timeout_per_iteration_minutes=30,
                     fail_fast=True,
                     collect_metrics=True,
                 ),
                 "concurrent_queries": ConcurrentQueriesSettings(
                     enabled=False,
                     max_concurrent=2,
-                    query_timeout_seconds=180,
                     stream_timeout_seconds=None,
                     retry_failed_queries=False,
                     max_retries=1,
@@ -178,14 +150,12 @@ class ExecutionConfigHelper:
                 "power_run": PowerRunSettings(
                     iterations=3,
                     warm_up_iterations=1,
-                    timeout_per_iteration_minutes=60,
                     fail_fast=False,
                     collect_metrics=True,
                 ),
                 "concurrent_queries": ConcurrentQueriesSettings(
                     enabled=True,
                     max_concurrent=2,
-                    query_timeout_seconds=300,
                     stream_timeout_seconds=None,
                     retry_failed_queries=True,
                     max_retries=3,
@@ -195,14 +165,12 @@ class ExecutionConfigHelper:
                 "power_run": PowerRunSettings(
                     iterations=5,
                     warm_up_iterations=2,
-                    timeout_per_iteration_minutes=120,
                     fail_fast=False,
                     collect_metrics=True,
                 ),
                 "concurrent_queries": ConcurrentQueriesSettings(
                     enabled=True,
                     max_concurrent=4,
-                    query_timeout_seconds=600,
                     stream_timeout_seconds=None,
                     retry_failed_queries=True,
                     max_retries=5,
@@ -212,14 +180,12 @@ class ExecutionConfigHelper:
                 "power_run": PowerRunSettings(
                     iterations=10,
                     warm_up_iterations=3,
-                    timeout_per_iteration_minutes=180,
                     fail_fast=False,
                     collect_metrics=True,
                 ),
                 "concurrent_queries": ConcurrentQueriesSettings(
                     enabled=True,
                     max_concurrent=8,
-                    query_timeout_seconds=900,
                     stream_timeout_seconds=None,
                     retry_failed_queries=True,
                     max_retries=10,
@@ -260,8 +226,6 @@ class ExecutionConfigHelper:
             "power_run": {
                 "enabled": power_settings.iterations > 1 or power_settings.warm_up_iterations > 0,
                 "total_iterations": power_settings.iterations + power_settings.warm_up_iterations,
-                "estimated_duration_minutes": (power_settings.iterations + power_settings.warm_up_iterations)
-                * power_settings.timeout_per_iteration_minutes,
                 "settings": power_settings.to_dict(),
             },
             "concurrent_queries": {
@@ -295,7 +259,6 @@ def create_sample_execution_config(output_path: Union[str, Path]) -> None:
             "power_run": {
                 "iterations": 3,
                 "warm_up_iterations": 1,
-                "timeout_per_iteration_minutes": 60,
                 "fail_fast": False,
                 "collect_metrics": True,
                 "_description": "Power run configuration for iterative performance testing",
@@ -303,7 +266,6 @@ def create_sample_execution_config(output_path: Union[str, Path]) -> None:
             "concurrent_queries": {
                 "enabled": True,
                 "max_concurrent": 2,
-                "query_timeout_seconds": 300,
                 "retry_failed_queries": True,
                 "max_retries": 3,
                 "_description": "Concurrent query configuration for throughput testing",

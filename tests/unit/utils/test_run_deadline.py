@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import threading
@@ -7,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from benchbox.utils import resource_limits, run_deadline
+from benchbox.utils import run_deadline
 from benchbox.utils.run_deadline import (
     HARD_STOP_GRACE_SECONDS,
     TIMED_OUT_VALIDATION_STATUS,
@@ -247,7 +248,7 @@ def test_a_run_that_stops_within_the_grace_is_not_hard_stopped() -> None:
 
 
 def test_without_process_groups_the_direct_child_is_still_ended(monkeypatch) -> None:
-    monkeypatch.setattr(resource_limits, "HAS_PROCESS_GROUPS", False)
+    monkeypatch.delattr(os, "killpg")
     deadline = RunDeadline(1)
     stopped = threading.Event()
     child = subprocess.Popen(SLEEPER)
