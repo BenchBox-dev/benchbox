@@ -5,9 +5,10 @@ import os
 import subprocess
 from pathlib import Path
 
+from benchbox.core.exceptions import RunTimeoutError
 from benchbox.core.tpcds.c_tools import tpcds_option
 from benchbox.utils.printing import emit
-from benchbox.utils.run_deadline import RunTimeoutError, current_run_deadline, run_child, stream_child
+from benchbox.utils.run_deadline import current_run_deadline, run_child, stream_child
 
 
 class StreamingGenerationMixin:

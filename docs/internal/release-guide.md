@@ -839,8 +839,8 @@ report. A config without the key never retries.
 
 - A failed cell whose signature is infrastructure runs once more with the same
   arguments, the same timeout and the same memory limit.
-- No retry starts when the remaining budget is below `per_cell_timeout_s`; the
-  skipped retry is recorded.
+- No retry starts when the remaining budget is below `per_cell_timeout_s` plus the 60-second outside-kill margin
+  (`runner.outside_limit_s`), the longest a cell can run before the runner kills it; the skipped retry is recorded.
 - The cell passes only if the retry passes. A second infrastructure failure
   fails the cell, and a product failure is never retried.
 - The cell row in `cells.jsonl` records `attempt`, `retry_signature`,

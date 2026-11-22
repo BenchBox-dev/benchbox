@@ -688,6 +688,22 @@ def _run_tpcds_stream_driver(monkeypatch, driver: _StreamDriver, **run_config: A
     return driver._last_throughput_test_result, rows
 
 
+class _ClockedStreamDriver(_StreamDriver):
+    def __init__(self, gate: threading.Event, clock: FakeClock, streams: int, seconds: int) -> None:
+        super().__init__(gate)
+        self.first_calls = threading.Barrier(streams, action=lambda: setattr(clock, "now", clock.now + seconds))
+        self.started: set[int] = set()
+
+    def execute_query(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        thread_id = threading.get_ident()
+        with self._lock:
+            first = thread_id not in self.started
+            self.started.add(thread_id)
+        if first:
+            self.first_calls.wait(timeout=30)
+        return super().execute_query(*args, **kwargs)
+
+
 class TestDataFrameThroughputStopsAtTheDeadline:
     def test_a_dataframe_throughput_run_stops_at_the_deadline_with_the_in_flight_query_marked(self) -> None:
         gate = threading.Event()
@@ -1220,6 +1236,40 @@ class TestAStopAtTheLimitIsRecordedByTheGateThatTakesIt:
 
         assert ran == []
         assert deadline.timeout is not None
+
+    @pytest.mark.parametrize("which", ["tpch", "tpcds"])
+    def test_a_throughput_stream_records_the_timeout_when_it_skips_its_next_query(
+        self, monkeypatch, clock, which
+    ) -> None:
+        gate = threading.Event()
+        gate.set()
+        driver = _ClockedStreamDriver(gate, clock, streams=2, seconds=11)
+        adapter = MockPlatformAdapter()
+        partial = SimpleNamespace(
+            query_results=[], validation_status="PASSED", validation_details=None, compliance_class="official"
+        )
+        streams: dict[str, Any] = {}
+
+        def run_streams(_benchmark: Any, **_run_config: Any) -> Any:
+            run_deadline.current_run_deadline().enter_phase("execute")
+            if which == "tpch":
+                streams["result"], streams["rows"] = _run_tpch_stream_driver(driver)
+            else:
+                streams["result"], streams["rows"] = _run_tpcds_stream_driver(monkeypatch, driver)
+            return partial
+
+        monkeypatch.setattr(adapter, "run_enhanced_benchmark", run_streams)
+
+        with pytest.raises(run_deadline.RunTimeoutError) as excinfo:
+            adapter.run_benchmark(Mock(), timeout_seconds=10)
+
+        assert [stream.queries_executed for stream in streams["result"].stream_results] == [1, 1]
+        assert not any(stream.success for stream in streams["result"].stream_results)
+        assert len(driver.calls) == 2
+        assert excinfo.value.partial_result is partial
+        assert (excinfo.value.timeout_seconds, excinfo.value.phase) == (10, "execute")
+        assert partial.validation_status == "TIMED_OUT"
+        assert partial.validation_details["timeout"]["timeout_seconds"] == 10
 
 
 class TestGizmoSQLDoesNotCancelWorkAfterTheRunLimit:
