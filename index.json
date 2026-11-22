@@ -11450,7 +11450,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-foundation",
-      "integration_head": "fac5f6d321d85daebc0a99e980feca9a1201b9fc",
+      "integration_head": "3804ae6e392cb5526e1e347b0c6073dcca4a7c2b",
       "integration_log": [
         {
           "at": "2026-11-22T03:55:11Z",
@@ -11475,6 +11475,20 @@
           "op_id": "938f20078e444c31ad8ca09274b5ab53",
           "previous_head": "720cbc650ec714c2bed8c24766a81bcb4f83a4ff",
           "seq": 2
+        },
+        {
+          "at": "2026-11-22T04:50:32Z",
+          "changed_files": [
+            "tests/unit/core/tpcdi/test_provenance_guard.py"
+          ],
+          "head": "3804ae6e392cb5526e1e347b0c6073dcca4a7c2b",
+          "kind": "fix",
+          "op_id": "a10301d38e1f4e58a5287a2cda8fe04d",
+          "previous_head": "fac5f6d321d85daebc0a99e980feca9a1201b9fc",
+          "requires_acceptance": [
+            "tpcdi-provenance-record-and-copy-guard-20261121"
+          ],
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-foundation",
