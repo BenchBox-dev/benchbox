@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "UAT infrastructure retry is admitted only when the remaining job budget covers the cell limit plus the 60-second outside-kill margin, so a retry cannot overrun the job budget."}
