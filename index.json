@@ -27320,6 +27320,13 @@
       "status": "done",
       "title": "Generate seed corpus of benchmark results for the results explorer"
     },
+    "generation-estimate-remeasure-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Re-measure the generation estimate on an idle host and cover the missing cases"
+    },
     "generator-validation-large-scales-20261111": {
       "claim": null,
       "needs": [

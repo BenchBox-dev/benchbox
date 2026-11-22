@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The estimate data comes from idle-host runs, includes TPC-H query generation, and the dbgen small-scale cost is explained or fixed."
+  ],
+  "context": "Measurements of 2026-11-22 are on tpc-generation-duration-estimate-20261120; run folders under ~/Developer/benchmark_runs/generation-estimate/.",
+  "description": "## Problem\nThe generation estimate (#4439, `benchbox/core/generation_estimate.json`) was measured on one Mac (darwin-arm64, Apple M4) while other work was running (load ~5 on 10 CPUs, swap 86%), so figures may be high. Gaps: no TPC-H query generation (qgen) figures, so no TPC-H query estimate prints; every host is labelled with the one measured host class; dbgen at SF 0.01 (4.98 s) was no faster than SF 0.1 (4.75 s), an unexplained fixed cost of about 4-5 s; the earlier note of dsqgen q9 at 5 s (SF 3000) and 11-13 s (SF 5000) was not reproduced (1.9 s and 3.0 s).\n\n## Change\nRe-run the measurement list on an idle host, add qgen (all 22 queries) per scale, investigate the dbgen small-scale fixed cost, and, if the owner wants other host classes (e.g. Linux x86_64), measure there and teach the estimate to pick the matching host class (falling back with a clear label).\n\n## Decision gates\n- STOP before any measurement run: the owner's 2026-11-21 approval covered only the original list on that Mac; new runs need approval in the current task naming hosts and scales.\n- A run refused admission or that would breach the disk floor: stop and report; do not shrink the list silently.\n- Owner texts verbatim (\"Rough estimate: ...\" and \"The run limit of ...\").\n\n## Verification rubric\nThe new table (tool, scale, wall, peak memory, heavy-run log path, host, load at start) is on this item and in the pull request; tests for any new host-class selection and the TPC-H query estimate; `make pr-preflight` exits 0.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T13:13:21Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ff4a6bb8045d425196072bbf93561396",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    }
+  ]
+}
