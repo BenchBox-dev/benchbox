@@ -5,7 +5,9 @@ import logging
 import os
 import shutil
 import tempfile
+import uuid
 import zipfile
+import zlib
 from pathlib import Path
 
 from benchbox.core.expected_results.download import get_cache_dir
@@ -31,12 +33,35 @@ def _file_sha256(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def _file_crc32(path: Path) -> int:
+    crc = 0
+    with path.open("rb") as stream:
+        while chunk := stream.read(1 << 20):
+            crc = zlib.crc32(chunk, crc)
+    return crc
+
+
+def _members_intact(unpack_dir: Path) -> bool:
+    if not TOOLS_ARCHIVE_PATH.is_file():
+        raise ToolsArchiveError(f"TPC-DI tools archive is missing: {TOOLS_ARCHIVE_PATH}")
+    with zipfile.ZipFile(TOOLS_ARCHIVE_PATH) as bundle:
+        for info in bundle.infolist():
+            member = unpack_dir / info.filename
+            if info.is_dir():
+                if not member.is_dir():
+                    return False
+            elif not member.is_file() or member.stat().st_size != info.file_size or _file_crc32(member) != info.CRC:
+                return False
+    return True
+
+
 def _is_complete(unpack_dir: Path) -> bool:
     sentinel = unpack_dir / _COMPLETE_SENTINEL
     return (
         sentinel.is_file()
         and sentinel.read_text(encoding="utf-8").strip() == TOOLS_ARCHIVE_SHA256
         and (unpack_dir / TOOLS_ROOT_MEMBER / DIGEN_JAR_NAME).is_file()
+        and _members_intact(unpack_dir)
     )
 
 
@@ -60,6 +85,26 @@ def _extract(archive: Path, destination: Path) -> None:
         bundle.extractall(destination)
 
 
+def _publish(staging: Path, unpack_dir: Path) -> bool:
+    if _is_complete(unpack_dir):
+        return False
+    if unpack_dir.exists():
+        stale = unpack_dir.with_name(f".stale-{uuid.uuid4().hex}")
+        try:
+            os.replace(unpack_dir, stale)
+        except OSError:
+            pass
+        else:
+            shutil.rmtree(stale, ignore_errors=True)
+    try:
+        os.replace(staging, unpack_dir)
+    except OSError:
+        if not _is_complete(unpack_dir):
+            raise
+        return False
+    return True
+
+
 def resolve_tools_dir() -> Path:
     unpack_dir = get_cache_dir().parent / TOOLS_CACHE_NAME / TOOLS_ARCHIVE_SHA256
     if _is_complete(unpack_dir):
@@ -71,13 +116,8 @@ def resolve_tools_dir() -> Path:
     try:
         _extract(archive, staging)
         (staging / _COMPLETE_SENTINEL).write_text(TOOLS_ARCHIVE_SHA256, encoding="utf-8")
-        if unpack_dir.exists():
-            shutil.rmtree(unpack_dir)
-        os.replace(staging, unpack_dir)
-    except OSError:
-        if not _is_complete(unpack_dir):
-            raise
+        if _publish(staging, unpack_dir):
+            logger.info("Unpacked the TPC-DI tools to %s", unpack_dir)
     finally:
         shutil.rmtree(staging, ignore_errors=True)
-    logger.info("Unpacked the TPC-DI tools to %s", unpack_dir)
     return unpack_dir / TOOLS_ROOT_MEMBER

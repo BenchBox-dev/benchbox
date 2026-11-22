@@ -136,7 +136,8 @@ not part of this copy.
 numbering whitespace.
 
 The official `TPC-DI_Tools_v1.1.0.zip` (SHA-256 `d9c10de5dafa781ddd4df72453f50af2f0c9c7ccfa0cbae99ed0be70a2ede22b`)
-contains no TPC EULA and no appendix SQL; it is not committed.
+contains no TPC EULA and no appendix SQL. It is committed once, byte-identical, in `benchbox/_binaries/tpc-di/tools/`
+(not under `_sources/`); see `SOURCING.md` there.
 
 ## Applying BenchBox Patches
 

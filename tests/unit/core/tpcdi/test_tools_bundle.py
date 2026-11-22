@@ -143,6 +143,45 @@ def test_incomplete_unpack_is_redone(cache):
     assert not (resolved / "stale.txt").exists()
 
 
+def test_a_complete_unpack_published_by_another_process_is_kept(cache, monkeypatch):
+    unpack_dir = cache / "benchbox" / tools.TOOLS_CACHE_NAME / tools.TOOLS_ARCHIVE_SHA256
+    real_extract = tools._extract
+
+    def extract_then_lose_the_race(archive, destination):
+        real_extract(archive, destination)
+        real_extract(archive, unpack_dir)
+        (unpack_dir / tools._COMPLETE_SENTINEL).write_text(tools.TOOLS_ARCHIVE_SHA256, encoding="utf-8")
+        (unpack_dir / "Tools" / "in-use.marker").write_text("x", encoding="utf-8")
+
+    monkeypatch.setattr(tools, "_extract", extract_then_lose_the_race)
+    resolved = tools.resolve_tools_dir()
+    assert resolved == unpack_dir / "Tools"
+    assert (resolved / "in-use.marker").is_file()
+    assert [path.name for path in unpack_dir.parent.iterdir()] == [tools.TOOLS_ARCHIVE_SHA256]
+
+
+def test_an_edited_unpacked_file_is_restored_on_next_use(cache, monkeypatch):
+    calls = []
+    real_extract = tools._extract
+    monkeypatch.setattr(
+        tools, "_extract", lambda archive, destination: (calls.append(archive), real_extract(archive, destination))
+    )
+    resolved = tools.resolve_tools_dir()
+    target = resolved / "PDGF" / "config" / "tpc-di-schema.xml"
+    original = target.read_bytes()
+    target.write_bytes(bytes([original[0] ^ 1]) + original[1:])
+    assert tools.resolve_tools_dir() == resolved
+    assert target.read_bytes() == original
+    assert len(calls) == 2
+
+
+def test_a_missing_unpacked_file_is_restored_on_next_use(cache):
+    resolved = tools.resolve_tools_dir()
+    (resolved / "README.txt").unlink()
+    tools.resolve_tools_dir()
+    assert (resolved / "README.txt").is_file()
+
+
 def test_path_traversal_in_an_archive_is_refused(tmp_path):
     hostile = tmp_path / "hostile.zip"
     with zipfile.ZipFile(hostile, "w") as bundle:
