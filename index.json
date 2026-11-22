@@ -2744,7 +2744,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "crr-a0-decision-records",
         "crr-a1-rule-module-and-snapshot",

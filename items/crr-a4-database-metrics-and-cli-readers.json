@@ -6,13 +6,6 @@
     "No class string comparison remains in the listed files",
     "CLI result output and CSV export print the derived wording and the class for a power-only TPC result"
   ],
-  "batch": {
-    "batch_id": "corpus-rule",
-    "implementation_dependencies": [
-      "crr-a2-writer-and-score-from-timings"
-    ],
-    "member_id": "crr-a4-database-metrics-and-cli-readers"
-  },
   "context": "Step of the corpus rule remediation plan (crr-00-corpus-rule-remediation-plan). Plan written 2026-11-22 and reviewed twice by an independent adversarial reviewer; counts marked (R) were measured by that reviewer and must be re-measured, not trusted. Owner decisions were given by choice dialog on 2026-11-22 and are quoted in crr-00.",
   "description": "## Problem\ncore/results/database.py stores the stamp at insert and filters \"official OR NULL\"; metrics.py and qphds.py hold their own class sets; cli/output.py, cli/commands/report.py (--include-unofficial) and tests/uat/phases/validate.py read the stamp (T1, T3).\n\n## Change\n- These readers call the rule. The database stores the facts the rule needs (phases, refresh evidence, executed streams) so a row's outcome can be derived; existing rows without those facts report \"undetermined\" until re-imported, and the CLI says so.\n- Coordinate with tpcdi-validator-admission-and-results-database-20261121, which edits the same files: read its state first and rebase onto it if it has merged.\n\n## Decision gates\n- If the database change needs a schema migration, follow the existing migration pattern in that module; if none exists, stop and report before inventing one.\n\n## Guardrails (apply to every item of this plan)\n- Fix the root cause for every platform and benchmark. No rule, exception, label or test may name a platform or a version matrix. Only the pvm-p* items may name Polars, and only to run and stage that run's files.\n- Never edit a stored result file to make it pass. Outcomes change only through the rule.\n- Any change to the outcome of a stored result must show in the committed outcome snapshot diff in the same pull request and be explained in its body.\n- No new stored class value. No reader may decide anything from benchmark.compliance_class, conformance_class or summary.tpc_metrics.suppressed.\n- Paths, line numbers and counts in this plan were read on 2026-11-22 at develop 93f3360. Re-read before editing; report drift, do not guess.\n- AGENTS.md applies: linked worktree, one pull request per item, close at the merged pull request, heavy work only through make heavy-run, no live cloud run without owner approval in that task.\n- At a decision gate, follow the recorded default. If its stop condition is met, stop and report to the owner. Never substitute a different owner decision.\n- Read crr-00-corpus-rule-remediation-plan first: it holds the owner decisions, the rule table and the fault types (T1 to T5).",
   "sessions": [
@@ -38,6 +31,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "efc3c161127a43debc74b3ea7d81c5c4",
+      "session_id": "fb2b868a75fa45f6a33b883d74cd5ef0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fe4873e1ab4511a8ff69ca5f",
+      "at": "2026-11-22T17:54:13Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "a5bb7a1b910447e99d9f3f5f234e3c94",
       "session_id": "fb2b868a75fa45f6a33b883d74cd5ef0"
     }
   ]
