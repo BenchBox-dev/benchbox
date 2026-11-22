@@ -33,6 +33,15 @@
       "op": "take",
       "op_id": "6cc82dd718cc4f7e94b6f29d55ae52f6",
       "session_id": "301a72f40ca84d7ab9668f9bdc47da3b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18",
+      "at": "2026-11-22T21:42:09Z",
+      "client": "omp-coding-agent",
+      "generation": "348d68c91f68475da86570d2ce7ae056",
+      "op": "finish",
+      "op_id": "e4fcf18b3d7a4b5c94c137913b867d9b",
+      "session_id": "301a72f40ca84d7ab9668f9bdc47da3b"
     }
   ]
 }
