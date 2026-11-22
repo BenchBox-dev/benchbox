@@ -107,8 +107,24 @@ jobs:
             cp "$guard" "$RUNNER_TEMP/copy_guard.py"
             echo "The base has no ${guard}; running the head copy that this pull request adds"
           fi
+          hash_list=_sources/tpc-di/databricks-tpc-di/FORBIDDEN_HASHES.json
+          approved=quality/comment-policy-approved-external-hashes.json
+          if git cat-file -e "${BASE_REF}:${hash_list}" 2>/dev/null; then
+            git show "${BASE_REF}:${hash_list}" > "$RUNNER_TEMP/forbidden_hashes.json"
+            echo "Using the base copy of ${hash_list}"
+          else
+            cp "$hash_list" "$RUNNER_TEMP/forbidden_hashes.json"
+            echo "The base has no ${hash_list}; using the head copy that this pull request adds"
+          fi
+          if git cat-file -e "${BASE_REF}:${approved}" 2>/dev/null; then
+            git show "${BASE_REF}:${approved}" > "$RUNNER_TEMP/approved_hashes.json"
+            echo "Using the base copy of ${approved}"
+          else
+            cp "$approved" "$RUNNER_TEMP/approved_hashes.json"
+            echo "The base has no ${approved}; using the head copy that this pull request adds"
+          fi
           cd "$RUNNER_TEMP"
-          python -I -S copy_guard.py --root "$GITHUB_WORKSPACE"
+          python -I -S copy_guard.py --root "$GITHUB_WORKSPACE" --hash-list forbidden_hashes.json --approved-hashes approved_hashes.json
       - name: Install uv for the path-gated checks
         id: uv
         if: ${{ !cancelled() && steps.checkout.conclusion == 'success' && (needs.ci-paths.outputs.unit-docs == 'true' || needs.ci-paths.outputs.unit-results-data == 'true') }}

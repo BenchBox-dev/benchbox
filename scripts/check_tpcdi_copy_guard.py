@@ -56,16 +56,16 @@ def gitlink_entries(root: Path) -> list[str]:
     )
 
 
-def load_forbidden(root: Path) -> tuple[set[str], int]:
-    hash_list = json.loads((root / HASH_LIST).read_text(encoding="utf-8"))
+def load_forbidden(path: Path) -> tuple[set[str], int]:
+    hash_list = json.loads(path.read_text(encoding="utf-8"))
     entries = [entry for group in FORBIDDEN_GROUPS for entry in hash_list["forbidden_by_content"][group]]
     if not entries:
         raise ValueError("the forbidden hash list is empty")
     return {entry["sha256"] for entry in entries}, max(entry["bytes"] for entry in entries)
 
 
-def load_official(root: Path) -> set[str]:
-    return {entry["sha256"] for entry in json.loads((root / APPROVED_HASHES).read_text(encoding="utf-8"))["files"]}
+def load_official(path: Path) -> set[str]:
+    return {entry["sha256"] for entry in json.loads(path.read_text(encoding="utf-8"))["files"]}
 
 
 def file_digests(root: Path, files: list[str], max_bytes: int) -> dict[str, str]:
@@ -119,10 +119,10 @@ def unlisted_sql_violations(root: Path, files: list[str]) -> list[str]:
     return [name for name in files if name.startswith(ETL_DIR) and name.endswith(".sql") and name not in listed]
 
 
-def check(root: Path) -> list[str]:
+def check(root: Path, hash_list: Path | None = None, approved_hashes: Path | None = None) -> list[str]:
     files = tree_files(root)
-    forbidden, max_bytes = load_forbidden(root)
-    official = load_official(root)
+    forbidden, max_bytes = load_forbidden(hash_list or root / HASH_LIST)
+    official = load_official(approved_hashes or root / APPROVED_HASHES)
     digests = file_digests(root, files, max_bytes)
     problems = []
     problems += [
@@ -144,9 +144,11 @@ def main(argv: list[str] | None = None) -> int:
         description="Fail when copied project files or misplaced TPC-DI tool files are in the tree."
     )
     parser.add_argument("--root", required=True, type=Path)
+    parser.add_argument("--hash-list", type=Path)
+    parser.add_argument("--approved-hashes", type=Path)
     args = parser.parse_args(argv)
     try:
-        problems = check(args.root.resolve())
+        problems = check(args.root.resolve(), args.hash_list, args.approved_hashes)
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
         print(f"copy guard: cannot run: {error!r}", file=sys.stderr)
         return 2

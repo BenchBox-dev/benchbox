@@ -50,9 +50,12 @@ def make_tree(root: Path, hashes: list[dict], official: list[str]) -> None:
     )
 
 
-def run_script(root: Path) -> subprocess.CompletedProcess:
+def run_script(root: Path, *extra: str) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [sys.executable, "-I", "-S", str(SCRIPT), "--root", str(root)], capture_output=True, text=True, cwd=root
+        [sys.executable, "-I", "-S", str(SCRIPT), "--root", str(root), *extra],
+        capture_output=True,
+        text=True,
+        cwd=root,
     )
 
 
@@ -67,7 +70,7 @@ def test_script_reports_ok_on_the_real_tree():
 
 
 def test_hash_list_is_not_empty():
-    forbidden, max_bytes = guard.load_forbidden(REPO_ROOT)
+    forbidden, max_bytes = guard.load_forbidden(REPO_ROOT / guard.HASH_LIST)
     assert len(forbidden) > 300
     assert max_bytes > 0
 
@@ -224,3 +227,34 @@ def test_script_ignores_planted_python_modules_and_conftests(tmp_path):
     write(tmp_path, "conftest.py", b"raise SystemExit(0)\n")
     write(tmp_path, "vendor/pdgf.jar", b"x")
     assert run_script(tmp_path).returncode == 1
+
+
+def test_head_manifest_cannot_approve_a_copied_file_the_trusted_manifest_does_not(tmp_path):
+    content = b"generator code copied into the tools directory\n"
+    entry = {"sha256": digest(content), "bytes": len(content)}
+    make_tree(tmp_path, [entry], [digest(content)])
+    write(tmp_path, TOOLS_DIR + "tpcdi_gen/audit.py", content)
+    assert run_script(tmp_path).returncode == 0
+    trusted = tmp_path.parent / (tmp_path.name + "-trusted-approved.json")
+    trusted.write_text(json.dumps({"files": [{"sha256": "0" * 64, "label": "x"}]}), encoding="utf-8")
+    result = run_script(tmp_path, "--approved-hashes", str(trusted))
+    assert result.returncode == 1
+    assert TOOLS_DIR + "tpcdi_gen/audit.py" in result.stderr
+
+
+def test_head_forbidden_list_cannot_drop_an_entry_the_trusted_list_has(tmp_path):
+    content = b"generator text taken from the project\n"
+    make_tree(tmp_path, [{"sha256": "1" * 64, "bytes": 1000}], [])
+    write(tmp_path, "benchbox/core/tpcdi/copied.txt", content)
+    assert run_script(tmp_path).returncode == 0
+    trusted = tmp_path.parent / (tmp_path.name + "-trusted-hashes.json")
+    entries = [{"sha256": digest(content), "bytes": len(content)}]
+    trusted.write_text(
+        json.dumps(
+            {"forbidden_by_content": {"generator_and_tools": entries, "audit_snapshots": [], "digen_output": []}}
+        ),
+        encoding="utf-8",
+    )
+    result = run_script(tmp_path, "--hash-list", str(trusted))
+    assert result.returncode == 1
+    assert "benchbox/core/tpcdi/copied.txt" in result.stderr

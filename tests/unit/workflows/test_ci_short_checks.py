@@ -117,6 +117,11 @@ def test_copy_guard_runs_on_every_pull_request_whatever_the_path_filter_decides(
     assert "guard=scripts/check_tpcdi_copy_guard.py" in run
     assert 'cd "$RUNNER_TEMP"' in run
     assert 'python -I -S copy_guard.py --root "$GITHUB_WORKSPACE"' in run
+    assert "--hash-list forbidden_hashes.json --approved-hashes approved_hashes.json" in run
+    assert 'git show "${BASE_REF}:${hash_list}" > "$RUNNER_TEMP/forbidden_hashes.json"' in run
+    assert 'git show "${BASE_REF}:${approved}" > "$RUNNER_TEMP/approved_hashes.json"' in run
+    assert "hash_list=_sources/tpc-di/databricks-tpc-di/FORBIDDEN_HASHES.json" in run
+    assert "approved=quality/comment-policy-approved-external-hashes.json" in run
     for forbidden in ("uv ", "pytest", "pip ", "pip3"):
         assert forbidden not in run
     assert "UV_PYTHON" not in steps["copy-guard"].get("env", {})
