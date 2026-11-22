@@ -43540,10 +43540,15 @@
       "title": "Publish llms.txt and Markdown versions of the documentation pages"
     },
     "site-local-docs-check-stale-inputs-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T21:42:12Z",
+        "generation": "8ec376f2db484655a570727b1ecb186f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "benchbox-site: local `npm run docs:check` checks against the release pin, not the bundle CI uses on next, without saying so"
     },
     "site-main-carries-unreleased-scale-and-tpcdi-docs-20261112": {
