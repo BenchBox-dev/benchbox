@@ -15458,6 +15458,13 @@
       "status": "done",
       "title": "Correct PR-1642 batch provenance: push commits, open real PR, fix completed_pr, record missing audit event"
     },
+    "batch-advance-develop-merge-replay-and-cache-root-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Fix batch-advance develop-merge replaying the last record, and add a shared BenchBox cache-root helper"
+    },
     "batch-arrow-dataframe-roundtrips-20261104": {
       "claim": null,
       "needs": [],

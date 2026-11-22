@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "A second develop merge on a recorded head merges develop.",
+    "One shared cache-root helper is used by the answers cache and the TPC-DI tools."
+  ],
+  "description": "## Problem\n1. `make batch-advance REASON=develop-merge` on an integration head already logged as a develop merge (scripts/batch_integration.py `_resolve_advance`) replays the old record instead of merging develop again: entry is found for HEAD with kind == reason, so `_merge_develop` is never called. Seen on batch tpcdi-source when develop gained a commit after a recorded develop merge; the workaround was running the same `git merge --no-ff -m \"Merge develop into <branch>\" refs/remotes/origin/develop` by hand, then batch-advance.\n2. benchbox/core/tpcdi/tools.py finds its cache root as `get_cache_dir().parent`, where get_cache_dir (benchbox/core/expected_results/download.py) is the answers cache. There is no shared BenchBox cache-root helper.\n\n## Change\n1. When HEAD equals the recorded integration head and origin/develop is not an ancestor of HEAD, merge develop rather than replay; replay only when the recorded entry is not yet acknowledged. Add a regression test.\n2. Add one cache-root helper (XDG_CACHE_HOME or ~/.cache, then benchbox), make get_cache_dir and the TPC-DI tools resolver use it.\n\n## Verification rubric\nPass: a test reproduces the second develop merge and records a new head; tools and answers caches resolve to the same paths as before.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e",
+      "at": "2026-11-22T16:43:19Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "220c47108e824af99df8706d93ca216b",
+      "session_id": "a8b92107f30e427f9def4483bf06f645"
+    }
+  ]
+}
