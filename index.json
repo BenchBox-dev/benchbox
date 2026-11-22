@@ -36752,7 +36752,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "Put Results Explorer graphs in the Polars 2.x post and move its figures and the findings pages to the published runs"
+      "title": "Put Results Explorer graphs in the Polars 2.x post and move its SSB and ClickBench figures to the published runs"
     },
     "pvm-p6-post-tpch-from-published-run": {
       "claim": null,
