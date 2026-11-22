@@ -12545,7 +12545,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-source",
-      "integration_head": "bb7c7f68d4364ac9eeb62387ebf5a4392fb9e80c",
+      "integration_head": "7985a640c19e13ffac0fecb04cb52f49a05109c9",
       "integration_log": [
         {
           "at": "2026-11-22T07:11:35Z",
@@ -12622,6 +12622,23 @@
           "op_id": "a135330e92554a078df3f1232d6f83f9",
           "previous_head": "7556bb485df5577558818b6ee88abe8fcc975cdc",
           "seq": 5
+        },
+        {
+          "at": "2026-11-22T16:43:12Z",
+          "changed_files": [
+            "_sources/README.md",
+            "benchbox/core/tpcdi/tools.py",
+            "tests/unit/core/tpcdi/test_tools_bundle.py"
+          ],
+          "head": "7985a640c19e13ffac0fecb04cb52f49a05109c9",
+          "kind": "fix",
+          "op_id": "5e4641e78dad471d980ca9a5d6518b1c",
+          "previous_head": "bb7c7f68d4364ac9eeb62387ebf5a4392fb9e80c",
+          "requires_acceptance": [
+            "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120",
+            "tpcdi-bundle-tpc-di-tools-20261121"
+          ],
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-source",
