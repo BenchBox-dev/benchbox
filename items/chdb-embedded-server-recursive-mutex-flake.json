@@ -8,6 +8,7 @@
     "implementation_dependencies": [],
     "member_id": "chdb-embedded-server-recursive-mutex-flake"
   },
+  "context": "2026-11-22 investigation (batch trunk-stability member, no code change): no BenchBox-side cause found. The failing run 43451522754 installed chdb 4.1.6 with chdb-core 26.1.0; develop now pins chdb 4.5.0 with chdb-core 26.11.1 (#4351), a different engine, and the old engine does not import on the macOS arm64 development host. On the current pin, 8 lock-taken runs of clickhouse-local read_primitives SF 0.01 (alternating --force all and database reuse) and 5 same-process reopens of one session path all passed; this is not the x86 CI rate. BenchBox runs each cell as one subprocess, closes each temporary validation session before the main one opens, and does not fork after chdb starts. The error names the engine loading an existing table at session start. No matching upstream chdb issue was found; a draft issue text exists but is not filed. Acceptance 1 (x86 rate) and 2 (cause) are not met. Next step, owner decision pending: dispatch a one-off x86 loop of the cell (20 to 30 repetitions, cell logs kept) on the current pin, which needs a workflow change, or close against the engine bump unless it recurs.",
   "description": "Trunk UAT 43451522754 (91d357a1) attempt 1: clickhouse-local read_primitives 0.01 failed in 4 s with 'Failed to create connection: Code: 36. DB::Exception: Error initializing EmbeddedServer: . (BAD_ARGUMENTS)' and 'Load job load table default.orders failed: std::system_error recursive_mutex lock failed: Invalid argument (ASYNC_LOAD_WAIT_FAILED)'. The same cell passed at 131c0b76, and no clickhouse-local code changed in between.",
   "sessions": [
     {
@@ -24,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "16176a1c872744a897570a21e13fd2ee",
+      "session_id": "80e0302416054591a591cf3adefee19a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3",
+      "at": "2026-11-22T22:47:03Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "99c2b3eecae54fd4a5023031bb08224b",
       "session_id": "80e0302416054591a591cf3adefee19a"
     }
   ]
