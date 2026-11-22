@@ -45781,10 +45781,15 @@
       "title": "Throughput stream-coverage check trips on a sub-millisecond query timing at small scale"
     },
     "throughput-stream-gate-deadline-test-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T14:34:43Z",
+        "generation": "a32de07c52fe4652aaaff3243db54250",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Add a test for the throughput stream gate that records the run timeout"
     },
     "throughput-stream-success-propagation": {
