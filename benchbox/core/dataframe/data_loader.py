@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 DEFAULT_CACHE_DIR = Path("benchmark_runs") / "datagen"
-DATAFRAME_CACHE_VERSION = "v8"
+DATAFRAME_CACHE_VERSION = "v9"
 
 _KNOWN_FORMAT_DIRS = frozenset(f.value for f in DataFormat)
 
@@ -301,6 +301,7 @@ class FormatConverter:
 
             convert_options = pv.ConvertOptions(
                 auto_dict_encode=True,
+                null_values=[""] if not null_marker else ["", null_marker],
                 strings_can_be_null=not dialect_preserves_empty_strings(null_marker),
                 column_types=arrow_column_types,
             )
