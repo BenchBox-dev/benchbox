@@ -9118,7 +9118,7 @@
         }
       },
       "integration_branch": "feat/run-timeout-followups",
-      "integration_head": "40e373235134cf0e475792f34e038260eece2334",
+      "integration_head": "16c4a49c23d86d358a7e118c129051e4d49b95cb",
       "integration_log": [
         {
           "at": "2026-11-22T13:28:47Z",
@@ -9197,6 +9197,20 @@
           "op_id": "d4e0032fd0b14759813738b05383b89a",
           "previous_head": "63f86dc61301d2ae76276b0c02854ca8bbf381c9",
           "seq": 8
+        },
+        {
+          "at": "2026-11-22T16:59:02Z",
+          "changed_files": [
+            "tests/unit/utils/test_process_group_term_ignoring_children.py"
+          ],
+          "head": "16c4a49c23d86d358a7e118c129051e4d49b95cb",
+          "kind": "fix",
+          "op_id": "6084b43e91b843769df770acfcbfeab5",
+          "previous_head": "40e373235134cf0e475792f34e038260eece2334",
+          "requires_acceptance": [
+            "process-group-term-then-kill-verify-20261122"
+          ],
+          "seq": 9
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-followups",
