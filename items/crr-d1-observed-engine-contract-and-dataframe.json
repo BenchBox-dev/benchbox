@@ -7,6 +7,11 @@
     "Each 'not_captured' declaration cites the evidence that the library cannot report the engine",
     "A test fails if the observed value is computed from the library version alone (seeded in the pull request)"
   ],
+  "batch": {
+    "batch_id": "corpus-rule-r3",
+    "implementation_dependencies": [],
+    "member_id": "crr-d1-observed-engine-contract-and-dataframe"
+  },
   "context": "Step of the corpus rule remediation plan (crr-00-corpus-rule-remediation-plan). Plan written 2026-11-22 and reviewed twice by an independent adversarial reviewer; counts marked (R) were measured by that reviewer and must be re-measured, not trusted. Owner decisions were given by choice dialog on 2026-11-22 and are quoted in crr-00.",
   "description": "## Problem\nA default-engine run records applied: auto, observed: not_captured, so the file does not say which engine ran (T4). The Explorer shows one label for a default whose engine differs between versions (T5).\n\n## Change\n- Contract for platform.execution_engine.observed: the engine observed during the run, its source, 'mixed' when queries differ, 'not_captured' with a reason when the platform cannot report it. The value must come from an observation of the run, never from a table of versions.\n- Implement for every DataFrame platform that declares engines, Dask included (core/execution_engine.py, platform_manifest.py). 'not_captured' is allowed only where the gate below shows the library cannot report it; it is not a way to skip a platform.\n- The pipeline only parses the field here; it is emitted in the read model by crr-b3.\n- Testing a library version other than the locked one happens only in a separate environment (the version-matrix runner's per-version environments); never change the project lock for it.\n- Guard, table-driven from the platform manifest: every platform that declares engines either has an observation implementation with a test, or an explicit 'not_captured' declaration with a reason.\n\n## Decision gates\n- For each platform, first establish whether the library can report the engine a query used (API, explain, profile). If it cannot on some version, record 'not_captured' for that version and say so in the pull request. Do not infer from the version.\n- No change to the variant label (execution-variants ADR D8).\n\n## Guardrails (apply to every item of this plan)\n- Fix the root cause for every platform and benchmark. No rule, exception, label or test may name a platform or a version matrix. Only the pvm-p* items may name Polars, and only to run and stage that run's files.\n- Never edit a stored result file to make it pass. Outcomes change only through the rule.\n- Any change to the outcome of a stored result must show in the committed outcome snapshot diff in the same pull request and be explained in its body.\n- No new stored class value. No reader may decide anything from benchmark.compliance_class, conformance_class or summary.tpc_metrics.suppressed.\n- Paths, line numbers and counts in this plan were read on 2026-11-22 at develop 93f3360. Re-read before editing; report drift, do not guess.\n- AGENTS.md applies: linked worktree, one pull request per item, close at the merged pull request, heavy work only through make heavy-run, no live cloud run without owner approval in that task.\n- At a decision gate, follow the recorded default. If its stop condition is met, stop and report to the owner. Never substitute a different owner decision.\n- Read crr-00-corpus-rule-remediation-plan first: it holds the owner decisions, the rule table and the fault types (T1 to T5).",
   "sessions": [
@@ -56,6 +61,14 @@
       "client": "omp-coding-agent",
       "op": "abort",
       "op_id": "557ba7a9e9124fc7a1570450465b6c24",
+      "session_id": "fb2b868a75fa45f6a33b883d74cd5ef0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fe4873e1ab4511a8ff69ca5f",
+      "at": "2026-11-22T18:52:33Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9a0095b60be548a7bbe89564a5e9cd8f",
       "session_id": "fb2b868a75fa45f6a33b883d74cd5ef0"
     }
   ]
