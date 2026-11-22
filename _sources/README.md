@@ -93,6 +93,37 @@ _sources/tpc-ds/
 └── specification/
 ```
 
+### TPC-DI Appendix SQL and EULA
+
+`_sources/tpc-di/` and `benchbox/_binaries/tpc-di/` hold the same six files, byte for byte:
+`EULA.txt`, `NOTICE.txt` (line 1 is the legend "THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC."),
+and the specification's audit (Appendix A), validation (Appendix B) and visibility (Appendix C) SQL:
+`tpcdi_audit.sql`, `tpcdi_validation.sql`, `tpcdi_visibility_1.sql`, `tpcdi_visibility_2.sql`.
+The SQL files are never edited. `benchbox/core/tpcdi/appendix.py` applies only the substitutions the
+specification permits (its portability table in each file header) at load time and records each one.
+
+**The appendix SQL is an unofficial shared copy.** The TPC site offers no separate Appendix download.
+The files are the copy shared by the abroniewski/TPC-DI-MS-SQL-Benchmark repository at commit
+`18eca39b128f5fcc86cbc9c1e53e30ed0e685fa7` (`Helpers/Scripts`), byte-identical to the copies in two other public
+repositories. The official archive is being sought, and a tracked follow-up will replace this copy
+once it is obtained. The Tools archive is not part of this copy.
+
+| File | SHA-256 |
+|------|---------|
+| `tpcdi_audit.sql` | `32eb0f55a08b8cf5a906d4aff563539d42c873c72d6dc662798218b2bc3107fc` |
+| `tpcdi_validation.sql` | `9ee9ef8144c7f53bb6fb0d4ac489dda2379e7aa1b8e24d7a12df1539b7f86c02` |
+| `tpcdi_visibility_1.sql` | `209454549598d8147a2a0eb9ced8bd86eb3548f32fc90c1765975b0076e8bde7` |
+| `tpcdi_visibility_2.sql` | `a22645d5c9d2095d8d77549db3e7ecbc8d5d5417e8f0973fbd92150347ea894a` |
+
+`EULA.txt` is the TPC's published End User License Agreement v2.2.0,
+`https://www.tpc.org/TPC_Documents_Current_Versions/txt/EULA_v2.2.0.txt`, SHA-256
+`017bd9dbc4c332ac433fc0cc018f3691b330f8aca82a05a20274512de423576e`. Its wording equals
+`_sources/tpc-h/EULA.txt` (clause 9 included); the two differ only in line wrapping, quotation marks and
+numbering whitespace.
+
+The official `TPC-DI_Tools_v1.1.0.zip` (SHA-256 `d9c10de5dafa781ddd4df72453f50af2f0c9c7ccfa0cbae99ed0be70a2ede22b`)
+contains no TPC EULA and no appendix SQL; it is not committed.
+
 ## Applying BenchBox Patches
 
 BenchBox includes patches that add features and fix compilation issues:

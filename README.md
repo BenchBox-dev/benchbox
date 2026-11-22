@@ -295,3 +295,9 @@ present employers. See [DISCLAIMER.md](DISCLAIMER.md) for details.
 ## License
 
 BenchBox is available under the [MIT License](LICENSE).
+
+The TPC-DI audit, validation and visibility SQL (Appendix A, B and C) ships
+unmodified in `benchbox/_binaries/tpc-di/` under the TPC End User License
+Agreement (`EULA.txt` beside it). THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE
+FROM TPC. The SQL comes from an unofficial shared copy until the official
+archive is obtained; see `_sources/README.md`.

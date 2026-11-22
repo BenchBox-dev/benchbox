@@ -1,0 +1,26 @@
+THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC.
+
+TPC-DI automated audit, batch validation and data visibility SQL (Appendix A, B and C of the TPC-DI
+specification, version 1.1.0). Copyright Transaction Processing Performance Council (TPC).
+Licensed under the TPC End User License Agreement v2.2 (EULA.txt in this directory). The SQL files
+are distributed unmodified, with the EULA and this legend, and BenchBox charges no fee for them.
+
+Files: tpcdi_audit.sql, tpcdi_validation.sql, tpcdi_visibility_1.sql, tpcdi_visibility_2.sql
+
+Source of the SQL files: an unofficial third-party copy, not the TPC's own archive. It was fetched
+from https://github.com/abroniewski/TPC-DI-MS-SQL-Benchmark at commit
+18eca39b128f5fcc86cbc9c1e53e30ed0e685fa7 (Helpers/Scripts). The TPC site offers no separate
+Appendix download. The official archive is being sought and a tracked follow-up will replace this
+copy. SHA-256:
+  32eb0f55a08b8cf5a906d4aff563539d42c873c72d6dc662798218b2bc3107fc  tpcdi_audit.sql
+  9ee9ef8144c7f53bb6fb0d4ac489dda2379e7aa1b8e24d7a12df1539b7f86c02  tpcdi_validation.sql
+  209454549598d8147a2a0eb9ced8bd86eb3548f32fc90c1765975b0076e8bde7  tpcdi_visibility_1.sql
+  a22645d5c9d2095d8d77549db3e7ecbc8d5d5417e8f0973fbd92150347ea894a  tpcdi_visibility_2.sql
+
+Source of EULA.txt: https://www.tpc.org/TPC_Documents_Current_Versions/txt/EULA_v2.2.0.txt
+SHA-256 017bd9dbc4c332ac433fc0cc018f3691b330f8aca82a05a20274512de423576e
+
+Run results are derived from TPC-DI. They are not audited TPC results and are not comparable to
+TPC Benchmark Results.
+
+TPC website: https://www.tpc.org
