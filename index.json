@@ -47145,13 +47145,18 @@
       "title": "TPC-DI: update the SF1 integrity row-count spec to the specification's table set before reopening"
     },
     "tpcdi-08-generator-core-and-reference-files-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T17:20:55Z",
+        "generation": "ef1bb714faf84ab7919053eacca90817",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e"
+      },
       "needs": [
         "tpcdi-bundle-tpc-di-tools-20261121",
         "run-timeout-generators-and-partial-data-20261120"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI step 11: DIGen runner: generate the source files with the shipped tools and record what was generated"
     },
     "tpcdi-09-generator-customer-and-finwire-20261120": {
