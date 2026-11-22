@@ -23,6 +23,10 @@ Site and documentation sentence: "BenchBox's TPC-DI ETL is based on Shannon Barr
 - `src/incremental_batches/**`, except its audit and validation rewrites in `src/incremental_batches/audit_validation/**`.
 - Every derived SQL file is committed only under `benchbox/core/tpcdi/etl/`, listed in `benchbox/core/tpcdi/etl/PROVENANCE.json`, with all comments removed.
 
+## Names only
+
+- `src/incremental_batches/dw_init.sql` is read for staging table and column names only. `benchbox/core/tpcdi/schema_specs.yaml` takes the names of its stage tables (`FinWire`, `WatchIncremental`, `DailyMarketIncremental`, `CashTransactionIncremental`, `HoldingIncremental`, `TradeIncremental`, `AccountIncremental`, `CustomerIncremental`, `ProspectIncremental`) and of `BatchDate`, with their column names. Column types are the specification's exact types, not the project's; no statement, comment, constraint, partitioning or table property is taken. The file is not committed and is not listed in `benchbox/core/tpcdi/etl/PROVENANCE.json`.
+
 ## Paths BenchBox never takes
 
 - `src/tools/**`: the project's generator code, its copy of the TPC-DI tools and tools zip (`DIGen.jar`, `DIGen_Build.zip`, `pdgf.jar`, plugins, libraries, dictionaries, configuration), its static files and its static audit snapshots.

@@ -273,12 +273,6 @@
           "path": "benchbox/core/tpcdi/schema.py"
         },
         {
-          "path": "benchbox/core/tpcdi/schema_extension_specs.yaml"
-        },
-        {
-          "path": "benchbox/core/tpcdi/schema_extensions.py"
-        },
-        {
           "path": "benchbox/core/tpcdi/schema_specs.yaml"
         },
         {
