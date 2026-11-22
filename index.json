@@ -11489,7 +11489,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-foundation",
-      "integration_head": "f65a4e511a8fb827c0f3361fab9e68ed4df1331a",
+      "integration_head": "a66ecfe585b38624e9b8ea1c7f93374b72dd56e3",
       "integration_log": [
         {
           "at": "2026-11-22T03:55:11Z",
@@ -11554,6 +11554,24 @@
             "tpcdi-comment-policy-route-for-tpc-files-20261121"
           ],
           "seq": 5
+        },
+        {
+          "at": "2026-11-22T05:55:19Z",
+          "changed_files": [
+            ".github/workflows/ci.yml",
+            "_project/inert-doc-readers.json",
+            "tests/unit/core/tpcdi/test_provenance_guard.py",
+            "tests/unit/core/tpcdi/test_provenance_record.py",
+            "tests/unit/workflows/test_ci_short_checks.py"
+          ],
+          "head": "a66ecfe585b38624e9b8ea1c7f93374b72dd56e3",
+          "kind": "fix",
+          "op_id": "81378e525d5349f89866a438680e1f8d",
+          "previous_head": "f65a4e511a8fb827c0f3361fab9e68ed4df1331a",
+          "requires_acceptance": [
+            "tpcdi-provenance-record-and-copy-guard-20261121"
+          ],
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-foundation",
