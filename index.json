@@ -36737,7 +36737,8 @@
     "pvm-p4-run-and-publish-tpcds": {
       "claim": null,
       "needs": [
-        "pvm-p3-run-and-publish-tpch",
+        "pvm-p2-publish-ssb-clickbench",
+        "crr-c2-row-count-references-tpc-and-ssb",
         "tpcds-expression-q41-row-count-differs-from-sql"
       ],
       "priority": "medium-high",
