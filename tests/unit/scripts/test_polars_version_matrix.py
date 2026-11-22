@@ -187,6 +187,15 @@ def test_cell_command_pins_rechunk_engine_and_single_iteration() -> None:
     assert not any(part.startswith("engine=") for part in command)
 
 
+def test_cell_command_passes_the_cell_limit_and_the_outside_kill_waits_a_minute_longer() -> None:
+    cell = next(item for item in POLARS.cells() if item.setup == "B")
+    command = runner.cell_command(POLARS, cell)
+
+    assert POLARS.cell_timeout_s == 1800.0
+    assert command[command.index("--timeout") + 1] == "1800"
+    assert run_version_matrix.outside_kill_after_s(POLARS) == 1860.0
+
+
 def test_environment_check_rejects_stale_runtime_and_wrong_version() -> None:
     packages = runner.parse_freeze("polars==1.31.0\npolars-runtime-32==1.44.2\npyarrow==20.0.0\n")
 
@@ -229,6 +238,7 @@ def test_runner_refuses_to_continue_when_a_pinned_value_changes(key: str) -> Non
         ({"swap_growth_gib": 1.5}, "resource-policy-exceeded"),
         ({"safety_abort": True, "exit_code": -9}, "resource-policy-exceeded"),
         ({"timed_out": True, "exit_code": -9}, "timeout"),
+        ({"exit_code": 124}, "timeout"),
         ({"exit_code": -9}, "oom-killed"),
         ({"exit_code": 1}, "execution-failure"),
         ({"result_ok": False}, "execution-failure"),
