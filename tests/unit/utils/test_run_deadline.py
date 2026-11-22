@@ -8,12 +8,12 @@ from types import SimpleNamespace
 
 import pytest
 
+from benchbox.core.exceptions import RunTimeoutError
 from benchbox.utils import run_deadline
 from benchbox.utils.run_deadline import (
     HARD_STOP_GRACE_SECONDS,
     TIMED_OUT_VALIDATION_STATUS,
     RunDeadline,
-    RunTimeoutError,
     active_run_deadline,
     arm_hard_stop,
     current_run_deadline,
