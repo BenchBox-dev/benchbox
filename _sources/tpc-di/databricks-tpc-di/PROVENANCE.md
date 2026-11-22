@@ -28,7 +28,7 @@ Site and documentation sentence: "BenchBox's TPC-DI ETL is based on Shannon Barr
 - `src/tools/**`: the project's generator code, its copy of the TPC-DI tools and tools zip (`DIGen.jar`, `DIGen_Build.zip`, `pdgf.jar`, plugins, libraries, dictionaries, configuration), its static files and its static audit snapshots.
 - DIGen output and generated reference files.
 - Its copy or rewrite of the appendix SQL (`src/incremental_batches/audit_validation/**`), including `Appendix_v1.1.0/`. The audit, validation and visibility SQL comes from the TPC and is never edited in the repository.
-- `src/single_batch/**`, `src/databricks_app/**`, `tests/**`, `docs/**`.
+- `src/single_batch/**`, `src/databricks_app/**`, and the project's own `tests` and `docs` directories.
 
 ## Guard
 
