@@ -526,9 +526,9 @@ class BenchmarkManager:
             console.print(f"Scale factor: {scale_factor} (fixed for this benchmark)")
             return scale_factor
 
-        scale_options = benchmark_info["scale_options"]
         recommended_scale = self._get_recommended_scale(benchmark_info, system_profile)
-        standard = ", ".join(f"{opt:g}" for opt in scale_options)
+        standard_scales = list(rule.standard)
+        standard = ", ".join(f"{opt:g}" for opt in standard_scales)
 
         while True:
             console.print("\n[bold cyan]Scale Factor Selection[/bold cyan]")
@@ -539,7 +539,7 @@ class BenchmarkManager:
             )
             console.print(f"• [green]Recommended for your system: {recommended_scale}[/green]")
 
-            self._display_scale_estimates(benchmark_id, benchmark_info, scale_options, system_profile)
+            self._display_scale_estimates(benchmark_id, benchmark_info, standard_scales, system_profile)
 
             scale_factor = FloatPrompt.ask("Scale factor", default=recommended_scale)
 
