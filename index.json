@@ -13719,11 +13719,22 @@
         "tpcdi-11-audit-recount-batch1-20261120",
         "tpcdi-13-digen-reference-path-and-comparison-20261120"
       ],
-      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e",
-      "owner_epoch": 0,
-      "owner_generation": "c7b7cd645bab5f117d364690bb09ffdf",
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5d4e220f613a3ab3ee8f830c",
+      "owner_epoch": 1,
+      "owner_generation": "413d0ed37c213ffb361ba36e49bd7f38",
       "project_id": "tpcdi-correction-plan-20261120",
-      "recoveries": [],
+      "recoveries": [
+        {
+          "at": "2026-11-22T20:00:02Z",
+          "client": "omp-coding-agent",
+          "epoch": 1,
+          "new_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5d4e220f613a3ab3ee8f830c",
+          "op_id": "aca1d4ee7e7948c6b0c7b1573f9ab4cb",
+          "previous_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e",
+          "reason": "The leader session ended when the host restarted; the same leader resumes under a new tracker session.",
+          "session_id": "12592a6a6d8740699d4d29831152a0cb"
+        }
+      ],
       "repository": "https://github.com/BenchBox-dev/BenchBox.git",
       "scope": {
         "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120": [

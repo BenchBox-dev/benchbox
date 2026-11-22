@@ -69,6 +69,16 @@
       "op": "update",
       "op_id": "f46f57f4568846cca6e64a75bdb99869",
       "session_id": "a8b92107f30e427f9def4483bf06f645"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5d4e220f613a3ab3ee8f830c",
+      "at": "2026-11-22T20:00:02Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e",
+      "op": "recover",
+      "op_id": "aca1d4ee7e7948c6b0c7b1573f9ab4cb",
+      "reason": "The leader session ended when the host restarted; the same leader resumes under a new tracker session.",
+      "session_id": "12592a6a6d8740699d4d29831152a0cb"
     }
   ]
 }
