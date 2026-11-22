@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "TPC-H runs now also print a rough estimate of query generation time, and the generation time estimates for TPC-H and TPC-DS are re-measured on a quiet host (darwin-arm64, Apple M4).",
+      "benchmarks": ["tpch", "tpcds"]
+    }
+  ]
+}

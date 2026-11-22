@@ -51,7 +51,7 @@ def test_interactive_summary_shows_the_measured_generation_estimate(monkeypatch:
     )
 
     assert (
-        f"TPC-H data generation{PRESENT}, scale 1: Rough estimate: generation will take about 12 seconds (measured on {HOST} at scale 0.01, 0.1, 1, 10)."
+        f"TPC-H data generation{PRESENT}, scale 1: Rough estimate: generation will take about 11 seconds (measured on {HOST} at scale 0.01, 0.1, 1, 10)."
         in stream.getvalue()
     )
     assert "Est. Time:" in stream.getvalue()
