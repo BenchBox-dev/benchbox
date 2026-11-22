@@ -286,12 +286,6 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
     def tpch_refresh_backend(self) -> Any | None:
         return None
 
-    def engine_observation_gap(self) -> str | None:
-        return None
-
-    def observe_execution_engine(self, lazy: Any) -> str | None:
-        return None
-
     def _record_engine_observation(self, result: dict[str, Any], lazy: Any) -> None:
         if self.OBSERVED_ENGINE_SOURCE == "none" or self.engine_observation_gap() is not None:
             return

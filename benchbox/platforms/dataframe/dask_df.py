@@ -495,7 +495,7 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
     def observe_execution_engine(self, lazy: Any) -> str | None:
         from dask.base import get_scheduler
 
-        scheduler = get_scheduler(collections=[lazy])
+        scheduler = get_scheduler(collections=[getattr(lazy, "native", lazy)])
         if isinstance(getattr(scheduler, "__self__", None), Client):
             return "distributed"
         return _LOCAL_SCHEDULER_ENGINES.get(

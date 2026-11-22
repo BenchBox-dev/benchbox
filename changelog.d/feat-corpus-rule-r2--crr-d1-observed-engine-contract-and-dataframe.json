@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "DataFrame runs now record the execution engine that actually ran (platform.execution_engine.observed with its source), `mixed` when queries differ, and a reason when the engine cannot be captured. The platform manifest declares, for each platform with engines, the adapter that observes it or why it cannot."
+    }
+  ]
+}

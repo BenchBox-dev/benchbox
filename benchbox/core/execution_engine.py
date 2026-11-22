@@ -25,7 +25,6 @@ ObservedSource = Literal["explain", "vendor_log", "session_var", "runtime_state"
 
 NOT_CAPTURED = "not_captured"
 MIXED = "mixed"
-UNREPORTED_REASON = "the adapter records no observation of the engine that ran"
 RESERVED_OPTION_KEYS = frozenset({"engine", "mode", "backend", "runtime", "executor", "warehouse"})
 
 
@@ -95,8 +94,6 @@ class ExecutionEngineReceipt:
         if self.observed == NOT_CAPTURED:
             if self.observed_source != "none":
                 raise ValueError(f"A {NOT_CAPTURED!r} engine observation cannot name source {self.observed_source!r}")
-            if not self.observed_reason:
-                object.__setattr__(self, "observed_reason", UNREPORTED_REASON)
             return
         if self.observed_source == "none":
             raise ValueError(f"Observed engine {self.observed!r} needs the source it was observed from")
@@ -178,6 +175,12 @@ def platform_default_receipt(platform: str, requested: str) -> ExecutionEngineRe
 class ExecutionEngineHook:
     OBSERVED_ENGINE_SOURCE: ObservedSource = "none"
 
+    def engine_observation_gap(self) -> str | None:
+        return None
+
+    def observe_execution_engine(self, lazy: Any) -> str | None:
+        return None
+
     def resolve_execution_engine(self, requested: str) -> ExecutionEngineReceipt:
         return platform_default_receipt(str(getattr(self, "platform_name", type(self).__name__)), requested)
 
@@ -215,7 +218,6 @@ __all__ = [
     "ExecutionEngineResolution",
     "ExecutionEngineUnavailableError",
     "ObservedSource",
-    "UNREPORTED_REASON",
     "UnsupportedExecutionEngineError",
     "legacy_option_engine",
     "platform_default_receipt",
