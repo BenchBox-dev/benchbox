@@ -9,7 +9,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "The pandas, Dask and cuDF CSV readers, the DataFusion DataFrame and sorted-Parquet pyarrow readers, TPC-DI source staging and the write-primitives CSV source no longer turn text such as `N/A`, `NA`, `NULL` and `nan` into nulls; only empty fields and the dialect null marker are null. This also preserves the `N/A` and `NA` zone names in the NYC Taxi zone table."
+      "text": "The pandas, Dask and cuDF CSV readers, TPC-DI source staging and the write-primitives CSV source no longer turn text such as `N/A`, `NA`, `NULL` and `nan` into nulls; only empty fields and the dialect null marker are null. This also preserves the `N/A` and `NA` zone names in the NYC Taxi zone table. The DataFusion DataFrame and sorted-Parquet pyarrow readers already kept such text, but now read empty fields in delimited files as NULL instead of empty strings, as DuckDB and native DataFusion do."
     }
   ]
 }
