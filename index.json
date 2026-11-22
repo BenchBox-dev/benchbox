@@ -9045,6 +9045,58 @@
       "start_head": "4a6fe5496bad1a4e651111363890dcb4dbdd1251",
       "terminal_outcome": "deliver"
     },
+    "run-timeout-harness2": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/run-timeout-harness2",
+      "integration_head": "4a6fe5496bad1a4e651111363890dcb4dbdd1251",
+      "integration_log": [
+        {
+          "at": "2026-11-22T00:45:42Z",
+          "head": "4a6fe5496bad1a4e651111363890dcb4dbdd1251",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-harness2",
+      "lifecycle": "active",
+      "members": [
+        "run-timeout-uat-cells-20261120",
+        "run-timeout-remove-unused-timers-20261120"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "owner_epoch": 0,
+      "owner_generation": "5cc325240442b5b56ed83ad754583333",
+      "project_id": "run-timeout-plan-20261120",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "run-timeout-remove-unused-timers-20261120": [
+          "benchbox/*",
+          "tests/*",
+          "docs/*",
+          "examples/*",
+          "quality/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "run-timeout-uat-cells-20261120": [
+          "tests/*",
+          "scripts/*",
+          "docs/*",
+          "quality/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "60ded198318b14f2074fbbc110c6a85fd45a24152ccacd050e639fa9c76a960f",
+      "start_head": "4a6fe5496bad1a4e651111363890dcb4dbdd1251",
+      "terminal_outcome": "deliver"
+    },
     "server-engine-bulk-load": {
       "accepted_members": {},
       "batch_schema": 2,
