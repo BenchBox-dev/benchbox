@@ -45940,17 +45940,12 @@
       "title": "TPC-DI step 2: deletion-only pull request against published-results, then recut the ledger seed"
     },
     "tpcdi-03-site-rework-notice-20261120": {
-      "claim": {
-        "expires_at": "2026-11-23T04:35:25Z",
-        "generation": "ec9a0f8b08e34799bc237433d530e505",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-01-withdraw-bundles-develop-20261120"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "TPC-DI step 3 (parallel with steps 4 and later): site notice that TPC-DI is being reworked (benchbox-site)"
     },
     "tpcdi-04-quarantine-run-path-20261120": {
