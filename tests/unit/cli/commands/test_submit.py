@@ -41,9 +41,12 @@ def _fake_result() -> SimpleNamespace:
     )
 
 
+_PASSED_ROW_COUNT = {"rows": 5, "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5}}
+
+
 def _valid_submission_bundle() -> dict:
     return {
-        "version": "2.1",
+        "version": "2.2",
         "run": {
             "id": "abc123",
             "timestamp": "2026-05-03T00:00:00",
@@ -53,7 +56,10 @@ def _valid_submission_bundle() -> dict:
         "platform": {"name": "duckdb", "version": "1.3.0"},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
         "phases": {"validation": {"status": "PASSED"}},
-        "queries": [{"id": f"Q{i}", "ms": 123, "status": "SUCCESS"} for i in range(1, 23)],
+        "queries": [
+            {"id": f"Q{i}", "ms": 123, "status": "SUCCESS", **(_PASSED_ROW_COUNT if i == 1 else {})}
+            for i in range(1, 23)
+        ],
     }
 
 
@@ -417,8 +423,9 @@ def test_submit_dry_run_validation_rejects_pr_package_errors(monkeypatch: pytest
 
 def _write_flat_plateau_bundle(path: Path) -> None:
     queries = [{"id": f"Q{i}", "ms": 4400.0 + (i % 5) * 15.0, "status": "SUCCESS"} for i in range(1, 23)]
+    queries[0].update(_PASSED_ROW_COUNT)
     bundle = {
-        "version": "2.1",
+        "version": "2.2",
         "run": {"id": "plateau", "timestamp": "2026-05-03T00:00:00", "total_duration_ms": 100000},
         "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0},
         "platform": {"name": "duckdb", "version": "1.3.0"},

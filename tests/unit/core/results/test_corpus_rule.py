@@ -396,3 +396,66 @@ def test_module_runs_with_no_project_packages_installed(tmp_path: Path) -> None:
 
     assert completed.returncode == 0, completed.stderr
     assert completed.stdout.strip() == "power_only ('power_only',) [] ['pydantic', 'yaml']"
+
+
+def evidenced(statuses: Sequence[str]) -> dict:
+    rows = [
+        {"id": str(index), "run_type": "measurement", "ms": 1.0, "row_count_validation": {"status": status}}
+        for index, status in enumerate(statuses, start=1)
+    ]
+    return result(extra={"queries": rows})
+
+
+@pytest.mark.parametrize(
+    ("statuses", "labelled"),
+    [
+        (["PASSED", "PASSED"], False),
+        (["PASSED", "SKIPPED"], False),
+        (["PASSED", "UNVALIDATED"], True),
+        (["UNVALIDATED", "UNVALIDATED"], True),
+        (["SKIPPED"], True),
+        ([], True),
+    ],
+)
+def test_row_counts_not_checked_label_follows_per_query_evidence_and_never_the_rank(
+    statuses: Sequence[str], labelled: bool
+) -> None:
+    data = evidenced(statuses)
+    outcome = rule.derive_outcome(rule.facts_from_result(data))
+    baseline = rule.derive_outcome(rule.Facts("tpch", 1.0, frozenset({rule.PHASE_POWER}), None))
+
+    assert (rule.ROW_COUNTS_NOT_CHECKED_LABEL in outcome.labels) is labelled
+    assert outcome.ranked
+    assert (outcome.class_name, outcome.lanes, outcome.score_source, outcome.public_admission) == (
+        baseline.class_name,
+        baseline.lanes,
+        baseline.score_source,
+        baseline.public_admission,
+    )
+
+
+def test_label_comes_from_the_file_not_from_the_recorded_validation_status() -> None:
+    unevidenced = evidenced(["SKIPPED"])
+    unevidenced["summary"]["validation"] = "passed"
+    no_reference = evidenced(["UNVALIDATED"])
+    no_reference["summary"]["validation"] = "no_reference"
+
+    for data in (unevidenced, no_reference):
+        outcome = rule.derive_outcome(rule.facts_from_result(data))
+        assert outcome.ranked
+        assert rule.ROW_COUNTS_NOT_CHECKED_LABEL in outcome.labels
+
+
+def test_a_held_result_is_not_labelled_and_a_failed_validation_is_still_refused() -> None:
+    data = evidenced(["FAILED"])
+    data["summary"]["validation"] = "failed"
+    outcome = rule.derive_outcome(rule.facts_from_result(data))
+
+    assert outcome.held_reason == rule.HELD_FAILED_VALIDATION
+    assert not outcome.ranked
+    assert rule.ROW_COUNTS_NOT_CHECKED_LABEL not in outcome.labels
+
+
+def test_no_reference_status_is_not_a_failed_validation() -> None:
+    assert "no_reference" not in rule.NON_CLEAN_VALIDATION_STATUSES
+    assert "no_reference" not in NON_CLEAN_VALIDATION_STATUSES

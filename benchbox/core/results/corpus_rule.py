@@ -74,6 +74,7 @@ CLASS_WORDS = {
     CLASS_SUBSCALE: "Scale below the TPC minimum",
 }
 NONSTANDARD_SCALE_LABEL = "Non-standard scale: compared only at the same scale"
+ROW_COUNTS_NOT_CHECKED_LABEL = "Row counts not checked"
 HELD_LABELS = {
     HELD_GATEWAY_ROUTED: "Not ranked: routed through a gateway",
     HELD_KNOWN_DEFECT: "Not ranked: known defect",
@@ -90,6 +91,7 @@ class Facts:
     gateway_routed: bool = False
     known_defect: bool = False
     validation_failed: bool = False
+    row_counts_checked: bool = True
 
 
 @dataclass(frozen=True)
@@ -385,7 +387,11 @@ def derive_outcome(
             row.name,
         )
     held = _held_reason(facts)
-    return _hold(outcome, held) if held is not None else outcome
+    if held is not None:
+        return _hold(outcome, held)
+    if not facts.row_counts_checked and outcome.class_name != CLASS_UNDETERMINED:
+        return replace(outcome, labels=(*outcome.labels, ROW_COUNTS_NOT_CHECKED_LABEL))
+    return outcome
 
 
 def _executed(block: Any) -> bool:
@@ -440,6 +446,21 @@ def _gateway_routed(data: Mapping[str, Any]) -> bool:
     return isinstance(gateway, Mapping) and bool(gateway.get("name")) and gateway.get("routed") is True
 
 
+def row_counts_checked(data: Mapping[str, Any]) -> bool:
+    queries = data.get("queries")
+    statuses: list[str] = []
+    for query in queries if isinstance(queries, list) else ():
+        if (
+            not isinstance(query, Mapping)
+            or str(query.get("run_type") or "measurement").strip().lower() != "measurement"
+        ):
+            continue
+        evidence = query.get("row_count_validation")
+        status = evidence.get("status") if isinstance(evidence, Mapping) else None
+        statuses.append(str(status or "").strip().upper())
+    return "PASSED" in statuses and "UNVALIDATED" not in statuses
+
+
 def _recorded_validation_status(data: Mapping[str, Any]) -> str | None:
     summary = data.get("summary")
     value = summary.get("validation") if isinstance(summary, Mapping) else None
@@ -477,6 +498,7 @@ def facts_from_result(
         gateway_routed=_gateway_routed(data),
         known_defect=any(isinstance(item, str) and item for item in known_defects),
         validation_failed=status in NON_CLEAN_VALIDATION_STATUSES or failed > 0,
+        row_counts_checked=row_counts_checked(data),
     )
 
 

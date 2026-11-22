@@ -315,7 +315,7 @@ def test_tpcds_dataframe_sensitive_query_checked_at_reference_seed() -> None:
     }
 
 
-def test_tpcds_dataframe_query_without_agreed_count_is_uncertain() -> None:
+def test_tpcds_dataframe_query_without_agreed_count_has_no_reference() -> None:
     measurement = _measurement(query_id="21", rows=6)
 
     summary = validate_dataframe_query_results(
@@ -324,13 +324,13 @@ def test_tpcds_dataframe_query_without_agreed_count_is_uncertain() -> None:
         scale_factor=0.01,
     )
 
-    assert summary.status == "UNCERTAIN"
+    assert summary.status == "NO_REFERENCE"
     assert summary.details["checked"] == 0
     assert summary.details["skipped"] == 1
     assert measurement["row_count_validation"]["status"] == "UNVALIDATED"
 
 
-def test_tpcds_dataframe_unrecorded_scale_remains_uncertain() -> None:
+def test_tpcds_dataframe_unrecorded_scale_has_no_reference() -> None:
     measurement = _measurement(query_id="1", rows=1)
 
     summary = validate_dataframe_query_results(
@@ -339,7 +339,7 @@ def test_tpcds_dataframe_unrecorded_scale_remains_uncertain() -> None:
         scale_factor=0.5,
     )
 
-    assert summary.status == "UNCERTAIN"
+    assert summary.status == "NO_REFERENCE"
     assert summary.details["checked"] == 0
     assert measurement["row_count_validation"]["status"] == "UNVALIDATED"
 

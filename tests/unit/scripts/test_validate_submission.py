@@ -13,7 +13,6 @@ from benchbox.validation.bundle import (
     KNOWN_DEFECT_REASONS,
     SUBMISSION_NOTES_MAX_LEN,
     ValidationResult,
-    _validate_bundle,
     _validate_execution_consistency,
     _validate_manifest_hash,
     _validate_manifest_provenance,
@@ -32,6 +31,25 @@ pytestmark = [
 
 
 ATTESTATION = {"cpu_model": "Apple M4", "cpu_identity_provenance": "user_attested", "attested_by": "maintainer"}
+
+
+def _with_first_query_row_count_evidence(data: dict) -> dict:
+    summary = data.get("summary")
+    queries = data.get("queries")
+    if not isinstance(summary, dict) or summary.get("validation") != "passed" or not isinstance(queries, list):
+        return data
+    measurements = [q for q in queries if isinstance(q, dict) and q.get("run_type", "measurement") == "measurement"]
+    if not measurements or any("row_count_validation" in q for q in measurements):
+        return data
+    first = measurements[0]
+    rows = first["rows"] if isinstance(first.get("rows"), int) else 5
+    first["rows"] = rows
+    first["row_count_validation"] = {"status": "PASSED", "expected": rows, "actual": rows}
+    return data
+
+
+def _validate_bundle(data: dict, vr: ValidationResult, **flags) -> None:
+    bundle_module._validate_bundle(_with_first_query_row_count_evidence(data), vr, **flags)
 
 
 class TestManifestProvenance:
@@ -305,9 +323,12 @@ class TestManifestProvenance:
         assert not self._run(fields).ok
 
 
+_PASSED_ROW_COUNT = {"rows": 5, "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5}}
+
+
 def _minimal_bundle() -> dict:
     return {
-        "version": "2.1",
+        "version": "2.2",
         "run": {
             "id": "abc123",
             "timestamp": "2026-04-01T12:00:00",
@@ -327,7 +348,15 @@ def _minimal_bundle() -> dict:
             "queries": {"total": 22, "passed": 22, "failed": 0},
         },
         "phases": {"validation": {"status": "PASSED"}},
-        "queries": [{"id": f"Q{i}", "ms": 100 + i * 10, "status": "SUCCESS"} for i in range(1, 23)],
+        "queries": [
+            {
+                "id": f"Q{i}",
+                "ms": 100 + i * 10,
+                "status": "SUCCESS",
+                **(_PASSED_ROW_COUNT if i == 1 else {}),
+            }
+            for i in range(1, 23)
+        ],
     }
 
 
@@ -464,6 +493,7 @@ class TestValidateBundle:
 
     def test_row_count_validation_requires_schema_2_2(self):
         data = _minimal_bundle()
+        data["version"] = "2.1"
         data["queries"][0].update(
             {
                 "rows": 4,
@@ -1688,6 +1718,8 @@ def _timing_bundle(
     for qid, ms in per_query_ms.items():
         for sample in ms if isinstance(ms, list) else [ms]:
             queries.append({"id": qid, "ms": sample, "status": "SUCCESS"})
+    if queries:
+        queries[0].update(_PASSED_ROW_COUNT)
     total = len(queries)
     timing = {"total_ms": sum(q["ms"] for q in queries)}
     if geomean_ms is not None:
@@ -1698,7 +1730,7 @@ def _timing_bundle(
     if rows_loaded is not None:
         summary["data"] = {"rows_loaded": rows_loaded}
     return {
-        "version": "2.1",
+        "version": "2.2",
         "run": {"id": "timing-test", "timestamp": "2026-09-19T00:00:00", "total_duration_ms": 60000},
         "benchmark": {"id": benchmark, "name": benchmark, "scale_factor": scale_factor},
         "platform": {"name": platform, "version": "1.0"},
@@ -3464,3 +3496,64 @@ def test_manifest_class_attestation_must_match_the_recorded_bundle(tmp_path, env
     manifest = {"execution_class": "container", "execution_class_evidence": "owner attestation"}
     _validate_manifest_provenance(manifest, bundle, vr)
     assert vr.ok is ok
+
+
+def _row_count_bundle(status: str, row_statuses: list[str | None]) -> dict:
+    data = _minimal_bundle()
+    data["summary"]["validation"] = status
+    for index, row in enumerate(data["queries"]):
+        row.pop("row_count_validation", None)
+        row_status = row_statuses[index] if index < len(row_statuses) else None
+        if row_status is not None:
+            expected = 5 if row_status == "PASSED" else None
+            row["rows"] = 5
+            row["row_count_validation"] = {"status": row_status, "expected": expected, "actual": 5}
+    return data
+
+
+class TestValidationStatusVocabulary:
+    @staticmethod
+    def _validate(data: dict, **flags) -> ValidationResult:
+        vr = ValidationResult("test")
+        bundle_module._validate_bundle(data, vr, **flags)
+        return vr
+
+    def test_passed_with_per_query_evidence_is_accepted(self):
+        vr = self._validate(_row_count_bundle("passed", ["PASSED"] * 22))
+        assert vr.ok, vr.errors
+
+    @pytest.mark.parametrize("row_statuses", [[], [None] * 22, ["SKIPPED"] * 22])
+    def test_new_passed_result_without_per_query_evidence_is_refused(self, row_statuses):
+        vr = self._validate(_row_count_bundle("passed", row_statuses))
+        assert not vr.ok
+        assert any("requires per-query row-count evidence" in e for e in vr.errors)
+
+    def test_stored_passed_results_without_evidence_stay_admitted_on_the_mirror_path(self):
+        vr = self._validate(_row_count_bundle("passed", []), allow_partial_validation=True)
+        assert vr.ok, vr.errors
+
+    @pytest.mark.parametrize("row_statuses", [[], [None] * 22, ["UNVALIDATED"] * 22])
+    @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
+    def test_no_reference_status_is_admitted_on_both_paths(self, row_statuses, flags):
+        vr = self._validate(_row_count_bundle("no_reference", row_statuses), **flags)
+        assert vr.ok, vr.errors
+
+    @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
+    def test_failed_validation_is_still_refused(self, flags):
+        assert not self._validate(_row_count_bundle("failed", ["PASSED"] * 22), **flags).ok
+
+    @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
+    def test_no_reference_with_a_failed_query_is_refused(self, flags):
+        data = _row_count_bundle("no_reference", [])
+        data["queries"][0]["status"] = "FAILED"
+        data["summary"]["queries"] = {"total": 22, "passed": 21, "failed": 1}
+        vr = self._validate(data, **flags)
+        assert not vr.ok
+        assert any("'no_reference' contradicts" in e for e in vr.errors)
+
+    def test_allowlists_admit_no_reference_and_keep_passed_the_clean_status(self):
+        assert bundle_module.PUBLIC_CLEAN_VALIDATION_STATUS == "passed"
+        assert "no_reference" in bundle_module.PUBLIC_ADMITTED_VALIDATION_STATUSES
+        assert "no_reference" in bundle_module.PUBLIC_MIRROR_ALLOWED_VALIDATION_STATUSES
+        blocked = {"failed", "not_validated", "uncertain"}
+        assert not blocked & bundle_module.PUBLIC_MIRROR_ALLOWED_VALIDATION_STATUSES
