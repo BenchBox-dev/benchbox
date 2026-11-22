@@ -99,7 +99,7 @@ def terminal_state(cell: CellResult) -> str:
         return "skipped"
     if is_unreachable_status(cell.status):
         return "unreachable"
-    if cell.status == "timed-out" or cell.exit_code == 124:
+    if cell.status in {"timed-out", "hung"} or cell.exit_code == 124:
         return "timeout"
     if cell.exit_code in {-9, 137}:
         return "killed"
@@ -179,7 +179,7 @@ def write_report(
 
     pass_count = sum(1 for r in rows if r.status == "passed")
     fail_count = sum(1 for r in rows if r.status == "failed")
-    timeout_count = sum(1 for r in rows if r.status == "timed-out")
+    timeout_count = sum(1 for r in rows if r.status in {"timed-out", "hung"})
     row_skipped_count = sum(1 for r in rows if is_skipped_status(r.status))
     row_unreachable_count = sum(1 for r in rows if is_unreachable_status(r.status))
     attempted_count = executed_count - row_skipped_count - row_unreachable_count

@@ -11,7 +11,6 @@ from typing import Any
 
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.process_group import kill_process_group
-from benchbox.utils.resource_limits import kill_started_group
 
 HARD_STOP_GRACE_SECONDS = 30.0
 HARD_STOP_EXPORT_MARGIN_SECONDS = 5.0
@@ -185,7 +184,7 @@ class RunDeadline:
             self._stopped_children.update(child.pid for child in children)
         for child in children:
             if child.poll() is None:
-                kill_started_group(child)
+                kill_process_group(child)
 
     def stopped(self, process: subprocess.Popen[Any]) -> bool:
         with self._lock:
@@ -215,7 +214,7 @@ class RunDeadline:
                 process.communicate()
                 raise self.record_timeout(f"BenchBox stopped {tool}") from None
             except BaseException:
-                kill_started_group(process)
+                kill_process_group(process)
                 raise
             returncode = process.poll()
             if returncode and self.stopped(process):

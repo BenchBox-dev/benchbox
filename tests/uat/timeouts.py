@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import signal
 import subprocess
 import sys
 import threading
@@ -107,8 +108,9 @@ def run_with_timeout(
             _reap_in_background(proc)
             out, err = None, None
         memory_exceeded = isinstance(exc, _MemoryLimitExceeded)
+        killed_exit_code = proc.returncode if proc.returncode is not None else -int(getattr(signal, "SIGKILL", 9))
         return TimeoutResult(
-            exit_code=EXIT_MEMORY_LIMIT if memory_exceeded else EXIT_TIMEOUT,
+            exit_code=EXIT_MEMORY_LIMIT if memory_exceeded else killed_exit_code,
             timed_out=not memory_exceeded,
             elapsed_s=time.monotonic() - start,
             stdout=out,

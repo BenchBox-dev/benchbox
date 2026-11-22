@@ -417,6 +417,18 @@ def test_benchbox_run_argv_appends_extra_args():
     assert argv[-2:] == ["--tuning", "tuned"]
 
 
+def test_benchbox_run_argv_passes_the_cell_limit_as_timeout():
+    argv = matrix.benchbox_run_argv("duckdb", "tpch", 0.01, timeout_s=600)
+    assert argv[argv.index("--timeout") + 1] == "600"
+    assert "--timeout" not in matrix.benchbox_run_argv("duckdb", "tpch", 0.01)
+
+
+def test_benchbox_run_official_argv_passes_the_cell_limit_as_timeout():
+    argv = matrix.benchbox_run_official_argv("duckdb", "tpch", 1.0, phases="power", streams=3, timeout_s=900)
+    assert argv[argv.index("--timeout") + 1] == "900"
+    assert "--timeout" not in matrix.benchbox_run_official_argv("duckdb", "tpch", 1.0, phases="power", streams=3)
+
+
 def test_benchbox_run_argv_velox_iterations_one():
     argv = matrix.benchbox_run_argv("velox", "tpch", 0.01)
     iter_idx = argv.index("--iterations")

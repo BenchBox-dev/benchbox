@@ -8,7 +8,6 @@ import json
 import math
 import os
 import re
-import signal
 import subprocess
 import sys
 import time
@@ -35,6 +34,7 @@ from benchbox.core.tpcds.qualification.classification import (
     rows_digest,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.process_group import kill_process_group
 
 _INPUTS = Path(__file__).with_name("inputs.json")
 _PARAMETERS = Path(__file__).parents[1] / "dataframe_queries" / "qualification_values.json"
@@ -726,13 +726,7 @@ def supervise(
 
 
 def _kill_worker(process: subprocess.Popen[Any]) -> None:
-    try:
-        if hasattr(signal, "SIGKILL"):
-            os.killpg(process.pid, signal.SIGKILL)
-        else:
-            process.kill()
-    except ProcessLookupError:
-        pass
+    kill_process_group(process)
     process.wait()
 
 

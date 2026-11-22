@@ -597,7 +597,7 @@ def _handle_execute(args: argparse.Namespace) -> int:
         "log_dir": str(result.log_dir),
         "passed": sum(1 for r in outcome.results if r.status == "passed"),
         "failed": sum(1 for r in outcome.results if r.status == "failed"),
-        "timed_out": sum(1 for r in outcome.results if r.status == "timed-out"),
+        "timed_out": sum(1 for r in outcome.results if r.status in {"timed-out", "hung"}),
         "pruned": len(outcome.pruned),
         "compatibility_pruned": len(getattr(outcome, "compatibility_pruned", ())),
         "skipped_unreachable": len(outcome.skipped_unreachable),

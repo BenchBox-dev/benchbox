@@ -264,6 +264,12 @@ def test_cell_observation_uses_the_recorded_failure_class():
     assert dash.cell_observation(_row("a", "skipped"), "1", "t") is None
 
 
+def test_cell_observation_counts_a_cell_the_runner_killed_as_attempted():
+    row = _row("a", "hung", failure_kind="infrastructure", failure_signature="timeout")
+    hung = dash.cell_observation(row, "1", "t")
+    assert hung is not None and hung.outcome == "infrastructure"
+
+
 def _evidence(run_id: int, day: int, rows: list[dict], **record):
     run = _run(run_id, day * 1440, event="schedule", head_branch="develop")
     payload = {

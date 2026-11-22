@@ -331,6 +331,7 @@ def benchbox_run_argv(
     extra_args: Iterable[str] = (),
     local_managed_platform: bool = False,
     quiet: bool = True,
+    timeout_s: int | None = None,
 ) -> list[str]:
     argv = uv_run_argv(platform)
     argv += [
@@ -350,6 +351,8 @@ def benchbox_run_argv(
         "--phases",
         phases,
     ]
+    if timeout_s is not None:
+        argv += ["--timeout", str(timeout_s)]
     if compression is not None:
         argv += ["--compression", compression]
     argv += PLATFORM_CLI_FLAGS.get(platform, [])
@@ -371,6 +374,7 @@ def benchbox_run_official_argv(
     extra_args: Iterable[str] = (),
     local_managed_platform: bool = False,
     quiet: bool = True,
+    timeout_s: int | None = None,
 ) -> list[str]:
     argv = uv_run_argv(platform)
     argv += [
@@ -386,6 +390,8 @@ def benchbox_run_official_argv(
         "--streams",
         str(streams),
     ]
+    if timeout_s is not None:
+        argv += ["--timeout", str(timeout_s)]
     if seed is not None:
         argv += ["--seed", str(seed)]
     if quiet:

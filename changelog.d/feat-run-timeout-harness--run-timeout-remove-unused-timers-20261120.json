@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "before-you-upgrade",
+      "breaking": true,
+      "lead": "Unused timers and timeout settings removed",
+      "text": "benchbox.utils no longer exports TimeoutManager, get_timeout_manager, timeout, TimeoutConfig, TimeoutError or run_with_timeout, and ResourceLimitsConfig no longer has default_operation_timeout or enforce_timeouts; none of them limited a run. Three configuration keys that promised a limit and enforced nothing are removed: benchmarks.timeout_minutes, execution.power_run.timeout_per_iteration_minutes and execution.concurrent_queries.query_timeout_seconds.",
+      "details": [
+        "A configuration file that still sets one of the three keys loads, prints '`<key>` is no longer used and has no effect. Use `execution.timeout_seconds` to limit a run.', and the key is ignored.",
+        "Use execution.timeout_seconds (or --timeout) to limit a whole run; 0 means no limit.",
+        "ExecutionConfigHelper and its power run and concurrent query settings no longer carry the two removed timeout values, and the performance profiles and optimize_for_system no longer set them.",
+        "Plan capture keeps plan_capture_timeout_seconds with its 30-second default and is now also bounded by the time left on the run."
+      ]
+    }
+  ]
+}

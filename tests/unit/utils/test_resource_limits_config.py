@@ -68,8 +68,6 @@ class TestResourceLimitsConfig:
         assert config.memory_warning_percent == 75.0
         assert config.memory_critical_percent == 90.0
         assert config.cpu_warning_percent == 90.0
-        assert config.default_operation_timeout == 300.0
-        assert config.enforce_timeouts is True
         assert config.enable_graceful_degradation is False
         assert config.degradation_memory_threshold_percent == 80.0
 
