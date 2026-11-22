@@ -43226,7 +43226,7 @@
       "needs": [],
       "priority": "low",
       "status": "open",
-      "title": "benchbox-site: local `npm run docs:check` uses stale site inputs and reports violations CI does not"
+      "title": "benchbox-site: local `npm run docs:check` checks against the release pin, not the bundle CI uses on next, without saying so"
     },
     "site-main-carries-unreleased-scale-and-tpcdi-docs-20261112": {
       "claim": null,
