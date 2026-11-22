@@ -21533,6 +21533,15 @@
       "status": "open",
       "title": "Define result identity and comparison version from fields in the file, in one function"
     },
+    "crr-b2-site-accepts-next-read-model": {
+      "claim": null,
+      "needs": [
+        "crr-b1-identity-and-comparison-version"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Site: accept the next read-model version and render its new fields when present"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],
