@@ -1960,8 +1960,8 @@ in the file and falls inside the run's host-load window.
 | LakeSail `312e8b59` (SF 0.1) | `lakesail-sf01/mem.log` (`42d956b2456ec7e893a46a1d3e18151308736854167939b3b5287c3a8e5a4195`) | 6 | 1794964333, 2026-11-17 20:12:13 | 2.16GB / 4.00GB |
 
 The `doris-sf001-6g/mem.log` trace starts at 2026-11-18 17:28:15, when the container came up, and ends at 18:17:52; the run's
-`host_load` window is 18:17:33 to 18:17:52, and before it the trace holds 115 to 593 MB. The earlier note's figures of
-0.7 GB (Doris SF 0.01), 2.7 GB (Doris SF 0.1) and about 600 MB (LakeSail) do not match these traces. The bundles read
+`host_load` window is 18:17:33 to 18:17:52, and before it the trace holds 115 to 593 MB, so a figure read from the early part of
+a trace is far below the peak. The bundles read
 `environment.container.collection_status: unavailable`, so the traces and this note are the record of memory use.
 
 Host conditions of the published runs. All three ran on a shared 16 GiB Apple-silicon machine (10 CPUs) launched through
@@ -1981,7 +1981,9 @@ cell start of `c18125e7` (`doris-sf01-6g-quiet.out`) and 3.86 at its bring-up (`
 `312e8b59` (`lakesail-sf01.out`). The artifacts do not show a threshold on the 1-minute load average: the start samples
 of the bundles are 6.61 and 5.9 for the two published Doris runs.
 
-Not published. Six more runs completed with a result file, 279/279 statements and validation passed; none is published.
+Not published. No uniform host-load rule was applied when choosing which runs to publish; each published Doris figure is the fastest of its set, and every discarded run is listed below with its timings and host load.
+
+Six more runs completed with a result file, 279/279 statements and validation passed; none is published.
 `Admission` is the 5-minute load printed by the heavy-work gate, where the transcript was kept.
 
 | run (result file in `results/`, SHA-256 prefix) | scale | server memory | power total | load | 1/5/15-minute load, start | swap, start | available memory, start | admission |
