@@ -8992,6 +8992,105 @@
       "start_head": "f3409b20ba5a2b7a7705b8c7a37c50da60400a3d",
       "terminal_outcome": "deliver"
     },
+    "run-timeout-followups": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/run-timeout-followups",
+      "integration_head": "93f336032a16c82b37544b527b203e2b5187a593",
+      "integration_log": [
+        {
+          "at": "2026-11-22T13:28:47Z",
+          "head": "93f336032a16c82b37544b527b203e2b5187a593",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-followups",
+      "lifecycle": "active",
+      "members": [
+        "run-timeout-error-public-import-20261122",
+        "run-official-timeout-config-usage-exit-20261122",
+        "throughput-stream-gate-deadline-test-20261122",
+        "uat-retry-budget-outside-kill-margin-20261122",
+        "remove-execution-timeout-minutes-key-20261122",
+        "process-group-term-then-kill-verify-20261122",
+        "generation-estimate-remeasure-20261122",
+        "run-timeout-decision-record-refresh-20261122"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "owner_epoch": 0,
+      "owner_generation": "428865900619a87ca89695fcbc5ea3bc",
+      "project_id": "run-timeout-plan-20261120",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "generation-estimate-remeasure-20261122": [
+          "benchbox/core/*",
+          "benchbox/cli/*",
+          "tests/*",
+          "docs/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "process-group-term-then-kill-verify-20261122": [
+          "tests/*",
+          "benchbox/utils/*",
+          "benchbox/core/tpcds/qualification/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "remove-execution-timeout-minutes-key-20261122": [
+          "benchbox/utils/*",
+          "benchbox/cli/*",
+          "benchbox/core/*",
+          "tests/*",
+          "docs/*",
+          "examples/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "run-official-timeout-config-usage-exit-20261122": [
+          "benchbox/cli/*",
+          "tests/*",
+          "docs/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "run-timeout-decision-record-refresh-20261122": [
+          "_project/decisions/run-timeout-2026-11-20.md",
+          "docs/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "run-timeout-error-public-import-20261122": [
+          "benchbox/*",
+          "tests/*",
+          "docs/*",
+          "examples/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "throughput-stream-gate-deadline-test-20261122": [
+          "tests/*",
+          "benchbox/core/throughput/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "uat-retry-budget-outside-kill-margin-20261122": [
+          "tests/*",
+          "docs/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "1e24758d5a1c450128be0a6d65e8f15cea99c0357c3390b24474b623b6770cb5",
+      "start_head": "93f336032a16c82b37544b527b203e2b5187a593",
+      "terminal_outcome": "deliver"
+    },
     "run-timeout-harness": {
       "accepted_members": {},
       "batch_schema": 2,
