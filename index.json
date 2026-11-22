@@ -12489,7 +12489,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-source",
-      "integration_head": "7fb82540ea6a6ec9fa1202d3a569c5e95a859ec3",
+      "integration_head": "7556bb485df5577558818b6ee88abe8fcc975cdc",
       "integration_log": [
         {
           "at": "2026-11-22T07:11:35Z",
@@ -12545,6 +12545,18 @@
           "op_id": "108af3e646da4b449a00aceba8f1a41d",
           "previous_head": "726e13aa60559c79b52231c4061ecc5ff7516f6f",
           "seq": 3
+        },
+        {
+          "at": "2026-11-22T15:34:34Z",
+          "changed_files": [
+            ".pre-commit-config.yaml"
+          ],
+          "head": "7556bb485df5577558818b6ee88abe8fcc975cdc",
+          "kind": "develop-merge",
+          "merged_parent": "9af7995e813937d1a93fe9506fe6212e640fd7f4",
+          "op_id": "6d4bf62684d74c18a5e455d648015427",
+          "previous_head": "7fb82540ea6a6ec9fa1202d3a569c5e95a859ec3",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-source",
