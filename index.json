@@ -47197,15 +47197,10 @@
       "title": "Make the TPC-DI SCD Type 2 expire step actually update expired rows"
     },
     "tpcdi-schema-emit-type-map-and-tuning-20261122": {
-      "claim": {
-        "expires_at": "2026-11-23T13:56:39Z",
-        "generation": "9aecea9611c540b0839e91494be52ead",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "TPC-DI: register column-type choices under SCHEMA_EMIT, map types with translate_ddl type_map, and restore tuning in DDL"
     },
     "tpcdi-settle-appendix-sql-source-20261121": {
