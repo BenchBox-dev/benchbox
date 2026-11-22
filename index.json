@@ -18385,9 +18385,9 @@
     },
     "cedardb-server-crash-mid-shard-nightly-20261119": {
       "claim": {
-        "expires_at": "2026-11-23T21:59:06Z",
-        "generation": "e2d6196e8bbe4bd39b453827dc78cebf",
-        "renewals": 0,
+        "expires_at": "2026-11-23T21:59:21Z",
+        "generation": "aa56cc2826df43ffb2f43cb57e3f6406",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3"
       },
       "needs": [],
