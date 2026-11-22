@@ -50,10 +50,38 @@ PLATFORM_NAMES = frozenset(
         "vertica",
     }
 )
-SQL_VARIABLE = re.compile(
-    r"^(sql|query|queries|statement|stmt|ddl|dml|script|q)$|_(sql|query|ddl|statement|stmt|script)$",
-    re.IGNORECASE,
+SQL_NAME_TOKENS = frozenset(
+    {"sql", "query", "queries", "statement", "statements", "stmt", "stmts", "ddl", "dml", "script", "scripts", "q"}
 )
+NON_SQL_NAME_TOKENS = frozenset(
+    {
+        "id",
+        "ids",
+        "num",
+        "number",
+        "name",
+        "names",
+        "type",
+        "types",
+        "platform",
+        "dialect",
+        "path",
+        "file",
+        "key",
+        "index",
+        "idx",
+        "len",
+        "length",
+        "label",
+    }
+)
+
+
+def _is_sql_name(name: str) -> bool:
+    tokens = {token.lower() for token in re.findall(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+", name)}
+    return bool(tokens & SQL_NAME_TOKENS) and not tokens & NON_SQL_NAME_TOKENS
+
+
 DIALECT_IDENTIFIER = re.compile(r"platform|dialect|engine|backend|target", re.IGNORECASE)
 SQL_KEYWORD = re.compile(r"\b(select|create|insert|alter|cast|limit|interval|date_trunc)\b|array_", re.IGNORECASE)
 
@@ -101,6 +129,9 @@ REVIEWED_ALLOWLIST: dict[tuple[str, str, str], str] = {
 }
 
 UNRESOLVED_VIOLATIONS: dict[tuple[str, str, str], str] = {
+    ("benchbox/core/nyctaxi/benchmark.py", "NYCTaxiBenchmark.translate_query_text", "re.sub"): (
+        "per-dialect day-of-week and epoch-difference rewrites by regex on query text"
+    ),
     ("benchbox/core/read_primitives/queries.py", "ReadPrimitivesQueryManager.get_query", "replace"): (
         "ClickHouse-only function-name case rewrite on query text"
     ),
@@ -148,7 +179,7 @@ def _name(node: ast.AST) -> str | None:
 
 def _is_sql_variable(node: ast.AST) -> bool:
     name = _name(node)
-    return name is not None and SQL_VARIABLE.search(name) is not None
+    return name is not None and _is_sql_name(name)
 
 
 def _is_regex_substitution(func: ast.Attribute) -> bool:
@@ -339,6 +370,19 @@ def load(sql, platform):
     return _DUMMY_PATTERN.subn(lambda _: _DUMMY_TABLE_CLAUSES.get(platform, ""), sql)
 """
 
+QUERY_TEXT_FIXTURE = """
+def adapt(query_text, platform):
+    if platform == "clickhouse":
+        query_text = query_text.replace("LAG(x, 1)", "lag(x, 1)")
+    return query_text
+"""
+
+SQL_TEXT_FIXTURE = """
+class Adapter:
+    def adapt(self, dialect):
+        return self.sql_text.replace("TIMESTAMP", "DATETIME2")
+"""
+
 CLEAN_PARAMETER_FIXTURE = """
 def render(sql, params):
     for key, value in params.items():
@@ -362,6 +406,8 @@ def adapt(query, platform):
         (PLATFORM_DICT_FIXTURE, KIND_DICT),
         (PLATFORM_TABLE_FIXTURE, KIND_TABLE),
         (PLATFORM_TABLE_FIXTURE, KIND_REGEX),
+        (QUERY_TEXT_FIXTURE, KIND_REPLACE),
+        (SQL_TEXT_FIXTURE, KIND_REPLACE),
     ],
 )
 def test_fixture_with_per_platform_text_rewrite_is_flagged(source: str, kind: str) -> None:
