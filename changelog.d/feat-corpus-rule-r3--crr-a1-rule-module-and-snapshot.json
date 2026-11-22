@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Add the stdlib-only corpus outcome rule module with its generated data file and extend the corpus outcome snapshot with today's and the rule's outcome, score and rank for every stored result. No reader changes."
+}
