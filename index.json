@@ -21554,6 +21554,15 @@
       "status": "open",
       "title": "Emit the rule outcome, identity and median rows from the Explorer pipeline"
     },
+    "crr-b4-site-renders-rule-outcome-and-labels": {
+      "claim": null,
+      "needs": [
+        "crr-b3-pipeline-emits-rule-outcome-and-medians"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Site: render class, lane and labels from the read model and delete the TypeScript copies of the rule"
+    },
     "crr-c1-validation-status-vocabulary": {
       "claim": null,
       "needs": [
