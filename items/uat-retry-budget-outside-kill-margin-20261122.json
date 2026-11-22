@@ -9,6 +9,61 @@
   },
   "context": "Noted by the UAT-cells implementer in the run-timeout effort (#4437).",
   "description": "## Problem\n`tests/uat/infrastructure_retry.py` (`with_infrastructure_retry`) retries a cell when `remaining_s >= timeout_s`. Since #4437 a cell can run until `timeout_s + OUTSIDE_KILL_MARGIN_S` (60 s) before the runner kills it, so a retry admitted with exactly `timeout_s` left can overrun the job budget by up to 60 seconds.\n\n## Change\nCompare the remaining budget with the cell's worst-case duration (`outside_limit_s(timeout_s)` in tests/uat/runner.py).\n\n## Decision gates\nNo change to cell limits, the 60-second margin, which cells retry, or pass/fail rules (owner decisions, run-timeout-uat-cells-20261120). Retry counting for `hung` stays identical to `timed-out`.\n\n## Verification rubric\nA test (fails before) with a fake clock where remaining is between `timeout_s` and `timeout_s + 60`: the retry is skipped as insufficient time; one where remaining exceeds it: the retry runs. `make pr-preflight` exits 0.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "prepared": {
+    "accepted_head": "c86059056e19791a683ee5176e21c89aed35bcfb",
+    "batch_id": "run-timeout-followups",
+    "changed_files": [
+      "changelog.d/feat-run-timeout-followups--uat-retry-budget-outside-kill-margin-20261122.json",
+      "docs/internal/release-guide.md",
+      "tests/uat/infrastructure_retry.py",
+      "tests/uat/test_infrastructure_retry.py"
+    ],
+    "integration_head": "8566368a694e0ae8b5f6133f5eae324d90b5b350",
+    "integration_seq": 3,
+    "member_id": "uat-retry-budget-outside-kill-margin-20261122",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "1e24758d5a1c450128be0a6d65e8f15cea99c0357c3390b24474b623b6770cb5",
+    "source_base": "6d93d877637520491aba57065ae1736372d39178",
+    "source_revision": "c86059056e19791a683ee5176e21c89aed35bcfb",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-fu-retry",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/uat/test_hung_status_readers.py",
+        "tests/uat/test_infrastructure_retry.py",
+        "tests/unit/cli/test_shipped_docs_urls.py",
+        "tests/unit/scripts/test_ci_units.py",
+        "tests/unit/scripts/test_generate_changelog_entry.py",
+        "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index",
+        "tests/unit/scripts/test_path_filter_decision.py",
+        "tests/unit/scripts/test_release_maintenance_admission.py"
+      ],
+      "review": {
+        "base_sha": "6d93d877637520491aba57065ae1736372d39178",
+        "head_sha": "c86059056e19791a683ee5176e21c89aed35bcfb",
+        "head_tree": "1b41f24feee704c3f87d9196419f29084d328b38",
+        "outcome": "clear",
+        "patch_digest": "7c8b2ed038b1c2711e12060336e10061",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "93f336032a16c82b37544b527b203e2b5187a593"
+      },
+      "revision": "c86059056e19791a683ee5176e21c89aed35bcfb",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
@@ -33,6 +88,15 @@
       "generation": "2e3bbc98e76f4b55a320b3e901ae03c0",
       "op": "take",
       "op_id": "4bf3a0deebd94c6e81462b0890bfd830",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T14:39:55Z",
+      "client": "omp-coding-agent",
+      "generation": "2e3bbc98e76f4b55a320b3e901ae03c0",
+      "op": "prepare",
+      "op_id": "4273d450303d4b6b9246713a16d26071",
       "session_id": "e80ec8f825d244408f926415b43e3179"
     }
   ]
