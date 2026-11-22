@@ -36778,7 +36778,9 @@
       "claim": null,
       "needs": [
         "pvm-s6-publish-polars-results",
-        "pvm-s6b-polars-2-blog-draft"
+        "pvm-s6b-polars-2-blog-draft",
+        "pvm-p4-run-and-publish-tpcds",
+        "pvm-p7-post-tpcds-from-published-run"
       ],
       "priority": "medium-high",
       "status": "blocked",
