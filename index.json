@@ -36678,6 +36678,15 @@
       "status": "open",
       "title": "Run and publish the Polars TPC-DS results after query 41 is explained and fixed"
     },
+    "pvm-p5-post-and-findings-from-published-runs": {
+      "claim": null,
+      "needs": [
+        "pvm-p2-publish-ssb-clickbench"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Put Results Explorer graphs in the Polars 2.x post and move its figures and the findings pages to the published runs"
+    },
     "pvm-polars-2-version-matrix": {
       "claim": null,
       "needs": [
