@@ -4,7 +4,7 @@
     "Old corpus bundles validate and render unchanged",
     "Schema policy and contract docs record the change"
   ],
-  "context": "2026-11-22 constraint from crr-00-corpus-rule-remediation-plan (owner decided to rank query-only TPC results at standard scale with a label, and to derive the class from facts on read): (1) any stored conformance field written by this item is informational; no reader may decide admission, ranking, score or label from it. (2) The mapping unofficial_nonstandard -> nonstandard_scale is wrong for query-only results at a standard scale (26 stored results); those derive to power_only, throughput_only or partial. Re-plan this item against crr-a1-rule-module-and-snapshot before starting.",
+  "context": "2026-11-22 constraint from crr-00-corpus-rule-remediation-plan (owner decided to rank query-only TPC results at standard scale with a label, and to derive the class from facts on read): (1) any stored conformance field written by this item is informational; no reader may decide admission, ranking, score or label from it. (2) The mapping unofficial_nonstandard -> nonstandard_scale is wrong for query-only results at a standard scale (26 stored results); those derive to power_only, throughput_only or partial. Re-plan this item against crr-a1-rule-module-and-snapshot before starting.\n\n2026-11-22 amendment (owner decision recorded on crr-00-corpus-rule-remediation-plan; ADR docs/internal/adr/adr-corpus-derived-outcome-rule.md): the stored conformance field (benchmark.compliance_class and conformance_class) is informational only; no reader may decide admission, lane, score or rank from it, and no standard-scale result may be mapped to nonstandard_scale. The class comes from the corpus rule computed from facts in the result file.",
   "description": "Result JSON carries benchmark.compliance_class (official / unofficial_nonstandard / unofficial_subscale; core/tpch/compliance.py, core/tpcds/compliance.py) and execution.official (core/results/schema.py ~597), already persisted in the published corpus. New bundles write conformance_class (full_spec / nonstandard_scale / subscale) and execution.full_spec alongside the legacy fields; every reader accepts either (validation/bundle.py, core/results/database.py, scripts/validate_submission.py, Explorer duckdbQueries.ts, localResult.ts, utils.ts); stored corpus values stay readable. Rename the admission code unofficial_compliance (core/publishing/admission.py) and SubmitTerminalState.unofficial, keeping the old values accepted; Explorer \"Unofficial\" badge and \"(unofficial)\" suffix become \"Non-standard\"/\"(subscale)\". Record the change in schema_policy.py, hosted-results-contract.md and result-formats.md.",
   "sessions": [
     {
@@ -30,6 +30,14 @@
       "op": "update",
       "op_id": "cb49c04aaaa541eb83f46090c3dfe69a",
       "session_id": "c07e5ac3266b4133b46582fc1e496cdf"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fe4873e1ab4511a8ff69ca5f",
+      "at": "2026-11-22T17:56:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0fb167b83034413abb4eb0df09ad8c89",
+      "session_id": "fb2b868a75fa45f6a33b883d74cd5ef0"
     }
   ]
 }
