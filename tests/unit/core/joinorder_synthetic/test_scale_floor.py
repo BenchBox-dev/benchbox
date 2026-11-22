@@ -17,5 +17,10 @@ def test_scale_below_the_floor_is_refused(tmp_path, scale_factor):
         JoinOrderSyntheticBenchmark(scale_factor=scale_factor, output_dir=tmp_path)
 
 
+def test_fractional_scale_of_one_or_more_is_refused(tmp_path):
+    with pytest.raises(ScaleFactorOutOfRangeError, match="whole numbers from 1"):
+        JoinOrderSyntheticBenchmark(scale_factor=1.5, output_dir=tmp_path)
+
+
 def test_scale_at_the_floor_is_accepted(tmp_path):
     assert JoinOrderSyntheticBenchmark(scale_factor=0.01, output_dir=tmp_path).scale_factor == 0.01
