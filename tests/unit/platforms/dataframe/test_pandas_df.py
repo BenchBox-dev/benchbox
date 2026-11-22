@@ -37,6 +37,30 @@ class TestPandasDataFrameAdapter:
         assert adapter.family == "pandas"
         assert adapter.dtype_backend == "numpy_nullable"
 
+    def test_initialization_uses_system_arrow_memory_pool(self, monkeypatch):
+        import pyarrow as pa
+
+        original = pa.default_memory_pool()
+        monkeypatch.delenv("ARROW_DEFAULT_MEMORY_POOL", raising=False)
+        pa.set_memory_pool(pa.mimalloc_memory_pool())
+        try:
+            PandasDataFrameAdapter()
+            assert pa.default_memory_pool().backend_name == "system"
+        finally:
+            pa.set_memory_pool(original)
+
+    def test_initialization_keeps_arrow_memory_pool_chosen_by_environment(self, monkeypatch):
+        import pyarrow as pa
+
+        original = pa.default_memory_pool()
+        monkeypatch.setenv("ARROW_DEFAULT_MEMORY_POOL", "mimalloc")
+        pa.set_memory_pool(pa.mimalloc_memory_pool())
+        try:
+            PandasDataFrameAdapter()
+            assert pa.default_memory_pool().backend_name == "mimalloc"
+        finally:
+            pa.set_memory_pool(original)
+
     def test_initialization_with_options(self):
 
         adapter = PandasDataFrameAdapter(

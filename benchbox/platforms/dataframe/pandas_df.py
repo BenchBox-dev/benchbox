@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -129,6 +130,16 @@ def _coerce_date_columns(df: PandasDF, date_columns: list[str]) -> PandasDF:
     return df
 
 
+def _use_system_arrow_memory_pool() -> None:
+    if "ARROW_DEFAULT_MEMORY_POOL" in os.environ:
+        return
+    try:
+        import pyarrow as pa
+    except ImportError:
+        return
+    pa.set_memory_pool(pa.system_memory_pool())
+
+
 class PandasDataFrameAdapter(PandasFamilyAdapter[PandasDF]):
     def __init__(
         self,
@@ -154,6 +165,7 @@ class PandasDataFrameAdapter(PandasFamilyAdapter[PandasDF]):
         self.allow_third_party_extensions = bool(allow_third_party_extensions)
 
         self._configure_copy_on_write(copy_on_write)
+        _use_system_arrow_memory_pool()
 
         self._validate_and_apply_tuning()
 
