@@ -13660,6 +13660,7 @@
         "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120": "2d94734a5bb1bb8a70afb9ce9ec81fcf9ecd5309",
         "tpcdi-08-generator-core-and-reference-files-20261120": "749a92bdf74437a2ccb6512bab07b73dec3c2302",
         "tpcdi-11-audit-recount-batch1-20261120": "ebd4df32ff1270544d8a48c5ff2e25157a4bd8b0",
+        "tpcdi-13-digen-reference-path-and-comparison-20261120": "e7b0b9e9b3274c26ae7bd534fdc8bd1f53c370d1",
         "tpcdi-bundle-tpc-di-tools-20261121": "12c11c70351f99283f10c2032dde6a0754360b7f"
       },
       "batch_schema": 2,
@@ -13725,6 +13726,19 @@
           "integration_head": "c70272a8de246fa58f257a2db31a18a69a742de8",
           "integration_seq": 8
         },
+        "tpcdi-13-digen-reference-path-and-comparison-20261120": {
+          "accepted_head": "e7b0b9e9b3274c26ae7bd534fdc8bd1f53c370d1",
+          "changed_files": [
+            "changelog.d/tpcdi-warehouse-comparison-harness.json",
+            "docs/internal/tpcdi-duckdb-comparison.md",
+            "quality/docs-ownership.json",
+            "scripts/tpcdi/EXPECTED_DIFFERENCES.yaml",
+            "scripts/tpcdi/compare_warehouses.py",
+            "tests/unit/scripts/test_compare_warehouses.py"
+          ],
+          "integration_head": "5f76f868e5bba2d887c81f041123a2aa814627e4",
+          "integration_seq": 9
+        },
         "tpcdi-bundle-tpc-di-tools-20261121": {
           "accepted_head": "12c11c70351f99283f10c2032dde6a0754360b7f",
           "changed_files": [
@@ -13747,7 +13761,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-source",
-      "integration_head": "c70272a8de246fa58f257a2db31a18a69a742de8",
+      "integration_head": "5f76f868e5bba2d887c81f041123a2aa814627e4",
       "integration_log": [
         {
           "at": "2026-11-22T07:11:35Z",
@@ -13859,6 +13873,15 @@
           "op_id": "4907c061a95f48618700c2519eceecf6",
           "previous_head": "24b75929564ad355981001b488c390aec395016f",
           "seq": 8
+        },
+        {
+          "at": "2026-11-22T21:25:25Z",
+          "head": "5f76f868e5bba2d887c81f041123a2aa814627e4",
+          "kind": "prepare",
+          "member": "tpcdi-13-digen-reference-path-and-comparison-20261120",
+          "op_id": "8ae2c839abda44c3826095ddc60e05f2",
+          "previous_head": "c70272a8de246fa58f257a2db31a18a69a742de8",
+          "seq": 9
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-source",
@@ -48444,18 +48467,13 @@
       "title": "TPC-DI step 17 (milestone): DuckDB initialization and historical-load phases, completion records and the audit gate"
     },
     "tpcdi-13-digen-reference-path-and-comparison-20261120": {
-      "claim": {
-        "expires_at": "2026-11-23T21:01:17Z",
-        "generation": "f60e5367e9004d6cba713f471668ef38",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5d4e220f613a3ab3ee8f830c"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-11-audit-recount-batch1-20261120",
         "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 13: comparison harness with the DuckDB implementation, and the early full run"
     },
     "tpcdi-14-milestone-report-owner-stop-20261120": {

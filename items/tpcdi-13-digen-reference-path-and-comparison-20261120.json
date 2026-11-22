@@ -13,6 +13,59 @@
   },
   "context": "Step of the TPC-DI plan based on shannon-barrow/databricks-tpc-di. The full plan (inventory of the project, the 34 departures from the specification with file and line, target architecture, step list) is the description of tpcdi-plan-databricks-base-20261121; every owner decision is quoted on tpcdi-correction-plan-20261120. Read both before starting. Item ids keep the number they were created with; the step number in the title is the order. File paths and line numbers in the plan were read on 2026-11-21 and must be re-read before editing.\n\n2026-11-22 AMENDMENT (owner-approved: \"amend the plan and the remaining items ... so each one uses the standard path named in the audit\"). This note supersedes any conflicting wording in this item's Change, gates and rubric. Standard paths: query/audit/ETL SQL reaches a platform only through `translate_sql_query` (benchbox/utils/dialect_utils.py); a construct the translator lacks is a named fork rewrite called through `apply_rewrite`, never a text replacement or a per-platform alternative statement; statements are split with `split_sql_statements`; what the translator did is recorded in the standard `execution.translation` block; new SQL text gets a golden-corpus area. Benchmark-scoped column-type/emission choices are `Phase.SCHEMA_EMIT` rules plus `translate_ddl(type_map=...)`; adapter CREATE TABLE rewrites are `DDL_OPTIMIZE`. Reuse existing helpers before writing new ones (AGENTS.md). Audit reference: the leader's divergence audit (2026-11-22). Specific to this item: Keep the external comparison with the DuckDB implementation (owner decision 14). For any BenchBox-vs-BenchBox cross-platform check reuse scripts/sql_execution_gate (DuckDB reference check). Use the gate's expected_differences.json shape for the expected-differences list, or state in the PR why a YAML catalogue must differ.",
   "description": "## Problem\nBenchBox needs outside evidence that its ETL is right. The only open DuckDB implementation that gates on an audit is djouallah/tpcdi, itself ported from the Databricks project. It runs PDGF directly, splits `CustomerMgmt.xml`, rewrites one answer-key file, keeps the yield and floating-point defects, and uses the project's rewritten audit. So it is a comparison point, not an oracle.\n\n## Owner decisions (choice dialogs, 2026-11-20 and 2026-11-21)\n- 2026-11-21: \"We will be using the DuckDB implementation for comparison.\"\n- 2026-11-21: where the project and the specification differ, \"The specification wins without asking. Every difference, and any behaviour of the project that is kept, goes in a catalogue I approve at the milestone stop. A difference from the DuckDB implementation not in the catalogue is a finding that blocks the step.\"\n- 2026-11-21, approved to run on this machine through the heavy-work lock with output under `~/Developer/benchmark_runs`: DIGen (once the archive is placed); a clone of the DuckDB implementation at a pinned commit; a JDK 8 downloaded into `~/Developer/tpc-tools/` (not system-wide) if none is installed.\n- 2026-11-21, scale: keep smallest publishable 3 and default 5 (list 3, 5, 10, 100). Below 3: \"The run is allowed; the result is marked not validated with the reason, and publication and the validator refuse it.\"\n\n## Change\nAdd `scripts/tpcdi/compare_warehouses.py` (not packaged): given two DuckDB databases built from the same staging manifest, it reports per table the row counts, rows only on one side, rows that differ by column, DImessages counts by type and batch, and each audit test's outcome on both sides. Add `scripts/tpcdi/EXPECTED_DIFFERENCES.yaml`: one entry per known, explained difference (for example yield multiplied by 100 instead of divided, DECIMAL instead of DOUBLE), each with the clause that makes BenchBox's value right. The harness exits non-zero for any difference not on the list. Add a documented procedure (in `docs/internal/`) for building the DuckDB implementation's warehouse at a pinned commit on a copy of BenchBox's DIGen output, outside the repository. Early run: build its warehouse at scales 3, 5 and 10, then run the official Appendix A (TPC-files step) over its tables, and record which tests fail at each scale. Each entry of the expected-differences list cites the id of a row in `DEPARTURES.yaml`; a test fails for an entry that cites none or a missing row. Timings of the two implementations are reported in the output and never compared or used as a pass condition.\n\n## Decision gates\nThe pinned commit of the DuckDB implementation and the exact command used are in the pull request. Its code runs only from a clone outside the repository, on a copy of the staging files, through `make heavy-run`. If it cannot run on unmodified DIGen output (it expects its own PDGF invocation), report what had to change in the copy and stop for the owner's word if the change alters row content. If the official audit over its tables fails at scale 3 or 5 on tests other than the ones the answer-key step explains, report the list to the owner before the ETL scaffolding step starts: it bears on whether 3 can stay the smallest publishable scale. Nothing from its repository is committed except facts in the procedure and the expected-differences list.\n\n## Verification rubric\nPass: harness unit tests on two small fixture databases: identical gives exit 0; a changed row, a missing row and a changed message count each give a non-zero exit and name the table; a listed expected difference is accepted and an unlisted one is not. The early run's results at scales 3, 5 and 10 (per-test audit outcomes) are attached to the pull request and kept under `~/Developer/benchmark_runs`. `make pr-preflight` passes.\n\n## Guardrails (owner, 2026-11-20 and 2026-11-21)\n- The agent never posts a stand-in review, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`.\n- Arming: `make pr-arm` once; one more attempt only when the refusal named a cause, the agent reported it and the cause is cleared; never a third without asking. `make pr-rerun` at most once and only for a job the runner never ran or cancelled, never for a failed test.\n- Review threads: reply; resolve only after the bot's review of the new head does not raise the finding again.\n- Subagents are read-only. No file edit by script; use the edit tool. Do not edit a pull request description while its CI is starting; post a comment.\n- Any limit, default, threshold, status token, message, label text or name (option, configuration key, result field, file name, test hook) the owner has not already chosen is chosen by the implementer following existing BenchBox conventions and the specification, and is listed in the pull request (owner, 2026-11-21: no stop for these). Texts the owner has chosen (see tpcdi-correction-plan-20261120) are used verbatim.\n- A blocked step stops this item; no workaround. No live cloud run. Heavy work only through `make heavy-run`. Delivery follows the batch plan on tpcdi-correction-plan-20261120: a batch member ends at a landing report and its batch has one final pull request; a serial item has its own pull request.\n- From the quarantine step until the reopening step, no TPC-DI entry point may produce a result that reads PASSED or is admitted for publication.\n- Sources. SQL derived from the Databricks project (`src/incremental_batches/**` at commit 8e0f944, treated as MIT on the owner's instruction) may be committed only after the provenance step has merged, only under `benchbox/core/tpcdi/etl/`, with every file listed in `PROVENANCE.json` and with all comments removed.\n- TPC and bankmark files (DIGen, PDGF, dictionaries, configuration, EULA, appendix SQL) come only from the official archive the owner supplies, are committed unmodified and only in `_sources/tpc-di/`, `benchbox/_binaries/tpc-di/` and `benchbox/_binaries/tpc-di/tools/`. Never copy from the Databricks project or the DuckDB implementation: their copies of the tools or the tools zip, DIGen output, generated reference files, audit snapshots, their copy or rewrite of the appendix SQL, or any generator code (`src/tools/**`). Never commit DIGen output.\n- The specification wins over the Databricks project without asking. Each behaviour of the project that is kept and each change made to follow the specification is one row in `benchbox/core/tpcdi/etl/DEPARTURES.yaml`, which the owner approves at the milestone stop.\n- Owner, 2026-11-21: \"The specification wins without asking. Every difference, and any behaviour of the project that is kept, goes in a catalogue I approve at the milestone stop. A difference from the DuckDB implementation not in the catalogue is a finding that blocks the step.\" The catalogue is `DEPARTURES.yaml`; every entry of the comparison's expected-differences list must cite a catalogue row. After the milestone stop, a new catalogue row in which BenchBox follows the specification is listed in the pull request; a row that would keep behaviour of the Databricks project that departs from the specification stops for the owner's approval (owner, 2026-11-21).\n- The agent never contacts bankmark, the TPC or the Databricks project's author.\n- Staging files produced by DIGen are never edited. The official audit, validation and visibility SQL is never edited in the repository.",
+  "prepared": {
+    "accepted_head": "e7b0b9e9b3274c26ae7bd534fdc8bd1f53c370d1",
+    "batch_id": "tpcdi-source",
+    "changed_files": [
+      "changelog.d/tpcdi-warehouse-comparison-harness.json",
+      "docs/internal/tpcdi-duckdb-comparison.md",
+      "quality/docs-ownership.json",
+      "scripts/tpcdi/EXPECTED_DIFFERENCES.yaml",
+      "scripts/tpcdi/compare_warehouses.py",
+      "tests/unit/scripts/test_compare_warehouses.py"
+    ],
+    "integration_head": "5f76f868e5bba2d887c81f041123a2aa814627e4",
+    "integration_seq": 9,
+    "member_id": "tpcdi-13-digen-reference-path-and-comparison-20261120",
+    "overlaps": [],
+    "owner_epoch": 1,
+    "schema": "prepared_work_v2",
+    "scope_hash": "395fc8211211f06e6dfcc5e52b0c8be78e68a94d3438767f487b0753857d0830",
+    "source_base": "c70272a8de246fa58f257a2db31a18a69a742de8",
+    "source_revision": "e7b0b9e9b3274c26ae7bd534fdc8bd1f53c370d1",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-s-13",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/cli/test_shipped_docs_urls.py",
+        "tests/unit/scripts/test_compare_warehouses.py",
+        "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index",
+        "tests/unit/test_ledger_coverage.py"
+      ],
+      "review": {
+        "base_sha": "c70272a8de246fa58f257a2db31a18a69a742de8",
+        "head_sha": "e7b0b9e9b3274c26ae7bd534fdc8bd1f53c370d1",
+        "head_tree": "2b3a55a396023ea2908897e64e2dbadd0d333abd",
+        "outcome": "clear",
+        "patch_digest": "b607ac68cf372927c9d4c6906a5064ce",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "1def2325473a89eced3a96b02ced91fb1e44b13f"
+      },
+      "revision": "e7b0b9e9b3274c26ae7bd534fdc8bd1f53c370d1",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
@@ -87,6 +140,15 @@
       "generation": "f60e5367e9004d6cba713f471668ef38",
       "op": "take",
       "op_id": "5d34afb490e84a43b8acfd93a23c23aa",
+      "session_id": "12592a6a6d8740699d4d29831152a0cb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5d4e220f613a3ab3ee8f830c",
+      "at": "2026-11-22T21:25:25Z",
+      "client": "omp-coding-agent",
+      "generation": "f60e5367e9004d6cba713f471668ef38",
+      "op": "prepare",
+      "op_id": "8ae2c839abda44c3826095ddc60e05f2",
       "session_id": "12592a6a6d8740699d4d29831152a0cb"
     }
   ]
