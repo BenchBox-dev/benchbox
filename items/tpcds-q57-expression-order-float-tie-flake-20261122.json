@@ -2,6 +2,7 @@
   "acceptance": [
     "Q57 no longer diverges across repeats in tpcds-cross-surface-draws-report."
   ],
+  "context": "2026-11-22: recurred on trunk run 45045080621 (develop at fb80a2717b, PR #4443): 57_expression diverged in 1 of 2 runs; failed job rerun once. Second occurrence in one day; it blocks arming across the repository.",
   "description": "## Problem\nTrunk run 44996878729 (develop at 93f336032a) failed in tpcds-parity-draws: `57_expression: diverged in 1 of 2 runs; Q57: returned row 73 breaks the ORDER BY: sort key (-109.64909090909092, Decimal('20.18')), expected (-109.64909090909093, Decimal('265.34'))`. The two sort keys differ only in the last float digit, so floating-point summation order makes the order check non-deterministic. A failed-job rerun passed.\n\n## Change\nFind whether the expression backend's float aggregation is order-dependent, or whether the cross-surface ORDER BY check should compare float sort keys with a tolerance (treating near-equal keys as ties). Fix the cause; do not add Q57 to a skip list.\n\n## Verification rubric\nPass: `make tpcds-cross-surface-draws-report` passes repeatedly (for example, 10 runs) with no Q57 divergence, and a test pins the tie behaviour.",
   "sessions": [
     {
@@ -10,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "57e0d5637993422cb683d27ea1a7babb",
+      "session_id": "a8b92107f30e427f9def4483bf06f645"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d896fbff3bc029f135cc922e",
+      "at": "2026-11-22T16:57:49Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "22947a03e40944db94036eff86059367",
       "session_id": "a8b92107f30e427f9def4483bf06f645"
     }
   ]
