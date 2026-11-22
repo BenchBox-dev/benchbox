@@ -9137,7 +9137,7 @@
         }
       },
       "integration_branch": "feat/run-timeout-harness2",
-      "integration_head": "085deeb9fcf8fd0cc575f052d1292e3d6d9785cd",
+      "integration_head": "6c26ac2734c0ab937ce6b95a4d31d8f7a5f84820",
       "integration_log": [
         {
           "at": "2026-11-22T00:45:42Z",
@@ -9194,6 +9194,22 @@
             "run-timeout-remove-unused-timers-20261120"
           ],
           "seq": 4
+        },
+        {
+          "at": "2026-11-22T03:33:35Z",
+          "changed_files": [
+            "tests/uat/failure_signature.py",
+            "tests/uat/infrastructure_retry.py",
+            "tests/uat/test_infrastructure_retry.py"
+          ],
+          "head": "6c26ac2734c0ab937ce6b95a4d31d8f7a5f84820",
+          "kind": "fix",
+          "op_id": "6ad7fcdb2f464f8fb105726d00c36540",
+          "previous_head": "085deeb9fcf8fd0cc575f052d1292e3d6d9785cd",
+          "requires_acceptance": [
+            "run-timeout-uat-cells-20261120"
+          ],
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-harness2",
