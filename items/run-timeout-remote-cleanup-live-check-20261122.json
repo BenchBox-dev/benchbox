@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Each adapter with cleanup has a live, owner-approved check with evidence, or the item records why it was not run.",
+    "Any defect the live check finds is fixed, with a stubbed regression test."
+  ],
+  "context": "Follow-up from the run-timeout effort (run-timeout-plan-20261120); stubs-only verification was an owner decision. Capability table: docs/operations/run-safety.md.",
+  "description": "## Problem\nWhen a run times out, BenchBox calls `cancel_remote_work()` on cloud adapters (Onehouse Quanton, BigQuery, EMR Serverless, Glue, Dataproc; merged in #4435). This was verified with stubbed clients only, by the owner's decision (2026-11-20: \"verify it with stubbed clients only, and print a warning ... until a live check has been done. No live cloud runs.\"). The warning text therefore says cleanup \"has not been checked against the live service\". Unverified: the real APIs' behaviour (asynchronous cancel, CANCELLING states, permissions, error shapes such as Glue `BatchStopJobRun` `Errors`), and whether only work this run started is stopped.\n\n## Change\nFor each adapter with cleanup, run one deliberately short time-limited run against the live service that starts work and times out, and record what was cancelled or stopped, what was left running, and the bill impact. Fix any defect found. When an adapter passes, decide with the owner whether its warning changes from the \"has not been checked\" text; the owner-chosen texts may only change with the owner's new wording.\n\n## Decision gates\n- STOP before any live run: needs the owner's explicit approval in the current task naming the platforms, account, and spend ceiling. Until then this item stays blocked.\n- Never stop a warehouse, cluster, session or job that existed before the run; if a live run shows the adapter cannot tell, remove its cleanup and report.\n- Any change to the two owner warning texts needs the owner's wording.\n\n## Verification rubric\nPer adapter: the live run's log and the cloud console/API evidence show the started job/query/session cancelled within the 30-second grace and nothing pre-existing touched; a cleanup failure is reported and exit code stays 124; the results table (adapter, what was started, what was stopped, time to stop, residue, cost) is in the pull request.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T13:12:56Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5df8a549bc5245588c1cd27d7514cd1c",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    }
+  ]
+}
