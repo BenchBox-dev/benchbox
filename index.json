@@ -49929,10 +49929,15 @@
       "title": "UAT boundary reset: prune resume-shard config sprawl; define config lifecycle policy"
     },
     "uat-retry-budget-outside-kill-margin-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T14:39:51Z",
+        "generation": "2e3bbc98e76f4b55a320b3e901ae03c0",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Count the outside-kill margin when deciding whether a UAT cell retry fits the job budget"
     },
     "uat-review-p3-followups": {
