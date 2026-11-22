@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "DataFrame platforms no longer turn the text values `N/A`, `NA`, `NULL`, `nan` and similar into nulls when converting delimited data to Parquet. TPC-DS `item` rows with size or units `N/A` lost their value, so Q41 returned fewer rows than the SQL reference (9 and 10 instead of 10 and 12 at scale factor 10). The Parquet cache version is bumped so affected caches are rebuilt."
+    }
+  ]
+}
