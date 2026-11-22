@@ -4,7 +4,7 @@
     "If (b) or (c) is chosen, pvm-s6-publish-polars-results is updated with the matching scope and acceptance before it is taken",
     "If (c) is chosen, a separate item for the validation provider exists and pvm-s6-publish-polars-results lists it in needs"
   ],
-  "context": "2026-10-07 DECISION: option (a) — analysis and blog draft only; no bundles in results-data/, no validate_corpus.py change. Analysis lands under _project/analysis/polars-version-matrix/ (findings summary, methodology, analysis CSV) in one PR (pvm-s6); blog draft per pvm-s6b. Reason: Polars SF10 bundles return UNCERTAIN/NOT_RUN, which validate_corpus.py treats as not clean, so they could not be ranked. Authority (user, 2026-10-07): \"write a handoff that instructs a new agent session to fully complete the new todos as a batch ... address all decisions required here ... so the agent can complete the implementation without stopping for clarifications\". The handoff resolved this gate as option (a) under that instruction. (b)/(c) not chosen, so no pvm-s6 scope change and no validation-provider item; (c) is reported as an out-of-scope follow-up.",
+  "context": "2026-10-07 DECISION: option (a) — analysis and blog draft only; no bundles in results-data/, no validate_corpus.py change. Analysis lands under _project/analysis/polars-version-matrix/ (findings summary, methodology, analysis CSV) in one PR (pvm-s6); blog draft per pvm-s6b. Reason: Polars SF10 bundles return UNCERTAIN/NOT_RUN, which validate_corpus.py treats as not clean, so they could not be ranked. Authority (user, 2026-10-07): \"write a handoff that instructs a new agent session to fully complete the new todos as a batch ... address all decisions required here ... so the agent can complete the implementation without stopping for clarifications\". The handoff resolved this gate as option (a) under that instruction. (b)/(c) not chosen, so no pvm-s6 scope change and no validation-provider item; (c) is reported as an out-of-scope follow-up.\n\n2026-11-22 owner decision: this decision is reversed. All three Polars engine settings enter the corpus, published by the maintainer path. See crr-00-corpus-rule-remediation-plan and pvm-p1 to pvm-p7.",
   "description": "Polars DataFrame bundles at SF10 cannot be ranked in Results Explorer. DataFrame validation returns UNCERTAIN (TPC-H outside SF1, TPC-DS) or NOT_RUN (SSB, ClickBench) (query_validation.py:89-101), and validate_corpus.py treats both as validation_not_clean (validate_corpus.py:41-42, 376). Unranked bundles also contribute no comparison identity to the cohort depth gate.\n\nOptions for the user:\n(a) Recommended: publish the analysis and a blog post only; do not add bundles to results-data/.\n(b) Promote the setup A median bundles unranked under results-data/bundles/polars-version-matrix/. This needs an explicit allowlist entry in validate_corpus.py (replacing the hard-coded duckdb-version-matrix check, not a suffix rule), plus spec and test updates.\n(c) First build a DataFrame validation provider that turns cross-surface and row-count evidence into a clean status, so the bundles rank. This is a product change with its own spec and review, and it would be a new item.\n\nGuardrail: no work in pvm-s6 starts until the user's choice is recorded here with date and wording. The decision can be taken at any time; it does not need to wait for the run.",
   "links": [
     "results-data/validate_corpus.py",
@@ -45,6 +45,14 @@
       "op": "finish",
       "op_id": "f6bf10879d9d4aad8e6f697b69136ef0",
       "session_id": "812ba5be3c0c4d27866953a8d8ff4e33"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6fbef61b8c1a450fbecb672",
+      "at": "2026-11-22T17:07:29Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "779e33a4b5824be38d86eb6198d50b4a",
+      "session_id": "c07e5ac3266b4133b46582fc1e496cdf"
     }
   ]
 }
