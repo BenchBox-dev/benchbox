@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "pr-arm waits instead of refusing when the only failed core check comes from a text-edit placeholder run and the full CI run is still running."
+  ],
+  "context": "Filed 2026-11-22 while closing out the run-timeout follow-ups (umbrella run-timeout-plan-20261120). Evidence was read on 2026-11-22; re-read run logs, file paths and line numbers before acting.",
+  "description": "## Problem\nOn 2026-11-22 `make pr-arm PR=4443 HEAD=5c57945da… WAIT=55` refused at once with: \"no verify-fast-duration verdict is recorded for 5c57945da: the core job ended failure for 5c57945da and no verdict will arrive; rerun it with make pr-rerun PR=4443, then arm again\" and \"required check 'core' completed with conclusion 'failure'\". The failed `core` was the `CI (text edit)` placeholder run 45034069456 (event pull_request, 6 s), while the full `CI` run 45036340993 for the same head was in progress; that full run later passed and the PR armed. `docs/agent/merge-authority.md` says a placeholder failure stays `waiting` while the full run is in progress, and for a later head pr-arm did report the other placeholders (`results-data`, `docs`, `tooling`) as waiting. The `core` duration-verdict path does not apply the same rule, so it ends a WAIT early and advises a needless `make pr-rerun`, on which agents may spend their one rerun.\n\n## Change\nMake the duration-verdict check and the required-check reading in `scripts/pr_landing.py` (and the arm gate it uses) classify a failed `core` from a `CI (text edit)` placeholder run as `waiting` while a full CI run for the head is queued or in progress, as for the other placeholder checks.\n\n## Decision gates\n- A failed `core` in a full CI run stays a refusal; only placeholder runs change.\n- Do not relax any required check or the would-block duration rule.\n\n## Verification rubric\nPass: a test with the recorded shape of this case (placeholder `core` failure plus an in-progress full run) yields `waiting`, failing before the fix; a test with a failed `core` in a completed full run still yields `refused` with the rerun advice; existing pr-arm tests pass.\nFail: either case misclassified.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4443",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/45034069456",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/45036340993"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T19:35:51Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0e70ee04bd2c4bed9f14c6c34fad9ef1",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    }
+  ]
+}

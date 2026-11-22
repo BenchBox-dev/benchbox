@@ -36483,6 +36483,13 @@
       "status": "open",
       "title": "make pr-arm reads stale remote head right after push and refuses"
     },
+    "pr-arm-text-edit-core-placeholder-misread-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "pr-arm treats the CI (text edit) placeholder `core` failure as final while the full CI run is still in progress"
+    },
     "pr-arm-wait-mode-20261111": {
       "claim": null,
       "needs": [
