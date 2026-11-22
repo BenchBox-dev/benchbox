@@ -2,7 +2,7 @@
   "acceptance": [
     "The stale-skills warning no longer appears in pr-preflight."
   ],
-  "context": "Observed throughout the run-timeout effort, 2026-11-21.\n\nBlocked 2026-11-22: owner-only action (`make skill-sync` in the primary clone); agents may not write there.\n\nOwner decision 2026-11-22 (choice dialog): \"Authorize one command\": the leader runs only `make skill-sync` in the primary clone, once, with BENCHBOX_ALLOW_MAIN_CLONE_WRITE=1, and reports what changed.\n\n2026-11-22: ran the authorized `BENCHBOX_ALLOW_MAIN_CLONE_WRITE=1 make skill-sync` once in the primary clone (exit 0; 3 changes in the gitignored .agents/skills: manifest, receipt, todo/SKILL.md). Not resolved: the primary clone's checkout is an old develop (15c8bb6a7b), whose skill-sync.conf pins catalog rev bcafff24; origin/develop pins 3b684e08, so the warning persists. Fix needs the primary clone fast-forwarded to origin/develop (`git pull --ff-only`) and skill-sync run again: owner action or a new authorization.",
+  "context": "Observed throughout the run-timeout effort, 2026-11-21.\n\nBlocked 2026-11-22: owner-only action (`make skill-sync` in the primary clone); agents may not write there.\n\nOwner decision 2026-11-22 (choice dialog): \"Authorize one command\": the leader runs only `make skill-sync` in the primary clone, once, with BENCHBOX_ALLOW_MAIN_CLONE_WRITE=1, and reports what changed.\n\n2026-11-22: ran the authorized `BENCHBOX_ALLOW_MAIN_CLONE_WRITE=1 make skill-sync` once in the primary clone (exit 0; 3 changes in the gitignored .agents/skills: manifest, receipt, todo/SKILL.md). Not resolved: the primary clone's checkout is an old develop (15c8bb6a7b), whose skill-sync.conf pins catalog rev bcafff24; origin/develop pins 3b684e08, so the warning persists. Fix needs the primary clone fast-forwarded to origin/develop (`git pull --ff-only`) and skill-sync run again: owner action or a new authorization.\n\n2026-11-22 status re-checked during follow-up close-out: still blocked. The primary clone is at an old develop that pins catalog rev bcafff24 while origin/develop pins 3b684e08; one authorized skill-sync in the primary clone ran (exit 0) but cannot clear the warning until the primary clone is fast-forwarded, which needs the owner or a new explicit authorization.",
   "description": "## Problem\nEvery `make pr-preflight` in the run-timeout effort printed: \"the primary clone's .agents/skills copy is not at the catalog revisions this branch pins in skill-sync.conf ... Agents may not refresh it. Owner: run 'make skill-sync' in /Users/joe/Developer/BenchBox.\" Codex, Gemini and Antigravity sessions started in the primary clone read outdated skills, and the warning was misread by an agent as a preflight failure.\n\n## Change\nOwner runs `make skill-sync` in the primary clone.\n\n## Decision gates\nOwner-only: agents must not write to the primary clone (AGENTS.md). Blocked until the owner acts.\n\n## Verification rubric\n`make pr-preflight` in any worktree no longer prints the stale-skills warning.\n\n## Guardrails\nAgents make no change in the primary clone and do not run `make skill-sync` there.",
   "sessions": [
     {
@@ -43,6 +43,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "c9d0e1f2a3b4567c8d9e0f1234567890",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T19:36:29Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "608a0c39ded444068658e6df6e3e2c0b",
       "session_id": "e80ec8f825d244408f926415b43e3179"
     }
   ]
