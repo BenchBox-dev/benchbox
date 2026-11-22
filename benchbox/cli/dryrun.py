@@ -184,6 +184,16 @@ def _resolve_cli_table_format(options: dict[str, Any]) -> str | None:
     return table_format
 
 
+def _phase_estimate_messages(benchmark: str, scale: float, phases: list[str] | None) -> list[str]:
+    lifecycle = resolve_lifecycle_phases(phases)
+    kinds = tuple(
+        kind
+        for kind, wanted in ((DATA_GENERATION, lifecycle.generate), (QUERY_GENERATION, lifecycle.execute))
+        if wanted
+    )
+    return generation_estimate_messages(benchmark, scale, kinds)
+
+
 def display_interactive_preview(
     database_config: DatabaseConfig,
     benchmark_config: BenchmarkConfig,
@@ -283,13 +293,7 @@ def display_interactive_preview(
         table.add_row("Est. Time:", f"{time_range[0]}-{time_range[1]} minutes")
 
     display_console.print(table)
-    lifecycle = resolve_lifecycle_phases(phases)
-    kinds = tuple(
-        kind
-        for kind, wanted in ((DATA_GENERATION, lifecycle.generate), (QUERY_GENERATION, lifecycle.execute))
-        if wanted
-    )
-    for message in generation_estimate_messages(benchmark_config.name, benchmark_config.scale_factor, kinds):
+    for message in _phase_estimate_messages(benchmark_config.name, benchmark_config.scale_factor, phases):
         display_console.print(message)
 
     display_console.print()
@@ -379,8 +383,11 @@ class DryRunDisplay:
         if result.estimated_resources:
             self._display_resource_estimates(result.estimated_resources)
 
-        for message in generation_estimate_messages(
-            str(result.benchmark_config.get("name", "")), result.benchmark_config.get("scale_factor", 0)
+        options = result.benchmark_config.get("options") or {}
+        for message in _phase_estimate_messages(
+            str(result.benchmark_config.get("name", "")),
+            result.benchmark_config.get("scale_factor", 0),
+            options.get("requested_phases"),
         ):
             self.console.print(message)
 

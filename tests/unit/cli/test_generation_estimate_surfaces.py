@@ -151,3 +151,27 @@ def test_preview_shows_only_the_estimates_for_the_chosen_phases(phases: list[str
     output = stream.getvalue()
     assert ("TPC-DS data generation, scale 10:" in output) is data
     assert ("TPC-DS query generation, scale 10:" in output) is query
+
+
+@pytest.mark.parametrize(
+    ("requested", "data", "query"),
+    [(["power"], False, True), (["generate"], True, False), (None, True, True), ([], True, True)],
+)
+def test_dry_run_result_shows_only_the_estimates_for_the_requested_phases(
+    requested: list[str] | None, data: bool, query: bool
+) -> None:
+    console, stream = wide_console()
+    options = {} if requested is None else {"requested_phases": requested}
+    result = DryRunResult(
+        benchmark_config={"name": "tpcds", "scale_factor": 10, "options": options},
+        database_config={"type": "duckdb", "name": "DuckDB"},
+        system_profile={"cpu_cores_logical": 8, "memory_total_gb": 16.0, "os_name": "Darwin"},
+        platform_config={},
+        queries={},
+    )
+
+    DryRunDisplay(console=console).display_dry_run_results(result)
+
+    output = stream.getvalue()
+    assert ("TPC-DS data generation, scale 10:" in output) is data
+    assert ("TPC-DS query generation, scale 10:" in output) is query
