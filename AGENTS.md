@@ -127,6 +127,7 @@ controls, and cannot certify or unlock the changes that make it possible.
 - Timing durations use `benchbox.utils.clock.mono_time()` and `elapsed_seconds()`; wall clocks are event/audit only.
 - Adapter SDK imports stay lazy. New platforms follow https://benchbox.dev/docs/development/adding-new-platforms.html and pass `make platform-manifest-check`.
 - CREATE TABLE rewrites are registered under `benchbox.sql_compat.context.Phase.DDL_OPTIMIZE`; `make compat-inventory-check` covers their drift.
+- Query text reaches a platform only through `translate_sql_query`; translator gaps are named fork rewrites through `apply_rewrite`, never text replacement or per-platform SQL (`tests/unit/sql_compat/test_core_sql_text_rewrite.py` guards `benchbox/core`).
 - CLI dry runs must propagate explicit phases; deterministic runs use a seed.
 - Green focused/fast tests are not UAT or production certification.
 
