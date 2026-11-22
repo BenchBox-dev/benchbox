@@ -43242,6 +43242,13 @@
       "status": "done",
       "title": "Remove the unreleased TPC-DS 3000 limit text from the site's next branch"
     },
+    "site-next-run-timeout-docs-merge-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Merge benchbox-site #242 (public RunTimeoutError import, optimize_for_system without memory_gb) once next is green"
+    },
     "site-next-tpcdi-page-tradetype-and-market-history-text-20261120": {
       "claim": null,
       "needs": [
