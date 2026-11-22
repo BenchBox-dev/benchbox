@@ -32201,7 +32201,7 @@
         "bundle-validator-checks-compliance-before-offlist-return-20261120"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Make the published-results mirror validator apply the non-standard-scale policy"
     },
     "mirrored-file-local-imports-audit-20261020": {
