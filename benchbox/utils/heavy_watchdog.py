@@ -41,11 +41,6 @@ SIG_KILL = getattr(signal, "SIGKILL", SIG_TERM)
 LOG_PREFIX = "[heavy-watchdog]"
 FLAG_DESCENDANTS_KILLED = b"K"
 FLAG_HOLDER_TERMINATED = b"H"
-FLAG_RETRYABLE = b"R"
-DEFAULT_SMALL_TREE_BUDGET_SHARE = 0.25
-DEFAULT_SMALL_TREE_FOREIGN_SHARE = 0.25
-DEFAULT_SWAP_EXHAUSTED_PERCENT = 98.0
-RETRY_ENV = "BENCHBOX_HEAVY_RETRY_IDEMPOTENT"
 VM_NOTE = (
     "VMs and containers started through the Apple container runtime are children of launchd, not of the lock "
     "holder, so their footprint is not tree-attributed; only the Linux machine run through "
@@ -110,10 +105,6 @@ class WatchPolicy:
     disks: tuple[tuple[str, str], ...] = ()
     vm_machine: str = vm_footprint.DEFAULT_MACHINE
     vm_cleanup_seconds: float | None = None
-    retry_idempotent: bool = False
-    small_tree_budget_share: float = DEFAULT_SMALL_TREE_BUDGET_SHARE
-    small_tree_foreign_share: float = DEFAULT_SMALL_TREE_FOREIGN_SHARE
-    swap_exhausted_percent: float = DEFAULT_SWAP_EXHAUSTED_PERCENT
 
 
 @dataclass(frozen=True)
@@ -129,6 +120,12 @@ class OutsideProcess:
     name: str
     command: str
     footprint_bytes: int
+
+
+@dataclass(frozen=True)
+class OutsideReading:
+    processes: tuple[OutsideProcess, ...]
+    containers: tuple[OutsideProcess, ...]
 
 
 @dataclass(frozen=True)
@@ -210,14 +207,24 @@ def read_swap_used_percent() -> float | None:
         return None
 
 
+def redacted_command(proc: psutil.Process, name: str) -> str:
+    try:
+        parts = proc.cmdline()
+    except (psutil.Error, OSError):
+        parts = []
+    executable = os.path.basename(parts[0]) if parts and parts[0] else name
+    return f"{executable} (arguments redacted)"
+
+
 def read_outside_processes(
     sample: TreeSample,
     limit: int = TOP_PROCESS_COUNT,
     *,
     process_iter: Callable[[list[str]], Iterable[psutil.Process]] = psutil.process_iter,
-) -> list[OutsideProcess]:
+) -> OutsideReading:
     inside = {member.pid for member in sample.members}
     found: list[OutsideProcess] = []
+    containers: list[OutsideProcess] = []
     for proc in process_iter(["pid", "name"]):
         pid = proc.info.get("pid")
         if pid is None or pid in inside or pid == os.getpid():
@@ -225,13 +232,14 @@ def read_outside_processes(
         value = process_tree.footprint.pid_footprint_bytes(pid)
         if not value:
             continue
-        try:
-            command = " ".join(proc.cmdline())[:120]
-        except (psutil.Error, OSError):
-            command = ""
-        found.append(OutsideProcess(pid, proc.info.get("name") or "?", command, value))
+        name = proc.info.get("name") or "?"
+        if name == vm_footprint.VM_PROCESS_NAME:
+            containers.append(OutsideProcess(pid, name, "", value))
+            continue
+        found.append(OutsideProcess(pid, name, redacted_command(proc, name), value))
     found.sort(key=lambda item: item.footprint_bytes, reverse=True)
-    return found[:limit]
+    containers.sort(key=lambda item: item.footprint_bytes, reverse=True)
+    return OutsideReading(tuple(found[:limit]), tuple(containers))
 
 
 def default_vm_reader() -> Callable[[TreeSample], VmReading | None]:
@@ -258,7 +266,7 @@ class Watchdog:
         pressure_reader: Callable[[], int | None] = read_pressure_level,
         disk_reader: Callable[[Sequence[tuple[str, str]]], list[DiskFree]] = read_disks,
         vm_reader: Callable[[TreeSample], VmReading | None] | None = None,
-        outside_reader: Callable[[TreeSample], list[OutsideProcess]] = read_outside_processes,
+        outside_reader: Callable[[TreeSample], OutsideReading] = read_outside_processes,
         swap_reader: Callable[[], float | None] = read_swap_used_percent,
         sleeper: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
@@ -325,9 +333,7 @@ class Watchdog:
                 f"(inode {self.policy.lock_inode} -> {current}); mutual exclusion may be broken. Not killing anything"
             )
 
-    def _attribution(
-        self, sample: TreeSample, outside: Sequence[OutsideProcess], swap_percent: float | None
-    ) -> list[str]:
+    def _attribution(self, sample: TreeSample, outside: OutsideReading, swap_percent: float | None) -> list[str]:
         tree = sample.total_bytes
         budget = self.policy.budget_bytes
         share = f"{tree / budget:.0%} of the {budget / GIB:.2f} GiB budget" if budget > 0 else "no budget set"
@@ -335,45 +341,31 @@ class Watchdog:
         lines = [
             f"attribution from a single sample, not proof of cause: holder tree {tree / GIB:.2f} GiB ({share}); "
             f"swap used {swap}",
-            f"largest {len(outside)} processes outside the holder tree (they belong to other sessions and are never signalled):",
+            f"largest {len(outside.processes)} processes outside the holder tree "
+            "(they belong to other sessions and are never signalled):",
         ]
         lines += [
             f"  pid {item.pid} {item.name} {item.footprint_bytes / GIB:.2f} GiB {item.command}".rstrip()
-            for item in outside
+            for item in outside.processes
         ]
+        if outside.containers:
+            total = sum(item.footprint_bytes for item in outside.containers)
+            pids = ",".join(str(item.pid) for item in outside.containers)
+            lines.append(
+                f"containers (origin unknown): {len(outside.containers)} process(es), {total / GIB:.2f} GiB, "
+                f"pid {pids}; counted for neither the holder tree nor the other sessions"
+            )
         return lines
-
-    def _retryable(
-        self,
-        sample: TreeSample,
-        breaches: Sequence[Breach],
-        outside: Sequence[OutsideProcess],
-        swap_percent: float | None,
-        vm: VmReading | None = None,
-    ) -> bool:
-        if not self.policy.retry_idempotent or self.policy.budget_bytes <= 0:
-            return False
-        if any(breach.signal != "memory pressure" for breach in breaches):
-            return False
-        if swap_percent is None or swap_percent >= self.policy.swap_exhausted_percent:
-            return False
-        vm_pids = set(vm.pids) if vm is not None else set()
-        tree = sample.total_bytes + (vm.footprint_bytes if vm is not None else 0)
-        foreign = sum(item.footprint_bytes for item in outside if item.pid not in vm_pids)
-        if foreign <= 0 or tree > self.policy.small_tree_budget_share * self.policy.budget_bytes:
-            return False
-        return tree <= self.policy.small_tree_foreign_share * (tree + foreign)
 
     def _report(
         self,
         sample: TreeSample,
         breaches: Sequence[Breach],
         vm: VmReading | None = None,
-        outside: Sequence[OutsideProcess] | None = None,
+        outside: OutsideReading | None = None,
         swap_percent: float | None = None,
-        retryable: bool = False,
     ) -> None:
-        action = "stop for bounded retry" if retryable else ("kill" if self.policy.mode == "kill" else "warn only")
+        action = "kill" if self.policy.mode == "kill" else "warn only"
         for breach in breaches:
             self.log(f"BREACH {breach.signal}: measured {breach.measured}, limit {breach.limit}; action: {action}")
         self.log(
@@ -533,23 +525,20 @@ class Watchdog:
         if not breaches:
             self._in_breach = False
             return True
-        outside: list[OutsideProcess] | None = None
+        outside: OutsideReading | None = None
         swap_percent: float | None = None
         if any(breach.signal == "memory pressure" for breach in breaches):
             swap_percent = self._swap_reader()
             try:
                 outside = self._outside_reader(sample)
             except (psutil.Error, OSError):
-                outside = []
-        retryable = self.policy.mode == "kill" and self._retryable(sample, breaches, outside or [], swap_percent, vm)
+                outside = OutsideReading((), ())
         if self.policy.mode == "warn":
             if not self._in_breach:
                 self._in_breach = True
                 self._report(sample, breaches, vm, outside, swap_percent)
             return True
-        self._report(sample, breaches, vm, outside, swap_percent, retryable)
-        if retryable:
-            self._flag(FLAG_RETRYABLE)
+        self._report(sample, breaches, vm, outside, swap_percent)
         self._kill_tree(sample)
         return True
 
@@ -577,7 +566,6 @@ def policy_from_args(args: argparse.Namespace) -> WatchPolicy:
         holder_created=args.holder_created,
         budget_bytes=args.budget_bytes,
         mode=mode_from_env(),
-        retry_idempotent=os.environ.get(RETRY_ENV, "").strip() == "1",
         kill_free_disk_gib=_float_env(KILL_FREE_DISK_GIB_ENV, default_kill_free_disk_gib()),
         interval_seconds=_float_env(INTERVAL_ENV, DEFAULT_INTERVAL_SECONDS, minimum=0.05),
         grace_seconds=_float_env(GRACE_ENV, DEFAULT_GRACE_SECONDS),

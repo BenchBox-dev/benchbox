@@ -12,13 +12,8 @@ from typing import Any
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
 from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY
 from benchbox.utils.clock import elapsed_seconds, mono_time
-from benchbox.utils.engine_memory import (
-    SPARK_NON_HEAP_ALLOWANCE_GIB,
-    admitted_budget_gib,
-    check_explicit_cap,
-    derived_cap_gib,
-    parse_size_gib,
-)
+from benchbox.utils.heavy_run_events import current_run_id
+from benchbox.utils.resource_limits import heavy_memory_budget_gib
 
 from ..utils.dependencies import (
     check_platform_dependencies,
@@ -71,27 +66,17 @@ _MAX_COMPATIBLE_JAVA_VERSION = 22
 _logger = logging.getLogger(__name__)
 _SPARK_AUTO_BROADCAST_THRESHOLD = "spark.sql.autoBroadcastJoinThreshold"
 _SPARK_AQE_KEYS = SPARK_AQE_KEYS
+_JVM_AND_PYTHON_ALLOWANCE_GIB = 3
 
 
 def bounded_default_driver_memory(master: str) -> str:
-    budget_gib = admitted_budget_gib() if master.startswith("local") else None
+    if not master.startswith("local") or current_run_id() is None:
+        return default_spark_driver_memory(master)
+    budget_gib = heavy_memory_budget_gib()
     if budget_gib is None:
         return default_spark_driver_memory(master)
     scaled_heap_gib = int(default_spark_driver_memory(master, int(budget_gib * 1024**3)).removesuffix("g"))
-    return f"{derived_cap_gib(budget_gib, SPARK_NON_HEAP_ALLOWANCE_GIB, engine='Spark', ceiling_gib=scaled_heap_gib)}g"
-
-
-def checked_explicit_driver_memory(master: str, driver_memory: str) -> str:
-    budget_gib = admitted_budget_gib() if master.startswith("local") else None
-    if budget_gib is not None:
-        check_explicit_cap(
-            parse_size_gib(str(driver_memory), default_unit="m"),
-            budget_gib,
-            SPARK_NON_HEAP_ALLOWANCE_GIB,
-            engine="Spark",
-            option="driver_memory",
-        )
-    return driver_memory
+    return f"{max(1, min(scaled_heap_gib, int(budget_gib - _JVM_AND_PYTHON_ALLOWANCE_GIB)))}g"
 
 
 def _get_java_version(java_home: str | None = None) -> int | None:
@@ -219,12 +204,7 @@ class SparkAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
         self.warehouse_dir = config.get("warehouse_dir")
         self.database = config.get("database") or "default"
 
-        explicit_driver_memory = config.get("driver_memory")
-        self.driver_memory = (
-            checked_explicit_driver_memory(self.master, explicit_driver_memory)
-            if explicit_driver_memory
-            else bounded_default_driver_memory(self.master)
-        )
+        self.driver_memory = config.get("driver_memory") or bounded_default_driver_memory(self.master)
         self.executor_memory = config.get("executor_memory") or "4g"
         self.executor_cores = config.get("executor_cores") if config.get("executor_cores") is not None else 2
         self.num_executors = config.get("num_executors")

@@ -255,6 +255,55 @@ def test_the_hold_window_is_configurable_from_the_environment() -> None:
     )
 
 
+@pytest.mark.parametrize("raw", ["inf", "-inf", "nan", "-1", "-0.5", " Infinity "])
+def test_a_non_finite_or_negative_hold_is_refused_with_the_owner_chosen_message(raw: str) -> None:
+    with pytest.raises(ValueError) as caught:
+        rl.admission_policy_from_env({rl.ADMIT_HOLD_SECONDS_ENV: raw})
+    assert str(caught.value) == (
+        f"BENCHBOX_HEAVY_ADMIT_HOLD_SECONDS must be a finite number of seconds, 0 or more; got {raw!r}."
+    )
+
+
+@pytest.mark.parametrize(("raw", "expected"), [("0", 0.0), ("0.5", 0.5), ("3600", 3600.0), ("1e9", 1e9)])
+def test_a_finite_hold_of_any_size_is_accepted(raw: str, expected: float) -> None:
+    assert rl.admission_policy_from_env({rl.ADMIT_HOLD_SECONDS_ENV: raw}).hold_seconds == expected
+
+
+@pytest.mark.parametrize("raw", ["inf", "nan", "-1"])
+def test_admit_refuses_a_bad_hold_with_a_usage_exit_and_no_admission_sampling(
+    raw: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.delenv(hl.ADMIT_ENV, raising=False)
+    monkeypatch.setenv(rl.ADMIT_HOLD_SECONDS_ENV, raw)
+    monkeypatch.setattr(rl, "read_host_pressure", lambda: pytest.fail("pressure must not be sampled"))
+    assert hl.main(["admit"]) == hl.EXIT_USAGE
+    captured = capsys.readouterr()
+    assert f"got {raw!r}." in captured.err
+    assert captured.out == ""
+
+
+@pytest.mark.parametrize("raw", ["inf", "nan", "-1"])
+def test_run_admit_refuses_a_bad_hold_before_taking_the_lock_or_running_the_command(
+    raw: str, lock_file: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv(rl.ADMIT_HOLD_SECONDS_ENV, raw)
+    monkeypatch.setattr(rl, "read_host_pressure", lambda: pytest.fail("pressure must not be sampled"))
+    marker = tmp_path / "ran"
+    code = hl.main(["run", "--admit", "--", sys.executable, "-c", f"open({str(marker)!r}, 'w').close()"])
+    assert code == hl.EXIT_USAGE
+    assert not marker.exists()
+    assert not hl.lock_is_held(lock_file)
+    assert "must be a finite number of seconds, 0 or more" in capsys.readouterr().err
+
+
+def test_heavy_status_reports_a_bad_hold_instead_of_failing() -> None:
+    from benchbox.utils import heavy_status
+
+    reading = types.SimpleNamespace(pressure=healthy(), budget_gib=8.0)
+    lines = heavy_status._render_pressure(reading, {rl.ADMIT_HOLD_SECONDS_ENV: "inf"})
+    assert lines == ["BENCHBOX_HEAVY_ADMIT_HOLD_SECONDS must be a finite number of seconds, 0 or more; got 'inf'."]
+
+
 def test_a_reading_that_stays_bad_refuses_after_the_retry_window(clock: FakeClock) -> None:
     result = rl.admit_heavy_work(POLICY, reader=lambda: healthy(available_gib=0.5))
     assert not result.admitted

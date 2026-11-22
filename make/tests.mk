@@ -41,8 +41,8 @@ heavy-sentinel-uninstall:
 heavy-run: override CMD := $(value CMD)
 heavy-run: export HEAVY_RUN_CMD := $(CMD)
 heavy-run:
-	@test -n "$$HEAVY_RUN_CMD" || { echo "usage: make heavy-run CMD='<command>' [HEAVY_ADMIT_WAIT=<minutes>] [HEAVY_RETRY_IDEMPOTENT=1]"; exit 2; }
-	@uv run -- python -m benchbox.utils.host_lock run --admit --guard $${HEAVY_ADMIT_WAIT:+--admit-wait-minutes "$$HEAVY_ADMIT_WAIT"} $$(test "$$HEAVY_RETRY_IDEMPOTENT" = 1 && echo --retry-idempotent) $${HEAVY_RETRY_MAX:+--retry-max "$$HEAVY_RETRY_MAX"} $${HEAVY_RETRY_TOTAL_MINUTES:+--retry-total-minutes "$$HEAVY_RETRY_TOTAL_MINUTES"} -- sh -c "$$HEAVY_RUN_CMD"
+	@test -n "$$HEAVY_RUN_CMD" || { echo "usage: make heavy-run CMD='<command>' [HEAVY_ADMIT_WAIT=<minutes>]"; exit 2; }
+	@uv run -- python -m benchbox.utils.host_lock run --admit --guard $${HEAVY_ADMIT_WAIT:+--admit-wait-minutes "$$HEAVY_ADMIT_WAIT"} -- sh -c "$$HEAVY_RUN_CMD"
 
 .PHONY: test-medium
 test-medium:

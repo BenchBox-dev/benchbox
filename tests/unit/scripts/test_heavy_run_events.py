@@ -278,7 +278,6 @@ def test_watchdog_breach_is_reported_as_watchdog_kill_not_success(
 ) -> None:
     class Breached:
         breached = True
-        retryable = False
 
         def stop(self) -> None:
             pass
@@ -295,7 +294,6 @@ def test_watchdog_breach_is_reported_as_watchdog_kill_not_success(
 def _teardown_breach_guard(monkeypatch: pytest.MonkeyPatch) -> Any:
     class LateGuard:
         breached = False
-        retryable = False
 
         def stop(self) -> None:
             pass

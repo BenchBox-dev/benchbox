@@ -4,7 +4,7 @@ import importlib
 import logging
 import re
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -23,14 +23,6 @@ from benchbox.utils.duckdb_extensions import (
     finish_unfinished_result,
 )
 from benchbox.utils.duckdb_lambda import duckdb_query_text
-from benchbox.utils.engine_memory import (
-    DEFAULT_DUCKDB_MEMORY_LIMIT_GIB,
-    DUCKDB_NON_BUFFER_ALLOWANCE_GIB,
-    admitted_budget_gib,
-    check_explicit_cap,
-    derived_cap_gib,
-    parse_size_gib,
-)
 from benchbox.utils.printing import emit
 
 from .base import DriverIsolationCapability, PlatformAdapter
@@ -60,56 +52,6 @@ def _as_bool(value: Any) -> bool:
     from benchbox.core.hooks.platform_hooks import parse_bool
 
     return parse_bool(str(value))
-
-
-DEFAULT_MEMORY_LIMIT = "4GB"
-
-
-def explicit_options_marker(config: Mapping[str, Any]) -> Any:
-    marker = config.get("_explicit_platform_options")
-    nested = config.get("options")
-    if marker is None and isinstance(nested, Mapping):
-        marker = nested.get("_explicit_platform_options")
-    return marker
-
-
-def memory_limit_is_explicit(config: Mapping[str, Any]) -> bool:
-    marker = explicit_options_marker(config)
-    if isinstance(marker, Mapping):
-        return "memory_limit" in marker
-    return "memory_limit" in config
-
-
-def memory_limit_config(config: Mapping[str, Any]) -> dict[str, Any]:
-    forwarded: dict[str, Any] = {}
-    if "memory_limit" in config:
-        forwarded["memory_limit"] = config["memory_limit"]
-    marker = explicit_options_marker(config)
-    if marker is not None:
-        forwarded["_explicit_platform_options"] = marker
-    return forwarded
-
-
-def budgeted_memory_limit(requested: str, *, explicit: bool) -> str:
-    budget_gib = admitted_budget_gib()
-    if budget_gib is None:
-        return requested
-    if not explicit:
-        cap = derived_cap_gib(
-            budget_gib,
-            DUCKDB_NON_BUFFER_ALLOWANCE_GIB,
-            engine="DuckDB",
-            ceiling_gib=min(parse_size_gib(requested), DEFAULT_DUCKDB_MEMORY_LIMIT_GIB),
-        )
-        return f"{cap}GB"
-    check_explicit_cap(
-        parse_size_gib(requested),
-        budget_gib,
-        DUCKDB_NON_BUFFER_ALLOWANCE_GIB,
-        engine="DuckDB",
-        option="memory_limit",
-    )
-    return requested
 
 
 _MEMORY_LIMIT_PATTERN = re.compile(
@@ -715,7 +657,7 @@ class DuckDBAdapter(PlatformAdapter):
             adapter_config["database_path"] = str(data_dir / db_filename)
             data_dir.mkdir(parents=True, exist_ok=True)
 
-        adapter_config.update(memory_limit_config(config))
+        adapter_config["memory_limit"] = config.get("memory_limit", "4GB")
 
         adapter_config["force_recreate"] = config.get("force", False)
 
@@ -820,11 +762,10 @@ class DuckDBAdapter(PlatformAdapter):
         super().__init__(**config)
         self._duckdb_module = self._initialize_duckdb_runtime(config)
         self.database_path = config.get("database_path", ":memory:")
-        raw_memory = config.get("memory_limit", DEFAULT_MEMORY_LIMIT)
+        raw_memory = config.get("memory_limit", "4GB")
         if raw_memory is not None:
             if not isinstance(raw_memory, str) or not _MEMORY_LIMIT_PATTERN.fullmatch(raw_memory):
                 raise ValueError("memory_limit must use a bounded memory size (e.g., '4GB')")
-            raw_memory = budgeted_memory_limit(raw_memory, explicit=memory_limit_is_explicit(config))
         self.memory_limit = raw_memory
         raw_temp = config.get("max_temp_directory_size")
         if raw_temp is not None:

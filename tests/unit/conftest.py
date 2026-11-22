@@ -32,11 +32,6 @@ def _unit_home(_hermetic_state, tmp_path_factory: pytest.TempPathFactory, monkey
 
 
 @pytest.fixture(autouse=True)
-def _outside_heavy_run(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("BENCHBOX_HEAVY_RUN_ID", raising=False)
-
-
-@pytest.fixture(autouse=True)
 def _no_cloud_metadata_probes(monkeypatch: pytest.MonkeyPatch) -> None:
     from benchbox.platforms import athena
     from benchbox.platforms.base import client_region

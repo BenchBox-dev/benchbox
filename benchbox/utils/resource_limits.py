@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import shutil
 import subprocess
@@ -533,6 +534,19 @@ def _float_setting(environ: Mapping[str, str], name: str, default: float) -> flo
     return value
 
 
+def _hold_seconds_setting(environ: Mapping[str, str]) -> float:
+    raw = environ.get(ADMIT_HOLD_SECONDS_ENV)
+    if raw is None or not raw.strip():
+        return DEFAULT_ADMIT_HOLD_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        return DEFAULT_ADMIT_HOLD_SECONDS
+    if not math.isfinite(value) or value < 0:
+        raise ValueError(f"{ADMIT_HOLD_SECONDS_ENV} must be a finite number of seconds, 0 or more; got {raw!r}.")
+    return value
+
+
 def admission_policy_from_env(
     environ: Mapping[str, str] | None = None, *, need_gib: float | None = None
 ) -> AdmissionPolicy:
@@ -542,7 +556,7 @@ def admission_policy_from_env(
         min_level=_float_setting(env, MIN_LEVEL_ENV, DEFAULT_MIN_LEVEL),
         min_free_disk_gib=_float_setting(env, MIN_FREE_DISK_GIB_ENV, DEFAULT_MIN_FREE_DISK_GIB),
         max_load_ratio=_float_setting(env, MAX_LOAD_RATIO_ENV, DEFAULT_MAX_LOAD_RATIO),
-        hold_seconds=_float_setting(env, ADMIT_HOLD_SECONDS_ENV, DEFAULT_ADMIT_HOLD_SECONDS),
+        hold_seconds=_hold_seconds_setting(env),
     )
 
 
