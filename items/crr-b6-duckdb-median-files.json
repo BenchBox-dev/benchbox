@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "CORPUS_NOTES.md lists, per configuration, whether runs replaced the median or the median was kept, and why",
+    "validate_corpus.py passes on develop and on published-results",
+    "The snapshot diff shows exactly these configurations changing",
+    "Median rows in the Explorer for replaced configurations equal the old median files' values within 1%, or the difference is explained"
+  ],
+  "context": "Step of the corpus rule remediation plan (crr-00-corpus-rule-remediation-plan). Plan written 2026-11-22 and reviewed twice by an independent adversarial reviewer; counts marked (R) were measured by that reviewer and must be re-measured, not trusted. Owner decisions were given by choice dialog on 2026-11-22 and are quoted in crr-00.",
+  "description": "## Problem\nresults-data/bundles/duckdb-version-matrix/ holds 28 files that are each a median of several runs, written 2026-08-29, with a configured stream count and inconsistent stamps (R). Methodology answer 3 asks for every run.\n\n## Change\n- Look for the individual run files (~/Developer/benchmark_runs/duckdb-version-matrix-20260829-sf10 and -v2). Where all runs of a median exist and pass validate_submission.py --trust-internal-source, stage them with make corpus-stage-local and replace the median file. Where they do not, keep the median file and label it \"median of N runs; individual runs not published\" through the rule's labels (owner decision 12).\n- The 7 TPC-H files carry a known data defect and stay excluded; duckdb-sf10-tpch-defective-datagen-rerun owns their rerun.\n\n## Decision gates\n- Never edit a run file. If a run fails validation, keep the median file for that configuration and record why in CORPUS_NOTES.md.\n- The pull request that changes results-data/ is authorized by owner decision 12; the published-results mirror follows the standard path.\n\n## Guardrails (apply to every item of this plan)\n- Fix the root cause for every platform and benchmark. No rule, exception, label or test may name a platform or a version matrix. Only the pvm-p* items may name Polars, and only to run and stage that run's files.\n- Never edit a stored result file to make it pass. Outcomes change only through the rule.\n- Any change to the outcome of a stored result must show in the committed outcome snapshot diff in the same pull request and be explained in its body.\n- No new stored class value. No reader may decide anything from benchmark.compliance_class, conformance_class or summary.tpc_metrics.suppressed.\n- Paths, line numbers and counts in this plan were read on 2026-11-22 at develop 93f3360. Re-read before editing; report drift, do not guess.\n- AGENTS.md applies: linked worktree, one pull request per item, close at the merged pull request, heavy work only through make heavy-run, no live cloud run without owner approval in that task.\n- At a decision gate, follow the recorded default. If its stop condition is met, stop and report to the owner. Never substitute a different owner decision.\n- Read crr-00-corpus-rule-remediation-plan first: it holds the owner decisions, the rule table and the fault types (T1 to T5).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6fbef61b8c1a450fbecb672",
+      "at": "2026-11-22T16:51:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "dc7f777053624c67babcde05a714b80f",
+      "session_id": "c07e5ac3266b4133b46582fc1e496cdf"
+    }
+  ]
+}

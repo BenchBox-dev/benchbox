@@ -21572,6 +21572,16 @@
       "status": "open",
       "title": "Site: show median rows, a version view with a version chart, and a trend view keyed by identity"
     },
+    "crr-b6-duckdb-median-files": {
+      "claim": null,
+      "needs": [
+        "crr-b5-site-median-rows-version-view-and-trend",
+        "crr-a5-published-results-mirror"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Replace the 28 stored DuckDB median files with their individual runs, or label them"
+    },
     "crr-c1-validation-status-vocabulary": {
       "claim": null,
       "needs": [
