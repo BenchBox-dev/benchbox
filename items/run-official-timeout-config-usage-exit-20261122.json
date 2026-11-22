@@ -9,6 +9,64 @@
   },
   "context": "Observed by the site-docs subagent on 2026-11-21 in the run-timeout effort.",
   "description": "## Problem\nReported while documenting --timeout (not yet reproduced by the leader): with `execution.timeout_seconds: -1` in the config file, `benchbox datagen` exits 2 with a usage error, but `benchbox run-official ...` prints \"Benchmark execution failed: execution.timeout_seconds: ... got -1\" and exits 1, because run-official wraps run in its own error handler. The owner decided negative and fractional values are usage errors (run-timeout-plan-20261120).\n\n## Change\nReproduce first. If confirmed, make run-official report an invalid timeout setting (flag or config) as a usage error with exit 2, like run and datagen.\n\n## Decision gates\nIf reproduction shows exit 2 already, close the item with the evidence. Do not change how other run-official errors map to exit codes.\n\n## Verification rubric\nA CLI test (fails before) for run-official with an invalid config value and with `--timeout -1` / `--timeout 1.5` asserting exit 2 and the usage message; `make pr-preflight` exits 0.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "prepared": {
+    "accepted_head": "1f10d4e8d0fd57f9423d8879b59a94222900cbed",
+    "batch_id": "run-timeout-followups",
+    "changed_files": [
+      "benchbox/cli/commands/run_official.py",
+      "changelog.d/feat-run-timeout-followups--run-official-timeout-config-usage-exit-20261122.json",
+      "tests/unit/cli/test_run_timeout_option.py"
+    ],
+    "integration_head": "ac7999047f2a85d61772c650960be83a38c5f0a5",
+    "integration_seq": 1,
+    "member_id": "run-official-timeout-config-usage-exit-20261122",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "1e24758d5a1c450128be0a6d65e8f15cea99c0357c3390b24474b623b6770cb5",
+    "source_base": "93f336032a16c82b37544b527b203e2b5187a593",
+    "source_revision": "1f10d4e8d0fd57f9423d8879b59a94222900cbed",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-fu-exitcode",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/test_throughput_stream_count.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_no_cli_surface_drift.py",
+        "tests/uat/test_throughput.py",
+        "tests/unit/cli/commands/test_run_official.py",
+        "tests/unit/cli/test_new_commands.py",
+        "tests/unit/cli/test_output_control_static.py",
+        "tests/unit/cli/test_run_timeout_option.py",
+        "tests/unit/cli/test_shipped_docs_urls.py",
+        "tests/unit/core/tpcdi/test_tpcdi_no_values_row_source.py",
+        "tests/unit/platforms/test_credential_error_messages.py",
+        "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index"
+      ],
+      "review": {
+        "base_sha": "93f336032a16c82b37544b527b203e2b5187a593",
+        "head_sha": "1f10d4e8d0fd57f9423d8879b59a94222900cbed",
+        "head_tree": "8c3c09440fae3a782105e3dcef86755529100f17",
+        "outcome": "clear",
+        "patch_digest": "965267b50bbc6064011531fac2b34a6f",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "93f336032a16c82b37544b527b203e2b5187a593"
+      },
+      "revision": "1f10d4e8d0fd57f9423d8879b59a94222900cbed",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
@@ -33,6 +91,15 @@
       "generation": "5bbea490bad849c489843e64cb0a53ca",
       "op": "take",
       "op_id": "ec1287c89ac2418aa22528e0e5c19d14",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T14:15:52Z",
+      "client": "omp-coding-agent",
+      "generation": "5bbea490bad849c489843e64cb0a53ca",
+      "op": "prepare",
+      "op_id": "8645e59de1f24fd5b6be6d7e1fb3c944",
       "session_id": "e80ec8f825d244408f926415b43e3179"
     }
   ]

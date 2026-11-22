@@ -8993,20 +8993,42 @@
       "terminal_outcome": "deliver"
     },
     "run-timeout-followups": {
-      "accepted_members": {},
+      "accepted_members": {
+        "run-official-timeout-config-usage-exit-20261122": "1f10d4e8d0fd57f9423d8879b59a94222900cbed"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "run-official-timeout-config-usage-exit-20261122": {
+          "accepted_head": "1f10d4e8d0fd57f9423d8879b59a94222900cbed",
+          "changed_files": [
+            "benchbox/cli/commands/run_official.py",
+            "changelog.d/feat-run-timeout-followups--run-official-timeout-config-usage-exit-20261122.json",
+            "tests/unit/cli/test_run_timeout_option.py"
+          ],
+          "integration_head": "ac7999047f2a85d61772c650960be83a38c5f0a5",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/run-timeout-followups",
-      "integration_head": "93f336032a16c82b37544b527b203e2b5187a593",
+      "integration_head": "ac7999047f2a85d61772c650960be83a38c5f0a5",
       "integration_log": [
         {
           "at": "2026-11-22T13:28:47Z",
           "head": "93f336032a16c82b37544b527b203e2b5187a593",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-22T14:15:52Z",
+          "head": "ac7999047f2a85d61772c650960be83a38c5f0a5",
+          "kind": "prepare",
+          "member": "run-official-timeout-config-usage-exit-20261122",
+          "op_id": "8645e59de1f24fd5b6be6d7e1fb3c944",
+          "previous_head": "93f336032a16c82b37544b527b203e2b5187a593",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-followups",
@@ -40157,15 +40179,10 @@
       "title": "Consolidate run-official into run --official flag"
     },
     "run-official-timeout-config-usage-exit-20261122": {
-      "claim": {
-        "expires_at": "2026-11-23T14:15:48Z",
-        "generation": "5bbea490bad849c489843e64cb0a53ca",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Make an invalid execution.timeout_seconds a usage error in run-official"
     },
     "run-output-flag-does-not-place-result-files-20261117": {
