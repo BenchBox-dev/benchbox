@@ -26,6 +26,7 @@ PRODUCT_SIGNATURES = (SIGNATURE_QUERY_FAILURE, SIGNATURE_VALIDATION_FAILURE, SIG
 
 _NOT_A_FAILURE_TERMINAL_STATES = frozenset({"passed", "skipped", "unreachable"})
 _VALIDATION_SUBMIT_STATES = frozenset({"schema_violation", "unvalidated", "bundle_load_error", "unofficial"})
+_TIMED_OUT_QUERY_STATUS = "TIMEOUT"
 
 _SINGLESTORE_1712_RE = re.compile(
     r"\A\s*1712\s*:|\bERROR\s+1712\b|\(\s*1712\s*,|\b(?:errno|error[ _]code)\s*[=:]?\s*1712\b",
@@ -50,19 +51,23 @@ class FailureEvidence:
     terminal_state: str
     submit_terminal_state: str
     failed_query_errors: tuple[str, ...] = ()
+    failed_query_statuses: tuple[str, ...] = ()
     failure_text: str = ""
 
 
 def evidence_from_row(row: Mapping[str, object]) -> FailureEvidence:
     failed = row.get("failed_queries")
     errors: tuple[str, ...] = ()
+    statuses: tuple[str, ...] = ()
     if isinstance(failed, Sequence) and not isinstance(failed, str):
         errors = tuple(str(entry.get("error") or "") if isinstance(entry, Mapping) else "" for entry in failed)
+        statuses = tuple(str(entry.get("status") or "") if isinstance(entry, Mapping) else "" for entry in failed)
     return FailureEvidence(
         status=str(row.get("status") or ""),
         terminal_state=str(row.get("terminal_state") or ""),
         submit_terminal_state=str(row.get("submit_terminal_state") or ""),
         failed_query_errors=errors,
+        failed_query_statuses=statuses,
         failure_text=str(row.get("failure_tail") or ""),
     )
 
@@ -70,8 +75,15 @@ def evidence_from_row(row: Mapping[str, object]) -> FailureEvidence:
 def classify_failure(evidence: FailureEvidence) -> FailureClass | None:
     if evidence.status == "passed" or evidence.terminal_state in _NOT_A_FAILURE_TERMINAL_STATES:
         return None
-    if evidence.failed_query_errors:
-        if all(_SINGLESTORE_1712_RE.search(error) for error in evidence.failed_query_errors):
+    errors = evidence.failed_query_errors
+    if evidence.terminal_state == "timeout" and evidence.failed_query_statuses:
+        errors = tuple(
+            error
+            for error, status in zip(errors, evidence.failed_query_statuses, strict=True)
+            if status.strip().upper() != _TIMED_OUT_QUERY_STATUS
+        )
+    if errors:
+        if all(_SINGLESTORE_1712_RE.search(error) for error in errors):
             return FailureClass(KIND_INFRASTRUCTURE, SIGNATURE_SINGLESTORE_1712)
         return FailureClass(KIND_PRODUCT, SIGNATURE_QUERY_FAILURE)
     if evidence.submit_terminal_state in _VALIDATION_SUBMIT_STATES:

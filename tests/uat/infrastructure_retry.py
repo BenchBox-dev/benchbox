@@ -28,6 +28,7 @@ def evidence_from_cell(cell: CellResult) -> FailureEvidence:
         terminal_state=terminal_state(cell),
         submit_terminal_state=cell.submit_terminal_state,
         failed_query_errors=tuple(entry["error"] for entry in failed),
+        failed_query_statuses=tuple(entry["status"] for entry in failed),
         failure_text=cell_log_tail(Path(cell.log_path)),
     )
 
