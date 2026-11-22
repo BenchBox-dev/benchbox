@@ -11483,7 +11483,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-foundation",
-      "integration_head": "9853c6c7f10e505c1a5a54e6eab1c01d000aa3dd",
+      "integration_head": "f65a4e511a8fb827c0f3361fab9e68ed4df1331a",
       "integration_log": [
         {
           "at": "2026-11-22T03:55:11Z",
@@ -11531,6 +11531,23 @@
           "op_id": "72c656147fc74c918c1f45092bd103aa",
           "previous_head": "3804ae6e392cb5526e1e347b0c6073dcca4a7c2b",
           "seq": 4
+        },
+        {
+          "at": "2026-11-22T05:28:20Z",
+          "changed_files": [
+            ".github/soundness-paths.txt",
+            ".github/workflows/ci.yml",
+            "tests/system/test_ci_lint_parity.py",
+            "tests/unit/workflows/test_ci_short_checks.py"
+          ],
+          "head": "f65a4e511a8fb827c0f3361fab9e68ed4df1331a",
+          "kind": "fix",
+          "op_id": "45788db1aedc4a4fb5aa032e862f522c",
+          "previous_head": "9853c6c7f10e505c1a5a54e6eab1c01d000aa3dd",
+          "requires_acceptance": [
+            "tpcdi-comment-policy-route-for-tpc-files-20261121"
+          ],
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-foundation",
