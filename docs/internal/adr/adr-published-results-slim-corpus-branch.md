@@ -190,9 +190,11 @@ draft mirror PR vs `published-results` carrying the change. Maintainers
 review and flip ready when the develop change is intended to surface on
 the public corpus branch.
 
-The corpus-rule module and its data file are not yet covered by that workflow.
-They must be added to the workflow's path filters and copy lists in the same
-change that adds them; until then they are not mirrored.
+The corpus-rule module and its data file are covered by that workflow:
+`benchbox/core/results/corpus_rule.py` and
+`benchbox/core/results/corpus_rule_data.json` are in the workflow's push
+trigger paths, its drift comparison paths, its copy list and its `git add`
+list.
 
 This means `published-results` will normally be at most one mirror PR
 behind develop on the vendored runtime. If a develop PR modifies one
@@ -211,7 +213,7 @@ not make `develop` authoritative for published-only archive bundles.
 ### Corpus rule file set
 
 The corpus-rule module and its data file are vendored together, as one unit,
-under the sync workflow once it is extended to cover them. The ordering below is the delivery order the
+under the sync workflow. The ordering below is the delivery order the
 corpus rule requires so the slim branch never runs a mismatched rule; it is
 not an owner decision. Mirror-ordering rule:
 
@@ -230,7 +232,7 @@ not an owner decision. Mirror-ordering rule:
 
 ### The workflow file itself is NOT auto-mirrored — this is permanent, not a gap to close
 
-`sync-results-data-to-published.yml`'s automated mirror covers these six files (the corpus-rule file set joins them only when the workflow is extended, as described above):
+`sync-results-data-to-published.yml`'s automated mirror covers these six files (`benchbox/core/results/corpus_rule.py` and `benchbox/core/results/corpus_rule_data.json` are also mirrored by the same workflow, as one unit):
 
 - `scripts/validate_submission.py`
 - `scripts/generate_corpus_inventory.py`

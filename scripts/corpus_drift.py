@@ -38,6 +38,8 @@ CANARY_PATHSPECS = (
     "results-data/README.md",
     "results-data/validate_corpus.py",
     "benchbox/validation/bundle.py",
+    "benchbox/core/results/corpus_rule.py",
+    "benchbox/core/results/corpus_rule_data.json",
     "benchbox/core/results/query_status.py",
     "benchbox/core/results/schema_policy.py",
     "benchbox/core/results/subscale_policy.py",
