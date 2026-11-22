@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Every member is done, or blocked on a gate named on the member.",
+    "The final pull request of batch trunk-stability has merged."
+  ],
+  "description": "## Purpose\nNotes item for the registered feature batch `trunk-stability`. It is never implemented itself and is not a batch member. It closes when every member is done or blocked on a named gate and the final pull request has merged.\n\n## Owner decisions (2026-11-22)\n- \"use the todo skill to implement batches 1 to 3 as a registered feature batch, v0.6.0 replaces 0.5.2\": the next release is v0.6.0; the unreleased 0.5.2 (release candidates rc1 to rc3) gets no final tag.\n- Choice dialog, 2026-11-22: the three items other sessions are working on stay with those sessions and are excluded here: tpcds-q57-expression-order-float-tie-flake-20261122 (member of batch run-timeout-hardening), trunk-uat-pandas-df-memory-breach-20261122, trunk-uat-timeseries-execute-failure-20261122.\n- Choice dialog, 2026-11-22: cedardb-server-crash-mid-shard-nightly-20261119 and clickhouse-local-tpchavoc-sf1-timeout-nightly-20261119 are finished on three consecutive green nightly runs (done 2026-11-22).\n- Choice dialog, 2026-11-22: all five remaining items are members, accepting that the chdb and pg_mooncake members may end blocked on hosted evidence and hold the final pull request.\n- Not decided (left open, outside the batch): release-uat-fixes-unverified-on-real-runner-20261101 (SingleStore sign-off) and release-uat-dataframe-runner-shutdown-20261030 (rc2 cause unmeasurable).\n\n## Members\n1. df-memory-guard-generation-check-runs-after-generation-20261118\n2. tpcds-parity-draws-fails-with-all-draws-equivalent-20261119\n3. flaky-bigquery-credential-defaults-confirm-prompt\n4. chdb-embedded-server-recursive-mutex-flake\n5. uat-regression-doris-clickbench-mooncake-flightdata\nNo implementation dependencies between members.\n\n## Delivery\nIntegration branch feat/trunk-stability, one final pull request to develop.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3",
+      "at": "2026-11-22T22:00:23Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "073d687645bf41d891049cb122ce12ec",
+      "session_id": "80e0302416054591a591cf3adefee19a"
+    }
+  ]
+}
