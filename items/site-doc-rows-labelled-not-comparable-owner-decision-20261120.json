@@ -2,6 +2,7 @@
   "acceptance": [
     "The owner's choice is recorded."
   ],
+  "context": "Owner decision 2026-11-22 (choice dialog). Where it conflicts with the Decision gates text in the description, this wins. Asked to choose between keeping the labels and making the named scales standard (SSB 100; ClickBench 0.1 and 10; read_primitives 1 and 10), the owner chose: \"Make all of them standard. Blocked until the generators are proven at those scales, which needs a bigger host for SSB 100.\" Context given to the owner: 8 ClickBench bundles at 0.1 and 8 at 10 are in results-data; none exist at the other labelled scales.",
   "description": "## Problem\nFound by the read-only review of the 11 to 16 November work. Site #142 labelled documented rows (SSB 100, ClickBench other than 1, read_primitives 1 and 10) as not comparable with published results, rather than widening the standard scale lists in the registry. The labels are live on site main (docs/benchmarks/ssb.md, clickbench.md). The session disclosed this on 2026-11-12 and 2026-11-16 and left it to the owner; no decision is recorded.\n\n## Change\nNone until the owner decides: keep the labels, or make named scales standard (a registry change that reclassifies bundles and needs runs first).\n\n## Decision gates\nOwner decision. Not worked in this run.\n\n## Verification rubric\nPass: the owner's choice is recorded here.\n\n## Guardrails (owner, 2026-11-20)\nAccepted by the owner in the choice dialog: the agent never posts a stand-in review, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. It arms with `make pr-arm` once per pull request and reports the result. Subagents are read-only. Any limit, default, threshold or label text is shown to the owner before it is committed. A blocked step stops this item; the agent moves to the next item and does not work around the block.\nReview threads: the accepted text also said the agent never resolves a thread. Asked afterwards which rule applies, the owner chose: \"The morning rule: I may resolve a thread once the bot has reviewed the new head and did not raise the finding again.\" ('I' is the agent.) So the agent pushes the fix and replies, and resolves a thread only after the bot's review of the new head does not raise that finding again.",
   "sessions": [
     {
@@ -18,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "0fe4fbe178f746858adff4278f6863b0",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-22T17:29:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "259b10375e3a445a892dc8d1ff8c5904",
       "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
