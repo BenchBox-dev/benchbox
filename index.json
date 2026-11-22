@@ -13953,7 +13953,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-source",
-      "integration_head": "878c5a4f24bfe1424dd11e514f0b7ce3e7431f76",
+      "integration_head": "d78cac8b006d8e12fa4e9444b2a6fcb1d2a98c80",
       "integration_log": [
         {
           "at": "2026-11-22T07:11:35Z",
@@ -14207,6 +14207,20 @@
             "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120"
           ],
           "seq": 11
+        },
+        {
+          "at": "2026-11-22T23:43:15Z",
+          "changed_files": [
+            "docs/internal/tpcdi-duckdb-comparison.md"
+          ],
+          "head": "d78cac8b006d8e12fa4e9444b2a6fcb1d2a98c80",
+          "kind": "fix",
+          "op_id": "42734d49339e4cc58f2a37ae3762a437",
+          "previous_head": "878c5a4f24bfe1424dd11e514f0b7ce3e7431f76",
+          "requires_acceptance": [
+            "tpcdi-13-digen-reference-path-and-comparison-20261120"
+          ],
+          "seq": 12
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-source",
