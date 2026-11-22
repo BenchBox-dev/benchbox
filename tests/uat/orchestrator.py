@@ -690,7 +690,7 @@ def _accounting_for_gate_summary(report_summary: Any, execute_outcome: Any) -> g
     results = tuple(getattr(execute_outcome, "results", ()))
     passed = sum(1 for r in results if r.status == "passed")
     failed = sum(1 for r in results if r.status == "failed")
-    timed_out = sum(1 for r in results if r.status == "timed-out")
+    timed_out = sum(1 for r in results if r.status in {"timed-out", "hung"})
     row_skipped = sum(1 for r in results if report_phase.is_skipped_status(r.status))
     row_unreachable = sum(1 for r in results if report_phase.is_unreachable_status(r.status))
     unvalidated = sum(

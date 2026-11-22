@@ -35,6 +35,7 @@ jobs:
       actions: read
     outputs:
       comment-policy: ${{ steps.comment-policy.conclusion == 'success' && steps.notice-drift.conclusion == 'success' && 'success' || 'failure' }}
+      copy-guard: ${{ steps.copy-guard.conclusion == 'success' && 'success' || 'failure' }}
       spellcheck: ${{ steps.spellcheck.conclusion || 'skipped' }}
       results-data-check: ${{ contains(format('{0} {1} {2} {3} {4} {5}', steps.results-python.conclusion, steps.results-install.conclusion, steps.results-inventory.conclusion, steps.results-corpus.conclusion, steps.results-validator.conclusion, steps.results-tests.conclusion), 'failure') && 'failure' || steps.results-tests.conclusion == 'success' && 'success' || 'skipped' }}
       example-validation: ${{ contains(format('{0} {1} {2} {3} {4}', steps.docs-python.conclusion, steps.docs-install.conclusion, steps.docs-validate.conclusion, steps.docs-urls.conclusion, steps.docs-generate.conclusion), 'failure') && 'failure' || steps.docs-generate.conclusion == 'success' && 'success' || 'skipped' }}
@@ -91,6 +92,40 @@ jobs:
           fi
           git show "${BASE_REF}:scripts/check_comment_cleanup_scope.py" > "$RUNNER_TEMP/trusted_check_scope.py"
           python -I "$RUNNER_TEMP/trusted_check_scope.py" --check-drift --base "$BASE_REF"
+      - name: Fail on copied project files and misplaced TPC-DI tool files
+        id: copy-guard
+        if: ${{ !cancelled() && steps.checkout.conclusion == 'success' }}
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          : "${BASE_REF:?BASE_REF is required}"
+          guard=scripts/check_tpcdi_copy_guard.py
+          if git cat-file -e "${BASE_REF}:${guard}" 2>/dev/null; then
+            git show "${BASE_REF}:${guard}" > "$RUNNER_TEMP/copy_guard.py"
+            echo "Running the base copy of ${guard}"
+          else
+            cp "$guard" "$RUNNER_TEMP/copy_guard.py"
+            echo "The base has no ${guard}; running the head copy that this pull request adds"
+          fi
+          hash_list=_sources/tpc-di/databricks-tpc-di/FORBIDDEN_HASHES.json
+          approved=quality/comment-policy-approved-external-hashes.json
+          if git cat-file -e "${BASE_REF}:${hash_list}" 2>/dev/null; then
+            git show "${BASE_REF}:${hash_list}" > "$RUNNER_TEMP/forbidden_hashes.json"
+            echo "Using the base copy of ${hash_list}"
+          else
+            cp "$hash_list" "$RUNNER_TEMP/forbidden_hashes.json"
+            echo "The base has no ${hash_list}; using the head copy that this pull request adds"
+          fi
+          if git cat-file -e "${BASE_REF}:${approved}" 2>/dev/null; then
+            git show "${BASE_REF}:${approved}" > "$RUNNER_TEMP/approved_hashes.json"
+            echo "Using the base copy of ${approved}"
+          else
+            cp "$approved" "$RUNNER_TEMP/approved_hashes.json"
+            echo "The base has no ${approved}; using the head copy that this pull request adds"
+          fi
+          cd "$RUNNER_TEMP"
+          python -I -S copy_guard.py --root "$GITHUB_WORKSPACE" --hash-list forbidden_hashes.json --approved-hashes approved_hashes.json
       - name: Install uv for the path-gated checks
         id: uv
         if: ${{ !cancelled() && steps.checkout.conclusion == 'success' && (needs.ci-paths.outputs.unit-docs == 'true' || needs.ci-paths.outputs.unit-results-data == 'true') }}
@@ -122,7 +157,9 @@ jobs:
         if: ${{ !cancelled() && steps.results-install.conclusion == 'success' }}
         env:
           UV_PYTHON: "3.12"
-        run: uv run -- python scripts/generate_corpus_inventory.py --check
+        run: |
+          uv run -- python scripts/generate_corpus_inventory.py --check
+          uv run -- python scripts/corpus_compliance_snapshot.py --check
       - name: Corpus validation
         id: results-corpus
         if: ${{ !cancelled() && steps.results-inventory.conclusion == 'success' }}
@@ -280,12 +317,30 @@ jobs:
           UPSTREAM_FRESHNESS_REQUIRED: ${{ steps.release.outputs.upstream-freshness-required }}
           RELEASE_IDENTITY_CHANGED: ${{ steps.release.outputs.release-identity-changed }}
           EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
           skip=
           if [ "$UPSTREAM_FRESHNESS_REQUIRED" != "true" ]; then skip=1; fi
           pre_tag=
           if [ "$RELEASE_IDENTITY_CHANGED" = "true" ]; then pre_tag=1; fi
-          make release-check VERSION="$RELEASE_VERSION" BASE_REF="$EVENT_BASE_SHA" SKIP_UPSTREAM_FRESHNESS="$skip" RELEASE_PRE_TAG="$pre_tag"
+          line=
+          if [[ "$BASE_REF" =~ ^release/[0-9]+\.[0-9]+\.x$ ]]; then line="$BASE_REF"; fi
+          make release-check VERSION="$RELEASE_VERSION" BASE_REF="$EVENT_BASE_SHA" SKIP_UPSTREAM_FRESHNESS="$skip" RELEASE_LINE="$line" RELEASE_PRE_TAG="$pre_tag"
+
+      - name: Install uv for the maintenance-line guard
+        if: startsWith(github.base_ref, 'release/')
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
+
+      - name: Guard SQLGlot adoption on a maintenance line
+        if: startsWith(github.base_ref, 'release/')
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          uv run --locked -- python -m scripts.check_line_sqlglot_adoption --base-ref "$BASE_REF" --base-sha "$EVENT_BASE_SHA" --body-env PR_BODY
 
       - name: Fetch base branch
         run: git fetch --no-tags origin "${{ github.base_ref || 'develop' }}:refs/remotes/origin/${{ github.base_ref || 'develop' }}"
@@ -1816,6 +1871,7 @@ jobs:
             tests/__init__.py
             tests/duration_policy.py
             tests/fixtures/fast_tier_baseline/
+            quality/fast-duration-ceiling.json
           sparse-checkout-cone-mode: false
 
       - name: Download complete medium shard evidence
@@ -1923,6 +1979,7 @@ jobs:
         run: |
           python -m scripts.build_fast_duration_baseline verify \
             --baseline tests/fixtures/fast_tier_baseline \
+            --ceiling quality/fast-duration-ceiling.json \
             --run-dir fast-junit \
             --summary "$GITHUB_STEP_SUMMARY" \
             --report-out fast-duration-verdict.json
@@ -2110,6 +2167,7 @@ jobs:
             --needs "$NEEDS_JSON" \
             --always ci-paths \
             --always short-checks.comment-policy \
+            --always short-checks.copy-guard \
             --expect content-guard=${{ needs.ci-paths.outputs.content-guard-needed == 'true' }} \
             --expect skill-integrity=${{ needs.ci-paths.outputs.skill-integrity-needed == 'true' }} \
             --expect audit-sha=${{ needs.ci-paths.outputs.audit-paths-changed == 'true' }} || {

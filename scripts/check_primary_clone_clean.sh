@@ -119,6 +119,39 @@ Agents may not refresh it. Owner: run 'make skill-sync' in $primary_abs.
 EOM
 }
 
+sha256_of() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | cut -d' ' -f1
+  else
+    shasum -a 256 "$1" | cut -d' ' -f1
+  fi
+}
+
+report_stale_ignored_skills() {
+  manifest="$top_abs/.claude/skills/skill-sync.manifest"
+  [ -f "$manifest" ] && [ -d "$primary_abs/.claude/skills" ] || return 0
+  expected=$(mktemp)
+  sed -n 's/^\([0-9a-f]\{64\}\) [0-7]\{3\} \(.*\)$/\1 .claude\/skills\/\2/p' "$manifest" > "$expected"
+  stale=$(
+    cut -d' ' -f2- "$expected" | (unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE; git -C "$primary_abs" check-ignore --stdin 2>/dev/null || true) |
+      while IFS= read -r path; do
+        [ -f "$primary_abs/$path" ] || continue
+        want=$(grep -F " $path" "$expected" | while IFS=' ' read -r hash listed; do [ "$listed" != "$path" ] || printf '%s\n' "$hash"; done)
+        [ "$(sha256_of "$primary_abs/$path")" = "$want" ] || printf '  %s\n' "$path"
+      done
+  )
+  rm -f "$expected"
+  [ -n "$stale" ] || return 0
+  cat >&2 <<EOM
+WARNING: git-ignored skill files in the primary clone differ from the
+.claude/skills/skill-sync.manifest this branch pins, so Claude sessions started
+there read outdated skills:
+$stale
+Agents may not refresh them. Owner: back up and delete those files, then run
+'tools/skill-sync apply' in $primary_abs.
+EOM
+}
+
 case "$mode" in
   snapshot)
     if [ -f "$snapshot" ] && [ "${BENCHBOX_PRIMARY_SNAPSHOT_REFRESH:-}" != "1" ]; then
@@ -130,6 +163,7 @@ case "$mode" in
     ;;
   report | enforce)
     report_stale_agent_skills
+    report_stale_ignored_skills
     if [ ! -f "$snapshot" ]; then
       printf 'No primary-clone snapshot at %s; run make agent-write-preflight first. Skipping primary-clone change check.\n' "$snapshot" >&2
       exit 0

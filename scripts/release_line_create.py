@@ -59,7 +59,7 @@ def _final_version(tag: str) -> None:
 
 
 def _creation_tree(root: Path, base: str, source: str) -> str:
-    paths = sorted(consumer.creation_review_paths(root, base, source))
+    paths = sorted(consumer.creation_carried_paths(root, base, source))
     with tempfile.TemporaryDirectory(prefix="release-line-index-") as temporary:
         env = {"GIT_INDEX_FILE": str(Path(temporary) / "index")}
         _git(root, "read-tree", base, env=env)
@@ -90,7 +90,7 @@ def create_line(root: Path, tag: str, fetch: Fetch = consumer.fetch_hosted_refs)
         "-p",
         base,
         "-m",
-        f"chore(release): carry {consumer.PRODUCER_BRANCH}'s reviewer files and their tests onto {branch}",
+        f"chore(release): carry {consumer.PRODUCER_BRANCH}'s reviewer files, landing tooling and their tests onto {branch}",
         "-m",
         f"{consumer.CREATION_SOURCE_TRAILER}: {source}",
     )

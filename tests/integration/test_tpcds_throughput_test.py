@@ -101,7 +101,7 @@ class TestThroughputTestConfig:
         assert config.num_streams == 4
         assert config.scale_factor == 1.0
         assert config.base_seed == 42
-        assert config.stream_timeout == 7200
+        assert config.stream_timeout == 0
         assert config.verbose is False
         assert config.max_workers is None
         assert config.queries_per_stream is None
@@ -502,24 +502,22 @@ class TestCooperativeCancellation:
         assert stream_result.queries_executed == 2
         assert stream_result.success is True
 
-    def test_execute_stream_ignores_stale_cancel_event_from_reused_config(self, tpcds_benchmark):
+    def test_execute_stream_honours_a_set_event_whatever_cancel_on_timeout_says(self, tpcds_benchmark):
         connections: list[Mock] = []
         factory = self._connection_factory(connections)
 
         test = TPCDSThroughputTest(benchmark=tpcds_benchmark, connection_factory=factory, num_streams=1)
 
-        stale_config = TPCDSThroughputTestConfig(num_streams=1, cancel_on_timeout=True, enable_preflight=False)
-        stale_config._stream_cancel_events = {0: threading.Event()}
-        stale_config._stream_cancel_events[0].set()
+        config = TPCDSThroughputTestConfig(num_streams=1, cancel_on_timeout=False, enable_preflight=False)
+        config._stream_cancel_events = {0: threading.Event()}
+        config._stream_cancel_events[0].set()
         test._pregenerated_queries = {0: [(self._stream_query(1), "SELECT 1"), (self._stream_query(2), "SELECT 2")]}
 
-        stale_config.cancel_on_timeout = False
+        stream_result = test._execute_stream(stream_id=0, seed=1, config=config)
 
-        stream_result = test._execute_stream(stream_id=0, seed=1, config=stale_config)
-
-        assert stream_result.queries_executed == 2
-        assert stream_result.success is True
-        assert connections[0].execute.call_count == 2
+        assert stream_result.queries_executed == 0
+        assert stream_result.success is False
+        assert connections[0].execute.call_count == 0
 
 
 class TestBenchmarkIntegration:

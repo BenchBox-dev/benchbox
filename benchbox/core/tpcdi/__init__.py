@@ -7,7 +7,6 @@
 
 from .benchmark import TPCDIBenchmark
 from .generator import TPCDIDataGenerator
-from .queries import TPCDIQueryManager
 from .schema import (
     DIMACCOUNT,
     DIMCOMPANY,
@@ -15,7 +14,7 @@ from .schema import (
     DIMDATE,
     DIMSECURITY,
     DIMTIME,
-    FACTTRADE,
+    DIMTRADE,
     TABLES,
     get_all_create_table_sql,
     get_create_table_sql,
@@ -24,12 +23,11 @@ from .schema import (
 __all__ = [
     "TPCDIBenchmark",
     "TPCDIDataGenerator",
-    "TPCDIQueryManager",
     "DIMCUSTOMER",
     "DIMACCOUNT",
     "DIMSECURITY",
     "DIMCOMPANY",
-    "FACTTRADE",
+    "DIMTRADE",
     "DIMDATE",
     "DIMTIME",
     "TABLES",

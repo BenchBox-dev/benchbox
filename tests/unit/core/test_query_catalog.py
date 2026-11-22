@@ -23,7 +23,9 @@ from benchbox.core.query_catalog import (
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
-_ALL_BENCHMARK_IDS = sorted(get_all_benchmarks())
+_ALL_BENCHMARK_IDS = sorted(
+    benchmark_id for benchmark_id, entry in get_all_benchmarks().items() if entry["support_status"] != "document_only"
+)
 
 
 class TestListQueryIds:
@@ -119,7 +121,7 @@ class TestGetDataframeRender:
         assert "pandas" in render.source.lower() or "def q1_pandas_impl" in render.source
 
     def test_benchmark_without_dataframe_impl_is_none(self):
-        assert get_dataframe_render("tpcdi", list_query_ids("tpcdi")[0]) is None
+        assert get_dataframe_render("tpcdi", "TDI_HISTORICAL") is None
 
     def test_id_normalization_matches_q_prefixed_registry(self):
         assert get_dataframe_query("tpch", "6") is not None
@@ -234,11 +236,6 @@ class TestQuerySourcePath:
 
     def test_generic_benchmark_points_at_queries_module(self):
         assert query_source_path("clickbench", "Q1") == "benchbox/core/clickbench/queries.py"
-
-    def test_tpcdi_query_submodule_resolution(self):
-        assert query_source_path("tpcdi", "AQ1") == "benchbox/core/tpcdi/query_analytics.py"
-        assert query_source_path("tpcdi", "EQ1") == "benchbox/core/tpcdi/query_etl.py"
-        assert query_source_path("tpcdi", "VQ1") == "benchbox/core/tpcdi/query_validation.py"
 
     def test_tpchavoc_variant_set_resolution(self):
         assert query_source_path("tpchavoc", "1_v1") == "benchbox/core/tpchavoc/variant_sets/q01.py"

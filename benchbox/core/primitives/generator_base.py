@@ -20,6 +20,7 @@ from benchbox.utils.cloud_storage import CloudStorageGeneratorMixin, create_path
 from benchbox.utils.compression_mixin import CompressionMixin
 from benchbox.utils.datagen_manifest import DataGenerationManifest, require_manifest_files, resolve_compression_metadata
 from benchbox.utils.file_format import detect_compression
+from benchbox.utils.generation_marker import generation_in_progress
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 from benchbox.utils.verbosity import VerbosityMixin, compute_verbosity
 
@@ -359,6 +360,8 @@ class PrimitivesDataGeneratorBase(CompressionMixin, CloudStorageGeneratorMixin, 
                 self.log_verbose(f"Warning: Failed to release lock: {e}")
 
     def check_bulk_load_files_exist(self) -> bool:
+        if generation_in_progress(self.output_dir):
+            return False
         expected_files = [
             "csv_small_1k.csv",
             "csv_medium_100k.csv",

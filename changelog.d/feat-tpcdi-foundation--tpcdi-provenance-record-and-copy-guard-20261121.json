@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Record the source and licence of the databricks-tpc-di project, quote the owner decisions for the TPC-DI rework and add a test that fails when a forbidden project or TPC tool file lands outside its allowed directory."
+}

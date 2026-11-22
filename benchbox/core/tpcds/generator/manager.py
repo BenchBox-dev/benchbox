@@ -11,6 +11,7 @@ from benchbox.utils.cloud_storage import CloudStorageGeneratorMixin, create_path
 from benchbox.utils.compression_mixin import CompressionMixin
 from benchbox.utils.data_validation import BenchmarkDataValidator
 from benchbox.utils.file_format import is_tpc_format
+from benchbox.utils.generation_marker import track_generation
 from benchbox.utils.printing import emit
 
 from ..compliance import TpcdsComplianceClass, validate_tpcds_scale
@@ -155,6 +156,10 @@ class TPCDSDataGenerator(
 
         self._log_regeneration_reason(validation_result)
 
+        with track_generation(target_dir):
+            return self._regenerate(target_dir)
+
+    def _regenerate(self, target_dir: Path) -> dict[str, list[Path]]:
         removed_stale = self._prune_stale_table_artifacts(target_dir)
         if removed_stale and self.verbose:
             emit(f"🧹 Removed {len(removed_stale)} stale TPC-DS table artifacts before regeneration")

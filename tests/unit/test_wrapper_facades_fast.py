@@ -12,7 +12,6 @@ from benchbox.datavault import DataVault
 from benchbox.h2odb import H2ODB
 from benchbox.read_primitives import ReadPrimitives
 from benchbox.ssb import SSB
-from benchbox.tpcdi import TPCDI
 from benchbox.tpcds import TPCDS
 from benchbox.tpcds_obt import TPCDSOBT
 from benchbox.tpch import TPCH
@@ -103,57 +102,6 @@ def test_tpch_wrapper_fallback_paths_return_compatibility_messages(tmp_path: Pat
     assert maintenance["status"] == "fallback"
     assert maintenance["message"] == "Use adapter.run_benchmark() instead"
     assert maintenance["refresh_functions"]["refresh_function_1"]["rows_inserted"] == 150
-
-
-def test_tpcdi_wrapper_proxies_etl_and_public_properties(tmp_path: Path) -> None:
-    impl = MagicMock()
-    impl.generate_data.return_value = [tmp_path / "batch.csv"]
-    impl.get_queries.return_value = {"V1": "SELECT 1"}
-    impl.get_query.return_value = "SELECT 1"
-    impl.get_schema.return_value = {"customer": {}}
-    impl.get_create_tables_sql.return_value = "CREATE TABLE customer (id INT)"
-    impl.generate_source_data.return_value = {"csv": ["batch.csv"]}
-    impl.run_etl_pipeline.return_value = {"status": "etl"}
-    impl.validate_etl_results.return_value = {"status": "valid"}
-    impl.get_etl_status.return_value = {"phase": "ready"}
-    impl.load_data_to_database.return_value = None
-    impl.run_benchmark.return_value = {"status": "benchmark"}
-    impl.execute_query.return_value = [("ok",)]
-    impl.create_schema.return_value = None
-    impl.run_full_benchmark.return_value = {"status": "full"}
-    impl.run_etl_benchmark.return_value = {"status": "etl-benchmark"}
-    impl.run_data_validation.return_value = {"status": "validation"}
-    impl.calculate_official_metrics.return_value = {"score": 1.0}
-    impl.optimize_database.return_value = {"optimized": True}
-    impl.validator = object()
-    impl.schema_manager = object()
-    impl.metrics_calculator = object()
-
-    with patch("benchbox.tpcdi.TPCDIBenchmark", return_value=impl):
-        tpcdi = TPCDI(scale_factor=0.01, output_dir=tmp_path, verbose=True)
-
-    assert tpcdi.generate_data() == [tmp_path / "batch.csv"]
-    assert tpcdi.get_queries(dialect="duckdb") == {"V1": "SELECT 1"}
-    assert tpcdi.get_query("V1") == "SELECT 1"
-    assert tpcdi.get_schema("duckdb") == {"customer": {}}
-    assert tpcdi.get_create_tables_sql(dialect="duckdb") == "CREATE TABLE customer (id INT)"
-    assert tpcdi.generate_source_data(["csv"], ["historical"]) == {"csv": ["batch.csv"]}
-    assert tpcdi.run_etl_pipeline("conn") == {"status": "etl"}
-    assert tpcdi.validate_etl_results("conn") == {"status": "valid"}
-    assert tpcdi.get_etl_status() == {"phase": "ready"}
-    assert tpcdi.etl_mode is True
-    assert tpcdi.load_data_to_database("conn", ["customer"]) is None
-    assert tpcdi.run_benchmark("conn") == {"status": "benchmark"}
-    assert tpcdi.execute_query("V1", "conn") == [("ok",)]
-    assert tpcdi.create_schema("conn") is None
-    assert tpcdi.run_full_benchmark("conn") == {"status": "full"}
-    assert tpcdi.run_etl_benchmark("conn") == {"status": "etl-benchmark"}
-    assert tpcdi.run_data_validation("conn") == {"status": "validation"}
-    assert tpcdi.calculate_official_metrics("etl", "validation") == {"score": 1.0}
-    assert tpcdi.optimize_database("conn") == {"optimized": True}
-    assert tpcdi.validator is impl.validator
-    assert tpcdi.schema_manager is impl.schema_manager
-    assert tpcdi.metrics_calculator is impl.metrics_calculator
 
 
 def test_read_primitives_wrapper_proxies_generation_and_benchmark_methods(tmp_path: Path) -> None:

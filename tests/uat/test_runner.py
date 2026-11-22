@@ -447,14 +447,57 @@ def test_run_cell_skips_diagnostic_rerun_when_failure_has_stdout(tmp_path: Path)
     assert "verbose diagnostic re-run" not in log_text
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="POSIX timeout semantics")
-def test_run_cell_marks_timeout(tmp_path: Path):
-    fake_argv = [sys.executable, "-c", "import time; time.sleep(3)"]
+def test_run_cell_marks_a_timeout_the_product_stopped_as_timed_out(tmp_path: Path):
+    fake_argv = [sys.executable, "-c", "import sys; sys.exit(124)"]
     with patch.object(runner, "benchbox_run_argv", return_value=fake_argv):
         result = runner.run_cell("duckdb", "tpch", 0.01, timeout_s=1, log_dir=tmp_path)
     assert result.status == "timed-out"
     assert result.exit_code == 124
-    assert "UAT_TIMEOUT timeout_s=1 exit_code=124" in result.log_path.read_text(encoding="utf-8")
+    log_text = result.log_path.read_text(encoding="utf-8")
+    assert "UAT_TIMEOUT timeout_s=1 exit_code=124" in log_text
+    assert "verbose diagnostic re-run" not in log_text
+
+
+@pytest.mark.parametrize("exit_code", [124, -9, 0, 2])
+def test_run_cell_marks_a_cell_the_runner_killed_as_hung_whatever_its_exit_code(tmp_path: Path, exit_code: int):
+    with (
+        patch.object(runner, "benchbox_run_argv", return_value=[sys.executable, "-c", "pass"]),
+        patch.object(
+            runner, "run_with_timeout", side_effect=_fake_run_with_timeout_factory(exit_code=exit_code, timed_out=True)
+        ),
+    ):
+        result = runner.run_cell("duckdb", "tpch", 0.01, timeout_s=1, log_dir=tmp_path)
+    assert result.status == "hung"
+    assert result.exit_code == exit_code
+    log_text = result.log_path.read_text(encoding="utf-8")
+    assert f"UAT_HUNG outside_limit_s=61 exit_code={exit_code}" in log_text
+    assert "verbose diagnostic re-run" not in log_text
+
+
+def _timeout_after(argv: list[str]) -> str:
+    return argv[argv.index("--timeout") + 1]
+
+
+@pytest.mark.parametrize("official", [False, True])
+def test_run_cell_passes_the_cell_limit_to_benchbox_and_kills_from_outside_a_minute_later(
+    tmp_path: Path, official: bool
+):
+    calls: list[tuple[list[str], int]] = []
+
+    def fake_run_with_timeout(argv, timeout_s, *, stdout=None, stderr=None, env=None, cwd=None):
+        calls.append((argv, timeout_s))
+        return TimeoutResult(exit_code=0, timed_out=False, elapsed_s=0.1, stdout=b"", stderr=b"")
+
+    with (
+        patch.object(runner, "run_with_timeout", side_effect=fake_run_with_timeout),
+        patch.object(runner, "resolve_official_result_path", return_value=None),
+    ):
+        runner.run_cell("duckdb", "tpch", 0.01, timeout_s=300, log_dir=tmp_path, official=official, streams=2)
+
+    argv, outside_s = calls[0]
+    assert argv[argv.index("benchbox") + 1] == ("run-official" if official else "run")
+    assert _timeout_after(argv) == "300"
+    assert outside_s == 360
 
 
 def test_run_cell_flags_local_datagen_leak_under_external_root(monkeypatch, tmp_path: Path):
@@ -638,12 +681,20 @@ def _fake_run_with_timeout_factory(*, exit_code: int, timed_out: bool):
     return fake_run_with_timeout
 
 
-def test_run_cell_official_timeout_preserves_timed_out_status(tmp_path: Path):
+@pytest.mark.parametrize(
+    ("exit_code", "timed_out", "status"),
+    [(124, False, "timed-out"), (124, True, "hung"), (-9, True, "hung"), (0, True, "hung")],
+)
+def test_run_cell_official_separates_a_product_timeout_from_a_runner_kill(
+    tmp_path: Path, exit_code: int, timed_out: bool, status: str
+):
     fake_argv = [sys.executable, "-c", "print('unused')"]
     with (
         patch.object(runner, "benchbox_run_official_argv", return_value=fake_argv),
         patch.object(
-            runner, "run_with_timeout", side_effect=_fake_run_with_timeout_factory(exit_code=124, timed_out=True)
+            runner,
+            "run_with_timeout",
+            side_effect=_fake_run_with_timeout_factory(exit_code=exit_code, timed_out=timed_out),
         ),
         patch.object(runner, "resolve_official_result_path", return_value=None),
     ):
@@ -657,8 +708,8 @@ def test_run_cell_official_timeout_preserves_timed_out_status(tmp_path: Path):
             streams=3,
         )
 
-    assert result.status == "timed-out"
-    assert result.exit_code == 124
+    assert result.status == status
+    assert result.exit_code == exit_code
     assert result.result_path is None
     assert result.throughput_check == "not validated: cell timed out"
 

@@ -389,7 +389,7 @@ def render(receipt: dict[str, object]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _expected_guards(receipt: dict[str, object]) -> list[str]:
+def _expected_changed_path_steps(receipt: dict[str, object]) -> list[str]:
     module_path = Path(__file__).resolve().parent.parent / "_project" / "scripts" / "preflight_targets.py"
     spec = importlib.util.spec_from_file_location("preflight_targets", module_path)
     if spec is None or spec.loader is None or not module_path.is_file():
@@ -400,7 +400,7 @@ def _expected_guards(receipt: dict[str, object]) -> list[str]:
     if not merge_base or not head:
         raise ReceiptError("the preflight receipt records no merge base or head; rerun `make pr-preflight`")
     paths = _git("diff", "--name-only", "--no-renames", merge_base, head).splitlines()
-    return module.guards(paths)
+    return [*module.guards(paths), *module.lint_steps(Path(_git("rev-parse", "--show-toplevel")), paths)]
 
 
 def verify_receipt(directory: Path, tree: str, allowlist: dict[tuple[str, str], dict[str, str]]) -> dict[str, object]:
@@ -447,7 +447,7 @@ def verify_receipt(directory: Path, tree: str, allowlist: dict[tuple[str, str], 
         required.append("pytest")
     if selection["linux_files"] > 0:
         required.append("linux-pytest")
-    required += _expected_guards(receipt)
+    required += _expected_changed_path_steps(receipt)
     recorded = {step.get("name") for step in steps}
     missing = [name for name in required if name not in recorded]
     if missing:

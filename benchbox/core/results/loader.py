@@ -37,6 +37,7 @@ from benchbox.core.results.schema_policy import (
     supports_row_count_validation,
 )
 from benchbox.core.results.timing_fields import bundle_timing_field_paths, net_estimate_problems, run_timing_problems
+from benchbox.core.results.tpcdi_audit import mark_legacy_tpcdi_result
 from benchbox.validation.bundle import COMPANION_SUFFIXES
 
 logger = logging.getLogger(__name__)
@@ -222,7 +223,7 @@ def reconstruct_benchmark_results(
     execution_phases = _reconstruct_execution_phases(data.get("phases", {}), summary_section)
     native_comparison = _reconstruct_native_comparison(data.get("comparisons", {}))
 
-    return BenchmarkResults(
+    result = BenchmarkResults(
         benchmark_name=benchmark_section.get("name", "Unknown"),
         platform=platform_section.get("name", "Unknown"),
         scale_factor=benchmark_section.get("scale_factor", 1.0),
@@ -248,6 +249,7 @@ def reconstruct_benchmark_results(
         geometric_mean_execution_time=tpc["geometric_mean_execution_time"],
         test_execution_type=benchmark_section.get("mode", "standard"),
         validation_status=summary_section.get("validation", "NOT_RUN"),
+        validation_details=_extract_timeout_details(execution_section),
         execution_metadata=execution_metadata,
         execution_environment=execution_environment,
         platform_deployment=platform_section.get("deployment"),
@@ -281,6 +283,7 @@ def reconstruct_benchmark_results(
         dataset_version=benchmark_section.get("dataset_version"),
         data_generation_version=_coerce_datagen_version(benchmark_section.get("data_generation_version")),
         data_generation_hash=_coerce_datagen_hash(benchmark_section.get("data_generation_hash")),
+        data_generation_seed=_coerce_datagen_version(benchmark_section.get("data_generation_seed")),
         power_stream_policy=_coerce_datagen_hash(benchmark_section.get("power_stream_policy")),
         flightdata_source_provenance=benchmark_section.get("source_provenance"),
         manifest_hash=benchmark_section.get("manifest_hash"),
@@ -294,6 +297,8 @@ def reconstruct_benchmark_results(
         self_run=provenance_section.get("self_run"),
         execution_engine=read_execution_engine(data),
     )
+    mark_legacy_tpcdi_result(result)
+    return result
 
 
 def _coerce_datagen_version(value: object) -> int | None:
@@ -328,6 +333,11 @@ def _extract_execution_metadata(execution_section: dict[str, Any]) -> dict[str, 
     if isinstance(comparability, dict):
         metadata["variant_comparability"] = comparability
     return metadata or None
+
+
+def _extract_timeout_details(execution_section: dict[str, Any]) -> dict[str, Any] | None:
+    timeout = execution_section.get("timeout")
+    return {"timeout": dict(timeout)} if isinstance(timeout, dict) else None
 
 
 def _parse_timestamp(timestamp_str: str) -> datetime:

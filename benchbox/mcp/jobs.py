@@ -23,6 +23,7 @@ from mcp.types import ToolAnnotations
 from benchbox.core.benchmark_registry import get_all_benchmarks
 from benchbox.core.deprecation_notices import begin_run, run_scope
 from benchbox.core.run_selection import resolve_run_selection
+from benchbox.core.run_service import unavailable_benchmark_message
 from benchbox.core.throughput.containment import await_quiescence, track_outstanding_results, tracked_stream_ids
 from benchbox.mcp.deprecations import attach_deprecations, request_deprecations
 from benchbox.mcp.schemas import (
@@ -43,8 +44,10 @@ from benchbox.mcp.tools.benchmark import (
     _check_scale_factor,
     _execute_mcp_run_via_core,
     _resolve_mcp_mode_with_registry,
+    run_limit_warning,
 )
 from benchbox.utils.clock import mono_time, utc_now
+from benchbox.utils.run_deadline import validate_timeout_seconds
 
 logger = logging.getLogger(__name__)
 
@@ -936,7 +939,7 @@ def _response_has_outstanding_work(value: object) -> bool:
 
 _ATTEST_ATTEMPTS = 6
 _FAILED_PHASE_STATUSES = frozenset({"FAILED", "ERROR"})
-_INCOMPLETE_RUN_STATUSES = frozenset({"no_results", "incomplete"})
+_INCOMPLETE_RUN_STATUSES = frozenset({"no_results", "incomplete", "timed_out"})
 
 
 def derive_job_outcome(response: Mapping[str, Any]) -> str:
@@ -1090,6 +1093,7 @@ class DurableJobWorker:
         platform_options = request.get("platform_options")
         seed = request.get("seed")
         iterations = request.get("iterations")
+        timeout_seconds = request.get("timeout_seconds")
         results_dir = staging
         execution_id = job.execution_id
         anonymize = True
@@ -1176,6 +1180,7 @@ class DurableJobWorker:
             link_probe=link_probe,
             seed=seed,
             iterations=iterations,
+            timeout_seconds=timeout_seconds,
             normalized_platform_options=normalized_platform_options,
             results_dir=results_dir,
             execution_id=execution_id,
@@ -1521,7 +1526,7 @@ def _public_status(job: JobRecord) -> dict[str, Any]:
 def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> None:
 
     @mcp.tool(
-        description="Queue a tenant-owned benchmark and immediately return its durable handle. Optional seed and iterations have the same meaning as in run_benchmark; iterations is bounded by the server policy.",
+        description="Queue a tenant-owned benchmark and immediately return its durable handle. Optional seed, iterations and timeout_seconds have the same meaning as in run_benchmark; iterations is bounded by the server policy.",
         annotations=START_ANNOTATIONS,
     )
     async def start_benchmark(
@@ -1537,9 +1542,12 @@ def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> No
         platform_options: dict[str, object] | None = None,
         seed: int | None = None,
         iterations: int | None = None,
+        timeout_seconds: int | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         principal = authenticated_principal()
+        if (unavailable := unavailable_benchmark_message(benchmark)) is not None:
+            raise MCPError(-32602, unavailable)
         try:
             normalized_platform_options = validate_platform_options(platform, platform_options)
             resolved_execution_engine = validate_execution_engine(platform, execution_engine)
@@ -1548,6 +1556,7 @@ def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> No
             phases = validate_phases(phases)
             seed = validate_seed(seed)
             iterations = validate_iterations(iterations)
+            timeout_seconds = validate_timeout_seconds(timeout_seconds)
         except ValueError as exc:
             raise MCPError(-32602, str(exc)) from exc
         request = {
@@ -1567,10 +1576,16 @@ def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> No
             request["seed"] = seed
         if iterations is not None:
             request["iterations"] = iterations
+        if timeout_seconds is not None:
+            request["timeout_seconds"] = timeout_seconds
         job, created = await anyio.to_thread.run_sync(
             lambda: runtime.repository.submit(principal.principal_id, request, idempotency_key=idempotency_key)
         )
-        return {**_public_status(job), "created": created}
+        started = {**_public_status(job), "created": created}
+        limit_warning = run_limit_warning(platform, timeout_seconds)
+        if limit_warning:
+            started["warnings"] = [*started.get("warnings", []), limit_warning]
+        return started
 
     @mcp.tool(
         description="Read the status of a benchmark job owned by the current principal.", annotations=READ_ANNOTATIONS

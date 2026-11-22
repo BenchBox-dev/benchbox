@@ -8,7 +8,6 @@ import json
 import logging
 import os
 import shutil
-import signal
 import subprocess
 import sys
 import threading
@@ -20,6 +19,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.process_group import kill_process_group
 from benchbox.utils.process_tree import tree_footprint_bytes
 
 try:
@@ -64,9 +64,6 @@ class ResourceLimitsConfig:
 
     cpu_warning_percent: float = 90.0
 
-    default_operation_timeout: float = 300.0
-    enforce_timeouts: bool = True
-
     warning_callback: Callable[[ResourceWarning], None] | None = None
     critical_callback: Callable[[ResourceWarning], None] | None = None
 
@@ -88,8 +85,6 @@ class ResourceLimitsConfig:
             memory_warning_percent=config.get("memory_warning_percent", 75.0),
             memory_critical_percent=config.get("memory_critical_percent", 90.0),
             cpu_warning_percent=config.get("cpu_warning_percent", 90.0),
-            default_operation_timeout=config.get("default_operation_timeout", 300.0),
-            enforce_timeouts=config.get("enforce_timeouts", True),
             enable_graceful_degradation=config.get("enable_graceful_degradation", False),
             degradation_memory_threshold_percent=config.get("degradation_memory_threshold_percent", 80.0),
         )
@@ -452,16 +447,6 @@ def read_memory_snapshot() -> MemorySnapshot:
     return MemorySnapshot(free_gib=free_gib, swap_used_percent=swap_used_percent)
 
 
-def _kill_started_group(process: subprocess.Popen[str]) -> None:
-    try:
-        if hasattr(os, "killpg") and hasattr(signal, "SIGKILL"):
-            os.killpg(process.pid, signal.SIGKILL)
-        else:
-            process.kill()
-    except OSError:
-        pass
-
-
 def run_text(argv: Sequence[str], timeout: float) -> str | None:
     try:
         process = subprocess.Popen(
@@ -477,7 +462,7 @@ def run_text(argv: Sequence[str], timeout: float) -> str | None:
     try:
         output, _ = process.communicate(timeout=max(timeout, 0.0))
     except subprocess.TimeoutExpired:
-        _kill_started_group(process)
+        kill_process_group(process)
         try:
             process.communicate(timeout=1.0)
         except subprocess.TimeoutExpired:

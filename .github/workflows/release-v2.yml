@@ -116,7 +116,8 @@ jobs:
         run: |
           set -euo pipefail
           version="${RELEASE_TAG#v}"
-          make release-check VERSION="$version" RELEASE_PRE_TAG=1
+          line="$(uv run -- python scripts/release_artifact_consumer.py line --source . --tag "$RELEASE_TAG")"
+          make release-check VERSION="$version" RELEASE_PRE_TAG=1 RELEASE_LINE="$line"
 
       - name: Check ruleset drift without the readiness override
         if: ${{ github.event_name == 'push' || inputs.probe == 'none' }}

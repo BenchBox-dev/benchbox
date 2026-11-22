@@ -1,0 +1,246 @@
+diff --git a/tools/StringBuffer.c b/tools/StringBuffer.c
+index 9b23c8f..2f403fa 100644
+--- a/tools/StringBuffer.c
++++ b/tools/StringBuffer.c
+@@ -38,8 +38,10 @@
+ #include <stdio.h>
+ #include <assert.h>
+ #ifndef USE_STDLIB_H
++#ifndef MACOS
+ #include <malloc.h>
+ #endif
++#endif
+ #include "StringBuffer.h"
+ 
+ /*
+diff --git a/tools/config.h b/tools/config.h
+index f01b3d9..4d964e5 100644
+--- a/tools/config.h
++++ b/tools/config.h
+@@ -37,6 +37,16 @@
+ #ifndef CONFIG_H
+ #define CONFIG_H
+ 
++#ifdef MACOS
++#define SUPPORT_64BITS
++#define HUGE_TYPE	int64_t
++#define HUGE_FORMAT	"%lld"
++#define HUGE_COUNT	1
++#define USE_STRING_H
++#define USE_STDLIB_H
++#define FLEX
++#endif /* MACOS */
++
+ #ifdef NCR
+ #define STDLIB_HAS_GETOPT
+ #define USE_STRING_H
+diff --git a/tools/date.c b/tools/date.c
+index 22e4d46..1afb9ef 100644
+--- a/tools/date.c
++++ b/tools/date.c
+@@ -37,8 +37,10 @@
+ /*** includes ***/
+ #include <stdlib.h>
+ #ifndef USE_STDLIB_H
++#ifndef MACOS
+ #include <malloc.h>
+ #endif
++#endif
+ #include <stdio.h>
+ #include <math.h>
+ #include "config.h"
+@@ -563,7 +565,7 @@ day_number(date_t *d)
+  * TODO: None
+  */
+ int
+-getDateWeightFromJulian(jDay, nDistribution)
++getDateWeightFromJulian(int jDay, int nDistribution)
+ {
+ 	date_t dTemp;
+ 	int nDay;
+diff --git a/tools/dcgram.c b/tools/dcgram.c
+index 87f75c9..0814f39 100644
+--- a/tools/dcgram.c
++++ b/tools/dcgram.c
+@@ -39,8 +39,10 @@
+ #include <stdio.h>
+ #include <ctype.h>
+ #ifndef USE_STDLIB_H
++#ifndef MACOS
+ #include <malloc.h>
+ #endif
++#endif
+ #include "error_msg.h"
+ #include "grammar.h"
+ #include "dist.h"
+diff --git a/tools/dcomp.c b/tools/dcomp.c
+index 0aec265..320b49a 100644
+--- a/tools/dcomp.c
++++ b/tools/dcomp.c
+@@ -39,8 +39,10 @@
+ #include "porting.h"
+ #include <stdio.h>
+ #ifndef USE_STDLIB_H
++#ifndef MACOS
+ #include <malloc.h>
+ #endif
++#endif
+ #include <sys/stat.h>
+ #include <fcntl.h>
+ #ifdef AIX
+diff --git a/tools/decimal.c b/tools/decimal.c
+index 2936b78..e551619 100644
+--- a/tools/decimal.c
++++ b/tools/decimal.c
+@@ -38,8 +38,10 @@
+ #include "config.h"
+ #include "porting.h"
+ #ifndef USE_STDLIB_H
++#ifndef MACOS
+ #include <malloc.h>
+ #endif
++#endif
+ #include <stdio.h>
+ #include "decimal.h"
+ #include "mathops.h"
+diff --git a/tools/dist.c b/tools/dist.c
+index 7e71e7b..60ca40c 100644
+--- a/tools/dist.c
++++ b/tools/dist.c
+@@ -38,7 +38,9 @@
+ #include <stdio.h>
+ #include <fcntl.h>
+ #include <assert.h>
++#ifndef MACOS
+ #include <malloc.h>
++#endif
+ #ifdef WIN32
+ #include <io.h>
+ #include <stdlib.h>
+@@ -52,8 +54,10 @@
+ #include <sys/types.h>
+ #endif
+ #ifndef USE_STDLIB_H
++#ifndef MACOS
+ #include <malloc.h>
+ #endif
++#endif
+ #include "config.h"
+ #include "decimal.h"
+ #include "date.h"
+diff --git a/tools/misc.c b/tools/misc.c
+index e9d6208..641987e 100644
+--- a/tools/misc.c
++++ b/tools/misc.c
+@@ -42,7 +42,9 @@
+ #include <ctype.h>
+ #include <math.h>
+ #ifndef _POSIX_SOURCE
++#ifndef MACOS
+ #include <malloc.h>
++#endif
+ #endif /* POSIX_SOURCE */
+ #include <fcntl.h>
+ #ifdef AIX
+diff --git a/tools/permute.c b/tools/permute.c
+index 12f0dc7..51b095a 100644
+--- a/tools/permute.c
++++ b/tools/permute.c
+@@ -36,8 +36,10 @@
+ #include "config.h"
+ #include "porting.h"
+ #ifndef USE_STDLIB_H
++#ifndef MACOS
+ #include <malloc.h>
+ #endif
++#endif
+ #include <stdio.h>
+ #include "genrand.h"
+ 
+diff --git a/tools/porting.h b/tools/porting.h
+index 48ebdd1..59ff24d 100644
+--- a/tools/porting.h
++++ b/tools/porting.h
+@@ -113,6 +113,11 @@ char *strdup(const char *);
+ #define MAXINT INT_MAX
+ #endif
+ 
++#ifdef MACOS
++#include <limits.h>
++#define MAXINT INT_MAX
++#endif /* MACOS */
++
+ #ifdef LINUX
+ #define MAXINT INT_MAX
+ #endif
+diff --git a/tools/query_handler.c b/tools/query_handler.c
+index 25b3d46..6fb1890 100644
+--- a/tools/query_handler.c
++++ b/tools/query_handler.c
+@@ -37,8 +37,10 @@
+ #include "porting.h"
+ #include <stdio.h>
+ #ifndef USE_STDLIB_H
++#ifndef MACOS
+ #include <malloc.h>
+ #endif
++#endif
+ #include "StringBuffer.h"
+ #include "eval.h"
+ #include "substitution.h"
+diff --git a/tools/tdef_functions.c b/tools/tdef_functions.c
+index 2e902d6..e6afd02 100644
+--- a/tools/tdef_functions.c
++++ b/tools/tdef_functions.c
+@@ -171,7 +171,7 @@ table_func_t s_tdef_funcs[] = {
+ };
+ 
+ table_func_t *
+-getTdefFunctionsByNumber(nTable)
++getTdefFunctionsByNumber(int nTable)
+ {
+    if (nTable >= S_BRAND)
+       return(&s_tdef_funcs[nTable - S_BRAND]);
+diff --git a/tools/tdefs.c b/tools/tdefs.c
+index fe8cc47..7a07153 100644
+--- a/tools/tdefs.c
++++ b/tools/tdefs.c
+@@ -147,7 +147,7 @@ getTdefsByNumber(int nTable)
+ }
+ */
+ tdef *
+-getSimpleTdefsByNumber(nTable)
++getSimpleTdefsByNumber(int nTable)
+ {
+    if (nTable >= S_BRAND)
+       return(&s_tdefs[nTable - S_BRAND]);
+diff --git a/tools/w_call_center.c b/tools/w_call_center.c
+index ce3512f..3e47cfc 100644
+--- a/tools/w_call_center.c
++++ b/tools/w_call_center.c
+@@ -44,8 +44,10 @@
+ #include <netinet/in.h>
+ #endif
+ #ifndef USE_STDLIB_H
++#ifndef MACOS
+ #include <malloc.h>
+ #endif
++#endif
+ #include "w_call_center.h"
+ #include "date.h"
+ #include "decimal.h"
+diff --git a/tools/w_household_demographics.c b/tools/w_household_demographics.c
+index f0f04ba..07e852e 100644
+--- a/tools/w_household_demographics.c
++++ b/tools/w_household_demographics.c
+@@ -43,8 +43,10 @@
+ #include <netinet/in.h>
+ #endif
+ #ifndef USE_STDLIB_H
++#ifndef MACOS
+ #include <malloc.h>
+ #endif
++#endif
+ #include "genrand.h"
+ #include "w_household_demographics.h"
+ #include "print.h"

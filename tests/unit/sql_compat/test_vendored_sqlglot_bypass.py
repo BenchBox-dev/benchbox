@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import functools
 import hashlib
 import re
 from collections import defaultdict
@@ -313,14 +314,40 @@ def _python_files(roots: Sequence[Path], repo_root: Path) -> Iterator[tuple[str,
             yield path.relative_to(repo_root).as_posix(), path
 
 
-def scan_package(roots: Sequence[Path] = SCAN_ROOTS, repo_root: Path = REPO_ROOT) -> dict[tuple[str, str], Summary]:
+VENDOR_TOKENS = frozenset({VENDOR_PACKAGE.rsplit(".", 1)[-1], VENDOR_PACKAGE, *DYNAMIC_FRAGMENTS})
+FORK_REWRITE_TOKENS = frozenset({FORK_REWRITE_PACKAGE, "sqlglot.benchbox", *VENDOR_TOKENS})
+UPSTREAM_TOKENS = frozenset({"sqlglot"})
+
+
+def _read_candidate(path: Path, tokens: frozenset[str] | None) -> str | None:
+    text = path.read_text(encoding="utf-8")
+    if tokens is not None and not any(token in text for token in tokens):
+        return None
+    return text
+
+
+def scan_package(
+    roots: Sequence[Path] = SCAN_ROOTS, repo_root: Path = REPO_ROOT, *, prefilter: bool = True
+) -> dict[tuple[str, str], Summary]:
     offenders: dict[tuple[str, str], Summary] = {}
     for relative, path in _python_files(roots, repo_root):
         if relative.startswith(ALLOWED_PATHS):
             continue
-        for kind, summary in summarize(scan_source(path.read_text(encoding="utf-8"))).items():
+        text = _read_candidate(path, VENDOR_TOKENS if prefilter else None)
+        if text is None:
+            continue
+        for kind, summary in summarize(scan_source(text)).items():
             offenders[(relative, kind)] = summary
     return offenders
+
+
+@functools.cache
+def _repository_scan() -> tuple[tuple[tuple[str, str], Summary], ...]:
+    return tuple(scan_package().items())
+
+
+def repository_scan() -> dict[tuple[str, str], Summary]:
+    return dict(_repository_scan())
 
 
 @dataclass(frozen=True)
@@ -484,7 +511,7 @@ def test_allowlist_never_exempts_allowed_paths_or_sql_compat():
 
 
 def test_no_new_vendored_sqlglot_bypass_callers():
-    diff = diff_allowlist(scan_package(), BYPASS_ALLOWLIST)
+    diff = diff_allowlist(repository_scan(), BYPASS_ALLOWLIST)
     assert not diff.new_or_grown, (
         "Fork use outside benchbox/utils/dialect_utils.py and the vendor bootstrap "
         f"((path, kind): (listed, actual)): {diff.new_or_grown}. "
@@ -493,14 +520,14 @@ def test_no_new_vendored_sqlglot_bypass_callers():
 
 
 def test_bypass_allowlist_has_no_stale_entries():
-    diff = diff_allowlist(scan_package(), BYPASS_ALLOWLIST)
+    diff = diff_allowlist(repository_scan(), BYPASS_ALLOWLIST)
     assert not diff.stale, (
         f"Allowlist entries exceed actual findings; shrink them ((path, kind): (listed, actual)): {diff.stale}"
     )
 
 
 def test_bypass_allowlist_digests_match_the_matched_constructs():
-    diff = diff_allowlist(scan_package(), BYPASS_ALLOWLIST)
+    diff = diff_allowlist(repository_scan(), BYPASS_ALLOWLIST)
     assert not diff.swapped, (
         "Counts match but the matched constructs changed; review the swap and re-pin the digest "
         f"((path, kind): (listed, actual)): {diff.swapped}"
@@ -767,17 +794,30 @@ def imports_fork_rewrites(source: str) -> bool:
     return False
 
 
-def scan_fork_rewrite_imports(roots: Sequence[Path] = SCAN_ROOTS, repo_root: Path = REPO_ROOT) -> list[str]:
-    return [
-        relative
-        for relative, path in _python_files(roots, repo_root)
-        if not relative.startswith(FORK_REWRITE_ALLOWED_PATHS)
-        and imports_fork_rewrites(path.read_text(encoding="utf-8"))
-    ]
+def scan_fork_rewrite_imports(
+    roots: Sequence[Path] = SCAN_ROOTS, repo_root: Path = REPO_ROOT, *, prefilter: bool = True
+) -> list[str]:
+    offenders: list[str] = []
+    for relative, path in _python_files(roots, repo_root):
+        if relative.startswith(FORK_REWRITE_ALLOWED_PATHS):
+            continue
+        text = _read_candidate(path, FORK_REWRITE_TOKENS if prefilter else None)
+        if text is not None and imports_fork_rewrites(text):
+            offenders.append(relative)
+    return offenders
+
+
+@functools.cache
+def _repository_fork_rewrite_scan() -> tuple[str, ...]:
+    return tuple(scan_fork_rewrite_imports())
+
+
+def repository_fork_rewrite_scan() -> list[str]:
+    return list(_repository_fork_rewrite_scan())
 
 
 def test_only_the_wrapper_imports_fork_rewrites():
-    offenders = scan_fork_rewrite_imports()
+    offenders = repository_fork_rewrite_scan()
     assert not offenders, (
         f"Fork rewrite functions are imported outside benchbox/utils/dialect_utils.py: {offenders}. "
         "Call apply_rewrite instead."
@@ -820,7 +860,7 @@ def test_wrapper_exposes_translate_ddl_as_the_only_fork_ddl_entry():
     from benchbox.utils import dialect_utils
 
     assert callable(dialect_utils.translate_ddl)
-    offenders = [path for path in scan_fork_rewrite_imports() if path != "benchbox/utils/dialect_utils.py"]
+    offenders = [path for path in repository_fork_rewrite_scan() if path != "benchbox/utils/dialect_utils.py"]
     assert offenders == []
 
 
@@ -836,12 +876,20 @@ def imports_upstream_sqlglot(source: str) -> bool:
     return False
 
 
-def scan_upstream_sqlglot_imports(roots: Sequence[Path] = SCAN_ROOTS, repo_root: Path = REPO_ROOT) -> set[str]:
-    return {
-        relative
-        for relative, path in _python_files(roots, repo_root)
-        if imports_upstream_sqlglot(path.read_text(encoding="utf-8"))
-    }
+def scan_upstream_sqlglot_imports(
+    roots: Sequence[Path] = SCAN_ROOTS, repo_root: Path = REPO_ROOT, *, prefilter: bool = True
+) -> set[str]:
+    found: set[str] = set()
+    for relative, path in _python_files(roots, repo_root):
+        text = _read_candidate(path, UPSTREAM_TOKENS if prefilter else None)
+        if text is not None and imports_upstream_sqlglot(text):
+            found.add(relative)
+    return found
+
+
+@functools.cache
+def _repository_upstream_scan() -> frozenset[str]:
+    return frozenset(scan_upstream_sqlglot_imports())
 
 
 def test_upstream_sqlglot_scanner_detects_each_import_form():
@@ -854,7 +902,7 @@ def test_upstream_sqlglot_scanner_detects_each_import_form():
 
 
 def test_upstream_sqlglot_imports_are_exactly_the_allowlisted_project_tools():
-    found = scan_upstream_sqlglot_imports()
+    found = set(_repository_upstream_scan())
     assert found == set(UPSTREAM_SQLGLOT_ALLOWLIST), (
         "Upstream PyPI sqlglot is a different translator from the bundled fork. "
         f"New: {sorted(found - set(UPSTREAM_SQLGLOT_ALLOWLIST))}; stale: {sorted(set(UPSTREAM_SQLGLOT_ALLOWLIST) - found)}"
@@ -891,3 +939,9 @@ def test_dot_directories_such_as_virtualenvs_are_not_scanned(tmp_path: Path):
 
 def test_default_scan_roots_cover_scripts_and_project_tools():
     assert {root.name for root in SCAN_ROOTS} == {"benchbox", "scripts", "_project"}
+
+
+@pytest.mark.slow
+def test_prefiltered_repository_scans_match_unfiltered_scans():
+    assert scan_package(prefilter=False) == repository_scan()
+    assert scan_fork_rewrite_imports(prefilter=False) == repository_fork_rewrite_scan()

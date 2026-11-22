@@ -377,8 +377,8 @@ same module, so it honors the override and the real-home default.
 - A parallel session (`-n` above 0, including the default `-n auto`) always locks. A serial session
   (`-n 0`) locks only when its selected items, after deselection and before the first test, carry a heavy
   marker: `slow`, `stress`, `resource_heavy`, `live_integration`, `docker_integration` or any `live_*`.
-  `make pr-preflight` runs only default-marker `-n 0` targets and a `fast and not (slow or stress ...)`
-  lane, so it never waits. `BENCHBOX_SKIP_TEST_LOCK=1` skips locking entirely and needs owner approval in the current task;
+  `make pr-preflight` runs its mapped `-n 0` targets under `python -m benchbox.utils.host_lock run --admit --guard`,
+  so they wait for the lock, pass admission and run under the watchdog. `BENCHBOX_SKIP_TEST_LOCK=1` skips locking entirely and needs owner approval in the current task;
   the refusal message lists only compliant steps (wait, `make heavy-status`, `make heavy-run`).
 - Admission and the watchdog run only in sessions whose selected items include a heavy marker. A parallel
   session is judged from its `-m` expression, since the controller does not collect: it is heavy when a heavy
@@ -1291,21 +1291,13 @@ asserted contracts; they do not certify live platforms or benchmark compliance.
   NULL warehouse name and preserve input frames. Q78 distinguishes all-NULL sums
   from partial-NULL and complete groups. Dask mixed-direction sorting and its
   available Series operations need explicit coverage.
-- [SCD string comparisons](unit/core/tpcdi/test_etl_scd_processor.py) trim padded
-  text for object and newer pandas string dtypes so whitespace-only changes do
-  not create dimension versions. [Ingest tests](unit/core/tpcdi/test_tpcdi_ingest_dtypes.py)
-  keep date-like CSV, fixed-width and JSON payloads as text; the literal date
-  column is an adversarial inference case. Packaging declares the pandas floor.
 - [TPC-DS streams](unit/core/tpcds/test_throughput_test_coverage.py) use the run's
   stream count and seed, not stream_id-dependent substitutes, and batch dsqgen
   generation once before per-stream translation. The disconnected single-stream
   helper in [runner tests](unit/core/tpcds/benchmark/test_tpcds_runner_streams.py)
   raises NotImplementedError; counting SQL comments cannot establish execution.
-- [TPC-DI dialect tests](unit/core/tpcdi/test_tpcdi_clickhouse_overrides.py) preserve
-  base SQL while checking platform-specific date, derived-relation and aggregate
-  rewrites, parameter substitution and single/bulk retrieval parity. TPC-DS
-  ClickHouse tests reject unexpected generator shapes rather than restoring an
-  unbounded plan silently. These string/translation checks are not live-engine runs.
+- TPC-DS ClickHouse tests reject unexpected generator shapes rather than restoring
+  an unbounded plan silently. These string/translation checks are not live-engine runs.
 - [JoinOrder plan tests](unit/core/joinorder/test_dataframe_join_plan_shape.py)
   check fixed syntactic join topology and the executor's consumed plan, not just
   equal rows. This measures multi-join execution rather than optimizer reordering;
@@ -1477,9 +1469,3 @@ asserted contracts; they do not certify live platforms or benchmark compliance.
   retain the explicit Redshift approximate-percentile parser limitation. Reassess
   that narrow allowlist when the pinned SQLGlot release recognizes the syntax;
   static parser limitations do not certify or prevent adapter execution.
-- [Error recovery fixtures](unit/core/tpcdi/test_error_recovery_coverage.py) use
-  distinct checkpoint identities because time-based IDs can collide within one
-  second. Error-report tests inject log records and substitute statistics, so they
-  do not test the nested statistics call itself. The current manager uses a
-  reentrant lock; the removed comment's deadlock claim is stale. Retry tests
-  retain explicit arithmetic/caps and fresh-manager state isolation.

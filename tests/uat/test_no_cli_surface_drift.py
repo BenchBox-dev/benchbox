@@ -77,7 +77,9 @@ ALLOWED_INTERNAL_CLI_FILES = {
     "benchbox/cli/prompt_guard.py",
     "benchbox/cli/publication_guard.py",
     "benchbox/cli/vendor_provenance_options.py",
+    "benchbox/cli/run_time_limit.py",
     "benchbox/cli/exit_codes.py",
+    "benchbox/cli/unavailable_benchmark.py",
     "benchbox/cli/output.py",
     "benchbox/cli/platform_checks.py",
     "benchbox/cli/presentation/__init__.py",
@@ -111,6 +113,7 @@ ACCEPTED_CLI_SURFACE_DIGESTS = {
     "benchbox/cli/commands/report.py": "e373d381a336a479b892334a140a35e8804bc8d2ac5513d18edff21999ef2b60",
     "benchbox/cli/commands/results.py": "d7e157d2e82397b62e671476c7aa2ee4bf897b5c41a33549a70ee33fd3fd0eac",
     "benchbox/cli/commands/metrics.py": "170f47a581bd13aa1e57a5ddbbb7743630f3600524c3508eb17dccea7f0fe096",
+    "benchbox/cli/commands/datagen.py": "31c8ce606dd25c0036598bc3c6722c98449514e64e58841bbe22fecf57ec83b8",
 }
 FORBIDDEN_CLI_SURFACE_DECORATORS = {"argument", "command", "group", "option"}
 FORBIDDEN_CLI_SURFACE_FUNCTIONS = {

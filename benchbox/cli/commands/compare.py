@@ -33,6 +33,7 @@ from benchbox.core.results.loader import (
 )
 from benchbox.core.results.regression_policy import is_regression
 from benchbox.core.results.schema_policy import is_loader_supported_result_schema
+from benchbox.core.results.tpcdi_audit import LEGACY_TPCDI_REFUSAL, legacy_tpcdi_note
 from benchbox.validation.bundle import COMPANION_SUFFIXES
 
 COMPARE_EXIT_CODES = (
@@ -1300,6 +1301,9 @@ def _load_comparison_files(baseline_path: Path, current_path: Path) -> tuple[Any
     try:
         baseline, baseline_raw = load_result_file(baseline_path)
         current, current_raw = load_result_file(current_path)
+        if legacy_tpcdi_note(baseline) or legacy_tpcdi_note(current):
+            console.print(f"[red]Error: {LEGACY_TPCDI_REFUSAL}[/red]")
+            sys.exit(ExitCode.NOT_COMPARABLE)
         return baseline, baseline_raw, current, current_raw
     except FileNotFoundError as e:
         console.print(f"[red]Error: Result file not found: {e}[/red]")

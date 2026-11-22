@@ -32,7 +32,6 @@ pytestmark = [
         "benchbox/core/tpchavoc/validation.py",
         "benchbox/core/validation/engines.py",
         "benchbox/utils/data_validation.py",
-        "benchbox/core/tpcdi/query_validation.py",
         "benchbox/core/tpchavoc/dataframe_equivalence.py",
         "benchbox/core/tpchavoc/equivalence.py",
         "benchbox/core/results/result_digest.py",

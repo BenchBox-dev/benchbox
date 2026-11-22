@@ -43,7 +43,7 @@ def _schema_validator() -> Draft202012Validator:
 
 class TestConfigCaptureMarker:
     def test_current_schema_is_the_version_that_introduced_the_fields(self) -> None:
-        assert CURRENT_SCHEMA_VERSION == "2.5"
+        assert supports_capture_and_vendor_fields(CURRENT_SCHEMA_VERSION)
         assert supports_capture_and_vendor_fields("2.5")
         assert not supports_capture_and_vendor_fields("2.4")
 

@@ -34,6 +34,7 @@ from benchbox.core.results.query_execution import (
     DURATION_CONSISTENCY_TOLERANCE_MS,
     query_execution_from_legacy_dict,
 )
+from benchbox.core.results.tpcdi_audit import LEGACY_TPCDI_REFUSAL, is_legacy_tpcdi_bundle
 
 logger = logging.getLogger(__name__)
 
@@ -81,12 +82,15 @@ class PlatformComparison:
             try:
                 with open(path, encoding="utf-8") as f:
                     data = json.load(f)
+                legacy = is_legacy_tpcdi_bundle(data)
                 result = _dict_to_benchmark_results(data)
                 results.append(result)
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON in {path}: {e}") from e
             except Exception as e:
                 raise ValueError(f"Failed to parse {path}: {e}") from e
+            if legacy:
+                raise ValueError(LEGACY_TPCDI_REFUSAL)
 
         return cls(results, config)
 

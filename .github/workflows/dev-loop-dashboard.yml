@@ -1,0 +1,58 @@
+name: Dev-loop dashboard
+
+on:
+  schedule:
+    - cron: "41 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Trailing window length in days'
+        required: false
+        default: '7'
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: dev-loop-dashboard
+  cancel-in-progress: false
+
+jobs:
+  dashboard:
+    name: Write the dev-loop dashboard
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Compute the dashboard for the trailing window
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WINDOW_DAYS: ${{ inputs.days || '7' }}
+        run: |
+          set -euo pipefail
+          python3 scripts/dev_loop_dashboard.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --days "$WINDOW_DAYS" \
+            --max-api-calls 900 \
+            --output "$RUNNER_TEMP/dev-loop-dashboard.md"
+          cat "$RUNNER_TEMP/dev-loop-dashboard.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the dashboard
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: dev-loop-dashboard-${{ github.run_id }}
+          path: ${{ runner.temp }}/dev-loop-dashboard.md
+          retention-days: 90
+          if-no-files-found: error

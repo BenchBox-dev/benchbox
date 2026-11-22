@@ -2,8 +2,6 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
-import uuid
-from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, Union
 
@@ -26,7 +24,13 @@ from benchbox.core.platform_config import (
 from benchbox.core.platform_manifest import get_all_platform_aliases
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.results.models import BenchmarkResults
-from benchbox.core.run_service import execute_run, resolve_lifecycle_phases, resolve_run_config
+from benchbox.core.run_service import (
+    BenchmarkUnavailableError,
+    build_unfinished_result,
+    execute_run,
+    resolve_lifecycle_phases,
+    resolve_run_config,
+)
 from benchbox.core.schemas import ExecutionContext
 from benchbox.platforms import get_adapter, get_platform_adapter
 from benchbox.utils.cloud_storage import is_databricks_path
@@ -41,30 +45,8 @@ def resolved_deployment_mode(database_config) -> Optional[str]:
 
 
 def _build_failure_result(config: BenchmarkConfig, exc: Exception) -> BenchmarkResults:
-    from benchbox.core.results.models import ExecutionPhases, SetupPhase
-
-    return BenchmarkResults(
-        benchmark_name=getattr(config, "display_name", config.name.upper()),
-        platform="unknown",
-        scale_factor=config.scale_factor,
-        execution_id=uuid.uuid4().hex[:8],
-        timestamp=datetime.now(),
-        duration_seconds=0.0,
-        total_queries=0,
-        successful_queries=0,
-        failed_queries=0,
-        total_execution_time=0.0,
-        average_query_time=0.0,
-        query_results=[],
-        query_definitions={},
-        execution_phases=ExecutionPhases(setup=SetupPhase()),
-        validation_status="FAILED",
-        validation_details={"error": str(exc)},
-        data_loading_time=0.0,
-        schema_creation_time=0.0,
-        total_rows_loaded=0,
-        data_size_mb=0.0,
-        table_statistics={},
+    return build_unfinished_result(
+        config, platform="unknown", validation_status="FAILED", validation_details={"error": str(exc)}
     )
 
 
@@ -222,6 +204,8 @@ class BenchmarkOrchestrator:
                 execution_context=execution_context,
             )
 
+        except BenchmarkUnavailableError:
+            raise
         except Exception as e:
             if database_config and self._should_offer_credential_setup(database_config, e):
                 if self._offer_and_run_credential_setup(database_config.type):

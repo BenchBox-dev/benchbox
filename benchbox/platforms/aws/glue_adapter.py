@@ -34,6 +34,7 @@ from benchbox.platforms.base.cloud_spark import (
 )
 from benchbox.platforms.base.cloud_spark.config import CloudPlatform
 from benchbox.platforms.base.phase_tracking import _resolve_benchmark_table_names
+from benchbox.platforms.base.remote_work import StartedRemoteWork
 from benchbox.utils.dependencies import (
     check_platform_dependencies,
     get_dependency_error_message,
@@ -134,6 +135,7 @@ class AWSGlueAdapter(SparkTuningMixin, SparkExternalTableMixin, PlatformAdapter)
 
         self._job_name: str | None = None
         self._job_runs: list[str] = []
+        self._started_work = StartedRemoteWork()
 
         self._total_dpu_hours = 0.0
         self._query_count = 0
@@ -468,6 +470,7 @@ job.commit()
 
         run_id = response["JobRunId"]
         self._job_runs.append(run_id)
+        self._started_work.add(run_id)
         logger.info(f"Started job run: {run_id}")
 
         return run_id
@@ -487,6 +490,7 @@ job.commit()
             status = response["JobRun"]["JobRunState"]
 
             if status in terminal_states:
+                self._started_work.discard(run_id)
                 execution_time = response["JobRun"].get("ExecutionTime", 0)
                 dpu_hours = (execution_time / 3600) * self.number_of_workers
                 self._total_dpu_hours += dpu_hours
@@ -518,6 +522,16 @@ job.commit()
                         results.append(json.loads(line))
 
         return results
+
+    def _stop_job_run(self, client: Any, run_id: str) -> None:
+        response = client.batch_stop_job_run(JobName=self._job_name, JobRunIds=[run_id])
+        errors = [error for error in response.get("Errors") or [] if error.get("JobRunId") in (None, run_id)]
+        if errors:
+            raise RuntimeError(f"BatchStopJobRun refused to stop {run_id}: {errors}")
+
+    def cancel_remote_work(self) -> None:
+        client = self._get_glue_client()
+        self._started_work.cancel_all("AWS Glue", lambda run_id, _: self._stop_job_run(client, run_id))
 
     def close(self) -> None:
         logger.info(f"AWS Glue adapter closed. Total DPU-hours: {self._total_dpu_hours:.2f}")

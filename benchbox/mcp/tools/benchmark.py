@@ -28,7 +28,9 @@ from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 from benchbox.core.results.exporter import ResultExporter
 from benchbox.core.results.integrity_validator import ResultIntegrityValidator, report_payload
 from benchbox.core.results.schema import build_result_payload
+from benchbox.core.run_cleanup_warning import cloud_cleanup_warning
 from benchbox.core.run_selection import RunSelection, resolve_run_selection
+from benchbox.core.run_service import unavailable_benchmark_message
 from benchbox.core.tuning import modes as tuning_modes
 from benchbox.mcp.deprecations import attach_deprecations
 from benchbox.mcp.errors import (
@@ -54,6 +56,11 @@ from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dependencies import BENCHMARK_LOAD_ERRORS
 from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 from benchbox.utils.printing import get_quiet_console, silence_output
+from benchbox.utils.run_deadline import (
+    RUN_TIMEOUT_OPTION_KEY,
+    TIMED_OUT_VALIDATION_STATUS,
+    validate_timeout_seconds,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +122,7 @@ def register_benchmark_tools(
     platform_policy: LocalPlatformPolicy = DEFAULT_LOCAL_PLATFORM_POLICY,
 ) -> None:
     @mcp.tool(
-        description="Run a benchmark on a database platform.\n\n        Args:\n            platform: Target platform (duckdb, polars-df, snowflake, etc.)\n            benchmark: Benchmark to run (tpch, tpcds, tpcds_obt, ssb, joinorder, clickbench, nyctaxi, tsbs_devops, h2odb, amplab, coffeeshop, tpch_skew, datavault, tpcdi, write_primitives, read_primitives, and more)\n            scale_factor: Data scale factor (0.01 for testing, 1+ for production; joinorder uses canonical IMDb 2013 data and only accepts 1.0)\n            queries: Comma-separated query IDs to run (e.g., \"1,3,6\")\n            phases: Comma-separated phases (default: \"load,power\")\n            mode: Execution mode: 'sql', 'dataframe', or 'data_only'\n            capture_plans: Capture query execution plans (3-8%% overhead). Supported: DuckDB, PostgreSQL, DataFusion.\n            dry_run: Preview execution plan without running\n            validate_only: Validate configuration without running\n            link_probe: Measure post-benchmark statement overhead (6 metered SELECT 1 statements on billable warehouses). Set false to skip; equivalent to the CLI --no-link-probe flag.\n            platform_options: Bounded, non-secret platform settings approved for the selected platform.\n            seed: RNG seed for query parameter generation, 0 to 2147483647 (default: unset; same as the CLI --seed). The effective value is reported in mcp_metadata.\n            iterations: Power test measurement iterations, at least 1 (default: 3; power or standard phase only; same as the CLI --iterations). The effective value is reported in mcp_metadata.\n\n        Returns:\n            Benchmark results, dry-run preview, or validation status.\n\n        Before reporting a run, call validate_results on its result file and report the WARN and FAIL findings. A completed run also carries that validator's verdict in its integrity field (overall_status PASS, WARN or FAIL, with the non-passing checks). A run that ends without a result file returns an MCP error (is_error true) with the cause. Compare two results only when their benchmark, scale, phase, configuration, tuning, hardware and evidence are compatible; a shared benchmark name alone is not enough.\n\n        Platform options are a deliberately smaller MCP contract than the CLI\n        ``--platform-option`` surface. Only bounded, non-secret execution\n        settings are accepted; credentials, endpoints, paths, and package\n        installation controls must remain server configuration.\n\n        JoinOrder note:\n            The public joinorder benchmark downloads and verifies the canonical IMDb 2013\n            Parquet archive on first use, then reuses BENCHBOX_OUTPUT_DIR/benchmark_runs/datagen/joinorder_sf1/.\n        ",
+        description="Run a benchmark on a database platform.\n\n        Args:\n            platform: Target platform (duckdb, polars-df, snowflake, etc.)\n            benchmark: Benchmark to run (tpch, tpcds, tpcds_obt, ssb, joinorder, clickbench, nyctaxi, tsbs_devops, h2odb, amplab, coffeeshop, tpch_skew, datavault, write_primitives, read_primitives, and more)\n            scale_factor: Data scale factor (0.01 for testing, 1+ for production; joinorder uses canonical IMDb 2013 data and only accepts 1.0)\n            queries: Comma-separated query IDs to run (e.g., \"1,3,6\")\n            phases: Comma-separated phases (default: \"load,power\")\n            mode: Execution mode: 'sql', 'dataframe', or 'data_only'\n            capture_plans: Capture query execution plans (3-8%% overhead). Supported: DuckDB, PostgreSQL, DataFusion.\n            dry_run: Preview execution plan without running\n            validate_only: Validate configuration without running\n            link_probe: Measure post-benchmark statement overhead (6 metered SELECT 1 statements on billable warehouses). Set false to skip; equivalent to the CLI --no-link-probe flag.\n            platform_options: Bounded, non-secret platform settings approved for the selected platform.\n            seed: RNG seed for query parameter generation, 0 to 2147483647 (default: unset; same as the CLI --seed). The effective value is reported in mcp_metadata.\n            iterations: Power test measurement iterations, at least 1 (default: 3; power or standard phase only; same as the CLI --iterations). The effective value is reported in mcp_metadata.\n            timeout_seconds: Stop the whole run (generate, load and execute) after this many seconds (default: unset, no limit; 0 also means no limit; same as the CLI --timeout). A run stopped at its limit returns mcp_metadata.status 'timed_out' with a partial result that must not be published or compared; do not retry it unchanged.\n\n        Returns:\n            Benchmark results, dry-run preview, or validation status.\n\n        Before reporting a run, call validate_results on its result file and report the WARN and FAIL findings. A completed run also carries that validator's verdict in its integrity field (overall_status PASS, WARN or FAIL, with the non-passing checks). A run that ends without a result file returns an MCP error (is_error true) with the cause. Compare two results only when their benchmark, scale, phase, configuration, tuning, hardware and evidence are compatible; a shared benchmark name alone is not enough.\n\n        Platform options are a deliberately smaller MCP contract than the CLI\n        ``--platform-option`` surface. Only bounded, non-secret execution\n        settings are accepted; credentials, endpoints, paths, and package\n        installation controls must remain server configuration.\n\n        JoinOrder note:\n            The public joinorder benchmark downloads and verifies the canonical IMDb 2013\n            Parquet archive on first use, then reuses BENCHBOX_OUTPUT_DIR/benchmark_runs/datagen/joinorder_sf1/.\n        ",
         annotations=RUN_BENCHMARK_ANNOTATIONS,
     )
     def run_benchmark(
@@ -133,14 +140,18 @@ def register_benchmark_tools(
         platform_options: dict[str, object] | None = None,
         seed: int | None = None,
         iterations: int | None = None,
+        timeout_seconds: int | None = None,
     ) -> dict[str, Any]:
         begin_run()
+        if (unavailable := _unavailable_benchmark_response(benchmark)) is not None:
+            return attach_deprecations(unavailable)
         try:
             normalized_platform_options = validate_platform_options(platform, platform_options)
             resolved_execution_engine = validate_execution_engine(platform, execution_engine)
             selection = resolve_run_selection(platform, resolved_execution_engine, normalized_platform_options)
             validate_seed(seed)
             validate_iterations(iterations)
+            validate_timeout_seconds(timeout_seconds)
         except ValueError as exc:
             response = make_error(ErrorCode.VALIDATION_ERROR, str(exc), details={"platform": platform})
             response["status"] = "failed"
@@ -203,6 +214,7 @@ def register_benchmark_tools(
                 platform_options=normalized_platform_options,
                 seed=seed,
                 iterations=iterations,
+                timeout_seconds=timeout_seconds,
                 results_dir=resolve_path_provider(results_dir),
                 anonymize=anonymize_results,
             )
@@ -221,8 +233,8 @@ def register_benchmark_tools(
         benchmark_lower = benchmark.lower()
         all_benchmarks = get_all_benchmarks()
 
-        if benchmark_lower not in all_benchmarks:
-            return make_not_found_error("benchmark", benchmark, available=list(all_benchmarks.keys()))
+        if (refusal := _query_details_refusal(benchmark, all_benchmarks)) is not None:
+            return refusal
 
         try:
             resolved_mode = _resolve_query_details_mode(platform, mode)
@@ -278,6 +290,7 @@ def _run_under_platform_policy(
     platform_options: Mapping[str, object],
     seed: int | None,
     iterations: int | None,
+    timeout_seconds: int | None,
     results_dir: Path,
     anonymize: bool,
 ) -> dict[str, Any]:
@@ -298,13 +311,23 @@ def _run_under_platform_policy(
         platform_options=platform_options,
         seed=seed,
         iterations=iterations,
+        timeout_seconds=timeout_seconds,
         results_dir=results_dir,
         anonymize=anonymize,
         billable_acknowledgement=acknowledgement,
     )
     if scale_note and response.get("status") not in ("error", "failed"):
         response.setdefault("warnings", []).append(scale_note)
+    limit_warning = run_limit_warning(platform, timeout_seconds)
+    if limit_warning:
+        response.setdefault("warnings", []).append(limit_warning)
     return response
+
+
+def run_limit_warning(platform: str, timeout_seconds: int | None) -> str | None:
+    if validate_timeout_seconds(timeout_seconds) is None:
+        return None
+    return cloud_cleanup_warning(platform)
 
 
 def _apply_platform_policy(
@@ -332,7 +355,7 @@ def _apply_platform_policy(
     return None, policy.acknowledgement_record(selection.platform, selection.deployment, platform_options)
 
 
-_RUN_ERROR_STATUSES = frozenset({"incomplete", "no_results"})
+_RUN_ERROR_STATUSES = frozenset({"incomplete", "no_results", "timed_out"})
 
 
 def _as_tool_result(response: dict[str, Any]) -> dict[str, Any]:
@@ -353,6 +376,33 @@ def _as_tool_result(response: dict[str, Any]) -> dict[str, Any]:
             is_error=True,
         ),
     )
+
+
+def _query_details_refusal(benchmark: str, all_benchmarks: Mapping[str, Any]) -> dict[str, Any] | None:
+    unavailable = _unavailable_benchmark_response(benchmark)
+    if unavailable is not None:
+        return unavailable
+    if benchmark.lower() not in all_benchmarks:
+        return make_not_found_error("benchmark", benchmark, available=list(all_benchmarks.keys()))
+    return None
+
+
+def _unavailable_benchmark_response(benchmark: str) -> dict[str, Any] | None:
+    message = unavailable_benchmark_message(benchmark)
+    if message is None:
+        return None
+    metadata = get_all_benchmarks().get(benchmark.lower().replace("-", "").replace("_", ""), {})
+    response = make_error(
+        ErrorCode.VALIDATION_ERROR,
+        message,
+        details={
+            "benchmark": benchmark,
+            "support_status": metadata.get("support_status"),
+            "query_count": metadata.get("num_queries", 0),
+        },
+    )
+    response["status"] = "failed"
+    return response
 
 
 def _make_failed_response(error_response: dict[str, Any], execution_id: str) -> dict[str, Any]:
@@ -442,6 +492,7 @@ def _execute_mcp_run_via_core(
     link_probe: bool = True,
     seed: int | None = None,
     iterations: int | None = None,
+    timeout_seconds: int | None = None,
     normalized_platform_options: Mapping[str, object],
     results_dir: Path,
     execution_id: str,
@@ -538,6 +589,7 @@ def _execute_mcp_run_via_core(
         options={
             **({"seed": seed} if seed is not None else {}),
             **({"power_iterations": iterations} if iterations is not None else {}),
+            **({RUN_TIMEOUT_OPTION_KEY: timeout_seconds} if timeout_seconds else {}),
         },
     )
     benchmark_config.test_execution_type = map_phases_to_execution_type(phases)
@@ -716,9 +768,13 @@ def _build_run_response(
         )
     elif result_payload:
         response["integrity"] = _integrity_verdict(result_payload)
+    timed_out = bool(result) and getattr(result, "validation_status", None) == TIMED_OUT_VALIDATION_STATUS
     response["mcp_metadata"] = {
         "execution_id": execution_id,
-        "status": "incomplete" if export_failed else ("completed" if result else "no_results"),
+        "status": "incomplete"
+        if export_failed
+        else ("timed_out" if timed_out else ("completed" if result else "no_results")),
+        **({"timeout": (result.validation_details or {}).get("timeout")} if timed_out else {}),
         "platform_requested": platform,
         "benchmark_requested": benchmark,
         "scale_factor_requested": scale_factor,
@@ -744,6 +800,7 @@ def _run_benchmark_impl(
     *,
     seed: int | None = None,
     iterations: int | None = None,
+    timeout_seconds: int | None = None,
     execution_engine: str = "default",
     platform_options: Mapping[str, object] | None = None,
     results_dir: Path,
@@ -752,6 +809,8 @@ def _run_benchmark_impl(
     billable_acknowledgement: Mapping[str, object] | None = None,
 ) -> dict[str, Any]:
     execution_id = execution_id or f"mcp_{uuid.uuid4().hex[:8]}"
+    if (unavailable := _unavailable_benchmark_response(benchmark)) is not None:
+        return _make_failed_response(unavailable, execution_id)
     start_time = mono_time()
 
     try:
@@ -793,6 +852,7 @@ def _run_benchmark_impl(
             link_probe=link_probe,
             seed=seed,
             iterations=iterations,
+            timeout_seconds=timeout_seconds,
             normalized_platform_options=normalized_platform_options,
             results_dir=results_dir,
             execution_id=execution_id,

@@ -12,7 +12,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 WORKFLOW = Path(__file__).resolve().parents[3] / ".github" / "workflows" / "ci.yml"
 JOB = "short-checks"
 GATE_CHECKS = {
-    "tooling": {"always": {"comment-policy"}, "expect": {}},
+    "tooling": {"always": {"comment-policy", "copy-guard"}, "expect": {}},
     "docs": {
         "always": set(),
         "expect": {
@@ -27,6 +27,7 @@ GATE_CHECKS = {
 }
 CHECK_STEPS = {
     "comment-policy": ["comment-policy", "notice-drift"],
+    "copy-guard": ["copy-guard"],
     "spellcheck": ["spellcheck"],
     "results-data-check": [
         "results-python",
@@ -105,3 +106,23 @@ def test_each_check_keeps_its_python_version() -> None:
         assert steps[step_id]["env"]["UV_PYTHON"] == "3.12", step_id
     for step_id in CHECK_STEPS["example-validation"][1:]:
         assert steps[step_id]["env"]["UV_PYTHON"] == "3.11", step_id
+
+
+def test_copy_guard_runs_on_every_pull_request_whatever_the_path_filter_decides() -> None:
+    steps = _steps()
+    for step_id in CHECK_STEPS["copy-guard"]:
+        assert "needs.ci-paths" not in steps[step_id].get("if", ""), step_id
+    run = steps["copy-guard"]["run"]
+    assert 'git show "${BASE_REF}:${guard}"' in run
+    assert "guard=scripts/check_tpcdi_copy_guard.py" in run
+    assert 'cd "$RUNNER_TEMP"' in run
+    assert 'python -I -S copy_guard.py --root "$GITHUB_WORKSPACE"' in run
+    assert "--hash-list forbidden_hashes.json --approved-hashes approved_hashes.json" in run
+    assert 'git show "${BASE_REF}:${hash_list}" > "$RUNNER_TEMP/forbidden_hashes.json"' in run
+    assert 'git show "${BASE_REF}:${approved}" > "$RUNNER_TEMP/approved_hashes.json"' in run
+    assert "hash_list=_sources/tpc-di/databricks-tpc-di/FORBIDDEN_HASHES.json" in run
+    assert "approved=quality/comment-policy-approved-external-hashes.json" in run
+    for forbidden in ("uv ", "pytest", "pip ", "pip3"):
+        assert forbidden not in run
+    assert "UV_PYTHON" not in steps["copy-guard"].get("env", {})
+    assert steps["copy-guard"]["env"]["BASE_REF"] == "${{ github.event.pull_request.base.sha }}"

@@ -1,0 +1,144 @@
+diff --git a/tools/params.h b/tools/params.h
+index 9c8aa8c..67090ea 100644
+--- a/tools/params.h
++++ b/tools/params.h
+@@ -50,7 +50,7 @@ option_t options[] =
+ {"PARAMS",		OPT_STR,			6, "read parameters from file <s>", read_file, ""}, 
+ {"PROG",		OPT_STR|OPT_HIDE|OPT_SET,	7, "DO NOT MODIFY" , NULL, "dsdgen"}, 
+ {"QUIET",		OPT_FLG,			8, "disable all output to stdout/stderr", NULL, "N"}, 
+-{"SCALE",		OPT_INT,			9,"volume of data to generate in GB", SetScaleIndex, "1"}, 
++{"SCALE",		OPT_STR,			9,"volume of data to generate in GB", SetScaleIndex, "1"}, 
+ {"SUFFIX",		OPT_STR|OPT_ADV,	10,"use <s> as output file suffix", NULL, ".dat"}, 
+ {"TABLE",		OPT_STR,			11,"build only table <s>", NULL, "ALL"}, 
+ {"TERMINATE",	OPT_FLG|OPT_ADV,	12,"end each record with a field delimiter", NULL, "Y"}, 
+diff --git a/tools/r_params.c b/tools/r_params.c
+index 4db16e5..f8e579c 100644
+--- a/tools/r_params.c
++++ b/tools/r_params.c
+@@ -252,6 +252,19 @@ get_int(char *var)
+ 		return(0);
+ }
+ 
++double
++get_dbl(char *var)
++{
++	int nParam;
++
++	init_params();
++	nParam = fnd_param(var);
++	if (nParam >= 0)
++		return(atof(params[options[nParam].index]));
++	else
++		return(0.0);
++}
++
+ /*
+  * Routine: set_str(int var, char *value)
+  * Purpose: set a character parameter
+diff --git a/tools/r_params.h b/tools/r_params.h
+index ce63f48..1698e64 100644
+--- a/tools/r_params.h
++++ b/tools/r_params.h
+@@ -66,6 +66,7 @@ int	process_options(int count, char **args);
+ char	*get_str(char *var);
+ void	set_str(char *param, char *value);
+ int		get_int(char *var);
++double	get_dbl(char *var);
+ void	set_int(char *var, char *val);
+ int		is_set(char *flag);
+ void	clr_flg(char *flag);
+diff --git a/tools/scaling.c b/tools/scaling.c
+index 5cc9be5..e5cf1ef 100644
+--- a/tools/scaling.c
++++ b/tools/scaling.c
+@@ -254,8 +254,9 @@ ds_key_t
+ get_rowcount(int table)
+ {
+ 
+-	static int bScaleSet = 0,
+-      nScale;
++	static int bScaleSet = 0;
++	static double nScale;
++	int iScale;
+ 	int nTable,
+ 		nMultiplier,
+ 		i,
+@@ -265,14 +266,15 @@ get_rowcount(int table)
+ 	
+ 	if (!bScaleSet)
+ 	{		
+-		nScale = get_int("SCALE");
++		nScale = get_dbl("SCALE");
+ 		if (nScale > 100000)
+ 			ReportErrorNoLine(QERR_BAD_SCALE, NULL, 1);
+ 
+ 		memset(arRowcount, 0, sizeof(long) * MAX_TABLE);
++		iScale = (nScale < 1) ? 1 : (int)nScale;
+ 		for (nTable=CALL_CENTER; nTable <= MAX_TABLE; nTable++)
+ 		{
+-			switch(nScale)
++			switch(iScale)
+ 			{
+ 			case 100000:
+ 				arRowcount[nTable].kBaseRowcount = dist_weight(NULL, "rowcounts", nTable + nRowcountOffset + 1, 9);
+@@ -333,6 +335,18 @@ get_rowcount(int table)
+ 				nMultiplier *= 10;
+ 			arRowcount[nTable].kBaseRowcount *= nMultiplier;
+ 
++			if (arRowcount[nTable].kBaseRowcount >= 0)
++			{
++				if (nScale < 1)
++				{
++					int mem = dist_member(NULL, "rowcounts", nTable + 1, 3);
++					if (!(mem == 1 && nMultiplier == 1))
++						arRowcount[nTable].kBaseRowcount = (ds_key_t)((double)arRowcount[nTable].kBaseRowcount * nScale);
++					if (arRowcount[nTable].kBaseRowcount == 0)
++						arRowcount[nTable].kBaseRowcount = 1;
++				}
++			}
++
+       } /* for each table */
+ 
+ 		
+@@ -343,7 +357,7 @@ get_rowcount(int table)
+ 	}
+ 	
+ 	if ((table == INVENTORY))
+-		return(sc_w_inventory(nScale));
++		return(sc_w_inventory((int)nScale));
+ 	if ((table == S_INVENTORY))
+ 		return(getIDCount(ITEM) * get_rowcount(WAREHOUSE) * 6);
+ 
+diff --git a/tools/w_call_center.c b/tools/w_call_center.c
+index 3413c27..ce3512f 100644
+--- a/tools/w_call_center.c
++++ b/tools/w_call_center.c
+@@ -99,8 +99,8 @@ mk_w_call_center (void* row, ds_key_t index)
+ 
+ 	/* begin locals declarations */
+ 	date_t dTemp;
+-	static int bInit = 0,
+-		nScale;
++	static int bInit = 0;
++	static double nScale;
+ 	struct CALL_CENTER_TBL *r,
+ 		*rOldValues = &g_OldValues;
+ 
+@@ -118,7 +118,7 @@ mk_w_call_center (void* row, ds_key_t index)
+ 		jDateEnd = dttoj(&dTemp);
+ 		nDateRange = jDateEnd - jDateStart + 1; 
+ 		nDaysPerRevision = nDateRange / pTdef->nParam + 1;
+-		nScale = get_int("SCALE");
++		nScale = get_dbl("SCALE");
+ 		
+ 		/* these fields need to be handled as part of SCD code or further definition */
+ 		r->cc_division_id = -1;
+@@ -168,7 +168,7 @@ mk_w_call_center (void* row, ds_key_t index)
+ 	pick_distribution (&r->cc_class, "call_center_class", 1, 1, CC_CLASS);
+ 	changeSCD(SCD_PTR, &r->cc_class, &rOldValues->cc_class,  &nFieldChangeFlags,  bFirstRecord);
+ 
+-	genrand_integer (&r->cc_employees, DIST_UNIFORM, 1, CC_EMPLOYEE_MAX * nScale * nScale, 0, CC_EMPLOYEES);
++	genrand_integer (&r->cc_employees, DIST_UNIFORM, 1, nScale >= 1 ? (int)(CC_EMPLOYEE_MAX * nScale * nScale) : (int)CC_EMPLOYEE_MAX, 0, CC_EMPLOYEES);
+ 	changeSCD(SCD_INT, &r->cc_employees, &rOldValues->cc_employees,  &nFieldChangeFlags,  bFirstRecord);
+ 
+ 	genrand_integer(&r->cc_sq_ft, DIST_UNIFORM, 100, 700, 0, CC_SQ_FT);

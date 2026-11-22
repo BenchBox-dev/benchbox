@@ -56,7 +56,7 @@ Owner decisions of 2026-10-27:
 
 - The per-test 0.5 s duration requirement (dlv2-13) is superseded by the aggregate fast-duration gate:
   `scripts/build_fast_duration_baseline.py`, `fast-duration-baseline-refresh.yml`, the `verify-fast-duration`
-  verdict and `tests/fixtures/fast_tier_baseline`. Evidence is PR #3625 and the "Fast-test duration policy" section
+  verdict, `tests/fixtures/fast_tier_baseline` and the absolute ceiling in `quality/fast-duration-ceiling.json`. Evidence is PR #3625 and the "Fast-test duration policy" section
   of `docs/internal/nightly-t3.md`. `tests/fixtures/test_durations.json` and the `duration_exempt` marker are removed.
 - The browser check is ported to the site repository (`dlv2-site-browser-check`) and the Explorer-token lint is
   retired. The `t3:browser` check (Explorer Firefox and WebKit smoke) is now
@@ -175,7 +175,8 @@ with maintainer and release-manager escalation as described in
 | `trunk-red-disarm.yml` | product-safety | Completed develop Trunk run disables auto-merge on armed PRs the arm gate would refuse |
 | `upload-answers.yml` | product-safety | Answer file publication |
 | `trunk-duration-trend.yml` | tooling | Daily comparison of Trunk job p50 durations with the prior week; opens or closes one issue assigned to the repository owner; read-only actions access plus issue writes |
-| `fast-duration-baseline-refresh.yml` | tooling | Weekly regeneration of the committed fast-tier duration baseline from successful merged-PR fast-junit artifacts; opens one pull request with contents and pull-requests write only, bounded logged API calls, and a medium-shard drift report |
+| `dev-loop-dashboard.yml` | tooling | Weekly Markdown report of the dev-loop v2 targets against the recorded baseline, the trunk UAT run history and per-cell infrastructure-failure rate; read-only actions, contents and pull-requests access, one runner, report uploaded as an artifact |
+| `fast-duration-baseline-refresh.yml` | tooling | Weekly regeneration of the committed fast-tier duration baseline from successful merged-PR fast-junit artifacts; opens one pull request with contents, issues and pull-requests write only, bounded logged API calls, and a medium-shard drift report; refuses to open the pull request and raises one issue when the refreshed total is over the ceiling in `quality/fast-duration-ceiling.json`, which it never edits |
 | `validate-submission.yml` | product-safety | Submission validation |
 | `validate-submission-comment.yml` | product-safety | Submission validation comment |
 | `windows-fast.yml` | product-safety | Dispatch-only Windows fast unit suite, the same command as the nightly `t3:windows` domain, preceded by the installed-wheel bundled SQLGlot runtime smoke |
@@ -361,9 +362,11 @@ with maintainer and release-manager escalation as described in
 | `ruleset_drift_check.py` | product-safety | Ruleset drift (KEEP trap) |
 | `check_dependency_bounds.py` | product-safety | Dependency bounds |
 | `ci_failures.py` | tooling | Read-only excerpt of the failing lines of failed CI jobs for a PR head or a run |
+| `corpus_compliance_snapshot.py` | product-safety | Fails when a code change alters the compliance class or ranking exclusion of a committed result bundle |
 | `changelog_fragments.py` | tooling | Changelog fragment validation, rendering, required-entry decision and Unreleased guard |
 | `check_sqlglot_upstream_freshness.py` | product-safety | Bundled SQLGlot freshness release gate |
 | `check_sqlglot_advisories.py` | product-safety | Bundled SQLGlot published-advisory release gate |
+| `check_line_sqlglot_adoption.py` | product-safety | Maintenance-line guard: a pull request that changes the SQLGlot pin must be a pure adoption whose body carries the recomputed translated-query report |
 | `sqlglot_delivery.py` | product-safety | Consumes the fork's verified runtime deliveries: plans against the reviewed trust root, prepares the adoption commit, publishes one automation-owned pull request and arms it only through the existing arming rules |
 | `generate_landing_quickstarts.py` | product-safety | Landing quickstart generation |
 | `site_inputs.py` | product-safety | Site-inputs bundle build and verify |

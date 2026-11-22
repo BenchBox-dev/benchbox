@@ -66,9 +66,13 @@ def test_check_artifacts_fix_hint_names_exact_regen_command(rows, monkeypatch):
 
 def test_every_shipped_benchmark_is_classified(rows):
     from benchbox.core.benchmark_registry import list_benchmark_ids
+    from benchbox.core.run_service import unavailable_benchmark_message
 
+    shipped = {
+        benchmark_id for benchmark_id in list_benchmark_ids() if unavailable_benchmark_message(benchmark_id) is None
+    }
     mapped = {r["benchmark"] for r in rows}
-    assert mapped == set(list_benchmark_ids()), "coverage map and registry disagree on benchmark set"
+    assert mapped == shipped, "coverage map and registry disagree on benchmark set"
     assert len(rows) == len(mapped), "duplicate benchmark rows in coverage map"
     for r in rows:
         assert r["primary_oracle"], f"{r['benchmark']} has no primary_oracle classification"
@@ -241,7 +245,7 @@ def test_staged_gate_scale_is_read_from_its_own_metadata(monkeypatch):
     staged_scale = EQUIVALENCE_SCALE / 100
     assert staged_scale != EQUIVALENCE_SCALE, "probe scale must differ from the shared default"
 
-    probe_id = "tpcdi"
+    probe_id = "write_primitives"
     assert probe_id not in GATES, f"{probe_id} gained an enforced gate; pick another staged probe"
     template = GATES["coffeeshop"]
     staged = replace(

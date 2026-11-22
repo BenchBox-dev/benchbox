@@ -2,7 +2,6 @@ platform	benchmark	status	decision	reason	template_path
 duckdb	tpch	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/duckdb/tpch_tuned.yaml
 duckdb	tpcds	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/duckdb/tpcds_tuned.yaml
 duckdb	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-duckdb	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 duckdb	ssb	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/duckdb/ssb_tuned.yaml
 duckdb	clickbench	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/duckdb/clickbench_tuned.yaml
 duckdb	h2odb	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/duckdb/h2odb_tuned.yaml
@@ -24,7 +23,6 @@ duckdb	vector_search	basic_constraints	waived	basic constraints are acceptable u
 datafusion	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 datafusion	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 datafusion	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-datafusion	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 datafusion	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 datafusion	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 datafusion	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -46,7 +44,6 @@ datafusion	vector_search	basic_constraints	waived	basic constraints are acceptab
 clickhouse-local	tpch	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/clickhouse/tpch_tuned.yaml
 clickhouse-local	tpcds	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/clickhouse/tpcds_tuned.yaml
 clickhouse-local	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-clickhouse-local	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 clickhouse-local	ssb	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/clickhouse/ssb_tuned.yaml
 clickhouse-local	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 clickhouse-local	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -68,7 +65,6 @@ clickhouse-local	vector_search	basic_constraints	waived	basic constraints are ac
 lakesail	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 lakesail	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 lakesail	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-lakesail	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 lakesail	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 lakesail	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 lakesail	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -90,7 +86,6 @@ lakesail	vector_search	basic_constraints	waived	basic constraints are acceptable
 clickhouse-server	tpch	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/clickhouse/tpch_tuned.yaml
 clickhouse-server	tpcds	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/clickhouse/tpcds_tuned.yaml
 clickhouse-server	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-clickhouse-server	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 clickhouse-server	ssb	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/clickhouse/ssb_tuned.yaml
 clickhouse-server	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 clickhouse-server	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -112,7 +107,6 @@ clickhouse-server	vector_search	basic_constraints	waived	basic constraints are a
 cedardb	tpch	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/cedardb/tpch_tuned.yaml
 cedardb	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 cedardb	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-cedardb	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 cedardb	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 cedardb	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 cedardb	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -134,7 +128,6 @@ cedardb	vector_search	basic_constraints	waived	basic constraints are acceptable 
 starrocks	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-starrocks	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -156,7 +149,6 @@ starrocks	vector_search	basic_constraints	waived	basic constraints are acceptabl
 sqlite	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 sqlite	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 sqlite	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-sqlite	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 sqlite	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 sqlite	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 sqlite	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -178,7 +170,6 @@ sqlite	vector_search	basic_constraints	waived	basic constraints are acceptable u
 spark	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 spark	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 spark	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-spark	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 spark	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 spark	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 spark	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -200,7 +191,6 @@ spark	vector_search	basic_constraints	waived	basic constraints are acceptable un
 postgresql	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 postgresql	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 postgresql	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-postgresql	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 postgresql	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 postgresql	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 postgresql	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -222,7 +212,6 @@ postgresql	vector_search	basic_constraints	waived	basic constraints are acceptab
 presto	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 presto	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 presto	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-presto	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 presto	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 presto	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 presto	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -244,7 +233,6 @@ presto	vector_search	basic_constraints	waived	basic constraints are acceptable u
 trino	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 trino	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 trino	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-trino	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 trino	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 trino	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 trino	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -266,7 +254,6 @@ trino	vector_search	basic_constraints	waived	basic constraints are acceptable un
 databend	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 databend	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 databend	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-databend	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 databend	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 databend	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 databend	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -288,7 +275,6 @@ databend	vector_search	basic_constraints	waived	basic constraints are acceptable
 doris	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 doris	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 doris	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-doris	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 doris	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 doris	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 doris	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -310,7 +296,6 @@ doris	vector_search	basic_constraints	waived	basic constraints are acceptable un
 influxdb	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 influxdb	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 influxdb	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-influxdb	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 influxdb	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 influxdb	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 influxdb	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -332,7 +317,6 @@ influxdb	vector_search	basic_constraints	waived	basic constraints are acceptable
 pg-duckdb	tpch	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/pg-duckdb/tpch_tuned.yaml
 pg-duckdb	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-duckdb	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-pg-duckdb	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-duckdb	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-duckdb	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-duckdb	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -354,7 +338,6 @@ pg-duckdb	vector_search	basic_constraints	waived	basic constraints are acceptabl
 pg-mooncake	tpch	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/pg-mooncake/tpch_tuned.yaml
 pg-mooncake	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-mooncake	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-pg-mooncake	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-mooncake	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-mooncake	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pg-mooncake	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -376,7 +359,6 @@ pg-mooncake	vector_search	basic_constraints	waived	basic constraints are accepta
 timescaledb	tpch	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/timescaledb/tpch_tuned.yaml
 timescaledb	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 timescaledb	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-timescaledb	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 timescaledb	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 timescaledb	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 timescaledb	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -398,7 +380,6 @@ timescaledb	vector_search	basic_constraints	waived	basic constraints are accepta
 questdb	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 questdb	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 questdb	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-questdb	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 questdb	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 questdb	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 questdb	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -420,7 +401,6 @@ questdb	vector_search	basic_constraints	waived	basic constraints are acceptable 
 singlestore	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 singlestore	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 singlestore	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-singlestore	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 singlestore	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 singlestore	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 singlestore	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -442,7 +422,6 @@ singlestore	vector_search	basic_constraints	waived	basic constraints are accepta
 velox	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 velox	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 velox	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-velox	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 velox	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 velox	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 velox	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -464,7 +443,6 @@ velox	vector_search	basic_constraints	waived	basic constraints are acceptable un
 polars-df	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 polars-df	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 polars-df	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-polars-df	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 polars-df	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 polars-df	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 polars-df	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -486,7 +464,6 @@ polars-df	vector_search	basic_constraints	waived	basic constraints are acceptabl
 pandas-df	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pandas-df	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pandas-df	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-pandas-df	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pandas-df	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pandas-df	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pandas-df	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -508,7 +485,6 @@ pandas-df	vector_search	basic_constraints	waived	basic constraints are acceptabl
 pyspark-df	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pyspark-df	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pyspark-df	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-pyspark-df	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pyspark-df	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pyspark-df	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 pyspark-df	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -530,7 +506,6 @@ pyspark-df	vector_search	basic_constraints	waived	basic constraints are acceptab
 dask-df	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 dask-df	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 dask-df	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-dask-df	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 dask-df	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 dask-df	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 dask-df	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -552,7 +527,6 @@ dask-df	vector_search	basic_constraints	waived	basic constraints are acceptable 
 datafusion-df	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 datafusion-df	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 datafusion-df	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-datafusion-df	tpcdi	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 datafusion-df	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 datafusion-df	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 datafusion-df	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-

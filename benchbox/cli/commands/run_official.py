@@ -35,6 +35,17 @@ from benchbox.utils.printing import fatal
 @click.option("-q", "--quiet", is_flag=True, help="Emit the exported result path on the final non-empty stdout line")
 @click.option("--validate-results", is_flag=True, help="Enable result validation")
 @click.option(
+    "--timeout",
+    "timeout",
+    type=click.IntRange(min=0),
+    default=None,
+    metavar="SECONDS",
+    help=(
+        "Stop the whole run after this many seconds (exit code 124). A timed-out run is not an official result. "
+        "0 means no limit. Default: no limit."
+    ),
+)
+@click.option(
     "--acknowledge-billable-platform",
     "acknowledge_billable_platform",
     is_flag=True,
@@ -56,6 +67,7 @@ def run_official(
     quiet,
     validate_results,
     acknowledge_billable_platform,
+    timeout,
 ):
     try:
         validate_tpc_scale_factor(scale)
@@ -108,8 +120,11 @@ def run_official(
             concurrency=streams,
             benchmark_option_pairs=(("tpch_refresh_functions", "true"),) if benchmark.lower() == "tpch" else (),
             acknowledge_billable_platform=acknowledge_billable_platform,
+            timeout=timeout,
         )
     except click.exceptions.Exit:
+        raise
+    except click.UsageError:
         raise
     except Exception as e:
         fatal(f"Benchmark execution failed: {e}")

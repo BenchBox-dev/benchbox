@@ -253,7 +253,7 @@ def _run_dsqgen_streams(
     cmd: list[str],
     *,
     temp_path: Path,
-    timeout: int,
+    tool: str,
     env: dict[str, str],
 ) -> subprocess.CompletedProcess[str]:
     from benchbox.core.tpcds.c_tools import run_dsqgen_process
@@ -266,7 +266,7 @@ def _run_dsqgen_streams(
     return run_dsqgen_process(
         cmd,
         cwd=temp_path,
-        timeout=timeout,
+        tool=tool,
         env=env,
         discard_partial_output=discard_partial_output,
     )
@@ -309,7 +309,6 @@ def generate_dsqgen_streams(
     scale_factor: float = 1.0,
     seed: Optional[int] = None,
     dialect: str = "netezza",
-    timeout: int = 300,
 ) -> dict[int, list[StreamQuery]]:
     if num_streams < 1:
         raise ValueError(f"num_streams must be >= 1, got {num_streams}")
@@ -354,11 +353,9 @@ def generate_dsqgen_streams(
             result = _run_dsqgen_streams(
                 cmd,
                 temp_path=temp_path,
-                timeout=timeout,
+                tool=f"dsqgen -STREAMS {num_streams} (scale factor {scale_factor:g})",
                 env=env,
             )
-        except subprocess.TimeoutExpired as exc:
-            raise DSQGenStreamsError(f"dsqgen -STREAMS {num_streams} timed out after {timeout}s") from exc
         except FileNotFoundError as exc:
             raise DSQGenStreamsError(f"dsqgen binary not found at {dsqgen_path}") from exc
 

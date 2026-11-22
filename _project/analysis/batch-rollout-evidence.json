@@ -23,13 +23,13 @@
   "catalog": {
     "repository": "https://github.com/joeharris76/skill-sync-skills",
     "canonical_branch": "main",
-    "merge_revision": "bcafff240e5660f4c5968851a3666158be1c8c18",
-    "parent_revision": "bff071b69212d78d9949671ea565b4d6ea7ee4ac",
+    "merge_revision": "3b684e08b884f17f87e7855faa2364d1b67263ff",
+    "parent_revision": "911ec8e8050e32d65b7cb4821b54981048f93619",
     "canonical_path": "skills/todo",
     "pr": {
-      "number": 167,
-      "url": "https://github.com/joeharris76/skill-sync-skills/pull/167",
-      "merge_revision": "bcafff240e5660f4c5968851a3666158be1c8c18"
+      "number": 177,
+      "url": "https://github.com/joeharris76/skill-sync-skills/pull/177",
+      "merge_revision": "3b684e08b884f17f87e7855faa2364d1b67263ff"
     }
   },
   "artifact": {
@@ -128,15 +128,15 @@
     }
   },
   "benchbox_pin": {
-    "before": "7625613714c5fd11e15ba97f96d33ef64e88ffe6",
-    "after": "bcafff240e5660f4c5968851a3666158be1c8c18",
+    "before": "bcafff240e5660f4c5968851a3666158be1c8c18",
+    "after": "3b684e08b884f17f87e7855faa2364d1b67263ff",
     "config": "skill-sync.conf",
     "apply": "./tools/skill-sync apply"
   },
   "mirrors": {
     "tracked_target": {
       "root": ".claude/skills/todo",
-      "receipt_revision": "bcafff240e5660f4c5968851a3666158be1c8c18",
+      "receipt_revision": "3b684e08b884f17f87e7855faa2364d1b67263ff",
       "files": {
         "SKILL.md": "6bd0f0d9ea104b72a92f2bd0ff457baf7231ea59aae17e5dfe8a398e00002482",
         "references/batch.md": "2ee57c4ff9c8a93675892d9ff8137e56535eff5a597a244fae9f9acc23ce2d6f",
@@ -156,7 +156,7 @@
     "agents_target": {
       "root": ".agents/skills/todo",
       "materialized": true,
-      "receipt_revision": "bcafff240e5660f4c5968851a3666158be1c8c18",
+      "receipt_revision": "3b684e08b884f17f87e7855faa2364d1b67263ff",
       "files": {
         "SKILL.md": "6bd0f0d9ea104b72a92f2bd0ff457baf7231ea59aae17e5dfe8a398e00002482",
         "references/batch.md": "2ee57c4ff9c8a93675892d9ff8137e56535eff5a597a244fae9f9acc23ce2d6f",

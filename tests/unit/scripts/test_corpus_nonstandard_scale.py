@@ -231,6 +231,37 @@ def test_submission_accepts_a_recorded_subscale_class_at_an_off_list_scale() -> 
     assert vr.ok, vr.errors
 
 
+@pytest.mark.parametrize("compliance_class", ["garbage", "", "Official", 7, ["official"]])
+@pytest.mark.parametrize(("benchmark_id", "scale"), [("tpch", 2.0), ("ssb", 2.0), ("tpch", 1.0)])
+def test_submission_refuses_an_unknown_compliance_class_at_any_scale(
+    benchmark_id: str, scale: float, compliance_class: object
+) -> None:
+    vr = _validate(_submission_bundle(benchmark_id, scale, compliance_class=compliance_class))
+
+    assert not vr.ok
+    assert any("not a recognised compliance class" in error for error in vr.errors)
+    assert not _nonstandard_warnings(vr)
+
+
+def test_unknown_compliance_class_is_refused_under_partial_validation_and_internal_source() -> None:
+    from benchbox.validation.bundle import _validate_compliance_section
+
+    for flags in ({"allow_partial_validation": True}, {"internal_source": True}):
+        for scale in (1.0, 2.0):
+            vr = ValidationResult("test")
+            _validate_compliance_section(
+                {"id": "tpch", "scale_factor": scale, "compliance_class": "garbage"}, vr, **flags
+            )
+            assert any("not a recognised compliance class" in error for error in vr.errors), (flags, scale)
+
+
+def test_unknown_compliance_class_on_a_gateway_routed_bundle_is_refused() -> None:
+    payload = _submission_bundle("ssb", 2.0, compliance_class="garbage")
+    payload["platform"]["gateway"] = {"name": "espresso", "routed": True}
+
+    assert any("not a recognised compliance class" in error for error in _validate(payload).errors)
+
+
 @pytest.mark.parametrize("compliance_class", [NONSTANDARD_COMPLIANCE_CLASS, "unofficial_subscale"])
 def test_submission_still_refuses_unofficial_classes_at_a_standard_scale(compliance_class: str) -> None:
     scale = 1.0 if compliance_class == NONSTANDARD_COMPLIANCE_CLASS else 0.1

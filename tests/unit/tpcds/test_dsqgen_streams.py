@@ -208,9 +208,9 @@ class TestRunDsqgenStreams:
         results = [self._completed(1, self._CITIES_OVERRUN), self._completed(0)]
 
         monkeypatch.setattr(streams_mod.sys, "platform", "win32")
-        monkeypatch.setattr(streams_mod.subprocess, "run", lambda *args, **kwargs: results.pop(0))
+        monkeypatch.setattr("benchbox.core.tpcds.c_tools.run_child", lambda *args, **kwargs: results.pop(0))
 
-        result = _run_dsqgen_streams(["dsqgen.exe"], temp_path=tmp_path, timeout=30, env={})
+        result = _run_dsqgen_streams(["dsqgen.exe"], temp_path=tmp_path, tool="dsqgen", env={})
 
         assert result.returncode == 0
         assert not results
@@ -228,9 +228,9 @@ class TestRunDsqgenStreams:
             return self._completed(1, "different dsqgen failure")
 
         monkeypatch.setattr(streams_mod.sys, "platform", "win32")
-        monkeypatch.setattr(streams_mod.subprocess, "run", _fail_once)
+        monkeypatch.setattr("benchbox.core.tpcds.c_tools.run_child", _fail_once)
 
-        result = _run_dsqgen_streams(["dsqgen.exe"], temp_path=tmp_path, timeout=30, env={})
+        result = _run_dsqgen_streams(["dsqgen.exe"], temp_path=tmp_path, tool="dsqgen", env={})
 
         assert result.returncode == 1
         assert calls == 1
@@ -247,9 +247,9 @@ class TestRunDsqgenStreams:
 
         monkeypatch.setattr(streams_mod.sys, "platform", "win32")
         monkeypatch.setattr("benchbox.core.tpcds.c_tools._WINDOWS_DSQGEN_MAX_ATTEMPTS", 3)
-        monkeypatch.setattr(streams_mod.subprocess, "run", _always_overrun)
+        monkeypatch.setattr("benchbox.core.tpcds.c_tools.run_child", _always_overrun)
 
-        result = _run_dsqgen_streams(["dsqgen.exe"], temp_path=tmp_path, timeout=30, env={})
+        result = _run_dsqgen_streams(["dsqgen.exe"], temp_path=tmp_path, tool="dsqgen", env={})
 
         assert result.returncode == 1
         assert calls == 3
@@ -265,9 +265,9 @@ class TestRunDsqgenStreams:
             return self._completed(1, self._CITIES_OVERRUN)
 
         monkeypatch.setattr(streams_mod.sys, "platform", "linux")
-        monkeypatch.setattr(streams_mod.subprocess, "run", _fail_once)
+        monkeypatch.setattr("benchbox.core.tpcds.c_tools.run_child", _fail_once)
 
-        result = _run_dsqgen_streams(["dsqgen"], temp_path=tmp_path, timeout=30, env={})
+        result = _run_dsqgen_streams(["dsqgen"], temp_path=tmp_path, tool="dsqgen", env={})
 
         assert result.returncode == 1
         assert calls == 1

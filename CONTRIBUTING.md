@@ -142,8 +142,11 @@ independently to each member.
    make pr-open TITLE="fix(scope): what the change does" PR_BODY_FILE=pr-body.md
    ```
 
-   `make pr-preflight` checks changelog fragments, runs Ruff on changed Python files and runs
-   mapped tests, with a conditional Linux run for platform-sensitive mapped tests. It does not
+   `make pr-preflight` checks changelog fragments, runs Ruff, `lint-imports` and ty (on changed `benchbox/` and
+   `tests/` files) on changed Python files, the marker lint when test files changed, and runs
+   mapped tests, with a conditional Linux run for platform-sensitive mapped tests. The marker lint covers the
+   changed test files plus the tree-wide decorator scan rather than collecting the whole suite; `make lint-markers`
+   and `make typecheck` stay the full checks that CI's `lint` job runs. It does not
    run the CI content guard or the full fast lane. It also writes a receipt for the tree it ran on
    (see [Preflight receipt](#preflight-receipt)); `make pr-open` refuses to push without a passing receipt
    for the tree being pushed, so commit first, run preflight, then open the PR. `make pr-open` pushes and
@@ -231,8 +234,8 @@ make pr-preflight
 ```
 
 This first reports primary-clone cleanliness and checks changelog fragments. It runs `ruff check`
-and `ruff format --check` on the Python files you changed, then runs mapped tests without xdist,
-so it does not wait on the shared test lock. A changed `tests/**/test_*.py` runs itself; a changed
+and `ruff format --check` on the Python files you changed, then runs mapped tests without xdist
+under the host lock, admission check and watchdog, so it waits while another heavy run holds the lock. A changed `tests/**/test_*.py` runs itself; a changed
 `benchbox/**/<module>.py` or `scripts/<module>.py` runs every `tests/**/test_<module>.py`.
 Tests that failed in the previous run go first (`--ff`), then the rest run. After a successful
 mapped run, changes touching platform-branching code or platform skips can select an additional

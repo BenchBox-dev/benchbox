@@ -80,14 +80,16 @@ def test_supported_matrix_has_three_local_identities_per_cohort() -> None:
         ("tpch", "0.1"): {"duckdb", "datafusion", "polars-df"},
         ("tpch", "1.0"): {"duckdb", "clickhouse-local", "cedardb"},
         ("tpcds", "1"): {"duckdb", "clickhouse-local", "cedardb"},
-        ("tpcdi", "0.01"): {"duckdb", "datafusion", "clickhouse-local"},
-        ("tpcdi", "0.1"): {"duckdb", "datafusion", "clickhouse-local"},
-        ("tpcdi", "1.0"): {"duckdb", "datafusion", "clickhouse-local"},
         ("ssb", "0.01"): {"duckdb", "datafusion", "polars-df"},
         ("ssb", "0.1"): {"duckdb", "datafusion", "polars-df"},
     }
     assert all(len(platforms) == 3 for platforms in cohorts.values())
-    assert len(entries) == len(cells) == 27
+    assert len(entries) == len(cells) == 18
+
+
+def test_seed_matrix_has_no_tpcdi_cell() -> None:
+    entries = _workflow()["jobs"]["generate-seed-corpus"]["strategy"]["matrix"]["include"]
+    assert [entry for entry in entries if entry["benchmark"] == "tpcdi"] == []
 
 
 def _stage_bundle(

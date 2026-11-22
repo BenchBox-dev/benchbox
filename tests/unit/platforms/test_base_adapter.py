@@ -2863,6 +2863,7 @@ class TestTPCHAndTPCDSExecutionHelpers:
                     success=True,
                     rows_affected=10,
                     error=None,
+                    timed_out=False,
                 ),
                 SimpleNamespace(
                     function="DF_SS",
@@ -2872,6 +2873,7 @@ class TestTPCHAndTPCDSExecutionHelpers:
                     success=False,
                     rows_affected=0,
                     error="lock timeout",
+                    timed_out=False,
                 ),
             ],
         }
@@ -2996,8 +2998,8 @@ class TestTPCHAndTPCDSExecutionHelpers:
             overall_throughput=0.5,
             errors=["rf2 failed"],
             operations=[
-                SimpleNamespace(operation_type="RF1", duration=1.0, success=True, rows_affected=100),
-                SimpleNamespace(operation_type="RF2", duration=3.0, success=False, rows_affected=0),
+                SimpleNamespace(operation_type="RF1", duration=1.0, success=True, rows_affected=100, timed_out=False),
+                SimpleNamespace(operation_type="RF2", duration=3.0, success=False, rows_affected=0, timed_out=False),
             ],
         )
 

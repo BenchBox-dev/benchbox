@@ -131,6 +131,8 @@ def publish_run(ctx, result_file, target, label, last, benchmark, platform, dry_
                 )
                 if is_tpcds_result(_result):
                     console.print("   See _sources/tpcds-subscale-contract.md for details.")
+            elif _decision.code == "legacy_tpcdi":
+                console.print(f"\n[red]❌ Publish refused: {_decision.reason}[/red]")
             else:
                 console.print(
                     f"\n[red]❌ Publish refused: result is not a clean pass ({_decision.reason})[/red]\n"
@@ -532,6 +534,8 @@ def publish_bundle(
                     f"({unofficial_result_subject(_result)}) and cannot be published under label "
                     f"'{label}'. Add [bold]--label unofficial-research[/bold] to publish it as unofficial research."
                 )
+            elif _decision.code == "legacy_tpcdi":
+                console.print(f"[red]Publish refused:[/red] {_decision.reason}")
             else:
                 console.print(
                     "[red]Publish refused:[/red] This result is not a clean pass "

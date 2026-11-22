@@ -6,11 +6,11 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 import atexit
-import subprocess
 import threading
 from pathlib import Path
 from typing import Optional, Union
 
+from benchbox.utils.run_deadline import current_run_deadline, run_child
 from benchbox.utils.tpc_compilation import CompilationStatus, ensure_tpc_binaries
 
 
@@ -63,14 +63,15 @@ class QGenBinary:
 
         work_dir = self._ensure_work_dir()
 
-        result = subprocess.run(
+        result = run_child(
             cmd,
+            tool=f"qgen (query {query_id}, scale factor {scale_factor:g})",
+            deadline=current_run_deadline(),
             cwd=work_dir,
             env=env,
             capture_output=True,
             text=True,
             check=True,
-            timeout=10,
         )
         return self._clean_sql(result.stdout)
 

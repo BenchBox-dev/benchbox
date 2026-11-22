@@ -20,13 +20,20 @@ from benchbox.core.throughput.result import (
     throughput_stream_ids,
     throughput_stream_numbering,
 )
-from benchbox.core.throughput.runner import StreamRunner
+from benchbox.core.throughput.runner import (
+    StreamRunner,
+    clear_query_in_flight,
+    mark_query_in_flight,
+    stream_cancel_event,
+    stream_stop_requested,
+)
 from benchbox.core.validation.query_validation import (
     clear_reference_seed_context,
     reset_stream_seed_override_warnings,
     set_reference_seed_context,
 )
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS, failed_query_status
 
 
 @dataclass
@@ -35,7 +42,7 @@ class TPCDSThroughputTestConfig:
     num_streams: int = 4
     first_stream_id: int = THROUGHPUT_FIRST_STREAM_ID
     base_seed: int = 42
-    stream_timeout: int = 7200
+    stream_timeout: int = 0
     max_workers: Optional[int] = None
     verbose: bool = False
     cancel_on_timeout: bool = False
@@ -385,6 +392,7 @@ class TPCDSThroughputTest:
         query_id = stream_query.query_id
         variant = stream_query.variant
         query_display_id = f"{query_id}{variant}" if variant else str(query_id)
+        mark_query_in_flight(config, stream_id, query_display_id)
         query_start = mono_time()
         conversion_clock = ConversionClock().start()
         query_result = {
@@ -425,10 +433,12 @@ class TPCDSThroughputTest:
             )
             stream_result.queries_successful += 1
         except Exception as e:
+            execution_time = elapsed_seconds(query_start)
             query_result.update(
                 {
-                    "execution_time_seconds": elapsed_seconds(query_start),
+                    "execution_time_seconds": execution_time,
                     "success": False,
+                    "timed_out": failed_query_status() == TIMED_OUT_QUERY_STATUS,
                     "error": str(e),
                 }
             )
@@ -438,6 +448,7 @@ class TPCDSThroughputTest:
 
         stream_result.query_results.append(query_result)
         stream_result.queries_executed += 1
+        clear_query_in_flight(config, stream_id)
 
     def _finalize_stream_success(
         self,
@@ -517,17 +528,11 @@ class TPCDSThroughputTest:
             else:
                 query_subset = self._build_stream_queries(stream_id, seed, config)
 
-            cancel_event = None
-            if getattr(config, "cancel_on_timeout", False) is True:
-                cancel_events = getattr(config, "_stream_cancel_events", None)
-                if isinstance(cancel_events, dict):
-                    candidate = cancel_events.get(stream_id)
-                    if isinstance(candidate, threading.Event):
-                        cancel_event = candidate
+            cancel_event = stream_cancel_event(config, stream_id)
 
             cancelled = False
             for position, stream_query in enumerate(query_subset):
-                if cancel_event is not None and cancel_event.is_set():
+                if stream_stop_requested(cancel_event):
                     cancelled = True
                     if config.verbose:
                         self.logger.warning(

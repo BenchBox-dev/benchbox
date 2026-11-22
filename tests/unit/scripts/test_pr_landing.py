@@ -1264,21 +1264,57 @@ def test_landing_targets_pass_the_repository_worktree_and_branch(target: str, tm
     assert {("--repo", "o/r"), ("--worktree", "."), ("--branch", "feat/x")} <= _adjacent(tokens)
 
 
+def _recorded_make(tmp_path: Path, *arguments: str) -> list[list[str]]:
+    stubs = tmp_path / "recorded-make-bin"
+    stubs.mkdir()
+    calls = tmp_path / "make-calls.txt"
+    (stubs / "fake-make").write_text(
+        f'#!/bin/sh\nfor word in "$@"; do printf \'%s\\n\' "$word" >> "{calls}"; done\necho --- >> "{calls}"\n',
+        encoding="utf-8",
+    )
+    (stubs / "fake-make").chmod(0o755)
+    (stubs / "gh").write_text('#!/bin/sh\necho "must not call gh: $*" >&2\nexit 99\n', encoding="utf-8")
+    (stubs / "gh").chmod(0o755)
+    env = {**os.environ, "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}"}
+    subprocess.run(
+        ["make", f"MAKE={stubs / 'fake-make'}", *arguments],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    blocks = calls.read_text(encoding="utf-8").split("---\n")
+    return [block.splitlines() for block in blocks if block.strip()]
+
+
 @requires_posix_make
 def test_pr_ready_with_evidence_runs_the_readiness_transaction_and_arms_the_exact_head(tmp_path: Path) -> None:
-    tokens = _dry_run(tmp_path, "pr-ready", "REPO=o/r", "BRANCH=feat/x", "PR=3", "HEAD=abc", "EVIDENCE=e.json")
+    (call,) = _recorded_make(tmp_path, "pr-ready", "REPO=o/r", "BRANCH=feat/x", "PR=3", "HEAD=abc", "EVIDENCE=e.json")
+    assert "pr-arm-auto-merge" in call
+    assert {"PR=3", "HEAD=abc", "EVIDENCE=e.json"} <= {word.strip('"') for word in call}
 
-    assert "pr-arm-auto-merge" in tokens
+    tokens = _dry_run(
+        tmp_path, "pr-landing-ready", "REPO=o/r", "BRANCH=feat/x", "PR=3", "HEAD=abc", "EVIDENCE=e.json", "ARM=1"
+    )
     assert {("--expected-head", "abc"), ("--evidence-json", "e.json")} <= _adjacent(tokens)
     assert "--arm" in tokens
 
 
 @requires_posix_make
-def test_pr_ready_without_evidence_arms_through_pr_arm_and_never_calls_gh_merge(tmp_path: Path) -> None:
-    tokens = _dry_run(tmp_path, "pr-ready", "REPO=o/r", "PR=3", "HEAD=abc")
+def test_pr_arm_auto_merge_forwards_the_evidence_and_exact_head_to_the_readiness_transaction(tmp_path: Path) -> None:
+    (call,) = _recorded_make(tmp_path, "pr-arm-auto-merge", "REPO=o/r", "PR=3", "HEAD=abc", "EVIDENCE=e.json")
 
-    assert "pr-arm" in tokens and "PR=3" in tokens and "HEAD=abc" in tokens
-    assert not {"merge", "--auto"} <= set(tokens)
+    assert "pr-landing-ready" in call
+    assert {"PR=3", "HEAD=abc", "EVIDENCE=e.json", "ARM=1"} <= set(call)
+
+
+@requires_posix_make
+def test_pr_ready_without_evidence_arms_through_pr_arm_and_never_calls_gh_merge(tmp_path: Path) -> None:
+    (call,) = _recorded_make(tmp_path, "pr-ready", "REPO=o/r", "PR=3", "HEAD=abc")
+
+    assert "pr-arm" in call and "PR=3" in call and "HEAD=abc" in call
+    assert not {"merge", "--auto"} <= set(call)
 
 
 @requires_posix_make
@@ -1302,6 +1338,10 @@ with open(os.environ["CALLS"], "a", encoding="utf-8") as handle:
 if "scripts/pr_base.py" in sys.argv:
     print(os.environ.get("PR_OPEN_BASE") or "develop")
     sys.exit(0)
+if "scripts/changelog_fragments.py" in sys.argv and os.environ.get("REAL_ROOT"):
+    import subprocess
+    rest = sys.argv[sys.argv.index("scripts/changelog_fragments.py") + 1:]
+    sys.exit(subprocess.call([sys.executable, os.environ["REAL_ROOT"] + "/scripts/changelog_fragments.py", *rest]))
 if "--verify-parent" in sys.argv:
     sys.exit(int(os.environ.get("VERIFY_EXIT", "0")))
 if "scripts/local_review.py" in sys.argv:
@@ -1314,9 +1354,25 @@ if "scripts/pr_open_rest.py" in sys.argv:
 """
 _GIT = """#!/bin/sh
 [ -z "$GIT_LOG" ] || echo "$*" >> "$GIT_LOG"
+if [ "$1" = -C ]; then shift 2; fi
 case "$1 $2" in
   "branch --show-current") echo feat/x ;;
   "remote get-url") echo git@github.com:BenchBox-dev/BenchBox.git ;;
+  "--no-replace-objects show") cat "$REAL_ROOT/pyproject.toml" ;;
+  "rev-parse origin/develop") [ -z "$BASE_SHA" ] || echo "$BASE_SHA" ;;
+  "log --no-merges") [ -z "$REVERTS_SHA" ] || echo "This reverts commit $REVERTS_SHA." ;;
+  "merge-base --is-ancestor") ;;
+  "cat-file -e") exit "${CAT_FILE_EXIT:-0}" ;;
+  "patch-id --verbatim") cat | cksum | cut -d' ' -f1 | sed 's/$/ -/' ;;
+  "diff --binary")
+    if [ "$4" = "$BASE_SHA" ]; then printf '%s\\n' "$NET_DIFF"; else printf '%s\\n' "$REVERSE_DIFF"; fi ;;
+  "diff --name-only")
+    case "$*" in
+      *\\^*--diff-filter=A*|*--diff-filter=A*\\^*) [ -z "$REVERTED_ADDED" ] || printf '%s\\n' "$REVERTED_ADDED" ;;
+      *\\^*) [ -z "$REVERTED_PATHS" ] || printf '%s\\n' "$REVERTED_PATHS" ;;
+      *--diff-filter=A" "*) [ -z "$ADDED_FILES" ] || printf '%s\\n' "$ADDED_FILES" ;;
+      *) [ -z "$CHANGED_FILES" ] || printf '%s\\n' "$CHANGED_FILES" ;;
+    esac ;;
   "rev-parse HEAD")
     if [ -n "$HEAD_MOVES" ] && [ -f "$GIT_LOG.seen" ]; then echo 2222222222222222222222222222222222222222
     else : > "$GIT_LOG.seen"; echo 1111111111111111111111111111111111111111; fi ;;
@@ -1412,6 +1468,167 @@ def test_pr_open_with_evidence_arms_only_a_reused_pr(tmp_path: Path) -> None:
 
     created = _makes(_run_pr_open(tmp_path / "created", "created", "READY=1", "EVIDENCE=e.json"))
     assert not [m for m in created if "pr-arm" in m or "pr-ready" in m]
+
+
+_DRY_RUN_TARGETS = [
+    ("pr-open", ["TITLE=fix: x y"]),
+    ("pr-preflight", []),
+    ("pr-refresh", []),
+    ("pr-fanout", []),
+    ("skill-sync", []),
+    ("pr-preflight-fast-tests", []),
+    ("pr-content-guard", ["PATH_LISTS=/nonexistent"]),
+    ("pr-ready", ["PR=3", "HEAD=abc", "EVIDENCE=e.json"]),
+    ("pr-ready", ["URL=https://github.com/o/r/pull/3", "HEAD=abc"]),
+    ("pr-arm-auto-merge", ["PR=3", "HEAD=abc", "EVIDENCE=e.json"]),
+]
+
+
+def _git(repo: Path, *args: str) -> str:
+    done = subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", *args],
+        cwd=repo,
+        capture_output=True,
+        encoding="utf-8",
+        check=True,
+    )
+    return done.stdout.strip()
+
+
+def _landing_repo(tmp_path: Path) -> tuple[Path, Path]:
+    remote = tmp_path / "origin.git"
+    _git(tmp_path, "init", "-q", "--bare", "-b", "develop", str(remote))
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q", "-b", "develop")
+    shutil.copy(ROOT / "Makefile", repo / "Makefile")
+    shutil.copytree(ROOT / "make", repo / "make")
+    (repo / "scripts").mkdir()
+    shutil.copy(ROOT / "scripts" / "make_timing_shell.sh", repo / "scripts" / "make_timing_shell.sh")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "base")
+    _git(repo, "remote", "add", "origin", str(remote))
+    _git(repo, "push", "-q", "origin", "develop")
+    _git(repo, "checkout", "-q", "-b", "feat/x")
+    (repo / "feature.txt").write_text("x\n", encoding="utf-8")
+    _git(repo, "add", "feature.txt")
+    _git(repo, "commit", "-q", "-m", "feat: x")
+    other = tmp_path / "other"
+    _git(tmp_path, "clone", "-q", str(remote), str(other))
+    (other / "ahead.txt").write_text("y\n", encoding="utf-8")
+    _git(other, "add", "ahead.txt")
+    _git(other, "commit", "-q", "-m", "develop moves")
+    _git(other, "push", "-q", "origin", "develop")
+    return repo, remote
+
+
+def _snapshot(*roots: Path) -> list[tuple[str, int]]:
+    return sorted((str(path), path.stat().st_size) for root in roots for path in root.rglob("*") if path.is_file())
+
+
+@requires_posix_make
+@pytest.mark.parametrize(("target", "variables"), _DRY_RUN_TARGETS)
+def test_dry_run_of_a_landing_target_touches_nothing_and_exits_zero(
+    tmp_path: Path, target: str, variables: list[str]
+) -> None:
+    repo, remote = _landing_repo(tmp_path)
+    stubs = tmp_path / "stubs"
+    stubs.mkdir()
+    calls = tmp_path / "external-calls.log"
+    for name in ("gh", "uv", "python3"):
+        (stubs / name).write_text(f'#!/bin/sh\necho "{name} $*" >> "{calls}"\nexit 99\n', encoding="utf-8")
+        (stubs / name).chmod(0o755)
+    env = {k: v for k, v in os.environ.items() if k != "BENCHBOX_MAKE_TIMINGS"}
+    env["PATH"] = f"{stubs}{os.pathsep}{os.environ['PATH']}"
+    head = _git(repo, "rev-parse", "HEAD")
+    remote_refs = _git(remote, "for-each-ref")
+    files = _snapshot(repo, remote)
+
+    result = subprocess.run(
+        ["make", "-n", target, *variables], cwd=repo, env=env, capture_output=True, text=True, check=False
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "dry-run" in result.stdout and f"skipping {target}" in result.stdout
+    assert not calls.exists()
+    assert _git(repo, "rev-parse", "HEAD") == head
+    assert _git(remote, "for-each-ref") == remote_refs
+    assert _snapshot(repo, remote) == files
+
+
+@requires_posix_make
+@pytest.mark.parametrize(
+    ("flags", "statuses"),
+    [
+        (["-n"], (0,)),
+        (["--dry-run"], (0,)),
+        (["--just-print"], (0,)),
+        (["--recon"], (0,)),
+        (["-sn"], (0,)),
+        (["-kn"], (0,)),
+        (["-t"], (0,)),
+        (["-n", "-j2"], (0,)),
+        (["-n", "--no-print-directory"], (0,)),
+        (["--no-print-directory", "-n"], (0,)),
+        (["-k", "--warn-undefined-variables", "-n"], (0,)),
+        (["-I", "/tmp", "-n"], (0,)),
+        (["-t", "--no-print-directory"], (0,)),
+        (["--no-print-directory", "-q"], (0, 1)),
+        (["-q"], (0, 1)),
+        (["-sq"], (0, 1)),
+    ],
+)
+def test_every_dry_run_spelling_stops_pr_open(tmp_path: Path, flags: list[str], statuses: tuple[int, ...]) -> None:
+    repo, remote = _landing_repo(tmp_path)
+    remote_refs = _git(remote, "for-each-ref")
+
+    result = subprocess.run(
+        ["make", *flags, "pr-open", "TITLE=fix: x y"],
+        cwd=repo,
+        env={k: v for k, v in os.environ.items() if k != "BENCHBOX_MAKE_TIMINGS"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode in statuses, result.stderr
+    assert "dry-run (-n, -q or -t): skipping pr-open" in result.stdout
+    assert _git(remote, "for-each-ref") == remote_refs
+
+
+@requires_posix_make
+@pytest.mark.parametrize(
+    "title",
+    [
+        "fix: x y",
+        "fix: handle n",
+        "fix: add -n and -q flags",
+        "fix: n q t -t --dry-run",
+        "fix(core): parens (and) more",
+        "fix: $(touch pwned) `touch pwned2` ; touch pwned3",
+        'fix: it\'s "quoted"',
+    ],
+)
+def test_a_real_run_reaches_the_pr_open_recipe_whatever_the_title_says(tmp_path: Path, title: str) -> None:
+    repo, _ = _landing_repo(tmp_path)
+    stubs = tmp_path / "stubs"
+    stubs.mkdir()
+    (stubs / "uv").write_text("#!/bin/sh\nexit 99\n", encoding="utf-8")
+    (stubs / "uv").chmod(0o755)
+    env = {**os.environ, "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}", "BENCHBOX_MAKE_TIMINGS": "0"}
+
+    result = subprocess.run(
+        ["make", "pr-open", f"TITLE={title}", "MAKE=true"],
+        cwd=repo,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert "dry-run" not in result.stdout
+    assert "BASE must be develop or a release/X.Y.x maintenance line" in result.stderr
+    assert not list(repo.glob("pwned*"))
 
 
 def test_makefile_has_separate_bounded_all_open_status_view() -> None:

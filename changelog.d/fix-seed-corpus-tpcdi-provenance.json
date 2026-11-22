@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "ClickHouse Local results now record the engine version. They previously recorded platform.version as unknown because the version query called a method the local client does not have."
+    }
+  ]
+}

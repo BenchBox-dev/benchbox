@@ -100,52 +100,6 @@ jobs:
             phases: generate,load,power,throughput,maintenance
             streams: 4
 
-          - benchmark: tpcdi
-            platform: duckdb
-            scale_factor: "0.01"
-            extras: duckdb
-            official: false
-          - benchmark: tpcdi
-            platform: datafusion
-            scale_factor: "0.01"
-            extras: datafusion
-            official: false
-          - benchmark: tpcdi
-            platform: clickhouse-local
-            scale_factor: "0.01"
-            extras: clickhouse-local
-            official: false
-          - benchmark: tpcdi
-            platform: duckdb
-            scale_factor: "0.1"
-            extras: duckdb
-            official: false
-          - benchmark: tpcdi
-            platform: datafusion
-            scale_factor: "0.1"
-            extras: datafusion
-            official: false
-          - benchmark: tpcdi
-            platform: clickhouse-local
-            scale_factor: "0.1"
-            extras: clickhouse-local
-            official: false
-          - benchmark: tpcdi
-            platform: duckdb
-            scale_factor: "1.0"
-            extras: duckdb
-            official: false
-          - benchmark: tpcdi
-            platform: datafusion
-            scale_factor: "1.0"
-            extras: datafusion
-            official: false
-          - benchmark: tpcdi
-            platform: clickhouse-local
-            scale_factor: "1.0"
-            extras: clickhouse-local
-            official: false
-
           - benchmark: ssb
             platform: duckdb
             scale_factor: "0.01"
@@ -344,6 +298,9 @@ jobs:
       - name: Regenerate corpus inventory
         run: uv run -- python scripts/generate_corpus_inventory.py --write
 
+      - name: Regenerate the compliance class snapshot
+        run: uv run -- python scripts/corpus_compliance_snapshot.py --write
+
       - name: Validate corpus before opening a PR
         run: uv run -- python results-data/validate_corpus.py
 
@@ -363,7 +320,7 @@ jobs:
         id: check
         shell: bash
         run: |
-          git add results-data/bundles/ results-data/corpus-inventory.json
+          git add results-data/bundles/ results-data/corpus-inventory.json results-data/compliance-classes.json
           if git diff --cached --quiet; then
             echo "no_changes=true" >> "$GITHUB_OUTPUT"
           else

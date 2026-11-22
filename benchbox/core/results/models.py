@@ -11,6 +11,7 @@ from benchbox.core.results.environment import (
     PlatformDeploymentMetadata,
     PlatformStorageMetadata,
 )
+from benchbox.core.results.tpcdi_audit import enforce_tpcdi_audit_rule
 
 if TYPE_CHECKING:
     from benchbox.core.results.query_plan_models import QueryPlanDAG
@@ -389,6 +390,11 @@ class QueryDefinition:
     parameters: dict[str, Any] | None = None
 
 
+_TPCDI_AUDIT_RULE_FIELDS = frozenset(
+    {"benchmark_name", "validation_status", "validation_details", "execution_metadata", "_benchmark_id_override"}
+)
+
+
 @dataclass
 class BenchmarkResults:
     benchmark_name: str
@@ -410,6 +416,7 @@ class BenchmarkResults:
     table_statistics: dict[str, int] = field(default_factory=dict)
     data_generation_version: int | None = None
     data_generation_hash: str | None = None
+    data_generation_seed: int | None = None
     power_stream_policy: str | None = None
     flightdata_source_provenance: dict[str, Any] | None = None
     per_query_timings: list[dict[str, Any]] | None = field(default_factory=list)
@@ -509,3 +516,8 @@ class BenchmarkResults:
         while "__" in normalized:
             normalized = normalized.replace("__", "_")
         return normalized
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        object.__setattr__(self, name, value)
+        if name in _TPCDI_AUDIT_RULE_FIELDS:
+            enforce_tpcdi_audit_rule(self)

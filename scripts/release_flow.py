@@ -199,9 +199,10 @@ def check_dependency_bounds(root: Path, runner: Runner) -> list[str]:
     return _delegated("dependency bounds", [sys.executable, str(script), "--fail-on=cap-reached"], root, runner)
 
 
-def check_sqlglot_upstream_freshness(root: Path, runner: Runner) -> list[str]:
+def check_sqlglot_upstream_freshness(root: Path, runner: Runner, line: str | None = None) -> list[str]:
     script = root / "scripts" / "check_sqlglot_upstream_freshness.py"
-    return _delegated("sqlglot upstream freshness", [sys.executable, str(script), "--root", str(root)], root, runner)
+    command = [sys.executable, str(script), "--root", str(root), *(["--line", line] if line else [])]
+    return _delegated("sqlglot upstream freshness", command, root, runner)
 
 
 def check_sqlglot_advisories(root: Path, runner: Runner) -> list[str]:
@@ -223,6 +224,7 @@ def run_checks(
     *,
     baseline_ref: str | None = None,
     skip_upstream_freshness: bool = False,
+    line: str | None = None,
     pre_tag: bool = False,
     releasable_commit: str | None = None,
     releasable_api: Callable[[str], dict] | None = None,
@@ -237,7 +239,7 @@ def run_checks(
     problems += check_uv_lock_revision(root, runner, baseline_ref or latest_release_tag(root, before_version=version))
     problems += check_dependency_bounds(root, runner)
     if not skip_upstream_freshness:
-        problems += check_sqlglot_upstream_freshness(root, runner)
+        problems += check_sqlglot_upstream_freshness(root, runner, line)
         problems += check_sqlglot_advisories(root, runner)
     if releasable_commit is not None:
         problems += check_releasable_commit(root, releasable_commit, releasable_api)
@@ -416,6 +418,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Skip the network-dependent upstream SQLGlot freshness check",
     )
     sub.choices["check"].add_argument(
+        "--line",
+        help="Protected line of the checkout (develop or release/X.Y.x); a maintenance line skips the freshness check",
+    )
+    sub.choices["check"].add_argument(
         "--baseline-ref", help="Lock revision baseline (default: prior final release tag)"
     )
     sub.choices["check"].add_argument(
@@ -457,6 +463,7 @@ def main(argv: list[str] | None = None) -> int:
         version,
         baseline_ref=args.baseline_ref,
         skip_upstream_freshness=args.skip_upstream_freshness,
+        line=args.line,
         pre_tag=args.pre_tag,
         releasable_commit=args.releasable_commit,
     )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shlex
@@ -449,6 +450,45 @@ def test_report_warns_when_the_primary_agents_skills_copy_is_not_at_the_pinned_r
     assert ("not at the catalog revisions" in result.stderr) is stale
     assert ("make skill-sync" in result.stderr) is stale
     assert (sorted((primary / ".agents").rglob("*")) if revs else []) == before
+
+
+def _ignored_blog_skill(primary: Path, linked: Path, primary_text: str | None) -> None:
+    pinned = hashlib.sha256(b"pinned\n").hexdigest()
+    manifest = linked / ".claude" / "skills" / "skill-sync.manifest"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(
+        f"# header\n{pinned} 644 blog/SKILL.md\n{pinned} 644 blog/SKILL.md.tmpl\n{pinned} 644 code/SKILL.md\n",
+        encoding="utf-8",
+    )
+    (primary / ".git" / "info" / "exclude").write_text(".claude/skills/blog/\n", encoding="utf-8")
+    code = primary / ".claude" / "skills" / "code" / "SKILL.md"
+    code.parent.mkdir(parents=True)
+    code.write_text("tracked copy is not this check's concern\n", encoding="utf-8")
+    if primary_text is not None:
+        blog = primary / ".claude" / "skills" / "blog" / "SKILL.md"
+        blog.parent.mkdir(parents=True)
+        blog.write_text(primary_text, encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("primary_text", "stale"),
+    [("pinned\n", False), ("older\n", True), (None, False)],
+    ids=["current", "stale", "absent"],
+)
+def test_report_warns_when_an_ignored_mirrored_skill_differs_from_the_manifest(
+    tmp_path: Path, primary_text: str | None, stale: bool
+) -> None:
+    primary, linked = _linked_worktree(tmp_path)
+    _ignored_blog_skill(primary, linked, primary_text)
+    _run_check_in(linked, primary, "snapshot")
+
+    result = _run_check_in(linked, primary, "report")
+
+    assert result.returncode == 0
+    assert (".claude/skills/blog/SKILL.md" in result.stderr) is stale
+    assert "code/SKILL.md" not in result.stderr.replace(".claude/skills/blog/SKILL.md", "")
+    if primary_text is not None:
+        assert (primary / ".claude" / "skills" / "blog" / "SKILL.md").read_text(encoding="utf-8") == primary_text
 
 
 def test_write_preflight_records_snapshot_and_passes_with_dirty_primary(tmp_path: Path) -> None:

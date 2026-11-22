@@ -10,13 +10,13 @@ from tests.uat.cells_io import cell_log_tail, failed_query_details
 from tests.uat.failure_signature import FailureEvidence, classify_failure
 from tests.uat.gate_summary import InfrastructureRetryAccounting
 from tests.uat.phases.report import terminal_state
-from tests.uat.runner import CellResult
+from tests.uat.runner import CellResult, outside_limit_s
 
 RETRY_PASSED = "retry_passed"
 RETRY_FAILED = "retry_failed"
 RETRY_SKIPPED_INSUFFICIENT_TIME = "skipped_insufficient_time"
 
-_RETRYABLE_STATUSES = frozenset({"failed", "timed-out"})
+_RETRYABLE_STATUSES = frozenset({"failed", "timed-out", "hung"})
 
 CellRunner = Callable[..., CellResult]
 
@@ -28,6 +28,7 @@ def evidence_from_cell(cell: CellResult) -> FailureEvidence:
         terminal_state=terminal_state(cell),
         submit_terminal_state=cell.submit_terminal_state,
         failed_query_errors=tuple(entry["error"] for entry in failed),
+        failed_query_statuses=tuple(entry["status"] for entry in failed),
         failure_text=cell_log_tail(Path(cell.log_path)),
     )
 
@@ -56,7 +57,7 @@ def with_infrastructure_retry(
         if signature is None:
             return first
         remaining_s = job_budget_s - elapsed_seconds(started_at, clock())
-        if remaining_s < kwargs["timeout_s"]:
+        if remaining_s < outside_limit_s(kwargs["timeout_s"]):
             return dataclasses.replace(first, retry_signature=signature, retry_outcome=RETRY_SKIPPED_INSUFFICIENT_TIME)
         second = runner(platform, benchmark, scale, **kwargs)
         return dataclasses.replace(

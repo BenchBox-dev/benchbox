@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "TPC-DS and TPC-DS-OBT scale factors below 0.01 are now refused with an error that says the bundled dsdgen does not finish there (it loops in catalog_sales date scaling), before dsdgen is started."
+    }
+  ]
+}

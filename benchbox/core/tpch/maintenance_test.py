@@ -7,10 +7,10 @@
 
 import logging
 import tempfile
-import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from time import sleep
 from typing import Any, Callable, Optional
 
 from benchbox.core.tpch.refresh import (
@@ -27,6 +27,12 @@ from benchbox.core.tpch.refresh import (
 )
 from benchbox.core.tpch.schema import LINEITEM, ORDERS
 from benchbox.utils.clock import elapsed_seconds, mono_time
+from benchbox.utils.run_deadline import (
+    TIMED_OUT_QUERY_STATUS,
+    failed_query_status,
+    limit_to_remaining,
+    stop_requested_before_query,
+)
 
 
 @dataclass
@@ -52,6 +58,7 @@ class TPCHMaintenanceOperation:
     success: bool
     error: Optional[str] = None
     update_set: Optional[int] = None
+    timed_out: bool = False
 
 
 @dataclass
@@ -69,6 +76,7 @@ class TPCHMaintenanceTestResult:
     overall_throughput: float = 0.0
     success: bool = True
     errors: list[str] = field(default_factory=list)
+    stopped_at_time_limit: bool = False
 
     @property
     def scale_factor(self) -> float:
@@ -176,6 +184,9 @@ class TPCHMaintenanceTest:
         result.start_time = datetime.now().isoformat()
 
         for pair_id in range(maintenance_pairs):
+            if stop_requested_before_query("RF1"):
+                result.stopped_at_time_limit = True
+                break
             update_set = update_sets[self.first_set + pair_id]
             if self.verbose:
                 self.logger.info(f"Executing maintenance pair {pair_id + 1} using update set {update_set.set_id}")
@@ -191,8 +202,11 @@ class TPCHMaintenanceTest:
             result.successful_operations += 1
 
             if rf1_interval > 0:
-                time.sleep(rf1_interval)
+                sleep(limit_to_remaining(rf1_interval))
 
+            if stop_requested_before_query("RF2"):
+                result.stopped_at_time_limit = True
+                break
             rf2_result = self._execute_rf2(pair_id, update_set)
             result.operations.append(rf2_result)
             result.total_operations += 1
@@ -204,7 +218,7 @@ class TPCHMaintenanceTest:
             result.successful_operations += 1
 
             if rf2_interval > 0 and pair_id < maintenance_pairs - 1:
-                time.sleep(rf2_interval)
+                sleep(limit_to_remaining(rf2_interval))
 
         return self._finish_maintenance_test(result, start_time)
 
@@ -219,7 +233,7 @@ class TPCHMaintenanceTest:
             result.start_time = result.end_time
         if result.total_time > 0:
             result.overall_throughput = result.successful_operations / result.total_time
-        result.success = result.failed_operations == 0
+        result.success = result.failed_operations == 0 and not result.stopped_at_time_limit
         if self.verbose:
             self.logger.info(f"Maintenance Test completed in {result.total_time:.3f}s")
             self.logger.info(f"Successful operations: {result.successful_operations}/{result.total_operations}")
@@ -271,6 +285,7 @@ class TPCHMaintenanceTest:
             check_rf1_applied(connection, update_set, operation.rows_affected)
             operation.success = True
         except Exception as exc:
+            operation.timed_out = failed_query_status() == TIMED_OUT_QUERY_STATUS
             operation.error = str(exc)
             if self.verbose:
                 self.logger.error(f"RF1 pair {pair_id + 1} failed: {exc}")
@@ -311,6 +326,7 @@ class TPCHMaintenanceTest:
             check_rf2_applied(connection, update_set, deletes.orders)
             operation.success = True
         except Exception as exc:
+            operation.timed_out = failed_query_status() == TIMED_OUT_QUERY_STATUS
             operation.error = str(exc)
             if self.verbose:
                 self.logger.error(f"RF2 pair {pair_id + 1} failed: {exc}")
