@@ -30719,15 +30719,10 @@
       "title": "Interactive official mode offers scale factor 30 for TPC-DS"
     },
     "interactive-prompt-omits-tpcds-official-points-20261120": {
-      "claim": {
-        "expires_at": "2026-11-23T21:43:16Z",
-        "generation": "c792c58993704bbb820376d20a8b4f1f",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Interactive scale prompt lists fewer TPC-DS standard values than the rule accepts"
     },
     "interactive-scale-prompt-treats-lists-as-limits-20261111": {
