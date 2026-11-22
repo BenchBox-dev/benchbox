@@ -21,6 +21,7 @@ from typing import Any
 POLICY_PATH = "quality/comment-cleanup-scope.json"
 COMMENT_POLICY_PATH = "quality/comment-policy.json"
 APPROVED_EXTERNAL_PATH = "quality/comment-policy-approved-external.json"
+APPROVED_EXTERNAL_HASHES_PATH = "quality/comment-policy-approved-external-hashes.json"
 PINNED_NOTICE_DRIFT_PATHS = frozenset({"LICENSE", "COPYRIGHT.md"})
 
 COMMENT_POLICY_ENFORCEMENT_MODES = {"advisory", "blocking"}
@@ -1476,6 +1477,35 @@ def approved_external_paths(root: Path, base: str) -> frozenset[str]:
     except subprocess.CalledProcessError:
         return frozenset()
     return load_approved_external(raw)
+
+
+def load_approved_hashes(raw: bytes | None) -> frozenset[str]:
+    if raw is None:
+        return frozenset()
+    data = json.loads(raw)
+    if not isinstance(data, dict) or set(data) != {"version", "files"} or data["version"] != 1:
+        raise ValueError("invalid approved external hashes schema")
+    files = data["files"]
+    if not isinstance(files, list):
+        raise ValueError("approved external hashes must be a list")
+    labels = set()
+    for entry in files:
+        if not isinstance(entry, dict) or set(entry) != {"sha256", "label"}:
+            raise ValueError("approved external hash entries need sha256 and label")
+        if not isinstance(entry["sha256"], str) or not re.fullmatch(r"[0-9a-f]{64}", entry["sha256"]):
+            raise ValueError("approved external hash must be a lowercase SHA-256")
+        if not isinstance(entry["label"], str) or not entry["label"].strip() or entry["label"] in labels:
+            raise ValueError("approved external hash labels must be unique and non-empty")
+        labels.add(entry["label"])
+    return frozenset(entry["sha256"] for entry in files)
+
+
+def approved_external_hashes(root: Path, base: str) -> frozenset[str]:
+    try:
+        raw = base_blob(root, base, APPROVED_EXTERNAL_HASHES_PATH)
+    except subprocess.CalledProcessError:
+        return frozenset()
+    return load_approved_hashes(raw)
 
 
 def check_ratchet(policy: dict, baseline: dict, approved: frozenset[str] = frozenset()) -> None:

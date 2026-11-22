@@ -291,9 +291,28 @@ pull request.
   list, and any other new entry fails the ratchet. The list is in
   `.github/soundness-paths.txt`, so a change to it needs a soundness review
   and makes the check scan the whole repository. Entries must be directory
-  prefixes of at least two path segments. The list does not exempt files from
-  scanning: files under an approved prefix are bounded like any other
-  external exclusion, so a file added after the base is still scanned.
+  prefixes of at least two path segments.
+- **Approved external hashes:**
+  `quality/comment-policy-approved-external-hashes.json` lists the SHA-256 of
+  every file the owner has approved to ship unmodified under an approved
+  prefix, with a label naming its source. A file under an approved prefix that
+  has an external entry is skipped from the scan only if its SHA-256 is in the
+  manifest at the base. An edited, renamed-with-change or new file there is
+  scanned like any other file. The manifest is read from the base, so a hash
+  added in a pull request does not skip that pull request's file; it takes
+  effect after it merges. The manifest is in `.github/soundness-paths.txt`, and
+  a change to it makes the check scan the whole repository. It holds hashes
+  only, never file content.
+  The first 99 entries are the SHA-256 of each file member of the official
+  `TPC-DI_Tools_v1.1.0.zip` (archive SHA-256
+  `d9c10de5dafa781ddd4df72453f50af2f0c9c7ccfa0cbae99ed0be70a2ede22b`), taken
+  from the member bytes read from the zip itself, with the nested
+  `Tools/DIGen_Build.zip` as one blob, plus the zip's own hash. The last four
+  are the appendix SQL files, taken from `SHA256SUMS` of the unofficial
+  shared copy `Appendix_v1.1.0-shared-copy` and recomputed. Those four hashes
+  are of that copy, not the official archive; a follow-up replaces them if the
+  official files differ. Some archive members are byte-identical, so the
+  103 entries hold 100 distinct hashes.
 - **Policy ratchet:** a base comparison (`--base` without `--bootstrap`, as
   `make comment-policy-check`, the hook, and CI run it) compares your policy
   with the base policy. It fails if enforcement moves from blocking to

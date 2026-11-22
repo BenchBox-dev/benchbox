@@ -19,12 +19,14 @@ from pathlib import Path
 from typing import Any
 
 from check_comment_cleanup_scope import (
+    APPROVED_EXTERNAL_HASHES_PATH,
     APPROVED_EXTERNAL_PATH,
     COMMENT_POLICY_DIRECTIVES,
     COMMENT_POLICY_ENFORCEMENT_MODES,
     POLICY_PATH as SCOPE_POLICY_PATH,
     _extract_version_from_path,
     _parse_version,
+    approved_external_hashes,
     approved_external_paths,
     check_ratchet,
     comment_policy_matches as matches,
@@ -351,6 +353,11 @@ def scan_sources(root: Path, sources: dict[str, bytes], policy: dict) -> list[Fi
     decoded = {}
     errors = []
     for path, raw in sources.items():
+        approved = policy.get("approved_external", frozenset())
+        if any(
+            entry["path"] in approved and matches(path, entry["path"]) for entry in policy["external"]
+        ) and hashlib.sha256(raw).hexdigest() in policy.get("approved_hashes", frozenset()):
+            continue
         ownership_members = policy.get("ownership_excluded_members")
         if ownership_members is not None:
             if path in ownership_members:
@@ -549,7 +556,17 @@ def main(argv: list[str] | None = None) -> int:
                 args.full
                 or bool(revoked)
                 or trusted is None
-                or bool(changed & {POLICY_PATH, SCOPE_POLICY_PATH, APPROVED_EXTERNAL_PATH, LAUNCHER_PATH, *trusted})
+                or bool(
+                    changed
+                    & {
+                        POLICY_PATH,
+                        SCOPE_POLICY_PATH,
+                        APPROVED_EXTERNAL_PATH,
+                        APPROVED_EXTERNAL_HASHES_PATH,
+                        LAUNCHER_PATH,
+                        *trusted,
+                    }
+                )
             )
             if not global_change:
                 changed.update(entry["path"] for entry in policy["exceptions"] if entry["consumer"] in changed)
@@ -575,6 +592,8 @@ def main(argv: list[str] | None = None) -> int:
         if compared:
             base_paths = git(root, "ls-tree", "-r", "--name-only", "-z", args.base).decode().split("\0")
             effective_policy["external_members"] = set(base_paths) | bumped_wheels
+            effective_policy["approved_external"] = approved_external_paths(root, args.base)
+            effective_policy["approved_hashes"] = approved_external_hashes(root, args.base)
         failed = expired_policy_findings(policy) + scan_sources(root, sources, effective_policy)
         warnings = expiring_policy_warnings(policy)
         if args.json_out:

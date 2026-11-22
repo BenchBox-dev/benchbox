@@ -19,7 +19,7 @@ import check_comment_policy
 import pytest
 import run_comment_policy as policy_runner
 import yaml
-from check_comment_cleanup_scope import load_approved_external
+from check_comment_cleanup_scope import load_approved_external, load_approved_hashes
 from check_comment_policy import (
     allowed,
     check_ratchet,
@@ -266,6 +266,103 @@ def test_a_new_commented_file_under_an_external_path_is_reported() -> None:
     sources = {"_sources/tpc-di/appendix.sql": b"-- note\nSELECT 1;\n"}
     effective = {**policy(external=[APPROVED_ENTRY]), "external_members": set()}
     assert [finding.path for finding in scan_sources(ROOT, sources, effective)] == ["_sources/tpc-di/appendix.sql"]
+
+
+COMMENTED_SQL = b"-- note\nSELECT 1;\n"
+COMMENTED_SQL_SHA = hashlib.sha256(COMMENTED_SQL).hexdigest()
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b"[]",
+        b'{"version": 1}',
+        b'{"version": 1, "files": [{"sha256": "ab"}]}',
+        b'{"version": 1, "files": [{"sha256": "AB", "label": "a"}]}',
+        b'{"version": 1, "files": [{"sha256": "%s", "label": ""}]}' % (b"a" * 64),
+        b'{"version": 1, "files": [{"sha256": "%s", "label": "a"}, {"sha256": "%s", "label": "a"}]}'
+        % (b"a" * 64, b"b" * 64),
+    ],
+)
+def test_approved_hash_manifest_is_validated(raw: bytes) -> None:
+    with pytest.raises(ValueError):
+        load_approved_hashes(raw)
+
+
+def test_committed_hash_manifest_is_well_formed() -> None:
+    raw = (ROOT / "quality/comment-policy-approved-external-hashes.json").read_bytes()
+    assert len(json.loads(raw)["files"]) == 103
+    assert len(load_approved_hashes(raw)) == 100
+
+
+def test_a_manifested_file_under_an_approved_prefix_is_skipped_and_any_other_is_scanned() -> None:
+    sources = {
+        "_sources/tpc-di/appendix.sql": COMMENTED_SQL,
+        "_sources/tpc-di/edited.sql": COMMENTED_SQL + b" ",
+        "other/appendix.sql": COMMENTED_SQL,
+    }
+    effective = {
+        **policy(external=[APPROVED_ENTRY]),
+        "external_members": set(),
+        "approved_external": frozenset({"_sources/tpc-di/"}),
+        "approved_hashes": frozenset({COMMENTED_SQL_SHA}),
+    }
+    assert [finding.path for finding in scan_sources(ROOT, sources, effective)] == [
+        "_sources/tpc-di/edited.sql",
+        "other/appendix.sql",
+    ]
+
+
+def write_hashes(tmp_path: Path, hashes: list[str]) -> None:
+    (tmp_path / "quality/comment-policy-approved-external-hashes.json").write_text(
+        json.dumps({"version": 1, "files": [{"sha256": h, "label": f"f{i}"} for i, h in enumerate(hashes)]}),
+        encoding="utf-8",
+    )
+
+
+def base_with_manifest(tmp_path: Path, hashes: list[str]) -> str:
+    git_repo(tmp_path, "x = 1\n")
+    write_list(tmp_path, APPROVED_LIST["paths"])
+    write_hashes(tmp_path, hashes)
+    return commit_all(tmp_path)
+
+
+def test_a_file_whose_hash_is_in_the_base_manifest_passes_the_base_comparison(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    base = base_with_manifest(tmp_path, [COMMENTED_SQL_SHA])
+    add_external_route(tmp_path)
+    (tmp_path / "other.sql").write_text(COMMENTED_SQL.decode(), encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
+    capsys.readouterr()
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 1
+    output = capsys.readouterr().out
+    assert "other.sql:1" in output
+    assert "_sources/tpc-di" not in output
+    (tmp_path / "other.sql").unlink()
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 0
+
+
+def test_the_same_path_with_one_byte_changed_is_reported(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    base = base_with_manifest(tmp_path, [COMMENTED_SQL_SHA])
+    add_external_route(tmp_path)
+    (tmp_path / "_sources/tpc-di/appendix.sql").write_bytes(COMMENTED_SQL + b"\n")
+    capsys.readouterr()
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base]) == 1
+    assert "_sources/tpc-di/appendix.sql:1" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("staged", [False, True])
+def test_a_candidate_cannot_add_a_hash_for_its_own_file(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], staged: bool
+) -> None:
+    base = base_with_manifest(tmp_path, [])
+    add_external_route(tmp_path)
+    write_hashes(tmp_path, [COMMENTED_SQL_SHA])
+    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
+    capsys.readouterr()
+    assert main(["--root", str(tmp_path), "--mode", "strict", "--base", base, *(["--staged"] if staged else [])]) == 1
+    assert "_sources/tpc-di/appendix.sql:1" in capsys.readouterr().out
 
 
 def commit_all(tmp_path: Path) -> str:
