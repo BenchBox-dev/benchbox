@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import ast
 import re
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NamedTuple
 
 import pytest
 
@@ -101,70 +103,78 @@ class Finding:
     path: str
     scope: str
     kind: str
+    count: int = 1
 
     @property
     def key(self) -> tuple[str, str, str]:
         return (self.path, self.scope, self.kind)
 
     def render(self) -> str:
-        return "::".join(self.key)
+        return f"{'::'.join(self.key)} x{self.count}"
 
 
-REVIEWED_ALLOWLIST: dict[tuple[str, str, str], str] = {
-    ("benchbox/core/tpcds/c_tools.py", "DSQGenBinary._clean_sql", "re.sub"): (
-        "strips dsqgen tool markers from generated source SQL before any platform translation; no platform key"
+class Accepted(NamedTuple):
+    count: int
+    reason: str
+
+
+Key = tuple[str, str, str]
+
+REVIEWED_ALLOWLIST: dict[Key, Accepted] = {
+    ("benchbox/core/tpcds/c_tools.py", "DSQGenBinary._clean_sql", "re.sub"): Accepted(
+        27, "strips dsqgen tool markers from generated source SQL before any platform translation; no platform key"
     ),
-    ("benchbox/core/tpcds/maintenance_test.py", "TPCDSMaintenanceTest._expected_removals", "re.sub"): (
-        "inlines staging relation names into a count guard identically on every platform"
+    ("benchbox/core/tpcds/maintenance_test.py", "TPCDSMaintenanceTest._expected_removals", "re.sub"): Accepted(
+        1, "inlines staging relation names into a count guard identically on every platform"
     ),
-    ("benchbox/core/tpcds/qualification/runner.py", "prepare", "re.sub"): (
-        "re.sub strips non-digits from a query label, not SQL text"
+    ("benchbox/core/tpcds/qualification/runner.py", "prepare", "re.sub"): Accepted(
+        1, "re.sub strips non-digits from a query label, not SQL text"
     ),
-    ("benchbox/core/tpcds/qualification/runner.py", "worker", "re.sub"): (
-        "re.sub strips non-digits from a query label, not SQL text"
+    ("benchbox/core/tpcds/qualification/runner.py", "worker", "re.sub"): Accepted(
+        1, "re.sub strips non-digits from a query label, not SQL text"
     ),
-    ("benchbox/core/tpcds_obt/benchmark.py", "TPCDSOBTBenchmark.get_create_tables_sql", "re.sub"): (
-        "idempotence edit to the standard source DDL applied before translate_sql_query; not platform-keyed"
+    ("benchbox/core/tpcds_obt/benchmark.py", "TPCDSOBTBenchmark.get_create_tables_sql", "re.sub"): Accepted(
+        1, "idempotence edit to the standard source DDL applied before translate_sql_query; not platform-keyed"
     ),
 }
 
-UNRESOLVED_VIOLATIONS: dict[tuple[str, str, str], str] = {
-    ("benchbox/core/nyctaxi/benchmark.py", "NYCTaxiBenchmark.translate_query_text", "re.sub"): (
-        "per-dialect day-of-week and epoch-difference rewrites by regex on query text"
+UNRESOLVED_VIOLATIONS: dict[Key, Accepted] = {
+    ("benchbox/core/nyctaxi/benchmark.py", "NYCTaxiBenchmark.translate_query_text", "re.sub"): Accepted(
+        8, "per-dialect day-of-week and epoch-difference rewrites by regex on query text"
     ),
-    ("benchbox/core/read_primitives/queries.py", "ReadPrimitivesQueryManager.get_query", "replace"): (
-        "ClickHouse-only function-name case rewrite on query text"
+    ("benchbox/core/read_primitives/queries.py", "ReadPrimitivesQueryManager.get_query", "replace"): Accepted(
+        1, "ClickHouse-only function-name case rewrite on query text"
     ),
-    ("benchbox/core/tpcds/maintenance_functions.py", "MaintenanceFunction.statements_for", "replace"): (
-        "MySQL-family CAST target rewrite on statement text"
+    ("benchbox/core/tpcds/maintenance_functions.py", "MaintenanceFunction.statements_for", "replace"): Accepted(
+        1, "MySQL-family CAST target rewrite on statement text"
     ),
-    ("benchbox/core/tpchavoc/dialect_compat.py", "rewrite_dialect_variant", "replace"): (
-        "Doris and StarRocks GROUP BY () removal by text replacement"
+    ("benchbox/core/tpchavoc/dialect_compat.py", "rewrite_dialect_variant", "replace"): Accepted(
+        1, "Doris and StarRocks GROUP BY () removal by text replacement"
     ),
     (
         "benchbox/core/transaction_primitives/benchmark.py",
         "TransactionPrimitivesBenchmark._rewrite_transactional_sql_for_platform",
         "re.sub",
-    ): "SQLite series and typed-date rewrites by regex on transactional SQL",
+    ): Accepted(2, "SQLite series and typed-date rewrites by regex on transactional SQL"),
     (
         "benchbox/core/transactional/benchmark_base.py",
         "TransactionalBenchmarkBase._rewrite_transactional_sql_for_platform",
         "re.sub",
-    ): "per-platform series, date-literal, temp-table and BEGIN rewrites by regex on transactional SQL",
-    ("benchbox/core/transactional/benchmark_base.py", "_starrocks_begin_statement", "re.sub"): (
-        "StarRocks BEGIN rewrite by regex"
+    ): Accepted(9, "per-platform series, date-literal, temp-table and BEGIN rewrites by regex on transactional SQL"),
+    ("benchbox/core/transactional/benchmark_base.py", "_starrocks_begin_statement", "re.sub"): Accepted(
+        1, "StarRocks BEGIN rewrite by regex"
     ),
-    ("benchbox/core/transactional/questdb_sql.py", "rewrite_questdb_operation_sql", "re.sub"): (
-        "QuestDB CURRENT_TIMESTAMP rewrite by regex"
+    ("benchbox/core/transactional/questdb_sql.py", "rewrite_questdb_operation_sql", "re.sub"): Accepted(
+        1, "QuestDB CURRENT_TIMESTAMP rewrite by regex"
     ),
-    ("benchbox/core/tuning/metadata.py", "TuningMetadataManager._first_row_query", "re.sub"): (
-        "T-SQL TOP 1 injection by regex on select text"
+    ("benchbox/core/tuning/metadata.py", "TuningMetadataManager._first_row_query", "re.sub"): Accepted(
+        1, "T-SQL TOP 1 injection by regex on select text"
     ),
-    ("benchbox/core/tuning/metadata.py", "TuningMetadataManager._get_create_table_sql", "replace"): (
-        "per-platform column type substitution on metadata DDL text"
+    ("benchbox/core/tuning/metadata.py", "TuningMetadataManager._get_create_table_sql", "replace"): Accepted(
+        3, "per-platform column type substitution on metadata DDL text"
     ),
-    ("benchbox/core/vector_search/queries.py", "<module>", "replace"): (
-        "SingleStore vector-function variants built by replacing function text in query SQL"
+    ("benchbox/core/vector_search/queries.py", "<module>", "replace"): Accepted(
+        1, "SingleStore vector-function variants built by replacing function text in query SQL"
     ),
 }
 
@@ -350,22 +360,23 @@ def _direct_definitions(owner: ast.AST) -> list[ast.AST]:
 
 
 def scan_source(source: str, path: str) -> set[Finding]:
-    findings: set[Finding] = set()
+    counts: Counter[tuple[str, str]] = Counter()
     tree = ast.parse(source)
     aliases = _re_aliases(tree)
     for scope_name, nodes in _scopes(tree):
         calls = [node for node in nodes if isinstance(node, ast.Call)]
-        rewrite_kinds = {kind for call in calls if (kind := _text_rewrite_kind(call, aliases))}
-        if rewrite_kinds and _is_dialect_aware(nodes):
-            findings.update(Finding(path, scope_name, kind) for kind in rewrite_kinds)
-        if any(_is_any_rewrite(call, aliases) for call in calls) and any(
-            isinstance(node, ast.Dict) and _is_platform_keyed_sql_dict(node) for node in nodes
-        ):
-            findings.add(Finding(path, scope_name, KIND_DICT))
-        for node in nodes:
-            if _is_platform_keyed_rewrite_table(node):
-                findings.add(Finding(path, scope_name, KIND_TABLE))
-    return findings
+        if _is_dialect_aware(nodes):
+            for call in calls:
+                if kind := _text_rewrite_kind(call, aliases):
+                    counts[(scope_name, kind)] += 1
+        if any(_is_any_rewrite(call, aliases) for call in calls):
+            keyed_dicts = sum(isinstance(node, ast.Dict) and _is_platform_keyed_sql_dict(node) for node in nodes)
+            if keyed_dicts:
+                counts[(scope_name, KIND_DICT)] += keyed_dicts
+        tables = sum(_is_platform_keyed_rewrite_table(node) for node in nodes)
+        if tables:
+            counts[(scope_name, KIND_TABLE)] += tables
+    return {Finding(path, scope, kind, count) for (scope, kind), count in counts.items()}
 
 
 def scan_core() -> set[Finding]:
@@ -495,22 +506,70 @@ def test_clean_fixture_passes(source: str) -> None:
     assert scan_source(source, "fixture.py") == set()
 
 
+ACCEPTED: dict[Key, Accepted] = {**REVIEWED_ALLOWLIST, **UNRESOLVED_VIOLATIONS}
+
+
+def _excess(findings: set[Finding], accepted: dict[Key, Accepted]) -> list[str]:
+    return sorted(
+        f"{finding.render()} (accepted {accepted[finding.key].count if finding.key in accepted else 0})"
+        for finding in findings
+        if finding.count > (accepted[finding.key].count if finding.key in accepted else 0)
+    )
+
+
+def _stale(findings: set[Finding], accepted: dict[Key, Accepted]) -> list[str]:
+    found = {finding.key: finding.count for finding in findings}
+    return sorted(
+        f"{'::'.join(key)} accepted {entry.count}, found {found.get(key, 0)}"
+        for key, entry in accepted.items()
+        if found.get(key, 0) < entry.count
+    )
+
+
+TWO_REWRITES_FIXTURE = """
+def adapt(query_text, platform):
+    if platform == "clickhouse":
+        query_text = query_text.replace("LAG(x, 1)", "lag(x, 1)")
+    if platform == "mysql":
+        query_text = query_text.replace("AS INTEGER", "AS SIGNED")
+    return query_text
+"""
+
+TWO_REWRITES_KEY: Key = ("fixture.py", "adapt", KIND_REPLACE)
+
+
+def test_fixture_scope_counts_every_occurrence() -> None:
+    (finding,) = scan_source(TWO_REWRITES_FIXTURE, "fixture.py")
+    assert finding.key == TWO_REWRITES_KEY
+    assert finding.count == 2
+
+
+def test_extra_occurrence_in_accepted_scope_fails() -> None:
+    findings = scan_source(TWO_REWRITES_FIXTURE, "fixture.py")
+    assert _excess(findings, {TWO_REWRITES_KEY: Accepted(1, "reviewed")})
+    assert not _excess(findings, {TWO_REWRITES_KEY: Accepted(2, "reviewed")})
+
+
+def test_lower_occurrence_count_is_stale() -> None:
+    findings = scan_source(TWO_REWRITES_FIXTURE, "fixture.py")
+    assert _stale(findings, {TWO_REWRITES_KEY: Accepted(3, "reviewed")})
+    assert not _stale(findings, {TWO_REWRITES_KEY: Accepted(2, "reviewed")})
+
+
 def test_core_has_no_unreviewed_sql_text_rewrite() -> None:
-    accepted = set(REVIEWED_ALLOWLIST) | set(UNRESOLVED_VIOLATIONS)
-    unexpected = sorted(finding.render() for finding in scan_core() if finding.key not in accepted)
+    unexpected = _excess(scan_core(), ACCEPTED)
     assert not unexpected, (
         "Query text must reach a platform through translate_sql_query, with translator gaps as named fork "
-        "rewrites through apply_rewrite. Text-level SQL rewriting found in benchbox/core:\n  " + "\n  ".join(unexpected)
+        "rewrites through apply_rewrite. New or additional text-level SQL rewriting found in benchbox/core:\n  "
+        + "\n  ".join(unexpected)
     )
 
 
 def test_core_allowlists_have_no_stale_entries() -> None:
-    present = {finding.key for finding in scan_core()}
-    stale = sorted("::".join(key) for key in (set(REVIEWED_ALLOWLIST) | set(UNRESOLVED_VIOLATIONS)) - present)
-    assert not stale, "Remove entries that no longer match a finding:\n  " + "\n  ".join(stale)
+    stale = _stale(scan_core(), ACCEPTED)
+    assert not stale, "Lower or remove entries that no longer match the recorded count:\n  " + "\n  ".join(stale)
 
 
 def test_allowlists_are_disjoint_and_reasoned() -> None:
     assert not set(REVIEWED_ALLOWLIST) & set(UNRESOLVED_VIOLATIONS)
-    assert all(reason.strip() for reason in REVIEWED_ALLOWLIST.values())
-    assert all(reason.strip() for reason in UNRESOLVED_VIOLATIONS.values())
+    assert all(entry.reason.strip() and entry.count > 0 for entry in ACCEPTED.values())
