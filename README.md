@@ -308,4 +308,8 @@ Agreement, the bankmark PDGF licence (`PDGF-LICENSE.txt`: use limited to
 generating TPC-DI data for "internal, academic, and research purposes only"; no
 modification, decompilation or redistribution) and `SOURCING.md`. The package
 licence stays MIT. BenchBox unpacks the archive into its cache directory on
-first use and runs it with your Java.
+first use and runs DIGen from a per-run copy of that unpack with your Java 8
+(DIGen failed on every newer Java tried: 17, 21, 25 and 27). On every generation it prints the licence
+notice, then answers DIGen's own licence prompt. The Python TPC-DI generators
+written for this project are separate legacy code that the DIGen path does not
+use; TPC-DI is unavailable while it is reworked.

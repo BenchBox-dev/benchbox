@@ -4154,10 +4154,10 @@
     },
     {
       "path": "COPYRIGHT.md",
-      "blob_sha256": "0219f8b184bb6cb9cfbe8fbe6a5735dc04baa435885f73e30b3069a0dc00472b",
+      "blob_sha256": "9b167331e0959dde40fdc467de85055724531e0b3001d7891da671bedbeee2d3",
       "byte_start": 0,
-      "byte_end": 8335,
-      "retained_sha256": "0219f8b184bb6cb9cfbe8fbe6a5735dc04baa435885f73e30b3069a0dc00472b",
+      "byte_end": 8794,
+      "retained_sha256": "9b167331e0959dde40fdc467de85055724531e0b3001d7891da671bedbeee2d3",
       "governing_requirement": "This authored summary repeats legal and benchmark acknowledgements but is not independently established as a governing instrument.",
       "source_identity": "ed5c263c513ba65499f4918d3a7de607f280c65b:COPYRIGHT.md",
       "owner": "comment-cleanup-scope-policy",
