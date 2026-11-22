@@ -21560,6 +21560,13 @@
       "status": "open",
       "title": "Add row-count references for TPC-H, TPC-DS and SSB at every scale that ranks, per query stream"
     },
+    "crr-d1-observed-engine-contract-and-dataframe": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Record the execution engine that actually ran, starting with the DataFrame platforms"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],
