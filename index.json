@@ -10356,6 +10356,68 @@
       "start_head": "93f336032a16c82b37544b527b203e2b5187a593",
       "terminal_outcome": "deliver"
     },
+    "run-timeout-hardening": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/run-timeout-hardening",
+      "integration_head": "1def2325473a89eced3a96b02ced91fb1e44b13f",
+      "integration_log": [
+        {
+          "at": "2026-11-22T21:01:02Z",
+          "head": "1def2325473a89eced3a96b02ced91fb1e44b13f",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-hardening",
+      "lifecycle": "active",
+      "members": [
+        "tpcds-q57-expression-order-float-tie-flake-20261122",
+        "hard-stop-exit-bound-term-kill-wait-20261122",
+        "tpch-dbgen-small-scale-process-count-20261122"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18",
+      "owner_epoch": 0,
+      "owner_generation": "bc8b84117d96a1ffee66af28f520aa58",
+      "project_id": "run-timeout-plan-20261120",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "hard-stop-exit-bound-term-kill-wait-20261122": [
+          "docs/*",
+          "_project/decisions/run-timeout-2026-11-20.md",
+          "benchbox/cli/run_time_limit.py",
+          "benchbox/utils/run_deadline.py",
+          "tests/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "tpcds-q57-expression-order-float-tie-flake-20261122": [
+          "benchbox/core/*",
+          "benchbox/platforms/dataframe/*",
+          "tests/*",
+          "docs/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "tpch-dbgen-small-scale-process-count-20261122": [
+          "benchbox/core/*",
+          "benchbox/utils/*",
+          "benchbox/cli/*",
+          "tests/*",
+          "docs/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "e9c3379d3638626d0b81fe2002644ae4d4052a4afcafce2000184f44de9b7e77",
+      "start_head": "1def2325473a89eced3a96b02ced91fb1e44b13f",
+      "terminal_outcome": "deliver"
+    },
     "run-timeout-harness": {
       "accepted_members": {},
       "batch_schema": 2,
