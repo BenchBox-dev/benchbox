@@ -28355,10 +28355,10 @@
     },
     "fullspec-sf1-first-runs-chdb-cedardb-20261119": {
       "claim": {
-        "expires_at": "2026-11-21T14:44:09Z",
-        "generation": "a9c87b7f44574d1cbd049f28478c9144",
+        "expires_at": "2026-11-23T18:38:08Z",
+        "generation": "a4259a29f9684a52b9432296f596ec4d",
         "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b65a39861a3f1bb8f36fad05"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a7a258a2d9eac99620687964"
       },
       "needs": [],
       "priority": "high",
