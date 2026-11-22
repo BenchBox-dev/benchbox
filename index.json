@@ -15631,12 +15631,17 @@
       "title": "Add the absolute-path rule to the batch member brief template in the skill catalog"
     },
     "batch-member-check-refusal-message-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T16:44:41Z",
+        "generation": "b05c98b3da4f4a8abcdf46441f4bdf1a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
+      },
       "needs": [
         "dev-loop-local-gates-20261122"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Make batch-member-check name the failing preflight step instead of the stderr tail"
     },
     "batch-member-dispatch-prompt-20261113": {
