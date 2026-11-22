@@ -51009,17 +51009,12 @@
       "title": "Land the WA004-WA007 Windows antipattern rules in the existing checker"
     },
     "windows-antipatterns-check-scans-worktree-venv-20261028": {
-      "claim": {
-        "expires_at": "2026-11-23T16:44:47Z",
-        "generation": "5031434e1917430396c7769545bb2218",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
-      },
+      "claim": null,
       "needs": [
         "dev-loop-local-gates-20261122"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Skip gitignored virtual environments in make windows-antipatterns-check"
     },
     "windows-auto-merge-soundness-executable-mode-check": {
