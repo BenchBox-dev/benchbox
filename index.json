@@ -40157,10 +40157,15 @@
       "title": "Consolidate run-official into run --official flag"
     },
     "run-official-timeout-config-usage-exit-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T14:15:48Z",
+        "generation": "5bbea490bad849c489843e64cb0a53ca",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Make an invalid execution.timeout_seconds a usage error in run-official"
     },
     "run-output-flag-does-not-place-result-files-20261117": {
