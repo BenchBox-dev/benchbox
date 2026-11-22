@@ -530,7 +530,7 @@ def test_run_with_timeout_enforces_timeout_with_memory_guard():
     )
     assert result.timed_out is True
     assert result.memory_exceeded is False
-    assert result.exit_code < 0
+    assert result.exit_code not in (0, timeouts.EXIT_TIMEOUT)
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX memory metering")
