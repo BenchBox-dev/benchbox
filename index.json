@@ -9010,7 +9010,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-harness",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "run-timeout-uat-cells-20261120",
         "run-timeout-remove-unused-timers-20261120"
