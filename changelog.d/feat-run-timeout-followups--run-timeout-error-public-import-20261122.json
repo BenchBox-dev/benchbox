@@ -1,0 +1,1 @@
+{"schema": 1, "entries": [{"category": "changed", "text": "`RunTimeoutError`, raised by `adapter.run_benchmark(timeout_seconds=...)` and `benchmark.generate_data(timeout_seconds=...)`, is now defined in and imported from `benchbox.core.exceptions`; it no longer lives in `benchbox.utils.run_deadline`."}]}

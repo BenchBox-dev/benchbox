@@ -5,6 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from benchbox.core.exceptions import RunTimeoutError
 from benchbox.core.runner.runner import _ensure_data_generated, _validate_manifest_if_present
 from benchbox.core.schemas import BenchmarkConfig
 from benchbox.core.ssb.generator import SSBDataGenerator
@@ -21,7 +22,7 @@ from benchbox.utils.generation_marker import (
     generation_in_progress,
     track_generation,
 )
-from benchbox.utils.run_deadline import RunDeadline, RunTimeoutError, active_run_deadline
+from benchbox.utils.run_deadline import RunDeadline, active_run_deadline
 from tests.unit.core.generator_stubs import make_stub
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]

@@ -41,7 +41,7 @@ from benchbox.core.dataframe.query_resolution import (
 from benchbox.core.dataframe.query_validation import DataFrameQueryValidationSummary, validate_dataframe_query_results
 from benchbox.core.dataframe.schema_utils import get_benchmark_schema_columns
 from benchbox.core.errors import PlanCaptureError
-from benchbox.core.exceptions import ConfigurationError, InsufficientMemoryError
+from benchbox.core.exceptions import ConfigurationError, InsufficientMemoryError, RunTimeoutError
 from benchbox.core.execution_engine import DEFAULT_EXECUTION_ENGINE, ExecutionEngineHook
 from benchbox.core.results import (
     BenchmarkInfoInput,
@@ -66,7 +66,6 @@ from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.duckdb_extensions import THIRD_PARTY_EXTENSION_OPTION
 from benchbox.utils.printing import quiet_console
 from benchbox.utils.run_deadline import (
-    RunTimeoutError,
     current_run_deadline,
     enter_run_phase,
     failed_query_status,
