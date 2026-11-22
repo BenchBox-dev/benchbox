@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Added a runner for the shipped TPC-DI DIGen tool: it needs Java 8, prints the licence notice on every generation, obeys the run time limit, and records a SHA-256 manifest of every generated file. TPC-DI stays unavailable from the command line.",
+      "details": [
+        "DIGen scale factors are whole numbers of 3 or more; any other value is refused before Java starts.",
+        "BENCHBOX_TPCDI_JAVA_OPTS sets the JVM options DIGen passes to its generation process."
+      ],
+      "benchmarks": ["tpcdi"]
+    }
+  ]
+}

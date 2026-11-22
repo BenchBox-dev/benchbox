@@ -23,9 +23,12 @@ dictionaries and configuration), exactly as the Transaction Processing Performan
 
 ## Use in BenchBox
 
-On first use BenchBox verifies the archive's SHA-256, unpacks it into its cache directory
-(`$XDG_CACHE_HOME/benchbox/tpcdi-tools/`, or `~/.cache/benchbox/tpcdi-tools/`) and runs DIGen from there with the
-user's own Java. It never unpacks into the installed package. No generator code is ported or rewritten.
+On first use BenchBox verifies the archive's SHA-256 and unpacks it into its cache directory
+(`$XDG_CACHE_HOME/benchbox/tpcdi-tools/`, or `~/.cache/benchbox/tpcdi-tools/`). It never unpacks into the installed
+package and never runs from the unpack itself: PDGF writes `Constants.properties` and its logs beside itself, so each
+generation runs DIGen from a throwaway copy of the unpack under `tpcdi-tools/runs/`, with the user's own Java 8 (DIGen
+failed on every newer Java tried: 17, 21, 25 and 27). Before DIGen starts, BenchBox prints the licence notice naming this directory; it then
+answers DIGen's own licence prompt. No generator code is ported or rewritten.
 
 ## Conditions to read before use
 
