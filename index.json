@@ -46019,7 +46019,7 @@
         "tpcdi-owner-action-place-official-archives-20261121"
       ],
       "priority": "medium-high",
-      "status": "blocked",
+      "status": "open",
       "title": "TPC-DI step 10: ship the official TPC-DI tools archive (DIGen and PDGF) byte-identical, with licences and a sourcing file"
     },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
