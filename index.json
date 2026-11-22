@@ -40008,6 +40008,13 @@
       "status": "open",
       "title": "Bring the run-timeout decision record up to date with the delivered steps"
     },
+    "run-timeout-error-public-import-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Give RunTimeoutError a documented public import path"
+    },
     "run-timeout-execution-phases-20261120": {
       "claim": null,
       "needs": [],

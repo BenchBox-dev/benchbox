@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "`RunTimeoutError` is importable from one documented public module, and the docs use it."
+  ],
+  "context": "Found while documenting --timeout (benchbox-site #233).",
+  "description": "## Problem\n`adapter.run_benchmark(timeout_seconds=...)` and `benchmark.generate_data(timeout_seconds=...)` raise `RunTimeoutError`, which is the documented Python outcome of a timed-out run, but it is defined in `benchbox/utils/run_deadline.py` and exported from neither `benchbox` nor `benchbox.utils`. The site docs (benchbox-site #233) import it from `benchbox.utils.run_deadline`, an internal module path.\n\n## Change\nExport it from the place BenchBox's other public exceptions are exported (find the existing convention first), update the docs that import it, and list it on the public contracts page.\n\n## Decision gates\nFollow the existing public-exception convention; if none exists or it is ambiguous, STOP and ask the owner which module is public. No re-export shims beyond the chosen public path.\n\n## Verification rubric\nA test imports `RunTimeoutError` from the public path and catches it from a timed-out `generate_data` stub; docs import from the public path; `make pr-preflight` exits 0.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T13:13:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a9083cb9fd3249bbaed50c4904504e25",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    }
+  ]
+}
