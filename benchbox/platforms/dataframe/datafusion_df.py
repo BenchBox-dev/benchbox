@@ -395,17 +395,22 @@ class DataFusionDataFrameAdapter(ExpressionFamilyAdapter[DataFusionDF, DataFusio
             skip_rows=1 if (column_names and has_header) else 0,
         )
         parse_options = pv.ParseOptions(delimiter=delimiter)
+        convert_options = pv.ConvertOptions(null_values=[""], strings_can_be_null=True)
         compression = detect_compression(path)
         if compression:
             manager = CompressionManager()
             try:
                 compressor = manager.get_compressor(compression)
                 with compressor.open_for_read(path, mode="rb") as stream:
-                    table = pv.read_csv(stream, read_options=read_options, parse_options=parse_options)
+                    table = pv.read_csv(
+                        stream, read_options=read_options, parse_options=parse_options, convert_options=convert_options
+                    )
             except CompressionError as err:
                 raise RuntimeError(f"Failed to read compressed data file {path}: {err}") from err
         else:
-            table = pv.read_csv(path, read_options=read_options, parse_options=parse_options)
+            table = pv.read_csv(
+                path, read_options=read_options, parse_options=parse_options, convert_options=convert_options
+            )
 
         if column_names and has_trailing:
             table = table.select(column_names)
