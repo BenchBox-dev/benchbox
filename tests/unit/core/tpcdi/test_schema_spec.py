@@ -462,24 +462,58 @@ def test_flag_columns_follow_the_per_platform_rule(dialect):
     assert f"cashflag {flag_type}" in get_create_table_sql("TradeIncremental", dialect)
 
 
-def test_time_columns_follow_the_platform_rule():
-    assert "TimeValue TIME NOT NULL" in get_create_table_sql("DimTime", "duckdb")
-    assert "TimeValue STRING NOT NULL" in get_create_table_sql("DimTime", "databricks")
-    assert "TimeValue String NOT NULL" in get_create_table_sql("DimTime", "clickhouse")
+@pytest.mark.parametrize(
+    ("dialect", "time_type"),
+    [
+        ("duckdb", "TIME"),
+        ("postgres", "TIME"),
+        ("spark", "STRING"),
+        ("lakesail", "STRING"),
+        ("pyspark", "STRING"),
+        ("velox", "STRING"),
+        ("databricks", "STRING"),
+        ("clickhouse", "String"),
+    ],
+)
+def test_time_columns_follow_the_platform_rule(dialect, time_type):
+    assert f"TimeValue {time_type} NOT NULL" in get_create_table_sql("DimTime", dialect)
 
 
-def test_tpcdi_rules_are_registered_under_ddl_optimize():
+def test_tpcdi_rules_are_registered_under_schema_emit():
     importlib.import_module("benchbox.sql_compat.rules.schema_emit.tpcdi_ddl")
     from benchbox.sql_compat.context import Phase
     from benchbox.sql_compat.registry import REGISTRY
 
-    entries = [
-        (phase, entry.rule_id) for (phase, _, benchmark, _), entry in REGISTRY.all_rules() if benchmark == "tpcdi"
-    ]
-    rules = {rule_id for _, rule_id in entries}
-    assert "ddl_optimize.duckdb.tpcdi.flag_columns_boolean" in rules
-    assert "ddl_optimize.databricks.tpcdi.time_as_string" in rules
-    assert {phase for phase, _ in entries} == {Phase.DDL_OPTIMIZE}
+    entries = [(phase, entry) for (phase, _, benchmark, _), entry in REGISTRY.all_rules() if benchmark == "tpcdi"]
+    rules = {entry.rule_id for _, entry in entries}
+    assert "schema_emit.duckdb.tpcdi.flag_columns_boolean" in rules
+    assert "schema_emit.databricks.tpcdi.time_as_string" in rules
+    assert {phase for phase, _ in entries} == {Phase.SCHEMA_EMIT}
+    assert all(rule_id.startswith("schema_emit.") and ".tpcdi." in rule_id for rule_id in rules)
+    for _, entry in entries:
+        payload = entry.decision.payload
+        if payload is not None:
+            assert payload.governance_only
+            assert payload.transformer_id == "translate_ddl:type_map"
+
+
+def test_type_maps_match_the_registered_rules():
+    from benchbox.sql_compat.rules.schema_emit.tpcdi_ddl import FLAG_BOOLEAN_PLATFORMS, TIME_AS_STRING_TYPES
+
+    assert FLAG_BOOLEAN_PLATFORMS == ("duckdb",)
+    assert schema.type_map_for_dialect("duckdb") == {}
+    assert schema.type_map_for_dialect("postgres") == {"BOOLEAN": "SMALLINT"}
+    assert schema.type_map_for_dialect("Databricks") == {"BOOLEAN": "SMALLINT", "TIME": "STRING"}
+    assert schema.type_map_for_dialect("clickhouse") == {"BOOLEAN": "SMALLINT", "TIME": "String"}
+    assert {
+        platform for platform in TIME_AS_STRING_TYPES if "TIME" not in schema.type_map_for_dialect(platform)
+    } == set()
+
+
+def test_schema_source_does_not_dispatch_on_registry_payloads():
+    source = (SCHEMA_DIR / "schema.py").read_text(encoding="utf-8")
+    assert "transformer_id" not in source
+    assert "REGISTRY" not in source
 
 
 def test_duckdb_evaluates_true_equals_one():
@@ -535,3 +569,33 @@ def test_unknown_table_is_refused():
 def test_retained_old_modules_still_import(module):
     pytest.importorskip("pandas")
     importlib.import_module(module)
+
+
+def _benchmark_without_construction():
+    pytest.importorskip("pandas")
+    from benchbox.core.tpcdi.benchmark import TPCDIBenchmark
+
+    benchmark = TPCDIBenchmark.__new__(TPCDIBenchmark)
+    benchmark.quiet = True
+    return benchmark
+
+
+@pytest.mark.parametrize("dialect", ["standard", "duckdb", "postgres", "databricks", "clickhouse"])
+def test_tuning_config_adds_no_keys_because_the_specification_declares_none(dialect):
+    from benchbox.core.tuning.interface import UnifiedTuningConfiguration
+
+    benchmark = _benchmark_without_construction()
+    tuning = UnifiedTuningConfiguration()
+    tuning.enable_primary_keys()
+    tuning.enable_foreign_keys()
+    untuned = benchmark.get_create_tables_sql(dialect)
+    assert benchmark.get_create_tables_sql(dialect, tuning_config=tuning) == untuned
+    assert benchmark.get_create_tables_sql(dialect, tuning_config=UnifiedTuningConfiguration()) == untuned
+    assert "PRIMARY KEY" not in untuned.upper()
+    assert "FOREIGN KEY" not in untuned.upper()
+
+
+def test_malformed_tuning_config_is_refused():
+    benchmark = _benchmark_without_construction()
+    with pytest.raises(RuntimeError, match="Invalid tuning_config"):
+        benchmark.get_create_tables_sql("duckdb", tuning_config=object())
