@@ -1,0 +1,10 @@
+THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC.
+
+TPC-H benchmark tools Copyright Transaction Processing Performance Council (TPC).
+Licensed under the TPC End User License Agreement v2.2 (EULA.txt in this directory).
+BenchBox charges no fee for them.
+
+This directory holds the TPC-H dbgen and qgen source, query templates and specification, with the
+BenchBox patch described in PATCHES.md.
+
+TPC website: https://www.tpc.org

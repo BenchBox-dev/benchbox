@@ -52,3 +52,50 @@ def test_query_catalog_resolves_templates_beside_notices() -> None:
     assert len(list_query_ids("tpcds")) == 99
     assert query_source_path("tpcds", "1") == "_sources/tpc-ds/query_templates/query1.tpl"
     assert "select" in get_sql_render("tpcds", "1").sql.lower()
+
+
+TPC_LEGEND = "THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC."
+NOTICE_DIRECTORIES = {
+    "tpch-runtime": ROOT / "benchbox" / "_binaries" / "tpc-h",
+    "tpcds-runtime": ROOT / "benchbox" / "_binaries" / "tpc-ds",
+    "tpch-source-tree": ROOT / "_sources" / "tpc-h",
+    "tpcds-source-tree": ROOT / "_sources" / "tpc-ds",
+}
+
+
+def _legend_is_line_one(notice: Path) -> bool:
+    lines = notice.read_text(encoding="utf-8").splitlines()
+    return bool(lines) and lines[0] == TPC_LEGEND
+
+
+@pytest.mark.parametrize("directory", NOTICE_DIRECTORIES.values(), ids=NOTICE_DIRECTORIES.keys())
+def test_tpc_notice_has_the_legend_on_line_one(directory: Path) -> None:
+    assert _legend_is_line_one(directory / "NOTICE.txt")
+
+
+@pytest.mark.parametrize("directory", NOTICE_DIRECTORIES.values(), ids=NOTICE_DIRECTORIES.keys())
+def test_tpc_notice_check_fails_when_the_legend_is_removed(directory: Path, tmp_path: Path) -> None:
+    original = (directory / "NOTICE.txt").read_text(encoding="utf-8")
+    stripped = tmp_path / "NOTICE.txt"
+    stripped.write_text(original.removeprefix(TPC_LEGEND + "\n"), encoding="utf-8")
+    assert not _legend_is_line_one(stripped)
+    moved = tmp_path / "MOVED.txt"
+    moved.write_text("TPC notice\n" + original, encoding="utf-8")
+    assert not _legend_is_line_one(moved)
+
+
+@pytest.mark.parametrize("suite", ["tpc-h", "tpc-ds"])
+def test_runtime_notice_sits_beside_the_shipped_binaries(suite: str) -> None:
+    runtime = ROOT / "benchbox" / "_binaries" / suite
+    assert (runtime / "NOTICE.txt").is_file()
+    assert any(path.is_file() for path in runtime.glob("*/*gen*"))
+
+
+@pytest.mark.parametrize("suite", ["tpc-h", "tpc-ds"])
+def test_source_notice_is_listed_for_the_source_distribution(suite: str) -> None:
+    assert f"include _sources/{suite}/NOTICE.txt" in (ROOT / "MANIFEST.in").read_text(encoding="utf-8").splitlines()
+
+
+def test_readme_licence_section_carries_the_legend() -> None:
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert TPC_LEGEND in text.replace("\n", " ")

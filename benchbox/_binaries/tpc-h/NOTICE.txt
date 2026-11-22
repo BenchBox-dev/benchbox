@@ -1,0 +1,14 @@
+THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC.
+
+TPC-H benchmark tools Copyright Transaction Processing Performance Council (TPC).
+Licensed under the TPC End User License Agreement v2.2 (templates/queries/EULA.txt in this directory).
+BenchBox charges no fee for them.
+
+This directory holds the pre-built dbgen and qgen programs, their distribution files and the query
+templates for these platforms:
+  darwin-arm64, darwin-x86_64, linux-arm64, linux-x86_64, windows-arm64, windows-x86_64
+
+The binaries include the BenchBox stdout output patch. See _sources/tpc-h/PATCHES.md for details.
+
+Source code: _sources/tpc-h/dbgen/
+TPC website: https://www.tpc.org

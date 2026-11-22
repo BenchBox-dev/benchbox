@@ -1,0 +1,18 @@
+THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC.
+
+TPC-DS benchmark tools Copyright Transaction Processing Performance Council (TPC) 2001 - 2021.
+Licensed under the TPC End User License Agreement v2.2 (templates/query_templates/EULA.txt in this directory).
+BenchBox charges no fee for them.
+
+This directory holds the pre-built dsdgen and dsqgen programs, their distribution files and the query
+templates for these platforms:
+  darwin-arm64, darwin-x86_64, linux-arm64, linux-x86_64, windows-arm64, windows-x86_64
+
+The darwin-arm64, darwin-x86_64, linux-arm64, and linux-x86_64 binaries include BenchBox patches
+for sub-SF1 scale factor support and stdout output. See _sources/tpc-ds/PATCHES.md for details.
+
+The windows-arm64 and windows-x86_64 binaries are the upstream TPC-DS reference binaries without
+BenchBox patches.
+
+Source code: _sources/tpc-ds/tools/
+TPC website: https://www.tpc.org
