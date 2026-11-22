@@ -9,6 +9,10 @@ PR #166 is open as draft against `published-results`. The W4 sync workflow
 (`.github/workflows/sync-results-data-to-published.yml`) lands together
 with this ADR update.
 
+Amended 2026-11-22: the vendored runtime gains the stdlib-only corpus-rule
+module and its data file (see "Corpus rule file set"). The rule itself is
+recorded in [adr-corpus-derived-outcome-rule.md](adr-corpus-derived-outcome-rule.md).
+
 ## Date
 
 2026-05-03
@@ -92,6 +96,7 @@ second corpus authority.
 | `benchbox/validation/bundle.py` | The shared validator implementation used by both develop and this branch. Mirrored here so `validate_submission.py` runs without installing BenchBox; kept in sync by `sync-results-data-to-published.yml`. |
 | `benchbox/core/results/query_status.py` | Stdlib-only failed-query policy shared by publication, ranking, and the slim validator so both branches judge measurement failures identically. |
 | `benchbox/core/results/schema_policy.py` | Stdlib-only schema-version policy required by the shared bundle validator. |
+| The corpus-rule module and its data file (`benchbox/core/results/`) | Stdlib-only. One function of facts in a result file gives its class, lane, label and score, so `develop`, the slim validator and the mirror branch compute the same outcome. See "Corpus rule file set". |
 | `scripts/publication/validator_parity.py` | Trusted validator entry point comparing the PR-head and merge payload outcomes. Its runtime consists only of the allowlisted shared validator files. |
 | `scripts/generate_corpus_inventory.py` | Inventory generator — same rationale as above. |
 | `.github/workflows/validate-submission.yml` | The submission CI gate. |
@@ -134,7 +139,7 @@ both branches. The validator entry points import `benchbox/validation/bundle.py`
 which loads the mirrored `query_status.py` and `schema_policy.py` policies.
 File-loader fallbacks support the slim checkout without an installed BenchBox;
 they load those same shared policy files rather than substitute inline rules.
-The mirror must carry all six runtime files together. CI invokes the scripts
+The mirror must carry all six runtime files and the corpus-rule file set together. CI invokes the scripts
 with `uv run --no-project --python 3.11 -- python`, so neither project metadata
 nor an installed BenchBox is required.
 
@@ -177,13 +182,17 @@ host the same mix of `maintainer-run` (seed corpus, no sidecar) and
 
 ### Vendored scripts: source of truth and divergence detection
 
-The complete six-file runtime listed below exists on `develop` (the canonical
+The complete runtime listed below (the six files) exists on `develop` (the canonical
 home) and is vendored to `published-results` for self-contained CI. Sync is automated by
 [`.github/workflows/sync-results-data-to-published.yml`](https://github.com/BenchBox-dev/BenchBox/blob/develop/.github/workflows/sync-results-data-to-published.yml):
 when develop's copy of any runtime file changes, the workflow opens a
 draft mirror PR vs `published-results` carrying the change. Maintainers
 review and flip ready when the develop change is intended to surface on
 the public corpus branch.
+
+The corpus-rule module and its data file are not yet covered by that workflow.
+They must be added to the workflow's path filters and copy lists in the same
+change that adds them; until then they are not mirrored.
 
 This means `published-results` will normally be at most one mirror PR
 behind develop on the vendored runtime. If a develop PR modifies one
@@ -199,9 +208,29 @@ remains authoritative for these vendored implementation files —
 develop-side validator or generator bug fix is the canonical fix. This does
 not make `develop` authoritative for published-only archive bundles.
 
+### Corpus rule file set
+
+The corpus-rule module and its data file are vendored together, as one unit,
+under the sync workflow once it is extended to cover them. The ordering below is the delivery order the
+corpus rule requires so the slim branch never runs a mismatched rule; it is
+not an owner decision. Mirror-ordering rule:
+
+- The module and its data file always travel in the same mirror pull request;
+  neither is mirrored without the other, so the branch never holds a module
+  and a data file from different `develop` revisions.
+- A mirrored file that imports the module (a validator, the inventory
+  generator or the parity entry point) never reaches `published-results`
+  before the module and data file it needs. When one `develop` change
+  touches both, they go in the same mirror pull request; when they land
+  separately, the rule file set is mirrored first.
+- The module is stdlib-only and reads its data file without an installed
+  BenchBox, so the slim checkout can run it.
+- `develop` remains authoritative; the copies on `published-results` are
+  read-only mirrors, like the six runtime files.
+
 ### The workflow file itself is NOT auto-mirrored — this is permanent, not a gap to close
 
-`sync-results-data-to-published.yml`'s automated mirror covers these six files:
+`sync-results-data-to-published.yml`'s automated mirror covers these six files (the corpus-rule file set joins them only when the workflow is extended, as described above):
 
 - `scripts/validate_submission.py`
 - `scripts/generate_corpus_inventory.py`
