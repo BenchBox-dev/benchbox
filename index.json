@@ -46138,9 +46138,7 @@
     },
     "tpcdi-comment-policy-route-for-tpc-files-20261121": {
       "claim": null,
-      "needs": [
-        "tpcdi-07-specification-schema-20261120"
-      ],
+      "needs": [],
       "priority": "medium-high",
       "status": "open",
       "title": "TPC-DI step 8: a route for owner-approved TPC files through the comment policy"
