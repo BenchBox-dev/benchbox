@@ -35380,7 +35380,9 @@
     },
     "preflight-misses-ci-lint-guards-20261122": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "dev-loop-local-gates-20261122"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Catch CI lint-guard failures before pull request: lint-imports, lint-markers and ty in preflight"
