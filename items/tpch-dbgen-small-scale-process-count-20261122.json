@@ -2,6 +2,11 @@
   "acceptance": [
     "Small-scale TPC-H generation no longer pays dbgen's fixed text-pool cost once per CPU core, with unchanged generated data and the owner's chosen process-count rule."
   ],
+  "batch": {
+    "batch_id": "run-timeout-hardening",
+    "implementation_dependencies": [],
+    "member_id": "tpch-dbgen-small-scale-process-count-20261122"
+  },
   "context": "Filed 2026-11-22 while closing out the run-timeout follow-ups (umbrella run-timeout-plan-20261120). Evidence was read on 2026-11-22; re-read run logs, file paths and line numbers before acting.\n\nOwner decisions 2026-11-22 (choice dialog): \"Cap at min(cores, 4) below SF 1\": at most 4 dbgen processes below SF 1, SF >= 1 unchanged. Still STOP if sorted row content differs from develop's or re-measurement on this Mac shows no gain.",
   "description": "## Problem\nThe generation-estimate re-measure (#4446, run folder `~/Developer/benchmark_runs/generation-estimate/remeasure-20261122/`) found that TPC-H data generation takes about 4–5 s at both SF 0.01 and SF 0.1, so small scales gain nothing from their smaller size. Cause, with evidence in that folder (`dbgen_direct`, `dbgen_fixed` and `par/` logs, load below 3, Apple M4, 10 cores): the stock dbgen builds a fixed 300 MiB text pool (`TEXT_POOL_SIZE`, `_sources/tpc-h/dbgen/text.c:89`) before writing its first comment, in every process, whatever the scale or table. One `dbgen -vf -s 0.01` takes 1.57 s; every single-table run at SF 0.01 takes 1.40–1.49 s; peak RSS is about 316 MB. BenchBox passes `{\"parallel\": cpu_cores}` (`benchmark_loader.py`), so the CLI starts 10 chunk processes that each pay the cost: an SF 0.01 run used 20 s of CPU in 4.7 s wall. In-process timings: parallel 1 = 2.60 s, 4 = 1.63 s, 10 = 2.29 s at SF 0.01; 2.92 / 1.89 / 2.74 s at SF 0.1. The rest is about 1 s of uv and CLI start-up, a 0.2 s sleep and `sync` (0.2–0.35 s).\nPrior art: #4316 already runs dbgen once for compressed data at SF ≤ 1. State which compression mode the re-measure used and whether the fix extends #4316's rule to uncompressed output.\n\n## Change\nInvestigate, then propose to the owner: choose the number of dbgen chunk processes from scale and core count at small scales, so small-scale generation stops paying the pool cost many times. Find where the process count and the chunked-versus-single-file layout are chosen (benchmark loader, TPC-H generator, #4316's rule). Do not change dbgen's text pool.\n\n## Decision gates\n- STOP before implementing: present the measured options (process count per scale, wall and CPU time, file layout effect) to the owner in a choice dialog; the default process count and the file layout are owner decisions.\n- STOP if any option changes generated data: the sorted row content of every TPC-H table at SF 0.01 and 0.1 must hash equal to develop's (compare rows, not files, because the chunk layout may change).\n- Measure on an idle host only (1-minute load below 3), through `make heavy-run`; if admission is refused or free disk would fall below 50 GiB, stop and report.\n\n## Verification rubric\nPass: the owner's chosen rule implemented; row-content hashes at SF 0.01 and 0.1 equal develop's; before/after wall and CPU time at SF 0.01, 0.1, 1 and 10 in the pull request, with SF 0.01 and 0.1 wall time below the parallel=4 figures above; `benchbox/core/generation_estimate.json` re-measured if its figures move by more than 10%; a test pins the process-count rule at its scale boundaries. A blanket cap of one process fails (it is slower than four).\nFail: data differs, figures not measured, or a default changed without the owner's choice.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
   "links": [
@@ -31,6 +36,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "08323ab238d448d5a0d1236a04e43b6f",
+      "session_id": "301a72f40ca84d7ab9668f9bdc47da3b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18",
+      "at": "2026-11-22T21:01:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ce1e27b1734641fdae9b9a2ed08744ff",
       "session_id": "301a72f40ca84d7ab9668f9bdc47da3b"
     }
   ]
