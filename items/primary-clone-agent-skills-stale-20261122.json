@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The stale-skills warning no longer appears in pr-preflight."
+  ],
+  "context": "Observed throughout the run-timeout effort, 2026-11-21.",
+  "description": "## Problem\nEvery `make pr-preflight` in the run-timeout effort printed: \"the primary clone's .agents/skills copy is not at the catalog revisions this branch pins in skill-sync.conf ... Agents may not refresh it. Owner: run 'make skill-sync' in /Users/joe/Developer/BenchBox.\" Codex, Gemini and Antigravity sessions started in the primary clone read outdated skills, and the warning was misread by an agent as a preflight failure.\n\n## Change\nOwner runs `make skill-sync` in the primary clone.\n\n## Decision gates\nOwner-only: agents must not write to the primary clone (AGENTS.md). Blocked until the owner acts.\n\n## Verification rubric\n`make pr-preflight` in any worktree no longer prints the stale-skills warning.\n\n## Guardrails\nAgents make no change in the primary clone and do not run `make skill-sync` there.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T13:14:04Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1a24e23b11fe415fab22f744ae1b4d10",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    }
+  ]
+}

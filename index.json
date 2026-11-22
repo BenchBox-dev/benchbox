@@ -35472,6 +35472,13 @@
       "status": "done",
       "title": "Confirm vendor pricing data may be redistributed in the BenchBox wheel"
     },
+    "primary-clone-agent-skills-stale-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Refresh the primary clone's stale .agents/skills copy (owner action)"
+    },
     "primary-clone-agents-skills-materialization-stale-20261115": {
       "claim": null,
       "needs": [],
