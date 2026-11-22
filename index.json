@@ -29067,7 +29067,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Design only: pause a small heavy-run under another session's memory pressure"
     },
     "heavy-guard-sentinel-20261030": {
