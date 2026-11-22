@@ -21542,6 +21542,18 @@
       "status": "open",
       "title": "Site: accept the next read-model version and render its new fields when present"
     },
+    "crr-b3-pipeline-emits-rule-outcome-and-medians": {
+      "claim": null,
+      "needs": [
+        "crr-a3-validators-staging-and-admission",
+        "crr-b2-site-accepts-next-read-model",
+        "crr-c1-validation-status-vocabulary",
+        "crr-d1-observed-engine-contract-and-dataframe"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Emit the rule outcome, identity and median rows from the Explorer pipeline"
+    },
     "crr-c1-validation-status-vocabulary": {
       "claim": null,
       "needs": [
