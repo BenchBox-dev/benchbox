@@ -36170,15 +36170,10 @@
       "title": "Correct the registry query counts for write and transaction primitives"
     },
     "process-group-term-then-kill-verify-20261122": {
-      "claim": {
-        "expires_at": "2026-11-23T17:20:04Z",
-        "generation": "eddaf8c6cae247b0aace82a963a497b8",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Verify the SIGTERM-then-SIGKILL change in run_text, run-deadline child cleanup and the qualification worker"
     },
     "process-spend-versus-product-spend-decision": {
