@@ -13528,6 +13528,7 @@
       "accepted_members": {
         "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120": "2d94734a5bb1bb8a70afb9ce9ec81fcf9ecd5309",
         "tpcdi-08-generator-core-and-reference-files-20261120": "749a92bdf74437a2ccb6512bab07b73dec3c2302",
+        "tpcdi-11-audit-recount-batch1-20261120": "ebd4df32ff1270544d8a48c5ff2e25157a4bd8b0",
         "tpcdi-bundle-tpc-di-tools-20261121": "12c11c70351f99283f10c2032dde6a0754360b7f"
       },
       "batch_schema": 2,
@@ -13583,6 +13584,16 @@
           "integration_head": "24b75929564ad355981001b488c390aec395016f",
           "integration_seq": 7
         },
+        "tpcdi-11-audit-recount-batch1-20261120": {
+          "accepted_head": "ebd4df32ff1270544d8a48c5ff2e25157a4bd8b0",
+          "changed_files": [
+            "benchbox/core/tpcdi/sources/recount.py",
+            "changelog.d/tpcdi-recount-answer-key.json",
+            "tests/unit/core/tpcdi/test_recount.py"
+          ],
+          "integration_head": "c70272a8de246fa58f257a2db31a18a69a742de8",
+          "integration_seq": 8
+        },
         "tpcdi-bundle-tpc-di-tools-20261121": {
           "accepted_head": "12c11c70351f99283f10c2032dde6a0754360b7f",
           "changed_files": [
@@ -13605,7 +13616,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-source",
-      "integration_head": "24b75929564ad355981001b488c390aec395016f",
+      "integration_head": "c70272a8de246fa58f257a2db31a18a69a742de8",
       "integration_log": [
         {
           "at": "2026-11-22T07:11:35Z",
@@ -13708,6 +13719,15 @@
           "op_id": "d30732143c7c4ebaab862a786f1991a2",
           "previous_head": "7985a640c19e13ffac0fecb04cb52f49a05109c9",
           "seq": 7
+        },
+        {
+          "at": "2026-11-22T20:27:16Z",
+          "head": "c70272a8de246fa58f257a2db31a18a69a742de8",
+          "kind": "prepare",
+          "member": "tpcdi-11-audit-recount-batch1-20261120",
+          "op_id": "4907c061a95f48618700c2519eceecf6",
+          "previous_head": "24b75929564ad355981001b488c390aec395016f",
+          "seq": 8
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-source",
@@ -48274,17 +48294,12 @@
       "title": "TPC-DI step 10: generator: trades, holdings, cash, watches and daily market files"
     },
     "tpcdi-11-audit-recount-batch1-20261120": {
-      "claim": {
-        "expires_at": "2026-11-23T20:25:29Z",
-        "generation": "4791784ba3764339a234d082ec318078",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5d4e220f613a3ab3ee8f830c"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-08-generator-core-and-reference-files-20261120"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 12: independent recount for DIGen's known answer-key errors"
     },
     "tpcdi-12-duckdb-historical-load-and-audit-20261120": {
