@@ -52,6 +52,14 @@ existing `compliance_class` vocabulary as information only.
 - gateway-routed, known defect, failed validation -> unchanged from today
 Every ranked TPC row carries "Derived from TPC-H/TPC-DS ... not an official TPC result" plus the class in plain words. Vendor terms, anonymization, tuning and timing coverage stay separate admission checks behind the same entry point; they are not class inputs.
 
+Precedence: rows are evaluated in the order listed and the first matching row
+decides. A TPC-H or TPC-DS result below scale 1 is `subscale` (refused on the
+public path, owner decision 2) and never matches the non-standard-scale row;
+that row covers scales that are neither standard nor, for TPC-H and TPC-DS,
+below scale 1. The "no timed phase" row and the unchanged checks (gateway
+routed, known defect, failed validation) apply before any class row. TPC-DI is
+decided by its own admission rule, not by the class rows.
+
 The columns are: the class the facts give, whether the public path (submit,
 publish) accepts the result, whether the maintainer path accepts it, the
 ranking lane it enters, and the score shown. `nonstandard_scale` and `none`

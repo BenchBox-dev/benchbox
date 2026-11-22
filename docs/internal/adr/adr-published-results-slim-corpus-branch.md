@@ -182,13 +182,17 @@ host the same mix of `maintainer-run` (seed corpus, no sidecar) and
 
 ### Vendored scripts: source of truth and divergence detection
 
-The complete runtime listed below (six files, plus the corpus-rule module and its data file) exists on `develop` (the canonical
+The complete runtime listed below (the six files) exists on `develop` (the canonical
 home) and is vendored to `published-results` for self-contained CI. Sync is automated by
 [`.github/workflows/sync-results-data-to-published.yml`](https://github.com/BenchBox-dev/BenchBox/blob/develop/.github/workflows/sync-results-data-to-published.yml):
 when develop's copy of any runtime file changes, the workflow opens a
 draft mirror PR vs `published-results` carrying the change. Maintainers
 review and flip ready when the develop change is intended to surface on
 the public corpus branch.
+
+The corpus-rule module and its data file are not yet covered by that workflow.
+They must be added to the workflow's path filters and copy lists in the same
+change that adds them; until then they are not mirrored.
 
 This means `published-results` will normally be at most one mirror PR
 behind develop on the vendored runtime. If a develop PR modifies one
@@ -207,7 +211,7 @@ not make `develop` authoritative for published-only archive bundles.
 ### Corpus rule file set
 
 The corpus-rule module and its data file are vendored together, as one unit,
-under the same sync workflow. The ordering below is the delivery order the
+under the sync workflow once it is extended to cover them. The ordering below is the delivery order the
 corpus rule requires so the slim branch never runs a mismatched rule; it is
 not an owner decision. Mirror-ordering rule:
 
@@ -226,7 +230,7 @@ not an owner decision. Mirror-ordering rule:
 
 ### The workflow file itself is NOT auto-mirrored — this is permanent, not a gap to close
 
-`sync-results-data-to-published.yml`'s automated mirror covers these six files, and the corpus-rule file set described above:
+`sync-results-data-to-published.yml`'s automated mirror covers these six files (the corpus-rule file set joins them only when the workflow is extended, as described above):
 
 - `scripts/validate_submission.py`
 - `scripts/generate_corpus_inventory.py`
