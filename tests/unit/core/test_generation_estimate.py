@@ -39,7 +39,7 @@ def test_estimate_text_is_the_owner_text_for_a_measured_scale(lines: list[str]) 
     announce_generation_estimate(DATA_GENERATION, "tpch", 1)
 
     assert lines == [
-        f"TPC-H data generation, scale 1: Rough estimate: generation will take about 12 seconds (measured on {HOST} at scale 0.01, 0.1, 1, 10)."
+        f"TPC-H data generation, scale 1: Rough estimate: generation will take about 11 seconds (measured on {HOST} at scale 0.01, 0.1, 1, 10)."
     ]
 
 
@@ -57,14 +57,14 @@ def test_estimate_at_a_measured_scale_equals_the_measurement() -> None:
     estimate = estimate_generation(DATA_GENERATION, "tpcds", 10)
 
     assert estimate is not None
-    assert estimate.seconds == pytest.approx(183.41)
+    assert estimate.seconds == pytest.approx(176.9)
 
 
 def test_unmeasured_larger_scale_is_labelled_extrapolated(lines: list[str]) -> None:
     announce_generation_estimate(DATA_GENERATION, "tpcds", 100)
 
     assert lines == [
-        "TPC-DS data generation, scale 100: Rough estimate: generation will take about 31 minutes "
+        "TPC-DS data generation, scale 100: Rough estimate: generation will take about 29 minutes "
         f"(measured on {HOST} at scale 0.01, 0.1, 1, 10; "
         "extrapolated for scale 100, above the largest measured scale 10)."
     ]
@@ -83,9 +83,26 @@ def test_query_generation_estimate_uses_the_dsqgen_measurements(lines: list[str]
     assert "extrapolated for scale 10000, above the largest measured scale 5000" in lines[1]
 
 
+def test_tpch_query_generation_estimate_uses_the_qgen_measurements(lines: list[str]) -> None:
+    announce_generation_estimate(QUERY_GENERATION, "tpch", 100)
+    announce_generation_estimate(QUERY_GENERATION, "tpch", 10000)
+
+    assert lines[0] == (
+        f"TPC-H query generation, scale 100: Rough estimate: generation will take about 1 second (measured on {HOST} at scale 1, 10, 100, 1000)."
+    )
+    assert "extrapolated for scale 10000, above the largest measured scale 1000" in lines[1]
+
+
+def test_tpch_data_and_query_lines_name_their_kind_and_scale() -> None:
+    data, query = generation_estimate.generation_estimate_messages("tpch", 1)
+
+    assert data.startswith("TPC-H data generation (if the data is not already present), scale 1: Rough estimate: ")
+    assert query.startswith("TPC-H query generation, scale 1: Rough estimate: ")
+
+
 def test_no_estimate_for_an_unmeasured_benchmark(lines: list[str]) -> None:
     assert announce_generation_estimate(DATA_GENERATION, "clickbench", 1) is None
-    assert announce_generation_estimate(QUERY_GENERATION, "tpch", 1) is None
+    assert announce_generation_estimate(QUERY_GENERATION, "clickbench", 1) is None
     assert lines == []
 
 
@@ -127,7 +144,7 @@ def test_announce_returns_the_estimate_it_printed(lines: list[str]) -> None:
     estimate = announce_generation_estimate(DATA_GENERATION, "tpcds", 10)
 
     assert estimate is not None
-    assert estimate.seconds == pytest.approx(183.41)
+    assert estimate.seconds == pytest.approx(176.9)
     assert lines[0] == estimate.message()
 
 
