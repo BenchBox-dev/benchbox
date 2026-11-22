@@ -22617,10 +22617,15 @@
       "title": "Plan: one admission and ranking rule for the results corpus, then publish the Polars matrix through it"
     },
     "crr-a0-decision-records": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T20:40:20Z",
+        "generation": "98f5a190441c40f78c2baccec7f800a1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Record the corpus rule decisions in the ADRs and tracker before any code changes"
     },
     "crr-a1-rule-module-and-snapshot": {
