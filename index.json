@@ -36669,6 +36669,13 @@
       "status": "done",
       "title": "Gate: user decides how Polars matrix results are published"
     },
+    "pvm-p0-remove-cli-charts-from-post": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Remove the command-line charts from the Polars 2.x post"
+    },
     "pvm-p1-run-ssb-clickbench": {
       "claim": null,
       "needs": [
