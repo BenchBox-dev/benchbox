@@ -39640,10 +39640,15 @@
       "title": "Run timeout step 3: cancel remote work on cloud platforms when a run times out"
     },
     "run-timeout-remove-unused-timers-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T04:12:28Z",
+        "generation": "1e9cce00dd7140d8be542fb474bf487b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Run timeout step 5: remove timers with no caller; plan capture on the deadline; one kill helper"
     },
     "run-timeout-site-docs-20261121": {
