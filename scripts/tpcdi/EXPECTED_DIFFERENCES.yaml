@@ -1,0 +1,88 @@
+entries:
+  - id: exact-numerics
+    kind: column_type
+    clause: "3.2, Table 3.2.1"
+    reason: "The specification types every non-integer measure as NUMERIC(p,s). BenchBox stores DECIMAL(p,s); the DuckDB implementation stores DOUBLE. Values are compared after the DOUBLE side is rounded to the scale of the DECIMAL side."
+    table: "*"
+    column: "*"
+    left_type: "DECIMAL(*)"
+    right_type: "DOUBLE"
+
+  - id: yield-multiplied-by-100
+    kind: column_value
+    clause: "4.5.11.2, 4.6.10"
+    reason: "The specification defines Yield as the dividend divided by the closing price multiplied by 100. The DuckDB implementation divides by 100 instead (its yield equals dividend / close / 100 on every FactMarketHistory row at scales 3, 5 and 10), so its value is the specification value divided by 10000."
+    table: FactMarketHistory
+    column: Yield
+    condition: "l.yield = ROUND(r.yield * 10000, 2)"
+
+  - id: fifty-two-week-high-window
+    kind: column_value
+    clause: "4.5.11.2"
+    reason: "The specification takes the high over the dates after DM_DATE minus one year. The DuckDB implementation takes the 364 preceding rows plus the current one. DailyMarket has one row per calendar day for every security at scales 3, 5 and 10 (no gaps), so its window is the specification window except that it is one day short across a 29 February. The specification high is therefore never below the implementation's."
+    table: FactMarketHistory
+    column: FiftyTwoWeekHigh
+    condition: "l.fiftytwoweekhigh >= ROUND(r.fiftytwoweekhigh, 2)"
+
+  - id: fifty-two-week-high-date
+    kind: column_value
+    clause: "4.5.11.2"
+    reason: "The specification takes the earliest date on which the high occurs in its window; the DuckDB implementation picks one of the tied dates without ordering. The specification high is never below the implementation's (see fifty-two-week-high-window), and when the two highs are equal the specification date is the earlier."
+    table: FactMarketHistory
+    column: SK_FiftyTwoWeekHighDate
+    condition: "l.fiftytwoweekhigh > ROUND(r.fiftytwoweekhigh, 2) OR (l.fiftytwoweekhigh = ROUND(r.fiftytwoweekhigh, 2) AND l.sk_fiftytwoweekhighdate < r.sk_fiftytwoweekhighdate)"
+
+  - id: fifty-two-week-low-window
+    kind: column_value
+    clause: "4.5.11.2"
+    reason: "Same window difference as fifty-two-week-high-window; the specification low is never above the implementation's."
+    table: FactMarketHistory
+    column: FiftyTwoWeekLow
+    condition: "l.fiftytwoweeklow <= ROUND(r.fiftytwoweeklow, 2)"
+
+  - id: fifty-two-week-low-date
+    kind: column_value
+    clause: "4.5.11.2"
+    reason: "Same tie and window difference as fifty-two-week-high-date, for the low."
+    table: FactMarketHistory
+    column: SK_FiftyTwoWeekLowDate
+    condition: "l.fiftytwoweeklow < ROUND(r.fiftytwoweeklow, 2) OR (l.fiftytwoweeklow = ROUND(r.fiftytwoweeklow, 2) AND l.sk_fiftytwoweeklowdate < r.sk_fiftytwoweeklowdate)"
+
+  - id: dimtrade-batchid-fixed-at-creation
+    kind: column_value
+    clause: "4.6.7.2"
+    reason: "The specification fixes DimTrade.BatchID at the batch that created the row. The DuckDB implementation overwrites it with the batch of the last update, so its value is never below the specification value."
+    table: DimTrade
+    column: BatchID
+    condition: "l.batchid <= r.batchid"
+
+  - id: prospect-status-messages
+    kind: messages
+    clause: "4.5.15, 4.6.14.2"
+    reason: "The specification has the Prospect transformation write status messages to DImessages. The DuckDB implementation writes none (its DImessages has no Prospect row of type Status at scales 3, 5 and 10)."
+    condition: "g.messagetype = 'Status' AND g.messagesource = 'Prospect' AND g.right_count IS NULL"
+
+  - id: answer-key-tier-inv-batch1-left
+    kind: rows_only
+    clause: "2.4.5, 7.2.6.7"
+    reason: "DIGen's Batch1 answer key for DimCustomer C_TIER_INV is off by one; BenchBox corrects it while loading the Audit table and records the correction. The DuckDB implementation loads the key as generated."
+    table: Audit
+    side: left
+    condition: "t.dataset = 'DimCustomer' AND t.attribute = 'C_TIER_INV' AND t.batchid = 1"
+
+  - id: answer-key-tier-inv-batch1-right
+    kind: rows_only
+    clause: "2.4.5, 7.2.6.7"
+    reason: "Counterpart of answer-key-tier-inv-batch1-left: the uncorrected key row held by the DuckDB implementation."
+    table: Audit
+    side: right
+    condition: "t.dataset = 'DimCustomer' AND t.attribute = 'C_TIER_INV' AND t.batchid = 1"
+
+  - id: audit-customer-tier-alerts-batch1
+    kind: audit
+    clause: "2.4.5, 7.2.6.7"
+    reason: "With the uncorrected C_TIER_INV key the official audit reports Mismatch for the customer tier alert count of Batch 1 over the DuckDB implementation's tables at scales 3 and 5; BenchBox's corrected key gives OK."
+    test: "DimCustomer customer tier alerts"
+    batch: "1"
+    left_result: "OK"
+    right_result: "Mismatch"
