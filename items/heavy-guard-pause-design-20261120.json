@@ -3,7 +3,7 @@
     "A written design is linked and the item is blocked for the owner's decision.",
     "No guard code changed."
   ],
-  "context": "Review threads, corrected 2026-11-20: the guardrail text above says the agent never resolves a thread. Asked afterwards which rule applies, the owner chose \"The morning rule: I may resolve a thread once the bot has reviewed the new head and did not raise the finding again.\" ('I' is the agent.) That answer stands.\n\nState 2026-11-20: not started.",
+  "context": "Review threads, corrected 2026-11-20: the guardrail text above says the agent never resolves a thread. Asked afterwards which rule applies, the owner chose \"The morning rule: I may resolve a thread once the bot has reviewed the new head and did not raise the finding again.\" ('I' is the agent.) That answer stands.\n\nState 2026-11-20: not started.\n\nOwner decision 2026-11-22 (choice dialog). Where it conflicts with the Decision gates text in the description, this wins. \"check the breach history first; drop it if no recorded breach shows a pause would have saved a run, otherwise write the design and block.\"",
   "description": "## Problem\nOn 2026-11-17 the owner chose \"Also add pause and retry for small holder trees (relaxes the kill policy)\". It was not built. On 2026-11-20 the owner chose to file pause as \"a design-only item that ends at your approval\".\n\n## Change\nWrite a design, linked from this item: what is suspended and how; what happens to memory, the host lock, containers and VMs the job started, and benchmark timings inside a paused job; when the kill still fires; how a paused run is marked so its timings are never published. State the evidence that pausing would have saved a run, from the breach history, or that there is none.\n\n## Decision gates\nNo code. The item goes to `blocked` with the design linked, for the owner's approval.\n\n## Verification rubric\nPass: the design answers each point above and cites the breach records it relies on.\n\n## Guardrails (accepted by the owner, 2026-11-20)\nThe agent never posts a stand-in review, resolves a review thread, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. It arms with `make pr-arm` once per pull request and reports the result. Subagents are read-only. Any limit, default, threshold or label text is shown to the owner before it is committed. A blocked step stops this item; the agent moves to the next item and does not work around the block.",
   "sessions": [
     {
@@ -28,6 +28,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "211eaa899f0f4fb8af73345330fba160",
+      "session_id": "07ffce55d91d4769bb111de9401d9503"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a2d9b179a7e76625f10f9840",
+      "at": "2026-11-22T17:29:58Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "43aa6829f54e4a3a857ec3d31ffac44f",
       "session_id": "07ffce55d91d4769bb111de9401d9503"
     }
   ]
