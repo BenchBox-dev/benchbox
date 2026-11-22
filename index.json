@@ -37950,10 +37950,15 @@
       "title": "Ranking & Aggregation System - Platform Leaderboards & Trends"
     },
     "raw-run-evidence-deleted-and-4381-authorship-record-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T17:34:26Z",
+        "generation": "d892b8ffb2ca4f08bbede4b66f732341",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6ace4eb729d47ce80d54f1e"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Record the deleted raw benchmark run directories and the #4381 authorship change"
     },
     "raw-text-benchmarks-duckdb-source-dialect-20261025": {
