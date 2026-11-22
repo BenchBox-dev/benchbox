@@ -16,6 +16,66 @@
     "https://github.com/BenchBox-dev/benchbox/actions/runs/42266293613",
     "https://github.com/BenchBox-dev/benchbox/pull/3949"
   ],
+  "prepared": {
+    "accepted_head": "56175a2889e8b1e16d1dae4e6ea7dd9e0b5f1e16",
+    "batch_id": "trunk-stability",
+    "changed_files": [
+      "benchbox/platforms/pg_mooncake.py",
+      "changelog.d/fix-mooncake-mirror-retry.json",
+      "tests/uat/engine_evidence.py",
+      "tests/uat/test_engine_evidence.py",
+      "tests/unit/platforms/test_pg_mooncake_adapter.py"
+    ],
+    "integration_head": "411fd43c0f816eea7b981572fbf8c25db2db0744",
+    "integration_seq": 1,
+    "member_id": "uat-regression-doris-clickbench-mooncake-flightdata",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "3b7251e9000d98e196666438b73f01c853f2fa044c8586221a3bd51536c2dc51",
+    "source_base": "3e72b74aac395a2bc5e5e4d04b764239226b344c",
+    "source_revision": "56175a2889e8b1e16d1dae4e6ea7dd9e0b5f1e16",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-ts-mooncake",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/uat/test_engine_evidence.py",
+        "tests/unit/cli/test_output_control_static.py",
+        "tests/unit/cli/test_shipped_docs_urls.py",
+        "tests/unit/core/tpcdi/test_tpcdi_no_values_row_source.py",
+        "tests/unit/platforms/test_credential_error_messages.py",
+        "tests/unit/platforms/test_pg_family_baseline_session.py",
+        "tests/unit/platforms/test_pg_mooncake_adapter.py",
+        "tests/unit/platforms/test_postgres_partitioning.py",
+        "tests/unit/platforms/test_sql_family_timing_contract.py",
+        "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index"
+      ],
+      "review": {
+        "base_sha": "3e72b74aac395a2bc5e5e4d04b764239226b344c",
+        "head_sha": "56175a2889e8b1e16d1dae4e6ea7dd9e0b5f1e16",
+        "head_tree": "e679e8580312de3e3f52baf09d95bab9f68b1143",
+        "outcome": "clear",
+        "patch_digest": "e5165ccafa025a100cfa52624a7a6cfd",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "44c34087bc617576e094614a28cb2f1c3b4a8985"
+      },
+      "revision": "56175a2889e8b1e16d1dae4e6ea7dd9e0b5f1e16",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6346e27f41a942170bcc4ec",
@@ -90,6 +150,15 @@
       "generation": "af6169009b1d4a1e955b21138a36e29c",
       "op": "take",
       "op_id": "922a223e95e24e33a069f6880fc4e38a",
+      "session_id": "80e0302416054591a591cf3adefee19a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3",
+      "at": "2026-11-22T23:16:06Z",
+      "client": "omp-coding-agent",
+      "generation": "af6169009b1d4a1e955b21138a36e29c",
+      "op": "prepare",
+      "op_id": "1efd401768a8428096ec1f064676369e",
       "session_id": "80e0302416054591a591cf3adefee19a"
     }
   ]

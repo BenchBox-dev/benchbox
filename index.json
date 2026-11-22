@@ -15234,20 +15234,44 @@
       "terminal_outcome": "deliver"
     },
     "trunk-stability": {
-      "accepted_members": {},
+      "accepted_members": {
+        "uat-regression-doris-clickbench-mooncake-flightdata": "56175a2889e8b1e16d1dae4e6ea7dd9e0b5f1e16"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "uat-regression-doris-clickbench-mooncake-flightdata": {
+          "accepted_head": "56175a2889e8b1e16d1dae4e6ea7dd9e0b5f1e16",
+          "changed_files": [
+            "benchbox/platforms/pg_mooncake.py",
+            "changelog.d/fix-mooncake-mirror-retry.json",
+            "tests/uat/engine_evidence.py",
+            "tests/uat/test_engine_evidence.py",
+            "tests/unit/platforms/test_pg_mooncake_adapter.py"
+          ],
+          "integration_head": "411fd43c0f816eea7b981572fbf8c25db2db0744",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/trunk-stability",
-      "integration_head": "3e72b74aac395a2bc5e5e4d04b764239226b344c",
+      "integration_head": "411fd43c0f816eea7b981572fbf8c25db2db0744",
       "integration_log": [
         {
           "at": "2026-11-22T22:00:51Z",
           "head": "3e72b74aac395a2bc5e5e4d04b764239226b344c",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-22T23:16:06Z",
+          "head": "411fd43c0f816eea7b981572fbf8c25db2db0744",
+          "kind": "prepare",
+          "member": "uat-regression-doris-clickbench-mooncake-flightdata",
+          "op_id": "1efd401768a8428096ec1f064676369e",
+          "previous_head": "3e72b74aac395a2bc5e5e4d04b764239226b344c",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-trunk-stability",
@@ -52094,15 +52118,10 @@
       "title": "UAT runs benchmarks with --quiet, so the first failure's error text is lost"
     },
     "uat-regression-doris-clickbench-mooncake-flightdata": {
-      "claim": {
-        "expires_at": "2026-11-23T23:16:02Z",
-        "generation": "af6169009b1d4a1e955b21138a36e29c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "pg_mooncake FlightData load fails in trunk UAT at SF0.01 (Doris ClickBench fixed)"
     },
     "uat-release-gate-enforcement": {
