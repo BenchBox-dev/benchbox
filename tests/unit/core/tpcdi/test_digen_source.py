@@ -61,6 +61,17 @@ Java version: Azul Systems, Inc. 1.8.0_514
 """
 
 
+def patch_child(monkeypatch: pytest.MonkeyPatch, fake: Any) -> None:
+    real = digen.run_child
+
+    def dispatch(command: list[str], **kwargs: Any) -> Any:
+        if "-version" in command:
+            return real(command, **kwargs)
+        return fake(command, **kwargs)
+
+    monkeypatch.setattr(digen, "run_child", dispatch)
+
+
 def write_fake_java(home: Path, version: str) -> Path:
     executable = home / "bin" / "java"
     executable.parent.mkdir(parents=True)
@@ -94,8 +105,9 @@ def tools_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def fake_digen_output(command: list[str], *, scale: int | None = None) -> Path:
     out = Path(command[command.index("-o") + 1])
     sf = int(command[command.index("-sf") + 1]) if scale is None else scale
-    for batch, rows in (("Batch1", 3), ("Batch2", 2), ("Batch3", 2)):
+    for batch, rows in (("Batch1", 3), ("Batch2", 20), ("Batch3", 30)):
         (out / batch).mkdir(parents=True, exist_ok=True)
+        (out / batch / "BatchDate.txt").write_text("2017-07-07\n")
         (out / batch / "DailyMarket.txt").write_text("row\n" * rows)
         (out / f"{batch}_audit.csv").write_text("a,b\n1,2\n")
     (out / "Batch1" / "FINWIRE1967Q1").write_text("finwire\n")
@@ -126,7 +138,7 @@ class Child:
 @pytest.fixture
 def child(monkeypatch: pytest.MonkeyPatch) -> Child:
     fake = Child()
-    monkeypatch.setattr(digen, "run_child", fake)
+    patch_child(monkeypatch, fake)
     return fake
 
 
@@ -185,7 +197,7 @@ def test_notice_is_printed_with_an_existing_path_before_the_child_starts(
     real_notice = digen.print_licence_notice
     monkeypatch.setattr(digen, "print_licence_notice", lambda: (order.append("notice"), real_notice())[1])
     fake = Child(order)
-    monkeypatch.setattr(digen, "run_child", fake)
+    patch_child(monkeypatch, fake)
 
     result = digen.generate(3, tmp_path / "out", environ=environment)
 
@@ -276,7 +288,11 @@ def test_manifest_is_written_with_a_checksum_per_file(
     assert {"DailyMarket", "FINWIRE", "FINWIRE_audit", "Batch1_audit", "CustomerMgmt", "digen_report"} <= set(
         manifest["tables"]
     )
-    assert entries["Batch2/DailyMarket.txt"]["metadata"] == {"batch": "Batch2"}
+    assert entries["Batch2/DailyMarket.txt"]["metadata"] == {"batch": "Batch2", "line_count": 20}
+    assert all(entry["row_count"] == 0 for entry in entries.values())
+    report_path = out.resolve() / digen.REPORT_NAME
+    assert entries[digen.REPORT_NAME]["size_bytes"] == report_path.stat().st_size
+    assert "line_count" not in entries[digen.REPORT_NAME].get("metadata", {})
     assert not (out / GENERATION_IN_PROGRESS_MARKER).exists()
     digen.verify_staging(out)
 
@@ -287,10 +303,14 @@ def test_manifest_ignores_the_report_fields_that_change_between_runs(
     first = digen.generate(3, tmp_path / "one", environ=environment)
     second = digen.generate(3, tmp_path / "a-longer-directory-name", environ=environment)
     assert first.manifest_hash == second.manifest_hash
-    drop = {"created_at"}
-    one = {k: v for k, v in json.loads(first.manifest_path.read_text(encoding="utf-8")).items() if k not in drop}
-    two = {k: v for k, v in json.loads(second.manifest_path.read_text(encoding="utf-8")).items() if k not in drop}
-    assert one == two
+    manifests = []
+    for result in (first, second):
+        manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
+        manifest.pop("created_at")
+        for entry in manifest["tables"]["digen_report"]["formats"]["txt"]:
+            entry.pop("size_bytes")
+        manifests.append(manifest)
+    assert manifests[0] == manifests[1]
 
 
 @pytest.mark.parametrize("damage", ["change", "delete", "add", "report"])
@@ -432,7 +452,7 @@ def test_child_runs_in_a_copy_and_the_unpacked_tools_stay_untouched(
         fake_digen_output(command)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr(digen, "run_child", run)
+    patch_child(monkeypatch, run)
     digen.generate(3, tmp_path / "out", environ=environment)
 
     assert seen["cwd"] != tools_dir
@@ -441,7 +461,25 @@ def test_child_runs_in_a_copy_and_the_unpacked_tools_stay_untouched(
     assert not (tools_dir / "PDGF" / "pdgf.log").exists()
 
 
-@pytest.mark.parametrize("scale", [2, 0, -3, 3.5, 2.999, "abc", None, True, float("nan"), float("inf")])
+@pytest.mark.parametrize(
+    "scale",
+    [
+        2,
+        0,
+        -3,
+        3.5,
+        2.999,
+        "abc",
+        None,
+        True,
+        float("nan"),
+        float("inf"),
+        "3.0000000000000001",
+        3.0000000000000001e-1,
+        "1e999",
+        2147483648,
+    ],
+)
 def test_invalid_scales_are_refused_before_any_child_starts(
     tmp_path: Path, tools_dir: Path, environment: dict[str, str], child: Child, scale: Any
 ) -> None:
@@ -458,6 +496,15 @@ def test_whole_numbers_from_three_are_accepted(scale: Any) -> None:
     assert validate_digen_scale(scale) == int(float(scale))
 
 
+def test_a_scale_that_only_rounds_to_a_whole_number_is_refused() -> None:
+    assert validate_digen_scale("3.0") == 3
+    assert validate_digen_scale(" 3e0 ") == 3
+    with pytest.raises(TPCDIScaleError):
+        validate_digen_scale("3.0000000000000001")
+    with pytest.raises(TPCDIScaleError):
+        validate_digen_scale("4.9999999999999999")
+
+
 def test_the_digen_scales_are_the_owner_choices() -> None:
     assert DIGEN_DEFAULT_SCALE == 5
     assert DIGEN_MIN_SCALE == 3
@@ -468,7 +515,7 @@ def test_the_digen_scales_are_the_owner_choices() -> None:
 def test_a_failing_child_is_reported_and_leaves_the_in_progress_marker(
     tmp_path: Path, tools_dir: Path, environment: dict[str, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(digen, "run_child", Child(returncode=1))
+    patch_child(monkeypatch, Child(returncode=1))
     out = tmp_path / "out"
     with pytest.raises(digen.DigenRunError, match="status 1: outerr"):
         digen.generate(3, out, environ=environment)
@@ -485,9 +532,53 @@ def test_missing_required_entries_are_refused(
         (out / digen.REPORT_NAME).unlink()
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr(digen, "run_child", run)
+    patch_child(monkeypatch, run)
     with pytest.raises(digen.DigenOutputError, match="Batch3, digen_report.txt"):
         digen.generate(3, tmp_path / "out", environ=environment)
+
+
+@pytest.mark.parametrize(
+    "damage", ["empty-batch", "missing-batch-date", "empty-file", "count-mismatch", "short-batch1"]
+)
+def test_incomplete_or_inconsistent_output_is_refused_before_the_manifest(
+    tmp_path: Path, tools_dir: Path, environment: dict[str, str], monkeypatch: pytest.MonkeyPatch, damage: str
+) -> None:
+    def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        out = fake_digen_output(command)
+        if damage == "empty-batch":
+            shutil.rmtree(out / "Batch2")
+            (out / "Batch2").mkdir()
+        elif damage == "missing-batch-date":
+            (out / "Batch3" / "BatchDate.txt").unlink()
+        elif damage == "empty-file":
+            (out / "Batch1" / "DailyMarket.txt").write_text("")
+        elif damage == "count-mismatch":
+            (out / "Batch3" / "DailyMarket.txt").write_text("row\n" * 29)
+        else:
+            (out / digen.REPORT_NAME).write_text(
+                (out / digen.REPORT_NAME).read_text(encoding="utf-8").replace("Batch1: 1000", "Batch1: 2")
+            )
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    patch_child(monkeypatch, run)
+    out = tmp_path / "out"
+    with pytest.raises(digen.DigenOutputError, match="Batch"):
+        digen.generate(3, out, environ=environment)
+    assert not (out / MANIFEST_FILENAME).exists()
+    assert (out / GENERATION_IN_PROGRESS_MARKER).exists()
+
+
+def test_java_probe_is_bound_by_the_run_deadline(tmp_path: Path) -> None:
+    home = tmp_path / "hungjdk"
+    executable = home / "bin" / "java"
+    executable.parent.mkdir(parents=True)
+    executable.write_text("#!/bin/sh\nexec sleep 60\n")
+    executable.chmod(0o755)
+    started = time.monotonic()
+    with own_run_deadline(1):
+        with pytest.raises(RunTimeoutError):
+            digen.find_supported_java({"JAVA_HOME": str(home), "PATH": ""})
+    assert time.monotonic() - started < 30
 
 
 def test_report_for_another_scale_is_refused(
@@ -497,7 +588,7 @@ def test_report_for_another_scale_is_refused(
         fake_digen_output(command, scale=5)
         return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr(digen, "run_child", run)
+    patch_child(monkeypatch, run)
     with pytest.raises(digen.DigenOutputError, match="states scale factor 5, but 3 was requested"):
         digen.generate(3, tmp_path / "out", environ=environment)
 

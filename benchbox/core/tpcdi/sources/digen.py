@@ -47,6 +47,7 @@ JAVA_REQUIREMENT_MESSAGE = (
 )
 
 REPORT_NAME = "digen_report.txt"
+BATCH_DATE_FILE = "BatchDate.txt"
 REQUIRED_ENTRIES = ("Batch1", "Batch2", "Batch3", REPORT_NAME)
 LICENCE_ANSWER = b"\nYES\n"
 JAVA_PROBE_SECONDS = 10
@@ -163,9 +164,11 @@ def print_licence_notice() -> str:
 
 
 def probe_java_major(executable: Path) -> int | None:
+    deadline = current_run_deadline()
+    limit = {} if deadline is not None else {"timeout": JAVA_PROBE_SECONDS}
     try:
-        completed = subprocess.run(
-            [str(executable), "-version"], capture_output=True, text=True, timeout=JAVA_PROBE_SECONDS, check=False
+        completed = run_child(
+            [str(executable), "-version"], tool="java", deadline=deadline, capture_output=True, text=True, **limit
         )
     except (OSError, subprocess.SubprocessError):
         return None
@@ -256,11 +259,43 @@ def _file_format(file_name: str) -> str:
     return Path(file_name).suffix.lstrip(".") or "text"
 
 
+def _count_newlines(path: Path) -> int:
+    total = 0
+    with path.open("rb") as stream:
+        while chunk := stream.read(_HASH_CHUNK_BYTES):
+            total += chunk.count(b"\n")
+    return total
+
+
+def check_payload(output_dir: Path, report: DigenReport) -> None:
+    expected = {
+        "Batch1": report.historical_rows,
+        "Batch2": report.incremental_1_rows,
+        "Batch3": report.incremental_2_rows,
+    }
+    for name, rows in expected.items():
+        batch_dir = output_dir / name
+        payload = (
+            [path for path in sorted(batch_dir.iterdir()) if path.is_file() and not path.name.endswith("_audit.csv")]
+            if batch_dir.is_dir()
+            else []
+        )
+        if (
+            BATCH_DATE_FILE not in {path.name for path in payload}
+            or len(payload) < 2
+            or any(path.stat().st_size == 0 for path in payload)
+        ):
+            raise DigenOutputError(f"{name} in {output_dir} does not hold the data files DIGen writes")
+        records = sum(_count_newlines(path) for path in payload if path.suffix != ".xml") - 1
+        if records > rows or (name != "Batch1" and records != rows):
+            raise DigenOutputError(f"{name} in {output_dir} holds {records} records but {REPORT_NAME} states {rows}")
+
+
 def _digest_file(path: Path, *, is_report: bool) -> tuple[str, int, int]:
     if is_report:
         text = path.read_text(encoding="utf-8", errors="replace")
         normalised = normalise_report(text).encode("utf-8")
-        return hashlib.sha256(normalised).hexdigest(), len(normalised), 0
+        return hashlib.sha256(normalised).hexdigest(), path.stat().st_size, 0
     digest = hashlib.sha256()
     lines = 0
     size = 0
@@ -310,7 +345,7 @@ def write_staging_manifest(
         relative = path.relative_to(output_dir).as_posix()
         checksum, size, lines = _digest_file(path, is_report=relative == REPORT_NAME)
         entries.append((path, checksum, size, lines))
-        listed.append((relative, size, checksum))
+        listed.append((relative, 0 if relative == REPORT_NAME else size, checksum))
         size_bytes += size
     manifest_hash = _identity(report.scale_factor, listed)
     manifest = DataGenerationManifest(
@@ -336,14 +371,20 @@ def write_staging_manifest(
     for path, checksum, size, lines in entries:
         relative = path.relative_to(output_dir)
         batch = relative.parts[0] if relative.parts[0].startswith("Batch") and len(relative.parts) > 1 else None
+        is_report = relative.as_posix() == REPORT_NAME
+        metadata: dict[str, Any] = {}
+        if batch:
+            metadata["batch"] = batch
+        if not is_report:
+            metadata["line_count"] = lines
         manifest.add_entry(
             _table_name(path.name),
             path,
-            row_count=lines,
+            row_count=0,
             size_bytes=size,
             checksum=checksum,
             format=_file_format(path.name),
-            metadata={"batch": batch} if batch else None,
+            metadata=metadata or None,
         )
     return manifest.write(), manifest_hash, len(entries), size_bytes
 
@@ -372,7 +413,7 @@ def verify_staging(output_dir: Path | str) -> dict[str, Any]:
             f"DIGen staging in {root} differs from its manifest: {', '.join(problems[:10])}"
             + (f" and {len(problems) - 10} more" if len(problems) > 10 else "")
         )
-    listed = sorted((name, size, checksum) for name, (size, checksum) in expected.items())
+    listed = sorted((name, 0 if name == REPORT_NAME else size, checksum) for name, (size, checksum) in expected.items())
     if _identity(int(manifest["scale_factor"]), listed) != manifest.get("manifest_hash"):
         raise StagingTamperedError(f"{manifest_path} does not match its manifest_hash")
     return manifest
@@ -501,6 +542,7 @@ def generate(
             if missing:
                 raise DigenOutputError(f"{TOOL_NAME} did not produce {', '.join(missing)} in {output}")
             report = parse_report((output / REPORT_NAME).read_text(encoding="utf-8", errors="replace"))
+            check_payload(output, report)
             if report.scale_factor != scale:
                 raise DigenOutputError(
                     f"{REPORT_NAME} states scale factor {report.scale_factor}, but {scale} was requested"
