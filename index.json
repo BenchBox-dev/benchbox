@@ -21479,6 +21479,15 @@
       "status": "open",
       "title": "Record the corpus rule decisions in the ADRs and tracker before any code changes"
     },
+    "crr-a1-rule-module-and-snapshot": {
+      "claim": null,
+      "needs": [
+        "crr-a0-decision-records"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Add the outcome rule as one stdlib-only module with an exhaustive test and a corpus outcome snapshot"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],
