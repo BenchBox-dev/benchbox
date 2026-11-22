@@ -36980,6 +36980,13 @@
       "status": "done",
       "title": "Make pr-open require the preflight guard steps in the receipt"
     },
+    "preflight-receipt-step-accepted-exit-code-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Make `preflight_receipt.py step` exit 0 for an accepted exit code instead of each recipe special-casing it"
+    },
     "preflight-runs-docs-inventory-and-project-reference-guards-20261110": {
       "claim": null,
       "needs": [],

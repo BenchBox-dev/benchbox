@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Accepted step exit codes are handled in one place and a test proves an accepted non-zero exit is recorded and returned as passed."
+  ],
+  "context": "Filed 2026-11-22 while closing out the run-timeout follow-ups (umbrella run-timeout-plan-20261120). Evidence was read on 2026-11-22; re-read run logs, file paths and line numbers before acting.",
+  "description": "## Problem\n`scripts/preflight_receipt.py step --ok-codes 0,5` records a step as passed when the command exits with an accepted code, but the step command itself still exits with the child's code. `make/pr-landing.mk` therefore special-cases it: the `lint-markers` step appends `|| [ \"$$?\" -eq 5 ]`, and the `pytest` step stores the status and maps 5 to 0 afterwards. A new step that passes `--ok-codes` but forgets that special case aborts preflight even though its receipt says passed (this happened during #4443). No test checks that a receipt records an accepted non-zero exit as passed.\n\n## Change\nRead every caller of `preflight_receipt.py step` (make files and scripts). If none needs the raw child code after an accepted outcome, make `step` exit 0 when the outcome is accepted and remove the special cases. If a caller does need it (for example the pytest step's later handling), keep the raw code, make the contract explicit in the command's help, and make every `--ok-codes` caller consistent.\n\n## Decision gates\n- Do not change which outcomes count as passed, `unverified` or failed, or the receipt's required steps.\n- If the cleanest fix changes the receipt format, stop and report the option on this item.\n\n## Verification rubric\nPass: a test runs `step --ok-codes 0,5` on a command that exits 5 and asserts both the step's exit status and the recorded outcome `passed`, failing before the change; `tests/unit/scripts/test_pr_preflight_base.py` and the receipt tests pass; `make pr-preflight` exits 0 on a change whose changed test module is fully deselected.\nFail: special cases remain without a reason, or the outcome classification changed.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4443"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T19:35:45Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "314e8bf6ff364322b50ec9870fb5cbc4",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    }
+  ]
+}
