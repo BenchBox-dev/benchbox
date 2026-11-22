@@ -5,66 +5,8 @@
     "tpc-full-spec-result-schema carries the two constraints in its context",
     "No agent text concludes the licence question; the ADR quotes the owner's decision and lists the open risks"
   ],
-  "batch": {
-    "batch_id": "corpus-rule-r2",
-    "implementation_dependencies": [],
-    "member_id": "crr-a0-decision-records"
-  },
   "context": "Step of the corpus rule remediation plan (crr-00-corpus-rule-remediation-plan). Plan written 2026-11-22 and reviewed twice by an independent adversarial reviewer; counts marked (R) were measured by that reviewer and must be re-measured, not trusted. Owner decisions were given by choice dialog on 2026-11-22 and are quoted in crr-00.",
   "description": "## Problem\nThe plan supersedes or extends recorded decisions. They must be amended first so later pull requests cite a current record.\n\n## Change\n- New ADR in docs/internal/adr/: the derived-outcome rule and the power-only lane. It contains the rule table from crr-00 and owner decisions 1 to 8.\n- Amend the methodology ADR (answers 2, 3, 9) and the slim-branch ADR. The site copy of the subscale ADR (decisions 1 and 5) and the site methodology page are amended in crr-b4, and the ADR says so.\n- Append to tracker item tpc-full-spec-result-schema: the stored conformance field is informational; no standard-scale result may be mapped to nonstandard_scale.\n- Licence note in the ADR: the owner decided to rank at standard scale; the fair-use section of the subscale ADR does not cover it; EULA clause 7 (use of TPC names) has not been assessed. State these as open risks, not as conclusions.\n\n## Decision gates\n- If re-reading an ADR shows a decision that conflicts with crr-00 and is not listed under \"Records touched\", stop and report it to the owner.\n\n## Guardrails (apply to every item of this plan)\n- Fix the root cause for every platform and benchmark. No rule, exception, label or test may name a platform or a version matrix. Only the pvm-p* items may name Polars, and only to run and stage that run's files.\n- Never edit a stored result file to make it pass. Outcomes change only through the rule.\n- Any change to the outcome of a stored result must show in the committed outcome snapshot diff in the same pull request and be explained in its body.\n- No new stored class value. No reader may decide anything from benchmark.compliance_class, conformance_class or summary.tpc_metrics.suppressed.\n- Paths, line numbers and counts in this plan were read on 2026-11-22 at develop 93f3360. Re-read before editing; report drift, do not guess.\n- AGENTS.md applies: linked worktree, one pull request per item, close at the merged pull request, heavy work only through make heavy-run, no live cloud run without owner approval in that task.\n- At a decision gate, follow the recorded default. If its stop condition is met, stop and report to the owner. Never substitute a different owner decision.\n- Read crr-00-corpus-rule-remediation-plan first: it holds the owner decisions, the rule table and the fault types (T1 to T5).",
-  "prepared": {
-    "accepted_head": "e075afca00b4c22b5756123f7a119e70ad12f7a9",
-    "batch_id": "corpus-rule-r2",
-    "changed_files": [
-      "docs/internal/adr/adr-benchmark-methodology-provisional-policy.md",
-      "docs/internal/adr/adr-corpus-derived-outcome-rule.md",
-      "docs/internal/adr/adr-published-results-slim-corpus-branch.md",
-      "quality/docs-ownership.json"
-    ],
-    "integration_head": "d9058de25791e77ad2d3ac749f5b2ee41e399e6c",
-    "integration_seq": 1,
-    "member_id": "crr-a0-decision-records",
-    "overlaps": [],
-    "owner_epoch": 0,
-    "schema": "prepared_work_v2",
-    "scope_hash": "475ff1de5e9b419decd547ba325fbdbd4754bba97fe4f063138fc5103cd83e3e",
-    "source_base": "c3c7cf47b19bf5041a024e115b0c355c292353a1",
-    "source_revision": "e075afca00b4c22b5756123f7a119e70ad12f7a9",
-    "source_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r2--crr-a0-decision-records",
-    "verification": {
-      "clean": true,
-      "command": [
-        "uv",
-        "run",
-        "--",
-        "python",
-        "-m",
-        "pytest",
-        "-n",
-        "0",
-        "-q",
-        "tests/unit/cli/test_shipped_docs_urls.py",
-        "tests/unit/docs/test_architecture_decision_surfaces.py",
-        "tests/unit/docs/test_publication_architecture.py",
-        "tests/unit/docs/test_publish_policy.py",
-        "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index",
-        "tests/unit/scripts/test_soundness_manifest.py"
-      ],
-      "review": {
-        "base_sha": "c3c7cf47b19bf5041a024e115b0c355c292353a1",
-        "head_sha": "e075afca00b4c22b5756123f7a119e70ad12f7a9",
-        "head_tree": "cdf836a7c1c608f3b43155106d3c84db9adc8286",
-        "outcome": "clear",
-        "patch_digest": "fd3db37d17120e53ad89f52dd7a9366a",
-        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
-        "schema": "benchbox_member_review_v1",
-        "trusted_sha": "c3c7cf47b19bf5041a024e115b0c355c292353a1"
-      },
-      "revision": "e075afca00b4c22b5756123f7a119e70ad12f7a9",
-      "status": "passed",
-      "suite": "member-tests"
-    }
-  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6fbef61b8c1a450fbecb672",
@@ -122,6 +64,14 @@
       "generation": "df17024a641043e2bc1cf34f64eacf3b",
       "op": "prepare",
       "op_id": "60ebb223a7f644b2bc529bd57fd4a180",
+      "session_id": "fb2b868a75fa45f6a33b883d74cd5ef0"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:fe4873e1ab4511a8ff69ca5f",
+      "at": "2026-11-22T18:51:40Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "557ba7a9e9124fc7a1570450465b6c24",
       "session_id": "fb2b868a75fa45f6a33b883d74cd5ef0"
     }
   ]

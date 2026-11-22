@@ -2968,26 +2968,12 @@
       "terminal_outcome": "deliver"
     },
     "corpus-rule-r2": {
-      "accepted_members": {
-        "crr-a0-decision-records": "e075afca00b4c22b5756123f7a119e70ad12f7a9"
-      },
+      "accepted_members": {},
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {
-        "crr-a0-decision-records": {
-          "accepted_head": "e075afca00b4c22b5756123f7a119e70ad12f7a9",
-          "changed_files": [
-            "docs/internal/adr/adr-benchmark-methodology-provisional-policy.md",
-            "docs/internal/adr/adr-corpus-derived-outcome-rule.md",
-            "docs/internal/adr/adr-published-results-slim-corpus-branch.md",
-            "quality/docs-ownership.json"
-          ],
-          "integration_head": "d9058de25791e77ad2d3ac749f5b2ee41e399e6c",
-          "integration_seq": 1
-        }
-      },
+      "integrated_members": {},
       "integration_branch": "feat/corpus-rule-r2",
       "integration_head": "d9058de25791e77ad2d3ac749f5b2ee41e399e6c",
       "integration_log": [
@@ -3008,7 +2994,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r2",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "crr-a0-decision-records",
         "crr-a1-rule-module-and-snapshot",
