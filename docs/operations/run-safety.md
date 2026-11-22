@@ -116,6 +116,15 @@ The warning is shown on every surface that takes a limit: the command line (once
 uses, including a platform chosen interactively), the `warnings` list of the MCP `run_benchmark` and `start_benchmark`
 results, and a log warning from `adapter.run_benchmark(timeout_seconds=...)` in Python.
 
+From Python, `adapter.run_benchmark(timeout_seconds=...)` and `benchmark.generate_data(timeout_seconds=...)` raise
+`RunTimeoutError` when the limit is reached. Import it from the public module:
+
+```python
+from benchbox.core.exceptions import RunTimeoutError
+```
+
+The error carries `timeout_seconds`, `phase`, `query_id` and `detail`. It derives from `Exception`, not `BenchBoxError`.
+
 | Platform | Cancel a statement | Stop a job, session or cluster | Run-started work is known | Implemented |
 |---|---|---|---|---|
 | Onehouse Quanton | Job cancel API | Terminate a cluster the client provisioned | Job ids the client submitted | Yes |

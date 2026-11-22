@@ -9,11 +9,11 @@ import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 
+from benchbox.core.exceptions import RunTimeoutError
 from benchbox.core.tpcds.c_tools import tpcds_option
 from benchbox.utils.filesystem_flush import flush_filesystem
 from benchbox.utils.printing import emit
 from benchbox.utils.run_deadline import (
-    RunTimeoutError,
     bind_run_deadline,
     current_run_deadline,
     run_child,
