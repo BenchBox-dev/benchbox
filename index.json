@@ -45814,12 +45814,17 @@
       "title": "Dual-write conformance fields and rename unofficial publishing codes"
     },
     "tpc-generation-duration-estimate-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-23T04:13:43Z",
+        "generation": "940f9e7000d846808f7db10372bf4852",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
+      },
       "needs": [
         "run-timeout-remove-unused-timers-20261120"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Show a rough duration estimate before TPC data and query generation"
     },
     "tpc-generation-no-default-timeout-optional-user-timeout-20261120": {
