@@ -11489,7 +11489,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-foundation",
-      "integration_head": "a66ecfe585b38624e9b8ea1c7f93374b72dd56e3",
+      "integration_head": "bef45b9aa3092ee39c59600a635990a7983ce22e",
       "integration_log": [
         {
           "at": "2026-11-22T03:55:11Z",
@@ -11572,6 +11572,25 @@
             "tpcdi-provenance-record-and-copy-guard-20261121"
           ],
           "seq": 6
+        },
+        {
+          "at": "2026-11-22T06:17:16Z",
+          "changed_files": [
+            ".github/soundness-paths.txt",
+            ".github/workflows/ci.yml",
+            "scripts/check_tpcdi_copy_guard.py",
+            "tests/unit/core/tpcdi/test_provenance_guard.py",
+            "tests/unit/workflows/test_ci_short_checks.py"
+          ],
+          "head": "bef45b9aa3092ee39c59600a635990a7983ce22e",
+          "kind": "fix",
+          "op_id": "ef61a85fe0cc4e0eaecca8b6df404bb4",
+          "previous_head": "a66ecfe585b38624e9b8ea1c7f93374b72dd56e3",
+          "requires_acceptance": [
+            "tpcdi-comment-policy-route-for-tpc-files-20261121",
+            "tpcdi-provenance-record-and-copy-guard-20261121"
+          ],
+          "seq": 7
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-foundation",
