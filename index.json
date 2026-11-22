@@ -43246,7 +43246,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Merge benchbox-site #242 (public RunTimeoutError import, optimize_for_system without memory_gb) once next is green"
     },
     "site-next-tpcdi-page-tradetype-and-market-history-text-20261120": {
