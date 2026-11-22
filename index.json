@@ -9046,20 +9046,65 @@
       "terminal_outcome": "deliver"
     },
     "run-timeout-harness2": {
-      "accepted_members": {},
+      "accepted_members": {
+        "run-timeout-uat-cells-20261120": "8bcaca7d6f3e3e2998a7dcc25f5c75c5443d88da"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "run-timeout-uat-cells-20261120": {
+          "accepted_head": "8bcaca7d6f3e3e2998a7dcc25f5c75c5443d88da",
+          "changed_files": [
+            "docs/internal/uat-release-campaign.md",
+            "quality/windows-antipatterns-baseline.json",
+            "scripts/dev_loop_dashboard.py",
+            "scripts/release_reuse_uat_evidence.py",
+            "scripts/run_version_matrix.py",
+            "tests/fixtures/version_matrix/polars_dry_run.txt",
+            "tests/uat/README.md",
+            "tests/uat/_cli.py",
+            "tests/uat/cells_io.py",
+            "tests/uat/clickhouse_memory.py",
+            "tests/uat/infrastructure_retry.py",
+            "tests/uat/matrix.py",
+            "tests/uat/orchestrator.py",
+            "tests/uat/phases/report.py",
+            "tests/uat/rubric.py",
+            "tests/uat/runner.py",
+            "tests/uat/test_hung_status_readers.py",
+            "tests/uat/test_infrastructure_retry.py",
+            "tests/uat/test_matrix.py",
+            "tests/uat/test_runner.py",
+            "tests/uat/test_runner_timeout_process_group.py",
+            "tests/uat/test_timeouts.py",
+            "tests/uat/timeouts.py",
+            "tests/unit/scripts/test_dev_loop_dashboard.py",
+            "tests/unit/scripts/test_polars_version_matrix.py",
+            "tests/unit/scripts/test_release_reuse_uat_evidence.py"
+          ],
+          "integration_head": "d40fd21425fcd2b738ea80e85e42457800b9c673",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/run-timeout-harness2",
-      "integration_head": "4a6fe5496bad1a4e651111363890dcb4dbdd1251",
+      "integration_head": "d40fd21425fcd2b738ea80e85e42457800b9c673",
       "integration_log": [
         {
           "at": "2026-11-22T00:45:42Z",
           "head": "4a6fe5496bad1a4e651111363890dcb4dbdd1251",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-22T01:17:51Z",
+          "head": "d40fd21425fcd2b738ea80e85e42457800b9c673",
+          "kind": "prepare",
+          "member": "run-timeout-uat-cells-20261120",
+          "op_id": "d920ff4c9e8c45289a8d2b4022bcd7a4",
+          "previous_head": "4a6fe5496bad1a4e651111363890dcb4dbdd1251",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-harness2",
@@ -39338,15 +39383,10 @@
       "title": "Run timeout: document --timeout on the benchbox-site run, datagen, MCP and configuration pages"
     },
     "run-timeout-uat-cells-20261120": {
-      "claim": {
-        "expires_at": "2026-11-23T01:17:48Z",
-        "generation": "f81cfe29b9f3428eb20b48b5c3a5eda0",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Run timeout step 4: UAT cells pass --timeout; the outside kill becomes the backstop"
     },
     "runtime-module-refactor-batch-two": {
