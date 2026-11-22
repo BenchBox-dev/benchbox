@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The TPC-DI data warehouse schema now follows Clause 3.2 of the specification: DimTrade replaces FactTrade, and DImessages, Prospect, Financial, Audit and the FactHoldings trade keys are added, with exact numeric types for money and quantities.",
+      "details": [
+        "Flag columns are BOOLEAN on DuckDB, where true = 1 evaluates to true, and a 0/1 SMALLINT on other platforms.",
+        "Staging tables for the ETL load are created with the warehouse tables. TPC-DI stays unavailable while it is reworked."
+      ],
+      "benchmarks": ["tpcdi"]
+    }
+  ]
+}

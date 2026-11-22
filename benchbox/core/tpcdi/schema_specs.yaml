@@ -1,309 +1,495 @@
 core_tables:
-- id: DIMCUSTOMER
-  key: DimCustomer
-  schema:
-    name: DimCustomer
-    columns:
-    - name: SK_CustomerID
-      type: BIGINT
-      primary_key: true
-    - name: CustomerID
-      type: BIGINT
-    - name: TaxID
-      type: VARCHAR(20)
-    - name: Status
-      type: VARCHAR(10)
-    - name: LastName
-      type: VARCHAR(30)
-    - name: FirstName
-      type: VARCHAR(30)
-    - name: MiddleInitial
-      type: VARCHAR(1)
-    - name: Gender
-      type: VARCHAR(1)
-    - name: Tier
-      type: TINYINT
-    - name: DOB
-      type: DATE
-    - name: AddressLine1
-      type: VARCHAR(80)
-    - name: AddressLine2
-      type: VARCHAR(80)
-    - name: PostalCode
-      type: VARCHAR(12)
-    - name: City
-      type: VARCHAR(25)
-    - name: StateProv
-      type: VARCHAR(20)
-    - name: Country
-      type: VARCHAR(24)
-    - name: Phone1
-      type: VARCHAR(30)
-    - name: Phone2
-      type: VARCHAR(30)
-    - name: Phone3
-      type: VARCHAR(30)
-    - name: Email1
-      type: VARCHAR(50)
-    - name: Email2
-      type: VARCHAR(50)
-    - name: NationalTaxRateDesc
-      type: VARCHAR(50)
-    - name: NationalTaxRate
-      type: DECIMAL(6,5)
-    - name: LocalTaxRateDesc
-      type: VARCHAR(50)
-    - name: LocalTaxRate
-      type: DECIMAL(6,5)
-    - name: AgencyID
-      type: VARCHAR(30)
-    - name: CreditRating
-      type: BIGINT
-    - name: NetWorth
-      type: BIGINT
-    - name: MarketingNameplate
-      type: VARCHAR(100)
-    - name: IsCurrent
-      type: BOOLEAN
-    - name: BatchID
-      type: BIGINT
-    - name: EffectiveDate
-      type: DATE
-    - name: EndDate
-      type: DATE
 - id: DIMACCOUNT
   key: DimAccount
   schema:
     name: DimAccount
     columns:
-    - name: SK_AccountID
-      type: BIGINT
-      primary_key: true
-    - name: AccountID
-      type: BIGINT
-    - name: SK_BrokerID
-      type: BIGINT
-    - name: SK_CustomerID
-      type: BIGINT
-    - name: Status
-      type: VARCHAR(10)
-    - name: AccountDesc
-      type: VARCHAR(50)
-    - name: TaxStatus
-      type: TINYINT
-    - name: IsCurrent
-      type: BOOLEAN
-    - name: BatchID
-      type: BIGINT
-    - name: EffectiveDate
-      type: DATE
-    - name: EndDate
-      type: DATE
-- id: DIMSECURITY
-  key: DimSecurity
+    - {name: SK_AccountID, type: BIGINT, not_null: true}
+    - {name: AccountID, type: BIGINT, not_null: true}
+    - {name: SK_BrokerID, type: BIGINT, not_null: true}
+    - {name: SK_CustomerID, type: BIGINT, not_null: true}
+    - {name: Status, type: VARCHAR(10), not_null: true}
+    - {name: AccountDesc, type: VARCHAR(50)}
+    - {name: TaxStatus, type: SMALLINT}
+    - {name: IsCurrent, type: BOOLEAN, not_null: true}
+    - {name: BatchID, type: INTEGER, not_null: true}
+    - {name: EffectiveDate, type: DATE, not_null: true}
+    - {name: EndDate, type: DATE, not_null: true}
+- id: DIMBROKER
+  key: DimBroker
   schema:
-    name: DimSecurity
+    name: DimBroker
     columns:
-    - name: SK_SecurityID
-      type: BIGINT
-      primary_key: true
-    - name: Symbol
-      type: VARCHAR(15)
-    - name: Issue
-      type: VARCHAR(6)
-    - name: Status
-      type: VARCHAR(10)
-    - name: Name
-      type: VARCHAR(70)
-    - name: ExchangeID
-      type: VARCHAR(6)
-    - name: SK_CompanyID
-      type: BIGINT
-    - name: SharesOutstanding
-      type: BIGINT
-    - name: FirstTrade
-      type: DATE
-    - name: FirstTradeOnExchange
-      type: DATE
-    - name: Dividend
-      type: DECIMAL(10,2)
-    - name: IsCurrent
-      type: BOOLEAN
-    - name: BatchID
-      type: BIGINT
-    - name: EffectiveDate
-      type: DATE
-    - name: EndDate
-      type: DATE
+    - {name: SK_BrokerID, type: BIGINT, not_null: true}
+    - {name: BrokerID, type: BIGINT, not_null: true}
+    - {name: ManagerID, type: BIGINT}
+    - {name: FirstName, type: VARCHAR(50), not_null: true}
+    - {name: LastName, type: VARCHAR(50), not_null: true}
+    - {name: MiddleInitial, type: VARCHAR(1)}
+    - {name: Branch, type: VARCHAR(50)}
+    - {name: Office, type: VARCHAR(50)}
+    - {name: Phone, type: VARCHAR(14)}
+    - {name: IsCurrent, type: BOOLEAN, not_null: true}
+    - {name: BatchID, type: INTEGER, not_null: true}
+    - {name: EffectiveDate, type: DATE, not_null: true}
+    - {name: EndDate, type: DATE, not_null: true}
 - id: DIMCOMPANY
   key: DimCompany
   schema:
     name: DimCompany
     columns:
-    - name: SK_CompanyID
-      type: BIGINT
-      primary_key: true
-    - name: CompanyID
-      type: BIGINT
-    - name: Status
-      type: VARCHAR(10)
-    - name: Name
-      type: VARCHAR(60)
-    - name: Industry
-      type: VARCHAR(50)
-    - name: SPrating
-      type: VARCHAR(4)
-    - name: isLowGrade
-      type: BOOLEAN
-    - name: MarketCap
-      type: DECIMAL(15,2)
-    - name: CEO
-      type: VARCHAR(100)
-    - name: AddressLine1
-      type: VARCHAR(80)
-    - name: AddressLine2
-      type: VARCHAR(80)
-    - name: PostalCode
-      type: VARCHAR(12)
-    - name: City
-      type: VARCHAR(25)
-    - name: StateProv
-      type: VARCHAR(20)
-    - name: Country
-      type: VARCHAR(24)
-    - name: Description
-      type: VARCHAR(150)
-    - name: FoundingDate
-      type: DATE
-    - name: IsCurrent
-      type: BOOLEAN
-    - name: BatchID
-      type: BIGINT
-    - name: EffectiveDate
-      type: DATE
-    - name: EndDate
-      type: DATE
-- id: FACTTRADE
-  key: FactTrade
+    - {name: SK_CompanyID, type: BIGINT, not_null: true}
+    - {name: CompanyID, type: BIGINT, not_null: true}
+    - {name: Status, type: VARCHAR(10), not_null: true}
+    - {name: Name, type: VARCHAR(60), not_null: true}
+    - {name: Industry, type: VARCHAR(50), not_null: true}
+    - {name: SPrating, type: VARCHAR(4)}
+    - {name: isLowGrade, type: BOOLEAN}
+    - {name: CEO, type: VARCHAR(100), not_null: true}
+    - {name: AddressLine1, type: VARCHAR(80)}
+    - {name: AddressLine2, type: VARCHAR(80)}
+    - {name: PostalCode, type: VARCHAR(12), not_null: true}
+    - {name: City, type: VARCHAR(25), not_null: true}
+    - {name: StateProv, type: VARCHAR(20), not_null: true}
+    - {name: Country, type: VARCHAR(24)}
+    - {name: Description, type: VARCHAR(150), not_null: true}
+    - {name: FoundingDate, type: DATE}
+    - {name: IsCurrent, type: BOOLEAN, not_null: true}
+    - {name: BatchID, type: INTEGER, not_null: true}
+    - {name: EffectiveDate, type: DATE, not_null: true}
+    - {name: EndDate, type: DATE, not_null: true}
+- id: DIMCUSTOMER
+  key: DimCustomer
   schema:
-    name: FactTrade
+    name: DimCustomer
     columns:
-    - name: TradeID
-      type: BIGINT
-      primary_key: true
-    - name: SK_BrokerID
-      type: BIGINT
-    - name: SK_CreateDateID
-      type: BIGINT
-    - name: SK_CreateTimeID
-      type: BIGINT
-    - name: SK_CloseDateID
-      type: BIGINT
-    - name: SK_CloseTimeID
-      type: BIGINT
-    - name: Status
-      type: VARCHAR(10)
-    - name: Type
-      type: VARCHAR(12)
-    - name: CashFlag
-      type: BOOLEAN
-    - name: SK_SecurityID
-      type: BIGINT
-    - name: SK_CompanyID
-      type: BIGINT
-    - name: Quantity
-      type: BIGINT
-    - name: BidPrice
-      type: DECIMAL(8,2)
-    - name: SK_CustomerID
-      type: BIGINT
-    - name: SK_AccountID
-      type: BIGINT
-    - name: ExecutedBy
-      type: VARCHAR(64)
-    - name: TradePrice
-      type: DECIMAL(8,2)
-    - name: Fee
-      type: DECIMAL(10,2)
-    - name: Commission
-      type: DECIMAL(10,2)
-    - name: Tax
-      type: DECIMAL(10,2)
-    - name: BatchID
-      type: BIGINT
+    - {name: SK_CustomerID, type: BIGINT, not_null: true}
+    - {name: CustomerID, type: BIGINT, not_null: true}
+    - {name: TaxID, type: VARCHAR(20), not_null: true}
+    - {name: Status, type: VARCHAR(10), not_null: true}
+    - {name: LastName, type: VARCHAR(30), not_null: true}
+    - {name: FirstName, type: VARCHAR(30), not_null: true}
+    - {name: MiddleInitial, type: VARCHAR(1)}
+    - {name: Gender, type: VARCHAR(1)}
+    - {name: Tier, type: SMALLINT}
+    - {name: DOB, type: DATE, not_null: true}
+    - {name: AddressLine1, type: VARCHAR(80), not_null: true}
+    - {name: AddressLine2, type: VARCHAR(80)}
+    - {name: PostalCode, type: VARCHAR(12), not_null: true}
+    - {name: City, type: VARCHAR(25), not_null: true}
+    - {name: StateProv, type: VARCHAR(20), not_null: true}
+    - {name: Country, type: VARCHAR(24)}
+    - {name: Phone1, type: VARCHAR(30)}
+    - {name: Phone2, type: VARCHAR(30)}
+    - {name: Phone3, type: VARCHAR(30)}
+    - {name: Email1, type: VARCHAR(50)}
+    - {name: Email2, type: VARCHAR(50)}
+    - {name: NationalTaxRateDesc, type: VARCHAR(50)}
+    - {name: NationalTaxRate, type: 'DECIMAL(6,5)'}
+    - {name: LocalTaxRateDesc, type: VARCHAR(50)}
+    - {name: LocalTaxRate, type: 'DECIMAL(6,5)'}
+    - {name: AgencyID, type: VARCHAR(30)}
+    - {name: CreditRating, type: INTEGER}
+    - {name: NetWorth, type: BIGINT}
+    - {name: MarketingNameplate, type: VARCHAR(100)}
+    - {name: IsCurrent, type: BOOLEAN, not_null: true}
+    - {name: BatchID, type: INTEGER, not_null: true}
+    - {name: EffectiveDate, type: DATE, not_null: true}
+    - {name: EndDate, type: DATE, not_null: true}
 - id: DIMDATE
   key: DimDate
   schema:
     name: DimDate
     columns:
-    - name: SK_DateID
-      type: BIGINT
-      primary_key: true
-    - name: DateValue
-      type: DATE
-    - name: DateDesc
-      type: VARCHAR(20)
-    - name: CalendarYearID
-      type: BIGINT
-    - name: CalendarYearDesc
-      type: VARCHAR(20)
-    - name: CalendarQtrID
-      type: BIGINT
-    - name: CalendarQtrDesc
-      type: VARCHAR(20)
-    - name: CalendarMonthID
-      type: BIGINT
-    - name: CalendarMonthDesc
-      type: VARCHAR(20)
-    - name: CalendarWeekID
-      type: BIGINT
-    - name: CalendarWeekDesc
-      type: VARCHAR(20)
-    - name: DayOfWeekNum
-      type: BIGINT
-    - name: DayOfWeekDesc
-      type: VARCHAR(10)
-    - name: FiscalYearID
-      type: BIGINT
-    - name: FiscalYearDesc
-      type: VARCHAR(20)
-    - name: FiscalQtrID
-      type: BIGINT
-    - name: FiscalQtrDesc
-      type: VARCHAR(20)
-    - name: HolidayFlag
-      type: BOOLEAN
+    - {name: SK_DateID, type: BIGINT, not_null: true}
+    - {name: DateValue, type: DATE, not_null: true}
+    - {name: DateDesc, type: VARCHAR(20), not_null: true}
+    - {name: CalendarYearID, type: SMALLINT, not_null: true}
+    - {name: CalendarYearDesc, type: VARCHAR(20), not_null: true}
+    - {name: CalendarQtrID, type: INTEGER, not_null: true}
+    - {name: CalendarQtrDesc, type: VARCHAR(20), not_null: true}
+    - {name: CalendarMonthID, type: INTEGER, not_null: true}
+    - {name: CalendarMonthDesc, type: VARCHAR(20), not_null: true}
+    - {name: CalendarWeekID, type: INTEGER, not_null: true}
+    - {name: CalendarWeekDesc, type: VARCHAR(20), not_null: true}
+    - {name: DayOfWeekNum, type: SMALLINT, not_null: true}
+    - {name: DayOfWeekDesc, type: VARCHAR(10), not_null: true}
+    - {name: FiscalYearID, type: SMALLINT, not_null: true}
+    - {name: FiscalYearDesc, type: VARCHAR(20), not_null: true}
+    - {name: FiscalQtrID, type: INTEGER, not_null: true}
+    - {name: FiscalQtrDesc, type: VARCHAR(20), not_null: true}
+    - {name: HolidayFlag, type: BOOLEAN}
+- id: DIMSECURITY
+  key: DimSecurity
+  schema:
+    name: DimSecurity
+    columns:
+    - {name: SK_SecurityID, type: BIGINT, not_null: true}
+    - {name: Symbol, type: VARCHAR(15), not_null: true}
+    - {name: Issue, type: VARCHAR(6), not_null: true}
+    - {name: Status, type: VARCHAR(10), not_null: true}
+    - {name: Name, type: VARCHAR(70), not_null: true}
+    - {name: ExchangeID, type: VARCHAR(6), not_null: true}
+    - {name: SK_CompanyID, type: BIGINT, not_null: true}
+    - {name: SharesOutstanding, type: BIGINT, not_null: true}
+    - {name: FirstTrade, type: DATE, not_null: true}
+    - {name: FirstTradeOnExchange, type: DATE, not_null: true}
+    - {name: Dividend, type: 'DECIMAL(10,2)', not_null: true}
+    - {name: IsCurrent, type: BOOLEAN, not_null: true}
+    - {name: BatchID, type: INTEGER, not_null: true}
+    - {name: EffectiveDate, type: DATE, not_null: true}
+    - {name: EndDate, type: DATE, not_null: true}
 - id: DIMTIME
   key: DimTime
   schema:
     name: DimTime
     columns:
-    - name: SK_TimeID
-      type: BIGINT
-      primary_key: true
-    - name: TimeValue
-      type: TIME
-    - name: HourID
-      type: BIGINT
-    - name: HourDesc
-      type: VARCHAR(20)
-    - name: MinuteID
-      type: BIGINT
-    - name: MinuteDesc
-      type: VARCHAR(20)
-    - name: SecondID
-      type: BIGINT
-    - name: SecondDesc
-      type: VARCHAR(20)
-    - name: MarketHoursFlag
-      type: BOOLEAN
-    - name: OfficeHoursFlag
-      type: BOOLEAN
-core_table_order:
-- DimDate
-- DimTime
-- DimCompany
-- DimSecurity
-- DimCustomer
-- DimAccount
-- FactTrade
+    - {name: SK_TimeID, type: BIGINT, not_null: true}
+    - {name: TimeValue, type: TIME, not_null: true}
+    - {name: HourID, type: SMALLINT, not_null: true}
+    - {name: HourDesc, type: VARCHAR(20), not_null: true}
+    - {name: MinuteID, type: SMALLINT, not_null: true}
+    - {name: MinuteDesc, type: VARCHAR(20), not_null: true}
+    - {name: SecondID, type: SMALLINT, not_null: true}
+    - {name: SecondDesc, type: VARCHAR(20), not_null: true}
+    - {name: MarketHoursFlag, type: BOOLEAN}
+    - {name: OfficeHoursFlag, type: BOOLEAN}
+- id: DIMTRADE
+  key: DimTrade
+  schema:
+    name: DimTrade
+    columns:
+    - {name: TradeID, type: BIGINT, not_null: true}
+    - {name: SK_BrokerID, type: BIGINT}
+    - {name: SK_CreateDateID, type: BIGINT, not_null: true}
+    - {name: SK_CreateTimeID, type: BIGINT, not_null: true}
+    - {name: SK_CloseDateID, type: BIGINT}
+    - {name: SK_CloseTimeID, type: BIGINT}
+    - {name: Status, type: VARCHAR(10), not_null: true}
+    - {name: Type, type: VARCHAR(12), not_null: true}
+    - {name: CashFlag, type: BOOLEAN, not_null: true}
+    - {name: SK_SecurityID, type: BIGINT, not_null: true}
+    - {name: SK_CompanyID, type: BIGINT, not_null: true}
+    - {name: Quantity, type: 'DECIMAL(6,0)', not_null: true}
+    - {name: BidPrice, type: 'DECIMAL(8,2)', not_null: true}
+    - {name: SK_CustomerID, type: BIGINT, not_null: true}
+    - {name: SK_AccountID, type: BIGINT, not_null: true}
+    - {name: ExecutedBy, type: VARCHAR(64), not_null: true}
+    - {name: TradePrice, type: 'DECIMAL(8,2)'}
+    - {name: Fee, type: 'DECIMAL(10,2)'}
+    - {name: Commission, type: 'DECIMAL(10,2)'}
+    - {name: Tax, type: 'DECIMAL(10,2)'}
+    - {name: BatchID, type: INTEGER, not_null: true}
+- id: DIMESSAGES
+  key: DImessages
+  schema:
+    name: DImessages
+    columns:
+    - {name: MessageDateAndTime, type: TIMESTAMP, not_null: true}
+    - {name: BatchID, type: INTEGER, not_null: true}
+    - {name: MessageSource, type: VARCHAR(30)}
+    - {name: MessageText, type: VARCHAR(50), not_null: true}
+    - {name: MessageType, type: VARCHAR(12), not_null: true}
+    - {name: MessageData, type: VARCHAR(100)}
+- id: FACTCASHBALANCES
+  key: FactCashBalances
+  schema:
+    name: FactCashBalances
+    columns:
+    - {name: SK_CustomerID, type: BIGINT, not_null: true}
+    - {name: SK_AccountID, type: BIGINT, not_null: true}
+    - {name: SK_DateID, type: BIGINT, not_null: true}
+    - {name: Cash, type: 'DECIMAL(15,2)', not_null: true}
+    - {name: BatchID, type: INTEGER, not_null: true}
+- id: FACTHOLDINGS
+  key: FactHoldings
+  schema:
+    name: FactHoldings
+    columns:
+    - {name: TradeID, type: BIGINT, not_null: true}
+    - {name: CurrentTradeID, type: BIGINT, not_null: true}
+    - {name: SK_CustomerID, type: BIGINT, not_null: true}
+    - {name: SK_AccountID, type: BIGINT, not_null: true}
+    - {name: SK_SecurityID, type: BIGINT, not_null: true}
+    - {name: SK_CompanyID, type: BIGINT, not_null: true}
+    - {name: SK_DateID, type: BIGINT, not_null: true}
+    - {name: SK_TimeID, type: BIGINT, not_null: true}
+    - {name: CurrentPrice, type: 'DECIMAL(8,2)'}
+    - {name: CurrentHolding, type: INTEGER, not_null: true}
+    - {name: BatchID, type: INTEGER, not_null: true}
+- id: FACTMARKETHISTORY
+  key: FactMarketHistory
+  schema:
+    name: FactMarketHistory
+    columns:
+    - {name: SK_SecurityID, type: BIGINT, not_null: true}
+    - {name: SK_CompanyID, type: BIGINT, not_null: true}
+    - {name: SK_DateID, type: BIGINT, not_null: true}
+    - {name: PERatio, type: 'DECIMAL(10,2)'}
+    - {name: Yield, type: 'DECIMAL(5,2)', not_null: true}
+    - {name: FiftyTwoWeekHigh, type: 'DECIMAL(8,2)', not_null: true}
+    - {name: SK_FiftyTwoWeekHighDate, type: BIGINT, not_null: true}
+    - {name: FiftyTwoWeekLow, type: 'DECIMAL(8,2)', not_null: true}
+    - {name: SK_FiftyTwoWeekLowDate, type: BIGINT, not_null: true}
+    - {name: ClosePrice, type: 'DECIMAL(8,2)', not_null: true}
+    - {name: DayHigh, type: 'DECIMAL(8,2)', not_null: true}
+    - {name: DayLow, type: 'DECIMAL(8,2)', not_null: true}
+    - {name: Volume, type: BIGINT, not_null: true}
+    - {name: BatchID, type: INTEGER, not_null: true}
+- id: FACTWATCHES
+  key: FactWatches
+  schema:
+    name: FactWatches
+    columns:
+    - {name: SK_CustomerID, type: BIGINT, not_null: true}
+    - {name: SK_SecurityID, type: BIGINT, not_null: true}
+    - {name: SK_DateID_DatePlaced, type: BIGINT, not_null: true}
+    - {name: SK_DateID_DateRemoved, type: BIGINT}
+    - {name: BatchID, type: INTEGER, not_null: true}
+- id: INDUSTRY
+  key: Industry
+  schema:
+    name: Industry
+    columns:
+    - {name: IN_ID, type: VARCHAR(2), not_null: true}
+    - {name: IN_NAME, type: VARCHAR(50), not_null: true}
+    - {name: IN_SC_ID, type: VARCHAR(4), not_null: true}
+- id: FINANCIAL
+  key: Financial
+  schema:
+    name: Financial
+    columns:
+    - {name: SK_CompanyID, type: BIGINT, not_null: true}
+    - {name: FI_YEAR, type: SMALLINT, not_null: true}
+    - {name: FI_QTR, type: SMALLINT, not_null: true}
+    - {name: FI_QTR_START_DATE, type: DATE, not_null: true}
+    - {name: FI_REVENUE, type: 'DECIMAL(15,2)', not_null: true}
+    - {name: FI_NET_EARN, type: 'DECIMAL(15,2)', not_null: true}
+    - {name: FI_BASIC_EPS, type: 'DECIMAL(10,2)', not_null: true}
+    - {name: FI_DILUT_EPS, type: 'DECIMAL(10,2)', not_null: true}
+    - {name: FI_MARGIN, type: 'DECIMAL(10,2)', not_null: true}
+    - {name: FI_INVENTORY, type: 'DECIMAL(15,2)', not_null: true}
+    - {name: FI_ASSETS, type: 'DECIMAL(15,2)', not_null: true}
+    - {name: FI_LIABILITY, type: 'DECIMAL(15,2)', not_null: true}
+    - {name: FI_OUT_BASIC, type: BIGINT, not_null: true}
+    - {name: FI_OUT_DILUT, type: BIGINT, not_null: true}
+- id: PROSPECT
+  key: Prospect
+  schema:
+    name: Prospect
+    columns:
+    - {name: AgencyID, type: VARCHAR(30), not_null: true}
+    - {name: SK_RecordDateID, type: BIGINT, not_null: true}
+    - {name: SK_UpdateDateID, type: BIGINT, not_null: true}
+    - {name: BatchID, type: INTEGER, not_null: true}
+    - {name: IsCustomer, type: BOOLEAN, not_null: true}
+    - {name: LastName, type: VARCHAR(30), not_null: true}
+    - {name: FirstName, type: VARCHAR(30), not_null: true}
+    - {name: MiddleInitial, type: VARCHAR(1)}
+    - {name: Gender, type: VARCHAR(1)}
+    - {name: AddressLine1, type: VARCHAR(80)}
+    - {name: AddressLine2, type: VARCHAR(80)}
+    - {name: PostalCode, type: VARCHAR(12)}
+    - {name: City, type: VARCHAR(25), not_null: true}
+    - {name: State, type: VARCHAR(20), not_null: true}
+    - {name: Country, type: VARCHAR(24)}
+    - {name: Phone, type: VARCHAR(30)}
+    - {name: Income, type: INTEGER}
+    - {name: NumberCars, type: SMALLINT}
+    - {name: NumberChildren, type: SMALLINT}
+    - {name: MaritalStatus, type: VARCHAR(1)}
+    - {name: Age, type: SMALLINT}
+    - {name: CreditRating, type: SMALLINT}
+    - {name: OwnOrRentFlag, type: VARCHAR(1)}
+    - {name: Employer, type: VARCHAR(30)}
+    - {name: NumberCreditCards, type: SMALLINT}
+    - {name: NetWorth, type: BIGINT}
+    - {name: MarketingNameplate, type: VARCHAR(100)}
+- id: STATUSTYPE
+  key: StatusType
+  schema:
+    name: StatusType
+    columns:
+    - {name: ST_ID, type: VARCHAR(4), not_null: true}
+    - {name: ST_NAME, type: VARCHAR(10), not_null: true}
+- id: TAXRATE
+  key: TaxRate
+  schema:
+    name: TaxRate
+    columns:
+    - {name: TX_ID, type: VARCHAR(4), not_null: true}
+    - {name: TX_NAME, type: VARCHAR(50), not_null: true}
+    - {name: TX_RATE, type: 'DECIMAL(6,5)', not_null: true}
+- id: TRADETYPE
+  key: TradeType
+  schema:
+    name: TradeType
+    columns:
+    - {name: TT_ID, type: VARCHAR(3), not_null: true}
+    - {name: TT_NAME, type: VARCHAR(12), not_null: true}
+    - {name: TT_IS_SELL, type: SMALLINT, not_null: true}
+    - {name: TT_IS_MRKT, type: SMALLINT, not_null: true}
+- id: AUDIT
+  key: Audit
+  schema:
+    name: Audit
+    columns:
+    - {name: DataSet, type: VARCHAR(20), not_null: true}
+    - {name: BatchID, type: INTEGER}
+    - {name: Date, type: DATE}
+    - {name: Attribute, type: VARCHAR(50), not_null: true}
+    - {name: Value, type: BIGINT}
+    - {name: DValue, type: 'DECIMAL(15,5)'}
+staging_tables:
+- id: FINWIRE
+  key: FinWire
+  schema:
+    name: FinWire
+    columns:
+    - {name: rectype, type: VARCHAR(3)}
+    - {name: recdate, type: DATE}
+    - {name: value, type: VARCHAR(543)}
+- id: WATCHINCREMENTAL
+  key: WatchIncremental
+  schema:
+    name: WatchIncremental
+    columns:
+    - {name: w_c_id, type: BIGINT}
+    - {name: w_s_symb, type: VARCHAR(15)}
+    - {name: w_dts, type: TIMESTAMP}
+    - {name: w_action, type: VARCHAR(4)}
+    - {name: batchid, type: INTEGER}
+- id: DAILYMARKETINCREMENTAL
+  key: DailyMarketIncremental
+  schema:
+    name: DailyMarketIncremental
+    columns:
+    - {name: dm_date, type: DATE}
+    - {name: dm_s_symb, type: VARCHAR(15)}
+    - {name: dm_close, type: 'DECIMAL(8,2)'}
+    - {name: dm_high, type: 'DECIMAL(8,2)'}
+    - {name: dm_low, type: 'DECIMAL(8,2)'}
+    - {name: dm_vol, type: BIGINT}
+    - {name: batchid, type: INTEGER}
+    - {name: fiftytwoweekhigh, type: 'DECIMAL(8,2)'}
+    - {name: sk_fiftytwoweekhighdate, type: BIGINT}
+    - {name: fiftytwoweeklow, type: 'DECIMAL(8,2)'}
+    - {name: sk_fiftytwoweeklowdate, type: BIGINT}
+- id: CASHTRANSACTIONINCREMENTAL
+  key: CashTransactionIncremental
+  schema:
+    name: CashTransactionIncremental
+    columns:
+    - {name: accountid, type: BIGINT}
+    - {name: datevalue, type: DATE}
+    - {name: cash, type: 'DECIMAL(15,2)'}
+    - {name: batchid, type: INTEGER}
+- id: HOLDINGINCREMENTAL
+  key: HoldingIncremental
+  schema:
+    name: HoldingIncremental
+    columns:
+    - {name: hh_h_t_id, type: BIGINT}
+    - {name: hh_t_id, type: BIGINT}
+    - {name: hh_before_qty, type: INTEGER}
+    - {name: hh_after_qty, type: INTEGER}
+    - {name: batchid, type: INTEGER}
+- id: TRADEINCREMENTAL
+  key: TradeIncremental
+  schema:
+    name: TradeIncremental
+    columns:
+    - {name: tradeid, type: BIGINT}
+    - {name: t_dts, type: TIMESTAMP}
+    - {name: create_ts, type: TIMESTAMP}
+    - {name: close_ts, type: TIMESTAMP}
+    - {name: status, type: VARCHAR(10)}
+    - {name: type, type: VARCHAR(12)}
+    - {name: cashflag, type: BOOLEAN}
+    - {name: t_s_symb, type: VARCHAR(15)}
+    - {name: quantity, type: 'DECIMAL(6,0)'}
+    - {name: bidprice, type: 'DECIMAL(8,2)'}
+    - {name: t_ca_id, type: BIGINT}
+    - {name: executedby, type: VARCHAR(64)}
+    - {name: tradeprice, type: 'DECIMAL(8,2)'}
+    - {name: fee, type: 'DECIMAL(10,2)'}
+    - {name: commission, type: 'DECIMAL(10,2)'}
+    - {name: tax, type: 'DECIMAL(10,2)'}
+    - {name: batchid, type: INTEGER}
+- id: ACCOUNTINCREMENTAL
+  key: AccountIncremental
+  schema:
+    name: AccountIncremental
+    columns:
+    - {name: accountid, type: BIGINT}
+    - {name: brokerid, type: BIGINT}
+    - {name: customerid, type: BIGINT}
+    - {name: accountDesc, type: VARCHAR(50)}
+    - {name: taxstatus, type: SMALLINT}
+    - {name: status, type: VARCHAR(10)}
+    - {name: batchid, type: INTEGER}
+- id: CUSTOMERINCREMENTAL
+  key: CustomerIncremental
+  schema:
+    name: CustomerIncremental
+    columns:
+    - {name: customerid, type: BIGINT}
+    - {name: taxid, type: VARCHAR(20)}
+    - {name: status, type: VARCHAR(10)}
+    - {name: lastname, type: VARCHAR(30)}
+    - {name: firstname, type: VARCHAR(30)}
+    - {name: middleinitial, type: VARCHAR(1)}
+    - {name: gender, type: VARCHAR(1)}
+    - {name: tier, type: SMALLINT}
+    - {name: dob, type: DATE}
+    - {name: addressline1, type: VARCHAR(80)}
+    - {name: addressline2, type: VARCHAR(80)}
+    - {name: postalcode, type: VARCHAR(12)}
+    - {name: city, type: VARCHAR(25)}
+    - {name: stateprov, type: VARCHAR(20)}
+    - {name: country, type: VARCHAR(24)}
+    - {name: phone1, type: VARCHAR(30)}
+    - {name: phone2, type: VARCHAR(30)}
+    - {name: phone3, type: VARCHAR(30)}
+    - {name: email1, type: VARCHAR(50)}
+    - {name: email2, type: VARCHAR(50)}
+    - {name: lcl_tx_id, type: VARCHAR(4)}
+    - {name: nat_tx_id, type: VARCHAR(4)}
+    - {name: batchid, type: INTEGER}
+- id: PROSPECTINCREMENTAL
+  key: ProspectIncremental
+  schema:
+    name: ProspectIncremental
+    columns:
+    - {name: agencyid, type: VARCHAR(30)}
+    - {name: lastname, type: VARCHAR(30)}
+    - {name: firstname, type: VARCHAR(30)}
+    - {name: middleinitial, type: VARCHAR(1)}
+    - {name: gender, type: VARCHAR(1)}
+    - {name: addressline1, type: VARCHAR(80)}
+    - {name: addressline2, type: VARCHAR(80)}
+    - {name: postalcode, type: VARCHAR(12)}
+    - {name: city, type: VARCHAR(25)}
+    - {name: state, type: VARCHAR(20)}
+    - {name: country, type: VARCHAR(24)}
+    - {name: phone, type: VARCHAR(30)}
+    - {name: income, type: INTEGER}
+    - {name: numbercars, type: SMALLINT}
+    - {name: numberchildren, type: SMALLINT}
+    - {name: maritalstatus, type: VARCHAR(1)}
+    - {name: age, type: SMALLINT}
+    - {name: creditrating, type: SMALLINT}
+    - {name: ownorrentflag, type: VARCHAR(1)}
+    - {name: employer, type: VARCHAR(30)}
+    - {name: numbercreditcards, type: SMALLINT}
+    - {name: networth, type: BIGINT}
+    - {name: marketingnameplate, type: VARCHAR(100)}
+    - {name: recordbatchid, type: INTEGER, not_null: true}
+    - {name: batchid, type: INTEGER}
+- id: BATCHDATE
+  key: BatchDate
+  schema:
+    name: BatchDate
+    columns:
+    - {name: batchdate, type: DATE, not_null: true}
+    - {name: batchid, type: INTEGER}

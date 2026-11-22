@@ -20,6 +20,8 @@ from typing import Any
 
 POLICY_PATH = "quality/comment-cleanup-scope.json"
 COMMENT_POLICY_PATH = "quality/comment-policy.json"
+APPROVED_EXTERNAL_PATH = "quality/comment-policy-approved-external.json"
+APPROVED_EXTERNAL_HASHES_PATH = "quality/comment-policy-approved-external-hashes.json"
 PINNED_NOTICE_DRIFT_PATHS = frozenset({"LICENSE", "COPYRIGHT.md"})
 
 COMMENT_POLICY_ENFORCEMENT_MODES = {"advisory", "blocking"}
@@ -1451,11 +1453,67 @@ def is_wheel_bump(candidate_entry: dict, baseline_entry: dict) -> bool:
     return _normalized_name(cand_dist) == _normalized_name(base_dist)
 
 
-def check_ratchet(policy: dict, baseline: dict) -> None:
+def load_approved_external(raw: bytes | None) -> frozenset[str]:
+    if raw is None:
+        return frozenset()
+    data = json.loads(raw)
+    if not isinstance(data, dict) or set(data) != {"version", "paths"} or data["version"] != 1:
+        raise ValueError("invalid approved external schema")
+    paths = data["paths"]
+    if not isinstance(paths, list) or len(set(paths)) != len(paths):
+        raise ValueError("approved external paths must be a list without duplicates")
+    for path in paths:
+        if not isinstance(path, str) or not path.endswith("/"):
+            raise ValueError("approved external paths must be directory prefixes")
+        validate_comment_policy_path(path)
+        if len(PurePosixPath(path).parts) < 2:
+            raise ValueError(f"approved external path is too broad: {path}")
+    return frozenset(paths)
+
+
+def approved_external_paths(root: Path, base: str) -> frozenset[str]:
+    try:
+        raw = base_blob(root, base, APPROVED_EXTERNAL_PATH)
+    except subprocess.CalledProcessError:
+        return frozenset()
+    return load_approved_external(raw)
+
+
+def load_approved_hashes(raw: bytes | None) -> frozenset[str]:
+    if raw is None:
+        return frozenset()
+    data = json.loads(raw)
+    if not isinstance(data, dict) or set(data) != {"version", "files"} or data["version"] != 1:
+        raise ValueError("invalid approved external hashes schema")
+    files = data["files"]
+    if not isinstance(files, list):
+        raise ValueError("approved external hashes must be a list")
+    labels = set()
+    for entry in files:
+        if not isinstance(entry, dict) or set(entry) != {"sha256", "label"}:
+            raise ValueError("approved external hash entries need sha256 and label")
+        if not isinstance(entry["sha256"], str) or not re.fullmatch(r"[0-9a-f]{64}", entry["sha256"]):
+            raise ValueError("approved external hash must be a lowercase SHA-256")
+        if not isinstance(entry["label"], str) or not entry["label"].strip() or entry["label"] in labels:
+            raise ValueError("approved external hash labels must be unique and non-empty")
+        labels.add(entry["label"])
+    return frozenset(entry["sha256"] for entry in files)
+
+
+def approved_external_hashes(root: Path, base: str) -> frozenset[str]:
+    try:
+        raw = base_blob(root, base, APPROVED_EXTERNAL_HASHES_PATH)
+    except subprocess.CalledProcessError:
+        return frozenset()
+    return load_approved_hashes(raw)
+
+
+def check_ratchet(policy: dict, baseline: dict, approved: frozenset[str] = frozenset()) -> None:
     if baseline.get("enforcement", "blocking") == "blocking" and policy.get("enforcement", "blocking") == "advisory":
         raise ValueError("enforcement cannot be relaxed from blocking to advisory")
+    base_paths = {b["path"] for b in baseline["external"]}
     for entry in policy["external"]:
-        if entry in baseline["external"]:
+        if entry in baseline["external"] or (entry["path"] in approved and entry["path"] not in base_paths):
             continue
         matched_base = [b for b in baseline["external"] if is_wheel_bump(entry, b)]
         if matched_base and not any(b in policy["external"] for b in matched_base):
@@ -1470,7 +1528,7 @@ def bumped_by_head_policy(root: Path, base: str, entry: dict[str, str], staged: 
     try:
         base_policy = load_comment_policy(base_blob(root, base, COMMENT_POLICY_PATH))
         head_policy = load_comment_policy(raw_head)
-        check_ratchet(head_policy, base_policy)
+        check_ratchet(head_policy, base_policy, approved_external_paths(root, base))
         head_external = head_policy["external"]
         if entry in head_external:
             return False

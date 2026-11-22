@@ -273,12 +273,6 @@
           "path": "benchbox/core/tpcdi/schema.py"
         },
         {
-          "path": "benchbox/core/tpcdi/schema_extension_specs.yaml"
-        },
-        {
-          "path": "benchbox/core/tpcdi/schema_extensions.py"
-        },
-        {
           "path": "benchbox/core/tpcdi/schema_specs.yaml"
         },
         {
@@ -4160,10 +4154,10 @@
     },
     {
       "path": "COPYRIGHT.md",
-      "blob_sha256": "5a58d51af167ced82fa2f9d8de1c03a8ad14cd3842ca24c0becdca2e0cf5e935",
+      "blob_sha256": "b9e4d5dee0b9f819bec2bf27b91861c39fbd69cf659d10412bd9552aaaf706fe",
       "byte_start": 0,
-      "byte_end": 6262,
-      "retained_sha256": "5a58d51af167ced82fa2f9d8de1c03a8ad14cd3842ca24c0becdca2e0cf5e935",
+      "byte_end": 6913,
+      "retained_sha256": "b9e4d5dee0b9f819bec2bf27b91861c39fbd69cf659d10412bd9552aaaf706fe",
       "governing_requirement": "This authored summary repeats legal and benchmark acknowledgements but is not independently established as a governing instrument.",
       "source_identity": "ed5c263c513ba65499f4918d3a7de607f280c65b:COPYRIGHT.md",
       "owner": "comment-cleanup-scope-policy",

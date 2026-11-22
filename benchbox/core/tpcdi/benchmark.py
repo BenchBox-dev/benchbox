@@ -194,10 +194,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         dialect: str = "standard",
         tuning_config: Optional["UnifiedTuningConfiguration"] = None,
     ) -> str:
-        enable_primary_keys = tuning_config.primary_keys.enabled if tuning_config else False
-        enable_foreign_keys = tuning_config.foreign_keys.enabled if tuning_config else False
-
-        return get_all_create_table_sql(dialect, enable_primary_keys, enable_foreign_keys)
+        return get_all_create_table_sql(dialect)
 
     @refuses_unavailable_benchmark("tpcdi")
     def load_data_to_database(self, connection: Any, tables: Optional[list[str]] = None) -> None:

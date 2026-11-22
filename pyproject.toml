@@ -818,10 +818,7 @@ ignore_rules = [
 
     { function_names = ["union_sales_channels_pandas", "union_returns_channels_pandas"], path_contains = ["benchbox/core/tpcds/dataframe_queries/channel_helper.py"] },
 
-    { function_names = ["create_sample_test_results", "get_extended_table_order"], path_contains = [
-        "benchbox/core/tpc_validation.py",
-        "benchbox/core/tpcdi/schema_extensions.py",
-    ] },
+    { function_names = ["create_sample_test_results"], path_contains = ["benchbox/core/tpc_validation.py"] },
 
     { function_names = ["get_stream_info", "get_table_info", "get_table_tuning"], path_contains = [
         "benchbox/core/joinorder/benchmark.py",

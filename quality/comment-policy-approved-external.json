@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "paths": [
+    "benchbox/_binaries/tpc-di/",
+    "_sources/tpc-di/"
+  ]
+}
