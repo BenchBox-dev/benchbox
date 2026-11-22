@@ -36720,6 +36720,16 @@
       "status": "open",
       "title": "Put Results Explorer graphs in the Polars 2.x post and move its figures and the findings pages to the published runs"
     },
+    "pvm-p6-post-tpch-from-published-run": {
+      "claim": null,
+      "needs": [
+        "pvm-p3-run-and-publish-tpch",
+        "pvm-p5-post-and-findings-from-published-runs"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Move the Polars 2.x post's TPC-H figures to the published run and add its Results Explorer graph"
+    },
     "pvm-polars-2-version-matrix": {
       "claim": null,
       "needs": [
