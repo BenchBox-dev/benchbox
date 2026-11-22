@@ -2,6 +2,11 @@
   "acceptance": [
     "A UAT retry is admitted only when the remaining job budget covers the cell limit plus the outside-kill margin."
   ],
+  "batch": {
+    "batch_id": "run-timeout-followups",
+    "implementation_dependencies": [],
+    "member_id": "uat-retry-budget-outside-kill-margin-20261122"
+  },
   "context": "Noted by the UAT-cells implementer in the run-timeout effort (#4437).",
   "description": "## Problem\n`tests/uat/infrastructure_retry.py` (`with_infrastructure_retry`) retries a cell when `remaining_s >= timeout_s`. Since #4437 a cell can run until `timeout_s + OUTSIDE_KILL_MARGIN_S` (60 s) before the runner kills it, so a retry admitted with exactly `timeout_s` left can overrun the job budget by up to 60 seconds.\n\n## Change\nCompare the remaining budget with the cell's worst-case duration (`outside_limit_s(timeout_s)` in tests/uat/runner.py).\n\n## Decision gates\nNo change to cell limits, the 60-second margin, which cells retry, or pass/fail rules (owner decisions, run-timeout-uat-cells-20261120). Retry counting for `hung` stays identical to `timed-out`.\n\n## Verification rubric\nA test (fails before) with a fake clock where remaining is between `timeout_s` and `timeout_s + 60`: the retry is skipped as insufficient time; one where remaining exceeds it: the retry runs. `make pr-preflight` exits 0.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
   "sessions": [
@@ -11,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "3d5ab1f75ead4e52b19aedb2291020cf",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T13:28:59Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9aa0ecd8fd21428c9ec795abaed0bebc",
       "session_id": "e80ec8f825d244408f926415b43e3179"
     }
   ]
