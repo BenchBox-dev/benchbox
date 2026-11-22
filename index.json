@@ -48784,6 +48784,13 @@
       "status": "done",
       "title": "Complete TPC-DI SF 100 generation measurement; retain measured SF 10 evidence"
     },
+    "tpcdi-site-next-contract-red-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Make benchbox-site next match the certified core bundle's TPC-DI contract (next CI red since 2026-11-22)"
+    },
     "tpcdi-site-release-pin-contract-20261121": {
       "claim": null,
       "needs": [

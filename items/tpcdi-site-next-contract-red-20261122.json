@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "benchbox-site next CI is green against the certified core bundle, with TPC-DI shown as the owner decided and its notice kept."
+  ],
+  "context": "Filed 2026-11-22 from the run-timeout follow-up close-out; cross-repository under the TPC-DI plan (tpcdi-plan-databricks-base-20261121, owner decisions on tpcdi-correction-plan-20261120). Re-read the bundle contract and page text before editing.",
+  "description": "## Problem\nbenchbox-site `next` CI has been red since 2026-11-22 04:34Z (CI 44985668836 on 7e90968) at the step \"Check the site documentation against the docs inputs' contracts\", with three violations: the benchmark API snapshot marker in `docs/reference/public-contracts.md` differs (the contract gives 10 beta and 1 document-only), and `docs/benchmarks/support-status.md` says TPC-DI is beta with 38 queries while the contract gives `document_only` and 0. On `next`, CI checks the docs against the newest certified core bundle (`DOCS_INPUTS=.site-inputs` after `npm run bundle:fetch`, `.github/workflows/ci.yml`), which already carries the TPC-DI quarantine and query removal. Every pull request into `next` fails the same required job, including #242 (site-next-run-timeout-docs-merge-20261122). tpcdi-site-release-pin-contract-20261121 covers the `main` side (release pin) and stays blocked on a core release.\n\n## Owner decisions already recorded (tpcdi-site-release-pin-contract-20261121, 2026-11-20 and 2026-11-21)\n- Registry status during the rework: `document_only`.\n- The site notice stays until the new pages land.\n\n## Change\nOn `next` only: update the TPC-DI row of `docs/benchmarks/support-status.md` (`document_only`, 0 queries) and the benchmark API snapshot marker in `docs/reference/public-contracts.md` to the bundle's values, re-reading the bundle's contract first. Keep the TPC-DI notice. Do not touch `release-pin/` or `main`.\n\n## Decision gates\n- STOP and ask the owner (choice dialog) whether `next` may show TPC-DI as `document_only` with 0 queries before the core release, since `next` previews the next release. Quote the answer on this item.\n- If the bundle's contract reports anything beyond these three violations, stop and record it; do not edit pages owned by other open TPC-DI items without checking them.\n- Never weaken or skip a docs contract to make CI pass.\n\n## Verification rubric\nPass: in a `next` worktree, `npm run bundle:fetch && DOCS_INPUTS=.site-inputs npm run docs:check`, `npm run lint:docs` and `npm run test:docs-contracts` pass; the pull request into `next` merges with green CI; the next `next` CI run is green; the TPC-DI notice still shows.\nFail: any violation remains, or a contract was relaxed.\n\n## Guardrails\nWork in a linked worktree of BenchBox-dev/benchbox-site (`git -C /Users/joe/Developer/benchbox-site worktree add ../benchbox-site.wt-<slug> <branch>`); never edit `/Users/joe/Developer/benchbox-site` itself. benchbox-site has no Makefile; its checks are `npm run` scripts. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/actions/runs/44985668836",
+    "https://github.com/BenchBox-dev/benchbox-site/pull/242"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
+      "at": "2026-11-22T19:48:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ab1af7e7801e475eb7d6005aa2bc1e17",
+      "session_id": "e80ec8f825d244408f926415b43e3179"
+    }
+  ]
+}
