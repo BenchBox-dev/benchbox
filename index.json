@@ -36658,6 +36658,16 @@
       "status": "open",
       "title": "Publish the Polars SSB and ClickBench results to the corpus by the maintainer path"
     },
+    "pvm-p3-run-and-publish-tpch": {
+      "claim": null,
+      "needs": [
+        "pvm-p2-publish-ssb-clickbench",
+        "crr-c2-row-count-references-tpc-and-ssb"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Run and publish the Polars TPC-H results"
+    },
     "pvm-polars-2-version-matrix": {
       "claim": null,
       "needs": [
