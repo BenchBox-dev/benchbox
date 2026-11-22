@@ -50679,7 +50679,9 @@
     },
     "windows-antipatterns-check-scans-worktree-venv-20261028": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "dev-loop-local-gates-20261122"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Skip gitignored virtual environments in make windows-antipatterns-check"
