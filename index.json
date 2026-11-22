@@ -36668,6 +36668,16 @@
       "status": "open",
       "title": "Run and publish the Polars TPC-H results"
     },
+    "pvm-p4-run-and-publish-tpcds": {
+      "claim": null,
+      "needs": [
+        "pvm-p3-run-and-publish-tpch",
+        "tpcds-expression-q41-row-count-differs-from-sql"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Run and publish the Polars TPC-DS results after query 41 is explained and fixed"
+    },
     "pvm-polars-2-version-matrix": {
       "claim": null,
       "needs": [
