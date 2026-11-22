@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Every stored result has an identity and comparison version; the list of 'version not recorded' results is in the pull request",
+    "The DuckDB dev-wheel result resolves to a pre-release and is never the leaderboard version",
+    "No code path reads a folder name to decide identity (grep in the pull request)",
+    "The two cohort-depth test contracts pass unchanged",
+    "The contract fixture exists and validates against the read-model schema at the next version"
+  ],
+  "context": "Step of the corpus rule remediation plan (crr-00-corpus-rule-remediation-plan). Plan written 2026-11-22 and reviewed twice by an independent adversarial reviewer; counts marked (R) were measured by that reviewer and must be re-measured, not trusted. Owner decisions were given by choice dialog on 2026-11-22 and are quoted in crr-00.",
+  "description": "## Problem\nFour identity rules disagree (T3): validate_corpus.py adds the version only for the folder duckdb-version-matrix; the inventory uses display name plus version; the Explorer meta-leaderboard uses variant_id alone; the trend view uses platform_id. Platforms record versions differently (DuckDB dev wheel: platform.version 2.0.0-alpha against package 1.6.0.dev365; Snowflake server against client; BigQuery \"unknown\") (R).\n\n## Change\n- One function returns identity = platform, execution variant, comparison version, plus whether the version is a release. The comparison version is resolved by one table per platform family (which field, how to tell a pre-release). Unresolvable versions are \"version not recorded\", one identity, never \"newest\".\n- validate_corpus.py, scripts/generate_corpus_inventory.py and the pipeline use it. The folder-name rule is deleted and SEED_CORPUS_SPEC's \"Version-over-version cohorts\" section is rewritten.\n- Cohort minimum keeps the recorded rule (owner decision 3): engine settings and container runs count; versions of one platform do not. tests/unit/scripts/test_corpus_cohort_depth.py and test_corpus_execution_class_identity.py keep their contracts.\n- Publish a read-model contract fixture for the next version (not yet emitted): class, lane, labels, score, score source, identity, comparison version, release flag, run count, median, spread, observed engine, row-count evidence label, iteration label.\n\n## Decision gates\n- If any stored cohort's eligibility changes because versions stop being counted, list it in the pull request; if a currently ranked cohort would fall below the minimum, stop and report.\n\n## Guardrails (apply to every item of this plan)\n- Fix the root cause for every platform and benchmark. No rule, exception, label or test may name a platform or a version matrix. Only the pvm-p* items may name Polars, and only to run and stage that run's files.\n- Never edit a stored result file to make it pass. Outcomes change only through the rule.\n- Any change to the outcome of a stored result must show in the committed outcome snapshot diff in the same pull request and be explained in its body.\n- No new stored class value. No reader may decide anything from benchmark.compliance_class, conformance_class or summary.tpc_metrics.suppressed.\n- Paths, line numbers and counts in this plan were read on 2026-11-22 at develop 93f3360. Re-read before editing; report drift, do not guess.\n- AGENTS.md applies: linked worktree, one pull request per item, close at the merged pull request, heavy work only through make heavy-run, no live cloud run without owner approval in that task.\n- At a decision gate, follow the recorded default. If its stop condition is met, stop and report to the owner. Never substitute a different owner decision.\n- Read crr-00-corpus-rule-remediation-plan first: it holds the owner decisions, the rule table and the fault types (T1 to T5).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d6fbef61b8c1a450fbecb672",
+      "at": "2026-11-22T16:50:51Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ac7bc9bbb2864d129e1884296f87fa1d",
+      "session_id": "c07e5ac3266b4133b46582fc1e496cdf"
+    }
+  ]
+}
