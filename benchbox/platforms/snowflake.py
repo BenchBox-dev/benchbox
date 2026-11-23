@@ -105,6 +105,29 @@ SNOWFLAKE_STATISTICS_COLUMNS = (
     "CLUSTER_NUMBER",
 )
 
+SNOWFLAKE_CRL_CONNECTOR_MAJOR = 5
+
+
+def _connector_major_version() -> int:
+    return int(snowflake.connector.__version__.split(".", 1)[0])
+
+
+def _gateway_connector_params(endpoint: GatewayEndpoint, connector_major: int) -> dict[str, Any]:
+    params: dict[str, Any] = {}
+    if connector_major >= SNOWFLAKE_CRL_CONNECTOR_MAJOR:
+        if endpoint.ca_bundle is not None:
+            params["extra_root_store_path"] = endpoint.ca_bundle
+        if endpoint.insecure:
+            params["crl_check_mode"] = "DISABLED"
+        elif endpoint.ocsp_fail_open is not None:
+            params["crl_check_mode"] = "ADVISORY" if endpoint.ocsp_fail_open else "ENABLED"
+        return params
+    if endpoint.ocsp_fail_open is not None:
+        params["ocsp_fail_open"] = endpoint.ocsp_fail_open
+    if endpoint.insecure:
+        params["insecure_mode"] = True
+    return params
+
 
 class SnowflakeAdapter(PlatformAdapter):
     gateway_endpoint: GatewayEndpoint | None = None
@@ -224,7 +247,11 @@ class SnowflakeAdapter(PlatformAdapter):
 
     def _require_environment_ca_bundle(self) -> None:
         endpoint = self.gateway_endpoint
-        if endpoint is None or endpoint.ca_bundle is None:
+        if (
+            endpoint is None
+            or endpoint.ca_bundle is None
+            or _connector_major_version() >= SNOWFLAKE_CRL_CONNECTOR_MAJOR
+        ):
             return
         active = os.environ.get("REQUESTS_CA_BUNDLE")
         if not active or Path(active).expanduser().resolve() != Path(endpoint.ca_bundle).resolve():
@@ -688,10 +715,7 @@ class SnowflakeAdapter(PlatformAdapter):
             conn_params["protocol"] = endpoint.protocol
             if endpoint.port is not None:
                 conn_params["port"] = endpoint.port
-            if endpoint.ocsp_fail_open is not None:
-                conn_params["ocsp_fail_open"] = endpoint.ocsp_fail_open
-            if endpoint.insecure:
-                conn_params["insecure_mode"] = True
+            conn_params.update(_gateway_connector_params(endpoint, _connector_major_version()))
         return conn_params
 
     def _create_admin_connection(self, **connection_config) -> Any:

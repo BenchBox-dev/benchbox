@@ -19,6 +19,7 @@ BASE = {"account": "acct", "username": "user", "password": "mock-password", "war
 def snowflake_dependencies(monkeypatch):
     monkeypatch.delenv(INSECURE_GATEWAY_ENV, raising=False)
     monkeypatch.delenv("REQUESTS_CA_BUNDLE", raising=False)
+    monkeypatch.setattr("benchbox.platforms.snowflake._connector_major_version", lambda: 4)
     with (
         patch("benchbox.platforms.snowflake.check_platform_dependencies", return_value=(True, [])),
         patch("benchbox.platforms.snowflake.snowflake") as mock_snowflake,
@@ -226,6 +227,8 @@ def test_routed_platform_info_records_gateway() -> None:
 
 def test_connector_accepts_every_gateway_parameter(monkeypatch) -> None:
     connection = pytest.importorskip("snowflake.connector.connection")
+    if not connection.DEFAULT_CONFIGURATION:
+        pytest.skip("snowflake-connector-python 5.x has no parameter registry; test_snowflake_gateway_tls.py covers it")
     monkeypatch.setenv(INSECURE_GATEWAY_ENV, "1")
     adapter = _adapter(
         gateway="custom",
@@ -901,3 +904,53 @@ def test_mock_gateway_handshake_tag_preservation_and_receipt_parsing(snowflake_d
 def test_mock_gateway_fixture_binds_loopback_only(loopback_gateway) -> None:
     assert loopback_gateway.server.server_address[0] == "127.0.0.1"
     assert loopback_gateway.port > 0
+
+
+def _connector_major(monkeypatch, major: int) -> None:
+    monkeypatch.setattr("benchbox.platforms.snowflake._connector_major_version", lambda: major)
+
+
+@pytest.mark.parametrize(
+    ("option", "expected"),
+    [
+        ({"gateway_ocsp_fail_open": True}, "ADVISORY"),
+        ({"gateway_ocsp_fail_open": False}, "ENABLED"),
+        ({"allow_insecure_gateway": True}, "DISABLED"),
+        ({"gateway_ocsp_fail_open": True, "allow_insecure_gateway": True}, "DISABLED"),
+        ({"gateway_ocsp_fail_open": False, "allow_insecure_gateway": True}, "DISABLED"),
+    ],
+)
+def test_connector_5_maps_revocation_options_to_crl_check_mode(option, expected, monkeypatch) -> None:
+    _connector_major(monkeypatch, 5)
+    monkeypatch.setenv(INSECURE_GATEWAY_ENV, "1")
+    params = _adapter(gateway="custom", gateway_host="gw.example.com", **option)._connect_params(
+        {}, include_database=False
+    )
+    assert params["crl_check_mode"] == expected
+    assert not {"ocsp_fail_open", "insecure_mode"} & set(params)
+
+
+def test_connector_5_passes_no_revocation_setting_by_default(monkeypatch) -> None:
+    _connector_major(monkeypatch, 5)
+    params = _adapter(gateway="custom", gateway_host="gw.example.com")._connect_params({}, include_database=False)
+    assert not {"crl_check_mode", "ocsp_fail_open", "insecure_mode", "extra_root_store_path"} & set(params)
+
+
+def test_connector_5_passes_ca_bundle_without_environment(tmp_path: Path, monkeypatch) -> None:
+    _connector_major(monkeypatch, 5)
+    bundle = tmp_path / "ca.pem"
+    bundle.write_text("mock-ca", encoding="utf-8")
+    adapter = _adapter(gateway="custom", gateway_host="gw.example.com", gateway_ca_bundle=str(bundle))
+    assert adapter._connect_params({}, include_database=False)["extra_root_store_path"] == str(bundle)
+
+
+def test_connector_below_5_keeps_ocsp_and_insecure_mode_parameters(monkeypatch) -> None:
+    _connector_major(monkeypatch, 4)
+    monkeypatch.setenv(INSECURE_GATEWAY_ENV, "1")
+    adapter = _adapter(
+        gateway="custom", gateway_host="gw.example.com", gateway_ocsp_fail_open=False, allow_insecure_gateway=True
+    )
+    params = adapter._connect_params({}, include_database=False)
+    assert params["ocsp_fail_open"] is False
+    assert params["insecure_mode"] is True
+    assert not {"crl_check_mode", "extra_root_store_path"} & set(params)

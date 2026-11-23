@@ -208,7 +208,8 @@ class TestSnowflakeAdapter:
         snowflake_connection = pytest.importorskip("snowflake.connector.connection")
         DEFAULT_CONFIGURATION = snowflake_connection.DEFAULT_CONFIGURATION
         extra = {"client_session_keep_alive", "login_timeout", "network_timeout"}
-        assert set(call_kwargs) - extra <= set(DEFAULT_CONFIGURATION)
+        if DEFAULT_CONFIGURATION:
+            assert set(call_kwargs) - extra <= set(DEFAULT_CONFIGURATION)
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_create_admin_connection_with_key_pair(self, mock_snowflake, tmp_path):

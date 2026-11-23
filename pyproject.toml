@@ -42,6 +42,32 @@ dependencies = [
 [tool.uv]
 required-version = ">=0.13.4"
 override-dependencies = ["filelock>=4.2.1,<5"]
+conflicts = [
+    [
+        { extra = "cloud-spark" },
+        { extra = "snowflake" },
+    ],
+    [
+        { extra = "cloud-spark" },
+        { extra = "cloud" },
+    ],
+    [
+        { extra = "cloud-spark" },
+        { extra = "all" },
+    ],
+    [
+        { extra = "cloud-spark-snowflake" },
+        { extra = "snowflake" },
+    ],
+    [
+        { extra = "cloud-spark-snowflake" },
+        { extra = "cloud" },
+    ],
+    [
+        { extra = "cloud-spark-snowflake" },
+        { extra = "all" },
+    ],
+]
 
 [tool.setuptools]
 include-package-data = true
