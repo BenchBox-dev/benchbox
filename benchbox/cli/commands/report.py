@@ -72,7 +72,7 @@ def report() -> None:
 @click.option(
     "--metric",
     "-m",
-    type=click.Choice(["geometric_mean", "power_at_size", "cost_efficiency"]),
+    type=click.Choice(["geometric_mean", "power_at_size", "throughput_at_size", "qph_at_size", "cost_efficiency"]),
     default="geometric_mean",
     help="Metric to rank by",
 )
@@ -165,7 +165,7 @@ def rankings(
 
         if metric == "geometric_mean":
             score_str = f"{r.score:.1f} ms"
-        elif metric == "power_at_size":
+        elif metric in ("power_at_size", "throughput_at_size", "qph_at_size"):
             score_str = f"{r.score:.0f}"
         else:
             score_str = f"${r.score:.4f}/query"
@@ -505,6 +505,8 @@ def _get_metric_header(metric: str) -> str:
     headers = {
         "geometric_mean": "Geomean",
         "power_at_size": "Power@Size",
+        "throughput_at_size": "Throughput@Size",
+        "qph_at_size": "QphH/QphDS@Size",
         "cost_efficiency": "Cost/Query",
     }
     return headers.get(metric, metric)

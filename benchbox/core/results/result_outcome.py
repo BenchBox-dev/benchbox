@@ -63,10 +63,53 @@ def outcome_from_stored_facts(text: str | None) -> corpus_rule.Outcome:
     return corpus_rule.derive_outcome(facts)
 
 
-def admitted_for_ranking(outcome: corpus_rule.Outcome, include_unofficial: bool) -> bool:
+POWER_SCORE_SOURCES = frozenset(
+    {
+        corpus_rule.SCORE_QPH_AND_POWER,
+        corpus_rule.SCORE_FROM_TIMINGS,
+        corpus_rule.SCORE_POWER_QUERY_TIMINGS_ONLY,
+        corpus_rule.SCORE_POWER_FROM_TIMINGS,
+    }
+)
+THROUGHPUT_SCORE_SOURCES = frozenset(
+    {
+        corpus_rule.SCORE_QPH_AND_POWER,
+        corpus_rule.SCORE_FROM_TIMINGS,
+        corpus_rule.SCORE_THROUGHPUT_FROM_TIMINGS,
+    }
+)
+QPH_SCORE_SOURCES = frozenset({corpus_rule.SCORE_QPH_AND_POWER})
+SPEC_METRIC_SCORE_SOURCES = {
+    "power_at_size": POWER_SCORE_SOURCES,
+    "throughput_at_size": THROUGHPUT_SCORE_SOURCES,
+    "qph_at_size": QPH_SCORE_SOURCES,
+}
+
+
+def supports_spec_metric(outcome: corpus_rule.Outcome, metric: str) -> bool:
+    if outcome.held_reason is not None:
+        return False
+    return outcome.score_source in SPEC_METRIC_SCORE_SOURCES.get(metric, ())
+
+
+def admitted_for_ranking(outcome: corpus_rule.Outcome, include_unofficial: bool, metric: str) -> bool:
+    if metric in SPEC_METRIC_SCORE_SOURCES and not supports_spec_metric(outcome, metric):
+        return False
     if include_unofficial:
         return outcome.maintainer_admission and outcome.held_reason is None and outcome.score_source is not None
     return outcome.ranked and outcome.public_admission
+
+
+def facts_describe_result(facts: corpus_rule.Facts, result: BenchmarkResults) -> bool:
+    benchmark = corpus_rule.normalize_benchmark_id(getattr(result, "benchmark_id", None))
+    scale = getattr(result, "scale_factor", None)
+    return (
+        benchmark is not None
+        and benchmark == corpus_rule.normalize_benchmark_id(facts.benchmark)
+        and isinstance(scale, int | float)
+        and facts.scale_factor is not None
+        and abs(float(scale) - facts.scale_factor) < 1e-9
+    )
 
 
 def outcome_words(outcome: corpus_rule.Outcome) -> tuple[str, str]:

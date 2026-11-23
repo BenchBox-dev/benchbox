@@ -818,12 +818,135 @@ class TestRankingsComplianceFilter:
         assert migrated.outcome.class_name == corpus_rule.CLASS_UNDETERMINED
         assert _rank(db, "TPC-H", 1.0, include_unofficial=True) == []
 
-        assert db._backfill_facts("old", _facts("tpch", 1.0, "power")) is True
-        assert db._backfill_facts("old", _facts("tpch", 1.0, "power", "throughput")) is False
+        old = create_test_result(execution_id="old", benchmark="TPC-H", scale_factor=1.0)
+        assert db._backfill_facts(old, _facts("tpch", 1.0, "power")) is True
+        assert db._backfill_facts(old, _facts("tpch", 1.0, "power", "throughput")) is False
         restored = db.get_result("old")
         assert restored is not None
         assert restored.outcome.class_name == corpus_rule.CLASS_POWER_ONLY
         assert _rank(db, "TPC-H", 1.0, include_unofficial=False) == ["OldDB"]
+
+
+SPEC_METRIC_CASES = [
+    pytest.param(
+        "TPC-H",
+        1.0,
+        FULL_SPEC,
+        {"power_at_size": True, "throughput_at_size": True, "qph_at_size": True},
+        id="full_spec",
+    ),
+    pytest.param(
+        "TPC-H",
+        1.0,
+        _facts("tpch", 1.0, "power", "throughput"),
+        {"power_at_size": True, "throughput_at_size": True, "qph_at_size": False},
+        id="partial_power_throughput",
+    ),
+    pytest.param(
+        "TPC-H",
+        1.0,
+        _facts("tpch", 1.0, "power"),
+        {"power_at_size": True, "throughput_at_size": False, "qph_at_size": False},
+        id="power_only",
+    ),
+    pytest.param(
+        "TPC-H",
+        1.0,
+        _facts("tpch", 1.0, "throughput"),
+        {"power_at_size": False, "throughput_at_size": True, "qph_at_size": False},
+        id="throughput_only",
+    ),
+    pytest.param(
+        "TPC-H",
+        0.1,
+        _facts("tpch", 0.1, "power"),
+        {"power_at_size": True, "throughput_at_size": False, "qph_at_size": False},
+        id="subscale",
+    ),
+    pytest.param(
+        "TPC-H",
+        2.0,
+        _facts("tpch", 2.0, "power"),
+        {"power_at_size": False, "throughput_at_size": False, "qph_at_size": False},
+        id="nonstandard_scale",
+    ),
+]
+
+
+class TestRankingsBySpecMetric:
+    @pytest.mark.parametrize("include_unofficial", [False, True])
+    @pytest.mark.parametrize(("benchmark_name", "scale", "facts", "supported"), SPEC_METRIC_CASES)
+    @pytest.mark.parametrize("metric", ["power_at_size", "throughput_at_size", "qph_at_size"])
+    def test_spec_metrics_rank_only_rows_whose_score_source_supports_them(
+        self, tmp_path, benchmark_name, scale, facts, supported, metric, include_unofficial
+    ):
+        db = ResultDatabase(tmp_path / "test.db")
+        result = create_test_result(
+            execution_id="run",
+            platform="DB",
+            benchmark=benchmark_name,
+            scale_factor=scale,
+            timestamp=datetime.now(timezone.utc) - timedelta(days=5),
+        )
+        result.throughput_at_size = 500.0
+        result.qph_at_size = 700.0
+        db.store_result(result, facts)
+
+        ranked = db.calculate_rankings(
+            benchmark_name, scale, RankingConfig(lookback_days=90, metric=metric), include_unofficial=include_unofficial
+        )
+
+        public = scale >= 1.0 and scale != 2.0
+        assert bool(ranked) is (supported[metric] and (public or include_unofficial))
+
+    def test_timings_only_rows_still_rank_by_timings_when_unofficial_rows_are_included(self, tmp_path):
+        db = ResultDatabase(tmp_path / "test.db")
+        db.store_result(
+            create_test_result(
+                execution_id="run",
+                platform="DB",
+                benchmark="TPC-H",
+                scale_factor=2.0,
+                timestamp=datetime.now(timezone.utc) - timedelta(days=5),
+            ),
+            _facts("tpch", 2.0, "power"),
+        )
+
+        assert _rank(db, "TPC-H", 2.0, include_unofficial=True) == ["DB"]
+
+
+class TestFactsAreBoundToTheRow:
+    def test_store_result_refuses_facts_for_another_scale_or_benchmark(self, tmp_path):
+        db = ResultDatabase(tmp_path / "test.db")
+        result = create_test_result(execution_id="bound", benchmark="TPC-H", scale_factor=0.1)
+
+        with pytest.raises(ValueError, match="different benchmark or scale factor"):
+            db.store_result(result, _facts("tpch", 1.0, "power"))
+        with pytest.raises(ValueError, match="different benchmark or scale factor"):
+            db.store_result(result, _facts("tpcds", 0.1, "power"))
+        assert db.get_result("bound") is None
+
+    def test_backfill_skips_a_row_the_facts_do_not_describe(self, tmp_path):
+        db = ResultDatabase(tmp_path / "test.db")
+        db.store_result(
+            create_test_result(
+                execution_id="same-id",
+                platform="DB",
+                benchmark="TPC-H",
+                scale_factor=0.1,
+                timestamp=datetime.now(timezone.utc) - timedelta(days=5),
+            )
+        )
+        with sqlite3.connect(db.db_path) as conn:
+            conn.execute("UPDATE results SET facts_json = NULL")
+            conn.commit()
+        other_file = create_test_result(execution_id="same-id", benchmark="TPC-H", scale_factor=1.0)
+
+        assert db._backfill_facts(other_file, _facts("tpch", 1.0, "power")) is False
+        stored = db.get_result("same-id")
+        assert stored is not None
+        assert stored.outcome.class_name == corpus_rule.CLASS_UNDETERMINED
+        assert _rank(db, "TPC-H", 0.1, include_unofficial=True) == []
 
 
 class TestPerformanceTrends:

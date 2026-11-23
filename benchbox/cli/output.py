@@ -17,9 +17,8 @@ if TYPE_CHECKING:
     from benchbox.utils.cloud_storage import DatabricksPath
 
 PathLike = Union[Path, "CloudPath", "DatabricksPath"]
-from benchbox.core.results.corpus_rule import SCORE_TIMINGS_ONLY
 from benchbox.core.results.models import BenchmarkResults
-from benchbox.core.results.result_outcome import outcome_for_result, outcome_words
+from benchbox.core.results.result_outcome import outcome_for_result, outcome_words, supports_spec_metric
 from benchbox.core.results.status import (
     normalize_validation_status,
     result_cli_failure_reason,
@@ -347,7 +346,7 @@ class ConsoleResultFormatter:
         outcome = outcome_for_result(results)
         stats["class"], stats["label"] = outcome_words(outcome)
         power_at_size = getattr(results, "power_at_size", None)
-        if power_at_size and outcome.score_source != SCORE_TIMINGS_ONLY:
+        if power_at_size and supports_spec_metric(outcome, "power_at_size"):
             if outcome.maintainer_admission and not outcome.public_admission:
                 stats["power_at_size"] = f"{power_at_size:.2f} ({outcome.class_name}, unofficial)"
             else:

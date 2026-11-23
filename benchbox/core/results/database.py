@@ -33,6 +33,7 @@ from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.regression_policy import is_regression
 from benchbox.core.results.result_outcome import (
     admitted_for_ranking,
+    facts_describe_result,
     facts_for_result,
     facts_to_json,
     outcome_from_stored_facts,
@@ -47,6 +48,8 @@ SCHEMA_VERSION = 4
 _RANKING_METRIC_CONFIG = {
     "geometric_mean": ("geometric_mean_ms", "ASC"),
     "power_at_size": ("power_at_size", "DESC"),
+    "throughput_at_size": ("throughput_at_size", "DESC"),
+    "qph_at_size": ("qph_at_size", "DESC"),
     "cost_efficiency": ("total_cost / NULLIF(successful_queries, 0)", "ASC"),
 }
 _BACKUP_TABLE_NAME_PATTERN = re.compile(r"^queries_orphan_backup_\d{20}$")
@@ -439,6 +442,10 @@ class ResultDatabase:
             if result.geometric_mean_execution_time is not None:
                 geometric_mean_ms = result.geometric_mean_execution_time * 1000.0
 
+            if facts is not None and not facts_describe_result(facts, result):
+                raise ValueError(
+                    f"Facts for execution_id '{result.execution_id}' describe a different benchmark or scale factor"
+                )
             facts_text = facts_to_json(facts if facts is not None else facts_for_result(result))
 
             cursor.execute(
@@ -729,7 +736,7 @@ class ResultDatabase:
             admitted = [
                 int(row["id"])
                 for row in cursor.fetchall()
-                if admitted_for_ranking(outcome_from_stored_facts(row["facts_json"]), include_unofficial)
+                if admitted_for_ranking(outcome_from_stored_facts(row["facts_json"]), include_unofficial, config.metric)
             ]
             admission_filter = (
                 f"AND id IN ({', '.join(str(result_id) for result_id in admitted)})" if admitted else "AND 0"
@@ -1054,11 +1061,18 @@ class ResultDatabase:
                 "schema_version": SCHEMA_VERSION,
             }
 
-    def _backfill_facts(self, execution_id: str, facts: corpus_rule.Facts) -> bool:
+    def _backfill_facts(self, result: BenchmarkResults, facts: corpus_rule.Facts) -> bool:
+        if not facts_describe_result(facts, result):
+            logger.warning(
+                "Not backfilling facts for %s: they describe a different benchmark or scale factor",
+                result.execution_id,
+            )
+            return False
         with self._connection() as conn:
             cursor = conn.execute(
-                "UPDATE results SET facts_json = ? WHERE execution_id = ? AND facts_json IS NULL",
-                (facts_to_json(facts), execution_id),
+                "UPDATE results SET facts_json = ? WHERE execution_id = ? AND facts_json IS NULL "
+                "AND benchmark = ? AND ABS(scale_factor - ?) < 1e-9",
+                (facts_to_json(facts), result.execution_id, result.benchmark_name, result.scale_factor),
             )
             conn.commit()
             return cursor.rowcount > 0
@@ -1100,7 +1114,7 @@ class ResultDatabase:
                 imported += 1
             except ValueError as e:
                 if "already exists" in str(e):
-                    if self._backfill_facts(result.execution_id, facts):
+                    if self._backfill_facts(result, facts):
                         imported += 1
                     else:
                         skipped += 1

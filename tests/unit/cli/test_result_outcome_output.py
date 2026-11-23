@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -112,3 +113,51 @@ def test_csv_export_carries_class_and_wording(tmp_path):
     assert rows
     assert {row["class"] for row in rows} == {"power_only"}
     assert all(row["label"].startswith(f"{DERIVED_WORDING}; {POWER_ONLY_WORDING}") for row in rows)
+
+
+def _stats_for(result):
+    return ConsoleResultFormatter.format_execution_statistics(result)
+
+
+def test_gateway_routed_result_prints_no_power_score_and_the_hold_label():
+    result = _power_only_result()
+    result.platform_info = {"gateway": {"name": "gw", "routed": True}}
+
+    stats = _stats_for(result)
+
+    assert "power_at_size" not in stats
+    assert "gateway" in stats["label"].lower()
+
+
+def test_failed_validation_result_prints_no_power_score_and_the_hold_label():
+    result = _power_only_result()
+    result.validation_status = "FAILED"
+
+    stats = _stats_for(result)
+
+    assert "power_at_size" not in stats
+    assert "validation" in stats["label"].lower()
+
+
+def test_undetermined_and_foreign_inputs_never_print_a_bare_score():
+    foreign = SimpleNamespace(
+        benchmark_name="TPC-H",
+        platform="x",
+        scale_factor=1.0,
+        total_queries=1,
+        successful_queries=1,
+        power_at_size=99.0,
+    )
+
+    stats = _stats_for(foreign)
+
+    assert stats["class"] == "undetermined"
+    assert "power_at_size" not in stats
+    assert "re-import" in stats["label"]
+
+
+def test_result_without_a_power_phase_prints_no_power_score():
+    result = _power_only_result()
+    result.execution_phases = None
+
+    assert "power_at_size" not in _stats_for(result)
