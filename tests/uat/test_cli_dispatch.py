@@ -211,6 +211,7 @@ def test_sweep_main_forwards_dry_run_override(monkeypatch, capsys):
         abort_reason = None
         phase_exit_codes = {"execute": 0}
         plan = None
+        execute_outcome = None
 
         def exit_code(self):
             return 0
@@ -228,6 +229,63 @@ def test_sweep_main_forwards_dry_run_override(monkeypatch, capsys):
     assert rc == 0
     assert calls == [(Path("tests/uat/configs/uat-2026-05-02.yaml"), True, ["duckdb", "sqlite"])]
     assert '"phase_exit_codes"' in capsys.readouterr().out
+
+
+def test_sweep_main_names_failed_cells_with_exit_status(tmp_path, monkeypatch, capsys):
+    from tests.uat.phases.enumerate import Cell
+    from tests.uat.phases.execute import ExecuteOutcome
+    from tests.uat.runner import CellResult
+
+    result_json = tmp_path / "tpcds.json"
+    result_json.write_text(
+        json.dumps(
+            {
+                "queries": [{"id": "75", "status": "FAILED"}, {"id": "1", "status": "SUCCESS"}],
+                "errors": [{"phase": "query", "query_id": "75", "message": "no matching operator"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    def cell(benchmark: str, status: str, exit_code: int, result_path: Path | None) -> CellResult:
+        return CellResult(
+            "questdb", benchmark, 0.01, status, exit_code, 1.0, tmp_path / f"{benchmark}.log", result_path
+        )
+
+    outcome = ExecuteOutcome(
+        phase="execute",
+        results=(
+            cell("tpch", "passed", 0, None),
+            cell("tpcds", "failed", 1, result_json),
+            cell("ssb", "failed", 124, None),
+        ),
+        pruned=(),
+        skipped_unreachable=(),
+        startup_failed=(Cell("velox", "tpch", 0.01),),
+    )
+
+    class StubResult:
+        name = "stub"
+        log_dir = tmp_path
+        aborted_phase = None
+        abort_reason = None
+        phase_exit_codes = {"execute": 1}
+        plan = None
+        execute_outcome = outcome
+
+        def exit_code(self):
+            return 1
+
+    monkeypatch.setattr("tests.uat.orchestrator.run_sweep_from_path", lambda *args, **kwargs: StubResult())
+
+    assert _cli.main(["sweep", "--config", "any.yaml"]) == 1
+
+    err = capsys.readouterr().err
+    assert "[sweep] FAILED CELL questdb/tpcds@0.01 status=failed exit=1" in err
+    assert "[sweep]   query 75 FAILED: no matching operator" in err
+    assert "[sweep] FAILED CELL questdb/ssb@0.01 status=failed exit=124" in err
+    assert "[sweep] FAILED CELL velox/tpch@0.01 not run: startup failed" in err
+    assert "questdb/tpch@0.01" not in err
 
 
 def test_stress_main_forwards_platform_benchmark_scale_as_stress_overrides(monkeypatch, capsys):

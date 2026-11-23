@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "DataFrame platforms no longer turn the text values `N/A`, `NA`, `NULL`, `nan` and similar into nulls when converting delimited data to Parquet. TPC-DS `item` rows with size or units `N/A` lost their value, so Q41 returned fewer rows than the SQL reference (9 and 10 instead of 10 and 12 at scale factor 10). The Parquet cache version is bumped so affected caches are rebuilt."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The pandas, Dask and cuDF CSV readers, TPC-DI source staging and the write-primitives CSV source no longer turn text such as `N/A`, `NA`, `NULL` and `nan` into nulls; only empty fields and the dialect null marker are null. This also preserves the `N/A` and `NA` zone names in the NYC Taxi zone table. The DataFusion DataFrame and sorted-Parquet pyarrow readers already kept such text, but now read empty fields in delimited files as NULL instead of empty strings, as DuckDB and native DataFusion do."
+    }
+  ]
+}

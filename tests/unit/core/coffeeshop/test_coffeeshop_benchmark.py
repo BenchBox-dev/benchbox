@@ -8,7 +8,9 @@ from pathlib import Path
 
 import pytest
 
+from benchbox.coffeeshop import CoffeeShop
 from benchbox.core.coffeeshop.benchmark import CoffeeShopBenchmark
+from benchbox.core.errors import ScaleFactorOutOfRangeError
 
 pytestmark = [
     pytest.mark.unit,
@@ -18,7 +20,27 @@ pytestmark = [
 
 @pytest.fixture
 def coffeeshop(tmp_path):
-    return CoffeeShopBenchmark(scale_factor=0.000001, output_dir=tmp_path)
+    return CoffeeShopBenchmark(scale_factor=0.01, output_dir=tmp_path)
+
+
+@pytest.mark.parametrize("scale_factor", [0.001, 0.009, 0.000001])
+def test_scale_below_the_floor_is_refused(tmp_path, scale_factor):
+    with pytest.raises(ScaleFactorOutOfRangeError, match="accepts a finite scale_factor from 0.01"):
+        CoffeeShopBenchmark(scale_factor=scale_factor, output_dir=tmp_path)
+
+
+def test_fractional_scale_of_one_or_more_is_refused(tmp_path):
+    with pytest.raises(ScaleFactorOutOfRangeError, match="whole numbers from 1"):
+        CoffeeShopBenchmark(scale_factor=1.5, output_dir=tmp_path)
+
+
+def test_scale_at_the_floor_is_accepted(tmp_path):
+    assert CoffeeShopBenchmark(scale_factor=0.01, output_dir=tmp_path).scale_factor == 0.01
+
+
+def test_wrapper_refuses_scale_below_the_floor(tmp_path):
+    with pytest.raises(ScaleFactorOutOfRangeError, match="accepts a finite scale_factor from 0.01"):
+        CoffeeShop(scale_factor=0.001, output_dir=tmp_path)
 
 
 class TestCoffeeShopBenchmarkInit:

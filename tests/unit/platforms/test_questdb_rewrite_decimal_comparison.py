@@ -12,6 +12,13 @@ def test_decimal_division_compared_with_fractional_literal_uses_decimal_literal(
     assert rewrite_query(sql) == ("SELECT 1 FROM t WHERE CAST(a AS DECIMAL(17, 2)) / CAST(b AS DECIMAL(17, 2)) < 0.9m")
 
 
+def test_decimal_division_by_nullif_decimal_uses_decimal_literal():
+    sql = "SELECT 1 FROM t WHERE CAST(a AS DECIMAL(17, 2)) / NULLIF(CAST(b AS DECIMAL(17, 2)), 0) < 0.9"
+    assert rewrite_query(sql) == (
+        "SELECT 1 FROM t WHERE CAST(a AS DECIMAL(17, 2)) / NULLIF(CAST(b AS DECIMAL(17, 2)), 0) < 0.9m"
+    )
+
+
 def test_literal_on_the_left_and_negative_literals_are_converted():
     assert rewrite_query(
         "SELECT 1 FROM t WHERE 0.5 <= CAST(a AS DECIMAL(7, 2)) AND CAST(a AS DECIMAL(7, 2)) > -0.25"

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed QuestDB TPC-DS query 75 failing with 'there is no matching operator `<` with the argument types: DECIMAL(76,4) < DOUBLE': a fractional literal compared with a decimal division by NULLIF of a decimal now becomes a decimal literal."
+    }
+  ]
+}

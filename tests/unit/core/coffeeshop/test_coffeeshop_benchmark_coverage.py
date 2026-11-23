@@ -16,7 +16,7 @@ pytestmark = [
 
 
 def test_get_queries_returns_raw_queries_without_translation(tmp_path: Path) -> None:
-    benchmark = CoffeeShopBenchmark(scale_factor=0.000001, output_dir=tmp_path)
+    benchmark = CoffeeShopBenchmark(scale_factor=0.01, output_dir=tmp_path)
 
     with patch.object(benchmark.query_manager, "get_all_queries", return_value={"SA1": "SELECT 1"}) as get_all:
         assert benchmark.get_queries() == {"SA1": "SELECT 1"}
@@ -25,7 +25,7 @@ def test_get_queries_returns_raw_queries_without_translation(tmp_path: Path) -> 
 
 
 def test_get_queries_translates_each_query_for_requested_dialect(tmp_path: Path) -> None:
-    benchmark = CoffeeShopBenchmark(scale_factor=0.000001, output_dir=tmp_path)
+    benchmark = CoffeeShopBenchmark(scale_factor=0.01, output_dir=tmp_path)
 
     with (
         patch.object(benchmark.query_manager, "get_all_queries", return_value={"SA1": "SELECT 1", "PR1": "SELECT 2"}),
@@ -40,7 +40,7 @@ def test_get_queries_translates_each_query_for_requested_dialect(tmp_path: Path)
 
 
 def test_execute_query_supports_execute_and_cursor_connections(tmp_path: Path) -> None:
-    benchmark = CoffeeShopBenchmark(scale_factor=0.000001, output_dir=tmp_path)
+    benchmark = CoffeeShopBenchmark(scale_factor=0.01, output_dir=tmp_path)
 
     execute_cursor = Mock()
     execute_cursor.fetchall.return_value = [("execute",)]
@@ -62,7 +62,7 @@ def test_execute_query_supports_execute_and_cursor_connections(tmp_path: Path) -
 
 
 def test_execute_query_rejects_unsupported_connection_types(tmp_path: Path) -> None:
-    benchmark = CoffeeShopBenchmark(scale_factor=0.000001, output_dir=tmp_path)
+    benchmark = CoffeeShopBenchmark(scale_factor=0.01, output_dir=tmp_path)
 
     with patch.object(benchmark, "get_query", return_value="SELECT 1"):
         with pytest.raises(ValueError, match="Unsupported connection type"):
@@ -70,7 +70,7 @@ def test_execute_query_rejects_unsupported_connection_types(tmp_path: Path) -> N
 
 
 def test_get_create_tables_sql_forwards_constraint_flags(tmp_path: Path) -> None:
-    benchmark = CoffeeShopBenchmark(scale_factor=0.000001, output_dir=tmp_path)
+    benchmark = CoffeeShopBenchmark(scale_factor=0.01, output_dir=tmp_path)
     tuning_config = SimpleNamespace(
         primary_keys=SimpleNamespace(enabled=False),
         foreign_keys=SimpleNamespace(enabled=True),
@@ -83,7 +83,7 @@ def test_get_create_tables_sql_forwards_constraint_flags(tmp_path: Path) -> None
 
 
 def test_load_data_to_database_uses_cursor_path_without_executescript_or_executemany(tmp_path: Path) -> None:
-    benchmark = CoffeeShopBenchmark(scale_factor=0.000001, output_dir=tmp_path)
+    benchmark = CoffeeShopBenchmark(scale_factor=0.01, output_dir=tmp_path)
     data_file = tmp_path / "dim_locations.tbl"
     data_file.write_text("1||north\n", encoding="utf-8")
     benchmark.tables = {"dim_locations": str(data_file)}
@@ -109,13 +109,13 @@ def test_load_data_to_database_uses_cursor_path_without_executescript_or_execute
 
 
 def test_normalize_row_replaces_empty_strings_with_none(tmp_path: Path) -> None:
-    benchmark = CoffeeShopBenchmark(scale_factor=0.000001, output_dir=tmp_path)
+    benchmark = CoffeeShopBenchmark(scale_factor=0.01, output_dir=tmp_path)
 
     assert benchmark._normalize_row(["1", "", "abc", ""]) == ["1", None, "abc", None]
 
 
 def test_run_benchmark_records_failed_iterations(tmp_path: Path) -> None:
-    benchmark = CoffeeShopBenchmark(scale_factor=0.000001, output_dir=tmp_path)
+    benchmark = CoffeeShopBenchmark(scale_factor=0.01, output_dir=tmp_path)
 
     with (
         patch.object(benchmark, "execute_query", side_effect=[[(1, "ok")], RuntimeError("boom")]),

@@ -241,10 +241,13 @@ class SortedParquetWriter:
             column_names=read_column_names,
         )
         parse_options = csv.ParseOptions(delimiter="|")
+        convert_options = csv.ConvertOptions(null_values=[""], strings_can_be_null=True)
 
         tables = []
         for source_file in source_files:
-            table = csv.read_csv(source_file, read_options=read_options, parse_options=parse_options)
+            table = csv.read_csv(
+                source_file, read_options=read_options, parse_options=parse_options, convert_options=convert_options
+            )
             tables.append(table)
 
         combined = pa.concat_tables(tables) if len(tables) > 1 else tables[0]

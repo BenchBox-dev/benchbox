@@ -540,7 +540,7 @@ class DataFrameWriteOperationsManager:
         if source_format == "parquet":
             df = pd.read_parquet(source_path)
         elif source_format == "csv":
-            df = pd.read_csv(source_path)
+            df = pd.read_csv(source_path, keep_default_na=False, na_values=[""])
         elif source_format == "json":
             df = pd.read_json(source_path)
         else:
