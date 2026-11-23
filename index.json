@@ -30538,17 +30538,12 @@
       "title": "Validate the SSB, TPC-DI and primitives generators at SF 100"
     },
     "generator-volume-changes-pass-pr-ci-unchecked-20261112": {
-      "claim": {
-        "expires_at": "2026-11-24T13:54:48Z",
-        "generation": "4013046033a94e5abedac85d2f801c7b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a5dffb67f2f8103a3765a88b"
-      },
+      "claim": null,
       "needs": [
         "feature-fix-ci-congestion-diagnostics-and-generator-gate-20261117"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "A generator change that multiplies data volume passes PR CI: the SF 1 size baseline is not enforced and no run exercises the new volume"
     },
     "generator-volume-gate-rename-bypass-20261120": {
