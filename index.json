@@ -15711,7 +15711,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "e6ddfbf8260288399421391cbe4d0cb309e5a3c7",
+        "node_id": "PR_kwDOQ7J64c8AAAABRKRISQ",
+        "number": 4466,
+        "repository": "BenchBox-dev/BenchBox"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-23T03:29:26Z",
+          "head": "e6ddfbf8260288399421391cbe4d0cb309e5a3c7",
+          "op_id": "3ec590b03c4a4f8797b0f529762bc7b2",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "df-memory-guard-generation-check-runs-after-generation-20261118": {
           "accepted_head": "e3e668b54325cf99e196848837f487cdb51fd454",
