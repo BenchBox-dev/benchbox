@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from benchbox.core.results import corpus_rule as rule
-from benchbox.core.results.status import NON_CLEAN_VALIDATION_STATUSES
+from benchbox.core.results.status import NON_CLEAN_VALIDATION_STATUSES, bundle_non_clean_reason
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -281,7 +281,10 @@ def result(
     phases: dict = {"data_generation": {"status": "COMPLETED"}, "data_loading": {"status": "COMPLETED"}}
     phases["power_test"] = {"status": "COMPLETED"} if power else {"status": "NOT_RUN"}
     if refresh:
-        phases["power_test"]["refresh_functions"] = [{"function": "RF1", "status": "SUCCESS"}]
+        phases["power_test"]["refresh_functions"] = [
+            {"function": "RF1", "status": "SUCCESS"},
+            {"function": "RF2", "status": "SUCCESS"},
+        ]
     phases["throughput_test"] = (
         {
             "status": "COMPLETED",
@@ -290,6 +293,8 @@ def result(
         if throughput_streams
         else {"status": "NOT_RUN"}
     )
+    if refresh and throughput_streams:
+        phases["throughput_test"]["refresh_stream"] = {"status": "COMPLETED", "pairs": [{"status": "SUCCESS"}]}
     data = {
         "benchmark": {"id": benchmark, "scale_factor": scale},
         "phases": phases,
@@ -396,3 +401,164 @@ def test_module_runs_with_no_project_packages_installed(tmp_path: Path) -> None:
 
     assert completed.returncode == 0, completed.stderr
     assert completed.stdout.strip() == "power_only ('power_only',) [] ['pydantic', 'yaml']"
+
+
+def _tpcds_result(*, streams: int = 4, second: int | None = 4, maintenance: int = 2) -> dict:
+    data = result(benchmark="tpcds", throughput_streams=streams)
+    if second is not None:
+        data["phases"]["throughput_test_2"] = {
+            "status": "COMPLETED",
+            "stream_results": [{"stream_id": n, "success": True} for n in range(second)],
+        }
+    for name in ("maintenance_test", "maintenance_test_2")[:maintenance]:
+        data["phases"][name] = {"status": "COMPLETED", "operations": [{"status": "SUCCESS"}]}
+    return data
+
+
+def _validation_failed(data: dict) -> bool:
+    return rule.facts_from_result(data).validation_failed
+
+
+def _with(data: dict, mutate) -> dict:
+    mutate(data)
+    return data
+
+
+def _fixture_variants() -> list[dict]:
+    clean = result()
+    clean["queries"] = [{"id": "1", "run_type": "measurement", "status": "SUCCESS"}]
+    variants = [clean]
+    variants.append(
+        _with(json.loads(json.dumps(clean)), lambda d: d["summary"].update(queries={"total": 3, "passed": 1}))
+    )
+    variants.append(
+        _with(
+            json.loads(json.dumps(clean)),
+            lambda d: d["summary"].update(queries={"total": 3, "passed": 2, "skipped": 1}),
+        )
+    )
+    variants.append(
+        _with(json.loads(json.dumps(clean)), lambda d: d["queries"].append({"id": "2", "status": "FAILED"}))
+    )
+    variants.append(
+        _with(
+            json.loads(json.dumps(clean)),
+            lambda d: d["queries"].append({"id": "2", "run_type": "warmup", "status": "FAILED"}),
+        )
+    )
+    variants.append(
+        _with(
+            json.loads(json.dumps(clean)),
+            lambda d: d["queries"][0].update(row_count_validation={"status": "FAILED"}),
+        )
+    )
+    variants.append(
+        _with(
+            json.loads(json.dumps(clean)),
+            lambda d: d["queries"][0].update(row_count_validation={"status": "PASSED"}),
+        )
+    )
+    for translation in ("fallback", "failed", "ok", {"status": "FALLBACK"}):
+        variants.append(
+            _with(json.loads(json.dumps(clean)), lambda d, t=translation: d.update(execution={"translation": t}))
+        )
+    for status in ("failed", "passed", "unknown", "PARTIAL", {"status": "error"}, None):
+        variants.append(_with(json.loads(json.dumps(clean)), lambda d, v=status: d["summary"].update(validation=v)))
+    return variants
+
+
+@pytest.mark.parametrize("index", range(len(_fixture_variants())))
+def test_validation_hold_matches_the_bundle_cleanliness_predicate_on_fixtures(index: int) -> None:
+    data = _fixture_variants()[index]
+
+    assert _validation_failed(data) == (bundle_non_clean_reason(data) is not None)
+
+
+def test_validation_hold_matches_the_bundle_cleanliness_predicate_on_every_stored_result() -> None:
+    root = Path(__file__).resolve().parents[4] / "results-data" / "bundles"
+    paths = sorted(root.rglob("*.json"))
+    checked = 0
+    for path in paths:
+        if path.name.endswith(".manifest.json"):
+            continue
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict) or "phases" not in data:
+            continue
+        checked += 1
+        assert _validation_failed(data) == (bundle_non_clean_reason(data) is not None), path
+    assert checked
+
+
+def test_validation_hold_covers_count_row_validation_and_translation_gaps() -> None:
+    clean = _fixture_variants()
+    assert not _validation_failed(clean[0])
+    assert _validation_failed(clean[1])
+    assert _validation_failed(clean[3])
+    assert _validation_failed(clean[5])
+    assert _validation_failed(clean[7])
+
+
+def test_a_routed_gateway_holds_the_result_with_or_without_a_name() -> None:
+    for gateway in ({"routed": True}, {"name": "g", "routed": True}, {"name": "g", "routed": 1}):
+        data = result(extra={"platform": {"name": "engine", "gateway": gateway}})
+        outcome = rule.derive_outcome(rule.facts_from_result(data))
+        assert outcome.held_reason == rule.HELD_GATEWAY_ROUTED
+    for gateway in ({"name": "g"}, {"name": "g", "routed": False}, {}, None):
+        data = result(extra={"platform": {"name": "engine", "gateway": gateway}})
+        assert not rule.facts_from_result(data).gateway_routed
+
+
+def test_failed_or_partial_refresh_is_not_refresh_evidence() -> None:
+    clean = result(throughput_streams=3, refresh=True)
+    assert rule.PHASE_REFRESH in rule.phases_ran(clean)
+
+    def broken(mutate) -> dict:
+        data = json.loads(json.dumps(clean))
+        mutate(data)
+        return data
+
+    cases = [
+        broken(lambda d: d["phases"]["power_test"]["refresh_functions"][1].update(status="FAILED")),
+        broken(lambda d: d["phases"]["power_test"]["refresh_functions"].pop()),
+        broken(lambda d: d["phases"]["throughput_test"]["refresh_stream"].update(pairs=[{"status": "FAILED"}])),
+        broken(lambda d: d["phases"]["throughput_test"]["refresh_stream"].update(status="FAILED")),
+        broken(lambda d: d["phases"]["throughput_test"].pop("refresh_stream")),
+    ]
+    for data in cases:
+        assert rule.PHASE_REFRESH not in rule.phases_ran(data)
+        assert rule.derive_outcome(rule.facts_from_result(data)).class_name != rule.CLASS_FULL_SPEC
+
+
+def test_tpcds_refresh_evidence_needs_both_maintenance_tests_to_complete() -> None:
+    assert rule.PHASE_REFRESH in rule.phases_ran(_tpcds_result())
+    assert rule.PHASE_REFRESH not in rule.phases_ran(_tpcds_result(maintenance=1))
+    failed = _tpcds_result()
+    failed["phases"]["maintenance_test_2"]["operations"][0]["status"] = "FAILED"
+    assert rule.PHASE_REFRESH not in rule.phases_ran(failed)
+    not_run = _tpcds_result()
+    not_run["phases"]["maintenance_test_2"]["status"] = "NOT_RUN"
+    assert rule.PHASE_REFRESH not in rule.phases_ran(not_run)
+
+
+def test_stream_count_counts_only_successful_streams() -> None:
+    data = result(throughput_streams=4)
+    data["phases"]["throughput_test"]["stream_results"][0]["success"] = False
+    data["phases"]["throughput_test"]["stream_results"][1].pop("success")
+
+    assert rule.executed_stream_count(data) == 2
+    assert rule.derive_outcome(
+        rule.facts_from_result(result(throughput_streams=4, refresh=True, scale=10.0))
+    ).class_name
+    failed = result(throughput_streams=3, refresh=True, scale=10.0)
+    failed["phases"]["throughput_test"]["stream_results"][0]["success"] = False
+    assert rule.derive_outcome(rule.facts_from_result(failed)).class_name != rule.CLASS_FULL_SPEC
+
+
+def test_tpcds_stream_count_considers_both_throughput_tests() -> None:
+    assert rule.executed_stream_count(_tpcds_result()) == 4
+    assert rule.executed_stream_count(_tpcds_result(second=None)) == 0
+    short = _tpcds_result()
+    short["phases"]["throughput_test_2"]["stream_results"][0]["success"] = False
+    assert rule.executed_stream_count(short) == 3
+    assert rule.derive_outcome(rule.facts_from_result(short)).class_name != rule.CLASS_FULL_SPEC
+    assert rule.derive_outcome(rule.facts_from_result(_tpcds_result())).class_name == rule.CLASS_FULL_SPEC

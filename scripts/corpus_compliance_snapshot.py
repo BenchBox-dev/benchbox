@@ -71,6 +71,9 @@ def throughput_at_size_from_timings(data: Mapping[str, Any], scale_factor: float
     duration_ms = block.get("duration_ms") if isinstance(block, Mapping) else None
     if isinstance(duration_ms, bool) or not isinstance(duration_ms, int | float) or duration_ms <= 0:
         return None
+    streams = block.get("stream_results")
+    if isinstance(streams, list) and not all(isinstance(s, Mapping) and s.get("success") is True for s in streams):
+        return None
     executed = sum(
         1
         for query in data.get("queries") or []
