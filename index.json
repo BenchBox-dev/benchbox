@@ -20013,17 +20013,12 @@
       "title": "Require public-site visual acceptance before merging into develop"
     },
     "ci-diagnostics-pr-remove-dead-pid-helper-and-false-credit-20261120": {
-      "claim": {
-        "expires_at": "2026-11-24T13:54:17Z",
-        "generation": "592e9b990db5443498b6ca169ea4ada9",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a5dffb67f2f8103a3765a88b"
-      },
+      "claim": null,
       "needs": [
         "feature-fix-ci-congestion-diagnostics-and-generator-gate-20261117"
       ],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Remove the unreachable PID-file helper from #4322 and correct its description"
     },
     "ci-docker-hub-unauthenticated-pulls-20261009": {
