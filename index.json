@@ -48807,10 +48807,15 @@
       "title": "Bootstrap Theseus repository governance and preserve the BenchBox source provenance"
     },
     "theseus-review-brief-binary-read-requirement-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T15:12:44Z",
+        "generation": "5db9587e435c4ca591a3e5f664d290f1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f0306fe42dc404288de80bb6"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Theseus review brief does not tell the reviewer that each changed binary needs one read"
     },
     "theseus-review-cannot-withdraw-finding-on-staged-upstream-path-20261109": {
