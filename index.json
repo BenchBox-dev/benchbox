@@ -50903,13 +50903,18 @@
       "title": "TPC-DI step 31: Results Explorer shows TPC_DI_RPS and phase throughputs (benchbox-site, with the core read-model check)"
     },
     "tpcdi-bundle-tpc-di-tools-20261121": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T23:37:22Z",
+        "generation": "a7161a727f5f4b589ed5327ac7a39852",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b9c0e3a9d406db652098bdd"
+      },
       "needs": [
         "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120",
         "tpcdi-owner-action-place-official-archives-20261121"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI step 10: ship the official TPC-DI tools archive (DIGen and PDGF) byte-identical, with licences and a sourcing file"
     },
     "tpcdi-bundles-same-generator-comparison-and-site-views-20261120": {
