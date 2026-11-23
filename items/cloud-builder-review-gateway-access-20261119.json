@@ -4,7 +4,7 @@
     "A cloud-builder session joins with the new TS_AUTHKEY and reaches the gateway (evidence recorded); port 22 is denied.",
     "BenchBox docs and review guidance name tag:review-cloud, and a grep of live docs finds no tag:oracle-cloud."
   ],
-  "description": "On 2026-11-19 the owner removed `tag:oracle-cloud` from the tailnet policy (tagOwners, grant, test) while retiring oracle infrastructure names. That tag was still in use: the cloud builder `TS_AUTHKEY` tags each cloud session node `tag:oracle-cloud`, and its grant was the only path from cloud sessions to the review gateway on tcp:4000. Cloud-builder sessions therefore cannot reach the gateway, and the existing TS_AUTHKEY likely no longer authenticates. The owner chose to leave it deleted and re-enable later under a non-oracle name.\n\nRe-enable: add `tag:review-cloud` (tagOwners, a grant to the gateway host on tcp:4000 only, and a tests block accepting :4000 and denying :22); the owner mints a new reusable, ephemeral, pre-approved auth key tagged `tag:review-cloud` and stores it as the cloud builders' TS_AUTHKEY; update docs/agent/cloud-builder.md, docs/internal/review-gateway-host.md and the `tag:oracle-cloud` entry in .github/review-guidance.md. Consider adding the tag to the Theseus `infra:` config so `theseus infra setup` manages it.",
+  "description": "On 2026-11-19 the owner removed `tag:oracle-cloud` from the tailnet policy (tagOwners, grant, test) while retiring oracle infrastructure names. That tag was still in use: the cloud builder `TS_AUTHKEY` tags each cloud session node `tag:oracle-cloud`, and its grant was the only path from cloud sessions to the review gateway on tcp:4000. Cloud-builder sessions therefore cannot reach the gateway, and the existing TS_AUTHKEY likely no longer authenticates. The owner chose to leave it deleted and re-enable later under a non-oracle name.\n\nRe-enable: add `tag:review-cloud` (tagOwners, a grant to the gateway host on tcp:4000 only, and a tests block accepting :4000 and denying :22); the owner mints a new reusable, ephemeral, pre-approved auth key tagged `tag:review-cloud` and stores it as the cloud builders' TS_AUTHKEY; update docs/agent/cloud-builder.md, docs/internal/review-gateway-host.md and the `tag:oracle-cloud` entry in .github/review-guidance.md. Consider adding the tag to the Theseus `infra:` config so `theseus infra setup` manages it.\n\nDecision gate: the owner confirms that cloud-builder gateway access is wanted again before any tailnet change. The tailnet policy edit and the auth key are owner console actions.\nVerification rubric: oracle-gateway-cloud-builder-smoke-20261031 is this item's live proof. It depends on this item, and its checks (gateway reachable, pr-open review through the gateway, every other host and port refused) must pass in an owner-launched cloud session.\nGuardrails: the grant reaches only the gateway host on tcp:4000. The tests block denies :22. The key is ephemeral and tagged. No agent reads or prints the auth key.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b5abc8a4010555c0d8f96bb",
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "8f1e13910905466d8caf9caab138353a",
       "session_id": "045b6d4d12cf4622b6f5f4ab89e94f4e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f0306fe42dc404288de80bb6",
+      "at": "2026-11-23T18:40:32Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d0348878a0b845f8d0faa509ece4961d",
+      "session_id": "85f847e9be7f4d2f8dd166c7531f637d"
     }
   ]
 }
