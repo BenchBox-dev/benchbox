@@ -29120,10 +29120,15 @@
       "title": "Site Python API pages: link the run-time scale-factor range"
     },
     "feature-feat-corpus-scale-policy-and-reruns-20261117": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T03:30:55Z",
+        "generation": "34db99bc78fb4320bc08686d0e9cb5e5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Corpus: non-standard scale policy, TPC-DI local reruns and cloud exclusion, Doris and LakeSail reruns, ledger seed"
     },
     "feature-feat-heavy-guard-attribution-engine-caps-20261117": {
