@@ -3,7 +3,7 @@
     "Every member is done and the batch's final PR is merged to develop.",
     "make batch-finish EXECUTE=1 has removed the member and integration worktrees."
   ],
-  "context": "Batch `shared-data-lifecycle`, integration branch feat/shared-data-lifecycle, worktree /Users/joe/Developer/BenchBox.wt-shared-data-lifecycle, start head 5e784d6039. Owner named feature delivery on 2026-11-23 and answered every member decision in one dialog (quoted on each member). State 2026-11-23: landed and prepared: version-matrix-data-cleanup-residual-gaps-20261122 (integration head a8c3b06bc8), results-dir-env-ignored-by-cli-run-20261122 narrowed to help text (integration head 144badc14f). Not landed: derived-benchmark-data-copies-20261122 (implemented; re-merging the integration head and re-running batch-member-check), low-disk-guard-local-snapshots-20261122 (implemented; batch-member-check running). The BENCHBOX_RESULTS_DIR behaviour change left the batch and is delivered serially as results-dir-env-honoured-by-run-and-last-lookups-20261123 (PR #4475). Next: land the two remaining members (batch-land, take, prepare); then pr-preflight-fast-tests, pr-preflight, pr-open, bind_batch_pr, batch-evidence, pr-arm; after merge, take and finish each member, then make batch-finish EXECUTE=1. Expect a merge conflict risk only in AGENTS.md: none, the batch no longer touches it.",
+  "context": "Batch `shared-data-lifecycle`, integration branch feat/shared-data-lifecycle, worktree /Users/joe/Developer/BenchBox.wt-shared-data-lifecycle, start head 5e784d6039. Owner named feature delivery on 2026-11-23 and answered every member decision in one dialog (quoted on each member). State 2026-11-23: landed and prepared: version-matrix-data-cleanup-residual-gaps-20261122, results-dir-env-ignored-by-cli-run-20261122 (narrowed to help text), low-disk-guard-local-snapshots-20261122; integration head 6b7e561b89. Not landed: derived-benchmark-data-copies-20261122, implemented and committed in its member worktree; it must contain 6b7e561b89 and pass make batch-member-check there, which host memory pressure (admission Error 76) is currently refusing. The BENCHBOX_RESULTS_DIR behaviour change is delivered serially as results-dir-env-honoured-by-run-and-last-lookups-20261123 (PR #4475). Next: batch-land the derived member, take, prepare; then pr-preflight-fast-tests, pr-preflight, pr-open, bind_batch_pr, batch-evidence, pr-arm; after merge take and finish each member, then make batch-finish EXECUTE=1. Old tpchavoc_sf* folders in the shared datagen folder become orphans once the derived member merges.",
   "description": "Batch notes for feature batch `shared-data-lifecycle`. This item is not a member. Members: low-disk-guard-local-snapshots-20261122, results-dir-env-ignored-by-cli-run-20261122, version-matrix-data-cleanup-residual-gaps-20261122, derived-benchmark-data-copies-20261122. One final PR to develop. Related, not members: run-data-rule-effect-measurement-20261122 (held until 2026-12-06); pre-rule-private-run-root-data-20261122 and stale-data-references-after-datagen-cleanup-20261122 (host-only, done 2026-11-23).",
   "sessions": [
     {
@@ -28,6 +28,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "d1ff7dbb69b143d7830d76a615077efd",
+      "session_id": "e94ef2c0cac942f885a89e503648c51e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b",
+      "at": "2026-11-23T18:51:25Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "33c219d8dfe140d9a2c80b2e1302c2f6",
       "session_id": "e94ef2c0cac942f885a89e503648c51e"
     }
   ]
