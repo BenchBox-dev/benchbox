@@ -60,6 +60,10 @@ class CoffeeShopBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseB
         output_dir: str | Path | None = None,
         **config: Any,
     ):
+        from benchbox.core.benchmark_registry import validate_scale_factor
+
+        validate_scale_factor("coffeeshop", scale_factor)
+
         super().__init__(scale_factor, output_dir=output_dir, **config)
 
         self._name = "CoffeeShop Benchmark"

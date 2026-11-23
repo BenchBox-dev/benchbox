@@ -221,6 +221,19 @@ def test_spill_measurement_counts_the_out_of_core_directory_under_the_process_te
     assert run_version_matrix.spill_bytes(tmp_path) == 320
 
 
+def test_completed_matrix_drops_generated_data_and_keeps_its_evidence(tmp_path: Path) -> None:
+    kept = [tmp_path / "matrix-manifest.json", tmp_path / "results" / "cell.json", tmp_path / "matrix.log"]
+    dropped = [tmp_path / "datagen" / "tpch_sf10" / "lineitem.tbl.zst", tmp_path / "databases" / "tpch_sf10" / "db"]
+    for path in (*kept, *dropped):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"x")
+
+    run_version_matrix.remove_regenerable_data(tmp_path)
+
+    assert all(path.is_file() for path in kept)
+    assert sorted(entry.name for entry in tmp_path.iterdir()) == ["matrix-manifest.json", "matrix.log", "results"]
+
+
 @pytest.mark.parametrize("key", ["benchbox_commit", "pyarrow", "datagen_manifests"])
 def test_runner_refuses_to_continue_when_a_pinned_value_changes(key: str) -> None:
     changed = {**PINS, key: "different"}
