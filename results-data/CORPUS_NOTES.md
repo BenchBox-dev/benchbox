@@ -2015,11 +2015,14 @@ load of 15.02 against 5.9 at the start.
 
 LakeSail. `tpcds_obt_sf01_lakesail_sql_20261117_201241_312e8b59` is the SF 0.1 bundle: 279/279 statements, validation
 passed, power total 18.6 s, load 2.5 s, launched through `mocker run` from `tests/uat/mocker_launch.py` with the compose
-`mem_limit` (`LAKESAIL_MEMORY_LIMIT`, default 4g); `lakesail-sf01/mem.log` shows a 4.00GB limit and a 2.16GB peak (table
+`mem_limit` (`LAKESAIL_MEMORY_LIMIT`, which then defaulted to 4g); `lakesail-sf01/mem.log` shows a 4.00GB limit and a 2.16GB peak (table
 above). A run launched with `mocker compose up` gave the server 1 GiB because that path ignores `mem_limit`, and the server
 died during the SF 0.1 load (inferred from `lakesail-diag/mem.log`, whose last sample reads `0B / 0B`; `OOMKilled` read
 false in `lakesail-diag/inspect-*.json`). The hand-started 4 GiB run `e3d1d5c0` passed 279/279. No existing LakeSail bundle
 was superseded; the SF 0.01 bundle `a1896614` is unchanged.
+A TPC-DS OBT SF 1 cell at the 4g default did not finish within its 600 s timeout (container peak 3.98GB of 4.00GB); the same
+cell at 8g with an 1800 s timeout passed 279/279 in 223 s with a 3.92GB container peak (`lakesail-8g-sf1-20261122/run/mem.log`,
+line 112), which is why the default is now 6g. That SF 1 bundle is not part of this corpus.
 
 ## TPC-DI results withdrawn (2026-11-21)
 

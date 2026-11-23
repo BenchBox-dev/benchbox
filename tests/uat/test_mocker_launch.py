@@ -102,7 +102,7 @@ def test_lakesail_translation_carries_memory_tmpfs_data_mount_and_port(mocker_cl
     project = "benchbox-uat-lakesail"
     (service,) = mocker_launch.build_services(spec, project, env={"BENCHBOX_DATA_DIR": "/runs"})
     argv = mocker_launch.run_command(service, project)
-    assert _flag_values(argv, "-m") == ["4g"]
+    assert _flag_values(argv, "-m") == ["6g"]
     assert _flag_values(argv, "--tmpfs") == ["/tmp:size=2g"]
     assert _flag_values(argv, "-v") == ["/runs:/runs:ro"]
     assert _flag_values(argv, "-p") == ["50051:50051"]
