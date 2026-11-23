@@ -135,6 +135,26 @@ def test_head_vs_merge_real_payloads_agree_when_identical(tmp_path: Path, monkey
     assert message.startswith("Parity OK")
 
 
+SLIM_RUNTIME = [
+    "scripts/validate_submission.py",
+    "scripts/generate_corpus_inventory.py",
+    "scripts/publication/validator_parity.py",
+    "benchbox/validation/bundle.py",
+    "benchbox/core/results/query_status.py",
+    "benchbox/core/results/timing_fields.py",
+    "benchbox/core/results/schema_policy.py",
+    "benchbox/core/results/subscale_policy.py",
+    "benchbox/core/results/standard_scales.json",
+]
+
+
+def _copy_slim_runtime(repo: Path) -> None:
+    for path in SLIM_RUNTIME:
+        destination = repo / path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes((REPO_ROOT / path).read_bytes())
+
+
 @pytest.mark.parametrize("case", ["identical", "invalid_head", "missing_head", "missing_runtime"])
 def test_parity_executes_real_payloads_in_an_isolated_slim_checkout(tmp_path: Path, case: str) -> None:
     repo = tmp_path / "slim"
@@ -158,20 +178,7 @@ def test_parity_executes_real_payloads_in_an_isolated_slim_checkout(tmp_path: Pa
         _git(repo, "commit", "-m", "invalid head payload")
         head = _git(repo, "rev-parse", "HEAD")
 
-    runtime = [
-        "scripts/validate_submission.py",
-        "scripts/generate_corpus_inventory.py",
-        "scripts/publication/validator_parity.py",
-        "benchbox/validation/bundle.py",
-        "benchbox/core/results/query_status.py",
-        "benchbox/core/results/timing_fields.py",
-        "benchbox/core/results/schema_policy.py",
-        "benchbox/core/results/subscale_policy.py",
-    ]
-    for path in runtime:
-        destination = repo / path
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes((REPO_ROOT / path).read_bytes())
+    _copy_slim_runtime(repo)
     if case == "missing_runtime":
         (repo / "benchbox/validation/bundle.py").unlink()
     result = subprocess.run(
@@ -179,7 +186,7 @@ def test_parity_executes_real_payloads_in_an_isolated_slim_checkout(tmp_path: Pa
             sys.executable,
             "-I",
             "-S",
-            str(repo / "scripts/publication/validator_parity.py"),
+            "scripts/publication/validator_parity.py",
             "--base-sha",
             base,
             "--merge-sha",
@@ -191,6 +198,7 @@ def test_parity_executes_real_payloads_in_an_isolated_slim_checkout(tmp_path: Pa
         capture_output=True,
         text=True,
         check=False,
+        timeout=120,
     )
     if case == "identical":
         assert result.returncode == 0, result.stdout + result.stderr
@@ -202,6 +210,74 @@ def test_parity_executes_real_payloads_in_an_isolated_slim_checkout(tmp_path: Pa
             assert "diverged" in result.stderr
         else:
             assert "bundle.py" in result.stderr
+
+
+def _offlist_bundle_dict(benchmark: str, compliance_class: str | None) -> dict:
+    from benchbox.validation.bundle import CANONICAL_LOGICAL_QUERY_IDS
+
+    canonical = sorted(CANONICAL_LOGICAL_QUERY_IDS[benchmark])
+    if benchmark == "tpcds":
+        variants = {"14": ("14a", "14b"), "23": ("23a", "23b"), "24": ("24a", "24b"), "39": ("39a", "39b")}
+        canonical = sorted(
+            {variant for query_id in canonical for variant in variants.get(query_id, (query_id,))},
+        )
+    payload = {
+        "version": "2.1",
+        "run": {"id": "abc123", "timestamp": "2026-04-01T12:00:00", "total_duration_ms": 5000},
+        "benchmark": {"id": benchmark, "name": benchmark, "scale_factor": 2.0},
+        "platform": {"name": "DuckDB", "version": "1.4.3"},
+        "summary": {
+            "validation": "passed",
+            "queries": {"total": len(canonical), "passed": len(canonical), "failed": 0},
+        },
+        "phases": {"validation": {"status": "PASSED"}},
+        "queries": [{"id": qid, "ms": 100 + index * 10, "status": "SUCCESS"} for index, qid in enumerate(canonical)],
+    }
+    if compliance_class is not None:
+        payload["benchmark"]["compliance_class"] = compliance_class
+    return payload
+
+
+@pytest.mark.parametrize("allow_partial", [False, True], ids=["strict", "partial"])
+@pytest.mark.parametrize("compliance_class", [None, "official", "unofficial_nonstandard"])
+@pytest.mark.parametrize("benchmark_id", ["tpch", "tpcds"])
+def test_parity_in_a_slim_checkout_matches_the_registry_verdict_for_off_list_scales(
+    tmp_path: Path, monkeypatch, benchmark_id: str, compliance_class: str | None, allow_partial: bool
+) -> None:
+    repo = tmp_path / "slim"
+    base = _init_fixture_repo(repo, "results-data/bundles/tpch_result.json")
+    rel = f"results-data/bundles/offlist_{benchmark_id}.json"
+    (repo / rel).write_text(json.dumps(_offlist_bundle_dict(benchmark_id, compliance_class)), encoding="utf-8")
+    _git(repo, "add", rel)
+    _git(repo, "commit", "-m", "add off-list bundle")
+    merge = _git(repo, "rev-parse", "HEAD")
+
+    parity = _load_parity_module()
+    monkeypatch.setattr(parity, "CHECKOUT_ROOT", repo)
+    registry_rc, registry_summary = parity._run_validation_on_payload([rel], merge, allow_partial=allow_partial)
+    assert registry_rc == 0, registry_summary
+
+    _copy_slim_runtime(repo)
+    command = [
+        sys.executable,
+        "-I",
+        "-S",
+        "scripts/publication/validator_parity.py",
+        "--base-sha",
+        base,
+        "--merge-sha",
+        merge,
+        "--head-sha",
+        merge,
+    ]
+    if allow_partial:
+        command.append("--allow-partial-validation")
+    result = subprocess.run(command, cwd=repo, capture_output=True, text=True, check=False, timeout=120)
+
+    assert result.returncode == registry_rc, result.stdout + result.stderr
+    assert "Parity OK" in result.stdout
+    assert f"{rel}: OK" in registry_summary.replace("\\", "/")
+    assert f"{rel}: OK" in result.stdout.replace("\\", "/")
 
 
 def test_missing_payload_at_requested_sha_fails_closed(tmp_path: Path, monkeypatch) -> None:

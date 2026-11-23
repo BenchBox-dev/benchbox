@@ -339,6 +339,43 @@ def test_candidate_notice_range_expansion_is_rejected(tmp_path: Path, policy: di
         scope.immutable_external_ownership(tmp_path, base, [], False, [candidate])
 
 
+def test_reviewed_copyright_update_matches_head_without_an_exclusion(tmp_path: Path, policy: dict) -> None:
+    path = "COPYRIGHT.md"
+    original = b"Existing acknowledgments\n"
+    updated = original + b"New acknowledgment\n"
+    policy["notices"] = [_notice_entry(path, original)]
+    base = _scope_repo(tmp_path, policy, {path: original})
+    (tmp_path / path).write_bytes(updated)
+    candidate = _notice_entry(path, updated)
+    _write_scope_policy(tmp_path, {**policy, "notices": [candidate]})
+
+    assert scope.immutable_external_ownership(tmp_path, base, [], False, [candidate]) == (set(), [])
+    assert scope.pinned_notice_drift_findings(tmp_path, base) == []
+
+    (tmp_path / path).write_bytes(updated + b"Unpinned acknowledgment\n")
+    with pytest.raises(scope.PolicyError, match="blob digest does not match the head"):
+        scope.immutable_external_ownership(tmp_path, base, [], False, [candidate])
+    assert [finding.subject for finding in scope.pinned_notice_drift_findings(tmp_path, base)] == [path]
+
+
+@pytest.mark.parametrize(("path", "external"), [("LICENSE", False), ("COPYRIGHT.md", True)])
+def test_reviewed_immutable_notice_still_refuses_a_matching_expanded_pin(
+    tmp_path: Path, policy: dict, path: str, external: bool
+) -> None:
+    original = b"Existing notice\n"
+    updated = original + b"New text\n"
+    policy["notices"] = [_notice_entry(path, original)]
+    if external:
+        policy["external_entries"] = [_external(selector={"path": path})]
+    base = _scope_repo(tmp_path, policy, {path: original})
+    (tmp_path / path).write_bytes(updated)
+    candidate = _notice_entry(path, updated)
+    _write_scope_policy(tmp_path, {**policy, "notices": [candidate]})
+
+    with pytest.raises(scope.PolicyError, match="expands the pinned base range"):
+        scope.immutable_external_ownership(tmp_path, base, [], False, [candidate])
+
+
 def test_candidate_notice_partial_to_whole_escalation_is_rejected(tmp_path: Path, policy: dict) -> None:
     content = b"0123456789abcdef"
     policy["notices"] = [_partial_notice_entry("src/a.py", content, 4, 12)]
