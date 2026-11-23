@@ -15128,7 +15128,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-source",
-      "integration_head": "98c48f3a5bc5aafca5da14fcc6a279a034e6e158",
+      "integration_head": "f93c98ff537697d1c6694dddf5dc19cd4e3735aa",
       "integration_log": [
         {
           "at": "2026-11-22T07:11:35Z",
@@ -15667,6 +15667,39 @@
           "op_id": "ecc99225743f453884d13ae079944fe8",
           "previous_head": "3852bc5c5f4fb53f39019a6618c162684e04faad",
           "seq": 20
+        },
+        {
+          "at": "2026-11-23T23:18:18Z",
+          "changed_files": [
+            ".github/ci-units.yml",
+            ".github/soundness-paths.txt",
+            ".github/workflows/ci.yml",
+            ".github/workflows/sync-results-data-to-published.yml",
+            "benchbox/core/results/standard_scales.json",
+            "benchbox/core/results/subscale_policy.py",
+            "benchbox/validation/bundle.py",
+            "changelog.d/fix-mirror-validator-standard-scales.json",
+            "docs/internal/comment-cleanup-scope.md",
+            "docs/internal/dev-loop-property-ledger.md",
+            "quality/comment-policy.json",
+            "results-data/CORPUS_NOTES.md",
+            "scripts/check_comment_cleanup_scope.py",
+            "scripts/corpus_drift.py",
+            "scripts/generate_standard_scales.py",
+            "tests/unit/publication/test_validator_parity.py",
+            "tests/unit/scripts/test_comment_cleanup_scope.py",
+            "tests/unit/scripts/test_corpus_nonstandard_scale.py",
+            "tests/unit/scripts/test_generate_standard_scales.py",
+            "tests/unit/scripts/test_soundness_manifest.py",
+            "tests/unit/scripts/test_validate_submission_resource_heavy.py",
+            "tests/unit/test_sync_results_workflow.py"
+          ],
+          "head": "f93c98ff537697d1c6694dddf5dc19cd4e3735aa",
+          "kind": "develop-merge",
+          "merged_parent": "4b7893f7b07ffdd342569ee94084bb4bdab4223d",
+          "op_id": "6f7e21a992844cf3987272f0f30a81a4",
+          "previous_head": "98c48f3a5bc5aafca5da14fcc6a279a034e6e158",
+          "seq": 21
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-source",
