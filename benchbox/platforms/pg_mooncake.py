@@ -314,14 +314,15 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
                     table_name_lower, staging_table, None if self.schema == "public" else self.schema
                 )
 
+                cursor.execute(f"DROP TABLE IF EXISTS {qualified_staging}")
                 cursor.execute(rename)
                 connection.commit()
                 try:
                     cursor.execute(create)
                     connection.commit()
-                except Exception:
+                except Exception as mirror_exc:
                     connection.rollback()
-                    self._restore_source_table_name(cursor, connection, qualified_staging, table_name_lower)
+                    self._restore_source_table_name(cursor, connection, qualified_staging, table_name_lower, mirror_exc)
                     raise
                 if mirrored is not None:
                     mirrored.add(table_name_lower)
@@ -344,13 +345,23 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
             connection.rollback()
             self.logger.warning(f"Could not drop the heap staging table {qualified_staging} after the mirror: {exc}")
 
-    def _restore_source_table_name(self, cursor: Any, connection: Any, qualified_staging: str, table_name: str) -> None:
+    def _restore_source_table_name(
+        self,
+        cursor: Any,
+        connection: Any,
+        qualified_staging: str,
+        table_name: str,
+        mirror_error: BaseException | None = None,
+    ) -> None:
         try:
             cursor.execute(f'ALTER TABLE {qualified_staging} RENAME TO "{table_name}"')
             connection.commit()
         except Exception as exc:
             connection.rollback()
-            self.logger.warning(f"Could not restore the heap table name {table_name} after a mirror failure: {exc}")
+            self.logger.warning(
+                f"Could not restore the heap table name {table_name} after a mirror failure "
+                f"(mirror error: {mirror_error}): {exc}"
+            )
 
     def _mooncake_staging_table_name(self, table_name: str) -> str:
         suffix_budget = 63 - len(MOONCAKE_STAGING_PREFIX)

@@ -336,7 +336,12 @@ class TestPgMooncakeLoadPromotion:
         with patch.object(postgresql_module.PostgreSQLAdapter, "load_data", return_value=({"orders": 2}, 1.25, None)):
             adapter.load_data(Mock(), conn, tmp_path)
 
-        assert events[:3] == ['execute:ALTER TABLE "orders"', "commit", "execute:CALL mooncake.create_table"]
+        assert events[:4] == [
+            'execute:DROP TABLE IF EXISTS "__bb_moon_src_orders"',
+            'execute:ALTER TABLE "orders"',
+            "commit",
+            "execute:CALL mooncake.create_table",
+        ]
 
     def test_heap_staging_table_is_dropped_after_the_mirror_is_counted(self, pg_mooncake_stubs, tmp_path):
         adapter = PgMooncakeAdapter()
@@ -354,10 +359,12 @@ class TestPgMooncakeLoadPromotion:
 
         executed = [call.args[0] for call in cursor.execute.call_args_list]
         assert executed == [
+            'DROP TABLE IF EXISTS "__bb_moon_src_orders"',
             'ALTER TABLE "orders" RENAME TO "__bb_moon_src_orders"',
             "CALL mooncake.create_table('orders', '__bb_moon_src_orders')",
             'SELECT COUNT(*) FROM "orders"',
             'DROP TABLE IF EXISTS "__bb_moon_src_orders"',
+            'DROP TABLE IF EXISTS "__bb_moon_src_lineitem"',
             'ALTER TABLE "lineitem" RENAME TO "__bb_moon_src_lineitem"',
             "CALL mooncake.create_table('lineitem', '__bb_moon_src_lineitem')",
             'SELECT COUNT(*) FROM "lineitem"',
@@ -370,9 +377,12 @@ class TestPgMooncakeLoadPromotion:
         cursor = Mock()
         cursor.fetchone.return_value = (2,)
 
+        seen: list[str] = []
+
         def execute(sql):
-            if sql.startswith("DROP TABLE"):
+            if sql.startswith("DROP TABLE") and 'SELECT COUNT(*) FROM "orders"' in seen:
                 raise RuntimeError("drop failed")
+            seen.append(sql)
 
         cursor.execute.side_effect = execute
         conn.cursor.return_value = cursor
@@ -387,7 +397,7 @@ class TestPgMooncakeLoadPromotion:
         adapter = PgMooncakeAdapter()
         conn = Mock()
         cursor = Mock()
-        cursor.execute.side_effect = [None, RuntimeError("mirror creation failed"), None]
+        cursor.execute.side_effect = [None, None, RuntimeError("mirror creation failed"), None]
         conn.cursor.return_value = cursor
 
         with (
@@ -402,11 +412,64 @@ class TestPgMooncakeLoadPromotion:
 
         executed = [call.args for call in cursor.execute.call_args_list]
         assert executed == [
+            ('DROP TABLE IF EXISTS "__bb_moon_src_orders"',),
             ('ALTER TABLE "orders" RENAME TO "__bb_moon_src_orders"',),
             ("CALL mooncake.create_table('orders', '__bb_moon_src_orders')",),
             ('ALTER TABLE "__bb_moon_src_orders" RENAME TO "orders"',),
         ]
         cursor.close.assert_called_once()
+
+    def test_second_attempt_after_a_failed_mirror_starts_from_a_clean_staging_name(self, pg_mooncake_stubs, tmp_path):
+        tables: set[str] = {"orders", "__bb_moon_src_orders"}
+
+        class _CatalogCursor:
+            def execute(self, sql):
+                if sql.startswith("DROP TABLE IF EXISTS "):
+                    tables.discard(sql.rsplit('"', 2)[1])
+                elif sql.startswith("ALTER TABLE ") and " RENAME TO " in sql:
+                    source, target = (part.strip('"') for part in sql[len("ALTER TABLE ") :].split(" RENAME TO "))
+                    if target in tables:
+                        raise RuntimeError(f'relation "{target}" already exists')
+                    tables.discard(source)
+                    tables.add(target)
+
+            def fetchone(self):
+                return (2,)
+
+            def close(self):
+                pass
+
+        adapter = PgMooncakeAdapter()
+        conn = Mock()
+        conn.cursor.return_value = _CatalogCursor()
+
+        with patch.object(postgresql_module.PostgreSQLAdapter, "load_data", return_value=({"orders": 2}, 1.25, None)):
+            stats, _, _ = adapter.load_data(Mock(), conn, tmp_path)
+
+        assert stats == {"orders": 2}
+        assert "__bb_moon_src_orders" not in tables
+
+    def test_restore_failure_warning_names_the_original_mirror_error(self, pg_mooncake_stubs, tmp_path, caplog):
+        adapter = PgMooncakeAdapter()
+        conn = Mock()
+        cursor = Mock()
+        cursor.execute.side_effect = [
+            None,
+            None,
+            RuntimeError("channel closed"),
+            RuntimeError('relation "orders" already exists'),
+        ]
+        conn.cursor.return_value = cursor
+        caplog.set_level("WARNING")
+
+        with (
+            patch.object(postgresql_module.PostgreSQLAdapter, "load_data", return_value=({"orders": 2}, 1.25, None)),
+            pytest.raises(RuntimeError, match="channel closed"),
+        ):
+            adapter.load_data(Mock(), conn, tmp_path)
+
+        assert "channel closed" in caplog.text
+        assert 'relation "orders" already exists' in caplog.text
 
     def test_load_data_rejects_invalid_schema_identifier(self, pg_mooncake_stubs, tmp_path):
         adapter = PgMooncakeAdapter(schema='public";drop')
