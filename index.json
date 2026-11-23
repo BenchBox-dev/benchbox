@@ -50348,15 +50348,10 @@
       "title": "TPC-DS parity B6: promote tpcds to enforced blocking gate"
     },
     "tpcds-parity-draws-fails-with-all-draws-equivalent-20261119": {
-      "claim": {
-        "expires_at": "2026-11-24T04:23:43Z",
-        "generation": "ef98f4200ef7474caac5a9138507f298",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "tpcds-parity-draws exits 1 although every draw reports the surfaces equivalent"
     },
     "tpcds-pyspark-compatibility": {
