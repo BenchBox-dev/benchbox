@@ -1099,12 +1099,43 @@ benchbox-fixture-key-material
         adapter.configure_for_benchmark(mock_connection, "olap")
 
         execute_calls = [str(call) for call in mock_cursor.execute.call_args_list]
-        assert any("QUERY_ACCELERATION_MAX_SCALE_FACTOR" in call for call in execute_calls)
+        assert not any("QUERY_ACCELERATION_MAX_SCALE_FACTOR" in call for call in execute_calls)
         assert any("USE_CACHED_RESULT" in call for call in execute_calls)
         assert any("STATEMENT_TIMEOUT_IN_SECONDS" in call for call in execute_calls)
         assert any("USE WAREHOUSE" in call for call in execute_calls)
 
         assert mock_cursor.close.call_count == 2
+
+    @pytest.mark.parametrize("benchmark_type", ["olap", "tpch", "tpcds"])
+    @patch("benchbox.platforms.snowflake.snowflake")
+    def test_configure_for_benchmark_session_statements(self, mock_snowflake, benchmark_type):
+        mock_connection = Mock()
+        mock_cursor = Mock()
+        mock_connection.cursor.return_value = mock_cursor
+
+        adapter = SnowflakeAdapter(
+            account="test_account",
+            username="test_user",
+            password="test_pass",
+            warehouse="TEST_WH",
+            database="TEST_DB",
+            modify_warehouse_settings=True,
+            strict_validation=False,
+        )
+
+        adapter.configure_for_benchmark(mock_connection, benchmark_type)
+
+        session_statements = [
+            str(call.args[0]) for call in mock_cursor.execute.call_args_list if "ALTER SESSION" in str(call.args[0])
+        ]
+        assert session_statements == [
+            f"ALTER SESSION SET QUERY_TAG = '{adapter.query_tag}_optimization'",
+            f"ALTER SESSION SET TIMEZONE = '{adapter.timezone}'",
+            "ALTER SESSION SET AUTOCOMMIT = TRUE",
+            "ALTER SESSION SET USE_CACHED_RESULT = FALSE",
+            "ALTER SESSION SET STATEMENT_TIMEOUT_IN_SECONDS = 1800",
+        ]
+        assert not any("QUERY_ACCELERATION" in str(call) for call in mock_cursor.execute.call_args_list)
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_configure_for_benchmark_with_multi_cluster(self, mock_snowflake):
