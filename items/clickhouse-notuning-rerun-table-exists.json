@@ -3,6 +3,11 @@
     "Rerun green twice in a row on clickhouse-server (notuning, then tuned and notuning matrix as applicable)",
     "Regression test covering rerun-into-existing-tables for both tuned and notuning modes"
   ],
+  "batch": {
+    "batch_id": "release-readiness",
+    "implementation_dependencies": [],
+    "member_id": "clickhouse-notuning-rerun-table-exists"
+  },
   "context": "Reproduced 2026-10-07 against mocker-hosted ClickHouse 25.8 with CLICKHOUSE_MEMORY_LIMIT=5.25g. Full failing log: /tmp/ch-notuning-ctrl.log. Tuned rerun reference showing \"Dropped database\": /tmp/ch-benefit-sf1-tuned-rerun.log (ssb-tuned cell). Related code: run-connection/database lifecycle in benchbox/platforms/base + clickhouse setup.py create_connection/handle_existing_database.\n\nSecond finding (observed 2026-10-07, PR #2766 investigation): a notuning run, or a run with --phases power, against a server whose default database still holds a tuned layout prints \"Database being reused - skipping schema creation and data loading\" and measures the wrong layout without any error. It invalidated one benchmark cell. Workaround: start one fresh container per benchmark's three cells (notuning, tuned, tuned plus optimize_after_load). Deliberately not fixed in the PR #2766 effort; any refusal or drop behavior change needs owner review.",
   "description": "Rerun-hygiene inconsistency between tuning modes on clickhouse-server.\n\nRepro steps:\n1. BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs benchbox run --platform clickhouse-server --benchmark tpch --scale 1 --seed 42 --tuning notuning --phases generate,load ...\n2. Run the exact same command a second time against the same server/database.\n3. Second run fails during schema creation with Code: 57. DB::Exception: Table default.region already exists (exits 1), because it issues plain CREATE TABLE without IF NOT EXISTS and without dropping first.\n\nContrast: a --tuning tuned run drops the pre-existing database/tables before recreating them (log shows \"Dropped database\").\n\nExpected behavior: notuning reruns are idempotent like tuned runs (recreate or reuse cleanly), or fail early with an actionable message before partial work.\n\nConstraint: any drop-behavior change is destructive and needs owner review before implementation.",
   "sessions": [
@@ -48,6 +53,14 @@
       "op": "release",
       "op_id": "bd3ffc64d06642a6821e88987eeadf7e",
       "session_id": "b833d84af4ae4e4b999f435d3c8fd25e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e8526faa0e732223dd79589d",
+      "at": "2026-11-23T13:48:37Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d03e17afbe0846d1aab106b55cd20ab4",
+      "session_id": "24cca4279aeb4583a89b2c57ce255d32"
     }
   ]
 }
