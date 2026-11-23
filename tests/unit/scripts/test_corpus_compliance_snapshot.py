@@ -102,3 +102,18 @@ def test_difference_report_lists_every_changed_result_and_gate_counts(recorded) 
     assert sum("becomes ranked" in row["reason"] for row in rows) <= 25
     assert f"- stored results: {len(recorded)}" in report
     assert all(row["path"] in report for row in rows)
+
+
+def test_throughput_at_size_is_not_scored_for_failed_streams() -> None:
+    queries = [{"test_type": "throughput", "run_type": "measurement"}]
+    good = {
+        "phases": {"throughput_test": {"duration_ms": 1000, "stream_results": [{"success": True}]}},
+        "queries": queries,
+    }
+    bad = {
+        "phases": {"throughput_test": {"duration_ms": 1000, "stream_results": [{"success": True}, {"success": False}]}},
+        "queries": queries,
+    }
+
+    assert script.throughput_at_size_from_timings(good, 1.0) is not None
+    assert script.throughput_at_size_from_timings(bad, 1.0) is None

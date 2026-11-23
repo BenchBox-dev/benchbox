@@ -65,6 +65,8 @@ NON_CLEAN_VALIDATION_STATUSES = frozenset(
     {"failed", "interrupted", "timed_out", "partial", "error", "not_run", "not_validated", "uncertain", "unknown"}
 )
 
+NON_CLEAN_TRANSLATION_STATUSES = frozenset({"fallback", "failed"})
+
 BENCHMARK_LABELS = {"tpch": "TPC-H", "tpcds": "TPC-DS"}
 CLASS_WORDS = {
     CLASS_FULL_SPEC: "Full specification run: power, throughput and refresh",
@@ -392,16 +394,53 @@ def _executed(block: Any) -> bool:
     return isinstance(block, Mapping) and bool(block) and str(block.get("status") or "").upper() != "NOT_RUN"
 
 
-def _refresh_evidence(phases: Mapping[str, Any]) -> bool:
+def _status_completed(block: Any) -> bool:
+    return isinstance(block, Mapping) and str(block.get("status") or "").upper() == "COMPLETED"
+
+
+def _all_succeed(items: Any, expected: int | None = None) -> bool:
+    return (
+        isinstance(items, list)
+        and bool(items)
+        and (expected is None or len(items) == expected)
+        and all(isinstance(item, Mapping) and str(item.get("status") or "").upper() == "SUCCESS" for item in items)
+    )
+
+
+def _tpch_refresh_clean(phases: Mapping[str, Any]) -> bool:
     power = phases.get("power_test")
     functions = power.get("refresh_functions") if isinstance(power, Mapping) else None
-    if isinstance(functions, list) and functions:
-        return True
+    if not _all_succeed(functions, 2):
+        return False
     throughput = phases.get("throughput_test")
     refresh_stream = throughput.get("refresh_stream") if isinstance(throughput, Mapping) else None
-    if isinstance(refresh_stream, Mapping) and refresh_stream:
-        return True
-    return any(_executed(phases.get(name)) for name in ("maintenance_test", "maintenance_test_2"))
+    return (
+        isinstance(refresh_stream, Mapping)
+        and str(refresh_stream.get("status") or "") == "COMPLETED"
+        and _all_succeed(refresh_stream.get("pairs"))
+    )
+
+
+def _tpcds_maintenance_clean(phases: Mapping[str, Any]) -> bool:
+    for name in ("maintenance_test", "maintenance_test_2"):
+        block = phases.get(name)
+        if not _status_completed(block) or not _all_succeed(block.get("operations")):
+            return False
+    return True
+
+
+def _refresh_evidence(data: Mapping[str, Any], phases: Mapping[str, Any]) -> bool:
+    benchmark = normalize_benchmark_id(_benchmark_id(data))
+    if benchmark == "tpch":
+        return _tpch_refresh_clean(phases)
+    if benchmark == "tpcds":
+        return _tpcds_maintenance_clean(phases)
+    return _tpch_refresh_clean(phases) or _tpcds_maintenance_clean(phases)
+
+
+def _benchmark_id(data: Mapping[str, Any]) -> Any:
+    benchmark = data.get("benchmark")
+    return benchmark.get("id") if isinstance(benchmark, Mapping) else None
 
 
 def _measured_rows(data: Mapping[str, Any]) -> bool:
@@ -420,29 +459,37 @@ def phases_ran(data: Mapping[str, Any]) -> frozenset[str] | None:
         ran.add(PHASE_POWER)
     if _executed(phases.get("throughput_test")):
         ran.add(PHASE_THROUGHPUT)
-    if _refresh_evidence(phases):
+    if _refresh_evidence(data, phases):
         ran.add(PHASE_REFRESH)
     if not ran & {PHASE_POWER, PHASE_THROUGHPUT} and _measured_rows(data):
         ran.add(PHASE_OTHER_TIMED)
     return frozenset(ran)
 
 
+def _succeeded_streams(block: Any) -> int | None:
+    streams = block.get("stream_results") if isinstance(block, Mapping) else None
+    if not isinstance(streams, list) or not streams:
+        return None
+    return sum(1 for stream in streams if isinstance(stream, Mapping) and stream.get("success") is True)
+
+
 def executed_stream_count(data: Mapping[str, Any]) -> int | None:
     phases = data.get("phases")
-    block = phases.get("throughput_test") if isinstance(phases, Mapping) else None
-    streams = block.get("stream_results") if isinstance(block, Mapping) else None
-    return len(streams) if isinstance(streams, list) and streams else None
+    if not isinstance(phases, Mapping):
+        return None
+    first = _succeeded_streams(phases.get("throughput_test"))
+    if first is None or normalize_benchmark_id(_benchmark_id(data)) != "tpcds":
+        return first
+    return min(first, _succeeded_streams(phases.get("throughput_test_2")) or 0)
 
 
 def _gateway_routed(data: Mapping[str, Any]) -> bool:
     platform = data.get("platform")
     gateway = platform.get("gateway") if isinstance(platform, Mapping) else None
-    return isinstance(gateway, Mapping) and bool(gateway.get("name")) and gateway.get("routed") is True
+    return isinstance(gateway, Mapping) and bool(gateway.get("routed"))
 
 
-def _recorded_validation_status(data: Mapping[str, Any]) -> str | None:
-    summary = data.get("summary")
-    value = summary.get("validation") if isinstance(summary, Mapping) else None
+def _status_text(value: Any) -> str | None:
     if isinstance(value, Mapping):
         value = value.get("status")
     if value is None:
@@ -450,11 +497,65 @@ def _recorded_validation_status(data: Mapping[str, Any]) -> str | None:
     return str(value).strip().lower() or None
 
 
+def _int_or_none(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _query_row_failed(query: Any) -> bool:
+    if not isinstance(query, Mapping):
+        return False
+    if str(query.get("run_type") or "measurement").strip().lower() != "measurement":
+        return False
+    status = query.get("status")
+    return status is not None and str(status).upper() not in {"SUCCESS", "SKIPPED"}
+
+
 def _recorded_failed_queries(data: Mapping[str, Any]) -> int:
     summary = data.get("summary")
     queries = summary.get("queries") if isinstance(summary, Mapping) else None
-    failed = queries.get("failed") if isinstance(queries, Mapping) else None
-    return failed if isinstance(failed, int) and not isinstance(failed, bool) and failed > 0 else 0
+    if isinstance(queries, Mapping):
+        failed = _int_or_none(queries.get("failed"))
+        if failed is not None and failed > 0:
+            return failed
+        total = _int_or_none(queries.get("total"))
+        passed = _int_or_none(queries.get("passed"))
+        skipped = _int_or_none(queries.get("skipped")) or 0
+        if total is not None and passed is not None and total > passed + skipped:
+            return total - passed - skipped
+    rows = data.get("queries")
+    return sum(1 for row in rows if _query_row_failed(row)) if isinstance(rows, list) else 0
+
+
+def _row_count_validation_failed(data: Mapping[str, Any]) -> bool:
+    rows = data.get("queries")
+    return isinstance(rows, list) and any(
+        isinstance(row, Mapping)
+        and isinstance(evidence := row.get("row_count_validation"), Mapping)
+        and str(evidence.get("status") or "").strip().upper() == "FAILED"
+        for row in rows
+    )
+
+
+def _recorded_validation_status(data: Mapping[str, Any]) -> str | None:
+    summary = data.get("summary")
+    return _status_text(summary.get("validation")) if isinstance(summary, Mapping) else None
+
+
+def _translation_non_clean(data: Mapping[str, Any]) -> bool:
+    execution = data.get("execution")
+    status = _status_text(execution.get("translation")) if isinstance(execution, Mapping) else None
+    return status in NON_CLEAN_TRANSLATION_STATUSES
 
 
 def facts_from_result(
@@ -467,7 +568,7 @@ def facts_from_result(
     benchmark = data.get("benchmark")
     benchmark = benchmark if isinstance(benchmark, Mapping) else {}
     benchmark_id = benchmark.get("id")
-    status = validation_status if validation_status is not None else _recorded_validation_status(data)
+    status = _status_text(validation_status) if validation_status is not None else _recorded_validation_status(data)
     failed = failed_queries if failed_queries is not None else _recorded_failed_queries(data)
     return Facts(
         benchmark=benchmark_id if isinstance(benchmark_id, str) else None,
@@ -476,7 +577,12 @@ def facts_from_result(
         streams=executed_stream_count(data),
         gateway_routed=_gateway_routed(data),
         known_defect=any(isinstance(item, str) and item for item in known_defects),
-        validation_failed=status in NON_CLEAN_VALIDATION_STATUSES or failed > 0,
+        validation_failed=(
+            status in NON_CLEAN_VALIDATION_STATUSES
+            or failed > 0
+            or _row_count_validation_failed(data)
+            or _translation_non_clean(data)
+        ),
     )
 
 
