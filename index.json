@@ -25346,7 +25346,7 @@
       "needs": [],
       "priority": "low",
       "status": "open",
-      "title": "Decide whether benchmarks derived from TPC-H keep their own copy of the source data"
+      "title": "Make benchmarks derived from TPC-H read the source data folder and stop keeping their own copy"
     },
     "derived-power-export-rounding-20261017": {
       "claim": null,

@@ -1,13 +1,12 @@
 {
   "acceptance": [
-    "Decision gate (first step, no code): list every benchmark whose generator writes TPC-H or TPC-DS source files under its own name (at least tpchavoc, write_primitives, transaction_primitives, read_primitives, ai_primitives) and, for each, whether its folder is a full copy, a superset with auxiliary files, or already redirected. Then choose 'accept' or 'share'. Stop and ask the owner if the answer differs per benchmark.",
+    "Decision gate (first step, no code): list every benchmark whose generator writes TPC-H or TPC-DS source files under its own name (at least tpchavoc, write_primitives, transaction_primitives, read_primitives, ai_primitives) and, for each, whether its folder is a full copy, a superset with auxiliary files, or already redirected. Owner answered 2026-11-23: share. Stop and ask the owner only if a listed benchmark cannot share without changing its generated content.",
     "The `--output` question is settled by a run, not by reading code: run one derived benchmark at SF0.01 with `--output <empty scratch dir>` and record which folders appear.",
-    "If 'accept': the item closes with the inventory and the measured duplicate bytes per scale factor in context; no code change.",
     "If 'share': a derived benchmark's run at a scale whose source folder exists generates no second copy of the source files, in both the default path and the `--output` path; its auxiliary files stay in a folder that a source-only benchmark never reads or prunes; a test covers both paths.",
     "Verification rubric for 'share': byte comparison (hash) of loaded row counts or result validation for one derived benchmark before and after, on DuckDB at SF0.01, plus the duplicate-bytes measurement repeated on a scratch root.",
     "Guardrails: never delete or rewrite an existing dataset folder to deduplicate it; a source benchmark's parquet conversion or `--force datagen` must not remove files a derived benchmark needs (the #3442 failure mode); manifests stay valid under benchbox/utils/datagen_version.py; no hardlink or symlink deduplication."
   ],
-  "context": "Origin: disk cleanup and root-cause review on 2026-11-22. The root volume fell to 46 GiB free, below the 50 GiB heavy-work floor. Cause found: generated benchmark data has no lifecycle (any session creates it under any run root, nothing removes it), and Time Machine local snapshots kept deleted data allocated. PR #4451 (https://github.com/BenchBox-dev/benchbox/pull/4451) added AGENTS.md [RUN-DATA-001] and made scripts/run_version_matrix.py delete its datagen/ and databases/ when a matrix completes.",
+  "context": "Origin: disk cleanup and root-cause review on 2026-11-22. The root volume fell to 46 GiB free, below the 50 GiB heavy-work floor. Cause found: generated benchmark data has no lifecycle (any session creates it under any run root, nothing removes it), and Time Machine local snapshots kept deleted data allocated. PR #4451 (https://github.com/BenchBox-dev/benchbox/pull/4451) added AGENTS.md [RUN-DATA-001] and made scripts/run_version_matrix.py delete its datagen/ and databases/ when a matrix completes.\n\nOwner decision 2026-11-23 (choice dialog): 'Make derived benchmarks read the source folder'. Prior art to extend: DATA_SOURCE_BENCHMARK in benchbox/base.py and tests/unit/cli/test_orchestrator_data_sharing.py.",
   "description": "Problem: benchmarks that reuse another benchmark's data are stored twice in the shared data folder. Measured 2026-11-22 in `~/Developer/benchmark_runs/datagen`: 0.85 GB of byte-identical files across dataset folders, of which `tpch_sf1`/`tpchavoc_sf1` is 0.57 GB and `tpch_sf01`/`write_primitives_sf01`/`tpchavoc_sf01` is 0.25 GB. The cost grows with scale factor (an SF10 pair would be about 6 GB).\n\nSecond, unverified, observation from reading `benchbox/cli/orchestrator.py` (`_get_benchmark_instance`): the redirect of a derived benchmark to its source's shared folder is skipped when `--output` is given, so `--output <shared>/datagen` may send `write_primitives` to `write_primitives_sf<N>` and not `tpch_sf<N>`. A 2026-11-22 run of `write_primitives` SF0.01 with `--output` reused an existing folder and did not show which path it took.\n\nExpected outcome: a recorded decision. Either the copies are accepted (they are small at the scales in use) or derived benchmarks read the source folder in both the default and the `--output` path.",
   "links": [
     "benchbox/cli/orchestrator.py",
@@ -24,6 +23,14 @@
       "op": "create",
       "op_id": "b868c57a901e433a958503c6782d92a2",
       "session_id": "326a88b3a63f4096aae1118667c53175"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b",
+      "at": "2026-11-23T14:24:39Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ad5e2cf3cd714382bbd9e404b18706d7",
+      "session_id": "e94ef2c0cac942f885a89e503648c51e"
     }
   ]
 }
