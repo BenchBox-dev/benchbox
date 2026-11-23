@@ -3,7 +3,7 @@
     "The TPC-H SF10 cells are rerun on data without the defect and the new bundles carry no known_defects entry",
     "The analysis for the DuckDB matrix is regenerated, or the old TPC-H SF10 results are marked superseded where they are published"
   ],
-  "context": "Priority raised to high by owner decision on 2026-11-13: making published results easier to read and cite is worth little while most rows are flagged defective, so corpus repair outranks the agent-facing work.",
+  "context": "Priority raised to high by owner decision on 2026-11-13: making published results easier to read and cite is worth little while most rows are flagged defective, so corpus repair outranks the agent-facing work.\n\n2026-11-22: during a disk cleanup the shared SF10 datasets under ~/Developer/benchmark_runs/datagen (tpch_sf10, tpcds_sf10, ssb_sf10, clickbench_sf10) and the private copies under polars-version-matrix-20261120, polars-version-matrix-reference-20261119 and duckdb-tuned-sf10-20261112 were deleted, so SF10 data must be regenerated before this work. Since PR #4451, scripts/run_version_matrix.py deletes <output>/datagen and <output>/databases when a matrix completes; see version-matrix-data-cleanup-residual-gaps-20261122, which asks for the first completed matrix to be checked.",
   "description": "The archived DuckDB version matrix (2026-08-29, ~/Developer/benchmark_runs/duckdb-version-matrix-20260829-sf10 and -v2) has 7 TPC-H SF10 result bundles carrying known_defects `defective-macdbgen-addresses`. Their generated data must not be reused, and the bundles should not be treated as clean results. Regenerate the TPC-H SF10 data with a non-defective generator and rerun those cells, then re-analyze. Recorded as an out-of-scope follow-up of the Polars matrix work.",
   "links": [
     "~/Developer/benchmark_runs/duckdb-version-matrix-20260829-sf10",
@@ -25,6 +25,14 @@
       "op": "update",
       "op_id": "867c743904904fc5b82b14a20c532ee1",
       "session_id": "ac67b069b7864c4699843546272d3701"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1666d419ebd76239145cfb5d",
+      "at": "2026-11-23T00:17:29Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b07d9f3dafa24f34a7212fe14d6deef9",
+      "session_id": "326a88b3a63f4096aae1118667c53175"
     }
   ]
 }
