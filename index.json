@@ -20098,12 +20098,17 @@
       "title": "Review the blocking duration gate after 20 measured runs"
     },
     "ci-fast-duration-gate-rerun-and-baseline-drift-20261113": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T13:54:59Z",
+        "generation": "d1209026a6bd423bafac9c10ba9c1d32",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a5dffb67f2f8103a3765a88b"
+      },
       "needs": [
         "feature-fix-ci-congestion-diagnostics-and-generator-gate-20261117"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Fast-tier duration gate: a failed-jobs re-run never re-measures, and a stale baseline charges PRs for other PRs' tests"
     },
     "ci-fast-duration-gate-slow-runner-margin-20261101": {
