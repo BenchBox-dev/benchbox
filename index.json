@@ -15531,6 +15531,7 @@
     },
     "trunk-stability-r2": {
       "accepted_members": {
+        "df-memory-guard-generation-check-runs-after-generation-20261118": "e3e668b54325cf99e196848837f487cdb51fd454",
         "tpcds-parity-draws-fails-with-all-draws-equivalent-20261119": "c6c7afbe908a44958093619d663d69acd5ee9dbb",
         "uat-regression-doris-clickbench-mooncake-flightdata": "b0fcd4a8e6845d23a21d44b48df69da5b1210ea3"
       },
@@ -15539,6 +15540,18 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "df-memory-guard-generation-check-runs-after-generation-20261118": {
+          "accepted_head": "e3e668b54325cf99e196848837f487cdb51fd454",
+          "changed_files": [
+            "benchbox/core/runner/runner.py",
+            "benchbox/platforms/dataframe/benchmark_mixin.py",
+            "changelog.d/feat-trunk-stability--df-memory-guard-generation-check-runs-after-generation-20261118.json",
+            "tests/unit/core/runner/test_dataframe_generation_memory_guard.py",
+            "tests/unit/platforms/dataframe/test_benchmark_mixin_memory_policy.py"
+          ],
+          "integration_head": "e6ddfbf8260288399421391cbe4d0cb309e5a3c7",
+          "integration_seq": 3
+        },
         "tpcds-parity-draws-fails-with-all-draws-equivalent-20261119": {
           "accepted_head": "c6c7afbe908a44958093619d663d69acd5ee9dbb",
           "changed_files": [
@@ -15564,7 +15577,7 @@
         }
       },
       "integration_branch": "feat/trunk-stability-r2",
-      "integration_head": "5367fa582b6cce2d01c7ad6d0eedef6a8c7f07bd",
+      "integration_head": "e6ddfbf8260288399421391cbe4d0cb309e5a3c7",
       "integration_log": [
         {
           "at": "2026-11-23T00:06:31Z",
@@ -15589,6 +15602,15 @@
           "op_id": "dc6350bc95a44c95932de09f8af90161",
           "previous_head": "e73b51f731fc3e4f1318cae177618607c7f6b2d0",
           "seq": 2
+        },
+        {
+          "at": "2026-11-23T02:32:55Z",
+          "head": "e6ddfbf8260288399421391cbe4d0cb309e5a3c7",
+          "kind": "prepare",
+          "member": "df-memory-guard-generation-check-runs-after-generation-20261118",
+          "op_id": "35c65cae850f4e308765235b1a7b44b5",
+          "previous_head": "5367fa582b6cce2d01c7ad6d0eedef6a8c7f07bd",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-trunk-stability-r2",
@@ -25034,15 +25056,10 @@
       "title": "Decide whether the DataFrame memory guard should account for data-generation memory"
     },
     "df-memory-guard-generation-check-runs-after-generation-20261118": {
-      "claim": {
-        "expires_at": "2026-11-24T02:32:50Z",
-        "generation": "132cf9b2bd8b42d9874928cf81921f1b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "DataFrame memory guard's data-generation estimate likely never applies in benchbox run, because generation finishes first"
     },
     "df-memory-guard-refusal-message-and-subset-estimate-20261112": {
