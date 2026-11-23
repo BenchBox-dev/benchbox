@@ -142,3 +142,36 @@ def test_update_baseline_refuses_to_write_from_a_flaky_run(monkeypatch, capsys):
 def test_the_command_line_rejects_fewer_than_one_repeat():
     with pytest.raises(SystemExit):
         main(["--benchmark", "ssb", "--repeats", "0"])
+
+
+def test_an_enforced_flaky_run_does_not_claim_equivalence(monkeypatch, capsys):
+    gate = _gate("coin_gate", wrong_on={2})
+    _enforce(monkeypatch, gate)
+
+    assert run_gate(gate, repeats=2) == 1
+    out = " ".join(capsys.readouterr().out.split())
+    assert "surfaces are equivalent" not in out
+    assert "Equivalence not established: 1 cell(s) changed outcome between identical repeat runs" in out
+    assert "Q2_expression: diverged in 1 of 2 runs" in out
+
+
+def test_a_steady_run_still_claims_equivalence(monkeypatch, capsys):
+    gate = _gate("steady_gate", wrong_on=set())
+    _enforce(monkeypatch, gate)
+
+    assert run_gate(gate, repeats=2) == 0
+    assert "surfaces are equivalent" in capsys.readouterr().out
+
+
+def test_the_draws_target_names_the_failing_draw_and_its_exit_status():
+    import subprocess
+
+    result = subprocess.run(
+        ["make", "-n", "tpcds-cross-surface-draws-report"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=True,
+    )
+    assert "FAILED with exit status $rc" in result.stdout
+    assert "|| status=1" not in result.stdout
