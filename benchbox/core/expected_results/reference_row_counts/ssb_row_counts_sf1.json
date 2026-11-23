@@ -1,0 +1,68 @@
+{
+  "schema_version": 2,
+  "benchmark": "ssb",
+  "scale_factor": 1.0,
+  "reference_kind": "engine_agreement",
+  "streams": {
+    "0": {
+      "query_parameters": "SSB fixed query text (no substitution parameters)",
+      "seed": null,
+      "row_counts": {
+        "1.1": 1,
+        "1.2": 1,
+        "1.3": 1,
+        "2.1": 280,
+        "2.2": 56,
+        "2.3": 7,
+        "3.1": 150,
+        "3.2": 600,
+        "3.3": 24,
+        "3.4": 2,
+        "4.1": 35,
+        "4.2": 100,
+        "4.3": 1854
+      }
+    }
+  },
+  "parameter_sensitive_query_ids": [],
+  "provenance": {
+    "generator": {
+      "data_generator": "BenchBox SSB data generator (benchbox/core/ssb/generator.py) via the generate phase",
+      "query_generator": "SSBBenchmark.get_queries, per-engine dialect translation",
+      "data_stamp": {
+        "generator_version": "v1",
+        "data_generation_version": 1,
+        "base_constants_hash": "6c2327e588ae42b1c2143d42b84085f7ad57db46061637a9dd2aa3b05063095e"
+      }
+    },
+    "data_checksum": {
+      "algorithm": "sha256 over each table's decompressed shards in natural shard order, then over table name and digest; the dbgen_version table is excluded because it records the generation time",
+      "sha256": "f2f6af981525e9a60ab238c30184937175515d22482ad1e767de28eb864b8d75",
+      "tables": {
+        "customer": "ad0d7a62f33fd2913d47add9fb215c73e72457210e2d1440286ab19e329f6161",
+        "date": "1dfcc97852329a851c457410d9079d2d1c07fe32d7f964a2eb3afb1f7d1895ab",
+        "lineorder": "ae4ffbd4a17af36f549f6ecf5ea7b6ece0be4585e45ad6f7733c390a772a60c4",
+        "part": "0f5f08c0156ff018df0b3ab38d09c0dbc3ac07f323dade60972482e09679aafd",
+        "supplier": "facbd48ac0cac30e85dc2f74c72489ae54d96060851b9280ad8bae7687879f42"
+      }
+    },
+    "engines": {
+      "duckdb": "2.0.0",
+      "datafusion": "55.0.0"
+    },
+    "generated_on": "2026-11-23",
+    "agreement": {
+      "result": "identical",
+      "engines": [
+        "duckdb",
+        "datafusion"
+      ],
+      "streams": [
+        0
+      ],
+      "queries_per_stream": 13,
+      "rule": "every query on every stream returned the same row count on every listed engine, on data with one checksum"
+    },
+    "regenerate": "make row-count-references-regen BENCHMARK=ssb SCALE=<scale factor> WORK_DIR=<durable directory>"
+  }
+}

@@ -11,9 +11,6 @@ importlib.import_module("benchbox.core.expected_results")
 from benchbox.core.expected_results.models import ExpectedQueryResult, ValidationMode, ValidationResult
 from benchbox.core.expected_results.registry import LoadOutcome, get_registry
 from benchbox.core.expected_results.ssb_results import normalize_ssb_query_id
-from benchbox.core.expected_results.tpcds_results import (
-    TPCDS_PARAMETER_SENSITIVE_QUERY_IDS as _TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
-)
 from benchbox.core.expected_results.tpch_results import (
     PARAMETER_SENSITIVE_QUERY_IDS as _TPCH_PARAMETER_SENSITIVE_QUERY_IDS,
 )
@@ -24,8 +21,6 @@ logger = logging.getLogger(__name__)
 _PARAMETER_SENSITIVE_QUERY_IDS_BY_BENCHMARK: dict[str, frozenset[str]] = {
     "tpch": _TPCH_PARAMETER_SENSITIVE_QUERY_IDS,
     "tpc-h": _TPCH_PARAMETER_SENSITIVE_QUERY_IDS,
-    "tpcds": _TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
-    "tpc-ds": _TPCDS_PARAMETER_SENSITIVE_QUERY_IDS,
 }
 
 
@@ -173,11 +168,7 @@ class QueryValidator:
 
         context_mode = get_validation_mode_context()
         env_mode_str = os.environ.get("BENCHBOX_QUERY_VALIDATION_MODE")
-        if (scale_factor or 1.0) == 1.0:
-            run_mode = self._resolve_tpcds_run_mode(benchmark_type)
-            if run_mode is not None and run_mode != expected_result.validation_mode:
-                return dataclasses.replace(expected_result, validation_mode=run_mode)
-        elif context_mode is not None:
+        if context_mode is not None:
             if context_mode != expected_result.validation_mode:
                 return dataclasses.replace(expected_result, validation_mode=context_mode)
         elif env_mode_str is not None:
@@ -325,6 +316,25 @@ class QueryValidator:
                 benchmark_type, query_id_str, actual_row_count, scale_factor, stream_id, load_outcome
             )
 
+        result = self._validate_against_reference(
+            benchmark_type, query_id, query_id_str, query_id_normalized, actual_row_count, scale_factor, expected_result
+        )
+        result.reference_kind = expected_result.reference_kind
+        result.reference_label = expected_result.reference_label
+        if expected_result.reference_label and not result.is_valid and result.error_message:
+            result.error_message = f"{result.error_message}\n  Reference: {expected_result.reference_label}"
+        return result
+
+    def _validate_against_reference(
+        self,
+        benchmark_type: str,
+        query_id: str | int,
+        query_id_str: str,
+        query_id_normalized: str,
+        actual_row_count: int,
+        scale_factor: float | None,
+        expected_result: ExpectedQueryResult,
+    ) -> ValidationResult:
         if get_reference_seed_context() is False and expected_result.reference_parameters_only:
             return ValidationResult(
                 is_valid=True,

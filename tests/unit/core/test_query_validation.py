@@ -3,16 +3,18 @@ from pathlib import Path
 
 import pytest
 
-from benchbox.core.expected_results.loader import (
-    TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS,
-    load_tpch_subscale_row_counts,
-)
 from benchbox.core.expected_results.models import (
     BenchmarkExpectedResults,
     ExpectedQueryResult,
     ValidationMode,
 )
 from benchbox.core.expected_results.registry import ExpectedResultsRegistry, get_registry
+from benchbox.core.expected_results.row_count_references import (
+    load_row_count_reference,
+    reference_path,
+    reference_scales,
+    validate_payload,
+)
 from benchbox.core.validation.query_validation import (
     QueryValidator,
     clear_reference_seed_context,
@@ -71,22 +73,19 @@ class TestQueryValidatorExactModeSafeguards:
             assert (result.error_message is None) is valid
 
     def test_integration_with_real_tpcds_variants(self):
-        from benchbox.core.expected_results.loader import load_tpcds_expected_results
-
         validator = QueryValidator()
 
-        tpcds_results = load_tpcds_expected_results(scale_factor=1.0)
+        recorded = load_row_count_reference("tpcds", 1.0).streams[0].row_counts
 
-        if "14" in tpcds_results and "14a" in tpcds_results:
-            result = validator.validate_query_result(
-                benchmark_type="tpcds",
-                query_id="14a",
-                actual_row_count=tpcds_results["14a"],
-                scale_factor=1.0,
-            )
+        result = validator.validate_query_result(
+            benchmark_type="tpcds",
+            query_id="14a",
+            actual_row_count=recorded["14a"],
+            scale_factor=1.0,
+        )
 
-            assert result.is_valid is True, f"Variant 14a validation should not fail: {result.error_message}"
-            assert result.validation_mode in (ValidationMode.EXACT, ValidationMode.SKIP, ValidationMode.RANGE)
+        assert result.is_valid is True, f"Variant 14a validation should not fail: {result.error_message}"
+        assert result.validation_mode == ValidationMode.EXACT
 
 
 class TestQueryValidatorVariantHandling:
@@ -174,7 +173,7 @@ class TestTPCHSubscaleRowCountReference:
 
     @pytest.mark.parametrize("scale_factor", [0.01, 0.1])
     def test_every_reference_count_passes_exactly(self, scale_factor):
-        counts = load_tpch_subscale_row_counts(scale_factor).row_counts
+        counts = load_row_count_reference("tpch", scale_factor).streams[0].row_counts
         validator = QueryValidator()
 
         for query_id, count in counts.items():
@@ -191,7 +190,7 @@ class TestTPCHSubscaleRowCountReference:
         assert result.expected_row_count == 1
 
     def test_parameter_sensitive_query_is_skipped_for_other_parameters(self):
-        reference = load_tpch_subscale_row_counts(0.01)
+        reference = load_row_count_reference("tpch", 0.01)
         assert {"2", "9", "21"} <= reference.parameter_sensitive_query_ids
         set_reference_seed_context(False)
 
@@ -226,12 +225,11 @@ class TestTPCHSubscaleRowCountReference:
     def test_reference_files_are_well_formed_and_query_template_bound(self):
         import hashlib
 
-        from benchbox.core.expected_results.loader import tpch_subscale_row_count_reference_path
-
         root = Path(__file__).resolve().parents[3] / "_sources" / "tpc-h" / "dbgen"
-        for scale_factor in TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS:
-            payload = json.loads(tpch_subscale_row_count_reference_path(scale_factor).read_text(encoding="utf-8"))
-            template = payload["provenance"]["query_template_digest"]
+        for scale_factor in reference_scales("tpch"):
+            payload = json.loads(reference_path("tpch", scale_factor).read_text(encoding="utf-8"))
+            validate_payload(payload, f"tpch sf{scale_factor:g}")
+            template = payload["provenance"]["generator"]["query_template_digest"]
             digest = hashlib.sha256()
             for relative in template["templates"]:
                 digest.update(relative.encode("utf-8") + b"\0" + (root / relative).read_bytes())
@@ -240,16 +238,11 @@ class TestTPCHSubscaleRowCountReference:
 
     @pytest.mark.parametrize(
         ("field", "value"),
-        [("reference_seed", 7), ("scale_factor", 0.1), ("row_counts", {"1": 4})],
+        [("benchmark", "ssb"), ("scale_factor", 1), ("streams", {"0": {"row_counts": {"1": 4}}})],
     )
-    def test_malformed_reference_is_rejected(self, monkeypatch, tmp_path, field, value):
-        from benchbox.core.expected_results import loader
-
-        source = json.loads(loader.tpch_subscale_row_count_reference_path(0.01).read_text(encoding="utf-8"))
+    def test_malformed_reference_is_rejected(self, field, value):
+        source = json.loads(reference_path("tpch", 0.01).read_text(encoding="utf-8"))
         source[field] = value
-        target = tmp_path / "tpch_row_counts_sf0.01.json"
-        target.write_text(json.dumps(source), encoding="utf-8")
-        monkeypatch.setattr(loader, "tpch_subscale_row_count_reference_path", lambda scale_factor: target)
 
         with pytest.raises(ValueError):
-            loader.load_tpch_subscale_row_counts(0.01)
+            validate_payload(source, "tpch_row_counts_sf0.01.json")
