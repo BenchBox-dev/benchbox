@@ -349,6 +349,32 @@ def test_prompt_scale_single_standard_value_still_prompts(monkeypatch: pytest.Mo
     assert "0.01 to 100000" in output
 
 
+@pytest.mark.parametrize("benchmark_id", ["tpcds", "tpch", "clickbench"])
+def test_prompt_scale_standard_values_match_rule(
+    monkeypatch: pytest.MonkeyPatch, manager: BenchmarkManager, benchmark_id: str
+):
+    console, stream = _capture_console()
+    monkeypatch.setattr(bench_mod, "console", console)
+    monkeypatch.setattr(bench_mod.FloatPrompt, "ask", lambda *_args, **_kwargs: 0.1)
+    monkeypatch.setattr(manager, "_validate_scale_choice", lambda *_args, **_kwargs: None)
+    previewed: list[list[float]] = []
+    monkeypatch.setattr(
+        manager,
+        "_display_scale_estimates",
+        lambda _benchmark_id, _info, scales, _profile: previewed.append(list(scales)),
+    )
+    benchmark_info = manager.benchmarks["tpch"]
+
+    manager._prompt_scale(benchmark_id, benchmark_info, {"memory_gb": 64, "cpu_cores": 4})
+
+    standard = bench_mod.get_scale_factor_rule(benchmark_id).standard
+    expected_line = "Standard values: " + ", ".join(f"{opt:g}" for opt in standard)
+    assert expected_line in stream.getvalue()
+    assert previewed == [list(standard)]
+    if benchmark_id == "tpcds":
+        assert 300.0 in standard
+
+
 def test_prompt_scale_retries_after_validation_failure(monkeypatch: pytest.MonkeyPatch, manager: BenchmarkManager):
     monkeypatch.setattr(manager, "_display_scale_estimates", lambda *_args, **_kwargs: None)
     answers = iter([1.0, 0.1])

@@ -81,6 +81,7 @@
     "tests/unit/cli/test_logo.py",
     "tests/unit/core/test_benchmark_dependency_errors.py",
     "tests/unit/core/test_platform_registry.py",
+    "tests/unit/core/test_tpc_notices.py",
     "tests/unit/docs/test_readme_quickstart_installs_what_it_uses.py",
     "tests/unit/scripts/test_doc_contracts.py",
     "tests/unit/scripts/test_docs_ownership.py",

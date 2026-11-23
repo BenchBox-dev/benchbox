@@ -13,7 +13,8 @@ from benchbox.utils import host_lock as hl, resource_limits as rl
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
-POLICY = rl.AdmissionPolicy(need_gib=2.0, min_level=35.0, min_free_disk_gib=50.0)
+POLICY = rl.AdmissionPolicy(need_gib=2.0, min_level=35.0, min_free_disk_gib=50.0, hold_seconds=0.0)
+HELD = dataclasses.replace(POLICY, hold_seconds=30.0)
 DISK_OK = (rl.DiskReading("boot volume", "/", 200.0), rl.DiskReading("output root", "out", 200.0))
 
 
@@ -203,6 +204,104 @@ def test_a_reading_that_recovers_inside_the_window_admits(clock: FakeClock) -> N
     assert result.admitted
     assert result.samples == 3
     assert clock.sleeps == [5.0, 5.0]
+
+
+def test_a_condition_that_stays_good_for_the_hold_window_admits_after_the_window(clock: FakeClock) -> None:
+    result = rl.admit_heavy_work(HELD, reader=lambda: healthy())
+    assert result.admitted
+    assert result.samples == 7
+    assert sum(clock.sleeps) == pytest.approx(30.0)
+
+
+def test_a_condition_that_dips_inside_the_hold_window_restarts_the_hold(clock: FakeClock) -> None:
+    readings = iter([healthy(), healthy(), healthy(pressure_level=2)] + [healthy()] * 20)
+    result = rl.admit_heavy_work(HELD, reader=lambda: next(readings))
+    assert result.admitted
+    assert result.samples == 3 + 7
+    assert sum(clock.sleeps) == pytest.approx(10.0 + 5.0 + 30.0)
+
+
+def test_oscillating_foreign_pressure_is_never_admitted_and_names_the_unstable_hold(clock: FakeClock) -> None:
+    flip = iter(([healthy()] * 4 + [healthy(pressure_level=2)]) * 30)
+    result = rl.admit_heavy_work(HELD, reader=lambda: next(flip))
+    assert not result.admitted
+    assert any("did not hold for 30s" in refusal for refusal in result.refusals)
+    assert sum(clock.sleeps) <= 60.0 + HELD.hold_seconds
+
+
+def test_a_host_that_never_clears_is_refused_at_the_retry_window_without_the_hold(clock: FakeClock) -> None:
+    result = rl.admit_heavy_work(HELD, reader=lambda: healthy(pressure_level=4))
+    assert not result.admitted
+    assert sum(clock.sleeps) == pytest.approx(30.0)
+
+
+def test_force_skips_the_hold_window(clock: FakeClock) -> None:
+    result = rl.admit_heavy_work(HELD, reader=lambda: healthy(pressure_level=4), force=True)
+    assert result.admitted and result.forced
+    assert clock.sleeps == []
+
+
+def test_force_on_a_clean_host_admits_on_the_first_sample_without_waiting(clock: FakeClock) -> None:
+    result = rl.admit_heavy_work(HELD, reader=lambda: healthy(), force=True)
+    assert result.admitted and not result.forced and result.samples == 1
+    assert clock.sleeps == []
+
+
+def test_the_hold_window_is_configurable_from_the_environment() -> None:
+    assert rl.admission_policy_from_env({rl.ADMIT_HOLD_SECONDS_ENV: "90"}).hold_seconds == 90.0
+    assert rl.admission_policy_from_env({}).hold_seconds == rl.DEFAULT_ADMIT_HOLD_SECONDS
+    assert (
+        rl.admission_policy_from_env({rl.ADMIT_HOLD_SECONDS_ENV: "junk"}).hold_seconds == rl.DEFAULT_ADMIT_HOLD_SECONDS
+    )
+
+
+@pytest.mark.parametrize("raw", ["inf", "-inf", "nan", "-1", "-0.5", " Infinity "])
+def test_a_non_finite_or_negative_hold_is_refused_with_the_owner_chosen_message(raw: str) -> None:
+    with pytest.raises(ValueError) as caught:
+        rl.admission_policy_from_env({rl.ADMIT_HOLD_SECONDS_ENV: raw})
+    assert str(caught.value) == (
+        f"BENCHBOX_HEAVY_ADMIT_HOLD_SECONDS must be a finite number of seconds, 0 or more; got {raw!r}."
+    )
+
+
+@pytest.mark.parametrize(("raw", "expected"), [("0", 0.0), ("0.5", 0.5), ("3600", 3600.0), ("1e9", 1e9)])
+def test_a_finite_hold_of_any_size_is_accepted(raw: str, expected: float) -> None:
+    assert rl.admission_policy_from_env({rl.ADMIT_HOLD_SECONDS_ENV: raw}).hold_seconds == expected
+
+
+@pytest.mark.parametrize("raw", ["inf", "nan", "-1"])
+def test_admit_refuses_a_bad_hold_with_a_usage_exit_and_no_admission_sampling(
+    raw: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.delenv(hl.ADMIT_ENV, raising=False)
+    monkeypatch.setenv(rl.ADMIT_HOLD_SECONDS_ENV, raw)
+    monkeypatch.setattr(rl, "read_host_pressure", lambda: pytest.fail("pressure must not be sampled"))
+    assert hl.main(["admit"]) == hl.EXIT_USAGE
+    captured = capsys.readouterr()
+    assert f"got {raw!r}." in captured.err
+    assert captured.out == ""
+
+
+@pytest.mark.parametrize("raw", ["inf", "nan", "-1"])
+def test_run_admit_refuses_a_bad_hold_before_taking_the_lock_or_running_the_command(
+    raw: str, lock_file: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv(rl.ADMIT_HOLD_SECONDS_ENV, raw)
+    monkeypatch.setattr(rl, "read_host_pressure", lambda: pytest.fail("pressure must not be sampled"))
+    marker = tmp_path / "ran"
+    code = hl.main(["run", "--admit", "--", sys.executable, "-c", f"open({str(marker)!r}, 'w').close()"])
+    assert code == hl.EXIT_USAGE
+    assert not marker.exists()
+    assert not hl.lock_is_held(lock_file)
+    assert "must be a finite number of seconds, 0 or more" in capsys.readouterr().err
+
+
+def test_heavy_status_reports_a_bad_hold_instead_of_failing() -> None:
+    from benchbox.utils import heavy_status
+
+    reading = types.SimpleNamespace(pressure=healthy(), budget_gib=8.0)
+    lines = heavy_status._render_pressure(reading, {rl.ADMIT_HOLD_SECONDS_ENV: "inf"})
+    assert lines == ["BENCHBOX_HEAVY_ADMIT_HOLD_SECONDS must be a finite number of seconds, 0 or more; got 'inf'."]
 
 
 def test_a_reading_that_stays_bad_refuses_after_the_retry_window(clock: FakeClock) -> None:

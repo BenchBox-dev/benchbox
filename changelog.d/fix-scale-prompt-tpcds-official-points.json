@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The interactive scale prompt now lists every standard scale factor the benchmark accepts without a note, including the TPC-DS official points 300 and 1000 and above."
+    }
+  ]
+}

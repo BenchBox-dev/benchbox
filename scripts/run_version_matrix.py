@@ -35,6 +35,7 @@ TIMEOUT_EXIT_CODE = 124
 OUTSIDE_KILL_MARGIN_S = 60
 CRITICAL_PRESSURE = 4
 CRITICAL_SAMPLES = 3
+REGENERABLE_SUBDIRS = ("datagen", "databases")
 
 CLI_DESCRIPTION = (
     "Run a reproducible engine version matrix.\n"
@@ -42,8 +43,9 @@ CLI_DESCRIPTION = (
     "The matrix is operator-run: it generates each benchmark dataset once, then\n"
     "loads and measures it with every package version in the selected engine spec.\n"
     "Each power cell is a separate BenchBox invocation, repeated per the spec.\n"
-    "Artifacts stay outside the checkout and are recorded in ``matrix-manifest.json``;\n"
-    "analyze them with ``scripts/analyze_version_matrix.py``.\n"
+    "Results stay outside the checkout and are recorded in ``matrix-manifest.json``;\n"
+    "analyze them with ``scripts/analyze_version_matrix.py``. Generated data and\n"
+    "databases are removed once the matrix completes.\n"
     "\n"
     "Run from the BenchBox checkout with ``uv run --no-sync`` because the runner\n"
     "changes the installed engine package between subprocesses while the project\n"
@@ -135,6 +137,13 @@ def _clear_databases(spec: MatrixSpec, output_dir: Path, benchmark: str, scale: 
         for path in database_dir.glob(f"*{suffix}"):
             if path.is_file() or path.is_symlink():
                 path.unlink()
+
+
+def remove_regenerable_data(output_dir: Path) -> None:
+    for name in REGENERABLE_SUBDIRS:
+        path = output_dir / name
+        if path.exists():
+            shutil.rmtree(path)
 
 
 def benchbox_command(
@@ -414,6 +423,7 @@ def run_matrix(spec: MatrixSpec, *, output_dir: Path, repo_root: Path, dry_run: 
     }
     if not dry_run:
         _write_json(output_dir / "matrix-manifest.json", manifest)
+        remove_regenerable_data(output_dir)
     return manifest
 
 
@@ -811,6 +821,7 @@ def run_polars_matrix(
             check_pins(pins, current_pins(repo_root, output_dir / "datagen", spec))
     manifest["complete"] = True
     _write_json(output_dir / "matrix-manifest.json", manifest)
+    remove_regenerable_data(output_dir)
     return manifest
 
 

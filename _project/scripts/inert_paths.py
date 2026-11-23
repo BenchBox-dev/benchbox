@@ -23,11 +23,42 @@ DATA_PATH = Path(
         str(Path(__file__).resolve().parents[2] / ".github" / "inert-paths.txt"),
     )
 )
+GATE_INPUT_FILES = {
+    "tests/fixtures/fast_tier_baseline/manifest.json": "verify-fast-duration (ci.yml)",
+    "tests/fixtures/fast_tier_baseline/tests-00.json": "verify-fast-duration (ci.yml)",
+    "tests/fixtures/fast_tier_baseline/tests-01.json": "verify-fast-duration (ci.yml)",
+    "tests/fixtures/fast_tier_baseline/tests-02.json": "verify-fast-duration (ci.yml)",
+    "tests/fixtures/fast_tier_baseline/tests-03.json": "verify-fast-duration (ci.yml)",
+    "tests/fixtures/fast_tier_baseline/tests-04.json": "verify-fast-duration (ci.yml)",
+    "tests/fixtures/fast_tier_baseline/tests-05.json": "verify-fast-duration (ci.yml)",
+    "tests/fixtures/fast_tier_baseline/tests-06.json": "verify-fast-duration (ci.yml)",
+    "tests/fixtures/fast_tier_baseline/tests-07.json": "verify-fast-duration (ci.yml)",
+    "quality/fast-duration-ceiling.json": "verify-fast-duration (ci.yml)",
+    "tests/fixtures/medium_shard_durations.json": "coverage test selection and trunk sharding",
+    "tests/unit/generators/sf1_size_baseline.json": "doc contracts check and the SF1 measurement test",
+    "publication/ledger-seed.json": "make ledger-seed-gates",
+    "results-data/corpus-inventory.json": "corpus inventory is current (ci.yml)",
+    "results-data/compliance-classes.json": "corpus inventory is current (ci.yml)",
+    "quality/windows-antipatterns-baseline.json": "windows antipattern ratchet (pre-commit)",
+    "_project/scripts/project_references_baseline.txt": "project reference check",
+}
 READERS_PATH = Path(__file__).resolve().parents[1] / "inert-doc-readers.json"
 _VALID_KINDS = frozenset({"file", "glob", "prefix", "regex", "except"})
 _RULES = load_rules(DATA_PATH, _VALID_KINDS, "inert path")
 _EXEMPT_RULES = tuple(rule for rule in _RULES if rule.kind != "except")
 EXCEPT_PATTERNS = tuple(rule.pattern for rule in _RULES if rule.kind == "except")
+
+
+def gate_input_violations(rules: tuple) -> list[str]:
+    return [
+        f"{path} is read by {gate} and cannot be declared inert"
+        for path, gate in GATE_INPUT_FILES.items()
+        if rules_match(path, rules)
+    ]
+
+
+if _VIOLATIONS := gate_input_violations(_EXEMPT_RULES):
+    raise ValueError("; ".join(_VIOLATIONS))
 SCAN_DIRS = ("benchbox", "scripts", "_project/scripts", "tests")
 WORKFLOW_GLOB = ".github/workflows/*.yml"
 MAKE_GLOB = "make/*.mk"
@@ -88,7 +119,7 @@ def is_machine_read_doc(path: str) -> bool:
 
 
 def is_inert_path(path: str) -> bool:
-    return matches_exemption(path) and not matches_exception(path)
+    return normalize_path(path) not in GATE_INPUT_FILES and matches_exemption(path) and not matches_exception(path)
 
 
 def _target_names(target: ast.expr) -> list[str]:

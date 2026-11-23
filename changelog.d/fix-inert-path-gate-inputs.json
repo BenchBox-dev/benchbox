@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Keep an explicit list of blocking-gate input files that the inert-path guard refuses to treat as inert, with a test."
+}

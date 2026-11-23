@@ -83,3 +83,16 @@ def test_get_platform_config_keeps_non_adapter_options_nested() -> None:
 
     assert produced["options"] == options
     assert not {"type", "name", "connection_string", "custom_setting"} & produced.keys()
+
+
+@pytest.mark.parametrize("platform", ["duckdb", "ducklake"])
+def test_get_platform_config_keeps_the_profile_memory_limit_under_a_small_heavy_run_budget(
+    monkeypatch: pytest.MonkeyPatch, platform: str
+) -> None:
+    monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
+    monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "2")
+    config = DatabaseConfig(type=platform, name="t")
+
+    produced = get_platform_config(config, SimpleNamespace(memory_total_gb=16.0, cpu_cores_logical=10))
+
+    assert produced["memory_limit"] == "12GB"

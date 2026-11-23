@@ -470,3 +470,25 @@ def test_the_exit_status_matches_the_reported_result(fin: Finished, capsys: pyte
     assert json.loads(capsys.readouterr().out)["ok"] is True and accepted == 0
     executed = bi.main(["--worktree", str(fin.integration), "finish", "--execute"])
     assert json.loads(capsys.readouterr().out)["ok"] is True and executed == 0
+
+
+def _page_tracker_sections(fin: Finished) -> None:
+    fin.world.tracker.window_cap = 40
+    fin.world.tracker.paged_sections = {"receipts", "integration_log"}
+
+
+def test_finish_rereads_the_batch_when_the_tracker_changes_between_pages(fin: Finished) -> None:
+    _page_tracker_sections(fin)
+    fin.world.tracker.churn = 1
+    report = fin.finish(execute=False)
+    assert _status(report) == {"zeta": "would-delete", "alpha": "would-delete", "mid": "refused"}
+
+
+def test_finish_refuses_with_a_bounded_number_of_rereads_when_the_tracker_keeps_changing(fin: Finished) -> None:
+    _page_tracker_sections(fin)
+    fin.world.tracker.churn = 10**6
+    fin.world.calls.clear()
+    with pytest.raises(bi.BatchError, match="tracker read failed .*E_CURSOR_STALE"):
+        fin.finish(execute=False)
+    summaries = [argv for argv, _ in fin.world.calls if argv[len(bi.TRACTABLE_COMMAND) :][:2] == ["batch", "show"]]
+    assert len([argv for argv in summaries if "--field" not in argv]) == bi.CURSOR_STALE_ATTEMPTS

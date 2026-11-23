@@ -79,6 +79,27 @@ def _handle_cell(args: argparse.Namespace) -> int:
     return 0 if result.status == "passed" else 1
 
 
+def _failed_cell_lines(outcome: object) -> list[str]:
+    from tests.uat.cells_io import failed_query_details
+
+    lines: list[str] = []
+    for cell in getattr(outcome, "results", ()):
+        if cell.status == "passed":
+            continue
+        name = f"{cell.platform}/{cell.benchmark}@{cell.scale:g}"
+        lines.append(f"[sweep] FAILED CELL {name} status={cell.status} exit={cell.exit_code} log={cell.log_path}")
+        for detail in failed_query_details(cell):
+            error = " ".join(detail["error"].split())
+            lines.append(f"[sweep]   query {detail['query_id']} {detail['status']}: {error}")
+    for reason, cells in (
+        ("startup failed", getattr(outcome, "startup_failed", ())),
+        ("platform died mid-run", getattr(outcome, "died_mid_platform", ())),
+    ):
+        for cell in cells:
+            lines.append(f"[sweep] FAILED CELL {cell.platform}/{cell.benchmark}@{cell.scale:g} not run: {reason}")
+    return lines
+
+
 def _handle_sweep(args: argparse.Namespace) -> int:
     from tests.uat.orchestrator import run_sweep_from_path
 
@@ -105,6 +126,8 @@ def _handle_sweep(args: argparse.Namespace) -> int:
             f"{c.platform}/{c.benchmark}@{c.scale:g}" for c in result.plan.compatibility_pruned
         ]
     print(json.dumps(payload, indent=2))
+    for line in _failed_cell_lines(result.execute_outcome):
+        print(line, file=sys.stderr)
     return result.exit_code()
 
 
