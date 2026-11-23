@@ -15,6 +15,7 @@ from benchbox.utils import (
     git_flood as git_flood_module,
     host_lock,
     linux_machine,
+    local_snapshots,
     process_tree,
     resource_limits,
     vm_footprint,
@@ -85,6 +86,7 @@ class StatusReading:
     vm_line: str | None = None
     top_cpu: tuple[tuple[int, float, str], ...] | None = None
     spins: tuple[Any, ...] = ()
+    snapshot_line: str | None = None
 
 
 def _holder_age(record: str) -> float | None:
@@ -407,10 +409,11 @@ def collect(
     spin_reader: Callable[[], tuple[Any, ...]] | None = None,
 ) -> StatusReading:
     path = host_lock.lock_path(environ)
-    with ThreadPoolExecutor(max_workers=4) as pool:
+    with ThreadPoolExecutor(max_workers=5) as pool:
         pressure_future = pool.submit(pressure_reader or (lambda: _read_pressure(runner, which)))
         orphan_future = pool.submit(find_orphans, runner, footprint)
         spin_future = pool.submit(spin_reader or (lambda: read_active_spins(environ)))
+        snapshot_future = pool.submit(local_snapshots.describe_local_snapshots, runner=runner, which=which)
         vm_future = pool.submit(vm_reader or (lambda: _read_vm(environ, runner, which)))
         top = top_reader()
         top_cpu = _read_top_cpu(runner)
@@ -420,6 +423,7 @@ def collect(
         orphans = orphan_future.result()
         vm = vm_future.result()
         spins = spin_future.result()
+        snapshot_line = snapshot_future.result()
     return StatusReading(
         lock_path=path,
         holder=holder,
@@ -433,6 +437,7 @@ def collect(
         sentinel=read_sentinel_state(environ),
         git_flood=(git_flood_reader or (lambda: _read_git_flood(environ, footprint)))(),
         vm=vm,
+        snapshot_line=snapshot_line,
         vm_line=_read_vm_line(vm, vm_attributor or vm_footprint.VmAttributor(), environ),
     )
 
@@ -478,6 +483,8 @@ def _render_pressure(reading: StatusReading, environ: Mapping[str, str] | None) 
     lines = resource_limits.format_admission_report(result, policy).splitlines()
     budget = "unmeasured" if reading.budget_gib is None else f"{reading.budget_gib:.2f} GiB"
     lines.append(f"  heavy-work memory budget: {budget}")
+    if reading.snapshot_line:
+        lines.append(f"  {reading.snapshot_line}")
     return lines
 
 

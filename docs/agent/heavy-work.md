@@ -68,7 +68,8 @@ refuses to start it while the host is already under pressure.
 Shell variables in `CMD` reach the shell unchanged: a `CMD` of `echo $HOME > $HOME/y.log` writes to your home directory instead of having make expand `$H` first.
 
 `make heavy-status` reports the lock holder and its age, live waiters, the
-admission readings (pressure level, available memory, disk), VM inventory,
+admission readings (pressure level, available memory, disk), a macOS local-snapshot line
+(count and names, `none` or `unmeasured`; omitted without `tmutil`), VM inventory,
 the top 10 processes by physical footprint, the top 5 by CPU use, and orphans:
 server processes (JVMs, ClickHouse, PostgreSQL and similar) and shells with
 parent pid 1 whose working directory is inside a BenchBox worktree. It never signals or modifies a

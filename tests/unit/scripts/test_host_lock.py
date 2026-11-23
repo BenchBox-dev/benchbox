@@ -982,3 +982,50 @@ def test_blocking_lock_primitives_use_the_same_byte_on_windows(lock_file: Path, 
         (windows_msvcrt.LK_LOCK, hl.LOCK_OFFSET),
         (windows_msvcrt.LK_UNLCK, hl.LOCK_OFFSET),
     ]
+
+
+def _refused(refusal: str):
+    from benchbox.utils import resource_limits as rl
+
+    pressure = rl.HostPressure(16.0, 6.0, 0.0, 1, 55, (rl.DiskReading("boot volume", "/", 40.0),), ())
+    return rl.AdmissionResult(False, (refusal,), pressure)
+
+
+def test_disk_refusal_names_local_snapshots(monkeypatch: pytest.MonkeyPatch) -> None:
+    from benchbox.utils import local_snapshots, resource_limits
+
+    line = "local snapshots on /: 1 (2026-11-22-085225)"
+    monkeypatch.setattr(local_snapshots, "describe_local_snapshots", lambda **kwargs: line)
+    monkeypatch.setattr(
+        resource_limits,
+        "admit_heavy_work",
+        lambda policy, force=False: _refused("free disk on boot volume (/) 40.0 GiB"),
+    )
+    with pytest.raises(hl.AdmissionRefused) as raised:
+        hl.check_admission(environ={}, echo=False)
+    assert line in str(raised.value)
+
+
+def test_non_disk_refusal_does_not_query_snapshots(monkeypatch: pytest.MonkeyPatch) -> None:
+    from benchbox.utils import local_snapshots, resource_limits
+
+    monkeypatch.setattr(local_snapshots, "describe_local_snapshots", lambda **kwargs: pytest.fail("queried"))
+    monkeypatch.setattr(
+        resource_limits, "admit_heavy_work", lambda policy, force=False: _refused("memory pressure level 2")
+    )
+    with pytest.raises(hl.AdmissionRefused):
+        hl.check_admission(environ={}, echo=False)
+
+
+def test_disk_refusal_without_snapshot_line_is_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
+    from benchbox.utils import local_snapshots, resource_limits
+
+    monkeypatch.setattr(local_snapshots, "describe_local_snapshots", lambda **kwargs: None)
+    monkeypatch.setattr(
+        resource_limits,
+        "admit_heavy_work",
+        lambda policy, force=False: _refused("free disk on boot volume (/) 40.0 GiB"),
+    )
+    with pytest.raises(hl.AdmissionRefused) as raised:
+        hl.check_admission(environ={}, echo=False)
+    assert "local snapshots" not in str(raised.value)

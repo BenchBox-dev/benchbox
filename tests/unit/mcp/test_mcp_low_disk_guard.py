@@ -18,6 +18,11 @@ def _guard_enabled(monkeypatch):
     monkeypatch.setenv(disk_guard.MIN_FREE_PERCENT_ENV, str(disk_guard.DEFAULT_MIN_FREE_PERCENT))
 
 
+@pytest.fixture(autouse=True)
+def _no_snapshot_query(monkeypatch):
+    monkeypatch.setattr(disk_guard.local_snapshots, "describe_local_snapshots", lambda **kwargs: None)
+
+
 @pytest.fixture(scope="module")
 def tool_functions() -> dict[str, Any]:
     from benchbox.mcp import create_server
