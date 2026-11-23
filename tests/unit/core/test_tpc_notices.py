@@ -55,11 +55,15 @@ def test_query_catalog_resolves_templates_beside_notices() -> None:
 
 
 TPC_LEGEND = "THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC."
+TPCDI_SOURCE_DIR = ROOT / "_sources" / "tpc-di"
+TPCDI_RUNTIME_DIR = ROOT / "benchbox" / "_binaries" / "tpc-di"
 NOTICE_DIRECTORIES = {
     "tpch-runtime": ROOT / "benchbox" / "_binaries" / "tpc-h",
     "tpcds-runtime": ROOT / "benchbox" / "_binaries" / "tpc-ds",
+    "tpcdi-runtime": TPCDI_RUNTIME_DIR,
     "tpch-source-tree": ROOT / "_sources" / "tpc-h",
     "tpcds-source-tree": ROOT / "_sources" / "tpc-ds",
+    "tpcdi-source-tree": TPCDI_SOURCE_DIR,
 }
 
 
@@ -99,3 +103,17 @@ def test_source_notice_is_listed_for_the_source_distribution(suite: str) -> None
 def test_readme_licence_section_carries_the_legend() -> None:
     text = (ROOT / "README.md").read_text(encoding="utf-8")
     assert TPC_LEGEND in text.replace("\n", " ")
+
+
+@pytest.mark.parametrize("filename", ["EULA.txt", "NOTICE.txt"])
+def test_tpcdi_source_and_runtime_notices_are_byte_identical(filename: str) -> None:
+    assert (TPCDI_RUNTIME_DIR / filename).read_bytes() == (TPCDI_SOURCE_DIR / filename).read_bytes()
+
+
+def test_tpcdi_tools_eula_matches_the_runtime_eula() -> None:
+    assert (TPCDI_RUNTIME_DIR / "tools" / "EULA.txt").read_bytes() == (TPCDI_RUNTIME_DIR / "EULA.txt").read_bytes()
+
+
+@pytest.mark.parametrize("filename", ["EULA.txt", "NOTICE.txt"])
+def test_tpcdi_source_notices_are_listed_for_the_source_distribution(filename: str) -> None:
+    assert f"include _sources/tpc-di/{filename}" in (ROOT / "MANIFEST.in").read_text(encoding="utf-8").splitlines()

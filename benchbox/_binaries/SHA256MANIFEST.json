@@ -1,5 +1,8 @@
 {
   "files": {
+    "tpc-di/EULA.txt": "017bd9dbc4c332ac433fc0cc018f3691b330f8aca82a05a20274512de423576e",
+    "tpc-di/NOTICE.txt": "6b2cdb563ec3ec2611da682f694f8b64c157cdf037232036dd0877e05ca8bdf4",
+    "tpc-di/tools/EULA.txt": "017bd9dbc4c332ac433fc0cc018f3691b330f8aca82a05a20274512de423576e",
     "tpc-ds/NOTICE.txt": "c53f3b5681af12eee53c3e9baaaf453023c33ef1bd88e51bbea97943da34ccd8",
     "tpc-ds/darwin-arm64/checksums.md5": "b77d22ddfca20230222772447c2a7430def8d2f32ec18db1283c57b774554a9d",
     "tpc-ds/darwin-arm64/dsdgen": "1d3ac18c9d7f92a0e8069ee68782e100dfdbb681fd747ac8fab91d010b7b02c5",
