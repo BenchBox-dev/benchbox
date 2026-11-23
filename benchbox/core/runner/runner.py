@@ -1378,10 +1378,9 @@ def _dataframe_generation_guard(
     adapter: Any | None,
     benchmark: Any,
     benchmark_config: BenchmarkConfig,
-    phases: LifecyclePhases,
 ) -> Callable[[], None] | None:
     platform_name = getattr(adapter, "platform_name", None)
-    if not phases.load or not isinstance(platform_name, str) or not _is_dataframe_adapter(adapter):
+    if not isinstance(platform_name, str) or not _is_dataframe_adapter(adapter):
         return None
     if (getattr(benchmark_config, "options", None) or {}).get("ignore_memory_warnings"):
         return None
@@ -1529,7 +1528,7 @@ def run_benchmark_lifecycle(
             output_dir_handler=output_dir_handler,
             monitor=monitor,
             validation_records=validation_records,
-            before_generate=_dataframe_generation_guard(platform_adapter, benchmark, benchmark_config, phases),
+            before_generate=_dataframe_generation_guard(platform_adapter, benchmark, benchmark_config),
         )
     dataset_identity_established = bool(phases.load) and (freshly_generated or manifest_reused)
 

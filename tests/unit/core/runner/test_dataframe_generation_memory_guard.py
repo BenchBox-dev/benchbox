@@ -47,14 +47,22 @@ def _benchmark(events: list[str], tables: dict[str, Any], workers: int = 10) -> 
     )
 
 
-def _run(benchmark: SimpleNamespace, config: BenchmarkConfig, **kwargs: Any) -> Any:
+ALL_PHASES = LifecyclePhases(generate=True, load=True, execute=True)
+
+
+def _run(
+    benchmark: SimpleNamespace,
+    config: BenchmarkConfig,
+    phases: LifecyclePhases = ALL_PHASES,
+    **kwargs: Any,
+) -> Any:
     return run_benchmark_lifecycle(
         benchmark_config=config,
         database_config=None,
         system_profile=None,
         platform_adapter=RecordingDataFrameAdapter(),
         benchmark_instance=benchmark,
-        phases=LifecyclePhases(generate=True, load=True, execute=True),
+        phases=phases,
         enable_resource_monitoring=False,
         **kwargs,
     )
@@ -66,6 +74,27 @@ def test_uncached_run_is_refused_before_generate_data(monkeypatch: pytest.Monkey
 
     with pytest.raises(InsufficientMemoryError, match="data generation"):
         _run(_benchmark(events, {}), _config())
+
+    assert events == []
+
+
+@pytest.mark.parametrize(
+    "phases",
+    [
+        LifecyclePhases(generate=False, load=False, execute=True),
+        LifecyclePhases(generate=True, load=False, execute=False),
+        LifecyclePhases(generate=True, load=False, execute=True),
+    ],
+    ids=["power-only", "generate-only", "generate-and-power"],
+)
+def test_uncached_run_is_refused_when_the_load_phase_is_not_requested(
+    monkeypatch: pytest.MonkeyPatch, phases: LifecyclePhases
+) -> None:
+    monkeypatch.setattr("benchbox.core.dataframe.capabilities.get_available_memory_gb", lambda: 3.5)
+    events: list[str] = []
+
+    with pytest.raises(InsufficientMemoryError, match="data generation"):
+        _run(_benchmark(events, {}), _config(), phases=phases)
 
     assert events == []
 
