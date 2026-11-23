@@ -5,11 +5,6 @@
     "Exactly one implementation of the generation check remains; no unreachable branch is left in `benchmark_mixin.py`.",
     "The change is merged with a changelog fragment, or the no-change outcome is recorded with its evidence."
   ],
-  "batch": {
-    "batch_id": "trunk-stability",
-    "implementation_dependencies": [],
-    "member_id": "df-memory-guard-generation-check-runs-after-generation-20261118"
-  },
   "context": "Found 2026-11-18 while closing df-memory-guard-datagen-memory-20261117, whose closing note stated the order without tracing a live run. Generator measurements: ~/Developer/benchmark_runs/df-datagen-mem/results.jsonl (TPC-H about 3.0 GiB summed over 10 workers at SF1 and SF10; TPC-DS about 0.1 GiB).",
   "description": "## Problem\nPR #4334 (merged b5b584ef77) made `check_sufficient_memory` use a data-generation estimate when `BenchmarkExecutionMixin._generation_pending` reports uncached data. The check sits inside `BenchmarkExecutionMixin.run_benchmark` (benchmark_mixin.py). In the CLI path, `benchbox/core/runner/runner.py` calls `_run_data_generation_phase` (which reaches `_ensure_data_generated` -> `benchmark.generate_data()`) before `_execute_via_adapter`, which is what calls the mixin's `run_benchmark`. So for a normal `benchbox run` the data is generated before the guard runs, `_generation_pending` is false, and the generation estimate does not apply. Established from reading origin/develop on 2026-11-18; not yet confirmed by a run. #4334's tests call the mixin directly, so they do not cover the runner order.\n\n## Method\n1. Confirm the order: a unit test or a small uncached run (TPC-H SF0.01, Polars) through the runner entry point, showing whether `generate_data` is called before `check_sufficient_memory`. List every other caller of the DataFrame adapter `run_benchmark` that can reach generation itself.\n2. Apply the decision gate.\n\n## Decision gate\n- Order confirmed (generation first): the owner's 2026-11-17 rule already chose option (a), a generation estimate in the guard for uncached runs, so implement it where it takes effect: refuse in the runner before `_run_data_generation_phase` for DataFrame adapters, reusing `generation_estimate_gb`. Keep one implementation; remove the mixin's generation branch if step 1 shows no caller reaches it, otherwise keep both call sites on one shared helper.\n- Order not confirmed (guard already runs first in every path): record the evidence here and close with no code change.\n- If the fix would need a different estimate or a separate pre-generation command (option b), stop and ask the owner.\n\n## Guardrails\nTiming and memory runs only through `make heavy-run` after `make heavy-status`; never force admission, set BENCHBOX_SKIP_TEST_LOCK, disable the watchdog, or pass `--ignore-memory-warnings` without the owner's approval in that task. Never kill processes by pattern; the host is shared. Do not lower `GENERATION_GB_PER_WORKER`, the margin or the platform floors without the owner (raising is allowed). Do not change generator parallelism or output. SQL adapters stay unchanged. Changelog fragment for the user-visible behaviour change.",
   "links": [
@@ -30,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "aee8eadcacca4e88b74e04acea3e42bb",
+      "session_id": "80e0302416054591a591cf3adefee19a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3",
+      "at": "2026-11-23T00:05:58Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "9f2a471e5ac54554a484cb6f976d939d",
       "session_id": "80e0302416054591a591cf3adefee19a"
     }
   ]

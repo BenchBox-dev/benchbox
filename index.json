@@ -15271,39 +15271,12 @@
       "terminal_outcome": "deliver"
     },
     "trunk-stability": {
-      "accepted_members": {
-        "tpcds-parity-draws-fails-with-all-draws-equivalent-20261119": "82b145bb81bf725f212ac379f6d592825fbaca17",
-        "uat-regression-doris-clickbench-mooncake-flightdata": "56175a2889e8b1e16d1dae4e6ea7dd9e0b5f1e16"
-      },
+      "accepted_members": {},
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {
-        "tpcds-parity-draws-fails-with-all-draws-equivalent-20261119": {
-          "accepted_head": "82b145bb81bf725f212ac379f6d592825fbaca17",
-          "changed_files": [
-            "benchbox/core/equivalence/cross_surface.py",
-            "changelog.d/fix-tpcds-parity-draws-reason.json",
-            "make/reports.mk",
-            "tests/unit/core/equivalence/test_cross_surface_repeats.py"
-          ],
-          "integration_head": "1f1ae14248227eee7ca3ebd5c3c43393a830473f",
-          "integration_seq": 2
-        },
-        "uat-regression-doris-clickbench-mooncake-flightdata": {
-          "accepted_head": "56175a2889e8b1e16d1dae4e6ea7dd9e0b5f1e16",
-          "changed_files": [
-            "benchbox/platforms/pg_mooncake.py",
-            "changelog.d/fix-mooncake-mirror-retry.json",
-            "tests/uat/engine_evidence.py",
-            "tests/uat/test_engine_evidence.py",
-            "tests/unit/platforms/test_pg_mooncake_adapter.py"
-          ],
-          "integration_head": "411fd43c0f816eea7b981572fbf8c25db2db0744",
-          "integration_seq": 1
-        }
-      },
+      "integrated_members": {},
       "integration_branch": "feat/trunk-stability",
       "integration_head": "1f1ae14248227eee7ca3ebd5c3c43393a830473f",
       "integration_log": [
@@ -15333,7 +15306,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-trunk-stability",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "df-memory-guard-generation-check-runs-after-generation-20261118",
         "tpcds-parity-draws-fails-with-all-draws-equivalent-20261119",
