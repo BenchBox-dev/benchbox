@@ -4,8 +4,7 @@ import math
 import statistics
 from typing import TYPE_CHECKING
 
-from benchbox.core.results import corpus_score
-from benchbox.core.results.subscale_policy import bundle_compliance_class
+from benchbox.core.results import corpus_rule, corpus_score
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -175,11 +174,18 @@ class TPCMetricsCalculator:
         raise ValueError("Could not auto-detect scale factor. Please specify --scale-factor")
 
     @staticmethod
+    def _composite_scale_refusal(data: dict) -> str | None:
+        facts = corpus_rule.facts_from_result(data)
+        return corpus_rule.composite_scale_refusal(
+            facts.benchmark, facts.scale_factor, gateway_routed=facts.gateway_routed
+        )
+
+    @staticmethod
     def metrics_refusal_reason(data: dict, label: str) -> str | None:
         summary = data.get("summary", {})
-        compliance_class = bundle_compliance_class(data)
-        if compliance_class in UNOFFICIAL_COMPLIANCE_CLASSES:
-            return f"{label} results are {compliance_class} and carry no official TPC metrics"
+        refusal = TPCMetricsCalculator._composite_scale_refusal(data)
+        if refusal:
+            return f"{label} results are {refusal} and carry no official TPC metrics"
         failed = (summary.get("queries") or {}).get("failed") or 0
         if failed:
             return f"{label} results contain {failed} failed queries"
@@ -208,9 +214,9 @@ class TPCMetricsCalculator:
         reasons = []
         for label, data in (("Power", power_data), ("Throughput", throughput_data)):
             benchmark = data.get("benchmark") or {}
-            compliance_class = bundle_compliance_class(data)
-            if compliance_class != "official":
-                reasons.append(f"{label} results are not official compliance ({compliance_class or 'unspecified'})")
+            refusal = TPCMetricsCalculator._composite_scale_refusal(data)
+            if refusal:
+                reasons.append(f"{label} results are not official compliance ({refusal})")
             if benchmark.get("id") != "tpch":
                 reasons.append(f"{label} results are not TPC-H")
             failed = (data.get("summary") or {}).get("queries", {}).get("failed", 0)

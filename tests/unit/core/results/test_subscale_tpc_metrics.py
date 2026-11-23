@@ -60,7 +60,7 @@ def test_subscale_metrics_are_still_refused_for_official_metric_computation() ->
     payload = build_result_payload(_build("unofficial_subscale"))
 
     assert TPCMetricsCalculator.metrics_refusal_reason(payload, "Power") == (
-        "Power results are unofficial_subscale and carry no official TPC metrics"
+        "Power results are below the standard scale and carry no official TPC metrics"
     )
 
 

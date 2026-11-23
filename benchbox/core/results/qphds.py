@@ -7,7 +7,6 @@ from benchbox.core.results import corpus_score
 from benchbox.core.results.metrics import TPC_QUERIES_PER_STREAM, TPCMetricsCalculator
 from benchbox.core.tpcds.streams import MULTI_PART_QUERY_IDS
 
-OFFICIAL_COMPLIANCE_CLASS = "official"
 QUERY_STATEMENTS_PER_STREAM = TPC_QUERIES_PER_STREAM["tpcds"] + len(MULTI_PART_QUERY_IDS)
 
 
@@ -108,13 +107,13 @@ def evaluate_qphds(
     phases: Any,
     *,
     scale_factor: float,
-    compliance_class: str | None,
+    scale_refusal: str | None,
     failed_query_count: int,
     query_subset: list[str] | None,
 ) -> QphDSEvaluation:
     problems: list[str] = []
-    if compliance_class != OFFICIAL_COMPLIANCE_CLASS:
-        problems.append(f"results are not official compliance ({compliance_class or 'unspecified'})")
+    if scale_refusal:
+        problems.append(f"results are not official compliance ({scale_refusal})")
     if failed_query_count:
         problems.append(f"{failed_query_count} queries failed")
     if query_subset:

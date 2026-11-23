@@ -6,7 +6,13 @@ import pytest
 
 from benchbox.core.results.builder import BenchmarkInfoInput, ResultBuilder
 from benchbox.core.results.metrics import TPCMetricsCalculator
-from benchbox.core.results.models import ExecutionPhases, PowerTestPhase, SetupPhase, ThroughputTestPhase
+from benchbox.core.results.models import (
+    ExecutionPhases,
+    PowerTestPhase,
+    SetupPhase,
+    ThroughputStream,
+    ThroughputTestPhase,
+)
 from benchbox.core.results.platform_info import PlatformInfoInput
 from benchbox.core.results.query_normalizer import normalize_query_result
 from benchbox.core.results.schema import build_result_payload
@@ -59,7 +65,9 @@ def _eligible_results() -> tuple[dict, dict]:
     return power, throughput
 
 
-def _result_payload(scale_factor: float, compliance_class: str, *, power_refresh: bool = True) -> dict:
+def _result_payload(
+    scale_factor: float, compliance_class: str | None, *, power_refresh: bool = True, evidenced: bool = False
+) -> dict:
     builder = ResultBuilder(
         benchmark=BenchmarkInfoInput(
             name="TPC-H",
@@ -70,10 +78,16 @@ def _result_payload(scale_factor: float, compliance_class: str, *, power_refresh
         ),
         platform=PlatformInfoInput(name="DuckDB", execution_mode="sql"),
     )
+    evidence = (
+        {"rows_returned": 1, "row_count_validation": {"status": "PASSED", "expected": 1, "actual": 1}}
+        if evidenced
+        else {}
+    )
     for query_id in range(1, 23):
         builder.add_query_result(
             normalize_query_result(
                 {
+                    **evidence,
                     "query_id": str(query_id),
                     "status": "SUCCESS",
                     "execution_time_seconds": 1.0,
@@ -89,6 +103,7 @@ def _result_payload(scale_factor: float, compliance_class: str, *, power_refresh
             builder.add_query_result(
                 normalize_query_result(
                     {
+                        **evidence,
                         "query_id": str(query_id),
                         "status": "SUCCESS",
                         "execution_time_seconds": 1.0,
@@ -136,7 +151,14 @@ def _result_payload(scale_factor: float, compliance_class: str, *, power_refresh
                 end_time="2026-01-01T00:00:01",
                 duration_ms=1000,
                 num_streams=2,
-                streams=[],
+                streams=[
+                    ThroughputStream(
+                        stream_id=stream_id, start_time="", end_time="", duration_ms=500, query_executions=[]
+                    )
+                    for stream_id in (1, 2)
+                ]
+                if evidenced
+                else [],
                 total_queries_executed=44,
                 throughput_at_size=200.0,
                 success=True,
@@ -204,12 +226,12 @@ def test_sf1_official_two_stream_results_emit_qphh_only_when_refresh_evidence_qu
 
 def test_sf001_unofficial_results_keep_refresh_evidence_but_withhold_qphh() -> None:
     power, throughput = _eligible_results()
-    power["benchmark"]["compliance_class"] = "unofficial_subscale"
-    throughput["benchmark"]["compliance_class"] = "unofficial_subscale"
+    power["benchmark"]["scale_factor"] = 0.01
+    throughput["benchmark"]["scale_factor"] = 0.01
     power["summary"]["tpc_metrics"] = {"power_at_size": 100.0}
     throughput["summary"]["tpc_metrics"] = {"throughput_at_size": 200.0}
 
-    with pytest.raises(ValueError, match="unofficial_subscale"):
+    with pytest.raises(ValueError, match="below the standard scale"):
         TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=0.01)
 
     assert len(power["phases"]["power_test"]["refresh_functions"]) == 2
@@ -228,11 +250,11 @@ def test_official_22_query_power_and_consecutive_refresh_pairs_qualify_qphh() ->
     ("mutate", "expected_reason"),
     [
         (
-            lambda power, throughput: power["benchmark"].update(compliance_class="unofficial_subscale"),
+            lambda power, throughput: power["benchmark"].update(scale_factor=0.01),
             "not official compliance",
         ),
         (
-            lambda power, throughput: throughput["benchmark"].update(compliance_class="unofficial_subscale"),
+            lambda power, throughput: throughput["benchmark"].update(scale_factor=0.01),
             "not official compliance",
         ),
         (lambda power, throughput: power["benchmark"].update(id="tpcds"), "not TPC-H"),
@@ -362,3 +384,11 @@ def test_qphh_accepts_zero_duration_successful_refresh() -> None:
     result = TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=1.0)
     assert result["qphh_at_size"] == 141.4
     assert result["refresh_included"] is True
+
+
+def test_a_full_specification_tpch_run_without_the_official_flag_gets_qphh_and_the_official_class() -> None:
+    payload = _result_payload(1.0, None, evidenced=True)
+
+    assert payload["benchmark"]["compliance_class"] == "official"
+    assert payload["summary"]["tpc_metrics"]["qphh_at_size"] > 0
+    assert "qphh_unavailable" not in payload["summary"]["tpc_metrics"]
