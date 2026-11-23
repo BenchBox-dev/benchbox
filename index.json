@@ -47572,10 +47572,15 @@
       "title": "Find and correct durable copies of the stale 'git config user.email noreply@anthropic.com' instruction"
     },
     "stale-data-references-after-datagen-cleanup-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T14:23:37Z",
+        "generation": "e72e55cb428246f9855eb77e51a60437",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Reconcile run folders whose datagen links and recorded paths point at data deleted on 2026-11-22"
     },
     "stale-docs-remaining-after-retro-20261111": {
