@@ -1,0 +1,33 @@
+{
+  "acceptance": [
+    "Owner decision 2026-11-23 (choice dialog): the CLI honours BENCHBOX_RESULTS_DIR. No further decision is needed.",
+    "With BENCHBOX_RESULTS_DIR set, `benchbox run` writes the result JSON and its companion files under that directory, prints that absolute path as its last line, and writes nothing new under <benchmark_runs>/results. A test fails before the fix.",
+    "`export --last`, `submit --last`, `publish run --last`, the default `visualize` source and the `compare` default search resolve the results directory through `resolve_results_dir(env=os.environ)`; a test per command sets the variable, places an older result in `./benchmark_runs/results` and a newer one in the configured directory, and asserts the configured one is chosen.",
+    "Precedence is tested: explicit argument > BENCHBOX_RESULTS_DIR > BENCHBOX_OUTPUT_DIR/results > default.",
+    "Verification rubric: one live run under make heavy-run (`BENCHBOX_RESULTS_DIR=<scratch> benchbox run --platform duckdb --benchmark tpch --scale 0.01 --phases generate,load,power --non-interactive --quiet`, then `benchbox export --last`) with both directory listings pasted in the PR.",
+    "AGENTS.md [RUN-DATA-001] is updated to prefer BENCHBOX_RESULTS_DIR over a private root, within the byte budget (make agent-instructions-check passes).",
+    "Guardrails: datagen and databases locations unchanged; the default results location is unchanged when no variable is set; the last-line result path contract parsed by scripts/run_version_matrix.py and the UAT runner keeps working; help text and tips that print `benchmark_runs/results/` as an example stay accurate; changelog.d fragment added."
+  ],
+  "context": "Split out of results-dir-env-ignored-by-cli-run-20261122 on 2026-11-23: that item is a member of batch shared-data-lifecycle with a frozen scope that excludes the --last consumers, and the batch landing review refused the run-side change alone (finding: stale --last lookups, High). Delivered serially on its own PR.",
+  "description": "Problem: `benchbox run` ignores `BENCHBOX_RESULTS_DIR` (it resolves the variable, creates the directory, then writes to `<benchmark_runs>/results`). The one-line fix is to resolve `DirectoryManager.results_dir` through `benchbox.core.runtime_paths.resolve_results_dir`. A review of that fix on 2026-11-23 found it is not safe alone: `export --last`, `submit --last`, `publish run --last`, `visualize` and `compare` look for results in the literal relative path `benchmark_runs/results` (benchbox/cli/commands/export.py, submit.py, publish.py, visualize.py, compare.py, benchbox/core/visualization/result_plotter.py). After the redirect a follow-up command could pick an older run from that path or find nothing. Those lookups are also wrong today for the default root, which is `<checkout-parent>/benchmark_runs`, and for `BENCHBOX_OUTPUT_DIR`.\n\nExpected outcome: the run command and every 'latest result' lookup use one resolver, so a result written by `benchbox run` is the one `--last` finds, with or without the variables set.\n\nA tested implementation of the run-side change exists on branch `feat/shared-data-lifecycle--results-dir-env-ignored-by-cli-run-20261122` at commit c725f39add (benchbox/cli/config.py, tests/unit/cli/test_run_results_dir.py, AGENTS.md wording).",
+  "links": [
+    "benchbox/cli/config.py",
+    "benchbox/core/runtime_paths.py",
+    "benchbox/cli/commands/export.py",
+    "benchbox/cli/commands/submit.py",
+    "benchbox/cli/commands/publish.py",
+    "benchbox/cli/commands/visualize.py",
+    "benchbox/cli/commands/compare.py",
+    "benchbox/core/visualization/result_plotter.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b",
+      "at": "2026-11-23T17:30:45Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0d6ee1933fbd4f7db4cee56837581926",
+      "session_id": "e94ef2c0cac942f885a89e503648c51e"
+    }
+  ]
+}
