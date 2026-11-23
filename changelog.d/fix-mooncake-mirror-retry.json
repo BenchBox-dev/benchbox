@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed pg_mooncake loads failing on a retry with a misleading 'relation already exists' error when an earlier failed mirror attempt left its heap staging table behind; the stale staging table is now dropped before each mirror, and the warning for a failed heap-name restore now names the original mirror error."
+    }
+  ]
+}

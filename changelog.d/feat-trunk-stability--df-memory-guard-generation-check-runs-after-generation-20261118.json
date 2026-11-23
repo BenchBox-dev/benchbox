@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The DataFrame memory guard now applies its data-generation estimate in benchbox run: when data has to be generated, the run is refused before the generator processes start if free memory cannot hold them, instead of generating first and checking afterwards. Cached data is not refused for generation, and --ignore-memory-warnings still bypasses the check."
+    }
+  ]
+}

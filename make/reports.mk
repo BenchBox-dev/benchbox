@@ -37,7 +37,9 @@ tpcds-cross-surface-draws-report:
 	@status=0; \
 	for draw in "--power-stream 1" "--seed 42" "--seed 42 --power-stream 1"; do \
 		uv run -- python -m benchbox.core.equivalence.cross_surface --benchmark tpcds \
-			--backend expression --backend pandas --backend datafusion --repeats 2 $$draw $(EXECUTION_ENGINE_OPTION) || status=1; \
+			--backend expression --backend pandas --backend datafusion --repeats 2 $$draw $(EXECUTION_ENGINE_OPTION); \
+		rc=$$?; \
+		if [ $$rc -ne 0 ]; then echo "tpcds-cross-surface-draws-report: draw '$$draw' FAILED with exit status $$rc (reason printed above)"; status=1; fi; \
 	done; \
 	exit $$status
 

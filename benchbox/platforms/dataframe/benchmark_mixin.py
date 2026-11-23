@@ -129,6 +129,21 @@ def _generator_workers(benchmark: Any | None) -> int | None:
     return workers if isinstance(workers, int) and workers > 0 else None
 
 
+def refuse_insufficient_generation_memory(benchmark: Any | None, benchmark_config: Any, platform_name: str) -> None:
+    if _benchmark_manages_dataframe_loading(benchmark):
+        return
+    memory_check = check_sufficient_memory(
+        benchmark_config.name,
+        getattr(benchmark_config, "scale_factor", 1.0),
+        platform_name.lower(),
+        queries=getattr(benchmark_config, "queries", None),
+        generation_required=True,
+        generation_workers=_generator_workers(benchmark),
+    )
+    if not memory_check.is_safe:
+        raise InsufficientMemoryError(format_memory_warning(memory_check))
+
+
 def _benchmark_manages_dataframe_loading(benchmark: Any | None) -> bool:
     if not _benchmark_defines_hook(benchmark, "skip_dataframe_data_loading"):
         return False
@@ -413,10 +428,6 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                     scale_factor,
                     platform_name.lower(),
                     queries=getattr(benchmark_config, "queries", None),
-                    generation_required=phases.load
-                    and not _benchmark_manages_dataframe_loading(benchmark)
-                    and self._generation_pending(benchmark, data_dir, options),
-                    generation_workers=_generator_workers(benchmark),
                 )
                 if not memory_check.is_safe:
                     warning = format_memory_warning(memory_check)
@@ -620,23 +631,6 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             else:
                 normalized[name] = Path(path)
         return normalized
-
-    def _generation_pending(
-        self,
-        benchmark_instance: Any | None,
-        data_dir: Path | None,
-        options: DataFrameRunOptions,
-    ) -> bool:
-        if benchmark_instance is None or not hasattr(benchmark_instance, "generate_data"):
-            return False
-        if options.force_regenerate:
-            return True
-        tables = getattr(benchmark_instance, "tables", None)
-        if isinstance(tables, dict) and tables:
-            return bool(self._find_missing_paths(self._normalize_table_paths(tables)))
-        if data_dir is not None and Path(data_dir).exists():
-            return not any(next(Path(data_dir).glob(pattern), None) for pattern in ("*.tbl", "*.csv", "*.parquet"))
-        return True
 
     @staticmethod
     def _collect_plan_local_roots(data_paths: dict[str, Path | list[Path]], data_dir: Path | None) -> list[Path]:
