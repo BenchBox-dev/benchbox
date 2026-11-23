@@ -12211,6 +12211,7 @@
     },
     "shared-data-lifecycle": {
       "accepted_members": {
+        "results-dir-env-ignored-by-cli-run-20261122": "487a5c1abab5d474215a5f53af7495c4cb1ad9b1",
         "version-matrix-data-cleanup-residual-gaps-20261122": "db63e3cc2f045c4b5a97804f213d390cbdfacc0e"
       },
       "batch_schema": 2,
@@ -12218,6 +12219,15 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "results-dir-env-ignored-by-cli-run-20261122": {
+          "accepted_head": "487a5c1abab5d474215a5f53af7495c4cb1ad9b1",
+          "changed_files": [
+            "benchbox/cli/commands/run.py",
+            "changelog.d/feat-shared-data-lifecycle--results-dir-env-ignored-by-cli-run-20261122.json"
+          ],
+          "integration_head": "144badc14fb4dd3c0552d7138862d81aeb4d4505",
+          "integration_seq": 2
+        },
         "version-matrix-data-cleanup-residual-gaps-20261122": {
           "accepted_head": "db63e3cc2f045c4b5a97804f213d390cbdfacc0e",
           "changed_files": [
@@ -12229,7 +12239,7 @@
         }
       },
       "integration_branch": "feat/shared-data-lifecycle",
-      "integration_head": "a8c3b06bc855a9f6492bbc1e53aa097ccf3591a8",
+      "integration_head": "144badc14fb4dd3c0552d7138862d81aeb4d4505",
       "integration_log": [
         {
           "at": "2026-11-23T14:25:08Z",
@@ -12245,6 +12255,15 @@
           "op_id": "2ec917699ac542de88c1daac4d2ccbd9",
           "previous_head": "5e784d60394b5ec4f7535c6ea9a3c8fc5c4dc491",
           "seq": 1
+        },
+        {
+          "at": "2026-11-23T17:43:11Z",
+          "head": "144badc14fb4dd3c0552d7138862d81aeb4d4505",
+          "kind": "prepare",
+          "member": "results-dir-env-ignored-by-cli-run-20261122",
+          "op_id": "582ceafeceaf4539b891841aa50fd370",
+          "previous_head": "a8c3b06bc855a9f6492bbc1e53aa097ccf3591a8",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-shared-data-lifecycle",
@@ -42190,15 +42209,10 @@
       "title": "Make benchbox run and the --last result lookups honour BENCHBOX_RESULTS_DIR together"
     },
     "results-dir-env-ignored-by-cli-run-20261122": {
-      "claim": {
-        "expires_at": "2026-11-24T17:43:07Z",
-        "generation": "3557076744444324b1b0c8f1bbf0cce6",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Say in the benchbox run --output help that it reuses shared data for local runs"
     },
     "results-explorer-accessibility-copy-and-facet-cleanup": {
