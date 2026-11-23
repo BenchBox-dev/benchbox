@@ -44313,6 +44313,13 @@
       "status": "dropped",
       "title": "Warn on shared-clone Git identity drift (successor)"
     },
+    "shared-data-lifecycle-batch-20261123": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Umbrella: deliver the shared-data lifecycle remediation as one feature batch"
+    },
     "shared-github-quota-and-transient-failure-owner-20261113": {
       "claim": null,
       "needs": [],
