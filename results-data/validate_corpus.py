@@ -104,6 +104,7 @@ def _load_repo_module(name: str, relative_path: str):
 
 
 SUBSCALE_POLICY = _load_repo_module("_benchbox_subscale_policy", "benchbox/core/results/subscale_policy.py")
+COMPARISON_IDENTITY = _load_repo_module("_benchbox_comparison_identity", "benchbox/core/results/comparison_identity.py")
 
 
 @functools.cache
@@ -701,31 +702,12 @@ def _variant_aware_identity(payload: dict, platform_name: str, bundle: pathlib.P
     return published_variant_id(payload, base, bundle)
 
 
-def _comparison_identity(bundle: pathlib.Path, payload: dict) -> str:
+def _comparison_identity(bundle: pathlib.Path, payload: dict):
     try:
-        platform_section = payload["platform"]
-        platform = platform_section["name"]
-        version = None
-        if bundle.parent.name == "duckdb-version-matrix":
-            version = platform_section.get("version") or platform_section.get("client_version")
-            execution = payload.get("execution", {})
-            if isinstance(execution, dict):
-                for key in (
-                    "driver_version_resolved",
-                    "driver_version_requested",
-                    "driver_resolved_version",
-                    "driver_requested_version",
-                ):
-                    candidate = execution.get(key)
-                    if candidate and str(candidate) != "unknown":
-                        version = candidate
-                        break
-        identity = _variant_aware_identity(payload, str(platform), bundle)
+        variant = _variant_aware_identity(payload, str(payload["platform"]["name"]), bundle)
+        return COMPARISON_IDENTITY.comparison_identity(payload, variant)
     except Exception as exc:
         raise CorpusReadError(f"ERROR reading platform identity from {bundle}: {exc}") from exc
-    if version and str(version) != "unknown":
-        identity = f"{identity} v{str(version)[:120]}"
-    return identity
 
 
 def parse_run_date(payload: dict, *, bundle: pathlib.Path | None = None) -> _dt.date:
@@ -802,7 +784,7 @@ def cohort_platforms(bundles: list[pathlib.Path]) -> dict[CohortKey, set[str]]:
         if _declares_execution_class(payload, bundle):
             _comparison_identity(bundle, payload)
         if bundle_rankable(payload, bundle):
-            identities.add(_comparison_identity(bundle, payload))
+            identities.add(_comparison_identity(bundle, payload).cohort_key)
     return dict(cohorts)
 
 

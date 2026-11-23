@@ -1,0 +1,36 @@
+{
+  "default": {
+    "fields": [
+      "platform.version"
+    ],
+    "pre_release": "(?i)(?:\\d(?:a|b|rc)\\d+|(?:^|[^a-z])(?:dev|alpha|beta|rc|pre|preview|snapshot|nightly|canary)(?:[^a-z]|$))"
+  },
+  "platforms": {
+    "clickhouse-local": {
+      "fields": [
+        "execution.driver_version_resolved",
+        "platform.client_version",
+        "platform.version"
+      ]
+    },
+    "duckdb": {
+      "fields": [
+        "execution.driver_version_resolved",
+        "execution.driver_version_requested",
+        "execution.driver_resolved_version",
+        "execution.driver_requested_version",
+        "platform.client_version",
+        "platform.version"
+      ]
+    },
+    "polars": {
+      "fields": [
+        "execution.driver_version_resolved",
+        "platform.version"
+      ]
+    }
+  },
+  "unrecorded_values": [
+    "unknown"
+  ]
+}

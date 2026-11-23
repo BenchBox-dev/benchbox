@@ -9,6 +9,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -53,6 +55,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -97,6 +101,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -141,6 +147,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -177,6 +185,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -213,6 +223,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -257,6 +269,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -301,6 +315,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -345,6 +361,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -389,6 +407,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -433,6 +453,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -477,6 +499,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -513,6 +537,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -549,6 +575,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.33.101",
+        "comparison_version": "10.33.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -593,6 +621,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -637,6 +667,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -681,6 +713,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -725,6 +759,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -769,6 +805,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -813,6 +851,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -857,6 +897,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "tuned"
       },
@@ -901,6 +943,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -937,6 +981,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -973,6 +1019,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.33.101",
+        "comparison_version": "10.33.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1017,6 +1065,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1061,6 +1111,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1097,6 +1149,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1134,6 +1188,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.33.101",
+        "comparison_version": "10.33.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1170,6 +1226,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1206,6 +1264,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1243,6 +1303,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.33.101",
+        "comparison_version": "10.33.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1279,6 +1341,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1323,6 +1387,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1367,6 +1433,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1403,6 +1471,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1439,6 +1509,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1483,6 +1555,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1527,6 +1601,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "tuned"
       },
@@ -1571,6 +1647,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -1607,6 +1685,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -1643,6 +1723,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.33.101",
+        "comparison_version": "10.33.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1687,6 +1769,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1723,6 +1807,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1767,6 +1853,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1803,6 +1891,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1847,6 +1937,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1883,6 +1975,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1927,6 +2021,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -1971,6 +2067,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -2007,6 +2105,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -2043,6 +2143,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2079,6 +2181,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2123,6 +2227,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2167,6 +2273,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2203,6 +2311,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2247,6 +2357,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2291,6 +2403,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2327,6 +2441,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2371,6 +2487,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2415,6 +2533,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -2451,6 +2571,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -2487,6 +2609,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.33.101",
+        "comparison_version": "10.33.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2531,6 +2655,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2567,6 +2693,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2611,6 +2739,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2655,6 +2785,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2691,6 +2823,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2735,6 +2869,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2779,6 +2915,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2815,6 +2953,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2859,6 +2999,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2903,6 +3045,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -2939,6 +3083,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.33.101",
+        "comparison_version": "10.33.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -2983,6 +3129,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3019,6 +3167,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3063,6 +3213,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3100,6 +3252,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3137,6 +3291,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3183,6 +3339,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3220,6 +3378,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3257,6 +3417,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3294,6 +3456,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3331,6 +3495,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3377,6 +3543,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3414,6 +3582,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3451,6 +3621,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3488,6 +3660,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.34.101",
+        "comparison_version": "10.34.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3525,6 +3699,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3562,6 +3738,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3599,6 +3777,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3636,6 +3816,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3673,6 +3855,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3710,6 +3894,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.34.101",
+        "comparison_version": "10.34.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3747,6 +3933,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.0.0",
+        "comparison_version": "1.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3783,6 +3971,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.1.3",
+        "comparison_version": "1.1.3",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3819,6 +4009,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.2.2",
+        "comparison_version": "1.2.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3855,6 +4047,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3891,6 +4085,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.4.4",
+        "comparison_version": "1.4.4",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3927,6 +4123,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3963,6 +4161,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "2.0.0-alpha38615",
+        "comparison_version": "1.6.0.dev365",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -3999,6 +4199,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.0.0",
+        "comparison_version": "1.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4043,6 +4245,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.1.3",
+        "comparison_version": "1.1.3",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4087,6 +4291,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.2.2",
+        "comparison_version": "1.2.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4131,6 +4337,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4175,6 +4383,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.4.4",
+        "comparison_version": "1.4.4",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4219,6 +4429,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4263,6 +4475,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "2.0.0-alpha38615",
+        "comparison_version": "1.6.0.dev365",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4307,6 +4521,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.0.0",
+        "comparison_version": "1.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4354,6 +4570,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.1.3",
+        "comparison_version": "1.1.3",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4401,6 +4619,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.2.2",
+        "comparison_version": "1.2.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4448,6 +4668,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4495,6 +4717,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.4.4",
+        "comparison_version": "1.4.4",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4542,6 +4766,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4589,6 +4815,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "2.0.0-alpha38615",
+        "comparison_version": "1.6.0.dev365",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4636,6 +4864,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.0.0",
+        "comparison_version": "1.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4674,6 +4904,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.1.3",
+        "comparison_version": "1.1.3",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4712,6 +4944,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.2.2",
+        "comparison_version": "1.2.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4750,6 +4984,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4788,6 +5024,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.4.4",
+        "comparison_version": "1.4.4",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4826,6 +5064,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4864,6 +5104,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "2.0.0-alpha38615",
+        "comparison_version": "1.6.0.dev365",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4902,6 +5144,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4946,6 +5190,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -4990,6 +5236,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5034,6 +5282,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5078,6 +5328,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5122,6 +5374,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5166,6 +5420,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5210,6 +5466,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5254,6 +5512,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5298,6 +5558,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5342,6 +5604,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5386,6 +5650,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5430,6 +5696,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5474,6 +5742,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5518,6 +5788,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5562,6 +5834,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5606,6 +5880,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5650,6 +5926,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5694,6 +5972,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5738,6 +6018,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5782,6 +6064,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5826,6 +6110,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5870,6 +6156,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5914,6 +6202,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -5958,6 +6248,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -5994,6 +6286,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -6030,6 +6324,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6066,6 +6362,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6110,6 +6408,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6154,6 +6454,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6198,6 +6500,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6242,6 +6546,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6286,6 +6592,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -6322,6 +6630,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -6358,6 +6668,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.33.101",
+        "comparison_version": "10.33.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6402,6 +6714,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6446,6 +6760,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6490,6 +6806,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6534,6 +6852,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6578,6 +6898,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6622,6 +6944,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6666,6 +6990,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -6702,6 +7028,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -6738,6 +7066,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.33.101",
+        "comparison_version": "10.33.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6782,6 +7112,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6826,6 +7158,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6870,6 +7204,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6914,6 +7250,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -6958,6 +7296,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7002,6 +7342,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7046,6 +7388,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "tuned"
       },
@@ -7090,6 +7434,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -7126,6 +7472,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.33.101",
+        "comparison_version": "10.33.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7170,6 +7518,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7214,6 +7564,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7258,6 +7610,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7302,6 +7656,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7346,6 +7702,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7390,6 +7748,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7434,6 +7794,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7478,6 +7840,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7522,6 +7886,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7566,6 +7932,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7610,6 +7978,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7654,6 +8024,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7698,6 +8070,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7742,6 +8116,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7786,6 +8162,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7830,6 +8208,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7874,6 +8254,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7918,6 +8300,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -7962,6 +8346,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8006,6 +8392,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8050,6 +8438,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8094,6 +8484,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8138,6 +8530,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8182,6 +8576,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8226,6 +8622,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.34.101",
+        "comparison_version": "10.34.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8270,6 +8668,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8306,6 +8706,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8342,6 +8744,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8378,6 +8782,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8422,6 +8828,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8458,6 +8866,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8494,6 +8904,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8538,6 +8950,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8574,6 +8988,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -8610,6 +9026,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -8646,6 +9064,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8682,6 +9102,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8718,6 +9140,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8754,6 +9178,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8790,6 +9216,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8826,6 +9254,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8862,6 +9292,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8906,6 +9338,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8942,6 +9376,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -8978,6 +9414,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9022,6 +9460,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9058,6 +9498,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -9094,6 +9536,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -9130,6 +9574,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9166,6 +9612,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9202,6 +9650,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9238,6 +9688,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9282,6 +9734,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9326,6 +9780,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9370,6 +9826,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9414,6 +9872,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9458,6 +9918,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9502,6 +9964,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9546,6 +10010,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9590,6 +10056,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -9626,6 +10094,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.44.2",
+        "comparison_version": "1.44.2",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -9662,6 +10132,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -9698,6 +10170,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.44.2",
+        "comparison_version": "1.44.2",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -9734,6 +10208,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9778,6 +10254,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9822,6 +10300,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9866,6 +10346,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -9902,6 +10384,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -9938,6 +10422,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -9982,6 +10468,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10026,6 +10514,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10070,6 +10560,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10114,6 +10606,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10158,6 +10652,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10202,6 +10698,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -10238,6 +10736,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -10274,6 +10774,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.33.101",
+        "comparison_version": "10.33.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10318,6 +10820,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10362,6 +10866,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10406,6 +10912,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10450,6 +10958,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.33.101",
+        "comparison_version": "10.33.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10494,6 +11004,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10538,6 +11050,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10582,6 +11096,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10626,6 +11142,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10670,6 +11188,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10714,6 +11234,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "tuned"
       },
@@ -10758,6 +11280,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -10794,6 +11318,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -10830,6 +11356,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.33.101",
+        "comparison_version": "10.33.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10874,6 +11402,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10918,6 +11448,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10956,6 +11488,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -10994,6 +11528,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11032,6 +11568,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11079,6 +11617,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11126,6 +11666,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11172,6 +11714,8 @@
         "platform_id": "apache-doris",
         "variant_id": "apache-doris",
         "platform_version": "4.0.3-rc03",
+        "comparison_version": "4.0.3-rc03",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11218,6 +11762,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11264,6 +11810,8 @@
         "platform_id": "lakesail",
         "variant_id": "lakesail",
         "platform_version": "4.2.0",
+        "comparison_version": "4.2.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11310,6 +11858,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11356,6 +11906,8 @@
         "platform_id": "apache-doris",
         "variant_id": "apache-doris",
         "platform_version": "4.0.3-rc03",
+        "comparison_version": "4.0.3-rc03",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11402,6 +11954,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11448,6 +12002,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11485,6 +12041,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11522,6 +12080,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11559,6 +12119,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11596,6 +12158,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11633,6 +12197,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11679,6 +12245,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11716,6 +12284,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11762,6 +12332,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11799,6 +12371,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11846,6 +12420,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11893,6 +12469,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11940,6 +12518,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -11987,6 +12567,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12034,6 +12616,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12072,6 +12656,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12119,6 +12705,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12166,6 +12754,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12213,6 +12803,8 @@
         "platform_id": "spark",
         "variant_id": "spark",
         "platform_version": "4.1.1",
+        "comparison_version": "4.1.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12251,6 +12843,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12298,6 +12892,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12336,6 +12932,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12383,6 +12981,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12430,6 +13030,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12468,6 +13070,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12506,6 +13110,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12553,6 +13159,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12600,6 +13208,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12647,6 +13257,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -12685,6 +13297,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -12723,6 +13337,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12770,6 +13386,8 @@
         "platform_id": "spark",
         "variant_id": "spark",
         "platform_version": "4.1.1",
+        "comparison_version": "4.1.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12817,6 +13435,8 @@
         "platform_id": "spark",
         "variant_id": "spark",
         "platform_version": "4.1.1",
+        "comparison_version": "4.1.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12864,6 +13484,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12911,6 +13533,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12949,6 +13573,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -12987,6 +13613,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13034,6 +13662,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13081,6 +13711,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13128,6 +13760,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13175,6 +13809,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13222,6 +13858,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13269,6 +13907,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13316,6 +13956,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13363,6 +14005,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13410,6 +14054,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13457,6 +14103,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13504,6 +14152,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13551,6 +14201,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13598,6 +14250,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13645,6 +14299,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13692,6 +14348,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -13730,6 +14388,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -13768,6 +14428,8 @@
         "platform_id": "cedardb",
         "variant_id": "cedardb^container",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13806,6 +14468,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13844,6 +14508,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13891,6 +14557,8 @@
         "platform_id": "clickhouse-server",
         "variant_id": "clickhouse-server^container",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13929,6 +14597,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -13967,6 +14637,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14014,6 +14686,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14052,6 +14726,8 @@
         "platform_id": "lakesail",
         "variant_id": "lakesail",
         "platform_version": "4.1.1",
+        "comparison_version": "4.1.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14090,6 +14766,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -14128,6 +14806,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -14166,6 +14846,8 @@
         "platform_id": "pyspark",
         "variant_id": "pyspark",
         "platform_version": "4.1.1",
+        "comparison_version": "4.1.1",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -14204,6 +14886,8 @@
         "platform_id": "spark",
         "variant_id": "spark",
         "platform_version": "4.1.1",
+        "comparison_version": "4.1.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14242,6 +14926,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14280,6 +14966,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14327,6 +15015,8 @@
         "platform_id": "starrocks",
         "variant_id": "starrocks^container",
         "platform_version": "8.0.33",
+        "comparison_version": "8.0.33",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14365,6 +15055,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14403,6 +15095,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14441,6 +15135,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14488,6 +15184,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14526,6 +15224,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14564,6 +15264,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14611,6 +15313,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14649,6 +15353,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": null
       },
@@ -14696,6 +15402,8 @@
         "platform_id": "pandas",
         "variant_id": "pandas",
         "platform_version": "2.3.3",
+        "comparison_version": "2.3.3",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -14734,6 +15442,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -14772,6 +15482,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.44.2",
+        "comparison_version": "1.44.2",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": null
       },
@@ -14819,6 +15531,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14857,6 +15571,8 @@
         "platform_id": "spark",
         "variant_id": "spark",
         "platform_version": "4.1.1",
+        "comparison_version": "4.1.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14895,6 +15611,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14933,6 +15651,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -14980,6 +15700,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15018,6 +15740,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15056,6 +15780,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15094,6 +15820,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15132,6 +15860,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15170,6 +15900,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15217,6 +15949,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15255,6 +15989,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15293,6 +16029,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15340,6 +16078,8 @@
         "platform_id": "apache-doris",
         "variant_id": "apache-doris^container",
         "platform_version": "4.0.3-rc03",
+        "comparison_version": "4.0.3-rc03",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15387,6 +16127,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15425,6 +16167,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15463,6 +16207,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "tuned"
       },
@@ -15501,6 +16247,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.5.5",
+        "comparison_version": "1.5.5",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15548,6 +16296,8 @@
         "platform_id": "ducklake",
         "variant_id": "ducklake",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15586,6 +16336,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -15624,6 +16376,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -15662,6 +16416,8 @@
         "platform_id": "pyspark",
         "variant_id": "pyspark",
         "platform_version": "4.1.1",
+        "comparison_version": "4.1.1",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -15700,6 +16456,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15738,6 +16496,8 @@
         "platform_id": "spark",
         "variant_id": "spark",
         "platform_version": "4.1.1",
+        "comparison_version": "4.1.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15776,6 +16536,8 @@
         "platform_id": "spark",
         "variant_id": "spark",
         "platform_version": "4.2.0",
+        "comparison_version": "4.2.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15823,6 +16585,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15861,6 +16625,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15908,6 +16674,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15945,6 +16713,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -15991,6 +16761,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16028,6 +16800,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16074,6 +16848,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16111,6 +16887,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -16148,6 +16926,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16185,6 +16965,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16231,6 +17013,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16268,6 +17052,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16305,6 +17091,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16351,6 +17139,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16388,6 +17178,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16425,6 +17217,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16471,6 +17265,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16508,6 +17304,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -16545,6 +17343,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.34.101",
+        "comparison_version": "10.34.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16582,6 +17382,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16619,6 +17421,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16665,6 +17469,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16702,6 +17508,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16739,6 +17547,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16776,6 +17586,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16813,6 +17625,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16850,6 +17664,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16896,6 +17712,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16933,6 +17751,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -16970,6 +17790,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17016,6 +17838,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17053,6 +17877,8 @@
         "platform_id": "polars",
         "variant_id": "polars",
         "platform_version": "1.40.0",
+        "comparison_version": "1.40.0",
+        "version_is_release": true,
         "execution_mode": "dataframe",
         "tuning_mode": "notuning"
       },
@@ -17090,6 +17916,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.34.101",
+        "comparison_version": "10.34.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17127,6 +17955,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17164,6 +17994,8 @@
         "platform_id": "sqlite",
         "variant_id": "sqlite",
         "platform_version": "3.53.1",
+        "comparison_version": "3.53.1",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17210,6 +18042,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17247,6 +18081,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17284,6 +18120,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17321,6 +18159,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17367,6 +18207,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17404,6 +18246,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17441,6 +18285,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17478,6 +18324,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17515,6 +18363,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17552,6 +18402,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17589,6 +18441,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17635,6 +18489,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17672,6 +18528,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17709,6 +18567,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17746,6 +18606,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17783,6 +18645,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17820,6 +18684,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17857,6 +18723,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17894,6 +18762,8 @@
         "platform_id": "clickhouse-local",
         "variant_id": "clickhouse-local^container",
         "platform_version": null,
+        "comparison_version": "4.1.6",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17931,6 +18801,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -17968,6 +18840,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "53.0.0",
+        "comparison_version": "53.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18005,6 +18879,8 @@
         "platform_id": "datafusion",
         "variant_id": "datafusion",
         "platform_version": "54.0.0",
+        "comparison_version": "54.0.0",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18051,6 +18927,8 @@
         "platform_id": "duckdb",
         "variant_id": "duckdb",
         "platform_version": "1.3.2",
+        "comparison_version": "1.3.2",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18088,6 +18966,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18125,6 +19005,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18161,6 +19043,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18197,6 +19081,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18233,6 +19119,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18269,6 +19157,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18305,6 +19195,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18341,6 +19233,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18377,6 +19271,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18413,6 +19309,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18449,6 +19347,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18493,6 +19393,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18537,6 +19439,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18581,6 +19485,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18625,6 +19531,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18669,6 +19577,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18713,6 +19623,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18757,6 +19669,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18801,6 +19715,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18845,6 +19761,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18881,6 +19799,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18917,6 +19837,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18953,6 +19875,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -18989,6 +19913,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -19025,6 +19951,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -19061,6 +19989,8 @@
         "platform_id": "bigquery",
         "variant_id": "bigquery",
         "platform_version": null,
+        "comparison_version": "version not recorded",
+        "version_is_release": false,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -19097,6 +20027,8 @@
         "platform_id": "databricks",
         "variant_id": "databricks",
         "platform_version": "2026.36",
+        "comparison_version": "2026.36",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
@@ -19133,6 +20065,8 @@
         "platform_id": "snowflake",
         "variant_id": "snowflake",
         "platform_version": "10.35.101",
+        "comparison_version": "10.35.101",
+        "version_is_release": true,
         "execution_mode": "sql",
         "tuning_mode": "notuning"
       },
