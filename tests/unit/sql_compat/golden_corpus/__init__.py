@@ -29,7 +29,8 @@ def outcome(produce: Callable[[], str]) -> str:
 
 @cache
 def _frozen(area: str) -> dict[str, str]:
-    return json.loads((FROZEN / f"{area}.json").read_text(encoding="utf-8"))
+    values: dict[str, str | list[str]] = json.loads((FROZEN / f"{area}.json").read_text(encoding="utf-8"))
+    return {case_id: value if isinstance(value, str) else "".join(value) for case_id, value in values.items()}
 
 
 def frozen_legacy(area: str, case_id: str) -> Callable[[], str]:
