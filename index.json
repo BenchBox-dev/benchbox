@@ -23826,9 +23826,9 @@
     },
     "crr-a2-writer-and-score-from-timings": {
       "claim": {
-        "expires_at": "2026-11-24T06:00:17Z",
+        "expires_at": "2026-11-24T06:43:55Z",
         "generation": "32c6cf5585e440c1adf658cf42123f22",
-        "renewals": 0,
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2"
       },
       "needs": [
