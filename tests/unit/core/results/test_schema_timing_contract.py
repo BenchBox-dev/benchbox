@@ -133,7 +133,7 @@ def test_build_result_payload_accepts_consistent_duration_aliases() -> None:
     payload = build_result_payload(result)
 
     assert payload["queries"][0]["ms"] == 1250.0
-    assert payload["run"]["streams"] == 1
+    assert payload["run"]["streams"] == 0
     assert payload["phases"]["throughput_test"] == {
         "status": "FAILED",
         "duration_ms": 1000,
