@@ -1,0 +1,30 @@
+{
+  "acceptance": [
+    "Measurement (read-only, after the hold date): count and total size of real `datagen/` and `databases/` directories under `~/Developer/benchmark_runs/*/` and one level deeper, excluding the shared `datagen/` and `databases/`, split into created before and after 2026-11-22; the same for `/tmp` and the user temp directory; size of the shared `datagen/`. Record the commands and numbers in context next to the baseline.",
+    "Decision gate: the rule holds if directories created after 2026-11-22 total under 5 GiB and each belongs to a run that was still active at measurement time. If it holds, close with the numbers and no tooling. If not, ask the owner to choose between a report-only check in `make heavy-status`/`make disk-check` and a deleting sweep; do not build either before that answer.",
+    "If a sweep is chosen it is a separate item with its own acceptance; this item only records the decision and links the successor.",
+    "`DirectoryManager.clean_old_files`: either deleted as unused (with its tests, if any) or wired to a documented command. Deleting it does not need the measurement and may land first. It must never be wired to run implicitly inside `benchbox run`.",
+    "Verification rubric: every number is from a live read on the measurement day, with the command shown; no number is carried over from the 2026-11-22 baseline or from session memory.",
+    "Guardrails: this item deletes nothing under benchmark_runs or /tmp; it never touches a directory with open files (`lsof +D`) or a run named in `make heavy-status`; result files and dated experiment directories are evidence and are out of scope; do not clear this item's hold early to get work."
+  ],
+  "context": "Origin: disk cleanup and root-cause review on 2026-11-22. The root volume fell to 46 GiB free, below the 50 GiB heavy-work floor. Cause found: generated benchmark data has no lifecycle (any session creates it under any run root, nothing removes it), and Time Machine local snapshots kept deleted data allocated. PR #4451 (https://github.com/BenchBox-dev/benchbox/pull/4451) added AGENTS.md [RUN-DATA-001] and made scripts/run_version_matrix.py delete its datagen/ and databases/ when a matrix completes.",
+  "description": "Problem: [RUN-DATA-001] in AGENTS.md is an instruction with no mechanical check. Before it existed, session transcripts set a per-run `BENCHBOX_OUTPUT_DIR` about as often as the shared one, and 127 of 154 run folders were less than two months old. Whether the instruction changes that is unknown.\n\nBaseline taken 2026-11-22 after cleanup: `~/Developer/benchmark_runs` 131 GiB; shared `datagen/` about 8 GiB; `datagen` folders outside the shared one: 12 real folders, 24.4 GiB, all in two runs started before the rule merged (`std-scales-20261122`, `gvg-sf1-20261122`), plus 7 dangling symlinks; 101 `datagen` folders under `/tmp` and the user temp directory.\n\nRelated dead code: `DirectoryManager.clean_old_files` in `benchbox/cli/config.py` (30-day age-based deletion over results, datagen and databases) has no caller.\n\nExpected outcome: a measured answer after two weeks of normal use, and a decision based on it: nothing more needed, or a sweep/guard. The hold date is the end of that window.",
+  "links": [
+    "AGENTS.md",
+    "docs/internal/low-disk-guard.md",
+    "benchbox/cli/config.py",
+    "benchbox/utils/disk_guard.py",
+    "https://github.com/BenchBox-dev/benchbox/pull/4451"
+  ],
+  "not_before": "2026-12-06T00:00:00Z",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1666d419ebd76239145cfb5d",
+      "at": "2026-11-23T00:16:17Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3803fa491c4f43539daac4c3844069e8",
+      "session_id": "326a88b3a63f4096aae1118667c53175"
+    }
+  ]
+}

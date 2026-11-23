@@ -42493,6 +42493,13 @@
       "status": "done",
       "title": "Refuse to start a cloud platform non-interactively without an explicit acknowledgement"
     },
+    "run-data-rule-effect-measurement-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Measure whether RUN-DATA-001 stopped private data copies, then decide on a sweep and on DirectoryManager.clean_old_files"
+    },
     "run-force-drops-remote-database-silently-20261113": {
       "claim": null,
       "needs": [
