@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import atexit
 import copy
 import importlib.util
 import json
 import shutil
+import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -13,6 +15,7 @@ import pytest
 
 from benchbox.core.results import corpus_rule, corpus_score
 from benchbox.validation.bundle import COMPANION_SUFFIXES
+from tests.unit.scripts.explorer_pipeline.conftest import combined_bundle
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
@@ -20,10 +23,23 @@ REPO_ROOT = script.CHECKOUT_ROOT
 ROOTS = {
     "corpus": REPO_ROOT / "results-data" / "bundles",
     "fixtures": REPO_ROOT / "tests" / "fixtures" / "explorer_browser" / "source" / "bundles",
-    "combined": REPO_ROOT / "tests" / "fixtures" / "corpus_score_guard" / "combined" / "bundles",
+    "combined": Path(tempfile.mkdtemp(prefix="combined-guard-")) / "bundles",
 }
 CLASS_VALUES = ("official", "unofficial_subscale", "unofficial_nonstandard")
 TEST_TYPES = ("power", "throughput", "combined", "standard")
+
+
+def _write_combined_bundles(root: Path) -> None:
+    root.mkdir(parents=True)
+    for family in ("tpch", "tpcds"):
+        for platform, qph in (("platform-a", 250.0), ("platform-b", 410.0)):
+            data = combined_bundle(platform, benchmark=family, qph=qph)
+            data["run"]["id"] = f"{family}-{platform}"
+            (root / f"{family}_sf1_{platform}_combined.json").write_text(json.dumps(data, indent=1), encoding="utf-8")
+
+
+_write_combined_bundles(ROOTS["combined"])
+atexit.register(shutil.rmtree, ROOTS["combined"].parent, ignore_errors=True)
 
 Mutation = Callable[[dict[str, Any]], None]
 
