@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Constructing the CoffeeShop or JoinOrder Synthetic benchmark class directly with a scale factor below 0.01 is now refused with the same message the command line gives."
+    }
+  ]
+}

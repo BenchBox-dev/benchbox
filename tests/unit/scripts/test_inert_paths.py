@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -99,6 +101,63 @@ def test_manifest_uses_only_known_kinds() -> None:
     kinds = {line.split("\t", 1)[0] for line in MANIFEST.read_text(encoding="utf-8").splitlines() if line.strip()}
     assert kinds <= {"glob", "file", "prefix", "regex", "except"}
     assert "except" in kinds
+
+
+GATE_INPUT_SAMPLE = "tests/fixtures/fast_tier_baseline/manifest.json"
+
+
+def test_gate_input_list_names_only_tracked_files() -> None:
+    assert sorted(set(inert.GATE_INPUT_FILES) - _tracked()) == []
+
+
+def test_gate_input_list_covers_every_fast_tier_baseline_file() -> None:
+    baseline = {path for path in _tracked() if path.startswith("tests/fixtures/fast_tier_baseline/")}
+    assert baseline
+    assert baseline <= set(inert.GATE_INPUT_FILES)
+
+
+def test_gate_input_list_names_known_blocking_gate_inputs() -> None:
+    assert {
+        "quality/fast-duration-ceiling.json",
+        "tests/unit/generators/sf1_size_baseline.json",
+        "publication/ledger-seed.json",
+        "results-data/corpus-inventory.json",
+    } <= set(inert.GATE_INPUT_FILES)
+    assert all(inert.GATE_INPUT_FILES.values())
+
+
+def test_checked_in_manifest_declares_no_gate_input_inert() -> None:
+    assert inert.gate_input_violations(inert._EXEMPT_RULES) == []
+    for path in inert.GATE_INPUT_FILES:
+        assert not inert.matches_exemption(path), path
+        assert not inert.is_inert_path(path), path
+
+
+@pytest.mark.parametrize("path", sorted(inert.GATE_INPUT_FILES))
+@pytest.mark.parametrize("kind", ["file", "glob", "prefix"])
+def test_declaring_a_gate_input_inert_is_a_violation(path: str, kind: str, tmp_path: Path) -> None:
+    directory = path.rsplit("/", 1)[0]
+    pattern = {"file": path, "glob": f"{directory}/*", "prefix": f"{directory}/"}[kind]
+    manifest = tmp_path / "inert-paths.txt"
+    manifest.write_text(f"{kind}\t{pattern}\n", encoding="utf-8")
+    rules = tuple(load_manifest_rules(manifest, inert._VALID_KINDS, "inert path"))
+    violations = inert.gate_input_violations(rules)
+    assert any(violation.startswith(path + " ") for violation in violations)
+
+
+def test_loading_a_manifest_that_declares_a_gate_input_inert_fails(tmp_path: Path) -> None:
+    manifest = tmp_path / "inert-paths.txt"
+    manifest.write_text(f"file\t{GATE_INPUT_SAMPLE}\n", encoding="utf-8")
+    proc = subprocess.run(
+        [sys.executable, "-c", "import _project.scripts.inert_paths"],
+        cwd=ROOT,
+        env={**os.environ, "INERT_PATH_MANIFEST": str(manifest)},
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert proc.returncode != 0
+    assert f"{GATE_INPUT_SAMPLE} is read by" in proc.stderr
 
 
 REPO_ROOT_BINDING = "REPO_ROOT = Path(__file__).resolve().parent.parent\n"

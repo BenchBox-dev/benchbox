@@ -269,30 +269,30 @@ class TestCoffeeShopQueries:
 class TestCoffeeShopBenchmark:
     def test_generate_data(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            benchmark = CoffeeShopBenchmark(scale_factor=0.0001, output_dir=Path(temp_dir))
+            benchmark = CoffeeShopBenchmark(scale_factor=0.01, output_dir=Path(temp_dir))
             tables = benchmark.generate_data()
             assert set(tables.keys()) == {"dim_locations", "dim_products", "order_lines"}
             assert all(Path(path).exists() for path in tables.values())
 
     def test_get_schema(self):
-        benchmark = CoffeeShopBenchmark(scale_factor=0.001)
+        benchmark = CoffeeShopBenchmark(scale_factor=0.01)
         schema = benchmark.get_schema()
         assert set(schema.keys()) == {"dim_locations", "dim_products", "order_lines"}
 
     def test_get_queries(self):
-        benchmark = CoffeeShopBenchmark(scale_factor=0.001)
+        benchmark = CoffeeShopBenchmark(scale_factor=0.01)
         queries = benchmark.get_queries()
         assert len(queries) == 11
         assert "order_lines" in queries["SA2"]
 
     def test_execute_query_mock(self):
-        benchmark = CoffeeShopBenchmark(scale_factor=0.001)
+        benchmark = CoffeeShopBenchmark(scale_factor=0.01)
         mock_connection = _MockConnection()
         result = benchmark.execute_query("SA1", mock_connection)
         assert result == [("ok",)]
 
     def test_run_benchmark_mock(self):
-        benchmark = CoffeeShopBenchmark(scale_factor=0.001)
+        benchmark = CoffeeShopBenchmark(scale_factor=0.01)
         mock_connection = _MockConnection()
         result = benchmark.run_benchmark(mock_connection, queries=["SA1", "PR1"], iterations=1)
         assert result["benchmark"] == "CoffeeShop Benchmark"
@@ -302,17 +302,17 @@ class TestCoffeeShopBenchmark:
     def test_default_output_dir_matches_basebenchmark(self, monkeypatch, tmp_path):
         monkeypatch.chdir(tmp_path)
         monkeypatch.delenv("BENCHBOX_OUTPUT_DIR", raising=False)
-        benchmark = CoffeeShopBenchmark(scale_factor=0.001)
+        benchmark = CoffeeShopBenchmark(scale_factor=0.01)
         tables = benchmark.generate_data()
 
-        sf_fragment = format_scale_factor(0.001)
+        sf_fragment = format_scale_factor(0.01)
         expected_root = tmp_path / "benchmark_runs" / "datagen" / f"coffeeshop_{sf_fragment}"
         assert benchmark.output_dir == expected_root
         assert Path(tables["order_lines"]).parent == expected_root
 
     def test_manifest_reuse_validation(self, monkeypatch, tmp_path):
         monkeypatch.chdir(tmp_path)
-        scale = 0.0001
+        scale = 0.01
         benchmark = CoffeeShopBenchmark(scale_factor=scale)
         benchmark.generate_data()
 
@@ -325,17 +325,17 @@ class TestCoffeeShopBenchmark:
 
 class TestCoffeeShopErrors:
     def test_invalid_table_name(self):
-        benchmark = CoffeeShopBenchmark(scale_factor=0.001)
+        benchmark = CoffeeShopBenchmark(scale_factor=0.01)
         with pytest.raises(ValueError, match="Invalid table names"):
             benchmark.generate_data(tables=["missing_table"])
 
     def test_unsupported_output_format(self):
-        benchmark = CoffeeShopBenchmark(scale_factor=0.001)
+        benchmark = CoffeeShopBenchmark(scale_factor=0.01)
         with pytest.raises(ValueError, match="Unsupported output format"):
             benchmark.generate_data(output_format="parquet")
 
     def test_load_data_without_generation(self):
-        benchmark = CoffeeShopBenchmark(scale_factor=0.001)
+        benchmark = CoffeeShopBenchmark(scale_factor=0.01)
         with pytest.raises(ValueError, match="No data generated"):
             benchmark.load_data_to_database(_MockConnection())
 

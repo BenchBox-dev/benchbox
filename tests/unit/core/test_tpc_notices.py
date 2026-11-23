@@ -68,6 +68,14 @@ TPCDI_SHIPPED_FILES = (
     "tpcdi_visibility_1.sql",
     "tpcdi_visibility_2.sql",
 )
+NOTICE_DIRECTORIES = {
+    "tpch-runtime": ROOT / "benchbox" / "_binaries" / "tpc-h",
+    "tpcds-runtime": ROOT / "benchbox" / "_binaries" / "tpc-ds",
+    "tpcdi-runtime": TPCDI_RUNTIME_DIR,
+    "tpch-source-tree": ROOT / "_sources" / "tpc-h",
+    "tpcds-source-tree": ROOT / "_sources" / "tpc-ds",
+    "tpcdi-source-tree": TPCDI_SOURCE_DIR,
+}
 
 
 def _legend_is_line_one(notice: Path) -> bool:
@@ -75,19 +83,32 @@ def _legend_is_line_one(notice: Path) -> bool:
     return bool(lines) and lines[0] == TPC_LEGEND
 
 
-@pytest.mark.parametrize("directory", [TPCDI_RUNTIME_DIR, TPCDI_SOURCE_DIR], ids=["runtime", "source-tree"])
-def test_tpcdi_notice_has_the_legend_on_line_one(directory: Path) -> None:
+@pytest.mark.parametrize("directory", NOTICE_DIRECTORIES.values(), ids=NOTICE_DIRECTORIES.keys())
+def test_tpc_notice_has_the_legend_on_line_one(directory: Path) -> None:
     assert _legend_is_line_one(directory / "NOTICE.txt")
 
 
-def test_tpcdi_notice_check_fails_when_the_legend_is_removed(tmp_path: Path) -> None:
-    original = (TPCDI_RUNTIME_DIR / "NOTICE.txt").read_text(encoding="utf-8")
+@pytest.mark.parametrize("directory", NOTICE_DIRECTORIES.values(), ids=NOTICE_DIRECTORIES.keys())
+def test_tpc_notice_check_fails_when_the_legend_is_removed(directory: Path, tmp_path: Path) -> None:
+    original = (directory / "NOTICE.txt").read_text(encoding="utf-8")
     stripped = tmp_path / "NOTICE.txt"
     stripped.write_text(original.removeprefix(TPC_LEGEND + "\n"), encoding="utf-8")
     assert not _legend_is_line_one(stripped)
     moved = tmp_path / "MOVED.txt"
-    moved.write_text("TPC-DI notice\n" + original, encoding="utf-8")
+    moved.write_text("TPC notice\n" + original, encoding="utf-8")
     assert not _legend_is_line_one(moved)
+
+
+@pytest.mark.parametrize("suite", ["tpc-h", "tpc-ds"])
+def test_runtime_notice_sits_beside_the_shipped_binaries(suite: str) -> None:
+    runtime = ROOT / "benchbox" / "_binaries" / suite
+    assert (runtime / "NOTICE.txt").is_file()
+    assert any(path.is_file() for path in runtime.glob("*/*gen*"))
+
+
+@pytest.mark.parametrize("suite", ["tpc-h", "tpc-ds"])
+def test_source_notice_is_listed_for_the_source_distribution(suite: str) -> None:
+    assert f"include _sources/{suite}/NOTICE.txt" in (ROOT / "MANIFEST.in").read_text(encoding="utf-8").splitlines()
 
 
 @pytest.mark.parametrize("filename", TPCDI_SHIPPED_FILES)

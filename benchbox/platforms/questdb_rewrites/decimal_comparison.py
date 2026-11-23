@@ -20,6 +20,8 @@ def _is_decimal(node: exp.Expr) -> bool:
         return _is_decimal(node.this)
     if isinstance(node, (exp.Cast, exp.TryCast)):
         return node.args["to"].this in _DECIMAL_TYPES
+    if isinstance(node, exp.Nullif):
+        return _is_decimal(node.this)
     if isinstance(node, _ARITHMETIC):
         return _is_decimal(node.this) and _is_decimal(node.expression)
     return False

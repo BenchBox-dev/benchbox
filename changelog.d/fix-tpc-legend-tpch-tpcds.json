@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The TPC-H and TPC-DS generator bundles now ship a NOTICE.txt with the TPC End User License Agreement legend \"THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC.\" beside the binaries and the query templates."
+    }
+  ]
+}
