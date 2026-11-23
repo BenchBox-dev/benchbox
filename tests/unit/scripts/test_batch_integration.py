@@ -291,6 +291,7 @@ def _preflight_that_fails(
     steps: list[dict] | None,
     *,
     before_run: bool = False,
+    written_with_earlier_mtime: bool = False,
 ) -> Path:
     receipts = tmp_path / "receipts"
     monkeypatch.setenv("BENCHBOX_PREFLIGHT_RECEIPT_DIR", str(receipts))
@@ -310,6 +311,9 @@ def _preflight_that_fails(
         if list(argv)[:2] == ["make", "pr-preflight"]:
             if steps is not None and not before_run:
                 write()
+                if written_with_earlier_mtime:
+                    earlier = path.stat().st_mtime - 5
+                    os.utime(path, (earlier, earlier))
             return done(2, stderr=PRIMARY_CLONE_WARNING)
         return original(argv, cwd, **kwargs)
 
@@ -378,6 +382,17 @@ def test_member_check_refusal_ignores_a_receipt_left_by_an_earlier_run(
     world.commit(member, {"src/a.py": "member\n"})
     _preflight_that_fails(monkeypatch, tmp_path, member, [FAILED_PYTEST_STEP], before_run=True)
     with _raises(r"no receipt for this tree"):
+        world.check(member, ["tests/test_zeta.py"])
+
+
+def test_member_check_refusal_reads_a_receipt_written_during_the_run_with_an_earlier_timestamp(
+    world: World, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    world.start()
+    member = world.member("zeta")
+    world.commit(member, {"src/a.py": "member\n"})
+    _preflight_that_fails(monkeypatch, tmp_path, member, [FAILED_PYTEST_STEP], written_with_earlier_mtime=True)
+    with _raises(r"failed step pytest \(exit 1\); first failing test tests/unit/test_first.py::test_one"):
         world.check(member, ["tests/test_zeta.py"])
 
 
