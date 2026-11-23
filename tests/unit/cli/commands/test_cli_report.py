@@ -418,7 +418,9 @@ class TestReportIncludeUnofficial:
 
         reimported = runner.invoke(cli, ["report", "import", str(bundles_dir), "--db-path", str(db_path)])
         listed_again = runner.invoke(cli, ["report", "list", "--db-path", str(db_path)])
+        restored = ResultDatabase(db_path).get_result("old")
 
         assert "Imported: 1" in reimported.output
-        assert "power_only" in listed_again.output
+        assert restored is not None
+        assert restored.outcome.class_name == "power_only"
         assert "undetermined" not in listed_again.output
