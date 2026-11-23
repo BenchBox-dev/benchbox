@@ -10720,7 +10720,7 @@
         }
       },
       "integration_branch": "feat/run-timeout-hardening",
-      "integration_head": "f6c6a572f2aedc3db720dd9424b3cf4817e2e785",
+      "integration_head": "92ada379de94132e6641c7eca52c59159f8a68a5",
       "integration_log": [
         {
           "at": "2026-11-22T21:01:02Z",
@@ -10872,6 +10872,24 @@
           "op_id": "ad6a07c84e784c2bbec4ad9f86398b10",
           "previous_head": "3abd2375b1e6bacd9095e9544bdfbcd90225013f",
           "seq": 6
+        },
+        {
+          "at": "2026-11-23T03:58:26Z",
+          "changed_files": [
+            "benchbox/core/equivalence/cross_surface.py",
+            "tests/unit/cli/test_run_timeout_remote_cleanup.py",
+            "tests/unit/core/equivalence/test_cross_surface.py",
+            "tests/unit/utils/test_process_group_term_ignoring_children.py"
+          ],
+          "head": "92ada379de94132e6641c7eca52c59159f8a68a5",
+          "kind": "fix",
+          "op_id": "83c42622f875419bb2761acc2ce3f07d",
+          "previous_head": "f6c6a572f2aedc3db720dd9424b3cf4817e2e785",
+          "requires_acceptance": [
+            "hard-stop-exit-bound-term-kill-wait-20261122",
+            "tpcds-q57-expression-order-float-tie-flake-20261122"
+          ],
+          "seq": 7
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-hardening",
