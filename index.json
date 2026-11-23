@@ -19645,10 +19645,15 @@
       "title": "Revert PRs get the wrong changelog-fragment decision: `revert:` is refused and `Revert \"` is always exempt"
     },
     "changelog-unreleased-test-paths-20261017": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T13:45:08Z",
+        "generation": "c39e5377a77a4cd593f577081ac9a6d3",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e8526faa0e732223dd79589d"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Remove test-file paths from the unreleased CHANGELOG entries"
     },
     "chdb-4x-engine-load-verification-20261006": {
