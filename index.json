@@ -29889,7 +29889,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Test whether a scheduled baseline refresh merges without re-authoring its commit"
     },
     "fast-baseline-reproduce-as-review-evidence-and-refresh-cadence-20261120": {
