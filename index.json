@@ -42190,10 +42190,15 @@
       "title": "Make benchbox run and the --last result lookups honour BENCHBOX_RESULTS_DIR together"
     },
     "results-dir-env-ignored-by-cli-run-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T17:43:07Z",
+        "generation": "3557076744444324b1b0c8f1bbf0cce6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Say in the benchbox run --output help that it reuses shared data for local runs"
     },
     "results-explorer-accessibility-copy-and-facet-cleanup": {
