@@ -38482,15 +38482,10 @@
       "title": "Pre-Compile TPC Binaries for Multiple Platforms ✅ COMPLETED"
     },
     "pre-rule-private-run-root-data-20261122": {
-      "claim": {
-        "expires_at": "2026-11-24T14:23:30Z",
-        "generation": "610372841b044e808be188fc587be4ab",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Remove regenerable data left under private and /tmp run roots that predate RUN-DATA-001"
     },
     "pre-tractable-worktrees-owner-triage-20261117": {
