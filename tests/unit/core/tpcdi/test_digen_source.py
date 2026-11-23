@@ -66,12 +66,22 @@ def patch_child(monkeypatch: pytest.MonkeyPatch, fake: Any) -> None:
     monkeypatch.setattr(digen, "run_child", dispatch)
 
 
-def write_fake_java(home: Path, version: str) -> Path:
-    executable = home / "bin" / "java"
-    executable.parent.mkdir(parents=True)
-    executable.write_text(f"#!/bin/sh\necho 'openjdk version \"{version}\"' >&2\n")
-    executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
+def write_java_stub(home: Path, posix_body: str, windows_body: str) -> Path:
+    on_windows = os.name == "nt"
+    executable = home / "bin" / ("java.bat" if on_windows else "java")
+    executable.parent.mkdir(parents=True, exist_ok=True)
+    if on_windows:
+        executable.write_bytes(f"@echo off\n{windows_body}".replace("\n", "\r\n").encode())
+    else:
+        executable.write_text(f"#!/bin/sh\n{posix_body}")
+        executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
     return executable
+
+
+def write_fake_java(home: Path, version: str) -> Path:
+    return write_java_stub(
+        home, f"echo 'openjdk version \"{version}\"' >&2\n", f'echo openjdk version "{version}" 1>&2\n'
+    )
 
 
 @pytest.fixture
@@ -222,10 +232,7 @@ def test_benchbox_java_home_is_looked_up_before_java_home(tmp_path: Path) -> Non
 )
 def test_java_major_is_read_from_the_version_line(tmp_path: Path, output: str, major: int) -> None:
     home = tmp_path / "jdk"
-    executable = home / "bin" / "java"
-    executable.parent.mkdir(parents=True)
-    executable.write_text(f"#!/bin/sh\necho '{output}' >&2\n")
-    executable.chmod(0o755)
+    executable = write_java_stub(home, f"echo '{output}' >&2\n", f"echo {output} 1>&2\n")
     assert digen.probe_java_major(executable) == major
 
 
@@ -658,10 +665,7 @@ def test_incomplete_or_inconsistent_output_is_refused_before_the_manifest(
 
 def test_java_probe_is_bound_by_the_run_deadline(tmp_path: Path) -> None:
     home = tmp_path / "hungjdk"
-    executable = home / "bin" / "java"
-    executable.parent.mkdir(parents=True)
-    executable.write_text("#!/bin/sh\nexec sleep 60\n")
-    executable.chmod(0o755)
+    write_java_stub(home, "exec sleep 60\n", "ping -n 8 127.0.0.1 >nul\n")
     started = time.monotonic()
     with own_run_deadline(1):
         with pytest.raises(RunTimeoutError):
@@ -693,16 +697,18 @@ def test_a_directory_that_is_not_ours_is_never_cleared(
     assert child.calls == []
 
 
+@pytest.mark.skipif(
+    os.name == "nt", reason="the stub records its shell pid and the test probes it with os.kill(pid, 0)"
+)
 def test_run_time_limit_ends_the_child_and_the_ended_generation_is_not_reused(tmp_path: Path, tools_dir: Path) -> None:
     pid_file = tmp_path / "child.pid"
     home = tmp_path / "slowjdk"
-    executable = home / "bin" / "java"
-    executable.parent.mkdir(parents=True)
-    executable.write_text(
-        '#!/bin/sh\nif [ "$1" = "-version" ]; then echo \'openjdk version "1.8.0_1"\' >&2; exit 0; fi\n'
-        f"echo $$ > {pid_file}\nexec sleep 60\n"
+    write_java_stub(
+        home,
+        'if [ "$1" = "-version" ]; then echo \'openjdk version "1.8.0_1"\' >&2; exit 0; fi\n'
+        f"echo $$ > {pid_file}\nexec sleep 60\n",
+        "",
     )
-    executable.chmod(0o755)
     out = tmp_path / "out"
     environ = {"JAVA_HOME": str(home), "PATH": ""}
 

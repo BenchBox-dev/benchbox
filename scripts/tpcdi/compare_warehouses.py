@@ -583,7 +583,7 @@ def compare_audits(
                 "right": right_result,
             }
         )
-        if left_result == right_result:
+        if left_result == right_result and all(result == "OK" for result in left.get(key, [AUDIT_ABSENT])):
             continue
         chosen = [
             entry

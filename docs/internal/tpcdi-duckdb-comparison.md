@@ -146,7 +146,9 @@ Per table present on both sides:
 `DImessages` is compared as counts per `(BatchID, MessageType, MessageSource,
 MessageText)`, so timestamps and message data are ignored, and the counts per
 batch and type are printed for both sides. With `--audit` each side runs the
-official audit and every `(test, batch, description)` outcome is compared.
+official audit and every `(test, batch, description)` outcome is compared. A
+result other than OK on the left side is a finding even when the right side
+agrees, unless an `audit` entry accepts that exact pair.
 
 Tables without a natural key in the harness, and tables whose key is not unique, are compared as multisets of
 normalised whole rows: a group of identical rows whose count differs is reported, so a duplicated row is a

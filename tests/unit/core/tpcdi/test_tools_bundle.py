@@ -146,18 +146,27 @@ def test_incomplete_unpack_is_redone(cache):
 def test_a_complete_unpack_published_by_another_process_is_kept(cache, monkeypatch):
     unpack_dir = cache / "benchbox" / tools.TOOLS_CACHE_NAME / tools.TOOLS_ARCHIVE_SHA256
     real_extract = tools._extract
+    published = []
 
     def extract_then_lose_the_race(archive, destination):
         real_extract(archive, destination)
         real_extract(archive, unpack_dir)
         (unpack_dir / tools._COMPLETE_SENTINEL).write_text(tools.TOOLS_ARCHIVE_SHA256, encoding="utf-8")
-        (unpack_dir / "Tools" / "in-use.marker").write_text("x", encoding="utf-8")
+        published.append((unpack_dir / "Tools" / "DIGen.jar").stat().st_ino)
 
     monkeypatch.setattr(tools, "_extract", extract_then_lose_the_race)
     resolved = tools.resolve_tools_dir()
     assert resolved == unpack_dir / "Tools"
-    assert (resolved / "in-use.marker").is_file()
+    assert (resolved / "DIGen.jar").stat().st_ino == published[0]
     assert [path.name for path in unpack_dir.parent.iterdir()] == [tools.TOOLS_ARCHIVE_SHA256]
+
+
+def test_an_extra_unpacked_file_is_removed_on_next_use(cache):
+    resolved = tools.resolve_tools_dir()
+    extra = resolved / "PDGF" / "planted.txt"
+    extra.write_text("x", encoding="utf-8")
+    assert tools.resolve_tools_dir() == resolved
+    assert not extra.exists()
 
 
 def test_an_edited_unpacked_file_is_restored_on_next_use(cache, monkeypatch):

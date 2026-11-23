@@ -45,13 +45,19 @@ def _members_intact(unpack_dir: Path) -> bool:
     if not TOOLS_ARCHIVE_PATH.is_file():
         raise ToolsArchiveError(f"TPC-DI tools archive is missing: {TOOLS_ARCHIVE_PATH}")
     with zipfile.ZipFile(TOOLS_ARCHIVE_PATH) as bundle:
-        for info in bundle.infolist():
-            member = unpack_dir / info.filename
-            if info.is_dir():
-                if not member.is_dir():
-                    return False
-            elif not member.is_file() or member.stat().st_size != info.file_size or _file_crc32(member) != info.CRC:
+        members = bundle.infolist()
+    expected = {info.filename for info in members if not info.is_dir()}
+    present = {path.relative_to(unpack_dir).as_posix() for path in unpack_dir.rglob("*") if path.is_file()}
+    present.discard(_COMPLETE_SENTINEL)
+    if present - expected:
+        return False
+    for info in members:
+        member = unpack_dir / info.filename
+        if info.is_dir():
+            if not member.is_dir():
                 return False
+        elif not member.is_file() or member.stat().st_size != info.file_size or _file_crc32(member) != info.CRC:
+            return False
     return True
 
 

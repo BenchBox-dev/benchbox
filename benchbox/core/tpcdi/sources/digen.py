@@ -532,7 +532,10 @@ def _digen_command(java: JavaRuntime, scale_factor: int, output_dir: Path, envir
 def _run_digen(command: list[str], workdir: Path) -> subprocess.CompletedProcess[Any]:
     read_end, write_end = os.pipe()
     try:
-        os.write(write_end, LICENCE_ANSWER)
+        try:
+            os.write(write_end, LICENCE_ANSWER)
+        finally:
+            os.close(write_end)
         return run_child(
             command,
             tool=TOOL_NAME,
@@ -545,7 +548,6 @@ def _run_digen(command: list[str], workdir: Path) -> subprocess.CompletedProcess
         )
     finally:
         os.close(read_end)
-        os.close(write_end)
 
 
 def generate(

@@ -265,6 +265,25 @@ def test_audit_outcome_differences_need_an_entry(tmp_path, left):
     assert [row["right"] for row in accepted.audit] == ["OK", "Mismatch"]
 
 
+def test_a_non_ok_audit_result_on_the_left_is_a_finding_even_when_both_sides_agree(tmp_path, left):
+    right = build(tmp_path / "right.duckdb")
+    both = [("DimCustomer C_TIER_INV", 1, "Mismatch", "tier"), ("Audit table batches", None, "OK", "three")]
+    results = {left: both, right: both}
+    [difference] = run(left, right, audit=lambda path: results[path]).unaccepted()
+    assert difference.subject == "DimCustomer C_TIER_INV batch 1: Mismatch vs Mismatch"
+    entry = {
+        "id": "tier-key",
+        "kind": "audit",
+        "clause": "2.4.5",
+        "reason": "answer key",
+        "test": "DimCustomer C_TIER_INV",
+        "batch": "1",
+        "left_result": "Mismatch",
+        "right_result": "Mismatch",
+    }
+    assert run(left, right, [entry], audit=lambda path: results[path]).unaccepted() == []
+
+
 def test_unused_entries_are_reported(tmp_path, left):
     right = build(tmp_path / "right.duckdb")
     assert run(left, right, [YIELD_TYPE]).unused_entries == ["yield-type"]

@@ -132,3 +132,12 @@ entries:
     batch: "1"
     left_result: "OK"
     right_result: "Mismatch"
+
+  - id: audit-customer-tier-alerts-batch1-uncorrected-left
+    kind: audit
+    clause: "2.4.5, 7.2.6.7"
+    reason: "When the left warehouse is itself built on the uncorrected C_TIER_INV key, as in the self-comparison of the DuckDB implementation's warehouse at scales 3 and 5, the official audit reports Mismatch for the customer tier alert count of Batch 1 on both sides. Accepted only for this test and batch, and only as the same Mismatch on both sides."
+    test: "DimCustomer customer tier alerts"
+    batch: "1"
+    left_result: "Mismatch"
+    right_result: "Mismatch"
