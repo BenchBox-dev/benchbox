@@ -147,6 +147,7 @@ class TestGetPlatformInfoSdkPath:
             "resolution": "platform_default",
             "observed": "not_captured",
             "observed_source": "none",
+            "observed_reason": None,
         }
 
     def test_platform_info_sdk_import_error_silenced(self):

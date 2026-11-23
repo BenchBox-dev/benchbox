@@ -765,6 +765,7 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
             if isinstance(result_df, UnifiedLazyFrame):
                 result_df = result_df.native
 
+            lazy_result = result_df
             if hasattr(result_df, "collect"):
                 result_df = self.collect(result_df)
 
@@ -779,7 +780,7 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
                     first_row = self._get_first_row(result_df)
             self._log_verbose(f"Query {qid} completed in {execution_time:.3f}s, returned {row_count} rows")
 
-            return build_success_result_dict(
+            result = build_success_result_dict(
                 query_id=qid,
                 execution_time_seconds=execution_time,
                 row_count=row_count,
@@ -787,6 +788,8 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
                 request_count=ledger.count,
                 result_bytes=dataframe_result_bytes(result_df),
             )
+            self._record_engine_observation(result, lazy_result)
+            return result
 
         except Exception as e:
             execution_time = elapsed_seconds(start_time)
@@ -899,6 +902,7 @@ class ExpressionFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, 
             )
             if plan_capture_error is not None:
                 result_dict["plan_capture_error"] = plan_capture_error
+            self._record_engine_observation(result_dict, lazy_result)
 
             return result_dict, profile
 

@@ -61,6 +61,8 @@ results-data:
   - "scripts/validate_submission.py"
   - "scripts/check_submission_validator_sync.py"
   - "scripts/corpus_compliance_snapshot.py"
+  - "scripts/generate_corpus_rule_data.py"
+  - "_project/scripts/explorer_pipeline/**"
   - ".github/workflows/validate-submission.yml"
   - "benchbox/core/results/**"
   - "benchbox/validation/**"

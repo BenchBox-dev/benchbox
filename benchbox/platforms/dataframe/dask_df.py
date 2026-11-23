@@ -96,6 +96,13 @@ def _cap_default_memory_limit(memory_limit: str) -> str:
     return memory_limit
 
 
+_LOCAL_SCHEDULER_ENGINES = {
+    ("dask.threaded", "get"): "threaded",
+    ("dask.local", "get_sync"): "synchronous",
+    ("dask.multiprocessing", "get"): "processes",
+}
+
+
 class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
     def __init__(
         self,
@@ -482,6 +489,18 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
 
     def compute(self, df: DaskDF) -> Any:
         return self._run_with_resource_diagnostics("compute", df.compute)
+
+    OBSERVED_ENGINE_SOURCE = "runtime_state"
+
+    def observe_execution_engine(self, lazy: Any) -> str | None:
+        from dask.base import get_scheduler
+
+        scheduler = get_scheduler(collections=[getattr(lazy, "native", lazy)])
+        if isinstance(getattr(scheduler, "__self__", None), Client):
+            return "distributed"
+        return _LOCAL_SCHEDULER_ENGINES.get(
+            (getattr(scheduler, "__module__", None), getattr(scheduler, "__name__", None))
+        )
 
     def persist(self, df: DaskDF) -> DaskDF:
         return self._run_with_resource_diagnostics("persist", df.persist)
