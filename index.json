@@ -30547,12 +30547,17 @@
       "title": "A generator change that multiplies data volume passes PR CI: the SF 1 size baseline is not enforced and no run exercises the new volume"
     },
     "generator-volume-gate-rename-bypass-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T13:54:06Z",
+        "generation": "81b7ea997f834690bec9f0b9e3e7018b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a5dffb67f2f8103a3765a88b"
+      },
       "needs": [
         "feature-fix-ci-congestion-diagnostics-and-generator-gate-20261117"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Close the rename bypass in the generator-volume gate's CI path filter"
     },
     "generator-volume-gate-sf1-measurement-probe-and-budget-20261120": {
