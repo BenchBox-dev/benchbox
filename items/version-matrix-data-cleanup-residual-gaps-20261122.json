@@ -6,6 +6,11 @@
     "Verification rubric: `uv run -- python -m pytest tests/unit/scripts/test_polars_version_matrix.py tests/unit/scripts/test_duckdb_version_matrix.py -q` passes; the golden dry-run fixtures are unchanged unless a flag is added, in which case the fixture diff is shown in the PR.",
     "Guardrails: the matrix keeps generating into its own output root during the run (a shared folder could supply parquet written by a different pyarrow version, which the pins do not detect); cleanup stays limited to `datagen` and `databases` under the output root and still fails loudly on a removal error; no change to cell commands, timing, or the per-cell pin check; no comments or docstrings (comment policy)."
   ],
+  "batch": {
+    "batch_id": "shared-data-lifecycle",
+    "implementation_dependencies": [],
+    "member_id": "version-matrix-data-cleanup-residual-gaps-20261122"
+  },
   "context": "Origin: disk cleanup and root-cause review on 2026-11-22. The root volume fell to 46 GiB free, below the 50 GiB heavy-work floor. Cause found: generated benchmark data has no lifecycle (any session creates it under any run root, nothing removes it), and Time Machine local snapshots kept deleted data allocated. PR #4451 (https://github.com/BenchBox-dev/benchbox/pull/4451) added AGENTS.md [RUN-DATA-001] and made scripts/run_version_matrix.py delete its datagen/ and databases/ when a matrix completes.\n\nOwner decision 2026-11-23 (choice dialog): gap 1 'Delete on failure unless --keep-data is passed'; gap 2 (first real run check) moved to pvm-p1-run-ssb-clickbench as an acceptance line so this item can close.",
   "description": "PR #4451 made `scripts/run_version_matrix.py` delete `<output>/datagen` and `<output>/databases` after the manifest is written. Three gaps remain.\n\n1. Failure path. A matrix that fails partway (generation, install, a cell, a pin mismatch) raises before the cleanup, so it keeps a full private copy (about 20 GB at SF10). The runner refuses a non-empty output root, so that copy can never be reused by a rerun.\n2. Not exercised live. The cleanup was verified by a unit test of the helper and the two runner test modules (50 passed). No real matrix has completed with it. In particular nobody has confirmed that nothing between the last cell and process exit still reads the data, or that removing roughly 20 GB completes in reasonable time.\n3. Follow-up reuse. Two earlier follow-up investigations reused a finished matrix's data through symlinks (`polars-2-1-spill-attribution-20261121`, `polars-version-matrix-reference-20261119/q41-*`). That is no longer possible, and there is no documented way to get byte-identical data for a follow-up. The Polars manifest pins datagen manifest hashes; the DuckDB matrix manifest has no data pins at all.\n\nExpected outcome: a failed matrix does not strand data without the operator knowing, the cleanup is proven on a real run, and a follow-up has a documented path to matching data.",
   "links": [
@@ -30,6 +35,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "e1ad47498ebd40f8bbea0c4e86422dd6",
+      "session_id": "e94ef2c0cac942f885a89e503648c51e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b",
+      "at": "2026-11-23T14:25:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2f7d7f3844a34a6a9734117757a5136a",
       "session_id": "e94ef2c0cac942f885a89e503648c51e"
     }
   ]
