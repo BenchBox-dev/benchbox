@@ -34242,6 +34242,15 @@
       "status": "open",
       "title": "Make the published-results mirror validator apply the non-standard-scale policy"
     },
+    "mirror-validator-submission-guard-standard-scales-20261122": {
+      "claim": null,
+      "needs": [
+        "mirror-validator-refuses-offlist-tpch-tpcds-bundles-20261120"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Reject community edits to standard_scales.json in the published-results submission guard"
+    },
     "mirrored-file-local-imports-audit-20261020": {
       "claim": null,
       "needs": [

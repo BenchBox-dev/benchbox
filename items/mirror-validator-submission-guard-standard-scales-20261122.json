@@ -1,0 +1,13 @@
+{
+  "description": "## Problem\nThe approved mirror-validator design adds benchbox/core/results/standard_scales.json to the mirrored files. The submission guard in .github/workflows/validate-submission.yml must stay byte-identical between develop and published-results, and the published-results copy changes only through a hand-opened PR there, so #4463 could not add the new file to the guard list. A community submission PR could therefore edit standard_scales.json without the guard rejecting it.\n\n## Change\nA coordinated pair of pull requests: add the file to the guard list on published-results and on develop, landing so the sync check stays green.\n\n## Verification rubric\nPass: both copies list the file; the validator sync check passes; a submission PR touching the file is rejected (test or recorded run).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6",
+      "at": "2026-11-23T04:43:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d1dc351b7f4a40bc9d1064b42cf7fdc0",
+      "session_id": "703e90baefd545ccb42540a47d1ce09e"
+    }
+  ]
+}
