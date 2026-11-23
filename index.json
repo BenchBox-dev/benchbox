@@ -26976,12 +26976,17 @@
       "title": "Consider Doris as a fourth local full-spec cohort engine"
     },
     "doris-lakesail-corpus-notes-and-label-corrections-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T03:31:08Z",
+        "generation": "47f960a492f746a3a6caa933e5720720",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6"
+      },
       "needs": [
         "feature-feat-corpus-scale-policy-and-reruns-20261117"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Correct the Doris and LakeSail record on #4340: memory peaks, discard list, defect label wording"
     },
     "doris-load-dead-paths-cleanup-20261107": {
