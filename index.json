@@ -23294,9 +23294,9 @@
     },
     "crr-a1-rule-module-and-snapshot": {
       "claim": {
-        "expires_at": "2026-11-23T23:20:17Z",
+        "expires_at": "2026-11-24T00:20:49Z",
         "generation": "9c33ae43b199426eb2ea0f69f7eab922",
-        "renewals": 0,
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2"
       },
       "needs": [
