@@ -29,6 +29,7 @@ from benchbox.core.results.models import (
     QueryExecution,
     SetupPhase,
 )
+from benchbox.core.results.result_outcome import facts_from_json, facts_to_json
 from tests.fixtures.result_dict_fixtures import make_benchmark_results, make_power_only_phases, make_v2_result_dict
 
 pytestmark = [
@@ -824,11 +825,29 @@ class TestRankingsComplianceFilter:
 
         old = create_test_result(execution_id="old", benchmark="TPC-H", scale_factor=1.0)
         assert db._backfill_facts(old, _facts("tpch", 1.0, "power")) is True
-        assert db._backfill_facts(old, _facts("tpch", 1.0, "power", "throughput")) is False
+        assert db._backfill_facts(old, _facts("tpch", 1.0, "power")) is False
         restored = db.get_result("old")
         assert restored is not None
         assert restored.outcome.class_name == corpus_rule.CLASS_POWER_ONLY
         assert _rank(db, "TPC-H", 1.0, include_unofficial=False) == ["OldDB"]
+
+
+def test_public_validation_refusal_survives_fact_persistence_and_reimport(tmp_path):
+    facts = corpus_rule.Facts(
+        benchmark="tpch", scale_factor=1.0, phases=frozenset({"power"}), public_validation_refused=True
+    )
+    assert facts_from_json(facts_to_json(facts)) == facts
+    legacy = json.loads(facts_to_json(facts))
+    legacy.pop("public_validation_refused")
+    assert facts_from_json(json.dumps(legacy)).public_validation_refused is False
+
+    db = ResultDatabase(tmp_path / "results.db")
+    result = create_test_result(execution_id="refusal", platform="example")
+    db.store_result(result, facts)
+    with sqlite3.connect(db.db_path) as conn:
+        conn.execute("UPDATE results SET facts_json = ? WHERE execution_id = 'refusal'", (json.dumps(legacy),))
+    assert db._backfill_facts(result, facts)
+    assert db.get_result("refusal").outcome.public_admission is False
 
 
 @pytest.mark.parametrize("recorded", [None, 7])

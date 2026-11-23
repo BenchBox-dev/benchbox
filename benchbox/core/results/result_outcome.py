@@ -29,6 +29,7 @@ def facts_to_json(facts: corpus_rule.Facts) -> str:
             "gateway_routed": facts.gateway_routed,
             "known_defect": facts.known_defect,
             "validation_failed": facts.validation_failed,
+            "public_validation_refused": facts.public_validation_refused,
             "row_counts_checked": facts.row_counts_checked,
         },
         sort_keys=True,
@@ -52,6 +53,7 @@ def facts_from_json(text: str | None) -> corpus_rule.Facts | None:
         gateway_routed=bool(payload.get("gateway_routed")),
         known_defect=bool(payload.get("known_defect")),
         validation_failed=bool(payload.get("validation_failed")),
+        public_validation_refused=bool(payload.get("public_validation_refused")),
         row_counts_checked=bool(payload.get("row_counts_checked", True)),
     )
 

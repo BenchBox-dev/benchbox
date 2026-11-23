@@ -1119,21 +1119,23 @@ class ResultDatabase:
             corpus_score.combined_score(payload),
         )
         version = comparison_identity(payload, "").comparison_version.version
+        facts_text = facts_to_json(facts)
         with self._connection() as conn:
             cursor = conn.execute(
-                "UPDATE results SET facts_json = COALESCE(facts_json, ?), power_at_size = ?, "
+                "UPDATE results SET facts_json = ?, power_at_size = ?, "
                 "throughput_at_size = ?, qph_at_size = ?, "
                 "metadata_json = json_set(COALESCE(metadata_json, '{}'), '$.comparison_version', ?) "
                 "WHERE execution_id = ? AND benchmark = ? AND ABS(scale_factor - ?) < 1e-9 "
-                "AND (facts_json IS NULL OR power_at_size IS NOT ? OR throughput_at_size IS NOT ? "
+                "AND (facts_json IS NOT ? OR power_at_size IS NOT ? OR throughput_at_size IS NOT ? "
                 "OR qph_at_size IS NOT ? OR json_extract(metadata_json, '$.comparison_version') IS NOT ?)",
                 (
-                    facts_to_json(facts),
+                    facts_text,
                     *scores,
                     version,
                     result.execution_id,
                     result.benchmark_name,
                     result.scale_factor,
+                    facts_text,
                     *scores,
                     version,
                 ),
