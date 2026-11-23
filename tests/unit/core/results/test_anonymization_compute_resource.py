@@ -12,6 +12,7 @@ import pytest
 from benchbox.core.results.exporter import ResultExporter
 from benchbox.platforms.base.runtime_metadata import apply_normalized_result_metadata
 from tests.fixtures.result_dict_fixtures import make_benchmark_results
+from tests.fixtures.snowflake_warehouses import warehouse_description, warehouse_row
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -31,7 +32,8 @@ def _snowflake() -> tuple[dict[str, Any], str]:
         database="BENCH_DB",
     )
     cursor = Mock()
-    row = [SECRET, "STARTED", "STANDARD", "LARGE"] + [None] * 27
+    row = warehouse_row(name=SECRET)
+    cursor.description = warehouse_description()
 
     def execute(sql: str) -> Mock:
         lowered = sql.lower()
@@ -40,7 +42,7 @@ def _snowflake() -> tuple[dict[str, Any], str]:
         elif "current_region" in lowered:
             cursor.fetchone.return_value = ("AWS_US_EAST_1", "AWS")
         elif "SHOW WAREHOUSES" in sql:
-            cursor.fetchone.return_value = tuple(row)
+            cursor.fetchone.return_value = row
         elif "current_account_name" in lowered:
             cursor.fetchone.return_value = ("acct", "org")
         return cursor

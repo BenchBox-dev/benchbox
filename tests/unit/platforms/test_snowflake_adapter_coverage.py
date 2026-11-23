@@ -10,6 +10,11 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from benchbox.core.tuning.applied_ledger import PHASE_DDL, PHASE_POST_LOAD, AppliedTuningLedger, recording_connection
+from tests.fixtures.snowflake_warehouses import (
+    SHOW_WAREHOUSES_COLUMNS,
+    warehouse_description as _warehouse_description,
+    warehouse_row as _warehouse_row,
+)
 
 pytestmark = [
     pytest.mark.unit,
@@ -153,51 +158,6 @@ class TestBuildCtasSortSql:
         with patch.object(adapter, "resolve_sorted_ingestion_strategy", return_value=("on", "sort_key")):
             with pytest.raises(ValueError, match="method.*sort_key.*not supported"):
                 adapter._build_ctas_sort_sql("T", [col])
-
-
-SHOW_WAREHOUSES_COLUMNS = (
-    "name",
-    "state",
-    "type",
-    "size",
-    "min_cluster_count",
-    "max_cluster_count",
-    "started_clusters",
-    "running",
-    "queued",
-    "is_default",
-    "is_current",
-    "auto_suspend",
-    "auto_resume",
-    "available",
-    "provisioning",
-    "quiescing",
-    "other",
-    "created_on",
-    "resumed_on",
-    "updated_on",
-    "owner",
-    "comment",
-    "enable_query_acceleration",
-    "query_acceleration_max_scale_factor",
-    "resource_monitor",
-    "actives",
-    "pendings",
-    "failed",
-    "suspended",
-    "uuid",
-    "scaling_policy",
-)
-
-
-def _warehouse_description(columns=SHOW_WAREHOUSES_COLUMNS):
-    return [(name, 0, None, None, None, None, True) for name in columns]
-
-
-def _warehouse_row(columns=SHOW_WAREHOUSES_COLUMNS, **values):
-    defaults = {"name": "MY_WH", "state": "STARTED", "type": "STANDARD", "size": "LARGE"}
-    defaults.update(values)
-    return tuple(defaults.get(name) for name in columns)
 
 
 def _platform_info_for(cursor_description, row):

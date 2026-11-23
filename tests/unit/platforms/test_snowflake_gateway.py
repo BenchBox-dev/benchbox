@@ -9,6 +9,7 @@ import pytest
 from benchbox.core.exceptions import ConfigurationError
 from benchbox.core.gateway import INSECURE_GATEWAY_ENV, GatewayConfigurationError, UnsupportedGatewayError
 from benchbox.platforms.snowflake import SnowflakeAdapter
+from tests.fixtures.snowflake_warehouses import SHOW_WAREHOUSES_COLUMNS
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium, pytest.mark.cloud_import]
 
@@ -565,39 +566,6 @@ def _connection(answers: dict[str, object], fail: set[str] | None = None) -> Moc
     return connection
 
 
-SHOW_WAREHOUSES_COLUMNS = (
-    "name",
-    "state",
-    "type",
-    "size",
-    "min_cluster_count",
-    "max_cluster_count",
-    "started_clusters",
-    "running",
-    "queued",
-    "is_default",
-    "is_current",
-    "auto_suspend",
-    "auto_resume",
-    "available",
-    "provisioning",
-    "quiescing",
-    "other",
-    "created_on",
-    "resumed_on",
-    "updated_on",
-    "owner",
-    "comment",
-    "enable_query_acceleration",
-    "query_acceleration_max_scale_factor",
-    "resource_monitor",
-    "actives",
-    "pendings",
-    "failed",
-    "suspended",
-    "uuid",
-    "scaling_policy",
-)
 FULL_WAREHOUSE_ROW = tuple(f"c{i}" for i in range(len(SHOW_WAREHOUSES_COLUMNS)))
 HEALTHY_ANSWERS = {
     "current_version()": [("8.1",)],
