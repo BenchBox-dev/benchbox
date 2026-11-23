@@ -41853,7 +41853,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "blocked",
+      "status": "open",
       "title": "Remove the remediation session's worktrees, branches and scratch files"
     },
     "remote-closeout-arm-landing-20261018": {
