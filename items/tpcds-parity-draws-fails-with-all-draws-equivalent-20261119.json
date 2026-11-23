@@ -15,6 +15,86 @@
     "make/reports.mk",
     "benchbox/core/equivalence/cross_surface.py"
   ],
+  "prepared": {
+    "accepted_head": "c6c7afbe908a44958093619d663d69acd5ee9dbb",
+    "batch_id": "trunk-stability-r2",
+    "changed_files": [
+      "benchbox/core/equivalence/cross_surface.py",
+      "changelog.d/fix-tpcds-parity-draws-reason.json",
+      "make/reports.mk",
+      "tests/unit/core/equivalence/test_cross_surface_repeats.py"
+    ],
+    "integration_head": "5367fa582b6cce2d01c7ad6d0eedef6a8c7f07bd",
+    "integration_seq": 2,
+    "member_id": "tpcds-parity-draws-fails-with-all-draws-equivalent-20261119",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "d98a09e46beb966c286e304e63a24dcb95953dc9de6d2f316fa826dd65df22f6",
+    "source_base": "e73b51f731fc3e4f1318cae177618607c7f6b2d0",
+    "source_revision": "c6c7afbe908a44958093619d663d69acd5ee9dbb",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-r2-parity",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/test_amplab_cross_surface_equivalence.py",
+        "tests/integration/test_clickbench_cross_surface_equivalence.py",
+        "tests/integration/test_coffeeshop_cross_surface_equivalence.py",
+        "tests/integration/test_cross_surface_execution_engine.py",
+        "tests/integration/test_cross_surface_mutation_sensitivity.py",
+        "tests/integration/test_datavault_cross_surface_equivalence.py",
+        "tests/integration/test_datavault_cross_surface_regeneration.py",
+        "tests/integration/test_h2odb_cross_surface_equivalence.py",
+        "tests/integration/test_joinorder_synthetic_cross_surface_equivalence.py",
+        "tests/integration/test_read_primitives_cross_surface_equivalence.py",
+        "tests/integration/test_ssb_cross_surface_equivalence.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/unit/cli/test_output_control_static.py",
+        "tests/unit/cli/test_shipped_docs_urls.py",
+        "tests/unit/core/equivalence/test_cross_surface.py",
+        "tests/unit/core/equivalence/test_cross_surface_baseline_autodetect.py",
+        "tests/unit/core/equivalence/test_cross_surface_repeats.py",
+        "tests/unit/core/equivalence/test_datafusion_cross_surface.py",
+        "tests/unit/core/equivalence/test_tpcds_shared_draw.py",
+        "tests/unit/core/joinorder_synthetic/test_synthetic_queries.py",
+        "tests/unit/core/tpcdi/test_tpcdi_no_values_row_source.py",
+        "tests/unit/core/tpcds/test_q44_q65_pandas_null_outputs.py",
+        "tests/unit/core/tpcds/test_qualification_classification.py",
+        "tests/unit/core/tpcds/test_qualification_numeric_ties.py",
+        "tests/unit/core/tpcds/test_sql_rank_nulls.py",
+        "tests/unit/platforms/test_credential_error_messages.py",
+        "tests/unit/scripts/test_check_make_targets.py",
+        "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index",
+        "tests/unit/scripts/test_pr_preflight_base.py",
+        "tests/unit/test_cross_surface_dtype_cell.py",
+        "tests/unit/test_oracle_coverage_map.py",
+        "tests/unit/test_standardized_test_commands.py",
+        "tests/unit/workflows/test_t2_partition_workflow.py"
+      ],
+      "review": {
+        "base_sha": "e73b51f731fc3e4f1318cae177618607c7f6b2d0",
+        "head_sha": "c6c7afbe908a44958093619d663d69acd5ee9dbb",
+        "head_tree": "365f15d9a802b64ef5a3919e0e1b9b395b846841",
+        "outcome": "clear",
+        "patch_digest": "aa0f967fe826fe0fc9fa276e5e9636aa",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "0fc93ef300fbec76330d814b234c4e24f0c5b7a5"
+      },
+      "revision": "c6c7afbe908a44958093619d663d69acd5ee9dbb",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d414581c3188d7bdb8ecf82a",
@@ -89,6 +169,15 @@
       "generation": "0ebbd0ec872d46b9a615c1d67b596a0c",
       "op": "take",
       "op_id": "9a9e44f0d4894784a33c1db263785b03",
+      "session_id": "80e0302416054591a591cf3adefee19a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3",
+      "at": "2026-11-23T01:41:51Z",
+      "client": "omp-coding-agent",
+      "generation": "0ebbd0ec872d46b9a615c1d67b596a0c",
+      "op": "prepare",
+      "op_id": "dc6350bc95a44c95932de09f8af90161",
       "session_id": "80e0302416054591a591cf3adefee19a"
     }
   ]
