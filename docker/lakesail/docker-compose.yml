@@ -9,6 +9,7 @@ services:
       args:
         PYSAIL_VERSION: ${PYSAIL_VERSION:-0.7.1}
         PYSPARK_CLIENT_VERSION: ${PYSPARK_CLIENT_VERSION:-4.2.0}
+    mem_limit: ${LAKESAIL_MEMORY_LIMIT:-6g}
     command: ["spark", "server", "--ip", "0.0.0.0", "--port", "50051"]
     ports:
       - "${SPARK_CONNECT_PORT:-50051}:50051"

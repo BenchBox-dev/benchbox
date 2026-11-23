@@ -33,6 +33,8 @@ class DockerAssetError(ValueError):
 
 
 CLICKHOUSE_MEMORY_LIMIT_ENV_VAR = "CLICKHOUSE_MEMORY_LIMIT"
+DORIS_PIPELINE_TASKS_ENV_VAR = "BENCHBOX_UAT_DORIS_PARALLEL_PIPELINE_TASK_NUM"
+DORIS_DEFAULT_PIPELINE_TASKS = "default"
 _MEMORY_VALUE_RE = re.compile(r"^\s*(?P<value>[0-9]+(?:\.[0-9]+)?)\s*(?P<unit>[KMGTPE]?i?B?)\s*$", re.IGNORECASE)
 _COMPOSE_MEMORY_UNITS = {
     "": 1,
@@ -382,7 +384,6 @@ _PLATFORM_INJECT_SPARK_CONNECT_ENDPOINT_OPT: frozenset[str] = frozenset({"lakesa
 
 _PLATFORM_LOCAL_MANAGED_STATIC_OPTS: dict[str, list[str]] = {
     "cedardb": ["--platform-option", "username=benchbox", "--platform-option", "admin_database=benchbox_test"],
-    "doris": ["--platform-option", "parallel_pipeline_task_num=1"],
     "postgresql": ["--platform-option", "username=benchbox"],
 }
 
@@ -522,8 +523,22 @@ def platform_extra_opts(platform: str, *, env: dict[str, str] | None = None) -> 
     return opts
 
 
+def resolve_doris_pipeline_tasks_opts(env: dict[str, str] | None = None) -> list[str]:
+    environment = os.environ if env is None else env
+    raw = environment.get(DORIS_PIPELINE_TASKS_ENV_VAR, "").strip()
+    if not raw or raw.lower() == DORIS_DEFAULT_PIPELINE_TASKS:
+        return []
+    if not raw.isdigit() or int(raw) < 1:
+        raise DockerAssetError(
+            f"{DORIS_PIPELINE_TASKS_ENV_VAR} must be a positive integer or {DORIS_DEFAULT_PIPELINE_TASKS!r}, got {raw!r}"
+        )
+    return ["--platform-option", f"parallel_pipeline_task_num={int(raw)}"]
+
+
 def local_managed_platform_extra_opts(platform: str, *, env: dict[str, str] | None = None) -> list[str]:
     opts = list(_PLATFORM_LOCAL_MANAGED_STATIC_OPTS.get(platform, []))
+    if platform == "doris":
+        opts += resolve_doris_pipeline_tasks_opts(env)
     password_key = _PLATFORM_PASSWORD_ENV_KEYS.get(platform)
     if password_key is not None:
         password = _compose_service_environment_value(platform, password_key, env=env)

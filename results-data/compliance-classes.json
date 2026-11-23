@@ -1089,6 +1089,10 @@
       "compliance_class": null,
       "ranking_excluded": false
     },
+    "tpcds_obt_sf001_doris_sql_20261118_181752_c2022935.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
     "tpcds_obt_sf001_duckdb_sql_20261111_105936_37e7cc9b.json": {
       "compliance_class": null,
       "ranking_excluded": false
@@ -1105,7 +1109,15 @@
       "compliance_class": null,
       "ranking_excluded": false
     },
+    "tpcds_obt_sf01_doris_sql_20261118_225023_c18125e7.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
     "tpcds_obt_sf01_duckdb_sql_20261111_110025_688df8f3.json": {
+      "compliance_class": null,
+      "ranking_excluded": false
+    },
+    "tpcds_obt_sf01_lakesail_sql_20261117_201241_312e8b59.json": {
       "compliance_class": null,
       "ranking_excluded": false
     },
