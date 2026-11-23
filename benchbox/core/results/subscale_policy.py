@@ -1,8 +1,18 @@
 from __future__ import annotations
 
+import functools
+import json
 import math
 from collections.abc import Iterable, Mapping
+from pathlib import Path
 from typing import Any
+
+STANDARD_SCALES_PATH = Path(__file__).with_name("standard_scales.json")
+STANDARD_SCALES_SCHEMA_VERSION = 1
+PROJECTION_UNAVAILABLE_MESSAGE = (
+    "standard-scale projection benchbox/core/results/standard_scales.json is missing or unreadable; "
+    "registry-less validation cannot classify scale factors"
+)
 
 SUBSCALE_COMPLIANCE_CLASS = "unofficial_subscale"
 NONSTANDARD_COMPLIANCE_CLASS = "unofficial_nonstandard"
@@ -30,6 +40,33 @@ def is_subscale_tpc(benchmark_id: Any, scale_factor: Any) -> bool:
     return normalize_tpc_benchmark_id(benchmark_id) in SUBSCALE_TPC_BENCHMARKS and 0 < scale < 1.0
 
 
+@functools.cache
+def _standard_scales() -> tuple[float, dict[str, tuple[float, ...]]]:
+    try:
+        projection = json.loads(STANDARD_SCALES_PATH.read_text(encoding="utf-8"))
+        if projection["schema_version"] != STANDARD_SCALES_SCHEMA_VERSION:
+            raise ValueError("unsupported projection schema_version")
+        tolerance = float(projection["match_tolerance"])
+        benchmarks = {
+            str(benchmark_id).lower(): tuple(float(scale) for scale in scales)
+            for benchmark_id, scales in projection["benchmarks"].items()
+        }
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+        raise RuntimeError(PROJECTION_UNAVAILABLE_MESSAGE) from error
+    return tolerance, benchmarks
+
+
+def _is_nonstandard_by_projection(benchmark_id: Any, scale_factor: Any) -> bool:
+    tolerance, benchmarks = _standard_scales()
+    standard = benchmarks.get(str(benchmark_id).lower())
+    if standard is None:
+        return False
+    value = float(scale_factor)
+    if not math.isfinite(value):
+        return True
+    return not any(abs(value - scale) < tolerance for scale in standard)
+
+
 def is_nonstandard_scale(benchmark_id: Any, scale_factor: Any) -> bool:
     if isinstance(scale_factor, bool) or scale_factor is None:
         return False
@@ -40,7 +77,7 @@ def is_nonstandard_scale(benchmark_id: Any, scale_factor: Any) -> bool:
     try:
         from benchbox.core.benchmark_registry import is_standard_scale_factor
     except ImportError:
-        return False
+        return _is_nonstandard_by_projection(benchmark_id, scale_factor)
     try:
         return not is_standard_scale_factor(str(benchmark_id), scale_factor)
     except ValueError:

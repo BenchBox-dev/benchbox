@@ -160,6 +160,7 @@ jobs:
         run: |
           uv run -- python scripts/generate_corpus_inventory.py --check
           uv run -- python scripts/corpus_compliance_snapshot.py --check
+          uv run -- python scripts/generate_standard_scales.py --check
       - name: Corpus validation
         id: results-corpus
         if: ${{ !cancelled() && steps.results-inventory.conclusion == 'success' }}
