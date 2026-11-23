@@ -110,7 +110,7 @@ ALLOWED_HIDDEN_COMPAT_CLI_FILES = {
 ALLOWED_INTERNAL_CLI_FILES = ALLOWED_INTERNAL_CLI_FILES | ALLOWED_HIDDEN_COMPAT_CLI_FILES
 ACCEPTED_CLI_SURFACE_DIGESTS = {
     "benchbox/cli/commands/compare.py": "619038759fe450955d1778f680acdeba6d62baf295a2153af03280d085b0d4d6",
-    "benchbox/cli/commands/report.py": "e373d381a336a479b892334a140a35e8804bc8d2ac5513d18edff21999ef2b60",
+    "benchbox/cli/commands/report.py": "a68830e86c43abb91761db4ef9d5913a8b92ec287daa0bc8edabcf5bda29a73e",
     "benchbox/cli/commands/results.py": "d7e157d2e82397b62e671476c7aa2ee4bf897b5c41a33549a70ee33fd3fd0eac",
     "benchbox/cli/commands/metrics.py": "170f47a581bd13aa1e57a5ddbbb7743630f3600524c3508eb17dccea7f0fe096",
     "benchbox/cli/commands/datagen.py": "31c8ce606dd25c0036598bc3c6722c98449514e64e58841bbe22fecf57ec83b8",

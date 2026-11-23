@@ -18,6 +18,7 @@ from benchbox.core.results.database import (
 )
 from benchbox.core.results.fetch_mode import FETCH_MODES, env_fetch_mode
 from benchbox.core.results.regression_policy import is_meaningful_improvement
+from benchbox.core.results.result_outcome import outcome_words
 
 
 @click.group(
@@ -71,7 +72,7 @@ def report() -> None:
 @click.option(
     "--metric",
     "-m",
-    type=click.Choice(["geometric_mean", "power_at_size", "cost_efficiency"]),
+    type=click.Choice(["geometric_mean", "power_at_size", "throughput_at_size", "qph_at_size", "cost_efficiency"]),
     default="geometric_mean",
     help="Metric to rank by",
 )
@@ -100,6 +101,12 @@ def report() -> None:
     help="Rank only results recorded under this run.timing_method (results without one are method 1).",
 )
 @click.option(
+    "--include-unofficial",
+    is_flag=True,
+    default=False,
+    help="Also rank results the rule admits only for maintainers or scores only from timings (subscale, non-standard scale).",
+)
+@click.option(
     "--db-path",
     type=click.Path(path_type=Path),
     help="Path to result database (default: ~/.benchbox/results.db)",
@@ -112,6 +119,7 @@ def rankings(
     lookback_days: int,
     fetch_mode: str | None,
     timing_method: int | None,
+    include_unofficial: bool,
     db_path: Path | None,
 ) -> None:
     db = ResultDatabase(db_path)
@@ -124,7 +132,12 @@ def rankings(
 
     try:
         rankings_list = db.calculate_rankings(
-            benchmark, scale_factor, config, fetch_mode=fetch_mode or env_fetch_mode(), timing_method=timing_method
+            benchmark,
+            scale_factor,
+            config,
+            include_unofficial=include_unofficial,
+            fetch_mode=fetch_mode or env_fetch_mode(),
+            timing_method=timing_method,
         )
     except IncomparableModesError as exc:
         raise click.ClickException(
@@ -133,6 +146,7 @@ def rankings(
 
     if not rankings_list:
         console.print(f"[yellow]No results found for {benchmark} at scale factor {scale_factor}[/yellow]")
+        _print_undetermined_note(db)
         return
 
     table = Table(title=f"{benchmark} Platform Rankings (SF={scale_factor})")
@@ -151,7 +165,7 @@ def rankings(
 
         if metric == "geometric_mean":
             score_str = f"{r.score:.1f} ms"
-        elif metric == "power_at_size":
+        elif metric in ("power_at_size", "throughput_at_size", "qph_at_size"):
             score_str = f"{r.score:.0f}"
         else:
             score_str = f"${r.score:.4f}/query"
@@ -168,6 +182,7 @@ def rankings(
         )
 
     console.print(table)
+    _print_undetermined_note(db)
 
 
 @report.command(
@@ -312,9 +327,11 @@ def regressions(
         "Scans a directory for JSON result files and imports them into the\n"
         "historical database for analysis.\n"
         "\n"
-        "By default, unofficial TPC-DS results (subscale or non-standard scale factor)\n"
-        "are excluded from the database to prevent contamination of comparative rankings.\n"
-        "Use --include-unofficial to import them explicitly.\n"
+        "Each result's class is derived from the facts in its file (phases run,\n"
+        "scale, streams), never from a recorded stamp. By default, results the rule\n"
+        "admits only for maintainers (TPC-H or TPC-DS below scale factor 1) are\n"
+        "excluded. Use --include-unofficial to import them explicitly. Stored rows\n"
+        "recorded without facts are undetermined until their result file is imported again.\n"
         "\n"
         "\b\n"
         "Examples:\n"
@@ -334,7 +351,7 @@ def regressions(
     "--include-unofficial",
     is_flag=True,
     default=False,
-    help="Include unofficial TPC-DS results (compliance_class != official). Excluded by default.",
+    help="Include results admitted only for maintainers (TPC below scale factor 1). Excluded by default.",
 )
 def import_results(
     directory: Path,
@@ -352,7 +369,7 @@ def import_results(
     console.print(f"[green]Imported: {imported}[/green]")
     if excluded > 0:
         console.print(
-            f"[yellow]Excluded (unofficial TPC-DS): {excluded}[/yellow] "
+            f"[yellow]Excluded (below the TPC minimum scale): {excluded}[/yellow] "
             "[dim](use --include-unofficial to import these)[/dim]"
         )
     if skipped > 0:
@@ -397,6 +414,7 @@ def stats(db_path: Path | None) -> None:
 
     table.add_row("Database Path", summary["database_path"])
     table.add_row("Schema Version", str(summary["schema_version"]))
+    table.add_row("Undetermined Results", str(db.count_undetermined()))
 
     console.print(table)
 
@@ -451,6 +469,7 @@ def list_results(
     table.add_column("Queries", justify="right")
     table.add_column("Geomean (ms)", justify="right")
     table.add_column("Status", justify="center")
+    table.add_column("Class")
     table.add_column("Execution ID", style="dim")
 
     for r in results:
@@ -465,16 +484,29 @@ def list_results(
             f"{r.successful_queries}/{r.total_queries}",
             geomean_str,
             f"[{status_style}]{r.validation_status}[/{status_style}]",
+            outcome_words(r.outcome)[0],
             r.execution_id[:12],
         )
 
     console.print(table)
+    _print_undetermined_note(db)
+
+
+def _print_undetermined_note(db: ResultDatabase) -> None:
+    undetermined = db.count_undetermined()
+    if undetermined:
+        console.print(
+            f"[yellow]{undetermined} stored result(s) are undetermined: they record no facts to derive a class "
+            "from, so no ranking includes them. Import their result files again to derive it.[/yellow]"
+        )
 
 
 def _get_metric_header(metric: str) -> str:
     headers = {
         "geometric_mean": "Geomean",
         "power_at_size": "Power@Size",
+        "throughput_at_size": "Throughput@Size",
+        "qph_at_size": "QphH/QphDS@Size",
         "cost_efficiency": "Cost/Query",
     }
     return headers.get(metric, metric)

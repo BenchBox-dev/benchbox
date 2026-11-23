@@ -228,7 +228,7 @@ class TestConsoleResultFormatter:
         assert stats["scale_factor"] == "2.0"
         assert stats["queries_total"] == "2"
         assert stats["queries_successful"] == "2"
-        assert stats["power_at_size"] == "987.65"
+        assert "power_at_size" not in stats
 
     def test_format_execution_statistics_platform_result(self):
         result = MockBenchmarkResults(

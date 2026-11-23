@@ -22,7 +22,7 @@ from benchbox.core.results.environment import (
 )
 from benchbox.core.results.execution_variant import execution_engine_payload, gateway_payload
 from benchbox.core.results.fetch_mode import summarize_fetch_modes
-from benchbox.core.results.metrics import UNOFFICIAL_COMPLIANCE_CLASSES, percentile_ms
+from benchbox.core.results.metrics import percentile_ms
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.platform_timing import resolve_net_estimate_status, summarize_run_platform_timing
 from benchbox.core.results.provenance import VENDOR_PROVENANCE_FIELDS
@@ -49,6 +49,7 @@ from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
     OFFICIAL_COMPLIANCE_CLASS,
     SUBSCALE_COMPLIANCE_CLASS,
+    UNOFFICIAL_COMPLIANCE_CLASSES,
     platform_info_gateway,
     unofficial_metric_marker,
 )
