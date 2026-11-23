@@ -17,6 +17,7 @@ from benchbox.core.expected_results import has_row_count_reference
 from benchbox.core.expected_results.loader import TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS
 from benchbox.core.expected_results.ssb_results import SSB_EXPECTED_ROW_COUNTS
 from benchbox.core.expected_results.tpcds_results import TPCDS_SUBSCALE_ROW_COUNTS
+from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS
 from benchbox.core.tpc_spec import min_streams_for_scale
 
 DATA_PATH = CHECKOUT_ROOT / "benchbox" / "core" / "results" / "corpus_rule_data.json"
@@ -59,6 +60,7 @@ def build_data() -> dict[str, Any]:
         stream_minimum[benchmark_id] = minima
     return {
         "schema_version": SCHEMA_VERSION,
+        "min_throughput_streams": MIN_THROUGHPUT_STREAMS,
         "row_count_reference_scales": row_count_reference_scales(),
         "scales": scales,
         "stream_minimum": stream_minimum,

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import dataclasses
+
 import generate_corpus_rule_data as script
 import pytest
 
@@ -47,3 +49,34 @@ def test_a_changed_reference_source_changes_the_data(monkeypatch) -> None:
     monkeypatch.setattr(script, "has_row_count_reference", lambda benchmark, scale: False)
 
     assert script.drift() is not None
+
+
+def test_a_scale_added_to_the_registry_but_not_the_data_file_fails_the_check(monkeypatch) -> None:
+    real_rule = script.get_scale_factor_rule
+
+    def widened(benchmark_id: str):
+        rule = real_rule(benchmark_id)
+        if benchmark_id != "tpch":
+            return rule
+        return dataclasses.replace(rule, standard=(*rule.standard, 3000.0))
+
+    monkeypatch.setattr(script, "get_scale_factor_rule", widened)
+
+    problem = script.drift()
+
+    assert problem is not None
+    assert script.REGENERATE_COMMAND in problem
+    assert script.main(["--check"]) != 0
+
+
+def test_a_changed_minimum_throughput_stream_count_changes_the_data(monkeypatch) -> None:
+    monkeypatch.setattr(script, "MIN_THROUGHPUT_STREAMS", 7)
+
+    assert script.drift() is not None
+
+
+def test_the_rule_module_reads_the_minimum_throughput_streams_from_the_data_file() -> None:
+    from benchbox.core.results import corpus_rule
+    from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS
+
+    assert corpus_rule.min_throughput_streams() == MIN_THROUGHPUT_STREAMS

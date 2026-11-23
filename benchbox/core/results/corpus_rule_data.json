@@ -1,4 +1,5 @@
 {
+  "min_throughput_streams": 2,
   "row_count_reference_scales": {
     "ssb": [
       0.01,

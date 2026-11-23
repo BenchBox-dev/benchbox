@@ -93,7 +93,7 @@ def power_at_size(data: Mapping[str, Any]) -> float | None:
         if power_refresh_evidence(power_phase)[0]:
             refresh = [max(0.001, function["duration_ms"] / 1000.0) for function in power_phase["refresh_functions"]]
             seconds = [refresh[0], *seconds, refresh[1]]
-    geometric_mean = math.exp(sum(math.log(value) for value in seconds) / len(seconds))
+    geometric_mean = math.exp(math.fsum(math.log(value) for value in seconds) / len(seconds))
     return (scale * 3600) / geometric_mean
 
 
@@ -141,8 +141,8 @@ def qphds_terms(
     return {
         "q": float(POWER_QUERY_COUNTS["tpcds"] * num_streams),
         "t_pt_hours": power_seconds * num_streams / 3600.0,
-        "t_tt_hours": sum(throughput_seconds) / 3600.0,
-        "t_dm_hours": sum(maintenance_seconds) / 3600.0,
+        "t_tt_hours": math.fsum(throughput_seconds) / 3600.0,
+        "t_dm_hours": math.fsum(maintenance_seconds) / 3600.0,
         "t_ld_hours": 0.01 * num_streams * load_seconds / 3600.0,
     }
 

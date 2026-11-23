@@ -10,7 +10,8 @@ PR #166 is open as draft against `published-results`. The W4 sync workflow
 with this ADR update.
 
 Amended 2026-11-22: the vendored runtime gains the stdlib-only corpus-rule
-module and its data file (see "Corpus rule file set"). The rule itself is
+module, its data file, the score module and the comparison-identity module
+and file (see "Corpus rule file set"). The rule itself is
 recorded in [adr-corpus-derived-outcome-rule.md](adr-corpus-derived-outcome-rule.md).
 
 ## Date
@@ -96,7 +97,8 @@ second corpus authority.
 | `benchbox/validation/bundle.py` | The shared validator implementation used by both develop and this branch. Mirrored here so `validate_submission.py` runs without installing BenchBox; kept in sync by `sync-results-data-to-published.yml`. |
 | `benchbox/core/results/query_status.py` | Stdlib-only failed-query policy shared by publication, ranking, and the slim validator so both branches judge measurement failures identically. |
 | `benchbox/core/results/schema_policy.py` | Stdlib-only schema-version policy required by the shared bundle validator. |
-| The corpus-rule module and its data file (`benchbox/core/results/`) | Stdlib-only. One function of facts in a result file gives its class, lane, label and score, so `develop`, the slim validator and the mirror branch compute the same outcome. See "Corpus rule file set". |
+| `benchbox/core/results/corpus_rule.py`, `corpus_rule_data.json`, `corpus_score.py`, `comparison_identity.py`, `comparison_identity.json` | Stdlib-only. One function of facts in a result file gives its class, lane, label and score, and one function gives its comparison identity, so `develop`, the slim validator and the mirror branch compute the same outcome. See "Corpus rule file set". |
+| `scripts/unpublished_rule_rankings.txt` | List of bundles whose rule-derived rankings are not yet published; the cohort-depth gate in `results-data/validate_corpus.py` reads it, and a missing file silently reads as empty, so it is mirrored with the validator. |
 | `scripts/publication/validator_parity.py` | Trusted validator entry point comparing the PR-head and merge payload outcomes. Its runtime consists only of the allowlisted shared validator files. |
 | `scripts/generate_corpus_inventory.py` | Inventory generator — same rationale as above. |
 | `.github/workflows/validate-submission.yml` | The submission CI gate. |
@@ -237,10 +239,26 @@ not an owner decision. Mirror-ordering rule:
   BenchBox, so the slim checkout can run it.
 - `develop` remains authoritative; the copies on `published-results` are
   read-only mirrors, like the six runtime files.
+- The slim validator calls the rule and the score function for every
+  outcome and has no fallback to the stamp a writer recorded or to a value
+  the scale registry owns. The data file carries the standard scales, the
+  stream minima and the minimum throughput stream count;
+  `scripts/generate_corpus_rule_data.py --check` fails CI on `develop` when
+  the registry or `tpc_spec.py` and the data file differ.
+- `scripts/check_mirror_validator_parity.py` is a required check on
+  `develop`. It builds a checkout holding only the mirrored files, runs the
+  validator there with `python -I -S` (standard library only), runs the
+  `develop` validator over the same stored bundles, and fails when any
+  bundle differs in admission, lane, class, label, score or submission
+  findings.
+- Every mirrored runtime file, and the workflow file itself, is on the
+  "reject validator changes" list of `validate-submission.yml`;
+  `tests/unit/scripts/test_check_mirror_validator_parity.py` fails when the
+  list and the sync workflow's file list differ.
 
 ### The workflow file itself is NOT auto-mirrored — this is permanent, not a gap to close
 
-`sync-results-data-to-published.yml`'s automated mirror covers these six files (`benchbox/core/results/corpus_rule.py` and `benchbox/core/results/corpus_rule_data.json` are also mirrored by the same workflow, as one unit):
+`sync-results-data-to-published.yml`'s automated mirror covers these six files (the five corpus-rule files `corpus_rule.py`, `corpus_rule_data.json`, `corpus_score.py`, `comparison_identity.py` and `comparison_identity.json` under `benchbox/core/results/` are also mirrored by the same workflow, as one unit; `results-data/validate_corpus.py`, `scripts/unpublished_rule_rankings.txt`, `subscale_policy.py` and `timing_fields.py` travel with them):
 
 - `scripts/validate_submission.py`
 - `scripts/generate_corpus_inventory.py`

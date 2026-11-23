@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The published-results validator now computes admission, lane, label and score only through the shared corpus rule and score modules, with no fallback to a recorded stamp or a hard-coded stream minimum, and a required check runs it and the develop validator over every stored result and fails when they differ."
+    }
+  ]
+}
