@@ -1515,6 +1515,9 @@ def test_validator_agrees_with_the_explorer_on_phase_and_rankability(tmp_path: P
     explorer_phase, explorer_reason = _explorer_pipeline_view(path)
 
     assert validator.bundle_phase(payload) == explorer_phase
+    if explorer_reason in COMBINED_EVIDENCE_REASONS:
+        assert "combined" not in validator.bundle_lanes(payload)
+        return
     assert validator.exclusion_reason(payload) == explorer_reason
     assert validator.bundle_rankable(payload) is (explorer_reason is None)
 
@@ -1561,6 +1564,7 @@ def test_inventory_validator_and_explorer_agree_on_the_cohort_phase(tmp_path: Pa
     assert (scale.split("#")[1] if "#" in scale else "power") == explorer_phase
 
 
+COMBINED_EVIDENCE_REASONS = frozenset({"combined_throughput_not_clean", "combined_refresh_not_clean"})
 STAMP_REFUSAL_REASON = "unofficial_compliance"
 RULE_NEWLY_RANKED_COMMITTED_BUNDLES = 19
 
@@ -1851,9 +1855,7 @@ def test_combined_bundles_without_clean_throughput_and_refresh_evidence_are_not_
     validator = _load_validator()
     payload = _parity_variants()[name]
 
-    assert _combined_ranking_value(validator, payload) is None
-    assert validator.exclusion_reason(payload) == reason
-    assert validator.bundle_rankable(payload) is False
+    assert "combined" not in validator.bundle_lanes(payload)
 
 
 @pytest.mark.parametrize(
@@ -1880,3 +1882,52 @@ def test_combined_cohort_keys_stay_separate_from_the_power_cohort() -> None:
 
     assert validator.cohort_phase_suffix(combined_bundle()) == "#combined"
     assert validator.cohort_phase_suffix(combined_bundle(benchmark="tpcds")) == "#combined"
+
+
+def _phase_bundle(*, throughput: bool, refresh: bool) -> dict:
+    payload = combined_bundle()
+    payload["phases"]["power_test"] = {
+        "status": "COMPLETED",
+        "query_count": 22,
+        **(
+            {
+                "refresh_first_set": 5,
+                "refresh_functions": [
+                    {"function": name, "update_set": 5, "duration_ms": 15, "status": "SUCCESS"}
+                    for name in ("RF1", "RF2")
+                ],
+            }
+            if refresh
+            else {}
+        ),
+    }
+    if not throughput:
+        payload["phases"]["throughput_test"] = {"status": "NOT_RUN"}
+        payload["queries"] = [query for query in payload["queries"] if query.get("test_type") != "throughput"]
+    elif not refresh:
+        payload["phases"]["throughput_test"].pop("refresh_stream", None)
+    payload["benchmark"].pop("test_type", None)
+    return payload
+
+
+def test_a_partial_power_and_throughput_bundle_ranks_in_both_cohorts(tmp_path: Path) -> None:
+    validator = _load_validator()
+    payload = _phase_bundle(throughput=True, refresh=False)
+    path = tmp_path / "partial.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator.bundle_lanes(payload, path) == ("power_only", "throughput")
+    cohorts = validator.cohort_platforms([path])
+    assert sorted(cohorts) == [("tpch", "1.0"), ("tpch", "1.0#throughput#2streams")]
+    assert all(len(identities) == 1 for identities in cohorts.values())
+
+
+def test_a_power_and_refresh_bundle_without_throughput_ranks_power_only(tmp_path: Path) -> None:
+    validator = _load_validator()
+    payload = _phase_bundle(throughput=False, refresh=True)
+    path = tmp_path / "refresh.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator.bundle_lanes(payload, path) == ("power_only",)
+    cohorts = validator.cohort_platforms([path])
+    assert {key: len(identities) for key, identities in cohorts.items()} == {("tpch", "1.0"): 1}
