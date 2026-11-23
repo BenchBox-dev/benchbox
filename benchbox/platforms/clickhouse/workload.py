@@ -114,6 +114,7 @@ class ClickHouseWorkloadMixin:
             )
             nullable_columns_by_table = self._get_nullable_columns_by_table(benchmark)
             schema_tables = self._get_schema_table_names(benchmark)
+            self._require_no_existing_schema_tables(connection, schema_tables)
 
             table_tunings = None
             if self.tuning_enabled and effective_config is not None:
@@ -153,6 +154,15 @@ class ClickHouseWorkloadMixin:
             raise
 
         return elapsed_seconds(start_time)
+
+    def _require_no_existing_schema_tables(self, connection: Any, schema_tables: set[str]) -> None:
+        clashes = sorted(set(self._get_existing_tables(connection)) & {name.lower() for name in schema_tables})
+        if clashes:
+            raise RuntimeError(
+                f"Refusing to create the schema: table(s) {', '.join(clashes)} already exist in database "
+                f"'{getattr(self, 'database', 'default')}', and no table was created. Re-run with --force to drop "
+                "and recreate the database, or use an empty database."
+            )
 
     def _translate_schema_statement(
         self,
