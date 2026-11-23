@@ -3780,6 +3780,7 @@
       "accepted_members": {
         "crr-a0-decision-records": "98270097cf7240eb08df85fbc3512e860ed26aa7",
         "crr-a1-rule-module-and-snapshot": "8898e0559b7b10f25c0b92af3e9083d5fa47c647",
+        "crr-a2-writer-and-score-from-timings": "e489a4cf38c4fc346afb6d166b125e65caffe8cd",
         "crr-b1-identity-and-comparison-version": "b8476bed2c90140f84813231be0a52218dbdb8a3",
         "crr-c1-validation-status-vocabulary": "37f31ba22c582643360aa2bd4392884d10130087",
         "crr-d1-observed-engine-contract-and-dataframe": "d604a887132187c5a0875f0700aa01c23c2670e4"
@@ -3811,6 +3812,77 @@
           ],
           "integration_head": "ac57e97965796472f439ff9eb73a99eac17958c8",
           "integration_seq": 3
+        },
+        "crr-a2-writer-and-score-from-timings": {
+          "accepted_head": "e489a4cf38c4fc346afb6d166b125e65caffe8cd",
+          "changed_files": [
+            ".github/workflows/ci.yml",
+            ".github/workflows/sync-results-data-to-published.yml",
+            "_project/scripts/explorer_pipeline/transformer.py",
+            "benchbox/cli/commands/metrics.py",
+            "benchbox/cli/commands/submit.py",
+            "benchbox/core/publishing/admission.py",
+            "benchbox/core/results/builder.py",
+            "benchbox/core/results/corpus_rule.py",
+            "benchbox/core/results/corpus_score.py",
+            "benchbox/core/results/metrics.py",
+            "benchbox/core/results/qphds.py",
+            "benchbox/core/results/schema.py",
+            "benchbox/core/results/submit_classification.py",
+            "benchbox/core/results/subscale_policy.py",
+            "benchbox/core/tpc_patterns.py",
+            "benchbox/core/tpcds/compliance.py",
+            "benchbox/core/tpch/compliance.py",
+            "benchbox/platforms/dataframe/benchmark_mixin.py",
+            "benchbox/validation/bundle.py",
+            "changelog.d/feat-corpus-rule-r3--crr-a2-writer-and-score-from-timings.json",
+            "docs/internal/adr/adr-published-results-slim-corpus-branch.md",
+            "results-data/compliance-classes.json",
+            "results-data/validate_corpus.py",
+            "scripts/corpus_compliance_snapshot.py",
+            "scripts/corpus_drift.py",
+            "tests/integration/test_cross_branch_validator_contract.py",
+            "tests/integration/test_tpcds_official_end_to_end.py",
+            "tests/uat/phases/validate.py",
+            "tests/uat/test_package.py",
+            "tests/uat/test_phases.py",
+            "tests/uat/test_runner.py",
+            "tests/uat/test_validate.py",
+            "tests/unit/cli/commands/test_publish.py",
+            "tests/unit/cli/commands/test_submit.py",
+            "tests/unit/cli/test_new_commands.py",
+            "tests/unit/core/results/test_corpus_score.py",
+            "tests/unit/core/results/test_corpus_score_runtime_parity.py",
+            "tests/unit/core/results/test_export_power_precision.py",
+            "tests/unit/core/results/test_metrics.py",
+            "tests/unit/core/results/test_public_admission_rule.py",
+            "tests/unit/core/results/test_qphds.py",
+            "tests/unit/core/results/test_routed_compliance.py",
+            "tests/unit/core/results/test_schema_timing_contract.py",
+            "tests/unit/core/results/test_submit_classifier_contract.py",
+            "tests/unit/core/results/test_subscale_tpc_metrics.py",
+            "tests/unit/core/results/test_tpch_refresh_metrics.py",
+            "tests/unit/core/results/test_variant_comparability_end_to_end.py",
+            "tests/unit/core/test_run_timeout_result.py",
+            "tests/unit/core/tpcds/test_compliance.py",
+            "tests/unit/core/tpch/test_tpch_compliance.py",
+            "tests/unit/platforms/test_tpcds_combined_order.py",
+            "tests/unit/scripts/explorer_pipeline/conftest.py",
+            "tests/unit/scripts/explorer_pipeline/test_combined_ranking.py",
+            "tests/unit/scripts/explorer_pipeline/test_duckdb_browser_contract.py",
+            "tests/unit/scripts/explorer_pipeline/test_throughput_ranking.py",
+            "tests/unit/scripts/explorer_pipeline/test_transformer.py",
+            "tests/unit/scripts/test_corpus_cohort_depth.py",
+            "tests/unit/scripts/test_corpus_compliance_snapshot.py",
+            "tests/unit/scripts/test_corpus_execution_class_identity.py",
+            "tests/unit/scripts/test_corpus_nonstandard_scale.py",
+            "tests/unit/scripts/test_corpus_score_guard.py",
+            "tests/unit/scripts/test_validate_submission.py",
+            "tests/unit/test_results_exporter.py",
+            "tests/unit/test_sync_results_workflow.py"
+          ],
+          "integration_head": "327195efcce34c25d1c782ce19677b652a63b365",
+          "integration_seq": 6
         },
         "crr-b1-identity-and-comparison-version": {
           "accepted_head": "b8476bed2c90140f84813231be0a52218dbdb8a3",
@@ -3930,7 +4002,7 @@
         }
       },
       "integration_branch": "feat/corpus-rule-r4",
-      "integration_head": "e5731841b37dbd6471ac66eb8e90213dd0841a41",
+      "integration_head": "327195efcce34c25d1c782ce19677b652a63b365",
       "integration_log": [
         {
           "at": "2026-11-22T23:06:06Z",
@@ -3982,6 +4054,15 @@
           "op_id": "61d93ea07f8d4e049b87c5333ec8e5ec",
           "previous_head": "859ad5835188eecec5a9cf99444383bc78b0fdca",
           "seq": 5
+        },
+        {
+          "at": "2026-11-23T12:36:50Z",
+          "head": "327195efcce34c25d1c782ce19677b652a63b365",
+          "kind": "prepare",
+          "member": "crr-a2-writer-and-score-from-timings",
+          "op_id": "f80117af4f9441ce9498a19a4c246c07",
+          "previous_head": "e5731841b37dbd6471ac66eb8e90213dd0841a41",
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r4",
@@ -23879,17 +23960,12 @@
       "title": "Add the outcome rule as one stdlib-only module with an exhaustive test and a corpus outcome snapshot"
     },
     "crr-a2-writer-and-score-from-timings": {
-      "claim": {
-        "expires_at": "2026-11-24T11:05:43Z",
-        "generation": "374d45e3e45442fd9979754fa877af50",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2"
-      },
+      "claim": null,
       "needs": [
         "crr-a1-rule-module-and-snapshot"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Make the result writer use the rule and recompute every lane's score from timings"
     },
     "crr-a3-validators-staging-and-admission": {
