@@ -170,8 +170,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -208,8 +208,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -534,8 +534,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -572,8 +572,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -994,8 +994,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -1032,8 +1032,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -1750,8 +1750,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -1788,8 +1788,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -1874,8 +1874,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -2180,8 +2180,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -2218,8 +2218,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -2658,8 +2658,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -2696,8 +2696,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -3184,8 +3184,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -6532,8 +6532,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -6570,8 +6570,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -6608,8 +6608,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -6886,8 +6886,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -6924,8 +6924,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -7298,8 +7298,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -7336,8 +7336,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -7758,8 +7758,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -9368,8 +9368,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -9406,8 +9406,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -9482,8 +9482,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -9520,8 +9520,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -9882,8 +9882,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -9920,8 +9920,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -9996,8 +9996,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -10034,8 +10034,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -10456,8 +10456,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -10494,8 +10494,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -10532,8 +10532,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -10570,8 +10570,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -10752,8 +10752,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -10790,8 +10790,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -11116,8 +11116,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -11154,8 +11154,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -11720,8 +11720,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -11758,8 +11758,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -12660,8 +12660,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -13393,8 +13393,8 @@
       },
       "rule": {
         "class": "power_only",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -13853,8 +13853,8 @@
       },
       "rule": {
         "class": "power_only",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -13893,8 +13893,8 @@
       },
       "rule": {
         "class": "power_only",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -14964,7 +14964,7 @@
       "rule": {
         "class": "subscale",
         "public_admission": false,
-        "maintainer_admission": true,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -15004,7 +15004,7 @@
       "rule": {
         "class": "subscale",
         "public_admission": false,
-        "maintainer_admission": true,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -15043,7 +15043,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -15083,7 +15083,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -15173,7 +15173,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -15213,7 +15213,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -15303,7 +15303,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -15343,7 +15343,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -15384,7 +15384,7 @@
       "rule": {
         "class": "subscale",
         "public_admission": false,
-        "maintainer_admission": true,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -15424,7 +15424,7 @@
       "rule": {
         "class": "subscale",
         "public_admission": false,
-        "maintainer_admission": true,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -15464,7 +15464,7 @@
       "rule": {
         "class": "subscale",
         "public_admission": false,
-        "maintainer_admission": true,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -15503,7 +15503,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -15543,7 +15543,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -15633,7 +15633,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -15673,7 +15673,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -15713,7 +15713,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -15803,7 +15803,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -15843,7 +15843,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -15933,7 +15933,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -16023,7 +16023,7 @@
       "rule": {
         "class": "subscale",
         "public_admission": false,
-        "maintainer_admission": true,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -16063,7 +16063,7 @@
       "rule": {
         "class": "subscale",
         "public_admission": false,
-        "maintainer_admission": true,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -16151,7 +16151,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -16191,7 +16191,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -16231,7 +16231,7 @@
       },
       "rule": {
         "class": "subscale",
-        "public_admission": false,
+        "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
@@ -16961,8 +16961,8 @@
       },
       "rule": {
         "class": "power_only",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -17516,8 +17516,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -17936,8 +17936,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -18385,8 +18385,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
@@ -18512,8 +18512,8 @@
       },
       "rule": {
         "class": "none",
-        "public_admission": true,
-        "maintainer_admission": true,
+        "public_admission": false,
+        "maintainer_admission": false,
         "lanes": [],
         "score_source": null,
         "labels": [
