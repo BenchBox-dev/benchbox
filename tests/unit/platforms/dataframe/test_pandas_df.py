@@ -37,6 +37,57 @@ class TestPandasDataFrameAdapter:
         assert adapter.family == "pandas"
         assert adapter.dtype_backend == "numpy_nullable"
 
+    def test_initialization_uses_system_arrow_memory_pool(self, monkeypatch):
+        import pyarrow as pa
+
+        monkeypatch.delenv("ARROW_DEFAULT_MEMORY_POOL", raising=False)
+        pa.set_memory_pool(pa.mimalloc_memory_pool())
+
+        PandasDataFrameAdapter()
+
+        assert pa.default_memory_pool().backend_name == "system"
+
+    def test_initialization_keeps_arrow_memory_pool_chosen_by_environment(self, monkeypatch):
+        import pyarrow as pa
+
+        monkeypatch.setenv("ARROW_DEFAULT_MEMORY_POOL", "mimalloc")
+        pa.set_memory_pool(pa.mimalloc_memory_pool())
+
+        PandasDataFrameAdapter()
+
+        assert pa.default_memory_pool().backend_name == "mimalloc"
+
+    def test_arrow_memory_pool_is_restored_after_a_test_builds_the_adapter(self, tmp_path):
+        import os
+        import subprocess
+        import sys
+
+        repo_root = Path(__file__).resolve().parents[4]
+        (tmp_path / "conftest.py").write_text("from tests.conftest import _restore_arrow_memory_pool  # noqa: F401\n")
+        (tmp_path / "test_pool.py").write_text(
+            "import pyarrow as pa\n"
+            "from benchbox.platforms.dataframe.pandas_df import PandasDataFrameAdapter\n"
+            "BEFORE = pa.default_memory_pool().backend_name\n"
+            "def test_a_builds_adapter(monkeypatch):\n"
+            "    monkeypatch.delenv('ARROW_DEFAULT_MEMORY_POOL', raising=False)\n"
+            "    pa.set_memory_pool(pa.mimalloc_memory_pool())\n"
+            "    PandasDataFrameAdapter()\n"
+            "    assert pa.default_memory_pool().backend_name == 'system'\n"
+            "def test_b_sees_restored_pool():\n"
+            "    assert pa.default_memory_pool().backend_name == BEFORE\n"
+        )
+
+        completed = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-p", "no:xdist", str(tmp_path)],
+            cwd=repo_root,
+            env={**os.environ, "PYTHONPATH": str(repo_root)},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        assert completed.returncode == 0, completed.stdout + completed.stderr
+
     def test_initialization_with_options(self):
 
         adapter = PandasDataFrameAdapter(
