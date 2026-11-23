@@ -75,7 +75,9 @@ def write_java_stub(home: Path, posix_body: str, windows_body: str) -> Path:
     else:
         executable.write_text(f"#!/bin/sh\n{posix_body}")
         executable.chmod(executable.stat().st_mode | stat.S_IEXEC)
-    return executable
+    found = shutil.which("java", path=str(executable.parent))
+    assert found is not None
+    return Path(found)
 
 
 def write_fake_java(home: Path, version: str) -> Path:
