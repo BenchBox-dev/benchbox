@@ -12270,6 +12270,7 @@
     },
     "shared-data-lifecycle": {
       "accepted_members": {
+        "low-disk-guard-local-snapshots-20261122": "b829571859f12e8e51cb9a80e8573a37ca041637",
         "results-dir-env-ignored-by-cli-run-20261122": "487a5c1abab5d474215a5f53af7495c4cb1ad9b1",
         "version-matrix-data-cleanup-residual-gaps-20261122": "db63e3cc2f045c4b5a97804f213d390cbdfacc0e"
       },
@@ -12278,6 +12279,25 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "low-disk-guard-local-snapshots-20261122": {
+          "accepted_head": "b829571859f12e8e51cb9a80e8573a37ca041637",
+          "changed_files": [
+            "benchbox/utils/disk_guard.py",
+            "benchbox/utils/heavy_status.py",
+            "benchbox/utils/host_lock.py",
+            "benchbox/utils/local_snapshots.py",
+            "changelog.d/feat-shared-data-lifecycle--low-disk-guard-local-snapshots-20261122.json",
+            "docs/agent/heavy-work.md",
+            "docs/internal/low-disk-guard.md",
+            "tests/unit/mcp/test_mcp_low_disk_guard.py",
+            "tests/unit/scripts/test_host_lock.py",
+            "tests/unit/utils/test_disk_guard.py",
+            "tests/unit/utils/test_heavy_status.py",
+            "tests/unit/utils/test_local_snapshots.py"
+          ],
+          "integration_head": "6b7e561b89e5c7a593b5ed8e139be533b58781a1",
+          "integration_seq": 3
+        },
         "results-dir-env-ignored-by-cli-run-20261122": {
           "accepted_head": "487a5c1abab5d474215a5f53af7495c4cb1ad9b1",
           "changed_files": [
@@ -12298,7 +12318,7 @@
         }
       },
       "integration_branch": "feat/shared-data-lifecycle",
-      "integration_head": "144badc14fb4dd3c0552d7138862d81aeb4d4505",
+      "integration_head": "6b7e561b89e5c7a593b5ed8e139be533b58781a1",
       "integration_log": [
         {
           "at": "2026-11-23T14:25:08Z",
@@ -12323,6 +12343,15 @@
           "op_id": "582ceafeceaf4539b891841aa50fd370",
           "previous_head": "a8c3b06bc855a9f6492bbc1e53aa097ccf3591a8",
           "seq": 2
+        },
+        {
+          "at": "2026-11-23T18:19:20Z",
+          "head": "6b7e561b89e5c7a593b5ed8e139be533b58781a1",
+          "kind": "prepare",
+          "member": "low-disk-guard-local-snapshots-20261122",
+          "op_id": "06f06f81d7844f618e0c13ee02d21a7f",
+          "previous_head": "144badc14fb4dd3c0552d7138862d81aeb4d4505",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-shared-data-lifecycle",
@@ -33463,15 +33492,10 @@
       "title": "Raise DataLoadingError instead of silent zero-row loads in SQL/file loader"
     },
     "low-disk-guard-local-snapshots-20261122": {
-      "claim": {
-        "expires_at": "2026-11-24T18:19:16Z",
-        "generation": "68e67e65ec86404b8cd593e735526084",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "Make the low-disk guidance and reports account for space held by local snapshots"
     },
     "lxml-cve-pysec-2026-87-blocked-by-redshift-connector": {
