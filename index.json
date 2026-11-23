@@ -52774,15 +52774,10 @@
       "title": "UAT runs benchmarks with --quiet, so the first failure's error text is lost"
     },
     "uat-regression-doris-clickbench-mooncake-flightdata": {
-      "claim": {
-        "expires_at": "2026-11-24T04:23:36Z",
-        "generation": "c24bfea9e25043bb83150c86f073e5cd",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "pg_mooncake FlightData load fails in trunk UAT at SF0.01 (Doris ClickBench fixed)"
     },
     "uat-release-gate-enforcement": {
