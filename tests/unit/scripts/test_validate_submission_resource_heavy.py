@@ -18,7 +18,7 @@ pytestmark = [
 
 def _minimal_bundle() -> dict:
     return {
-        "version": "2.1",
+        "version": "2.2",
         "export": {"anonymized": True},
         "run": {
             "id": "abc123",
@@ -28,7 +28,7 @@ def _minimal_bundle() -> dict:
         "benchmark": {
             "id": "tpch",
             "name": "TPC-H",
-            "scale_factor": 0.01,
+            "scale_factor": 1.0,
         },
         "platform": {
             "name": "DuckDB",
@@ -38,7 +38,16 @@ def _minimal_bundle() -> dict:
             "validation": "passed",
             "queries": {"total": 22, "passed": 22, "failed": 0},
         },
-        "queries": [{"id": f"Q{i}", "ms": 100 + i, "status": "SUCCESS"} for i in range(1, 23)],
+        "queries": [
+            {
+                "id": f"Q{i}",
+                "ms": 100 + i,
+                "status": "SUCCESS",
+                "rows": 5,
+                "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5},
+            }
+            for i in range(1, 23)
+        ],
     }
 
 
@@ -74,6 +83,10 @@ def _copy_slim_validator(repo_root: Path, slim_root: Path) -> None:
         repo_root / "benchbox" / "core" / "results" / "subscale_policy.py",
         slim_root / "benchbox" / "core" / "results" / "subscale_policy.py",
     )
+    for name in ("corpus_rule.py", "corpus_rule_data.json"):
+        shutil.copy2(
+            repo_root / "benchbox" / "core" / "results" / name, slim_root / "benchbox" / "core" / "results" / name
+        )
 
 
 @pytest.fixture

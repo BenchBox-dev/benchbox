@@ -236,19 +236,31 @@ identities from DuckDB, ClickHouse Local (chDB only) and CedarDB; see
 
 A matrix entry marked `official: true` adds `--official --seed 42` and its
 `streams` value to the generic local command and runs the phases the entry lists;
-official TPC-H entries also enable the refresh functions. Only a TPC-H or TPC-DS
-run made with `--official` is classed `official`; without the flag a run at SF 1
-or above is `unofficial_nonstandard` and is never admitted. The TPC-H SF 1 and
-TPC-DS SF 1 entries are the only ones marked `official: true`.
+official TPC-H entries also enable the refresh functions. The stored
+`compliance_class` is information the writer derives from the corpus rule; no gate
+reads it. Admission and ranking follow from the facts in the result file: the
+benchmark, the scale factor, the phases that ran, the streams that completed and the
+validation record. `benchbox run --official` still refuses any scale factor that is not
+an official scale point (SF 1, 10, 30, and so on).
 
-The flag applies only at official scale points (SF 1, 10, 30, and so on).
-`benchbox run --official` refuses any other scale factor, and every TPC-H or
-TPC-DS run below SF 1 is classed `unofficial_subscale` with or without the
-flag. The TPC-H SF 0.01 and SF 0.1 entries therefore run the generic command,
-and staging skips their bundles as `unofficial_compliance`. Those cohorts
-contribute no rankable bundle and are reported as `UNRANKED`. They stay in the
-matrix because removing coverage is a maintainer decision; dropping them would
-only save runner time, since they add nothing to the admitted corpus.
+The staging script, `validate_submission.py` (public and trusted), `benchbox submit`,
+`benchbox publish` and `validate_corpus.py` all call `corpus_rule` and agree on the
+outcome (`tests/unit/scripts/test_corpus_rule_parity.py`):
+
+| Facts | Public path | Staging and trusted validation | `validate_corpus.py` lane |
+|---|---|---|---|
+| TPC-H or TPC-DS, standard scale, one or more of power, throughput, refresh | admitted | admitted | the lane the rule names (combined, power-only or throughput) |
+| TPC-H or TPC-DS below SF 1 | refused | admitted | subscale |
+| any benchmark at a non-standard scale | admitted | admitted | none: admitted and unranked |
+| other benchmark at a standard scale | admitted | admitted | its own |
+| gateway-routed result | refused | refused by staging | none |
+
+Staging stops at `validate_corpus.admission_reason`; it never reads the rank. A
+non-standard-scale result therefore stages and validates as admitted and unranked,
+and the TPC-H SF 0.01 and SF 0.1 entries stage as subscale results. The vendor-terms,
+anonymization, tuning and timing-coverage checks stay behind the same entry points.
+`tests/unit/cli/test_corpus_rule_lane_canary.py` builds one result per lane through the
+CLI arguments with a stubbed executor and asserts each enters its lane.
 
 ### Timestamp contract
 

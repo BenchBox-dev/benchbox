@@ -71,27 +71,7 @@ try:
 except ImportError:
     EXECUTION_CLASSES = ("native", "container")
 
-try:
-    from benchbox.core.benchmark_registry import is_standard_scale_factor
-except ImportError:
-    is_standard_scale_factor = None
-
-NONSTANDARD_COMPLIANCE_CLASS = "unofficial_nonstandard"
 KNOWN_COMPLIANCE_CLASSES = frozenset({"official", "unofficial_nonstandard", "unofficial_subscale"})
-OFFICIAL_CLASS_BENCHMARKS = frozenset({"tpch", "tpcds"})
-
-
-def _is_nonstandard_scale(benchmark_id: Any, scale_factor: Any) -> bool:
-    if is_standard_scale_factor is None or isinstance(scale_factor, bool) or scale_factor is None:
-        return False
-    try:
-        float(scale_factor)
-    except (TypeError, ValueError):
-        return False
-    try:
-        return not is_standard_scale_factor(str(benchmark_id), scale_factor)
-    except ValueError:
-        return False
 
 
 try:
@@ -465,7 +445,6 @@ PUBLIC_NO_REFERENCE_VALIDATION_STATUS = _query_status.NO_REFERENCE_VALIDATION_ST
 PUBLIC_ADMITTED_VALIDATION_STATUSES = frozenset({PUBLIC_CLEAN_VALIDATION_STATUS, PUBLIC_NO_REFERENCE_VALIDATION_STATUS})
 PUBLIC_MIRROR_ALLOWED_VALIDATION_STATUSES = PUBLIC_ADMITTED_VALIDATION_STATUSES | frozenset({"partial", "not_run"})
 PUBLIC_NON_CLEAN_TRANSLATION_STATUSES = {"fallback", "failed"}
-CLI_REFUSED_COMPLIANCE_CLASSES = frozenset({"unofficial_nonstandard", "unofficial_subscale"})
 TPCDI_BENCHMARK_ID = "tpcdi"
 TPCDI_BUNDLE_REFUSAL = "TPC-DI bundles are not accepted while BenchBox reworks TPC-DI."
 
@@ -1817,28 +1796,26 @@ def _validate_compliance_section(
             f"expected one of {sorted(KNOWN_COMPLIANCE_CLASSES)}"
         )
         return
-    if _is_gateway_routed(platform):
-        compliance = NONSTANDARD_COMPLIANCE_CLASS
-    elif _is_nonstandard_scale(benchmark.get("id"), benchmark.get("scale_factor")) or (
-        is_standard_scale_factor is None
-        and compliance == NONSTANDARD_COMPLIANCE_CLASS
-        and str(benchmark.get("id")).strip().casefold() not in OFFICIAL_CLASS_BENCHMARKS
-    ):
-        vr.warn(
-            f"nonstandard-scale: scale_factor={benchmark.get('scale_factor')!r} is not a standard scale for "
-            f"benchmark {benchmark.get('id')!r}; the bundle is accepted and excluded from ranking "
-            "(exclusion reason: unofficial_compliance)"
+    benchmark_id = benchmark.get("id")
+    scale_factor = benchmark.get("scale_factor")
+    gateway_routed = _is_gateway_routed(platform)
+    refusal = _corpus_rule.public_refusal(benchmark_id, scale_factor, gateway_routed=gateway_routed)
+    if refusal is not None:
+        if allow_partial_validation or internal_source:
+            return
+        vr.error(
+            f"benchmark scale_factor={scale_factor!r} is not accepted for public submissions ({refusal}); "
+            "only results at scale factor 1 or above that were not routed through a gateway may be submitted"
         )
         return
-    refusal = _corpus_rule.public_refusal(
-        benchmark.get("id"), benchmark.get("scale_factor"), gateway_routed=_is_gateway_routed(platform)
+    outcome = _corpus_rule.derive_outcome(
+        _corpus_rule.Facts(benchmark_id, scale_factor, frozenset({_corpus_rule.PHASE_POWER}))
     )
-    if refusal is None or allow_partial_validation or internal_source:
-        return
-    vr.error(
-        f"benchmark scale_factor={benchmark.get('scale_factor')!r} is not accepted for public submissions ({refusal}); "
-        "only results at scale factor 1 or above that were not routed through a gateway may be submitted"
-    )
+    if outcome.class_name == _corpus_rule.CLASS_NONSTANDARD_SCALE:
+        vr.warn(
+            f"nonstandard-scale: scale_factor={scale_factor!r} is not a standard scale for "
+            f"benchmark {benchmark_id!r}; the bundle is accepted and not ranked ({'; '.join(outcome.labels)})"
+        )
 
 
 def _fold_tpcds_variant_observations(observed: set[str]) -> set[str]:

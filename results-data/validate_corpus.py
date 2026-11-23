@@ -23,7 +23,6 @@ DOCUMENTED_SHALLOW_COHORTS = {
     ("read_primitives", "0.01"): frozenset({"clickhouse-local^container", "datafusion"}),
     ("read_primitives", "0.1"): frozenset({"clickhouse-local^container", "datafusion"}),
     ("tpcds_obt", "1.0"): frozenset({"datafusion", "duckdb"}),
-    ("tpch", "1.0"): frozenset({"duckdb"}),
     ("tpchavoc", "0.01"): frozenset({"datafusion"}),
     ("tpchavoc", "0.1"): frozenset({"datafusion"}),
     ("tpchavoc", "1.0"): frozenset({"datafusion"}),
@@ -103,7 +102,7 @@ def _load_repo_module(name: str, relative_path: str):
     return module
 
 
-SUBSCALE_POLICY = _load_repo_module("_benchbox_subscale_policy", "benchbox/core/results/subscale_policy.py")
+CORPUS_RULE = _load_repo_module("_benchbox_corpus_rule", "benchbox/core/results/corpus_rule.py")
 CORPUS_SCORE = _load_repo_module("_benchbox_corpus_score", "benchbox/core/results/corpus_score.py")
 COMPARISON_IDENTITY = _load_repo_module("_benchbox_comparison_identity", "benchbox/core/results/comparison_identity.py")
 
@@ -602,15 +601,27 @@ def sidecar_known_defects(bundle: pathlib.Path) -> list[str]:
     return [item for item in recorded if isinstance(item, str) and item]
 
 
-def exclusion_reason(payload: dict, bundle: pathlib.Path | None = None) -> str | None:
+def rule_outcome(payload: dict, bundle: pathlib.Path | None = None):
+    known_defects = sidecar_known_defects(bundle) if bundle is not None else []
+    return CORPUS_RULE.derive_outcome(
+        CORPUS_RULE.facts_from_result(
+            payload,
+            known_defects=known_defects,
+            validation_status=bundle_validation_status(payload),
+            failed_queries=failed_query_count(payload),
+        )
+    )
+
+
+def bundle_lanes(payload: dict, bundle: pathlib.Path | None = None) -> tuple[str, ...]:
+    if admission_reason(payload, bundle) is not None:
+        return ()
+    return rule_outcome(payload, bundle).lanes
+
+
+def admission_reason(payload: dict, bundle: pathlib.Path | None = None) -> str | None:
     if bundle is not None and sidecar_known_defects(bundle):
         return KNOWN_DEFECTIVE_DATA
-    benchmark = _mapping(payload.get("benchmark"))
-    compliance = SUBSCALE_POLICY.effective_compliance_class(
-        benchmark.get("id"), benchmark.get("scale_factor"), benchmark.get("compliance_class")
-    )
-    if compliance in SUBSCALE_POLICY.RANKING_EXCLUDED_COMPLIANCE_CLASSES:
-        return "unofficial_compliance"
     if failed_query_count(payload):
         return "failed_queries"
     if bundle_phase(payload) == THROUGHPUT_PHASE and _throughput_stream_count_mismatch(payload) is not None:
@@ -638,7 +649,22 @@ def exclusion_reason(payload: dict, bundle: pathlib.Path | None = None) -> str |
         defects = _combined_evidence_defects(payload)
         if defects:
             return defects[0]
-    return _primary_metric_reason(payload, display)
+    reason = _primary_metric_reason(payload, display)
+    if reason is not None:
+        return reason
+    if rule_outcome(payload, bundle).held_reason == CORPUS_RULE.HELD_NO_TIMED_PHASE:
+        return CORPUS_RULE.HELD_NO_TIMED_PHASE
+    return None
+
+
+def exclusion_reason(payload: dict, bundle: pathlib.Path | None = None) -> str | None:
+    reason = admission_reason(payload, bundle)
+    if reason is not None:
+        return reason
+    outcome = rule_outcome(payload, bundle)
+    if outcome.lanes:
+        return None
+    return outcome.held_reason or f"not_ranked_{outcome.class_name}"
 
 
 def bundle_rankable(payload: dict, bundle: pathlib.Path | None = None) -> bool:

@@ -128,12 +128,13 @@ class TestOfficialFlagReachesTheClassifier:
         assert compliance_mode_kwargs(ungated) == {}
 
     def test_an_official_run_is_not_refused_by_submit_classification(self):
-        from benchbox.validation.bundle import CLI_REFUSED_COMPLIANCE_CLASSES
+        from benchbox.core.results.corpus_rule import CLASS_SUBSCALE, public_refusal
 
-        official = validate_tpch_scale(1.0, official=True)
-        assert official.value not in CLI_REFUSED_COMPLIANCE_CLASSES
+        assert validate_tpch_scale(1.0, official=True) is TpchComplianceClass.OFFICIAL
+        assert public_refusal("tpch", 1.0) is None
         assert validate_tpch_scale(1.0) is None
-        assert validate_tpch_scale(0.01).value in CLI_REFUSED_COMPLIANCE_CLASSES
+        assert validate_tpch_scale(0.01) is not None
+        assert public_refusal("tpch", 0.01) == CLASS_SUBSCALE
 
     def test_dataframe_fallback_classifies_tpch_from_config(self):
         from benchbox.core.schemas import BenchmarkConfig

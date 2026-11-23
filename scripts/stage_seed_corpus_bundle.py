@@ -27,7 +27,7 @@ from benchbox.validation.bundle import (
 
 RESULTS_DATA = Path(__file__).resolve().parents[1] / "results-data"
 sys.path.insert(0, str(RESULTS_DATA))
-exclusion_reason = importlib.import_module("validate_corpus").exclusion_reason
+admission_reason = importlib.import_module("validate_corpus").admission_reason
 
 PLANS_SUFFIX = ".plans.json"
 TUNING_SUFFIX = ".tuning.json"
@@ -100,7 +100,7 @@ def stage_seed_bundle(result_file: Path, destination: Path, *, internal_manifest
     payload: Any = json.loads(result_file.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise StagingError(f"{result_file.name} is not a JSON object")
-    reason = exclusion_reason(payload)
+    reason = admission_reason(payload)
     if reason is not None:
         _write_status(reason)
         _write_output(False)

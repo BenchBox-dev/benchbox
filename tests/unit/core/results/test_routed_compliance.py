@@ -19,7 +19,6 @@ from benchbox.core.results.submit_classification import (
 )
 from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
-    bundle_compliance_class,
     result_compliance_class,
 )
 
@@ -123,8 +122,6 @@ def test_bundle_helper_and_metrics_readiness_refuse_routed_bundle() -> None:
         "summary": {"queries": {"failed": 0}},
     }
     native = {"benchmark": {"id": "tpch", "compliance_class": "official"}, "platform": {}}
-    assert bundle_compliance_class(routed) == NONSTANDARD_COMPLIANCE_CLASS
-    assert bundle_compliance_class(native) == "official"
     assert TPCMetricsCalculator.metrics_refusal_reason(routed, "Power") is not None
     assert any(
         "not official compliance" in reason for reason in TPCMetricsCalculator.qphh_unavailable_reasons(routed, routed)

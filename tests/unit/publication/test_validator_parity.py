@@ -78,13 +78,22 @@ def _git(repo: Path, *args: str) -> str:
 
 def _minimal_bundle_dict() -> dict:
     return {
-        "version": "2.1",
+        "version": "2.2",
         "run": {"id": "abc123", "timestamp": "2026-04-01T12:00:00", "total_duration_ms": 5000},
-        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 0.01},
+        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0},
         "platform": {"name": "DuckDB", "version": "1.4.3"},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
         "phases": {"validation": {"status": "PASSED"}},
-        "queries": [{"id": f"Q{i}", "ms": 100 + i * 10, "status": "SUCCESS"} for i in range(1, 23)],
+        "queries": [
+            {
+                "id": f"Q{i}",
+                "ms": 100 + i * 10,
+                "status": "SUCCESS",
+                "rows": 5,
+                "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5},
+            }
+            for i in range(1, 23)
+        ],
     }
 
 
@@ -167,6 +176,8 @@ def test_parity_executes_real_payloads_in_an_isolated_slim_checkout(tmp_path: Pa
         "benchbox/core/results/timing_fields.py",
         "benchbox/core/results/schema_policy.py",
         "benchbox/core/results/subscale_policy.py",
+        "benchbox/core/results/corpus_rule.py",
+        "benchbox/core/results/corpus_rule_data.json",
     ]
     for path in runtime:
         destination = repo / path

@@ -15,7 +15,6 @@ from _project.scripts.explorer_pipeline.models import (
     _PHASE_ALIASES,
     APPLIED_TUNING_STATUSES,
     COMBINED_PHASE,
-    RANKING_EXCLUDED_COMPLIANCE_CLASSES,
     RANKING_METRIC_BY_FAMILY,
     RANKING_METRIC_BY_FAMILY_PHASE,
     THROUGHPUT_PHASE,
@@ -81,6 +80,7 @@ def _rankable_body(benchmark: str = "tpch") -> dict:
             "tpc_metrics": {"power_at_size": 1.0},
         },
         "queries": queries,
+        "phases": {"power_test": {"status": "COMPLETED"}},
     }
 
 
@@ -126,7 +126,6 @@ KNOWN_DEFECTIVE_SHALLOW_COHORTS = {
     ("read_primitives", "0.01"): {"clickhouse-local^container", "datafusion"},
     ("read_primitives", "0.1"): {"clickhouse-local^container", "datafusion"},
     ("tpcds_obt", "1.0"): {"datafusion", "duckdb"},
-    ("tpch", "1.0"): {"duckdb"},
     ("tpchavoc", "0.01"): {"datafusion"},
     ("tpchavoc", "0.1"): {"datafusion"},
     ("tpchavoc", "1.0"): {"datafusion"},
@@ -814,11 +813,15 @@ def test_phase_names_are_case_normalized_and_standard_is_power(tmp_path: Path) -
     _write_bundle(tmp_path, "standard.json", benchmark="tpch", scale=1.0, platform="Spark", test_type="Standard")
     (tmp_path / "combined.json").write_text(json.dumps(combined_bundle("Doris")), encoding="utf-8")
     _write_bundle(tmp_path, "none.json", benchmark="tpch", scale=1.0, platform="Polars", test_type=None)
+    _write_bundle(tmp_path, "unknown.json", benchmark="tpch", scale=1.0, platform="Trino", test_type=None)
+    unknown = json.loads((tmp_path / "unknown.json").read_text(encoding="utf-8"))
+    unknown["phases"] = {}
+    (tmp_path / "unknown.json").write_text(json.dumps(unknown), encoding="utf-8")
 
     assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {
-        ("tpch", "1.0"): {"duckdb", "spark"},
+        ("tpch", "1.0"): {"duckdb", "spark", "polars"},
         ("tpch", "1.0#combined"): {"doris"},
-        ("tpch", "1.0#unknown"): {"polars"},
+        ("tpch", "1.0#unknown"): set(),
     }
 
 
@@ -839,14 +842,6 @@ UNRANKABLE_OVERRIDES = {
     "failed-queries": {"summary": {"queries": {"total": 2, "passed": 1, "failed": 1}, "validation": "passed"}},
     "partial-validation": {"summary": {"queries": {"total": 2, "passed": 2, "failed": 0}, "validation": "partial"}},
     "failed-validation": {"summary": {"queries": {"total": 2, "passed": 2, "failed": 0}, "validation": "FAILED"}},
-    "unofficial": {
-        "benchmark": {
-            "id": "tpch",
-            "scale_factor": 1.0,
-            "test_type": "power",
-            "compliance_class": "unofficial_nonstandard",
-        }
-    },
     "translation-fallback": {
         "summary": {"queries": {"total": 2, "passed": 2, "failed": 0}, "validation": "passed"},
         "execution": {"translation": "fallback"},
@@ -934,7 +929,7 @@ def test_a_cohort_with_only_unrankable_bundles_is_reported_unranked_and_passes(
 ) -> None:
     validator = _load_validator()
     for platform in ("BigQuery", "Databricks", "Snowflake"):
-        _rankable_bundle(tmp_path, f"{platform}.json", platform, **UNRANKABLE_OVERRIDES["unofficial"])
+        _rankable_bundle(tmp_path, f"{platform}.json", platform, **UNRANKABLE_OVERRIDES["failed-queries"])
     for platform in ("DuckDB", "DataFusion", "Spark"):
         _write_bundle(tmp_path, f"{platform}.json", benchmark="tpcds", scale=1.0, platform=platform)
 
@@ -956,7 +951,7 @@ def test_a_cohort_with_one_or_two_rankable_identities_still_fails(tmp_path: Path
     for index, platform in enumerate(("DuckDB", "DataFusion")[:rankable]):
         _rankable_bundle(tmp_path, f"ok{index}.json", platform)
     for platform in ("BigQuery", "Snowflake"):
-        _rankable_bundle(tmp_path, f"{platform}.json", platform, **UNRANKABLE_OVERRIDES["unofficial"])
+        _rankable_bundle(tmp_path, f"{platform}.json", platform, **UNRANKABLE_OVERRIDES["failed-queries"])
 
     shallow = validator.shallow_cohorts(validator.cohort_platforms(validator.discover_bundles(tmp_path)))
 
@@ -1492,7 +1487,6 @@ def _parity_variants() -> dict[str, dict]:
         "translation-fallback-no-validation": variant(
             summary={"queries": clean_queries}, execution={"translation": "failed"}
         ),
-        "unofficial": with_benchmark(compliance_class="unofficial_nonstandard", scale_factor=1.0),
         "subscale-recorded-official": with_benchmark(compliance_class="official"),
         "official": with_benchmark(compliance_class="official"),
         "phase-upper": with_benchmark(test_type="POWER"),
@@ -1567,20 +1561,31 @@ def test_inventory_validator_and_explorer_agree_on_the_cohort_phase(tmp_path: Pa
     assert (scale.split("#")[1] if "#" in scale else "power") == explorer_phase
 
 
-def test_validator_agrees_with_the_explorer_on_every_committed_bundle() -> None:
+STAMP_REFUSAL_REASON = "unofficial_compliance"
+RULE_NEWLY_RANKED_COMMITTED_BUNDLES = 19
+
+
+def test_validator_agrees_with_the_explorer_on_every_committed_bundle_but_the_stamp_refusals() -> None:
     validator = _load_validator()
     bundles = validator.discover_bundles(BUNDLES)
     assert bundles
 
     disagreements = []
+    newly_ranked = []
     for path in bundles:
         payload = json.loads(path.read_text(encoding="utf-8"))
-        if (validator.bundle_phase(payload), validator.exclusion_reason(payload, path)) != _explorer_pipeline_view(
-            path
-        ):
+        explorer_phase, explorer_reason = _explorer_pipeline_view(path)
+        validator_reason = validator.exclusion_reason(payload, path)
+        if validator.bundle_phase(payload) != explorer_phase:
+            disagreements.append(path.name)
+        elif explorer_reason == STAMP_REFUSAL_REASON:
+            if validator_reason is None:
+                newly_ranked.append(path.name)
+        elif validator_reason != explorer_reason:
             disagreements.append(path.name)
 
     assert not disagreements
+    assert len(newly_ranked) == RULE_NEWLY_RANKED_COMMITTED_BUNDLES
 
 
 def test_every_committed_bundle_declares_a_phase() -> None:
@@ -1623,7 +1628,6 @@ def test_copied_constants_match_their_explorer_sources() -> None:
     assert validator.EXECUTION_RUN_TYPES == explorer_transformer._ALLOWED_EXECUTION_RUN_TYPES
     assert validator.NON_CLEAN_VALIDATION_STATUSES == NON_CLEAN_VALIDATION_STATUSES
     assert validator.NON_CLEAN_TRANSLATION_STATUSES == NON_CLEAN_TRANSLATION_STATUSES
-    assert validator.SUBSCALE_POLICY.RANKING_EXCLUDED_COMPLIANCE_CLASSES == RANKING_EXCLUDED_COMPLIANCE_CLASSES
     assert validator.PHASE_ALIASES == _PHASE_ALIASES
 
 
@@ -1690,6 +1694,7 @@ def _subscale_bundle(directory: Path, name: str, platform: str, tpc_metrics: dic
         "run": {"timestamp": "2026-08-01T12:00:00"},
         "export": {"anonymized": True},
         "result_schema_version": "2.3",
+        "phases": {"power_test": {"status": "COMPLETED"}},
         "summary": {
             "queries": {"total": 22, "passed": 22, "failed": 0},
             "validation": "passed",
@@ -1752,7 +1757,7 @@ def test_subscale_bundle_without_iteration_numbers_has_no_primary_metric(tmp_pat
     )
 
 
-def test_nonstandard_bundle_keeps_its_timing_score_but_is_not_ranked(tmp_path: Path) -> None:
+def test_a_stamp_at_a_standard_scale_does_not_stop_the_validator_ranking_the_bundle(tmp_path: Path) -> None:
     validator = _load_validator()
     path = _subscale_bundle(
         tmp_path,
@@ -1764,10 +1769,10 @@ def test_nonstandard_bundle_keeps_its_timing_score_but_is_not_ranked(tmp_path: P
     )
     payload = json.loads(path.read_text(encoding="utf-8"))
 
-    assert validator.exclusion_reason(payload) == "unofficial_compliance"
+    assert validator.exclusion_reason(payload) is None
     assert validator._power_score(payload) == pytest.approx(1.0 * 3600 / 0.02)
     entry = BundleTransformer().to_manifest_entry(path, result_id="r")
-    assert entry.ranking_exclusion_reason == "unofficial_compliance"
+    assert entry.ranking_exclusion_reason == STAMP_REFUSAL_REASON
     assert entry.power_score == pytest.approx(1.0 * 3600 / 0.02)
 
 

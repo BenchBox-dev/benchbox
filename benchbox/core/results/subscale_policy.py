@@ -79,13 +79,5 @@ def result_compliance_class(result: Any) -> str | None:
     return routed_compliance_class(getattr(result, "compliance_class", None), gateway)
 
 
-def bundle_compliance_class(data: Mapping[str, Any]) -> str | None:
-    benchmark = data.get("benchmark")
-    recorded = benchmark.get("compliance_class") if isinstance(benchmark, Mapping) else None
-    platform = data.get("platform")
-    gateway = platform.get("gateway") if isinstance(platform, Mapping) else None
-    return routed_compliance_class(recorded, gateway)
-
-
 def unofficial_metric_marker(compliance_class: str) -> dict[str, Any]:
     return {"unofficial": True, "reason": f"compliance_class={compliance_class}"}

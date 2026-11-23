@@ -38,6 +38,7 @@ SIDECAR = {
 
 def _bundle(environment: dict | None, *, execution_class: str | None = None) -> dict:
     payload = scored_minimal_bundle()
+    payload["phases"] = {"power_test": {"status": "COMPLETED"}}
     payload["platform"] = {"name": "ClickHouse Local", "version": "25.1"}
     if environment is not None:
         payload["environment"] = copy.deepcopy(environment)

@@ -380,6 +380,7 @@ def test_validator_fails_closed_when_the_identity_module_is_not_mirrored(
         "platform": {"name": "DuckDB"},
         "run": {"timestamp": "2026-08-01T12:00:00"},
         "export": {"anonymized": True},
+        "phases": {"power_test": {"status": "COMPLETED"}},
         "summary": {
             "queries": {"total": 22, "passed": 22, "failed": 0},
             "validation": "passed",
