@@ -230,7 +230,15 @@ RULE_TABLE: tuple[Row, ...] = (
 
 @cache
 def load_data(path: Path = DATA_PATH) -> Mapping[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if data["schema_version"] != 1 or not isinstance(data["scales"], dict) or not data["scales"]:
+            raise ValueError("invalid corpus rule data")
+        return data
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise RuntimeError(
+            "corpus rule data benchbox/core/results/corpus_rule_data.json is missing or unreadable"
+        ) from error
 
 
 def min_throughput_streams(data: Mapping[str, Any] | None = None) -> int:
@@ -262,15 +270,22 @@ def _scale_value(scale_factor: Any) -> float | None:
     return float(scale_factor)
 
 
-def _scale_band(benchmark: str, scale: float, data: Mapping[str, Any]) -> str | None:
-    if benchmark in data["tpc_benchmarks"] and 0 < scale < 1.0:
-        return BAND_SUBSCALE
+def is_standard_scale(benchmark_id: Any, scale_factor: float, data: Mapping[str, Any] | None = None) -> bool | None:
+    data = data if data is not None else load_data()
+    benchmark = normalize_benchmark_id(benchmark_id)
     entry = data["scales"].get(benchmark)
     if entry is None:
         return None
-    if math.isfinite(scale) and any(abs(scale - option) < 1e-9 for option in entry["standard"]):
-        return BAND_STANDARD
-    return BAND_NONSTANDARD
+    return math.isfinite(scale_factor) and any(abs(scale_factor - option) < 1e-9 for option in entry["standard"])
+
+
+def _scale_band(benchmark: str, scale: float, data: Mapping[str, Any]) -> str | None:
+    if benchmark in data["tpc_benchmarks"] and 0 < scale < 1.0:
+        return BAND_SUBSCALE
+    standard = is_standard_scale(benchmark, scale, data)
+    if standard is None:
+        return None
+    return BAND_STANDARD if standard else BAND_NONSTANDARD
 
 
 def _streams_ok(benchmark: str, scale: float, streams: int | None, data: Mapping[str, Any]) -> bool | None:

@@ -98,7 +98,7 @@ def main(argv: list[str] | None = None) -> int:
         DATA_PATH.write_text(render(build_data()), encoding="utf-8")
         print(f"Wrote {DATA_PATH}")
         return 0
-    problem = drift()
+    problem = drift(DATA_PATH)
     if problem:
         print(f"FAIL: {problem}", file=sys.stderr)
         return 1

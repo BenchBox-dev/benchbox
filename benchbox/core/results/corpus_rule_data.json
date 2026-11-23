@@ -38,7 +38,9 @@
     "clickbench": {
       "minimum": 0.01,
       "standard": [
-        1.0
+        0.1,
+        1.0,
+        10.0
       ]
     },
     "coffeeshop": {
@@ -112,7 +114,9 @@
       "minimum": 0.01,
       "standard": [
         0.01,
-        0.1
+        0.1,
+        1.0,
+        10.0
       ]
     },
     "ssb": {
