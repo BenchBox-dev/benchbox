@@ -15782,7 +15782,7 @@
         }
       },
       "integration_branch": "feat/trunk-stability-r2",
-      "integration_head": "e6ddfbf8260288399421391cbe4d0cb309e5a3c7",
+      "integration_head": "79491ed0a4d2ce9330062a2319d7ce6b1274b7ce",
       "integration_log": [
         {
           "at": "2026-11-23T00:06:31Z",
@@ -15816,6 +15816,21 @@
           "op_id": "35c65cae850f4e308765235b1a7b44b5",
           "previous_head": "5367fa582b6cce2d01c7ad6d0eedef6a8c7f07bd",
           "seq": 3
+        },
+        {
+          "at": "2026-11-23T03:39:48Z",
+          "changed_files": [
+            "benchbox/core/runner/runner.py",
+            "tests/unit/core/runner/test_dataframe_generation_memory_guard.py"
+          ],
+          "head": "79491ed0a4d2ce9330062a2319d7ce6b1274b7ce",
+          "kind": "fix",
+          "op_id": "b06cc2ae6e13435fa9b3508a48d7e111",
+          "previous_head": "e6ddfbf8260288399421391cbe4d0cb309e5a3c7",
+          "requires_acceptance": [
+            "df-memory-guard-generation-check-runs-after-generation-20261118"
+          ],
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-trunk-stability-r2",
