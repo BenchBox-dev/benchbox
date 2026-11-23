@@ -259,7 +259,7 @@ class AMPLabDataGenerator(CompressionMixin, CloudStorageGeneratorMixin):
 
         filename = self.get_compressed_filename("uservisits.tbl")
         file_path = self.output_dir / filename
-        num_visits = int(self.base_uservisits * self.scale_factor)
+        num_visits = int(self.base_uservisits * self.scale_factor * 1.2)
         num_rankings = int(self.base_rankings * self.scale_factor)
 
         start_date = datetime(2000, 1, 1)
