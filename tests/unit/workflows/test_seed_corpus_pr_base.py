@@ -153,11 +153,15 @@ def test_seed_workflow_never_stages_uncertain_bundles(tmp_path: Path) -> None:
 
 def _clean_payload() -> dict[str, Any]:
     return {
-        "benchmark": {"id": "ssb"},
+        "benchmark": {"id": "ssb", "scale_factor": 1.0},
+        "phases": {},
         "summary": {"validation": "passed", "queries": {"total": 2}},
         "execution": {"translation": "success"},
         "environment": {"hostname": "seed-runner.internal"},
-        "queries": [{"id": "1", "ms": 12.0}, {"id": "2", "ms": 15.0}],
+        "queries": [
+            {"id": "1", "ms": 12.0, "run_type": "measurement", "status": "SUCCESS"},
+            {"id": "2", "ms": 15.0, "run_type": "measurement", "status": "SUCCESS"},
+        ],
         "export": {"tool": "benchbox", "anonymized": False},
     }
 
