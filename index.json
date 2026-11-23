@@ -54055,10 +54055,15 @@
       "title": "\"Version Management & Consistency\""
     },
     "version-matrix-data-cleanup-residual-gaps-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T15:11:30Z",
+        "generation": "1453066e46a54aeb9c85321cabc38c67",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Close the gaps left by the version-matrix data cleanup: failed runs and follow-up reuse"
     },
     "visible-metrics-has-plans-contract-stale-20261108": {
