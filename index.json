@@ -29435,6 +29435,13 @@
       "status": "done",
       "title": "Corpus classification and seed provenance fixes from the remediation review"
     },
+    "feature-fix-release-readiness-20261123": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Release readiness before v0.6.0: registered batch release-readiness (notes; not a work item)"
+    },
     "feature-fix-restore-tpcds-scale-range-20261120": {
       "claim": null,
       "needs": [],
