@@ -34,7 +34,7 @@ def _fake_result() -> SimpleNamespace:
 
 def _minimal_schema_v2_bundle() -> dict:
     return {
-        "version": "2.0",
+        "version": "2.2",
         "run": {
             "id": "test-run-id",
             "timestamp": "2026-04-29T00:00:00Z",
@@ -44,7 +44,18 @@ def _minimal_schema_v2_bundle() -> dict:
         "platform": {"name": "duckdb"},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
         "phases": {"validation": {"status": "PASSED"}},
-        "queries": [{"id": f"Q{i}", "ms": 100.0} for i in range(1, 23)],
+        "queries": [
+            {
+                "id": f"Q{i}",
+                "ms": 100.0,
+                **(
+                    {"rows": 5, "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5}}
+                    if i == 1
+                    else {}
+                ),
+            }
+            for i in range(1, 23)
+        ],
     }
 
 

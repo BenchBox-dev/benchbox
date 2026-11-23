@@ -110,10 +110,23 @@ def _load_query_status_module():
     return module
 
 
+def _load_corpus_rule_module():
+    helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "corpus_rule.py"
+    spec = importlib.util.spec_from_file_location("_benchbox_corpus_rule", helper_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load corpus rule from {helper_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 _query_status = _load_query_status_module()
+_corpus_rule = _load_corpus_rule_module()
 bundle_failed_query_count = _query_status.bundle_failed_query_count
 documented_exclusions_cover_failures = _query_status.documented_exclusions_cover_failures
 unchecked_row_count_evidence = _query_status.unchecked_row_count_evidence
+has_row_count_evidence = _query_status.has_row_count_evidence
 row_count_skip_is_documented = _query_status.row_count_skip_is_documented
 
 
@@ -448,7 +461,9 @@ COMPANION_SUFFIXES = (".plans.json", ".tuning.json", ".applied.json", OVERRIDE_S
 SUBMISSION_MANIFEST_FILENAME = "submission-manifest.json"
 SUBMISSION_MANIFEST_SUFFIX = ".manifest.json"
 PUBLIC_CLEAN_VALIDATION_STATUS = "passed"
-PUBLIC_MIRROR_ALLOWED_VALIDATION_STATUSES = frozenset({"passed", "partial", "not_run"})
+PUBLIC_NO_REFERENCE_VALIDATION_STATUS = _query_status.NO_REFERENCE_VALIDATION_STATUS.lower()
+PUBLIC_ADMITTED_VALIDATION_STATUSES = frozenset({PUBLIC_CLEAN_VALIDATION_STATUS, PUBLIC_NO_REFERENCE_VALIDATION_STATUS})
+PUBLIC_MIRROR_ALLOWED_VALIDATION_STATUSES = PUBLIC_ADMITTED_VALIDATION_STATUSES | frozenset({"partial", "not_run"})
 PUBLIC_NON_CLEAN_TRANSLATION_STATUSES = {"fallback", "failed"}
 CLI_REFUSED_COMPLIANCE_CLASSES = frozenset({"unofficial_nonstandard", "unofficial_subscale"})
 TPCDI_BENCHMARK_ID = "tpcdi"
@@ -1485,7 +1500,7 @@ def _bundle_passed_validation(data: dict[str, Any]) -> bool:
     summary = data.get("summary")
     if not isinstance(summary, dict):
         return False
-    return _normalize_status(summary.get("validation")) == PUBLIC_CLEAN_VALIDATION_STATUS
+    return _normalize_status(summary.get("validation")) in PUBLIC_ADMITTED_VALIDATION_STATUSES
 
 
 def _bundle_geomean_ms(data: dict[str, Any]) -> float | None:
@@ -1964,9 +1979,7 @@ def _validate_summary_section(
 
     validation_status = _normalize_status(summary.get("validation"))
     allowed = (
-        PUBLIC_MIRROR_ALLOWED_VALIDATION_STATUSES
-        if allow_partial_validation
-        else frozenset({PUBLIC_CLEAN_VALIDATION_STATUS})
+        PUBLIC_MIRROR_ALLOWED_VALIDATION_STATUSES if allow_partial_validation else PUBLIC_ADMITTED_VALIDATION_STATUSES
     )
     if (
         internal_source
@@ -1977,14 +1990,17 @@ def _validate_summary_section(
         return
     if validation_status not in allowed:
         if validation_status is None:
-            vr.error("summary.validation is required for public submissions and must be 'passed'")
+            vr.error("summary.validation is required for public submissions and must be 'passed' or 'no_reference'")
         elif allow_partial_validation:
             vr.error(
                 f"summary.validation must be one of {sorted(allowed)} for trusted mirror "
                 f"validation, got {validation_status!r}"
             )
         else:
-            vr.error(f"summary.validation must be 'passed' for public submissions, got {validation_status!r}")
+            vr.error(
+                "summary.validation must be 'passed' for public submissions "
+                f"(or 'no_reference' when no row-count reference exists), got {validation_status!r}"
+            )
 
 
 TRANSLATION_RUNTIME_STRING_KEYS = ("distribution", "version", "fork_sha", "upstream_sha", "wheel_sha256")
@@ -3101,19 +3117,41 @@ def _validate_tpchavoc_variant_row_counts(
             vr.error(msg)
 
 
-def _validate_execution_consistency(data: dict[str, Any], vr: ValidationResult) -> None:
+def _validate_execution_consistency(
+    data: dict[str, Any], vr: ValidationResult, *, allow_partial_validation: bool = False
+) -> None:
     summary = data.get("summary")
     if not isinstance(summary, dict):
         return
     status = _normalize_status(summary.get("validation"))
+    no_reference = status == PUBLIC_NO_REFERENCE_VALIDATION_STATUS
     documented = status == "partial" and documented_exclusions_cover_failures(data)
-    if status != PUBLIC_CLEAN_VALIDATION_STATUS and not documented:
+    if status != PUBLIC_CLEAN_VALIDATION_STATUS and not documented and not no_reference:
         return
+    claim = (
+        f"summary.validation={PUBLIC_NO_REFERENCE_VALIDATION_STATUS!r}"
+        if no_reference
+        else "summary.validation='passed'"
+    )
+    if status == PUBLIC_CLEAN_VALIDATION_STATUS and not allow_partial_validation:
+        if not has_row_count_evidence(data.get("queries")):
+            vr.error(
+                "summary.validation='passed' requires per-query row-count evidence "
+                "(a measurement query with row_count_validation.status='PASSED' and none unvalidated); "
+                "a run with no row-count reference records 'no_reference'"
+            )
+    if no_reference:
+        benchmark_id, scale_factor = _bundle_benchmark_id(data), _bundle_scale_factor(data)
+        if _corpus_rule.row_count_reference_exists(benchmark_id, scale_factor):
+            vr.error(
+                f"{claim} is only valid where no row-count reference exists, but a reference is recorded for "
+                f"benchmark {benchmark_id!r} at scale factor {scale_factor:g}; record 'passed' with per-query evidence"
+            )
 
     failed = 0 if documented else bundle_failed_query_count(data)
     if failed > 0:
         noun = "query" if failed == 1 else "queries"
-        vr.error(f"summary.validation='passed' contradicts {failed} failed measurement {noun}")
+        vr.error(f"{claim} contradicts {failed} failed measurement {noun}")
 
     queries = data.get("queries")
     if isinstance(queries, list):
@@ -3124,18 +3162,17 @@ def _validate_execution_consistency(data: dict[str, Any], vr: ValidationResult) 
             if isinstance(rcv, dict):
                 rcv_status = rcv.get("status")
                 if rcv_status == "UNVALIDATED":
-                    vr.error(
-                        f"summary.validation='passed' counts queries[{i}] as validated, but its row count is "
-                        "unvalidated (no reference answers for this benchmark and scale factor)"
-                    )
+                    if not no_reference:
+                        vr.error(
+                            f"{claim} counts queries[{i}] as validated, but its row count is "
+                            "unvalidated (no reference answers for this benchmark and scale factor)"
+                        )
                 elif rcv_status is not None and not (
                     rcv_status == "PASSED" or (rcv_status == "SKIPPED" and row_count_skip_is_documented(rcv))
                 ):
-                    vr.error(
-                        f"summary.validation='passed' contradicts queries[{i}].row_count_validation.status={rcv_status!r}"
-                    )
+                    vr.error(f"{claim} contradicts queries[{i}].row_count_validation.status={rcv_status!r}")
     if unchecked_row_count_evidence(queries):
-        vr.error("summary.validation='passed' counts row counts as validated, but every recorded row count was skipped")
+        vr.error(f"{claim} counts row counts as validated, but every recorded row count was skipped")
     _validate_throughput_stream_completeness(data, vr)
 
 
@@ -3144,7 +3181,7 @@ def _validate_validation_phase_consistency(data: dict[str, Any], vr: ValidationR
     if not isinstance(summary, dict):
         return
     summary_status = _normalize_status(summary.get("validation"))
-    if summary_status not in {"passed", "partial"}:
+    if summary_status not in {"passed", "partial", PUBLIC_NO_REFERENCE_VALIDATION_STATUS}:
         return
 
     if "phases" not in data:
@@ -3159,7 +3196,10 @@ def _validate_validation_phase_consistency(data: dict[str, Any], vr: ValidationR
             (_normalize_status(raw_phase_status) or "unknown") if isinstance(raw_phase_status, str) else "unknown"
         )
 
-    compatible_phase_statuses = {"passed"} if summary_status == "passed" else {"passed", "partial"}
+    compatible_phase_statuses = {
+        "passed": {"passed"},
+        PUBLIC_NO_REFERENCE_VALIDATION_STATUS: {"passed", PUBLIC_NO_REFERENCE_VALIDATION_STATUS},
+    }.get(summary_status, {"passed", "partial"})
     if phase_status not in compatible_phase_statuses:
         vr.error(f"summary.validation={summary_status!r} contradicts phases.validation.status={phase_status!r}")
 
@@ -3229,7 +3269,7 @@ def _validate_bundle(
     _warn_timing_plateau(data, vr)
     _warn_small_scale_floor(data, vr)
     _validate_query_coverage(data, vr, allow_partial_validation=allow_partial_validation)
-    _validate_execution_consistency(data, vr)
+    _validate_execution_consistency(data, vr, allow_partial_validation=allow_partial_validation)
     _validate_tpchavoc_variant_row_counts(data, vr, allow_partial_validation=allow_partial_validation)
     for message in override_artifact_errors(vr.path):
         vr.error(message)

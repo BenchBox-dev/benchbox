@@ -40,7 +40,14 @@ def _minimal_result(platform: str) -> BenchmarkResults:
         successful_queries=22,
         failed_queries=0,
         query_results=[
-            {"query_id": f"Q{i}", "execution_time_ms": 1, "rows_returned": 1, "status": "SUCCESS"} for i in range(1, 23)
+            {
+                "query_id": f"Q{i}",
+                "execution_time_ms": 1,
+                "rows_returned": 1,
+                "status": "SUCCESS",
+                **({"row_count_validation": {"status": "PASSED", "expected": 1, "actual": 1}} if i == 1 else {}),
+            }
+            for i in range(1, 23)
         ],
     )
 

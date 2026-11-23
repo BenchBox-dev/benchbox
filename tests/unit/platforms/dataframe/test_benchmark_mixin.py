@@ -416,7 +416,7 @@ def test_benchmark_without_oracle_passes_on_loaded_table_validation(tmp_path) ->
         options=DataFrameRunOptions(prefer_parquet=False),
     )
 
-    assert result.validation_status == "PASSED"
+    assert result.validation_status == "NO_REFERENCE"
     assert result.validation_details["load"]["provider"] == "loaded_table_checks"
     assert build_result_payload(result)["phases"]["validation"] == {"status": "PASSED"}
 

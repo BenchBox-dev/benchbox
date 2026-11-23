@@ -13,6 +13,10 @@ if str(CHECKOUT_ROOT) not in sys.path:
     sys.path.insert(0, str(CHECKOUT_ROOT))
 
 from benchbox.core.benchmark_registry import get_scale_factor_rule, list_benchmark_ids
+from benchbox.core.expected_results import has_row_count_reference
+from benchbox.core.expected_results.loader import TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS
+from benchbox.core.expected_results.ssb_results import SSB_EXPECTED_ROW_COUNTS
+from benchbox.core.expected_results.tpcds_results import TPCDS_SUBSCALE_ROW_COUNTS
 from benchbox.core.tpc_spec import min_streams_for_scale
 
 DATA_PATH = CHECKOUT_ROOT / "benchbox" / "core" / "results" / "corpus_rule_data.json"
@@ -24,6 +28,18 @@ TPC_DERIVED_BENCHMARKS = {"datavault": "tpch", "tpch_skew": "tpch", "tpchavoc": 
 
 def _scale_key(scale: float) -> str:
     return repr(float(scale))
+
+
+def row_count_reference_scales() -> dict[str, list[float]]:
+    candidates = {
+        "tpch": {1.0, *map(float, TPCH_SUBSCALE_ROW_COUNT_SCALE_FACTORS)},
+        "tpcds": {1.0, *map(float, TPCDS_SUBSCALE_ROW_COUNTS)},
+        "ssb": {float(scale) for scale in SSB_EXPECTED_ROW_COUNTS},
+    }
+    return {
+        benchmark: sorted(scale for scale in scales if has_row_count_reference(benchmark, scale))
+        for benchmark, scales in sorted(candidates.items())
+    }
 
 
 def build_data() -> dict[str, Any]:
@@ -43,6 +59,7 @@ def build_data() -> dict[str, Any]:
         stream_minimum[benchmark_id] = minima
     return {
         "schema_version": SCHEMA_VERSION,
+        "row_count_reference_scales": row_count_reference_scales(),
         "scales": scales,
         "stream_minimum": stream_minimum,
         "tpc_benchmarks": list(TPC_BENCHMARKS),

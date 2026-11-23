@@ -25,7 +25,16 @@ PUBLISH_LABEL = "maintainer-run"
 
 
 def _clean_query_results() -> list[dict[str, Any]]:
-    return [{"query_id": "1", "execution_time": 0.01, "success": True, "row_count": 1}]
+    return [
+        {
+            "query_id": "1",
+            "execution_time": 0.01,
+            "success": True,
+            "row_count": 1,
+            "rows_returned": 1,
+            "row_count_validation": {"status": "PASSED", "expected": 1, "actual": 1},
+        }
+    ]
 
 
 def _bundle_payload(*, official: bool, scale_factor: float = OFFICIAL_SCALE) -> dict[str, Any]:

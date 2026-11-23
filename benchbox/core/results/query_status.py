@@ -15,6 +15,9 @@ DATA_REFRESHED_REASON = "data refreshed"
 WITHIN_TOLERANCE_REASON = "within tolerance"
 WITHIN_RANGE_REASON = "within range"
 PARAMETER_SENSITIVE_REASON = "parameter sensitive"
+NO_REFERENCE_VALIDATION_STATUS = "NO_REFERENCE"
+NO_REFERENCE_REASON = "no row-count reference at this scale factor"
+NOT_VALIDATED_VALIDATION_STATUS = "NOT_VALIDATED"
 DOCUMENTED_ROW_COUNT_SKIP_REASONS: tuple[str, ...] = (
     DATA_REFRESHED_REASON,
     WITHIN_TOLERANCE_REASON,
@@ -156,6 +159,34 @@ def unchecked_row_count_evidence(query_rows: Any) -> bool:
         and isinstance(evidence := query.get("row_count_validation"), dict)
     ]
     return bool(statuses) and "PASSED" not in statuses and "SKIPPED" in statuses
+
+
+def _measurement_row_count_statuses(query_rows: Any) -> list[str]:
+    if not isinstance(query_rows, list):
+        return []
+    statuses: list[str] = []
+    for query in query_rows:
+        if not isinstance(query, dict) or str(query.get("run_type") or "measurement").strip().lower() != "measurement":
+            continue
+        evidence = query.get("row_count_validation")
+        statuses.append(str(evidence.get("status") or "").strip().upper() if isinstance(evidence, dict) else "")
+    return statuses
+
+
+def has_row_count_evidence(query_rows: Any) -> bool:
+    statuses = _measurement_row_count_statuses(query_rows)
+    return "PASSED" in statuses and "UNVALIDATED" not in statuses
+
+
+def unevidenced_validation_status(query_rows: Any, *, reference_exists: bool) -> str | None:
+    unreferenced = NOT_VALIDATED_VALIDATION_STATUS if reference_exists else NO_REFERENCE_VALIDATION_STATUS
+    if unvalidated_measurement_query_ids(query_rows):
+        return unreferenced
+    if unchecked_row_count_evidence(query_rows):
+        return NOT_VALIDATED_VALIDATION_STATUS
+    if _measurement_row_count_statuses(query_rows) and not has_row_count_evidence(query_rows):
+        return unreferenced
+    return None
 
 
 def _query_row_failed(query: Any) -> bool:

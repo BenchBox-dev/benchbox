@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from benchbox.core.expected_results import has_row_count_reference
 from benchbox.core.expected_results.models import ValidationMode, ValidationResult
 from benchbox.core.expected_results.ssb_results import normalize_ssb_query_id, ssb_expected_row_counts
 from benchbox.core.expected_results.tpcds_results import (
@@ -11,7 +12,12 @@ from benchbox.core.expected_results.tpcds_results import (
     tpcds_subscale_expected_row_counts,
     tpcds_subscale_reference_seed,
 )
-from benchbox.core.results.query_status import row_count_skip_is_documented, within_tolerance_warning
+from benchbox.core.results.query_status import (
+    NO_REFERENCE_REASON,
+    NO_REFERENCE_VALIDATION_STATUS,
+    row_count_skip_is_documented,
+    within_tolerance_warning,
+)
 from benchbox.core.validation.query_validation import (
     QueryValidator,
     get_data_refreshed_context,
@@ -86,12 +92,16 @@ def validate_dataframe_query_results(
 
     reason = _reference_unavailable_reason(benchmark_id, scale_factor, seed)
     if reason:
-        reference_absent = _reference_absent(benchmark_id, scale_factor)
+        reference_absent = reason == NO_REFERENCE_REASON
         for row in successful_rows:
             _attach_skipped_validation(row, reason, "UNVALIDATED" if reference_absent else "SKIPPED")
         evidence["skipped"] = len(successful_rows) + selected_skips
         evidence["reason"] = reason
-        status = _unavailable_status(execution_failures, bool(successful_rows or selected_skips))
+        status = _unavailable_status(
+            execution_failures,
+            bool(successful_rows or selected_skips),
+            NO_REFERENCE_VALIDATION_STATUS if reference_absent else "UNCERTAIN",
+        )
         return DataFrameQueryValidationSummary(status, evidence)
 
     initialization_error = _apply_reference_row_counts(successful_rows, benchmark_id, scale_factor, evidence, seed)
@@ -106,7 +116,7 @@ def validate_dataframe_query_results(
         status = "FAILED"
     elif execution_failures:
         status = "PARTIAL"
-    elif evidence["skipped"] > documented_skips or evidence["errors"]:
+    elif evidence["errors"] or evidence["skipped"] > documented_skips:
         status = "UNCERTAIN"
     elif evidence["checked"] and evidence["checked"] + documented_skips == len(successful_rows):
         status = "PASSED"
@@ -121,38 +131,22 @@ def _normalize_benchmark_name(value: str) -> str:
     return str(value).strip().lower().replace("tpc-h", "tpch").replace("tpc-ds", "tpcds")
 
 
-def _unavailable_status(execution_failures: int, has_unavailable_evidence: bool) -> str:
+def _unavailable_status(
+    execution_failures: int, has_unavailable_evidence: bool, evidence_status: str = "UNCERTAIN"
+) -> str:
     if execution_failures:
         return "PARTIAL"
     if has_unavailable_evidence:
-        return "UNCERTAIN"
+        return evidence_status
     return "NOT_RUN"
 
 
 def _reference_unavailable_reason(benchmark_id: str, scale_factor: float, seed: int | None) -> str | None:
-    if benchmark_id == "tpcds":
-        if tpcds_subscale_expected_row_counts(scale_factor) is not None:
-            return None
+    if not has_row_count_reference(benchmark_id, scale_factor):
+        return NO_REFERENCE_REASON
+    if benchmark_id == "tpcds" and tpcds_subscale_expected_row_counts(scale_factor) is None:
         return "TPC-DS expected row counts are not seed-aligned with this DataFrame run"
-    if benchmark_id == "ssb":
-        if ssb_expected_row_counts(scale_factor) is None:
-            return f"SSB expected row counts are not recorded for scale factor {scale_factor}"
-        return None
-    from benchbox.core.tpch.benchmark import has_row_count_reference
-
-    if not has_row_count_reference(scale_factor):
-        return "TPC-H reference row counts are not recorded for this scale factor"
     return None
-
-
-def _reference_absent(benchmark_id: str, scale_factor: float) -> bool:
-    if benchmark_id == "ssb":
-        return ssb_expected_row_counts(scale_factor) is None
-    if benchmark_id == "tpcds":
-        return scale_factor != 1.0 and tpcds_subscale_expected_row_counts(scale_factor) is None
-    from benchbox.core.tpch.benchmark import has_row_count_reference
-
-    return benchmark_id == "tpch" and not has_row_count_reference(scale_factor)
 
 
 def _apply_reference_row_counts(
