@@ -395,6 +395,9 @@ TIE_ROWS = [
     (2, 20200110, 0.0, 10.0, 20200110, 5.0, 20200106, 10.0, 0.0),
     (5, 20200108, 0.0, 7.0, 20200107, 4.0, 20200108, 0.0, 4.0),
     (5, 20200109, 0.0, 7.0, 20200107, 4.0, 20200109, 0.0, 4.0),
+    (2, 20180101, 0.0, 10.0, 20180101, 5.0, 20200106, 10.0, 0.0),
+    (5, 20180101, 0.0, 7.0, 20200107, 4.0, 20180101, 0.0, 4.0),
+    (2, 20200302, 0.0, 10.0, 20200302, 5.0, 20200106, 10.0, 0.0),
 ]
 TRADES_BENCHBOX = [(1, 20200301, 1), (2, 20200302, 2)]
 TRADES_IMPLEMENTATION = [(1, 20200301, 2), (2, 20200302, 2)]
@@ -404,10 +407,11 @@ def market_report(
     tmp_path: Path,
     benchbox: list[tuple] = BENCHBOX_MARKET,
     trades: list[tuple] = TRADES_BENCHBOX,
+    implementation: list[tuple] = IMPLEMENTATION_MARKET,
 ) -> harness.Report:
     entries = harness.load_expected(harness.DEFAULT_EXPECTED, None)
     left = build_market(tmp_path / "left.duckdb", True, [*benchbox, *TIE_ROWS], trades)
-    right = build_market(tmp_path / "right.duckdb", False, [*IMPLEMENTATION_MARKET, *TIE_ROWS], TRADES_IMPLEMENTATION)
+    right = build_market(tmp_path / "right.duckdb", False, [*implementation, *TIE_ROWS], TRADES_IMPLEMENTATION)
     return harness.compare(left, right, entries)
 
 
@@ -440,6 +444,8 @@ def test_shipped_entries_accept_the_differences_they_describe(tmp_path):
         ((3, LEAP, 0.5, 9.0, 20200103, 2.0, 20190401), "SK_FiftyTwoWeekLowDate"),
         ((2, LEAP, 1.25, 10.0, 20200104, 5.0, 20200106), "SK_FiftyTwoWeekHighDate"),
         ((5, LEAP, 0.25, 7.0, 20200107, 4.0, 20200107), "SK_FiftyTwoWeekLowDate"),
+        ((2, LEAP, 1.25, 10.0, 20180101, 5.0, 20200106), "SK_FiftyTwoWeekHighDate"),
+        ((5, LEAP, 0.25, 7.0, 20200107, 4.0, 20180101), "SK_FiftyTwoWeekLowDate"),
     ],
 )
 def test_shipped_entries_refuse_values_outside_the_rows_they_describe(tmp_path, row, subject):
@@ -463,6 +469,7 @@ def build_audit(path: Path, rows: list[tuple]) -> Path:
 X = ("DimCustomer", 1, "C_NEW", 5)
 Y = ("DimCustomer", 1, "C_OLD", 6)
 TIER = ("DimCustomer", 1, "C_TIER_INV", 9)
+TIER_UNCORRECTED = ("DimCustomer", 1, "C_TIER_INV", 8)
 
 
 def test_same_row_counts_with_different_multiplicities_are_a_difference(tmp_path, capsys):
@@ -479,9 +486,24 @@ def test_same_row_counts_with_different_multiplicities_are_a_difference(tmp_path
 def test_an_accepted_rows_only_difference_does_not_hide_a_duplicated_row(tmp_path):
     entries = harness.load_expected(harness.DEFAULT_EXPECTED, None)
     left = build_audit(tmp_path / "left.duckdb", [X, X, Y, TIER])
-    right = build_audit(tmp_path / "right.duckdb", [X, Y])
+    right = build_audit(tmp_path / "right.duckdb", [X, Y, TIER_UNCORRECTED])
     [difference] = harness.compare(left, right, entries).unaccepted()
     assert (difference.kind, difference.count, difference.unexplained) == ("rows_only_left", 2, 1)
     clean_left = build_audit(tmp_path / "left2.duckdb", [X, Y, TIER])
-    clean_right = build_audit(tmp_path / "right2.duckdb", [X, Y])
+    clean_right = build_audit(tmp_path / "right2.duckdb", [X, Y, TIER_UNCORRECTED])
     assert harness.compare(clean_left, clean_right, entries).unaccepted() == []
+
+
+@pytest.mark.parametrize(("value", "is_refused"), [(8, False), (9, False), (10, True), (7, True), (11, True)])
+def test_the_answer_key_correction_must_be_the_documented_delta(tmp_path, value, is_refused):
+    entries = harness.load_expected(harness.DEFAULT_EXPECTED, None)
+    left = build_audit(tmp_path / "left.duckdb", [X, Y, TIER])
+    right = build_audit(tmp_path / "right.duckdb", [X, Y, ("DimCustomer", 1, "C_TIER_INV", value)])
+    kinds = {difference.kind for difference in harness.compare(left, right, entries).unaccepted()}
+    assert kinds == ({"rows_only_left", "rows_only_right"} if is_refused else set())
+
+
+def test_a_tie_date_of_the_implementation_outside_the_window_is_refused(tmp_path):
+    implementation = replace(IMPLEMENTATION_MARKET, (2, LEAP, 0.000125, 10.0, 20200302, 5.0, 20200106))
+    report = market_report(tmp_path, implementation=implementation)
+    assert ("FactMarketHistory", "SK_FiftyTwoWeekHighDate") in refused(report)

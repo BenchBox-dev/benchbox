@@ -39,6 +39,10 @@ entries:
     condition: >-
       (l.fiftytwoweekhigh = ROUND(r.fiftytwoweekhigh, 2)
       AND l.sk_fiftytwoweekhighdate < r.sk_fiftytwoweekhighdate
+      AND l.sk_fiftytwoweekhighdate > CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 1 YEAR, '%Y%m%d') AS BIGINT)
+      AND l.sk_fiftytwoweekhighdate <= l.sk_dateid
+      AND r.sk_fiftytwoweekhighdate > CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 1 YEAR, '%Y%m%d') AS BIGINT)
+      AND r.sk_fiftytwoweekhighdate <= l.sk_dateid
       AND EXISTS (SELECT 1 FROM lhs.main.FactMarketHistory y WHERE y.sk_securityid = l.sk_securityid AND y.sk_dateid = l.sk_fiftytwoweekhighdate AND ROUND(y.dayhigh, 2) = ROUND(l.fiftytwoweekhigh, 2))
       AND EXISTS (SELECT 1 FROM rhs.main.FactMarketHistory x WHERE x.sk_securityid = r.sk_securityid AND x.sk_dateid = r.sk_fiftytwoweekhighdate AND ROUND(x.dayhigh, 2) = ROUND(r.fiftytwoweekhigh, 2)))
       OR ((COALESCE((try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE > strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 1 YEAR
@@ -71,6 +75,10 @@ entries:
     condition: >-
       (l.fiftytwoweeklow = ROUND(r.fiftytwoweeklow, 2)
       AND l.sk_fiftytwoweeklowdate < r.sk_fiftytwoweeklowdate
+      AND l.sk_fiftytwoweeklowdate > CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 1 YEAR, '%Y%m%d') AS BIGINT)
+      AND l.sk_fiftytwoweeklowdate <= l.sk_dateid
+      AND r.sk_fiftytwoweeklowdate > CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 1 YEAR, '%Y%m%d') AS BIGINT)
+      AND r.sk_fiftytwoweeklowdate <= l.sk_dateid
       AND EXISTS (SELECT 1 FROM lhs.main.FactMarketHistory y WHERE y.sk_securityid = l.sk_securityid AND y.sk_dateid = l.sk_fiftytwoweeklowdate AND ROUND(y.daylow, 2) = ROUND(l.fiftytwoweeklow, 2))
       AND EXISTS (SELECT 1 FROM rhs.main.FactMarketHistory x WHERE x.sk_securityid = r.sk_securityid AND x.sk_dateid = r.sk_fiftytwoweeklowdate AND ROUND(x.daylow, 2) = ROUND(r.fiftytwoweeklow, 2)))
       OR ((COALESCE((try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE > strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 1 YEAR
@@ -99,18 +107,22 @@ entries:
   - id: answer-key-tier-inv-batch1-left
     kind: rows_only
     clause: "2.4.5, 7.2.6.7"
-    reason: "DIGen's Batch1 answer key for DimCustomer C_TIER_INV is off by one; BenchBox corrects it while loading the Audit table and records the correction. The DuckDB implementation loads the key as generated."
+    reason: "DIGen's Batch1 answer key for DimCustomer C_TIER_INV is off by one; BenchBox corrects it while loading the Audit table and records the correction. The DuckDB implementation loads the key as generated. Accepted only when BenchBox's Value equals the implementation's Value plus one; the recount itself is not computable from the warehouse tables."
     table: Audit
     side: left
-    condition: "t.dataset = 'DimCustomer' AND t.attribute = 'C_TIER_INV' AND t.batchid = 1"
+    condition: >-
+      t.dataset = 'DimCustomer' AND t.attribute = 'C_TIER_INV' AND t.batchid = 1
+      AND EXISTS (SELECT 1 FROM rhs.main.Audit o WHERE o.dataset = t.dataset AND o.attribute = t.attribute AND o.batchid = t.batchid AND t.value = o.value + 1)
 
   - id: answer-key-tier-inv-batch1-right
     kind: rows_only
     clause: "2.4.5, 7.2.6.7"
-    reason: "Counterpart of answer-key-tier-inv-batch1-left: the uncorrected key row held by the DuckDB implementation."
+    reason: "Counterpart of answer-key-tier-inv-batch1-left: the uncorrected key row held by the DuckDB implementation, accepted only when BenchBox's row for the same key holds that value plus one."
     table: Audit
     side: right
-    condition: "t.dataset = 'DimCustomer' AND t.attribute = 'C_TIER_INV' AND t.batchid = 1"
+    condition: >-
+      t.dataset = 'DimCustomer' AND t.attribute = 'C_TIER_INV' AND t.batchid = 1
+      AND EXISTS (SELECT 1 FROM lhs.main.Audit o WHERE o.dataset = t.dataset AND o.attribute = t.attribute AND o.batchid = t.batchid AND o.value = t.value + 1)
 
   - id: audit-customer-tier-alerts-batch1
     kind: audit
