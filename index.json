@@ -50617,18 +50617,13 @@
       "title": "TPC-DI step 5: remove the 38 BenchBox-written queries and everything built on them"
     },
     "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120": {
-      "claim": {
-        "expires_at": "2026-11-24T23:37:14Z",
-        "generation": "9cb756a47ba943578e0caeeb73495f3c",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b9c0e3a9d406db652098bdd"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-comment-policy-route-for-tpc-files-20261121",
         "tpcdi-owner-action-place-official-archives-20261121"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "TPC-DI step 9: ship the TPC EULA, legend and the specification's audit, validation and visibility SQL"
     },
     "tpcdi-07-specification-schema-20261120": {
