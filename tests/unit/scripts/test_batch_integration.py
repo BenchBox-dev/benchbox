@@ -1666,6 +1666,62 @@ def test_tracker_reads_page_every_section_with_the_revision_pin(world: World) ->
     assert all(call[1] == integration for call in world.calls)
 
 
+def _summary_reads(world: World) -> int:
+    prefix = len(bi.TRACTABLE_COMMAND)
+    return len([argv for argv, _ in world.calls if argv[prefix:] == ["batch", "show", BATCH]])
+
+
+def test_a_tracker_that_changes_between_pages_is_read_again_from_the_start(world: World) -> None:
+    integration = world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    world.land_and_prepare("zeta")
+    world.tracker.window_cap = 40
+    world.tracker.paged_sections = {"receipts", "integration_log"}
+    world.tracker.churn = 2
+    world.calls.clear()
+    tracker = bi.read_tracker(integration, BATCH)
+    expected = world.tracker.sections()
+    assert tracker["receipts"] == expected["receipts"] and tracker["integration_log"] == expected["integration_log"]
+    assert tracker["_rev"] == str(world.tracker.rev)
+    assert _summary_reads(world) == 3
+
+
+def test_a_tracker_that_keeps_changing_is_refused_after_a_bounded_number_of_reads(world: World) -> None:
+    integration = world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    world.land_and_prepare("zeta")
+    world.tracker.window_cap = 40
+    world.tracker.paged_sections = {"receipts", "integration_log"}
+    world.tracker.churn = 10**6
+    world.calls.clear()
+    with _raises("tracker read failed .*E_CURSOR_STALE: revision changed"):
+        bi.read_tracker(integration, BATCH)
+    assert _summary_reads(world) == bi.CURSOR_STALE_ATTEMPTS
+
+
+def test_a_session_history_that_changes_between_pages_is_read_again_from_the_start(world: World) -> None:
+    integration = world.start()
+    entries = [_session("update", f"op{index}", f"2000-01-01T00:00:0{index}Z") for index in range(4)]
+    world.tracker.item_sessions["zeta"] = entries
+    world.tracker.session_page = 1
+    world.tracker.churn = 2
+    assert bi._item_sessions(integration, "zeta") == entries
+
+
+def test_a_session_history_that_keeps_changing_is_refused_after_a_bounded_number_of_reads(world: World) -> None:
+    integration = world.start()
+    world.tracker.item_sessions["zeta"] = [
+        _session("update", f"op{index}", f"2000-01-01T00:00:0{index}Z") for index in range(4)
+    ]
+    world.tracker.session_page = 1
+    world.tracker.churn = 10**6
+    world.calls.clear()
+    with _raises("tracker read failed .*E_CURSOR_STALE"):
+        bi._item_sessions(integration, "zeta")
+    firsts = [argv for argv, _ in world.calls if "--offset" in argv and argv[argv.index("--offset") + 1] == "0"]
+    assert len(firsts) == bi.CURSOR_STALE_ATTEMPTS
+
+
 def test_an_unreadable_tracker_fails_closed(world: World) -> None:
     integration = world.start()
     world.deliver("zeta", {"src/a.py": "member\n"})

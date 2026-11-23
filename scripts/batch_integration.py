@@ -17,12 +17,15 @@ import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from scripts.worktree_finish import FinishPreviewResult
 
 ROOT = Path(__file__).resolve().parents[1]
+T = TypeVar("T")
 
 CLI_DESCRIPTION = (
     "Integration-branch batch loop: leader and member steps behind the batch-* make targets.\n"
@@ -65,6 +68,7 @@ FINAL_SUITE = "member-reruns"
 LEADER_MEMBER_OPS = frozenset({"take", "release", "renew", "recover"})
 POLICY_PATH = ".github/review.yml"
 SECTION_BUDGET = 6000
+CURSOR_STALE_ATTEMPTS = 5
 REVIEW_PRINT_LIMIT = 16000
 GLOBAL_INPUT_FILES = frozenset(
     {"pyproject.toml", "uv.lock", "ruff.toml", ".ruff.toml", "pytest.ini", "tox.ini", "setup.cfg", "Makefile"}
@@ -78,6 +82,10 @@ FULL_SHA = re.compile(r"^[0-9a-f]{40}([0-9a-f]{24})?$")
 
 
 class BatchError(RuntimeError):
+    pass
+
+
+class CursorStale(BatchError):
     pass
 
 
@@ -333,14 +341,32 @@ def _tractable_json(repo: Path, args: list[str]) -> dict:
         detail = ""
         if isinstance(envelope, dict):
             detail = f" {envelope.get('code', '')}: {envelope.get('error', '')} {envelope.get('recovery', '')}"
-        raise BatchError(f"tracker read failed (exit {proc.returncode}){detail or ' ' + proc.stderr.strip()[:300]}")
+        message = f"tracker read failed (exit {proc.returncode}){detail or ' ' + proc.stderr.strip()[:300]}"
+        if isinstance(envelope, dict) and envelope.get("code") == "E_CURSOR_STALE":
+            raise CursorStale(message)
+        raise BatchError(message)
     data = envelope.get("data")
     if not isinstance(data, dict):
         raise BatchError("tracker read returned no data object")
     return data
 
 
+def _reread_on_stale_cursor(read: Callable[[], T]) -> T:
+    attempt = 1
+    while True:
+        try:
+            return read()
+        except CursorStale:
+            if attempt >= CURSOR_STALE_ATTEMPTS:
+                raise
+            attempt += 1
+
+
 def read_tracker(repo: Path, batch_id: str) -> dict:
+    return _reread_on_stale_cursor(lambda: _read_tracker_once(repo, batch_id))
+
+
+def _read_tracker_once(repo: Path, batch_id: str) -> dict:
     summary = _tractable_json(repo, ["batch", "show", batch_id])
     capability = summary.get("capability")
     if not isinstance(capability, dict) or int(capability.get("version") or 0) < 2:
@@ -1332,6 +1358,10 @@ def registered_dependencies(repo: Path, batch_id: str, member: str) -> list[str]
 
 
 def _item_sessions(repo: Path, item: str) -> list[dict]:
+    return _reread_on_stale_cursor(lambda: _item_sessions_once(repo, item))
+
+
+def _item_sessions_once(repo: Path, item: str) -> list[dict]:
     entries: list[dict] = []
     offset = 0
     revision: str | None = None
