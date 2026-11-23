@@ -165,3 +165,34 @@ def test_cedardb_capture_collects_logs_events_state_and_memory_redacted(tmp_path
     assert any("logs" in argv and "--timestamps" in argv for argv in calls)
     assert any("events" in argv and "container=abc123" in argv for argv in calls)
     assert any(".State" in " ".join(argv) and "inspect" in argv for argv in calls)
+
+
+def test_pg_mooncake_capture_collects_logs_events_state_and_memory_redacted(tmp_path):
+    spec = docker_assets.docker_platform_spec("pg-mooncake")
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append(argv)
+        output = "abc123" if "-q" in argv else "moonlink channel closed password=hidden-value"
+        return docker_assets.DockerCommandResult(tuple(argv), 0, output, "")
+
+    failures = engine_evidence.capture_engine_evidence(
+        "pg-mooncake", spec, "evidence-test", log_dir=tmp_path, runner=runner, env={}
+    )
+    destination = tmp_path / "pg-mooncake-evidence"
+    assert "pg-mooncake" in engine_evidence.EVIDENCE_PLATFORMS
+    assert failures == ()
+    assert {path.name for path in destination.iterdir()} == {
+        "host.json",
+        "containers.txt",
+        "container-state.json",
+        "container.log",
+        "events.txt",
+        "memory.txt",
+        "manifest.json",
+    }
+    assert "channel closed" in (destination / "container.log").read_text(encoding="utf-8")
+    assert "hidden-value" not in "".join(path.read_text(encoding="utf-8") for path in destination.iterdir())
+    assert any("logs" in argv and "--timestamps" in argv for argv in calls)
+    assert any("events" in argv and "container=abc123" in argv for argv in calls)
+    assert any(".State" in " ".join(argv) and "inspect" in argv for argv in calls)
