@@ -917,34 +917,10 @@ class TestGetPlatformMetadata:
     def _make_cursor(self, version="8.0.0", session_row=None, wh_row=None, tables=None):
         mock_cursor = Mock()
         session_row = session_row or ("user1", "role1", "WH1", "DB1", "PUBLIC", "AWS_US_EAST_1", "ACCT1")
-        wh_row = wh_row or (
-            "WH",
-            "STARTED",
-            "STANDARD",
-            "LARGE",
-            1,
-            3,
-            1,
-            0,
-            0,
-            False,
-            True,
-            None,
-            300,
-            True,
-            "100%",
-            "0%",
-            "0%",
-            "0%",
-            "2025-01-01",
-            "2025-01-01",
-            "2025-01-01",
-            "owner",
-            "",
-            None,
-            None,
-            "STANDARD",
+        wh_row = wh_row or _warehouse_row(
+            name="WH", min_cluster_count=1, max_cluster_count=3, auto_suspend=300, auto_resume=True
         )
+        mock_cursor.description = _warehouse_description()
         tables = tables or [("ORDERS", 1000, 1024, 1, None, None, None)]
 
         call_count = [0]

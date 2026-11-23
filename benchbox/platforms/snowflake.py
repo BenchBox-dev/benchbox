@@ -477,6 +477,30 @@ class SnowflakeAdapter(PlatformAdapter):
         except (IndexError, KeyError, TypeError):
             return None
 
+    _WAREHOUSE_INFO_COLUMNS = (
+        "name",
+        "state",
+        "type",
+        "size",
+        "min_cluster_count",
+        "max_cluster_count",
+        "started_clusters",
+        "running",
+        "queued",
+        "auto_suspend",
+        "auto_resume",
+        "available",
+        "provisioning",
+        "quiescing",
+        "other",
+        "created_on",
+        "resumed_on",
+        "updated_on",
+        "owner",
+        "comment",
+        "scaling_policy",
+    )
+
     _WAREHOUSE_COLUMNS = frozenset(
         {
             "name",
@@ -1844,36 +1868,9 @@ class SnowflakeAdapter(PlatformAdapter):
             wh_result = cursor.fetchall()
             if wh_result:
                 wh_info = wh_result[0]
-                warehouse_keys = (
-                    "name",
-                    "state",
-                    "type",
-                    "size",
-                    "min_cluster_count",
-                    "max_cluster_count",
-                    "started_clusters",
-                    "running",
-                    "queued",
-                    None,
-                    None,
-                    None,
-                    "auto_suspend",
-                    "auto_resume",
-                    "available",
-                    "provisioning",
-                    "quiescing",
-                    "other",
-                    "created_on",
-                    "resumed_on",
-                    "updated_on",
-                    "owner",
-                    "comment",
-                )
-                metadata["warehouse_info"] = {
-                    key: self._row_value(wh_info, i) for i, key in enumerate(warehouse_keys) if key is not None
-                }
-                metadata["warehouse_info"]["scaling_policy"] = self._row_value(wh_info, 25)
-                degraded = degraded or len(wh_info) <= 25
+                columns = self._row_by_column_name(cursor, wh_info)
+                metadata["warehouse_info"] = {key: columns.get(key) for key in self._WAREHOUSE_INFO_COLUMNS}
+                degraded = degraded or not columns.keys() >= set(self._WAREHOUSE_INFO_COLUMNS)
             else:
                 degraded = True
 
