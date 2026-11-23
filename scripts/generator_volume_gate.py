@@ -17,14 +17,14 @@ from scripts.measure_sf1_sizes import sum_directory_bytes
 BASELINE_PATH = "tests/unit/generators/sf1_size_baseline.json"
 SMOKE_PHASES = "generate,load,power"
 SMOKE_TIMEOUT_MINUTES: dict[str, int] = {
-    "amplab": 1,
-    "h2odb": 5,
-    "coffeeshop": 2,
-    "tsbs_devops": 3,
-    "joinorder_synthetic": 1,
-    "vector_search": 2,
-    "write_primitives": 5,
-    "transaction_primitives": 2,
+    "amplab": 3,
+    "h2odb": 9,
+    "coffeeshop": 3,
+    "tsbs_devops": 5,
+    "joinorder_synthetic": 3,
+    "vector_search": 3,
+    "write_primitives": 9,
+    "transaction_primitives": 4,
 }
 
 PURE_PYTHON_GENERATORS: dict[str, tuple[str, ...]] = {
@@ -176,33 +176,39 @@ def run_smoke(benchmark: str, *, runner: CommandRunner = subprocess.run) -> Smok
     start = mono_time()
     with tempfile.TemporaryDirectory(prefix="generator-volume-") as tmp:
         output = Path(tmp)
-        result = runner(
-            [
-                "uv",
-                "run",
-                "--no-sync",
-                "--",
-                "benchbox",
-                "run",
-                "--platform",
-                "duckdb",
-                "--benchmark",
-                benchmark,
-                "--scale",
-                "1",
-                "--phases",
-                SMOKE_PHASES,
-                "--compression",
-                "none",
-                "--non-interactive",
-                "--quiet",
-            ],
-            env={**os.environ, "BENCHBOX_OUTPUT_DIR": str(output)},
-            capture_output=True,
-            text=True,
-            timeout=SMOKE_TIMEOUT_MINUTES[benchmark] * 60,
-            check=False,
-        )
+        limit_seconds = SMOKE_TIMEOUT_MINUTES[benchmark] * 60
+        try:
+            result = runner(
+                [
+                    "uv",
+                    "run",
+                    "--no-sync",
+                    "--",
+                    "benchbox",
+                    "run",
+                    "--platform",
+                    "duckdb",
+                    "--benchmark",
+                    benchmark,
+                    "--scale",
+                    "1",
+                    "--phases",
+                    SMOKE_PHASES,
+                    "--compression",
+                    "none",
+                    "--non-interactive",
+                    "--quiet",
+                ],
+                env={**os.environ, "BENCHBOX_OUTPUT_DIR": str(output)},
+                capture_output=True,
+                text=True,
+                timeout=limit_seconds,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            return SmokeResult(
+                0, 0, 0, 0, elapsed_seconds(start), f"timeout: benchbox run exceeded the {limit_seconds} s limit"
+            )
         seconds = elapsed_seconds(start)
         if result.returncode != 0:
             tail = (result.stderr or result.stdout).strip().splitlines()[-5:]

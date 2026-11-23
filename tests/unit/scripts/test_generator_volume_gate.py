@@ -324,9 +324,45 @@ def test_every_gated_benchmark_has_a_timeout_and_the_smoke_passes_it_in_seconds(
     assert fake.timeout == gate.SMOKE_TIMEOUT_MINUTES["amplab"] * 60
 
 
-def test_the_ci_job_limit_is_twice_the_measured_total_rounded_up_to_five_minutes() -> None:
+def test_the_smoke_limits_are_four_times_the_local_time_with_a_three_minute_floor() -> None:
+    assert gate.SMOKE_TIMEOUT_MINUTES == {
+        "amplab": 3,
+        "h2odb": 9,
+        "coffeeshop": 3,
+        "tsbs_devops": 5,
+        "joinorder_synthetic": 3,
+        "vector_search": 3,
+        "write_primitives": 9,
+        "transaction_primitives": 4,
+    }
+
+
+def test_the_ci_job_limit_is_four_times_the_measured_total_rounded_to_five_minutes() -> None:
     workflow = yaml.safe_load(CI_WORKFLOW.read_text(encoding="utf-8"))
-    assert workflow["jobs"]["generator-volume"]["timeout-minutes"] == 20
+    assert workflow["jobs"]["generator-volume"]["timeout-minutes"] == 35
+
+
+def expire(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+    raise subprocess.TimeoutExpired(command, kwargs["timeout"])
+
+
+def test_a_smoke_timeout_is_a_failed_result_naming_the_limit_in_seconds() -> None:
+    result = gate.run_smoke("amplab", runner=expire)
+    assert result.error == "timeout: benchbox run exceeded the 180 s limit"
+    assert gate.evaluate_smoke(result) == result.error
+
+
+def test_a_smoke_timeout_fails_the_gate_without_a_traceback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run_smoke = gate.run_smoke
+    monkeypatch.setattr(gate, "run_smoke", lambda benchmark: run_smoke(benchmark, runner=expire))
+    args = write_inputs(tmp_path, [AMPLAB_GENERATOR], baseline_with(), baseline_with())
+    assert gate.main(args) == 1
+    out = capsys.readouterr().out
+    assert "| amplab | fail |" in out
+    assert "::error title=generator-volume::amplab: timeout: benchbox run exceeded the 180 s limit" in out
+    assert "Traceback" not in out
 
 
 def test_every_gated_benchmark_has_a_committed_baseline_and_a_measurement_entry() -> None:

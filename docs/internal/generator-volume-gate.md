@@ -104,22 +104,25 @@ measured values. Causes:
 
 ## Time limits
 
-Each benchmark's time limit is twice its measured time, rounded up to a whole
-minute; the job limit is twice the measured total, rounded up to five minutes.
+Each benchmark's time limit is four times its measured time, rounded up to a
+whole minute, with a minimum of 3 minutes; the job limit is four times the
+measured total, rounded to five minutes. A smoke run that exceeds its limit is
+killed and reported as a failed benchmark (`timeout: benchbox run exceeded the
+<N> s limit`) in the result table and the exit code.
 
-| Benchmark | Measured seconds | Limit (minutes) |
-|---|---|---|
-| amplab | 22.66 | 1 |
-| h2odb | 128.09 | 5 |
-| coffeeshop | 39.69 | 2 |
-| tsbs_devops | 61.53 | 3 |
-| joinorder_synthetic | 28.00 | 1 |
-| vector_search | 44.23 | 2 |
-| write_primitives | 120.17 | 5 |
-| transaction_primitives | 55.35 | 2 |
+| Benchmark | Measured seconds | 4x (seconds) | Limit (minutes) |
+|---|---|---|---|
+| amplab | 22.66 | 90.64 | 3 |
+| h2odb | 128.09 | 512.36 | 9 |
+| coffeeshop | 39.69 | 158.76 | 3 |
+| tsbs_devops | 61.53 | 246.12 | 5 |
+| joinorder_synthetic | 28.00 | 112.00 | 3 |
+| vector_search | 44.23 | 176.92 | 3 |
+| write_primitives | 120.17 | 480.68 | 9 |
+| transaction_primitives | 55.35 | 221.40 | 4 |
 
-The eight runs total 499.72 s; twice that is 999.44 s (16.7 minutes), so the
-`generator-volume` job limit is 20 minutes. The limits come from runs on one
+The eight runs total 499.72 s; four times that is 1998.88 s (33.3 minutes), so
+the `generator-volume` job limit is 35 minutes. The limits come from runs on one
 local machine; a hosted runner can be slower.
 
 ## Coverage limits
