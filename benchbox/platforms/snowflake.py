@@ -1371,7 +1371,6 @@ class SnowflakeAdapter(PlatformAdapter):
                 cache_setting = "FALSE" if self.disable_result_cache else "TRUE"
                 session_settings.extend(
                     [
-                        "ALTER SESSION SET QUERY_ACCELERATION_MAX_SCALE_FACTOR = 8",
                         f"ALTER SESSION SET USE_CACHED_RESULT = {cache_setting}",
                         "ALTER SESSION SET STATEMENT_TIMEOUT_IN_SECONDS = 1800",
                     ]
