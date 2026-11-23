@@ -41110,6 +41110,13 @@
       "status": "done",
       "title": "`benchbox report rankings` is always empty because imported rows store lowercase `passed` and the filter matches `'PASSED'`"
     },
+    "results-dir-env-ignored-by-cli-run-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "benchbox run ignores BENCHBOX_RESULTS_DIR for the result file and creates an empty folder there"
+    },
     "results-explorer-accessibility-copy-and-facet-cleanup": {
       "claim": null,
       "needs": [],

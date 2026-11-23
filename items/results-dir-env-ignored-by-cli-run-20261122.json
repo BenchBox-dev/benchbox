@@ -1,0 +1,32 @@
+{
+  "acceptance": [
+    "Decision gate (owner, before any code): choose 'CLI honours BENCHBOX_RESULTS_DIR' or 'variable is MCP-only'. Record the choice and reason in this item's context. Do not implement both.",
+    "If honoured: with BENCHBOX_RESULTS_DIR set, `benchbox run` writes the result JSON and every companion file it writes today (plan history, anonymized copy if any) under that directory, prints that absolute path as its last line, and writes nothing new under <benchmark_runs>/results. A test fails before the fix and passes after.",
+    "If MCP-only: `benchbox run` creates no directory at BENCHBOX_RESULTS_DIR, and the `--output` help text and the MCP `--results-dir` help both state the scope. A test asserts no directory is created.",
+    "Precedence stays explicit and tested: explicit argument > BENCHBOX_RESULTS_DIR > BENCHBOX_OUTPUT_DIR/results > default, matching benchbox/core/runtime_paths.py.",
+    "Verification rubric: rerun the observed command against a scratch directory under make heavy-run and paste the resulting file listing of both directories into the PR; unit tests alone do not close this item.",
+    "Guardrails: do not change where datagen or databases are written; do not change the default results location; the last-line result path contract that scripts/run_version_matrix.py and the UAT runner parse must keep working (their tests pass unchanged); user-facing change needs a changelog.d fragment.",
+    "If the honoured option lands, update AGENTS.md [RUN-DATA-001] in the same PR to prefer it over a private root, within the agent-instructions byte budget (make agent-instructions-check passes)."
+  ],
+  "context": "Origin: disk cleanup and root-cause review on 2026-11-22. The root volume fell to 46 GiB free, below the 50 GiB heavy-work floor. Cause found: generated benchmark data has no lifecycle (any session creates it under any run root, nothing removes it), and Time Machine local snapshots kept deleted data allocated. PR #4451 (https://github.com/BenchBox-dev/benchbox/pull/4451) added AGENTS.md [RUN-DATA-001] and made scripts/run_version_matrix.py delete its datagen/ and databases/ when a matrix completes.",
+  "description": "Problem: `benchbox run` does not write its result JSON to `BENCHBOX_RESULTS_DIR`. `benchbox/cli/commands/run.py` builds `ResultExporter(anonymize=False)`, which resolves and creates the directory from `BENCHBOX_RESULTS_DIR`, then replaces it with `orchestrator.directory_manager.results_dir` (`<benchmark_runs>/results`). The MCP server and `ResultExporter` on its own honour the variable, so the two entry points disagree.\n\nObserved 2026-11-22 on develop at 1def232547: `BENCHBOX_RESULTS_DIR=<dir>/results benchbox run --platform duckdb --benchmark tpch --scale 0.01 --phases generate,load,power --non-interactive --quiet` created `<dir>/results` empty and wrote the result to `~/Developer/benchmark_runs/results/`.\n\nWhy it matters: a results-only override is the cheapest way to keep one investigation's results together without a private run root, which is what makes sessions regenerate data. Today the only working recipe is a private root plus `--output <shared>/datagen` (AGENTS.md [RUN-DATA-001]).\n\nExpected outcome: one documented behaviour for `benchbox run`. Either the result file and its companion files go to `BENCHBOX_RESULTS_DIR` when it is set, or the variable is documented as MCP-only and the CLI stops creating the empty directory.",
+  "links": [
+    "benchbox/cli/commands/run.py",
+    "benchbox/core/results/exporter.py",
+    "benchbox/core/runtime_paths.py",
+    "benchbox/cli/config.py",
+    "benchbox/mcp/cli.py",
+    "AGENTS.md",
+    "https://github.com/BenchBox-dev/benchbox/pull/4451"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1666d419ebd76239145cfb5d",
+      "at": "2026-11-23T00:16:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "98c00678357549acb5e608dcf9b30eff",
+      "session_id": "326a88b3a63f4096aae1118667c53175"
+    }
+  ]
+}
