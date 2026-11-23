@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "CI-only: generator volume gate, and fast-duration verdicts that name the run attempt whose timings they read"
+}
