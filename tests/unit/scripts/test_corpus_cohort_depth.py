@@ -127,6 +127,7 @@ KNOWN_DEFECTIVE_SHALLOW_COHORTS = {
     ("read_primitives", "0.01"): {"clickhouse-local^container", "datafusion"},
     ("read_primitives", "0.1"): {"clickhouse-local^container", "datafusion"},
     ("tpcds_obt", "1.0"): {"datafusion", "duckdb"},
+    ("tpch", "1.0"): {"duckdb"},
     ("tpchavoc", "0.01"): {"datafusion"},
     ("tpchavoc", "0.1"): {"datafusion"},
     ("tpchavoc", "1.0"): {"datafusion"},
@@ -1506,6 +1507,21 @@ def _parity_variants() -> dict[str, dict]:
     }
 
 
+EXPECTED_RULE_DIVERGENCE = {
+    "combined-phase-with-power-score-only": ((), "missing_primary_metric"),
+    "combined-phase-with-throughput-score-only": ((), "missing_primary_metric"),
+    "combined-tpcds-failed-maintenance-operation": (("power_only",), None),
+    "combined-tpcds-maintenance-phase-failed": (("power_only",), None),
+    "combined-tpcds-second-round-missing": (("power_only",), None),
+    "combined-tpcds-second-throughput-failed": (("power_only",), None),
+    "combined-tpch-failed-power-refresh": (("throughput",), None),
+    "combined-tpch-failed-refresh-pair": (("power_only", "throughput"), None),
+    "combined-tpch-failed-refresh-stream": (("power_only", "throughput"), None),
+    "combined-tpch-failed-throughput-stream": (("power_only",), None),
+    "combined-tpch-no-refresh-evidence": (("throughput",), None),
+}
+
+
 @pytest.mark.parametrize("name", sorted(_parity_variants()))
 def test_validator_agrees_with_the_explorer_on_phase_and_rankability(tmp_path: Path, name: str) -> None:
     validator = _load_validator()
@@ -1516,10 +1532,14 @@ def test_validator_agrees_with_the_explorer_on_phase_and_rankability(tmp_path: P
     explorer_phase, explorer_reason = _explorer_pipeline_view(path)
 
     assert validator.bundle_phase(payload) == explorer_phase
-    if explorer_reason in COMBINED_EVIDENCE_REASONS:
-        assert "combined" not in validator.bundle_lanes(payload)
+    validator_reason = validator.exclusion_reason(payload)
+    if name in EXPECTED_RULE_DIVERGENCE:
+        lanes, reason = EXPECTED_RULE_DIVERGENCE[name]
+        assert explorer_reason in COMBINED_EVIDENCE_REASONS
+        assert validator.bundle_lanes(payload) == lanes
+        assert validator_reason == reason
         return
-    assert validator.exclusion_reason(payload) == explorer_reason
+    assert validator_reason == explorer_reason
     assert validator.bundle_rankable(payload) is (explorer_reason is None)
 
 
@@ -1569,7 +1589,7 @@ STAMP_REFUSAL_REASON = "unofficial_compliance"
 RULE_NEWLY_RANKED_COMMITTED_BUNDLES = 19
 
 
-DIVERGENCE_LIST = REPO_ROOT / "tests" / "fixtures" / "validator_explorer_divergence.txt"
+DIVERGENCE_LIST = REPO_ROOT / "scripts" / "unpublished_rule_rankings.txt"
 
 
 def test_validator_and_explorer_disagree_on_exactly_the_bundles_the_rule_newly_ranks() -> None:
@@ -1964,3 +1984,19 @@ def test_unclean_throughput_evidence_keeps_a_full_spec_run_out_of_the_combined_l
 
     assert "combined" not in validator.bundle_lanes(payload, path)
     assert validator._combined_score(payload) is None
+
+
+def test_the_depth_gate_does_not_count_rankings_the_explorer_does_not_publish() -> None:
+    validator = _load_validator()
+    bundles = validator.discover_bundles(BUNDLES)
+    listed = validator.unpublished_rule_rankings()
+    assert len(listed) == RULE_NEWLY_RANKED_COMMITTED_BUNDLES
+
+    shallow = validator.shallow_cohorts(validator.cohort_platforms(bundles))
+    assert shallow[("tpch", "1.0")] == {"duckdb"}
+
+    without = validator.cohort_platforms(bundles, frozenset())
+    assert len(without[("tpch", "1.0")]) == 4
+    sqlite_run = next(entry for entry in listed if "tpch_sf1_sqlite" in entry)
+    one_less = validator.cohort_platforms(bundles, listed - {sqlite_run})
+    assert one_less[("tpch", "1.0")] == {"duckdb", "sqlite"}

@@ -95,6 +95,12 @@ compliance class once three platforms shared its scale.
   report (`results-data/compliance-classes.json` is unchanged because its `rule`
   section already held these outcomes). TPC-H SF 1 now has four ranked identities, so
   it left the documented shallow cohorts.
+- Until the Explorer pipeline emits the rule's outcome, the cohort depth gate does not
+  count the 19 bundles listed in `scripts/unpublished_rule_rankings.txt`, because the
+  published ranking still excludes them. `validate_corpus.exclusion_reason` and the lanes
+  follow the rule; only `cohort_platforms` subtracts the list, so TPC-H SF 1 stays a
+  documented shallow cohort. The list is removed when the Explorer switches to the rule.
+  Corrects the 2026-11-23 note above: TPC-H SF 1 did not leave the shallow cohorts.
 
 Effect on the published corpus: the registry lists only SF 1 as a standard
 ClickBench scale. The 13 ClickBench bundles at SF 0.1 and SF 10 (see "Cloud
