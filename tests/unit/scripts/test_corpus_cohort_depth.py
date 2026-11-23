@@ -46,6 +46,7 @@ pytestmark = [
 ]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+COMBINED_EVIDENCE_REASONS = frozenset({"combined_throughput_not_clean", "combined_refresh_not_clean"})
 VALIDATOR = REPO_ROOT / "results-data" / "validate_corpus.py"
 BUNDLES = REPO_ROOT / "results-data" / "bundles"
 
@@ -1564,32 +1565,29 @@ def test_inventory_validator_and_explorer_agree_on_the_cohort_phase(tmp_path: Pa
     assert (scale.split("#")[1] if "#" in scale else "power") == explorer_phase
 
 
-COMBINED_EVIDENCE_REASONS = frozenset({"combined_throughput_not_clean", "combined_refresh_not_clean"})
 STAMP_REFUSAL_REASON = "unofficial_compliance"
 RULE_NEWLY_RANKED_COMMITTED_BUNDLES = 19
 
 
-def test_validator_agrees_with_the_explorer_on_every_committed_bundle_but_the_stamp_refusals() -> None:
+DIVERGENCE_LIST = REPO_ROOT / "tests" / "fixtures" / "validator_explorer_divergence.txt"
+
+
+def test_validator_and_explorer_disagree_on_exactly_the_bundles_the_rule_newly_ranks() -> None:
     validator = _load_validator()
     bundles = validator.discover_bundles(BUNDLES)
     assert bundles
 
-    disagreements = []
-    newly_ranked = []
+    disagreements = set()
     for path in bundles:
         payload = json.loads(path.read_text(encoding="utf-8"))
         explorer_phase, explorer_reason = _explorer_pipeline_view(path)
-        validator_reason = validator.exclusion_reason(payload, path)
-        if validator.bundle_phase(payload) != explorer_phase:
-            disagreements.append(path.name)
-        elif explorer_reason == STAMP_REFUSAL_REASON:
-            if validator_reason is None:
-                newly_ranked.append(path.name)
-        elif validator_reason != explorer_reason:
-            disagreements.append(path.name)
+        assert validator.bundle_phase(payload) == explorer_phase, path.name
+        if validator.bundle_rankable(payload, path) is not (explorer_reason is None):
+            disagreements.add(path.relative_to(BUNDLES).as_posix())
 
-    assert not disagreements
-    assert len(newly_ranked) == RULE_NEWLY_RANKED_COMMITTED_BUNDLES
+    expected = set(DIVERGENCE_LIST.read_text(encoding="utf-8").split())
+    assert len(expected) == RULE_NEWLY_RANKED_COMMITTED_BUNDLES
+    assert disagreements == expected
 
 
 def test_every_committed_bundle_declares_a_phase() -> None:
@@ -1931,3 +1929,38 @@ def test_a_power_and_refresh_bundle_without_throughput_ranks_power_only(tmp_path
     assert validator.bundle_lanes(payload, path) == ("power_only",)
     cohorts = validator.cohort_platforms([path])
     assert {key: len(identities) for key, identities in cohorts.items()} == {("tpch", "1.0"): 1}
+
+
+def test_a_combined_lane_run_with_unclean_evidence_is_not_ranked_in_the_combined_cohort(tmp_path: Path) -> None:
+    validator = _load_validator()
+    for name, payload in _parity_variants().items():
+        if not name.startswith("combined"):
+            continue
+        path = tmp_path / f"{name}.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        lanes = validator.rule_outcome(payload, path).lanes
+        defects = validator._combined_evidence_defects(payload)
+        if "combined" in lanes and defects:
+            assert validator.lane_reasons(payload, path)["combined"] == defects[0], name
+            assert "combined" not in validator.bundle_lanes(payload, path), name
+
+
+@pytest.mark.parametrize("mutation", ["stream-failed", "errors", "outstanding-work"])
+@pytest.mark.parametrize("suite", ["tpch", "tpcds"])
+def test_unclean_throughput_evidence_keeps_a_full_spec_run_out_of_the_combined_lane(
+    tmp_path: Path, suite: str, mutation: str
+) -> None:
+    validator = _load_validator()
+    payload = combined_bundle(benchmark=suite)
+    block = payload["phases"]["throughput_test"]
+    if mutation == "stream-failed":
+        block["stream_results"][-1]["success"] = False
+    elif mutation == "errors":
+        block["errors"] = ["stream 1 died"]
+    else:
+        block["outstanding_work"] = {"stream_ids": [1], "cleanup_state": "unknown"}
+    path = tmp_path / "unclean.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert "combined" not in validator.bundle_lanes(payload, path)
+    assert validator._combined_score(payload) is None

@@ -186,7 +186,7 @@ def test_three_platform_off_list_cohort_never_ranks(tmp_path: Path, benchmark_id
     assert cohorts == {(benchmark_id, f"{scale}"): set()}
     assert validator.unranked_cohorts(cohorts) == [(benchmark_id, f"{scale}")]
     assert validator.shallow_cohorts(cohorts) == {}
-    expected = "not_ranked_undetermined" if benchmark_id == "tpcdi" else "not_ranked_nonstandard_scale"
+    expected = "not_admitted_undetermined" if benchmark_id == "tpcdi" else "not_ranked_nonstandard_scale"
     for path in paths:
         assert validator.exclusion_reason(json.loads(path.read_text(encoding="utf-8"))) == expected
 

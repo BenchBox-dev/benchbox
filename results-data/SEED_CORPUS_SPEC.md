@@ -115,9 +115,16 @@ by stream count, because both composite metrics already contain the stream count
   every refresh step succeeded. For TPC-H that is RF1 and RF2 in the power phase,
   a `COMPLETED` refresh stream and `refresh_included: true`. For TPC-DS that is a
   `COMPLETED` `maintenance_test` and `maintenance_test_2`, each with at least one
-  operation and every operation `SUCCESS`. A failed stream or a failed refresh gives
-  the exclusion reason `combined_throughput_not_clean` or `combined_refresh_not_clean`,
+  operation and every operation `SUCCESS`. A bundle the rule puts in the combined lane
+  but whose evidence is not clean is not ranked there: a failed stream, `errors`,
+  `outstanding_work` or a configured-versus-executed stream mismatch gives
+  `combined_throughput_not_clean`, a failed refresh gives `combined_refresh_not_clean`,
   and a combined bundle without the composite metric gives `missing_primary_metric`.
+  When the facts leave out a phase the rule needs for the combined lane, the rule
+  places the bundle in the lanes its remaining phases support (power-only and
+  throughput, or power-only) and those lanes are scored from timings. The rule's
+  maintainer admission also gates staging: an undetermined outcome or a TPC-DI bundle
+  is refused with the rule's reason (`not_admitted_<class>`).
 - **Load time.** `summary.tpc_metrics.load_scope` records what load time includes:
   `components` lists the timed steps among `schema_creation`, `data_loading`,
   `statistics_gathering`, `post_load_maintenance` and `merge_settle`, and

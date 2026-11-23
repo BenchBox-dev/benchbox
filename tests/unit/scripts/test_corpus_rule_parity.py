@@ -137,6 +137,8 @@ def _publish_admitted(path: Path) -> bool:
 
 def _staged(tmp_path: Path, path: Path, monkeypatch: pytest.MonkeyPatch) -> bool:
     monkeypatch.setenv("BENCHBOX_MACHINE_ID_SALT", "parity-salt")
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "github-output"))
+    monkeypatch.setenv("SEED_STATUS_FILE", str(tmp_path / "seed-status"))
     return _stager().stage_seed_bundle(path, tmp_path / "staged")
 
 
@@ -193,3 +195,16 @@ def test_a_gateway_routed_result_is_refused_publicly_on_every_public_path(tmp_pa
     assert _publish_admitted(path) is False
     assert _gate_outcome(path, trusted=False)[0] is False
     assert _validator().admission_reason(data, path) == "gateway_routed"
+
+
+def test_a_bundle_the_rule_does_not_admit_to_the_maintainer_path_is_refused_by_admission(tmp_path: Path) -> None:
+    validator = _validator()
+    undetermined = _bundle(CASES[0])
+    undetermined.pop("phases")
+    assert validator.admission_reason(undetermined, _write(tmp_path / "a", "result.json", undetermined)) is not None
+
+    tpcdi = _bundle(CASES[0])
+    tpcdi["benchmark"]["id"] = "tpcdi"
+    assert validator.admission_reason(tpcdi, _write(tmp_path / "b", "result.json", tpcdi)) is not None
+    outcome = corpus_rule.derive_outcome(corpus_rule.facts_from_result(tpcdi))
+    assert outcome.maintainer_admission is False

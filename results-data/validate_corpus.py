@@ -556,7 +556,13 @@ COMBINED_QPH_METRICS = {"tpch": "qphh_at_size", "tpcds": "qphds_at_size"}
 
 
 def _combined_score(payload: dict) -> float | None:
+    if _combined_evidence_defects(payload):
+        return None
     return CORPUS_SCORE.combined_score(payload)
+
+
+def _combined_evidence_defects(payload: dict) -> list[str]:
+    return _load_bundle_validation().combined_evidence_defects(payload)
 
 
 def _primary_metric_value(payload: dict, display: list[tuple[str, float | None, int]]) -> float | None:
@@ -626,7 +632,8 @@ def _metric_reason(value: float | None) -> str | None:
 def _lane_reason(payload: dict, display: list[tuple[str, float | None, int]], lane: str) -> str | None:
     benchmark_id = str(_mapping(payload.get("benchmark")).get("id", "unknown"))
     if lane == CORPUS_RULE.LANE_COMBINED:
-        return _metric_reason(_combined_score(payload))
+        defects = _combined_evidence_defects(payload)
+        return defects[0] if defects else _metric_reason(_combined_score(payload))
     if lane == CORPUS_RULE.LANE_THROUGHPUT and benchmark_id in THROUGHPUT_SCORE_BENCHMARKS:
         return _stream_reason(payload) or _metric_reason(_throughput_score(payload))
     if lane in (CORPUS_RULE.LANE_POWER_ONLY, CORPUS_RULE.LANE_SUBSCALE) and benchmark_id in POWER_SCORE_BENCHMARKS:
@@ -672,8 +679,8 @@ def admission_reason(payload: dict, bundle: pathlib.Path | None = None) -> str |
     reason = _primary_metric_reason(payload, display)
     if reason is not None:
         return reason
-    if outcome.held_reason == CORPUS_RULE.HELD_NO_TIMED_PHASE:
-        return CORPUS_RULE.HELD_NO_TIMED_PHASE
+    if not outcome.maintainer_admission:
+        return outcome.held_reason or f"not_admitted_{outcome.class_name}"
     return None
 
 
