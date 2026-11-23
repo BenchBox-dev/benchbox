@@ -35082,12 +35082,17 @@
       "title": "Mirror validate-bundles rejects maintainer seed corpus with summary.validation=partial"
     },
     "mirror-validator-refuses-offlist-tpch-tpcds-bundles-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T21:01:33Z",
+        "generation": "87e90bbfad7840d0ae9562c4eaea6e55",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a5dffb67f2f8103a3765a88b"
+      },
       "needs": [
         "bundle-validator-checks-compliance-before-offlist-return-20261120"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Make the published-results mirror validator apply the non-standard-scale policy"
     },
     "mirror-validator-submission-guard-standard-scales-20261122": {
