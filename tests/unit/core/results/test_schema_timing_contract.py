@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from benchbox.core.results import corpus_rule
 from benchbox.core.results.loader import reconstruct_benchmark_results
 from benchbox.core.results.metrics import percentile_ms
 from benchbox.core.results.models import (
@@ -133,7 +134,7 @@ def test_build_result_payload_accepts_consistent_duration_aliases() -> None:
     payload = build_result_payload(result)
 
     assert payload["queries"][0]["ms"] == 1250.0
-    assert payload["run"]["streams"] == 0
+    assert payload["run"]["streams"] == 1
     assert payload["phases"]["throughput_test"] == {
         "status": "FAILED",
         "duration_ms": 1000,
@@ -144,6 +145,8 @@ def test_build_result_payload_accepts_consistent_duration_aliases() -> None:
         "errors": ["Stream 5 failed: worker died"],
     }
     assert "throughput_at_size" not in payload["summary"].get("tpc_metrics", {})
+    assert corpus_rule.executed_stream_count(payload) == 0
+    assert corpus_rule.facts_from_result(payload).streams == 0
 
 
 def test_refresh_evidence_is_serialized_as_phase_data_not_query_rows() -> None:
