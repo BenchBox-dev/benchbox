@@ -8,6 +8,16 @@
       "provenance": "_sources/README.md"
     },
     {
+      "path": "_sources/tpc-di/",
+      "owner": "TPC",
+      "provenance": "_sources/README.md"
+    },
+    {
+      "path": "benchbox/_binaries/tpc-di/",
+      "owner": "TPC",
+      "provenance": "_sources/README.md"
+    },
+    {
       "path": "_sources/tpc-ds/tools/",
       "owner": "TPC",
       "provenance": "_sources/README.md"
