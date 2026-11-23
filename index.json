@@ -51875,10 +51875,15 @@
       "title": "Trunk UAT pandas-df shard killed by the heavy-work watchdog at 13.07 GiB (budget 13 GiB)"
     },
     "trunk-uat-timeseries-execute-failure-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T16:41:27Z",
+        "generation": "9f6c69899fd44aa5908bf1eb12df53f2",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f39bd68d6be6ca1c15ff91e"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Trunk UAT timeseries (3 of 6 runs) and query-engines shards fail execute with no failing cell named in the job log"
     },
     "tsbs-devops-dataframe-sql-id-mapping": {
