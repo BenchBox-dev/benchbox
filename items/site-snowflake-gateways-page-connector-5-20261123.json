@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "docs/platforms/snowflake-gateways.md on next describes the gateway options as the merged core code implements them on connector 4.x and 5.x, and the pull request has merged with green CI."
+  ],
+  "description": "## Problem\nCore batch release-readiness changes how the gateway options behave on snowflake-connector-python 5.x and corrects the allow_insecure_gateway description. The site page docs/platforms/snowflake-gateways.md must match; a core batch cannot change benchbox-site.\n\n## Owner decisions (choice dialog, 2026-11-23)\n- On 5.x: allow_insecure_gateway -> crl_check_mode DISABLED; gateway_ocsp_fail_open true -> ADVISORY, false -> ENABLED; unset -> connector default (DISABLED). gateway_ca_bundle -> extra_root_store_path.\n- allow_insecure_gateway only turns off revocation checking; certificate and host name verification still apply.\n\n## Change\nIn a benchbox-site worktree, on the branch the site rule names for unreleased features (next), update docs/platforms/snowflake-gateways.md from the merged core code, re-reading it first.\n\nCovers the site-page acceptance lines of gateway-transport-options-connector-5 and gateway-insecure-option-help-text.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e8526faa0e732223dd79589d",
+      "at": "2026-11-23T13:47:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "978abb7613e941f8bc1d2deb85ed245a",
+      "session_id": "24cca4279aeb4583a89b2c57ce255d32"
+    }
+  ]
+}
