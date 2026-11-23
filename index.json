@@ -29280,7 +29280,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "blocked",
+      "status": "open",
       "title": "Trunk stability before v0.6.0: registered batch trunk-stability (notes; not a work item)"
     },
     "feature-pr-landing-guards-20261111": {
