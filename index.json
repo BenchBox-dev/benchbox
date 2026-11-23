@@ -3781,6 +3781,7 @@
         "crr-a0-decision-records": "98270097cf7240eb08df85fbc3512e860ed26aa7",
         "crr-a1-rule-module-and-snapshot": "8898e0559b7b10f25c0b92af3e9083d5fa47c647",
         "crr-b1-identity-and-comparison-version": "b8476bed2c90140f84813231be0a52218dbdb8a3",
+        "crr-c1-validation-status-vocabulary": "37f31ba22c582643360aa2bd4392884d10130087",
         "crr-d1-observed-engine-contract-and-dataframe": "d604a887132187c5a0875f0700aa01c23c2670e4"
       },
       "batch_schema": 2,
@@ -3838,6 +3839,50 @@
           "integration_head": "859ad5835188eecec5a9cf99444383bc78b0fdca",
           "integration_seq": 4
         },
+        "crr-c1-validation-status-vocabulary": {
+          "accepted_head": "37f31ba22c582643360aa2bd4392884d10130087",
+          "changed_files": [
+            "benchbox/core/dataframe/query_validation.py",
+            "benchbox/core/expected_results/__init__.py",
+            "benchbox/core/expected_results/registry.py",
+            "benchbox/core/results/builder.py",
+            "benchbox/core/results/corpus_rule.py",
+            "benchbox/core/results/corpus_rule_data.json",
+            "benchbox/core/results/database.py",
+            "benchbox/core/results/query_status.py",
+            "benchbox/core/runner/runner.py",
+            "benchbox/core/validation/query_validation.py",
+            "benchbox/validation/bundle.py",
+            "changelog.d/feat-corpus-rule-r3--crr-c1-validation-status-vocabulary.json",
+            "docs/agent/maintainer-bundles.md",
+            "results-data/compliance-classes.json",
+            "results-data/corpus-inventory.json",
+            "scripts/generate_corpus_rule_data.py",
+            "tests/integration/test_cross_branch_validator_contract.py",
+            "tests/integration/test_tpcds_official_end_to_end.py",
+            "tests/uat/test_validate.py",
+            "tests/unit/cli/commands/test_submit.py",
+            "tests/unit/core/dataframe/test_query_validation.py",
+            "tests/unit/core/expected_results/test_answer_files_missing.py",
+            "tests/unit/core/expected_results/test_missing_expected_count.py",
+            "tests/unit/core/expected_results/test_singleflight_run_policy.py",
+            "tests/unit/core/expected_results/test_tpcds_subscale_validation.py",
+            "tests/unit/core/results/test_builder.py",
+            "tests/unit/core/results/test_builder_throughput_metrics.py",
+            "tests/unit/core/results/test_corpus_rule.py",
+            "tests/unit/core/results/test_result_parity.py",
+            "tests/unit/core/results/test_translation_policy_metadata.py",
+            "tests/unit/core/results/test_unvalidated_row_counts.py",
+            "tests/unit/platforms/dataframe/test_benchmark_mixin.py",
+            "tests/unit/scripts/test_corpus_nonstandard_scale.py",
+            "tests/unit/scripts/test_generate_corpus_rule_data.py",
+            "tests/unit/scripts/test_validate_submission.py",
+            "tests/unit/test_base_advanced.py",
+            "tests/unit/test_results_exporter.py"
+          ],
+          "integration_head": "e5731841b37dbd6471ac66eb8e90213dd0841a41",
+          "integration_seq": 5
+        },
         "crr-d1-observed-engine-contract-and-dataframe": {
           "accepted_head": "d604a887132187c5a0875f0700aa01c23c2670e4",
           "changed_files": [
@@ -3885,7 +3930,7 @@
         }
       },
       "integration_branch": "feat/corpus-rule-r4",
-      "integration_head": "859ad5835188eecec5a9cf99444383bc78b0fdca",
+      "integration_head": "e5731841b37dbd6471ac66eb8e90213dd0841a41",
       "integration_log": [
         {
           "at": "2026-11-22T23:06:06Z",
@@ -3928,6 +3973,15 @@
           "op_id": "e4d247a08b244e7ebdacb7699c7ac7fd",
           "previous_head": "ac57e97965796472f439ff9eb73a99eac17958c8",
           "seq": 4
+        },
+        {
+          "at": "2026-11-23T07:04:32Z",
+          "head": "e5731841b37dbd6471ac66eb8e90213dd0841a41",
+          "kind": "prepare",
+          "member": "crr-c1-validation-status-vocabulary",
+          "op_id": "61d93ea07f8d4e049b87c5333ec8e5ec",
+          "previous_head": "859ad5835188eecec5a9cf99444383bc78b0fdca",
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r4",
@@ -23932,17 +23986,12 @@
       "title": "Replace the stored DuckDB median files with their individual runs where every run exists, under the owner's freeze release"
     },
     "crr-c1-validation-status-vocabulary": {
-      "claim": {
-        "expires_at": "2026-11-24T06:44:08Z",
-        "generation": "711023b093a64e1fad464794e0fbce45",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2"
-      },
+      "claim": null,
       "needs": [
         "crr-a1-rule-module-and-snapshot"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Use one validation status vocabulary for SQL and DataFrame runs and stop recording 'passed' without evidence"
     },
     "crr-c2-row-count-references-tpc-and-ssb": {
