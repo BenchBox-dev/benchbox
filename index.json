@@ -23879,12 +23879,17 @@
       "title": "Add the outcome rule as one stdlib-only module with an exhaustive test and a corpus outcome snapshot"
     },
     "crr-a2-writer-and-score-from-timings": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T08:51:07Z",
+        "generation": "97193e3aef1e4ef6ad66b748f9eafb5e",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2"
+      },
       "needs": [
         "crr-a1-rule-module-and-snapshot"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Make the result writer use the rule and recompute every lane's score from timings"
     },
     "crr-a3-validators-staging-and-admission": {
