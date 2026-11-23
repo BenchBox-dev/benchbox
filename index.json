@@ -30288,18 +30288,13 @@
       "title": "Owner decisions for the heavy-work guard pull request #4331"
     },
     "heavy-guard-4331-review-repairs-20261120": {
-      "claim": {
-        "expires_at": "2026-11-24T00:26:36Z",
-        "generation": "eda5a90c4b974c1584cffd8b3c0a22c9",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6"
-      },
+      "claim": null,
       "needs": [
         "heavy-guard-4331-owner-decisions-20261120",
         "feature-feat-heavy-guard-attribution-engine-caps-20261117"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Reduce #4331 to breach attribution and the admission hold, and repair what remains"
     },
     "heavy-guard-admission-20261030": {
