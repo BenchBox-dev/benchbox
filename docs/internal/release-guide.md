@@ -1028,9 +1028,15 @@ make release-check VERSION=X.Y.Z [BASE_REF=<immutable-predecessor-sha>] [RELEASE
 ```
 
 `release-prep` runs `scripts/update_version.py` (`pyproject.toml`,
-`benchbox/__init__.py` and the documentation release markers), then `uv lock`,
-then `scripts/generate_changelog_entry.py --compile-fragments`, which builds the
-`[X.Y.Z]` section from `changelog.d` (see "Release notes from fragments").
+`benchbox/__init__.py` and the documentation release markers), then `uv lock`
+and `uv lock --project` for every `_project/*/uv.lock` that records a `benchbox`
+package, then `scripts/generate_changelog_entry.py --compile-fragments`, which
+builds the `[X.Y.Z]` section from `changelog.d` (see "Release notes from
+fragments"). The fragments are validated first: when the assembled section
+would exceed the curated bullet limit (45), `release-prep` fails before
+writing anything and prints the bullet count and the limit, so curate the
+fragments and rerun. `release-check` names any `_project/*/uv.lock` whose
+`benchbox` version differs from `VERSION`.
 Commit the changed files, including the deleted fragments, as one PR.
 
 Before a minor release, the owner re-reads the vendor terms recorded in

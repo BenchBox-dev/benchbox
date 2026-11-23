@@ -715,6 +715,14 @@ def compile_fragments(source: Path, version: str, release_date: str, dry_run: bo
         for problem in problems:
             print(f"    - {problem}", file=sys.stderr)
         return False
+    assembled = len([line for line in (section_body(new_text, version) or "").splitlines() if _BULLET_RE.match(line)])
+    if assembled > MAX_CURATED_BULLETS:
+        print(
+            f"  Error: [{version}] would have {assembled} bullets, over the {MAX_CURATED_BULLETS}-bullet limit "
+            f"release-check enforces; curate the fragments in changelog.d/ and rerun. Nothing was written.",
+            file=sys.stderr,
+        )
+        return False
     if dry_run:
         print(f"  Dry run: {len(paths)} fragment(s) would be compiled into [{version}]; nothing written")
         return True

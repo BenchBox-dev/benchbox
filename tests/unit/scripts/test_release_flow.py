@@ -538,10 +538,14 @@ def test_prep_validates_fragments_first_and_compiles_them_last(tree: Path) -> No
         assert "--since-ref" not in argv
 
 
-def test_prep_relocks_each_present_subproject_before_compiling(tree: Path) -> None:
-    present = release_flow.LOCKED_SUBPROJECTS[0]
-    (tree / present).mkdir(parents=True)
-    (tree / present / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+def write_subproject_lock(root: Path, project: str, text: str) -> None:
+    (root / project).mkdir(parents=True)
+    (root / project / "uv.lock").write_text(text, encoding="utf-8")
+
+
+def test_prep_relocks_every_subproject_lock_that_records_benchbox(tree: Path) -> None:
+    write_subproject_lock(tree, "_project/sql-translation-ml", LOCK.format(version="1.2.2"))
+    write_subproject_lock(tree, "_project/unrelated", 'version = 1\n\n[[package]]\nname = "other"\nversion = "1"\n')
     calls: list[list[str]] = []
 
     def runner(argv, cwd):
@@ -550,8 +554,51 @@ def test_prep_relocks_each_present_subproject_before_compiling(tree: Path) -> No
 
     assert release_flow.prep(tree, VERSION, None, runner) == 0
     uv_calls = [argv for argv in calls if argv[0] == "uv"]
-    assert uv_calls == [["uv", "lock"], ["uv", "lock", "--project", present]]
+    assert uv_calls == [["uv", "lock"], ["uv", "lock", "--project", "_project/sql-translation-ml"]]
     assert calls.index(uv_calls[-1]) == len(calls) - 2
+
+
+def test_check_names_a_stale_subproject_lock(tree: Path) -> None:
+    write_subproject_lock(tree, "_project/sql-translation-ml", LOCK.format(version="1.2.2"))
+    write_subproject_lock(tree, "_project/unrelated", 'version = 1\n\n[[package]]\nname = "other"\nversion = "1"\n')
+
+    problems = release_flow.check_version_markers(tree, VERSION)
+    assert problems == [
+        "_project/sql-translation-ml/uv.lock: benchbox 1.2.2 != 1.2.3; "
+        "run `uv lock --project _project/sql-translation-ml`"
+    ]
+
+    (tree / "_project/sql-translation-ml/uv.lock").write_text(LOCK.format(version=VERSION), encoding="utf-8")
+    assert release_flow.check_version_markers(tree, VERSION) == []
+
+
+def test_prep_fails_early_when_assembled_section_exceeds_the_bullet_limit(
+    tree: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    limit = release_flow._load_script("generate_changelog_entry", tree).MAX_CURATED_BULLETS
+    entries = [
+        {"category": "added", "breaking": False, "text": f"Distinct user visible capability number {n} ships."}
+        for n in range(limit)
+    ]
+    for index in range(0, limit, 5):
+        write_fragment(tree, f"feat-batch-{index}.json", {"schema": 1, "entries": entries[index : index + 5]})
+    changelog_before = (tree / "CHANGELOG.md").read_bytes()
+    calls: list[list[str]] = []
+
+    def runner(argv, cwd):
+        calls.append(list(argv))
+        if Path(argv[1]).name == "generate_changelog_entry.py":
+            return release_flow.run_command(argv, cwd)
+        return 0, ""
+
+    assert release_flow.prep(tree, VERSION, "2026-02-03", runner) != 0
+
+    assert len(calls) == 1
+    assert (tree / "CHANGELOG.md").read_bytes() == changelog_before
+    assert len(list((tree / "changelog.d").glob("*.json"))) == limit // 5
+    captured = capsys.readouterr()
+    assert f"{limit + 1} bullets" in captured.out + captured.err
+    assert f"{limit}-bullet limit" in captured.out + captured.err
 
 
 def test_pre_tag_check_fails_while_any_fragment_is_pending(tree: Path) -> None:

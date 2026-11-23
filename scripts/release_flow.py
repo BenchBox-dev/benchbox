@@ -50,7 +50,7 @@ CLI_DESCRIPTION = (
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-LOCKED_SUBPROJECTS = ("_project/sql-translation-ml", "_project/scripts")
+SUBPROJECT_LOCK_GLOB = "_project/*/uv.lock"
 
 Runner = Callable[[Sequence[str], Path], tuple[int, str]]
 
@@ -106,16 +106,22 @@ def _init_version(root: Path) -> str | None:
     return match.group(1) if match else None
 
 
-def _lock_version(root: Path) -> str | None:
-    path = root / "uv.lock"
+def _lock_file_version(path: Path) -> str | None:
     if not path.is_file():
         return None
-    lock = _load_toml(path)
-    for package in lock.get("package", []):
+    for package in _load_toml(path).get("package", []):
         if package.get("name") == "benchbox":
             version = package.get("version")
             return version if isinstance(version, str) else None
     return None
+
+
+def subproject_locks(root: Path) -> list[Path]:
+    return [path for path in sorted(root.glob(SUBPROJECT_LOCK_GLOB)) if _lock_file_version(path) is not None]
+
+
+def _lock_version(root: Path) -> str | None:
+    return _lock_file_version(root / "uv.lock")
 
 
 def check_version_markers(root: Path, version: str) -> list[str]:
@@ -145,6 +151,13 @@ def check_version_markers(root: Path, version: str) -> list[str]:
         problems.append(f"uv.lock: no benchbox package entry found (expected {version})")
     elif normalize_version(lock_version) != expected_lock:
         problems.append(f"uv.lock: benchbox {lock_version} != {version}; run `uv lock`")
+    for lock in subproject_locks(root):
+        relative = lock.relative_to(root).as_posix()
+        found = _lock_file_version(lock)
+        if found is not None and normalize_version(found) != expected_lock:
+            problems.append(
+                f"{relative}: benchbox {found} != {version}; run `uv lock --project {lock.parent.relative_to(root).as_posix()}`"
+            )
     return problems
 
 
@@ -290,9 +303,8 @@ def prep(root: Path, version: str, release_date: str | None, runner: Runner) -> 
         ),
         ("uv.lock", ["uv", "lock"]),
         *(
-            (f"{project}/uv.lock", ["uv", "lock", "--project", project])
-            for project in LOCKED_SUBPROJECTS
-            if (root / project / "uv.lock").is_file()
+            (lock.relative_to(root).as_posix(), ["uv", "lock", "--project", lock.parent.relative_to(root).as_posix()])
+            for lock in subproject_locks(root)
         ),
         ("CHANGELOG.md", compile_cmd),
     ]
