@@ -45672,10 +45672,15 @@
       "title": "Generate and certify a Snowflake SSB tuned template"
     },
     "snowflake-test-fixture-real-username-20261013": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T14:45:59Z",
+        "generation": "2968a693f7aa458797b9f7ca5c77e71d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e8526faa0e732223dd79589d"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Replace a real Snowflake account username in a public test fixture"
     },
     "snowflake-trial-exit-corrected-plan-20261013": {
