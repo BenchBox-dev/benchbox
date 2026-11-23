@@ -11248,7 +11248,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-hardening",
-      "lifecycle": "active",
+      "lifecycle": "completed",
       "members": [
         "tpcds-q57-expression-order-float-tie-flake-20261122",
         "hard-stop-exit-bound-term-kill-wait-20261122",
@@ -51100,15 +51100,10 @@
       "title": "Find and regenerate TPC-H data generated before canonical addresses"
     },
     "tpch-dbgen-small-scale-process-count-20261122": {
-      "claim": {
-        "expires_at": "2026-11-24T15:51:01Z",
-        "generation": "3c00525bd1324792bf800992de026283",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f39bd68d6be6ca1c15ff91e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "Cut TPC-H generation time at small scales: dbgen pays a fixed text-pool cost per process and BenchBox starts one per CPU core"
     },
     "tpch-dbgen-source-tree-hygiene": {
