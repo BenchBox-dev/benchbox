@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The cross-surface ORDER BY check accepts either order for rows whose floating-point sort keys are within a relative 1e-9 of each other, so summation-order differences in the last digit no longer fail TPC-DS Q57 intermittently. Result values are still compared exactly as before."
+    }
+  ]
+}
