@@ -576,7 +576,7 @@ def _primary_metric_value(payload: dict, display: list[tuple[str, float | None, 
     if benchmark_id in POWER_SCORE_BENCHMARKS:
         return _power_score(payload)
     values = [value for _, value, _ in display if value is not None and value > 0]
-    return math.exp(sum(math.log(item) for item in values) / len(values)) if values else None
+    return math.exp(math.fsum(math.log(item) for item in values) / len(values)) if values else None
 
 
 def _primary_metric_reason(payload: dict, display: list[tuple[str, float | None, int]]) -> str | None:

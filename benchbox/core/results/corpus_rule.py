@@ -233,6 +233,11 @@ def load_data(path: Path = DATA_PATH) -> Mapping[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def min_throughput_streams(data: Mapping[str, Any] | None = None) -> int:
+    data = data if data is not None else load_data()
+    return int(data["min_throughput_streams"])
+
+
 def row_count_reference_exists(benchmark_id: Any, scale_factor: Any, data: Mapping[str, Any] | None = None) -> bool:
     data = data if data is not None else load_data()
     benchmark = normalize_benchmark_id(benchmark_id)

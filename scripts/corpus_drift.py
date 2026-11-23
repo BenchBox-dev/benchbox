@@ -50,6 +50,7 @@ CANARY_PATHSPECS = (
     "scripts/validate_submission.py",
     "scripts/publication/validator_parity.py",
     "scripts/generate_corpus_inventory.py",
+    "scripts/unpublished_rule_rankings.txt",
 )
 
 NIGHTLY_PATHSPECS = (

@@ -74,12 +74,6 @@ except ImportError:
 KNOWN_COMPLIANCE_CLASSES = frozenset({"official", "unofficial_nonstandard", "unofficial_subscale"})
 
 
-try:
-    from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS
-except ImportError:
-    MIN_THROUGHPUT_STREAMS = 2
-
-
 def _load_query_status_module():
     helper_path = Path(__file__).resolve().parents[1] / "core" / "results" / "query_status.py"
     spec = importlib.util.spec_from_file_location("_benchbox_query_status", helper_path)
@@ -103,6 +97,7 @@ def _load_corpus_rule_module():
 
 _query_status = _load_query_status_module()
 _corpus_rule = _load_corpus_rule_module()
+MIN_THROUGHPUT_STREAMS = _corpus_rule.min_throughput_streams()
 bundle_failed_query_count = _query_status.bundle_failed_query_count
 documented_exclusions_cover_failures = _query_status.documented_exclusions_cover_failures
 unchecked_row_count_evidence = _query_status.unchecked_row_count_evidence

@@ -34,6 +34,7 @@ CHECK_STEPS = {
         "results-install",
         "results-inventory",
         "results-corpus",
+        "results-mirror-parity",
         "results-validator",
         "results-tests",
     ],
