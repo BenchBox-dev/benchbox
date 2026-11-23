@@ -31,6 +31,16 @@ def compliance_mode_kwargs(config: BenchmarkConfig) -> dict[str, Any]:
     return {"official": bool(getattr(config, "official", False))}
 
 
+SMALL_SCALE_DBGEN_MAX_PROCESSES = 4
+SMALL_SCALE_DBGEN_THRESHOLD = 1.0
+
+
+def tpch_dbgen_process_count(scale_factor: float, cpu_cores: int) -> int:
+    if scale_factor < SMALL_SCALE_DBGEN_THRESHOLD:
+        return min(cpu_cores, SMALL_SCALE_DBGEN_MAX_PROCESSES)
+    return cpu_cores
+
+
 def get_benchmark_instance(
     config: BenchmarkConfig,
     system_profile: SystemProfile | None = None,
@@ -53,6 +63,8 @@ def get_benchmark_instance(
     cpu_cores = 1
     if system_profile:
         cpu_cores = getattr(system_profile, "cpu_cores_logical", 1)
+    if config.name.lower() == "tpch":
+        cpu_cores = tpch_dbgen_process_count(getattr(config, "scale_factor", 1.0), cpu_cores)
 
     benchmark_kwargs: dict[str, Any] = {
         "scale_factor": getattr(config, "scale_factor", 1.0),
