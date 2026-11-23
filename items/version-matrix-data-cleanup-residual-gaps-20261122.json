@@ -1,0 +1,29 @@
+{
+  "acceptance": [
+    "Decision gate for gap 1 (owner): choose between 'delete on failure too', 'keep on failure and print the path and size to stderr', or an explicit `--keep-data` flag. Keeping data for debugging and freeing disk conflict, so do not pick silently. Record the choice in context.",
+    "Gap 1, whichever option: a failing matrix ends with a message that states whether the data was kept or removed and, if kept, its path; a test drives a failing step and asserts the chosen behaviour and that `matrix.log`, `matrix-records.jsonl` and any written manifest survive.",
+    "Gap 2: the first matrix completed after PR #4451 (pvm-p1-run-ssb-clickbench or the DuckDB SF10 rerun, whichever runs first) is checked: exit status 0, `matrix-manifest.json` has `complete: true` where applicable, `datagen/` and `databases/` are absent, `scripts/analyze_version_matrix.py` runs on the output root without error. Record the run folder and these four facts in context. This is an observation of a run someone else needs anyway; do not start a matrix only to close this item.",
+    "Gap 3: `CLI_DESCRIPTION` or the matrix runbook states how a follow-up obtains matching data (regenerate at the pinned `benchbox_commit` into the shared data folder and compare the datagen manifest hash with the pin), and the DuckDB manifest either records the same datagen manifest pins or the item records why it does not need them.",
+    "Verification rubric: `uv run -- python -m pytest tests/unit/scripts/test_polars_version_matrix.py tests/unit/scripts/test_duckdb_version_matrix.py -q` passes; the golden dry-run fixtures are unchanged unless a flag is added, in which case the fixture diff is shown in the PR.",
+    "Guardrails: the matrix keeps generating into its own output root during the run (a shared folder could supply parquet written by a different pyarrow version, which the pins do not detect); cleanup stays limited to `datagen` and `databases` under the output root and still fails loudly on a removal error; no change to cell commands, timing, or the per-cell pin check; no comments or docstrings (comment policy)."
+  ],
+  "context": "Origin: disk cleanup and root-cause review on 2026-11-22. The root volume fell to 46 GiB free, below the 50 GiB heavy-work floor. Cause found: generated benchmark data has no lifecycle (any session creates it under any run root, nothing removes it), and Time Machine local snapshots kept deleted data allocated. PR #4451 (https://github.com/BenchBox-dev/benchbox/pull/4451) added AGENTS.md [RUN-DATA-001] and made scripts/run_version_matrix.py delete its datagen/ and databases/ when a matrix completes.",
+  "description": "PR #4451 made `scripts/run_version_matrix.py` delete `<output>/datagen` and `<output>/databases` after the manifest is written. Three gaps remain.\n\n1. Failure path. A matrix that fails partway (generation, install, a cell, a pin mismatch) raises before the cleanup, so it keeps a full private copy (about 20 GB at SF10). The runner refuses a non-empty output root, so that copy can never be reused by a rerun.\n2. Not exercised live. The cleanup was verified by a unit test of the helper and the two runner test modules (50 passed). No real matrix has completed with it. In particular nobody has confirmed that nothing between the last cell and process exit still reads the data, or that removing roughly 20 GB completes in reasonable time.\n3. Follow-up reuse. Two earlier follow-up investigations reused a finished matrix's data through symlinks (`polars-2-1-spill-attribution-20261121`, `polars-version-matrix-reference-20261119/q41-*`). That is no longer possible, and there is no documented way to get byte-identical data for a follow-up. The Polars manifest pins datagen manifest hashes; the DuckDB matrix manifest has no data pins at all.\n\nExpected outcome: a failed matrix does not strand data without the operator knowing, the cleanup is proven on a real run, and a follow-up has a documented path to matching data.",
+  "links": [
+    "scripts/run_version_matrix.py",
+    "scripts/analyze_version_matrix.py",
+    "tests/unit/scripts/test_polars_version_matrix.py",
+    "tests/unit/scripts/test_duckdb_version_matrix.py",
+    "https://github.com/BenchBox-dev/benchbox/pull/4451"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1666d419ebd76239145cfb5d",
+      "at": "2026-11-23T00:16:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e60e52a92018437d8cb73294be81600e",
+      "session_id": "326a88b3a63f4096aae1118667c53175"
+    }
+  ]
+}

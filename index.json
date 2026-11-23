@@ -53061,6 +53061,13 @@
       "status": "done",
       "title": "\"Version Management & Consistency\""
     },
+    "version-matrix-data-cleanup-residual-gaps-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Close the gaps left by the version-matrix data cleanup: failed runs, first live run, follow-up reuse"
+    },
     "visible-metrics-has-plans-contract-stale-20261108": {
       "claim": null,
       "needs": [],
