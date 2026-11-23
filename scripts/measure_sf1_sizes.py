@@ -118,6 +118,10 @@ def _sum_tree(root: Path, seen: set[str], *, count_parquet: bool = False) -> tup
     return total, count
 
 
+def sum_directory_bytes(root: Path, *, count_parquet: bool = False) -> tuple[int, int]:
+    return _sum_tree(root, set(), count_parquet=count_parquet)
+
+
 def _sum_paths(paths: object, *, count_parquet: bool = False) -> tuple[int, int]:
     total = 0
     count = 0

@@ -221,7 +221,9 @@ benchmark_metadata:
     supports_streams: false
     default_scale: 1.0
     scale_options:
+    - 0.1
     - 1.0
+    - 10.0
     min_scale: 0.01
     complexity: Medium
     estimated_time_range:
@@ -284,6 +286,8 @@ benchmark_metadata:
     scale_options:
     - 0.01
     - 0.1
+    - 1.0
+    - 10.0
     min_scale: 0.01
     complexity: Low
     estimated_time_range:

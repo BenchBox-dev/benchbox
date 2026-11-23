@@ -110,6 +110,21 @@ def test_listed_and_unlisted_values_are_distinguished() -> None:
     assert validate_scale_factor("tpch", 10) is True
 
 
+@pytest.mark.parametrize(
+    ("benchmark_id", "standard"),
+    [
+        ("clickbench", (0.1, 1.0, 10.0)),
+        ("read_primitives", (0.01, 0.1, 1.0, 10.0)),
+    ],
+)
+def test_proven_generation_scales_are_standard(benchmark_id: str, standard: tuple[float, ...]) -> None:
+    assert get_scale_factor_rule(benchmark_id).standard == standard
+    for sf in standard:
+        assert validate_scale_factor(benchmark_id, sf) is True
+        assert nonstandard_scale_note(benchmark_id, sf) is None
+    assert validate_scale_factor(benchmark_id, 100) is False
+
+
 def test_tpcds_official_points_are_standard() -> None:
     assert validate_scale_factor("tpcds", 300) is True
     assert validate_scale_factor("tpcds", 1000) is True

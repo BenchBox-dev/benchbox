@@ -206,6 +206,7 @@
     "docs/internal/docs-history-filter-runbook.md": "core-only",
     "docs/internal/duplication-residuals.md": "core-only",
     "docs/internal/gateway-uat-runbook.md": "core-only",
+    "docs/internal/generator-volume-gate.md": "core-only",
     "docs/internal/github-org-transfer.md": "core-only",
     "docs/internal/hosted-credentials.md": "core-only",
     "docs/internal/hosted-results-planning.md": "core-only",

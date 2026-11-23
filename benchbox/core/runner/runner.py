@@ -4,7 +4,7 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from copy import copy
 from dataclasses import dataclass
 from datetime import datetime
@@ -66,7 +66,11 @@ from benchbox.platforms.base.runtime_metadata import (
     attach_execution_engine_receipt,
     collect_normalized_result_metadata,
 )
-from benchbox.platforms.dataframe.benchmark_mixin import DataFramePhases, DataFrameRunOptions
+from benchbox.platforms.dataframe.benchmark_mixin import (
+    DataFramePhases,
+    DataFrameRunOptions,
+    refuse_insufficient_generation_memory,
+)
 from benchbox.utils.cloud_storage import CloudStagingPath, create_path_handler, is_cloud_path
 from benchbox.utils.dialect_utils import (
     SqlTranslationOutcome,
@@ -1063,6 +1067,7 @@ def _run_data_generation_phase(
     output_dir_handler: Any,
     monitor: Any,
     validation_records: list[tuple[str, ValidationResult]],
+    before_generate: Callable[[], None] | None = None,
 ) -> tuple[float, bool, bool]:
     datagen_start = time.monotonic()
 
@@ -1077,11 +1082,11 @@ def _run_data_generation_phase(
     manifest_reused = False
     if monitor is not None:
         with monitor.time_operation("data_generation"):
-            freshly_generated, manifest_reused = _ensure_data_generated(benchmark, benchmark_config)
+            freshly_generated, manifest_reused = _ensure_data_generated(benchmark, benchmark_config, before_generate)
             if freshly_generated:
                 monitor.increment_counter("tables_generated", len(getattr(benchmark, "tables", []) or []))
     else:
-        freshly_generated, manifest_reused = _ensure_data_generated(benchmark, benchmark_config)
+        freshly_generated, manifest_reused = _ensure_data_generated(benchmark, benchmark_config, before_generate)
 
     if validation_opts.enable_postgen_manifest_validation:
         manifest_result = _run_manifest_validation(benchmark, benchmark_config)
@@ -1357,11 +1362,29 @@ def _configure_lifecycle_adapter(
     if adapter is not None and hasattr(adapter, "table_mode"):
         adapter.table_mode = table_mode
 
-    is_dataframe_adapter = getattr(adapter, "is_dataframe_adapter", False) is True
-    if not is_dataframe_adapter and adapter is not None:
-        family = getattr(adapter, "family", None)
-        is_dataframe_adapter = isinstance(family, str) and callable(getattr(adapter, "run_benchmark", None))
-    return adapter, is_dataframe_adapter
+    return adapter, _is_dataframe_adapter(adapter)
+
+
+def _is_dataframe_adapter(adapter: Any | None) -> bool:
+    if adapter is None:
+        return False
+    if getattr(adapter, "is_dataframe_adapter", False) is True:
+        return True
+    family = getattr(adapter, "family", None)
+    return isinstance(family, str) and callable(getattr(adapter, "run_benchmark", None))
+
+
+def _dataframe_generation_guard(
+    adapter: Any | None,
+    benchmark: Any,
+    benchmark_config: BenchmarkConfig,
+) -> Callable[[], None] | None:
+    platform_name = getattr(adapter, "platform_name", None)
+    if not isinstance(platform_name, str) or not _is_dataframe_adapter(adapter):
+        return None
+    if (getattr(benchmark_config, "options", None) or {}).get("ignore_memory_warnings"):
+        return None
+    return lambda: refuse_insufficient_generation_memory(benchmark, benchmark_config, platform_name)
 
 
 def _resolve_lifecycle_table_format(adapter: Any | None, options: dict[str, Any], table_mode: str) -> str | None:
@@ -1505,6 +1528,7 @@ def run_benchmark_lifecycle(
             output_dir_handler=output_dir_handler,
             monitor=monitor,
             validation_records=validation_records,
+            before_generate=_dataframe_generation_guard(platform_adapter, benchmark, benchmark_config),
         )
     dataset_identity_established = bool(phases.load) and (freshly_generated or manifest_reused)
 
@@ -1763,7 +1787,9 @@ def _run_ensure_auxiliary_hook(benchmark: Any) -> None:
         )
 
 
-def _ensure_data_generated(benchmark: Any, config: BenchmarkConfig) -> tuple[bool, bool]:
+def _ensure_data_generated(
+    benchmark: Any, config: BenchmarkConfig, before_generate: Callable[[], None] | None = None
+) -> tuple[bool, bool]:
     options = getattr(config, "options", {}) or {}
     force_regenerate_flag = bool(options.get("force_regenerate"))
     no_regenerate_flag = bool(options.get("no_regenerate"))
@@ -1804,6 +1830,8 @@ def _ensure_data_generated(benchmark: Any, config: BenchmarkConfig) -> tuple[boo
     if manifest_found and not manifest_valid:
         emit("⚠️ Manifest validation failed; regenerating benchmark data")
 
+    if before_generate is not None:
+        before_generate()
     announce_generation_estimate(DATA_GENERATION, config.name, config.scale_factor)
     emit("Generating benchmark data...")
     _gen_start = time.monotonic()

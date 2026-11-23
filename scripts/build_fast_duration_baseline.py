@@ -28,6 +28,12 @@ MEDIUM_SHARD_COUNT = 4
 TEST_SHARD_COUNT = 8
 
 
+NEW_TEST_NOTE = (
+    "Tests counted as new are those absent from the committed baseline, which includes tests added by other merged "
+    "pull requests since it was last refreshed; they keep being charged until a refreshed baseline merges into develop."
+)
+
+
 class BaselineError(RuntimeError):
     pass
 
@@ -595,6 +601,49 @@ def verify_durations(
     }
 
 
+def read_measurement_source(run_dir: Path) -> dict[str, str | None]:
+    try:
+        payload = json.loads((run_dir / "calibration.json").read_text(encoding="utf-8"))
+        source = payload["measured_in"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return {"run_id": None, "run_attempt": None}
+    if not isinstance(source, dict):
+        return {"run_id": None, "run_attempt": None}
+    return {key: None if source.get(key) is None else str(source[key]) for key in ("run_id", "run_attempt")}
+
+
+def describe_measurement(
+    source: dict[str, str | None], current_run_id: str | None, current_attempt: str | None
+) -> dict[str, object]:
+    measured_attempt = source["run_attempt"]
+    measured_run = source["run_id"]
+    reused = (
+        measured_attempt is not None
+        and current_attempt is not None
+        and (measured_attempt != current_attempt or (measured_run is not None and measured_run != current_run_id))
+    )
+    return {
+        "measured_run_id": measured_run,
+        "measured_run_attempt": measured_attempt,
+        "verifying_run_attempt": current_attempt,
+        "timings_reused": reused,
+    }
+
+
+def measurement_note(report: dict[str, object]) -> str | None:
+    measured_attempt = report.get("measured_run_attempt")
+    if measured_attempt is None:
+        return None
+    where = f"attempt {measured_attempt} of run {report.get('measured_run_id')}"
+    if report.get("timings_reused"):
+        return (
+            f"These timings were measured by {where}; this is attempt {report.get('verifying_run_attempt')}, which "
+            "re-read them without running any test. Re-running only this job or the failed jobs cannot change the "
+            "numbers; a full workflow re-run (`gh run rerun <run-id>` without `--failed`) re-measures."
+        )
+    return f"Timings were measured in this attempt ({where})."
+
+
 def _positive_number(payload: dict[str, object], key: str, path: Path) -> float:
     value = payload.get(key)
     if isinstance(value, bool) or not isinstance(value, (int, float)):
@@ -653,13 +702,20 @@ def verify_run(baseline_dir: Path, run_dir: Path, ceiling_path: Path) -> dict[st
     return report
 
 
+def attach_measurement(report: dict[str, object], run_dir: Path, run_id: str | None, run_attempt: str | None) -> None:
+    report.update(describe_measurement(read_measurement_source(run_dir), run_id, run_attempt))
+
+
 def verify_markdown(report: dict[str, object], *, mode: str | None = None) -> str:
     effective_mode = str(mode or report.get("mode") or VERIFY_MODE)
     verdict = str(report["verdict"])
     heading = "### verify-fast-duration" if effective_mode == "block" else "### verify-fast-duration (report only)"
     lines = [heading, "", f"Verdict: **{verdict}**", ""]
+    note = measurement_note(report)
     if "reason" in report:
         lines.append(f"Reason: {report['reason']}")
+        if note:
+            lines += ["", note]
         return "\n".join(lines) + "\n"
 
     def fmt(value: object, spec: str) -> str:
@@ -691,6 +747,10 @@ def verify_markdown(report: dict[str, object], *, mode: str | None = None) -> st
     )
     if report["coverage_warning"]:
         lines.append(f"Warning: coverage is under {GATE_COVERAGE_MINIMUM:.0%} of baseline ids.")
+    if report["new_test_count"]:
+        lines += ["", NEW_TEST_NOTE]
+    if note:
+        lines += ["", note]
     return "\n".join(lines) + "\n"
 
 
@@ -699,6 +759,7 @@ def verify_command(args: argparse.Namespace) -> int:
     baseline_path = Path(args.baseline)
     run_path = Path(args.run_dir)
     report = verify_run(baseline_path, run_path, Path(args.ceiling))
+    attach_measurement(report, run_path, getattr(args, "run_id", None), getattr(args, "run_attempt", None))
     report["mode"] = mode
     text = verify_markdown(report, mode=mode)
     if args.summary:
@@ -721,8 +782,15 @@ def verify_command(args: argparse.Namespace) -> int:
                     f"summed ratio {float(report['sum_ratio']):.3f} > {1 + float(report['ratio_threshold']):.2f} and "
                     f"delta {float(report['delta_seconds']):+.1f} s > {float(report['delta_threshold_seconds']):.0f} s"
                 )
+            rerun_hint = (
+                " The timings came from an earlier attempt and were re-read, not re-measured: re-run the whole "
+                "workflow (not only this job or the failed jobs) to re-measure."
+                if report.get("timings_reused")
+                else ""
+            )
             print(
-                f"::error title=verify-fast-duration::fast-tier time exceeded the duration gate ({'; '.join(reasons)})"
+                f"::error title=verify-fast-duration::fast-tier time exceeded the duration gate "
+                f"({'; '.join(reasons)}).{rerun_hint}"
             )
             return 1
         print(
@@ -894,6 +962,8 @@ def main(argv: list[str] | None = None) -> int:
     verify_parser.add_argument("--ceiling", default="quality/fast-duration-ceiling.json")
     verify_parser.add_argument("--summary", default=None)
     verify_parser.add_argument("--report-out", default=None)
+    verify_parser.add_argument("--run-id", default=None)
+    verify_parser.add_argument("--run-attempt", default=None)
     verify_parser.add_argument("--mode", choices=["report", "block"], default=VERIFY_MODE)
     verify_parser.set_defaults(handler=verify_command)
     ceiling_parser = subparsers.add_parser("ceiling-check", help="Check a baseline against the absolute ceiling.")
