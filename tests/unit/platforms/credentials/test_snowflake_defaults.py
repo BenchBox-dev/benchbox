@@ -32,7 +32,7 @@ class TestSnowflakeCredentialDefaults:
         mock_manager = Mock()
         existing_creds = {
             "account": "myorg-account123",
-            "username": "JOEHARRIS76",
+            "username": "TEST_USER",
             "password": "secret_password",
             "warehouse": "MY_WAREHOUSE",
             "database": "MY_DATABASE",
@@ -44,7 +44,7 @@ class TestSnowflakeCredentialDefaults:
         mock_confirm.return_value = False
         mock_prompt_default.side_effect = [
             "myorg-account123",
-            "JOEHARRIS76",
+            "TEST_USER",
             "MY_WAREHOUSE",
             "MY_DATABASE",
             "MY_SCHEMA",
@@ -59,7 +59,7 @@ class TestSnowflakeCredentialDefaults:
 
         calls = mock_prompt_default.call_args_list
         assert calls[0][1]["current_value"] == "myorg-account123"
-        assert calls[1][1]["current_value"] == "JOEHARRIS76"
+        assert calls[1][1]["current_value"] == "TEST_USER"
         assert calls[2][1]["current_value"] == "MY_WAREHOUSE"
         assert calls[3][1]["current_value"] == "MY_DATABASE"
         assert calls[4][1]["current_value"] == "MY_SCHEMA"
@@ -127,7 +127,7 @@ class TestSnowflakeCredentialDefaults:
         mock_manager = Mock()
         existing_creds = {
             "account": "myorg-account123",
-            "username": "JOEHARRIS76",
+            "username": "TEST_USER",
             "password": "existing_secret",
             "warehouse": "MY_WAREHOUSE",
             "database": "MY_DATABASE",
@@ -137,7 +137,7 @@ class TestSnowflakeCredentialDefaults:
         mock_confirm.return_value = False
         mock_prompt_default.side_effect = [
             "myorg-account123",
-            "JOEHARRIS76",
+            "TEST_USER",
             "MY_WAREHOUSE",
             "MY_DATABASE",
             "PUBLIC",
@@ -170,7 +170,7 @@ class TestSnowflakeCredentialDefaults:
         mock_manager = Mock()
         existing_creds = {
             "account": "myorg-account123",
-            "username": "JOEHARRIS76",
+            "username": "TEST_USER",
             "password": "old_password",
             "warehouse": "MY_WAREHOUSE",
             "database": "MY_DATABASE",
@@ -180,7 +180,7 @@ class TestSnowflakeCredentialDefaults:
         mock_confirm.return_value = False
         mock_prompt_default.side_effect = [
             "myorg-account123",
-            "JOEHARRIS76",
+            "TEST_USER",
             "MY_WAREHOUSE",
             "MY_DATABASE",
             "PUBLIC",
@@ -213,14 +213,14 @@ class TestSnowflakeCredentialDefaults:
         mock_manager = Mock()
         existing_creds = {
             "account": "myorg-account123",
-            "username": "JOEHARRIS76",
+            "username": "TEST_USER",
         }
         mock_manager.get_platform_credentials.return_value = existing_creds
 
         mock_confirm.return_value = False
         mock_prompt_default.side_effect = [
             "myorg-account123",
-            "JOEHARRIS76",
+            "TEST_USER",
             "COMPUTE_WH",
             "BENCHBOX",
             "PUBLIC",
@@ -235,7 +235,7 @@ class TestSnowflakeCredentialDefaults:
 
         calls = mock_prompt_default.call_args_list
         assert calls[0][1]["current_value"] == "myorg-account123"
-        assert calls[1][1]["current_value"] == "JOEHARRIS76"
+        assert calls[1][1]["current_value"] == "TEST_USER"
         assert calls[2][1]["current_value"] is None
         assert calls[2][1]["default_if_none"] == "COMPUTE_WH"
 
@@ -255,7 +255,7 @@ class TestSnowflakeCredentialDefaults:
         mock_manager = Mock()
         existing_creds = {
             "account": "myorg-account123",
-            "username": "JOEHARRIS76",
+            "username": "TEST_USER",
             "password": "secret",
             "warehouse": "MY_WAREHOUSE",
             "database": "MY_DATABASE",
@@ -267,7 +267,7 @@ class TestSnowflakeCredentialDefaults:
         mock_confirm.return_value = False
         mock_prompt_default.side_effect = [
             "myorg-account123",
-            "JOEHARRIS76",
+            "TEST_USER",
             "MY_WAREHOUSE",
             "MY_DATABASE",
             "CUSTOM_SCHEMA",
@@ -343,7 +343,7 @@ class TestSnowflakeCredentialDefaults:
         mock_manager = Mock()
         existing_creds = {
             "account": "myorg-account123",
-            "username": "JOEHARRIS76",
+            "username": "TEST_USER",
             "password": "secret",
             "warehouse": "MY_WAREHOUSE",
             "database": "MY_DATABASE",
@@ -352,7 +352,7 @@ class TestSnowflakeCredentialDefaults:
 
         mock_prompt_default.side_effect = [
             "myorg-account123",
-            "JOEHARRIS76",
+            "TEST_USER",
             "MY_WAREHOUSE",
             "MY_DATABASE",
             "PUBLIC",
