@@ -20,6 +20,55 @@
     "tests/unit/scripts/test_duckdb_version_matrix.py",
     "https://github.com/BenchBox-dev/benchbox/pull/4451"
   ],
+  "prepared": {
+    "accepted_head": "db63e3cc2f045c4b5a97804f213d390cbdfacc0e",
+    "batch_id": "shared-data-lifecycle",
+    "changed_files": [
+      "scripts/run_version_matrix.py",
+      "tests/unit/scripts/test_duckdb_version_matrix.py"
+    ],
+    "integration_head": "a8c3b06bc855a9f6492bbc1e53aa097ccf3591a8",
+    "integration_seq": 1,
+    "member_id": "version-matrix-data-cleanup-residual-gaps-20261122",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "6a9cb1983aa03b5c62a4c0681b3eac3427875bbd6d0a1880f61b694cb7003a17",
+    "source_base": "5e784d60394b5ec4f7535c6ea9a3c8fc5c4dc491",
+    "source_revision": "db63e3cc2f045c4b5a97804f213d390cbdfacc0e",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-shared-data-lifecycle--version-matrix-data-cleanup-residual-gaps-20261122",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/scripts/test_duckdb_version_matrix.py",
+        "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index",
+        "tests/unit/scripts/test_polars_version_matrix.py",
+        "tests/unit/test_ledger_coverage.py"
+      ],
+      "review": {
+        "base_sha": "5e784d60394b5ec4f7535c6ea9a3c8fc5c4dc491",
+        "head_sha": "db63e3cc2f045c4b5a97804f213d390cbdfacc0e",
+        "head_tree": "b230fa3f8645cdbab9d78ba4f63ee52b4acc95ec",
+        "outcome": "clear",
+        "patch_digest": "3b79a492fbc6340a7a130c43172e4666",
+        "reason": "decided SHIP WITH FIXES with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "0d5e1a73761172c4f9ae502fe38ad4c3b4ed49ff"
+      },
+      "revision": "db63e3cc2f045c4b5a97804f213d390cbdfacc0e",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1666d419ebd76239145cfb5d",
@@ -52,6 +101,15 @@
       "generation": "1453066e46a54aeb9c85321cabc38c67",
       "op": "take",
       "op_id": "0d4900fdb8d847f8b6cc5e8ca98dcd3d",
+      "session_id": "e94ef2c0cac942f885a89e503648c51e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b",
+      "at": "2026-11-23T15:11:35Z",
+      "client": "omp-coding-agent",
+      "generation": "1453066e46a54aeb9c85321cabc38c67",
+      "op": "prepare",
+      "op_id": "2ec917699ac542de88c1daac4d2ccbd9",
       "session_id": "e94ef2c0cac942f885a89e503648c51e"
     }
   ]

@@ -12199,20 +12199,41 @@
       "terminal_outcome": "deliver"
     },
     "shared-data-lifecycle": {
-      "accepted_members": {},
+      "accepted_members": {
+        "version-matrix-data-cleanup-residual-gaps-20261122": "db63e3cc2f045c4b5a97804f213d390cbdfacc0e"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "version-matrix-data-cleanup-residual-gaps-20261122": {
+          "accepted_head": "db63e3cc2f045c4b5a97804f213d390cbdfacc0e",
+          "changed_files": [
+            "scripts/run_version_matrix.py",
+            "tests/unit/scripts/test_duckdb_version_matrix.py"
+          ],
+          "integration_head": "a8c3b06bc855a9f6492bbc1e53aa097ccf3591a8",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/shared-data-lifecycle",
-      "integration_head": "5e784d60394b5ec4f7535c6ea9a3c8fc5c4dc491",
+      "integration_head": "a8c3b06bc855a9f6492bbc1e53aa097ccf3591a8",
       "integration_log": [
         {
           "at": "2026-11-23T14:25:08Z",
           "head": "5e784d60394b5ec4f7535c6ea9a3c8fc5c4dc491",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-23T15:11:35Z",
+          "head": "a8c3b06bc855a9f6492bbc1e53aa097ccf3591a8",
+          "kind": "prepare",
+          "member": "version-matrix-data-cleanup-residual-gaps-20261122",
+          "op_id": "2ec917699ac542de88c1daac4d2ccbd9",
+          "previous_head": "5e784d60394b5ec4f7535c6ea9a3c8fc5c4dc491",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-shared-data-lifecycle",
@@ -54055,15 +54076,10 @@
       "title": "\"Version Management & Consistency\""
     },
     "version-matrix-data-cleanup-residual-gaps-20261122": {
-      "claim": {
-        "expires_at": "2026-11-24T15:11:30Z",
-        "generation": "1453066e46a54aeb9c85321cabc38c67",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Close the gaps left by the version-matrix data cleanup: failed runs and follow-up reuse"
     },
     "visible-metrics-has-plans-contract-stale-20261108": {
