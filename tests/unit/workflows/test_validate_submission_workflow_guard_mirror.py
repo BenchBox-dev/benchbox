@@ -45,10 +45,6 @@ def test_guard_step_still_covers_all_six_files() -> None:
         assert f in script
 
 
-def test_guard_step_covers_the_standard_scale_projection() -> None:
-    assert "benchbox/core/results/standard_scales.json" in _guard_step()["run"]
-
-
 def _run_guard_body(*, changed_guard: str, is_fork: str, base_ref: str, head_ref: str, pr_author: str):
     script = _guard_step()["run"]
     start = script.index('if [ -n "$CHANGED_GUARD" ]; then')

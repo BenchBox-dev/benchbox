@@ -183,10 +183,14 @@ def test_parity_executes_real_payloads_in_an_isolated_slim_checkout(tmp_path: Pa
         (repo / "benchbox/validation/bundle.py").unlink()
     result = subprocess.run(
         [
-            sys.executable,
+            "uv",
+            "run",
+            "--no-project",
+            "--",
+            "python",
             "-I",
             "-S",
-            str(repo / "scripts/publication/validator_parity.py"),
+            "scripts/publication/validator_parity.py",
             "--base-sha",
             base,
             "--merge-sha",
@@ -258,10 +262,14 @@ def test_parity_in_a_slim_checkout_matches_the_registry_verdict_for_off_list_sca
 
     _copy_slim_runtime(repo)
     command = [
-        sys.executable,
+        "uv",
+        "run",
+        "--no-project",
+        "--",
+        "python",
         "-I",
         "-S",
-        str(repo / "scripts/publication/validator_parity.py"),
+        "scripts/publication/validator_parity.py",
         "--base-sha",
         base,
         "--merge-sha",
@@ -275,8 +283,8 @@ def test_parity_in_a_slim_checkout_matches_the_registry_verdict_for_off_list_sca
 
     assert result.returncode == registry_rc, result.stdout + result.stderr
     assert "Parity OK" in result.stdout
-    assert f"{rel}: OK" in registry_summary
-    assert f"{rel}: OK" in result.stdout
+    assert f"{rel}: OK" in registry_summary.replace("\\", "/")
+    assert f"{rel}: OK" in result.stdout.replace("\\", "/")
 
 
 def test_missing_payload_at_requested_sha_fails_closed(tmp_path: Path, monkeypatch) -> None:
