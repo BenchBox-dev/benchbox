@@ -10,12 +10,12 @@
     {
       "path": "_sources/tpc-di/",
       "owner": "TPC",
-      "provenance": "_sources/README.md"
+      "provenance": "_sources/tpc-di/NOTICE.txt"
     },
     {
       "path": "benchbox/_binaries/tpc-di/",
       "owner": "TPC",
-      "provenance": "_sources/README.md"
+      "provenance": "benchbox/_binaries/tpc-di/NOTICE.txt"
     },
     {
       "path": "_sources/tpc-ds/tools/",

@@ -1,20 +1,20 @@
 {
   "schema": 1,
   "package": "theseus-reviewer",
-  "version": "0.2.17",
+  "version": "0.2.18",
   "repository": "joeharris76/theseus",
-  "source_commit": "2ed4e0d2db212161cb128487a1a344b6c5a11eb2",
-  "source_sha256": "5e5c678e3be75b3597abb2489f25a3714c4c2e23314f2cd382d51ca827c8fdf3",
-  "delta_sha256": "9b34df2af793b1ecd0d8bb3ee90645514371aa92ffece5f190d396428593e8cf",
+  "source_commit": "e97905790c4610c95cce6d27410bc94fc0c9efbb",
+  "source_sha256": "3f2e81ee8ab4be0c9f64e8b02104291dc67e4cfbc6214ee925e3aca1ba8decf6",
+  "delta_sha256": "25e53864a24ff9514daa8ad3788bdfb093570d6140eae430ae300e3cefbb15ea",
   "artifact": {
-    "sha256": "1a83b463377058016921888c90d8f1cecdf794c628a00bb9004adb350f96dcfd",
+    "sha256": "09e295871855269cc998f70a4fef9a7b5fbfff73a4132629cc360822a7eba6d7",
     "urls": [
-      "https://github.com/joeharris76/theseus/releases/download/v0.2.17/theseus_reviewer-0.2.17-py3-none-any.whl",
-      "https://github.com/joeharris76/theseus/releases/download/v0.2.17/theseus_reviewer-0.2.17-py3-none-any.retained.whl"
+      "https://github.com/joeharris76/theseus/releases/download/v0.2.18/theseus_reviewer-0.2.18-py3-none-any.whl",
+      "https://github.com/joeharris76/theseus/releases/download/v0.2.18/theseus_reviewer-0.2.18-py3-none-any.retained.whl"
     ]
   },
   "dependencies": [],
-  "workflow_sha": "2ed4e0d2db212161cb128487a1a344b6c5a11eb2",
+  "workflow_sha": "e97905790c4610c95cce6d27410bc94fc0c9efbb",
   "matcher": {
     "path": "_project/scripts/soundness_paths.py",
     "sha256": "eab7c989245187504215795af169ed0cd6ba2006b8d2fac9ae4b25417283124c"
