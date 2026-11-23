@@ -199,6 +199,11 @@ throughput from a result's timings) are covered by that workflow:
 trigger paths, its drift comparison paths, its copy list and its `git add`
 list.
 
+The comparison-identity module and its table, `benchbox/core/results/comparison_identity.py`
+and `benchbox/core/results/comparison_identity.json`, travel the same way. The
+module is stdlib-only, so `validate_corpus.py` and `generate_corpus_inventory.py`
+resolve the same comparison version on `develop` and on `published-results`.
+
 This means `published-results` will normally be at most one mirror PR
 behind develop on the vendored runtime. If a develop PR modifies one
 of these files but the mirror PR is left as a draft (e.g. waiting on a

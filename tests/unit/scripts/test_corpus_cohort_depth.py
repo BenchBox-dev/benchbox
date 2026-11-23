@@ -972,12 +972,11 @@ def test_the_gate_accepts_a_full_cohort(tmp_path: Path) -> None:
     assert validator.shallow_cohorts(validator.cohort_platforms(validator.discover_bundles(tmp_path))) == {}
 
 
-def test_the_gate_accepts_a_version_matrix_as_distinct_identities(tmp_path: Path) -> None:
+def test_versions_of_one_platform_do_not_count_as_distinct_identities(tmp_path: Path) -> None:
     validator = _load_validator()
-    matrix_dir = tmp_path / "duckdb-version-matrix"
     for index, version in enumerate(("1.0.0", "1.5.5", "1.6.0.dev365")):
         _write_bundle(
-            matrix_dir,
+            tmp_path,
             f"duckdb-{index}.json",
             benchmark="tpch",
             scale=10.0,
@@ -985,7 +984,9 @@ def test_the_gate_accepts_a_version_matrix_as_distinct_identities(tmp_path: Path
             platform_version=version,
         )
 
-    assert validator.shallow_cohorts(validator.cohort_platforms(validator.discover_bundles(tmp_path))) == {}
+    cohorts = validator.cohort_platforms(validator.discover_bundles(tmp_path))
+    assert cohorts == {("tpch", "10.0"): {"duckdb"}}
+    assert validator.shallow_cohorts(cohorts) == cohorts
 
 
 def test_versions_do_not_pad_an_ordinary_cross_platform_cohort(tmp_path: Path) -> None:
@@ -1005,29 +1006,31 @@ def test_versions_do_not_pad_an_ordinary_cross_platform_cohort(tmp_path: Path) -
     assert validator.shallow_cohorts(cohorts) == cohorts
 
 
-def test_same_platform_version_does_not_pad_a_cohort(tmp_path: Path) -> None:
+def test_the_folder_a_result_sits_in_does_not_change_its_identity(tmp_path: Path) -> None:
     validator = _load_validator()
-    matrix_dir = tmp_path / "duckdb-version-matrix"
-    for index in range(3):
-        _write_bundle(
-            matrix_dir,
-            f"duckdb-{index}.json",
-            benchmark="tpch",
-            scale=10.0,
-            platform="DuckDB",
-            platform_version="1.5.5",
-        )
+    for folder in ("flat", "duckdb-version-matrix"):
+        for index, version in enumerate(("1.4.4", "1.5.5")):
+            _write_bundle(
+                tmp_path / folder,
+                f"duckdb-{index}.json",
+                benchmark="tpch",
+                scale=10.0,
+                platform="DuckDB",
+                platform_version=version,
+            )
 
-    cohorts = validator.cohort_platforms(validator.discover_bundles(tmp_path))
-    assert cohorts == {("tpch", "10.0"): {"duckdb v1.5.5"}}
-    assert validator.shallow_cohorts(cohorts) == cohorts
+    by_folder = {
+        folder: validator.cohort_platforms(validator.discover_bundles(tmp_path / folder))
+        for folder in ("flat", "duckdb-version-matrix")
+    }
+
+    assert by_folder["flat"] == by_folder["duckdb-version-matrix"] == {("tpch", "10.0"): {"duckdb"}}
 
 
-def test_duckdb_package_version_overrides_internal_engine_version(tmp_path: Path) -> None:
+def test_duckdb_dev_wheel_resolves_to_a_pre_release_package_version(tmp_path: Path) -> None:
     validator = _load_validator()
-    matrix_dir = tmp_path / "duckdb-version-matrix"
     _write_bundle(
-        matrix_dir,
+        tmp_path,
         "duckdb-dev.json",
         benchmark="tpch",
         scale=10.0,
@@ -1035,10 +1038,14 @@ def test_duckdb_package_version_overrides_internal_engine_version(tmp_path: Path
         platform_version="2.0.0-alpha38615",
         execution_version="1.6.0.dev365",
     )
+    path = tmp_path / "duckdb-dev.json"
 
-    assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {
-        ("tpch", "10.0"): {"duckdb v1.6.0.dev365"}
-    }
+    identity = validator._comparison_identity(path, validator._load_bundle(path))
+
+    assert identity.comparison_version.version == "1.6.0.dev365"
+    assert identity.comparison_version.is_release is False
+    assert identity.cohort_key == "duckdb"
+    assert validator.cohort_platforms([path]) == {("tpch", "10.0"): {"duckdb"}}
 
 
 def test_companion_files_are_not_counted_as_bundles(tmp_path: Path) -> None:

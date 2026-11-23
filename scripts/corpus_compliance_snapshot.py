@@ -30,7 +30,7 @@ from _project.scripts.explorer_pipeline.models import (
     ranking_exclusion_reason,
 )
 from _project.scripts.explorer_pipeline.ranking import rank_platforms
-from benchbox.core.results import corpus_rule, corpus_score
+from benchbox.core.results import comparison_identity, corpus_rule, corpus_score
 from benchbox.core.results.subscale_policy import RANKING_EXCLUDED_COMPLIANCE_CLASSES
 from benchbox.validation.bundle import discover_bundles
 
@@ -151,6 +151,7 @@ def outcome_stream_count(item: _Loaded, lane: str) -> int | None:
 
 def _identity(item: _Loaded) -> Outcome:
     entry = item.entry
+    version = comparison_identity.resolve_comparison_version(item.data)
     return {
         "result_id": entry.result_id,
         "benchmark": item.slug,
@@ -158,6 +159,8 @@ def _identity(item: _Loaded) -> Outcome:
         "platform_id": entry.platform_id,
         "variant_id": entry.variant_id,
         "platform_version": entry.platform_version,
+        "comparison_version": version.text,
+        "version_is_release": version.is_release,
         "execution_mode": entry.execution_mode,
         "tuning_mode": entry.tuning_mode,
     }

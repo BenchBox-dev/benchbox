@@ -272,6 +272,14 @@ def test_corpus_rule_module_data_file_and_score_function_travel_in_every_mirror_
         assert pair <= set(paths)
 
 
+def test_comparison_identity_module_and_table_travel_in_every_mirror_list() -> None:
+    pair = {"benchbox/core/results/comparison_identity.py", "benchbox/core/results/comparison_identity.json"}
+    triggers, compare_paths, copy_paths = _mirrored_runtime_paths()
+
+    for paths in (triggers, compare_paths, copy_paths, _git_add_targets()):
+        assert pair <= set(paths)
+
+
 def _mirrored_runtime_paths() -> tuple[list[str], list[str], list[str]]:
     text = WORKFLOW_PATH.read_text(encoding="utf-8")
     workflow = yaml.safe_load(text)
