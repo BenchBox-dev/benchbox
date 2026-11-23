@@ -17367,10 +17367,15 @@
       "title": "Integrate verified batch commits through one owned feature branch"
     },
     "batch-finish-cursor-stale-reread-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T01:00:24Z",
+        "generation": "3f5bbb409e114082b4647c7dab5570c6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "batch-finish refuses with E_CURSOR_STALE when the tracker changes during its paged reads; re-read instead"
     },
     "batch-finish-integration-worktree-20261102": {
