@@ -14301,7 +14301,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-source",
-      "integration_head": "fd59e049600be286c602c588844ed5cd3985f021",
+      "integration_head": "717710138acc09e39a6a9f20aa22ce656b3e6c23",
       "integration_log": [
         {
           "at": "2026-11-22T07:11:35Z",
@@ -14646,6 +14646,21 @@
             "tpcdi-13-digen-reference-path-and-comparison-20261120"
           ],
           "seq": 15
+        },
+        {
+          "at": "2026-11-23T05:16:13Z",
+          "changed_files": [
+            "scripts/tpcdi/EXPECTED_DIFFERENCES.yaml",
+            "tests/unit/scripts/test_compare_warehouses.py"
+          ],
+          "head": "717710138acc09e39a6a9f20aa22ce656b3e6c23",
+          "kind": "fix",
+          "op_id": "d86440e64cb04e6db9a1fa90898e83cc",
+          "previous_head": "fd59e049600be286c602c588844ed5cd3985f021",
+          "requires_acceptance": [
+            "tpcdi-13-digen-reference-path-and-comparison-20261120"
+          ],
+          "seq": 16
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-source",
