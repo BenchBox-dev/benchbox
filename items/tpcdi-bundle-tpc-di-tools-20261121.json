@@ -196,6 +196,16 @@
       "op_id": "aca1d4ee7e7948c6b0c7b1573f9ab4cb",
       "reason": "The leader session ended when the host restarted; the same leader resumes under a new tracker session.",
       "session_id": "12592a6a6d8740699d4d29831152a0cb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b9c0e3a9d406db652098bdd",
+      "at": "2026-11-23T15:16:24Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:5d4e220f613a3ab3ee8f830c",
+      "op": "recover",
+      "op_id": "acb50a2026d3482a89e55ff817284e8f",
+      "reason": "leader session restarted; same leader resumes the batch",
+      "session_id": "c26727652a9d4aebb1e147b2152e577f"
     }
   ]
 }
