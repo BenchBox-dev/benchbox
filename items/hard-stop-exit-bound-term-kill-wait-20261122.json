@@ -132,6 +132,15 @@
       "op_id": "f0c20886f4a04ebba185c66526c422d1",
       "reason": "The leader's MCP server restarted with a new actor identity after the final PR merged; the same leader continues.",
       "session_id": "3204b8c4f1694869956ba59ef92c8970"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f39bd68d6be6ca1c15ff91e",
+      "at": "2026-11-23T15:50:51Z",
+      "client": "omp-coding-agent",
+      "generation": "149ed494d7424670a8b3326c96b59de0",
+      "op": "take",
+      "op_id": "aba5c65484984c368adfe5f5c909ed52",
+      "session_id": "3204b8c4f1694869956ba59ef92c8970"
     }
   ]
 }

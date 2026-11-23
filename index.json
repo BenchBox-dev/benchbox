@@ -31126,10 +31126,15 @@
       "title": "Gateway test suite + G1/G2 verification gates"
     },
     "hard-stop-exit-bound-term-kill-wait-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T15:50:51Z",
+        "generation": "149ed494d7424670a8b3326c96b59de0",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f39bd68d6be6ca1c15ff91e"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Decide whether the 30-second hard stop is an exit bound, and make the code and docs agree"
     },
     "harden-auto-merge-on-open-stranding": {
