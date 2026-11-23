@@ -871,9 +871,13 @@ def _unmapped_ok_codes(text: str) -> list[tuple[int, str]]:
     problems = []
     for match in re.finditer(r"--ok-codes[ =]+([0-9,]+)", text):
         codes = [int(code) for code in match.group(1).split(",") if code and int(code) != 0]
-        block = re.split(r"\n(?=\S)", text[match.start() :], maxsplit=1)[0]
+        command, _, after = text[match.start() :].partition(";")
+        recipe_after = re.split(r"\n(?=\S)", after, maxsplit=1)[0]
+        capture = re.search(r"\|\|\s*(\w+)=\$\$?\?", command)
         for code in codes:
-            if not re.search(rf"-eq {code}\b", block):
+            inline = re.search(rf'\|\|\s*\[\s*"\$\$?\?"\s+-eq\s+{code}\s*\]', command)
+            deferred = capture is not None and re.search(rf'"\$\$?{capture.group(1)}"\s+-eq\s+{code}\b', recipe_after)
+            if not inline and not deferred:
                 problems.append((text.count("\n", 0, match.start()) + 1, f"exit code {code}"))
     return problems
 
@@ -900,12 +904,39 @@ def test_every_ok_codes_caller_maps_its_accepted_codes() -> None:
     assert {path: found for path, found in problems.items() if found} == {}
 
 
-def test_an_ok_codes_caller_without_the_mapping_is_reported() -> None:
+LINT_MARKERS_CALL = "--name lint-markers --ok-codes"
+PYTEST_CALL = "--name pytest --ok-codes"
+
+
+def _line_of(text: str, marker: str) -> int:
+    return text.count("\n", 0, text.index(marker)) + 1
+
+
+@pytest.mark.parametrize(
+    ("call", "old", "new"),
+    [
+        (LINT_MARKERS_CALL, ' || [ "$$?" -eq 5 ] ;;', " ;;"),
+        (PYTEST_CALL, '"$$STATUS" -eq 5', '"$$STATUS" -eq 6'),
+        (PYTEST_CALL, '"$$TEST_LIST") || STATUS=$$?;', '"$$TEST_LIST");'),
+    ],
+)
+def test_breaking_one_ok_codes_caller_reports_exactly_that_caller(call: str, old: str, new: str) -> None:
     text = (ROOT / "make" / "pr-landing.mk").read_text(encoding="utf-8")
-    broken = text.replace('|| [ "$$?" -eq 5 ] ;;', ";;").replace('"$$STATUS" -eq 5', '"$$STATUS" -eq 6')
-    assert broken != text
-    assert len(_unmapped_ok_codes(broken)) == 2
     assert _unmapped_ok_codes(text) == []
+    assert text.count(old) == 1
+    broken = text.replace(old, new)
+    assert _unmapped_ok_codes(broken) == [(_line_of(broken, call), "exit code 5")]
+
+
+def test_a_mapping_belonging_to_another_command_does_not_satisfy_a_caller() -> None:
+    text = (
+        "\tstep) \\\n"
+        "\t\t$$RECORD --name one --ok-codes 0,5 -- run-one ;; \\\n"
+        "\tother) \\\n"
+        '\t\t$$RECORD --name two --ok-codes 0,5 -- run-two || [ "$$?" -eq 5 ] ;; \\\n'
+        '\tif [ "$$STATUS" -eq 5 ]; then echo mapped; fi\n'
+    )
+    assert _unmapped_ok_codes(text) == [(2, "exit code 5")]
 
 
 def test_step_help_documents_that_the_raw_exit_code_is_returned() -> None:
