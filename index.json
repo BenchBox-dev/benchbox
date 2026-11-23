@@ -14748,7 +14748,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-source",
-      "integration_head": "717710138acc09e39a6a9f20aa22ce656b3e6c23",
+      "integration_head": "3f2b268a868cef08766379cd8aa8c1a48e1da02c",
       "integration_log": [
         {
           "at": "2026-11-22T07:11:35Z",
@@ -15108,6 +15108,29 @@
             "tpcdi-13-digen-reference-path-and-comparison-20261120"
           ],
           "seq": 16
+        },
+        {
+          "at": "2026-11-23T15:16:28Z",
+          "changed_files": [
+            "_sources/tpc-di/.gitattributes",
+            "benchbox/core/tpcdi/sources/digen.py",
+            "benchbox/core/tpcdi/tools.py",
+            "docs/internal/tpcdi-duckdb-comparison.md",
+            "scripts/tpcdi/compare_warehouses.py",
+            "tests/unit/core/tpcdi/test_digen_source.py",
+            "tests/unit/core/tpcdi/test_tools_bundle.py",
+            "tests/unit/scripts/test_compare_warehouses.py"
+          ],
+          "head": "3f2b268a868cef08766379cd8aa8c1a48e1da02c",
+          "kind": "fix",
+          "op_id": "c540a951879b41e8a5bad659ad9b4e10",
+          "previous_head": "717710138acc09e39a6a9f20aa22ce656b3e6c23",
+          "requires_acceptance": [
+            "tpcdi-08-generator-core-and-reference-files-20261120",
+            "tpcdi-13-digen-reference-path-and-comparison-20261120",
+            "tpcdi-bundle-tpc-di-tools-20261121"
+          ],
+          "seq": 17
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-source",
