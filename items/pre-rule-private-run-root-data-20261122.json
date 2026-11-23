@@ -6,7 +6,7 @@
     "Verification rubric: before and after listings, free-space delta from `df`, and the approval message are recorded in context. A deletion that frees nothing is explained (for example a local snapshot still holds the blocks).",
     "Guardrails: delete only directories named `datagen` or `databases`; never follow or delete through a symlink; never delete result JSON, logs, manifests or qualification files; no `rm` on a glob that was not printed and approved first; live-run folders are skipped, not waited on with a loop; no Time Machine or Arq snapshot is touched under this item."
   ],
-  "context": "Origin: disk cleanup and root-cause review on 2026-11-22. The root volume fell to 46 GiB free, below the 50 GiB heavy-work floor. Cause found: generated benchmark data has no lifecycle (any session creates it under any run root, nothing removes it), and Time Machine local snapshots kept deleted data allocated. PR #4451 (https://github.com/BenchBox-dev/benchbox/pull/4451) added AGENTS.md [RUN-DATA-001] and made scripts/run_version_matrix.py delete its datagen/ and databases/ when a matrix completes.",
+  "context": "Origin: disk cleanup and root-cause review on 2026-11-22. The root volume fell to 46 GiB free, below the 50 GiB heavy-work floor. Cause found: generated benchmark data has no lifecycle (any session creates it under any run root, nothing removes it), and Time Machine local snapshots kept deleted data allocated. PR #4451 (https://github.com/BenchBox-dev/benchbox/pull/4451) added AGENTS.md [RUN-DATA-001] and made scripts/run_version_matrix.py delete its datagen/ and databases/ when a matrix completes.\n\n2026-11-23 owner approval (choice dialog): delete datagen/ and databases/ in std-scales-20261122 and gvg-sf1-20261122 (24-hour idle precondition waived by the owner for these two), per-run databases/ in runs idle over 24 hours, and datagen/databases under /tmp and the user temp directory older than 24 hours with no open files. Done 2026-11-23: checked `lsof` (no open files under either run) and `make heavy-status` (holder was a pr-preflight pytest, not these runs). Removed 8 datagen + 8 databases folders under gvg-sf1-20261122 (14.5 GiB), 4 + 4 under std-scales-20261122 (16.6 GiB), and 110 per-run databases folders in idle runs (largest: duckdb2-followups 6.3 GiB, duckdb-tuned-sf10 1.0 GiB). Skipped as modified within 24 hours: lakesail-4g-sf1-20261122/databases, lakesail-8g-sf1-20261122/databases. `du` of ~/Developer/benchmark_runs went from 131 GiB to 91 GiB. `df` free space stayed at about 300 GiB immediately afterwards; one third-party backup snapshot (Arq) is present and was not touched, which is the likely holder. /tmp/mw and /tmp/chl no longer existed. 242 datagen/databases folders exist under /tmp and the user temp directory but none was older than 24 hours, so none was removed. results/, logs, status files and summaries were not touched: only directories named datagen or databases were removed, never through a symlink.",
   "description": "Problem: runs started before [RUN-DATA-001] merged still hold private copies of generated data, and the sessions that own them were not told to delete it.\n\nMeasured 2026-11-22: `std-scales-20261122` (16.6 GiB of `datagen` in four per-benchmark roots, including `read_primitives-sf10` 10.4 GiB and `clickbench-sf10` 5.1 GiB) and `gvg-sf1-20261122` (7.8 GiB in eight per-benchmark roots, two of them separate copies of `tpch_sf1`). Both were running that day. Separately, 101 `datagen` folders sit under `/tmp` and the user temp directory; `/tmp/mw` (7.7 GiB) and `/tmp/chl` (2.0 GiB) are the largest `/tmp` entries and their content is unidentified.\n\nExpected outcome: once those runs are finished, their regenerable data is gone and their results, logs and manifests remain.",
   "links": [
     "AGENTS.md",
@@ -21,6 +21,14 @@
       "op": "create",
       "op_id": "87a4e2da34df4fde9e9ea6ceb288ea08",
       "session_id": "326a88b3a63f4096aae1118667c53175"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b",
+      "at": "2026-11-23T14:23:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c1fc5074999a442883141d2d96511ab5",
+      "session_id": "e94ef2c0cac942f885a89e503648c51e"
     }
   ]
 }
