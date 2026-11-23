@@ -223,10 +223,15 @@ def _run_postload_validation(
                 pass
 
 
+def _row_count_reference_exists(result: BenchmarkResults) -> bool:
+    name = result.benchmark_name
+    return isinstance(name, str) and row_count_reference_exists(normalize_benchmark_id(name), result.scale_factor)
+
+
 def _mark_unvalidated_queries(result: BenchmarkResults) -> BenchmarkResults:
     status = unevidenced_validation_status(
         result.query_results,
-        reference_exists=row_count_reference_exists(normalize_benchmark_id(result.benchmark_name), result.scale_factor),
+        reference_exists=_row_count_reference_exists(result),
     )
     if status is None:
         return result
