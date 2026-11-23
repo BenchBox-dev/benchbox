@@ -327,19 +327,13 @@ def _float_tie_snap(values: Sequence[Any]) -> dict[float, float]:
     finite = sorted({value for value in values if isinstance(value, float) and math.isfinite(value)})
     snap: dict[float, float] = {}
     representative: float | None = None
-    previous: float | None = None
     for value in finite:
-        if (
-            representative is None
-            or previous is None
-            or not (
-                value == previous
-                or abs(value - previous) <= FLOAT_SORT_KEY_RELATIVE_TOLERANCE * max(abs(value), abs(previous))
-            )
+        if representative is None or not (
+            value == representative
+            or abs(value - representative) <= FLOAT_SORT_KEY_RELATIVE_TOLERANCE * max(abs(value), abs(representative))
         ):
             representative = value
         snap[value] = representative
-        previous = value
     return snap
 
 

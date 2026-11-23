@@ -1693,6 +1693,16 @@ def test_derived_order_treats_float_sort_keys_within_relative_tolerance_as_tied(
     assert _derived_order_violation(sql, columns, wide[::-1]) is not None
 
 
+def test_float_tie_snap_anchors_groups_at_their_representative_instead_of_chaining():
+    from benchbox.core.equivalence.cross_surface import _float_tie_snap
+
+    first, middle, last = 1.0, 1.0 + 0.9e-9, 1.0 + 1.8e-9
+    snap = _float_tie_snap([last, middle, first])
+    assert snap[first] == snap[middle] == first
+    assert snap[last] == last
+    assert snap[first] != snap[last]
+
+
 def test_derived_order_float_tie_tolerance_never_ties_infinities_or_nan_with_finite_keys():
     ascending = "SELECT x FROM t ORDER BY x"
     columns = [("x", "DOUBLE")]
