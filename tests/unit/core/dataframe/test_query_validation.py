@@ -308,7 +308,7 @@ def _ssb_label(scale_factor: float) -> str:
     return load_row_count_reference("ssb", scale_factor).label
 
 
-@pytest.mark.parametrize("scale_factor", [0.01, 0.1, 1.0])
+@pytest.mark.parametrize("scale_factor", [0.01, 0.1, 1.0, 10.0])
 def test_ssb_expected_row_counts_record_a_pass(scale_factor: float) -> None:
     counts = ssb_expected_row_counts(scale_factor)
     measurements = [_measurement(query_id=query_id, rows=rows) for query_id, rows in counts.items()]
