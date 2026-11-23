@@ -42134,7 +42134,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "blocked",
+      "status": "open",
       "title": "A run with no validation evidence is labelled passed (benchmarks other than TPC-DI)"
     },
     "results-normalized-cost-contract-cloud-facets": {
