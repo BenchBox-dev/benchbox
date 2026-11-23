@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Doris joinorder SF1 query 17d passes in trunk UAT, or its memory failure has a recorded cause and an owner decision."
+  ],
+  "context": "Filed 2026-11-23 from the run-timeout follow-up close-out; evidence read that day, re-read before acting. The sweep now names failed cells in the job log (#4458).",
+  "description": "## Problem\nTrunk UAT run 45155067627 (develop 9b3087d404, 2026-11-23) failed job `UAT stage 3 olap` (137626709101): `[sweep] FAILED CELL doris/joinorder@1 status=failed exit=1`, with `query 17d FAILED: (1105, 'errCode = 2, detailMessage = (127.0.0.1)[MEM_LIMIT_EXCEEDED] ... Allocator sys memory check failed: Cannot alloc:918.67 MB'`. Cell log: `/home/runner/Developer/benchmark_runs/logs/uat_20261123_103905/doris_joinorder_1.0_20261123_104350.log`. The olap shard passed on 2026-11-21 and 2026-11-22.\n\n## Change\nFrom the shard artifact, check whether 17d's plan or Doris's memory settings changed (Doris image or config, BenchBox Doris adapter session variables, joinorder query text) between the passing and failing runs, and whether other cells shared the server at that point. Fix the cause in BenchBox if it is ours (for example a session memory setting the adapter should pass), or record it as an upstream/runner limit.\n\n## Decision gates\n- Do not drop 17d or the cell, lower the scale, or raise container memory without the owner's decision in a choice dialog.\n- Local containers run on `mocker`; never run a global mocker prune.\n\n## Verification rubric\nPass: the cause recorded with evidence (what changed, or that nothing changed and the server ran out of memory under the runner's limits); a fix shown by 17d passing in a lock-taken local cell run with the same container memory, or the next Trunk UAT olap shard green; or the owner's recorded decision.\nFail: the query passes only because it was skipped or its memory raised without the owner.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/45155067627"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f39bd68d6be6ca1c15ff91e",
+      "at": "2026-11-23T16:41:22Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a2e494d40b9e43c28c26a4f23ed477da",
+      "session_id": "3204b8c4f1694869956ba59ef92c8970"
+    }
+  ]
+}
