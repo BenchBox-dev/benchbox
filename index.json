@@ -32219,6 +32219,13 @@
       "status": "done",
       "title": "Raise DataLoadingError instead of silent zero-row loads in SQL/file loader"
     },
+    "low-disk-guard-local-snapshots-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Make the low-disk guidance and reports account for space held by local snapshots"
+    },
     "lxml-cve-pysec-2026-87-blocked-by-redshift-connector": {
       "claim": null,
       "needs": [],

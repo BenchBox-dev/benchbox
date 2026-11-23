@@ -1,0 +1,28 @@
+{
+  "acceptance": [
+    "Decision gate (owner): how far the tooling goes. Minimum is documentation plus a report line. Deleting snapshots automatically is out of scope and stays an owner action unless the owner asks for it in this item.",
+    "`docs/internal/low-disk-guard.md` has a section stating: local snapshots can hold deleted data, how to list them (`tmutil listlocalsnapshots /`), the owner command to remove one, that `df` does not show the space as free until they go, and the 2026-11-22 numbers as the example. The retention list puts 'check local snapshots' first.",
+    "On macOS, the low-disk refusal text from the heavy-work admission check and from `make disk-check` includes the count and names (dates) of local snapshots when any exist, or says none; on Linux and when `tmutil` is missing the line is omitted and nothing fails.",
+    "The snapshot query is bounded: it has a timeout no longer than the existing 5 s per-command limit in `make heavy-status`, and a slow or failing `tmutil` reports `unmeasured` and never blocks or fails admission.",
+    "Verification rubric: unit tests cover snapshots present, none, tool missing, tool timeout and non-macOS, with the command runner injected; plus one live `make heavy-status` or `make disk-check` output from the maintainer host pasted in the PR.",
+    "Guardrails: no code path deletes, thins or mounts a snapshot; no sudo; third-party snapshots (Arq) are reported by name only and never suggested for deletion; admission thresholds and the 50 GiB floor are unchanged; the guard still never deletes, moves or prunes anything."
+  ],
+  "context": "Origin: disk cleanup and root-cause review on 2026-11-22. The root volume fell to 46 GiB free, below the 50 GiB heavy-work floor. Cause found: generated benchmark data has no lifecycle (any session creates it under any run root, nothing removes it), and Time Machine local snapshots kept deleted data allocated. PR #4451 (https://github.com/BenchBox-dev/benchbox/pull/4451) added AGENTS.md [RUN-DATA-001] and made scripts/run_version_matrix.py delete its datagen/ and databases/ when a matrix completes. Prior incident: host-disk-exhaustion-enospc-20261006.",
+  "description": "Problem: on 2026-11-22 the root volume was at 46 GiB free. Deleting 32.8 GB of duplicate generated data returned 0.4 GB. Deleting two Time Machine local snapshots (`tmutil deletelocalsnapshots 2026-11-20-140045` and `2026-11-22-085225`, which worked without sudo) then took free space from 47 GiB to about 300 GiB. The snapshots, not live files, were holding most of the 'used' space, including data deleted earlier in October's cleanup.\n\nNothing in the tooling or docs points there. `docs/internal/low-disk-guard.md` lists worktrees, the uv cache, datagen and experiment directories. The admission refusal from `make heavy-run` and the `make disk-check` report list the largest directories under the output root, which sends the reader to delete live files that free nothing while a snapshot holds them. An Arq backup snapshot (`com_haystacksoftware_arqagent_...`) was also present and was left alone; its size is unknown.\n\nThis is the second disk incident on this host (see host-disk-exhaustion-enospc-20261006). The first closed with a guard and directory-size recommendations only.\n\nExpected outcome: when free space is low on macOS, the report says whether local snapshots exist, and the runbook tells the owner to check them before deleting data.",
+  "links": [
+    "docs/internal/low-disk-guard.md",
+    "benchbox/utils/disk_guard.py",
+    "benchbox/utils/host_lock.py",
+    "docs/agent/heavy-work.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1666d419ebd76239145cfb5d",
+      "at": "2026-11-23T00:16:40Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "229b79bd700147b0875714fa0bc98570",
+      "session_id": "326a88b3a63f4096aae1118667c53175"
+    }
+  ]
+}
