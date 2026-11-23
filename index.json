@@ -50940,15 +50940,10 @@
       "title": "Remove the now-redundant NULL filter before `n_unique()` in TPC-DS DataFrame Q28"
     },
     "tpcds-q57-expression-order-float-tie-flake-20261122": {
-      "claim": {
-        "expires_at": "2026-11-24T15:50:41Z",
-        "generation": "dc1a89fb5fe344f2b9415759fc7be82a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f39bd68d6be6ca1c15ff91e"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Fix the TPC-DS Q57 expression-backend ORDER BY check failing on a last-digit float tie"
     },
     "tpcds-q9-generation-above-sf5000-owner-decision-20261120": {
