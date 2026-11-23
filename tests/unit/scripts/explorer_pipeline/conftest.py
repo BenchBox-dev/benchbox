@@ -295,19 +295,20 @@ def combined_bundle(
                         "operation": operation,
                         "table": table,
                         "status": "SUCCESS",
-                        "refresh_set": round_number,
+                        "refresh_set": (round_number - 1) * (streams // 2) + run,
                         "duration_ms": 100.0,
                         **flag,
                     }
+                    for run in range(1, streams // 2 + 1)
                     for operation, table in (("DF_SS", "store_sales"), ("LF_SS", "store_sales"))
                 ],
             }
         phases["schema_creation"] = {"status": "COMPLETED", "duration_ms": 1000.0}
         if qph is None:
-            phases["data_loading"] = {"status": "COMPLETED"}
+            phases["data_loading"] = {"status": "COMPLETED", "database_reused": False}
         else:
             load_ms = tpcds_load_seconds_for(math.floor(qph) + 0.5, streams, power_ms, 1.0) * 1000.0 - 1000.0
-            phases["data_loading"] = {"status": "COMPLETED", "duration_ms": load_ms}
+            phases["data_loading"] = {"status": "COMPLETED", "duration_ms": load_ms, "database_reused": False}
     else:
         phases["power_test"] = {
             "status": "COMPLETED",

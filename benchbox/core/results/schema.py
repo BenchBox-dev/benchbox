@@ -26,7 +26,7 @@ from benchbox.core.results.metrics import UNOFFICIAL_COMPLIANCE_CLASSES, percent
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.platform_timing import resolve_net_estimate_status, summarize_run_platform_timing
 from benchbox.core.results.provenance import VENDOR_PROVENANCE_FIELDS
-from benchbox.core.results.qphds import load_scope_components
+from benchbox.core.results.qphds import database_load_reused, load_scope_components
 from benchbox.core.results.query_execution import (
     QueryExecutionContractError,
     normalize_row_count_validation,
@@ -1174,6 +1174,7 @@ def _build_phases_block(result: BenchmarkResults) -> dict[str, Any]:
             phases["data_loading"] = {
                 "status": setup.data_loading.status,
                 "duration_ms": setup.data_loading.duration_ms,
+                "database_reused": database_load_reused(setup),
             }
         if setup.validation:
             phases["validation"] = {

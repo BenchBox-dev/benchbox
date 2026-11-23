@@ -385,6 +385,7 @@ def test_tpch_power_includes_the_refresh_functions_like_the_runtime() -> None:
 def test_tpch_power_without_refresh_evidence_uses_the_queries_only() -> None:
     data = combined_bundle(benchmark="tpch", power=1234.5)
     data["phases"]["power_test"].pop("refresh_functions")
+    data["phases"]["power_test"].pop("refresh_first_set")
     seconds = [query["ms"] / 1000.0 for query in data["queries"] if query.get("test_type") == "power"]
 
     assert corpus_score.power_at_size(data) == pytest.approx(TPCMetricsCalculator.calculate_power_at_size(seconds, 1.0))

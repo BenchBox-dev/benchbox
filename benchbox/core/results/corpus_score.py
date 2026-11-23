@@ -8,7 +8,6 @@ from typing import Any
 POWER_QUERY_COUNTS = {"tpch": 22, "tpcds": 99}
 TPCDS_POWER_STATEMENTS = 103
 QPHDS_MIN_STREAMS = 4
-LOAD_PHASES = ("schema_creation", "data_loading", "statistics", "post_load_maintenance")
 SCORE_DERIVED_FROM_TIMINGS = "derived_from_timings"
 
 _NON_POWER_TEST_TYPES = frozenset({"throughput", "maintenance"})
@@ -84,6 +83,9 @@ def power_at_size(data: Mapping[str, Any]) -> float | None:
     if benchmark_id == "tpch":
         phases = data.get("phases")
         power_phase = phases.get("power_test") if isinstance(phases, Mapping) else None
+        refresh_configured = isinstance(power_phase, Mapping) and power_phase.get("refresh_first_set") is not None
+        if refresh_configured and not power_refresh_evidence(power_phase)[0]:
+            return None
         if power_refresh_evidence(power_phase)[0]:
             refresh = [max(0.001, function["duration_ms"] / 1000.0) for function in power_phase["refresh_functions"]]
             seconds = [refresh[0], *seconds, refresh[1]]
@@ -172,35 +174,155 @@ def _completed(block: Any) -> bool:
     return isinstance(block, Mapping) and str(block.get("status") or "").upper() == "COMPLETED"
 
 
-def _load_seconds(phases: Mapping[str, Any]) -> float | None:
+LOAD_SUCCESS_STATUSES = frozenset({"SUCCESS", "COMPLETED"})
+TPCDS_QUERIES_PER_STREAM = POWER_QUERY_COUNTS["tpcds"]
+
+
+def _positive_finite(value: object) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool) and math.isfinite(value) and value > 0
+
+
+def qphds_input_problems(
+    scale_factor: float,
+    num_streams: int,
+    power_seconds: float | None,
+    throughput_seconds: Sequence[float | None],
+    maintenance_seconds: Sequence[float | None],
+    load_seconds: float | None,
+) -> list[str]:
+    problems: list[str] = []
+    if not _positive_finite(scale_factor):
+        problems.append("scale factor is not a positive number")
     if (
-        not isinstance(phases.get("data_loading"), Mapping)
-        or str(phases["data_loading"].get("status")).upper() == "NOT_RUN"
+        isinstance(num_streams, bool)
+        or not isinstance(num_streams, int)
+        or num_streams < QPHDS_MIN_STREAMS
+        or num_streams % 2
     ):
-        return None
-    total_ms = 0.0
-    for name in LOAD_PHASES:
-        block = phases.get(name)
-        if not isinstance(block, Mapping) or str(block.get("status") or "").upper() == "NOT_RUN":
+        problems.append(f"stream count must be an even number of at least {QPHDS_MIN_STREAMS}; got {num_streams}")
+    for label, value in (("Power Test", power_seconds), ("database load", load_seconds)):
+        if not _positive_finite(value):
+            problems.append(f"{label} elapsed time is missing or not positive")
+    for label, values in (("Throughput Test", throughput_seconds), ("Data Maintenance Test", maintenance_seconds)):
+        if len(values) != 2:
+            problems.append(f"two {label} elapsed times are required; got {len(values)}")
             continue
-        if str(block.get("status") or "").upper() not in _PASSING_STATUSES | {"COMPLETED"}:
-            return None
-        duration = block.get("duration_ms")
-        if (
-            isinstance(duration, bool)
-            or not isinstance(duration, int | float)
-            or not math.isfinite(duration)
-            or duration < 0
-        ):
-            return None
-        total_ms += float(duration)
+        for index, value in enumerate(values, start=1):
+            if not _positive_finite(value):
+                problems.append(f"{label} {index} elapsed time is missing or not positive")
+    return problems
+
+
+def qphds_power_problems(present: bool, success: object, statements: object) -> list[str]:
+    if not present:
+        return ["Power Test did not run"]
+    problems: list[str] = []
+    if success is not True:
+        problems.append("Power Test did not complete successfully")
+    if statements != TPCDS_POWER_STATEMENTS:
+        problems.append(
+            f"Power Test ran {statements} statements instead of {TPCDS_POWER_STATEMENTS} "
+            f"(all {TPCDS_QUERIES_PER_STREAM} queries)"
+        )
+    return problems
+
+
+def qphds_refresh_runs(stream_count: int) -> int:
+    return max(stream_count // 2, 1)
+
+
+def qphds_maintenance_problems(
+    present: bool, success: object, refresh_sets: set[int], label: str, refresh_runs: int
+) -> list[str]:
+    if not present:
+        return [f"{label} did not run"]
+    problems: list[str] = []
+    if success is not True:
+        problems.append(f"{label} did not complete successfully")
+    if len(refresh_sets) != refresh_runs:
+        problems.append(f"{label} ran {len(refresh_sets)} refresh runs instead of {refresh_runs}")
+    return problems
+
+
+def _contiguous(values: set[int]) -> bool:
+    return bool(values) and max(values) - min(values) + 1 == len(values)
+
+
+def qphds_refresh_window_problems(first: set[int], second: set[int]) -> list[str]:
+    if first and second and not (_contiguous(first) and _contiguous(second) and min(second) == max(first) + 1):
+        return ["Data Maintenance Test 2 did not use the refresh sets that follow Data Maintenance Test 1"]
+    return []
+
+
+def refresh_sets_of(operations: object) -> set[int]:
+    if not isinstance(operations, list | tuple):
+        return set()
+    sets: set[int] = set()
+    for operation in operations:
+        value = operation.get("refresh_set") if isinstance(operation, Mapping) else operation
+        if isinstance(value, int) and not isinstance(value, bool):
+            sets.add(value)
+    return sets
+
+
+def qphds_load_evidence(
+    timed: Sequence[tuple[str, str | None, Any]],
+    *,
+    data_loading_captured: bool,
+    reused: bool | None,
+    settle: tuple[bool, Any] | None,
+) -> tuple[float | None, list[str]]:
+    if not data_loading_captured:
+        return None, ["database load time was not captured"]
+    problems: list[str] = []
+    total_ms = 0.0
+    if reused is None:
+        problems.append("database load reuse was not recorded")
+    elif reused:
+        problems.append("database load was reused, so its time was not measured in this run")
+    for label, status, duration_ms in timed:
+        if status not in LOAD_SUCCESS_STATUSES:
+            problems.append(f"database load {label} did not complete successfully ({status})")
+        if isinstance(duration_ms, bool) or not isinstance(duration_ms, int | float):
+            problems.append(f"database load {label} duration was not captured")
+        else:
+            total_ms += duration_ms
+    if settle is not None:
+        settled, waited_seconds = settle
+        if not settled:
+            problems.append("database load merge settle did not complete")
+        if isinstance(waited_seconds, bool) or not isinstance(waited_seconds, int | float):
+            problems.append("database load merge settle duration was not captured")
+        else:
+            total_ms += waited_seconds * 1000.0
+    return total_ms / 1000.0, problems
+
+
+_STORED_LOAD_LABELS = (
+    ("schema_creation", "table creation"),
+    ("data_loading", "data loading"),
+    ("statistics", "statistics gathering"),
+    ("post_load_maintenance", "post-load maintenance"),
+)
+
+
+def _stored_load_evidence(phases: Mapping[str, Any]) -> tuple[float | None, list[str]]:
+    loading = phases.get("data_loading")
+    if not isinstance(loading, Mapping) or str(loading.get("status") or "").upper() == "NOT_RUN":
+        return qphds_load_evidence([], data_loading_captured=False, reused=None, settle=None)
+    timed = []
+    for name, label in _STORED_LOAD_LABELS:
+        block = phases.get(name)
+        if isinstance(block, Mapping) and str(block.get("status") or "").upper() != "NOT_RUN":
+            timed.append((label, str(block.get("status") or "").upper(), block.get("duration_ms")))
     settle = phases.get("merge_settle")
-    if isinstance(settle, Mapping):
-        waited = settle.get("waited_seconds")
-        if settle.get("settled") is not True or isinstance(waited, bool) or not isinstance(waited, int | float):
-            return None
-        total_ms += float(waited) * 1000.0
-    return total_ms / 1000.0 if total_ms > 0 else None
+    reused = loading.get("database_reused")
+    return qphds_load_evidence(
+        timed,
+        data_loading_captured=True,
+        reused=reused if isinstance(reused, bool) else None,
+        settle=(settle.get("settled") is True, settle.get("waited_seconds")) if isinstance(settle, Mapping) else None,
+    )
 
 
 def _qphds(data: Mapping[str, Any], scale: float) -> float | None:
@@ -208,26 +330,44 @@ def _qphds(data: Mapping[str, Any], scale: float) -> float | None:
     if not isinstance(phases, Mapping):
         return None
     power = phases.get("power_test")
-    if not _completed(power) or power.get("query_count") != TPCDS_POWER_STATEMENTS:
-        return None
     first = phases.get("throughput_test")
     streams = first.get("num_streams") if isinstance(first, Mapping) else None
-    if isinstance(streams, bool) or not isinstance(streams, int) or streams < QPHDS_MIN_STREAMS or streams % 2:
-        return None
-    blocks = [
-        phases.get(name) for name in ("throughput_test", "throughput_test_2", "maintenance_test", "maintenance_test_2")
+    stream_count = streams if isinstance(streams, int) and not isinstance(streams, bool) else 0
+    names = ("throughput_test", "throughput_test_2", "maintenance_test", "maintenance_test_2")
+    blocks = [phases.get(name) for name in names]
+    problems = qphds_power_problems(
+        isinstance(power, Mapping),
+        power.get("status") == "COMPLETED" if isinstance(power, Mapping) else None,
+        power.get("query_count") if isinstance(power, Mapping) else None,
+    )
+    problems += [
+        f"{name} did not complete" for name, block in zip(names[:2], blocks[:2], strict=True) if not _completed(block)
     ]
-    if not all(_completed(block) for block in blocks):
-        return None
-    if any(block.get("num_streams") != streams for block in blocks[:2]):
-        return None
+    problems += [
+        f"{name} streams differ"
+        for name, block in zip(names[:2], blocks[:2], strict=True)
+        if isinstance(block, Mapping) and block.get("num_streams") != stream_count
+    ]
+    refresh_runs = qphds_refresh_runs(stream_count)
+    sets = []
+    for index, block in enumerate(blocks[2:], start=1):
+        present = isinstance(block, Mapping)
+        sets.append(refresh_sets_of(block.get("operations")) if present else set())
+        problems += qphds_maintenance_problems(
+            present, _completed(block) if present else None, sets[-1], f"Data Maintenance Test {index}", refresh_runs
+        )
+    problems += qphds_refresh_window_problems(sets[0], sets[1])
+    load_seconds, load_problems = _stored_load_evidence(phases)
+    problems += load_problems
     power_ms = _positive_ms(power)
     durations = [_positive_ms(block) for block in blocks]
-    load_seconds = _load_seconds(phases)
-    if power_ms is None or load_seconds is None or any(duration is None for duration in durations):
+    seconds = [None if duration is None else duration / 1000.0 for duration in durations]
+    problems += qphds_input_problems(
+        scale, stream_count, None if power_ms is None else power_ms / 1000.0, seconds[:2], seconds[2:], load_seconds
+    )
+    if problems or power_ms is None or load_seconds is None or any(value is None for value in seconds):
         return None
-    seconds = [duration / 1000.0 for duration in durations if duration is not None]
-    return qphds_at_size(scale, streams, power_ms / 1000.0, seconds[:2], seconds[2:], load_seconds)
+    return qphds_at_size(scale, stream_count, power_ms / 1000.0, seconds[:2], seconds[2:], load_seconds)
 
 
 def combined_score(data: Mapping[str, Any]) -> float | None:
@@ -238,7 +378,9 @@ def combined_score(data: Mapping[str, Any]) -> float | None:
     if benchmark_id == "tpcds":
         return _qphds(data, scale)
     phases = data.get("phases")
-    if not isinstance(phases, Mapping) or not refresh_included(phases.get("power_test"), phases.get("throughput_test")):
+    if not isinstance(phases, Mapping) or qphh_structure_problems(
+        phases.get("power_test"), phases.get("throughput_test")
+    ):
         return None
     power = power_at_size(data)
     throughput = throughput_at_size(data)
@@ -355,3 +497,34 @@ def refresh_included(power_phase: Mapping[str, Any] | None, throughput_phase: Ma
     if throughput_present:
         return throughput_refresh_evidence(throughput_phase)[0]
     return False
+
+
+def qphh_structure_problems(power_phase: Any, throughput_phase: Any) -> list[str]:
+    reasons: list[str] = []
+    if not isinstance(power_phase, Mapping) or power_phase.get("status") != "COMPLETED":
+        reasons.append("Power phase did not complete")
+    elif power_phase.get("query_count") != POWER_QUERY_COUNTS["tpch"]:
+        reasons.append("Power phase must complete all 22 TPC-H queries")
+
+    power_refresh_valid, power_first_set = power_refresh_evidence(power_phase)
+    if not power_refresh_valid:
+        reasons.append("Power phase must contain successful RF1 and RF2 evidence for one update set")
+
+    if not isinstance(throughput_phase, Mapping) or throughput_phase.get("status") != "COMPLETED":
+        reasons.append("Throughput phase did not complete")
+    stream_count = throughput_phase.get("num_streams") if isinstance(throughput_phase, Mapping) else None
+    if isinstance(stream_count, bool) or not isinstance(stream_count, int):
+        stream_count = len(throughput_phase.get("stream_results") or []) if isinstance(throughput_phase, Mapping) else 0
+    if stream_count < 2:
+        reasons.append("QphH requires at least two throughput streams")
+
+    throughput_refresh_valid, throughput_first_set, actual_stream_count = throughput_refresh_evidence(
+        throughput_phase, stream_count
+    )
+    if not throughput_refresh_valid:
+        reasons.append("Throughput phase must complete one successful RF1/RF2 pair per query stream")
+    if power_first_set is not None and throughput_first_set != power_first_set + 1:
+        reasons.append("Throughput refresh sets must start at the set immediately after the Power set")
+    if actual_stream_count != stream_count:
+        reasons.append("Throughput refresh pair count must match the requested stream count")
+    return reasons

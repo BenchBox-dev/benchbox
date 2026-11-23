@@ -16,11 +16,6 @@ NON_POWER_TEST_TYPES = frozenset({"throughput", "maintenance"})
 UNOFFICIAL_COMPLIANCE_CLASSES = frozenset({"unofficial_subscale", "unofficial_nonstandard"})
 TPC_QUERIES_PER_STREAM = {"tpch": 22, "tpcds": 99}
 _TPC_BENCHMARK_LABELS = {"tpch": "TPC-H", "tpcds": "TPC-DS"}
-QPHDS_MIN_STREAMS = 4
-
-
-def _positive_finite(value: object) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value > 0
 
 
 def percentile_ms(times_ms: Sequence[float], p: float) -> float:
@@ -111,27 +106,9 @@ class TPCMetricsCalculator:
         maintenance_seconds: Sequence[float | None],
         load_seconds: float | None,
     ) -> list[str]:
-        problems: list[str] = []
-        if not _positive_finite(scale_factor):
-            problems.append("scale factor is not a positive number")
-        if (
-            isinstance(num_streams, bool)
-            or not isinstance(num_streams, int)
-            or num_streams < QPHDS_MIN_STREAMS
-            or num_streams % 2
-        ):
-            problems.append(f"stream count must be an even number of at least {QPHDS_MIN_STREAMS}; got {num_streams}")
-        for label, value in (("Power Test", power_seconds), ("database load", load_seconds)):
-            if not _positive_finite(value):
-                problems.append(f"{label} elapsed time is missing or not positive")
-        for label, values in (("Throughput Test", throughput_seconds), ("Data Maintenance Test", maintenance_seconds)):
-            if len(values) != 2:
-                problems.append(f"two {label} elapsed times are required; got {len(values)}")
-                continue
-            for index, value in enumerate(values, start=1):
-                if not _positive_finite(value):
-                    problems.append(f"{label} {index} elapsed time is missing or not positive")
-        return problems
+        return corpus_score.qphds_input_problems(
+            scale_factor, num_streams, power_seconds, throughput_seconds, maintenance_seconds, load_seconds
+        )
 
     @staticmethod
     def calculate_qphds_terms(
@@ -242,36 +219,12 @@ class TPCMetricsCalculator:
             if (data.get("run") or {}).get("query_subset"):
                 reasons.append(f"{label} results use a query subset")
 
-        power_phase = (power_data.get("phases") or {}).get("power_test")
-        if not isinstance(power_phase, dict) or power_phase.get("status") != "COMPLETED":
-            reasons.append("Power phase did not complete")
-        elif power_phase.get("query_count") != 22:
-            reasons.append("Power phase must complete all 22 TPC-H queries")
-
-        power_refresh_valid, power_first_set = TPCMetricsCalculator._power_refresh_evidence(power_phase)
-        if not power_refresh_valid:
-            reasons.append("Power phase must contain successful RF1 and RF2 evidence for one update set")
-
-        throughput_phase = (throughput_data.get("phases") or {}).get("throughput_test")
-        if not isinstance(throughput_phase, dict) or throughput_phase.get("status") != "COMPLETED":
-            reasons.append("Throughput phase did not complete")
-        stream_count = throughput_phase.get("num_streams") if isinstance(throughput_phase, dict) else None
-        if isinstance(stream_count, bool) or not isinstance(stream_count, int):
-            stream_count = (
-                len(throughput_phase.get("stream_results") or []) if isinstance(throughput_phase, dict) else 0
+        reasons.extend(
+            corpus_score.qphh_structure_problems(
+                (power_data.get("phases") or {}).get("power_test"),
+                (throughput_data.get("phases") or {}).get("throughput_test"),
             )
-        if stream_count < 2:
-            reasons.append("QphH requires at least two throughput streams")
-
-        throughput_refresh_valid, throughput_first_set, actual_stream_count = (
-            TPCMetricsCalculator._throughput_refresh_evidence(throughput_phase, stream_count)
         )
-        if not throughput_refresh_valid:
-            reasons.append("Throughput phase must complete one successful RF1/RF2 pair per query stream")
-        if power_first_set is not None and throughput_first_set != power_first_set + 1:
-            reasons.append("Throughput refresh sets must start at the set immediately after the Power set")
-        if actual_stream_count != stream_count:
-            reasons.append("Throughput refresh pair count must match the requested stream count")
         return list(dict.fromkeys(reasons))
 
     @staticmethod
