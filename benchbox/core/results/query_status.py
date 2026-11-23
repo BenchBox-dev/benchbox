@@ -183,7 +183,7 @@ def unevidenced_validation_status(query_rows: Any, *, reference_exists: bool) ->
     if unvalidated_measurement_query_ids(query_rows):
         return unreferenced
     if unchecked_row_count_evidence(query_rows):
-        return NOT_VALIDATED_VALIDATION_STATUS
+        return unreferenced
     if _measurement_row_count_statuses(query_rows) and not has_row_count_evidence(query_rows):
         return unreferenced
     return None

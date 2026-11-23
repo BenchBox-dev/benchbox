@@ -204,7 +204,7 @@ class QueryValidator:
                 f"Actual rows returned: {actual_row_count}"
             )
             unvalidated = False
-        elif load_outcome is LoadOutcome.STREAM_NOT_REFERENCE_VALIDATED or (stream_id is not None and stream_id > 0):
+        elif load_outcome is LoadOutcome.STREAM_NOT_REFERENCE_VALIDATED:
             warning = (
                 f"Query '{query_id}' executed on stream {stream_id}. "
                 f"Answer files only available for stream 0 in '{benchmark_type}' benchmark. "

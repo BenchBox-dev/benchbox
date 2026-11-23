@@ -81,6 +81,16 @@ def _bundle_payload(benchmark: str, scale: float, platform: str, *, compliance_c
     return payload
 
 
+@pytest.mark.parametrize("bench_id", ["tpch", "tpcds"])
+def test_nonstandard_combined_run_is_admitted_without_metric(bench_id):
+    payload = _bundle_payload(bench_id, 2.0, "example")
+    payload["benchmark"]["test_type"] = "combined"
+    validator = _load_validator()
+    assert validator.rule_outcome(payload).lanes == ()
+    assert validator.admission_reason(payload) is None
+    assert validator.exclusion_reason(payload) == "missing_primary_metric"
+
+
 def _write_cohort(directory: Path, benchmark: str, scale: float, *, compliance_class: str | None = None) -> list[Path]:
     directory.mkdir(parents=True, exist_ok=True)
     paths = []

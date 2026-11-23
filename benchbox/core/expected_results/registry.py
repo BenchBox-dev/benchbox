@@ -31,7 +31,6 @@ class ExpectedResultsRegistry:
         self._providers: Dict[str, Callable] = {}
         self._lock = threading.Lock()
         self._loading: Dict[str, Dict[float, dict]] = {}
-        self._logged_stream_skips: set = set()
         self._missing_answer_files: set[tuple[str, float]] = set()
         self.wait_timeout_seconds = 30.0
 
@@ -61,16 +60,6 @@ class ExpectedResultsRegistry:
         benchmark_key = benchmark_name.lower()
         sf = scale_factor or 1.0
 
-        if stream_id is not None and stream_id > 0 and benchmark_key in ("tpch", "tpcds"):
-            skip_key = (benchmark_key, stream_id)
-            if skip_key not in self._logged_stream_skips:
-                self._logged_stream_skips.add(skip_key)
-                logger.debug(
-                    f"Stream {stream_id} requested for {benchmark_name}. "
-                    f"Answer files only available for stream 0. Validation will be skipped for this stream."
-                )
-            return None, LoadOutcome.STREAM_NOT_REFERENCE_VALIDATED
-
         benchmark_results, outcome = self._load_benchmark_results(benchmark_key, sf)
 
         if outcome in (LoadOutcome.PROVIDER_FAILED, LoadOutcome.PROVIDER_TIMEOUT):
@@ -81,7 +70,7 @@ class ExpectedResultsRegistry:
         if missing_files:
             return None, LoadOutcome.ANSWER_FILES_MISSING
 
-        if benchmark_results is None and sf != 1.0:
+        if benchmark_results is None and sf != 1.0 and not (stream_id and stream_id > 0):
             logger.debug(
                 f"No expected results at SF={sf} for benchmark '{benchmark_name}'. "
                 f"Trying SF=1.0 for scale-independent queries..."
@@ -109,6 +98,13 @@ class ExpectedResultsRegistry:
                 f"Validation will be skipped for this query."
             )
             return None, LoadOutcome.NO_ANSWER_SET
+
+        if stream_id is not None and stream_id > 0 and benchmark_key in ("tpch", "tpcds"):
+            streams = benchmark_results.stream_results or {}
+            if stream_id not in streams:
+                return None, LoadOutcome.STREAM_NOT_REFERENCE_VALIDATED
+            expected_result = streams[stream_id].get(query_id)
+            return (expected_result, LoadOutcome.HIT) if expected_result else (None, LoadOutcome.QUERY_NOT_FOUND)
 
         expected_result = benchmark_results.get_expected_result(query_id)
         if expected_result is None:
@@ -237,7 +233,6 @@ class ExpectedResultsRegistry:
                         del self._loading[benchmark_key][scale_factor]
                 if benchmark_key in self._loading and not self._loading[benchmark_key]:
                     del self._loading[benchmark_key]
-            self._logged_stream_skips.clear()
             logger.debug("Cleared expected results cache")
 
     def list_available_benchmarks(self) -> list[str]:

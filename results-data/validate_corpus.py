@@ -678,9 +678,6 @@ def admission_reason(payload: dict, bundle: pathlib.Path | None = None) -> str |
         if all(reason is not None for reason in reasons):
             return reasons[0]
         return None
-    reason = _primary_metric_reason(payload, display)
-    if reason is not None:
-        return reason
     if not outcome.maintainer_admission:
         return outcome.held_reason or f"not_admitted_{outcome.class_name}"
     return None
@@ -688,9 +685,13 @@ def admission_reason(payload: dict, bundle: pathlib.Path | None = None) -> str |
 
 def exclusion_reason(payload: dict, bundle: pathlib.Path | None = None) -> str | None:
     reason = admission_reason(payload, bundle)
+    outcome = rule_outcome(payload, bundle)
+    if not outcome.lanes and (reason is None or reason == outcome.held_reason):
+        metric_reason = _primary_metric_reason(payload, _display_timings(payload))
+        if metric_reason is not None:
+            return metric_reason
     if reason is not None:
         return reason
-    outcome = rule_outcome(payload, bundle)
     if outcome.lanes:
         return None
     return outcome.held_reason or f"not_ranked_{outcome.class_name}"

@@ -3141,10 +3141,31 @@ def _validate_execution_consistency(
                             "unvalidated (no reference answers for this benchmark and scale factor)"
                         )
                 elif rcv_status is not None and not (
-                    rcv_status == "PASSED" or (rcv_status == "SKIPPED" and row_count_skip_is_documented(rcv))
+                    rcv_status == "PASSED"
+                    or (
+                        rcv_status == "SKIPPED"
+                        and (
+                            row_count_skip_is_documented(rcv)
+                            or (
+                                no_reference
+                                and isinstance(rcv.get("warning"), str)
+                                and rcv["warning"].startswith(_query_status.NO_REFERENCE_REASON)
+                            )
+                        )
+                    )
                 ):
                     vr.error(f"{claim} contradicts queries[{i}].row_count_validation.status={rcv_status!r}")
-    if unchecked_row_count_evidence(queries):
+    if unchecked_row_count_evidence(queries) and not (
+        no_reference
+        and all(
+            isinstance(q.get("row_count_validation", {}).get("warning"), str)
+            and q["row_count_validation"]["warning"].startswith(_query_status.NO_REFERENCE_REASON)
+            for q in queries
+            if isinstance(q, dict)
+            and isinstance(q.get("row_count_validation"), dict)
+            and q["row_count_validation"].get("status") == "SKIPPED"
+        )
+    ):
         vr.error(f"{claim} counts row counts as validated, but every recorded row count was skipped")
     _validate_throughput_stream_completeness(data, vr)
 

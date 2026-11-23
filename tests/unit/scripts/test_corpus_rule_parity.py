@@ -142,6 +142,17 @@ def _staged(tmp_path: Path, path: Path, monkeypatch: pytest.MonkeyPatch) -> bool
     return _stager().stage_seed_bundle(path, tmp_path / "staged")
 
 
+@pytest.mark.parametrize("bench_id", ["tpch", "tpcds"])
+def test_nonstandard_combined_stages_without_a_ranked_lane(tmp_path, monkeypatch, bench_id):
+    data = _bundle(Case("nonstandard", bench_id, 2.0, "combined", True, (), None))
+    path = _write(tmp_path / "source", "result.json", data)
+    assert _staged(tmp_path, path, monkeypatch)
+    staged = json.loads((tmp_path / "staged" / path.name).read_text(encoding="utf-8"))
+    validator = _validator()
+    assert validator.admission_reason(staged) is None
+    assert validator.bundle_lanes(staged) == ()
+
+
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.name)
 def test_every_path_admits_the_same_results_into_the_same_lane_with_the_same_label(
     case: Case, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
