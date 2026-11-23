@@ -19,6 +19,7 @@ from benchbox.core.platform_manifest import PLATFORM_MANIFEST
 from benchbox.core.run_cleanup_warning import cloud_cleanup_warning
 from benchbox.core.schemas import BenchmarkConfig
 from benchbox.utils.run_deadline import (
+    HARD_STOP_GRACE_SECONDS,
     RUN_TIMEOUT_CONFIG_KEY,
     RunDeadline,
     active_run_deadline,
@@ -32,6 +33,8 @@ pytestmark = [
     pytest.mark.medium,
 ]
 
+HARD_STOP_EXIT_SECONDS = 5.0
+
 HARD_STOP_SCRIPT = """
 import functools, subprocess, sys, time
 from pathlib import Path
@@ -44,8 +47,10 @@ from benchbox.cli.orchestrator import BenchmarkOrchestrator
 from benchbox.core.schemas import BenchmarkConfig, DatabaseConfig
 from benchbox.utils.run_deadline import arm_hard_stop, current_run_deadline, register_remote_cleanup
 
-run_deadline.HARD_STOP_GRACE_SECONDS = 0.3
-run_deadline.HARD_STOP_EXPORT_MARGIN_SECONDS = 0.1
+REAL_GRACE = len(sys.argv) > 3
+if not REAL_GRACE:
+    run_deadline.HARD_STOP_GRACE_SECONDS = 0.3
+    run_deadline.HARD_STOP_EXPORT_MARGIN_SECONDS = 0.1
 run_module = sys.modules["benchbox.cli.commands.run"]
 orchestrator = BenchmarkOrchestrator(base_dir=sys.argv[1])
 BLOCKS = sys.argv[2] == "blocks"
@@ -89,7 +94,16 @@ def reaches_the_run(_s):
 
 orchestrator.execute_benchmark = blocks_past_the_limit
 run_time_limit.dispatch_run = reaches_the_run
-run_time_limit.arm_hard_stop = functools.partial(arm_hard_stop, grace_seconds=0.3)
+if REAL_GRACE:
+    real_hard_stop = run_time_limit.hard_stop
+
+    def recording_hard_stop(deadline):
+        Path(sys.argv[1], "hard-stop.at").write_text(repr(time.time()))
+        real_hard_stop(deadline)
+
+    run_time_limit.hard_stop = recording_hard_stop
+else:
+    run_time_limit.arm_hard_stop = functools.partial(arm_hard_stop, grace_seconds=0.3)
 run_module.run.main(
     ["--platform", "duckdb", "--benchmark", "tpch", "--scale", "0.01", "--non-interactive", "--timeout", "1"],
     obj={"config": ConfigManager()},
@@ -290,9 +304,11 @@ def test_a_cleanup_error_is_printed_even_when_the_console_is_quiet(monkeypatch, 
     assert "Remote cleanup failed: Onehouse: RuntimeError: the service refused" in capfd.readouterr().err
 
 
-def _run_hard_stop_script(tmp_path: Path, mode: str) -> tuple[subprocess.CompletedProcess[str], float]:
+def _run_hard_stop_script(
+    tmp_path: Path, mode: str, real_grace: bool = False
+) -> tuple[subprocess.CompletedProcess[str], float]:
     completed = subprocess.run(
-        [sys.executable, "-c", HARD_STOP_SCRIPT, str(tmp_path), mode],
+        [sys.executable, "-c", HARD_STOP_SCRIPT, str(tmp_path), mode, *(["real"] if real_grace else [])],
         capture_output=True,
         text=True,
         timeout=90,
@@ -324,6 +340,24 @@ def test_a_blocked_cleanup_does_not_move_the_hard_bound_and_is_reported_unfinish
     assert (tmp_path / "stuck.cancelled").exists(), output
     assert "Remote cleanup did not finish within 0.2 seconds" in completed.stderr
     assert elapsed < 1 + 0.3 + 6, f"the hard stop took {elapsed:.1f}s with a blocked cleanup"
+    bundles = [path for path in tmp_path.rglob("*.json") if "manifest" not in path.name]
+    assert len(bundles) == 1, output
+
+
+@pytest.mark.slow
+def test_a_cleanup_that_never_returns_starts_the_hard_stop_at_limit_plus_30_and_exits_within_the_stated_bound(
+    tmp_path,
+) -> None:
+    completed, elapsed = _run_hard_stop_script(tmp_path, "blocks", real_grace=True)
+
+    output = completed.stdout + completed.stderr
+    assert completed.returncode == 124, output
+    assert (tmp_path / "stuck.cancelled").exists(), output
+    assert "Remote cleanup did not finish within 25 seconds" in completed.stderr
+    started = float((tmp_path / "started.at").read_text(encoding="utf-8"))
+    hard_stop_began = float((tmp_path / "hard-stop.at").read_text(encoding="utf-8")) - started
+    assert abs(hard_stop_began - (1 + HARD_STOP_GRACE_SECONDS)) <= 0.5, hard_stop_began
+    assert elapsed - hard_stop_began < HARD_STOP_EXIT_SECONDS, elapsed
     bundles = [path for path in tmp_path.rglob("*.json") if "manifest" not in path.name]
     assert len(bundles) == 1, output
 

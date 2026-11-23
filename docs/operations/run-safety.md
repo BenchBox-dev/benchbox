@@ -104,8 +104,11 @@ only what this run started and has not seen finish: Onehouse jobs and a cluster 
 jobs, EMR Serverless job runs and an application the run created, Glue job runs, and Dataproc jobs and an ephemeral
 cluster the run created. It never stops a warehouse, application, cluster or session that existed before the run. The
 run waits for the cleanup only until 5 seconds before the 30-second grace ends, so a run that stopped cleanly still
-exports its full result. The hard stop waits only for what is left of that time, and the hard bound stays the limit
-plus 30 seconds. A cleanup that has not finished by then is reported as
+exports its full result. The hard stop waits only for what is left of that time. The 30 seconds are not an exit
+bound: stopping starts at the limit plus 30 seconds. At that point BenchBox cancels remote work (only if the cleanup
+had not already started at the limit), writes the partial result, ends the child processes it started and exits with
+code 124. That takes a few seconds, within 5 seconds when the remote cleanup had started at the limit; it takes up to 25
+seconds longer only if the cleanup had not started. A cleanup that has not finished by then is reported as
 `Remote cleanup did not finish within 25 seconds`. A failed cleanup does not change the exit code (124) or the
 `timed_out` result. Its error is printed to standard error as `Remote cleanup failed: ...` on the command line, also
 in a quiet run, logged as a warning by MCP runs and by `adapter.run_benchmark(timeout_seconds=...)`, and recorded in
