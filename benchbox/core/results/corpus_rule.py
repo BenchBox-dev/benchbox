@@ -233,6 +233,16 @@ def load_data(path: Path = DATA_PATH) -> Mapping[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def row_count_reference_exists(benchmark_id: Any, scale_factor: Any, data: Mapping[str, Any] | None = None) -> bool:
+    data = data if data is not None else load_data()
+    benchmark = normalize_benchmark_id(benchmark_id)
+    scale = _scale_value(scale_factor)
+    if benchmark is None or scale is None or not math.isfinite(scale):
+        return False
+    scales = data["row_count_reference_scales"].get(benchmark, ())
+    return any(abs(scale - recorded) < 1e-9 for recorded in scales)
+
+
 def normalize_benchmark_id(benchmark_id: Any) -> str | None:
     if not isinstance(benchmark_id, str) or not benchmark_id.strip():
         return None

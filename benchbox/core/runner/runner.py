@@ -486,7 +486,10 @@ def _attach_translation_metadata(
         result.execution_metadata = {}
     result.execution_metadata["translation"] = summary
 
-    if summary.get("status") in {"fallback", "failed"} and (result.validation_status or "").upper() == "PASSED":
+    if summary.get("status") in {"fallback", "failed"} and (result.validation_status or "").upper() in {
+        "PASSED",
+        NO_REFERENCE_VALIDATION_STATUS,
+    }:
         result.validation_status = "UNCERTAIN"
         result.validation_details = result.validation_details or {}
         warnings = result.validation_details.setdefault("warnings", [])

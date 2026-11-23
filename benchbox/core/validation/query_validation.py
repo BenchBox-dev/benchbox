@@ -188,6 +188,46 @@ class QueryValidator:
                 return dataclasses.replace(expected_result, validation_mode=ValidationMode(norm_env))
         return expected_result
 
+    @staticmethod
+    def _without_reference(
+        benchmark_type: str,
+        query_id: str,
+        actual_row_count: int,
+        scale_factor: float | None,
+        stream_id: int | None,
+        load_outcome: LoadOutcome,
+    ) -> ValidationResult:
+        if load_outcome is LoadOutcome.ANSWER_FILES_MISSING:
+            warning = (
+                f"Reference answer files for benchmark '{benchmark_type}' at scale factor {scale_factor or 1.0} "
+                f"are not installed (query '{query_id}'). Row counts were not checked. "
+                f"Actual rows returned: {actual_row_count}"
+            )
+            unvalidated = False
+        elif load_outcome is LoadOutcome.STREAM_NOT_REFERENCE_VALIDATED or (stream_id is not None and stream_id > 0):
+            warning = (
+                f"Query '{query_id}' executed on stream {stream_id}. "
+                f"Answer files only available for stream 0 in '{benchmark_type}' benchmark. "
+                f"Validation skipped. Actual rows returned: {actual_row_count}"
+            )
+            unvalidated = False
+        else:
+            warning = (
+                f"Unvalidated: no reference answers exist for benchmark '{benchmark_type}' at scale factor "
+                f"{scale_factor or 1.0} (query '{query_id}'). The row count was not checked and is not "
+                f"counted as passed. Actual rows returned: {actual_row_count}"
+            )
+            unvalidated = True
+        return ValidationResult(
+            is_valid=True,
+            query_id=query_id,
+            expected_row_count=None,
+            actual_row_count=actual_row_count,
+            validation_mode=ValidationMode.SKIP,
+            warning_message=warning,
+            unvalidated=unvalidated,
+        )
+
     def validate_query_result(
         self,
         benchmark_type: str,
@@ -281,32 +321,8 @@ class QueryValidator:
             )
 
         if expected_result is None:
-            if load_outcome is LoadOutcome.STREAM_NOT_REFERENCE_VALIDATED or (stream_id is not None and stream_id > 0):
-                return ValidationResult(
-                    is_valid=True,
-                    query_id=query_id_str,
-                    expected_row_count=None,
-                    actual_row_count=actual_row_count,
-                    validation_mode=ValidationMode.SKIP,
-                    warning_message=(
-                        f"Query '{query_id}' executed on stream {stream_id}. "
-                        f"Answer files only available for stream 0 in '{benchmark_type}' benchmark. "
-                        f"Validation skipped. Actual rows returned: {actual_row_count}"
-                    ),
-                )
-
-            return ValidationResult(
-                is_valid=True,
-                query_id=query_id_str,
-                expected_row_count=None,
-                actual_row_count=actual_row_count,
-                validation_mode=ValidationMode.SKIP,
-                warning_message=(
-                    f"Unvalidated: no reference answers exist for benchmark '{benchmark_type}' at scale factor "
-                    f"{scale_factor or 1.0} (query '{query_id}'). The row count was not checked and is not "
-                    f"counted as passed. Actual rows returned: {actual_row_count}"
-                ),
-                unvalidated=True,
+            return self._without_reference(
+                benchmark_type, query_id_str, actual_row_count, scale_factor, stream_id, load_outcome
             )
 
         if get_reference_seed_context() is False and expected_result.reference_parameters_only:

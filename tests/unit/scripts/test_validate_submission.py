@@ -3501,9 +3501,12 @@ def test_manifest_class_attestation_must_match_the_recorded_bundle(tmp_path, env
     assert vr.ok is ok
 
 
-def _row_count_bundle(status: str, row_statuses: list[str | None]) -> dict:
+def _row_count_bundle(status: str, row_statuses: list[str | None], scale_factor: float | None = None) -> dict:
     data = _minimal_bundle()
     data["summary"]["validation"] = status
+    if scale_factor is None:
+        scale_factor = 10.0 if status == "no_reference" else 0.01
+    data["benchmark"]["scale_factor"] = scale_factor
     for index, row in enumerate(data["queries"]):
         row.pop("row_count_validation", None)
         row_status = row_statuses[index] if index < len(row_statuses) else None
@@ -3553,6 +3556,42 @@ class TestValidationStatusVocabulary:
         vr = self._validate(data, **flags)
         assert not vr.ok
         assert any("'no_reference' contradicts" in e for e in vr.errors)
+
+    @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
+    @pytest.mark.parametrize(("benchmark_id", "scale"), [("tpch", 1.0), ("tpch", 0.01), ("tpcds", 0.1), ("ssb", 10.0)])
+    def test_no_reference_is_refused_where_a_reference_exists(self, flags, benchmark_id, scale):
+        data = _row_count_bundle("no_reference", [], scale_factor=scale)
+        data["benchmark"]["id"] = benchmark_id
+        vr = self._validate(data, **flags)
+        assert any("only valid where no row-count reference exists" in e for e in vr.errors)
+
+    @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
+    def test_no_reference_is_accepted_where_no_reference_exists(self, flags):
+        vr = self._validate(_row_count_bundle("no_reference", [], scale_factor=10.0), **flags)
+        assert not any("only valid where" in e for e in vr.errors)
+
+    @pytest.mark.parametrize("status", ["passed", "no_reference"])
+    def test_throughput_stream_completeness_is_checked_for_both_statuses(self, status):
+        data = _row_count_bundle(status, ["PASSED"] * 22 if status == "passed" else [])
+        data["phases"]["throughput_test"] = {
+            "status": "COMPLETED",
+            "stream_results": [{"stream_id": 1, "success": True}, {"stream_id": 3, "success": True}],
+        }
+        vr = self._validate(data)
+        assert any("contiguous 1..2" in e for e in vr.errors)
+
+    @pytest.mark.parametrize("phase_status", ["FAILED", "PARTIAL", "NOT_RUN"])
+    def test_validation_phase_must_agree_with_no_reference(self, phase_status):
+        data = _row_count_bundle("no_reference", [])
+        data["phases"]["validation"]["status"] = phase_status
+        vr = self._validate(data)
+        assert any("contradicts phases.validation.status" in e for e in vr.errors)
+
+    @pytest.mark.parametrize("phase_status", ["PASSED", "NO_REFERENCE"])
+    def test_compatible_validation_phase_is_accepted_with_no_reference(self, phase_status):
+        data = _row_count_bundle("no_reference", [])
+        data["phases"]["validation"]["status"] = phase_status
+        assert self._validate(data).ok
 
     def test_allowlists_admit_no_reference_and_keep_passed_the_clean_status(self):
         assert bundle_module.PUBLIC_CLEAN_VALIDATION_STATUS == "passed"
