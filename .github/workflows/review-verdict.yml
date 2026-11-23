@@ -38,10 +38,10 @@ jobs:
       actions: write
       contents: read
       pull-requests: read
-    uses: joeharris76/theseus/.github/workflows/review.yml@2ed4e0d2db212161cb128487a1a344b6c5a11eb2
+    uses: joeharris76/theseus/.github/workflows/review.yml@e97905790c4610c95cce6d27410bc94fc0c9efbb
     with:
       environment: review
-      theseus_ref: 2ed4e0d2db212161cb128487a1a344b6c5a11eb2
+      theseus_ref: e97905790c4610c95cce6d27410bc94fc0c9efbb
       gated_base: "develop,release/*"
       policy_path: .github/review.yml
       tailscale_tag: tag:review-ci
