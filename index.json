@@ -24594,17 +24594,12 @@
       "title": "Make the result writer use the rule and recompute every lane's score from timings"
     },
     "crr-a3-validators-staging-and-admission": {
-      "claim": {
-        "expires_at": "2026-11-24T18:57:19Z",
-        "generation": "9d753c99cba54d20a7e06be30f1a1152",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:69ad863fb6a91a23281f8dfd"
-      },
+      "claim": null,
       "needs": [
         "crr-a2-writer-and-score-from-timings"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Move the validators, staging and the public admission path to the rule"
     },
     "crr-a4-database-metrics-and-cli-readers": {
