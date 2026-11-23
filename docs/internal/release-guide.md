@@ -530,6 +530,19 @@ from a branch of this repository so that the status can be required without leav
 unrelated pull requests pending. If a dispatch fails, or the job graph check fails, the
 status is posted as `failure` carrying the error.
 
+The job checks out the pull request head and, separately, the base commit
+(`github.event.pull_request.base.sha`). The job graph check runs from the head so it
+validates the head's `release-v2.yml`; the launch script
+(`scripts.release_probe_launch`) runs from the base checkout. On `pull_request` the
+workflow file, and so the token permissions, come from the merge ref, which carries the
+base's posting contract; a head older than that contract would otherwise run a launcher
+that posts check runs with a statuses-only token and get HTTP 403. A stacked pull
+request whose base predates the contract runs the base's older launcher under the same
+base's workflow, so the two still agree. `scripts/release_probe_verdict.py` needs no
+such change: it runs in the `probe report` job of `release-v2.yml`, dispatched on the
+branch, where the workflow and the script both come from the head. This removes version
+skew only; a pull request can still edit the workflow file the merge ref supplies.
+
 The required context is a commit status, not a check run, because GitHub files a check
 run created with `GITHUB_TOKEN` into an arbitrary existing github-actions check suite of
 the commit, and one filed in the `CI` workflow's suite is not counted by the ruleset (the
