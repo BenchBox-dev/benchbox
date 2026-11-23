@@ -44,6 +44,7 @@ def _eligible_results() -> tuple[dict, dict]:
             "throughput_test": {
                 "status": "COMPLETED",
                 "num_streams": 2,
+                "stream_results": [{"stream_id": stream, "success": True} for stream in (1, 2)],
                 "refresh_stream": {
                     "first_set": 6,
                     "status": "COMPLETED",
@@ -66,7 +67,12 @@ def _eligible_results() -> tuple[dict, dict]:
 
 
 def _result_payload(
-    scale_factor: float, compliance_class: str | None, *, power_refresh: bool = True, evidenced: bool = False
+    scale_factor: float,
+    compliance_class: str | None,
+    *,
+    power_refresh: bool = True,
+    evidenced: bool = False,
+    stream_failure: bool = False,
 ) -> dict:
     builder = ResultBuilder(
         benchmark=BenchmarkInfoInput(
@@ -153,12 +159,15 @@ def _result_payload(
                 num_streams=2,
                 streams=[
                     ThroughputStream(
-                        stream_id=stream_id, start_time="", end_time="", duration_ms=500, query_executions=[]
+                        stream_id=stream_id,
+                        start_time="",
+                        end_time="",
+                        duration_ms=500,
+                        query_executions=[],
+                        success=not (stream_failure and stream_id == 1),
                     )
                     for stream_id in (1, 2)
-                ]
-                if evidenced
-                else [],
+                ],
                 total_queries_executed=44,
                 throughput_at_size=200.0,
                 success=True,
@@ -292,8 +301,8 @@ def test_official_22_query_power_and_consecutive_refresh_pairs_qualify_qphh() ->
             "Throughput results contain 2 failed queries",
         ),
         (
-            lambda power, throughput: throughput["phases"]["throughput_test"].update(num_streams=1),
-            "at least two throughput streams",
+            lambda power, throughput: throughput["phases"]["throughput_test"]["stream_results"].pop(),
+            "minimum number of successful throughput streams",
         ),
         (
             lambda power, throughput: throughput["phases"]["throughput_test"]["refresh_stream"].update(first_set=7),
@@ -304,7 +313,9 @@ def test_official_22_query_power_and_consecutive_refresh_pairs_qualify_qphh() ->
             "successful RF1/RF2 pair per query stream",
         ),
         (
-            lambda power, throughput: throughput["phases"]["throughput_test"].update(num_streams=3),
+            lambda power, throughput: throughput["phases"]["throughput_test"]["stream_results"].append(
+                {"stream_id": 3, "success": True}
+            ),
             "successful RF1/RF2 pair per query stream",
         ),
         (
@@ -392,3 +403,9 @@ def test_a_full_specification_tpch_run_without_the_official_flag_gets_qphh_and_t
     assert payload["benchmark"]["compliance_class"] == "official"
     assert payload["summary"]["tpc_metrics"]["qphh_at_size"] > 0
     assert "qphh_unavailable" not in payload["summary"]["tpc_metrics"]
+
+
+def test_failed_executed_stream_withholds_writer_qphh() -> None:
+    payload = _result_payload(1.0, None, evidenced=True, stream_failure=True)
+    assert "qphh_at_size" not in payload["summary"]["tpc_metrics"]
+    assert payload["summary"]["tpc_metrics"]["qphh_unavailable"]

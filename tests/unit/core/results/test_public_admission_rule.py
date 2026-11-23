@@ -74,3 +74,10 @@ def test_a_written_power_only_standard_scale_result_is_admitted_publicly() -> No
 
     assert "compliance_class" not in payload["benchmark"]
     assert publish_admission(loaded, "community").allowed
+
+
+def test_no_reference_is_refused_when_a_reference_exists() -> None:
+    result = _loaded(1.0)
+    result.validation_status = "no_reference"
+    assert not publish_admission(result, "community").allowed
+    assert classify_loaded_result(result) is not SubmitTerminalState.submittable

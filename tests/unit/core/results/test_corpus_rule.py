@@ -625,3 +625,33 @@ def test_a_held_result_is_not_labelled_and_a_failed_validation_is_still_refused(
 def test_no_reference_status_is_not_a_failed_validation() -> None:
     assert "no_reference" not in rule.NON_CLEAN_VALIDATION_STATUSES
     assert "no_reference" not in NON_CLEAN_VALIDATION_STATUSES
+
+
+def test_power_refresh_without_throughput_uses_partial_rule() -> None:
+    outcome = rule.derive_outcome(rule.facts_from_result(result(refresh=True)))
+    assert outcome.class_name == rule.CLASS_PARTIAL
+    assert outcome.score_source == rule.SCORE_POWER_QUERY_TIMINGS_ONLY
+
+
+def test_hold_precedes_missing_stream_evidence_and_refuses_public_failure() -> None:
+    facts = rule.Facts("tpch", 1.0, frozenset(PHASE_NAMES[:3]), gateway_routed=True)
+    assert rule.derive_outcome(facts).held_reason == rule.HELD_GATEWAY_ROUTED
+    failed = rule.derive_outcome(rule.Facts("tpch", 1.0, frozenset({rule.PHASE_POWER}), validation_failed=True))
+    assert not failed.public_admission
+
+
+@pytest.mark.parametrize(
+    ("flags", "public", "maintainer"),
+    [
+        ({"gateway_routed": True}, False, False),
+        ({"validation_failed": True}, False, False),
+        ({"known_defect": True}, True, True),
+        ({"known_defect": True, "validation_failed": True}, False, False),
+    ],
+)
+def test_hold_admission_matches_the_two_paths(flags: dict, public: bool, maintainer: bool) -> None:
+    facts = rule.Facts("tpch", 1.0, frozenset({rule.PHASE_POWER}), **flags)
+    outcome = rule.derive_outcome(facts)
+    assert (outcome.public_admission, outcome.maintainer_admission) == (public, maintainer)
+    assert not outcome.ranked
+    assert (rule.public_refusal_for_facts(facts) is None) == public

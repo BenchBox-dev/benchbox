@@ -6,7 +6,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from benchbox.core.results.status import result_non_clean_reason
 from benchbox.core.results.submit_classification import result_public_refusal_reason
 from benchbox.core.results.subscale_policy import normalize_tpc_benchmark_id
 from benchbox.core.results.tpcdi_audit import LEGACY_TPCDI_REFUSAL, legacy_tpcdi_note
@@ -23,18 +22,15 @@ def publish_admission(result: Any, label: str) -> PublishAdmissionDecision:
     if legacy_tpcdi_note(result) is not None:
         return PublishAdmissionDecision(allowed=False, code="legacy_tpcdi", reason=LEGACY_TPCDI_REFUSAL)
     refusal = result_public_refusal_reason(result)
-    if refusal is not None and label.lower() != "unofficial-research":
+    if refusal is not None and (
+        refusal not in {"unofficial_nonstandard", "unofficial_subscale"} or label.lower() != "unofficial-research"
+    ):
         return PublishAdmissionDecision(
             allowed=False,
-            code="unofficial_compliance",
+            code="unofficial_compliance"
+            if refusal in {"unofficial_nonstandard", "unofficial_subscale"}
+            else "non_clean",
             reason=refusal,
-        )
-    non_clean = result_non_clean_reason(result)
-    if non_clean:
-        return PublishAdmissionDecision(
-            allowed=False,
-            code="non_clean",
-            reason=non_clean,
         )
     return PublishAdmissionDecision(allowed=True)
 

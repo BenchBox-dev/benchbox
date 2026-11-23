@@ -124,7 +124,7 @@ def _unfinished_throughput(data: dict) -> None:
 
 
 def _single_stream(data: dict) -> None:
-    data["phases"]["throughput_test"]["num_streams"] = 1
+    data["phases"]["throughput_test"]["stream_results"].pop()
 
 
 def _clean_tpch(data: dict) -> None:

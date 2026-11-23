@@ -30,22 +30,41 @@ class SubmitTerminalState(str, Enum):
 
 
 def result_public_refusal(result: Any) -> str | None:
-    return corpus_rule.public_refusal(
-        getattr(result, "benchmark_id", None) or normalize_tpc_benchmark_id(getattr(result, "benchmark_name", None)),
-        getattr(result, "scale_factor", None),
-        gateway_routed=result_gateway_routed(result),
+    benchmark = getattr(result, "benchmark_id", None) or normalize_tpc_benchmark_id(
+        getattr(result, "benchmark_name", None)
     )
+    phases = None
+    if getattr(result, "execution_phases", None) is not None:
+        from benchbox.core.results.schema import _build_phases_block
+
+        phases = _build_phases_block(result)
+    data = {
+        "benchmark": {"id": benchmark, "scale_factor": getattr(result, "scale_factor", None)},
+        "platform": {"gateway": {"routed": result_gateway_routed(result)}},
+        "phases": phases or {},
+        "summary": {"validation": getattr(result, "validation_status", None)},
+        "queries": [{"run_type": "measurement"}] if getattr(result, "total_queries", 0) else [],
+    }
+    facts = corpus_rule.facts_from_result(data, failed_queries=result_failed_query_count(result))
+    if result_non_clean_reason(result):
+        from dataclasses import replace
+
+        facts = replace(facts, validation_failed=True)
+    return corpus_rule.public_refusal_for_facts(facts)
 
 
 PUBLIC_REFUSAL_REASONS = {
     corpus_rule.HELD_GATEWAY_ROUTED: "unofficial_nonstandard",
     corpus_rule.CLASS_SUBSCALE: "unofficial_subscale",
+    corpus_rule.HELD_FAILED_VALIDATION: "validation_failed",
+    corpus_rule.HELD_NO_TIMED_PHASE: "no_timed_phase",
+    corpus_rule.CLASS_UNDETERMINED: "undetermined",
 }
 
 
 def result_public_refusal_reason(result: Any) -> str | None:
     refusal = result_public_refusal(result)
-    return None if refusal is None else PUBLIC_REFUSAL_REASONS[refusal]
+    return None if refusal is None else PUBLIC_REFUSAL_REASONS.get(refusal, refusal)
 
 
 def result_refused_at_submission(result: Any) -> bool:
@@ -53,8 +72,11 @@ def result_refused_at_submission(result: Any) -> bool:
 
 
 def classify_loaded_result(result: Any) -> SubmitTerminalState:
-    if result_refused_at_submission(result):
+    refusal = result_public_refusal(result)
+    if refusal in (corpus_rule.HELD_GATEWAY_ROUTED, corpus_rule.CLASS_SUBSCALE):
         return SubmitTerminalState.unofficial
+    if refusal is not None and refusal != corpus_rule.HELD_FAILED_VALIDATION:
+        return SubmitTerminalState.schema_violation
 
     non_clean_reason = result_non_clean_reason(result)
     if non_clean_reason:
@@ -63,6 +85,8 @@ def classify_loaded_result(result: Any) -> SubmitTerminalState:
         if result_unvalidated_reason(result):
             return SubmitTerminalState.unvalidated
         return SubmitTerminalState.schema_violation
+    if refusal == corpus_rule.HELD_FAILED_VALIDATION:
+        return SubmitTerminalState.unvalidated
     return SubmitTerminalState.submittable
 
 

@@ -94,6 +94,7 @@ class Facts:
     known_defect: bool = False
     validation_failed: bool = False
     row_counts_checked: bool = True
+    public_validation_refused: bool = False
 
 
 @dataclass(frozen=True)
@@ -374,9 +375,15 @@ def _held_reason(facts: Facts) -> str | None:
     return None
 
 
-def _hold(outcome: Outcome, reason: str) -> Outcome:
+def _hold(outcome: Outcome, reason: str, *, validation_failed: bool = False) -> Outcome:
     return replace(
         outcome,
+        public_admission=reason == HELD_KNOWN_DEFECT
+        and not validation_failed
+        and outcome.class_name != CLASS_UNDETERMINED,
+        maintainer_admission=reason == HELD_KNOWN_DEFECT
+        and not validation_failed
+        and outcome.class_name != CLASS_UNDETERMINED,
         lanes=(),
         score_source=None,
         labels=(*outcome.labels, HELD_LABELS[reason]),
@@ -393,15 +400,20 @@ def derive_outcome(
 ) -> Outcome:
     data = data if data is not None else load_data()
     if facts.phases is None:
-        return _undetermined((MISSING_PHASES,))
+        outcome = _undetermined((MISSING_PHASES,))
+        held = _held_reason(facts)
+        return _hold(outcome, held, validation_failed=facts.validation_failed) if held else outcome
     context = build_context(facts, data)
     row = next((candidate for candidate in table if candidate.matches(context)), None)
+    held = _held_reason(facts)
     if row is None:
-        return _undetermined(missing_facts(facts, context))
+        outcome = _undetermined(missing_facts(facts, context))
+        return _hold(outcome, held, validation_failed=facts.validation_failed) if held else outcome
     if row.name == "no_timed_phase":
         return Outcome(row.class_name, False, False, (), None, (), HELD_NO_TIMED_PHASE, (), row.name)
     if missing_facts(facts, context):
-        return _undetermined(missing_facts(facts, context), row.name)
+        outcome = _undetermined(missing_facts(facts, context), row.name)
+        return _hold(outcome, held, validation_failed=facts.validation_failed) if held else outcome
     if row.delegate is not None:
         delegate = (delegates or {}).get(row.delegate)
         outcome = delegate(facts) if delegate is not None else _undetermined((MISSING_TPCDI_RULE,), row.name)
@@ -420,7 +432,9 @@ def derive_outcome(
         )
     held = _held_reason(facts)
     if held is not None:
-        return _hold(outcome, held)
+        return _hold(outcome, held, validation_failed=facts.validation_failed)
+    if facts.public_validation_refused:
+        outcome = replace(outcome, public_admission=False)
     if not facts.row_counts_checked and outcome.class_name != CLASS_UNDETERMINED:
         return replace(outcome, labels=(*outcome.labels, ROW_COUNTS_NOT_CHECKED_LABEL))
     return outcome
@@ -449,6 +463,8 @@ def _tpch_refresh_clean(phases: Mapping[str, Any]) -> bool:
     if not _all_succeed(functions, 2):
         return False
     throughput = phases.get("throughput_test")
+    if not _executed(throughput):
+        return True
     refresh_stream = throughput.get("refresh_stream") if isinstance(throughput, Mapping) else None
     return (
         isinstance(refresh_stream, Mapping)
@@ -635,6 +651,8 @@ def facts_from_result(
             or _translation_non_clean(data)
         ),
         row_counts_checked=row_counts_checked(data),
+        public_validation_refused=status == "no_reference"
+        and row_count_reference_exists(benchmark_id, benchmark.get("scale_factor")),
     )
 
 
@@ -671,4 +689,15 @@ def public_refusal(benchmark_id: str | None, scale_factor: float | None, *, gate
     outcome = derive_outcome(Facts(benchmark_id, scale_factor, frozenset({PHASE_POWER})))
     if outcome.class_name == CLASS_SUBSCALE and not outcome.public_admission:
         return CLASS_SUBSCALE
+    return None
+
+
+def public_refusal_for_facts(facts: Facts) -> str | None:
+    outcome = derive_outcome(facts)
+    if outcome.held_reason is not None and not outcome.public_admission:
+        return outcome.held_reason
+    if facts.public_validation_refused:
+        return HELD_FAILED_VALIDATION
+    if not outcome.public_admission:
+        return outcome.class_name
     return None

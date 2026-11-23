@@ -59,6 +59,11 @@ that row covers scales that are neither standard nor, for TPC-H and TPC-DS,
 below scale 1. The "no timed phase" row and the unchanged checks (gateway
 routed, known defect, failed validation) apply before any class row. TPC-DI is
 decided by its own admission rule, not by the class rows.
+Gateway-routed results are refused on both admission paths. Failed-validation
+results are refused on both paths. A known defect is admitted on both paths
+but held out of rankings.
+Timed TPC results without a power or throughput phase are admitted without a
+ranking lane or score; they are classified as `partial`.
 
 The columns are: the class the facts give, whether the public path (submit,
 publish) accepts the result, whether the maintainer path accepts it, the

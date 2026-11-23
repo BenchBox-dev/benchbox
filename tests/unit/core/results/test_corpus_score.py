@@ -100,7 +100,14 @@ def test_throughput_is_queries_per_stream_times_streams_over_the_phase_duration(
         ],
         scale=1.0,
     )
-    data["phases"] = {"throughput_test": {"duration_ms": 2000, "status": "COMPLETED", "num_streams": 2}}
+    data["phases"] = {
+        "throughput_test": {
+            "duration_ms": 2000,
+            "status": "COMPLETED",
+            "num_streams": 2,
+            "stream_results": [{"success": True}, {"success": True}],
+        }
+    }
 
     assert corpus_score.throughput_at_size(data) == pytest.approx(44 * 3600 / 2)
     data["phases"]["throughput_test"]["duration_ms"] = 0
@@ -335,7 +342,8 @@ def _drop_power_duration(data: dict) -> None:
 
 
 def _odd_streams(data: dict) -> None:
-    data["phases"]["throughput_test"]["num_streams"] = 3
+    for name in ("throughput_test", "throughput_test_2"):
+        data["phases"][name]["stream_results"] = data["phases"][name]["stream_results"][:3]
 
 
 def _partial_power_statements(data: dict) -> None:

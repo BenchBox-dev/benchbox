@@ -460,13 +460,9 @@ def throughput_refresh_evidence(
     pairs = refresh_stream.get("pairs")
     if not isinstance(pairs, list):
         return False, first_set, 0
-    stream_count = throughput_phase.get("num_streams")
+    stream_count = expected_streams
     if isinstance(stream_count, bool) or not isinstance(stream_count, int):
-        stream_count = (
-            expected_streams
-            if isinstance(expected_streams, int) and not isinstance(expected_streams, bool)
-            else len(throughput_phase.get("stream_results") or [])
-        )
+        stream_count = _corpus_rule()._succeeded_streams(throughput_phase) or 0
     pair_count = refresh_stream.get("pair_count")
     start_time = refresh_stream.get("start_time")
     end_time = refresh_stream.get("end_time")

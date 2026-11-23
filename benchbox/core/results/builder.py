@@ -634,7 +634,15 @@ class ResultBuilder:
             throughput_data_phase = {
                 "status": "COMPLETED" if throughput_phase.success else "FAILED",
                 "num_streams": throughput_phase.num_streams,
-                "stream_results": [{} for _ in throughput_phase.streams],
+                "stream_results": [
+                    {
+                        "stream_id": stream.stream_id,
+                        "success": stream.success is True,
+                        "duration_ms": stream.duration_ms,
+                        "query_count": len(stream.query_executions),
+                    }
+                    for stream in throughput_phase.streams
+                ],
                 "refresh_stream": refresh_stream,
             }
 
