@@ -20,7 +20,7 @@ def _minimal_bundle(
     if compliance_class is not None:
         benchmark_payload["compliance_class"] = compliance_class
     return {
-        "version": "2.0",
+        "version": "2.2",
         "run": {
             "id": "uat-validate-test",
             "timestamp": "2026-05-21T00:00:00Z",
@@ -30,7 +30,18 @@ def _minimal_bundle(
         "platform": {"name": platform},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
         "phases": {"validation": {"status": "PASSED"}},
-        "queries": [{"id": f"Q{i}", "ms": 1.0} for i in range(1, 23)],
+        "queries": [
+            {
+                "id": f"Q{i}",
+                "ms": 1.0,
+                **(
+                    {"rows": 5, "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5}}
+                    if i == 1
+                    else {}
+                ),
+            }
+            for i in range(1, 23)
+        ],
     }
 
 

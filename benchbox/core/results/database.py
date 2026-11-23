@@ -697,7 +697,7 @@ class ResultDatabase:
 
             validation_filter = ""
             if config.require_success:
-                validation_filter = "AND UPPER(validation_status) = 'PASSED'"
+                validation_filter = "AND UPPER(validation_status) IN ('PASSED', 'NO_REFERENCE')"
 
             unofficial_filter = (
                 "" if include_unofficial else "AND (compliance_class = 'official' OR compliance_class IS NULL)"
@@ -858,7 +858,7 @@ class ResultDatabase:
                     AND benchmark = ?
                     AND scale_factor = ?
                     AND geometric_mean_ms IS NOT NULL
-                    AND UPPER(validation_status) = 'PASSED'
+                    AND UPPER(validation_status) IN ('PASSED', 'NO_REFERENCE')
                 ORDER BY timestamp DESC
             """,
                 (platform, benchmark, scale_factor),

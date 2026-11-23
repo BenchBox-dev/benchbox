@@ -107,7 +107,7 @@ def test_scale_without_reference_answers_is_unvalidated():
     assert miss_at_unreferenced_scale.unvalidated
 
 
-def test_provider_with_missing_answer_file_is_unvalidated():
+def test_provider_with_missing_answer_file_is_skipped_not_unvalidated():
     def provider(scale_factor):
         raise FileNotFoundError("no answer files")
 
@@ -116,7 +116,8 @@ def test_provider_with_missing_answer_file_is_unvalidated():
     result = validator.validate_query_result("demo", "1", 4, 1.0)
 
     assert result.is_valid
-    assert result.unvalidated
+    assert not result.unvalidated
+    assert result.validation_mode == ValidationMode.SKIP
 
 
 def test_tpch_typo_fails_and_real_query_passes():

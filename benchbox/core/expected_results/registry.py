@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 class LoadOutcome(str, Enum):
     HIT = "hit"
     NO_ANSWER_SET = "no_answer_set"
+    ANSWER_FILES_MISSING = "answer_files_missing"
     STREAM_NOT_REFERENCE_VALIDATED = "stream_not_reference_validated"
     PROVIDER_FAILED = "provider_failed"
     PROVIDER_TIMEOUT = "provider_timeout"
@@ -31,6 +32,7 @@ class ExpectedResultsRegistry:
         self._lock = threading.Lock()
         self._loading: Dict[str, Dict[float, dict]] = {}
         self._logged_stream_skips: set = set()
+        self._missing_answer_files: set[tuple[str, float]] = set()
         self.wait_timeout_seconds = 30.0
 
     def register_provider(self, benchmark_name: str, provider: Callable) -> None:
@@ -73,6 +75,11 @@ class ExpectedResultsRegistry:
 
         if outcome in (LoadOutcome.PROVIDER_FAILED, LoadOutcome.PROVIDER_TIMEOUT):
             return None, outcome
+
+        missing_files = benchmark_results is None and (benchmark_key, sf) in self._missing_answer_files
+
+        if missing_files:
+            return None, LoadOutcome.ANSWER_FILES_MISSING
 
         if benchmark_results is None and sf != 1.0:
             logger.debug(
@@ -118,6 +125,15 @@ class ExpectedResultsRegistry:
             return None, LoadOutcome.QUERY_NOT_FOUND
 
         return expected_result, LoadOutcome.HIT
+
+    def has_row_count_reference(self, benchmark_name: str, scale_factor: float | None = None) -> bool:
+        key, sf = benchmark_name.lower(), scale_factor or 1.0
+        results, outcome = self._load_benchmark_results(key, sf)
+        return (
+            results is not None
+            or outcome in (LoadOutcome.PROVIDER_FAILED, LoadOutcome.PROVIDER_TIMEOUT)
+            or (key, sf) in self._missing_answer_files
+        )
 
     def _load_benchmark_results(
         self, benchmark_key: str, scale_factor: float
@@ -176,6 +192,8 @@ class ExpectedResultsRegistry:
             )
             results = None
             permanent_absence = True
+            with self._lock:
+                self._missing_answer_files.add((benchmark_key, scale_factor))
         except Exception as e:
             logger.warning(
                 f"Failed to load expected results for benchmark '{benchmark_key}' "
@@ -212,6 +230,7 @@ class ExpectedResultsRegistry:
     def clear_cache(self) -> None:
         with self._lock:
             self._cache.clear()
+            self._missing_answer_files.clear()
             for benchmark_key in list(self._loading):
                 for scale_factor in list(self._loading[benchmark_key]):
                     if self._loading[benchmark_key][scale_factor]["outcome"] is not None:

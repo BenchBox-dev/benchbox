@@ -1,4 +1,22 @@
 {
+  "row_count_reference_scales": {
+    "ssb": [
+      0.01,
+      0.1,
+      1.0,
+      10.0
+    ],
+    "tpcds": [
+      0.01,
+      0.1,
+      1.0
+    ],
+    "tpch": [
+      0.01,
+      0.1,
+      1.0
+    ]
+  },
   "scales": {
     "ai_primitives": {
       "minimum": 0.01,

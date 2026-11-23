@@ -7,6 +7,11 @@ import pytest
 from benchbox.core.dataframe.query_validation import _apply_row_count_oracle, validate_dataframe_query_results
 from benchbox.core.expected_results.models import ValidationMode, ValidationResult
 from benchbox.core.expected_results.ssb_results import SSB_EXPECTED_ROW_COUNTS
+from benchbox.core.results.query_status import (
+    NO_REFERENCE_REASON,
+    NO_REFERENCE_VALIDATION_STATUS,
+    unevidenced_validation_status,
+)
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -106,8 +111,8 @@ def test_tpcds_is_uncertain_until_its_parameters_are_seed_aligned() -> None:
     ("benchmark_name", "scale_factor", "seed", "expected_status"),
     [
         ("clickbench", 1.0, None, "NOT_RUN"),
-        ("ssb", 0.5, None, "UNCERTAIN"),
-        ("tpch", 0.5, None, "UNCERTAIN"),
+        ("ssb", 0.5, None, "NO_REFERENCE"),
+        ("tpch", 0.5, None, "NO_REFERENCE"),
     ],
 )
 def test_unsupported_or_unaligned_oracles_never_claim_passed(
@@ -125,6 +130,33 @@ def test_unsupported_or_unaligned_oracles_never_claim_passed(
 
     assert summary.status == expected_status
     assert summary.details["checked"] == 0
+
+
+@pytest.mark.parametrize(("benchmark_name", "scale_factor"), [("tpch", 10.0), ("tpcds", 10.0), ("ssb", 0.5)])
+def test_dataframe_and_sql_runs_without_a_reference_record_the_same_status_and_reason(
+    benchmark_name: str, scale_factor: float
+) -> None:
+    measurement = _measurement()
+    sql_rows = [{"query_id": "1", "run_type": "measurement", "row_count_validation": {"status": "UNVALIDATED"}}]
+
+    summary = validate_dataframe_query_results([measurement], benchmark_name=benchmark_name, scale_factor=scale_factor)
+
+    assert (
+        summary.status
+        == unevidenced_validation_status(sql_rows, reference_exists=False)
+        == NO_REFERENCE_VALIDATION_STATUS
+    )
+    assert summary.details["reason"] == NO_REFERENCE_REASON
+    assert measurement["row_count_validation"]["status"] == "UNVALIDATED"
+    assert measurement["row_count_validation"]["warning"] == NO_REFERENCE_REASON
+
+
+def test_not_seed_aligned_is_reported_only_where_a_reference_exists() -> None:
+    aligned = validate_dataframe_query_results([_measurement()], benchmark_name="tpcds", scale_factor=1.0)
+    unreferenced = validate_dataframe_query_results([_measurement()], benchmark_name="tpcds", scale_factor=10.0)
+
+    assert "not seed-aligned" in aligned.details["reason"]
+    assert "seed-aligned" not in unreferenced.details["reason"]
 
 
 def test_disabled_validation_is_not_run() -> None:
@@ -322,9 +354,9 @@ def test_ssb_unrecorded_scale_factor_is_unvalidated_not_passed() -> None:
 
     summary = validate_dataframe_query_results([measurement], benchmark_name="ssb", scale_factor=0.5)
 
-    assert summary.status == "UNCERTAIN"
+    assert summary.status == NO_REFERENCE_VALIDATION_STATUS
     assert summary.details["provider"] == "ssb_expected_row_counts"
-    assert "scale factor 0.5" in summary.details["reason"]
+    assert summary.details["reason"] == NO_REFERENCE_REASON
     assert measurement["row_count_validation"]["status"] == "UNVALIDATED"
 
 

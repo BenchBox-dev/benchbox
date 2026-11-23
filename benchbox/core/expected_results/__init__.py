@@ -12,6 +12,11 @@ from benchbox.core.expected_results import ssb_results, tpcds_results, tpch_resu
 from benchbox.core.expected_results.registry import get_registry
 
 
+def has_row_count_reference(benchmark_name: str, scale_factor: float | None = None) -> bool:
+    register_all_providers()
+    return get_registry().has_row_count_reference(benchmark_name, scale_factor)
+
+
 def register_all_providers():
     global _providers_registered
 

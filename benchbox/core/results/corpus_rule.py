@@ -76,6 +76,7 @@ CLASS_WORDS = {
     CLASS_SUBSCALE: "Scale below the TPC minimum",
 }
 NONSTANDARD_SCALE_LABEL = "Non-standard scale: compared only at the same scale"
+ROW_COUNTS_NOT_CHECKED_LABEL = "Row counts not checked"
 HELD_LABELS = {
     HELD_GATEWAY_ROUTED: "Not ranked: routed through a gateway",
     HELD_KNOWN_DEFECT: "Not ranked: known defect",
@@ -92,6 +93,7 @@ class Facts:
     gateway_routed: bool = False
     known_defect: bool = False
     validation_failed: bool = False
+    row_counts_checked: bool = True
 
 
 @dataclass(frozen=True)
@@ -229,6 +231,16 @@ RULE_TABLE: tuple[Row, ...] = (
 @cache
 def load_data(path: Path = DATA_PATH) -> Mapping[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def row_count_reference_exists(benchmark_id: Any, scale_factor: Any, data: Mapping[str, Any] | None = None) -> bool:
+    data = data if data is not None else load_data()
+    benchmark = normalize_benchmark_id(benchmark_id)
+    scale = _scale_value(scale_factor)
+    if benchmark is None or scale is None or not math.isfinite(scale):
+        return False
+    scales = data["row_count_reference_scales"].get(benchmark, ())
+    return any(abs(scale - recorded) < 1e-9 for recorded in scales)
 
 
 def normalize_benchmark_id(benchmark_id: Any) -> str | None:
@@ -387,7 +399,11 @@ def derive_outcome(
             row.name,
         )
     held = _held_reason(facts)
-    return _hold(outcome, held) if held is not None else outcome
+    if held is not None:
+        return _hold(outcome, held)
+    if not facts.row_counts_checked and outcome.class_name != CLASS_UNDETERMINED:
+        return replace(outcome, labels=(*outcome.labels, ROW_COUNTS_NOT_CHECKED_LABEL))
+    return outcome
 
 
 def _executed(block: Any) -> bool:
@@ -489,6 +505,21 @@ def _gateway_routed(data: Mapping[str, Any]) -> bool:
     return isinstance(gateway, Mapping) and bool(gateway.get("routed"))
 
 
+def row_counts_checked(data: Mapping[str, Any]) -> bool:
+    queries = data.get("queries")
+    statuses: list[str] = []
+    for query in queries if isinstance(queries, list) else ():
+        if (
+            not isinstance(query, Mapping)
+            or str(query.get("run_type") or "measurement").strip().lower() != "measurement"
+        ):
+            continue
+        evidence = query.get("row_count_validation")
+        status = evidence.get("status") if isinstance(evidence, Mapping) else None
+        statuses.append(str(status or "").strip().upper())
+    return "PASSED" in statuses and "UNVALIDATED" not in statuses
+
+
 def _status_text(value: Any) -> str | None:
     if isinstance(value, Mapping):
         value = value.get("status")
@@ -583,6 +614,7 @@ def facts_from_result(
             or _row_count_validation_failed(data)
             or _translation_non_clean(data)
         ),
+        row_counts_checked=row_counts_checked(data),
     )
 
 

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.corpus_rule import row_count_reference_exists
 from benchbox.core.results.environment import (
     NormalizedExecutionEnvironment,
     PlatformCloudMetadata,
@@ -41,9 +42,10 @@ from benchbox.core.results.query_normalizer import (
     format_query_id,
 )
 from benchbox.core.results.query_status import (
+    NO_REFERENCE_REASON,
+    NO_REFERENCE_VALIDATION_STATUS,
     has_failed_query_validation,
-    unchecked_row_count_evidence,
-    unvalidated_measurement_query_ids,
+    unevidenced_validation_status,
 )
 from benchbox.core.results.subscale_policy import platform_info_gateway, routed_compliance_class
 from benchbox.core.results.timer_scope import effective_timing_method
@@ -436,9 +438,16 @@ class ResultBuilder:
         elif failed_queries and validation_status == "PASSED":
             validation_status = "PARTIAL"
         elif validation_status == "PASSED" and (
-            unvalidated_measurement_query_ids(query_results_list) or unchecked_row_count_evidence(query_results_list)
+            unevidenced_status := unevidenced_validation_status(
+                query_results_list,
+                reference_exists=row_count_reference_exists(
+                    normalize_benchmark_id(self._benchmark.name), self._benchmark.scale_factor
+                ),
+            )
         ):
-            validation_status = "NOT_VALIDATED"
+            validation_status = unevidenced_status
+            if unevidenced_status == NO_REFERENCE_VALIDATION_STATUS:
+                self._validation_details = {"reason": NO_REFERENCE_REASON, **(self._validation_details or {})}
 
         return BenchmarkResults(
             benchmark_name=self._benchmark.display_name or self._benchmark.name,

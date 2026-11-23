@@ -32,7 +32,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -78,7 +80,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -124,7 +128,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -246,7 +252,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -292,7 +300,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -338,7 +348,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -384,7 +396,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -430,7 +444,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -476,7 +492,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -598,7 +616,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -644,7 +664,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -690,7 +712,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -736,7 +760,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -782,7 +808,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -828,7 +856,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -874,7 +904,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -920,7 +952,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -1042,7 +1076,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -1088,7 +1124,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -1133,7 +1171,8 @@
         "lanes": [],
         "score_source": "timings_only",
         "labels": [
-          "Non-standard scale: compared only at the same scale"
+          "Non-standard scale: compared only at the same scale",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -1210,7 +1249,8 @@
         "lanes": [],
         "score_source": "timings_only",
         "labels": [
-          "Non-standard scale: compared only at the same scale"
+          "Non-standard scale: compared only at the same scale",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -1248,7 +1288,8 @@
         "lanes": [],
         "score_source": "timings_only",
         "labels": [
-          "Non-standard scale: compared only at the same scale"
+          "Non-standard scale: compared only at the same scale",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -1325,7 +1366,8 @@
         "lanes": [],
         "score_source": "timings_only",
         "labels": [
-          "Non-standard scale: compared only at the same scale"
+          "Non-standard scale: compared only at the same scale",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -1364,7 +1406,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -1410,7 +1454,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -1532,7 +1578,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -1578,7 +1626,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -1624,7 +1674,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -1746,7 +1798,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -1830,7 +1884,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -1914,7 +1970,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -1998,7 +2056,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -2044,7 +2104,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -2204,7 +2266,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -2250,7 +2314,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -2334,7 +2400,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -2380,7 +2448,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -2464,7 +2534,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -2510,7 +2582,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -2632,7 +2706,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -2716,7 +2792,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -2762,7 +2840,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -2846,7 +2926,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -2892,7 +2974,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -2976,7 +3060,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -3022,7 +3108,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -3106,7 +3194,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -3190,7 +3280,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -3315,7 +3407,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-H, not an official TPC result"
+          "Derived from TPC-H, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -3519,7 +3612,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-H, not an official TPC result"
+          "Derived from TPC-H, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -3955,7 +4049,8 @@
         "lanes": [],
         "score_source": "timings_only",
         "labels": [
-          "Non-standard scale: compared only at the same scale"
+          "Non-standard scale: compared only at the same scale",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -3993,7 +4088,8 @@
         "lanes": [],
         "score_source": "timings_only",
         "labels": [
-          "Non-standard scale: compared only at the same scale"
+          "Non-standard scale: compared only at the same scale",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -4031,7 +4127,8 @@
         "lanes": [],
         "score_source": "timings_only",
         "labels": [
-          "Non-standard scale: compared only at the same scale"
+          "Non-standard scale: compared only at the same scale",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -4069,7 +4166,8 @@
         "lanes": [],
         "score_source": "timings_only",
         "labels": [
-          "Non-standard scale: compared only at the same scale"
+          "Non-standard scale: compared only at the same scale",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -4107,7 +4205,8 @@
         "lanes": [],
         "score_source": "timings_only",
         "labels": [
-          "Non-standard scale: compared only at the same scale"
+          "Non-standard scale: compared only at the same scale",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -4145,7 +4244,8 @@
         "lanes": [],
         "score_source": "timings_only",
         "labels": [
-          "Non-standard scale: compared only at the same scale"
+          "Non-standard scale: compared only at the same scale",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -4183,7 +4283,8 @@
         "lanes": [],
         "score_source": "timings_only",
         "labels": [
-          "Non-standard scale: compared only at the same scale"
+          "Non-standard scale: compared only at the same scale",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -4222,7 +4323,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -4268,7 +4371,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -4314,7 +4419,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -4360,7 +4467,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -4406,7 +4515,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -4452,7 +4563,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -4498,7 +4611,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -4546,7 +4661,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -4595,7 +4711,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -4644,7 +4761,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -4693,7 +4811,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -4742,7 +4861,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -4791,7 +4911,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -4840,7 +4961,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -5167,7 +5289,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5213,7 +5337,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5259,7 +5385,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5305,7 +5433,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5351,7 +5481,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5397,7 +5529,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5443,7 +5577,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5489,7 +5625,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5535,7 +5673,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5581,7 +5721,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5627,7 +5769,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5673,7 +5817,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5719,7 +5865,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5765,7 +5913,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5811,7 +5961,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5857,7 +6009,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5903,7 +6057,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5949,7 +6105,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -5995,7 +6153,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6041,7 +6201,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6087,7 +6249,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6133,7 +6297,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6179,7 +6345,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6225,7 +6393,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6385,7 +6555,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6431,7 +6603,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6477,7 +6651,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6523,7 +6699,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6569,7 +6747,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6691,7 +6871,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6737,7 +6919,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6783,7 +6967,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6829,7 +7015,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6875,7 +7063,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6921,7 +7111,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -6967,7 +7159,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7089,7 +7283,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7135,7 +7331,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7181,7 +7379,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7227,7 +7427,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7273,7 +7475,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7319,7 +7523,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7365,7 +7571,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7411,7 +7619,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7495,7 +7705,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7541,7 +7753,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7587,7 +7801,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7633,7 +7849,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7679,7 +7897,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7725,7 +7945,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7771,7 +7993,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7817,7 +8041,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7863,7 +8089,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7909,7 +8137,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -7955,7 +8185,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8001,7 +8233,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8047,7 +8281,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8093,7 +8329,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8139,7 +8377,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8185,7 +8425,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8231,7 +8473,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8277,7 +8521,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8323,7 +8569,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8369,7 +8617,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8415,7 +8665,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8461,7 +8713,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8507,7 +8761,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8553,7 +8809,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8599,7 +8857,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8645,7 +8905,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8805,7 +9067,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -8927,7 +9191,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -9315,7 +9581,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -9437,7 +9705,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -9711,7 +9981,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -9757,7 +10029,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -9803,7 +10077,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -9849,7 +10125,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -9895,7 +10173,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -9941,7 +10221,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -9987,7 +10269,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -10033,7 +10317,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -10231,7 +10517,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -10277,7 +10565,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -10323,7 +10613,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -10445,7 +10737,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -10491,7 +10785,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -10537,7 +10833,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -10583,7 +10881,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -10629,7 +10929,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -10675,7 +10977,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -10797,7 +11101,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -10843,7 +11149,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -10889,7 +11197,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -10935,7 +11245,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -10981,7 +11293,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -11027,7 +11341,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -11073,7 +11389,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -11119,7 +11437,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -11165,7 +11485,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -11211,7 +11533,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -11257,7 +11581,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -11379,7 +11705,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -11425,7 +11753,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -11593,7 +11923,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -11642,7 +11973,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -11690,7 +12022,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-DS, not an official TPC result"
+          "Derived from TPC-DS, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -11738,7 +12071,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-DS, not an official TPC result"
+          "Derived from TPC-DS, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -11786,7 +12120,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-DS, not an official TPC result"
+          "Derived from TPC-DS, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -11834,7 +12169,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-DS, not an official TPC result"
+          "Derived from TPC-DS, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -11882,7 +12218,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-DS, not an official TPC result"
+          "Derived from TPC-DS, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -11930,7 +12267,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-DS, not an official TPC result"
+          "Derived from TPC-DS, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -11978,7 +12316,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-DS, not an official TPC result"
+          "Derived from TPC-DS, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -12221,7 +12560,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-DS, not an official TPC result"
+          "Derived from TPC-DS, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -12308,7 +12648,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-DS, not an official TPC result"
+          "Derived from TPC-DS, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -12396,7 +12737,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -12445,7 +12787,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -12494,7 +12837,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -12543,7 +12887,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -12592,7 +12937,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -12681,7 +13027,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -12730,7 +13077,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -12779,7 +13127,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -12868,7 +13217,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -12957,7 +13307,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13006,7 +13357,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13135,7 +13487,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13184,7 +13537,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13233,7 +13587,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13362,7 +13717,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13411,7 +13767,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13460,7 +13817,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13509,7 +13867,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-DS, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13638,7 +13997,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13687,7 +14047,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13736,7 +14097,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13785,7 +14147,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13834,7 +14197,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13883,7 +14247,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13932,7 +14297,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -13981,7 +14347,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -14030,7 +14397,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -14079,7 +14447,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -14128,7 +14497,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -14177,7 +14547,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -14226,7 +14597,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -14275,7 +14647,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -14324,7 +14697,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -14533,7 +14907,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -14662,7 +15037,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -14991,7 +15367,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -15160,7 +15537,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -15289,7 +15667,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -15676,7 +16055,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Scale below the TPC minimum"
+          "Scale below the TPC minimum",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -15925,7 +16305,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -16054,7 +16435,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -16103,7 +16485,8 @@
         "score_source": "throughput_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Throughput test only"
+          "Throughput test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -16272,7 +16655,8 @@
         "score_source": "throughput_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Throughput test only"
+          "Throughput test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -16561,7 +16945,8 @@
         "score_source": "throughput_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Throughput test only"
+          "Throughput test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -16650,7 +17035,8 @@
         "score_source": "power_at_size_from_timings",
         "labels": [
           "Derived from TPC-H, not an official TPC result",
-          "Power test only"
+          "Power test only",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -16737,7 +17123,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-H, not an official TPC result"
+          "Derived from TPC-H, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -16824,7 +17211,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-H, not an official TPC result"
+          "Derived from TPC-H, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -16989,7 +17377,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-H, not an official TPC result"
+          "Derived from TPC-H, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -17115,7 +17504,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-H, not an official TPC result"
+          "Derived from TPC-H, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -17241,7 +17631,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-H, not an official TPC result"
+          "Derived from TPC-H, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -17445,7 +17836,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-H, not an official TPC result"
+          "Derived from TPC-H, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -17688,7 +18080,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-H, not an official TPC result"
+          "Derived from TPC-H, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -17814,7 +18207,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-H, not an official TPC result"
+          "Derived from TPC-H, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -18018,7 +18412,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-H, not an official TPC result"
+          "Derived from TPC-H, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -18183,7 +18578,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-H, not an official TPC result"
+          "Derived from TPC-H, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -18465,7 +18861,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-H, not an official TPC result"
+          "Derived from TPC-H, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -18903,7 +19300,8 @@
         ],
         "score_source": "own",
         "labels": [
-          "Derived from TPC-H, not an official TPC result"
+          "Derived from TPC-H, not an official TPC result",
+          "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
@@ -19370,7 +19768,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -19416,7 +19816,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -19462,7 +19864,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -19508,7 +19912,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -19554,7 +19960,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -19600,7 +20008,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -19646,7 +20056,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -19692,7 +20104,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",
@@ -19738,7 +20152,9 @@
           "own"
         ],
         "score_source": "own",
-        "labels": [],
+        "labels": [
+          "Row counts not checked"
+        ],
         "held_reason": null,
         "missing_facts": [],
         "row": "other_standard_scale",

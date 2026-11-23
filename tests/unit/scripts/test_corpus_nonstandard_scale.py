@@ -91,12 +91,15 @@ def _write_cohort(directory: Path, benchmark: str, scale: float, *, compliance_c
     return paths
 
 
+_PASSED_ROW_COUNT = {"rows": 5, "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5}}
+
+
 def _submission_bundle(benchmark: str, scale: float, **benchmark_fields: object) -> dict:
     from benchbox.validation.bundle import CANONICAL_LOGICAL_QUERY_IDS
 
     canonical = sorted(CANONICAL_LOGICAL_QUERY_IDS.get(benchmark, frozenset({"1", "2"})))
     return {
-        "version": "2.1",
+        "version": "2.2",
         "run": {"id": "abc123", "timestamp": "2026-04-01T12:00:00", "total_duration_ms": 5000},
         "benchmark": {"id": benchmark, "name": benchmark, "scale_factor": scale, **benchmark_fields},
         "platform": {"name": "DuckDB", "version": "1.4.3"},
@@ -105,7 +108,10 @@ def _submission_bundle(benchmark: str, scale: float, **benchmark_fields: object)
             "queries": {"total": len(canonical), "passed": len(canonical), "failed": 0},
         },
         "phases": {"validation": {"status": "PASSED"}},
-        "queries": [{"id": qid, "ms": 100 + index * 10, "status": "SUCCESS"} for index, qid in enumerate(canonical)],
+        "queries": [
+            {"id": qid, "ms": 100 + index * 10, "status": "SUCCESS", **(_PASSED_ROW_COUNT if index == 0 else {})}
+            for index, qid in enumerate(canonical)
+        ],
     }
 
 

@@ -159,7 +159,7 @@ class TestValidationPhaseStatus:
     def test_clean_run_keeps_a_passed_validation_phase(self) -> None:
         payload = self._payload(["SUCCESS"] * 3)
 
-        assert payload["summary"]["validation"] == "passed"
+        assert payload["summary"]["validation"] == "not_validated"
         assert payload["phases"]["validation"]["status"] == "PASSED"
 
     def test_failed_setup_validation_is_not_downgraded_by_a_milder_overall_status(self) -> None:

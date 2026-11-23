@@ -28,3 +28,22 @@ def test_a_changed_stream_minimum_in_the_source_changes_the_data(monkeypatch) ->
     monkeypatch.setattr(script, "min_streams_for_scale", lambda benchmark, scale: 99)
 
     assert script.drift() is not None
+
+
+def test_reference_scales_in_the_data_file_follow_the_shared_loader() -> None:
+    from benchbox.core.expected_results import has_row_count_reference
+    from benchbox.core.results import corpus_rule
+
+    recorded = corpus_rule.load_data()["row_count_reference_scales"]
+    assert recorded == script.row_count_reference_scales()
+    for benchmark in ("tpch", "tpcds", "ssb"):
+        for scale in (0.01, 0.1, 0.5, 1.0, 3.0, 10.0, 100.0):
+            assert corpus_rule.row_count_reference_exists(benchmark, scale) == has_row_count_reference(benchmark, scale)
+    assert not corpus_rule.row_count_reference_exists("amplab", 1.0)
+    assert not corpus_rule.row_count_reference_exists(None, 1.0)
+
+
+def test_a_changed_reference_source_changes_the_data(monkeypatch) -> None:
+    monkeypatch.setattr(script, "has_row_count_reference", lambda benchmark, scale: False)
+
+    assert script.drift() is not None
