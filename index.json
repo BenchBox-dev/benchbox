@@ -3781,6 +3781,7 @@
         "crr-a0-decision-records": "98270097cf7240eb08df85fbc3512e860ed26aa7",
         "crr-a1-rule-module-and-snapshot": "8898e0559b7b10f25c0b92af3e9083d5fa47c647",
         "crr-a2-writer-and-score-from-timings": "e489a4cf38c4fc346afb6d166b125e65caffe8cd",
+        "crr-a4-database-metrics-and-cli-readers": "7430efa087909cfafa17e45d7d4740ce8f4c7aaf",
         "crr-b1-identity-and-comparison-version": "b8476bed2c90140f84813231be0a52218dbdb8a3",
         "crr-c1-validation-status-vocabulary": "37f31ba22c582643360aa2bd4392884d10130087",
         "crr-d1-observed-engine-contract-and-dataframe": "d604a887132187c5a0875f0700aa01c23c2670e4"
@@ -3883,6 +3884,34 @@
           ],
           "integration_head": "327195efcce34c25d1c782ce19677b652a63b365",
           "integration_seq": 6
+        },
+        "crr-a4-database-metrics-and-cli-readers": {
+          "accepted_head": "7430efa087909cfafa17e45d7d4740ce8f4c7aaf",
+          "changed_files": [
+            "_project/inert-doc-readers.json",
+            "benchbox/cli/commands/report.py",
+            "benchbox/cli/output.py",
+            "benchbox/core/results/database.py",
+            "benchbox/core/results/exporter.py",
+            "benchbox/core/results/metrics.py",
+            "benchbox/core/results/result_outcome.py",
+            "benchbox/core/results/schema.py",
+            "benchbox/core/results/subscale_policy.py",
+            "changelog.d/feat-corpus-rule-r4--crr-a4-database-metrics-and-cli-readers.json",
+            "quality/comment-policy.json",
+            "tests/fixtures/result_dict_fixtures.py",
+            "tests/uat/test_no_cli_surface_drift.py",
+            "tests/unit/cli/commands/test_cli_report.py",
+            "tests/unit/cli/test_cli_output.py",
+            "tests/unit/cli/test_console_formatter.py",
+            "tests/unit/cli/test_result_outcome_output.py",
+            "tests/unit/cli/test_subscale_power_output.py",
+            "tests/unit/core/results/test_database.py",
+            "tests/unit/core/results/test_routed_compliance.py",
+            "tests/unit/publication/test_validator_parity.py"
+          ],
+          "integration_head": "33e123bab73a4a27686e77fcee3b3e5c7138f3a6",
+          "integration_seq": 7
         },
         "crr-b1-identity-and-comparison-version": {
           "accepted_head": "b8476bed2c90140f84813231be0a52218dbdb8a3",
@@ -4002,7 +4031,7 @@
         }
       },
       "integration_branch": "feat/corpus-rule-r4",
-      "integration_head": "327195efcce34c25d1c782ce19677b652a63b365",
+      "integration_head": "33e123bab73a4a27686e77fcee3b3e5c7138f3a6",
       "integration_log": [
         {
           "at": "2026-11-22T23:06:06Z",
@@ -4063,6 +4092,15 @@
           "op_id": "f80117af4f9441ce9498a19a4c246c07",
           "previous_head": "e5731841b37dbd6471ac66eb8e90213dd0841a41",
           "seq": 6
+        },
+        {
+          "at": "2026-11-23T17:51:08Z",
+          "head": "33e123bab73a4a27686e77fcee3b3e5c7138f3a6",
+          "kind": "prepare",
+          "member": "crr-a4-database-metrics-and-cli-readers",
+          "op_id": "3f0292f1995448059bb3a70ef4007e9a",
+          "previous_head": "327195efcce34c25d1c782ce19677b652a63b365",
+          "seq": 7
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r4",
@@ -24353,17 +24391,12 @@
       "title": "Move the validators, staging and the public admission path to the rule"
     },
     "crr-a4-database-metrics-and-cli-readers": {
-      "claim": {
-        "expires_at": "2026-11-24T17:29:25Z",
-        "generation": "7e3887e0f65248f09a0b7c594a40d32d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:69ad863fb6a91a23281f8dfd"
-      },
+      "claim": null,
       "needs": [
         "crr-a2-writer-and-score-from-timings"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "Move the results database, metrics and CLI readers to the rule"
     },
     "crr-a5-published-results-mirror": {
