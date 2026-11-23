@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator, Sequence
@@ -323,7 +324,7 @@ def _is_float_type(declared: str) -> bool:
 
 
 def _float_tie_snap(values: Sequence[Any]) -> dict[float, float]:
-    finite = sorted({value for value in values if isinstance(value, float) and value == value})
+    finite = sorted({value for value in values if isinstance(value, float) and math.isfinite(value)})
     snap: dict[float, float] = {}
     representative: float | None = None
     previous: float | None = None
