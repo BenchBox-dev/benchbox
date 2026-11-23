@@ -3779,6 +3779,7 @@
     "corpus-rule-r4": {
       "accepted_members": {
         "crr-a0-decision-records": "98270097cf7240eb08df85fbc3512e860ed26aa7",
+        "crr-a1-rule-module-and-snapshot": "8898e0559b7b10f25c0b92af3e9083d5fa47c647",
         "crr-d1-observed-engine-contract-and-dataframe": "d604a887132187c5a0875f0700aa01c23c2670e4"
       },
       "batch_schema": 2,
@@ -3796,6 +3797,18 @@
           ],
           "integration_head": "8d0eadcfefb8ac3dcf8a62abe5599fd9f9450f28",
           "integration_seq": 1
+        },
+        "crr-a1-rule-module-and-snapshot": {
+          "accepted_head": "8898e0559b7b10f25c0b92af3e9083d5fa47c647",
+          "changed_files": [
+            "benchbox/core/results/corpus_rule.py",
+            "changelog.d/fix-corpus-rule-facts-match-readers.json",
+            "scripts/corpus_compliance_snapshot.py",
+            "tests/unit/core/results/test_corpus_rule.py",
+            "tests/unit/scripts/test_corpus_compliance_snapshot.py"
+          ],
+          "integration_head": "ac57e97965796472f439ff9eb73a99eac17958c8",
+          "integration_seq": 3
         },
         "crr-d1-observed-engine-contract-and-dataframe": {
           "accepted_head": "d604a887132187c5a0875f0700aa01c23c2670e4",
@@ -3844,7 +3857,7 @@
         }
       },
       "integration_branch": "feat/corpus-rule-r4",
-      "integration_head": "03bcbb93b13d3a282bc679bcd671e3768ac4fe34",
+      "integration_head": "ac57e97965796472f439ff9eb73a99eac17958c8",
       "integration_log": [
         {
           "at": "2026-11-22T23:06:06Z",
@@ -3869,6 +3882,15 @@
           "op_id": "153d75f56b9c438dba237fd42ff9f9ab",
           "previous_head": "8d0eadcfefb8ac3dcf8a62abe5599fd9f9450f28",
           "seq": 2
+        },
+        {
+          "at": "2026-11-23T03:17:57Z",
+          "head": "ac57e97965796472f439ff9eb73a99eac17958c8",
+          "kind": "prepare",
+          "member": "crr-a1-rule-module-and-snapshot",
+          "op_id": "c0d2a570d89f4e42a27240036b879c3d",
+          "previous_head": "03bcbb93b13d3a282bc679bcd671e3768ac4fe34",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r4",
@@ -23646,17 +23668,12 @@
       "title": "Record the corpus rule decisions in the ADRs and tracker before any code changes"
     },
     "crr-a1-rule-module-and-snapshot": {
-      "claim": {
-        "expires_at": "2026-11-24T03:04:57Z",
-        "generation": "e6954f46a2754554b58fa23adc89edd3",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2"
-      },
+      "claim": null,
       "needs": [
         "crr-a0-decision-records"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Add the outcome rule as one stdlib-only module with an exhaustive test and a corpus outcome snapshot"
     },
     "crr-a2-writer-and-score-from-timings": {
