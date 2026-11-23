@@ -81,6 +81,12 @@ def power_at_size(data: Mapping[str, Any]) -> float | None:
     if any(ms is None or ms <= 0 for ms in durations):
         return None
     seconds = [ms / 1000.0 for ms in durations if ms is not None]
+    if benchmark_id == "tpch":
+        phases = data.get("phases")
+        power_phase = phases.get("power_test") if isinstance(phases, Mapping) else None
+        if power_refresh_evidence(power_phase)[0]:
+            refresh = [max(0.001, function["duration_ms"] / 1000.0) for function in power_phase["refresh_functions"]]
+            seconds = [refresh[0], *seconds, refresh[1]]
     geometric_mean = math.exp(sum(math.log(value) for value in seconds) / len(seconds))
     return (scale * 3600) / geometric_mean
 
@@ -92,15 +98,25 @@ def throughput_at_size(data: Mapping[str, Any]) -> float | None:
     duration_ms = block.get("duration_ms") if isinstance(block, Mapping) else None
     if scale is None or isinstance(duration_ms, bool) or not isinstance(duration_ms, int | float) or duration_ms <= 0:
         return None
-    streams = block.get("stream_results")
-    if isinstance(streams, list) and not all(isinstance(s, Mapping) and s.get("success") is True for s in streams):
+    stream_results = block.get("stream_results")
+    if isinstance(stream_results, list) and not all(
+        isinstance(stream, Mapping) and stream.get("success") is True for stream in stream_results
+    ):
         return None
-    executed = sum(
-        1
-        for query in _queries(data)
-        if query.get("test_type") == "throughput" and query.get("run_type") == "measurement"
-    )
-    return executed * scale * 3600 / (duration_ms / 1000) if executed else None
+    benchmark_id = tpc_benchmark_id(data)
+    if benchmark_id is None:
+        executed = sum(
+            1
+            for query in _queries(data)
+            if query.get("test_type") == "throughput" and query.get("run_type") == "measurement"
+        )
+        return executed * scale * 3600 / (duration_ms / 1000) if executed else None
+    streams = block.get("num_streams")
+    if isinstance(streams, bool) or not isinstance(streams, int):
+        streams = len(stream_results) if isinstance(stream_results, list) else 0
+    if streams <= 0:
+        return None
+    return POWER_QUERY_COUNTS[benchmark_id] * streams * scale * 3600 / (duration_ms / 1000)
 
 
 def qphh_at_size(power: float, throughput: float) -> float:

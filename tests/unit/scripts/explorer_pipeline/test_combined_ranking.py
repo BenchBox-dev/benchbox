@@ -79,7 +79,7 @@ def test_clean_combined_bundle_exposes_the_composite_beside_power_and_throughput
     tmp_path: Path, family_id: str, field: str, expected: float
 ) -> None:
     payload = _bundle("platform-a", benchmark=family_id, qph=321.5)
-    executed = sum(1 for query in payload["queries"] if query["test_type"] == "throughput")
+    executed = (99 if family_id == "tpcds" else 22) * payload["phases"]["throughput_test"]["num_streams"]
     first_round_ms = payload["phases"]["throughput_test"]["duration_ms"]
     entry, detail = _entry(tmp_path, payload)
 

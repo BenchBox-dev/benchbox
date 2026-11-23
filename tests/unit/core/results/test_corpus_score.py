@@ -92,7 +92,7 @@ def test_power_is_defined_for_the_tpc_benchmarks_only() -> None:
     assert corpus_score.power_at_size({"queries": _full_run()}) is None
 
 
-def test_throughput_is_executed_queries_over_the_phase_duration() -> None:
+def test_throughput_is_queries_per_stream_times_streams_over_the_phase_duration() -> None:
     data = _data(
         [
             {"id": "1", "iter": 1, "ms": 5.0, "run_type": "measurement", "status": "SUCCESS", "test_type": "throughput"}
@@ -100,7 +100,7 @@ def test_throughput_is_executed_queries_over_the_phase_duration() -> None:
         ],
         scale=1.0,
     )
-    data["phases"] = {"throughput_test": {"duration_ms": 2000, "status": "COMPLETED"}}
+    data["phases"] = {"throughput_test": {"duration_ms": 2000, "status": "COMPLETED", "num_streams": 2}}
 
     assert corpus_score.throughput_at_size(data) == pytest.approx(44 * 3600 / 2)
     data["phases"]["throughput_test"]["duration_ms"] = 0
@@ -365,3 +365,40 @@ def test_combined_score_is_undetermined_for_a_non_tpc_benchmark() -> None:
     data["benchmark"]["id"] = "ssb"
 
     assert corpus_score.combined_score(data) is None
+
+
+def _runtime_power(data: dict, scale: float) -> float:
+    final = [query["ms"] / 1000.0 for query in data["queries"] if query.get("test_type") == "power"]
+    refresh = [
+        max(0.001, function["duration_ms"] / 1000.0) for function in data["phases"]["power_test"]["refresh_functions"]
+    ]
+    return TPCMetricsCalculator.calculate_power_at_size([refresh[0], *final, refresh[1]], scale)
+
+
+def test_tpch_power_includes_the_refresh_functions_like_the_runtime() -> None:
+    data = combined_bundle(benchmark="tpch", power=1234.5)
+
+    assert corpus_score.power_at_size(data) == pytest.approx(_runtime_power(data, 1.0))
+    assert corpus_score.power_at_size(data) == pytest.approx(1234.5)
+
+
+def test_tpch_power_without_refresh_evidence_uses_the_queries_only() -> None:
+    data = combined_bundle(benchmark="tpch", power=1234.5)
+    data["phases"]["power_test"].pop("refresh_functions")
+    seconds = [query["ms"] / 1000.0 for query in data["queries"] if query.get("test_type") == "power"]
+
+    assert corpus_score.power_at_size(data) == pytest.approx(TPCMetricsCalculator.calculate_power_at_size(seconds, 1.0))
+
+
+@pytest.mark.parametrize("family", ["tpch", "tpcds"])
+def test_throughput_counts_one_round_of_queries_per_stream_like_the_runtime(family: str) -> None:
+    data = combined_bundle(benchmark=family)
+    block = data["phases"]["throughput_test"]
+    streams = block["num_streams"]
+    per_stream = 99 if family == "tpcds" else 22
+
+    expected = TPCMetricsCalculator.calculate_throughput_at_size(
+        per_stream * streams, block["duration_ms"] / 1000.0, 1.0, streams
+    )
+
+    assert corpus_score.throughput_at_size(data) == pytest.approx(expected)

@@ -91,14 +91,15 @@ def power_query_timings(
     *,
     ids: tuple[str, ...] = THROUGHPUT_QUERY_IDS,
     pinned: dict[str, dict] | None = None,
+    fixed_ms: tuple[float, ...] = (),
     test_type: str | None = None,
 ) -> list[dict]:
     pinned = pinned or {}
     unknown = set(pinned) - set(ids)
     assert not unknown, f"pinned queries outside the query set: {sorted(unknown)}"
     free = [query_id for query_id in ids if query_id not in pinned]
-    target_log_ms = len(ids) * math.log(scale_factor * SECONDS_PER_HOUR * 1000.0 / power)
-    pinned_log_ms = sum(math.log(query["ms"]) for query in pinned.values())
+    target_log_ms = (len(ids) + len(fixed_ms)) * math.log(scale_factor * SECONDS_PER_HOUR * 1000.0 / power)
+    pinned_log_ms = sum(math.log(query["ms"]) for query in pinned.values()) + sum(math.log(ms) for ms in fixed_ms)
     filler_ms = math.exp((target_log_ms - pinned_log_ms) / len(free)) if free else None
     extra = {"test_type": test_type} if test_type else {}
     return [
@@ -180,7 +181,7 @@ def throughput_bundle(
         for stream in range(1, streams + 1)
         for query_id in THROUGHPUT_QUERY_IDS
     ]
-    executed = len(data["queries"])
+    executed = {"tpch": 22, "tpcds": 99}.get(benchmark, 0) * streams or len(data["queries"])
     if power_at_size is not None:
         data["queries"] += power_query_timings(power_at_size, scale_factor, test_type="power")
     total = len(data["queries"])
@@ -215,10 +216,11 @@ TPCDS_POWER_STATEMENTS = len(TPCDS_QUERY_IDS)
 TPCDS_STREAMS = 4
 MAINTENANCE_PHASE_MS = 5000
 POWER_PHASE_MS = 30000
+RF_PHASE_MS = 1200.0
 
 
 def _refresh_function(name: str, update_set: int, **extra: object) -> dict:
-    return {"function": name, "status": "SUCCESS", "update_set": update_set, "duration_ms": 1200.0, **extra}
+    return {"function": name, "status": "SUCCESS", "update_set": update_set, "duration_ms": RF_PHASE_MS, **extra}
 
 
 def tpcds_load_seconds_for(qph: float, streams: int, power_ms: float, scale_factor: float) -> float:
@@ -261,7 +263,8 @@ def combined_bundle(
         for position, query_id in enumerate(query_ids)
     ]
     executed = len(data["queries"])
-    data["queries"] += power_query_timings(power, 1.0, ids=query_ids, test_type="power")
+    refresh_ms = () if tpcds else (RF_PHASE_MS, RF_PHASE_MS)
+    data["queries"] += power_query_timings(power, 1.0, ids=query_ids, fixed_ms=refresh_ms, test_type="power")
     total = len(data["queries"])
     data["summary"]["queries"] = {"total": total, "passed": total, "failed": 0}
     phases = data["phases"]
