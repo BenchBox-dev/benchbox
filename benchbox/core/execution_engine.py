@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
-from dataclasses import dataclass, field
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -21,9 +21,10 @@ ExecutionEngineResolution = Literal[
     "version_default",
     "platform_default",
 ]
-ObservedSource = Literal["explain", "vendor_log", "session_var", "none"]
+ObservedSource = Literal["explain", "vendor_log", "session_var", "runtime_state", "none"]
 
 NOT_CAPTURED = "not_captured"
+MIXED = "mixed"
 RESERVED_OPTION_KEYS = frozenset({"engine", "mode", "backend", "runtime", "executor", "warehouse"})
 
 
@@ -87,6 +88,36 @@ class ExecutionEngineReceipt:
     resolution: ExecutionEngineResolution
     observed: str = NOT_CAPTURED
     observed_source: ObservedSource = "none"
+    observed_reason: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.observed == NOT_CAPTURED:
+            if self.observed_source != "none":
+                raise ValueError(f"A {NOT_CAPTURED!r} engine observation cannot name source {self.observed_source!r}")
+            return
+        if self.observed_source == "none":
+            raise ValueError(f"Observed engine {self.observed!r} needs the source it was observed from")
+        if self.observed_reason is not None:
+            raise ValueError(f"Observed engine {self.observed!r} cannot carry a {NOT_CAPTURED!r} reason")
+
+
+def summarize_observed_engines(
+    receipt: ExecutionEngineReceipt,
+    observations: Sequence[str | None],
+    source: ObservedSource,
+    unavailable: str | None = None,
+) -> ExecutionEngineReceipt:
+    missing = sum(1 for observation in observations if not observation)
+    reason = unavailable
+    if reason is None and not observations:
+        reason = "no query completed"
+    if reason is None and missing:
+        reason = f"the library reported no engine for {missing} of {len(observations)} queries"
+    if reason is not None:
+        return replace(receipt, observed=NOT_CAPTURED, observed_source="none", observed_reason=reason)
+    distinct = set(observations)
+    observed = next(iter(distinct)) if len(distinct) == 1 else MIXED
+    return replace(receipt, observed=str(observed), observed_source=source, observed_reason=None)
 
 
 def _manifest_platform_key(platform: str) -> str:
@@ -141,7 +172,19 @@ def platform_default_receipt(platform: str, requested: str) -> ExecutionEngineRe
     )
 
 
+class ObservationNotRecognizedError(Exception):
+    pass
+
+
 class ExecutionEngineHook:
+    OBSERVED_ENGINE_SOURCE: ObservedSource = "none"
+
+    def engine_observation_gap(self) -> str | None:
+        return None
+
+    def observe_execution_engine(self, lazy: Any) -> str | None:
+        return None
+
     def resolve_execution_engine(self, requested: str) -> ExecutionEngineReceipt:
         return platform_default_receipt(str(getattr(self, "platform_name", type(self).__name__)), requested)
 
@@ -169,6 +212,7 @@ __all__ = [
     "DEFAULT_EXECUTION_ENGINE",
     "DEPRECATED_OPTION_ALIASES",
     "EXECUTION_ENGINE_CLASSES",
+    "MIXED",
     "NOT_CAPTURED",
     "RESERVED_OPTION_KEYS",
     "DeprecatedOptionAlias",
@@ -183,5 +227,6 @@ __all__ = [
     "platform_default_receipt",
     "reject_engine_bypassing_benchmark",
     "resolve_requested",
+    "summarize_observed_engines",
     "supported_execution_engines",
 ]

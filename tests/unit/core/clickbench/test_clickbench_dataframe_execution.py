@@ -151,8 +151,12 @@ class TestClickBenchQueryExecution:
         from benchbox.core.clickbench.dataframe_queries import get_clickbench_query
 
         query = get_clickbench_query("Q4")
-        assert _to_pandas_result(query.expression_impl(expr_ctx))["avg_user_id"].tolist() == [4.350909328996494e16]
-        assert _to_pandas_result(query.pandas_impl(pandas_ctx))["avg_user_id"].tolist() == [4.350909328996494e16]
+        assert _to_pandas_result(query.expression_impl(expr_ctx))["avg_user_id"].tolist() == pytest.approx(
+            [4.350909328996494e16], rel=1e-12
+        )
+        assert _to_pandas_result(query.pandas_impl(pandas_ctx))["avg_user_id"].tolist() == pytest.approx(
+            [4.350909328996494e16], rel=1e-12
+        )
 
     def test_q5_unique_users(self, expr_ctx, pandas_ctx):
         from benchbox.core.clickbench.dataframe_queries import get_clickbench_query
