@@ -14,7 +14,6 @@ from benchbox.core.platform_manifest import PLATFORM_MANIFEST
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 TESTS_ROOT = Path(__file__).resolve().parents[2]
-GUARDED_MODES = frozenset({"dataframe"})
 OBSERVATION_TEST_GLOB = "unit/**/test_*observed_engine*.py"
 GENERIC_TEST_FILES = frozenset({"test_observed_engine_guard.py", "test_observed_engine_contract.py"})
 
@@ -40,7 +39,7 @@ def observation_gaps(
     gaps: list[str] = []
     for entry in entries:
         capabilities = entry.capabilities
-        if not capabilities.get("execution_engines") or capabilities.get("default_mode") not in GUARDED_MODES:
+        if not capabilities.get("execution_engines"):
             continue
         declared = capabilities.get("observed_engine")
         if not declared:
@@ -66,18 +65,22 @@ def test_every_manifest_platform_with_engines_observes_or_declares_why_not():
 
 
 def test_guard_covers_at_least_one_platform():
-    guarded = [
-        entry
+    assert [entry for entry in PLATFORM_MANIFEST if entry.capabilities.get("execution_engines")]
+
+
+def test_guard_covers_every_default_mode_that_declares_engines():
+    modes = {
+        entry.capabilities.get("default_mode")
         for entry in PLATFORM_MANIFEST
-        if entry.capabilities.get("execution_engines") and entry.capabilities.get("default_mode") in GUARDED_MODES
-    ]
-    assert guarded
+        if entry.capabilities.get("execution_engines")
+    }
+    assert {"dataframe", "sql"} <= modes
 
 
 def _entry(**capabilities: Any) -> SimpleNamespace:
     return SimpleNamespace(
         key="synthetic",
-        capabilities={"execution_engines": {"a": {}, "b": {}}, "default_mode": "dataframe", **capabilities},
+        capabilities={"execution_engines": {"a": {}, "b": {}}, **capabilities},
     )
 
 
@@ -94,6 +97,12 @@ class _SourceOnly(ExecutionEngineHook):
 
 def _resolver(cls: type) -> Callable[[str], type]:
     return lambda path: cls
+
+
+@pytest.mark.parametrize("mode", ["dataframe", "sql", None])
+def test_guard_applies_to_every_default_mode(mode):
+    gaps = observation_gaps([_entry(default_mode=mode)])
+    assert len(gaps) == 1 and "neither an observation implementation nor a reason" in gaps[0]
 
 
 def test_guard_fails_for_a_platform_with_neither_implementation_nor_reason():
