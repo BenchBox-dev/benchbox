@@ -36854,6 +36854,13 @@
       "status": "done",
       "title": "Add heap-to-columnstore migration benchmark for pg_mooncake"
     },
+    "pg-mooncake-moonlink-channel-closed-cause-on-recurrence-20261123": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Name the cause of the pg_mooncake Moonlink channel-closed failure when it next occurs"
+    },
     "pg-mooncake-platform-adapter": {
       "claim": null,
       "needs": [],

@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The first error of a recurring Moonlink channel-closed failure is named from the captured container evidence, with a fix or an upstream report."
+  ],
+  "description": "## Problem\nTrunk UAT run 42266293613 failed pg-mooncake flightdata SF 0.01 inside Moonlink (`mooncake.create_table` of `flights`: replication channel closed). The cause was never identified: it did not reproduce locally and has not recurred (the postgres-family shard passed 16 of the 17 nightly runs that ran it between 2026-11-10 and 2026-11-22, and the one failure, run 43117035812, was not shown to be this error).\n\n## What changed\nBenchBox-dev/benchbox#4466 (merge 9b3087d404) made a failed mirror attempt leave no stale staging table and report the original mirror error, and made the UAT harness keep the pg-mooncake container log, events, state and memory before teardown (`pg-mooncake-evidence/` in the shard artifact).\n\n## Change\nOn the next occurrence, read the evidence directory and the restore-failure warning, name the first error and whether the container restarted or was killed for memory, and fix the cause or report it to the Moonlink project. Until it recurs there is nothing to do.\n\n## Decision gates\nNo retry, timeout, strictness or validation change to hide the failure. Promoted from uat-regression-doris-clickbench-mooncake-flightdata, whose acceptance line on the root cause was not met.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4466",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/42266293613"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3",
+      "at": "2026-11-23T04:23:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c68cbadee76f4f1f944205280c227579",
+      "session_id": "80e0302416054591a591cf3adefee19a"
+    }
+  ]
+}
