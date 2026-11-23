@@ -51853,6 +51853,13 @@
       "status": "open",
       "title": "Evaluate whether trimming post-merge Trunk work is worthwhile after coverage selection stabilizes"
     },
+    "trunk-uat-dask-df-h2odb-sf1-timed-out-20261123": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Trunk UAT dask-df h2odb SF1 cell stopped at its run limit (exit 124) on 2026-11-23"
+    },
     "trunk-uat-pandas-df-memory-breach-20261122": {
       "claim": null,
       "needs": [],

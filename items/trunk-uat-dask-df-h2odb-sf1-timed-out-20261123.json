@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The dask-df h2odb SF1 trunk UAT cell finishes within its run limit, with the cause of the 2026-11-23 timeout recorded."
+  ],
+  "context": "Filed 2026-11-23 from the run-timeout follow-up close-out; evidence read that day, re-read before acting. The sweep now names failed cells in the job log (#4458).",
+  "description": "## Problem\nTrunk UAT run 45155067627 (develop 9b3087d404, 2026-11-23) failed job `UAT stage 1 dask-df` (137626708703): `[sweep] FAILED CELL dask-df/h2odb@1 status=timed-out exit=124 log=/home/runner/Developer/benchmark_runs/logs/uat_20261123_122156/dask-df_h2odb_1.0_20261123_125248.log`. BenchBox stopped the cell at the run limit the UAT matrix passes (UAT cells use `--timeout` since #4437). The dask-df shard passed in runs 44888589677 (2026-11-21) and 45007293835 (2026-11-22), both after #4437, so the cell's duration grew or the runner was slow. Commits between d7197c9c12 and 9b3087d404 include #4466 (DataFrame generation memory check).\n\n## Change\nFrom the run's shard artifact, read the cell log: which phase and query hit the limit, and the cell's elapsed time compared with earlier passing runs (cells.jsonl). Decide from that evidence: a regression (bisect the window under the lock with the same limit, fix it) or runner slowness (record the evidence; if it recurs, take the limit to the owner).\n\n## Decision gates\n- Do not raise the cell's time limit, drop the cell or lower its scale without the owner's decision in a choice dialog, with the measured durations.\n- If a merge is the cause, name it with before/after durations before proposing a fix.\n\n## Verification rubric\nPass: the phase, query and elapsed time recorded with the comparison; a fix shown by the cell finishing within its limit under the lock (before and after), or the recorded evidence of runner slowness plus the next Trunk UAT dask-df shard green.\nFail: the cell passes only because its limit was raised or it was skipped without the owner.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/45155067627"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f39bd68d6be6ca1c15ff91e",
+      "at": "2026-11-23T16:41:17Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5e003d0ad5a546edba1c4ec8bd47531c",
+      "session_id": "3204b8c4f1694869956ba59ef92c8970"
+    }
+  ]
+}
