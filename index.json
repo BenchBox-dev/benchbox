@@ -44058,12 +44058,17 @@
       "title": "Remove the unreleased TPC-DS 3000 limit text from the site's next branch"
     },
     "site-next-run-timeout-docs-merge-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T00:40:11Z",
+        "generation": "917498cc7dad46399ede941414627c86",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18"
+      },
       "needs": [
         "tpcdi-site-next-contract-red-20261122"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Merge benchbox-site #242 (public RunTimeoutError import, optimize_for_system without memory_gb) once next is green"
     },
     "site-next-tpcdi-page-tradetype-and-market-history-text-20261120": {
