@@ -1032,10 +1032,18 @@ make release-check VERSION=X.Y.Z [BASE_REF=<immutable-predecessor-sha>] [RELEASE
 and `uv lock --project` for every `_project/*/uv.lock` that records a `benchbox`
 package, then `scripts/generate_changelog_entry.py --compile-fragments`, which
 builds the `[X.Y.Z]` section from `changelog.d` (see "Release notes from
-fragments"). The fragments are validated first: when the assembled section
+fragments"). Every fragment is validated first. When the assembled section
 would exceed the curated bullet limit (45), `release-prep` fails before
-writing anything and prints the bullet count and the limit, so curate the
-fragments and rerun. `release-check` names any `_project/*/uv.lock` whose
+writing or bumping anything, prints the bullet count and the limit, and writes
+the assembled draft body and the fragment worksheet to
+`benchbox-X.Y.Z-changelog-draft.md` and `benchbox-X.Y.Z-changelog-worksheet.txt`
+in the system temporary directory. Curate the draft into a section body (the
+`###` groups and bullets, no `## ` header) outside the repository and rerun
+with `make release-prep VERSION=X.Y.Z SECTION_FILE=<curated file>`. With
+`SECTION_FILE`, the file is checked against the same curation limits as
+`release-check` before anything changes, then becomes the `[X.Y.Z]` body; the
+fragments are deleted, the compare links are updated, and the version bump and
+relocks run as usual. `release-check` names any `_project/*/uv.lock` whose
 `benchbox` version differs from `VERSION`.
 Commit the changed files, including the deleted fragments, as one PR.
 

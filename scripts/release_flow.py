@@ -273,7 +273,7 @@ def latest_release_tag(root: Path, *, before_version: str | None = None) -> str 
     return None
 
 
-def prep(root: Path, version: str, release_date: str | None, runner: Runner) -> int:
+def prep(root: Path, version: str, release_date: str | None, runner: Runner, section_file: Path | None = None) -> int:
     update_version = root / "scripts" / "update_version.py"
     changelog = root / "scripts" / "generate_changelog_entry.py"
     if normalize_version(version) is None:
@@ -291,6 +291,8 @@ def prep(root: Path, version: str, release_date: str | None, runner: Runner) -> 
     compile_cmd = [sys.executable, str(changelog), "--compile-fragments", "--version", version, "--source", str(root)]
     if release_date:
         compile_cmd += ["--release-date", release_date]
+    if section_file is not None:
+        compile_cmd += ["--section-file", str(section_file.resolve())]
     steps: list[tuple[str, list[str]]] = [
         ("changelog fragment validation", [*compile_cmd, "--dry-run"]),
         (
@@ -424,6 +426,9 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--version", required=True, help="Release version without the leading 'v'")
         command.add_argument("--root", type=Path, default=REPO_ROOT, help=argparse.SUPPRESS)
     sub.choices["prep"].add_argument("--release-date", help="YYYY-MM-DD (default: today)")
+    sub.choices["prep"].add_argument(
+        "--section-file", type=Path, help="Hand-curated [VERSION] section body to use instead of the assembled draft"
+    )
     sub.choices["check"].add_argument(
         "--skip-upstream-freshness",
         action="store_true",
@@ -468,7 +473,7 @@ def main(argv: list[str] | None = None) -> int:
     version = args.version.removeprefix("v")
 
     if args.command == "prep":
-        return prep(args.root, version, args.release_date, run_command)
+        return prep(args.root, version, args.release_date, run_command, args.section_file)
 
     problems = run_checks(
         args.root,

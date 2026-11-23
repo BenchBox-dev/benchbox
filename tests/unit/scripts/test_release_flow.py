@@ -572,33 +572,130 @@ def test_check_names_a_stale_subproject_lock(tree: Path) -> None:
     assert release_flow.check_version_markers(tree, VERSION) == []
 
 
-def test_prep_fails_early_when_assembled_section_exceeds_the_bullet_limit(
-    tree: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    limit = release_flow._load_script("generate_changelog_entry", tree).MAX_CURATED_BULLETS
-    entries = [
-        {"category": "added", "breaking": False, "text": f"Distinct user visible capability number {n} ships."}
-        for n in range(limit)
-    ]
-    for index in range(0, limit, 5):
-        write_fragment(tree, f"feat-batch-{index}.json", {"schema": 1, "entries": entries[index : index + 5]})
-    changelog_before = (tree / "CHANGELOG.md").read_bytes()
-    calls: list[list[str]] = []
+NEW_VERSION = "1.2.4"
 
+
+def write_overflowing_fragments(root: Path) -> tuple[int, list[str]]:
+    limit = release_flow._load_script("generate_changelog_entry", root).MAX_CURATED_BULLETS
+    texts = [f"Distinct user visible capability number {n} ships." for n in range(limit)]
+    for index in range(0, limit, 5):
+        entries = [{"category": "added", "breaking": False, "text": text} for text in texts[index : index + 5]]
+        write_fragment(root, f"feat-batch-{index}.json", {"schema": 1, "entries": entries})
+    return limit, texts
+
+
+def real_changelog_runner(calls: list[list[str]]):
     def runner(argv, cwd):
         calls.append(list(argv))
-        if Path(argv[1]).name == "generate_changelog_entry.py":
-            return release_flow.run_command(argv, cwd)
-        return 0, ""
+        if argv[0] == "uv":
+            return 0, ""
+        return release_flow.run_command(argv, cwd)
 
-    assert release_flow.prep(tree, VERSION, "2026-02-03", runner) != 0
+    return runner
+
+
+def curated_body(count: int) -> str:
+    bullets = "\n".join(f"- **Capability {n}.** Short curated note {n}." for n in range(count))
+    return f"### Added\n\n{bullets}\n"
+
+
+def test_prep_over_limit_without_section_file_fails_and_writes_a_draft_outside_the_repo(
+    tree: Path, tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    temp_dir = tmp_path_factory.mktemp("draft-tmp")
+    monkeypatch.setenv("TMPDIR", str(temp_dir))
+    limit, texts = write_overflowing_fragments(tree)
+    write_fragment(
+        tree,
+        "feat-one-more.json",
+        {
+            "schema": 1,
+            "entries": [
+                {"category": "added", "breaking": False, "text": "Distinct user visible capability number extra ships."}
+            ],
+        },
+    )
+    changelog_before = (tree / "CHANGELOG.md").read_bytes()
+    pyproject_before = (tree / "pyproject.toml").read_bytes()
+    calls: list[list[str]] = []
+
+    result = release_flow.prep(tree, NEW_VERSION, "2026-02-03", real_changelog_runner(calls))
+
+    assert result != 0
+    assert len(calls) == 1
+    assert (tree / "CHANGELOG.md").read_bytes() == changelog_before
+    assert (tree / "pyproject.toml").read_bytes() == pyproject_before
+    assert len(list((tree / "changelog.d").glob("*.json"))) == limit // 5 + 1
+    draft = temp_dir / f"benchbox-{NEW_VERSION}-changelog-draft.md"
+    assert tree not in draft.parents
+    draft_text = draft.read_text(encoding="utf-8")
+    assert all(text in draft_text for text in texts)
+    assert "number extra ships" in draft_text
+    assert not draft_text.lstrip().startswith("## ")
+    assert (temp_dir / f"benchbox-{NEW_VERSION}-changelog-worksheet.txt").is_file()
+
+
+def test_prep_over_limit_message_names_count_limit_and_section_file(
+    tree: Path,
+    tmp_path_factory: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("TMPDIR", str(tmp_path_factory.mktemp("draft-tmp")))
+    limit, _texts = write_overflowing_fragments(tree)
+    write_fragment(
+        tree,
+        "feat-one-more.json",
+        {
+            "schema": 1,
+            "entries": [
+                {"category": "added", "breaking": False, "text": "Distinct user visible capability number extra ships."}
+            ],
+        },
+    )
+
+    assert release_flow.prep(tree, NEW_VERSION, None, real_changelog_runner([])) != 0
+
+    captured = capsys.readouterr()
+    output = captured.out + captured.err
+    assert f"{limit + 1} bullets" in output
+    assert f"{limit}-bullet limit" in output
+    assert "SECTION_FILE" in output
+    assert "changelog.d/" not in output.split("Error:")[-1]
+
+
+def test_prep_with_section_file_uses_it_when_the_draft_is_over_the_limit(tree: Path, tmp_path: Path) -> None:
+    limit, _texts = write_overflowing_fragments(tree)
+    section = tmp_path / "curated.md"
+    section.write_text(curated_body(5), encoding="utf-8")
+    calls: list[list[str]] = []
+
+    assert release_flow.prep(tree, NEW_VERSION, "2026-02-03", real_changelog_runner(calls), section) == 0
+
+    changelog = (tree / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "## [1.2.4] - 2026-02-03" in changelog
+    assert curated_body(5).strip() in changelog
+    assert "number 0 ships" not in changelog
+    assert "[1.2.4]: " in changelog
+    assert list((tree / "changelog.d").glob("*.json")) == []
+    assert f'version = "{NEW_VERSION}"' in (tree / "pyproject.toml").read_text(encoding="utf-8")
+    assert limit > 5
+
+
+def test_prep_refuses_a_curated_section_file_that_breaks_the_limits(tree: Path, tmp_path: Path) -> None:
+    limit, _texts = write_overflowing_fragments(tree)
+    section = tmp_path / "curated.md"
+    section.write_text(curated_body(limit + 1), encoding="utf-8")
+    changelog_before = (tree / "CHANGELOG.md").read_bytes()
+    pyproject_before = (tree / "pyproject.toml").read_bytes()
+    calls: list[list[str]] = []
+
+    assert release_flow.prep(tree, NEW_VERSION, "2026-02-03", real_changelog_runner(calls), section) != 0
 
     assert len(calls) == 1
     assert (tree / "CHANGELOG.md").read_bytes() == changelog_before
+    assert (tree / "pyproject.toml").read_bytes() == pyproject_before
     assert len(list((tree / "changelog.d").glob("*.json"))) == limit // 5
-    captured = capsys.readouterr()
-    assert f"{limit + 1} bullets" in captured.out + captured.err
-    assert f"{limit}-bullet limit" in captured.out + captured.err
 
 
 def test_pre_tag_check_fails_while_any_fragment_is_pending(tree: Path) -> None:

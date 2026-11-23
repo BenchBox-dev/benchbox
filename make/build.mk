@@ -26,7 +26,7 @@ dist: clean
 .PHONY: release-prep
 release-prep:
 	@test -n "$(VERSION)" || (echo "Usage: make release-prep VERSION=X.Y.Z" && exit 1)
-	uv run --frozen -- python scripts/release_flow.py prep --version "$(VERSION)"
+	uv run --frozen -- python scripts/release_flow.py prep --version "$(VERSION)" $(if $(SECTION_FILE),--section-file "$(SECTION_FILE)",)
 
 .PHONY: release-check
 release-check:

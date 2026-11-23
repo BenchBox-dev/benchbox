@@ -71,7 +71,7 @@ def has_changelog_section(source: Path, version: str) -> bool:
     return section_body(changelog.read_text(encoding="utf-8"), version) is not None
 
 
-def curated_section_from_file(path: Path, version: str, release_date: str) -> tuple[str | None, str | None]:
+def _curated_body_from_file(path: Path) -> tuple[str | None, str | None]:
     try:
         body = path.read_text(encoding="utf-8").strip()
     except OSError as exc:
@@ -80,6 +80,13 @@ def curated_section_from_file(path: Path, version: str, release_date: str) -> tu
         return None, f"curated section file {path} is empty"
     if re.search(r"^## ", body, re.MULTILINE):
         return None, f"curated section file {path} must hold the section body only, without a '## ' version header"
+    return body, None
+
+
+def curated_section_from_file(path: Path, version: str, release_date: str) -> tuple[str | None, str | None]:
+    body, error = _curated_body_from_file(path)
+    if body is None:
+        return None, error
     return f"## [{version}] - {release_date}\n\n{body}\n", None
 
 
@@ -122,7 +129,11 @@ def check_changelog_curation(source: Path, version: str) -> tuple[bool, list[str
     body = section_body(changelog.read_text(encoding="utf-8"), version)
     if body is None:
         return False, [f"no '## [{version}] - <date>' section found in CHANGELOG.md"]
+    problems = curation_problems(body, version)
+    return (not problems), problems
 
+
+def curation_problems(body: str, version: str) -> list[str]:
     bullets = [line.strip() for line in body.splitlines() if _BULLET_RE.match(line)]
     problems: list[str] = []
     if not bullets:
@@ -149,7 +160,7 @@ def check_changelog_curation(source: Path, version: str) -> tuple[bool, list[str
                 f"{len(long_bullets)} bullet(s) exceed the {MAX_BULLET_WORDS}-word bullet ceiling, "
                 f"e.g. {long_bullets[0][:70]!r} ({len(long_bullets[0].split())} words)"
             )
-    return (not problems), problems
+    return problems
 
 
 def _word_ceilings_apply(version: str) -> bool:
@@ -552,7 +563,12 @@ def _compare_links(
 
 
 def compile_changelog(
-    text: str, version: str, release_date: str, rendered: str, previous_final: str | None
+    text: str,
+    version: str,
+    release_date: str,
+    rendered: str,
+    previous_final: str | None,
+    curated_body: str | None = None,
 ) -> tuple[str | None, list[str]]:
     from packaging.version import Version
 
@@ -572,7 +588,9 @@ def compile_changelog(
     else:
         header, draft = f"## [{version}] - {release_date}", []
     core = _trim(draft)
-    if rendered.strip():
+    if curated_body is not None:
+        core = _trim(curated_body.splitlines())
+    elif rendered.strip():
         core = _merge_entries(core, rendered)
     if not core:
         return None, [f"no user-facing fragments or pre-release section to compile into [{version}]"]
@@ -633,19 +651,24 @@ def _commit_added_fragment(source: Path, commit_hash: str) -> bool:
     return False
 
 
-def _print_worksheet(source: Path, fragments: list) -> None:
+def _worksheet_lines(source: Path, fragments: list) -> list[str]:
     library = _sibling_module("changelog_fragments")
-    print("  Worksheet (file -> PR -> category -> tags):")
+    lines = ["  Worksheet (file -> PR -> category -> tags):"]
     for fragment in fragments:
         relative = f"{_FRAGMENT_DIR}/{fragment.name}"
         number = library.pr_number_for(source, relative)
         pr = f"PR #{number}" if number is not None else "PR unknown"
         if fragment.internal is not None:
-            print(f"    {relative} -> {pr} -> internal -> -")
+            lines.append(f"    {relative} -> {pr} -> internal -> -")
             continue
         for entry in fragment.entries:
             tags = [f"platform:{name}" for name in entry.platforms] + [f"benchmark:{name}" for name in entry.benchmarks]
-            print(f"    {relative} -> {pr} -> {entry.category} -> {', '.join(tags) or '-'}")
+            lines.append(f"    {relative} -> {pr} -> {entry.category} -> {', '.join(tags) or '-'}")
+    return lines
+
+
+def _print_worksheet(source: Path, fragments: list) -> None:
+    print("\n".join(_worksheet_lines(source, fragments)))
 
 
 def _previous_release_boundary(source: Path, previous_final: str) -> str | None:
@@ -681,7 +704,18 @@ def _print_coverage_report(source: Path, previous_final: str | None) -> None:
         print("    none")
 
 
-def compile_fragments(source: Path, version: str, release_date: str, dry_run: bool = False) -> bool:
+def _write_overflow_draft(version: str, body: str, worksheet: list[str]) -> tuple[Path, Path]:
+    directory = Path(tempfile.gettempdir())
+    draft = directory / f"benchbox-{version}-changelog-draft.md"
+    sheet = directory / f"benchbox-{version}-changelog-worksheet.txt"
+    draft.write_text(body.strip() + "\n", encoding="utf-8")
+    sheet.write_text("\n".join(worksheet) + "\n", encoding="utf-8")
+    return draft, sheet
+
+
+def compile_fragments(
+    source: Path, version: str, release_date: str, dry_run: bool = False, section_file: Path | None = None
+) -> bool:
     from packaging.version import InvalidVersion, Version
 
     library = _sibling_module("changelog_fragments")
@@ -703,23 +737,45 @@ def compile_fragments(source: Path, version: str, release_date: str, dry_run: bo
         for error in errors:
             print(f"    - {error}", file=sys.stderr)
         return False
+    curated_body = None
+    if section_file is not None:
+        curated_body, error = _curated_body_from_file(section_file)
+        if curated_body is None:
+            print(f"  Error: {error}; nothing was written", file=sys.stderr)
+            return False
     text = changelog.read_text(encoding="utf-8")
-    if section_body(text, version) is not None and not paths:
+    if section_file is None and section_body(text, version) is not None and not paths:
         print(f"  [{version}] already compiled and no fragments pending; nothing to do")
         return True
     previous = flow.latest_release_tag(source, before_version=version)
     previous_final = previous.removeprefix("refs/tags/") if previous else None
-    new_text, problems = compile_changelog(text, version, release_date, library.render(fragments), previous_final)
+    new_text, problems = compile_changelog(
+        text, version, release_date, library.render(fragments), previous_final, curated_body
+    )
     if new_text is None:
         print("  Error: cannot compile the changelog; nothing was written:", file=sys.stderr)
         for problem in problems:
             print(f"    - {problem}", file=sys.stderr)
         return False
-    assembled = len([line for line in (section_body(new_text, version) or "").splitlines() if _BULLET_RE.match(line)])
-    if assembled > MAX_CURATED_BULLETS:
+    body = section_body(new_text, version) or ""
+    assembled = len([line for line in body.splitlines() if _BULLET_RE.match(line)])
+    if section_file is not None:
+        curation = curation_problems(body, version)
+        if curation:
+            print(
+                f"  Error: curated section file {section_file} breaks the curation limits; nothing was written:",
+                file=sys.stderr,
+            )
+            for problem in curation:
+                print(f"    - {problem}", file=sys.stderr)
+            return False
+    elif assembled > MAX_CURATED_BULLETS:
+        draft, sheet = _write_overflow_draft(version, body, _worksheet_lines(source, fragments))
         print(
             f"  Error: [{version}] would have {assembled} bullets, over the {MAX_CURATED_BULLETS}-bullet limit "
-            f"release-check enforces; curate the fragments in changelog.d/ and rerun. Nothing was written.",
+            f"release-check enforces. Nothing was written.\n"
+            f"  Draft section body: {draft}\n  Worksheet: {sheet}\n"
+            f"  Curate the draft, then rerun with SECTION_FILE=<curated file>.",
             file=sys.stderr,
         )
         return False
@@ -731,11 +787,9 @@ def compile_fragments(source: Path, version: str, release_date: str, dry_run: bo
         changelog.write_text(new_text, encoding="utf-8")
     for path in paths:
         path.unlink()
-    body = section_body(new_text, version) or ""
-    bullets = len([line for line in body.splitlines() if _BULLET_RE.match(line)])
     lines = len(body.splitlines())
     print(
-        f"  Updated {changelog}: [{version}] has {bullets}/{MAX_CURATED_BULLETS} bullets, "
+        f"  Updated {changelog}: [{version}] has {assembled}/{MAX_CURATED_BULLETS} bullets, "
         f"{lines}/{MAX_CURATED_LINES} lines, {_section_words(body)}/{MAX_CURATED_WORDS} words"
     )
     _print_coverage_report(source, previous_final)
@@ -905,7 +959,8 @@ def main() -> int:
         return _run_curation_check(args.source, args.version)
 
     if args.compile_fragments:
-        return 0 if compile_fragments(args.source, args.version, args.release_date, args.dry_run) else 1
+        ok = compile_fragments(args.source, args.version, args.release_date, args.dry_run, args.section_file)
+        return 0 if ok else 1
 
     if args.section_file is not None:
         return _run_section_file(args.source, args.version, args.release_date, args.section_file)
