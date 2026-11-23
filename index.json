@@ -13975,7 +13975,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-source",
-      "integration_head": "d78cac8b006d8e12fa4e9444b2a6fcb1d2a98c80",
+      "integration_head": "5853ef3a1065e8e7a241dcfcef722b265dfd6c08",
       "integration_log": [
         {
           "at": "2026-11-22T07:11:35Z",
@@ -14243,6 +14243,51 @@
             "tpcdi-13-digen-reference-path-and-comparison-20261120"
           ],
           "seq": 12
+        },
+        {
+          "at": "2026-11-23T00:43:49Z",
+          "changed_files": [
+            "AGENTS.md",
+            "MANIFEST.in",
+            "README.md",
+            "_project/scripts/inert_paths.py",
+            "_sources/tpc-ds/NOTICE.txt",
+            "_sources/tpc-h/NOTICE.txt",
+            "benchbox/_binaries/SHA256MANIFEST.json",
+            "benchbox/_binaries/tpc-ds/NOTICE.txt",
+            "benchbox/_binaries/tpc-h/NOTICE.txt",
+            "benchbox/cli/benchmarks.py",
+            "benchbox/core/coffeeshop/benchmark.py",
+            "benchbox/core/joinorder_synthetic/benchmark.py",
+            "benchbox/platforms/questdb_rewrites/decimal_comparison.py",
+            "changelog.d/fix-inert-path-gate-inputs.json",
+            "changelog.d/fix-questdb-tpcds-q75-nullif-decimal.json",
+            "changelog.d/fix-scale-floor-direct-construction.json",
+            "changelog.d/fix-scale-prompt-tpcds-official-points.json",
+            "changelog.d/fix-tpc-legend-tpch-tpcds.json",
+            "docs/internal/low-disk-guard.md",
+            "quality/comment-cleanup-scope.json",
+            "scripts/run_version_matrix.py",
+            "tests/uat/_cli.py",
+            "tests/uat/test_cli_dispatch.py",
+            "tests/unit/cli/test_benchmark_manager_behavioral.py",
+            "tests/unit/core/coffeeshop/test_coffeeshop_benchmark.py",
+            "tests/unit/core/coffeeshop/test_coffeeshop_benchmark_coverage.py",
+            "tests/unit/core/joinorder_synthetic/test_scale_floor.py",
+            "tests/unit/core/joinorder_synthetic/test_synthetic_queries.py",
+            "tests/unit/core/test_quiet_kwarg_handling.py",
+            "tests/unit/core/test_tpc_notices.py",
+            "tests/unit/platforms/test_questdb_rewrite_decimal_comparison.py",
+            "tests/unit/scripts/test_inert_paths.py",
+            "tests/unit/scripts/test_polars_version_matrix.py",
+            "tests/unit/test_coffeeshop.py"
+          ],
+          "head": "5853ef3a1065e8e7a241dcfcef722b265dfd6c08",
+          "kind": "develop-merge",
+          "merged_parent": "3fa547ab997527ea2fc34b4111cfa3fe42b39648",
+          "op_id": "f20720a865b84a83bb0455c03e91153b",
+          "previous_head": "d78cac8b006d8e12fa4e9444b2a6fcb1d2a98c80",
+          "seq": 13
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-source",
