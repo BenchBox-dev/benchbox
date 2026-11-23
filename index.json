@@ -32078,10 +32078,15 @@
       "title": "Select the ledger test for ledger edits and align CONTRIBUTING with opt-in batches"
     },
     "ledger-legacy-overlay-moves-need-owner-approval-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T03:31:19Z",
+        "generation": "66ee9594b6aa4f8fb6036b048383e7b6",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Owner decision: legacy-overlay entries moved to accepted during the ledger seed recuts"
     },
     "ledger-seed-recut-after-published-results-advance-20261111": {
