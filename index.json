@@ -28766,15 +28766,10 @@
       "title": "Corpus: non-standard scale policy, TPC-DI local reruns and cloud exclusion, Doris and LakeSail reruns, ledger seed"
     },
     "feature-feat-heavy-guard-attribution-engine-caps-20261117": {
-      "claim": {
-        "expires_at": "2026-11-24T00:26:24Z",
-        "generation": "42e872cc9ff1427f99f6a2de634e968e",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Heavy-work guard: breach attribution, admission hold, UAT first-failure output"
     },
     "feature-feat-tpcdi-current-generator-followups-20261117": {
