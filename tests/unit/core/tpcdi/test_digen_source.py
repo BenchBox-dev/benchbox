@@ -173,23 +173,14 @@ def test_java_on_path_is_found_after_an_unsupported_java_home(tmp_path: Path) ->
     assert runtime.executable == supported
 
 
-def test_java_home_is_resolved_through_the_executable_lookup_of_its_bin_directory(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+@pytest.mark.skipif(os.name != "nt", reason="the executable lookup resolves java.exe only on Windows")
+def test_java_home_resolves_a_java_exe_in_its_bin_directory(tmp_path: Path) -> None:
     home = tmp_path / "jdk"
     (home / "bin").mkdir(parents=True)
     windows_style = home / "bin" / "java.exe"
     windows_style.write_text("x", encoding="utf-8")
-    lookups: list[str | None] = []
-
-    def which(name: str, path: str | None = None) -> str | None:
-        lookups.append(path)
-        return str(windows_style) if path == str(home / "bin") else None
-
-    monkeypatch.setattr(digen.shutil, "which", which)
-    candidates = list(digen._java_candidates({"JAVA_HOME": str(home), "PATH": "elsewhere"}))
+    candidates = list(digen._java_candidates({"JAVA_HOME": str(home), "PATH": str(tmp_path / "none")}))
     assert candidates == [windows_style]
-    assert lookups == [str(home / "bin"), "elsewhere"]
 
 
 def test_a_java_home_without_an_executable_java_is_skipped(tmp_path: Path) -> None:

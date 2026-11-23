@@ -19,42 +19,76 @@ entries:
   - id: fifty-two-week-high-window
     kind: column_value
     clause: "4.5.11.2"
-    reason: "The specification takes the high over the dates after DM_DATE minus one year. The DuckDB implementation takes the 364 preceding rows plus the current one. DailyMarket has one row per calendar day for every security at scales 3, 5 and 10 (no gaps), so its window is the specification window except that it is one day short across a 29 February. The specification high is therefore never below the implementation's."
+    reason: "The specification takes the high over the dates after DM_DATE minus one year. The DuckDB implementation takes the 364 preceding rows plus the current one. DailyMarket has one row per calendar day for every security at scales 3, 5 and 10 (no gaps), so its window is the specification window except that it is one day short when the specification window spans a 29 February. Only then can the specification high be larger, and only when it is the high of that one extra day (DM_DATE minus 365 days)."
     table: FactMarketHistory
     column: FiftyTwoWeekHigh
-    condition: "l.fiftytwoweekhigh >= ROUND(r.fiftytwoweekhigh, 2)"
+    condition: >-
+      (COALESCE((try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE > strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 1 YEAR
+      AND try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE <= strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE)
+      OR (try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) - 1 AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE > strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 1 YEAR
+      AND try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) - 1 AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE <= strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE), FALSE))
+      AND l.fiftytwoweekhigh > ROUND(r.fiftytwoweekhigh, 2)
+      AND l.sk_fiftytwoweekhighdate = CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 365 DAY, '%Y%m%d') AS BIGINT)
 
   - id: fifty-two-week-high-date
     kind: column_value
     clause: "4.5.11.2"
-    reason: "The specification takes the earliest date on which the high occurs in its window; the DuckDB implementation picks one of the tied dates without ordering. The specification high is never below the implementation's (see fifty-two-week-high-window), and when the two highs are equal the specification date is the earlier."
+    reason: "The specification takes the earliest date on which the high occurs in its window; the DuckDB implementation picks one of the tied dates without ordering. Accepted only when the highs are equal, the specification date is the earlier, and both sides carry the high as DayHigh on their own date, or when the specification window spans a 29 February and its high and date are those of the one extra day (see fifty-two-week-high-window)."
     table: FactMarketHistory
     column: SK_FiftyTwoWeekHighDate
-    condition: "l.fiftytwoweekhigh > ROUND(r.fiftytwoweekhigh, 2) OR (l.fiftytwoweekhigh = ROUND(r.fiftytwoweekhigh, 2) AND l.sk_fiftytwoweekhighdate < r.sk_fiftytwoweekhighdate)"
+    condition: >-
+      (l.fiftytwoweekhigh = ROUND(r.fiftytwoweekhigh, 2)
+      AND l.sk_fiftytwoweekhighdate < r.sk_fiftytwoweekhighdate
+      AND EXISTS (SELECT 1 FROM lhs.main.FactMarketHistory y WHERE y.sk_securityid = l.sk_securityid AND y.sk_dateid = l.sk_fiftytwoweekhighdate AND ROUND(y.dayhigh, 2) = ROUND(l.fiftytwoweekhigh, 2))
+      AND EXISTS (SELECT 1 FROM rhs.main.FactMarketHistory x WHERE x.sk_securityid = r.sk_securityid AND x.sk_dateid = r.sk_fiftytwoweekhighdate AND ROUND(x.dayhigh, 2) = ROUND(r.fiftytwoweekhigh, 2)))
+      OR ((COALESCE((try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE > strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 1 YEAR
+      AND try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE <= strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE)
+      OR (try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) - 1 AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE > strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 1 YEAR
+      AND try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) - 1 AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE <= strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE), FALSE))
+      AND l.fiftytwoweekhigh > ROUND(r.fiftytwoweekhigh, 2)
+      AND l.sk_fiftytwoweekhighdate = CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 365 DAY, '%Y%m%d') AS BIGINT))
 
   - id: fifty-two-week-low-window
     kind: column_value
     clause: "4.5.11.2"
-    reason: "Same window difference as fifty-two-week-high-window; the specification low is never above the implementation's."
+    reason: "Same window difference as fifty-two-week-high-window: only when the specification window spans a 29 February can the specification low be smaller, and only when it is the low of the one extra day."
     table: FactMarketHistory
     column: FiftyTwoWeekLow
-    condition: "l.fiftytwoweeklow <= ROUND(r.fiftytwoweeklow, 2)"
+    condition: >-
+      (COALESCE((try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE > strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 1 YEAR
+      AND try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE <= strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE)
+      OR (try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) - 1 AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE > strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 1 YEAR
+      AND try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) - 1 AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE <= strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE), FALSE))
+      AND l.fiftytwoweeklow < ROUND(r.fiftytwoweeklow, 2)
+      AND l.sk_fiftytwoweeklowdate = CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 365 DAY, '%Y%m%d') AS BIGINT)
 
   - id: fifty-two-week-low-date
     kind: column_value
     clause: "4.5.11.2"
-    reason: "Same tie and window difference as fifty-two-week-high-date, for the low."
+    reason: "Same tie and window difference as fifty-two-week-high-date, for the low and DayLow."
     table: FactMarketHistory
     column: SK_FiftyTwoWeekLowDate
-    condition: "l.fiftytwoweeklow < ROUND(r.fiftytwoweeklow, 2) OR (l.fiftytwoweeklow = ROUND(r.fiftytwoweeklow, 2) AND l.sk_fiftytwoweeklowdate < r.sk_fiftytwoweeklowdate)"
+    condition: >-
+      (l.fiftytwoweeklow = ROUND(r.fiftytwoweeklow, 2)
+      AND l.sk_fiftytwoweeklowdate < r.sk_fiftytwoweeklowdate
+      AND EXISTS (SELECT 1 FROM lhs.main.FactMarketHistory y WHERE y.sk_securityid = l.sk_securityid AND y.sk_dateid = l.sk_fiftytwoweeklowdate AND ROUND(y.daylow, 2) = ROUND(l.fiftytwoweeklow, 2))
+      AND EXISTS (SELECT 1 FROM rhs.main.FactMarketHistory x WHERE x.sk_securityid = r.sk_securityid AND x.sk_dateid = r.sk_fiftytwoweeklowdate AND ROUND(x.daylow, 2) = ROUND(r.fiftytwoweeklow, 2)))
+      OR ((COALESCE((try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE > strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 1 YEAR
+      AND try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE <= strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE)
+      OR (try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) - 1 AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE > strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 1 YEAR
+      AND try_strptime(CAST(year(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) - 1 AS VARCHAR) || '-02-29', '%Y-%m-%d')::DATE <= strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE), FALSE))
+      AND l.fiftytwoweeklow < ROUND(r.fiftytwoweeklow, 2)
+      AND l.sk_fiftytwoweeklowdate = CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 365 DAY, '%Y%m%d') AS BIGINT))
 
   - id: dimtrade-batchid-fixed-at-creation
     kind: column_value
     clause: "4.6.7.2"
-    reason: "The specification fixes DimTrade.BatchID at the batch that created the row. The DuckDB implementation overwrites it with the batch of the last update, so its value is never below the specification value."
+    reason: "The specification fixes DimTrade.BatchID at the batch that created the row. The DuckDB implementation overwrites it with the batch of the last update. Accepted only when BenchBox's value is the first batch whose BatchDate is on or after the trade's create date, and the implementation's value is not earlier."
     table: DimTrade
     column: BatchID
-    condition: "l.batchid <= r.batchid"
+    condition: >-
+      l.batchid = (SELECT min(b.batchid) FROM lhs.main.BatchDate b WHERE CAST(strftime(b.batchdate, '%Y%m%d') AS BIGINT) >= l.sk_createdateid)
+      AND l.batchid <= r.batchid
 
   - id: prospect-status-messages
     kind: messages

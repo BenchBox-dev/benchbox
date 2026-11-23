@@ -273,6 +273,28 @@ def disjunction(entries: Sequence[Expected]) -> str:
     return " OR ".join(f"COALESCE(({entry.text('condition')}), FALSE)" for entry in entries)
 
 
+def multiset_difference(
+    left_table: str,
+    right_table: str,
+    left_cols: dict[str, tuple[str, str]],
+    right_cols: dict[str, tuple[str, str]],
+    columns: Sequence[str],
+) -> str:
+    def grouped(catalog: str, table: str, own: dict[str, tuple[str, str]], other: dict[str, tuple[str, str]]) -> str:
+        values = [
+            f"{normalized(quote(own[name][0]), own[name][1], other[name][1])} AS {quote(name)}" for name in columns
+        ]
+        return f"SELECT {', '.join([*values, 'count(*) AS n'])} FROM {source(catalog, table)} GROUP BY ALL"
+
+    picks = [f"COALESCE(l.{quote(name)}, r.{quote(name)}) AS {quote(name)}" for name in columns]
+    on = " AND ".join(f"l.{quote(name)} IS NOT DISTINCT FROM r.{quote(name)}" for name in columns) or "TRUE"
+    return (
+        f"(SELECT {', '.join([*picks, 'l.n AS left_n', 'r.n AS right_n'])} "
+        f"FROM ({grouped('lhs', left_table, left_cols, right_cols)}) l "
+        f"FULL JOIN ({grouped('rhs', right_table, right_cols, left_cols)}) r ON {on}) t"
+    )
+
+
 def tally(
     connection: duckdb.DuckDBPyConnection,
     from_clause: str,
@@ -280,13 +302,15 @@ def tally(
     entries: Sequence[Expected],
     used: set[str],
     where: str = "TRUE",
+    weight: str = "1",
 ) -> tuple[int, int, list[str]]:
     selects = [
-        f"count(*) FILTER (WHERE {flagged})",
-        f"count(*) FILTER (WHERE ({flagged}) AND NOT ({disjunction(entries)}))",
+        f"COALESCE(sum({weight}) FILTER (WHERE {flagged}), 0)",
+        f"COALESCE(sum({weight}) FILTER (WHERE ({flagged}) AND NOT ({disjunction(entries)})), 0)",
     ]
     selects.extend(
-        f"count(*) FILTER (WHERE ({flagged}) AND COALESCE(({entry.text('condition')}), FALSE))" for entry in entries
+        f"COALESCE(sum({weight}) FILTER (WHERE ({flagged}) AND COALESCE(({entry.text('condition')}), FALSE)), 0)"
+        for entry in entries
     )
     row = connection.execute(f"SELECT {', '.join(selects)} FROM {from_clause} WHERE {where}").fetchone()
     accepted_by = [entry.id for entry, hits in zip(entries, row[2:], strict=True) if hits]
@@ -402,28 +426,39 @@ def compare_table(
         key = []
     report.key = key
     match_columns = key or common
-    found = False
+    totals = {"left": 0, "right": 0}
     for side, catalog, own_table, own_cols, other_catalog, other_table, other_cols in (
         ("left", "lhs", left_table, left_cols, "rhs", right_table, right_cols),
         ("right", "rhs", right_table, right_cols, "lhs", left_table, left_cols),
     ):
-        match = equality(own_cols, other_cols, match_columns, "t", "o", null_safe=not key)
         chosen = entries_on_side(entries_of(entries, "rows_only", table=left_table), side)
-        total, unexplained, accepted_by = tally(
-            connection,
-            f"{source(catalog, own_table)} t",
-            "TRUE",
-            chosen,
-            used,
-            f"NOT EXISTS (SELECT 1 FROM {source(other_catalog, other_table)} o WHERE {match})",
-        )
+        if key:
+            match = equality(own_cols, other_cols, key, "t", "o", null_safe=False)
+            total, unexplained, accepted_by = tally(
+                connection,
+                f"{source(catalog, own_table)} t",
+                "TRUE",
+                chosen,
+                used,
+                f"NOT EXISTS (SELECT 1 FROM {source(other_catalog, other_table)} o WHERE {match})",
+            )
+        else:
+            own, other = ("left_n", "right_n") if side == "left" else ("right_n", "left_n")
+            total, unexplained, accepted_by = tally(
+                connection,
+                multiset_difference(left_table, right_table, left_cols, right_cols, match_columns),
+                f"COALESCE({own}, 0) > COALESCE({other}, 0)",
+                chosen,
+                used,
+                weight=f"{own} - COALESCE({other}, 0)",
+            )
+        totals[side] = total
         if total:
-            found = True
             report.differences.append(
                 Difference(left_table, f"rows_only_{side}", f"{total} rows", total, unexplained, accepted_by)
             )
-    if left_rows != right_rows and not found:
-        gap = abs(left_rows - right_rows)
+    if left_rows - right_rows != totals["left"] - totals["right"]:
+        gap = abs(left_rows - right_rows - totals["left"] + totals["right"])
         report.differences.append(Difference(left_table, "row_count", f"{left_rows} vs {right_rows}", gap, gap))
     if not key:
         return report

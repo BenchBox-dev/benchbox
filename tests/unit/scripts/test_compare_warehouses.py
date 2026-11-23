@@ -337,48 +337,86 @@ def test_integer_widths_and_decimal_precision_are_not_type_differences(tmp_path,
     assert run(left, right).all_differences() == []
 
 
-MARKET_ROWS = [
-    (1, 20200101, 2.5, 10.0, 20200105, 5.0, 20200301),
-    (2, 20200101, 1.25, 12.0, 20200102, 4.0, 20200302),
-    (3, 20200101, 0.5, 9.0, 20200103, 3.0, 20200303),
-]
-
-
-def build_market(path: Path, decimal: bool, rows: list[tuple]) -> Path:
+def build_market(path: Path, decimal: bool, market: list[tuple], trades: list[tuple]) -> Path:
     price = "DECIMAL(8,2)" if decimal else "DOUBLE"
     yield_type = "DECIMAL(5,2)" if decimal else "DOUBLE"
     connection = duckdb.connect(str(path))
     connection.execute(
         f"CREATE TABLE FactMarketHistory (SK_SecurityID BIGINT, SK_DateID BIGINT, Yield {yield_type}, "
         f"FiftyTwoWeekHigh {price}, SK_FiftyTwoWeekHighDate BIGINT, FiftyTwoWeekLow {price}, "
-        "SK_FiftyTwoWeekLowDate BIGINT)"
+        f"SK_FiftyTwoWeekLowDate BIGINT, DayHigh {price}, DayLow {price})"
     )
-    connection.executemany("INSERT INTO FactMarketHistory VALUES (?, ?, ?, ?, ?, ?, ?)", rows)
+    connection.executemany("INSERT INTO FactMarketHistory VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", market)
     connection.execute(
         "CREATE TABLE DimTrade (TradeID BIGINT, SK_CreateDateID BIGINT, SK_CreateTimeID BIGINT, BatchID INTEGER)"
     )
+    connection.executemany("INSERT INTO DimTrade VALUES (?, ?, 1, ?)", trades)
+    connection.execute("CREATE TABLE BatchDate (BatchDate DATE, BatchID INTEGER)")
     connection.executemany(
-        "INSERT INTO DimTrade VALUES (?, 20200101, 1, ?)", [(1, 1), (2, 1)] if decimal else [(1, 2), (2, 1)]
+        "INSERT INTO BatchDate VALUES (?, ?)", [("2020-03-01", 1), ("2020-03-02", 2), ("2020-03-03", 3)]
     )
     connection.close()
     return path
 
 
-def test_shipped_entries_accept_the_differences_they_describe_and_nothing_else(tmp_path):
+LEAP = 20200301
+PLAIN = 20190301
+LEAP_EXTRA = 20190302
+
+
+def market(rows: list[tuple]) -> list[tuple]:
+    return [(*row, 0.0, 0.0) for row in rows]
+
+
+def replace(rows: list[tuple], row: tuple) -> list[tuple]:
+    return [market([row])[0] if existing[0] == row[0] else existing for existing in rows]
+
+
+BENCHBOX_MARKET = market(
+    [
+        (1, LEAP, 2.5, 12.0, LEAP_EXTRA, 5.0, 20200105),
+        (2, LEAP, 1.25, 10.0, 20200105, 5.0, 20200106),
+        (3, LEAP, 0.5, 9.0, 20200103, 2.0, LEAP_EXTRA),
+        (4, PLAIN, 0.75, 8.0, 20190110, 4.0, 20190111),
+        (5, LEAP, 0.25, 7.0, 20200107, 4.0, 20200108),
+    ]
+)
+IMPLEMENTATION_MARKET = market(
+    [
+        (1, LEAP, 0.00025, 11.0, 20190501, 5.0, 20200105),
+        (2, LEAP, 0.000125, 10.0, 20200110, 5.0, 20200106),
+        (3, LEAP, 0.00005, 9.0, 20200103, 3.0, 20190601),
+        (4, PLAIN, 0.000075, 8.0, 20190110, 4.0, 20190111),
+        (5, LEAP, 0.000025, 7.0, 20200107, 4.0, 20200109),
+    ]
+)
+TIE_ROWS = [
+    (2, 20200105, 0.0, 10.0, 20200105, 5.0, 20200106, 10.0, 0.0),
+    (2, 20200110, 0.0, 10.0, 20200110, 5.0, 20200106, 10.0, 0.0),
+    (5, 20200108, 0.0, 7.0, 20200107, 4.0, 20200108, 0.0, 4.0),
+    (5, 20200109, 0.0, 7.0, 20200107, 4.0, 20200109, 0.0, 4.0),
+]
+TRADES_BENCHBOX = [(1, 20200301, 1), (2, 20200302, 2)]
+TRADES_IMPLEMENTATION = [(1, 20200301, 2), (2, 20200302, 2)]
+
+
+def market_report(
+    tmp_path: Path,
+    benchbox: list[tuple] = BENCHBOX_MARKET,
+    trades: list[tuple] = TRADES_BENCHBOX,
+) -> harness.Report:
     entries = harness.load_expected(harness.DEFAULT_EXPECTED, None)
-    benchbox_rows = [
-        (1, 20200101, 2.5, 10.0, 20200105, 5.0, 20200301),
-        (2, 20200101, 1.25, 12.0, 20200102, 3.5, 20200201),
-        (3, 20200101, 0.5, 9.0, 20200103, 3.0, 20200303),
-    ]
-    other_rows = [
-        (1, 20200101, 0.00025, 10.0, 20200110, 5.0, 20200305),
-        (2, 20200101, 0.000125, 11.0, 20200104, 4.0, 20200302),
-        (3, 20200101, 0.00005, 9.0, 20200103, 3.0, 20200303),
-    ]
-    left = build_market(tmp_path / "left.duckdb", True, benchbox_rows)
-    right = build_market(tmp_path / "right.duckdb", False, other_rows)
-    report = harness.compare(left, right, entries)
+    left = build_market(tmp_path / "left.duckdb", True, [*benchbox, *TIE_ROWS], trades)
+    right = build_market(tmp_path / "right.duckdb", False, [*IMPLEMENTATION_MARKET, *TIE_ROWS], TRADES_IMPLEMENTATION)
+    return harness.compare(left, right, entries)
+
+
+def refused(report: harness.Report) -> set[tuple[str, str]]:
+    return {(difference.table, difference.subject) for difference in report.unaccepted()}
+
+
+def test_shipped_entries_accept_the_differences_they_describe(tmp_path):
+    report = market_report(tmp_path)
     assert report.unaccepted() == []
     by_subject = {difference.subject: difference.accepted_by for difference in report.all_differences()}
     assert by_subject["FiftyTwoWeekHigh"] == ["fifty-two-week-high-window"]
@@ -389,18 +427,61 @@ def test_shipped_entries_accept_the_differences_they_describe_and_nothing_else(t
     assert by_subject["BatchID"] == ["dimtrade-batchid-fixed-at-creation"]
 
 
-def test_shipped_entries_refuse_a_high_below_the_implementations_and_a_later_batch(tmp_path):
-    entries = harness.load_expected(harness.DEFAULT_EXPECTED, None)
-    other_rows = [(s, d, y / 10000, *rest) for s, d, y, *rest in MARKET_ROWS]
-    other_rows[0] = (1, 20200101, 0.00025, 10.5, 20200105, 5.0, 20200301)
-    left = build_market(tmp_path / "left.duckdb", True, MARKET_ROWS)
-    right = build_market(tmp_path / "right.duckdb", False, other_rows)
-    connection = duckdb.connect(str(left))
-    connection.execute("UPDATE DimTrade SET BatchID = 3 WHERE TradeID = 1")
+@pytest.mark.parametrize(
+    ("row", "subject"),
+    [
+        ((4, PLAIN, 0.75, 13.0, 20190110, 4.0, 20190111), "FiftyTwoWeekHigh"),
+        ((4, PLAIN, 0.75, 8.0, 20190110, 1.0, 20190111), "FiftyTwoWeekLow"),
+        ((4, PLAIN, 0.75, 8.0, 20190120, 4.0, 20190111), "SK_FiftyTwoWeekHighDate"),
+        ((4, PLAIN, 0.75, 8.0, 20190110, 4.0, 20190120), "SK_FiftyTwoWeekLowDate"),
+        ((1, LEAP, 2.5, 12.0, 20190401, 5.0, 20200105), "FiftyTwoWeekHigh"),
+        ((1, LEAP, 2.5, 12.0, 20190401, 5.0, 20200105), "SK_FiftyTwoWeekHighDate"),
+        ((3, LEAP, 0.5, 9.0, 20200103, 2.0, 20190401), "FiftyTwoWeekLow"),
+        ((3, LEAP, 0.5, 9.0, 20200103, 2.0, 20190401), "SK_FiftyTwoWeekLowDate"),
+        ((2, LEAP, 1.25, 10.0, 20200104, 5.0, 20200106), "SK_FiftyTwoWeekHighDate"),
+        ((5, LEAP, 0.25, 7.0, 20200107, 4.0, 20200107), "SK_FiftyTwoWeekLowDate"),
+    ],
+)
+def test_shipped_entries_refuse_values_outside_the_rows_they_describe(tmp_path, row, subject):
+    report = market_report(tmp_path, benchbox=replace(BENCHBOX_MARKET, row))
+    assert ("FactMarketHistory", subject) in refused(report)
+
+
+@pytest.mark.parametrize("trades", [[(1, 20200301, 1), (2, 20200302, 1)], [(1, 20200301, 0), (2, 20200302, 2)]])
+def test_a_constant_batch_id_is_refused_where_it_is_not_the_creation_batch(tmp_path, trades):
+    assert ("DimTrade", "BatchID") in refused(market_report(tmp_path, trades=trades))
+
+
+def build_audit(path: Path, rows: list[tuple]) -> Path:
+    connection = duckdb.connect(str(path))
+    connection.execute("CREATE TABLE Audit (DataSet VARCHAR, BatchID INTEGER, Attribute VARCHAR, Value BIGINT)")
+    connection.executemany("INSERT INTO Audit VALUES (?, ?, ?, ?)", rows)
     connection.close()
-    report = harness.compare(left, right, entries)
-    refused = {(difference.table, difference.subject) for difference in report.unaccepted()}
-    assert refused == {
-        ("FactMarketHistory", "FiftyTwoWeekHigh"),
-        ("DimTrade", "BatchID"),
-    }
+    return path
+
+
+X = ("DimCustomer", 1, "C_NEW", 5)
+Y = ("DimCustomer", 1, "C_OLD", 6)
+TIER = ("DimCustomer", 1, "C_TIER_INV", 9)
+
+
+def test_same_row_counts_with_different_multiplicities_are_a_difference(tmp_path, capsys):
+    left = build_audit(tmp_path / "left.duckdb", [X, X, Y])
+    right = build_audit(tmp_path / "right.duckdb", [X, Y, Y])
+    expected = write_expected(tmp_path / "expected.yaml", [])
+    code = harness.main([str(left), str(right), "--expected", str(expected), "--departures", str(tmp_path / "none")])
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "FINDING table=Audit kind=rows_only_left 1 rows" in out
+    assert "FINDING table=Audit kind=rows_only_right 1 rows" in out
+
+
+def test_an_accepted_rows_only_difference_does_not_hide_a_duplicated_row(tmp_path):
+    entries = harness.load_expected(harness.DEFAULT_EXPECTED, None)
+    left = build_audit(tmp_path / "left.duckdb", [X, X, Y, TIER])
+    right = build_audit(tmp_path / "right.duckdb", [X, Y])
+    [difference] = harness.compare(left, right, entries).unaccepted()
+    assert (difference.kind, difference.count, difference.unexplained) == ("rows_only_left", 2, 1)
+    clean_left = build_audit(tmp_path / "left2.duckdb", [X, Y, TIER])
+    clean_right = build_audit(tmp_path / "right2.duckdb", [X, Y])
+    assert harness.compare(clean_left, clean_right, entries).unaccepted() == []
