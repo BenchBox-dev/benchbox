@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import functools
+import importlib.util
 import math
+import sys
 from collections.abc import Mapping, Sequence
 from decimal import ROUND_FLOOR, Decimal
+from pathlib import Path
 from typing import Any
 
 POWER_QUERY_COUNTS = {"tpch": 22, "tpcds": 99}
@@ -370,10 +374,35 @@ def _qphds(data: Mapping[str, Any], scale: float) -> float | None:
     return qphds_at_size(scale, stream_count, power_ms / 1000.0, seconds[:2], seconds[2:], load_seconds)
 
 
+@functools.cache
+def _corpus_rule() -> Any:
+    try:
+        from benchbox.core.results import corpus_rule
+
+        return corpus_rule
+    except ImportError:
+        path = Path(__file__).with_name("corpus_rule.py")
+        spec = importlib.util.spec_from_file_location("_benchbox_corpus_rule", path)
+        if spec is None or spec.loader is None:
+            raise
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+        return module
+
+
+def _gateway_routed(data: Mapping[str, Any]) -> bool:
+    platform = data.get("platform")
+    gateway = platform.get("gateway") if isinstance(platform, Mapping) else None
+    return isinstance(gateway, Mapping) and bool(gateway.get("routed"))
+
+
 def combined_score(data: Mapping[str, Any]) -> float | None:
     benchmark_id = tpc_benchmark_id(data)
     scale = _scale_factor(data)
     if benchmark_id is None or scale is None:
+        return None
+    if _corpus_rule().composite_scale_refusal(benchmark_id, scale, gateway_routed=_gateway_routed(data)):
         return None
     if benchmark_id == "tpcds":
         return _qphds(data, scale)

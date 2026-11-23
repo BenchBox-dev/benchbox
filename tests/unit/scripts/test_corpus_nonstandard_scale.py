@@ -404,7 +404,8 @@ def test_cli_submit_and_publish_accept_an_off_list_result_and_refuse_the_rest() 
     for off_list in (
         _result("ssb", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
         _result("tpch", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
-        _result("tpch", 0.5, "unofficial_subscale"),
+        _result("tpch", 1.0, NONSTANDARD_COMPLIANCE_CLASS),
+        _result("tpch", 1.0),
     ):
         assert classify_loaded_result(off_list) is SubmitTerminalState.submittable
         assert publish_admission(off_list, "community").allowed
@@ -415,8 +416,9 @@ def test_cli_submit_and_publish_accept_an_off_list_result_and_refuse_the_rest() 
     assert not publish_admission(routed, "community").allowed
 
     for refused in (
-        _result("tpch", 1.0, NONSTANDARD_COMPLIANCE_CLASS),
+        _result("tpch", 0.5),
         _result("tpch", 0.1, "unofficial_subscale"),
+        _result("tpcds", 0.01, "official"),
     ):
         assert classify_loaded_result(refused) is SubmitTerminalState.unofficial
         assert not publish_admission(refused, "community").allowed

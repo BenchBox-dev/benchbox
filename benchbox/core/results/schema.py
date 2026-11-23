@@ -286,9 +286,6 @@ def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets:
     if scan_bytes:
         summary["cost"] = scan_bytes
     run = _build_run_section(result, query_times_ms, iterations_set, streams_set)
-    executed_streams = _executed_stream_count(phases_block)
-    if executed_streams is not None:
-        run["streams"] = executed_streams
     run_fetch_mode = _run_fetch_mode(queries_list)
     if run_fetch_mode is not None:
         run["fetch_mode"] = run_fetch_mode
@@ -1135,16 +1132,6 @@ def _validation_phase_status(row_count_status: str | None, overall_status: str |
     if row_count in _VALIDATION_SEVERITY and _VALIDATION_SEVERITY.get(overall, -1) > _VALIDATION_SEVERITY[row_count]:
         return overall
     return row_count_status
-
-
-def _executed_stream_count(phases_block: Mapping[str, Any]) -> int | None:
-    counts = []
-    for name in ("throughput_test", "throughput_test_2"):
-        block = phases_block.get(name)
-        streams = block.get("stream_results") if isinstance(block, Mapping) else None
-        if isinstance(streams, list) and streams:
-            counts.append(len(streams))
-    return counts[0] if counts else None
 
 
 def _build_phases_block(result: BenchmarkResults) -> dict[str, Any]:

@@ -38,7 +38,7 @@ DATABASE = SimpleNamespace(type="duckdb")
 
 
 def _config(**options: Any) -> BenchmarkConfig:
-    return BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=0.01, options=options)
+    return BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=1.0, options=options)
 
 
 def _execute(config: BenchmarkConfig) -> Any:

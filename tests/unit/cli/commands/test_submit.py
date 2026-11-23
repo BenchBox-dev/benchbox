@@ -35,7 +35,7 @@ def _fake_result() -> SimpleNamespace:
     return SimpleNamespace(
         benchmark_name="tpch",
         platform="duckdb",
-        scale_factor=0.01,
+        scale_factor=1.0,
         total_queries=22,
         duration_seconds=12.34,
     )
@@ -379,7 +379,7 @@ def test_submit_prints_next_steps_with_pr_target_branch(monkeypatch: pytest.Monk
         "published-results",
         "generate_corpus_inventory.py --write",
         "validate_submission.py",
-        "results: tpch duckdb sf0.01",
+        "results: tpch duckdb sf1",
         "results-data/bundles/tpch_duckdb.json",
     ):
         assert required in result.output, f"missing {required!r} in submit next-steps"
@@ -400,7 +400,7 @@ def test_submit_dry_run_matches_real_run_shape(monkeypatch: pytest.MonkeyPatch, 
         "Dry-run preview",
         "published-results",
         "generate_corpus_inventory.py --write",
-        "results: tpch duckdb sf0.01",
+        "results: tpch duckdb sf1",
         "(dry run; no files written)",
     ):
         assert required in result.output, f"missing {required!r} in dry-run output"
@@ -1298,7 +1298,6 @@ def test_submit_real_run_packages_override_companion_unchanged(monkeypatch: pyte
         ("tpch", "unofficial TPC-H configuration", False),
         ("TPC-DS", "unofficial TPC-DS configuration", True),
         ("tpcds", "unofficial TPC-DS configuration", True),
-        ("SSB", "unofficial SSB configuration", False),
     ],
 )
 def test_unofficial_refusal_names_the_actual_benchmark(
@@ -1312,7 +1311,7 @@ def test_unofficial_refusal_names_the_actual_benchmark(
     src.write_text("{}", encoding="utf-8")
     unofficial = _fake_result()
     unofficial.benchmark_name = benchmark_name
-    unofficial.compliance_class = "unofficial_subscale"
+    unofficial.scale_factor = 0.1
     monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (unofficial, {}))
 
     result = CliRunner().invoke(sub.submit, [str(src), "--output", str(tmp_path / "out")])
@@ -1323,3 +1322,13 @@ def test_unofficial_refusal_names_the_actual_benchmark(
     assert expected in output
     assert ("tpcds-subscale-contract" in output) is mentions_tpcds_contract
     assert ("TPC-DS" in output) is ("TPC-DS" in expected)
+
+
+def test_a_sub_sf1_result_of_a_non_tpc_benchmark_is_not_refused_at_submission() -> None:
+    from benchbox.core.results.submit_classification import result_refused_at_submission
+
+    result = _fake_result()
+    result.benchmark_name = "SSB"
+    result.scale_factor = 0.1
+
+    assert result_refused_at_submission(result) is False

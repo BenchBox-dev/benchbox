@@ -220,11 +220,11 @@ def _throughput_run(streams: int, query_streams: set[int]) -> dict:
     return build_result_payload(result)
 
 
-def test_the_writer_records_the_executed_stream_count() -> None:
+def test_run_streams_counts_the_streams_seen_in_rows_while_the_rule_counts_stream_results() -> None:
     payload = _throughput_run(streams=3, query_streams={1})
 
     assert len(payload["phases"]["throughput_test"]["stream_results"]) == 3
-    assert payload["run"]["streams"] == 3
+    assert payload["run"]["streams"] == 1
     assert corpus_rule.executed_stream_count(payload) == 3
 
 
@@ -403,3 +403,20 @@ def test_throughput_counts_one_round_of_queries_per_stream_like_the_runtime(fami
     )
 
     assert corpus_score.throughput_at_size(data) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize("family", ["tpch", "tpcds"])
+def test_a_sub_sf1_combined_bundle_gets_no_composite_from_the_corpus_path(family: str) -> None:
+    data = combined_bundle(benchmark=family)
+    assert corpus_score.combined_score(data) is not None
+    data["benchmark"]["scale_factor"] = 0.01
+
+    assert corpus_score.combined_score(data) is None
+
+
+@pytest.mark.parametrize("family", ["tpch", "tpcds"])
+def test_a_gateway_routed_combined_bundle_gets_no_composite_from_the_corpus_path(family: str) -> None:
+    data = combined_bundle(benchmark=family)
+    data["platform"]["gateway"] = {"name": "proxy", "routed": True}
+
+    assert corpus_score.combined_score(data) is None
