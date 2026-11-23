@@ -106,6 +106,15 @@
       "op_id": "b53c49a1e7014619825d03f8a17b98a9",
       "reason": "the leader's MCP server process restarted; the same session resumed under a new worker identity",
       "session_id": "026f18fa65004631adc919a50f67108b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:69ad863fb6a91a23281f8dfd",
+      "at": "2026-11-23T21:15:01Z",
+      "client": "omp-coding-agent",
+      "generation": "3647f702198b432ab955502c7ae1cc1c",
+      "op": "take",
+      "op_id": "02c078f6c0154bc490d630575acf1d7b",
+      "session_id": "026f18fa65004631adc919a50f67108b"
     }
   ]
 }
