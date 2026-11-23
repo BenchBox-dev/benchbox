@@ -10604,7 +10604,7 @@
         }
       },
       "integration_branch": "feat/run-timeout-hardening",
-      "integration_head": "e194aca80e6bd98bcf388adc0446fff1a25f74aa",
+      "integration_head": "3f577182f12c9bd1ca65f4663df2aede74015fa5",
       "integration_log": [
         {
           "at": "2026-11-22T21:01:02Z",
@@ -10620,6 +10620,21 @@
           "op_id": "a65ef4a8cd5b46b8b073dd6bff26e45c",
           "previous_head": "1def2325473a89eced3a96b02ced91fb1e44b13f",
           "seq": 1
+        },
+        {
+          "at": "2026-11-23T00:43:57Z",
+          "changed_files": [
+            "benchbox/core/equivalence/cross_surface.py",
+            "tests/unit/core/equivalence/test_cross_surface.py"
+          ],
+          "head": "3f577182f12c9bd1ca65f4663df2aede74015fa5",
+          "kind": "fix",
+          "op_id": "1f8652ea11b24e09a67df40b8219edd3",
+          "previous_head": "e194aca80e6bd98bcf388adc0446fff1a25f74aa",
+          "requires_acceptance": [
+            "tpcds-q57-expression-order-float-tie-flake-20261122"
+          ],
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-hardening",
