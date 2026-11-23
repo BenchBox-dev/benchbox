@@ -50618,9 +50618,9 @@
     },
     "tpcdi-06-tpc-licence-files-and-appendix-sql-20261120": {
       "claim": {
-        "expires_at": "2026-11-24T23:36:55Z",
-        "generation": "ef66fb337e074f1cbb1a750992dfe3b7",
-        "renewals": 0,
+        "expires_at": "2026-11-24T23:37:14Z",
+        "generation": "9cb756a47ba943578e0caeeb73495f3c",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b9c0e3a9d406db652098bdd"
       },
       "needs": [
