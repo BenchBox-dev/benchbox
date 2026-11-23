@@ -34,6 +34,7 @@ from benchbox.core.results.comparison_modes import IncomparableModesError, bundl
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.normalizer import get_query_map, normalize_result_dict
 from benchbox.core.results.platform_options import REDACTED_VALUE, _is_username_key
+from benchbox.core.results.result_outcome import outcome_for_result, outcome_words
 from benchbox.core.results.schema import (
     SchemaV2ValidationError,
     SchemaV2Validator,
@@ -348,7 +349,10 @@ class ResultExporter:
             "error_message",
             "iteration",
             "stream",
+            "class",
+            "label",
         ]
+        outcome_columns = list(outcome_words(outcome_for_result(result)))
 
         def _query_exec_time_ms(query: dict[str, Any]) -> float:
             exec_time_ms = query.get("execution_time_ms")
@@ -374,6 +378,7 @@ class ResultExporter:
                         self._anonymize_free_text(query.get("error_message", "")),
                         query.get("iteration", ""),
                         query.get("stream_id", ""),
+                        *outcome_columns,
                     ]
                 )
 
@@ -395,6 +400,7 @@ class ResultExporter:
                         self._anonymize_free_text(query.get("error") or query.get("error_message", "")),
                         query.get("iteration", ""),
                         query.get("stream_id", ""),
+                        *outcome_columns,
                     ]
                 )
 

@@ -23,6 +23,15 @@ def _load_parity_module():
     return mod
 
 
+def _mirrored_runtime_paths() -> list[str]:
+    spec = importlib.util.spec_from_file_location("corpus_drift_under_test", REPO_ROOT / "scripts/corpus_drift.py")
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return [path for path in mod.CANARY_PATHSPECS if path.startswith(("benchbox/", "scripts/"))]
+
+
 def test_validator_parity_script_exists() -> None:
     assert SCRIPT.is_file(), "scripts/publication/validator_parity.py must exist (A2 w4)"
 
@@ -89,8 +98,8 @@ def _minimal_bundle_dict() -> dict:
                 "id": f"Q{i}",
                 "ms": 100 + i * 10,
                 "status": "SUCCESS",
-                "rows": 5,
-                "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5},
+                "rows": 1,
+                "row_count_validation": {"status": "PASSED", "expected": 1, "actual": 1},
             }
             for i in range(1, 23)
         ],
@@ -167,18 +176,7 @@ def test_parity_executes_real_payloads_in_an_isolated_slim_checkout(tmp_path: Pa
         _git(repo, "commit", "-m", "invalid head payload")
         head = _git(repo, "rev-parse", "HEAD")
 
-    runtime = [
-        "scripts/validate_submission.py",
-        "scripts/generate_corpus_inventory.py",
-        "scripts/publication/validator_parity.py",
-        "benchbox/validation/bundle.py",
-        "benchbox/core/results/query_status.py",
-        "benchbox/core/results/timing_fields.py",
-        "benchbox/core/results/schema_policy.py",
-        "benchbox/core/results/subscale_policy.py",
-        "benchbox/core/results/corpus_rule.py",
-        "benchbox/core/results/corpus_rule_data.json",
-    ]
+    runtime = _mirrored_runtime_paths()
     for path in runtime:
         destination = repo / path
         destination.parent.mkdir(parents=True, exist_ok=True)

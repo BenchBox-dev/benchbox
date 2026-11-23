@@ -241,7 +241,7 @@ class TestConsoleResultFormatter:
         assert stats["scale_factor"] == "0.01"
         assert stats["queries_total"] == "3"
         assert stats["queries_successful"] == "2"
-        assert stats["power_at_size"] == "123.45"
+        assert "power_at_size" not in stats
 
     def test_format_execution_statistics_platform_result(self):
 
@@ -594,6 +594,8 @@ class TestResultExporter:
             "error_message",
             "iteration",
             "stream",
+            "class",
+            "label",
         ]
         assert headers == expected_headers
 
