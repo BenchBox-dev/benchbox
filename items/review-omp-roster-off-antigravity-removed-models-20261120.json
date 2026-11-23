@@ -4,7 +4,7 @@
     "make omp-candidate-check VERSION=<19.x> passes model-catalog and the live checks on the owner's darwin-arm64 Mac.",
     "A pin PR to omp 19.x merges with owner evidence and a hosted SHIP."
   ],
-  "description": "Every omp release after 18.20.0 fails BenchBox's candidate check: 18.21.0, 18.22.0-18.22.2, 19.0.0 and 19.0.1 (daily omp-pin-bump runs red since 2026-11-17, e.g. run 44750794955). In each, model-catalog fails because the catalog no longer lists google-antigravity/gemini-3.8-flash, google-antigravity/claude-sonnet-5-5, google-antigravity/claude-opus-5-5 and google-antigravity/gemini-4-argon, which .github/review-omp-config.yml routes to. Owner decision 2026-11-20: pin 18.20.0 now and move the roster later as a separate decision.\n\nWork: find what replaced those models in omp 19.x (provider rename, new model ids, or removal), propose a roster change with the review-depth and capacity implications (docs/internal and _project/decisions on reviewer models), get the owner's choice, then change .github/review-omp-config.yml and any fixtures, re-run the gateway so clients are allowed the new models, and let the pin-bump workflow propose 19.x. Changes to the roster are soundness-path changes under the review gate.",
+  "description": "Every omp release after 18.20.0 fails BenchBox's candidate check: 18.21.0, 18.22.0-18.22.2, 19.0.0 and 19.0.1 (daily omp-pin-bump runs red since 2026-11-17, e.g. run 44750794955). In each, model-catalog fails because the catalog no longer lists google-antigravity/gemini-3.8-flash, google-antigravity/claude-sonnet-5-5, google-antigravity/claude-opus-5-5 and google-antigravity/gemini-4-argon, which .github/review-omp-config.yml routes to. Owner decision 2026-11-20: pin 18.20.0 now and move the roster later as a separate decision.\n\nWork: find what replaced those models in omp 19.x (provider rename, new model ids, or removal), propose a roster change with the review-depth and capacity implications (docs/internal and _project/decisions on reviewer models), get the owner's choice, then change .github/review-omp-config.yml and any fixtures, re-run the gateway so clients are allowed the new models, and let the pin-bump workflow propose 19.x. Changes to the roster are soundness-path changes under the review gate.\n\nDecision gates: (1) read omp 19.x's model catalog and release notes and present the owner a roster proposal through the choice dialog, with a recommendation, before editing. The owner decides which models review which buckets. (2) If 19.x needs a gateway or provider change the owner must make (new credentials, provider enrollment), stop and ask.\nGuardrails: no live model spend beyond `make omp-candidate-check` without approval. Do not edit .github/review-omp-config.yml until gate 1 is answered. The pin stays at 18.20.0 until a 19.x pin PR has owner evidence and a hosted SHIP. Never force a pin through by bypassing the omp-pin gate.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1125961d008304f6050893ef",
@@ -13,6 +13,14 @@
       "op": "create",
       "op_id": "f065731e0a574237beb6d03be4d57570",
       "session_id": "3678ab0e75574974b0dc1dcda02267b3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f0306fe42dc404288de80bb6",
+      "at": "2026-11-23T18:40:25Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9874a1b40f64a544a270568fd522ce9e",
+      "session_id": "85f847e9be7f4d2f8dd166c7531f637d"
     }
   ]
 }
