@@ -23898,17 +23898,12 @@
       "title": "Replace the stored DuckDB median files with their individual runs where every run exists, under the owner's freeze release"
     },
     "crr-c1-validation-status-vocabulary": {
-      "claim": {
-        "expires_at": "2026-11-24T04:59:08Z",
-        "generation": "20e237da0c0e4346875988720602c0da",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2"
-      },
+      "claim": null,
       "needs": [
         "crr-a1-rule-module-and-snapshot"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Use one validation status vocabulary for SQL and DataFrame runs and stop recording 'passed' without evidence"
     },
     "crr-c2-row-count-references-tpc-and-ssb": {
