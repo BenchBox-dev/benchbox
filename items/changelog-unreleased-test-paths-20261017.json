@@ -3,6 +3,7 @@
     "No [Unreleased] CHANGELOG entry names a file under tests/",
     "Each affected entry still tells a user what changed"
   ],
+  "context": "2026-11-23 closing evidence, read on origin/develop 9b3087d404: the [Unreleased] section of CHANGELOG.md is empty (line 8 is followed directly by the 0.5.1 heading; changelog.d/README.md says it must stay empty and CI fails a pull request that adds text there), and none of the 121 files in changelog.d/ has an entry text naming a path under tests/. Both acceptance lines hold without a code change. Owner decision 2026-11-23 (choice dialog): finish on this evidence.",
   "description": "CHANGELOG.md [Unreleased] entries on develop still cite test files (around lines 389, 414 and 435). A changelog is for users; test paths do not tell them what changed. Owner, 2026-10-15, Claude session e0e74e6b, question dialog: \"Remove test paths\". The decision was never carried out.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "op": "create",
       "op_id": "2e0fc9c6b93a48b28c3d74035f2d47a9",
       "session_id": "67bb5eb994f24a56953bbaa960b4b8a9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e8526faa0e732223dd79589d",
+      "at": "2026-11-23T13:45:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7c14edabd2bf44ada5e71113d257b2a0",
+      "session_id": "24cca4279aeb4583a89b2c57ce255d32"
     }
   ]
 }
