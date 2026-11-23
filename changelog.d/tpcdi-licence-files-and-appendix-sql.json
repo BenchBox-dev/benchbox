@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Ship the TPC End User License Agreement, a NOTICE with the TPC legend on line 1 and the TPC-DI specification's audit, validation and visibility SQL, stored unmodified, in the package. A loader translates that SQL to a platform's dialect through the SQLGlot fork, as other benchmarks do, with the translation outcomes recorded in the standard way and the translated output pinned in the golden translation corpus. The SQL is an unofficial shared copy until the official archive is obtained. TPC-DI stays unavailable."
+    }
+  ]
+}

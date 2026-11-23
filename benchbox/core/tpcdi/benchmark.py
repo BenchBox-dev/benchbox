@@ -52,11 +52,14 @@ from benchbox.core.tpcdi.schema import (
     TPCDISchemaManager,
     get_all_create_table_sql,
 )
+from benchbox.core.tpcdi.sources.digen import DigenResult, generate as generate_digen_sources
 from benchbox.core.tpcdi.validation import DataQualityResult, TPCDIValidator
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.printing import emit
+from benchbox.utils.run_deadline import enter_run_phase, own_run_deadline
 
 DATAFRAME_ETL_TABLE_DIR = "dataframe-etl-tables"
+DIGEN_SOURCE_DIRECTORY = "digen"
 
 
 class TPCDITransformationError(RuntimeError):
@@ -543,6 +546,11 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
                 raise ValueError(f"Unsupported format: {format_type}")
 
         return generated_files
+
+    def generate_digen_source_data(self, timeout_seconds: Optional[int] = None) -> DigenResult:
+        with own_run_deadline(timeout_seconds):
+            enter_run_phase("generate")
+            return generate_digen_sources(self.scale_factor, self.config.source_dir / DIGEN_SOURCE_DIRECTORY)
 
     def _generate_csv_sources(self, batch_types: list[str]) -> list[str]:
         csv_files = []

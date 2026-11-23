@@ -19,6 +19,7 @@ include _sources/tpc-h/NOTICE.txt
 include _sources/tpc-ds/NOTICE.txt
 include _sources/tpc-di/EULA.txt
 include _sources/tpc-di/NOTICE.txt
+include _sources/tpc-di/*.sql
 recursive-include _sources/compilation *
 recursive-include _sources/tpc-ds/query_templates *.tpl *.lst
 recursive-include _sources/tpc-ds/query_variants *.tpl
