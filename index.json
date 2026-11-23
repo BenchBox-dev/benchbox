@@ -10685,7 +10685,7 @@
         }
       },
       "integration_branch": "feat/run-timeout-hardening",
-      "integration_head": "24609963c9aefeca4a72ca584d2bcebf3e69ab22",
+      "integration_head": "3abd2375b1e6bacd9095e9544bdfbcd90225013f",
       "integration_log": [
         {
           "at": "2026-11-22T21:01:02Z",
@@ -10734,6 +10734,22 @@
           "op_id": "c031c2165b7a4373add919b2de3f4824",
           "previous_head": "1336a739efaffb40fabb2a9d9e3a4ce620a3763d",
           "seq": 4
+        },
+        {
+          "at": "2026-11-23T02:47:51Z",
+          "changed_files": [
+            "benchbox/core/generation_estimate.json",
+            "docs/operations/run-safety.md"
+          ],
+          "head": "3abd2375b1e6bacd9095e9544bdfbcd90225013f",
+          "kind": "fix",
+          "op_id": "403ac93420154f758e18bda885d34e6d",
+          "previous_head": "24609963c9aefeca4a72ca584d2bcebf3e69ab22",
+          "requires_acceptance": [
+            "hard-stop-exit-bound-term-kill-wait-20261122",
+            "tpch-dbgen-small-scale-process-count-20261122"
+          ],
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-hardening",
