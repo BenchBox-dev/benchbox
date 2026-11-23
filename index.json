@@ -14872,7 +14872,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-source",
-      "integration_head": "3852bc5c5f4fb53f39019a6618c162684e04faad",
+      "integration_head": "98c48f3a5bc5aafca5da14fcc6a279a034e6e158",
       "integration_log": [
         {
           "at": "2026-11-22T07:11:35Z",
@@ -15395,6 +15395,22 @@
           "op_id": "1e9d39284df644bc8783ada58cacf2c8",
           "previous_head": "8364ee313b8d3526586082d4812ddd4988581803",
           "seq": 19
+        },
+        {
+          "at": "2026-11-23T18:33:44Z",
+          "changed_files": [
+            ".github/theseus-lock.json",
+            ".github/workflows/review-gate.yml",
+            ".github/workflows/review-verdict.yml",
+            "changelog.d/ci-theseus-0.2.18.json",
+            "quality/comment-policy.json"
+          ],
+          "head": "98c48f3a5bc5aafca5da14fcc6a279a034e6e158",
+          "kind": "develop-merge",
+          "merged_parent": "e0fae0da2711e06e4a69d704db14f8730aacb0af",
+          "op_id": "ecc99225743f453884d13ae079944fe8",
+          "previous_head": "3852bc5c5f4fb53f39019a6618c162684e04faad",
+          "seq": 20
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-source",
