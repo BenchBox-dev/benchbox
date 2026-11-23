@@ -52296,12 +52296,17 @@
       "title": "UAT: preflight disk report + headroom gate sized to the largest configured scale"
     },
     "uat-quiet-hides-first-failure-output-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T00:26:54Z",
+        "generation": "cd364085afd145e2ad8cedb4afa6db34",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6"
+      },
       "needs": [
         "feature-feat-heavy-guard-attribution-engine-caps-20261117"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "UAT runs benchmarks with --quiet, so the first failure's error text is lost"
     },
     "uat-regression-doris-clickbench-mooncake-flightdata": {
