@@ -25034,10 +25034,15 @@
       "title": "Decide whether the DataFrame memory guard should account for data-generation memory"
     },
     "df-memory-guard-generation-check-runs-after-generation-20261118": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T02:32:50Z",
+        "generation": "132cf9b2bd8b42d9874928cf81921f1b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "DataFrame memory guard's data-generation estimate likely never applies in benchbox run, because generation finishes first"
     },
     "df-memory-guard-refusal-message-and-subset-estimate-20261112": {
