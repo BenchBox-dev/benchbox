@@ -187,6 +187,8 @@ jobs:
           uv run -- python -m pytest -p no:cacheprovider -o addopts='' -q \
             tests/unit/scripts/test_generate_corpus_inventory.py \
             tests/unit/scripts/test_corpus_score_guard.py \
+            tests/unit/scripts/test_corpus_rule_parity.py \
+            tests/unit/cli/test_corpus_rule_lane_canary.py \
             tests/unit/scripts/test_validate_submission.py \
             tests/unit/scripts/explorer_pipeline \
             tests/unit/workflows/test_corpus_trust_boundary.py \

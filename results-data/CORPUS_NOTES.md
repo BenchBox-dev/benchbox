@@ -73,26 +73,34 @@ compliance class once three platforms shared its scale.
 - `validate_submission`, `benchbox submit` and `benchbox publish` accept the bundle.
   Submission prints a `nonstandard-scale` warning that names the scale and the
   exclusion reason.
-- The recorded exclusion reason is `unofficial_compliance`, the reason the
-  Explorer already renders as "Non-standard runs are unofficial and are not ranked."
-  The effective compliance class is `unofficial_nonstandard`, whatever the bundle
-  recorded, so `validate_corpus.py`, the Explorer pipeline and `benchbox submit` agree.
-- New bundles also record `benchmark.compliance_class: unofficial_nonstandard`, so
-  a validator without the registry (the slim `published-results` mirror) still
-  excludes them. Without the registry that validator cannot test the scale: it
-  accepts a recorded `unofficial_nonstandard` bundle of any benchmark other than
-  TPC-H and TPC-DS, and still refuses one for those two, which cannot be told
-  apart from an unofficial run at a standard scale. TPC-H and TPC-DS bundles at an
-  off-list scale are therefore validated where the registry exists.
+- `corpus_rule` computes the outcome from the facts in the bundle (class
+  `nonstandard_scale`, lane none, admitted publicly and by the maintainer path).
+  `validate_corpus.py` reports the exclusion as `not_ranked_nonstandard_scale`;
+  `validate_corpus.admission_reason`, which staging uses, returns none, so the bundle
+  stages. The recorded `benchmark.compliance_class` is information only and no gate
+  reads it: a stamp at a standard scale neither refuses nor excludes a bundle.
 - Off-list scales never rank, even below SF 1. Standard TPC-H and TPC-DS scales
-  below SF 1 keep the subscale policy.
-- Submission still refuses a TPC-H or TPC-DS run at a standard scale that is not
-  `official` (`unofficial_nonstandard` at SF 1 or above without `--official`, and
-  `unofficial_subscale` below SF 1), and every gateway-routed bundle. Only the
-  scale decides whether the unranked acceptance applies.
+  below SF 1 are subscale results: refused on the public path, admitted by the
+  maintainer path and ranked in the subscale cohort.
+- Submission refuses a TPC-H or TPC-DS run below SF 1 and every gateway-routed
+  bundle. A TPC-H or TPC-DS run at a standard scale is admitted whether or not it
+  was made with `--official`; the rule puts a query-only or partial run in its own
+  labelled lane.
 - A non-standard cohort has no rankable identity, so `validate_corpus.py` lists
   it as `UNRANKED` and the depth gate does not apply, however many platforms
   contributed.
+- 2026-11-23: `validate_corpus.py` stopped reading the stamp. Nineteen stored
+  bundles that carried `unofficial_nonstandard` at a standard scale became rankable
+  and none lost rank, exactly the "becomes ranked" rows of the accepted difference
+  report (`results-data/compliance-classes.json` is unchanged because its `rule`
+  section already held these outcomes). TPC-H SF 1 now has four ranked identities, so
+  it left the documented shallow cohorts.
+- Until the Explorer pipeline emits the rule's outcome, the cohort depth gate does not
+  count the 19 bundles listed in `scripts/unpublished_rule_rankings.txt`, because the
+  published ranking still excludes them. `validate_corpus.exclusion_reason` and the lanes
+  follow the rule; only `cohort_platforms` subtracts the list, so TPC-H SF 1 stays a
+  documented shallow cohort. The list is removed when the Explorer switches to the rule.
+  Corrects the 2026-11-23 note above: TPC-H SF 1 did not leave the shallow cohorts.
 
 Effect on the published corpus: the registry lists only SF 1 as a standard
 ClickBench scale. The 13 ClickBench bundles at SF 0.1 and SF 10 (see "Cloud

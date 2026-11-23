@@ -145,10 +145,10 @@ class TestOfficialFlagReachesTheClassifier:
         assert get_benchmark_instance(default, None).compliance_class is None
 
     def test_an_official_run_is_not_refused_by_submit_classification(self):
-        from benchbox.validation.bundle import CLI_REFUSED_COMPLIANCE_CLASSES
+        from benchbox.core.results.corpus_rule import public_refusal
 
-        official = validate_tpcds_scale(1.0, official=True)
-        assert official.value not in CLI_REFUSED_COMPLIANCE_CLASSES
+        assert validate_tpcds_scale(1.0, official=True) is TpcdsComplianceClass.OFFICIAL
+        assert public_refusal("tpcds", 1.0) is None
         assert validate_tpcds_scale(1.0) is None
 
     def test_both_construction_paths_carry_compliance_mode(self):

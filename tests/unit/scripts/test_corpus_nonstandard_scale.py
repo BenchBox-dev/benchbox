@@ -72,6 +72,7 @@ def _bundle_payload(benchmark: str, scale: float, platform: str, *, compliance_c
             "validation": "passed",
         },
         "queries": queries,
+        "phases": {"power_test": {"status": "COMPLETED"}},
     }
     if compliance_class is not None:
         payload["benchmark"]["compliance_class"] = compliance_class
@@ -185,8 +186,9 @@ def test_three_platform_off_list_cohort_never_ranks(tmp_path: Path, benchmark_id
     assert cohorts == {(benchmark_id, f"{scale}"): set()}
     assert validator.unranked_cohorts(cohorts) == [(benchmark_id, f"{scale}")]
     assert validator.shallow_cohorts(cohorts) == {}
+    expected = "not_admitted_undetermined" if benchmark_id == "tpcdi" else "not_ranked_nonstandard_scale"
     for path in paths:
-        assert validator.exclusion_reason(json.loads(path.read_text(encoding="utf-8"))) == "unofficial_compliance"
+        assert validator.exclusion_reason(json.loads(path.read_text(encoding="utf-8"))) == expected
 
 
 @pytest.mark.parametrize("benchmark_id", list_benchmark_ids())
@@ -226,8 +228,8 @@ def test_submission_accepts_an_off_list_bundle_and_discloses_the_exclusion(bench
 
     assert vr.ok, vr.errors
     (warning,) = _nonstandard_warnings(vr)
-    assert "unofficial_compliance" in warning
-    assert "excluded from ranking" in warning
+    assert "accepted and not ranked" in warning
+    assert "Non-standard scale" in warning
 
 
 def test_submission_accepts_the_stamped_class_at_an_off_list_scale() -> None:
@@ -237,10 +239,11 @@ def test_submission_accepts_the_stamped_class_at_an_off_list_scale() -> None:
     assert len(_nonstandard_warnings(vr)) == 1
 
 
-def test_submission_accepts_a_recorded_subscale_class_at_an_off_list_scale() -> None:
+def test_submission_refuses_a_tpc_bundle_below_the_minimum_scale_whether_or_not_the_scale_is_listed() -> None:
     vr = _validate(_submission_bundle("tpch", 0.5, compliance_class="unofficial_subscale"))
 
-    assert vr.ok, vr.errors
+    assert not vr.ok
+    assert any("not accepted for public submissions" in error for error in vr.errors)
 
 
 @pytest.mark.parametrize("compliance_class", ["garbage", "", "Official", 7, ["official"]])
@@ -309,24 +312,17 @@ def test_submission_still_refuses_gateway_routed_bundles_at_an_off_list_scale() 
     assert any("gateway_routed" in error for error in routed.errors)
 
 
-def test_a_registry_less_validator_does_not_decide_from_the_stamp(
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize("compliance_class", [None, "official", NONSTANDARD_COMPLIANCE_CLASS, "unofficial_subscale"])
+def test_the_submission_outcome_at_an_off_list_scale_does_not_depend_on_the_stamp(
+    compliance_class: str | None,
 ) -> None:
-    import benchbox.validation.bundle as bundle_module
+    kwargs = {} if compliance_class is None else {"compliance_class": compliance_class}
 
-    monkeypatch.setattr(bundle_module, "is_standard_scale_factor", None)
+    ssb = _validate(_submission_bundle("ssb", 2.0, **kwargs))
+    assert ssb.ok, ssb.errors
+    assert len(_nonstandard_warnings(ssb)) == 1
 
-    stamped_ssb = _validate(_submission_bundle("ssb", 2.0, compliance_class=NONSTANDARD_COMPLIANCE_CLASS))
-    assert stamped_ssb.ok, stamped_ssb.errors
-    assert any("unofficial_compliance" in warning for warning in stamped_ssb.warnings)
-
-    unstamped_ssb = _validate(_submission_bundle("ssb", 2.0))
-    assert unstamped_ssb.ok, unstamped_ssb.errors
-
-    stamped_tpch = _validate(_submission_bundle("tpch", 2.0, compliance_class=NONSTANDARD_COMPLIANCE_CLASS))
-    assert stamped_tpch.ok, stamped_tpch.errors
-
-    routed_payload = _submission_bundle("ssb", 2.0, compliance_class=NONSTANDARD_COMPLIANCE_CLASS)
+    routed_payload = _submission_bundle("ssb", 2.0, **kwargs)
     routed_payload["platform"]["gateway"] = {"name": "espresso", "routed": True}
     assert not _validate(routed_payload).ok
 

@@ -12,12 +12,21 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 def _minimal_bundle():
     return {
-        "version": "2.1",
+        "version": "2.2",
         "run": {"id": "a", "timestamp": "2026-04-01T12:00:00", "total_duration_ms": 5000},
-        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 0.01},
+        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0},
         "platform": {"name": "DuckDB", "version": "1.4.3"},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
-        "queries": [{"id": f"Q{i}", "ms": 100 + i * 10, "status": "SUCCESS"} for i in range(1, 23)],
+        "queries": [
+            {
+                "id": f"Q{i}",
+                "ms": 100 + i * 10,
+                "status": "SUCCESS",
+                "rows": 5,
+                "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5},
+            }
+            for i in range(1, 23)
+        ],
     }
 
 
