@@ -62,6 +62,10 @@ def resolve_dataframe_csv_dialect(
     return ("" if format_type == "tbl" else None), default_has_header
 
 
+def csv_null_options(null_marker: str | None) -> dict[str, Any]:
+    return {"keep_default_na": False, "na_values": [""] if not null_marker else ["", null_marker]}
+
+
 def declared_load_columns(benchmark: Any | None, table_name: str) -> list[str] | None:
     provider = getattr(benchmark, "get_dataframe_load_columns", None)
     if not callable(provider):

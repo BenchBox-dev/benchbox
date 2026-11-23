@@ -39,6 +39,10 @@ class JoinOrderSyntheticBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         if not isinstance(parallel, int) or parallel < 1:
             raise ValueError(f"parallel must be a positive integer, got {parallel}")
 
+        from benchbox.core.benchmark_registry import validate_scale_factor
+
+        validate_scale_factor("joinorder_synthetic", scale_factor)
+
         quiet = kwargs.pop("quiet", False)
 
         if output_dir is None:

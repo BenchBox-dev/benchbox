@@ -1216,6 +1216,23 @@ def _run_supervised(command: Sequence[str], env: Mapping[str, str], on_exit: Cal
         return 126
 
 
+def _precondition_exit(command: Sequence[str], admit: bool) -> int | None:
+    rejected = _load_sibling("heavy_preflight_scope").rejection_message(command)
+    if rejected is not None:
+        _log(rejected)
+        return EXIT_USAGE
+    if not admit:
+        return None
+    from benchbox.utils import resource_limits
+
+    try:
+        resource_limits.admission_policy_from_env(os.environ)
+    except ValueError as exc:
+        _log(str(exc))
+        return EXIT_USAGE
+    return None
+
+
 def run_command(
     command: Sequence[str],
     *,
@@ -1226,10 +1243,9 @@ def run_command(
     guard: bool = False,
     admit_wait_seconds: float = 0.0,
 ) -> int:
-    rejected = _load_sibling("heavy_preflight_scope").rejection_message(command)
-    if rejected is not None:
-        _log(rejected)
-        return EXIT_USAGE
+    refused = _precondition_exit(command, admit)
+    if refused is not None:
+        return refused
     path = lock_path()
     rendered = " ".join(shlex.quote(part) for part in command)
     admit_deadline = _now() + admit_wait_seconds
@@ -1333,6 +1349,9 @@ def run_command(
 def admit_command(need_gib: float | None = None) -> int:
     try:
         report = check_admission(need_gib=need_gib, echo=False)
+    except ValueError as exc:
+        _log(str(exc))
+        return EXIT_USAGE
     except AdmissionRefused as exc:
         _log(f"REFUSED: host is not ready for heavy work\n{exc.report}")
         return EXIT_ADMISSION
