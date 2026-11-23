@@ -29277,10 +29277,15 @@
       "title": "TPC-DS: scale and dsqgen errors are typed and say what happened"
     },
     "feature-fix-trunk-stability-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T04:25:12Z",
+        "generation": "1b150d4de96d4ef29568157ebe918160",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Trunk stability before v0.6.0: registered batch trunk-stability (notes; not a work item)"
     },
     "feature-pr-landing-guards-20261111": {
