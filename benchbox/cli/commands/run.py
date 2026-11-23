@@ -1797,9 +1797,10 @@ def _data_or_load_handle_result(
     "--output",
     type=str,
     help=(
-        "Directory for generated data and databases (required for cloud platforms; supports s3://, gs://, "
-        "abfss://, dbfs:/Volumes/). Result JSON is not written here: it goes to <benchmark_runs>/results, "
-        "where benchmark_runs is $BENCHBOX_OUTPUT_DIR or the default benchmark_runs directory. "
+        "Directory for generated data and databases; works for local paths and is how a run with its own "
+        "BENCHBOX_OUTPUT_DIR reuses shared generated data. Required for cloud platforms, which accept s3://, "
+        "gs://, abfss://, dbfs:/Volumes/. Result JSON is not written here: it goes to $BENCHBOX_RESULTS_DIR, "
+        "else <benchmark_runs>/results, where benchmark_runs is $BENCHBOX_OUTPUT_DIR or the default directory. "
         "The absolute result path is printed when the run finishes."
     ),
 )

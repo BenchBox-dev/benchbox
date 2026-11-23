@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "benchbox run now writes its result JSON and companion files to BENCHBOX_RESULTS_DIR when it is set, and the --output help states that it works for local paths."
+    }
+  ]
+}
