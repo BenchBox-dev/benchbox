@@ -29,6 +29,8 @@ from benchbox.core.contracts import (
 )
 from benchbox.core.generation_estimate import DATA_GENERATION, QUERY_GENERATION, announce_generation_estimate
 from benchbox.core.loaded_tables import require_loaded_tables
+from benchbox.core.results.builder import normalize_benchmark_id
+from benchbox.core.results.corpus_rule import row_count_reference_exists
 from benchbox.core.results.driver_metadata import apply_driver_metadata
 from benchbox.core.results.models import (
     BenchmarkResults,
@@ -222,7 +224,10 @@ def _run_postload_validation(
 
 
 def _mark_unvalidated_queries(result: BenchmarkResults) -> BenchmarkResults:
-    status = unevidenced_validation_status(result.query_results)
+    status = unevidenced_validation_status(
+        result.query_results,
+        reference_exists=row_count_reference_exists(normalize_benchmark_id(result.benchmark_name), result.scale_factor),
+    )
     if status is None:
         return result
     if (result.validation_status or "").upper() not in {"PASSED", "WARNINGS"}:

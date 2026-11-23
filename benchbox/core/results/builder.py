@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results.corpus_rule import row_count_reference_exists
 from benchbox.core.results.environment import (
     NormalizedExecutionEnvironment,
     PlatformCloudMetadata,
@@ -445,7 +446,12 @@ class ResultBuilder:
         elif failed_queries and validation_status == "PASSED":
             validation_status = "PARTIAL"
         elif validation_status == "PASSED" and (
-            unevidenced_status := unevidenced_validation_status(query_results_list)
+            unevidenced_status := unevidenced_validation_status(
+                query_results_list,
+                reference_exists=row_count_reference_exists(
+                    normalize_benchmark_id(self._benchmark.name), self._benchmark.scale_factor
+                ),
+            )
         ):
             validation_status = unevidenced_status
             if unevidenced_status == NO_REFERENCE_VALIDATION_STATUS:

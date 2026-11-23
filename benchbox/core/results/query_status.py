@@ -178,13 +178,14 @@ def has_row_count_evidence(query_rows: Any) -> bool:
     return "PASSED" in statuses and "UNVALIDATED" not in statuses
 
 
-def unevidenced_validation_status(query_rows: Any) -> str | None:
+def unevidenced_validation_status(query_rows: Any, *, reference_exists: bool) -> str | None:
+    unreferenced = NOT_VALIDATED_VALIDATION_STATUS if reference_exists else NO_REFERENCE_VALIDATION_STATUS
     if unvalidated_measurement_query_ids(query_rows):
-        return NO_REFERENCE_VALIDATION_STATUS
+        return unreferenced
     if unchecked_row_count_evidence(query_rows):
         return NOT_VALIDATED_VALIDATION_STATUS
     if _measurement_row_count_statuses(query_rows) and not has_row_count_evidence(query_rows):
-        return NO_REFERENCE_VALIDATION_STATUS
+        return unreferenced
     return None
 
 

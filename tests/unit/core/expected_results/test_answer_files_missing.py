@@ -69,7 +69,7 @@ def test_missing_answer_files_record_a_skipped_row_and_the_not_validated_run_sta
     assert result.is_valid
     assert not result.unvalidated
     assert "not installed" in (result.warning_message or "")
-    assert unevidenced_validation_status([row]) == NOT_VALIDATED_VALIDATION_STATUS
+    assert unevidenced_validation_status([row], reference_exists=True) == NOT_VALIDATED_VALIDATION_STATUS
 
 
 def test_no_reference_at_a_scale_records_an_unvalidated_row_and_the_no_reference_run_status() -> None:
@@ -80,7 +80,7 @@ def test_no_reference_at_a_scale_records_an_unvalidated_row_and_the_no_reference
     }
 
     assert result.unvalidated
-    assert unevidenced_validation_status([row]) == NO_REFERENCE_VALIDATION_STATUS
+    assert unevidenced_validation_status([row], reference_exists=False) == NO_REFERENCE_VALIDATION_STATUS
 
 
 def test_a_reference_present_validates_normally() -> None:

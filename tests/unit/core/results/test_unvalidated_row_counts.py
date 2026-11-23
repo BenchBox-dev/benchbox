@@ -4,7 +4,7 @@ import pytest
 
 from benchbox.core.results.query_execution import normalize_row_count_validation
 from benchbox.core.results.query_status import unvalidated_measurement_query_ids
-from benchbox.core.runner.runner import _finalize_validation_metadata
+from benchbox.core.runner.runner import _finalize_validation_metadata, _mark_unvalidated_queries
 from tests.fixtures.result_dict_fixtures import make_benchmark_results
 
 pytestmark = [
@@ -127,3 +127,31 @@ def test_passed_run_with_skipped_beside_passed_row_counts_stays_passed():
     )
 
     assert _finalize_validation_metadata(result, []).validation_status == "PASSED"
+
+
+@pytest.mark.parametrize(
+    ("scale_factor", "rows", "expected"),
+    [
+        (0.01, [_row("1", "UNVALIDATED")], "NOT_VALIDATED"),
+        (
+            0.01,
+            [{"query_id": "1", "status": "SUCCESS", "run_type": "measurement", "rows_returned": 4}],
+            "NOT_VALIDATED",
+        ),
+        (10.0, [_row("1", "UNVALIDATED")], "NO_REFERENCE"),
+        (10.0, [{"query_id": "1", "status": "SUCCESS", "run_type": "measurement", "rows_returned": 4}], "NO_REFERENCE"),
+    ],
+)
+def test_no_reference_is_recorded_only_where_the_reference_data_records_none(scale_factor, rows, expected):
+    result = make_benchmark_results(
+        benchmark_name="TPC-H",
+        scale_factor=scale_factor,
+        validation_status="PASSED",
+        validation_details={},
+        query_results=rows,
+    )
+
+    finalized = _mark_unvalidated_queries(result)
+
+    assert finalized.validation_status == expected
+    assert ("reason" in finalized.validation_details) is (expected == "NO_REFERENCE")

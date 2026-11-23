@@ -16,7 +16,6 @@ from benchbox.core.results.query_status import (
     NO_REFERENCE_REASON,
     NO_REFERENCE_VALIDATION_STATUS,
     row_count_skip_is_documented,
-    unvalidated_measurement_query_ids,
     within_tolerance_warning,
 )
 from benchbox.core.validation.query_validation import (
@@ -117,12 +116,7 @@ def validate_dataframe_query_results(
         status = "FAILED"
     elif execution_failures:
         status = "PARTIAL"
-    elif evidence["errors"]:
-        status = "UNCERTAIN"
-    elif unvalidated_measurement_query_ids(successful_rows):
-        status = NO_REFERENCE_VALIDATION_STATUS
-        evidence["reason"] = NO_REFERENCE_REASON
-    elif evidence["skipped"] > documented_skips:
+    elif evidence["errors"] or evidence["skipped"] > documented_skips:
         status = "UNCERTAIN"
     elif evidence["checked"] and evidence["checked"] + documented_skips == len(successful_rows):
         status = "PASSED"

@@ -141,7 +141,11 @@ def test_dataframe_and_sql_runs_without_a_reference_record_the_same_status_and_r
 
     summary = validate_dataframe_query_results([measurement], benchmark_name=benchmark_name, scale_factor=scale_factor)
 
-    assert summary.status == unevidenced_validation_status(sql_rows) == NO_REFERENCE_VALIDATION_STATUS
+    assert (
+        summary.status
+        == unevidenced_validation_status(sql_rows, reference_exists=False)
+        == NO_REFERENCE_VALIDATION_STATUS
+    )
     assert summary.details["reason"] == NO_REFERENCE_REASON
     assert measurement["row_count_validation"]["status"] == "UNVALIDATED"
     assert measurement["row_count_validation"]["warning"] == NO_REFERENCE_REASON
