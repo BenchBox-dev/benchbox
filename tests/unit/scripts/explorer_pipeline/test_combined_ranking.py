@@ -78,7 +78,7 @@ def test_power_and_throughput_phases_keep_their_metrics(family: str) -> None:
 def test_clean_combined_bundle_exposes_the_composite_beside_power_and_throughput(
     tmp_path: Path, family_id: str, field: str, expected: float
 ) -> None:
-    payload = _bundle("duckdb", benchmark=family_id, qph=321.5)
+    payload = _bundle("platform-a", benchmark=family_id, qph=321.5)
     executed = sum(1 for query in payload["queries"] if query["test_type"] == "throughput")
     first_round_ms = payload["phases"]["throughput_test"]["duration_ms"]
     entry, detail = _entry(tmp_path, payload)

@@ -232,7 +232,7 @@ def tpcds_load_seconds_for(qph: float, streams: int, power_ms: float, scale_fact
 
 
 def combined_bundle(
-    platform: str = "duckdb",
+    platform: str = "platform-a",
     *,
     benchmark: str = "tpch",
     streams: int | None = None,

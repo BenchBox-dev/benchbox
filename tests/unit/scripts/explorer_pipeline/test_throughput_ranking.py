@@ -81,7 +81,7 @@ def test_throughput_bundle_exposes_throughput_at_size_and_stream_count(tmp_path:
 
 
 def test_power_bundle_has_no_throughput_fields(tmp_path: Path) -> None:
-    ((entry, detail),) = _pairs(tmp_path, {"duckdb": scored_minimal_bundle()})
+    ((entry, detail),) = _pairs(tmp_path, {"platform-a": scored_minimal_bundle()})
 
     assert entry.power_score == pytest.approx(1234.56)
     assert entry.throughput_at_size is None

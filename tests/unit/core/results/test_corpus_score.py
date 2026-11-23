@@ -132,7 +132,7 @@ def _build_through_the_cli_classification(scale: float, official: bool = False):
             benchmark_id="tpch",
             compliance_class=dataframe_compliance_class(None, config),
         ),
-        platform=PlatformInfoInput(name="DuckDB", platform_version="1.0.0"),
+        platform=PlatformInfoInput(name="platform-a", platform_version="1.0.0"),
     )
     for raw in _stub_executor_results():
         builder.add_query_result(normalize_query_result(raw))
