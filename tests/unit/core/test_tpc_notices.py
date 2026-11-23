@@ -147,3 +147,12 @@ def test_tpcdi_notice_names_the_unofficial_appendix_source() -> None:
 def test_readme_licence_section_carries_the_legend() -> None:
     text = (ROOT / "README.md").read_text(encoding="utf-8")
     assert TPC_LEGEND in text.replace("\n", " ")
+
+
+def test_tpcdi_tools_eula_matches_the_runtime_eula() -> None:
+    assert (TPCDI_RUNTIME_DIR / "tools" / "EULA.txt").read_bytes() == (TPCDI_RUNTIME_DIR / "EULA.txt").read_bytes()
+
+
+@pytest.mark.parametrize("filename", ["EULA.txt", "NOTICE.txt"])
+def test_tpcdi_source_notices_are_listed_for_the_source_distribution(filename: str) -> None:
+    assert f"include _sources/tpc-di/{filename}" in (ROOT / "MANIFEST.in").read_text(encoding="utf-8").splitlines()

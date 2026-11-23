@@ -14,15 +14,17 @@ import shlex
 import subprocess
 import sys
 import tempfile
-import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from scripts.worktree_finish import FinishPreviewResult
 
 ROOT = Path(__file__).resolve().parents[1]
+T = TypeVar("T")
 
 CLI_DESCRIPTION = (
     "Integration-branch batch loop: leader and member steps behind the batch-* make targets.\n"
@@ -65,6 +67,7 @@ FINAL_SUITE = "member-reruns"
 LEADER_MEMBER_OPS = frozenset({"take", "release", "renew", "recover"})
 POLICY_PATH = ".github/review.yml"
 SECTION_BUDGET = 6000
+CURSOR_STALE_ATTEMPTS = 5
 REVIEW_PRINT_LIMIT = 16000
 GLOBAL_INPUT_FILES = frozenset(
     {"pyproject.toml", "uv.lock", "ruff.toml", ".ruff.toml", "pytest.ini", "tox.ini", "setup.cfg", "Makefile"}
@@ -78,6 +81,10 @@ FULL_SHA = re.compile(r"^[0-9a-f]{40}([0-9a-f]{24})?$")
 
 
 class BatchError(RuntimeError):
+    pass
+
+
+class CursorStale(BatchError):
     pass
 
 
@@ -333,14 +340,32 @@ def _tractable_json(repo: Path, args: list[str]) -> dict:
         detail = ""
         if isinstance(envelope, dict):
             detail = f" {envelope.get('code', '')}: {envelope.get('error', '')} {envelope.get('recovery', '')}"
-        raise BatchError(f"tracker read failed (exit {proc.returncode}){detail or ' ' + proc.stderr.strip()[:300]}")
+        message = f"tracker read failed (exit {proc.returncode}){detail or ' ' + proc.stderr.strip()[:300]}"
+        if isinstance(envelope, dict) and envelope.get("code") == "E_CURSOR_STALE":
+            raise CursorStale(message)
+        raise BatchError(message)
     data = envelope.get("data")
     if not isinstance(data, dict):
         raise BatchError("tracker read returned no data object")
     return data
 
 
+def _reread_on_stale_cursor(read: Callable[[], T]) -> T:
+    attempt = 1
+    while True:
+        try:
+            return read()
+        except CursorStale:
+            if attempt >= CURSOR_STALE_ATTEMPTS:
+                raise
+            attempt += 1
+
+
 def read_tracker(repo: Path, batch_id: str) -> dict:
+    return _reread_on_stale_cursor(lambda: _read_tracker_once(repo, batch_id))
+
+
+def _read_tracker_once(repo: Path, batch_id: str) -> dict:
     summary = _tractable_json(repo, ["batch", "show", batch_id])
     capability = summary.get("capability")
     if not isinstance(capability, dict) or int(capability.get("version") or 0) < 2:
@@ -709,17 +734,35 @@ def _validate_verification_command(command: object) -> list[str]:
     return list(command)
 
 
-def _preflight_refusal(repo: Path, proc, started: float) -> str:
+def _receipt_path(repo: Path) -> Path | None:
+    try:
+        import preflight_receipt
+
+        return preflight_receipt.receipt_dir() / f"{_git(repo, 'rev-parse', 'HEAD^{tree}')}.json"
+    except (ImportError, BatchError, OSError):
+        return None
+
+
+def _receipt_stamp(path: Path | None) -> tuple[int, int, int] | None:
+    if path is None:
+        return None
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    return (stat.st_ino, stat.st_mtime_ns, stat.st_size)
+
+
+def _preflight_refusal(path: Path | None, proc, stamp_before: tuple[int, int, int] | None) -> str:
     import preflight_receipt
 
-    path = None
     receipt = None
-    try:
-        path = preflight_receipt.receipt_dir() / f"{_git(repo, 'rev-parse', 'HEAD^{tree}')}.json"
-        if path.stat().st_mtime >= started:
+    stamp = _receipt_stamp(path)
+    if path is not None and stamp is not None and stamp != stamp_before:
+        try:
             receipt = json.loads(path.read_text(encoding="utf-8"))
-    except (BatchError, OSError, ValueError):
-        receipt = None
+        except (OSError, ValueError):
+            receipt = None
     steps = receipt.get("steps") if isinstance(receipt, dict) else None
     if not isinstance(steps, list):
         tail = (proc.stderr or proc.stdout).strip()[-400:]
@@ -785,10 +828,11 @@ def check_member(
         if not (repo / test.split("::", 1)[0]).exists():
             raise BatchError(f"named test {test!r} does not exist in this worktree")
     preflight = [*(preflight_command or DEFAULT_PREFLIGHT_COMMAND), f"BASE={integration_head}"]
-    preflight_started = time.time()
+    receipt_path = _receipt_path(repo)
+    receipt_before = _receipt_stamp(receipt_path)
     proc = _run(preflight, repo)
     if proc.returncode != 0:
-        raise BatchError(_preflight_refusal(repo, proc, preflight_started))
+        raise BatchError(_preflight_refusal(receipt_path, proc, receipt_before))
     proc = _run(["make", "-s", "changelog-check"], repo)
     if proc.returncode != 0:
         raise BatchError(f"changelog check failed: {(proc.stderr or proc.stdout).strip()[-400:]}")
@@ -1332,6 +1376,10 @@ def registered_dependencies(repo: Path, batch_id: str, member: str) -> list[str]
 
 
 def _item_sessions(repo: Path, item: str) -> list[dict]:
+    return _reread_on_stale_cursor(lambda: _item_sessions_once(repo, item))
+
+
+def _item_sessions_once(repo: Path, item: str) -> list[dict]:
     entries: list[dict] = []
     offset = 0
     revision: str | None = None

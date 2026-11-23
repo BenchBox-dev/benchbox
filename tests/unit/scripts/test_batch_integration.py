@@ -291,6 +291,7 @@ def _preflight_that_fails(
     steps: list[dict] | None,
     *,
     before_run: bool = False,
+    written_with_earlier_mtime: bool = False,
 ) -> Path:
     receipts = tmp_path / "receipts"
     monkeypatch.setenv("BENCHBOX_PREFLIGHT_RECEIPT_DIR", str(receipts))
@@ -310,6 +311,9 @@ def _preflight_that_fails(
         if list(argv)[:2] == ["make", "pr-preflight"]:
             if steps is not None and not before_run:
                 write()
+                if written_with_earlier_mtime:
+                    earlier = path.stat().st_mtime - 5
+                    os.utime(path, (earlier, earlier))
             return done(2, stderr=PRIMARY_CLONE_WARNING)
         return original(argv, cwd, **kwargs)
 
@@ -378,6 +382,17 @@ def test_member_check_refusal_ignores_a_receipt_left_by_an_earlier_run(
     world.commit(member, {"src/a.py": "member\n"})
     _preflight_that_fails(monkeypatch, tmp_path, member, [FAILED_PYTEST_STEP], before_run=True)
     with _raises(r"no receipt for this tree"):
+        world.check(member, ["tests/test_zeta.py"])
+
+
+def test_member_check_refusal_reads_a_receipt_written_during_the_run_with_an_earlier_timestamp(
+    world: World, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    world.start()
+    member = world.member("zeta")
+    world.commit(member, {"src/a.py": "member\n"})
+    _preflight_that_fails(monkeypatch, tmp_path, member, [FAILED_PYTEST_STEP], written_with_earlier_mtime=True)
+    with _raises(r"failed step pytest \(exit 1\); first failing test tests/unit/test_first.py::test_one"):
         world.check(member, ["tests/test_zeta.py"])
 
 
@@ -1664,6 +1679,62 @@ def test_tracker_reads_page_every_section_with_the_revision_pin(world: World) ->
         str(world.tracker.rev),
     ] in argvs
     assert all(call[1] == integration for call in world.calls)
+
+
+def _summary_reads(world: World) -> int:
+    prefix = len(bi.TRACTABLE_COMMAND)
+    return len([argv for argv, _ in world.calls if argv[prefix:] == ["batch", "show", BATCH]])
+
+
+def test_a_tracker_that_changes_between_pages_is_read_again_from_the_start(world: World) -> None:
+    integration = world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    world.land_and_prepare("zeta")
+    world.tracker.window_cap = 40
+    world.tracker.paged_sections = {"receipts", "integration_log"}
+    world.tracker.churn = 2
+    world.calls.clear()
+    tracker = bi.read_tracker(integration, BATCH)
+    expected = world.tracker.sections()
+    assert tracker["receipts"] == expected["receipts"] and tracker["integration_log"] == expected["integration_log"]
+    assert tracker["_rev"] == str(world.tracker.rev)
+    assert _summary_reads(world) == 3
+
+
+def test_a_tracker_that_keeps_changing_is_refused_after_a_bounded_number_of_reads(world: World) -> None:
+    integration = world.start()
+    world.deliver("zeta", {"src/a.py": "member\n"})
+    world.land_and_prepare("zeta")
+    world.tracker.window_cap = 40
+    world.tracker.paged_sections = {"receipts", "integration_log"}
+    world.tracker.churn = 10**6
+    world.calls.clear()
+    with _raises("tracker read failed .*E_CURSOR_STALE: revision changed"):
+        bi.read_tracker(integration, BATCH)
+    assert _summary_reads(world) == bi.CURSOR_STALE_ATTEMPTS
+
+
+def test_a_session_history_that_changes_between_pages_is_read_again_from_the_start(world: World) -> None:
+    integration = world.start()
+    entries = [_session("update", f"op{index}", f"2000-01-01T00:00:0{index}Z") for index in range(4)]
+    world.tracker.item_sessions["zeta"] = entries
+    world.tracker.session_page = 1
+    world.tracker.churn = 2
+    assert bi._item_sessions(integration, "zeta") == entries
+
+
+def test_a_session_history_that_keeps_changing_is_refused_after_a_bounded_number_of_reads(world: World) -> None:
+    integration = world.start()
+    world.tracker.item_sessions["zeta"] = [
+        _session("update", f"op{index}", f"2000-01-01T00:00:0{index}Z") for index in range(4)
+    ]
+    world.tracker.session_page = 1
+    world.tracker.churn = 10**6
+    world.calls.clear()
+    with _raises("tracker read failed .*E_CURSOR_STALE"):
+        bi._item_sessions(integration, "zeta")
+    firsts = [argv for argv, _ in world.calls if "--offset" in argv and argv[argv.index("--offset") + 1] == "0"]
+    assert len(firsts) == bi.CURSOR_STALE_ATTEMPTS
 
 
 def test_an_unreadable_tracker_fails_closed(world: World) -> None:

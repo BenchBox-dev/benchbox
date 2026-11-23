@@ -43,6 +43,18 @@ class TestDuckDBAdapter:
             assert adapter.thread_limit is None
             assert adapter.enable_progress_bar is False
 
+    @pytest.mark.parametrize("memory_limit", [None, "4GB", "8GB"])
+    def test_a_default_run_under_a_small_heavy_run_budget_starts_with_the_requested_limit(
+        self, monkeypatch, memory_limit
+    ):
+        monkeypatch.setenv("BENCHBOX_HEAVY_RUN_ID", "run-1")
+        monkeypatch.setenv("BENCHBOX_HEAVY_MEMORY_BUDGET_GIB", "2")
+        config = {} if memory_limit is None else {"memory_limit": memory_limit}
+        with patch("benchbox.platforms.duckdb.duckdb"):
+            adapter = DuckDBAdapter(**config)
+
+        assert adapter.memory_limit == (memory_limit or "4GB")
+
     @pytest.mark.parametrize("value", ["2GiB", "2 GB", "2 gigabytes", "2e3 MB", "976.5 KiB"])
     def test_initialization_accepts_duckdb_memory_size_syntax(self, value):
         with patch("benchbox.platforms.duckdb.duckdb"):

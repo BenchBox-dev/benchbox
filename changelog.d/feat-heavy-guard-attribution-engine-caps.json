@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "benchbox run --quiet now prints the captured error output to stderr when the run fails, so a failed quiet run no longer exits without a message."
+    },
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Heavy-work admission now requires a clean host for a hold window (BENCHBOX_HEAVY_ADMIT_HOLD_SECONDS, default 30; a non-finite or negative value is refused), and the watchdog reports the largest processes outside a breaching tree with their command lines redacted and container runtime processes on a separate line, without changing what it kills."
+    }
+  ]
+}

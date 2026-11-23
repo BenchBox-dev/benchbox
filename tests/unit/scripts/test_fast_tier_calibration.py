@@ -43,3 +43,16 @@ def test_record_aggregates_collection_lines_and_tolerates_a_missing_file(
 
     missing = tmp_path / "missing.jsonl"
     assert calibration.build_record(missing)["collection"] == {"processes": 0, "max_seconds": None, "seconds": []}
+
+
+def test_calibration_records_which_attempt_measured_it(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(calibration, "CALIBRATION_ITERATIONS", 1000)
+    collection = tmp_path / "collection.jsonl"
+    output = tmp_path / "calibration.json"
+    assert (
+        calibration.main(
+            ["--collection-file", str(collection), "--output", str(output), "--run-id", "77", "--run-attempt", "3"]
+        )
+        == 0
+    )
+    assert json.loads(output.read_text(encoding="utf-8"))["measured_in"] == {"run_id": "77", "run_attempt": "3"}

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import shutil
 import subprocess
@@ -400,11 +401,13 @@ MIN_LEVEL_ENV = "BENCHBOX_HEAVY_MIN_LEVEL"
 MIN_FREE_DISK_GIB_ENV = "BENCHBOX_HEAVY_MIN_FREE_DISK_GIB"
 MEMORY_BUDGET_GIB_ENV = "BENCHBOX_HEAVY_MEMORY_BUDGET_GIB"
 MAX_LOAD_RATIO_ENV = "BENCHBOX_HEAVY_MAX_LOAD_RATIO"
+ADMIT_HOLD_SECONDS_ENV = "BENCHBOX_HEAVY_ADMIT_HOLD_SECONDS"
 OUTPUT_DIR_ENV = "BENCHBOX_OUTPUT_DIR"
 DEFAULT_ADMIT_MIN_GIB = 2.0
 DEFAULT_MIN_LEVEL = 35.0
 DEFAULT_MIN_FREE_DISK_GIB = 50.0
 DEFAULT_MAX_LOAD_RATIO = 5.0
+DEFAULT_ADMIT_HOLD_SECONDS = 30.0
 DEFAULT_BUDGET_FRACTION = 0.5
 DEFAULT_OUTPUT_ROOT = "benchmark_runs"
 SYSCTL_PATH = "/usr/sbin/sysctl"
@@ -506,6 +509,7 @@ class AdmissionPolicy:
     min_level: float = DEFAULT_MIN_LEVEL
     min_free_disk_gib: float = DEFAULT_MIN_FREE_DISK_GIB
     max_load_ratio: float = DEFAULT_MAX_LOAD_RATIO
+    hold_seconds: float = DEFAULT_ADMIT_HOLD_SECONDS
 
 
 @dataclass(frozen=True)
@@ -530,6 +534,19 @@ def _float_setting(environ: Mapping[str, str], name: str, default: float) -> flo
     return value
 
 
+def _hold_seconds_setting(environ: Mapping[str, str]) -> float:
+    raw = environ.get(ADMIT_HOLD_SECONDS_ENV)
+    if raw is None or not raw.strip():
+        return DEFAULT_ADMIT_HOLD_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        return DEFAULT_ADMIT_HOLD_SECONDS
+    if not math.isfinite(value) or value < 0:
+        raise ValueError(f"{ADMIT_HOLD_SECONDS_ENV} must be a finite number of seconds, 0 or more; got {raw!r}.")
+    return value
+
+
 def admission_policy_from_env(
     environ: Mapping[str, str] | None = None, *, need_gib: float | None = None
 ) -> AdmissionPolicy:
@@ -539,6 +556,7 @@ def admission_policy_from_env(
         min_level=_float_setting(env, MIN_LEVEL_ENV, DEFAULT_MIN_LEVEL),
         min_free_disk_gib=_float_setting(env, MIN_FREE_DISK_GIB_ENV, DEFAULT_MIN_FREE_DISK_GIB),
         max_load_ratio=_float_setting(env, MAX_LOAD_RATIO_ENV, DEFAULT_MAX_LOAD_RATIO),
+        hold_seconds=_hold_seconds_setting(env),
     )
 
 
@@ -753,6 +771,7 @@ def format_admission_report(result: AdmissionResult, policy: AdmissionPolicy) ->
         f"  available memory: {_fmt(pressure.available_gib, ' GiB')} (need {policy.need_gib:g} GiB)",
         f"  total memory: {_fmt(pressure.total_gib, ' GiB')}; swap used (reported only): "
         f"{_fmt(pressure.swap_used_percent, '%')}",
+        f"  admission condition held for: {policy.hold_seconds:g}s ({ADMIT_HOLD_SECONDS_ENV})",
         f"  5-minute load average: {_fmt(pressure.load_average_5m)} on {_fmt(pressure.cpu_count)} CPUs "
         f"({f'refuse above {policy.max_load_ratio:g} x CPUs' if policy.max_load_ratio > 0 else 'not enforced'})",
     ]
@@ -781,19 +800,38 @@ def admit_heavy_work(
     force: bool = False,
     retry_window_seconds: float = RETRY_WINDOW_SECONDS,
     retry_interval_seconds: float = RETRY_INTERVAL_SECONDS,
+    clock: Callable[[], float] | None = None,
 ) -> AdmissionResult:
     read = read_host_pressure if reader is None else reader
-    started = mono_time()
+    now_of = mono_time if clock is None else clock
+    started = now_of()
+    saw_clean = False
+    stable_since: float | None = None
     samples = 0
     while True:
         pressure = read()
         samples += 1
+        now = now_of()
         refusals = evaluate_admission(pressure, policy)
-        if not refusals:
-            return AdmissionResult(True, (), pressure, samples)
         if force:
-            return AdmissionResult(True, refusals, pressure, samples, forced=True)
-        remaining = retry_window_seconds - elapsed_seconds(started)
+            return AdmissionResult(True, refusals, pressure, samples, forced=bool(refusals))
+        if not refusals:
+            if stable_since is None:
+                stable_since = now
+                saw_clean = True
+            held = now - stable_since
+            if held >= policy.hold_seconds:
+                return AdmissionResult(True, (), pressure, samples)
+            _sleep(min(retry_interval_seconds, policy.hold_seconds - held))
+            continue
+        if stable_since is not None:
+            refusals = (
+                *refusals,
+                f"condition did not hold for {policy.hold_seconds:g}s ({ADMIT_HOLD_SECONDS_ENV}); "
+                f"it held for {now - stable_since:.0f}s before failing again",
+            )
+        stable_since = None
+        remaining = retry_window_seconds + (policy.hold_seconds if saw_clean else 0.0) - (now - started)
         if remaining <= 0:
             return AdmissionResult(False, refusals, pressure, samples)
         _sleep(min(retry_interval_seconds, remaining))

@@ -128,7 +128,7 @@ def _collect_starrocks(collect: Collect, cli: str, container: str) -> None:
     )
 
 
-def _collect_cedardb(collect: Collect, cli: str, container: str) -> None:
+def _collect_container_log_events_memory(collect: Collect, cli: str, container: str) -> None:
     collect("container.log", [cli, "logs", "--timestamps", "--tail", str(_CEDARDB_LOG_LINES), container])
     until = int(time.time())
     collect(
@@ -149,7 +149,8 @@ def _collect_cedardb(collect: Collect, cli: str, container: str) -> None:
 
 _COLLECTORS: dict[str, Callable[[Collect, str, str], None]] = {
     "starrocks": _collect_starrocks,
-    "cedardb": _collect_cedardb,
+    "cedardb": _collect_container_log_events_memory,
+    "pg-mooncake": _collect_container_log_events_memory,
 }
 EVIDENCE_PLATFORMS: Sequence[str] = tuple(_COLLECTORS)
 

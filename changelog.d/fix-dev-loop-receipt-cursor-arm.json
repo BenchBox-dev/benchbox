@@ -1,0 +1,1 @@
+{"schema":1,"internal":"The preflight receipt step documents in --help that it returns the command's raw exit code, and a test fails when a make or scripts caller of --ok-codes does not map every accepted non-zero code to success."}

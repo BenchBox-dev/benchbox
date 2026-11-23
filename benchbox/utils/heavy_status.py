@@ -469,7 +469,10 @@ def _render_lock(reading: StatusReading) -> list[str]:
 def _render_pressure(reading: StatusReading, environ: Mapping[str, str] | None) -> list[str]:
     if reading.pressure is None:
         return ["host readings: unmeasured"]
-    policy = resource_limits.admission_policy_from_env(environ)
+    try:
+        policy = resource_limits.admission_policy_from_env(environ)
+    except ValueError as exc:
+        return [str(exc)]
     refusals = resource_limits.evaluate_admission(reading.pressure, policy)
     result = resource_limits.AdmissionResult(not refusals, refusals, reading.pressure)
     lines = resource_limits.format_admission_report(result, policy).splitlines()

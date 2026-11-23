@@ -1,0 +1,1 @@
+{"schema":1,"internal":"make pr-arm waits instead of refusing when the only failed core check is a CI (text edit) placeholder and no full CI run is listed yet for a pull request that was just marked ready."}
