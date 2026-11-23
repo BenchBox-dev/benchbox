@@ -11254,11 +11254,22 @@
         "hard-stop-exit-bound-term-kill-wait-20261122",
         "tpch-dbgen-small-scale-process-count-20261122"
       ],
-      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18",
-      "owner_epoch": 0,
-      "owner_generation": "bc8b84117d96a1ffee66af28f520aa58",
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f39bd68d6be6ca1c15ff91e",
+      "owner_epoch": 1,
+      "owner_generation": "a802e6526b9faf63f98d4049bf4b6fd5",
       "project_id": "run-timeout-plan-20261120",
-      "recoveries": [],
+      "recoveries": [
+        {
+          "at": "2026-11-23T15:50:30Z",
+          "client": "omp-coding-agent",
+          "epoch": 1,
+          "new_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4f39bd68d6be6ca1c15ff91e",
+          "op_id": "f0c20886f4a04ebba185c66526c422d1",
+          "previous_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18",
+          "reason": "The leader's MCP server restarted with a new actor identity after the final PR merged; the same leader continues.",
+          "session_id": "3204b8c4f1694869956ba59ef92c8970"
+        }
+      ],
       "repository": "https://github.com/BenchBox-dev/BenchBox.git",
       "scope": {
         "hard-stop-exit-bound-term-kill-wait-20261122": [
