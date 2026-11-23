@@ -735,11 +735,11 @@ def _validate_verification_command(command: object) -> list[str]:
 
 
 def _receipt_path(repo: Path) -> Path | None:
-    import preflight_receipt
-
     try:
+        import preflight_receipt
+
         return preflight_receipt.receipt_dir() / f"{_git(repo, 'rev-parse', 'HEAD^{tree}')}.json"
-    except (BatchError, OSError):
+    except (ImportError, BatchError, OSError):
         return None
 
 
