@@ -17,15 +17,12 @@ if TYPE_CHECKING:
     from benchbox.utils.cloud_storage import DatabricksPath
 
 PathLike = Union[Path, "CloudPath", "DatabricksPath"]
+from benchbox.core.results.corpus_rule import SCORE_TIMINGS_ONLY
 from benchbox.core.results.models import BenchmarkResults
+from benchbox.core.results.result_outcome import outcome_for_result, outcome_words
 from benchbox.core.results.status import (
     normalize_validation_status,
     result_cli_failure_reason,
-)
-from benchbox.core.results.subscale_policy import (
-    NONSTANDARD_COMPLIANCE_CLASS,
-    SUBSCALE_COMPLIANCE_CLASS,
-    result_compliance_class,
 )
 from benchbox.utils import format_bytes, format_duration
 from benchbox.utils.printing import quiet_console
@@ -77,6 +74,8 @@ class ConsoleResultFormatter:
             f"[bold blue]Queries:[/bold blue] {results.successful_queries}/{results.total_queries} successful"
         )
 
+        ConsoleResultFormatter._display_outcome(results)
+
         validation_details = getattr(results, "validation_details", {}) or {}
         ConsoleResultFormatter._print_validation_stages(validation_details)
         ConsoleResultFormatter._display_validation_status(results, validation_details)
@@ -96,6 +95,13 @@ class ConsoleResultFormatter:
 
         if verbose:
             ConsoleResultFormatter._display_platform_query_details(results)
+
+    @staticmethod
+    def _display_outcome(results: BenchmarkResults) -> None:
+        class_name, wording = outcome_words(outcome_for_result(results))
+        console.print(f"[bold blue]Class:[/bold blue] {class_name}")
+        if wording:
+            console.print(f"[bold blue]Label:[/bold blue] {wording}")
 
     @staticmethod
     def _display_resource_utilization(results: BenchmarkResults) -> None:
@@ -213,6 +219,8 @@ class ConsoleResultFormatter:
         console.print(
             f"[bold blue]Queries:[/bold blue] {results.successful_queries}/{results.total_queries} successful"
         )
+
+        ConsoleResultFormatter._display_outcome(results)
 
         validation_details = getattr(results, "validation_details", {}) or {}
         ConsoleResultFormatter._display_validation_status(results, validation_details)
@@ -336,12 +344,14 @@ class ConsoleResultFormatter:
 
         if getattr(results, "validation_status", None):
             stats["validation_status"] = str(results.validation_status)
-        compliance_class = result_compliance_class(results)
+        outcome = outcome_for_result(results)
+        stats["class"], stats["label"] = outcome_words(outcome)
         power_at_size = getattr(results, "power_at_size", None)
-        if compliance_class == SUBSCALE_COMPLIANCE_CLASS and power_at_size:
-            stats["power_at_size"] = f"{power_at_size:.2f} (subscale, unofficial)"
-        elif compliance_class != NONSTANDARD_COMPLIANCE_CLASS and power_at_size:
-            stats["power_at_size"] = f"{power_at_size:.2f}"
+        if power_at_size and outcome.score_source != SCORE_TIMINGS_ONLY:
+            if outcome.maintainer_admission and not outcome.public_admission:
+                stats["power_at_size"] = f"{power_at_size:.2f} ({outcome.class_name}, unofficial)"
+            else:
+                stats["power_at_size"] = f"{power_at_size:.2f}"
 
         return stats
 

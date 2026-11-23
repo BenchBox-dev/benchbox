@@ -8,7 +8,7 @@ from click.testing import CliRunner
 
 from benchbox.cli.app import cli
 from benchbox.core.results.database import ResultDatabase
-from tests.fixtures.result_dict_fixtures import make_benchmark_results, make_v2_result_dict
+from tests.fixtures.result_dict_fixtures import make_benchmark_results, make_power_only_phases, make_v2_result_dict
 
 pytestmark = [
     pytest.mark.unit,
@@ -25,11 +25,13 @@ def create_test_result(
     geometric_mean_ms: float = 100.0,
 ):
     return make_benchmark_results(
+        benchmark_id=benchmark.lower().replace("-", ""),
         benchmark_name=benchmark,
         platform=platform,
         scale_factor=scale_factor,
         execution_id=execution_id,
         timestamp=timestamp,
+        execution_phases=make_power_only_phases(timestamp),
         duration_seconds=10.0,
         total_queries=22,
         successful_queries=22,
@@ -185,7 +187,9 @@ class TestReportRankingsAfterImport:
         ):
             exporter.export_result(
                 make_benchmark_results(
+                    benchmark_id="tpch",
                     benchmark_name="TPC-H",
+                    execution_phases=make_power_only_phases(now),
                     platform=platform,
                     scale_factor=1.0,
                     execution_id=execution_id,
@@ -331,3 +335,90 @@ class TestReportHelp:
         assert "--benchmark" in result.output
         assert "--scale-factor" in result.output
         assert "--metric" in result.output
+
+
+class TestReportIncludeUnofficial:
+    def _db_with(self, tmp_path, scale_factor):
+        db_path = tmp_path / "rules.db"
+        ResultDatabase(db_path).store_result(
+            create_test_result(
+                execution_id="r1", platform="DuckDB", scale_factor=scale_factor, timestamp=datetime.now(timezone.utc)
+            )
+        )
+        return db_path
+
+    @pytest.mark.parametrize(
+        ("scale_factor", "default_ranks", "unofficial_ranks"),
+        [(1.0, True, True), (0.1, False, True), (2.0, False, True)],
+        ids=["standard_scale_power_only", "subscale", "nonstandard_scale"],
+    )
+    def test_rankings_include_unofficial_follows_the_rule_table(
+        self, tmp_path, scale_factor, default_ranks, unofficial_ranks
+    ):
+        db_path = self._db_with(tmp_path, scale_factor)
+        runner = CliRunner()
+        base = ["report", "rankings", "--benchmark", "TPC-H", "--scale-factor", str(scale_factor)]
+        base += ["--db-path", str(db_path)]
+
+        default = runner.invoke(cli, base)
+        unofficial = runner.invoke(cli, [*base, "--include-unofficial"])
+
+        assert default.exit_code == 0, default.output
+        assert unofficial.exit_code == 0, unofficial.output
+        assert ("Platform Rankings" in default.output) is default_ranks
+        assert ("Platform Rankings" in unofficial.output) is unofficial_ranks
+
+    def test_import_excludes_subscale_unless_asked(self, tmp_path):
+        from benchbox.core.results.exporter import ResultExporter
+
+        bundles_dir = tmp_path / "bundles"
+        exporter = ResultExporter(output_dir=bundles_dir)
+        exporter.export_result(
+            create_test_result(execution_id="sub", scale_factor=0.1, timestamp=datetime.now(timezone.utc)),
+            formats=["json"],
+        )
+        runner = CliRunner()
+
+        default = runner.invoke(cli, ["report", "import", str(bundles_dir), "--db-path", str(tmp_path / "a.db")])
+        included = runner.invoke(
+            cli, ["report", "import", str(bundles_dir), "--db-path", str(tmp_path / "b.db"), "--include-unofficial"]
+        )
+
+        assert "Imported: 0" in default.output
+        assert "Excluded (below the TPC minimum scale): 1" in default.output
+        assert "Imported: 1" in included.output
+
+    def test_rows_without_facts_are_reported_undetermined_and_reimport_restores_them(self, tmp_path):
+        import sqlite3
+
+        from benchbox.core.results.exporter import ResultExporter
+
+        bundles_dir = tmp_path / "bundles"
+        ResultExporter(output_dir=bundles_dir).export_result(
+            create_test_result(execution_id="old", timestamp=datetime.now(timezone.utc)), formats=["json"]
+        )
+        db_path = tmp_path / "legacy.db"
+        runner = CliRunner()
+        runner.invoke(cli, ["report", "import", str(bundles_dir), "--db-path", str(db_path)])
+        with sqlite3.connect(db_path) as conn:
+            conn.execute("UPDATE results SET facts_json = NULL")
+            conn.commit()
+
+        listed = runner.invoke(cli, ["report", "list", "--db-path", str(db_path)])
+        ranked = runner.invoke(
+            cli, ["report", "rankings", "--benchmark", "TPC-H", "--scale-factor", "1", "--db-path", str(db_path)]
+        )
+        stats = runner.invoke(cli, ["report", "stats", "--db-path", str(db_path)])
+
+        assert "undetermined" in listed.output
+        assert "1 stored result(s) are undetermined" in listed.output
+        assert "1 stored result(s) are undetermined" in ranked.output
+        assert "No results found" in ranked.output
+        assert "Undetermined Results" in stats.output
+
+        reimported = runner.invoke(cli, ["report", "import", str(bundles_dir), "--db-path", str(db_path)])
+        listed_again = runner.invoke(cli, ["report", "list", "--db-path", str(db_path)])
+
+        assert "Imported: 1" in reimported.output
+        assert "power_only" in listed_again.output
+        assert "undetermined" not in listed_again.output

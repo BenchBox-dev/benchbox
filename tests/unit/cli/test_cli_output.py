@@ -594,6 +594,8 @@ class TestResultExporter:
             "error_message",
             "iteration",
             "stream",
+            "class",
+            "label",
         ]
         assert headers == expected_headers
 

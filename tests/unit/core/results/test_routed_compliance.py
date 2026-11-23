@@ -134,20 +134,26 @@ def test_bundle_helper_and_metrics_readiness_refuse_routed_bundle() -> None:
     )
 
 
-def test_results_database_stores_routed_result_as_non_official(tmp_path: Path) -> None:
+def test_results_database_derives_routed_result_as_held_from_stored_facts(tmp_path: Path) -> None:
+    from benchbox.core.results import corpus_rule
+    from tests.fixtures.result_dict_fixtures import make_power_only_phases
+
     database = ResultDatabase(tmp_path / "results.db")
     routed = _result(ROUTED)
     routed.execution_id = "routed-run"
+    routed.execution_phases = make_power_only_phases(routed.timestamp)
     native = _result(None)
     native.execution_id = "native-run"
+    native.execution_phases = make_power_only_phases(native.timestamp)
     database.store_result(routed)
     database.store_result(native)
 
-    import sqlite3
-
-    with sqlite3.connect(tmp_path / "results.db") as connection:
-        rows = dict(connection.execute("SELECT execution_id, compliance_class FROM results"))
-    assert rows == {"routed-run": NONSTANDARD_COMPLIANCE_CLASS, "native-run": "official"}
+    stored_routed = database.get_result("routed-run")
+    stored_native = database.get_result("native-run")
+    assert stored_routed is not None and stored_native is not None
+    assert stored_routed.outcome.held_reason == corpus_rule.HELD_GATEWAY_ROUTED
+    assert stored_routed.outcome.ranked is False
+    assert stored_native.outcome.class_name == corpus_rule.CLASS_POWER_ONLY
 
 
 def _built_like_a_real_run(gateway: dict | None):

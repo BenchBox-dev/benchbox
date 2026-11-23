@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 NAMED_METRICS = ("geometric_mean", "p50", "p95", "p99", "total_time", "mean")
 
 NON_POWER_TEST_TYPES = frozenset({"throughput", "maintenance"})
-UNOFFICIAL_COMPLIANCE_CLASSES = frozenset({"unofficial_subscale", "unofficial_nonstandard"})
 TPC_QUERIES_PER_STREAM = {"tpch": 22, "tpcds": 99}
 _TPC_BENCHMARK_LABELS = {"tpch": "TPC-H", "tpcds": "TPC-DS"}
 

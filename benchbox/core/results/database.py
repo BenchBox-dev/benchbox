@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.core.cost.models import cost_status_of, published_total_cost
+from benchbox.core.results import corpus_rule
 from benchbox.core.results.comparison_modes import (
     IncomparableModesError,
     results_fetch_mode,
@@ -30,14 +31,19 @@ from benchbox.core.results.fetch_mode import MIXED_FETCH_MODE, parse_fetch_mode
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.regression_policy import is_regression
-from benchbox.core.results.subscale_policy import result_compliance_class
+from benchbox.core.results.result_outcome import (
+    admitted_for_ranking,
+    facts_for_result,
+    facts_to_json,
+    outcome_from_stored_facts,
+)
 from benchbox.core.results.tpcdi_audit import audited_validation_status
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_DB_PATH = Path.home() / ".benchbox" / "results.db"
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 _RANKING_METRIC_CONFIG = {
     "geometric_mean": ("geometric_mean_ms", "ASC"),
     "power_at_size": ("power_at_size", "DESC"),
@@ -88,7 +94,7 @@ class StoredResult:
     validation_status: str
     config_hash: str
     metadata: dict[str, Any]
-    compliance_class: str | None = None
+    facts_json: str | None = None
 
     def __post_init__(self) -> None:
         self.validation_status = audited_validation_status(
@@ -117,9 +123,13 @@ class StoredResult:
             total_cost=row["total_cost"],
             validation_status=row["validation_status"],
             config_hash=row["config_hash"],
-            compliance_class=row["compliance_class"] if "compliance_class" in keys else None,
+            facts_json=row["facts_json"] if "facts_json" in keys else None,
             metadata=json.loads(row["metadata_json"]) if row["metadata_json"] else {},
         )
+
+    @property
+    def outcome(self) -> corpus_rule.Outcome:
+        return outcome_from_stored_facts(self.facts_json)
 
 
 @dataclass
@@ -258,6 +268,8 @@ class ResultDatabase:
                         self._migrate_to_v2(cursor)
                     if current_version < 3:
                         self._migrate_to_v3(cursor)
+                    if current_version < 4:
+                        self._migrate_to_v4(cursor)
                 cursor.execute("DELETE FROM schema_version")
                 cursor.execute(
                     "INSERT INTO schema_version (version) VALUES (?)",
@@ -288,7 +300,7 @@ class ResultDatabase:
                 total_cost REAL,
                 validation_status TEXT NOT NULL,
                 config_hash TEXT NOT NULL,
-                compliance_class TEXT,
+                facts_json TEXT,
                 metadata_json TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
@@ -350,6 +362,17 @@ class ResultDatabase:
         )
         logger.info("Schema v3: normalized validation_status to uppercase")
 
+    def _migrate_to_v4(self, cursor: sqlite3.Cursor) -> None:
+        try:
+            cursor.execute("ALTER TABLE results ADD COLUMN facts_json TEXT")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute("ALTER TABLE results DROP COLUMN compliance_class")
+        except sqlite3.OperationalError:
+            pass
+        logger.info("Schema v4: stored result facts instead of the compliance stamp")
+
     def _compute_config_hash(self, result: BenchmarkResults) -> str:
         config_data = {
             "platform": result.platform,
@@ -360,7 +383,7 @@ class ResultDatabase:
         config_str = json.dumps(config_data, sort_keys=True)
         return hashlib.sha256(config_str.encode()).hexdigest()[:16]
 
-    def store_result(self, result: BenchmarkResults) -> int:
+    def store_result(self, result: BenchmarkResults, facts: corpus_rule.Facts | None = None) -> int:
         config_hash = self._compute_config_hash(result)
 
         platform_version = None
@@ -416,7 +439,7 @@ class ResultDatabase:
             if result.geometric_mean_execution_time is not None:
                 geometric_mean_ms = result.geometric_mean_execution_time * 1000.0
 
-            compliance_class = result_compliance_class(result)
+            facts_text = facts_to_json(facts if facts is not None else facts_for_result(result))
 
             cursor.execute(
                 """
@@ -425,7 +448,7 @@ class ResultDatabase:
                     timestamp, duration_seconds, total_queries, successful_queries,
                     failed_queries, geometric_mean_ms, power_at_size, throughput_at_size,
                     qph_at_size, total_cost, validation_status, config_hash,
-                    compliance_class, metadata_json
+                    facts_json, metadata_json
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
@@ -446,7 +469,7 @@ class ResultDatabase:
                     total_cost,
                     result.validation_status.upper(),
                     config_hash,
-                    compliance_class,
+                    facts_text,
                     json.dumps(metadata),
                 ),
             )
@@ -699,13 +722,22 @@ class ResultDatabase:
             if config.require_success:
                 validation_filter = "AND UPPER(validation_status) IN ('PASSED', 'NO_REFERENCE')"
 
-            unofficial_filter = (
-                "" if include_unofficial else "AND (compliance_class = 'official' OR compliance_class IS NULL)"
+            cursor.execute(
+                "SELECT id, facts_json FROM results WHERE benchmark = ? AND scale_factor = ?",
+                (benchmark, scale_factor),
+            )
+            admitted = [
+                int(row["id"])
+                for row in cursor.fetchall()
+                if admitted_for_ranking(outcome_from_stored_facts(row["facts_json"]), include_unofficial)
+            ]
+            admission_filter = (
+                f"AND id IN ({', '.join(str(result_id) for result_id in admitted)})" if admitted else "AND 0"
             )
 
             mode_scope = (
                 f"benchmark = ? AND scale_factor = ? AND timestamp >= ? AND {metric_col} IS NOT NULL "
-                f"{validation_filter} {unofficial_filter}"
+                f"{validation_filter} {admission_filter}"
             )
             if fetch_mode is None:
                 cursor.execute(
@@ -758,7 +790,7 @@ class ResultDatabase:
                     AND timestamp >= ?
                     AND {metric_col} IS NOT NULL
                     {validation_filter}
-                    {unofficial_filter}
+                    {admission_filter}
                     {mode_filter}
                 GROUP BY platform, platform_version
                 HAVING COUNT(*) >= ?
@@ -782,7 +814,7 @@ class ResultDatabase:
                     AND timestamp < ?
                     AND {metric_col} IS NOT NULL
                     {validation_filter}
-                    {unofficial_filter}
+                    {admission_filter}
                     {mode_filter}
                 GROUP BY platform
             """,
@@ -1022,6 +1054,24 @@ class ResultDatabase:
                 "schema_version": SCHEMA_VERSION,
             }
 
+    def _backfill_facts(self, execution_id: str, facts: corpus_rule.Facts) -> bool:
+        with self._connection() as conn:
+            cursor = conn.execute(
+                "UPDATE results SET facts_json = ? WHERE execution_id = ? AND facts_json IS NULL",
+                (facts_to_json(facts), execution_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def count_undetermined(self) -> int:
+        with self._connection() as conn:
+            rows = conn.execute("SELECT facts_json FROM results").fetchall()
+        return sum(
+            1
+            for row in rows
+            if outcome_from_stored_facts(row["facts_json"]).class_name == corpus_rule.CLASS_UNDETERMINED
+        )
+
     def import_results_from_directory(
         self,
         directory: Path,
@@ -1030,34 +1080,30 @@ class ResultDatabase:
     ) -> tuple[int, int, int]:
         from benchbox.core.results.loader import load_result_file
 
-        _unofficial_classes = {"unofficial_nonstandard", "unofficial_subscale"}
         imported = 0
         skipped = 0
         excluded = 0
 
         for file_path in directory.glob(pattern):
             try:
-                result, _ = load_result_file(file_path)
-                compliance_class = result_compliance_class(result)
-                if not include_unofficial:
-                    if compliance_class in _unofficial_classes:
-                        excluded += 1
-                        continue
-                if compliance_class is None and getattr(result, "benchmark_name", "").lower() in (
-                    "tpc-ds",
-                    "tpcds",
-                ):
-                    logger.warning(
-                        "Importing legacy TPC-DS result %s without compliance_class; "
-                        "it will be treated as official in ranking queries. "
-                        "Re-run the benchmark to generate a tagged result.",
-                        file_path.name,
-                    )
-                self.store_result(result)
+                result, data = load_result_file(file_path)
+                facts = corpus_rule.facts_from_result(data, known_defects=corpus_rule.sidecar_known_defects(file_path))
+                outcome = corpus_rule.derive_outcome(facts)
+                if outcome.held_reason == corpus_rule.HELD_NO_TIMED_PHASE:
+                    logger.warning("Skipped %s: no timed phase ran, so it is not a result", file_path.name)
+                    skipped += 1
+                    continue
+                if not include_unofficial and outcome.maintainer_admission and not outcome.public_admission:
+                    excluded += 1
+                    continue
+                self.store_result(result, facts)
                 imported += 1
             except ValueError as e:
                 if "already exists" in str(e):
-                    skipped += 1
+                    if self._backfill_facts(result.execution_id, facts):
+                        imported += 1
+                    else:
+                        skipped += 1
                 else:
                     logger.warning(f"Failed to import {file_path}: {e}")
                     skipped += 1

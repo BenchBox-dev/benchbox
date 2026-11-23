@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from benchbox.core.results import corpus_rule
 from benchbox.core.results.database import (
     DEFAULT_DB_PATH,
     SCHEMA_VERSION,
@@ -28,7 +29,7 @@ from benchbox.core.results.models import (
     QueryExecution,
     SetupPhase,
 )
-from tests.fixtures.result_dict_fixtures import make_benchmark_results, make_v2_result_dict
+from tests.fixtures.result_dict_fixtures import make_benchmark_results, make_power_only_phases, make_v2_result_dict
 
 pytestmark = [
     pytest.mark.unit,
@@ -52,7 +53,7 @@ def create_test_result(
 ) -> BenchmarkResults:
     ts = timestamp or datetime.now(timezone.utc)
 
-    execution_phases = None
+    query_executions: list[QueryExecution] = []
     if include_queries:
         query_executions = [
             QueryExecution(
@@ -76,22 +77,23 @@ def create_test_result(
                 iteration=1,
             ),
         ]
-        execution_phases = ExecutionPhases(
-            setup=SetupPhase(),
-            power_test=PowerTestPhase(
-                start_time=ts.isoformat(),
-                end_time=ts.isoformat(),
-                duration_ms=125,
-                query_executions=query_executions,
-                geometric_mean_time=geometric_mean_ms / 1000.0,
-                power_at_size=power_at_size,
-            ),
-        )
+    execution_phases = ExecutionPhases(
+        setup=SetupPhase(),
+        power_test=PowerTestPhase(
+            start_time=ts.isoformat(),
+            end_time=ts.isoformat(),
+            duration_ms=125,
+            query_executions=query_executions,
+            geometric_mean_time=geometric_mean_ms / 1000.0,
+            power_at_size=power_at_size,
+        ),
+    )
 
     platform_info = {"platform_version": platform_version} if platform_version else {}
     cost_summary = {"total_cost": total_cost} if total_cost is not None else None
 
     return make_benchmark_results(
+        benchmark_id=benchmark.lower().replace("-", ""),
         benchmark_name=benchmark,
         platform=platform,
         scale_factor=scale_factor,
@@ -165,6 +167,8 @@ class TestResultDatabase:
                     successful_queries=22,
                     validation_status="PASSED",
                     geometric_mean_execution_time=geometric_mean,
+                    benchmark_id="tpch",
+                    execution_phases=make_power_only_phases(now),
                 )
             )
         with sqlite3.connect(db_path) as conn:
@@ -200,6 +204,8 @@ class TestResultDatabase:
                 successful_queries=1,
                 validation_status="passed",
                 geometric_mean_execution_time=0.1,
+                benchmark_id="tpch",
+                execution_phases=make_power_only_phases(datetime.now(timezone.utc)),
             )
         )
 
@@ -662,97 +668,162 @@ class TestRankings:
         assert rankings[0].trend_change is None
 
 
-class TestRankingsComplianceFilter:
-    def test_unofficial_subscale_excluded_by_default(self, tmp_path):
-        db = ResultDatabase(tmp_path / "test.db")
-        now = datetime.now(timezone.utc)
+def _facts(benchmark: str, scale: float, *phases: str, streams: int | None = None, **flags: bool) -> corpus_rule.Facts:
+    return corpus_rule.Facts(benchmark, scale, frozenset(phases), streams=streams, **flags)
 
+
+FULL_SPEC = _facts("tpch", 1.0, "power", "throughput", "refresh", streams=2)
+CLASS_CASES = [
+    pytest.param("TPC-H", 1.0, FULL_SPEC, True, True, id="full_spec"),
+    pytest.param("TPC-H", 1.0, _facts("tpch", 1.0, "power", "throughput"), True, True, id="partial_power_throughput"),
+    pytest.param("TPC-H", 1.0, _facts("tpch", 1.0, "power", "refresh"), True, True, id="partial_power_refresh"),
+    pytest.param("TPC-H", 1.0, _facts("tpch", 1.0, "power"), True, True, id="power_only"),
+    pytest.param("TPC-H", 1.0, _facts("tpch", 1.0, "throughput"), True, True, id="throughput_only"),
+    pytest.param("TPC-H", 0.1, _facts("tpch", 0.1, "power"), False, True, id="subscale"),
+    pytest.param("TPC-H", 2.0, _facts("tpch", 2.0, "power"), False, True, id="nonstandard_scale"),
+    pytest.param("ClickBench", 1.0, _facts("clickbench", 1.0, "other_timed"), True, True, id="other_standard_scale"),
+    pytest.param("TPC-H", 1.0, _facts("tpch", 1.0), False, False, id="no_timed_phase"),
+    pytest.param(
+        "TPC-H", 1.0, _facts("tpch", 1.0, "power", validation_failed=True), False, False, id="failed_validation"
+    ),
+    pytest.param("TPC-H", 1.0, _facts("tpch", 1.0, "power", known_defect=True), False, False, id="known_defect"),
+    pytest.param("TPC-H", 1.0, _facts("tpch", 1.0, "power", gateway_routed=True), False, False, id="gateway_routed"),
+]
+
+
+def _rank(db: ResultDatabase, benchmark: str, scale: float, include_unofficial: bool) -> list[str]:
+    config = RankingConfig(lookback_days=90)
+    return [r.platform for r in db.calculate_rankings(benchmark, scale, config, include_unofficial=include_unofficial)]
+
+
+class TestRankingsComplianceFilter:
+    @pytest.mark.parametrize(("benchmark_name", "scale", "facts", "default_ranked", "unofficial_ranked"), CLASS_CASES)
+    def test_rankings_follow_the_rule_for_every_class(
+        self, tmp_path, benchmark_name, scale, facts, default_ranked, unofficial_ranked
+    ):
+        db = ResultDatabase(tmp_path / "test.db")
         db.store_result(
             create_test_result(
-                execution_id="official-run",
-                platform="OfficialDB",
+                execution_id="run",
+                platform="DB",
+                benchmark=benchmark_name,
+                scale_factor=scale,
+                timestamp=datetime.now(timezone.utc) - timedelta(days=5),
+            ),
+            facts,
+        )
+
+        assert (_rank(db, benchmark_name, scale, include_unofficial=False) == ["DB"]) is default_ranked
+        assert (_rank(db, benchmark_name, scale, include_unofficial=True) == ["DB"]) is unofficial_ranked
+
+    @pytest.mark.parametrize("stamp", ["official", "unofficial_subscale", "unofficial_nonstandard", None])
+    def test_the_stamp_never_changes_the_outcome(self, tmp_path, stamp):
+        db = ResultDatabase(tmp_path / "test.db")
+        db.store_result(
+            create_test_result(
+                execution_id="power-only",
+                platform="PowerDB",
                 benchmark="TPC-DS",
                 scale_factor=1.0,
-                timestamp=now - timedelta(days=5),
+                timestamp=datetime.now(timezone.utc) - timedelta(days=5),
+                compliance_class=stamp,
+            ),
+            _facts("tpcds", 1.0, "power"),
+        )
+        db.store_result(
+            create_test_result(
+                execution_id="subscale",
+                platform="SubscaleDB",
+                benchmark="TPC-DS",
+                scale_factor=0.5,
+                timestamp=datetime.now(timezone.utc) - timedelta(days=5),
+                compliance_class=stamp,
+            ),
+            _facts("tpcds", 0.5, "power"),
+        )
+
+        assert _rank(db, "TPC-DS", 1.0, include_unofficial=False) == ["PowerDB"]
+        assert _rank(db, "TPC-DS", 0.5, include_unofficial=False) == []
+        assert _rank(db, "TPC-DS", 0.5, include_unofficial=True) == ["SubscaleDB"]
+        stored = db.get_result("power-only")
+        assert stored is not None
+        assert stored.outcome.class_name == corpus_rule.CLASS_POWER_ONLY
+
+    def test_stored_facts_come_from_the_result_when_none_are_given(self, tmp_path):
+        db = ResultDatabase(tmp_path / "test.db")
+        db.store_result(
+            create_test_result(
+                execution_id="derived",
+                platform="DerivedDB",
+                benchmark="TPC-H",
+                timestamp=datetime.now(timezone.utc) - timedelta(days=5),
+                compliance_class="unofficial_nonstandard",
+            )
+        )
+
+        stored = db.get_result("derived")
+        assert stored is not None
+        assert stored.outcome.class_name == corpus_rule.CLASS_POWER_ONLY
+        assert _rank(db, "TPC-H", 1.0, include_unofficial=False) == ["DerivedDB"]
+
+    def test_rows_without_facts_are_undetermined_never_ranked(self, tmp_path):
+        db = ResultDatabase(tmp_path / "test.db")
+        db.store_result(
+            create_test_result(
+                execution_id="legacy",
+                platform="LegacyDB",
+                benchmark="TPC-DS",
+                timestamp=datetime.now(timezone.utc) - timedelta(days=5),
                 compliance_class="official",
             )
         )
-        db.store_result(
-            create_test_result(
-                execution_id="unofficial-run",
-                platform="UnofficialDB",
-                benchmark="TPC-DS",
-                scale_factor=1.0,
-                timestamp=now - timedelta(days=5),
-                compliance_class="unofficial_subscale",
+        with sqlite3.connect(db.db_path) as conn:
+            conn.execute("UPDATE results SET facts_json = NULL")
+            conn.commit()
+
+        stored = db.get_result("legacy")
+        assert stored is not None
+        assert stored.outcome.class_name == corpus_rule.CLASS_UNDETERMINED
+        assert db.count_undetermined() == 1
+        assert _rank(db, "TPC-DS", 1.0, include_unofficial=False) == []
+        assert _rank(db, "TPC-DS", 1.0, include_unofficial=True) == []
+
+    def test_schema_v3_rows_migrate_as_undetermined_and_import_restores_them(self, tmp_path):
+        db_path = tmp_path / "v3.db"
+        with sqlite3.connect(db_path) as conn:
+            conn.execute("CREATE TABLE schema_version (version INTEGER PRIMARY KEY)")
+            conn.execute("INSERT INTO schema_version VALUES (3)")
+            conn.execute(
+                """CREATE TABLE results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, execution_id TEXT UNIQUE NOT NULL, platform TEXT NOT NULL,
+                platform_version TEXT, benchmark TEXT NOT NULL, scale_factor REAL NOT NULL, timestamp TEXT NOT NULL,
+                duration_seconds REAL NOT NULL, total_queries INTEGER NOT NULL, successful_queries INTEGER NOT NULL,
+                failed_queries INTEGER NOT NULL, geometric_mean_ms REAL, power_at_size REAL, throughput_at_size REAL,
+                qph_at_size REAL, total_cost REAL, validation_status TEXT NOT NULL, config_hash TEXT NOT NULL,
+                compliance_class TEXT, metadata_json TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)"""
             )
-        )
-
-        config = RankingConfig(lookback_days=90)
-        rankings = db.calculate_rankings("TPC-DS", 1.0, config)
-
-        platform_names = [r.platform for r in rankings]
-        assert "OfficialDB" in platform_names
-        assert "UnofficialDB" not in platform_names
-
-    def test_unofficial_excluded_with_include_unofficial_false(self, tmp_path):
-        db = ResultDatabase(tmp_path / "test.db")
-        now = datetime.now(timezone.utc)
-
-        db.store_result(
-            create_test_result(
-                execution_id="subscale-run",
-                platform="SubscaleDB",
-                benchmark="TPC-DS",
-                scale_factor=1.0,
-                timestamp=now - timedelta(days=5),
-                compliance_class="unofficial_subscale",
+            conn.execute(
+                "INSERT INTO results (execution_id, platform, benchmark, scale_factor, timestamp, duration_seconds, "
+                "total_queries, successful_queries, failed_queries, geometric_mean_ms, power_at_size, "
+                "validation_status, config_hash, compliance_class) VALUES "
+                "('old', 'OldDB', 'TPC-H', 1.0, ?, 1.0, 22, 22, 0, 100.0, 1000.0, 'PASSED', 'h', 'official')",
+                ((datetime.now(timezone.utc) - timedelta(days=5)).isoformat(),),
             )
-        )
+            conn.execute("CREATE TABLE queries (id INTEGER PRIMARY KEY, result_id INTEGER)")
+            conn.commit()
 
-        config = RankingConfig(lookback_days=90)
-        rankings = db.calculate_rankings("TPC-DS", 1.0, config, include_unofficial=False)
-        assert len(rankings) == 0
+        db = ResultDatabase(db_path)
+        migrated = db.get_result("old")
+        assert migrated is not None
+        assert migrated.outcome.class_name == corpus_rule.CLASS_UNDETERMINED
+        assert _rank(db, "TPC-H", 1.0, include_unofficial=True) == []
 
-    def test_unofficial_included_with_include_unofficial_true(self, tmp_path):
-        db = ResultDatabase(tmp_path / "test.db")
-        now = datetime.now(timezone.utc)
-
-        db.store_result(
-            create_test_result(
-                execution_id="subscale-run2",
-                platform="SubscaleDB2",
-                benchmark="TPC-DS",
-                scale_factor=1.0,
-                timestamp=now - timedelta(days=5),
-                compliance_class="unofficial_subscale",
-            )
-        )
-
-        config = RankingConfig(lookback_days=90)
-        rankings = db.calculate_rankings("TPC-DS", 1.0, config, include_unofficial=True)
-        platform_names = [r.platform for r in rankings]
-        assert "SubscaleDB2" in platform_names
-
-    def test_legacy_no_compliance_class_included_by_default(self, tmp_path):
-        db = ResultDatabase(tmp_path / "test.db")
-        now = datetime.now(timezone.utc)
-
-        db.store_result(
-            create_test_result(
-                execution_id="legacy-run",
-                platform="LegacyDB",
-                benchmark="TPC-DS",
-                scale_factor=1.0,
-                timestamp=now - timedelta(days=5),
-                compliance_class=None,
-            )
-        )
-
-        config = RankingConfig(lookback_days=90)
-        rankings = db.calculate_rankings("TPC-DS", 1.0, config)
-        platform_names = [r.platform for r in rankings]
-        assert "LegacyDB" in platform_names
+        assert db._backfill_facts("old", _facts("tpch", 1.0, "power")) is True
+        assert db._backfill_facts("old", _facts("tpch", 1.0, "power", "throughput")) is False
+        restored = db.get_result("old")
+        assert restored is not None
+        assert restored.outcome.class_name == corpus_rule.CLASS_POWER_ONLY
+        assert _rank(db, "TPC-H", 1.0, include_unofficial=False) == ["OldDB"]
 
 
 class TestPerformanceTrends:
