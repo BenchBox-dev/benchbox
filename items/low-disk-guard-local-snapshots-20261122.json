@@ -7,6 +7,11 @@
     "Verification rubric: unit tests cover snapshots present, none, tool missing, tool timeout and non-macOS, with the command runner injected; plus one live `make heavy-status` or `make disk-check` output from the maintainer host pasted in the PR.",
     "Guardrails: no code path deletes, thins or mounts a snapshot; no sudo; third-party snapshots (Arq) are reported by name only and never suggested for deletion; admission thresholds and the 50 GiB floor are unchanged; the guard still never deletes, moves or prunes anything."
   ],
+  "batch": {
+    "batch_id": "shared-data-lifecycle",
+    "implementation_dependencies": [],
+    "member_id": "low-disk-guard-local-snapshots-20261122"
+  },
   "context": "Origin: disk cleanup and root-cause review on 2026-11-22. The root volume fell to 46 GiB free, below the 50 GiB heavy-work floor. Cause found: generated benchmark data has no lifecycle (any session creates it under any run root, nothing removes it), and Time Machine local snapshots kept deleted data allocated. PR #4451 (https://github.com/BenchBox-dev/benchbox/pull/4451) added AGENTS.md [RUN-DATA-001] and made scripts/run_version_matrix.py delete its datagen/ and databases/ when a matrix completes. Prior incident: host-disk-exhaustion-enospc-20261006.\n\nOwner decision 2026-11-23 (choice dialog): 'Docs plus a report line in the low-disk refusal and make disk-check'. Report only; nothing deletes a snapshot.",
   "description": "Problem: on 2026-11-22 the root volume was at 46 GiB free. Deleting 32.8 GB of duplicate generated data returned 0.4 GB. Deleting two Time Machine local snapshots (`tmutil deletelocalsnapshots 2026-11-20-140045` and `2026-11-22-085225`, which worked without sudo) then took free space from 47 GiB to about 300 GiB. The snapshots, not live files, were holding most of the 'used' space, including data deleted earlier in October's cleanup.\n\nNothing in the tooling or docs points there. `docs/internal/low-disk-guard.md` lists worktrees, the uv cache, datagen and experiment directories. The admission refusal from `make heavy-run` and the `make disk-check` report list the largest directories under the output root, which sends the reader to delete live files that free nothing while a snapshot holds them. An Arq backup snapshot (`com_haystacksoftware_arqagent_...`) was also present and was left alone; its size is unknown.\n\nThis is the second disk incident on this host (see host-disk-exhaustion-enospc-20261006). The first closed with a guard and directory-size recommendations only.\n\nExpected outcome: when free space is low on macOS, the report says whether local snapshots exist, and the runbook tells the owner to check them before deleting data.",
   "links": [
@@ -30,6 +35,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "18ae8ae055194f69aa23d4511053482b",
+      "session_id": "e94ef2c0cac942f885a89e503648c51e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b",
+      "at": "2026-11-23T14:25:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b5d5d808080241efa4bdd08cfc32bfef",
       "session_id": "e94ef2c0cac942f885a89e503648c51e"
     }
   ]
