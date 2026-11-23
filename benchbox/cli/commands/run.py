@@ -105,7 +105,7 @@ from benchbox.utils.cloud_storage import is_cloud_path
 from benchbox.utils.compression import CompressionManager
 from benchbox.utils.input_validation import MAX_QUERY_ID_LENGTH
 from benchbox.utils.output_path import normalize_output_root
-from benchbox.utils.printing import fatal
+from benchbox.utils.printing import fatal, replay_quiet_output_on_failure
 from benchbox.utils.runtime_env import DriverAutoInstallRefused, InvalidDriverVersion
 
 logger = logging.getLogger(__name__)
@@ -2254,22 +2254,23 @@ def run(
         allow_greybeam_inline_load=allow_greybeam_inline_load,
         acknowledge_billable_platform=acknowledge_billable_platform,
     )
-    try:
-        _prepare_run_state(s)
+    with replay_quiet_output_on_failure(bool(s.quiet)):
+        try:
+            _prepare_run_state(s)
 
-        if s.dry_run:
-            _run_dry_run(s)
-            return
+            if s.dry_run:
+                _run_dry_run(s)
+                return
 
-        run_time_limit.run_within_time_limit(s)
-    except DriverAutoInstallRefused as exc:
-        console.print(f"[red]❌ {escape(str(exc))}[/red]")
-        sys.exit(ExitCode.ACKNOWLEDGEMENT_REQUIRED)
-    except InvalidDriverVersion as exc:
-        console.print(f"[red]❌ {escape(str(exc))}[/red]")
-        sys.exit(ExitCode.USAGE)
-    except BenchmarkUnavailableError as exc:
-        exit_unavailable_benchmark(exc)
+            run_time_limit.run_within_time_limit(s)
+        except DriverAutoInstallRefused as exc:
+            console.print(f"[red]❌ {escape(str(exc))}[/red]")
+            sys.exit(ExitCode.ACKNOWLEDGEMENT_REQUIRED)
+        except InvalidDriverVersion as exc:
+            console.print(f"[red]❌ {escape(str(exc))}[/red]")
+            sys.exit(ExitCode.USAGE)
+        except BenchmarkUnavailableError as exc:
+            exit_unavailable_benchmark(exc)
 
 
 __all__ = ["run", "BenchmarkOptionParamType", "PlatformOptionParamType", "setup_verbose_logging"]

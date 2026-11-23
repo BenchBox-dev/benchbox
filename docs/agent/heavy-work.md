@@ -99,6 +99,68 @@ On `Error 76`, run the command again with `HEAVY_ADMIT_WAIT`; do not write a
 retry loop, and never set `BENCHBOX_HEAVY_ADMIT=force` to get past it. Time spent queued for the host
 lock counts against `HEAVY_ADMIT_WAIT`, and only `make heavy-run` reads it.
 
+## Admission hold and breach attribution
+
+Admission, the kill rule and the foreign pressure that sometimes drives them
+were far enough apart that a job could be admitted into a host that was about to
+breach and then stopped seconds later for memory it did not use. The policy
+below keeps the hard kill for anything the holder causes and adds evidence and
+patience.
+
+### Evidence inventory
+
+`~/.benchbox/heavy-runs.jsonl` held 143 runs that ended in `watchdog_kill`
+between 2026-11-06 and 2026-11-16; 121 of them executed for less than 180 s and 90
+for less than 60 s. Run records carry timings and exit codes but no signal or
+footprint, so they cannot say which signal fired. Seventeen retained watchdog logs
+report `BREACH memory pressure: measured level 4`. In three of them the holder
+tree's largest process was 0.50, 1.64 and 2.77 GiB, small beside the 8 GiB budget;
+across all seventeen the largest process listed first was 7.94 GiB, so some of those
+level-4 breaches had a large holder and are not foreign-caused. The reports listed
+only holder-tree processes: no log recorded the processes outside the tree, so
+foreign pressure is a hypothesis the logs support only indirectly (small tree,
+level-4 pressure, swap near full in `make heavy-status`), never a measured cause.
+Logs from the 2026-11-11 and 2026-11-12 sessions that were not retained cannot be
+reconstructed. From this change on, a memory-pressure breach also records what the logs were
+missing.
+
+### Attribution
+
+On a `memory pressure` breach the watchdog report adds, after the holder-tree
+processes, one block read from the same single sample: the holder tree's footprint
+and its share of the budget, swap use, and the five largest processes outside the
+tree (pid, name, footprint). The block is labelled as a single
+sample that does not prove cause, and outside processes are listed only; they are
+never signalled. Other breach signals (tree footprint, disk, VM) do not read outside
+processes.
+
+Another session's command line is never written to the log: a process outside the holder
+tree is shown as its executable's basename followed by `(arguments redacted)`, for example
+`python3.12 (arguments redacted)`.
+
+Virtual machine processes of the Apple container runtime are children of launchd, so the
+watchdog cannot tell whether the holder started them. They are left out of the list of other
+sessions and reported on a separate line, `containers (origin unknown)`, with their process
+count, total footprint and pids. That line is counted for neither the holder tree nor the other
+sessions, and the watchdog does not signal those processes either.
+
+### Admission hold
+
+Admission now needs every sample of the condition to be clean for
+`BENCHBOX_HEAVY_ADMIT_HOLD_SECONDS` (default 30, sampled every 5 s) before the job
+starts, instead of passing on the first clean sample. A refusal inside the window
+restarts it; the report says the condition cleared and after how long. With the
+window the total admission budget is the 30 s retry window plus the hold, after
+which admission is refused as before (`Error 76`; `HEAVY_ADMIT_WAIT` still re-checks
+every 60 s). `BENCHBOX_HEAVY_ADMIT=force` skips the hold and remains forbidden
+without owner approval. A hold of 0 restores single-sample admission.
+
+The value must be a finite number of seconds, 0 or more, with no upper bound. `inf`, `nan` and
+negative values are refused before the lock is taken (`make heavy-run` and
+`python -m benchbox.utils.host_lock admit` exit 2) with `BENCHBOX_HEAVY_ADMIT_HOLD_SECONDS must
+be a finite number of seconds, 0 or more; got '<value>'.`; `make heavy-status` prints the same
+message instead of the host readings.
+
 ## Sentinel
 
 The sentinel is a per-user watcher independent of any lock holder. Every 5 s it
