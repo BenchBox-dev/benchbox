@@ -57,7 +57,8 @@ def test_passed_run_with_unvalidated_queries_is_not_reported_as_passed():
 
     finalized = _finalize_validation_metadata(result, [])
 
-    assert finalized.validation_status == "NOT_VALIDATED"
+    assert finalized.validation_status == "NO_REFERENCE"
+    assert finalized.validation_details["reason"] == "no row-count reference at this scale factor"
     assert any("2 queries unvalidated" in warning for warning in finalized.validation_details["warnings"])
 
 
@@ -72,7 +73,7 @@ def test_aggregated_passed_records_do_not_restore_passed_over_unvalidated_querie
 
     finalized = _finalize_validation_metadata(result, [("post_load", ValidationResult(is_valid=True))])
 
-    assert finalized.validation_status == "NOT_VALIDATED"
+    assert finalized.validation_status == "NO_REFERENCE"
 
 
 def test_fully_validated_run_stays_passed():

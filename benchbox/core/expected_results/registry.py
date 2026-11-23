@@ -119,6 +119,10 @@ class ExpectedResultsRegistry:
 
         return expected_result, LoadOutcome.HIT
 
+    def has_row_count_reference(self, benchmark_name: str, scale_factor: float | None = None) -> bool:
+        results, outcome = self._load_benchmark_results(benchmark_name.lower(), scale_factor or 1.0)
+        return results is not None or outcome in (LoadOutcome.PROVIDER_FAILED, LoadOutcome.PROVIDER_TIMEOUT)
+
     def _load_benchmark_results(
         self, benchmark_key: str, scale_factor: float
     ) -> tuple[BenchmarkExpectedResults | None, LoadOutcome]:

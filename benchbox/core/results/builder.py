@@ -41,9 +41,10 @@ from benchbox.core.results.query_normalizer import (
     format_query_id,
 )
 from benchbox.core.results.query_status import (
+    NO_REFERENCE_REASON,
+    NO_REFERENCE_VALIDATION_STATUS,
     has_failed_query_validation,
-    unchecked_row_count_evidence,
-    unvalidated_measurement_query_ids,
+    unevidenced_validation_status,
 )
 from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
@@ -444,9 +445,11 @@ class ResultBuilder:
         elif failed_queries and validation_status == "PASSED":
             validation_status = "PARTIAL"
         elif validation_status == "PASSED" and (
-            unvalidated_measurement_query_ids(query_results_list) or unchecked_row_count_evidence(query_results_list)
+            unevidenced_status := unevidenced_validation_status(query_results_list)
         ):
-            validation_status = "NOT_VALIDATED"
+            validation_status = unevidenced_status
+            if unevidenced_status == NO_REFERENCE_VALIDATION_STATUS:
+                self._validation_details = {"reason": NO_REFERENCE_REASON, **(self._validation_details or {})}
 
         return BenchmarkResults(
             benchmark_name=self._benchmark.display_name or self._benchmark.name,
