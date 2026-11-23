@@ -13,7 +13,7 @@ import yaml
 from tests.uat import docker_assets
 
 MOCKER_CLI = "mocker"
-MOCKER_LAUNCH_PLATFORMS = frozenset({"doris", "singlestore"})
+MOCKER_LAUNCH_PLATFORMS = frozenset({"doris", "lakesail", "singlestore"})
 COMPOSE_PROJECT_LABEL = "com.docker.compose.project"
 COMPOSE_SERVICE_LABEL = "com.docker.compose.service"
 
@@ -35,6 +35,8 @@ class MockerService:
     ports: tuple[str, ...] = ()
     environment: tuple[tuple[str, str], ...] = ()
     volumes: tuple[str, ...] = ()
+    tmpfs: tuple[str, ...] = ()
+    buildable: bool = False
     named_volumes: tuple[str, ...] = ()
     privileged: bool = False
     restart: str | None = None
@@ -147,6 +149,8 @@ _SUPPORTED_KEYS = frozenset(
         "ports",
         "environment",
         "volumes",
+        "tmpfs",
+        "build",
         "privileged",
         "restart",
         "healthcheck",
@@ -213,6 +217,8 @@ def build_services(
                     ports=tuple(_expand(port, environment) for port in service.get("ports") or ()),
                     environment=_environment(service.get("environment"), environment),
                     volumes=tuple(volumes),
+                    tmpfs=tuple(_expand(path, environment) for path in service.get("tmpfs") or ()),
+                    buildable="build" in service,
                     named_volumes=tuple(named),
                     privileged=_truthy(service.get("privileged"), environment) if "privileged" in service else False,
                     restart=_expand(restart, environment) if restart else None,
@@ -260,6 +266,8 @@ def run_command(service: MockerService, project_name: str) -> list[str]:
         argv.extend(["-e", f"{key}={value}"])
     for volume in service.volumes:
         argv.extend(["-v", volume])
+    for path in service.tmpfs:
+        argv.extend(["--tmpfs", path])
     if service.entrypoint:
         argv.extend(["--entrypoint", service.entrypoint[0]])
     argv.append(service.image)
@@ -317,6 +325,11 @@ def launch_stack(
     def call(argv: list[str], *, step_timeout: int | float) -> docker_assets.DockerCommandResult:
         commands.append(argv)
         return runner(argv, dry_run=dry_run, timeout_s=int(step_timeout), cwd=work_dir, env=run_env)
+
+    if any(service.buildable for service in services):
+        built = call(docker_assets.compose_build_command(spec, project_name), step_timeout=timeout_s)
+        if not built.succeeded:
+            return _failure(built, "compose build failed")
 
     for service in services:
         call([MOCKER_CLI, "rm", "-f", service.container_name], step_timeout=60)
