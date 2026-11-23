@@ -102,28 +102,28 @@
       "ranking_excluded": false
     },
     "clickbench_sf01_bigquery_sql_20260919_185021_2730e66a.json": {
-      "compliance_class": "unofficial_nonstandard",
-      "ranking_excluded": true
+      "compliance_class": null,
+      "ranking_excluded": false
     },
     "clickbench_sf01_databricks_sql_20261003_220608_70c9438e.json": {
-      "compliance_class": "unofficial_nonstandard",
-      "ranking_excluded": true
+      "compliance_class": null,
+      "ranking_excluded": false
     },
     "clickbench_sf01_snowflake_sql_20260920_024607_616ff980.json": {
-      "compliance_class": "unofficial_nonstandard",
-      "ranking_excluded": true
+      "compliance_class": null,
+      "ranking_excluded": false
     },
     "clickbench_sf10_bigquery_sql_20260919_211134_6c9c5414.json": {
-      "compliance_class": "unofficial_nonstandard",
-      "ranking_excluded": true
+      "compliance_class": null,
+      "ranking_excluded": false
     },
     "clickbench_sf10_databricks_sql_20261003_231900_2437b487.json": {
-      "compliance_class": "unofficial_nonstandard",
-      "ranking_excluded": true
+      "compliance_class": null,
+      "ranking_excluded": false
     },
     "clickbench_sf10_snowflake_sql_20260919_213657_c9c32b6f.json": {
-      "compliance_class": "unofficial_nonstandard",
-      "ranking_excluded": true
+      "compliance_class": null,
+      "ranking_excluded": false
     },
     "clickbench_sf1_bigquery_sql_20260919_201018_dd899402.json": {
       "compliance_class": null,
@@ -374,32 +374,32 @@
       "ranking_excluded": false
     },
     "duckdb-version-matrix/clickbench_sf10_duckdb_v1_0_0_median.json": {
-      "compliance_class": "unofficial_nonstandard",
-      "ranking_excluded": true
+      "compliance_class": null,
+      "ranking_excluded": false
     },
     "duckdb-version-matrix/clickbench_sf10_duckdb_v1_1_3_median.json": {
-      "compliance_class": "unofficial_nonstandard",
-      "ranking_excluded": true
+      "compliance_class": null,
+      "ranking_excluded": false
     },
     "duckdb-version-matrix/clickbench_sf10_duckdb_v1_2_2_median.json": {
-      "compliance_class": "unofficial_nonstandard",
-      "ranking_excluded": true
+      "compliance_class": null,
+      "ranking_excluded": false
     },
     "duckdb-version-matrix/clickbench_sf10_duckdb_v1_3_2_median.json": {
-      "compliance_class": "unofficial_nonstandard",
-      "ranking_excluded": true
+      "compliance_class": null,
+      "ranking_excluded": false
     },
     "duckdb-version-matrix/clickbench_sf10_duckdb_v1_4_4_median.json": {
-      "compliance_class": "unofficial_nonstandard",
-      "ranking_excluded": true
+      "compliance_class": null,
+      "ranking_excluded": false
     },
     "duckdb-version-matrix/clickbench_sf10_duckdb_v1_5_5_median.json": {
-      "compliance_class": "unofficial_nonstandard",
-      "ranking_excluded": true
+      "compliance_class": null,
+      "ranking_excluded": false
     },
     "duckdb-version-matrix/clickbench_sf10_duckdb_v1_6_0_dev365_median.json": {
-      "compliance_class": "unofficial_nonstandard",
-      "ranking_excluded": true
+      "compliance_class": null,
+      "ranking_excluded": false
     },
     "duckdb-version-matrix/ssb_sf10_duckdb_v1_0_0_median.json": {
       "compliance_class": null,
