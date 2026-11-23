@@ -48794,10 +48794,15 @@
       "title": "✅ TPC-Havoc Variant Modularization"
     },
     "tpc-legend-missing-for-tpch-tpcds-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T00:04:26Z",
+        "generation": "deed1758d17b4ca29c5f3abe6bbe5d37",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Add the TPC EULA legend beside the shipped TPC-H and TPC-DS files"
     },
     "tpc-measured-intervals-reference-20261103": {
