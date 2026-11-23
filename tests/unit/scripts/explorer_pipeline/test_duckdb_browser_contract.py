@@ -8,7 +8,9 @@ import pytest
 
 from _project.scripts.explorer_pipeline.contract import EXPLORER_READ_MODEL_VERSION
 from _project.scripts.explorer_pipeline.pipeline import SUBMISSION_MANIFEST_SUFFIX, ExplorerPipeline
-from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE
+from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE, scored_minimal_bundle, with_power
+
+SCORED_BUNDLE = scored_minimal_bundle()
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -21,7 +23,7 @@ def db_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
     data_dir = base / "data"
     bundles_dir = data_dir / "bundles"
     bundles_dir.mkdir(parents=True)
-    (bundles_dir / "bundle.json").write_text(json.dumps(MINIMAL_BUNDLE), encoding="utf-8")
+    (bundles_dir / "bundle.json").write_text(json.dumps(SCORED_BUNDLE), encoding="utf-8")
 
     output_dir = base / "out"
     ExplorerPipeline().run(data_dir, output_dir, bundle_url_prefix="/results/data/bundles")
@@ -410,8 +412,8 @@ class TestSourceFidelity:
         assert self._result_row(db_path)["run_date"] == "2026-03-15"
 
     def test_query_count_matches_bundle(self, db_path: Path) -> None:
-        assert self._result_row(db_path)["query_count"] == 2
-        assert self._result_row(db_path)["logical_query_count"] == 2
+        assert self._result_row(db_path)["query_count"] == len(SCORED_BUNDLE["queries"])
+        assert self._result_row(db_path)["logical_query_count"] == len(SCORED_BUNDLE["queries"])
 
     def test_power_score_matches_bundle(self, db_path: Path) -> None:
         assert self._result_row(db_path)["power_score"] == pytest.approx(1234.56)
@@ -443,7 +445,7 @@ class TestSourceFidelity:
     def test_query_executions_count(self, db_path: Path) -> None:
         with _connect(db_path) as con:
             count = con.execute("SELECT COUNT(*) FROM query_executions").fetchone()[0]
-        assert count == 2
+        assert count == len(SCORED_BUNDLE["queries"])
 
     def test_query_execution_duration_values(self, db_path: Path) -> None:
         with _connect(db_path) as con:
@@ -514,7 +516,8 @@ class TestDerivedMetricParity:
     def test_display_geomean_ms_parity(self, db_path: Path) -> None:
         with _connect(db_path) as con:
             actual = con.execute("SELECT display_geomean_ms FROM results LIMIT 1").fetchone()[0]
-        expected = math.exp((math.log(8000.0) + math.log(4000.0)) / 2)
+        timings = [query["ms"] for query in SCORED_BUNDLE["queries"]]
+        expected = math.exp(sum(math.log(ms) for ms in timings) / len(timings))
         assert actual == pytest.approx(expected, rel=1e-9)
 
     def test_platform_id_is_provenance_stripped_slug(self, db_path: Path) -> None:
@@ -547,7 +550,7 @@ class TestDerivedMetricParity:
                 "   ON bmc.result_id = qdt.result_id AND bmc.query_id = qdt.query_id"
                 " ORDER BY bmc.query_id"
             ).fetchall()
-        assert len(cells) == 2
+        assert len(cells) == len(SCORED_BUNDLE["queries"])
         for query_id, bmc_ms, qdt_ms in cells:
             assert bmc_ms == pytest.approx(qdt_ms, rel=1e-9), (
                 f"Matrix cell display_ms != query_display_timings.display_ms for {query_id}"
@@ -708,9 +711,9 @@ def variant_db_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
     tuned["config"] = {"tuning_mode": "tuned"}
     for q in tuned["queries"]:
         q["ms"] = q["ms"] / 4.0
-    tuned["summary"]["tpc_metrics"]["power_at_size"] = 5000.0
+    with_power(tuned, 5000.0)
 
-    notuning = copy.deepcopy(MINIMAL_BUNDLE)
+    notuning = scored_minimal_bundle()
     notuning["run"]["id"] = "run-notuning"
     notuning["config"] = {"tuning_mode": "notuning"}
 
@@ -733,10 +736,9 @@ def tie_db_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
     bundles = []
     for platform, power_score in (("duckdb", 5000.0), ("sqlite", 5000.0), ("polars", 1000.0)):
-        bundle = copy.deepcopy(MINIMAL_BUNDLE)
+        bundle = scored_minimal_bundle(power_score)
         bundle["run"]["id"] = f"run-{platform}"
         bundle["platform"]["name"] = platform
-        bundle["summary"]["tpc_metrics"]["power_at_size"] = power_score
         bundles.append((platform, bundle))
 
     base = tmp_path_factory.mktemp("tie_pipeline_output")
@@ -758,10 +760,9 @@ def eligibility_db_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
     bundles = []
     for platform, power_score in (("duckdb", 5000.0), ("community", 10000.0), ("sqlite", 1000.0)):
-        bundle = copy.deepcopy(MINIMAL_BUNDLE)
+        bundle = scored_minimal_bundle(power_score)
         bundle["run"]["id"] = f"run-{platform}"
         bundle["platform"]["name"] = platform
-        bundle["summary"]["tpc_metrics"]["power_at_size"] = power_score
         bundles.append((platform, bundle))
 
     base = tmp_path_factory.mktemp("eligibility_pipeline_output")
@@ -840,7 +841,7 @@ class TestBenchmarkRankingEligibility:
     def test_benchmark_rankings_exclude_ineligible_rows_from_rank_math(self, eligibility_db_path: Path) -> None:
         with _connect(eligibility_db_path) as con:
             rows = con.execute(
-                "SELECT platform, is_ranking_eligible, power_score, rank, total_in_cohort, speedup_vs_best"
+                "SELECT platform, is_ranking_eligible, ROUND(power_score, 6), rank, total_in_cohort, ROUND(speedup_vs_best, 6)"
                 " FROM benchmark_rankings WHERE benchmark = 'tpch'"
                 " ORDER BY rank NULLS LAST, platform"
             ).fetchall()
@@ -857,7 +858,7 @@ class TestBenchmarkRankingEligibility:
     ) -> None:
         with _connect(eligibility_db_path) as con:
             rows = con.execute(
-                "SELECT platform, rank, platform_count, metric_value, speedup_vs_best"
+                "SELECT platform, rank, platform_count, ROUND(metric_value, 6), ROUND(speedup_vs_best, 6)"
                 " FROM cohort_metadata WHERE benchmark = 'tpch'"
                 " ORDER BY rank NULLS LAST, platform"
             ).fetchall()

@@ -15,6 +15,7 @@ on:
       - "benchbox/validation/bundle.py"
       - "benchbox/core/results/corpus_rule.py"
       - "benchbox/core/results/corpus_rule_data.json"
+      - "benchbox/core/results/corpus_score.py"
       - "benchbox/core/results/query_status.py"
       - "benchbox/core/results/schema_policy.py"
       - "benchbox/core/results/subscale_policy.py"
@@ -66,6 +67,7 @@ jobs:
             'benchbox/validation/bundle.py' \
             'benchbox/core/results/corpus_rule.py' \
             'benchbox/core/results/corpus_rule_data.json' \
+            'benchbox/core/results/corpus_score.py' \
             'benchbox/core/results/query_status.py' \
             'benchbox/core/results/schema_policy.py' \
             'benchbox/core/results/subscale_policy.py' \
@@ -181,6 +183,7 @@ jobs:
             'benchbox/validation/bundle.py'
             'benchbox/core/results/corpus_rule.py'
             'benchbox/core/results/corpus_rule_data.json'
+            'benchbox/core/results/corpus_score.py'
             'benchbox/core/results/query_status.py'
             'benchbox/core/results/schema_policy.py'
             'benchbox/core/results/subscale_policy.py'
@@ -216,7 +219,7 @@ jobs:
             exit 0
           fi
 
-          git add results-data scripts benchbox/validation benchbox/core/results/corpus_rule.py benchbox/core/results/corpus_rule_data.json benchbox/core/results/query_status.py benchbox/core/results/schema_policy.py benchbox/core/results/subscale_policy.py benchbox/core/results/timing_fields.py || true
+          git add results-data scripts benchbox/validation benchbox/core/results/corpus_rule.py benchbox/core/results/corpus_rule_data.json benchbox/core/results/corpus_score.py benchbox/core/results/query_status.py benchbox/core/results/schema_policy.py benchbox/core/results/subscale_policy.py benchbox/core/results/timing_fields.py || true
 
           MSG_FILE=$(mktemp)
           cat > "${MSG_FILE}" <<MSG

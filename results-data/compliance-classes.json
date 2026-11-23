@@ -4313,11 +4313,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf10/power",
         "rank": null,
         "total": 3,
-        "score": null,
+        "score": 394580.89,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -4360,11 +4360,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf10/power",
         "rank": null,
         "total": 3,
-        "score": null,
+        "score": 571074.0,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -4407,11 +4407,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf10/power",
         "rank": null,
         "total": 3,
-        "score": null,
+        "score": 502207.99,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -4454,11 +4454,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf10/power",
         "rank": null,
         "total": 3,
-        "score": null,
+        "score": 532573.03,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -4501,11 +4501,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf10/power",
         "rank": null,
         "total": 3,
-        "score": null,
+        "score": 576615.68,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -4548,11 +4548,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf10/power",
         "rank": null,
         "total": 3,
-        "score": null,
+        "score": 657656.88,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -4595,11 +4595,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf10/power",
         "rank": null,
         "total": 3,
-        "score": null,
+        "score": 773020.3,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -4642,11 +4642,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf10/power",
         "rank": null,
         "total": 0,
-        "score": 173508.23,
+        "score": 172773.64,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -4680,11 +4680,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf10/power",
         "rank": null,
         "total": 0,
-        "score": 212539.75,
+        "score": 211634.09,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -4718,11 +4718,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf10/power",
         "rank": null,
         "total": 0,
-        "score": 228201.42,
+        "score": 227737.47,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -4756,11 +4756,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf10/power",
         "rank": null,
         "total": 0,
-        "score": 198175.12,
+        "score": 195541.6,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -4794,11 +4794,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf10/power",
         "rank": null,
         "total": 0,
-        "score": 213021.4,
+        "score": 214702.54,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -4832,11 +4832,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf10/power",
         "rank": null,
         "total": 0,
-        "score": 236190.62,
+        "score": 235422.16,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -4870,11 +4870,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf10/power",
         "rank": null,
         "total": 0,
-        "score": 281041.44,
+        "score": 281634.51,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -10924,11 +10924,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": null,
         "total": 6,
-        "score": 35781.86,
+        "score": 35783.04,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -10962,11 +10962,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": null,
         "total": 6,
-        "score": 26925.36,
+        "score": 26926.83,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -11000,11 +11000,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": null,
         "total": 6,
-        "score": 39967.22,
+        "score": 39968.3,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -11038,11 +11038,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": 3,
         "total": 6,
-        "score": 79638.85,
+        "score": 79635.08,
         "exclusion_reason": null
       },
       "rule": {
@@ -11085,11 +11085,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": 2,
         "total": 6,
-        "score": 114648.64,
+        "score": 114653.51,
         "exclusion_reason": null
       },
       "rule": {
@@ -11946,11 +11946,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf10/power",
         "rank": null,
         "total": 3,
-        "score": null,
+        "score": 21379.65,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -11993,11 +11993,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf10/power",
         "rank": 3,
         "total": 3,
-        "score": 21175.71,
+        "score": 21175.77,
         "exclusion_reason": null
       },
       "rule": {
@@ -12040,11 +12040,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf10/power",
         "rank": null,
         "total": 3,
-        "score": 151088.75,
+        "score": 151093.98,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -12078,11 +12078,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf10/power",
         "rank": null,
         "total": 3,
-        "score": null,
+        "score": 80409.95,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -12125,11 +12125,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf10/power",
         "rank": 1,
         "total": 3,
-        "score": 497998.9,
+        "score": 497969.85,
         "exclusion_reason": null
       },
       "rule": {
@@ -12172,11 +12172,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf10/power",
         "rank": 2,
         "total": 3,
-        "score": 28917.68,
+        "score": 28917.58,
         "exclusion_reason": null
       },
       "rule": {
@@ -12219,11 +12219,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf10/power",
         "rank": null,
         "total": 3,
-        "score": null,
+        "score": 17711.42,
         "exclusion_reason": "failed_queries"
       },
       "rule": {
@@ -12257,11 +12257,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": null,
         "total": 6,
-        "score": null,
+        "score": 3820.32,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -12304,11 +12304,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": null,
         "total": 6,
-        "score": null,
+        "score": 57127.91,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -12342,11 +12342,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": null,
         "total": 6,
-        "score": null,
+        "score": 16053.58,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -12389,7 +12389,7 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": 6,
         "total": 6,
@@ -12436,11 +12436,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": null,
         "total": 6,
-        "score": 72793.96,
+        "score": 72787.81,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -12474,11 +12474,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": null,
         "total": 6,
-        "score": null,
+        "score": 67089.19,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -12512,11 +12512,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": null,
         "total": 6,
-        "score": null,
+        "score": 76858.93,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -12559,11 +12559,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": 1,
         "total": 6,
-        "score": 269803.24,
+        "score": 269837.53,
         "exclusion_reason": null
       },
       "rule": {
@@ -12606,11 +12606,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": null,
         "total": 6,
-        "score": null,
+        "score": 290100.96,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -12691,11 +12691,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": null,
         "total": 6,
-        "score": null,
+        "score": 90196.15,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -12729,11 +12729,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": 5,
         "total": 6,
-        "score": 3709.41,
+        "score": 3709.42,
         "exclusion_reason": null
       },
       "rule": {
@@ -12776,11 +12776,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": 4,
         "total": 6,
-        "score": 6211.44,
+        "score": 6211.42,
         "exclusion_reason": null
       },
       "rule": {
@@ -12823,11 +12823,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpcds/sf1/power",
         "rank": null,
         "total": 6,
-        "score": null,
+        "score": 6155.61,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -12917,11 +12917,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": null,
+        "score": 27873.12,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -12955,11 +12955,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": null,
+        "score": 37441.6,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -12993,11 +12993,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": 7,
         "total": 9,
-        "score": 2459.56,
+        "score": 2459.8,
         "exclusion_reason": null
       },
       "rule": {
@@ -13134,11 +13134,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.1/power",
         "rank": 9,
         "total": 11,
-        "score": 13478.23,
+        "score": 13478.78,
         "exclusion_reason": null
       },
       "rule": {
@@ -13275,11 +13275,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": 1,
         "total": 9,
-        "score": 6130.15,
+        "score": 6128.23,
         "exclusion_reason": null
       },
       "rule": {
@@ -13416,11 +13416,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.1/power",
         "rank": 5,
         "total": 11,
-        "score": 24750.35,
+        "score": 24726.71,
         "exclusion_reason": null
       },
       "rule": {
@@ -13557,11 +13557,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": 1,
         "total": 1,
-        "score": 93780.79,
+        "score": 93777.3,
         "exclusion_reason": null
       },
       "rule": {
@@ -13604,11 +13604,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": null,
+        "score": 72213.57,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -13651,11 +13651,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": null,
+        "score": 117871.52,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -13698,11 +13698,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": null,
         "total": 9,
-        "score": 6992.52,
+        "score": 7001.74,
         "exclusion_reason": "validation_not_clean"
       },
       "rule": {
@@ -13736,11 +13736,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.1/power",
         "rank": null,
         "total": 11,
-        "score": 24454.82,
+        "score": 24459.65,
         "exclusion_reason": "validation_not_clean"
       },
       "rule": {
@@ -13774,11 +13774,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": null,
         "total": 9,
-        "score": 3858.38,
+        "score": 3862.25,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -13812,11 +13812,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": null,
         "total": 9,
-        "score": 2591.18,
+        "score": 2590.15,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -13850,11 +13850,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": 8,
         "total": 9,
-        "score": 2407.22,
+        "score": 2406.67,
         "exclusion_reason": null
       },
       "rule": {
@@ -13897,11 +13897,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": null,
         "total": 9,
-        "score": 2254.73,
+        "score": 2256.2,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -13935,11 +13935,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": null,
         "total": 9,
-        "score": 3027.58,
+        "score": 3026.08,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -13973,11 +13973,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": 9,
         "total": 9,
-        "score": 2398.41,
+        "score": 2398.04,
         "exclusion_reason": null
       },
       "rule": {
@@ -14020,11 +14020,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": null,
         "total": 9,
-        "score": 5160.7,
+        "score": 5163.9,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -14058,11 +14058,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": null,
         "total": 9,
-        "score": 1693.78,
+        "score": 1695.45,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -14096,11 +14096,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": null,
         "total": 9,
-        "score": 9225.87,
+        "score": 9181.38,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -14172,7 +14172,7 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": null,
         "total": 9,
@@ -14210,7 +14210,7 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": null,
         "total": 9,
@@ -14248,11 +14248,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": null,
         "total": 9,
-        "score": 3819.88,
+        "score": 3819.21,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -14286,11 +14286,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": 6,
         "total": 9,
-        "score": 2869.69,
+        "score": 2868.49,
         "exclusion_reason": null
       },
       "rule": {
@@ -14333,11 +14333,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.01/power",
         "rank": null,
         "total": 9,
-        "score": 1383.81,
+        "score": 1383.8,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -14409,11 +14409,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.1/power",
         "rank": null,
         "total": 11,
-        "score": 14042.16,
+        "score": 14041.12,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -14447,11 +14447,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.1/power",
         "rank": 10,
         "total": 11,
-        "score": 8170.96,
+        "score": 8171.54,
         "exclusion_reason": null
       },
       "rule": {
@@ -14532,11 +14532,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.1/power",
         "rank": null,
         "total": 11,
-        "score": 19808.25,
+        "score": 19802.7,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -14570,11 +14570,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.1/power",
         "rank": 7,
         "total": 11,
-        "score": 16770.45,
+        "score": 16783.83,
         "exclusion_reason": null
       },
       "rule": {
@@ -14617,11 +14617,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.1/power",
         "rank": null,
         "total": 11,
-        "score": 24447.73,
+        "score": 24450.48,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -14655,7 +14655,7 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.1/power",
         "rank": 1,
         "total": 11,
@@ -14702,11 +14702,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.1/power",
         "rank": null,
         "total": 11,
-        "score": 17474.54,
+        "score": 17476.33,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -14740,11 +14740,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.1/power",
         "rank": null,
         "total": 11,
-        "score": 61160.65,
+        "score": 61118.04,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -14778,7 +14778,7 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.1/power",
         "rank": 2,
         "total": 11,
@@ -14863,11 +14863,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.1/power",
         "rank": null,
         "total": 11,
-        "score": 1074.04,
+        "score": 1074.09,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -14901,11 +14901,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.1/power",
         "rank": null,
         "total": 11,
-        "score": 7058.76,
+        "score": 7054.47,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -14939,11 +14939,11 @@
       "today": {
         "class": "unofficial_subscale",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf0.1/power",
         "rank": 11,
         "total": 11,
-        "score": 5463.89,
+        "score": 5463.76,
         "exclusion_reason": null
       },
       "rule": {
@@ -14986,11 +14986,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf10/power",
         "rank": null,
         "total": 0,
-        "score": 14569.14,
+        "score": 14569.13,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15024,11 +15024,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf10/power",
         "rank": null,
         "total": 0,
-        "score": 27914.03,
+        "score": 27914.09,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15062,11 +15062,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf10/power",
         "rank": null,
         "total": 0,
-        "score": 29876.26,
+        "score": 29876.32,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15100,11 +15100,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": 3552.8,
+        "score": 3552.79,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15138,11 +15138,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": 50827.68,
+        "score": 50822.82,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15176,11 +15176,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": null,
+        "score": 16319.0,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -15223,11 +15223,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": 3842.66,
+        "score": 3842.6,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15261,11 +15261,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": 77391.54,
+        "score": 77382.76,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15299,11 +15299,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": null,
+        "score": 59814.33,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {
@@ -15350,7 +15350,7 @@
         "cohort": "tpch/sf1/throughput/streams=3",
         "rank": 2,
         "total": 3,
-        "score": 25666.28,
+        "score": 25667.06,
         "exclusion_reason": null
       },
       "rule": {
@@ -15393,11 +15393,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": 93186.49,
+        "score": 93163.62,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15431,11 +15431,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": 100368.26,
+        "score": 100365.01,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15469,11 +15469,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": 56414.57,
+        "score": 56409.42,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15511,7 +15511,7 @@
         "cohort": "tpch/sf1/throughput/streams=3",
         "rank": 1,
         "total": 3,
-        "score": 297652.7,
+        "score": 297744.36,
         "exclusion_reason": null
       },
       "rule": {
@@ -15554,11 +15554,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": 99549.33,
+        "score": 99525.28,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15592,11 +15592,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": 99309.09,
+        "score": 99285.25,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15630,11 +15630,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": 98089.34,
+        "score": 98085.87,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15668,11 +15668,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": 1929.95,
+        "score": 1929.96,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15706,11 +15706,11 @@
       "today": {
         "class": "official",
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": 3644.65,
+        "score": 3644.66,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15744,11 +15744,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": 4805.2,
+        "score": 4805.23,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15786,7 +15786,7 @@
         "cohort": "tpch/sf1/throughput/streams=3",
         "rank": 3,
         "total": 3,
-        "score": 1541.96,
+        "score": 1541.97,
         "exclusion_reason": null
       },
       "rule": {
@@ -15829,11 +15829,11 @@
       "today": {
         "class": null,
         "ranking_excluded": false,
-        "score_source": "recorded",
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": 7237.64,
+        "score": 7237.66,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
@@ -15867,11 +15867,11 @@
       "today": {
         "class": "unofficial_nonstandard",
         "ranking_excluded": true,
-        "score_source": null,
+        "score_source": "derived_from_timings",
         "cohort": "tpch/sf1/power",
         "rank": null,
         "total": 1,
-        "score": null,
+        "score": 6499.14,
         "exclusion_reason": "unofficial_compliance"
       },
       "rule": {

@@ -384,11 +384,10 @@ class TestMetricsCommand:
     @pytest.mark.parametrize(
         ("power_summary", "throughput_summary", "expected"),
         [
-            ({"tpc_metrics": {"suppressed": True, "reason": "compliance_class=unofficial_subscale"}}, {}, "suppressed"),
             ({}, {"queries": {"total": 44, "passed": 39, "failed": 5}}, "failed queries"),
         ],
     )
-    def test_metrics_qphh_refuses_suppressed_or_failed_results(self, power_summary, throughput_summary, expected):
+    def test_metrics_qphh_refuses_failed_results(self, power_summary, throughput_summary, expected):
         runner = CliRunner()
 
         with tempfile.TemporaryDirectory() as tmpdir:

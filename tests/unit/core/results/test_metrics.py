@@ -264,16 +264,16 @@ def _throughput_file(
 
 
 class TestDeriveFromResultFiles:
-    def test_suppressed_metrics_are_refused(self) -> None:
+    def test_a_suppression_marker_is_not_read(self) -> None:
         suppressed = {"suppressed": True, "reason": "compliance_class=unofficial_subscale"}
-        with pytest.raises(ValueError, match="suppressed"):
-            TPCMetricsCalculator.compute_qphh_result(
-                _power_file({1: 1.0}), _throughput_file(tpc_metrics=suppressed), scale_factor=1.0
-            )
-        with pytest.raises(ValueError, match="suppressed"):
-            TPCMetricsCalculator.compute_qphh_result(
-                _power_file({1: 1.0}, tpc_metrics=suppressed), _throughput_file(), scale_factor=1.0
-            )
+        marked = TPCMetricsCalculator.compute_qphh_result(
+            _power_file({1: 1.0}, tpc_metrics=suppressed),
+            _throughput_file(tpc_metrics=suppressed),
+            scale_factor=1.0,
+        )
+        plain = TPCMetricsCalculator.compute_qphh_result(_power_file({1: 1.0}), _throughput_file(), scale_factor=1.0)
+
+        assert marked == plain
 
     @pytest.mark.parametrize("which", ["power", "throughput"])
     def test_failed_queries_are_refused(self, which: str) -> None:

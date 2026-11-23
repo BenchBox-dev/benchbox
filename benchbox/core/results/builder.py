@@ -45,11 +45,7 @@ from benchbox.core.results.query_status import (
     unchecked_row_count_evidence,
     unvalidated_measurement_query_ids,
 )
-from benchbox.core.results.subscale_policy import (
-    NONSTANDARD_COMPLIANCE_CLASS,
-    platform_info_gateway,
-    routed_compliance_class,
-)
+from benchbox.core.results.subscale_policy import platform_info_gateway, routed_compliance_class
 from benchbox.core.results.timer_scope import effective_timing_method
 
 if TYPE_CHECKING:
@@ -407,11 +403,7 @@ class ResultBuilder:
         compliance_class = routed_compliance_class(
             self._benchmark.compliance_class, platform_info_gateway(platform_info)
         )
-        metrics_suppressed = (
-            bool(failed_queries)
-            or compliance_class == NONSTANDARD_COMPLIANCE_CLASS
-            or self._power_stopped_at_time_limit
-        )
+        metrics_suppressed = bool(failed_queries) or self._power_stopped_at_time_limit
         if self._execution_phases_override is None and (self._power_refresh or self._throughput_phase):
             self._execution_phases_override = self._compose_refresh_phases(metrics_suppressed)
         if metrics_suppressed:

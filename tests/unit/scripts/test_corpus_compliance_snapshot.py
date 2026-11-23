@@ -5,7 +5,7 @@ import copy
 import corpus_compliance_snapshot as script
 import pytest
 
-from benchbox.core.results import corpus_rule
+from benchbox.core.results import corpus_rule, corpus_score
 
 pytestmark = [
     pytest.mark.unit,
@@ -107,13 +107,15 @@ def test_difference_report_lists_every_changed_result_and_gate_counts(recorded) 
 def test_throughput_at_size_is_not_scored_for_failed_streams() -> None:
     queries = [{"test_type": "throughput", "run_type": "measurement"}]
     good = {
+        "benchmark": {"scale_factor": 1.0},
         "phases": {"throughput_test": {"duration_ms": 1000, "stream_results": [{"success": True}]}},
         "queries": queries,
     }
     bad = {
+        "benchmark": {"scale_factor": 1.0},
         "phases": {"throughput_test": {"duration_ms": 1000, "stream_results": [{"success": True}, {"success": False}]}},
         "queries": queries,
     }
 
-    assert script.throughput_at_size_from_timings(good, 1.0) is not None
-    assert script.throughput_at_size_from_timings(bad, 1.0) is None
+    assert corpus_score.throughput_at_size(good) is not None
+    assert corpus_score.throughput_at_size(bad) is None

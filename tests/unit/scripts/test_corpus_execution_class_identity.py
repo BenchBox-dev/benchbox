@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 
 from _project.scripts.explorer_pipeline.transformer import BundleTransformer
+from tests.unit.scripts.explorer_pipeline.conftest import scored_minimal_bundle
 from tests.unit.scripts.test_corpus_cohort_depth import (
     BUNDLES,
-    MINIMAL_BUNDLE,
     _load_validator,
 )
 
@@ -37,7 +37,7 @@ SIDECAR = {
 
 
 def _bundle(environment: dict | None, *, execution_class: str | None = None) -> dict:
-    payload = copy.deepcopy(MINIMAL_BUNDLE)
+    payload = scored_minimal_bundle()
     payload["platform"] = {"name": "ClickHouse Local", "version": "25.1"}
     if environment is not None:
         payload["environment"] = copy.deepcopy(environment)
