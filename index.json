@@ -14822,7 +14822,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-source",
-      "integration_head": "3f2b268a868cef08766379cd8aa8c1a48e1da02c",
+      "integration_head": "8364ee313b8d3526586082d4812ddd4988581803",
       "integration_log": [
         {
           "at": "2026-11-22T07:11:35Z",
@@ -15205,6 +15205,20 @@
             "tpcdi-bundle-tpc-di-tools-20261121"
           ],
           "seq": 17
+        },
+        {
+          "at": "2026-11-23T17:53:24Z",
+          "changed_files": [
+            "tests/unit/core/tpcdi/test_digen_source.py"
+          ],
+          "head": "8364ee313b8d3526586082d4812ddd4988581803",
+          "kind": "fix",
+          "op_id": "a215b0fda7d646d5a68dd43e83c37e51",
+          "previous_head": "3f2b268a868cef08766379cd8aa8c1a48e1da02c",
+          "requires_acceptance": [
+            "tpcdi-08-generator-core-and-reference-files-20261120"
+          ],
+          "seq": 18
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-source",
