@@ -41,6 +41,7 @@ CANARY_PATHSPECS = (
     "benchbox/core/results/query_status.py",
     "benchbox/core/results/schema_policy.py",
     "benchbox/core/results/subscale_policy.py",
+    "benchbox/core/results/standard_scales.json",
     "benchbox/core/results/timing_fields.py",
     "scripts/validate_submission.py",
     "scripts/publication/validator_parity.py",

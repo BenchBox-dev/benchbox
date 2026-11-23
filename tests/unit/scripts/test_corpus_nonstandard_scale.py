@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from types import ModuleType
@@ -89,6 +91,9 @@ def _submission_bundle(benchmark: str, scale: float, **benchmark_fields: object)
     from benchbox.validation.bundle import CANONICAL_LOGICAL_QUERY_IDS
 
     canonical = sorted(CANONICAL_LOGICAL_QUERY_IDS.get(benchmark, frozenset({"1", "2"})))
+    if benchmark == "tpcds":
+        variants = {"14": ("14a", "14b"), "23": ("23a", "23b"), "24": ("24a", "24b"), "39": ("39a", "39b")}
+        canonical = sorted({variant for query_id in canonical for variant in variants.get(query_id, (query_id,))})
     return {
         "version": "2.1",
         "run": {"id": "abc123", "timestamp": "2026-04-01T12:00:00", "total_duration_ms": 5000},
@@ -208,7 +213,7 @@ def test_an_off_list_cohort_does_not_change_the_standard_cohort_beside_it(tmp_pa
     assert cohorts == {("ssb", "1.0"): {"duckdb", "datafusion", "sqlite"}, ("ssb", "2.0"): set()}
 
 
-@pytest.mark.parametrize("benchmark_id", ["tpch", "ssb", "clickbench", "joinorder", "metadata_primitives"])
+@pytest.mark.parametrize("benchmark_id", ["tpch", "tpcds", "ssb", "clickbench", "joinorder", "metadata_primitives"])
 def test_submission_accepts_an_off_list_bundle_and_discloses_the_exclusion(benchmark_id: str) -> None:
     vr = _validate(_submission_bundle(benchmark_id, _off_list_scale(benchmark_id)))
 
@@ -290,26 +295,154 @@ def test_submission_still_refuses_gateway_routed_bundles_at_an_off_list_scale() 
     assert any("unofficial_nonstandard" in error for error in routed.errors)
 
 
-def test_a_registry_less_validator_accepts_a_stamped_non_tpc_bundle_and_refuses_a_stamped_tpc_one(
-    monkeypatch: pytest.MonkeyPatch,
+MIRRORED_RUNTIME = (
+    "scripts/validate_submission.py",
+    "benchbox/validation/bundle.py",
+    "benchbox/core/results/query_status.py",
+    "benchbox/core/results/timing_fields.py",
+    "benchbox/core/results/schema_policy.py",
+    "benchbox/core/results/subscale_policy.py",
+    "benchbox/core/results/standard_scales.json",
+)
+MIRROR_CASES = [
+    ("tpch", 2.0, None),
+    ("tpch", 2.0, "official"),
+    ("tpch", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
+    ("tpch", 0.5, "unofficial_subscale"),
+    ("tpch", 0.5, None),
+    ("tpch", 1.0, NONSTANDARD_COMPLIANCE_CLASS),
+    ("tpch", 1.0, None),
+    ("tpcds", 2.0, None),
+    ("tpcds", 2.0, "official"),
+    ("tpcds", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
+    ("tpcds", 30.0, NONSTANDARD_COMPLIANCE_CLASS),
+    ("tpcds", 0.5, "unofficial_subscale"),
+    ("tpcds", 1000.0, None),
+    ("ssb", 2.0, None),
+    ("ssb", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
+    ("ssb", 1.0, NONSTANDARD_COMPLIANCE_CLASS),
+    ("clickbench", 10.0, None),
+    ("joinorder", 2.0, None),
+]
+
+
+def _slim_mirror(root: Path, *, with_projection: bool = True) -> Path:
+    for relative in MIRRORED_RUNTIME:
+        if relative.endswith("standard_scales.json") and not with_projection:
+            continue
+        destination = root / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes((REPO_ROOT / relative).read_bytes())
+    (root / "results-data" / "bundles").mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _run_mirror(root: Path, payload: dict, *, partial: bool) -> subprocess.CompletedProcess[str]:
+    payload = {**payload, "export": {"anonymized": True}}
+    bundle = root / "results-data" / "bundles" / "candidate.json"
+    bundle.write_text(json.dumps(payload), encoding="utf-8")
+    command = [sys.executable, "-I", "-S", "scripts/validate_submission.py", str(bundle.relative_to(root))]
+    if partial:
+        command.append("--allow-partial-validation")
+    return subprocess.run(command, cwd=root, capture_output=True, text=True, check=False, timeout=60)
+
+
+@pytest.fixture(scope="module")
+def slim_mirror(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return _slim_mirror(tmp_path_factory.mktemp("published-results"))
+
+
+@pytest.mark.parametrize("partial", [False, True], ids=["strict", "partial"])
+@pytest.mark.parametrize(("benchmark_id", "scale", "compliance_class"), MIRROR_CASES)
+def test_the_registry_less_validator_reaches_the_same_verdict_and_warning_as_the_registry(
+    slim_mirror: Path, tmp_path: Path, benchmark_id: str, scale: float, compliance_class: str | None, partial: bool
 ) -> None:
-    import benchbox.validation.bundle as bundle_module
+    fields = {} if compliance_class is None else {"compliance_class": compliance_class}
+    payload = _submission_bundle(benchmark_id, scale, **fields)
+    payload["export"] = {"anonymized": True}
+    core_path = tmp_path / "results-data" / "bundles" / "candidate.json"
+    core_path.parent.mkdir(parents=True)
+    core_path.write_text(json.dumps(payload), encoding="utf-8")
+    (core,) = validate_bundles([core_path], allow_partial_validation=partial)
 
-    monkeypatch.setattr(bundle_module, "is_standard_scale_factor", None)
+    mirror = _run_mirror(slim_mirror, payload, partial=partial)
 
-    stamped_ssb = _validate(_submission_bundle("ssb", 2.0, compliance_class=NONSTANDARD_COMPLIANCE_CLASS))
-    assert stamped_ssb.ok, stamped_ssb.errors
-    assert any("unofficial_compliance" in warning for warning in stamped_ssb.warnings)
+    assert (mirror.returncode == 0) == core.ok, mirror.stdout + mirror.stderr
+    assert ("nonstandard-scale" in mirror.stdout) == bool(_nonstandard_warnings(core))
+    assert ("is not accepted for public submissions" in mirror.stdout) == any(
+        "is not accepted for public submissions" in error for error in core.errors
+    )
 
-    unstamped_ssb = _validate(_submission_bundle("ssb", 2.0))
-    assert unstamped_ssb.ok, unstamped_ssb.errors
 
-    stamped_tpch = _validate(_submission_bundle("tpch", 2.0, compliance_class=NONSTANDARD_COMPLIANCE_CLASS))
-    assert not stamped_tpch.ok
+@pytest.mark.parametrize("benchmark_id", ["tpch", "tpcds"])
+def test_the_registry_less_validator_accepts_an_off_list_tpc_bundle_stamped_nonstandard(
+    slim_mirror: Path, benchmark_id: str
+) -> None:
+    payload = _submission_bundle(benchmark_id, 2.0, compliance_class=NONSTANDARD_COMPLIANCE_CLASS)
 
-    routed_payload = _submission_bundle("ssb", 2.0, compliance_class=NONSTANDARD_COMPLIANCE_CLASS)
-    routed_payload["platform"]["gateway"] = {"name": "espresso", "routed": True}
-    assert not _validate(routed_payload).ok
+    mirror = _run_mirror(slim_mirror, payload, partial=False)
+
+    assert mirror.returncode == 0, mirror.stdout + mirror.stderr
+    assert "nonstandard-scale" in mirror.stdout
+
+
+def test_the_registry_less_validator_still_refuses_a_gateway_routed_off_list_bundle(slim_mirror: Path) -> None:
+    payload = _submission_bundle("ssb", 2.0, compliance_class=NONSTANDARD_COMPLIANCE_CLASS)
+    payload["platform"]["gateway"] = {"name": "espresso", "routed": True}
+
+    assert _run_mirror(slim_mirror, payload, partial=False).returncode == 1
+
+
+@pytest.mark.parametrize("partial", [False, True], ids=["strict", "partial"])
+def test_the_registry_less_validator_fails_closed_without_the_projection(tmp_path: Path, partial: bool) -> None:
+    root = _slim_mirror(tmp_path, with_projection=False)
+
+    mirror = _run_mirror(root, _submission_bundle("tpch", 2.0), partial=partial)
+
+    assert mirror.returncode != 0
+    assert "benchbox/core/results/standard_scales.json is missing or unreadable" in mirror.stdout + mirror.stderr
+
+
+@pytest.mark.parametrize(
+    ("benchmark_id", "scale", "compliance_class", "expected"),
+    [
+        ("tpch", 2.0, None, "unofficial_compliance"),
+        ("tpch", 2.0, "official", "unofficial_compliance"),
+        ("tpcds", 30.0, None, "unofficial_compliance"),
+        ("ssb", 2.0, None, "unofficial_compliance"),
+        ("tpch", 1.0, None, "missing_primary_metric"),
+        ("tpcds", 1000.0, None, "missing_primary_metric"),
+    ],
+)
+def test_the_registry_less_exclusion_reason_sees_an_off_list_scale(
+    slim_mirror: Path, benchmark_id: str, scale: float, compliance_class: str | None, expected: str | None
+) -> None:
+    destination = slim_mirror / "results-data" / "validate_corpus.py"
+    destination.write_bytes(VALIDATOR.read_bytes())
+    code = (
+        "import importlib.util, json, sys\n"
+        "spec = importlib.util.spec_from_file_location('validate_corpus', 'results-data/validate_corpus.py')\n"
+        "module = importlib.util.module_from_spec(spec)\n"
+        "sys.modules['validate_corpus'] = module\n"
+        "spec.loader.exec_module(module)\n"
+        "payload = json.loads(sys.argv[1])\n"
+        "print(json.dumps(module.exclusion_reason(payload)))\n"
+    )
+    payload = _submission_bundle(
+        benchmark_id, scale, **({} if compliance_class is None else {"compliance_class": compliance_class})
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-I", "-S", "-c", code, json.dumps(payload)],
+        cwd=slim_mirror,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == expected
+    assert expected == _load_validator().exclusion_reason(payload)
 
 
 def test_validate_bundles_accepts_an_off_list_file(tmp_path: Path) -> None:

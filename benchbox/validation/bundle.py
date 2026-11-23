@@ -71,28 +71,8 @@ try:
 except ImportError:
     EXECUTION_CLASSES = ("native", "container")
 
-try:
-    from benchbox.core.benchmark_registry import is_standard_scale_factor
-except ImportError:
-    is_standard_scale_factor = None
-
 NONSTANDARD_COMPLIANCE_CLASS = "unofficial_nonstandard"
 KNOWN_COMPLIANCE_CLASSES = frozenset({"official", "unofficial_nonstandard", "unofficial_subscale"})
-OFFICIAL_CLASS_BENCHMARKS = frozenset({"tpch", "tpcds"})
-
-
-def _is_nonstandard_scale(benchmark_id: Any, scale_factor: Any) -> bool:
-    if is_standard_scale_factor is None or isinstance(scale_factor, bool) or scale_factor is None:
-        return False
-    try:
-        float(scale_factor)
-    except (TypeError, ValueError):
-        return False
-    try:
-        return not is_standard_scale_factor(str(benchmark_id), scale_factor)
-    except ValueError:
-        return False
-
 
 try:
     from benchbox.core.schemas import MIN_THROUGHPUT_STREAMS
@@ -465,7 +445,8 @@ def _load_subscale_policy_module():
     return module
 
 
-normalize_tpc_benchmark_id = _load_subscale_policy_module().normalize_tpc_benchmark_id
+_SUBSCALE_POLICY = _load_subscale_policy_module()
+normalize_tpc_benchmark_id = _SUBSCALE_POLICY.normalize_tpc_benchmark_id
 
 CANONICAL_LOGICAL_QUERY_COUNTS: dict[str, int] = {
     "tpch": 22,
@@ -1804,11 +1785,7 @@ def _validate_compliance_section(
         return
     if _is_gateway_routed(platform):
         compliance = NONSTANDARD_COMPLIANCE_CLASS
-    elif _is_nonstandard_scale(benchmark.get("id"), benchmark.get("scale_factor")) or (
-        is_standard_scale_factor is None
-        and compliance == NONSTANDARD_COMPLIANCE_CLASS
-        and str(benchmark.get("id")).strip().casefold() not in OFFICIAL_CLASS_BENCHMARKS
-    ):
+    elif _SUBSCALE_POLICY.is_nonstandard_scale(benchmark.get("id"), benchmark.get("scale_factor")):
         vr.warn(
             f"nonstandard-scale: scale_factor={benchmark.get('scale_factor')!r} is not a standard scale for "
             f"benchmark {benchmark.get('id')!r}; the bundle is accepted and excluded from ranking "

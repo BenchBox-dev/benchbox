@@ -65,25 +65,26 @@ accepted and never ranked. This applies to every benchmark, not only TPC-H and
 TPC-DS, and replaces the previous behaviour, which ranked any bundle that carried no
 compliance class once three platforms shared its scale.
 
-- Standard scales come only from the benchmark registry:
+- Standard scales come from the benchmark registry:
   `get_scale_factor_rule(benchmark_id).standard` in `benchbox/core/benchmark_registry.py`
   (the exact set for fixed-scale benchmarks such as `joinorder` and
-  `metadata_primitives`). `is_standard_scale_factor` wraps it, and no other list of
-  standard scales exists.
+  `metadata_primitives`). `is_standard_scale_factor` wraps it. The registry cannot be
+  imported by the slim `published-results` validator, so
+  `benchbox/core/results/standard_scales.json` projects every registry benchmark's
+  standard scales for it. `scripts/generate_standard_scales.py --write` regenerates the
+  file, and `--check` (develop CI) fails when it differs from the registry. A validator
+  that has neither the registry nor a readable projection fails instead of treating
+  every scale as standard.
 - `validate_submission`, `benchbox submit` and `benchbox publish` accept the bundle.
   Submission prints a `nonstandard-scale` warning that names the scale and the
-  exclusion reason.
+  exclusion reason. The registry-less validator reaches the same verdict, warning and
+  exclusion reason, whether the bundle is stamped `unofficial_nonstandard`,
+  `unofficial_subscale`, `official` or carries no class.
 - The recorded exclusion reason is `unofficial_compliance`, the reason the
   Explorer already renders as "Non-standard runs are unofficial and are not ranked."
   The effective compliance class is `unofficial_nonstandard`, whatever the bundle
   recorded, so `validate_corpus.py`, the Explorer pipeline and `benchbox submit` agree.
-- New bundles also record `benchmark.compliance_class: unofficial_nonstandard`, so
-  a validator without the registry (the slim `published-results` mirror) still
-  excludes them. Without the registry that validator cannot test the scale: it
-  accepts a recorded `unofficial_nonstandard` bundle of any benchmark other than
-  TPC-H and TPC-DS, and still refuses one for those two, which cannot be told
-  apart from an unofficial run at a standard scale. TPC-H and TPC-DS bundles at an
-  off-list scale are therefore validated where the registry exists.
+- New bundles also record `benchmark.compliance_class: unofficial_nonstandard`.
 - Off-list scales never rank, even below SF 1. Standard TPC-H and TPC-DS scales
   below SF 1 keep the subscale policy.
 - Submission still refuses a TPC-H or TPC-DS run at a standard scale that is not
