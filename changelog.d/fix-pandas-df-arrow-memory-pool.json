@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Pandas DataFrame runs of TPC-DS at scale factor 1 no longer grow to more than twice their earlier memory use: the Arrow memory pool that holds string columns now returns freed memory to the system instead of keeping it, unless ARROW_DEFAULT_MEMORY_POOL selects a pool."
+    }
+  ]
+}
