@@ -3,7 +3,7 @@
     "Owner records rerun/exclude/keep choice with exact affected bundles and settings.",
     "Chosen disposition is verified end to end: validated replacement runs and supersession, actual exclusion from ranks, or visible cap/comparability caveat for retained runs."
   ],
-  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.\n\n2026-11-17 owner decision: rerun Doris TPC-DS-OBT at SF 0.01 and 0.1 with a larger container at default parallelism, locally, and supersede both bundles.",
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.\n\n2026-11-17 owner decision: rerun Doris TPC-DS-OBT at SF 0.01 and 0.1 with a larger container at default parallelism, locally, and supersede both bundles.\n\n2026-11-22: #4340 merged as d0358749a6 (head c679a07c1d). Delivered: Doris rerun at default parallelism with the defect label defective-capped-engine-parallelism and the owner disclosure; corrected Doris and LakeSail memory peaks and full discard list in CORPUS_NOTES; ledger seed recut against published-results d2be33f732 (only the three Doris and LakeSail bundles added); compliance snapshot; LakeSail Docker default 6g for users and CI (SF 1 at 8g passed, 3.92 GiB peak; rule ceil(peak x 1.5)). make pr-preflight exit 0 (tree 6cae77039f); benchbox-review SHIP; hold lifted on owner authorisation, stale hold suite re-run once, armed once, merged.",
   "description": "## Problem\nThe Apache Doris 4.0.3 TPC-DS-OBT bundles published on 2026-11-11 (SF 0.01 and SF 0.1) ran with `parallel_pipeline_task_num=1`, which the UAT harness forces so Doris fits its 4 GiB container (`tests/uat/docker_assets.py`). DuckDB ran with 8 threads and DataFusion with 10 partitions in the same cohorts. `results-data/CORPUS_NOTES.md` and the changelog state the cap, but the ranked numbers still compare a single-task Doris with multi-threaded engines.\n\n## Change\nDecide between: re-running Doris with a larger container and default parallelism and replacing the two bundles; excluding the capped runs from ranking with a recorded reason; or keeping them with the documented caveat. If re-running, confirm the container memory needed at SF 0.1 before the sweep.\n\n## Guardrails\n- Replacing a published bundle follows the corpus supersede rules; never edit a bundle in place.\n- Heavy work only through the UAT entry point, within the approved memory budget.\n\n## Decision gates\nOwner chooses default-parallelism rerun with approved resource budget, exclusion, or keep-with-caveat; capped rankings are not automatically invalidated by this item. Confirm live bundle versions and settings first.\n\n## Verification rubric\nPass: identify exact two bundles, thread/task/memory settings and comparison caveat. If rerun, record complete zero-failure SF 0.01/0.1 validation and supersession. If keep/exclude, verify actual ranking and rendered disclosure reflect that decision; documentation alone is insufficient for exclusion.\n\n## Additional guardrails\nUse lock-taking UAT and approved budget, stop own servers, never modify existing bundle bytes or silently change all UAT container limits.",
   "links": [
     "tests/uat/docker_assets.py",
@@ -50,6 +50,14 @@
       "op": "update",
       "op_id": "651d478b28e849f7a97cfc666e3795cb",
       "session_id": "989657b059c44ae4bade82cb666c453c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6",
+      "at": "2026-11-23T03:31:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "6c006ca0027e4386b9835218cbe4a38f",
+      "session_id": "703e90baefd545ccb42540a47d1ce09e"
     }
   ]
 }
