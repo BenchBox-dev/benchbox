@@ -3,7 +3,7 @@
     "#4322's diff no longer touches the watchdog tests.",
     "Its changelog and body describe only its own changes."
   ],
-  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).\n\n2026-11-22: still met at #4322 head febdd4ea17: git diff origin/develop...HEAD -- tests/unit/utils/ is empty; test_generator_volume_gate.py is classified in test_release_line_carried_tests.py and that test passes; the changelog fragment names only CI changes this diff contains; develop merged (one conflict, scripts/build_fast_duration_baseline.py, resolved keeping both sides).",
+  "context": "Filed 2026-11-20 from the adversarial review of the scale-factor and TPC-DI remediation work (PRs #4298-#4385 and benchbox-site #178-#210).\n\n2026-11-22: still met at #4322 head febdd4ea17: git diff origin/develop...HEAD -- tests/unit/utils/ is empty; test_generator_volume_gate.py is classified in test_release_line_carried_tests.py and that test passes; the changelog fragment names only CI changes this diff contains; develop merged (one conflict, scripts/build_fast_duration_baseline.py, resolved keeping both sides).\n\n2026-11-23: #4322 merged as 5e784d6039 (head 5e4bdc8ea9). Delivered: generator-volume gate runs on generator, schema and seed inputs (rename bypass closed); SF 1 size baseline measured for eight benchmarks (all power phases passed; largest drift joinorder_synthetic +1.983%); per-benchmark run limits of 4x local time, minimum 3 min, job limit 35 min, with a timeout reported as a clean fail; dead PID helper and false credit removed from CI diagnostics; fast-duration re-run message and measurement provenance. make pr-preflight exit 0 (tree 96724fec4e); benchbox-review SHIP; armed once; merged.",
   "description": "## Problem\nThe atomic PID-file publish reached develop in #4311. #4322 still adds `recorded_pid` in tests/unit/utils/test_heavy_watchdog.py, whose empty-file branch cannot be reached, plus a test of that helper, and its body and changelog claim a test race fix it does not contain. #4322 also conflicts with develop in tests/system/test_ci_lint_parity.py.\n\n## Change\nRemove the helper and its test, restore the direct read, correct the changelog fragment and the pull request body, and merge develop.\n\n## Decision gates\nNone.\n\n## Verification rubric\nPass: `git diff origin/develop...HEAD -- tests/unit/utils/` shows no change; the changelog and body name only what the diff contains; the branch merges cleanly.\n\n## Additions from the item review\n- `tests/unit/scripts/test_generator_volume_gate.py` reads `.github/soundness-paths.txt`, a carried file, and is in neither `CREATION_REVIEW_TESTS` nor `NOT_CARRIED`, so `test_release_line_carried_tests` fails on #4322 (and on #4385, stacked on it). Classify it.\n- Merging develop also brings the fix for the release-v2 probe dispatch 403.\n\n## Guardrails\n- Any limit, default, threshold or label id or text is shown to the owner before it is committed. Briefs quote owner answers verbatim; questions to the owner carry no preselected answer.\n- The implementer replies on review threads and leaves resolving them to the reviewer or the owner, unless the owner says otherwise (AGENTS.md asks agents to resolve benchbox-oracle threads on soundness paths; the owner has been asked which applies).\n- Hosted writes (merge, close, disable or enable auto-merge, workflow dispatch, remote branch delete) only as the repository's close-out procedure or the owner's word for that pull request allows; never raw `gh pr merge` in core.\n- No polling loop around `make pr-arm`, no `--no-verify`, no stand-in review unless the owner names the PR and head unprompted. Push only after `make pr-preflight` exits 0 on the exact head.\n- No worktree takeover while another session may be working; no tracker write from a server that reports a stale version; never chain `git stash` with `git stash pop`.\n- Heavy work runs only through `make heavy-run` or a lock-taking entry point, one run at a time.\n- Status reports state only what merged and what was verified, with the evidence.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/pull/4322"
@@ -32,6 +32,14 @@
       "op": "update",
       "op_id": "0abbd700a92b4457b9d50e9e3dc1a519",
       "session_id": "82293ce1c4134e7b8c22e7e87ba5dfc1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a5dffb67f2f8103a3765a88b",
+      "at": "2026-11-23T13:54:14Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a3007e4009d74c729b73f0f50234ab69",
+      "session_id": "c2cecaa84d2f4c32a1615f71c3eef66e"
     }
   ]
 }
