@@ -26992,12 +26992,17 @@
       "title": "Remove Doris load leftovers kept only because out-of-scope tests import them"
     },
     "doris-tpcds-obt-results-capped-parallelism-20261111": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T03:31:29Z",
+        "generation": "bf2d6303bc6941dd8cafaa1183fbb493",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6"
+      },
       "needs": [
         "feature-feat-corpus-scale-policy-and-reruns-20261117"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Published Doris TPC-DS-OBT results ran with parallel_pipeline_task_num=1 and understate Doris"
     },
     "doris-uat-failures-20261030": {
