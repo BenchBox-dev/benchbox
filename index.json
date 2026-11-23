@@ -15272,6 +15272,7 @@
     },
     "trunk-stability": {
       "accepted_members": {
+        "tpcds-parity-draws-fails-with-all-draws-equivalent-20261119": "82b145bb81bf725f212ac379f6d592825fbaca17",
         "uat-regression-doris-clickbench-mooncake-flightdata": "56175a2889e8b1e16d1dae4e6ea7dd9e0b5f1e16"
       },
       "batch_schema": 2,
@@ -15279,6 +15280,17 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "tpcds-parity-draws-fails-with-all-draws-equivalent-20261119": {
+          "accepted_head": "82b145bb81bf725f212ac379f6d592825fbaca17",
+          "changed_files": [
+            "benchbox/core/equivalence/cross_surface.py",
+            "changelog.d/fix-tpcds-parity-draws-reason.json",
+            "make/reports.mk",
+            "tests/unit/core/equivalence/test_cross_surface_repeats.py"
+          ],
+          "integration_head": "1f1ae14248227eee7ca3ebd5c3c43393a830473f",
+          "integration_seq": 2
+        },
         "uat-regression-doris-clickbench-mooncake-flightdata": {
           "accepted_head": "56175a2889e8b1e16d1dae4e6ea7dd9e0b5f1e16",
           "changed_files": [
@@ -15293,7 +15305,7 @@
         }
       },
       "integration_branch": "feat/trunk-stability",
-      "integration_head": "411fd43c0f816eea7b981572fbf8c25db2db0744",
+      "integration_head": "1f1ae14248227eee7ca3ebd5c3c43393a830473f",
       "integration_log": [
         {
           "at": "2026-11-22T22:00:51Z",
@@ -15309,6 +15321,15 @@
           "op_id": "1efd401768a8428096ec1f064676369e",
           "previous_head": "3e72b74aac395a2bc5e5e4d04b764239226b344c",
           "seq": 1
+        },
+        {
+          "at": "2026-11-23T00:02:36Z",
+          "head": "1f1ae14248227eee7ca3ebd5c3c43393a830473f",
+          "kind": "prepare",
+          "member": "tpcds-parity-draws-fails-with-all-draws-equivalent-20261119",
+          "op_id": "866e5ba5875946389acf09a2c3fac2a3",
+          "previous_head": "411fd43c0f816eea7b981572fbf8c25db2db0744",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-trunk-stability",
@@ -49734,15 +49755,10 @@
       "title": "TPC-DS parity B6: promote tpcds to enforced blocking gate"
     },
     "tpcds-parity-draws-fails-with-all-draws-equivalent-20261119": {
-      "claim": {
-        "expires_at": "2026-11-24T00:02:33Z",
-        "generation": "a077fcdbd0b24d3ea4b41e62f8b9a5f3",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "tpcds-parity-draws exits 1 although every draw reports the surfaces equivalent"
     },
     "tpcds-pyspark-compatibility": {
