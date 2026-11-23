@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Decision gate (owner approval per path, as docs/internal/low-disk-guard.md requires for data another session created): present the exact list of directories with size, creation date and owning run, and delete only what the owner approves. `/tmp/mw` and `/tmp/chl` are identified first (what wrote them, whether anything is evidence) and are not deleted on size alone.",
+    "Precondition per directory, checked immediately before deletion: no process has files open under the run folder (`lsof +D`), the run is not the lock holder or a waiter in `make heavy-status`, and the folder was not modified in the last 24 hours.",
+    "After deletion: no real `datagen/` or `databases/` directory remains under `std-scales-20261122` and `gvg-sf1-20261122`; their `results/`, logs, status files and summaries are byte-identical to before (file list and sizes compared).",
+    "Verification rubric: before and after listings, free-space delta from `df`, and the approval message are recorded in context. A deletion that frees nothing is explained (for example a local snapshot still holds the blocks).",
+    "Guardrails: delete only directories named `datagen` or `databases`; never follow or delete through a symlink; never delete result JSON, logs, manifests or qualification files; no `rm` on a glob that was not printed and approved first; live-run folders are skipped, not waited on with a loop; no Time Machine or Arq snapshot is touched under this item."
+  ],
+  "context": "Origin: disk cleanup and root-cause review on 2026-11-22. The root volume fell to 46 GiB free, below the 50 GiB heavy-work floor. Cause found: generated benchmark data has no lifecycle (any session creates it under any run root, nothing removes it), and Time Machine local snapshots kept deleted data allocated. PR #4451 (https://github.com/BenchBox-dev/benchbox/pull/4451) added AGENTS.md [RUN-DATA-001] and made scripts/run_version_matrix.py delete its datagen/ and databases/ when a matrix completes.",
+  "description": "Problem: runs started before [RUN-DATA-001] merged still hold private copies of generated data, and the sessions that own them were not told to delete it.\n\nMeasured 2026-11-22: `std-scales-20261122` (16.6 GiB of `datagen` in four per-benchmark roots, including `read_primitives-sf10` 10.4 GiB and `clickbench-sf10` 5.1 GiB) and `gvg-sf1-20261122` (7.8 GiB in eight per-benchmark roots, two of them separate copies of `tpch_sf1`). Both were running that day. Separately, 101 `datagen` folders sit under `/tmp` and the user temp directory; `/tmp/mw` (7.7 GiB) and `/tmp/chl` (2.0 GiB) are the largest `/tmp` entries and their content is unidentified.\n\nExpected outcome: once those runs are finished, their regenerable data is gone and their results, logs and manifests remain.",
+  "links": [
+    "AGENTS.md",
+    "docs/internal/low-disk-guard.md",
+    "docs/agent/heavy-work.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1666d419ebd76239145cfb5d",
+      "at": "2026-11-23T00:16:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "87a4e2da34df4fde9e9ea6ceb288ea08",
+      "session_id": "326a88b3a63f4096aae1118667c53175"
+    }
+  ]
+}
