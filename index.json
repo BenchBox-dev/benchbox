@@ -10647,7 +10647,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "f6c6a572f2aedc3db720dd9424b3cf4817e2e785",
+        "node_id": "PR_kwDOQ7J64c8AAAABRKKHfQ",
+        "number": 4464,
+        "repository": "https://github.com/BenchBox-dev/BenchBox.git"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-23T03:16:53Z",
+          "head": "f6c6a572f2aedc3db720dd9424b3cf4817e2e785",
+          "op_id": "bee42f89b7ba41148aad89fb8c13142e",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "hard-stop-exit-bound-term-kill-wait-20261122": {
           "accepted_head": "c5889509257b76e2ced7570006444873b97d3479",
