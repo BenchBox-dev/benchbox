@@ -271,17 +271,16 @@ def test_a_non_ok_audit_result_on_the_left_is_a_finding_even_when_both_sides_agr
     results = {left: both, right: both}
     [difference] = run(left, right, audit=lambda path: results[path]).unaccepted()
     assert difference.subject == "DimCustomer C_TIER_INV batch 1: Mismatch vs Mismatch"
-    entry = {
-        "id": "tier-key",
-        "kind": "audit",
-        "clause": "2.4.5",
-        "reason": "answer key",
-        "test": "DimCustomer C_TIER_INV",
-        "batch": "1",
-        "left_result": "Mismatch",
-        "right_result": "Mismatch",
-    }
-    assert run(left, right, [entry], audit=lambda path: results[path]).unaccepted() == []
+
+
+@pytest.mark.parametrize("right_result", ["Mismatch", "OK"])
+def test_a_left_mismatch_of_the_tier_alert_test_is_refused_by_the_shipped_list(tmp_path, left, right_result):
+    right = build(tmp_path / "right.duckdb")
+    name = "DimCustomer customer tier alerts"
+    results = {left: [(name, 1, "Mismatch", "tier")], right: [(name, 1, right_result, "tier")]}
+    entries = harness.load_expected(harness.DEFAULT_EXPECTED, None)
+    [difference] = harness.compare(left, right, entries, audit=lambda path: results[path]).unaccepted()
+    assert difference.subject == f"{name} batch 1: Mismatch vs {right_result}"
 
 
 def test_unused_entries_are_reported(tmp_path, left):

@@ -129,6 +129,12 @@ output directory made by BenchBox.
    Exit 0 means every difference is on the list, 1 means at least one is not
    (the output names the table), 2 means the list is invalid.
 
+   Comparing the implementation's warehouse with itself under `--audit` exits 1
+   with exactly one finding: `DimCustomer customer tier alerts`, Batch 1,
+   `Mismatch` vs `Mismatch`. That is expected, because that side carries
+   DIGen's uncorrected `C_TIER_INV` key, and no entry accepts a left-side
+   Mismatch, so a BenchBox warehouse that skips the correction is refused.
+
 ## What the harness compares
 
 Per table present on both sides:
