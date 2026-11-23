@@ -370,6 +370,28 @@ def test_a_fork_pull_request_is_refused_before_any_other_step_and_the_scripts_ru
     assert text.count("python3 -m scripts.release_probe_launch") == 2
 
 
+def test_the_launch_script_runs_from_the_base_revision_while_the_graph_check_reads_the_head():
+    job = _workflow(PROBE_WORKFLOW)["jobs"]["probe"]
+    steps = job["steps"]
+    checkouts = [step for step in steps if str(step.get("uses", "")).startswith("actions/checkout@")]
+    assert [step["with"]["ref"] for step in checkouts] == [
+        "${{ github.event.pull_request.head.sha }}",
+        "${{ github.event.pull_request.base.sha }}",
+    ]
+    assert "path" not in checkouts[0]["with"]
+    base_path = checkouts[1]["with"]["path"]
+    assert base_path
+    graph_step = next(step for step in steps if step.get("id") == "graph")
+    assert "working-directory" not in graph_step
+    assert "scripts/release_probe_graph.py" in graph_step["run"]
+    launchers = [step for step in steps if "scripts.release_probe_launch" in step.get("run", "")]
+    assert len(launchers) == 2
+    assert {step["working-directory"] for step in launchers} == {base_path}
+    assert steps.index(checkouts[1]) < steps.index(launchers[0])
+    assert "checks" not in job["permissions"]
+    assert job["permissions"]["statuses"] == "write"
+
+
 def test_the_probe_report_job_is_the_last_job_and_needs_every_other_job(live):
     jobs = live["jobs"]
     assert set(jobs["report-probe"]["needs"]) == set(jobs) - {"report-probe"}
