@@ -3,7 +3,7 @@
     "Every member is done and the batch's final PR is merged to develop.",
     "make batch-finish EXECUTE=1 has removed the member and integration worktrees."
   ],
-  "context": "2026-11-23: owner named feature delivery ('complete the ready items using feature batches') and answered every member decision in one dialog; each answer is quoted on its member item. Capability checked live: show_batch reports capability version 2, store schema 4, tool 1.3.0. Members are independent (no implementation edges); scopes are disjoint. State: not yet registered.",
+  "context": "2026-11-23: owner named feature delivery ('complete the ready items using feature batches') and answered every member decision in one dialog; each answer is quoted on its member item. Capability checked live: show_batch reports capability version 2, store schema 4, tool 1.3.0. Members are independent (no implementation edges); scopes are disjoint. State: registered as batch `shared-data-lifecycle` at start head 5e784d6039, integration branch feat/shared-data-lifecycle, worktree /Users/joe/Developer/BenchBox.wt-shared-data-lifecycle. All four member worktrees created at the start head and dispatched as subagents of the leader session. No member landed yet. Next: land each member on its landing report (make batch-land, take, prepare), then fast tier, pr-preflight, pr-open, bind_batch_pr, batch-evidence, pr-arm. Leader check still owed after results-dir lands: rerun the BENCHBOX_RESULTS_DIR DuckDB TPC-H SF0.01 command under make heavy-run and record both directory listings.",
   "description": "Batch notes for feature batch `shared-data-lifecycle`. This item is not a member. Members: low-disk-guard-local-snapshots-20261122, results-dir-env-ignored-by-cli-run-20261122, version-matrix-data-cleanup-residual-gaps-20261122, derived-benchmark-data-copies-20261122. One final PR to develop. Related, not members: run-data-rule-effect-measurement-20261122 (held until 2026-12-06); pre-rule-private-run-root-data-20261122 and stale-data-references-after-datagen-cleanup-20261122 (host-only, done 2026-11-23).",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "d7cf1e03502043ed9168719af96c0be7",
+      "session_id": "e94ef2c0cac942f885a89e503648c51e"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b",
+      "at": "2026-11-23T14:26:49Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0d408565b395404d9911a67f4ce75f7f",
       "session_id": "e94ef2c0cac942f885a89e503648c51e"
     }
   ]
