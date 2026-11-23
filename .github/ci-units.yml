@@ -67,6 +67,10 @@ results-data:
   - "_project/scripts/explorer_pipeline/**"
   - ".github/workflows/validate-submission.yml"
   - "benchbox/core/results/**"
+  - "benchbox/cli/commands/submit*"
+  - "benchbox/cli/commands/publish*"
+  - "benchbox/core/publishing/**"
+  - "scripts/stage_seed_corpus_bundle.py"
   - "benchbox/validation/**"
 
 docs:

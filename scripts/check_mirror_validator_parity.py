@@ -18,7 +18,7 @@ SYNC_WORKFLOW = CHECKOUT_ROOT / ".github" / "workflows" / "sync-results-data-to-
 PROBE = CHECKOUT_ROOT / "scripts" / "corpus_outcome_probe.py"
 MIRRORED_SUFFIXES = (".py", ".json", ".txt")
 NOT_RUNTIME = ("results-data/bundles/", "results-data/corpus-inventory.json")
-COMPARED_FIELDS = ("admitted", "class", "labels", "ranked_lanes", "scores", "errors", "warnings")
+COMPARED_FIELDS = ("admitted", "class", "labels", "ranked_lanes", "scores", "trusted", "strict")
 MAX_REPORTED = 10
 
 CLI_DESCRIPTION = (

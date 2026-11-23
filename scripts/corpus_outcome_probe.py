@@ -54,8 +54,13 @@ def _submission_findings(validator, bundles: list[Path]) -> dict:
     module = validator._load_bundle_validation()
     findings = {}
     for bundle in bundles:
-        (result,) = module.validate_bundles([bundle], allow_partial_validation=True)
-        findings[str(bundle)] = {"errors": list(result.errors), "warnings": list(result.warnings)}
+        findings[str(bundle)] = {}
+        for mode, options in (
+            ("trusted", {"allow_partial_validation": True}),
+            ("strict", {"allow_partial_validation": False}),
+        ):
+            (result,) = module.validate_bundles([bundle], **options)
+            findings[str(bundle)][mode] = {"errors": list(result.errors), "warnings": list(result.warnings)}
     return findings
 
 

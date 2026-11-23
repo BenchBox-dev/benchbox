@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import sys
 from pathlib import Path
@@ -67,6 +68,18 @@ def test_the_mirror_runs_with_the_standard_library_only(tmp_path: Path) -> None:
     assert report["installed_third_party"] == []
     assert report["benchbox_package_loaded"] is False
     assert report["outcomes"]
+    outcome = next(iter(report["outcomes"].values()))
+    assert set(outcome["strict"]) == {"errors", "warnings"}
+    assert set(outcome["trusted"]) == {"errors", "warnings"}
+
+
+@pytest.mark.parametrize("mode", ["strict", "trusted"])
+def test_mode_specific_findings_are_compared(tmp_path: Path, mode: str) -> None:
+    mirror = guard.mirror_report(_slim(tmp_path), _bundles(tmp_path), sys.executable)["outcomes"]
+    develop = copy.deepcopy(mirror)
+    name = next(iter(develop))
+    develop[name][mode]["errors"].append("changed finding")
+    assert any(f"{name}: {mode} " in problem for problem in guard.differences(mirror, develop))
 
 
 def test_a_mirror_whose_rule_data_differs_is_reported_per_bundle(tmp_path: Path) -> None:

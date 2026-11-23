@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib.util
 import json
 import sys
@@ -103,6 +104,11 @@ def _bundle(case: Case) -> dict[str, Any]:
         data["summary"]["queries"] = {"total": 13, "passed": 13, "failed": 0}
         data["summary"].pop("tpc_metrics", None)
         data["phases"] = {}
+    data["version"] = "2.2"
+    data["phases"]["validation"] = {"status": "PASSED"}
+    for query in data["queries"]:
+        rows = query["rows"]
+        query["row_count_validation"] = {"status": "PASSED", "expected": rows, "actual": rows}
     data["benchmark"]["scale_factor"] = case.scale
     data["export"] = {"anonymized": True}
     return data
@@ -114,20 +120,21 @@ def _write(directory: Path, name: str, data: dict[str, Any], *, internal: bool =
     path.write_text(json.dumps(data), encoding="utf-8")
     if internal:
         path.with_name(f"{path.stem}.manifest.json").write_text(
-            json.dumps({"result_source": "internal", "bundle_file": path.name}), encoding="utf-8"
+            json.dumps(
+                {
+                    "result_source": "internal",
+                    "bundle_file": path.name,
+                    "bundle_hash": hashlib.sha256(path.read_bytes()).hexdigest(),
+                }
+            ),
+            encoding="utf-8",
         )
     return path
 
 
-def _gate_outcome(path: Path, *, trusted: bool) -> tuple[bool, list[str]]:
-    (result,) = validate_bundles([path], trust_internal_source=trusted)
-    admitted = not any(PUBLIC_GATE_MESSAGE in error for error in result.errors)
-    warnings = [warning for warning in result.warnings if warning.startswith(NONSTANDARD_WARNING)]
-    return admitted, warnings
-
-
-def _submit_admitted(path: Path) -> bool:
-    return classify_result_path(path) is not SubmitTerminalState.unofficial
+def _gate_errors(path: Path, *, trusted: bool) -> list[str]:
+    (result,) = validate_bundles([path], trust_internal_source=trusted, allow_partial_validation=trusted)
+    return result.errors
 
 
 def _publish_admitted(path: Path) -> bool:
@@ -168,22 +175,30 @@ def test_every_path_admits_the_same_results_into_the_same_lane_with_the_same_lab
     assert outcome.lanes == case.lanes
     assert (case.label is None) or any(label.startswith(case.label) for label in outcome.labels), outcome.labels
 
-    assert _submit_admitted(path) is case.public
+    assert classify_result_path(path) is (
+        SubmitTerminalState.submittable if case.public else SubmitTerminalState.unofficial
+    )
     assert _publish_admitted(path) is case.public
-    public_admitted, public_warnings = _gate_outcome(path, trusted=False)
-    assert public_admitted is case.public
-    trusted_admitted, trusted_warnings = _gate_outcome(trusted_path, trusted=True)
-    assert trusted_admitted is True
+    public_errors = []
+    if not case.public:
+        public_errors.append(
+            f"benchmark scale_factor={case.scale} is not accepted for public submissions (subscale); "
+            "only results at scale factor 1 or above that were not routed through a gateway may be submitted"
+        )
+    if case.benchmark == "ssb":
+        public_errors.append(
+            "benchmark 'ssb' covers 0 of 13 canonical queries "
+            "(missing: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, … (+1 more)); "
+            "partial runs remain local artifacts unless validated through the trusted mirror path"
+        )
+    assert _gate_errors(path, trusted=False) == public_errors
+    assert _gate_errors(trusted_path, trusted=True) == []
 
     assert _staged(tmp_path, path, monkeypatch) is True
     assert validator.admission_reason(data, path) is None
     assert validator.bundle_lanes(data, path) == case.lanes
     assert validator.bundle_rankable(data, path) is bool(case.lanes)
-
-    unranked_label = case.label == corpus_rule.NONSTANDARD_SCALE_LABEL
-    if case.public:
-        assert bool(public_warnings) is unranked_label
-    assert bool(trusted_warnings) is unranked_label
+    assert validator.rule_outcome(data, path).labels == outcome.labels
 
 
 @pytest.mark.parametrize("case", [case for case in CASES if case.lanes], ids=lambda case: case.name)
@@ -194,18 +209,105 @@ def test_the_stamp_never_moves_a_result_between_paths(case: Case, tmp_path: Path
         data["benchmark"]["compliance_class"] = stamp
         path = _write(tmp_path / stamp, "result.json", data)
         assert validator.bundle_lanes(data, path) == case.lanes, stamp
-        assert _gate_outcome(path, trusted=False)[0] is case.public, stamp
+        errors = _gate_errors(path, trusted=False)
+        assert any(PUBLIC_GATE_MESSAGE in error for error in errors) is (not case.public), stamp
 
 
-def test_a_gateway_routed_result_is_refused_publicly_on_every_public_path(tmp_path: Path) -> None:
+def test_a_gateway_routed_result_is_refused_publicly_on_every_public_path(tmp_path: Path, monkeypatch) -> None:
     data = _bundle(CASES[0])
     data["platform"]["gateway"] = {"name": "proxy", "routed": True}
-    path = _write(tmp_path, "result.json", data)
-
-    assert _submit_admitted(path) is False
+    path = _write(tmp_path / "public", "result.json", data)
+    trusted = _write(tmp_path / "trusted", "result.json", data, internal=True)
+    gateway_error = "gateway-routed results must declare normalized_cost.cost_status 'not_comparable_gateway'; got None"
+    assert classify_result_path(path) is SubmitTerminalState.unofficial
     assert _publish_admitted(path) is False
-    assert _gate_outcome(path, trusted=False)[0] is False
-    assert _validator().admission_reason(data, path) == "gateway_routed"
+    assert _gate_errors(path, trusted=False) == [
+        "benchmark scale_factor=1.0 is not accepted for public submissions (gateway_routed); "
+        "only results at scale factor 1 or above that were not routed through a gateway may be submitted",
+        gateway_error,
+    ]
+    assert _gate_errors(trusted, trusted=True) == [gateway_error]
+    assert _staged(tmp_path, path, monkeypatch) is False
+    validator = _validator()
+    assert validator.admission_reason(data, path) == "gateway_routed"
+    assert validator.bundle_lanes(data, path) == ()
+    assert "Not ranked: routed through a gateway" in validator.rule_outcome(data, path).labels
+
+
+def test_failed_validation_is_refused_on_every_path(tmp_path, monkeypatch):
+    data = _bundle(CASES[0])
+    data["summary"]["validation"] = "failed"
+    path = _write(tmp_path / "public", "result.json", data)
+    trusted = _write(tmp_path / "trusted", "result.json", data, internal=True)
+    assert classify_result_path(path) is SubmitTerminalState.schema_violation
+    assert _publish_admitted(path) is False
+    assert _gate_errors(path, trusted=False) == [
+        "summary.validation must be 'passed' for public submissions (or 'no_reference' when no row-count "
+        "reference exists), got 'failed'"
+    ]
+    assert _gate_errors(trusted, trusted=True) == [
+        "summary.validation must be one of ['no_reference', 'not_run', 'partial', 'passed'] "
+        "for trusted mirror validation, got 'failed'"
+    ]
+    assert _staged(tmp_path, path, monkeypatch) is False
+    validator = _validator()
+    assert validator.admission_reason(data, path) == "validation_not_clean"
+    assert validator.bundle_lanes(data, path) == ()
+    assert "Not ranked: validation did not pass" in validator.rule_outcome(data, path).labels
+
+
+@pytest.mark.parametrize("scale,shape,admitted", [(1.0, "power", False), (10.0, "throughput", True)])
+def test_no_reference_claims_match_every_path(tmp_path, monkeypatch, scale, shape, admitted):
+    data = _bundle(Case("no-reference", "tpch", scale, shape, admitted, (), None))
+    data["summary"]["validation"] = "no_reference"
+    for query in data["queries"]:
+        query["row_count_validation"] = {
+            "status": "SKIPPED",
+            "expected": None,
+            "actual": query["rows"],
+            "warning": "no row-count reference at this scale factor",
+        }
+    path = _write(tmp_path / "public", "result.json", data)
+    trusted = _write(tmp_path / "trusted", "result.json", data, internal=True)
+    errors = (
+        []
+        if admitted
+        else [
+            "summary.validation='no_reference' is only valid where no row-count reference exists, "
+            "but a reference is recorded for benchmark 'tpch' at scale factor 1; "
+            "record 'passed' with per-query evidence"
+        ]
+    )
+    assert classify_result_path(path) is (
+        SubmitTerminalState.submittable if admitted else SubmitTerminalState.unvalidated
+    )
+    assert _publish_admitted(path) is admitted
+    assert _gate_errors(path, trusted=False) == errors
+    assert _gate_errors(trusted, trusted=True) == errors
+    assert _staged(tmp_path, path, monkeypatch) is admitted
+    validator = _validator()
+    assert (validator.admission_reason(data, path) is None) is admitted
+    assert validator.bundle_lanes(data, path) == ((corpus_rule.LANE_THROUGHPUT,) if admitted else ())
+    assert "Row counts not checked" in validator.rule_outcome(data, path).labels
+
+
+def test_known_defect_is_admitted_but_not_ranked(tmp_path, monkeypatch):
+    data = _bundle(CASES[0])
+    path = _write(tmp_path / "public", "result.json", data, internal=True)
+    manifest_path = path.with_name("result.manifest.json")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["known_defects"] = ["defective-macdbgen-addresses"]
+    manifest_path.write_text(json.dumps(manifest))
+    validator = _validator()
+    assert classify_result_path(path) is SubmitTerminalState.submittable
+    assert _publish_admitted(path) is True
+    assert _gate_errors(path, trusted=False) == []
+    assert _gate_errors(path, trusted=True) == []
+    assert _staged(tmp_path, path, monkeypatch) is True
+    assert validator.admission_reason(data, path) is None
+    assert validator.bundle_lanes(data, path) == ()
+    assert validator.exclusion_reason(data, path) == "known_defective_data"
+    assert "Not ranked: known defect" in validator.rule_outcome(data, path).labels
 
 
 def test_a_bundle_the_rule_does_not_admit_to_the_maintainer_path_is_refused_by_admission(tmp_path: Path) -> None:

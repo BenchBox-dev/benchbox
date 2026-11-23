@@ -649,14 +649,16 @@ def lane_reasons(payload: dict, bundle: pathlib.Path | None = None) -> dict[str,
 
 
 def bundle_lanes(payload: dict, bundle: pathlib.Path | None = None) -> tuple[str, ...]:
+    if bundle is not None and sidecar_known_defects(bundle):
+        return ()
     if admission_reason(payload, bundle) is not None:
         return ()
     return tuple(lane for lane, reason in lane_reasons(payload, bundle).items() if reason is None)
 
 
 def admission_reason(payload: dict, bundle: pathlib.Path | None = None) -> str | None:
-    if bundle is not None and sidecar_known_defects(bundle):
-        return KNOWN_DEFECTIVE_DATA
+    if CORPUS_RULE.facts_from_result(payload).public_validation_refused:
+        return "validation_not_clean"
     if failed_query_count(payload):
         return "failed_queries"
     if bundle_validation_status(payload) in NON_CLEAN_VALIDATION_STATUSES:
@@ -684,6 +686,8 @@ def admission_reason(payload: dict, bundle: pathlib.Path | None = None) -> str |
 
 
 def exclusion_reason(payload: dict, bundle: pathlib.Path | None = None) -> str | None:
+    if bundle is not None and sidecar_known_defects(bundle):
+        return KNOWN_DEFECTIVE_DATA
     reason = admission_reason(payload, bundle)
     outcome = rule_outcome(payload, bundle)
     if not outcome.lanes and (reason is None or reason == outcome.held_reason):

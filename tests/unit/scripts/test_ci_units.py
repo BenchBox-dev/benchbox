@@ -38,6 +38,7 @@ def needed(paths: list[str], rules: dict[str, list[str]]) -> set[str]:
         (["results-explorer/src/App.tsx"], {"core"}),
         (["_project/scripts/explorer_pipeline/pipeline.py"], {"explorer", "results-data", "tooling"}),
         (["results-data/bundles/x.json"], {"explorer", "results-data"}),
+        (["scripts/stage_seed_corpus_bundle.py"], {"results-data", "tooling"}),
         (["docs/guides/intro.md"], {"docs"}),
         (["docs/conf.py"], {"core", "docs"}),
         (["scripts/check_windows_antipatterns.py"], {"tooling"}),
@@ -55,6 +56,9 @@ def test_single_unit_ownership(paths: list[str], expected: set[str], rules: dict
     ("paths", "extra"),
     [
         (["benchbox/core/results/schema.py"], {"explorer", "results-data"}),
+        (["benchbox/cli/commands/submit.py"], {"results-data"}),
+        (["benchbox/cli/commands/publish.py"], {"results-data"}),
+        (["benchbox/core/publishing/admission.py"], {"results-data"}),
         (["benchbox/cli/main.py"], {"docs"}),
         (["benchbox/core/platform_registry.py"], {"docs"}),
         (["pyproject.toml"], set()),
