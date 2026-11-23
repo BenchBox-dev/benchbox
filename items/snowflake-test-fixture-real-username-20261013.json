@@ -2,6 +2,11 @@
   "acceptance": [
     "No real account username remains in tests/unit/platforms/credentials/test_snowflake_defaults.py; the test passes."
   ],
+  "batch": {
+    "batch_id": "release-readiness",
+    "implementation_dependencies": [],
+    "member_id": "snowflake-test-fixture-real-username-20261013"
+  },
   "context": "Found 2026-10-13 while checking public exposure of Snowflake trial account identifiers.",
   "description": "## Problem\n`tests/unit/platforms/credentials/test_snowflake_defaults.py` (lines 35, 47 and 62 on develop) uses the maintainer's real Snowflake login name as fixture data. The repository is public. A username is not a credential, but it identifies a real account and can help target it.\n\n## Change\nReplace it with a neutral placeholder such as `TEST_USER` and keep the test's assertions equivalent.",
   "links": [
@@ -15,6 +20,14 @@
       "op": "create",
       "op_id": "9cc8a2651f4442ec9653d6b7e7c5fd6d",
       "session_id": "3b13441e52334ef899d57ca2e329a7f1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e8526faa0e732223dd79589d",
+      "at": "2026-11-23T13:48:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8862bbb6558848078928d526f5dabc6c",
+      "session_id": "24cca4279aeb4583a89b2c57ce255d32"
     }
   ]
 }
