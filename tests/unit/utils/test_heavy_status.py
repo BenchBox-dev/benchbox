@@ -364,3 +364,30 @@ def test_admission_prints_nothing_extra_without_a_report(
     monkeypatch.setattr(resource_limits, "format_admission_report", lambda result, policy: "admitted")
     hl.check_admission(environ=dict(os.environ))
     assert "ORPHAN SPIN" not in capsys.readouterr().err
+
+
+def test_status_reports_local_snapshots_on_macos(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "platform", "darwin")
+
+    def runner(argv, timeout):
+        if argv[0].endswith("tmutil"):
+            return "Snapshots for volume group containing disk /:\ncom.apple.TimeMachine.2026-11-22-085225.local\n"
+        return fake_runner(argv, timeout)
+
+    text = hs.render(collect(runner=runner, which=lambda name: f"/usr/bin/{name}" if name == "tmutil" else None))
+    assert "local snapshots on /: 1 (2026-11-22-085225)" in text
+
+
+def test_status_marks_slow_tmutil_unmeasured(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "platform", "darwin")
+
+    def runner(argv, timeout):
+        return None if argv[0].endswith("tmutil") else fake_runner(argv, timeout)
+
+    text = hs.render(collect(runner=runner, which=lambda name: f"/usr/bin/{name}" if name == "tmutil" else None))
+    assert "local snapshots on /: unmeasured" in text
+
+
+def test_status_omits_snapshot_line_off_macos(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "platform", "linux")
+    assert "local snapshots" not in hs.render(collect(which=lambda name: f"/usr/bin/{name}"))

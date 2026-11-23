@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
+from benchbox.utils import local_snapshots
 from benchbox.utils.formatting import format_bytes
 
 MIN_FREE_PERCENT_ENV = "BENCHBOX_MIN_FREE_DISK_PERCENT"
@@ -125,12 +126,14 @@ def largest_consumers(
     return consumers[:top_n]
 
 
-def format_low_disk_message(status: DiskStatus, consumers: list[Consumer]) -> str:
+def format_low_disk_message(status: DiskStatus, consumers: list[Consumer], snapshot_line: str | None = None) -> str:
     lines = [
         f"Low disk space on {status.path}: {format_bytes(status.free_bytes)} free of "
         f"{format_bytes(status.total_bytes)} ({status.free_percent:.2f}% free, "
         f"minimum {status.min_free_percent:g}%; free={status.free_bytes} total={status.total_bytes} bytes).",
     ]
+    if snapshot_line:
+        lines.append(snapshot_line)
     if consumers:
         lines.append("Largest top-level consumers under this path:")
         for item in consumers:
@@ -154,7 +157,7 @@ def ensure_free_space(
     if status.ok:
         return status
     consumers = largest_consumers(status.path, top_n=top_n, budget_seconds=scan_budget_seconds)
-    raise LowDiskSpaceError(format_low_disk_message(status, consumers))
+    raise LowDiskSpaceError(format_low_disk_message(status, consumers, local_snapshots.describe_local_snapshots()))
 
 
 def ensure_run_output_space(output_root: object, min_free_percent: float | None = None) -> None:

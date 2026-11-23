@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "On macOS the low-disk refusal, heavy-work disk admission refusal, make disk-check failure and make heavy-status now report how many local snapshots exist and their names (or none/unmeasured), since snapshots can hold deleted data that df still counts as used"
+    }
+  ]
+}

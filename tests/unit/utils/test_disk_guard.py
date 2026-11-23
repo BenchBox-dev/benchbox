@@ -42,6 +42,27 @@ def _guard_enabled(monkeypatch):
     monkeypatch.setenv(MIN_FREE_PERCENT_ENV, str(DEFAULT_MIN_FREE_PERCENT))
 
 
+@pytest.fixture(autouse=True)
+def _no_snapshot_query(monkeypatch):
+    monkeypatch.setattr(disk_guard.local_snapshots, "describe_local_snapshots", lambda **kwargs: None)
+
+
+def test_low_disk_message_includes_snapshot_line(tmp_path, monkeypatch):
+    line = "local snapshots on /: 2 (2026-11-20-140045, 2026-11-22-085225)"
+    monkeypatch.setattr(disk_guard.local_snapshots, "describe_local_snapshots", lambda **kwargs: line)
+    with patch.object(disk_guard.shutil, "disk_usage", return_value=_usage(GIB)):
+        with pytest.raises(LowDiskSpaceError) as raised:
+            ensure_free_space(tmp_path)
+    assert line in str(raised.value)
+
+
+def test_low_disk_message_without_snapshot_line(tmp_path):
+    with patch.object(disk_guard.shutil, "disk_usage", return_value=_usage(GIB)):
+        with pytest.raises(LowDiskSpaceError) as raised:
+            ensure_free_space(tmp_path)
+    assert "local snapshots" not in str(raised.value)
+
+
 def _populate(root: Path) -> None:
     (root / "big").mkdir()
     (root / "big" / "a.bin").write_bytes(b"x" * 5000)

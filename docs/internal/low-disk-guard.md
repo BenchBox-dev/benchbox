@@ -59,6 +59,43 @@ can be rebuilt by rerunning generation; result files and the dated experiment
 directories are evidence and are not regenerable without rerunning the
 benchmarks.
 
+## Local snapshots on macOS
+
+Time Machine and other backup agents keep local APFS snapshots of the root
+volume. A snapshot holds every block that was live when it was taken, including
+data deleted afterwards, and `df` does not show that space as free until the
+snapshot is removed. Deleting live files can therefore free almost nothing.
+
+List them:
+
+```bash
+tmutil listlocalsnapshots /
+```
+
+The owner removes a Time Machine snapshot by its date (no `sudo` was needed on
+the maintainer host):
+
+```bash
+tmutil deletelocalsnapshots 2026-11-20-140045
+```
+
+Example, 2026-11-22: the root volume was at 46 GiB free. Deleting 32.8 GB of
+duplicate generated data returned 0.4 GB. Deleting two local snapshots
+(`2026-11-20-140045` and `2026-11-22-085225`) then took free space from 47 GiB
+to about 300 GiB. An Arq backup snapshot (`com_haystacksoftware_arqagent_...`)
+was present and left alone.
+
+Snapshots whose names do not start with `com.apple.TimeMachine` belong to other
+tools; leave them to those tools.
+
+BenchBox only reports them. On macOS the low-disk refusal (the run guard,
+`make disk-check`, and the `make heavy-run` admission refusal on a disk floor)
+and `make heavy-status` add a line with the snapshot count and names, `none`,
+or `unmeasured` when `tmutil` fails or does not answer within the 5 second
+per-command limit. The line is omitted on Linux and when `tmutil` is missing.
+The query never fails or delays the guard or admission beyond that limit, and
+BenchBox never deletes, thins or mounts a snapshot.
+
 ## Retention recommendations
 
 These are recommendations only. Deleting anything is the owner's decision, and
@@ -67,16 +104,18 @@ exact paths need owner approval first. One exception: a session deletes the
 (`[RUN-DATA-001]` in `AGENTS.md`), because nothing else reads them and they can
 be regenerated.
 
-1. Worktrees: remove worktrees of merged branches with the existing worktree
+1. Local snapshots: check them first (see the next section). Deleting data
+   frees nothing while a snapshot still holds it.
+2. Worktrees: remove worktrees of merged branches with the existing worktree
    lifecycle tooling. Each carries its own virtual environment.
-2. uv cache: `uv cache prune` removes unused entries; `uv cache clean` removes
+3. uv cache: `uv cache prune` removes unused entries; `uv cache clean` removes
    all and is rebuilt on demand.
-3. `datagen` and `databases`: keep the scale factors in active use and
+4. `datagen` and `databases`: keep the scale factors in active use and
    regenerate the rest. They are the largest regenerable consumer.
-4. Dated experiment directories: archive finished ones to external storage
+5. Dated experiment directories: archive finished ones to external storage
    after their results are published, instead of keeping them on the root
    volume.
-5. Point `BENCHBOX_OUTPUT_DIR` at a secondary volume if one is available.
+6. Point `BENCHBOX_OUTPUT_DIR` at a secondary volume if one is available.
 
 The sustained-headroom target and the alert for event-log degradation depend on
 host actions that only the owner can take (freeing space, moving output, host

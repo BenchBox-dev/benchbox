@@ -884,7 +884,7 @@ def check_admission(
     echo: bool = True,
     spin_lines: Callable[[Mapping[str, str]], Sequence[str]] | None = None,
 ) -> str:
-    from benchbox.utils import heavy_status, resource_limits
+    from benchbox.utils import heavy_status, local_snapshots as snapshots, resource_limits
 
     env = os.environ if environ is None else environ
     if echo:
@@ -899,6 +899,10 @@ def check_admission(
         if echo:
             _log(report)
     if not result.admitted:
+        if any(refusal.startswith("free disk on") for refusal in result.refusals):
+            snapshot_line = snapshots.describe_local_snapshots()
+            if snapshot_line:
+                report = f"{report}\n  {snapshot_line}"
         raise AdmissionRefused(report)
     return report
 
