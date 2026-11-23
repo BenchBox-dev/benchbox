@@ -352,6 +352,18 @@ def _reset_global_config_provider(request, _hermetic_state):
     restore_global(request.node, "benchbox.utils.config_interface", "_config_provider", None)
 
 
+@pytest.fixture(autouse=True)
+def _restore_arrow_memory_pool():
+    try:
+        import pyarrow as pa
+    except ImportError:
+        yield
+        return
+    original = pa.default_memory_pool()
+    yield
+    pa.set_memory_pool(original)
+
+
 def pytest_sessionfinish(session, exitstatus) -> None:
     from pathlib import Path
 
