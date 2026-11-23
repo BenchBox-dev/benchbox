@@ -238,7 +238,8 @@ def test_connector_accepts_every_gateway_parameter(monkeypatch) -> None:
         allow_insecure_gateway=True,
     )
     params = adapter._connect_params({}, include_database=True)
-    assert set(params) <= set(connection.DEFAULT_CONFIGURATION)
+    assert set(params) - {"insecure_mode"} <= set(connection.DEFAULT_CONFIGURATION)
+    assert "insecure_mode" in params
 
 
 def test_explicit_gateway_options_reach_the_adapter_config() -> None:

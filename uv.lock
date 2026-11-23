@@ -15,25 +15,6 @@ resolution-markers = [
     "python_full_version < '3.12' and sys_platform == 'emscripten'",
     "python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
-conflicts = [[
-    { package = "benchbox", extra = "cloud-spark" },
-    { package = "benchbox", extra = "snowflake" },
-], [
-    { package = "benchbox", extra = "cloud" },
-    { package = "benchbox", extra = "cloud-spark" },
-], [
-    { package = "benchbox", extra = "all" },
-    { package = "benchbox", extra = "cloud-spark" },
-], [
-    { package = "benchbox", extra = "cloud-spark-snowflake" },
-    { package = "benchbox", extra = "snowflake" },
-], [
-    { package = "benchbox", extra = "cloud" },
-    { package = "benchbox", extra = "cloud-spark-snowflake" },
-], [
-    { package = "benchbox", extra = "all" },
-    { package = "benchbox", extra = "cloud-spark-snowflake" },
-]]
 
 [manifest]
 overrides = [{ name = "filelock", specifier = ">=4.2.1,<5" }]
@@ -446,10 +427,10 @@ all = [
     { name = "chdb", marker = "sys_platform != 'win32'" },
     { name = "clickhouse-connect" },
     { name = "clickhouse-driver" },
-    { name = "cloudpathlib", extra = ["azure", "gs", "s3"], marker = "extra == 'extra-8-benchbox-all' or extra == 'extra-8-benchbox-cloud' and (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') or (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') and extra == 'extra-8-benchbox-snowflake'" },
-    { name = "dask", extra = ["distributed"], marker = "extra == 'extra-8-benchbox-all' or extra == 'extra-8-benchbox-cloud' and (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') or (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') and extra == 'extra-8-benchbox-snowflake'" },
-    { name = "databricks-connect", version = "16.1.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' and extra == 'extra-8-benchbox-all' or (extra == 'extra-8-benchbox-all' or extra == 'extra-8-benchbox-cloud') and (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') or (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') and extra == 'extra-8-benchbox-snowflake'" },
-    { name = "databricks-connect", version = "18.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' and extra == 'extra-8-benchbox-all' or (extra == 'extra-8-benchbox-all' or extra == 'extra-8-benchbox-cloud') and (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') or (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') and extra == 'extra-8-benchbox-snowflake'" },
+    { name = "cloudpathlib", extra = ["azure", "gs", "s3"] },
+    { name = "dask", extra = ["distributed"] },
+    { name = "databricks-connect", version = "16.1.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "databricks-connect", version = "18.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "databricks-sdk" },
     { name = "databricks-sql-connector" },
     { name = "datafusion" },
@@ -463,16 +444,16 @@ all = [
     { name = "pandas" },
     { name = "polars" },
     { name = "presto-python-client" },
-    { name = "psycopg", extra = ["binary"], marker = "extra == 'extra-8-benchbox-all' or extra == 'extra-8-benchbox-cloud' and (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') or (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') and extra == 'extra-8-benchbox-snowflake'" },
+    { name = "psycopg", extra = ["binary"] },
     { name = "pyarrow" },
     { name = "pyathena" },
     { name = "pyiceberg" },
     { name = "pymysql" },
     { name = "pyodbc" },
-    { name = "pyspark", extra = ["connect"], marker = "extra == 'extra-8-benchbox-all' or extra == 'extra-8-benchbox-cloud' and (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') or (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') and extra == 'extra-8-benchbox-snowflake'" },
+    { name = "pyspark", extra = ["connect"] },
     { name = "redshift-connector" },
     { name = "singlestoredb" },
-    { name = "snowflake-connector-python", version = "5.2.0", source = { registry = "https://pypi.org/simple" } },
+    { name = "snowflake-connector-python" },
     { name = "trino" },
 ]
 athena = [
@@ -499,7 +480,7 @@ clickhouse-server = [
 ]
 cloud = [
     { name = "boto3" },
-    { name = "cloudpathlib", extra = ["azure", "gs", "s3"], marker = "extra == 'extra-8-benchbox-cloud' or extra == 'extra-8-benchbox-all' and (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') or (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') and extra == 'extra-8-benchbox-snowflake'" },
+    { name = "cloudpathlib", extra = ["azure", "gs", "s3"] },
     { name = "databricks-sdk" },
     { name = "databricks-sql-connector" },
     { name = "firebolt-sdk" },
@@ -508,7 +489,7 @@ cloud = [
     { name = "grpcio" },
     { name = "pyathena" },
     { name = "redshift-connector" },
-    { name = "snowflake-connector-python", version = "5.2.0", source = { registry = "https://pypi.org/simple" } },
+    { name = "snowflake-connector-python" },
     { name = "trino" },
 ]
 cloud-spark = [
@@ -516,8 +497,8 @@ cloud-spark = [
     { name = "azure-storage-file-datalake" },
     { name = "boto3" },
     { name = "cloudpathlib" },
-    { name = "databricks-connect", version = "16.1.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' and extra == 'extra-8-benchbox-cloud-spark' or (extra == 'extra-8-benchbox-all' or extra == 'extra-8-benchbox-cloud') and (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') or (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') and extra == 'extra-8-benchbox-snowflake'" },
-    { name = "databricks-connect", version = "18.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' and extra == 'extra-8-benchbox-cloud-spark' or (extra == 'extra-8-benchbox-all' or extra == 'extra-8-benchbox-cloud') and (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') or (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake') and extra == 'extra-8-benchbox-snowflake'" },
+    { name = "databricks-connect", version = "16.1.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "databricks-connect", version = "18.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "databricks-sdk" },
     { name = "databricks-sql-connector" },
     { name = "google-cloud-dataproc" },
@@ -686,8 +667,8 @@ singlestore = [
     { name = "singlestoredb" },
 ]
 snowflake = [
-    { name = "cloudpathlib", extra = ["azure", "gs", "s3"], marker = "extra == 'extra-8-benchbox-snowflake' or (extra == 'extra-8-benchbox-all' or extra == 'extra-8-benchbox-cloud') and (extra == 'extra-8-benchbox-cloud-spark' or extra == 'extra-8-benchbox-cloud-spark-snowflake')" },
-    { name = "snowflake-connector-python", version = "5.2.0", source = { registry = "https://pypi.org/simple" } },
+    { name = "cloudpathlib", extra = ["azure", "gs", "s3"] },
+    { name = "snowflake-connector-python" },
 ]
 spark = [
     { name = "pyspark" },
@@ -5807,20 +5788,6 @@ wheels = [
 name = "snowflake-connector-python"
 version = "4.8.1"
 source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.14' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
-    "python_full_version == '3.13.*' and sys_platform == 'win32'",
-    "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32'",
-    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.12.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
-    "python_full_version < '3.12' and sys_platform == 'win32'",
-    "python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
-]
 dependencies = [
     { name = "asn1crypto" },
     { name = "boto3" },
@@ -5870,61 +5837,6 @@ wheels = [
 ]
 
 [[package]]
-name = "snowflake-connector-python"
-version = "5.2.0"
-source = { registry = "https://pypi.org/simple" }
-resolution-markers = [
-    "python_full_version >= '3.14' and sys_platform == 'win32'",
-    "python_full_version >= '3.14' and sys_platform == 'emscripten'",
-    "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
-    "python_full_version == '3.13.*' and sys_platform == 'win32'",
-    "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
-    "python_full_version == '3.12.*' and sys_platform == 'win32'",
-    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.12.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
-    "python_full_version < '3.12' and sys_platform == 'win32'",
-    "python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
-]
-dependencies = [
-    { name = "cryptography" },
-    { name = "protobuf" },
-    { name = "pytz" },
-    { name = "tomlkit" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/5f/89/198870b0bcf10bd5ae3cc7167350639dc1a07d0d0a854f0eef2390569e03/snowflake_connector_python-5.2.0.tar.gz", hash = "sha256:f358bf77d14e18f852cbaeabe31fcd41cb89bc39df43442f42647f675d984bb3", size = 2006186, upload-time = "2026-11-04T15:58:31.387Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/91/5e982c6a4a846b9207bd8229e523cc6c1436593520804d56665c83b8a8e8/snowflake_connector_python-5.2.0-cp311-cp311-macosx_10_14_x86_64.whl", hash = "sha256:334d63d8e8f5dee7a43b62adcdc2eb7af4528ee130aa8ce1e604c36f134152a4", size = 11158382, upload-time = "2026-11-04T15:57:27.135Z" },
-    { url = "https://files.pythonhosted.org/packages/a5/c2/6513f313abc7dc4b1f9d7a1b322da09d35e6a52756e35832bd579567cf0f/snowflake_connector_python-5.2.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:730ba1a7c4383edcaff5733d171433117a0864a0141acf90ed5b6b6887c2e807", size = 10523594, upload-time = "2026-11-04T15:57:06.969Z" },
-    { url = "https://files.pythonhosted.org/packages/23/73/c6b519758b08e0577216d1d59c87c5c6f65a183697a497349574a5ddc567/snowflake_connector_python-5.2.0-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:95d8af5e53375128b2356c547b9b06e418e84731d41b864b4b9b688dd92cf9d5", size = 12540720, upload-time = "2026-11-04T15:57:55.675Z" },
-    { url = "https://files.pythonhosted.org/packages/77/c6/281f1a242fe4287d6ba1d0adf452b20af8898db7cf6faa73db4e99b6d75d/snowflake_connector_python-5.2.0-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:12e8094dbc49a6bbcbe130796b9ffbdc63592451e6b0eeb4f064e6933bb9924f", size = 13504967, upload-time = "2026-11-04T15:57:40.665Z" },
-    { url = "https://files.pythonhosted.org/packages/e6/c4/06ed4290c21839d75fea7d5ee96736a13fd136a62ea1b3c946181097c4df/snowflake_connector_python-5.2.0-cp311-cp311-win_amd64.whl", hash = "sha256:5eb26ff4d250f39199ed7c603e7ad81b7d7192d46482cbb41e3bc6dafeae1731", size = 11588422, upload-time = "2026-11-04T15:58:10.952Z" },
-    { url = "https://files.pythonhosted.org/packages/11/0d/9f443a70ad34c1cab2e8d9d21c3260ef44e2e1c7c0584eb44ddd29eaa2b5/snowflake_connector_python-5.2.0-cp311-cp311-win_arm64.whl", hash = "sha256:eb7070dedd6281498196a38ac923cd00ac971b1164fedae2c7e87197b15b9984", size = 10990035, upload-time = "2026-11-04T15:58:26.71Z" },
-    { url = "https://files.pythonhosted.org/packages/6f/04/57de5eedc7665a86a5a6a76df51930d40ba0f42dd86d2b864585d5ba450f/snowflake_connector_python-5.2.0-cp312-cp312-macosx_10_14_x86_64.whl", hash = "sha256:412b65da174430747fcead870eee3e7b7a321902d24cbea5dfa5d51978530d59", size = 11334290, upload-time = "2026-11-04T15:57:29.41Z" },
-    { url = "https://files.pythonhosted.org/packages/ad/75/61929f9e4815160f6de65fbda1d7c70cc8a6eb1572ae566aa2eeb58ce46a/snowflake_connector_python-5.2.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:7d19f03e8e79061a50c3906c24cacb4bb4e9407cbe5b87adae37a2a366f8c684", size = 10676396, upload-time = "2026-11-04T15:57:09.238Z" },
-    { url = "https://files.pythonhosted.org/packages/6a/bf/2db44dc98a6f7d5e3d08d839c2929d5c848cea15bf7454067884d851db0d/snowflake_connector_python-5.2.0-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:e50544c39dfede4f7aa9759ec833398b02e3c2a4e29c9b30716f48c883305ab5", size = 14343277, upload-time = "2026-11-04T15:57:58.307Z" },
-    { url = "https://files.pythonhosted.org/packages/e3/e5/f910b617fa4582976217e85e2db03bfd8c5530d0b87767e6852ac3b84cd2/snowflake_connector_python-5.2.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:089d4023f0bcd9bd52aa771b59c8588adb4b1913f55ef58dab69035e40379ae2", size = 15356817, upload-time = "2026-11-04T15:57:42.926Z" },
-    { url = "https://files.pythonhosted.org/packages/2c/ef/a42ea02aab3d6317b02f5315c781ac827d7b73b42e50e5c83de80c018379/snowflake_connector_python-5.2.0-cp312-cp312-win_amd64.whl", hash = "sha256:ab9c881914ac07d2745a85aa518d8a4b2edd917be7c272c05ae3871b7ebc6d81", size = 11676513, upload-time = "2026-11-04T15:58:13.192Z" },
-    { url = "https://files.pythonhosted.org/packages/5b/ab/950537add7ec8a9d23eeeebc0a68f1a6f2f02c24efe5991fabe403629b82/snowflake_connector_python-5.2.0-cp312-cp312-win_arm64.whl", hash = "sha256:f38cf00ac88b58d2c1a7064734a344fac91bb82e27b668ba4530d490dbd74b33", size = 10984868, upload-time = "2026-11-04T15:58:29.332Z" },
-    { url = "https://files.pythonhosted.org/packages/16/c4/8fd38e8c8fc6adc845d76c02ec92cc1f838efe9dd478a848da3b2f9b810e/snowflake_connector_python-5.2.0-cp313-cp313-macosx_10_14_x86_64.whl", hash = "sha256:435e295a6d258ea3aa22d0cbda601c93e409f772c9f8b5f3e1f9728619a05e34", size = 11499144, upload-time = "2026-11-04T15:57:31.656Z" },
-    { url = "https://files.pythonhosted.org/packages/78/13/1b6b978f4fa3a57158f7adbd2d3b638fe685aefda65d5577d7f611402bd1/snowflake_connector_python-5.2.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:a341e3559fe65c8a09d6d0dc46954abbdd9c249f35b1bffd6040bf8494433f06", size = 10830433, upload-time = "2026-11-04T15:57:11.866Z" },
-    { url = "https://files.pythonhosted.org/packages/c9/14/9f0755930d450f3eb9237fa8f4f592c72f0a6684b01756e20796b4603f19/snowflake_connector_python-5.2.0-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:e98284313c06fc0ebcd2077f1b7d2c3cf1513d4fd3a87251ebe41a7e8ced43b6", size = 16141462, upload-time = "2026-11-04T15:58:00.77Z" },
-    { url = "https://files.pythonhosted.org/packages/cf/f7/6b4717ed9a42b0bc105b73aab3b7b7d638180e794feb9df58f4d5860dac2/snowflake_connector_python-5.2.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:4188f21ebb8f766b6319a9bd0dc5e3f634268fb62ebb1cca70cb3d1e0f919e40", size = 17206372, upload-time = "2026-11-04T15:57:45.505Z" },
-    { url = "https://files.pythonhosted.org/packages/e4/22/4aeef5240ad0d0ecd0576b79d057965078ac50028c38e84326a10e5ab500/snowflake_connector_python-5.2.0-cp313-cp313-win_amd64.whl", hash = "sha256:7efc79853aacbe641c483ca31724f3363b064917b0dab57ddc792793b46dc620", size = 11766816, upload-time = "2026-11-04T15:58:15.494Z" },
-    { url = "https://files.pythonhosted.org/packages/90/78/5b2903822e294a857a3e2c7872e77e058c1a41ab968f88e447dfbb236566/snowflake_connector_python-5.2.0-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:39e3a575dd15c3fdaccbeec19e4e7b4d0aec68762915713dcd022e3befcea239", size = 11664887, upload-time = "2026-11-04T15:57:33.992Z" },
-    { url = "https://files.pythonhosted.org/packages/2d/21/89df3b2825b90a92fd8d633f63e954f1432484ad109c1687d434eca904ac/snowflake_connector_python-5.2.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:fed34fc2a7210362320136b565ec9fc7c2d34f80cbc4401441a169767a857cc9", size = 10986749, upload-time = "2026-11-04T15:57:13.952Z" },
-    { url = "https://files.pythonhosted.org/packages/ee/49/c0f1885cbd67417095ed4ccb7b594a122ef21651bb8f2a3a3da956938aad/snowflake_connector_python-5.2.0-cp314-cp314-manylinux_2_28_aarch64.whl", hash = "sha256:5a6d953577222ae03ee6d38baa578e050de0265b0098b199bdce7aef4b6a8c8a", size = 17936963, upload-time = "2026-11-04T15:58:03.27Z" },
-    { url = "https://files.pythonhosted.org/packages/45/50/0aa2cfbd86424e2e04cbdaff3eb43f86ddc82db4842220f6b1f5e54eae51/snowflake_connector_python-5.2.0-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:d2827964bad96d8daf5704e6c177e396167c9f7719a39cadd6a39e25203c31da", size = 19052519, upload-time = "2026-11-04T15:57:47.975Z" },
-    { url = "https://files.pythonhosted.org/packages/ec/b0/db3c2904572d48f0cf8d67a71e265d96f07d47fad2e534728d61ace4e244/snowflake_connector_python-5.2.0-cp314-cp314-win_amd64.whl", hash = "sha256:4d00bdd8c02a1f3096c01a05aab3e65843269b1c770b2fc12396324fe1484bbf", size = 12329106, upload-time = "2026-11-04T15:58:17.929Z" },
-    { url = "https://files.pythonhosted.org/packages/c1/3c/62395166c235870311f16554f8f2ed0a2eb7453803c99ccb5d89405a59fa/snowflake_connector_python-5.2.0-cp314-cp314t-macosx_10_15_x86_64.whl", hash = "sha256:63993a7d20660c98b2dbd72d8ee634d679a552109ec42cd3e6ac749fed2a6d71", size = 11830486, upload-time = "2026-11-04T15:57:35.995Z" },
-    { url = "https://files.pythonhosted.org/packages/4f/b6/b28b4136eed94a5495675ac10831faea0a68685275af65c5afac9966f694/snowflake_connector_python-5.2.0-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:9c1edeea774ce21b51ad4a15d4dfc43c3c4939ecf7343ae25f7134e6e97a52c4", size = 11142327, upload-time = "2026-11-04T15:57:15.925Z" },
-    { url = "https://files.pythonhosted.org/packages/9e/fa/8514353fda782a32305a4fbf15718c6245919b3463db9fce4215f697d661/snowflake_connector_python-5.2.0-cp314-cp314t-manylinux_2_28_aarch64.whl", hash = "sha256:1098be973a900ffb2cd82f50f21bfab33fb6c4baf2f497846a0b961f06113322", size = 19812780, upload-time = "2026-11-04T15:58:06.039Z" },
-    { url = "https://files.pythonhosted.org/packages/77/13/f63a2311f79fa0fd6c573c0d854d4adc01f4f5d94ebe4047656c4b47f793/snowflake_connector_python-5.2.0-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:8b54c5d6f9c44539d10557f6317a2f25a225345765da2b39f4f5be904543f20a", size = 20970983, upload-time = "2026-11-04T15:57:50.736Z" },
-    { url = "https://files.pythonhosted.org/packages/f7/86/6f57d74147647958320a369ce45a79ee19433d535f07e3739a06e5b1543b/snowflake_connector_python-5.2.0-cp314-cp314t-win_amd64.whl", hash = "sha256:db2fbc50f9b0377e837c81541dedb53174f596f7755665a3f9ab26f21ec7e39b", size = 12420713, upload-time = "2026-11-04T15:58:21.8Z" },
-]
-
-[[package]]
 name = "snowflake-snowpark-python"
 version = "1.48.1"
 source = { registry = "https://pypi.org/simple" }
@@ -5934,7 +5846,7 @@ dependencies = [
     { name = "python-dateutil" },
     { name = "pyyaml" },
     { name = "setuptools" },
-    { name = "snowflake-connector-python", version = "4.8.1", source = { registry = "https://pypi.org/simple" } },
+    { name = "snowflake-connector-python" },
     { name = "typing-extensions" },
     { name = "tzlocal" },
     { name = "wheel" },

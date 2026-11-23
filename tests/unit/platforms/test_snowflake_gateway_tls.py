@@ -18,8 +18,14 @@ pytestmark = [pytest.mark.unit, pytest.mark.medium, pytest.mark.cloud_import]
 connector = pytest.importorskip("snowflake.connector")
 pytest.importorskip("cryptography.x509")
 
-if int(connector.__version__.split(".", 1)[0]) < 5:
-    pytest.skip("requires snowflake-connector-python 5.x", allow_module_level=True)
+CONNECTOR_MAJOR = int(connector.__version__.split(".", 1)[0])
+requires_connector_5 = pytest.mark.skipif(
+    CONNECTOR_MAJOR < 5, reason="needs snowflake-connector-python 5.x: gateway_ca_bundle goes to extra_root_store_path"
+)
+requires_connector_below_5 = pytest.mark.skipif(
+    CONNECTOR_MAJOR >= 5,
+    reason="needs snowflake-connector-python below 5: gateway_ca_bundle is read from REQUESTS_CA_BUNDLE",
+)
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -85,7 +91,8 @@ def _write_private_ca_and_leaf(directory: Path) -> tuple[Path, Path, Path]:
 
 
 @pytest.fixture
-def private_ca_server(tmp_path: Path) -> Iterator[TlsServer]:
+def private_ca_server(tmp_path: Path, monkeypatch) -> Iterator[TlsServer]:
+    monkeypatch.setenv("SNOWFLAKE_DISABLE_PLATFORM_DETECTION", "true")
     ca_path, cert_path, key_path = _write_private_ca_and_leaf(tmp_path)
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain(cert_path, key_path)
@@ -121,19 +128,33 @@ def _login(server: TlsServer, **gateway_options: object) -> None:
         **BASE, gateway="custom", gateway_host="localhost", gateway_port=server.port, **gateway_options
     )
     params = adapter._connect_params({}, include_database=False)
+    if CONNECTOR_MAJOR >= 5:
+        params["enable_server_session_keep_alive_auto_detection"] = False
     with pytest.raises(connector.errors.DatabaseError):
-        connector.connect(
-            **params, login_timeout=4, network_timeout=4, enable_server_session_keep_alive_auto_detection=False
-        )
+        connector.connect(**params, login_timeout=4, network_timeout=4)
 
 
-def test_private_ca_endpoint_is_rejected_without_ca_bundle(private_ca_server: TlsServer) -> None:
+def _assert_login_reached_server(server: TlsServer) -> None:
+    assert server.handshakes
+    assert all(request.startswith(b"POST /session/v1/login-request") for request in server.handshakes)
+
+
+def test_private_ca_endpoint_is_rejected_without_ca_bundle(private_ca_server: TlsServer, monkeypatch) -> None:
+    monkeypatch.delenv("REQUESTS_CA_BUNDLE", raising=False)
     _login(private_ca_server)
     assert private_ca_server.handshakes == []
     assert private_ca_server.failures
 
 
-def test_private_ca_endpoint_verifies_with_gateway_ca_bundle(private_ca_server: TlsServer) -> None:
+@requires_connector_5
+def test_private_ca_endpoint_verifies_with_gateway_ca_bundle(private_ca_server: TlsServer, monkeypatch) -> None:
+    monkeypatch.delenv("REQUESTS_CA_BUNDLE", raising=False)
     _login(private_ca_server, gateway_ca_bundle=str(private_ca_server.ca_bundle))
-    assert private_ca_server.handshakes
-    assert all(request.startswith(b"POST /session/v1/login-request") for request in private_ca_server.handshakes)
+    _assert_login_reached_server(private_ca_server)
+
+
+@requires_connector_below_5
+def test_private_ca_endpoint_verifies_with_requests_ca_bundle(private_ca_server: TlsServer, monkeypatch) -> None:
+    monkeypatch.setenv("REQUESTS_CA_BUNDLE", str(private_ca_server.ca_bundle))
+    _login(private_ca_server, gateway_ca_bundle=str(private_ca_server.ca_bundle))
+    _assert_login_reached_server(private_ca_server)
