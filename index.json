@@ -3780,6 +3780,7 @@
       "accepted_members": {
         "crr-a0-decision-records": "98270097cf7240eb08df85fbc3512e860ed26aa7",
         "crr-a1-rule-module-and-snapshot": "8898e0559b7b10f25c0b92af3e9083d5fa47c647",
+        "crr-b1-identity-and-comparison-version": "b8476bed2c90140f84813231be0a52218dbdb8a3",
         "crr-d1-observed-engine-contract-and-dataframe": "d604a887132187c5a0875f0700aa01c23c2670e4"
       },
       "batch_schema": 2,
@@ -3809,6 +3810,33 @@
           ],
           "integration_head": "ac57e97965796472f439ff9eb73a99eac17958c8",
           "integration_seq": 3
+        },
+        "crr-b1-identity-and-comparison-version": {
+          "accepted_head": "b8476bed2c90140f84813231be0a52218dbdb8a3",
+          "changed_files": [
+            ".github/workflows/sync-results-data-to-published.yml",
+            "benchbox/core/results/comparison_identity.json",
+            "benchbox/core/results/comparison_identity.py",
+            "changelog.d/feat-corpus-rule-r3--crr-b1-identity-and-comparison-version.json",
+            "docs/internal/adr/adr-published-results-slim-corpus-branch.md",
+            "pyproject.toml",
+            "results-data/SEED_CORPUS_SPEC.md",
+            "results-data/compliance-classes.json",
+            "results-data/corpus-inventory.json",
+            "results-data/validate_corpus.py",
+            "scripts/corpus_compliance_snapshot.py",
+            "scripts/corpus_drift.py",
+            "scripts/generate_corpus_inventory.py",
+            "tests/fixtures/explorer_read_model/next_read_model_contract.json",
+            "tests/unit/core/results/test_comparison_identity.py",
+            "tests/unit/scripts/explorer_pipeline/test_next_read_model_contract.py",
+            "tests/unit/scripts/test_corpus_cohort_depth.py",
+            "tests/unit/scripts/test_corpus_comparison_identity.py",
+            "tests/unit/scripts/test_generate_corpus_inventory.py",
+            "tests/unit/test_sync_results_workflow.py"
+          ],
+          "integration_head": "859ad5835188eecec5a9cf99444383bc78b0fdca",
+          "integration_seq": 4
         },
         "crr-d1-observed-engine-contract-and-dataframe": {
           "accepted_head": "d604a887132187c5a0875f0700aa01c23c2670e4",
@@ -3857,7 +3885,7 @@
         }
       },
       "integration_branch": "feat/corpus-rule-r4",
-      "integration_head": "ac57e97965796472f439ff9eb73a99eac17958c8",
+      "integration_head": "859ad5835188eecec5a9cf99444383bc78b0fdca",
       "integration_log": [
         {
           "at": "2026-11-22T23:06:06Z",
@@ -3891,6 +3919,15 @@
           "op_id": "c0d2a570d89f4e42a27240036b879c3d",
           "previous_head": "03bcbb93b13d3a282bc679bcd671e3768ac4fe34",
           "seq": 3
+        },
+        {
+          "at": "2026-11-23T04:13:12Z",
+          "head": "859ad5835188eecec5a9cf99444383bc78b0fdca",
+          "kind": "prepare",
+          "member": "crr-b1-identity-and-comparison-version",
+          "op_id": "e4d247a08b244e7ebdacb7699c7ac7fd",
+          "previous_head": "ac57e97965796472f439ff9eb73a99eac17958c8",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r4",
@@ -23803,17 +23840,12 @@
       "title": "Add the guard that keeps class, lane and identity logic in one place"
     },
     "crr-b1-identity-and-comparison-version": {
-      "claim": {
-        "expires_at": "2026-11-24T03:55:18Z",
-        "generation": "1ee9d0d5c20042a48a5005567ae080bb",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2"
-      },
+      "claim": null,
       "needs": [
         "crr-a1-rule-module-and-snapshot"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Define result identity and comparison version from fields in the file, in one function"
     },
     "crr-b2-site-accepts-next-read-model": {
