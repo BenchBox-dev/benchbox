@@ -299,7 +299,7 @@ class TestBenchmarkOrchestrator:
             assert result == mock_instance
 
             called_kwargs = mock_benchmark_class.call_args.kwargs
-            assert called_kwargs["parallel"] == 8
+            assert called_kwargs["parallel"] == 4
             assert called_kwargs["scale_factor"] == 0.1
             assert called_kwargs["compress_data"] is True
             assert called_kwargs["compression_type"] == "zstd"

@@ -63,7 +63,9 @@ is dropped, except Snowflake (drops this benchmark's tables and tuning metadata,
 Before TPC-H or TPC-DS data generation, and before TPC-H or TPC-DS query generation, BenchBox prints a rough estimate
 read from `benchbox/core/generation_estimate.json`, which holds wall times measured with `benchbox run --phases
 generate` (parquet), `qgen` and `dsqgen` on a darwin-arm64 Apple M4 (10 cores, 16 GiB) at commit 93f336032a, with the
-host's one-minute load average below 3 at the start of every measurement:
+host's one-minute load average below 3 at the start of every measurement. The TPC-H data generation figures at scale
+0.01 and 0.1 were measured again the same way after BenchBox began starting at most four `dbgen` processes below scale
+1; those two points carry their own `measured_at_commit`:
 
 > Rough estimate: generation will take about {estimate} (measured on {host_class} at scale {scales}{extrapolated_note}).
 
@@ -104,8 +106,11 @@ only what this run started and has not seen finish: Onehouse jobs and a cluster 
 jobs, EMR Serverless job runs and an application the run created, Glue job runs, and Dataproc jobs and an ephemeral
 cluster the run created. It never stops a warehouse, application, cluster or session that existed before the run. The
 run waits for the cleanup only until 5 seconds before the 30-second grace ends, so a run that stopped cleanly still
-exports its full result. The hard stop waits only for what is left of that time, and the hard bound stays the limit
-plus 30 seconds. A cleanup that has not finished by then is reported as
+exports its full result. The hard stop waits only for what is left of that time. The 30 seconds are not an exit
+bound: stopping starts at the limit plus 30 seconds. At that point BenchBox cancels remote work (only if the cleanup
+had not already started at the limit), writes the partial result, ends the child processes it started and exits with
+code 124. That takes a few seconds, within 5 seconds when the remote cleanup had started at the limit; it takes up to 25
+seconds longer only if the cleanup had not started. A cleanup that has not finished by then is reported as
 `Remote cleanup did not finish within 25 seconds`. A failed cleanup does not change the exit code (124) or the
 `timed_out` result. Its error is printed to standard error as `Remote cleanup failed: ...` on the command line, also
 in a quiet run, logged as a warning by MCP runs and by `adapter.run_benchmark(timeout_seconds=...)`, and recorded in
