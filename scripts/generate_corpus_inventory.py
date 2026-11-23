@@ -136,27 +136,6 @@ def _query_count(bundle_data: dict) -> int:
     return len(bundle_data.get("queries", []))
 
 
-def _platform_version(data: dict) -> str:
-    platform = data.get("platform", {})
-    execution = data.get("execution", {})
-    if isinstance(platform, dict) and str(platform.get("name", "")).lower() == "duckdb":
-        if isinstance(execution, dict):
-            for key in (
-                "driver_version_resolved",
-                "driver_version_requested",
-                "driver_resolved_version",
-                "driver_requested_version",
-            ):
-                value = execution.get(key)
-                if value and value != "unknown":
-                    return str(value)
-        value = platform.get("client_version") if isinstance(platform, dict) else None
-        if value and value != "unknown":
-            return str(value)
-    value = platform.get("version") if isinstance(platform, dict) else None
-    return str(value) if value and value != "unknown" else "unknown"
-
-
 def extract_metadata(bundle_path: Path, bundles_dir: Path) -> dict:
     try:
         data = json.loads(bundle_path.read_text(encoding="utf-8"))
@@ -167,13 +146,15 @@ def extract_metadata(bundle_path: Path, bundles_dir: Path) -> dict:
     platform = data.get("platform", {})
     run = data.get("run", {})
     rel_path = bundle_path.relative_to(bundles_dir).as_posix()
+    version = _load_corpus_validator().COMPARISON_IDENTITY.resolve_comparison_version(data)
 
     return {
         "file": rel_path,
         "benchmark": benchmark.get("id", "unknown"),
         "benchmark_name": benchmark.get("name", benchmark.get("id", "unknown")),
         "platform": platform.get("name", "unknown"),
-        "platform_version": _platform_version(data),
+        "comparison_version": version.text,
+        "version_is_release": version.is_release,
         "scale_factor": benchmark.get("scale_factor", 0),
         "phase": _load_corpus_validator().bundle_phase(data),
         "timestamp": run.get("timestamp"),
@@ -213,10 +194,7 @@ def generate_inventory(bundles_dir: Path) -> dict:
     cohort_members: defaultdict[tuple[str, str], set[str]] = defaultdict(set)
     for entry in entries:
         key = (entry["benchmark"], str(entry["scale_factor"]) + _cohort_phase_suffix(bundles_dir / entry["file"]))
-        identity = entry["platform"]
-        if entry["platform_version"] != "unknown":
-            identity = f"{identity} v{entry['platform_version']}"
-        cohort_members[key].add(identity)
+        cohort_members[key].add(entry["platform"])
 
     cohorts: dict[str, list[str]] = {}
     for (benchmark, scale_factor), platforms in sorted(cohort_members.items()):
@@ -229,7 +207,7 @@ def generate_inventory(bundles_dir: Path) -> dict:
     by_phase = Counter(entry["phase"] for entry in entries)
 
     return {
-        "schema_version": "2.3",
+        "schema_version": "2.4",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "bundles": entries,
         "cohorts": cohorts,
