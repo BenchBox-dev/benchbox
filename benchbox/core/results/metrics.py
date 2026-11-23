@@ -209,7 +209,9 @@ class TPCMetricsCalculator:
         return corpus_score.refresh_included(power_phase, throughput_phase)
 
     @staticmethod
-    def qphh_unavailable_reasons(power_data: dict, throughput_data: dict) -> list[str]:
+    def qphh_unavailable_reasons(
+        power_data: dict, throughput_data: dict, scale_factor: float | None = None
+    ) -> list[str]:
         reasons = []
         for label, data in (("Power", power_data), ("Throughput", throughput_data)):
             benchmark = data.get("benchmark") or {}
@@ -228,6 +230,9 @@ class TPCMetricsCalculator:
             corpus_score.qphh_structure_problems(
                 (power_data.get("phases") or {}).get("power_test"),
                 (throughput_data.get("phases") or {}).get("throughput_test"),
+                scale_factor=scale_factor
+                or (throughput_data.get("benchmark") or {}).get("scale_factor")
+                or (throughput_data.get("environment") or {}).get("scale_factor"),
             )
         )
         return list(dict.fromkeys(reasons))
@@ -243,10 +248,20 @@ class TPCMetricsCalculator:
             if reason:
                 raise ValueError(reason)
 
-        power_metrics = power_data.get("summary", {}).get("tpc_metrics", {})
-        throughput_metrics = throughput_data.get("summary", {}).get("tpc_metrics", {})
-        power_at_size = power_metrics.get("power_at_size")
-        throughput_at_size = throughput_metrics.get("throughput_at_size")
+        power_input = {
+            **power_data,
+            "benchmark": {**power_data.get("benchmark", {}), "scale_factor": scale_factor},
+            "phases": {
+                **(power_data.get("phases") or {}),
+                "throughput_test": (throughput_data.get("phases") or {}).get("throughput_test"),
+            },
+        }
+        throughput_input = {
+            **throughput_data,
+            "benchmark": {**throughput_data.get("benchmark", {}), "scale_factor": scale_factor},
+        }
+        power_at_size = corpus_score.power_at_size(power_input)
+        throughput_at_size = corpus_score.throughput_at_size(throughput_input)
 
         power_times = TPCMetricsCalculator._final_power_iteration_times(power_data)
         power_phase = (power_data.get("phases") or {}).get("power_test")
@@ -261,26 +276,10 @@ class TPCMetricsCalculator:
             if power_times and refresh_times
             else (sum(power_times) if power_times else None)
         )
-        if power_at_size is None and power_times:
-            power_times_for_metric = (
-                [refresh_times[0], *power_times, refresh_times[1]] if refresh_times else power_times
-            )
-            power_at_size = TPCMetricsCalculator.calculate_power_at_size(power_times_for_metric, scale_factor)
 
         phase = (throughput_data.get("phases") or {}).get("throughput_test") or {}
         duration_ms = phase.get("duration_ms")
         throughput_time = duration_ms / 1000.0 if duration_ms else None
-        if throughput_at_size is None and throughput_time and phase.get("status") == "COMPLETED":
-            num_streams = phase.get("num_streams") or len(phase.get("stream_results") or [])
-            num_streams = num_streams or throughput_data.get("run", {}).get("streams") or 1
-            per_stream = TPC_QUERIES_PER_STREAM.get(throughput_data.get("benchmark", {}).get("id"))
-            if per_stream:
-                throughput_at_size = TPCMetricsCalculator.calculate_throughput_at_size(
-                    per_stream * num_streams,
-                    throughput_time,
-                    scale_factor,
-                    num_streams,
-                )
         return power_at_size, throughput_at_size, power_time, throughput_time
 
     @staticmethod
@@ -315,7 +314,7 @@ class TPCMetricsCalculator:
             raise ValueError("Could not derive Power@Size or Throughput@Size from result data")
         tpch_extras: dict = {}
         if benchmark_id == "tpch" or power_benchmark.get("id") == "tpch":
-            reasons = TPCMetricsCalculator.qphh_unavailable_reasons(power_data, throughput_data)
+            reasons = TPCMetricsCalculator.qphh_unavailable_reasons(power_data, throughput_data, sf)
             tpch_extras["refresh_included"] = TPCMetricsCalculator.refresh_included(
                 (power_data.get("phases") or {}).get("power_test"),
                 (throughput_data.get("phases") or {}).get("throughput_test"),
@@ -328,12 +327,8 @@ class TPCMetricsCalculator:
                 )
 
         throughput_phase = (throughput_data.get("phases") or {}).get("throughput_test") or {}
-        num_streams = (
-            throughput_phase.get("num_streams")
-            or len(throughput_phase.get("stream_results") or [])
-            or throughput_data.get("run", {}).get("streams")
-            or throughput_data.get("environment", {}).get("num_streams", 1)
-        )
+        streams = throughput_phase.get("stream_results") or []
+        num_streams = sum(1 for stream in streams if isinstance(stream, dict) and stream.get("success") is True)
         benchmark = throughput_benchmark
         return {
             "benchmark": benchmark.get("name") or _TPC_BENCHMARK_LABELS.get(str(benchmark.get("id") or ""), "TPC"),

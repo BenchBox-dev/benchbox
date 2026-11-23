@@ -151,8 +151,10 @@ def rankings(
 
     table = Table(title=f"{benchmark} Platform Rankings (SF={scale_factor})")
     table.add_column("Rank", style="cyan", justify="right")
-    table.add_column("Platform", style="green")
+    table.add_column("Platform", style="green", no_wrap=True)
     table.add_column("Version", style="dim")
+    table.add_column("Variant", style="dim")
+    table.add_column("Lane", style="dim")
     table.add_column(_get_metric_header(metric), justify="right")
     table.add_column("Samples", justify="right")
     table.add_column("Trend", justify="center")
@@ -174,6 +176,8 @@ def rankings(
             str(r.rank),
             r.platform,
             r.platform_version or "-",
+            r.variant,
+            r.lane,
             score_str,
             str(r.sample_count),
             trend_icon,

@@ -287,7 +287,7 @@ class TestStoreAndRetrieve:
         assert stored.benchmark == "TPC-H"
         assert stored.scale_factor == 10.0
         assert stored.geometric_mean_ms == pytest.approx(150.5, rel=1e-3)
-        assert stored.power_at_size == pytest.approx(2000.0, rel=1e-3)
+        assert stored.power_at_size is None
         assert stored.validation_status == "PASSED"
 
     def test_get_result_not_found(self, tmp_path):
@@ -539,6 +539,8 @@ class TestRankings:
                 timestamp=now,
             )
         )
+        with sqlite3.connect(db.db_path) as conn:
+            conn.execute("UPDATE results SET power_at_size = CASE platform WHEN 'Snowflake' THEN 2000 ELSE 1000 END")
 
         config = RankingConfig(metric="power_at_size", lookback_days=90)
         rankings = db.calculate_rankings("TPC-H", 1.0, config)
@@ -693,7 +695,9 @@ CLASS_CASES = [
 
 def _rank(db: ResultDatabase, benchmark: str, scale: float, include_unofficial: bool) -> list[str]:
     config = RankingConfig(lookback_days=90)
-    return [r.platform for r in db.calculate_rankings(benchmark, scale, config, include_unofficial=include_unofficial)]
+    return sorted(
+        {r.platform for r in db.calculate_rankings(benchmark, scale, config, include_unofficial=include_unofficial)}
+    )
 
 
 class TestRankingsComplianceFilter:
@@ -827,6 +831,73 @@ class TestRankingsComplianceFilter:
         assert _rank(db, "TPC-H", 1.0, include_unofficial=False) == ["OldDB"]
 
 
+@pytest.mark.parametrize("recorded", [None, 7])
+def test_import_recomputes_and_backfills_power_score(tmp_path, recorded):
+    db = ResultDatabase(tmp_path / "results.db")
+    data = make_v2_result_dict(
+        platform="example",
+        scale_factor=1.0,
+        execution_id="timed",
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        queries=[
+            {"id": str(i), "iter": 1, "ms": 1000, "run_type": "measurement", "status": "SUCCESS"} for i in range(1, 23)
+        ],
+        phases={"power_test": {"status": "COMPLETED", "query_count": 22}},
+    )
+    if recorded is not None:
+        data["summary"]["tpc_metrics"] = {"power_at_size": recorded}
+    data["summary"]["validation"] = "PASSED"
+    (tmp_path / "run.json").write_text(json.dumps(data))
+    assert db.import_results_from_directory(tmp_path) == (1, 0, 0)
+    assert db.get_result("timed").power_at_size == pytest.approx(3600)
+    assert len(db.calculate_rankings("TPC-H", 1, RankingConfig(metric="power_at_size"))) == 1
+    with sqlite3.connect(db.db_path) as conn:
+        conn.execute("UPDATE results SET power_at_size = 7")
+    assert db.import_results_from_directory(tmp_path) == (1, 0, 0)
+    assert db.get_result("timed").power_at_size == pytest.approx(3600)
+
+
+def test_rankings_separate_lanes_and_execution_variants(tmp_path):
+    db = ResultDatabase(tmp_path / "results.db")
+    for execution_id, facts, engine in [
+        ("power", _facts("tpch", 1, "power"), "first"),
+        ("combined", FULL_SPEC, "first"),
+        ("variant", _facts("tpch", 1, "power"), "second"),
+    ]:
+        result = create_test_result(execution_id=execution_id, platform="example")
+        result.platform_info["execution_engine"] = {"requested": engine}
+        db.store_result(result, facts)
+    with sqlite3.connect(db.db_path) as conn:
+        conn.execute("UPDATE results SET power_at_size = 100")
+    rankings = db.calculate_rankings("TPC-H", 1, RankingConfig(metric="power_at_size"))
+    assert len(rankings) == 3
+    assert all(row.sample_count == 1 for row in rankings)
+    assert {row.lane for row in rankings} == {"combined", "power_only"}
+    assert len({row.variant for row in rankings}) == 2
+
+
+def test_rankings_use_comparison_version_for_grouping_and_trends(tmp_path):
+    db = ResultDatabase(tmp_path / "results.db")
+    now = datetime.now(timezone.utc)
+    for execution_id, version, days, score in [
+        ("current-a", "1", 1, 100),
+        ("current-b", "2", 1, 200),
+        ("previous-a", "1", 100, 50),
+        ("previous-b", "2", 100, 200),
+    ]:
+        result = create_test_result(execution_id=execution_id, platform="example", timestamp=now - timedelta(days=days))
+        db.store_result(result, _facts("tpch", 1, "power"))
+        with sqlite3.connect(db.db_path) as conn:
+            conn.execute(
+                "UPDATE results SET power_at_size = ?, metadata_json = json_set(metadata_json, '$.comparison_version', ?) "
+                "WHERE execution_id = ?",
+                (score, version, execution_id),
+            )
+    rankings = db.calculate_rankings("TPC-H", 1, RankingConfig(metric="power_at_size"))
+    assert {row.platform_version for row in rankings} == {"1", "2"}
+    assert {row.platform_version: row.trend for row in rankings} == {"1": "up", "2": "stable"}
+
+
 SPEC_METRIC_CASES = [
     pytest.param(
         "TPC-H",
@@ -891,6 +962,8 @@ class TestRankingsBySpecMetric:
         result.throughput_at_size = 500.0
         result.qph_at_size = 700.0
         db.store_result(result, facts)
+        with sqlite3.connect(db.db_path) as conn:
+            conn.execute("UPDATE results SET power_at_size = 1000, throughput_at_size = 500, qph_at_size = 700")
 
         ranked = db.calculate_rankings(
             benchmark_name, scale, RankingConfig(lookback_days=90, metric=metric), include_unofficial=include_unofficial
