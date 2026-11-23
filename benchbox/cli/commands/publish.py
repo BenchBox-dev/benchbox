@@ -33,6 +33,7 @@ from benchbox.core.results.anonymization import (
 )
 from benchbox.core.results.canonical_json import canonical_json_text
 from benchbox.core.results.loader import ResultLoadError, UnsupportedSchemaError, load_result_file
+from benchbox.core.runtime_paths import resolve_results_dir_from_env
 from benchbox.validation.bundle import OVERRIDE_SUFFIX, unanonymized_plans_findings, unanonymized_tuning_findings
 
 PLANS_SUFFIX = ".plans.json"
@@ -308,7 +309,7 @@ def _resolve_source(
     if last:
         from benchbox.core.results.loader import find_latest_result
 
-        default_results_dir = Path("benchmark_runs/results")
+        default_results_dir = resolve_results_dir_from_env()
         path = find_latest_result(default_results_dir, benchmark=benchmark, platform=platform)
         if not path:
             console.print("[yellow]No results found.[/yellow]")

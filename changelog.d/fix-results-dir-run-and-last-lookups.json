@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "benchbox run now writes results under BENCHBOX_RESULTS_DIR when set, and export, submit, publish, visualize and compare find the latest result through the same resolver instead of the literal benchmark_runs/results path."
+    }
+  ]
+}

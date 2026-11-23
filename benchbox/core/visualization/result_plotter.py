@@ -14,6 +14,7 @@ from benchbox.core.labels import disambiguate_platform_labels
 from benchbox.core.results.loader import find_latest_result
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.normalizer import normalize_result_dict
+from benchbox.core.runtime_paths import resolve_results_dir_from_env
 from benchbox.core.visualization.exceptions import VisualizationError
 from benchbox.core.visualization.suggestions import recommend_charts
 from benchbox.core.visualization.utils import natural_query_sort_key
@@ -158,9 +159,10 @@ class ResultPlotter:
                     candidates.append(path)
             return sorted({p.resolve() for p in candidates})
 
-        latest = find_latest_result(Path("benchmark_runs/results"))
+        results_dir = resolve_results_dir_from_env()
+        latest = find_latest_result(results_dir)
         if not latest:
-            raise VisualizationError("No result sources provided and none found in benchmark_runs/results.")
+            raise VisualizationError(f"No result sources provided and none found in {results_dir}.")
         return [latest]
 
     @staticmethod
