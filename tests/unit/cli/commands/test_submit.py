@@ -52,7 +52,7 @@ def _valid_submission_bundle() -> dict:
             "timestamp": "2026-05-03T00:00:00",
             "total_duration_ms": 500,
         },
-        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 0.01},
+        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0},
         "platform": {"name": "duckdb", "version": "1.3.0"},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
         "phases": {"validation": {"status": "PASSED"}},

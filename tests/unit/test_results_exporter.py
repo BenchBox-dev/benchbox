@@ -32,7 +32,7 @@ def _minimal_result(platform: str) -> BenchmarkResults:
     return BenchmarkResults(
         benchmark_name="TPCH",
         platform=platform,
-        scale_factor=0.01,
+        scale_factor=1.0,
         execution_id=f"cost-{platform}",
         timestamp=datetime(2026, 5, 3),
         duration_seconds=1.0,
@@ -202,7 +202,7 @@ def test_exporter_serializes_execution_phases(tmp_path):
     result = BenchmarkResults(
         benchmark_name="TPCH",
         platform="duckdb",
-        scale_factor=0.01,
+        scale_factor=1.0,
         execution_id="test-run",
         timestamp=datetime.now(),
         duration_seconds=0.5,
@@ -246,7 +246,7 @@ def test_exporter_serializes_statistics_phase(tmp_path):
     result = BenchmarkResults(
         benchmark_name="TPCH",
         platform="duckdb",
-        scale_factor=0.01,
+        scale_factor=1.0,
         execution_id="stats-run",
         timestamp=datetime.now(),
         duration_seconds=0.5,

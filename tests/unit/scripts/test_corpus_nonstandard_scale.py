@@ -274,19 +274,26 @@ def test_unknown_compliance_class_on_a_gateway_routed_bundle_is_refused() -> Non
     assert any("not a recognised compliance class" in error for error in _validate(payload).errors)
 
 
-@pytest.mark.parametrize("compliance_class", [NONSTANDARD_COMPLIANCE_CLASS, "unofficial_subscale"])
-def test_submission_still_refuses_unofficial_classes_at_a_standard_scale(compliance_class: str) -> None:
-    scale = 1.0 if compliance_class == NONSTANDARD_COMPLIANCE_CLASS else 0.1
-    vr = _validate(_submission_bundle("tpch", scale, compliance_class=compliance_class))
+@pytest.mark.parametrize("compliance_class", [None, "official", "unofficial_subscale"])
+def test_submission_refuses_a_sub_sf1_tpc_bundle_whatever_it_is_stamped(compliance_class: str | None) -> None:
+    kwargs = {} if compliance_class is None else {"compliance_class": compliance_class}
+    vr = _validate(_submission_bundle("tpch", 0.1, **kwargs))
 
     assert not vr.ok
-    assert any("compliance_class" in error for error in vr.errors)
+    assert any("not accepted for public submissions" in error for error in vr.errors)
     assert not _nonstandard_warnings(vr)
+
+
+@pytest.mark.parametrize("compliance_class", [NONSTANDARD_COMPLIANCE_CLASS, "unofficial_subscale"])
+def test_a_stamp_does_not_refuse_a_bundle_at_a_standard_scale(compliance_class: str) -> None:
+    vr = _validate(_submission_bundle("tpch", 1.0, compliance_class=compliance_class))
+
+    assert vr.ok, vr.errors
 
 
 @pytest.mark.parametrize("benchmark_id", ["tpch", "ssb", "joinorder"])
 def test_submission_of_a_standard_scale_bundle_has_no_exclusion_warning(benchmark_id: str) -> None:
-    scale = get_scale_factor_rule(benchmark_id).standard[0]
+    scale = min(value for value in get_scale_factor_rule(benchmark_id).standard if value >= 1.0)
     vr = _validate(_submission_bundle(benchmark_id, scale))
 
     assert vr.ok, vr.errors
@@ -299,10 +306,10 @@ def test_submission_still_refuses_gateway_routed_bundles_at_an_off_list_scale() 
     routed = _validate(routed_payload)
 
     assert not routed.ok
-    assert any("unofficial_nonstandard" in error for error in routed.errors)
+    assert any("gateway_routed" in error for error in routed.errors)
 
 
-def test_a_registry_less_validator_accepts_a_stamped_non_tpc_bundle_and_refuses_a_stamped_tpc_one(
+def test_a_registry_less_validator_does_not_decide_from_the_stamp(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import benchbox.validation.bundle as bundle_module
@@ -317,7 +324,7 @@ def test_a_registry_less_validator_accepts_a_stamped_non_tpc_bundle_and_refuses_
     assert unstamped_ssb.ok, unstamped_ssb.errors
 
     stamped_tpch = _validate(_submission_bundle("tpch", 2.0, compliance_class=NONSTANDARD_COMPLIANCE_CLASS))
-    assert not stamped_tpch.ok
+    assert stamped_tpch.ok, stamped_tpch.errors
 
     routed_payload = _submission_bundle("ssb", 2.0, compliance_class=NONSTANDARD_COMPLIANCE_CLASS)
     routed_payload["platform"]["gateway"] = {"name": "espresso", "routed": True}

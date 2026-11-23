@@ -26,7 +26,7 @@ def _fake_result() -> SimpleNamespace:
     return SimpleNamespace(
         benchmark_name="tpch",
         platform="duckdb",
-        scale_factor=0.01,
+        scale_factor=1.0,
         total_queries=22,
         duration_seconds=12.34,
     )
@@ -40,7 +40,7 @@ def _minimal_schema_v2_bundle() -> dict:
             "timestamp": "2026-04-29T00:00:00Z",
             "total_duration_ms": 12340,
         },
-        "benchmark": {"id": "tpch", "scale_factor": 0.01},
+        "benchmark": {"id": "tpch", "scale_factor": 1.0},
         "platform": {"name": "duckdb"},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
         "phases": {"validation": {"status": "PASSED"}},

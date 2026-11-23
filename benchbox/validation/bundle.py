@@ -1830,17 +1830,15 @@ def _validate_compliance_section(
             "(exclusion reason: unofficial_compliance)"
         )
         return
-    if compliance is None:
+    refusal = _corpus_rule.public_refusal(
+        benchmark.get("id"), benchmark.get("scale_factor"), gateway_routed=_is_gateway_routed(platform)
+    )
+    if refusal is None or allow_partial_validation or internal_source:
         return
-    if compliance != "official":
-        if allow_partial_validation:
-            return
-        if internal_source and compliance in CLI_REFUSED_COMPLIANCE_CLASSES:
-            return
-        vr.error(
-            f"benchmark.compliance_class={compliance!r} is not accepted for public submissions; "
-            "only compliance_class=official may be submitted"
-        )
+    vr.error(
+        f"benchmark scale_factor={benchmark.get('scale_factor')!r} is not accepted for public submissions ({refusal}); "
+        "only results at scale factor 1 or above that were not routed through a gateway may be submitted"
+    )
 
 
 def _fold_tpcds_variant_observations(observed: set[str]) -> set[str]:
