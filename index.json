@@ -8816,6 +8816,7 @@
     },
     "release-readiness": {
       "accepted_members": {
+        "snowflake-session-query-acceleration-invalid-20261013": "7905758459adb0778c86690bea515236606c5e03",
         "snowflake-test-fixture-real-username-20261013": "96a5dd0ccbf201ca2d51d8a1ba3f740170e5b5f7"
       },
       "batch_schema": 2,
@@ -8823,6 +8824,16 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "snowflake-session-query-acceleration-invalid-20261013": {
+          "accepted_head": "7905758459adb0778c86690bea515236606c5e03",
+          "changed_files": [
+            "benchbox/platforms/snowflake.py",
+            "changelog.d/feat-release-readiness--snowflake-session-query-acceleration-invalid-20261013.json",
+            "tests/unit/platforms/test_snowflake_adapter.py"
+          ],
+          "integration_head": "0e3d1cc9aad0ff7abdc9705111b465d8ce20f382",
+          "integration_seq": 2
+        },
         "snowflake-test-fixture-real-username-20261013": {
           "accepted_head": "96a5dd0ccbf201ca2d51d8a1ba3f740170e5b5f7",
           "changed_files": [
@@ -8834,7 +8845,7 @@
         }
       },
       "integration_branch": "feat/release-readiness",
-      "integration_head": "94e949503418acb767ab56b8875fce547fbfe2ec",
+      "integration_head": "0e3d1cc9aad0ff7abdc9705111b465d8ce20f382",
       "integration_log": [
         {
           "at": "2026-11-23T13:47:59Z",
@@ -8850,6 +8861,15 @@
           "op_id": "398b327220ec457d904d42ad15c1589a",
           "previous_head": "9b3087d4048d5be48ec0e39b4c9f3e5ec679b724",
           "seq": 1
+        },
+        {
+          "at": "2026-11-23T15:10:04Z",
+          "head": "0e3d1cc9aad0ff7abdc9705111b465d8ce20f382",
+          "kind": "prepare",
+          "member": "snowflake-session-query-acceleration-invalid-20261013",
+          "op_id": "6cbddbf33d214bb38ba64514b138b833",
+          "previous_head": "94e949503418acb767ab56b8875fce547fbfe2ec",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-release-readiness",
@@ -45679,15 +45699,10 @@
       "title": "Audit the explicit NULLS LAST that translation adds on Snowflake (DESC), and on Databricks and BigQuery (ASC), since v0.4.1"
     },
     "snowflake-session-query-acceleration-invalid-20261013": {
-      "claim": {
-        "expires_at": "2026-11-24T15:09:59Z",
-        "generation": "4dc2fc67c3c044dfab3dfc1aa248b883",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e8526faa0e732223dd79589d"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "Snowflake: stop issuing ALTER SESSION SET QUERY_ACCELERATION_MAX_SCALE_FACTOR, which fails on every OLAP run"
     },
     "snowflake-shared-database-recreate-drops-shared-tables-20261013": {

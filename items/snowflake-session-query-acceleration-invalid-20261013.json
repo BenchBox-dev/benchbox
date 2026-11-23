@@ -14,6 +14,84 @@
   "links": [
     "benchbox/platforms/snowflake.py"
   ],
+  "prepared": {
+    "accepted_head": "7905758459adb0778c86690bea515236606c5e03",
+    "batch_id": "release-readiness",
+    "changed_files": [
+      "benchbox/platforms/snowflake.py",
+      "changelog.d/feat-release-readiness--snowflake-session-query-acceleration-invalid-20261013.json",
+      "tests/unit/platforms/test_snowflake_adapter.py"
+    ],
+    "integration_head": "0e3d1cc9aad0ff7abdc9705111b465d8ce20f382",
+    "integration_seq": 2,
+    "member_id": "snowflake-session-query-acceleration-invalid-20261013",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "bf6f29fc7f614f2899d65533a7a36ecea1a0b80919a8b17f14fe5a4e67cd7233",
+    "source_base": "94e949503418acb767ab56b8875fce547fbfe2ec",
+    "source_revision": "7905758459adb0778c86690bea515236606c5e03",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-rr-sfqa",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/integration/platforms/test_snowflake_live.py",
+        "tests/integration/platforms/test_snowflake_smoke.py",
+        "tests/system/test_module_size_thresholds.py",
+        "tests/uat/test_connection_registry_drift.py",
+        "tests/unit/cli/test_output_control_static.py",
+        "tests/unit/cli/test_platform_hooks.py",
+        "tests/unit/cli/test_shipped_docs_urls.py",
+        "tests/unit/core/results/test_anonymization_compute_resource.py",
+        "tests/unit/core/results/test_platform_timing.py",
+        "tests/unit/core/test_compute_resource_unification.py",
+        "tests/unit/core/tpcdi/test_tpcdi_no_values_row_source.py",
+        "tests/unit/core/tuning/test_applied_tuning_attribution.py",
+        "tests/unit/core/tuning/test_snowflake_tuned_template_clustering.py",
+        "tests/unit/platforms/base/test_tuning_trust.py",
+        "tests/unit/platforms/test_cloud_platform_ctas_sort.py",
+        "tests/unit/platforms/test_cloud_sorted_ingestion_strategy.py",
+        "tests/unit/platforms/test_cloud_warehouse_timing_contract.py",
+        "tests/unit/platforms/test_credential_error_messages.py",
+        "tests/unit/platforms/test_offline_adapter_inventory.py",
+        "tests/unit/platforms/test_physical_identifier_resolution_snowflake_redshift.py",
+        "tests/unit/platforms/test_platform_config_messages.py",
+        "tests/unit/platforms/test_platform_driver_runtime_contract.py",
+        "tests/unit/platforms/test_platform_info.py",
+        "tests/unit/platforms/test_snowflake_adapter.py",
+        "tests/unit/platforms/test_snowflake_adapter_coverage.py",
+        "tests/unit/platforms/test_snowflake_clustering_ledger.py",
+        "tests/unit/platforms/test_snowflake_fixture_cleanup.py",
+        "tests/unit/platforms/test_snowflake_gateway.py",
+        "tests/unit/platforms/test_snowflake_shared_database.py",
+        "tests/unit/platforms/test_snowflake_sql_generation.py",
+        "tests/unit/platforms/test_tpcds_maintenance_primary_keys.py",
+        "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index"
+      ],
+      "review": {
+        "base_sha": "94e949503418acb767ab56b8875fce547fbfe2ec",
+        "head_sha": "7905758459adb0778c86690bea515236606c5e03",
+        "head_tree": "4753d78d13eb48087630fc5e14aac561f25712db",
+        "outcome": "clear",
+        "patch_digest": "0e3262129fdd6d1184692f939e18e80f",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "5e784d60394b5ec4f7535c6ea9a3c8fc5c4dc491"
+      },
+      "revision": "7905758459adb0778c86690bea515236606c5e03",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
@@ -38,6 +116,15 @@
       "generation": "4dc2fc67c3c044dfab3dfc1aa248b883",
       "op": "take",
       "op_id": "501e296922774655965a1ee2db6cd096",
+      "session_id": "24cca4279aeb4583a89b2c57ce255d32"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e8526faa0e732223dd79589d",
+      "at": "2026-11-23T15:10:04Z",
+      "client": "omp-coding-agent",
+      "generation": "4dc2fc67c3c044dfab3dfc1aa248b883",
+      "op": "prepare",
+      "op_id": "6cbddbf33d214bb38ba64514b138b833",
       "session_id": "24cca4279aeb4583a89b2c57ce255d32"
     }
   ]
