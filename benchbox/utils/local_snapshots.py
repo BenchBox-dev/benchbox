@@ -9,7 +9,6 @@ from benchbox.utils.resource_limits import EXTERNAL_TIMEOUT_SECONDS, Runner, run
 TIME_MACHINE_PREFIX = "com.apple.TimeMachine."
 TIME_MACHINE_SUFFIX = ".local"
 HEADER_PREFIX = "Snapshots for"
-DOCS_HINT = "see docs/internal/low-disk-guard.md"
 
 
 def parse_snapshot_names(text: str) -> tuple[str, ...]:
@@ -35,8 +34,7 @@ def format_snapshots(names: Sequence[str] | None) -> str:
         return "local snapshots on /: none"
     listed = ", ".join(_display_name(name) for name in names)
     return (
-        f"local snapshots on /: {len(names)} ({listed}); snapshots can hold deleted data that df "
-        f"still counts as used, {DOCS_HINT}"
+        f"local snapshots on /: {len(names)} ({listed}); snapshots can hold deleted data that df still counts as used"
     )
 
 
