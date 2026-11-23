@@ -30429,12 +30429,17 @@
       "title": "Add an opt-in admission wait to make heavy-run"
     },
     "heavy-run-admitted-then-killed-by-foreign-memory-pressure-20261112": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T00:26:45Z",
+        "generation": "1a5ef994f7c241a481b7863acedc61ac",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6"
+      },
       "needs": [
         "feature-feat-heavy-guard-attribution-engine-caps-20261117"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "make heavy-run admits a job and the watchdog kills it seconds later for memory pressure the job did not cause"
     },
     "heavy-run-cmd-dollar-expansion-20261111": {
