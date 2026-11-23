@@ -170,6 +170,15 @@
       "op": "take",
       "op_id": "eaf07de702214001b52008f810d47606",
       "session_id": "c3ab3ca8623044e288c13bc910904e98"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2",
+      "at": "2026-11-23T09:01:31Z",
+      "client": "omp-coding-agent",
+      "generation": "97193e3aef1e4ef6ad66b748f9eafb5e",
+      "op": "release",
+      "op_id": "d7a021eac4434ca8b1407e1ccf50dd2a",
+      "session_id": "c3ab3ca8623044e288c13bc910904e98"
     }
   ]
 }
