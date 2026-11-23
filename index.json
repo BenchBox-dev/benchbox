@@ -32877,17 +32877,12 @@
       "title": "LakeSail and Velox compose files use nested variable defaults mocker cannot parse"
     },
     "lakesail-docker-4g-default-sf1-evidence-20261120": {
-      "claim": {
-        "expires_at": "2026-11-24T21:01:43Z",
-        "generation": "ef7980e320ff4fe4917894dbe0d6c743",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a5dffb67f2f8103a3765a88b"
-      },
+      "claim": null,
       "needs": [
         "feature-feat-corpus-scale-policy-and-reruns-20261117"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Decide and evidence LakeSail's container memory default"
     },
     "lakesail-honoured-spark-keys-20261017": {
