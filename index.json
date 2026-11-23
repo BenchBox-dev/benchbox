@@ -29547,15 +29547,10 @@
       "title": "TPC-DI after the specification unit: registry estimates, SF 100 measurement and documented differences"
     },
     "feature-fix-ci-congestion-diagnostics-and-generator-gate-20261117": {
-      "claim": {
-        "expires_at": "2026-11-24T13:53:56Z",
-        "generation": "bc68611712d44f5bb06209d5c83d2ab7",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a5dffb67f2f8103a3765a88b"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "CI: release-v2 probe queue time, watchdog test race, duration re-run message, generator volume gate"
     },
     "feature-fix-corpus-classification-and-seed-provenance-20261120": {
