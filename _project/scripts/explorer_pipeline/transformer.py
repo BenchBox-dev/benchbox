@@ -1515,10 +1515,6 @@ def _environment_facets(
     return _legacy_environment_facets_from_cost(normalized_cost)
 
 
-def _compliance_class(bundle: BundleDocument) -> str | None:
-    return bundle.benchmark.compliance_class
-
-
 def _benchmark_support_status(benchmark_id: str) -> str | None:
     try:
         status = get_benchmark_support_status(benchmark_id)
@@ -1909,7 +1905,6 @@ class BundleTransformer:
             cloud_region=environment_facets["cloud_region"],
             instance_or_warehouse=environment_facets["instance_or_warehouse"],
             storage_format=environment_facets["storage_format"],
-            compliance_class=_compliance_class(bundle),
             power_score_source=power_score_source,
             basis_availability=_compute_basis_availability(timings),
             **translator,
@@ -2077,7 +2072,6 @@ class BundleTransformer:
             failed_query_count=bundle_failed_query_count(bundle_data),
             cost_usd=_cost_usd_alias(normalized_cost),
             normalized_cost=normalized_cost,
-            compliance_class=_compliance_class(bundle),
             power_score_source=power_score_source,
             phase_durations=_phase_durations(bundle),
             physical_mechanisms=_physical_mechanisms(bundle),
@@ -2129,7 +2123,13 @@ class BundleTransformer:
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION
             defect_reason = manifest_known_defect_reason(bundle_path)
-        return detail.model_copy(update={"ranking_exclusion_reason": reason, "known_defect_reason": defect_reason})
+        return detail.model_copy(
+            update={
+                "ranking_exclusion_reason": reason,
+                "known_defect_reason": defect_reason,
+                "compliance_class": corpus_outcome.compliance_class(outcome),
+            }
+        )
 
 
 __all__ = ["BundleTransformer"]

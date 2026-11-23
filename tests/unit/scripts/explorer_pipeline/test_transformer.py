@@ -302,7 +302,7 @@ class TestToDetailResult:
         entry = transformer.to_manifest_entry(bundle, result_id=rid)
         detail = transformer.to_detail_result(bundle, rid)
 
-        assert entry.compliance_class == "unofficial_nonstandard"
+        assert entry.compliance_class is None
         assert entry.corpus_class == "power_only"
         assert entry.ranking_exclusion_reason is None
         assert detail.ranking_exclusion_reason == entry.ranking_exclusion_reason

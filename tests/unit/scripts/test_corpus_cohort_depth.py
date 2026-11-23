@@ -1794,7 +1794,7 @@ def test_a_recorded_official_class_below_sf1_is_classed_subscale_by_the_rule(tmp
 
     entry = BundleTransformer().to_manifest_entry(path, result_id="r")
     assert entry.corpus_class == "subscale"
-    assert entry.compliance_class == "official"
+    assert entry.compliance_class == "unofficial_subscale"
 
 
 def test_recorded_subscale_power_that_disagrees_with_timings_is_ignored(tmp_path: Path) -> None:

@@ -255,10 +255,10 @@ metrics:
   - table: results
     column: compliance_class
     kind: derived
-    canonical_ref: "_project.scripts.explorer_pipeline.transformer._compliance_class"
+    canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.compliance_class"
     tolerance: 0
     display_surfaces: [benchmark_index]
-    notes: "Value recorded in the result file, shown as recorded and never read to decide a class, lane or ranking; the class comes from corpus_class"
+    notes: "The informational stamp the writer would record for the rule's class (official, unofficial_subscale, unofficial_nonstandard or null); never read from the file"
 
   - table: results
     column: corpus_class

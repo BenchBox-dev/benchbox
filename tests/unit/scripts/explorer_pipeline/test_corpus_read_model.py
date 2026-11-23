@@ -283,3 +283,23 @@ def test_the_pipeline_takes_class_and_identity_from_the_rule_modules() -> None:
 
     assert "corpus_rule.derive_outcome" in text
     assert "comparison_identity.comparison_identity" in text
+
+
+@pytest.mark.parametrize(
+    ("scale", "recorded", "expected"),
+    [
+        (0.01, "official", "unofficial_subscale"),
+        (2.0, "official", "unofficial_nonstandard"),
+        (1.0, "unofficial_nonstandard", None),
+    ],
+)
+def test_the_compliance_class_column_follows_the_rule_not_the_stamp(
+    tmp_path: Path, scale: float, recorded: str, expected: str | None
+) -> None:
+    data = _power_run("one")
+    data["benchmark"]["scale_factor"] = scale
+    data["benchmark"]["compliance_class"] = recorded
+    db = _build(tmp_path, {"one": data})
+
+    with duckdb.connect(str(db), read_only=True) as con:
+        assert con.execute("SELECT compliance_class FROM results").fetchone() == (expected,)

@@ -6,6 +6,7 @@ from typing import Any
 
 from benchbox.core.execution_engine import NOT_CAPTURED
 from benchbox.core.results import comparison_identity, corpus_rule
+from benchbox.core.results.schema import NONSTANDARD_COMPLIANCE_CLASS, RECORDED_COMPLIANCE_CLASS_BY_RULE_CLASS
 
 SINGLE_ITERATION_LABEL = "single iteration"
 MINIMUM_MEASURED_ITERATIONS = 3
@@ -54,6 +55,12 @@ def unranked_reason(outcome: corpus_rule.Outcome) -> str | None:
     return outcome.held_reason or f"not_ranked_{outcome.class_name}"
 
 
+def compliance_class(outcome: corpus_rule.Outcome) -> str | None:
+    if outcome.held_reason == corpus_rule.HELD_GATEWAY_ROUTED:
+        return NONSTANDARD_COMPLIANCE_CLASS
+    return RECORDED_COMPLIANCE_CLASS_BY_RULE_CLASS.get(outcome.class_name)
+
+
 def iteration_label(measured_iterations: int) -> str | None:
     if 0 < measured_iterations < MINIMUM_MEASURED_ITERATIONS:
         return SINGLE_ITERATION_LABEL
@@ -75,6 +82,7 @@ def corpus_columns(
     identity = comparison_identity.comparison_identity(data, variant_id)
     version = identity.comparison_version
     return {
+        "compliance_class": compliance_class(outcome),
         "corpus_class": outcome.class_name,
         "corpus_lanes": list(outcome.lanes),
         "corpus_labels": list(outcome.labels),
