@@ -63,7 +63,9 @@ is dropped, except Snowflake (drops this benchmark's tables and tuning metadata,
 Before TPC-H or TPC-DS data generation, and before TPC-H or TPC-DS query generation, BenchBox prints a rough estimate
 read from `benchbox/core/generation_estimate.json`, which holds wall times measured with `benchbox run --phases
 generate` (parquet), `qgen` and `dsqgen` on a darwin-arm64 Apple M4 (10 cores, 16 GiB) at commit 93f336032a, with the
-host's one-minute load average below 3 at the start of every measurement:
+host's one-minute load average below 3 at the start of every measurement. The TPC-H data generation figures at scale
+0.01 and 0.1 were measured again the same way after BenchBox began starting at most four `dbgen` processes below scale
+1; those two points carry their own `measured_at_commit`:
 
 > Rough estimate: generation will take about {estimate} (measured on {host_class} at scale {scales}{extrapolated_note}).
 
