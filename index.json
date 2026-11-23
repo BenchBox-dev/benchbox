@@ -39048,6 +39048,13 @@
       "status": "done",
       "title": "Make pr-open require the preflight guard steps in the receipt"
     },
+    "preflight-receipt-passed-without-tests-on-termination-20261123": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "pr-preflight can write a 'passed' receipt with no test step when the run is cut short"
+    },
     "preflight-receipt-step-accepted-exit-code-20261122": {
       "claim": null,
       "needs": [],
