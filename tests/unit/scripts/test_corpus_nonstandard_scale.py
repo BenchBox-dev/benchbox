@@ -438,6 +438,7 @@ def test_the_registry_less_exclusion_reason_sees_an_off_list_scale(
         capture_output=True,
         text=True,
         check=False,
+        timeout=60,
     )
 
     assert result.returncode == 0, result.stderr

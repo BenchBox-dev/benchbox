@@ -183,11 +183,7 @@ def test_parity_executes_real_payloads_in_an_isolated_slim_checkout(tmp_path: Pa
         (repo / "benchbox/validation/bundle.py").unlink()
     result = subprocess.run(
         [
-            "uv",
-            "run",
-            "--no-project",
-            "--",
-            "python",
+            sys.executable,
             "-I",
             "-S",
             "scripts/publication/validator_parity.py",
@@ -202,6 +198,7 @@ def test_parity_executes_real_payloads_in_an_isolated_slim_checkout(tmp_path: Pa
         capture_output=True,
         text=True,
         check=False,
+        timeout=120,
     )
     if case == "identical":
         assert result.returncode == 0, result.stdout + result.stderr
@@ -262,11 +259,7 @@ def test_parity_in_a_slim_checkout_matches_the_registry_verdict_for_off_list_sca
 
     _copy_slim_runtime(repo)
     command = [
-        "uv",
-        "run",
-        "--no-project",
-        "--",
-        "python",
+        sys.executable,
         "-I",
         "-S",
         "scripts/publication/validator_parity.py",
@@ -279,7 +272,7 @@ def test_parity_in_a_slim_checkout_matches_the_registry_verdict_for_off_list_sca
     ]
     if allow_partial:
         command.append("--allow-partial-validation")
-    result = subprocess.run(command, cwd=repo, capture_output=True, text=True, check=False)
+    result = subprocess.run(command, cwd=repo, capture_output=True, text=True, check=False, timeout=120)
 
     assert result.returncode == registry_rc, result.stdout + result.stderr
     assert "Parity OK" in result.stdout
