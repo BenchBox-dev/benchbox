@@ -240,7 +240,7 @@ def test_declared_settings_cover_the_mocker_launched_stacks(mocker_cli):
     lakesail = managed_runtime.compose_declared_settings(
         docker_assets.docker_platform_spec("lakesail"), env={"BENCHBOX_DATA_DIR": "/runs"}
     )["lakesail-connect"]
-    assert lakesail.memory_bytes == 4 * 1024**3
+    assert lakesail.memory_bytes == 6 * 1024**3
 
 
 def test_cpu_shortfall_is_reported():
