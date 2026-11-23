@@ -48863,6 +48863,13 @@
       "status": "done",
       "title": "Theseus: a hosted finding posted without a review thread can never be disputed or adjudicated"
     },
+    "theseus-brief-unmarked-nonnul-font-binary-20261123": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Theseus brief leaves an unprotected font with no NUL byte unmarked although the check still requires its read"
+    },
     "theseus-ci-test-job-near-timeout-20261117": {
       "claim": null,
       "needs": [],

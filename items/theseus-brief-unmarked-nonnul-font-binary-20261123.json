@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Either the item is dropped with recorded evidence that no real font reaches this case, or:",
+    "A test with an unprotected `.woff2` that has no NUL head and a binary notice shows the brief marks it with the binary mark and the note, and a trace without a whole-file read is still rejected.",
+    "An unprotected font with a NUL head stays unmarked and exempt; existing tests and golden briefs pass unchanged.",
+    "Released in a Theseus version and locked by Theseus and BenchBox."
+  ],
+  "description": "Theseus v0.2.18 (#105) marks required files that the staged diff shows only as a binary notice `[binary: read this exact path once]`. cli._binary_required treats every unprotected font (`is_binary_candidate`) as exempt and leaves it unmarked. evidence.required_files exempts a font only when `has_nul_head` is also true. An unprotected font that git reports as binary but whose first 8000 bytes hold no NUL is therefore still required, with every line read, yet it carries no mark or guidance. compose_brief has no workspace path, so it cannot run the NUL probe. The gap costs only guidance, never a wrong decision: the check fails closed. Real fonts almost always contain NUL bytes. The independent review of #105 at 0d438388 noted this and did not raise it as a finding.\n\nDecision gate: first decide whether the case is worth code. Search consumer history (BenchBox and Theseus PRs) for a font that git called binary with no NUL in the first 8000 bytes. If none exists and none can be built from a real font, drop this item with that evidence. Otherwise choose between passing the workspace (or a precomputed NUL set from the plan step) into compose_brief, and recording `binary_nul` in the plan at plan time, then mark from that.\n\nGuardrails: do not change evidence.required_files, coverage.evaluate or the font-only exemption. Only the brief may change. Briefs with no binaries must render byte-for-byte as before (golden fixtures unchanged). The worst-case brief-size bound (_rendered_brief_bytes) must still bound the real brief.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f0306fe42dc404288de80bb6",
+      "at": "2026-11-23T18:39:06Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "57431e77c2f463b7d99d3588a619c8a0",
+      "session_id": "85f847e9be7f4d2f8dd166c7531f637d"
+    }
+  ]
+}
