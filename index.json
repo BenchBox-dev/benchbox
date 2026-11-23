@@ -29439,7 +29439,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Release readiness before v0.6.0: registered batch release-readiness (notes; not a work item)"
     },
     "feature-fix-restore-tpcds-scale-range-20261120": {
