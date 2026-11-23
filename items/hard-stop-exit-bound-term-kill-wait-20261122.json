@@ -12,6 +12,58 @@
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4446"
   ],
+  "prepared": {
+    "accepted_head": "c5889509257b76e2ced7570006444873b97d3479",
+    "batch_id": "run-timeout-hardening",
+    "changed_files": [
+      "_project/decisions/run-timeout-2026-11-20.md",
+      "changelog.d/feat-run-timeout-hardening--hard-stop-exit-bound-term-kill-wait-20261122.json",
+      "docs/operations/run-safety.md",
+      "tests/unit/cli/test_run_timeout_remote_cleanup.py",
+      "tests/unit/utils/test_process_group_term_ignoring_children.py"
+    ],
+    "integration_head": "1336a739efaffb40fabb2a9d9e3a4ce620a3763d",
+    "integration_seq": 3,
+    "member_id": "hard-stop-exit-bound-term-kill-wait-20261122",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "e9c3379d3638626d0b81fe2002644ae4d4052a4afcafce2000184f44de9b7e77",
+    "source_base": "3f577182f12c9bd1ca65f4663df2aede74015fa5",
+    "source_revision": "c5889509257b76e2ced7570006444873b97d3479",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-rh-hardstop",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/cli/test_run_timeout_remote_cleanup.py",
+        "tests/unit/cli/test_shipped_docs_urls.py",
+        "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index",
+        "tests/unit/utils/test_process_group_term_ignoring_children.py"
+      ],
+      "review": {
+        "base_sha": "3f577182f12c9bd1ca65f4663df2aede74015fa5",
+        "head_sha": "c5889509257b76e2ced7570006444873b97d3479",
+        "head_tree": "24bfe7177a76ec8829d512dc016a602bdf125a75",
+        "outcome": "clear",
+        "patch_digest": "16aa1ef246005fb38dfc8f18bf1b6786",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "0fc93ef300fbec76330d814b234c4e24f0c5b7a5"
+      },
+      "revision": "c5889509257b76e2ced7570006444873b97d3479",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4a1bf3c04b0f84a2d37b05ca",
@@ -52,6 +104,15 @@
       "generation": "08c36a8b42c44bd69c5a769c534c71de",
       "op": "take",
       "op_id": "8de1e287e2fc457baa2ea4522a32ae02",
+      "session_id": "301a72f40ca84d7ab9668f9bdc47da3b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18",
+      "at": "2026-11-23T02:08:27Z",
+      "client": "omp-coding-agent",
+      "generation": "08c36a8b42c44bd69c5a769c534c71de",
+      "op": "prepare",
+      "op_id": "f2aade57146c41d69b74661fb59ea165",
       "session_id": "301a72f40ca84d7ab9668f9bdc47da3b"
     }
   ]

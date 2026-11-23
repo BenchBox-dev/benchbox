@@ -10585,6 +10585,7 @@
     },
     "run-timeout-hardening": {
       "accepted_members": {
+        "hard-stop-exit-bound-term-kill-wait-20261122": "c5889509257b76e2ced7570006444873b97d3479",
         "tpcds-q57-expression-order-float-tie-flake-20261122": "5150a1b189fe676b9a60b92b7aa36936c7cfbe97"
       },
       "batch_schema": 2,
@@ -10592,6 +10593,18 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "hard-stop-exit-bound-term-kill-wait-20261122": {
+          "accepted_head": "c5889509257b76e2ced7570006444873b97d3479",
+          "changed_files": [
+            "_project/decisions/run-timeout-2026-11-20.md",
+            "changelog.d/feat-run-timeout-hardening--hard-stop-exit-bound-term-kill-wait-20261122.json",
+            "docs/operations/run-safety.md",
+            "tests/unit/cli/test_run_timeout_remote_cleanup.py",
+            "tests/unit/utils/test_process_group_term_ignoring_children.py"
+          ],
+          "integration_head": "1336a739efaffb40fabb2a9d9e3a4ce620a3763d",
+          "integration_seq": 3
+        },
         "tpcds-q57-expression-order-float-tie-flake-20261122": {
           "accepted_head": "5150a1b189fe676b9a60b92b7aa36936c7cfbe97",
           "changed_files": [
@@ -10604,7 +10617,7 @@
         }
       },
       "integration_branch": "feat/run-timeout-hardening",
-      "integration_head": "3f577182f12c9bd1ca65f4663df2aede74015fa5",
+      "integration_head": "1336a739efaffb40fabb2a9d9e3a4ce620a3763d",
       "integration_log": [
         {
           "at": "2026-11-22T21:01:02Z",
@@ -10635,6 +10648,15 @@
             "tpcds-q57-expression-order-float-tie-flake-20261122"
           ],
           "seq": 2
+        },
+        {
+          "at": "2026-11-23T02:08:27Z",
+          "head": "1336a739efaffb40fabb2a9d9e3a4ce620a3763d",
+          "kind": "prepare",
+          "member": "hard-stop-exit-bound-term-kill-wait-20261122",
+          "op_id": "f2aade57146c41d69b74661fb59ea165",
+          "previous_head": "3f577182f12c9bd1ca65f4663df2aede74015fa5",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-hardening",
@@ -30211,15 +30233,10 @@
       "title": "Gateway test suite + G1/G2 verification gates"
     },
     "hard-stop-exit-bound-term-kill-wait-20261122": {
-      "claim": {
-        "expires_at": "2026-11-24T02:08:23Z",
-        "generation": "08c36a8b42c44bd69c5a769c534c71de",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Decide whether the 30-second hard stop is an exit bound, and make the code and docs agree"
     },
     "harden-auto-merge-on-open-stranding": {
