@@ -3778,7 +3778,8 @@
     },
     "corpus-rule-r4": {
       "accepted_members": {
-        "crr-a0-decision-records": "98270097cf7240eb08df85fbc3512e860ed26aa7"
+        "crr-a0-decision-records": "98270097cf7240eb08df85fbc3512e860ed26aa7",
+        "crr-d1-observed-engine-contract-and-dataframe": "d604a887132187c5a0875f0700aa01c23c2670e4"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -3795,10 +3796,55 @@
           ],
           "integration_head": "8d0eadcfefb8ac3dcf8a62abe5599fd9f9450f28",
           "integration_seq": 1
+        },
+        "crr-d1-observed-engine-contract-and-dataframe": {
+          "accepted_head": "d604a887132187c5a0875f0700aa01c23c2670e4",
+          "changed_files": [
+            ".github/ci-units.yml",
+            ".github/workflows/ci.yml",
+            ".github/workflows/sync-results-data-to-published.yml",
+            "_project/scripts/explorer_pipeline/models.py",
+            "benchbox/core/execution_engine.py",
+            "benchbox/core/platform_manifest.py",
+            "benchbox/core/results/corpus_rule.py",
+            "benchbox/core/results/corpus_rule_data.json",
+            "benchbox/platforms/dataframe/benchmark_mixin.py",
+            "benchbox/platforms/dataframe/dask_df.py",
+            "benchbox/platforms/dataframe/expression_family.py",
+            "benchbox/platforms/dataframe/pandas_family.py",
+            "benchbox/platforms/dataframe/polars_df.py",
+            "changelog.d/feat-corpus-rule-r2--crr-d1-observed-engine-contract-and-dataframe.json",
+            "changelog.d/feat-corpus-rule-r3--crr-a1-rule-module-and-snapshot.json",
+            "docs/internal/adr/adr-published-results-slim-corpus-branch.md",
+            "pyproject.toml",
+            "results-data/compliance-classes.json",
+            "scripts/corpus_compliance_snapshot.py",
+            "scripts/corpus_drift.py",
+            "scripts/generate_corpus_rule_data.py",
+            "tests/fixtures/corpus_rule_isolated_probe.py",
+            "tests/unit/core/clickbench/test_clickbench_dataframe_execution.py",
+            "tests/unit/core/results/test_corpus_rule.py",
+            "tests/unit/core/results/test_execution_variant_observed.py",
+            "tests/unit/core/test_execution_engine_observed.py",
+            "tests/unit/core/test_observed_engine_guard.py",
+            "tests/unit/core/test_platform_manifest_observed_engine.py",
+            "tests/unit/platforms/dataframe/observed_engine_contract.py",
+            "tests/unit/platforms/dataframe/test_dask_observed_engine.py",
+            "tests/unit/platforms/dataframe/test_observed_engine_contract.py",
+            "tests/unit/platforms/dataframe/test_polars_observed_engine.py",
+            "tests/unit/platforms/test_databricks_adapter_coverage.py",
+            "tests/unit/scripts/explorer_pipeline/test_observed_engine_parse.py",
+            "tests/unit/scripts/test_ci_units.py",
+            "tests/unit/scripts/test_corpus_compliance_snapshot.py",
+            "tests/unit/scripts/test_generate_corpus_rule_data.py",
+            "tests/unit/test_sync_results_workflow.py"
+          ],
+          "integration_head": "03bcbb93b13d3a282bc679bcd671e3768ac4fe34",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/corpus-rule-r4",
-      "integration_head": "8d0eadcfefb8ac3dcf8a62abe5599fd9f9450f28",
+      "integration_head": "03bcbb93b13d3a282bc679bcd671e3768ac4fe34",
       "integration_log": [
         {
           "at": "2026-11-22T23:06:06Z",
@@ -3814,6 +3860,15 @@
           "op_id": "37475ea204fc4049a6fab980399aaf98",
           "previous_head": "44c34087bc617576e094614a28cb2f1c3b4a8985",
           "seq": 1
+        },
+        {
+          "at": "2026-11-23T02:31:55Z",
+          "head": "03bcbb93b13d3a282bc679bcd671e3768ac4fe34",
+          "kind": "prepare",
+          "member": "crr-d1-observed-engine-contract-and-dataframe",
+          "op_id": "153d75f56b9c438dba237fd42ff9f9ab",
+          "previous_head": "8d0eadcfefb8ac3dcf8a62abe5599fd9f9450f28",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r4",
@@ -23552,15 +23607,10 @@
       "title": "Add row-count references for TPC-H, TPC-DS and SSB at every scale that ranks, per query stream"
     },
     "crr-d1-observed-engine-contract-and-dataframe": {
-      "claim": {
-        "expires_at": "2026-11-24T02:31:49Z",
-        "generation": "2d2fdd9ddc3748b7a0983c8ff31dff8e",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "Record the execution engine that actually ran, starting with the DataFrame platforms"
     },
     "crr-d2-observed-engine-sql-platforms": {
