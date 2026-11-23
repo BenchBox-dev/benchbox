@@ -30566,12 +30566,17 @@
       "title": "Prove the generator-volume gate measures correctly and get its CI budget approved"
     },
     "generator-volume-gate-ungated-schema-and-seed-inputs-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T13:54:28Z",
+        "generation": "b7c53db3f0cf42ef8324fc78436ba9c5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a5dffb67f2f8103a3765a88b"
+      },
       "needs": [
         "feature-fix-ci-congestion-diagnostics-and-generator-gate-20261117"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Gate the remaining files that set pure-Python generator output volume"
     },
     "geospatial-primitives-benchmark": {
