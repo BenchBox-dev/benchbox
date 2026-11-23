@@ -41622,10 +41622,15 @@
       "title": "Release UAT Velox container exits with code 1 and its image is built on the runner"
     },
     "release-v2-probe-runs-head-script-with-merge-ref-permissions-20261119": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T18:07:44Z",
+        "generation": "942b439ced11460b938cc5673431882f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e8526faa0e732223dd79589d"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "release-v2 probe runs the PR head's launch script under the merge ref's token, so a head older than its base's #4390 gets 403"
     },
     "relocate-cli-hook-registries": {
