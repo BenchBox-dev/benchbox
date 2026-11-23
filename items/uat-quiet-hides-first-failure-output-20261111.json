@@ -4,7 +4,7 @@
     "Passing output is unchanged and credential-shaped fixtures are redacted from every retained/output surface; log ownership/location and retention are documented.",
     "Existing diagnostic reruns are retained with a reason or removed without losing server diagnostics."
   ],
-  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\n2026-11-15 recurrence: a Spark TPC-DI SF 1 UAT cell killed by the watchdog at 452 s left a cell log with only Spark stage progress bars; `--quiet` hid which query was running, so the run had to be repeated without `--quiet` to learn anything.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.\n\n2026-11-17: implemented in #4331. First-attempt stderr and the final error are kept in the cell log. Not exercised live: timeout and signal paths; a SIGKILL or the watchdog SIGTERM leaves only stderr already written.",
+  "context": "Filed 2026-11-11 from the benchmark scale-factor audit and the TPC-DS-OBT publication work of 2026-11-10 and 2026-11-11: identified during that work and not addressed.\n\n2026-11-15 recurrence: a Spark TPC-DI SF 1 UAT cell killed by the watchdog at 452 s left a cell log with only Spark stage progress bars; `--quiet` hid which query was running, so the run had to be repeated without `--quiet` to learn anything.\n\n2026-11-17 TODO review: clarified decision gates, observable pass/fail rubric and safety boundaries. Existing historical evidence is retained; this is tracker planning only, not implementation, spend, publication or closeout approval.\n\n2026-11-17: implemented in #4331. First-attempt stderr and the final error are kept in the cell log. Not exercised live: timeout and signal paths; a SIGKILL or the watchdog SIGTERM leaves only stderr already written.\n\n2026-11-22: #4331 merged as e79bb93236 (head aa403069cc) after the owner-authorised re-run of the Windows job passed. Delivered: breach attribution with redacted command lines and a separate \"containers (origin unknown)\" line, the admission hold refusing non-finite and negative values with the owner text, quiet-run first-failure output; engine caps, default-run refusal and replay removed.",
   "description": "## Problem\nWhen a UAT cell fails, the harness has run `benchbox run` with `--quiet`, and the original error is not in the cell's log. On 2026-11-11 a LakeSail TPC-DS-OBT cell failed after about 20 minutes with no recorded cause; the only evidence came from a separate diagnostic re-run, which showed a different, later symptom (connection refused). A 20-minute failure had to be reproduced to learn anything.\n\n## Change\nKeep the benchmark's error output for a failed cell: either capture stderr and the final error from the quiet run into the cell log, or always write the run's full output to a log file beside the cell's result. Confirm what the existing diagnostic re-run captures and whether it can be dropped once the first run keeps its output.\n\n## Guardrails\n- Passing cells stay quiet; the sweep summary must not grow.\n- No credentials or connection strings in the captured output.\n\n## Decision gates\nInspect existing capture/redaction and diagnostic rerun paths before adding another log. Choose the smallest first-attempt capture that preserves the benchmark error; decide whether the later diagnostic run remains necessary.\n\n## Verification rubric\nPass: an isolated intentionally failing cell retains original benchmark error, exit code and client/server context on its first execution. A passing cell leaves console summary unchanged. Inject credential-shaped strings and prove redaction in retained logs and console; verify timeout/signal failures and log location/retention.\n\n## Additional guardrails\nNo real credentials in fixtures/logs. Do not rerun an expensive workload merely to obtain the first failure. Preserve exit semantics, bounded log storage and quiet passing output.",
   "links": [
     "tests/uat",
@@ -74,6 +74,14 @@
       "op": "update",
       "op_id": "8868b8ddcd9e4bbd8f276b280f7e1f5f",
       "session_id": "86b0e4ee68654aa992c62ae76dd23e81"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6",
+      "at": "2026-11-23T00:26:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "239ef10f2ccc4afba69f1a873ad1d7ba",
+      "session_id": "703e90baefd545ccb42540a47d1ce09e"
     }
   ]
 }
