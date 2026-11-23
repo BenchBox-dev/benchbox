@@ -405,6 +405,23 @@ def test_throughput_counts_one_round_of_queries_per_stream_like_the_runtime(fami
     assert corpus_score.throughput_at_size(data) == pytest.approx(expected)
 
 
+def test_power_refresh_without_throughput_excludes_refresh_from_score() -> None:
+    data = combined_bundle(benchmark="tpch", power=1234.5)
+    data["phases"]["throughput_test"] = {"status": "NOT_RUN"}
+    seconds = [query["ms"] / 1000 for query in data["queries"] if query.get("test_type") == "power"]
+    assert corpus_score.power_at_size(data) == pytest.approx(TPCMetricsCalculator.calculate_power_at_size(seconds, 1.0))
+
+
+def test_composite_uses_scale_minimum_and_executed_stream_count() -> None:
+    data = combined_bundle(benchmark="tpch")
+    data["benchmark"]["scale_factor"] = 10.0
+    assert corpus_rule.derive_outcome(corpus_rule.facts_from_result(data)).class_name == corpus_rule.CLASS_PARTIAL
+    assert corpus_score.combined_score(data) is None
+    data["phases"]["throughput_test"]["num_streams"] = 99
+    duration = data["phases"]["throughput_test"]["duration_ms"] / 1000
+    assert corpus_score.throughput_at_size(data) == pytest.approx(22 * 2 * 10 * 3600 / duration)
+
+
 @pytest.mark.parametrize("family", ["tpch", "tpcds"])
 def test_a_sub_sf1_combined_bundle_gets_no_composite_from_the_corpus_path(family: str) -> None:
     data = combined_bundle(benchmark=family)

@@ -84,7 +84,8 @@ def power_at_size(data: Mapping[str, Any]) -> float | None:
     if any(ms is None or ms <= 0 for ms in durations):
         return None
     seconds = [ms / 1000.0 for ms in durations if ms is not None]
-    if benchmark_id == "tpch":
+    score_source = _corpus_rule().derive_outcome(_corpus_rule().facts_from_result(data)).score_source
+    if benchmark_id == "tpch" and score_source != _corpus_rule().SCORE_POWER_QUERY_TIMINGS_ONLY:
         phases = data.get("phases")
         power_phase = phases.get("power_test") if isinstance(phases, Mapping) else None
         refresh_configured = isinstance(power_phase, Mapping) and power_phase.get("refresh_first_set") is not None
@@ -117,9 +118,7 @@ def throughput_at_size(data: Mapping[str, Any]) -> float | None:
             if query.get("test_type") == "throughput" and query.get("run_type") == "measurement"
         )
         return executed * scale * 3600 / (duration_ms / 1000) if executed else None
-    streams = block.get("num_streams")
-    if isinstance(streams, bool) or not isinstance(streams, int):
-        streams = len(stream_results) if isinstance(stream_results, list) else 0
+    streams = _corpus_rule().executed_stream_count(data) or 0
     if streams <= 0:
         return None
     return POWER_QUERY_COUNTS[benchmark_id] * streams * scale * 3600 / (duration_ms / 1000)
@@ -334,9 +333,7 @@ def _qphds(data: Mapping[str, Any], scale: float) -> float | None:
     if not isinstance(phases, Mapping):
         return None
     power = phases.get("power_test")
-    first = phases.get("throughput_test")
-    streams = first.get("num_streams") if isinstance(first, Mapping) else None
-    stream_count = streams if isinstance(streams, int) and not isinstance(streams, bool) else 0
+    stream_count = _corpus_rule().executed_stream_count(data) or 0
     names = ("throughput_test", "throughput_test_2", "maintenance_test", "maintenance_test_2")
     blocks = [phases.get(name) for name in names]
     problems = qphds_power_problems(
@@ -350,7 +347,7 @@ def _qphds(data: Mapping[str, Any], scale: float) -> float | None:
     problems += [
         f"{name} streams differ"
         for name, block in zip(names[:2], blocks[:2], strict=True)
-        if isinstance(block, Mapping) and block.get("num_streams") != stream_count
+        if isinstance(block, Mapping) and _corpus_rule()._succeeded_streams(block) != stream_count
     ]
     refresh_runs = qphds_refresh_runs(stream_count)
     sets = []
@@ -404,11 +401,14 @@ def combined_score(data: Mapping[str, Any]) -> float | None:
         return None
     if _corpus_rule().composite_scale_refusal(benchmark_id, scale, gateway_routed=_gateway_routed(data)):
         return None
+    facts = _corpus_rule().facts_from_result(data)
+    if _corpus_rule().build_context(facts).streams_ok is not True:
+        return None
     if benchmark_id == "tpcds":
         return _qphds(data, scale)
     phases = data.get("phases")
     if not isinstance(phases, Mapping) or qphh_structure_problems(
-        phases.get("power_test"), phases.get("throughput_test")
+        phases.get("power_test"), phases.get("throughput_test"), scale_factor=scale
     ):
         return None
     power = power_at_size(data)
@@ -528,7 +528,7 @@ def refresh_included(power_phase: Mapping[str, Any] | None, throughput_phase: Ma
     return False
 
 
-def qphh_structure_problems(power_phase: Any, throughput_phase: Any) -> list[str]:
+def qphh_structure_problems(power_phase: Any, throughput_phase: Any, *, scale_factor: float | None = None) -> list[str]:
     reasons: list[str] = []
     if not isinstance(power_phase, Mapping) or power_phase.get("status") != "COMPLETED":
         reasons.append("Power phase did not complete")
@@ -541,11 +541,18 @@ def qphh_structure_problems(power_phase: Any, throughput_phase: Any) -> list[str
 
     if not isinstance(throughput_phase, Mapping) or throughput_phase.get("status") != "COMPLETED":
         reasons.append("Throughput phase did not complete")
-    stream_count = throughput_phase.get("num_streams") if isinstance(throughput_phase, Mapping) else None
-    if isinstance(stream_count, bool) or not isinstance(stream_count, int):
-        stream_count = len(throughput_phase.get("stream_results") or []) if isinstance(throughput_phase, Mapping) else 0
-    if stream_count < 2:
-        reasons.append("QphH requires at least two throughput streams")
+    streams = throughput_phase.get("stream_results") if isinstance(throughput_phase, Mapping) else None
+    stream_count = (
+        sum(1 for stream in streams if isinstance(stream, Mapping) and stream.get("success") is True)
+        if isinstance(streams, list)
+        else 0
+    )
+    if scale_factor is None:
+        minimum_ok = stream_count >= _corpus_rule().min_throughput_streams()
+    else:
+        minimum_ok = _corpus_rule()._streams_ok("tpch", scale_factor, stream_count, _corpus_rule().load_data()) is True
+    if not minimum_ok:
+        reasons.append("QphH requires the scale's minimum number of successful throughput streams")
 
     throughput_refresh_valid, throughput_first_set, actual_stream_count = throughput_refresh_evidence(
         throughput_phase, stream_count
