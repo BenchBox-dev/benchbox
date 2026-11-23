@@ -11,6 +11,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.execution_engine import ExecutionEngineHook
 from benchbox.core.loaded_tables import is_data_loading_skipped
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW
 from benchbox.core.results.timer_scope import REQUEST_KIND_QUERY, RequestLedger, outside_query_timer
@@ -408,7 +409,7 @@ class SparkDataLoadMixin:
         return df
 
 
-class SparkQueryExecutionMixin:
+class SparkQueryExecutionMixin(ExecutionEngineHook):
     _catalog_clear_cache_supported: bool = True
     _spark_arrow_conf_session: int | None = None
     _spark_arrow_pandas_enabled: bool = False
