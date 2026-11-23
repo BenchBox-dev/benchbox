@@ -1800,8 +1800,7 @@ def _data_or_load_handle_result(
         "Directory for generated data and databases; works for local paths and is how a run with its own "
         "BENCHBOX_OUTPUT_DIR reuses shared generated data. Required for cloud platforms (s3://, gs://, abfss://, "
         "dbfs:/Volumes/). Result JSON is not written here: it goes to $BENCHBOX_RESULTS_DIR, else "
-        "<benchmark_runs>/results ($BENCHBOX_OUTPUT_DIR or the default). "
-        "The absolute result path is printed when the run finishes."
+        "<benchmark_runs>/results ($BENCHBOX_OUTPUT_DIR or default). The absolute result path is printed at the end."
     ),
 )
 @click.option(
