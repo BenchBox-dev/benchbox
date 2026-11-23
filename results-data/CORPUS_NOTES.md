@@ -1916,6 +1916,114 @@ with `cpu_identity_provenance: user_attested`; no bundle was edited, so no resul
 (`bundle_file`, `bundle_hash`, `manifest_version`, `funding`, `result_source`, `submitted_by`, as on every
 sibling run) was added. This is an operator attestation, not a measurement.
 
+### Doris TPC-DS OBT at default parallelism and LakeSail TPC-DS OBT SF 0.1 (2026-11-17, 2026-11-18)
+
+Sources. Every figure below comes from the raw run directory `~/Developer/benchmark_runs/doris-lakesail-rerun/` on the
+maintainer's machine, which is not in the repository: the unpublished result files under `results/`, each run's
+`<run>/mem.log`, `<run>/up.log`, `<run>/inspect-*.json`, `<run>/container-*.log`, and the heavy-run transcripts (`*.out`). The
+`results/*.json` there are the originals; the published bundles are the anonymised copies, so their SHA-256 differs. Times in
+`mem.log` are Unix epoch seconds; clock times below are the host's local time (UTC-5). "Power total" is
+`summary.timing.total_ms`, "load" is `summary.data.load_time_ms`, and the load averages, swap and available memory are the
+bundle's `environment.host_load` (start sample, end sample).
+
+Doris reruns. The 2026-11-11 Doris TPC-DS OBT bundles `tpcds_obt_sf001_doris_sql_20261111_110147_93ab6464` and
+`tpcds_obt_sf01_doris_sql_20261111_110240_9315b4c2` ran with `parallel_pipeline_task_num=1`, which the UAT harness injected
+unconditionally. Their bundles do not record container memory (`environment.container.collection_status: unavailable`).
+The Doris compose file's default was `mem_limit: ${DORIS_MEMORY_LIMIT:-4g}` until `21f6710306` (2026-11-12) raised it to
+6g, so they ran in a 4 GiB container unless `DORIS_MEMORY_LIMIT` was overridden, which no artifact records. They carry no
+`host_load`. Their sidecars carry `known_defects: ["defective-capped-engine-parallelism"]` and a `known_defect_reason` naming
+the rerun; the bundle files are unchanged. The UAT harness now runs Doris at its own default parallelism; the cap is an
+opt-in override, `BENCHBOX_UAT_DORIS_PARALLEL_PIPELINE_TASK_NUM`, set to a positive integer.
+
+| scale | bundle | parallelism | container memory | statements | power total | load |
+|---|---|---|---|---|---|---|
+| 0.01 | `93ab6464` (superseded) | capped at 1 | 4 GiB (compose default then in force) | 279/279 | 6.2 s | 1.9 s |
+| 0.01 | `c2022935` | default | 6 GiB (compose default) | 279/279 | 7.4 s | 2.0 s |
+| 0.1 | `9315b4c2` (superseded) | capped at 1 | 4 GiB (compose default then in force) | 279/279 | 8.4 s | 35.3 s |
+| 0.1 | `c18125e7` | default | 6 GiB (compose default) | 279/279 | 10.4 s | 17.7 s |
+
+Validation passed for all four. Both reruns used `DORIS_MEMORY_LIMIT=6g`; their container logs open with `Doris memory
+profile: cgroup limit 6442450944 bytes, FE heap 512m, BE mem_limit 4400m`
+(`doris-sf001-6g/container-benchbox-uat-manual-doris-doris-1.log` line 1, and the same line in
+`doris-sf01-6g-quiet/container-benchbox-uat-manual-doris-doris-1.log`). The default-parallelism timings are slower than the
+capped ones, and that is disclosed rather than corrected: the capped and default sets must not be compared as engine
+performance.
+
+Peak container memory of the published runs. `mocker stats --no-stream`, sampled by `cell.sh` into each run's `mem.log`
+(`<run>/mem.log`; one line per sample: epoch, container, CPU %, used / limit, memory %). Each peak is the largest used value
+in the file and falls inside the run's host-load window.
+
+| bundle | `mem.log` (SHA-256) | line | epoch, local time | used / limit |
+|---|---|---|---|---|
+| Doris `c2022935` (SF 0.01) | `doris-sf001-6g/mem.log` (`b48979dcdf477ce23e6cc67213b5a4a366ddd35a88e07aaf2c9b0cc7f00f03f8`) | 2553 | 1795043870, 2026-11-18 18:17:50 | 2.26GB / 6.00GB |
+| Doris `c18125e7` (SF 0.1) | `doris-sf01-6g-quiet/mem.log` (`fc40fcafb56f99f231d85228a99d6e08361247b38979b8ca15ce22e5ba38bfea`) | 22 | 1795060206, 2026-11-18 22:50:06 | 2.61GB / 6.00GB |
+| LakeSail `312e8b59` (SF 0.1) | `lakesail-sf01/mem.log` (`42d956b2456ec7e893a46a1d3e18151308736854167939b3b5287c3a8e5a4195`) | 6 | 1794964333, 2026-11-17 20:12:13 | 2.16GB / 4.00GB |
+
+The `doris-sf001-6g/mem.log` trace starts at 2026-11-18 17:28:15, when the container came up, and ends at 18:17:52; the run's
+`host_load` window is 18:17:33 to 18:17:52, and before it the trace holds 115 to 593 MB, so a figure read from the early part of
+a trace is far below the peak. The bundles read
+`environment.container.collection_status: unavailable`, so the traces and this note are the record of memory use.
+
+Host conditions of the published runs. All three ran on a shared 16 GiB Apple-silicon machine (10 CPUs) launched through
+`make heavy-run`.
+
+| bundle | 1/5/15-minute load average (start, end) | available memory (start, end) | swap used (start, end) |
+|---|---|---|---|
+| `c2022935` | 6.61/7.29/9.66, 6.97/7.32/9.61 | 5.7 GiB, 4.6 GiB | 84.2%, 81.1% |
+| `c18125e7` | 5.9/4.1/2.65, 6.48/4.47/2.85 | 4.5 GiB, 3.0 GiB | 74.6%, 74.6% |
+| `312e8b59` | 3.33/3.79/4.6, 5.22/4.17/4.7 | 3.1 GiB, 2.9 GiB | 81.6%, 92.6% |
+
+The heavy-work gate (`make heavy-run`, and `make uat-bring-up`) refuses a start when the 5-minute load average is above
+5 x CPUs, here 50, and reports the reading; that is the only load rule the artifacts show. It printed, for the published
+runs, 5-minute load 7.29 at the cell start of `c2022935` (`doris-sf001-6g.out`) and 40.45 with 96.4% swap and 7.30 GiB
+available at its container bring-up (`doris-sf001-6g/up.log`, 2026-11-18 17:28), 49 minutes before the cell; 4.10 at the
+cell start of `c18125e7` (`doris-sf01-6g-quiet.out`) and 3.86 at its bring-up (`doris-sf01-6g-quiet/up.log`); and 3.81 for
+`312e8b59` (`lakesail-sf01.out`). The artifacts do not show a threshold on the 1-minute load average: the start samples
+of the bundles are 6.61 and 5.9 for the two published Doris runs.
+
+Not published. No uniform host-load rule was applied when choosing which runs to publish; each published Doris figure is the fastest of its set, and every discarded run is listed below with its timings and host load.
+
+Six more runs completed with a result file, 279/279 statements and validation passed; none is published.
+`Admission` is the 5-minute load printed by the heavy-work gate, where the transcript was kept.
+
+| run (result file in `results/`, SHA-256 prefix) | scale | server memory | power total | load | 1/5/15-minute load, start | swap, start | available memory, start | admission |
+|---|---|---|---|---|---|---|---|---|
+| `065c109b` (`dbb11b1bb0d5`) | Doris SF 0.01 | 4 GiB | 22.7 s | 4.3 s | 16.04/28.14/39.48 | 86.4% | 2.9 GiB | not kept |
+| `32fc5483` (`18e7f5eae59f`) | Doris SF 0.01 | 3 GiB | 10.1 s | 2.8 s | 6.04/7.43/16.06 | 83.9% | 2.8 GiB | 7.50 (`multi.out`) |
+| `4ded829a` (`14ebb345f7b8`) | Doris SF 0.1 | 6 GiB | 19.9 s | 40.4 s | 15.02/11.53/10.68 | 82.5% | 3.8 GiB | 11.73 (`doris-sf01-6g.out`) |
+| `e5792f56` (`1dfd9bacd372`) | Doris SF 0.1 | 4 GiB | 24.7 s | 46.7 s | 17.4/45.16/48.46 | 82.3% | 2.7 GiB | not kept |
+| `4b3ed1f9` (`f1378b329c53`) | Doris SF 0.1 | 3 GiB | 27.1 s | 60.3 s | 12.7/33.27/43.15 | 83.7% | 3.1 GiB | not kept |
+| `e3d1d5c0` (`d83f7193fc49`) | LakeSail SF 0.1 | 4 GiB, started by hand | 26.2 s | 4.3 s | 9.25/9.45/13.15 | 92.6% | 3.3 GiB | 9.54 (`diag4g.out`) |
+
+The completed runs not published are exactly these six; every Doris one ran at default parallelism
+(`platform.config.parallel_pipeline_task_num` 0). Peak container memory in each run's
+`mem.log`: `065c109b` 1.25GB / 4.00GB (`doris-sf001-4g/mem.log` line 7), `32fc5483` 1.46GB / 3.00GB
+(`doris-sf001-3g/mem.log` line 20), `4ded829a` 1.98GB / 6.00GB (`doris-sf01-6g/mem.log` line 12), `e5792f56` 1.62GB / 4.00GB
+(`doris-sf01-4g/mem.log` line 15), `4b3ed1f9` 2.04GB / 3.00GB (`doris-sf01-3g/mem.log` line 21), `e3d1d5c0` 1.73GB / 4.00GB
+(`lakesail-4g/mem.log` line 5). In every cell the published run has the lowest power total of the completed
+default-parallelism runs of that cell and scale; no load threshold selected it, and none was applied uniformly: the load
+figures above range from a 5-minute load of 3.79 to 45.16 across the nine runs and swap from 74.6% to 92.6%.
+
+Attempts that did not complete (no result file): a 2 GiB Doris SF 0.01 container (`doris-sf001-2g/up.log`: bring-up failed,
+`container with id benchbox-uat-manual-doris-doris-1 already exists`); a 2 GiB Doris SF 0.1 container (`doris-sf01-2g`
+log: `UAT_TIMEOUT timeout_s=600 exit_code=124`); an earlier Doris SF 0.1 start (`logs/doris_tpcds_obt_0.1_20261117_142946.log`:
+connection refused); and a LakeSail SF 0.1 server launched with `mocker compose up` (`lakesail-diag`, memory limit
+1.00GB in `lakesail-diag/mem.log`; the client exited 1 after 1320 s with `tpcds_sales_returns_obt has 0 rows`, `q4.out`).
+
+Comparison of `4ded829a` with the published SF 0.1 rerun `c18125e7`: 19.9 s against 10.4 s of power time, with a 1-minute
+load of 15.02 against 5.9 at the start.
+
+LakeSail. `tpcds_obt_sf01_lakesail_sql_20261117_201241_312e8b59` is the SF 0.1 bundle: 279/279 statements, validation
+passed, power total 18.6 s, load 2.5 s, launched through `mocker run` from `tests/uat/mocker_launch.py` with the compose
+`mem_limit` (`LAKESAIL_MEMORY_LIMIT`, which then defaulted to 4g); `lakesail-sf01/mem.log` shows a 4.00GB limit and a 2.16GB peak (table
+above). A run launched with `mocker compose up` gave the server 1 GiB because that path ignores `mem_limit`, and the server
+died during the SF 0.1 load (inferred from `lakesail-diag/mem.log`, whose last sample reads `0B / 0B`; `OOMKilled` read
+false in `lakesail-diag/inspect-*.json`). The hand-started 4 GiB run `e3d1d5c0` passed 279/279. No existing LakeSail bundle
+was superseded; the SF 0.01 bundle `a1896614` is unchanged.
+A TPC-DS OBT SF 1 cell at the 4g default did not finish within its 600 s timeout (container peak 3.98GB of 4.00GB); the same
+cell at 8g with an 1800 s timeout passed 279/279 in 223 s with a 3.92GB container peak (`lakesail-8g-sf1-20261122/run/mem.log`,
+line 112), which is why the default is now 6g. That SF 1 bundle is not part of this corpus.
+
 ## TPC-DI results withdrawn (2026-11-21)
 
 Reason: "Withdrawn: these results timed BenchBox-written queries on BenchBox-generated tables and did not measure the TPC-DI workload."
