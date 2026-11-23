@@ -1,0 +1,494 @@
+from __future__ import annotations
+
+import json
+import math
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, replace
+from functools import cache
+from pathlib import Path
+from typing import Any
+
+DATA_PATH = Path(__file__).with_name("corpus_rule_data.json")
+
+PHASE_POWER = "power"
+PHASE_THROUGHPUT = "throughput"
+PHASE_REFRESH = "refresh"
+PHASE_OTHER_TIMED = "other_timed"
+TIMED_PHASES = frozenset({PHASE_POWER, PHASE_THROUGHPUT, PHASE_REFRESH, PHASE_OTHER_TIMED})
+
+CLASS_FULL_SPEC = "full_spec"
+CLASS_PARTIAL = "partial"
+CLASS_POWER_ONLY = "power_only"
+CLASS_THROUGHPUT_ONLY = "throughput_only"
+CLASS_SUBSCALE = "subscale"
+CLASS_NONSTANDARD_SCALE = "nonstandard_scale"
+CLASS_NONE = "none"
+CLASS_UNDETERMINED = "undetermined"
+
+LANE_COMBINED = "combined"
+LANE_POWER_ONLY = "power_only"
+LANE_THROUGHPUT = "throughput"
+LANE_SUBSCALE = "subscale"
+LANE_OWN = "own"
+
+SCORE_QPH_AND_POWER = "qph_and_power_at_size"
+SCORE_FROM_TIMINGS = "from_timings"
+SCORE_POWER_QUERY_TIMINGS_ONLY = "power_at_size_from_query_timings_only"
+SCORE_POWER_FROM_TIMINGS = "power_at_size_from_timings"
+SCORE_THROUGHPUT_FROM_TIMINGS = "throughput_from_timings"
+SCORE_TIMINGS_ONLY = "timings_only"
+SCORE_OWN = "own"
+
+HELD_NO_TIMED_PHASE = "no_timed_phase"
+HELD_GATEWAY_ROUTED = "gateway_routed"
+HELD_KNOWN_DEFECT = "known_defect"
+HELD_FAILED_VALIDATION = "failed_validation"
+
+BAND_STANDARD = "standard"
+BAND_SUBSCALE = "subscale"
+BAND_NONSTANDARD = "nonstandard"
+
+KIND_TPC = "tpc"
+KIND_TPCDI = "tpcdi"
+KIND_OTHER = "other"
+
+MISSING_PHASES = "phases"
+MISSING_BENCHMARK = "benchmark"
+MISSING_SCALE_FACTOR = "scale_factor"
+MISSING_SCALE_REGISTRY = "scale_registry_entry"
+MISSING_STREAMS = "streams"
+MISSING_TPCDI_RULE = "tpcdi_admission_rule"
+
+DELEGATE_TPCDI = "tpcdi"
+
+NON_CLEAN_VALIDATION_STATUSES = frozenset(
+    {"failed", "interrupted", "timed_out", "partial", "error", "not_run", "not_validated", "uncertain", "unknown"}
+)
+
+BENCHMARK_LABELS = {"tpch": "TPC-H", "tpcds": "TPC-DS"}
+CLASS_WORDS = {
+    CLASS_FULL_SPEC: "Full specification run: power, throughput and refresh",
+    CLASS_PARTIAL: "Partial run: not every required phase ran",
+    CLASS_POWER_ONLY: "Power test only",
+    CLASS_THROUGHPUT_ONLY: "Throughput test only",
+    CLASS_SUBSCALE: "Scale below the TPC minimum",
+}
+NONSTANDARD_SCALE_LABEL = "Non-standard scale: compared only at the same scale"
+HELD_LABELS = {
+    HELD_GATEWAY_ROUTED: "Not ranked: routed through a gateway",
+    HELD_KNOWN_DEFECT: "Not ranked: known defect",
+    HELD_FAILED_VALIDATION: "Not ranked: validation did not pass",
+}
+
+
+@dataclass(frozen=True)
+class Facts:
+    benchmark: str | None
+    scale_factor: float | None
+    phases: frozenset[str] | None
+    streams: int | None = None
+    gateway_routed: bool = False
+    known_defect: bool = False
+    validation_failed: bool = False
+
+
+@dataclass(frozen=True)
+class Outcome:
+    class_name: str
+    public_admission: bool
+    maintainer_admission: bool
+    lanes: tuple[str, ...]
+    score_source: str | None
+    labels: tuple[str, ...]
+    held_reason: str | None = None
+    missing_facts: tuple[str, ...] = ()
+    row: str | None = None
+
+    @property
+    def ranked(self) -> bool:
+        return bool(self.lanes) and self.held_reason is None and self.class_name != CLASS_UNDETERMINED
+
+
+@dataclass(frozen=True)
+class Context:
+    kind: str | None
+    band: str | None
+    streams_ok: bool | None
+    power: bool
+    throughput: bool
+    refresh: bool
+    timed: bool
+    registry_known: bool
+
+
+@dataclass(frozen=True)
+class Row:
+    name: str
+    matches: Callable[[Context], bool]
+    class_name: str
+    public_admission: bool
+    maintainer_admission: bool
+    lanes: tuple[str, ...]
+    score_source: str | None
+    delegate: str | None = None
+
+
+def _standard_tpc(context: Context) -> bool:
+    return context.kind == KIND_TPC and context.band == BAND_STANDARD
+
+
+RULE_TABLE: tuple[Row, ...] = (
+    Row("no_timed_phase", lambda c: not c.timed, CLASS_NONE, False, False, (), None),
+    Row("tpcdi", lambda c: c.kind == KIND_TPCDI, CLASS_NONE, False, False, (), None, DELEGATE_TPCDI),
+    Row(
+        "tpc_subscale",
+        lambda c: c.kind == KIND_TPC and c.band == BAND_SUBSCALE,
+        CLASS_SUBSCALE,
+        False,
+        True,
+        (LANE_SUBSCALE,),
+        SCORE_POWER_FROM_TIMINGS,
+    ),
+    Row(
+        "nonstandard_scale",
+        lambda c: c.band == BAND_NONSTANDARD,
+        CLASS_NONSTANDARD_SCALE,
+        True,
+        True,
+        (),
+        SCORE_TIMINGS_ONLY,
+    ),
+    Row(
+        "tpc_full_spec",
+        lambda c: _standard_tpc(c) and c.power and c.throughput and c.refresh and c.streams_ok is True,
+        CLASS_FULL_SPEC,
+        True,
+        True,
+        (LANE_COMBINED,),
+        SCORE_QPH_AND_POWER,
+    ),
+    Row(
+        "tpc_power_throughput_partial",
+        lambda c: _standard_tpc(c) and c.power and c.throughput and (not c.refresh or c.streams_ok is False),
+        CLASS_PARTIAL,
+        True,
+        True,
+        (LANE_POWER_ONLY, LANE_THROUGHPUT),
+        SCORE_FROM_TIMINGS,
+    ),
+    Row(
+        "tpc_power_refresh_partial",
+        lambda c: _standard_tpc(c) and c.power and c.refresh and not c.throughput,
+        CLASS_PARTIAL,
+        True,
+        True,
+        (LANE_POWER_ONLY,),
+        SCORE_POWER_QUERY_TIMINGS_ONLY,
+    ),
+    Row(
+        "tpc_power_only",
+        lambda c: _standard_tpc(c) and c.power and not c.throughput and not c.refresh,
+        CLASS_POWER_ONLY,
+        True,
+        True,
+        (LANE_POWER_ONLY,),
+        SCORE_POWER_FROM_TIMINGS,
+    ),
+    Row(
+        "tpc_throughput_only",
+        lambda c: _standard_tpc(c) and c.throughput and not c.power,
+        CLASS_THROUGHPUT_ONLY,
+        True,
+        True,
+        (LANE_THROUGHPUT,),
+        SCORE_THROUGHPUT_FROM_TIMINGS,
+    ),
+    Row(
+        "tpc_no_ranked_phase",
+        lambda c: _standard_tpc(c) and not c.power and not c.throughput,
+        CLASS_PARTIAL,
+        True,
+        True,
+        (),
+        None,
+    ),
+    Row(
+        "other_standard_scale",
+        lambda c: c.kind == KIND_OTHER and c.band == BAND_STANDARD,
+        CLASS_NONE,
+        True,
+        True,
+        (LANE_OWN,),
+        SCORE_OWN,
+    ),
+)
+
+
+@cache
+def load_data(path: Path = DATA_PATH) -> Mapping[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def normalize_benchmark_id(benchmark_id: Any) -> str | None:
+    if not isinstance(benchmark_id, str) or not benchmark_id.strip():
+        return None
+    lowered = benchmark_id.strip().lower()
+    squashed = "".join(character for character in lowered if character.isalnum())
+    return squashed if squashed in ("tpch", "tpcds", "tpcdi") else lowered
+
+
+def _scale_value(scale_factor: Any) -> float | None:
+    if isinstance(scale_factor, bool) or not isinstance(scale_factor, int | float):
+        return None
+    return float(scale_factor)
+
+
+def _scale_band(benchmark: str, scale: float, data: Mapping[str, Any]) -> str | None:
+    if benchmark in data["tpc_benchmarks"] and 0 < scale < 1.0:
+        return BAND_SUBSCALE
+    entry = data["scales"].get(benchmark)
+    if entry is None:
+        return None
+    if math.isfinite(scale) and any(abs(scale - option) < 1e-9 for option in entry["standard"]):
+        return BAND_STANDARD
+    return BAND_NONSTANDARD
+
+
+def _streams_ok(benchmark: str, scale: float, streams: int | None, data: Mapping[str, Any]) -> bool | None:
+    minima = data["stream_minimum"].get(benchmark, {})
+    minimum = next((value for key, value in minima.items() if abs(float(key) - scale) < 1e-9), None)
+    if streams is None or minimum is None:
+        return None
+    return streams >= minimum
+
+
+def build_context(facts: Facts, data: Mapping[str, Any] | None = None) -> Context:
+    data = data if data is not None else load_data()
+    phases = facts.phases or frozenset()
+    benchmark = normalize_benchmark_id(facts.benchmark)
+    kind: str | None = None
+    band: str | None = None
+    streams_ok: bool | None = None
+    registry_known = False
+    if benchmark is not None:
+        if benchmark in data["tpc_benchmarks"]:
+            kind = KIND_TPC
+        elif benchmark == "tpcdi":
+            kind = KIND_TPCDI
+        else:
+            kind = KIND_OTHER
+        registry_known = benchmark in data["scales"]
+        scale = _scale_value(facts.scale_factor)
+        if scale is not None:
+            band = _scale_band(benchmark, scale, data)
+            streams_ok = _streams_ok(benchmark, scale, facts.streams, data)
+    return Context(
+        kind=kind,
+        band=band,
+        streams_ok=streams_ok,
+        power=PHASE_POWER in phases,
+        throughput=PHASE_THROUGHPUT in phases,
+        refresh=PHASE_REFRESH in phases,
+        timed=bool(phases & TIMED_PHASES),
+        registry_known=registry_known,
+    )
+
+
+def missing_facts(facts: Facts, context: Context) -> tuple[str, ...]:
+    if facts.phases is None:
+        return (MISSING_PHASES,)
+    if normalize_benchmark_id(facts.benchmark) is None:
+        return (MISSING_BENCHMARK,)
+    if _scale_value(facts.scale_factor) is None:
+        return (MISSING_SCALE_FACTOR,)
+    if not context.registry_known or context.band is None:
+        return (MISSING_SCALE_REGISTRY,)
+    if (
+        _standard_tpc(context)
+        and context.power
+        and context.throughput
+        and context.refresh
+        and context.streams_ok is None
+    ):
+        return (MISSING_STREAMS,)
+    return ()
+
+
+def _undetermined(missing: tuple[str, ...], row: str | None = None) -> Outcome:
+    return Outcome(CLASS_UNDETERMINED, False, False, (), None, (), None, missing, row)
+
+
+def _labels(row: Row, benchmark: str | None, data: Mapping[str, Any]) -> tuple[str, ...]:
+    labels: list[str] = []
+    base = benchmark if benchmark in BENCHMARK_LABELS else data["tpc_derived_benchmarks"].get(benchmark)
+    if row.lanes and base in BENCHMARK_LABELS:
+        labels.append(f"Derived from {BENCHMARK_LABELS[base]}, not an official TPC result")
+        if row.class_name in CLASS_WORDS:
+            labels.append(CLASS_WORDS[row.class_name])
+    if row.class_name == CLASS_NONSTANDARD_SCALE:
+        labels.append(NONSTANDARD_SCALE_LABEL)
+    return tuple(labels)
+
+
+def _held_reason(facts: Facts) -> str | None:
+    if facts.gateway_routed:
+        return HELD_GATEWAY_ROUTED
+    if facts.known_defect:
+        return HELD_KNOWN_DEFECT
+    if facts.validation_failed:
+        return HELD_FAILED_VALIDATION
+    return None
+
+
+def _hold(outcome: Outcome, reason: str) -> Outcome:
+    return replace(
+        outcome,
+        lanes=(),
+        score_source=None,
+        labels=(*outcome.labels, HELD_LABELS[reason]),
+        held_reason=reason,
+    )
+
+
+def derive_outcome(
+    facts: Facts,
+    *,
+    table: Sequence[Row] = RULE_TABLE,
+    delegates: Mapping[str, Callable[[Facts], Outcome]] | None = None,
+    data: Mapping[str, Any] | None = None,
+) -> Outcome:
+    data = data if data is not None else load_data()
+    if facts.phases is None:
+        return _undetermined((MISSING_PHASES,))
+    context = build_context(facts, data)
+    row = next((candidate for candidate in table if candidate.matches(context)), None)
+    if row is None:
+        return _undetermined(missing_facts(facts, context))
+    if row.name == "no_timed_phase":
+        return Outcome(row.class_name, False, False, (), None, (), HELD_NO_TIMED_PHASE, (), row.name)
+    if missing_facts(facts, context):
+        return _undetermined(missing_facts(facts, context), row.name)
+    if row.delegate is not None:
+        delegate = (delegates or {}).get(row.delegate)
+        outcome = delegate(facts) if delegate is not None else _undetermined((MISSING_TPCDI_RULE,), row.name)
+    else:
+        benchmark = normalize_benchmark_id(facts.benchmark)
+        outcome = Outcome(
+            row.class_name,
+            row.public_admission,
+            row.maintainer_admission,
+            row.lanes,
+            row.score_source,
+            _labels(row, benchmark, data),
+            None,
+            (),
+            row.name,
+        )
+    held = _held_reason(facts)
+    return _hold(outcome, held) if held is not None else outcome
+
+
+def _executed(block: Any) -> bool:
+    return isinstance(block, Mapping) and bool(block) and str(block.get("status") or "").upper() != "NOT_RUN"
+
+
+def _refresh_evidence(phases: Mapping[str, Any]) -> bool:
+    power = phases.get("power_test")
+    functions = power.get("refresh_functions") if isinstance(power, Mapping) else None
+    if isinstance(functions, list) and functions:
+        return True
+    throughput = phases.get("throughput_test")
+    refresh_stream = throughput.get("refresh_stream") if isinstance(throughput, Mapping) else None
+    if isinstance(refresh_stream, Mapping) and refresh_stream:
+        return True
+    return any(_executed(phases.get(name)) for name in ("maintenance_test", "maintenance_test_2"))
+
+
+def _measured_rows(data: Mapping[str, Any]) -> bool:
+    queries = data.get("queries")
+    return isinstance(queries, list) and any(
+        isinstance(query, Mapping) and query.get("run_type") == "measurement" for query in queries
+    )
+
+
+def phases_ran(data: Mapping[str, Any]) -> frozenset[str] | None:
+    phases = data.get("phases")
+    if not isinstance(phases, Mapping):
+        return None
+    ran: set[str] = set()
+    if _executed(phases.get("power_test")):
+        ran.add(PHASE_POWER)
+    if _executed(phases.get("throughput_test")):
+        ran.add(PHASE_THROUGHPUT)
+    if _refresh_evidence(phases):
+        ran.add(PHASE_REFRESH)
+    if not ran & {PHASE_POWER, PHASE_THROUGHPUT} and _measured_rows(data):
+        ran.add(PHASE_OTHER_TIMED)
+    return frozenset(ran)
+
+
+def executed_stream_count(data: Mapping[str, Any]) -> int | None:
+    phases = data.get("phases")
+    block = phases.get("throughput_test") if isinstance(phases, Mapping) else None
+    streams = block.get("stream_results") if isinstance(block, Mapping) else None
+    return len(streams) if isinstance(streams, list) and streams else None
+
+
+def _gateway_routed(data: Mapping[str, Any]) -> bool:
+    platform = data.get("platform")
+    gateway = platform.get("gateway") if isinstance(platform, Mapping) else None
+    return isinstance(gateway, Mapping) and bool(gateway.get("name")) and gateway.get("routed") is True
+
+
+def _recorded_validation_status(data: Mapping[str, Any]) -> str | None:
+    summary = data.get("summary")
+    value = summary.get("validation") if isinstance(summary, Mapping) else None
+    if isinstance(value, Mapping):
+        value = value.get("status")
+    if value is None:
+        return None
+    return str(value).strip().lower() or None
+
+
+def _recorded_failed_queries(data: Mapping[str, Any]) -> int:
+    summary = data.get("summary")
+    queries = summary.get("queries") if isinstance(summary, Mapping) else None
+    failed = queries.get("failed") if isinstance(queries, Mapping) else None
+    return failed if isinstance(failed, int) and not isinstance(failed, bool) and failed > 0 else 0
+
+
+def facts_from_result(
+    data: Mapping[str, Any],
+    *,
+    known_defects: Sequence[str] = (),
+    validation_status: str | None = None,
+    failed_queries: int | None = None,
+) -> Facts:
+    benchmark = data.get("benchmark")
+    benchmark = benchmark if isinstance(benchmark, Mapping) else {}
+    benchmark_id = benchmark.get("id")
+    status = validation_status if validation_status is not None else _recorded_validation_status(data)
+    failed = failed_queries if failed_queries is not None else _recorded_failed_queries(data)
+    return Facts(
+        benchmark=benchmark_id if isinstance(benchmark_id, str) else None,
+        scale_factor=_scale_value(benchmark.get("scale_factor")),
+        phases=phases_ran(data),
+        streams=executed_stream_count(data),
+        gateway_routed=_gateway_routed(data),
+        known_defect=any(isinstance(item, str) and item for item in known_defects),
+        validation_failed=status in NON_CLEAN_VALIDATION_STATUSES or failed > 0,
+    )
+
+
+def sidecar_known_defects(result_path: Path) -> list[str]:
+    try:
+        payload = json.loads(result_path.with_name(f"{result_path.stem}.manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    recorded = payload.get("known_defects") if isinstance(payload, dict) else None
+    return [item for item in recorded if isinstance(item, str) and item] if isinstance(recorded, list) else []
+
+
+def facts_from_path(result_path: Path) -> Facts:
+    data = json.loads(result_path.read_text(encoding="utf-8"))
+    return facts_from_result(data if isinstance(data, dict) else {}, known_defects=sidecar_known_defects(result_path))

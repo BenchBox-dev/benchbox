@@ -597,6 +597,7 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
             ledger.add_request()
             result_df = impl(ctx)
 
+            lazy_result = result_df
             if hasattr(result_df, "compute"):
                 compute = getattr(self, "compute", None)
                 result_df = compute(result_df) if callable(compute) else result_df.compute()
@@ -609,7 +610,7 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
 
             self._log_verbose(f"Query {qid} completed in {execution_time:.3f}s, returned {row_count} rows")
 
-            return build_success_result_dict(
+            result = build_success_result_dict(
                 query_id=qid,
                 execution_time_seconds=execution_time,
                 row_count=row_count,
@@ -617,6 +618,8 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
                 request_count=ledger.count,
                 result_bytes=dataframe_result_bytes(result_df),
             )
+            self._record_engine_observation(result, lazy_result)
+            return result
 
         except Exception as e:
             execution_time = elapsed_seconds(start_time)
@@ -658,6 +661,7 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
             ledger.add_request()
             result_df = impl(ctx)
 
+            lazy_result = result_df
             if hasattr(result_df, "compute"):
                 profile_ctx.start_collect()
                 compute = getattr(self, "compute", None)
@@ -698,6 +702,7 @@ class PandasFamilyAdapter(BenchmarkExecutionMixin, TuningConfigurableMixin, ABC,
                 request_count=ledger.count,
                 result_bytes=dataframe_result_bytes(result_df),
             )
+            self._record_engine_observation(result_dict, lazy_result)
 
             return result_dict, profile
 

@@ -39,6 +39,7 @@ _EXECUTION_ENGINE_FIELD_LIST = ", ".join(sorted(_EXECUTION_ENGINE_FIELDS))
 
 _PLATFORM_KEY_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 _SQL_DIALECT_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
+_OBSERVED_ADAPTER_PATTERN = re.compile(r"^[A-Za-z_][\w.]*:[A-Za-z_]\w*$")
 _REQUIRED_METADATA_FIELDS = frozenset(
     {
         "display_name",
@@ -153,7 +154,29 @@ def _validate_capabilities(key: str, capabilities: object) -> None:
 
     _validate_compute(key, capabilities.get("compute", {}))
     _validate_execution_engines(key, capabilities.get("execution_engines", {}))
+    _validate_observed_engine(key, capabilities.get("observed_engine"), capabilities.get("execution_engines", {}))
     _validate_gateways(key, capabilities.get("gateways", {}))
+
+
+def _validate_observed_engine(key: str, declared: object, engines: object) -> None:
+    if declared is None:
+        return
+    if not engines:
+        raise ValueError(f"Platform {key!r} declares observed_engine but no execution_engines")
+    if not isinstance(declared, dict) or len(declared) != 1:
+        raise ValueError(f"Platform {key!r} observed_engine must have exactly one of: adapter, not_captured")
+    adapter = declared.get("adapter")
+    not_captured = declared.get("not_captured")
+    if adapter is not None:
+        if not isinstance(adapter, str) or not _OBSERVED_ADAPTER_PATTERN.fullmatch(adapter):
+            raise ValueError(f"Platform {key!r} observed_engine adapter must be 'module:Class'")
+        return
+    if (
+        not isinstance(not_captured, dict)
+        or set(not_captured) != {"reason", "evidence"}
+        or not all(isinstance(value, str) and value.strip() for value in not_captured.values())
+    ):
+        raise ValueError(f"Platform {key!r} observed_engine not_captured must give a reason and evidence")
 
 
 def _validate_execution_engines(key: str, engines: object) -> None:
@@ -620,6 +643,9 @@ _PLATFORM_MANIFEST_JSON = """[
           "dependencies": ["polars"],
           "selectable": true
         }
+      },
+      "observed_engine": {
+        "adapter": "benchbox.platforms.dataframe.polars_df:PolarsDataFrameAdapter"
       }
     },
     "support_status": "stable"
@@ -3568,6 +3594,9 @@ _PLATFORM_MANIFEST_JSON = """[
           "dependencies": [],
           "selectable": true
         }
+      },
+      "observed_engine": {
+        "adapter": "benchbox.platforms.dataframe.dask_df:DaskDataFrameAdapter"
       }
     },
     "support_status": "beta"
