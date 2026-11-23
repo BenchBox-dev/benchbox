@@ -49,7 +49,8 @@ def _with_first_query_row_count_evidence(data: dict) -> dict:
 
 
 def _validate_bundle(data: dict, vr: ValidationResult, **flags) -> None:
-    bundle_module._validate_bundle(_with_first_query_row_count_evidence(data), vr, **flags)
+    evidenced = data if flags.get("allow_partial_validation") else _with_first_query_row_count_evidence(data)
+    bundle_module._validate_bundle(evidenced, vr, **flags)
 
 
 class TestManifestProvenance:
@@ -2213,21 +2214,23 @@ class TestSubmissionDeterministicGates:
 
     class TestThroughputStreamCompleteness:
         def _bundle(self, stream_ids, queries_by_stream, benchmark="tpch", status="COMPLETED"):
-            return {
-                "summary": {"validation": "passed"},
-                "benchmark": {"id": benchmark},
-                "phases": {
-                    "throughput_test": {
-                        "status": status,
-                        "stream_results": [{"stream_id": sid, "success": True} for sid in stream_ids],
-                    }
-                },
-                "queries": [
-                    {"id": qid, "status": "SUCCESS", "run_type": "measurement", "ms": 100, "stream": sid}
-                    for sid, qids in queries_by_stream.items()
-                    for qid in qids
-                ],
-            }
+            return _with_first_query_row_count_evidence(
+                {
+                    "summary": {"validation": "passed"},
+                    "benchmark": {"id": benchmark},
+                    "phases": {
+                        "throughput_test": {
+                            "status": status,
+                            "stream_results": [{"stream_id": sid, "success": True} for sid in stream_ids],
+                        }
+                    },
+                    "queries": [
+                        {"id": qid, "status": "SUCCESS", "run_type": "measurement", "ms": 100, "stream": sid}
+                        for sid, qids in queries_by_stream.items()
+                        for qid in qids
+                    ],
+                }
+            )
 
         def _full_tpch(self):
             return [f"Q{i}" for i in range(1, 23)]
@@ -2288,7 +2291,7 @@ class TestSubmissionDeterministicGates:
         def test_non_completed_phase_skips_stream_checks(self):
             data = self._bundle([1, 3], {}, status="FAILED")
             vr = ValidationResult("test")
-            _validate_execution_consistency(data, vr)
+            _validate_execution_consistency(data, vr, allow_partial_validation=True)
             assert vr.ok, vr.errors
 
         def test_other_benchmark_skips_query_counts_but_checks_contiguity(self):
