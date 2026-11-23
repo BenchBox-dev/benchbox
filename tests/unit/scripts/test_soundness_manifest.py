@@ -94,6 +94,8 @@ pytestmark = [
         "_project/scripts/results_explorer_snapshot_invariants.py",
         "benchbox/core/results/canonical_json.py",
         "benchbox/core/results/schema_policy.py",
+        "benchbox/core/results/corpus_rule_data.json",
+        "scripts/generate_corpus_rule_data.py",
         "_project/scripts/explorer_publish.py",
         "scripts/generate_corpus_inventory.py",
         "scripts/validate_submission.py",

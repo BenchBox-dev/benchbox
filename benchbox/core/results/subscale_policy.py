@@ -1,9 +1,20 @@
 from __future__ import annotations
 
+import importlib.util
+import sys
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 OFFICIAL_COMPLIANCE_CLASS = "official"
+
+_rule_path = Path(__file__).with_name("corpus_rule.py")
+_rule_spec = importlib.util.spec_from_file_location("_benchbox_subscale_corpus_rule", _rule_path)
+if _rule_spec is None or _rule_spec.loader is None:
+    raise ImportError(f"Cannot load corpus rule from {_rule_path}")
+_corpus_rule = importlib.util.module_from_spec(_rule_spec)
+sys.modules[_rule_spec.name] = _corpus_rule
+_rule_spec.loader.exec_module(_corpus_rule)
 SUBSCALE_COMPLIANCE_CLASS = "unofficial_subscale"
 NONSTANDARD_COMPLIANCE_CLASS = "unofficial_nonstandard"
 UNOFFICIAL_COMPLIANCE_CLASSES = frozenset({SUBSCALE_COMPLIANCE_CLASS, NONSTANDARD_COMPLIANCE_CLASS})
@@ -27,17 +38,25 @@ def is_nonstandard_scale(benchmark_id: Any, scale_factor: Any) -> bool:
     if isinstance(scale_factor, bool) or scale_factor is None:
         return False
     try:
-        float(scale_factor)
+        scale = float(scale_factor)
     except (TypeError, ValueError):
         return False
     try:
-        from benchbox.core.benchmark_registry import is_standard_scale_factor
-    except ImportError:
-        return False
-    try:
-        return not is_standard_scale_factor(str(benchmark_id), scale_factor)
-    except ValueError:
-        return False
+        return _corpus_rule.is_standard_scale(benchmark_id, scale) is False
+    except RuntimeError as error:
+        try:
+            from benchbox.core.benchmark_registry import get_scale_factor_rule
+        except ImportError:
+            raise error from None
+        try:
+            rule = get_scale_factor_rule(str(benchmark_id))
+        except ValueError:
+            return False
+        benchmark = _corpus_rule.normalize_benchmark_id(benchmark_id)
+        return (
+            _corpus_rule.is_standard_scale(benchmark, scale, {"scales": {benchmark: {"standard": rule.standard}}})
+            is False
+        )
 
 
 def effective_compliance_class(benchmark_id: Any, scale_factor: Any, recorded: Any) -> str | None:

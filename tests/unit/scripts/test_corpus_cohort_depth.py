@@ -122,6 +122,7 @@ def _write_bundle(
 
 
 KNOWN_DEFECTIVE_SHALLOW_COHORTS = {
+    ("clickbench", "0.1"): {"bigquery", "snowflake"},
     ("datavault", "0.01"): {"clickhouse-local^container"},
     ("datavault", "0.1"): {"clickhouse-local^container"},
     ("read_primitives", "0.01"): {"clickhouse-local^container", "datafusion"},

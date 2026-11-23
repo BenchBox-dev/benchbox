@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from io import StringIO
 from typing import ClassVar
 from unittest.mock import Mock
@@ -338,6 +338,8 @@ def test_prompt_scale_single_standard_value_still_prompts(monkeypatch: pytest.Mo
     console, stream = _capture_console()
     monkeypatch.setattr(bench_mod, "console", console)
     monkeypatch.setattr(bench_mod.FloatPrompt, "ask", lambda *_args, **_kwargs: 0.1)
+    single_value_rule = replace(bench_mod.get_scale_factor_rule("clickbench"), standard=(1.0,))
+    monkeypatch.setattr(bench_mod, "get_scale_factor_rule", lambda _benchmark_id: single_value_rule)
     benchmark_info = {**manager.benchmarks["clickbench"], "scale_options": [1.0], "default_scale": 1.0}
 
     scale = manager._prompt_scale("clickbench", benchmark_info, {"memory_gb": 64, "cpu_cores": 4})

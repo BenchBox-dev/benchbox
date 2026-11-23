@@ -63,8 +63,7 @@ The first command runs only the fast tests, which is the default for `make test-
 
 `benchbox run` and `benchbox run-official` cells pass `--timeout <cell limit>` (`execute.per_cell_timeout_s`), so a slow
 cell is stopped by BenchBox itself: it exits 124 and keeps a result bundle marked `timed_out`. The runner kills the
-process group from outside only at the cell limit plus 60 seconds (`runner.OUTSIDE_KILL_MARGIN_S`). The diagnostic
-re-run gets the same treatment with its own 180-second limit.
+process group from outside only at the cell limit plus 60 seconds (`runner.OUTSIDE_KILL_MARGIN_S`).
 
 | Cell status | Meaning |
 | --- | --- |
@@ -75,6 +74,22 @@ A `hung` cell counts everywhere a `timed-out` cell counts: the attempted and tim
 the single infrastructure retry and the retry-evidence reuse check. The cell log marks them `# UAT_TIMEOUT` and
 `# UAT_HUNG`. `scripts/run_version_matrix.py` passes the same `--timeout` and kills from outside at the limit plus 60
 seconds.
+
+## Cell logs and first-failure output
+
+`tests/uat/runner.py` owns one log per cell, named `<platform>_<benchmark>_<scale>_<timestamp>.log` in the
+cell's log directory (`LOG_DIR`, otherwise the dated default). The cell runs `benchbox run --quiet`, which prints
+nothing on success, so a passing cell's log holds only the command header, the child's stderr and the result path.
+When a quiet run fails, the CLI writes the tail (8000 characters) of the output it suppressed to stderr, and that,
+with the run's stdout, exit code and `UAT_TIMEOUT`, `UAT_MEMORY_LIMIT` or `UAT_PEAK_RSS_GIB` markers, is the first
+attempt's record. After a non-zero exit the harness scrubs credential-shaped text (`password=...`, URL userinfo,
+tokens) from the log in place; a passing cell's log is never rewritten. A cell that exits non-zero having printed
+nothing gets `# UAT_NO_OUTPUT exit_code=N`.
+
+The earlier verbose diagnostic re-run was removed: it ran the workload a second time for up to 180 s, showed a
+later symptom instead of the original one (a LakeSail cell failed with a different connection error), and the
+case it covered (no output at all) is now recorded by the marker. A process killed by a signal that the CLI
+cannot catch (SIGKILL, the heavy-work watchdog's SIGTERM) leaves only the stderr it had already written.
 
 ## Matrix And Connection Sources Of Truth
 

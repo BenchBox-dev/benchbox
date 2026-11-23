@@ -1155,29 +1155,38 @@
         "tuning_mode": "notuning"
       },
       "today": {
-        "class": "unofficial_nonstandard",
-        "ranking_excluded": true,
+        "class": null,
+        "ranking_excluded": false,
         "score_source": null,
         "cohort": "clickbench/sf0.1/power",
-        "rank": null,
-        "total": 0,
+        "rank": 2,
+        "total": 2,
         "score": 685.54,
-        "exclusion_reason": "unofficial_compliance"
+        "exclusion_reason": null
       },
       "rule": {
-        "class": "nonstandard_scale",
+        "class": "none",
         "public_admission": true,
         "maintainer_admission": true,
-        "lanes": [],
-        "score_source": "timings_only",
+        "lanes": [
+          "own"
+        ],
+        "score_source": "own",
         "labels": [
-          "Non-standard scale: compared only at the same scale",
           "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
-        "row": "nonstandard_scale",
-        "ranks": {}
+        "row": "other_standard_scale",
+        "ranks": {
+          "own": {
+            "cohort": "clickbench/sf0.1/power",
+            "rank": 2,
+            "total": 2,
+            "score": 685.54,
+            "exclusion_reason": null
+          }
+        }
       }
     },
     "clickbench_sf01_databricks_sql_20261003_220608_70c9438e.json": {
@@ -1194,28 +1203,27 @@
         "tuning_mode": "notuning"
       },
       "today": {
-        "class": "unofficial_nonstandard",
-        "ranking_excluded": true,
+        "class": null,
+        "ranking_excluded": false,
         "score_source": null,
         "cohort": "clickbench/sf0.1/power",
         "rank": null,
-        "total": 0,
+        "total": 2,
         "score": 360.09,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
-        "class": "nonstandard_scale",
+        "class": "none",
         "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
         "labels": [
-          "Non-standard scale: compared only at the same scale",
           "Not ranked: known defect"
         ],
         "held_reason": "known_defect",
         "missing_facts": [],
-        "row": "nonstandard_scale",
+        "row": "other_standard_scale",
         "ranks": {}
       }
     },
@@ -1233,29 +1241,38 @@
         "tuning_mode": "notuning"
       },
       "today": {
-        "class": "unofficial_nonstandard",
-        "ranking_excluded": true,
+        "class": null,
+        "ranking_excluded": false,
         "score_source": null,
         "cohort": "clickbench/sf0.1/power",
-        "rank": null,
-        "total": 0,
+        "rank": 1,
+        "total": 2,
         "score": 258.19,
-        "exclusion_reason": "unofficial_compliance"
+        "exclusion_reason": null
       },
       "rule": {
-        "class": "nonstandard_scale",
+        "class": "none",
         "public_admission": true,
         "maintainer_admission": true,
-        "lanes": [],
-        "score_source": "timings_only",
+        "lanes": [
+          "own"
+        ],
+        "score_source": "own",
         "labels": [
-          "Non-standard scale: compared only at the same scale",
           "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
-        "row": "nonstandard_scale",
-        "ranks": {}
+        "row": "other_standard_scale",
+        "ranks": {
+          "own": {
+            "cohort": "clickbench/sf0.1/power",
+            "rank": 1,
+            "total": 2,
+            "score": 258.19,
+            "exclusion_reason": null
+          }
+        }
       }
     },
     "clickbench_sf10_bigquery_sql_20260919_211134_6c9c5414.json": {
@@ -1272,29 +1289,38 @@
         "tuning_mode": "notuning"
       },
       "today": {
-        "class": "unofficial_nonstandard",
-        "ranking_excluded": true,
+        "class": null,
+        "ranking_excluded": false,
         "score_source": null,
         "cohort": "clickbench/sf10/power",
-        "rank": null,
-        "total": 0,
+        "rank": 9,
+        "total": 9,
         "score": 1049.16,
-        "exclusion_reason": "unofficial_compliance"
+        "exclusion_reason": null
       },
       "rule": {
-        "class": "nonstandard_scale",
+        "class": "none",
         "public_admission": true,
         "maintainer_admission": true,
-        "lanes": [],
-        "score_source": "timings_only",
+        "lanes": [
+          "own"
+        ],
+        "score_source": "own",
         "labels": [
-          "Non-standard scale: compared only at the same scale",
           "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
-        "row": "nonstandard_scale",
-        "ranks": {}
+        "row": "other_standard_scale",
+        "ranks": {
+          "own": {
+            "cohort": "clickbench/sf10/power",
+            "rank": 9,
+            "total": 9,
+            "score": 1049.16,
+            "exclusion_reason": null
+          }
+        }
       }
     },
     "clickbench_sf10_databricks_sql_20261003_231900_2437b487.json": {
@@ -1311,28 +1337,27 @@
         "tuning_mode": "notuning"
       },
       "today": {
-        "class": "unofficial_nonstandard",
-        "ranking_excluded": true,
+        "class": null,
+        "ranking_excluded": false,
         "score_source": null,
         "cohort": "clickbench/sf10/power",
         "rank": null,
-        "total": 0,
+        "total": 9,
         "score": 603.17,
         "exclusion_reason": "known_defective_data"
       },
       "rule": {
-        "class": "nonstandard_scale",
+        "class": "none",
         "public_admission": true,
         "maintainer_admission": true,
         "lanes": [],
         "score_source": null,
         "labels": [
-          "Non-standard scale: compared only at the same scale",
           "Not ranked: known defect"
         ],
         "held_reason": "known_defect",
         "missing_facts": [],
-        "row": "nonstandard_scale",
+        "row": "other_standard_scale",
         "ranks": {}
       }
     },
@@ -1350,29 +1375,38 @@
         "tuning_mode": "notuning"
       },
       "today": {
-        "class": "unofficial_nonstandard",
-        "ranking_excluded": true,
+        "class": null,
+        "ranking_excluded": false,
         "score_source": null,
         "cohort": "clickbench/sf10/power",
-        "rank": null,
-        "total": 0,
+        "rank": 8,
+        "total": 9,
         "score": 341.48,
-        "exclusion_reason": "unofficial_compliance"
+        "exclusion_reason": null
       },
       "rule": {
-        "class": "nonstandard_scale",
+        "class": "none",
         "public_admission": true,
         "maintainer_admission": true,
-        "lanes": [],
-        "score_source": "timings_only",
+        "lanes": [
+          "own"
+        ],
+        "score_source": "own",
         "labels": [
-          "Non-standard scale: compared only at the same scale",
           "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
-        "row": "nonstandard_scale",
-        "ranks": {}
+        "row": "other_standard_scale",
+        "ranks": {
+          "own": {
+            "cohort": "clickbench/sf10/power",
+            "rank": 8,
+            "total": 9,
+            "score": 341.48,
+            "exclusion_reason": null
+          }
+        }
       }
     },
     "clickbench_sf1_bigquery_sql_20260919_201018_dd899402.json": {
@@ -4033,29 +4067,38 @@
         "tuning_mode": "notuning"
       },
       "today": {
-        "class": "unofficial_nonstandard",
-        "ranking_excluded": true,
+        "class": null,
+        "ranking_excluded": false,
         "score_source": null,
         "cohort": "clickbench/sf10/power",
-        "rank": null,
-        "total": 0,
+        "rank": 6,
+        "total": 9,
         "score": 16.83,
-        "exclusion_reason": "unofficial_compliance"
+        "exclusion_reason": null
       },
       "rule": {
-        "class": "nonstandard_scale",
+        "class": "none",
         "public_admission": true,
         "maintainer_admission": true,
-        "lanes": [],
-        "score_source": "timings_only",
+        "lanes": [
+          "own"
+        ],
+        "score_source": "own",
         "labels": [
-          "Non-standard scale: compared only at the same scale",
           "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
-        "row": "nonstandard_scale",
-        "ranks": {}
+        "row": "other_standard_scale",
+        "ranks": {
+          "own": {
+            "cohort": "clickbench/sf10/power",
+            "rank": 6,
+            "total": 9,
+            "score": 16.83,
+            "exclusion_reason": null
+          }
+        }
       }
     },
     "duckdb-version-matrix/clickbench_sf10_duckdb_v1_1_3_median.json": {
@@ -4072,29 +4115,38 @@
         "tuning_mode": "notuning"
       },
       "today": {
-        "class": "unofficial_nonstandard",
-        "ranking_excluded": true,
+        "class": null,
+        "ranking_excluded": false,
         "score_source": null,
         "cohort": "clickbench/sf10/power",
-        "rank": null,
-        "total": 0,
+        "rank": 5,
+        "total": 9,
         "score": 14.96,
-        "exclusion_reason": "unofficial_compliance"
+        "exclusion_reason": null
       },
       "rule": {
-        "class": "nonstandard_scale",
+        "class": "none",
         "public_admission": true,
         "maintainer_admission": true,
-        "lanes": [],
-        "score_source": "timings_only",
+        "lanes": [
+          "own"
+        ],
+        "score_source": "own",
         "labels": [
-          "Non-standard scale: compared only at the same scale",
           "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
-        "row": "nonstandard_scale",
-        "ranks": {}
+        "row": "other_standard_scale",
+        "ranks": {
+          "own": {
+            "cohort": "clickbench/sf10/power",
+            "rank": 5,
+            "total": 9,
+            "score": 14.96,
+            "exclusion_reason": null
+          }
+        }
       }
     },
     "duckdb-version-matrix/clickbench_sf10_duckdb_v1_2_2_median.json": {
@@ -4111,29 +4163,38 @@
         "tuning_mode": "notuning"
       },
       "today": {
-        "class": "unofficial_nonstandard",
-        "ranking_excluded": true,
+        "class": null,
+        "ranking_excluded": false,
         "score_source": null,
         "cohort": "clickbench/sf10/power",
-        "rank": null,
-        "total": 0,
+        "rank": 7,
+        "total": 9,
         "score": 18.54,
-        "exclusion_reason": "unofficial_compliance"
+        "exclusion_reason": null
       },
       "rule": {
-        "class": "nonstandard_scale",
+        "class": "none",
         "public_admission": true,
         "maintainer_admission": true,
-        "lanes": [],
-        "score_source": "timings_only",
+        "lanes": [
+          "own"
+        ],
+        "score_source": "own",
         "labels": [
-          "Non-standard scale: compared only at the same scale",
           "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
-        "row": "nonstandard_scale",
-        "ranks": {}
+        "row": "other_standard_scale",
+        "ranks": {
+          "own": {
+            "cohort": "clickbench/sf10/power",
+            "rank": 7,
+            "total": 9,
+            "score": 18.54,
+            "exclusion_reason": null
+          }
+        }
       }
     },
     "duckdb-version-matrix/clickbench_sf10_duckdb_v1_3_2_median.json": {
@@ -4150,29 +4211,38 @@
         "tuning_mode": "notuning"
       },
       "today": {
-        "class": "unofficial_nonstandard",
-        "ranking_excluded": true,
+        "class": null,
+        "ranking_excluded": false,
         "score_source": null,
         "cohort": "clickbench/sf10/power",
-        "rank": null,
-        "total": 0,
+        "rank": 4,
+        "total": 9,
         "score": 13.84,
-        "exclusion_reason": "unofficial_compliance"
+        "exclusion_reason": null
       },
       "rule": {
-        "class": "nonstandard_scale",
+        "class": "none",
         "public_admission": true,
         "maintainer_admission": true,
-        "lanes": [],
-        "score_source": "timings_only",
+        "lanes": [
+          "own"
+        ],
+        "score_source": "own",
         "labels": [
-          "Non-standard scale: compared only at the same scale",
           "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
-        "row": "nonstandard_scale",
-        "ranks": {}
+        "row": "other_standard_scale",
+        "ranks": {
+          "own": {
+            "cohort": "clickbench/sf10/power",
+            "rank": 4,
+            "total": 9,
+            "score": 13.84,
+            "exclusion_reason": null
+          }
+        }
       }
     },
     "duckdb-version-matrix/clickbench_sf10_duckdb_v1_4_4_median.json": {
@@ -4189,29 +4259,38 @@
         "tuning_mode": "notuning"
       },
       "today": {
-        "class": "unofficial_nonstandard",
-        "ranking_excluded": true,
+        "class": null,
+        "ranking_excluded": false,
         "score_source": null,
         "cohort": "clickbench/sf10/power",
-        "rank": null,
-        "total": 0,
+        "rank": 2,
+        "total": 9,
         "score": 10.03,
-        "exclusion_reason": "unofficial_compliance"
+        "exclusion_reason": null
       },
       "rule": {
-        "class": "nonstandard_scale",
+        "class": "none",
         "public_admission": true,
         "maintainer_admission": true,
-        "lanes": [],
-        "score_source": "timings_only",
+        "lanes": [
+          "own"
+        ],
+        "score_source": "own",
         "labels": [
-          "Non-standard scale: compared only at the same scale",
           "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
-        "row": "nonstandard_scale",
-        "ranks": {}
+        "row": "other_standard_scale",
+        "ranks": {
+          "own": {
+            "cohort": "clickbench/sf10/power",
+            "rank": 2,
+            "total": 9,
+            "score": 10.03,
+            "exclusion_reason": null
+          }
+        }
       }
     },
     "duckdb-version-matrix/clickbench_sf10_duckdb_v1_5_5_median.json": {
@@ -4228,29 +4307,38 @@
         "tuning_mode": "notuning"
       },
       "today": {
-        "class": "unofficial_nonstandard",
-        "ranking_excluded": true,
+        "class": null,
+        "ranking_excluded": false,
         "score_source": null,
         "cohort": "clickbench/sf10/power",
-        "rank": null,
-        "total": 0,
+        "rank": 3,
+        "total": 9,
         "score": 10.05,
-        "exclusion_reason": "unofficial_compliance"
+        "exclusion_reason": null
       },
       "rule": {
-        "class": "nonstandard_scale",
+        "class": "none",
         "public_admission": true,
         "maintainer_admission": true,
-        "lanes": [],
-        "score_source": "timings_only",
+        "lanes": [
+          "own"
+        ],
+        "score_source": "own",
         "labels": [
-          "Non-standard scale: compared only at the same scale",
           "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
-        "row": "nonstandard_scale",
-        "ranks": {}
+        "row": "other_standard_scale",
+        "ranks": {
+          "own": {
+            "cohort": "clickbench/sf10/power",
+            "rank": 3,
+            "total": 9,
+            "score": 10.05,
+            "exclusion_reason": null
+          }
+        }
       }
     },
     "duckdb-version-matrix/clickbench_sf10_duckdb_v1_6_0_dev365_median.json": {
@@ -4267,29 +4355,38 @@
         "tuning_mode": "notuning"
       },
       "today": {
-        "class": "unofficial_nonstandard",
-        "ranking_excluded": true,
+        "class": null,
+        "ranking_excluded": false,
         "score_source": null,
         "cohort": "clickbench/sf10/power",
-        "rank": null,
-        "total": 0,
+        "rank": 1,
+        "total": 9,
         "score": 8.64,
-        "exclusion_reason": "unofficial_compliance"
+        "exclusion_reason": null
       },
       "rule": {
-        "class": "nonstandard_scale",
+        "class": "none",
         "public_admission": true,
         "maintainer_admission": true,
-        "lanes": [],
-        "score_source": "timings_only",
+        "lanes": [
+          "own"
+        ],
+        "score_source": "own",
         "labels": [
-          "Non-standard scale: compared only at the same scale",
           "Row counts not checked"
         ],
         "held_reason": null,
         "missing_facts": [],
-        "row": "nonstandard_scale",
-        "ranks": {}
+        "row": "other_standard_scale",
+        "ranks": {
+          "own": {
+            "cohort": "clickbench/sf10/power",
+            "rank": 1,
+            "total": 9,
+            "score": 8.64,
+            "exclusion_reason": null
+          }
+        }
       }
     },
     "duckdb-version-matrix/ssb_sf10_duckdb_v1_0_0_median.json": {
@@ -12057,9 +12154,48 @@
         "ranking_excluded": false,
         "score_source": null,
         "cohort": "tpcds_obt/sf0.01/power",
-        "rank": 3,
+        "rank": null,
         "total": 4,
         "score": 18.5,
+        "exclusion_reason": "known_defective_data"
+      },
+      "rule": {
+        "class": "none",
+        "public_admission": true,
+        "maintainer_admission": true,
+        "lanes": [],
+        "score_source": null,
+        "labels": [
+          "Derived from TPC-DS, not an official TPC result",
+          "Not ranked: known defect"
+        ],
+        "held_reason": "known_defect",
+        "missing_facts": [],
+        "row": "other_standard_scale",
+        "ranks": {}
+      }
+    },
+    "tpcds_obt_sf001_doris_sql_20261118_181752_c2022935.json": {
+      "identity": {
+        "result_id": "tpcds_obt-apache-doris-sf0.01-20261118-fd611edc",
+        "benchmark": "tpcds_obt",
+        "scale_factor": 0.01,
+        "platform_id": "apache-doris",
+        "variant_id": "apache-doris",
+        "platform_version": "4.0.3-rc03",
+        "comparison_version": "4.0.3-rc03",
+        "version_is_release": false,
+        "execution_mode": "sql",
+        "tuning_mode": "notuning"
+      },
+      "today": {
+        "class": null,
+        "ranking_excluded": false,
+        "score_source": null,
+        "cohort": "tpcds_obt/sf0.01/power",
+        "rank": 3,
+        "total": 4,
+        "score": 22.43,
         "exclusion_reason": null
       },
       "rule": {
@@ -12082,7 +12218,7 @@
             "cohort": "tpcds_obt/sf0.01/power",
             "rank": 3,
             "total": 4,
-            "score": 18.5,
+            "score": 22.43,
             "exclusion_reason": null
           }
         }
@@ -12205,7 +12341,7 @@
         "score_source": null,
         "cohort": "tpcds_obt/sf0.1/power",
         "rank": 2,
-        "total": 3,
+        "total": 4,
         "score": 16.43,
         "exclusion_reason": null
       },
@@ -12228,7 +12364,7 @@
           "own": {
             "cohort": "tpcds_obt/sf0.1/power",
             "rank": 2,
-            "total": 3,
+            "total": 4,
             "score": 16.43,
             "exclusion_reason": null
           }
@@ -12253,9 +12389,48 @@
         "ranking_excluded": false,
         "score_source": null,
         "cohort": "tpcds_obt/sf0.1/power",
-        "rank": 3,
-        "total": 3,
+        "rank": null,
+        "total": 4,
         "score": 25.16,
+        "exclusion_reason": "known_defective_data"
+      },
+      "rule": {
+        "class": "none",
+        "public_admission": true,
+        "maintainer_admission": true,
+        "lanes": [],
+        "score_source": null,
+        "labels": [
+          "Derived from TPC-DS, not an official TPC result",
+          "Not ranked: known defect"
+        ],
+        "held_reason": "known_defect",
+        "missing_facts": [],
+        "row": "other_standard_scale",
+        "ranks": {}
+      }
+    },
+    "tpcds_obt_sf01_doris_sql_20261118_225023_c18125e7.json": {
+      "identity": {
+        "result_id": "tpcds_obt-apache-doris-sf0.1-20261118-8510a80f",
+        "benchmark": "tpcds_obt",
+        "scale_factor": 0.1,
+        "platform_id": "apache-doris",
+        "variant_id": "apache-doris",
+        "platform_version": "4.0.3-rc03",
+        "comparison_version": "4.0.3-rc03",
+        "version_is_release": false,
+        "execution_mode": "sql",
+        "tuning_mode": "notuning"
+      },
+      "today": {
+        "class": null,
+        "ranking_excluded": false,
+        "score_source": null,
+        "cohort": "tpcds_obt/sf0.1/power",
+        "rank": 3,
+        "total": 4,
+        "score": 31.75,
         "exclusion_reason": null
       },
       "rule": {
@@ -12277,8 +12452,8 @@
           "own": {
             "cohort": "tpcds_obt/sf0.1/power",
             "rank": 3,
-            "total": 3,
-            "score": 25.16,
+            "total": 4,
+            "score": 31.75,
             "exclusion_reason": null
           }
         }
@@ -12303,7 +12478,7 @@
         "score_source": null,
         "cohort": "tpcds_obt/sf0.1/power",
         "rank": 1,
-        "total": 3,
+        "total": 4,
         "score": 4.51,
         "exclusion_reason": null
       },
@@ -12326,8 +12501,57 @@
           "own": {
             "cohort": "tpcds_obt/sf0.1/power",
             "rank": 1,
-            "total": 3,
+            "total": 4,
             "score": 4.51,
+            "exclusion_reason": null
+          }
+        }
+      }
+    },
+    "tpcds_obt_sf01_lakesail_sql_20261117_201241_312e8b59.json": {
+      "identity": {
+        "result_id": "tpcds_obt-lakesail-sf0.1-20261117-72f9a09f",
+        "benchmark": "tpcds_obt",
+        "scale_factor": 0.1,
+        "platform_id": "lakesail",
+        "variant_id": "lakesail",
+        "platform_version": "4.2.0",
+        "comparison_version": "4.2.0",
+        "version_is_release": true,
+        "execution_mode": "sql",
+        "tuning_mode": "notuning"
+      },
+      "today": {
+        "class": null,
+        "ranking_excluded": false,
+        "score_source": null,
+        "cohort": "tpcds_obt/sf0.1/power",
+        "rank": 4,
+        "total": 4,
+        "score": 52.07,
+        "exclusion_reason": null
+      },
+      "rule": {
+        "class": "none",
+        "public_admission": true,
+        "maintainer_admission": true,
+        "lanes": [
+          "own"
+        ],
+        "score_source": "own",
+        "labels": [
+          "Derived from TPC-DS, not an official TPC result",
+          "Row counts not checked"
+        ],
+        "held_reason": null,
+        "missing_facts": [],
+        "row": "other_standard_scale",
+        "ranks": {
+          "own": {
+            "cohort": "tpcds_obt/sf0.1/power",
+            "rank": 4,
+            "total": 4,
+            "score": 52.07,
             "exclusion_reason": null
           }
         }

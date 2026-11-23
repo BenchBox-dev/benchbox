@@ -135,13 +135,21 @@ def _target_names(target: ast.expr) -> list[str]:
     return []
 
 
+def _walk(tree: ast.AST) -> tuple[ast.AST, ...]:
+    nodes = getattr(tree, "_inert_nodes", None)
+    if nodes is None:
+        nodes = tuple(ast.walk(tree))
+        tree._inert_nodes = nodes
+    return nodes
+
+
 def _collect_bindings(tree: ast.AST) -> dict[str, list[ast.expr]]:
     bindings: dict[str, list[ast.expr]] = {}
 
     def add(name: str, expr: ast.expr) -> None:
         bindings.setdefault(name, []).append(expr)
 
-    for node in ast.walk(tree):
+    for node in _walk(tree):
         if isinstance(node, ast.Assign):
             for target in node.targets:
                 for name in _target_names(target):
@@ -298,7 +306,7 @@ def tree_candidates(tree: ast.AST, abs_path: str, repo_root: str) -> set[str]:
     home = os.path.abspath(abs_path)
     base = os.path.abspath(repo_root)
     found: set[str] = set()
-    for node in ast.walk(tree):
+    for node in _walk(tree):
         if (
             isinstance(node, ast.BinOp)
             and isinstance(node.op, ast.Div)
@@ -382,7 +390,7 @@ def _segment_glob_matches(path: str, pattern: str) -> bool:
 def path_constants(tree: ast.AST) -> set[str]:
     return {
         node.value.removeprefix("./").rstrip("/")
-        for node in ast.walk(tree)
+        for node in _walk(tree)
         if isinstance(node, ast.Constant)
         and isinstance(node.value, str)
         and "/" in node.value.strip("/")
@@ -423,7 +431,7 @@ def _module_paths(dotted: str) -> tuple[str, ...]:
 def imported_modules(tree: ast.AST, own: str, tracked: set[str]) -> set[str]:
     package = posixpath.dirname(own)
     names: list[str] = []
-    for node in ast.walk(tree):
+    for node in _walk(tree):
         if isinstance(node, ast.Import):
             names.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom):

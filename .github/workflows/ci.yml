@@ -7,6 +7,7 @@ env:
   BENCHBOX_HEAVY_ADMIT_MIN_GIB: "1.5"
   BENCHBOX_HEAVY_MIN_FREE_DISK_GIB: "5"
   BENCHBOX_HEAVY_MAX_LOAD_RATIO: "0"
+  BENCHBOX_HEAVY_ADMIT_HOLD_SECONDS: "0"
 
 on:
   pull_request:
@@ -253,6 +254,7 @@ jobs:
       submission-validator-changed: ${{ steps.path-flags.outputs.submission-validator-changed }}
       api-contract-changed: ${{ steps.path-flags.outputs.api-contract-changed }}
       tuning-paths-changed: ${{ steps.path-flags.outputs.tuning-paths-changed }}
+      generator-volume-needed: ${{ steps.path-flags.outputs.generator-volume-needed }}
       sql-evidence-paths-changed: ${{ steps.path-flags.outputs.sql-evidence-paths-changed }}
       windows-leg-needed: ${{ steps.windows-select.outputs.windows-leg-needed }}
       trunk-lane-plain-needed: ${{ steps.path-flags.outputs.trunk-lane-plain-needed }}
@@ -424,6 +426,9 @@ jobs:
           echo "trunk-lane-plain-needed=$trunk_plain" >> "$GITHUB_OUTPUT"
           echo "trunk-lane-coverage-needed=$trunk_coverage" >> "$GITHUB_OUTPUT"
           echo "sql-evidence-paths-changed=$sql_evidence" >> "$GITHUB_OUTPUT"
+          generator_volume=false
+          if grep -qE '^(benchbox/core/(vector_search/(generator\.py|generator_specs\.yaml|benchmark\.py)|(amplab|h2odb|coffeeshop|tsbs_devops|joinorder_synthetic|write_primitives|transaction_primitives)/generator(\.py|_specs\.yaml)|tsbs_devops/schema\.py|joinorder/schema\.py|primitives/generator_base\.py)|benchbox/data/coffeeshop/.*|benchbox/utils/coffeeshop_seed_loader\.py|tests/unit/generators/sf1_size_baseline\.json)$' .ci-paths/trunk-lane-changed.txt; then generator_volume=true; fi
+          echo "generator-volume-needed=$generator_volume" >> "$GITHUB_OUTPUT"
 
       - name: Classify merge units
         id: units
@@ -1142,6 +1147,8 @@ jobs:
         run: |
           uv run -- python -m scripts.fast_tier_calibration \
             --collection-file fast-junit/collection.jsonl \
+            --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}" \
             --output fast-junit/calibration.json | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload fast-tier junit
@@ -1671,6 +1678,38 @@ jobs:
       - name: Run real-CLI tuning liveness matrix
         run: make tuning-liveness-gate
 
+  generator-volume:
+    name: generator-volume
+    needs: ci-paths
+    if: ${{ needs.ci-paths.outputs.generator-volume-needed == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run the generator volume gate
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          uv run -- python -m scripts.generator_volume_gate \
+            --base-ref "$BASE_SHA" \
+            --require-affected \
+            --summary "$GITHUB_STEP_SUMMARY"
+
   sql-execution-evidence:
     name: sql-execution-evidence
     needs: ci-paths
@@ -1860,7 +1899,7 @@ jobs:
 
   core:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'core (text edit)' || 'core' }}
-    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, sql-execution-evidence, windows-tests, package-smoke, dependency-audit, trunk-lane-plain, trunk-lane-coverage]
+    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, generator-volume, sql-execution-evidence, windows-tests, package-smoke, dependency-audit, trunk-lane-plain, trunk-lane-coverage]
     if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
@@ -1956,6 +1995,7 @@ jobs:
             --expect correctness-gate=${{ needs.ci-paths.outputs.heavy-needed == 'true' }} \
             --expect tpch-binary-framing=${{ needs.ci-paths.outputs.heavy-needed == 'true' || needs.ci-paths.outputs.framing-needed == 'true' }} \
             --expect tuning-liveness=${{ needs.ci-paths.outputs.tuning-paths-changed == 'true' }} \
+            --expect generator-volume=${{ needs.ci-paths.outputs.generator-volume-needed == 'true' }} \
             --expect sql-execution-evidence=${{ needs.ci-paths.outputs.sql-evidence-paths-changed == 'true' }} \
             --expect windows-tests=${{ needs.ci-paths.outputs.windows-leg-needed == 'true' }} \
             --expect package-smoke=${{ needs.ci-paths.outputs.packaging-needed == 'true' || needs.ci-paths.outputs.first-command-needed == 'true' }} \
@@ -1994,6 +2034,8 @@ jobs:
             --baseline tests/fixtures/fast_tier_baseline \
             --ceiling quality/fast-duration-ceiling.json \
             --run-dir fast-junit \
+            --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}" \
             --summary "$GITHUB_STEP_SUMMARY" \
             --report-out fast-duration-verdict.json
 

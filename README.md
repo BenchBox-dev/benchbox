@@ -295,3 +295,8 @@ present employers. See [DISCLAIMER.md](DISCLAIMER.md) for details.
 ## License
 
 BenchBox is available under the [MIT License](LICENSE).
+
+The TPC-H and TPC-DS generators (`dbgen`, `qgen`, `dsdgen`, `dsqgen`) and query
+templates ship in `benchbox/_binaries/` under the TPC End User License Agreement
+(`EULA.txt` beside the templates), with a `NOTICE.txt` for each benchmark. THE TPC
+SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC.

@@ -661,6 +661,7 @@ verified 2026-11-06):
 
 | Platform | Engine | Behavior | What to do |
 |---|---|---|---|
+| `lakesail` | mocker | `mocker compose` ignores the stack memory limit; the server container gets 1 GiB and the process dies during the TPC-DS OBT SF0.1 load (peak 1.73 GiB at 4 GiB) | Handled: launched with `mocker run` and `LAKESAIL_MEMORY_LIMIT` (default 4g) |
 | `doris` | mocker | `mocker compose` ignores the stack `entrypoint` and memory; the container gets about 1112 MB, the FE JVM dies and `up --wait` still reports success | Handled: `make uat-bring-up PLATFORM=doris` launches it with `mocker run` (see below) |
 | `firebolt` (`docker/firebolt`, not a registered `make uat-bring-up` platform) | mocker | ignores the `memlock` ulimit; the server exits with `io_uring_register_buffers failed: Cannot allocate memory` | Use an engine that honors `ulimits` |
 | `firebolt` (`docker/firebolt`, not a registered `make uat-bring-up` platform) | Apple `container` | TPC-H SF0.01 needs more than 7 GiB; the load hung at 7 GiB | Give the container more than 7 GiB |
@@ -670,13 +671,13 @@ verified 2026-11-06):
 #### Mocker launch
 
 When the container CLI is `mocker`, `make uat-bring-up` and the managed execute
-phase start `doris` and `singlestore` (`MOCKER_LAUNCH_PLATFORMS` in
+phase start `doris`, `lakesail` and `singlestore` (`MOCKER_LAUNCH_PLATFORMS` in
 `tests/uat/mocker_launch.py`) with `mocker run -d` instead of `mocker compose up`.
 The compose service is the source of truth: image, `platform`, `mem_limit`
 (`-m`), `cpus`, `entrypoint` plus its arguments, `command`, `ports`,
 `environment`, `volumes`, `privileged` and `restart` are translated to flags.
 Memory and cpu come from the compose file (`DORIS_MEMORY_LIMIT`,
-`SINGLESTORE_MEMORY_LIMIT`, `SINGLESTORE_CPUS`, default 6g for Doris, 4g for SingleStore, and 4 cpus). The container is named
+`LAKESAIL_MEMORY_LIMIT`, `SINGLESTORE_MEMORY_LIMIT`, `SINGLESTORE_CPUS`, default 6g for Doris, 4g for LakeSail, 4g for SingleStore, and 4 cpus). Local Doris UAT cells run at Doris's default `parallel_pipeline_task_num`; set `BENCHBOX_UAT_DORIS_PARALLEL_PIPELINE_TASK_NUM` to a positive integer to cap it (`default` or unset leaves it uncapped). The container is named
 `<project>-<service>-1`, carries the `com.docker.compose.project` and
 `com.docker.compose.service` labels, and named volumes become
 `<project>-<volume>`, so container and volume cleanup helpers find them. Health is

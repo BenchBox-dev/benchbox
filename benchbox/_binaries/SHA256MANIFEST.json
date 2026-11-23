@@ -1,5 +1,9 @@
 {
   "files": {
+    "tpc-di/EULA.txt": "017bd9dbc4c332ac433fc0cc018f3691b330f8aca82a05a20274512de423576e",
+    "tpc-di/NOTICE.txt": "6b2cdb563ec3ec2611da682f694f8b64c157cdf037232036dd0877e05ca8bdf4",
+    "tpc-di/tools/EULA.txt": "017bd9dbc4c332ac433fc0cc018f3691b330f8aca82a05a20274512de423576e",
+    "tpc-ds/NOTICE.txt": "c53f3b5681af12eee53c3e9baaaf453023c33ef1bd88e51bbea97943da34ccd8",
     "tpc-ds/darwin-arm64/checksums.md5": "b77d22ddfca20230222772447c2a7430def8d2f32ec18db1283c57b774554a9d",
     "tpc-ds/darwin-arm64/dsdgen": "1d3ac18c9d7f92a0e8069ee68782e100dfdbb681fd747ac8fab91d010b7b02c5",
     "tpc-ds/darwin-arm64/dsqgen": "e5cb7ed5a92b5475b8d4e03e1de47fa4b4a0ea3bf08e2cf2f1996c4cc03623b8",
@@ -152,6 +156,7 @@
     "tpc-ds/windows-x86_64/dsqgen.exe": "17918ded0ca310c35734311ed565adc728407f2ee1dd4271cffebd04f333b383",
     "tpc-ds/windows-x86_64/tpcds.dst": "7aeb147cec9582168a0fc9fe3979bf2d3371dd08be2528be6a531094c6af3c71",
     "tpc-ds/windows-x86_64/tpcds.idx": "19c11f3bc9745b342346ae3f5982f9fac33f8dcf0dd88f71db86f737489a2e5a",
+    "tpc-h/NOTICE.txt": "e7c235e0e5ad7c5b32ce89bbbb6674c2fcfec8e0ebae7deaf4aab9289cc8daee",
     "tpc-h/darwin-arm64/checksums.md5": "6b3d0fd12680b4dd8a7b7c75e05b8b4edeba2fc12381c037556e9915a34f2450",
     "tpc-h/darwin-arm64/dbgen": "281563c8b78ae427241ed722d861d33257946d18c32f472d25dc7dea2103d3ee",
     "tpc-h/darwin-arm64/dists.dss": "4dc56300de1e5ac5e1900519794538e2b5d1b6caf5cd55703bf53000dd748876",

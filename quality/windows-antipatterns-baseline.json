@@ -170,9 +170,6 @@
     "tests/uat/test_report.py": {
       "WA003": 1
     },
-    "tests/uat/test_runner.py": {
-      "WA003": 7
-    },
     "tests/uat/test_runner_timeout_process_group.py": {
       "WA002": 2
     },

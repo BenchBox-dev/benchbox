@@ -70,6 +70,8 @@ class FakeTracker:
         self.item_sessions: dict[str, list[dict]] = {}
         self.session_page = 100
         self.sessions_stale = False
+        self.session_rev = 1
+        self.churn = 0
 
     def register(self, arguments: dict) -> None:
         self.batch = dict(arguments)
@@ -175,16 +177,36 @@ class FakeTracker:
             "final_evidence": {},
         }
 
+    def cursor_stale(self) -> SimpleNamespace:
+        return SimpleNamespace(
+            returncode=2,
+            stdout=json.dumps(
+                {
+                    "ok": False,
+                    "code": "E_CURSOR_STALE",
+                    "error": "revision changed; re-read show_batch before continuing",
+                    "recovery": ["call show_batch without field/offset"],
+                }
+            ),
+            stderr="",
+        )
+
     def show(self, args: list[str]) -> SimpleNamespace:
         if args[0] == "show":
             options = dict(zip(args[2::2], args[3::2], strict=False))
             if options.get("--field") == "sessions":
+                if options.get("--rev") not in (None, f"r{self.session_rev}"):
+                    return self.cursor_stale()
                 entries = self.item_sessions.get(args[1], [])
                 offset = int(options.get("--offset", 0))
-                data = {"id": args[1], "field": "sessions", "offset": offset, "total": len(entries), "rev": "r1"}
+                rev = f"r{self.session_rev}"
+                data = {"id": args[1], "field": "sessions", "offset": offset, "total": len(entries), "rev": rev}
                 data["window"] = entries[offset : offset + self.session_page]
                 if offset + self.session_page < len(entries):
-                    data["continuation"] = {"field": "sessions", "offset": offset + self.session_page, "rev": "r1"}
+                    data["continuation"] = {"field": "sessions", "offset": offset + self.session_page, "rev": rev}
+                    if self.churn > 0:
+                        self.churn -= 1
+                        self.session_rev += 1
                 if self.sessions_stale:
                     data["stale"] = True
                     data["cached_rev"] = data.pop("rev")
@@ -203,7 +225,8 @@ class FakeTracker:
         options = dict(zip(args[3::2], args[4::2], strict=False))
         sections = self.sections()
         if "--field" in options:
-            assert options.get("--rev") in (None, str(self.rev)), "stale revision"
+            if options.get("--rev") not in (None, str(self.rev)):
+                return self.cursor_stale()
             blob = json.dumps(sections[options["--field"]], separators=(",", ":"), sort_keys=True)
             offset = int(options.get("--offset", 0))
             budget = min(int(options.get("--budget", 6000)), self.window_cap)
@@ -212,6 +235,9 @@ class FakeTracker:
             data["rev"] = str(self.rev)
             if offset + budget < len(blob):
                 data["continuation"] = {"field": options["--field"], "offset": offset + budget, "rev": str(self.rev)}
+                if self.churn > 0:
+                    self.churn -= 1
+                    self.rev += 1
             return ok(data)
         summary = {
             "batch_id": args[2],

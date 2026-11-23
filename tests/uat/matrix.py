@@ -195,6 +195,12 @@ class BenchmarkInfo:
     surface: str = "public"
 
 
+UAT_UNCERTIFIED_SCALES: dict[str, tuple[float, ...]] = {
+    "clickbench": (0.1, 10.0),
+    "read_primitives": (1.0, 10.0),
+}
+
+
 def load_benchmarks() -> dict[str, BenchmarkInfo]:
     from benchbox.core.benchmark_registry import BENCHMARK_METADATA
 
@@ -206,7 +212,11 @@ def load_benchmarks() -> dict[str, BenchmarkInfo]:
             surface=str(meta.get("surface", "public")),
             default_scale=float(meta.get("default_scale", 1.0)),
             min_scale=(float(meta["min_scale"]) if meta.get("min_scale") is not None else None),
-            scale_options=tuple(float(s) for s in meta.get("scale_options", ())),
+            scale_options=tuple(
+                scale
+                for scale in (float(s) for s in meta.get("scale_options", ()))
+                if scale not in UAT_UNCERTIFIED_SCALES.get(bid, ())
+            ),
             supports_dataframe=bool(meta.get("supports_dataframe", True)),
         )
     return out

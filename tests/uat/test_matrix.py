@@ -355,6 +355,55 @@ def test_enumerate_with_pruning_ladder_scale_survives_when_in_registry():
     assert result.compatibility_pruned == ()
 
 
+@pytest.mark.parametrize(("benchmark_id", "uncertified"), sorted(matrix.UAT_UNCERTIFIED_SCALES.items()))
+def test_load_benchmarks_omits_uat_uncertified_scales(benchmark_id, uncertified):
+    from benchbox.core.benchmark_registry import BENCHMARK_METADATA
+
+    registered = {float(s) for s in BENCHMARK_METADATA[benchmark_id]["scale_options"]}
+    offered = set(matrix.load_benchmarks()[benchmark_id].scale_options)
+
+    assert offered
+    assert offered == registered - set(uncertified)
+    assert not offered & set(uncertified)
+
+
+def test_uat_uncertified_scales_are_registered_scale_options():
+    from benchbox.core.benchmark_registry import BENCHMARK_METADATA
+
+    for benchmark, uncertified in matrix.UAT_UNCERTIFIED_SCALES.items():
+        assert benchmark in BENCHMARK_METADATA
+        registered = {float(s) for s in BENCHMARK_METADATA[benchmark]["scale_options"]}
+        assert set(uncertified) <= registered, f"{benchmark} names scales absent from scale_options"
+
+
+@pytest.mark.parametrize(("benchmark_id", "uncertified"), sorted(matrix.UAT_UNCERTIFIED_SCALES.items()))
+def test_enumerate_with_pruning_reports_uat_uncertified_scales_as_not_certified(benchmark_id, uncertified):
+    certified = [scale for scale in matrix.load_benchmarks()[benchmark_id].scale_options if scale <= 1.0][:1]
+    raw = {
+        "platforms": {"include": ["duckdb"]},
+        "benchmarks": {"include": [benchmark_id]},
+        "scales": {"rungs": [*certified, *uncertified, 50000.0]},
+    }
+
+    result = enum_phase.enumerate_cells_with_pruning(_registry_cfg(raw))
+
+    assert {c.scale for c in result.cells} == set(certified)
+    ladder_rows = {c.scale: c for c in result.compatibility_pruned if c.rule_id.startswith("uat.ladder.")}
+    assert set(ladder_rows) == {*uncertified, 50000.0}
+    for scale in uncertified:
+        row = ladder_rows[scale]
+        assert row.rule_id == f"uat.ladder.{benchmark_id}.scale-not-certified"
+        assert row.status == enum_phase.REGISTRY_PRUNE_STATUS
+        assert row.reason == (
+            f"scale {scale} is a registered scale_option of {benchmark_id} that no UAT run certifies "
+            "and was dropped by the UAT uncertified-scale exclusion."
+        )
+        assert row.evidence == "tests.uat.matrix.UAT_UNCERTIFIED_SCALES"
+    unregistered = ladder_rows[50000.0]
+    assert unregistered.rule_id == f"uat.ladder.{benchmark_id}.scale-not-in-registry"
+    assert "outside" in unregistered.reason
+
+
 def test_uv_run_argv_native_uses_no_sync():
     assert matrix.uv_run_argv("duckdb") == ["uv", "run", "--no-sync", "--"]
 

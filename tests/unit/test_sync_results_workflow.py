@@ -300,6 +300,15 @@ def test_parity_runtime_triggers_is_compared_and_is_copied() -> None:
         assert "scripts/publication/validator_parity.py" in paths
 
 
+def test_standard_scale_projection_triggers_is_compared_and_is_copied_and_staged() -> None:
+    for paths in _mirrored_runtime_paths():
+        assert "benchbox/core/results/corpus_rule_data.json" in paths
+    stage = next(
+        line for line in _build_step_run().splitlines() if line.strip().startswith("git add results-data scripts")
+    )
+    assert "benchbox/core/results/corpus_rule_data.json" in stage
+
+
 def test_runtime_drift_copies_exact_source_and_preserves_published_only_archive(tmp_path: Path) -> None:
     repo = tmp_path / "runtime-mirror"
     _init_repo(repo)

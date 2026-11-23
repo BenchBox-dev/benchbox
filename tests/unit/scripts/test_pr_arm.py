@@ -1040,6 +1040,56 @@ def test_a_placeholder_core_failure_without_run_timestamps_is_refused_with_the_r
     assert "make pr-rerun PR=7" in err
 
 
+def _placeholder_only(placeholder_age: int) -> FakeGh:
+    return FakeGh(
+        verdict=None,
+        core=("completed", "failure"),
+        core_url=PLACEHOLDER_URL,
+        ci_runs=[(90, "CI (text edit)", "completed", "failure", _stamp(placeholder_age))],
+    )
+
+
+@pytest.mark.parametrize("age", [0, 60, 599])
+def test_a_placeholder_core_failure_before_any_full_run_is_listed_waits_for_it_within_the_window(
+    age: int, fixed_now: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gh = _placeholder_only(age)
+    assert _arm_live(gh) == 2
+    assert gh.merged() == []
+    err = capsys.readouterr().err
+    assert "waiting for full CI run to be listed" in err
+    assert "pr-rerun" not in err
+    assert "no verdict will arrive" not in err
+
+
+@pytest.mark.parametrize("age", [600, 1400])
+def test_a_placeholder_core_failure_with_no_full_run_past_the_window_is_refused_with_the_rerun_advice(
+    age: int, fixed_now: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert _arm_live(_placeholder_only(age)) == 2
+    err = capsys.readouterr().err
+    assert "waiting for" not in err
+    assert "make pr-rerun PR=7" in err
+
+
+def test_a_core_failure_in_a_completed_full_run_is_refused_with_the_rerun_advice(
+    fixed_now: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    gh = FakeGh(
+        verdict=None,
+        core=("completed", "failure"),
+        core_url=FULL_URL,
+        ci_runs=[
+            (90, "CI (text edit)", "completed", "failure", _stamp(1400)),
+            (91, "CI", "completed", "failure", _stamp(60)),
+        ],
+    )
+    assert _arm_live(gh) == 2
+    err = capsys.readouterr().err
+    assert "waiting for" not in err
+    assert "make pr-rerun PR=7" in err
+
+
 def test_a_real_core_failure_is_not_mistaken_for_a_placeholder_while_another_run_is_in_progress(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

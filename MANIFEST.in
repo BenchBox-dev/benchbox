@@ -15,6 +15,10 @@ include _sources/tpc-h/stdout-support.patch
 include _sources/tpc-ds/EULA.txt
 include _sources/tpc-ds/PATCHES.md
 include _sources/tpc-ds/stdout-support.patch
+include _sources/tpc-h/NOTICE.txt
+include _sources/tpc-ds/NOTICE.txt
+include _sources/tpc-di/EULA.txt
+include _sources/tpc-di/NOTICE.txt
 recursive-include _sources/compilation *
 recursive-include _sources/tpc-ds/query_templates *.tpl *.lst
 recursive-include _sources/tpc-ds/query_variants *.tpl
@@ -23,6 +27,7 @@ recursive-include _sources/tpc-h/dbgen/variants *.sql
 
 recursive-include benchbox/_binaries/tpc-h *
 recursive-include benchbox/_binaries/tpc-ds *
+recursive-include benchbox/_binaries/tpc-di *
 include benchbox/_binaries/SHA256MANIFEST.json
 global-exclude .DS_Store
 

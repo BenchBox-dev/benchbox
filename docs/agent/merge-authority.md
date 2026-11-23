@@ -190,7 +190,7 @@ authorization lands, then arm with `make pr-arm`.
 |---|---|---|
 | `armed` | Auto-merge is enabled for the exact head | 0 |
 | `merged` | The PR was already mergeable, so GitHub refused auto-merge; every gate had passed and `make pr-arm` merged the exact head directly | 0 |
-| `waiting` | Every reason is a check that has not finished: the full CI run, the `core` job that records the fast-duration verdict, or a `CI (text edit)` placeholder failure that the refresh workflow re-runs on its own (during the run, while the `ci-text-edit-refresh` run for the head is queued or in progress, or, before that run exists, for 10 minutes after a successful full run if it has not re-run yet). A CI run started by the stale-base guard (below) is also `waiting`. With `WAIT`, a review verdict that is still pending for this head also counts | 2 |
+| `waiting` | Every reason is a check that has not finished: the full CI run, the `core` job that records the fast-duration verdict, or a `CI (text edit)` placeholder failure that the refresh workflow re-runs on its own (during the run, while the `ci-text-edit-refresh` run for the head is queued or in progress, or, before that run exists, for 10 minutes after a successful full run if it has not re-run yet) or that is waiting for a full run not yet listed (for 10 minutes after the placeholder run last updated). A CI run started by the stale-base guard (below) is also `waiting`. With `WAIT`, a review verdict that is still pending for this head also counts | 2 |
 | `refused` | Anything else: a hold, an unresolved review thread (outdated ones count, and each is named, because the ruleset requires every conversation to be resolved), a failed required check, a failing review verdict or one that waits for the owner, a red trunk, a head mismatch. Without `WAIT`, a pending review verdict is also `refused` | 2; 1 when live state could not be read; the `gh` exit code when the merge command itself fails |
 | `conflict` | The PR conflicts with its base (`mergeable` is `CONFLICTING` or `mergeStateStatus` is `DIRTY`). GitHub does not start the `pull_request` CI run for a conflicting PR, so nothing would ever finish; the outcome names the recovery: merge or rebase `origin/<base>` into the branch, push, run `make pr-arm` again | 3 |
 | `transient` | A read failed in a way that is expected to pass: a GitHub rate limit (403 or 429 with rate-limit text or `Retry-After`), an HTTP 5xx, a network timeout such as `TLS handshake timeout`, or a tracker read with `unparseable output`. The outcome names the cause; for a rate limit, with `WAIT`, it also names the reset time | 4 |
@@ -303,7 +303,11 @@ happened to #3264 and #3319 (`review` runs from `synchronize` and
   appeared yet) and `make pr-rerun` is not needed; once the refresh run has
   completed with the placeholder still failed, past the 10 minutes with no
   refresh run, or when the full run failed, the refusal and the advice stand. An
-  error reading the refresh runs counts as no refresh run known.
+  error reading the refresh runs counts as no refresh run known. While no full
+  CI run is listed for the head at all (a pull request just marked ready starts
+  its full run seconds later), a failed placeholder `core` is `waiting` for up
+  to 10 minutes after that `CI (text edit)` run last updated; past that, or
+  without a timestamp, the refusal and the advice stand.
   With a successful full run and a failed `CI (text edit)` run on the head,
   `make pr-rerun` re-runs that run's failed jobs.
 - `make pr-status PR=<n>` (or `RUN=<id>`) prints, for each failed job of the

@@ -18,6 +18,7 @@ LEGACY_MANIFEST_NAME = "submission-manifest.json"
 
 MINIMUM_PLATFORMS_PER_COHORT = 3
 DOCUMENTED_SHALLOW_COHORTS = {
+    ("clickbench", "0.1"): frozenset({"bigquery", "snowflake"}),
     ("datavault", "0.01"): frozenset({"clickhouse-local^container"}),
     ("datavault", "0.1"): frozenset({"clickhouse-local^container"}),
     ("read_primitives", "0.01"): frozenset({"clickhouse-local^container", "datafusion"}),
