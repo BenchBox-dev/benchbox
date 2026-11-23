@@ -117,6 +117,7 @@ def _stub_executor_results() -> list[dict]:
             "iteration": 1,
             "stream_id": 0,
             "run_type": "measurement",
+            "row_count_validation": {"status": "PASSED", "expected": 1, "actual": 1},
         }
         for number in range(1, 23)
     ]
