@@ -11,7 +11,7 @@ from _project.scripts.explorer_pipeline.models import DetailResult, ManifestEntr
 from _project.scripts.explorer_pipeline.transformer import BundleTransformer
 from benchbox.core.cost.models import DeploymentMetadata, NormalizedCost
 from benchbox.validation.bundle import KNOWN_DEFECT_REASONS, is_primary_bundle_file
-from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE
+from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE, scored_minimal_bundle
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
@@ -75,9 +75,11 @@ class TestToManifestEntry:
         assert entry.trust_label == "community-submission"
         assert entry.visibility == "public-self-reported"
 
-    def test_power_score_extracted(self, bundle_file: Path) -> None:
+    def test_power_score_extracted(self, tmp_path: Path) -> None:
+        bundle = tmp_path / "scored.json"
+        bundle.write_text(json.dumps(scored_minimal_bundle()), encoding="utf-8")
         transformer = BundleTransformer()
-        entry = transformer.to_manifest_entry(bundle_file)
+        entry = transformer.to_manifest_entry(bundle)
 
         assert entry.power_score == pytest.approx(1234.56)
 

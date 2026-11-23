@@ -104,6 +104,7 @@ def _load_repo_module(name: str, relative_path: str):
 
 
 SUBSCALE_POLICY = _load_repo_module("_benchbox_subscale_policy", "benchbox/core/results/subscale_policy.py")
+CORPUS_SCORE = _load_repo_module("_benchbox_corpus_score", "benchbox/core/results/corpus_score.py")
 COMPARISON_IDENTITY = _load_repo_module("_benchbox_comparison_identity", "benchbox/core/results/comparison_identity.py")
 
 
@@ -525,30 +526,8 @@ def _tuning_applied(payload: dict) -> bool:
     return bool(status) and str(status) in APPLIED_TUNING_STATUSES
 
 
-def _tpc_metric(payload: dict, name: str) -> float | None:
-    metrics = _mapping(_mapping(payload.get("summary")).get("tpc_metrics"))
-    value = metrics.get(name)
-    if value is None:
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
 def _power_score(payload: dict) -> float | None:
-    recorded = _tpc_metric(payload, "power_at_size")
-    benchmark = _mapping(payload.get("benchmark"))
-    compliance = SUBSCALE_POLICY.effective_compliance_class(
-        benchmark.get("id"), benchmark.get("scale_factor"), benchmark.get("compliance_class")
-    )
-    if compliance != SUBSCALE_POLICY.SUBSCALE_COMPLIANCE_CLASS:
-        return recorded
-    queries = payload.get("queries")
-    power, _ = SUBSCALE_POLICY.subscale_power_at_size(
-        benchmark.get("id"), recorded, queries if isinstance(queries, list) else [], benchmark.get("scale_factor")
-    )
-    return power
+    return CORPUS_SCORE.power_at_size(payload)
 
 
 def _throughput_phase_clean(payload: dict) -> bool:
@@ -570,20 +549,17 @@ def _throughput_phase_clean(payload: dict) -> bool:
 def _throughput_score(payload: dict) -> float | None:
     if not _throughput_phase_clean(payload):
         return None
-    return _tpc_metric(payload, "throughput_at_size")
+    return CORPUS_SCORE.throughput_at_size(payload)
 
 
 COMBINED_PHASE = "combined"
 COMBINED_QPH_METRICS = {"tpch": "qphh_at_size", "tpcds": "qphds_at_size"}
 
 
-def _combined_score(payload: dict, benchmark_id: str) -> float | None:
+def _combined_score(payload: dict) -> float | None:
     if _combined_evidence_defects(payload):
         return None
-    metrics = _mapping(_mapping(payload.get("summary")).get("tpc_metrics"))
-    if benchmark_id == "tpch" and metrics.get("refresh_included") is not True:
-        return None
-    return _tpc_metric(payload, COMBINED_QPH_METRICS[benchmark_id])
+    return CORPUS_SCORE.combined_score(payload)
 
 
 def _combined_evidence_defects(payload: dict) -> list[str]:
@@ -594,7 +570,7 @@ def _primary_metric_value(payload: dict, display: list[tuple[str, float | None, 
     benchmark_id = str(_mapping(payload.get("benchmark")).get("id", "unknown"))
     phase = bundle_phase(payload)
     if phase == COMBINED_PHASE and benchmark_id in COMBINED_QPH_METRICS:
-        return _combined_score(payload, benchmark_id)
+        return _combined_score(payload)
     if phase == THROUGHPUT_PHASE and benchmark_id in THROUGHPUT_SCORE_BENCHMARKS:
         return _throughput_score(payload)
     if benchmark_id in POWER_SCORE_BENCHMARKS:

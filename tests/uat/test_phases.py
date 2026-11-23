@@ -40,7 +40,7 @@ def _write_submit_result(path: Path, *, failed: int = 0) -> None:
             "iterations": 1,
             "streams": 1,
         },
-        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 0.01, "test_type": "power"},
+        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0, "test_type": "power"},
         "platform": {"name": "DuckDB"},
         "summary": {
             "queries": {"total": 1, "passed": 0 if failed else 1, "failed": failed},

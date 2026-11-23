@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+from benchbox.core.results import corpus_rule
 from benchbox.core.results.corpus_rule import row_count_reference_exists
 from benchbox.core.results.environment import (
     NormalizedExecutionEnvironment,
@@ -47,11 +48,7 @@ from benchbox.core.results.query_status import (
     has_failed_query_validation,
     unevidenced_validation_status,
 )
-from benchbox.core.results.subscale_policy import (
-    NONSTANDARD_COMPLIANCE_CLASS,
-    platform_info_gateway,
-    routed_compliance_class,
-)
+from benchbox.core.results.subscale_policy import gateway_routed, platform_info_gateway, routed_compliance_class
 from benchbox.core.results.timer_scope import effective_timing_method
 
 if TYPE_CHECKING:
@@ -409,11 +406,7 @@ class ResultBuilder:
         compliance_class = routed_compliance_class(
             self._benchmark.compliance_class, platform_info_gateway(platform_info)
         )
-        metrics_suppressed = (
-            bool(failed_queries)
-            or compliance_class == NONSTANDARD_COMPLIANCE_CLASS
-            or self._power_stopped_at_time_limit
-        )
+        metrics_suppressed = bool(failed_queries) or self._power_stopped_at_time_limit
         if self._execution_phases_override is None and (self._power_refresh or self._throughput_phase):
             self._execution_phases_override = self._compose_refresh_phases(metrics_suppressed)
         if metrics_suppressed:
@@ -425,8 +418,14 @@ class ResultBuilder:
                 geometric_mean = 0.0
         else:
             tpc_metrics = self._calculate_tpc_metrics()
-        self._add_qphh_metrics(tpc_metrics, len(failed_queries), compliance_class)
-        self._add_qphds_metrics(tpc_metrics, len(failed_queries), compliance_class)
+        gateway = platform_info_gateway(platform_info)
+        scale_refusal = corpus_rule.composite_scale_refusal(
+            normalize_benchmark_id(self._benchmark.name),
+            self._benchmark.scale_factor,
+            gateway_routed=gateway_routed(gateway),
+        )
+        self._add_qphh_metrics(tpc_metrics, len(failed_queries), gateway)
+        self._add_qphds_metrics(tpc_metrics, len(failed_queries), scale_refusal)
 
         execution_phases = self._build_execution_phases(
             exec_times_all,
@@ -582,16 +581,14 @@ class ResultBuilder:
 
         return metrics
 
-    def _add_qphds_metrics(
-        self, metrics: dict[str, Any], failed_query_count: int, compliance_class: str | None
-    ) -> None:
+    def _add_qphds_metrics(self, metrics: dict[str, Any], failed_query_count: int, scale_refusal: str | None) -> None:
         if normalize_benchmark_id(self._benchmark.name) != "tpcds" or self._benchmark.test_type != "combined":
             return
 
         evaluation = evaluate_qphds(
             self._execution_phases_override,
             scale_factor=self._benchmark.scale_factor,
-            compliance_class=compliance_class,
+            scale_refusal=scale_refusal,
             failed_query_count=failed_query_count,
             query_subset=self._run_config.query_subset if self._run_config else None,
         )
@@ -601,7 +598,7 @@ class ResultBuilder:
         else:
             metrics["qphds_unavailable"] = evaluation.unavailable
 
-    def _add_qphh_metrics(self, metrics: dict[str, Any], failed_query_count: int, compliance_class: str | None) -> None:
+    def _add_qphh_metrics(self, metrics: dict[str, Any], failed_query_count: int, gateway: Any) -> None:
         if normalize_benchmark_id(self._benchmark.name) != "tpch":
             return
 
@@ -642,13 +639,15 @@ class ResultBuilder:
             }
 
         power_data = {
-            "benchmark": {"id": "tpch", "compliance_class": compliance_class},
+            "benchmark": {"id": "tpch", "scale_factor": self._benchmark.scale_factor},
+            "platform": {"gateway": gateway},
             "phases": {"power_test": power_data_phase} if power_data_phase else {},
             "summary": {"queries": {"failed": failed_query_count}},
             "run": {"query_subset": self._run_config.query_subset if self._run_config else None},
         }
         throughput_data = {
-            "benchmark": {"id": "tpch", "compliance_class": compliance_class},
+            "benchmark": {"id": "tpch", "scale_factor": self._benchmark.scale_factor},
+            "platform": {"gateway": gateway},
             "phases": {"throughput_test": throughput_data_phase} if throughput_data_phase else {},
             "summary": {"queries": {"failed": failed_query_count}},
             "run": {"query_subset": self._run_config.query_subset if self._run_config else None},

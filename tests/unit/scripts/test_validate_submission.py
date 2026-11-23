@@ -338,7 +338,7 @@ def _minimal_bundle() -> dict:
         "benchmark": {
             "id": "tpch",
             "name": "TPC-H",
-            "scale_factor": 0.01,
+            "scale_factor": 1.0,
         },
         "platform": {
             "name": "DuckDB",
@@ -1710,7 +1710,7 @@ def _timing_bundle(
     *,
     benchmark="tpch",
     platform="Snowflake",
-    scale_factor=0.1,
+    scale_factor=1.0,
     geomean_ms=None,
     rows_loaded=866602,
     validation="passed",
@@ -1816,7 +1816,9 @@ class TestTimingPlateau:
 class TestSmallScaleFloor:
     def test_slow_floor_on_tiny_data_warns(self):
         vr = ValidationResult("test")
-        _validate_bundle(_timing_bundle(_flat_queries(base=4400.0)), vr)
+        _validate_bundle(
+            _timing_bundle(_flat_queries(base=4400.0), scale_factor=0.1), vr, allow_partial_validation=True
+        )
         assert vr.ok, vr.errors
         assert any("small-scale-floor" in w for w in vr.warnings)
 
@@ -1840,14 +1842,22 @@ class TestSmallScaleFloor:
 
     def test_missing_rows_never_silently_passes(self):
         vr = ValidationResult("test")
-        _validate_bundle(_timing_bundle(_flat_queries(base=4400.0), rows_loaded=None), vr)
+        _validate_bundle(
+            _timing_bundle(_flat_queries(base=4400.0), scale_factor=0.1, rows_loaded=None),
+            vr,
+            allow_partial_validation=True,
+        )
         assert vr.ok, vr.errors
         assert any("small-scale-floor" in w and "unreported" in w for w in vr.warnings)
 
     def test_nonfinite_rows_loaded_is_unreported_not_fatal(self):
         for bad_rows in (float("inf"), float("-inf"), float("nan")):
             vr = ValidationResult("test")
-            _validate_bundle(_timing_bundle(_flat_queries(base=4400.0), rows_loaded=bad_rows), vr)
+            _validate_bundle(
+                _timing_bundle(_flat_queries(base=4400.0), scale_factor=0.1, rows_loaded=bad_rows),
+                vr,
+                allow_partial_validation=True,
+            )
             assert vr.ok, vr.errors
             assert any("small-scale-floor" in w and "unreported" in w for w in vr.warnings)
 
@@ -1888,7 +1898,7 @@ class TestScaleInvariance:
             platform="Snowflake",
             rows_loaded=86_586_082,
         )
-        results = validate_bundles([lo, hi])
+        results = validate_bundles([lo, hi], allow_partial_validation=True)
         assert all(vr.ok for vr in results)
         assert all(any("scale-invariant" in w for w in vr.warnings) for vr in results)
 
@@ -1938,7 +1948,7 @@ class TestScaleInvariance:
             platform="Snowflake",
             rows_loaded=86_586_082,
         )
-        results = validate_bundles([lo, hi])
+        results = validate_bundles([lo, hi], allow_partial_validation=True)
         assert all(vr.ok for vr in results)
         assert not any("scale-invariant" in w for vr in results for w in vr.warnings)
 
@@ -1984,7 +1994,7 @@ class TestScaleInvariance:
             platform="Snowflake",
             rows_loaded=86_586_082,
         )
-        results = validate_bundles([lo, hi])
+        results = validate_bundles([lo, hi], allow_partial_validation=True)
         assert all(vr.ok for vr in results)
         warned = [w for vr in results for w in vr.warnings if "scale-invariant" in w]
         assert warned
@@ -2064,10 +2074,11 @@ class TestSubmissionDeterministicGates:
         for compliance in ("unofficial_nonstandard", "unofficial_subscale"):
             data = _minimal_bundle()
             data["benchmark"]["compliance_class"] = compliance
+            data["benchmark"]["scale_factor"] = 0.01
             vr = ValidationResult("test")
             _validate_bundle(data, vr)
             assert not vr.ok
-            assert any("compliance_class" in e for e in vr.errors)
+            assert any("not accepted for public submissions" in e for e in vr.errors)
 
     def test_official_compliance_passes(self):
         data = _minimal_bundle()
@@ -2099,7 +2110,7 @@ class TestSubmissionDeterministicGates:
         vr = ValidationResult("test")
         _validate_bundle(data, vr)
         assert not vr.ok
-        assert any("unofficial_nonstandard" in e for e in vr.errors)
+        assert any("gateway_routed" in e for e in vr.errors)
 
     def test_gateway_routed_bundle_is_allowed_on_mirror_lane(self):
         data = _minimal_bundle()
@@ -2959,6 +2970,8 @@ class TestInternalSourceComplianceExemption:
         data = _minimal_bundle()
         if compliance is not None:
             data["benchmark"]["compliance_class"] = compliance
+        if compliance in self.REFUSED:
+            data["benchmark"]["scale_factor"] = 0.01
         bundle = tmp_path / "result.json"
         bundle.write_text(json.dumps(data), encoding="utf-8")
         manifest = {
@@ -2982,29 +2995,30 @@ class TestInternalSourceComplianceExemption:
         bundle = self._bundle(tmp_path, compliance, source)
         (vr,) = validate_bundles([bundle], require_manifest=True, trust_internal_source=True)
         assert not vr.ok
-        assert any("compliance_class" in e for e in vr.errors)
+        assert any("not accepted for public submissions" in e or "compliance_class" in e for e in vr.errors)
 
     @pytest.mark.parametrize("compliance", REFUSED)
     def test_bundle_without_manifest_is_rejected(self, tmp_path, compliance):
         data = _minimal_bundle()
         data["benchmark"]["compliance_class"] = compliance
+        data["benchmark"]["scale_factor"] = 0.01
         bundle = tmp_path / "result.json"
         bundle.write_text(json.dumps(data), encoding="utf-8")
         (vr,) = validate_bundles([bundle], trust_internal_source=True)
         assert not vr.ok
-        assert any("compliance_class" in e for e in vr.errors)
+        assert any("not accepted for public submissions" in e or "compliance_class" in e for e in vr.errors)
 
     def test_internal_manifest_naming_another_bundle_does_not_exempt(self, tmp_path):
         bundle = self._bundle(tmp_path, "unofficial_subscale", "internal", bundle_file="other.json")
         (vr,) = validate_bundles([bundle], trust_internal_source=True)
         assert not vr.ok
-        assert any("compliance_class" in e for e in vr.errors)
+        assert any("not accepted for public submissions" in e or "compliance_class" in e for e in vr.errors)
 
     def test_internal_source_exemption_does_not_apply_to_invalid_class_values(self, tmp_path):
         bundle = self._bundle(tmp_path, "Official", "internal")
         (vr,) = validate_bundles([bundle], require_manifest=True, trust_internal_source=True)
         assert not vr.ok
-        assert any("compliance_class" in e for e in vr.errors)
+        assert any("not accepted for public submissions" in e or "compliance_class" in e for e in vr.errors)
 
     def test_internal_source_exempts_gateway_routed_bundle(self, tmp_path):
         data = _minimal_bundle()
@@ -3031,7 +3045,7 @@ class TestInternalSourceComplianceExemption:
         bundle = self._bundle(tmp_path, compliance, "internal")
         (vr,) = validate_bundles([bundle], require_manifest=True)
         assert not vr.ok
-        assert any("compliance_class" in e for e in vr.errors)
+        assert any("not accepted for public submissions" in e or "compliance_class" in e for e in vr.errors)
 
     @pytest.mark.parametrize("compliance", REFUSED)
     def test_cli_exempts_internal_bundle_only_with_trust_flag(self, tmp_path, compliance):
@@ -3163,7 +3177,9 @@ class TestOverrideContract:
 
     def test_plateau_and_floor_promoted_to_overrides(self):
         vr = ValidationResult("test")
-        _validate_bundle(_timing_bundle(_flat_queries(base=4400.0)), vr)
+        _validate_bundle(
+            _timing_bundle(_flat_queries(base=4400.0), scale_factor=0.1), vr, allow_partial_validation=True
+        )
         assert vr.ok, vr.errors
         assert sorted(vr.override_required) == ["small-scale-floor", "timing-plateau"]
 
@@ -3209,7 +3225,7 @@ class TestOverrideContract:
 
     def test_exit_contract_community_vs_mirror(self, tmp_path):
         bundle = tmp_path / "flat.json"
-        bundle.write_text(json.dumps(_timing_bundle(_flat_queries(base=4400.0))), encoding="utf-8")
+        bundle.write_text(json.dumps(_timing_bundle(_flat_queries(base=4400.0), scale_factor=0.1)), encoding="utf-8")
         assert main([str(bundle)]) == 1
         assert main([str(bundle), "--allow-partial-validation"]) == 0
 
@@ -3240,7 +3256,7 @@ def _override_doc(*rules, **kw):
 
 def _write_plateau_bundle(tmp_path, name="flat.json"):
     bundle = tmp_path / name
-    bundle.write_text(json.dumps(_timing_bundle(_flat_queries(base=4400.0))), encoding="utf-8")
+    bundle.write_text(json.dumps(_timing_bundle(_flat_queries(base=4400.0), scale_factor=0.1)), encoding="utf-8")
     return bundle
 
 
@@ -3310,7 +3326,7 @@ class TestOverrideSatisfaction:
         bundle.with_name("flat.override.json").write_text(
             json.dumps(_override_doc("timing-plateau", "small-scale-floor")), encoding="utf-8"
         )
-        (vr,) = validate_bundles([bundle])
+        (vr,) = validate_bundles([bundle], allow_partial_validation=True)
         assert vr.ok, vr.errors
         assert vr.override_required == ["timing-plateau", "small-scale-floor"]
         assert unsatisfied_override_rules([vr]) == {}
@@ -3320,7 +3336,7 @@ class TestOverrideSatisfaction:
 
         bundle = _write_plateau_bundle(tmp_path)
         bundle.with_name("flat.override.json").write_text(json.dumps(_override_doc("timing-plateau")), encoding="utf-8")
-        (vr,) = validate_bundles([bundle])
+        (vr,) = validate_bundles([bundle], allow_partial_validation=True)
         assert vr.ok, vr.errors
         assert unsatisfied_override_rules([vr]) == {str(bundle): ["small-scale-floor"]}
 
@@ -3347,7 +3363,7 @@ class TestOverrideSatisfaction:
         bundle.with_name("flat.override.json").write_text(
             json.dumps(_override_doc("timing-plateau", "small-scale-floor")), encoding="utf-8"
         )
-        assert main([str(bundle)]) == 0
+        assert main([str(bundle), "--allow-partial-validation"]) == 0
         out = capsys.readouterr().out
         assert "override(s) required" in out
 
@@ -3505,7 +3521,7 @@ def _row_count_bundle(status: str, row_statuses: list[str | None], scale_factor:
     data = _minimal_bundle()
     data["summary"]["validation"] = status
     if scale_factor is None:
-        scale_factor = 10.0 if status == "no_reference" else 0.01
+        scale_factor = 10.0 if status == "no_reference" else 1.0
     data["benchmark"]["scale_factor"] = scale_factor
     for index, row in enumerate(data["queries"]):
         row.pop("row_count_validation", None)

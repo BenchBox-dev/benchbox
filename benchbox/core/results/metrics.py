@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import math
 import statistics
-from decimal import ROUND_FLOOR, Decimal
 from typing import TYPE_CHECKING
 
-from benchbox.core.results.subscale_policy import bundle_compliance_class
+from benchbox.core.results import corpus_rule, corpus_score
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -16,11 +15,6 @@ NON_POWER_TEST_TYPES = frozenset({"throughput", "maintenance"})
 UNOFFICIAL_COMPLIANCE_CLASSES = frozenset({"unofficial_subscale", "unofficial_nonstandard"})
 TPC_QUERIES_PER_STREAM = {"tpch": 22, "tpcds": 99}
 _TPC_BENCHMARK_LABELS = {"tpch": "TPC-H", "tpcds": "TPC-DS"}
-QPHDS_MIN_STREAMS = 4
-
-
-def _positive_finite(value: object) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value > 0
 
 
 def percentile_ms(times_ms: Sequence[float], p: float) -> float:
@@ -100,9 +94,7 @@ class TPCMetricsCalculator:
 
     @staticmethod
     def calculate_qphh_at_size(power_at_size: float, throughput_at_size: float) -> float:
-        if power_at_size <= 0 or throughput_at_size <= 0:
-            return 0.0
-        return round(math.sqrt(power_at_size * throughput_at_size), 1)
+        return corpus_score.qphh_at_size(power_at_size, throughput_at_size)
 
     @staticmethod
     def qphds_input_problems(
@@ -113,27 +105,9 @@ class TPCMetricsCalculator:
         maintenance_seconds: Sequence[float | None],
         load_seconds: float | None,
     ) -> list[str]:
-        problems: list[str] = []
-        if not _positive_finite(scale_factor):
-            problems.append("scale factor is not a positive number")
-        if (
-            isinstance(num_streams, bool)
-            or not isinstance(num_streams, int)
-            or num_streams < QPHDS_MIN_STREAMS
-            or num_streams % 2
-        ):
-            problems.append(f"stream count must be an even number of at least {QPHDS_MIN_STREAMS}; got {num_streams}")
-        for label, value in (("Power Test", power_seconds), ("database load", load_seconds)):
-            if not _positive_finite(value):
-                problems.append(f"{label} elapsed time is missing or not positive")
-        for label, values in (("Throughput Test", throughput_seconds), ("Data Maintenance Test", maintenance_seconds)):
-            if len(values) != 2:
-                problems.append(f"two {label} elapsed times are required; got {len(values)}")
-                continue
-            for index, value in enumerate(values, start=1):
-                if not _positive_finite(value):
-                    problems.append(f"{label} {index} elapsed time is missing or not positive")
-        return problems
+        return corpus_score.qphds_input_problems(
+            scale_factor, num_streams, power_seconds, throughput_seconds, maintenance_seconds, load_seconds
+        )
 
     @staticmethod
     def calculate_qphds_terms(
@@ -149,13 +123,9 @@ class TPCMetricsCalculator:
         )
         if problems:
             raise ValueError("; ".join(problems))
-        return {
-            "q": float(TPC_QUERIES_PER_STREAM["tpcds"] * num_streams),
-            "t_pt_hours": power_seconds * num_streams / 3600.0,
-            "t_tt_hours": sum(throughput_seconds) / 3600.0,
-            "t_dm_hours": sum(maintenance_seconds) / 3600.0,
-            "t_ld_hours": 0.01 * num_streams * load_seconds / 3600.0,
-        }
+        return corpus_score.qphds_terms(
+            num_streams, power_seconds, throughput_seconds, maintenance_seconds, load_seconds
+        )
 
     @staticmethod
     def calculate_qphds_at_size(
@@ -166,20 +136,18 @@ class TPCMetricsCalculator:
         maintenance_seconds: Sequence[float],
         load_seconds: float,
     ) -> float:
-        terms = TPCMetricsCalculator.calculate_qphds_terms(
+        problems = TPCMetricsCalculator.qphds_input_problems(
             scale_factor, num_streams, power_seconds, throughput_seconds, maintenance_seconds, load_seconds
         )
-        product = terms["t_pt_hours"] * terms["t_tt_hours"] * terms["t_dm_hours"] * terms["t_ld_hours"]
-        return TPCMetricsCalculator.floor_qphds(scale_factor, terms["q"], product)
+        if problems:
+            raise ValueError("; ".join(problems))
+        return corpus_score.qphds_at_size(
+            scale_factor, num_streams, power_seconds, throughput_seconds, maintenance_seconds, load_seconds
+        )
 
     @staticmethod
     def floor_qphds(scale_factor: float, q: float, hours_product: float) -> float:
-        value = (
-            Decimal(repr(float(scale_factor)))
-            * Decimal(repr(float(q)))
-            / Decimal(repr(float(hours_product))).sqrt().sqrt()
-        )
-        return float(value.to_integral_value(rounding=ROUND_FLOOR))
+        return corpus_score.floor_qphds(scale_factor, q, hours_product)
 
     @staticmethod
     def calculate_geometric_mean(times: Sequence[float]) -> float:
@@ -206,14 +174,18 @@ class TPCMetricsCalculator:
         raise ValueError("Could not auto-detect scale factor. Please specify --scale-factor")
 
     @staticmethod
+    def _composite_scale_refusal(data: dict) -> str | None:
+        facts = corpus_rule.facts_from_result(data)
+        return corpus_rule.composite_scale_refusal(
+            facts.benchmark, facts.scale_factor, gateway_routed=facts.gateway_routed
+        )
+
+    @staticmethod
     def metrics_refusal_reason(data: dict, label: str) -> str | None:
         summary = data.get("summary", {})
-        tpc_metrics = summary.get("tpc_metrics") or {}
-        if tpc_metrics.get("suppressed"):
-            return f"{label} results have suppressed TPC metrics ({tpc_metrics.get('reason', 'suppressed')})"
-        compliance_class = bundle_compliance_class(data)
-        if compliance_class in UNOFFICIAL_COMPLIANCE_CLASSES:
-            return f"{label} results are {compliance_class} and carry no official TPC metrics"
+        refusal = TPCMetricsCalculator._composite_scale_refusal(data)
+        if refusal:
+            return f"{label} results are {refusal} and carry no official TPC metrics"
         failed = (summary.get("queries") or {}).get("failed") or 0
         if failed:
             return f"{label} results contain {failed} failed queries"
@@ -224,122 +196,27 @@ class TPCMetricsCalculator:
 
     @staticmethod
     def _power_refresh_evidence(power_phase: dict | None) -> tuple[bool, int | None]:
-        if not isinstance(power_phase, dict):
-            return False, None
-        first_set = power_phase.get("refresh_first_set")
-        functions = power_phase.get("refresh_functions")
-        if isinstance(first_set, bool) or not isinstance(first_set, int) or first_set < 1:
-            return False, None
-        if not isinstance(functions, list) or len(functions) != 2:
-            return False, first_set
-        for expected, function in zip(("RF1", "RF2"), functions, strict=True):
-            update_set = function.get("update_set") if isinstance(function, dict) else None
-            duration_ms = function.get("duration_ms") if isinstance(function, dict) else None
-            if (
-                not isinstance(function, dict)
-                or function.get("function") != expected
-                or isinstance(update_set, bool)
-                or update_set != first_set
-                or function.get("status") != "SUCCESS"
-                or isinstance(duration_ms, bool)
-                or not isinstance(duration_ms, (int, float))
-                or not math.isfinite(duration_ms)
-                or duration_ms < 0
-            ):
-                return False, first_set
-        return True, first_set
+        return corpus_score.power_refresh_evidence(power_phase)
 
     @staticmethod
     def _throughput_refresh_evidence(
         throughput_phase: dict | None,
         expected_streams: int | None = None,
     ) -> tuple[bool, int | None, int]:
-        if not isinstance(throughput_phase, dict):
-            return False, None, 0
-        refresh_stream = throughput_phase.get("refresh_stream")
-        if not isinstance(refresh_stream, dict):
-            return False, None, 0
-        first_set = refresh_stream.get("first_set")
-        if isinstance(first_set, bool) or not isinstance(first_set, int) or first_set < 1:
-            return False, None, 0
-        pairs = refresh_stream.get("pairs")
-        if not isinstance(pairs, list):
-            return False, first_set, 0
-        stream_count = throughput_phase.get("num_streams")
-        if isinstance(stream_count, bool) or not isinstance(stream_count, int):
-            stream_count = (
-                expected_streams
-                if isinstance(expected_streams, int) and not isinstance(expected_streams, bool)
-                else len(throughput_phase.get("stream_results") or [])
-            )
-        pair_count = refresh_stream.get("pair_count")
-        start_time = refresh_stream.get("start_time")
-        end_time = refresh_stream.get("end_time")
-        valid = (
-            refresh_stream.get("status") == "COMPLETED"
-            and isinstance(start_time, str)
-            and bool(start_time)
-            and isinstance(end_time, str)
-            and bool(end_time)
-            and stream_count > 0
-            and len(pairs) == stream_count
-            and isinstance(pair_count, int)
-            and not isinstance(pair_count, bool)
-            and pair_count == len(pairs)
-        )
-        for offset, pair in enumerate(pairs):
-            set_id = first_set + offset
-            functions = pair.get("functions") if isinstance(pair, dict) else None
-            pair_set = pair.get("update_set") if isinstance(pair, dict) else None
-            if (
-                not isinstance(pair, dict)
-                or isinstance(pair_set, bool)
-                or pair_set != set_id
-                or pair.get("status") != "SUCCESS"
-                or not isinstance(functions, list)
-                or len(functions) != 2
-            ):
-                valid = False
-                continue
-            for expected, function in zip(("RF1", "RF2"), functions, strict=True):
-                update_set = function.get("update_set") if isinstance(function, dict) else None
-                duration_ms = function.get("duration_ms") if isinstance(function, dict) else None
-                if (
-                    not isinstance(function, dict)
-                    or function.get("function") != expected
-                    or isinstance(update_set, bool)
-                    or update_set != set_id
-                    or function.get("status") != "SUCCESS"
-                    or isinstance(duration_ms, bool)
-                    or not isinstance(duration_ms, (int, float))
-                    or not math.isfinite(duration_ms)
-                    or duration_ms < 0
-                ):
-                    valid = False
-        return valid, first_set, stream_count
+        return corpus_score.throughput_refresh_evidence(throughput_phase, expected_streams)
 
     @staticmethod
     def refresh_included(power_phase: dict | None, throughput_phase: dict | None) -> bool:
-        power_present = isinstance(power_phase, dict)
-        throughput_present = isinstance(throughput_phase, dict)
-        if power_present and throughput_present:
-            power_valid, _power_set = TPCMetricsCalculator._power_refresh_evidence(power_phase)
-            throughput_valid, _first_set, _streams = TPCMetricsCalculator._throughput_refresh_evidence(throughput_phase)
-            return power_valid and throughput_valid
-        if power_present:
-            return TPCMetricsCalculator._power_refresh_evidence(power_phase)[0]
-        if throughput_present:
-            return TPCMetricsCalculator._throughput_refresh_evidence(throughput_phase)[0]
-        return False
+        return corpus_score.refresh_included(power_phase, throughput_phase)
 
     @staticmethod
     def qphh_unavailable_reasons(power_data: dict, throughput_data: dict) -> list[str]:
         reasons = []
         for label, data in (("Power", power_data), ("Throughput", throughput_data)):
             benchmark = data.get("benchmark") or {}
-            compliance_class = bundle_compliance_class(data)
-            if compliance_class != "official":
-                reasons.append(f"{label} results are not official compliance ({compliance_class or 'unspecified'})")
+            refusal = TPCMetricsCalculator._composite_scale_refusal(data)
+            if refusal:
+                reasons.append(f"{label} results are not official compliance ({refusal})")
             if benchmark.get("id") != "tpch":
                 reasons.append(f"{label} results are not TPC-H")
             failed = (data.get("summary") or {}).get("queries", {}).get("failed", 0)
@@ -348,36 +225,12 @@ class TPCMetricsCalculator:
             if (data.get("run") or {}).get("query_subset"):
                 reasons.append(f"{label} results use a query subset")
 
-        power_phase = (power_data.get("phases") or {}).get("power_test")
-        if not isinstance(power_phase, dict) or power_phase.get("status") != "COMPLETED":
-            reasons.append("Power phase did not complete")
-        elif power_phase.get("query_count") != 22:
-            reasons.append("Power phase must complete all 22 TPC-H queries")
-
-        power_refresh_valid, power_first_set = TPCMetricsCalculator._power_refresh_evidence(power_phase)
-        if not power_refresh_valid:
-            reasons.append("Power phase must contain successful RF1 and RF2 evidence for one update set")
-
-        throughput_phase = (throughput_data.get("phases") or {}).get("throughput_test")
-        if not isinstance(throughput_phase, dict) or throughput_phase.get("status") != "COMPLETED":
-            reasons.append("Throughput phase did not complete")
-        stream_count = throughput_phase.get("num_streams") if isinstance(throughput_phase, dict) else None
-        if isinstance(stream_count, bool) or not isinstance(stream_count, int):
-            stream_count = (
-                len(throughput_phase.get("stream_results") or []) if isinstance(throughput_phase, dict) else 0
+        reasons.extend(
+            corpus_score.qphh_structure_problems(
+                (power_data.get("phases") or {}).get("power_test"),
+                (throughput_data.get("phases") or {}).get("throughput_test"),
             )
-        if stream_count < 2:
-            reasons.append("QphH requires at least two throughput streams")
-
-        throughput_refresh_valid, throughput_first_set, actual_stream_count = (
-            TPCMetricsCalculator._throughput_refresh_evidence(throughput_phase, stream_count)
         )
-        if not throughput_refresh_valid:
-            reasons.append("Throughput phase must complete one successful RF1/RF2 pair per query stream")
-        if power_first_set is not None and throughput_first_set != power_first_set + 1:
-            reasons.append("Throughput refresh sets must start at the set immediately after the Power set")
-        if actual_stream_count != stream_count:
-            reasons.append("Throughput refresh pair count must match the requested stream count")
         return list(dict.fromkeys(reasons))
 
     @staticmethod

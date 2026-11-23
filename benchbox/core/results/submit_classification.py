@@ -5,6 +5,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.results import corpus_rule
 from benchbox.core.results.loader import (
     ResultLoadError,
     UnsupportedSchemaError,
@@ -15,8 +16,7 @@ from benchbox.core.results.status import (
     result_non_clean_reason,
     result_unvalidated_reason,
 )
-from benchbox.core.results.subscale_policy import is_nonstandard_scale, result_compliance_class, result_gateway_routed
-from benchbox.validation.bundle import CLI_REFUSED_COMPLIANCE_CLASSES
+from benchbox.core.results.subscale_policy import normalize_tpc_benchmark_id, result_gateway_routed
 
 
 class SubmitTerminalState(str, Enum):
@@ -29,12 +29,27 @@ class SubmitTerminalState(str, Enum):
     missing_manifest = "missing_manifest"
 
 
+def result_public_refusal(result: Any) -> str | None:
+    return corpus_rule.public_refusal(
+        getattr(result, "benchmark_id", None) or normalize_tpc_benchmark_id(getattr(result, "benchmark_name", None)),
+        getattr(result, "scale_factor", None),
+        gateway_routed=result_gateway_routed(result),
+    )
+
+
+PUBLIC_REFUSAL_REASONS = {
+    corpus_rule.HELD_GATEWAY_ROUTED: "unofficial_nonstandard",
+    corpus_rule.CLASS_SUBSCALE: "unofficial_subscale",
+}
+
+
+def result_public_refusal_reason(result: Any) -> str | None:
+    refusal = result_public_refusal(result)
+    return None if refusal is None else PUBLIC_REFUSAL_REASONS[refusal]
+
+
 def result_refused_at_submission(result: Any) -> bool:
-    if result_gateway_routed(result):
-        return True
-    if result_compliance_class(result) not in CLI_REFUSED_COMPLIANCE_CLASSES:
-        return False
-    return not is_nonstandard_scale(getattr(result, "benchmark_id", None), getattr(result, "scale_factor", None))
+    return result_public_refusal(result) is not None
 
 
 def classify_loaded_result(result: Any) -> SubmitTerminalState:

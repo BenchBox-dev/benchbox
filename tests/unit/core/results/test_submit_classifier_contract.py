@@ -26,6 +26,7 @@ def _write_result_json(
     failed: int = 0,
     validation: str = "passed",
     compliance_class: str | None = None,
+    scale_factor: float = 1.0,
     translation_status: str | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -33,7 +34,12 @@ def _write_result_json(
     payload: dict = {
         "version": "2.1",
         "run": {"id": "contract", "timestamp": "2026-01-01T00:00:00", "total_duration_ms": 1},
-        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 0.01, "test_type": "power"},
+        "benchmark": {
+            "id": "tpch",
+            "name": "TPC-H",
+            "scale_factor": scale_factor,
+            "test_type": "power",
+        },
         "platform": {"name": "DuckDB"},
         "summary": {
             "queries": {"total": 1, "passed": passed, "failed": failed},
@@ -83,12 +89,13 @@ def _loadable_cases(tmp_path: Path) -> list[tuple[str, Path, SubmitTerminalState
     )
 
     unofficial = tmp_path / "unofficial.json"
-    _write_result_json(unofficial, compliance_class="unofficial_subscale")
+    _write_result_json(unofficial, compliance_class="unofficial_subscale", scale_factor=0.01)
 
     unofficial_and_unvalidated = tmp_path / "unofficial-and-unvalidated.json"
     _write_result_json(
         unofficial_and_unvalidated,
         failed=0,
+        scale_factor=0.01,
         validation="not_validated",
         compliance_class="unofficial_subscale",
     )

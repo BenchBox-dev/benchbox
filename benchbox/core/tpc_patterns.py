@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from typing import Any, Optional, Union
 
+from benchbox.core.results import corpus_rule
 from benchbox.core.tpc_disclaimer import derived_results_disclaimer
 
 
@@ -51,12 +52,15 @@ def generate_official_benchmark_audit_trail(
 def classify_official_scale_run(
     scale_factor: float,
     *,
+    benchmark_id: str,
     official: bool,
-    scale_points: frozenset,
     compliance_enum: Any,
 ) -> Any:
-    if scale_factor < 1.0:
+    outcome = corpus_rule.derive_outcome(
+        corpus_rule.Facts(benchmark_id, scale_factor, frozenset({corpus_rule.PHASE_POWER}))
+    )
+    if outcome.class_name == corpus_rule.CLASS_SUBSCALE:
         return compliance_enum.UNOFFICIAL_SUBSCALE
-    if official and scale_factor in scale_points:
-        return compliance_enum.OFFICIAL
-    return compliance_enum.UNOFFICIAL_NONSTANDARD
+    if outcome.class_name == corpus_rule.CLASS_NONSTANDARD_SCALE:
+        return compliance_enum.UNOFFICIAL_NONSTANDARD
+    return compliance_enum.OFFICIAL if official else None

@@ -190,9 +190,12 @@ draft mirror PR vs `published-results` carrying the change. Maintainers
 review and flip ready when the develop change is intended to surface on
 the public corpus branch.
 
-The corpus-rule module and its data file are covered by that workflow:
-`benchbox/core/results/corpus_rule.py` and
-`benchbox/core/results/corpus_rule_data.json` are in the workflow's push
+The corpus-rule module, its data file and the stdlib-only score function
+(`benchbox/core/results/corpus_score.py`, which recomputes Power@Size and
+throughput from a result's timings) are covered by that workflow:
+`benchbox/core/results/corpus_rule.py`,
+`benchbox/core/results/corpus_rule_data.json` and
+`benchbox/core/results/corpus_score.py` are in the workflow's push
 trigger paths, its drift comparison paths, its copy list and its `git add`
 list.
 

@@ -190,7 +190,7 @@ def test_power_time_without_query_durations_withholds_qphds(monkeypatch: pytest.
     result, _order, _adapter = _run(monkeypatch, tmp_path, power_query_results=[{}] * 103)
 
     evaluation = evaluate_qphds(
-        result.phases, scale_factor=1.0, compliance_class="official", failed_query_count=0, query_subset=None
+        result.phases, scale_factor=1.0, scale_refusal=None, failed_query_count=0, query_subset=None
     )
 
     assert evaluation.qphds_at_size is None
@@ -231,9 +231,7 @@ def test_load_time_and_both_rounds_reach_the_result_and_feed_the_metric(
     assert phases.maintenance_test_2.duration_ms == 20_000
     assert [stream.stream_id for stream in phases.throughput_test_2.streams] == [5, 6, 7, 8]
 
-    evaluation = evaluate_qphds(
-        phases, scale_factor=1.0, compliance_class="official", failed_query_count=0, query_subset=None
-    )
+    evaluation = evaluate_qphds(phases, scale_factor=1.0, scale_refusal=None, failed_query_count=0, query_subset=None)
 
     assert evaluation.unavailable == []
     assert evaluation.qphds_at_size == 11453.0

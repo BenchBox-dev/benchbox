@@ -15,8 +15,9 @@ def _minimal_bundle(
     platform: str = "duckdb",
     benchmark: str = "tpch",
     compliance_class: str | None = None,
+    scale_factor: float = 1.0,
 ) -> dict:
-    benchmark_payload = {"id": benchmark, "scale_factor": 0.01}
+    benchmark_payload = {"id": benchmark, "scale_factor": scale_factor}
     if compliance_class is not None:
         benchmark_payload["compliance_class"] = compliance_class
     return {
@@ -65,7 +66,7 @@ def test_run_validate_writes_rollup_and_computes_counts_without_subprocess(tmp_p
     _write_bundle(results_dir / "error.json", {"version": "2.0"})
     _write_bundle(
         results_dir / "refused.json",
-        _minimal_bundle(benchmark="tpcds", compliance_class="unofficial_subscale"),
+        _minimal_bundle(benchmark="tpcds", scale_factor=0.01),
     )
 
     out = validate.run_validate(results_dir, output_tsv=tmp_path / "rollup.tsv", floor=0.80)
@@ -83,7 +84,7 @@ def test_run_validate_writes_rollup_and_computes_counts_without_subprocess(tmp_p
     assert "clean.json\tclean\t0\t0" in text
     assert "warning.json\twarning_only\t0\t1" in text
     warning_row = next(
-        line for line in text.splitlines() if line.startswith("MysteryDB\ttpch\t0.01\t") and "warning.json" in line
+        line for line in text.splitlines() if line.startswith("MysteryDB\ttpch\t1.0\t") and "warning.json" in line
     )
     assert warning_row.split("\t")[7] != ""
     assert "error.json\terror\t" in text
@@ -110,7 +111,7 @@ def test_run_validate_excludes_refused_from_denominator(tmp_path: Path):
     clean = _write_bundle(tmp_path / "clean.json", _minimal_bundle())
     refused = _write_bundle(
         tmp_path / "refused.json",
-        _minimal_bundle(benchmark="tpcds", compliance_class="unofficial_nonstandard"),
+        _minimal_bundle(benchmark="tpcds", scale_factor=0.01),
     )
 
     out = validate.run_validate([clean, refused], output_tsv=tmp_path / "rollup.tsv", floor=0.80)

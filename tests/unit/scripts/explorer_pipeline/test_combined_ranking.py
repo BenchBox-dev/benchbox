@@ -16,7 +16,7 @@ from scripts.publication.check_explorer_compat import (
     create_in_memory_schema,
     validate_database_queries,
 )
-from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE, combined_bundle
+from tests.unit.scripts.explorer_pipeline.conftest import combined_bundle, scored_minimal_bundle
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
@@ -31,9 +31,8 @@ def _write(directory: Path, name: str, payload: dict) -> Path:
 
 
 def _bundle(name: str, *, benchmark: str = "tpch", qph: float = 250.0, power: float = 1234.5, **kwargs) -> dict:
-    payload = combined_bundle(name, benchmark=benchmark, qph=qph, **kwargs)
+    payload = combined_bundle(name, benchmark=benchmark, qph=qph, power=power, **kwargs)
     payload["run"]["id"] = name
-    payload["summary"]["tpc_metrics"]["power_at_size"] = power
     return payload
 
 
@@ -73,20 +72,25 @@ def test_power_and_throughput_phases_keep_their_metrics(family: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ("family_id", "field"),
-    [("tpch", "qphh_at_size"), ("tpcds", "qphds_at_size")],
+    ("family_id", "field", "expected"),
+    [("tpch", "qphh_at_size", 321.5), ("tpcds", "qphds_at_size", 321.0)],
 )
 def test_clean_combined_bundle_exposes_the_composite_beside_power_and_throughput(
-    tmp_path: Path, family_id: str, field: str
+    tmp_path: Path, family_id: str, field: str, expected: float
 ) -> None:
-    entry, detail = _entry(tmp_path, _bundle("duckdb", benchmark=family_id, qph=321.5))
+    payload = _bundle("platform-a", benchmark=family_id, qph=321.5)
+    executed = (99 if family_id == "tpcds" else 22) * payload["phases"]["throughput_test"]["num_streams"]
+    first_round_ms = payload["phases"]["throughput_test"]["duration_ms"]
+    entry, detail = _entry(tmp_path, payload)
 
     assert canonical_phase(entry.test_type) == "combined"
-    assert getattr(entry, field) == pytest.approx(321.5)
-    assert getattr(detail, field) == pytest.approx(321.5)
+    assert getattr(entry, field) == pytest.approx(expected)
+    assert getattr(detail, field) == pytest.approx(expected)
     assert entry.power_score == pytest.approx(1234.5)
-    assert entry.throughput_at_size == pytest.approx(3741.26)
-    assert primary_metric_value(entry, get_ranking_config(family_id, "combined").primary_metric) == pytest.approx(321.5)
+    assert entry.throughput_at_size == pytest.approx(executed * 3600 / (first_round_ms / 1000))
+    assert primary_metric_value(entry, get_ranking_config(family_id, "combined").primary_metric) == pytest.approx(
+        expected
+    )
     assert entry.ranking_exclusion_reason is None
     assert detail.ranking_exclusion_reason is None
     assert entry.load_scope == ["schema_creation", "data_loading"]
@@ -136,7 +140,7 @@ def test_combined_bundle_with_a_failed_throughput_or_refresh_step_is_not_rankabl
 
 
 def test_power_bundles_leave_the_composite_columns_empty(tmp_path: Path) -> None:
-    payload = json.loads(json.dumps(MINIMAL_BUNDLE))
+    payload = scored_minimal_bundle()
     payload["summary"]["tpc_metrics"]["qphh_at_size"] = 5.0
     entry, _ = _entry(tmp_path, payload)
 
@@ -194,8 +198,8 @@ def test_combined_cohort_orders_by_the_composite_not_the_power_score(tmp_path: P
     assert [row[0] for row in rows] == ["alpha", "beta"]
     assert [row[2] for row in rows] == ["qphh_at_size", "qphh_at_size"]
     assert [row[3] for row in rows] == [900.0, 100.0]
-    assert rows[0][5] == 10.0
-    assert rows[0][6] == pytest.approx(3741.26)
+    assert rows[0][5] == pytest.approx(10.0)
+    assert rows[0][6] == pytest.approx(900.0**2 / 10.0)
     assert json.loads(rows[0][7]) == ["schema_creation", "data_loading"]
     assert json.loads(rows[0][8]) == {"RF1": False, "RF2": False}
     assert rows[1][8] is None
@@ -308,7 +312,7 @@ def test_read_model_18_leaves_combined_bundles_out(tmp_path: Path) -> None:
 
 
 def _power_bundle() -> dict:
-    payload = json.loads(json.dumps(MINIMAL_BUNDLE))
+    payload = scored_minimal_bundle()
     payload["run"]["id"] = "power-run"
     return payload
 

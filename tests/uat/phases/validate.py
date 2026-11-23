@@ -6,8 +6,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from benchbox.cli.commands.publish import _redacted_publish_source
+from benchbox.core.results import corpus_rule
+from benchbox.core.results.submit_classification import PUBLIC_REFUSAL_REASONS
 from benchbox.validation.bundle import (
-    CLI_REFUSED_COMPLIANCE_CLASSES,
     ValidationResult,
     discover_bundles,
     validate_bundles,
@@ -95,7 +96,7 @@ def _build_rows(bundle_paths: Sequence[Path]) -> list[_RollupRow]:
     for bundle_path in bundle_paths:
         platform, benchmark, scale, compliance_class = _read_bundle_metadata(bundle_path)
 
-        if compliance_class in CLI_REFUSED_COMPLIANCE_CLASSES:
+        if compliance_class is not None:
             rows.append(
                 _RollupRow(
                     platform=platform,
@@ -190,9 +191,13 @@ def _read_bundle_metadata(bundle_path: Path) -> tuple[str, str, str, str | None]
         scale_factor = raw_benchmark.get("scale_factor")
         if scale_factor is not None:
             scale = str(scale_factor)
-        raw_compliance = raw_benchmark.get("compliance_class")
-        if isinstance(raw_compliance, str):
-            compliance_class = raw_compliance
+        raw_gateway = raw_platform.get("gateway") if isinstance(raw_platform, dict) else None
+        refusal = corpus_rule.public_refusal(
+            benchmark_id if isinstance(benchmark_id, str) else None,
+            scale_factor if isinstance(scale_factor, int | float) and not isinstance(scale_factor, bool) else None,
+            gateway_routed=isinstance(raw_gateway, dict) and raw_gateway.get("routed") is True,
+        )
+        compliance_class = None if refusal is None else PUBLIC_REFUSAL_REASONS[refusal]
 
     return platform, benchmark, scale, compliance_class
 

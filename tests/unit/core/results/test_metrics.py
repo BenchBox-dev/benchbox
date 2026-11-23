@@ -264,16 +264,16 @@ def _throughput_file(
 
 
 class TestDeriveFromResultFiles:
-    def test_suppressed_metrics_are_refused(self) -> None:
+    def test_a_suppression_marker_is_not_read(self) -> None:
         suppressed = {"suppressed": True, "reason": "compliance_class=unofficial_subscale"}
-        with pytest.raises(ValueError, match="suppressed"):
-            TPCMetricsCalculator.compute_qphh_result(
-                _power_file({1: 1.0}), _throughput_file(tpc_metrics=suppressed), scale_factor=1.0
-            )
-        with pytest.raises(ValueError, match="suppressed"):
-            TPCMetricsCalculator.compute_qphh_result(
-                _power_file({1: 1.0}, tpc_metrics=suppressed), _throughput_file(), scale_factor=1.0
-            )
+        marked = TPCMetricsCalculator.compute_qphh_result(
+            _power_file({1: 1.0}, tpc_metrics=suppressed),
+            _throughput_file(tpc_metrics=suppressed),
+            scale_factor=1.0,
+        )
+        plain = TPCMetricsCalculator.compute_qphh_result(_power_file({1: 1.0}), _throughput_file(), scale_factor=1.0)
+
+        assert marked == plain
 
     @pytest.mark.parametrize("which", ["power", "throughput"])
     def test_failed_queries_are_refused(self, which: str) -> None:
@@ -310,16 +310,33 @@ class TestDeriveFromResultFiles:
         assert result["power_at_size"] == pytest.approx(3600.0 / (0.01 * 0.01) ** (1.0 / 24.0))
         assert result["power_test_time"] == pytest.approx(22.02)
 
-    @pytest.mark.parametrize("compliance_class", ["unofficial_subscale", "unofficial_nonstandard"])
-    def test_unofficial_bundles_without_a_suppressed_marker_are_refused(self, compliance_class: str) -> None:
-        legacy = _throughput_file()
-        legacy["benchmark"]["compliance_class"] = compliance_class
-        with pytest.raises(ValueError, match=compliance_class):
-            TPCMetricsCalculator.compute_qphh_result(_power_file({1: 1.0}), legacy, scale_factor=1.0)
-        legacy_power = _power_file({1: 1.0})
-        legacy_power["benchmark"]["compliance_class"] = compliance_class
-        with pytest.raises(ValueError, match=compliance_class):
-            TPCMetricsCalculator.compute_qphh_result(legacy_power, _throughput_file(), scale_factor=1.0)
+    @pytest.mark.parametrize(("scale", "reason"), [(0.01, "below the standard scale"), (2.0, "non-standard scale")])
+    def test_results_at_a_scale_without_official_metrics_are_refused(self, scale: float, reason: str) -> None:
+        small_throughput = _throughput_file()
+        small_throughput["benchmark"]["scale_factor"] = scale
+        with pytest.raises(ValueError, match=reason):
+            TPCMetricsCalculator.compute_qphh_result(_power_file({1: 1.0}), small_throughput, scale_factor=1.0)
+        small_power = _power_file({1: 1.0})
+        small_power["benchmark"]["scale_factor"] = scale
+        with pytest.raises(ValueError, match=reason):
+            TPCMetricsCalculator.compute_qphh_result(small_power, _throughput_file(), scale_factor=1.0)
+
+    @pytest.mark.parametrize("stamp", [None, "official", "unofficial_subscale", "unofficial_nonstandard"])
+    def test_the_stamped_class_never_changes_the_availability_or_value(self, stamp: str | None) -> None:
+        expected = TPCMetricsCalculator.compute_qphh_result(
+            _power_file({1: 100.0, 2: 10.0, 3: 1.0}), _throughput_file(), scale_factor=1.0
+        )
+        power = _power_file({1: 100.0, 2: 10.0, 3: 1.0})
+        throughput = _throughput_file()
+        for data in (power, throughput):
+            data["benchmark"].pop("compliance_class", None)
+            if stamp is not None:
+                data["benchmark"]["compliance_class"] = stamp
+
+        assert TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=1.0) == expected
+        assert TPCMetricsCalculator.qphh_unavailable_reasons(
+            power, throughput
+        ) == TPCMetricsCalculator.qphh_unavailable_reasons(_power_file({1: 100.0, 2: 10.0, 3: 1.0}), _throughput_file())
 
     def test_official_bundles_are_accepted(self) -> None:
         power = _power_file({1: 1.0})

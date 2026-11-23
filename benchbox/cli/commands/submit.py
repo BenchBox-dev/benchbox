@@ -55,8 +55,8 @@ from benchbox.core.results.submission_history import record_hosted_submission
 from benchbox.core.results.submit_classification import (
     SubmitTerminalState,
     classify_loaded_result,
+    result_public_refusal_reason,
 )
-from benchbox.core.results.subscale_policy import result_compliance_class
 from benchbox.core.results.tpcdi_audit import LEGACY_TPCDI_REFUSAL, legacy_tpcdi_note
 from benchbox.validation.bundle import (
     COMPANION_SUFFIXES,
@@ -345,15 +345,15 @@ _TPC_BENCHMARK_NAME = re.compile(r"^tpc-?(h|ds)(?: benchmark)?$")
 
 
 def _unofficial_refusal_message(result: object) -> str:
-    compliance_class = result_compliance_class(result)
+    compliance_class = result_public_refusal_reason(result)
     raw_name = str(getattr(result, "benchmark_name", "") or "").strip()
     match = _TPC_BENCHMARK_NAME.match(raw_name.lower())
     name = f"TPC-{match.group(1).upper()}" if match else (raw_name or "benchmark")
     message = (
         f"\n[red]❌ Submission refused: compliance_class={compliance_class}[/red]\n"
         f"   This result was produced with an unofficial {name} configuration and\n"
-        "   must not be submitted as a comparable result. Only results with\n"
-        "   compliance_class=official may be submitted."
+        "   must not be submitted as a comparable result. Only results at scale\n"
+        "   factor 1 or above that were not routed through a gateway may be submitted."
     )
     if name == "TPC-DS":
         message += "\n   See _sources/tpcds-subscale-contract.md for details."

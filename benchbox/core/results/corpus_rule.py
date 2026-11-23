@@ -630,3 +630,25 @@ def sidecar_known_defects(result_path: Path) -> list[str]:
 def facts_from_path(result_path: Path) -> Facts:
     data = json.loads(result_path.read_text(encoding="utf-8"))
     return facts_from_result(data if isinstance(data, dict) else {}, known_defects=sidecar_known_defects(result_path))
+
+
+def composite_scale_refusal(
+    benchmark_id: str | None, scale_factor: float | None, *, gateway_routed: bool = False
+) -> str | None:
+    if gateway_routed:
+        return "routed through a gateway"
+    outcome = derive_outcome(Facts(benchmark_id, scale_factor, frozenset({PHASE_POWER})))
+    if outcome.class_name == CLASS_SUBSCALE:
+        return "below the standard scale"
+    if outcome.class_name == CLASS_NONSTANDARD_SCALE:
+        return "at a non-standard scale"
+    return None
+
+
+def public_refusal(benchmark_id: str | None, scale_factor: float | None, *, gateway_routed: bool = False) -> str | None:
+    if gateway_routed:
+        return HELD_GATEWAY_ROUTED
+    outcome = derive_outcome(Facts(benchmark_id, scale_factor, frozenset({PHASE_POWER})))
+    if outcome.class_name == CLASS_SUBSCALE and not outcome.public_admission:
+        return CLASS_SUBSCALE
+    return None

@@ -112,7 +112,7 @@ def _phases() -> ExecutionPhases:
 def _evaluate(phases: ExecutionPhases, **overrides):
     arguments = {
         "scale_factor": 1.0,
-        "compliance_class": "official",
+        "scale_refusal": None,
         "failed_query_count": 0,
         "query_subset": None,
     }
@@ -187,7 +187,7 @@ class TestQphDSEvaluation:
     @pytest.mark.parametrize(
         ("label", "mutate", "overrides", "reason"),
         [
-            ("subscale", None, {"compliance_class": "unofficial_subscale"}, "not official"),
+            ("subscale", None, {"scale_refusal": "below the standard scale"}, "not official"),
             ("failed queries", None, {"failed_query_count": 2}, "queries failed"),
             ("subset", None, {"query_subset": ["1", "2"]}, "query subset"),
             ("no throughput 2", {"throughput_test_2": None}, {}, "Throughput Test 2 did not run"),
@@ -575,3 +575,11 @@ class TestLoadScope:
         metrics = build_result_payload(builder.build())["summary"].get("tpc_metrics") or {}
 
         assert "load_scope" not in metrics
+
+
+def test_a_full_specification_tpcds_run_without_the_official_flag_gets_qphds_and_the_official_class() -> None:
+    payload = _payload(_phases(), 1.0, None)
+
+    assert payload["benchmark"]["compliance_class"] == "official"
+    assert payload["summary"]["tpc_metrics"]["qphds_at_size"] == EXPECTED_QPHDS
+    assert "qphds_unavailable" not in payload["summary"]["tpc_metrics"]

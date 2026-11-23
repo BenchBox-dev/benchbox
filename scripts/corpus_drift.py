@@ -40,6 +40,7 @@ CANARY_PATHSPECS = (
     "benchbox/validation/bundle.py",
     "benchbox/core/results/corpus_rule.py",
     "benchbox/core/results/corpus_rule_data.json",
+    "benchbox/core/results/corpus_score.py",
     "benchbox/core/results/comparison_identity.py",
     "benchbox/core/results/comparison_identity.json",
     "benchbox/core/results/query_status.py",
