@@ -48,9 +48,9 @@ HARD_STOP_DRIVER = (
     "from benchbox.cli.run_time_limit import hard_stop\n"
     "from benchbox.utils.run_deadline import RunDeadline, arm_hard_stop\n"
     "deadline = RunDeadline(1)\n"
-    "began = time.time()\n"
+    "began = time.monotonic()\n"
     "def recording_hard_stop(target):\n"
-    "    print(f'hard-stop {time.time()}', flush=True)\n"
+    "    print(f'hard-stop {time.monotonic()}', flush=True)\n"
     "    hard_stop(target)\n"
     "leaf = 'import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); print(1, flush=True); "
     "time.sleep(300)'\n"
@@ -197,7 +197,7 @@ def test_the_hard_stop_starts_at_limit_plus_grace_and_exits_in_bound_with_a_term
         assert elapsed_seconds(started) < limit + 5.0
         assert driver.poll() is None
         assert driver.wait(limit + HARD_STOP_GRACE_SECONDS + HARD_STOP_EXIT_SECONDS + 10.0) == ExitCode.TIMEOUT
-        exited = time.time()
+        exited = time.monotonic()
         hard_stop_lines = [line.split() for line in driver.stdout.read().splitlines() if line.startswith("hard-stop ")]
         assert len(hard_stop_lines) == 1
         hard_stop_began = float(hard_stop_lines[0][1]) - began

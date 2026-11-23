@@ -71,7 +71,7 @@ class StartedWork:
 
 def blocks_past_the_limit(*_args, **_kwargs):
     deadline = current_run_deadline()
-    Path(sys.argv[1], "started.at").write_text(repr(time.time()))
+    Path(sys.argv[1], "started.at").write_text(repr(time.monotonic()))
     modes = (("failing", "fails"), ("working", "ok")) + ((("stuck", "blocks"),) if BLOCKS else ())
     for name, mode in modes:
         work = StartedWork(name, mode)
@@ -98,7 +98,7 @@ if REAL_GRACE:
     real_hard_stop = run_time_limit.hard_stop
 
     def recording_hard_stop(deadline):
-        Path(sys.argv[1], "hard-stop.at").write_text(repr(time.time()))
+        Path(sys.argv[1], "hard-stop.at").write_text(repr(time.monotonic()))
         real_hard_stop(deadline)
 
     run_time_limit.hard_stop = recording_hard_stop
@@ -314,7 +314,7 @@ def _run_hard_stop_script(
         timeout=90,
         check=False,
     )
-    finished = time.time()
+    finished = time.monotonic()
     started = float((tmp_path / "started.at").read_text(encoding="utf-8"))
     return completed, finished - started
 
