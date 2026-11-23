@@ -3,6 +3,11 @@
     "Each open_csv call site over a Python stream either reads to EOF or closes the reader before the stream, or is shown unaffected",
     "A regression test or an allocator-checked loop for any site that changes"
   ],
+  "batch": {
+    "batch_id": "release-readiness",
+    "implementation_dependencies": [],
+    "member_id": "pyarrow-open-csv-early-close-audit"
+  },
   "description": "The primitives SF1 native crash (fixed by #4185) came from closing a zstd Python stream while pyarrow.csv.open_csv's background reader thread was still reading it. Other call sites pass Python streams to open_csv and could abandon a reader early in the same way: benchbox/platforms/datafusion.py, gizmosql_loading.py, questdb.py, influxdb/adapter.py. None of them has been tested.",
   "sessions": [
     {
@@ -12,6 +17,14 @@
       "op": "create",
       "op_id": "a467425dae5441698e8a10c4cbb68a3a",
       "session_id": "7f2d8583a7d94300804da984b061b91c"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e8526faa0e732223dd79589d",
+      "at": "2026-11-23T13:48:34Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "0f9622747f9441e993e05a4b47ae2e5d",
+      "session_id": "24cca4279aeb4583a89b2c57ce255d32"
     }
   ]
 }
