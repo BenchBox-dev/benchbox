@@ -3,6 +3,11 @@
     "The report target prints which draw failed and why whenever it exits non-zero",
     "The cause of run 44457489422 is named with evidence, or reproduced and fixed"
   ],
+  "batch": {
+    "batch_id": "trunk-stability-r2",
+    "implementation_dependencies": [],
+    "member_id": "tpcds-parity-draws-fails-with-all-draws-equivalent-20261119"
+  },
   "context": "2026-11-20 recurrence turned develop red: trunk 44646356309 on 1cfe92a8 (#4395, dashboard-only change: scripts/dev_loop_dashboard.py, its tests and workflow, docs) failed tpcds-parity-draws: every draw reported 0 divergent, but the second draw logged '[flaky - outcome changed between 2 identical runs] tpcds: 1 cell(s), FAIL; 57_expression: diverged in 1 of 2 runs; Q57: returned row 73 breaks the ...' and make tpcds-cross-surface-draws-report exited 1. The flake blocked make pr-arm repo-wide (red-develop gate). The failed job was re-run once on the unchanged head.\n\n2026-11-22: two more red trunk runs of tpcds-parity-draws (45045080621 on fb80a2717b, 45045478512 on 070a4eefe2), both the Q57 float-tie divergence tracked on tpcds-q57-expression-order-float-tie-flake-20261122; both cleared by a re-run of the unchanged head.",
   "description": "## Problem\nTrunk run 44457489422 (develop 3d7619eef, after #4379, 2026-11-19) failed job `tpcds-parity-draws`. `make tpcds-cross-surface-draws-report` printed \"0 divergent\" and \"SQL and DataFrame surfaces are equivalent\" for all three draws, then `make` exited 1 from make/reports.mk:37. The log names no failing draw. A re-run of the same commit passed, so develop went red for about an hour and blocked every pr-arm with no actionable cause.\n\n## Decision gate\nReproduce or explain the exit status: per draw, capture the exit code of `python -m benchbox.core.equivalence.cross_surface` and anything written to stderr. If a draw exits non-zero after printing \"equivalent\", fix the reporting so the reason is printed. If the cause is a crash/timeout in a backend (pandas/datafusion), fix or record it with the evidence. Do not mark as flaky without a cause.\n\n## Guardrails\n- Do not swallow the non-zero status or add retries to the target.\n- Do not narrow the draws or backends.\n\n## Verification rubric\nEither a reproduced cause with a fix and a test that a non-zero draw prints its reason, or a recorded root cause with log evidence.",
   "links": [
@@ -67,6 +72,14 @@
       "client": "omp-coding-agent",
       "op": "abort",
       "op_id": "9f2a471e5ac54554a484cb6f976d939d",
+      "session_id": "80e0302416054591a591cf3adefee19a"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a582822e53b94a30143d8ba3",
+      "at": "2026-11-23T00:06:40Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "64e3fa15d7f349209732ff329765d502",
       "session_id": "80e0302416054591a591cf3adefee19a"
     }
   ]
