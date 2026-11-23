@@ -5,6 +5,7 @@
   ],
   "context": "Review threads, corrected 2026-11-20: the guardrail text above says the agent never resolves a thread. Asked afterwards which rule applies, the owner chose \"The morning rule: I may resolve a thread once the bot has reviewed the new head and did not raise the finding again.\" ('I' is the agent.) That answer stands.\n\nState 2026-11-20: not started.\n\nOwner decision 2026-11-22 (choice dialog). Where it conflicts with the Decision gates text in the description, this wins. \"check the breach history first; drop it if no recorded breach shows a pause would have saved a run, otherwise write the design and block.\"\n\n2026-11-22: breach history checked first, per the owner's rule. Sources: ~/.benchbox/heavy-runs.jsonl (164 watchdog kills, 2026-11-06 to 2026-11-21), 66 kills with a retained breach report (agent transcripts and run logs), ~/.benchbox/sentinel.log from 2026-11-19. Two recorded kills show a short pause would have saved the run: 2026-11-20 02:42:37Z holder 46443 (pr-preflight pytest step, 0.33 GiB tree, two level-4 spikes under 6 s, same step admitted 60 s later and passed) and 2026-11-12 15:46:58Z holder 7998 (DuckDB TPC-DS SF1 cell during generation, 0.17 GiB tree, rerun admitted 37 s later and passed); a third, 2026-11-14 03:50:24Z holder 27361, probably. That is 3 of 164 kills, losing 203 s, 76 s and 23 s; only one was a benchmark run and its timings would be unpublishable under the design. Because a recorded breach shows a pause would have saved a run, the design was written and is linked (/Users/joe/.tractable/finding-drafts/benchbox/2026-11-22-heavy-guard-pause-design.md), section 6 (what is suspended, memory, host lock, containers and VMs, timings, when the kill still fires, how a paused run is marked unpublishable). No guard code changed. Blocked for the owner's decision.",
   "description": "## Problem\nOn 2026-11-17 the owner chose \"Also add pause and retry for small holder trees (relaxes the kill policy)\". It was not built. On 2026-11-20 the owner chose to file pause as \"a design-only item that ends at your approval\".\n\n## Change\nWrite a design, linked from this item: what is suspended and how; what happens to memory, the host lock, containers and VMs the job started, and benchmark timings inside a paused job; when the kill still fires; how a paused run is marked so its timings are never published. State the evidence that pausing would have saved a run, from the breach history, or that there is none.\n\n## Decision gates\nNo code. The item goes to `blocked` with the design linked, for the owner's approval.\n\n## Verification rubric\nPass: the design answers each point above and cites the breach records it relies on.\n\n## Guardrails (accepted by the owner, 2026-11-20)\nThe agent never posts a stand-in review, resolves a review thread, closes and reopens a pull request to restart CI, uses `--no-verify`, force-pushes, rewrites an author, or deletes anything under `~/Developer/benchmark_runs`. It arms with `make pr-arm` once per pull request and reports the result. Subagents are read-only. Any limit, default, threshold or label text is shown to the owner before it is committed. A blocked step stops this item; the agent moves to the next item and does not work around the block.",
+  "drop_reason": "Owner decision 2026-11-22 (choice dialog): \"drop it. The evidence shows little benefit; the design stays linked if kills grow.\" Evidence: a pause would have saved 3 of 164 recorded watchdog kills (203 s, 76 s, 23 s lost; each rerun passed within 1 to 13 minutes); only one was a benchmark run and its timings would have been unpublishable. Design: /Users/joe/.tractable/finding-drafts/benchbox/2026-11-22-heavy-guard-pause-design.md.",
   "links": [
     "/Users/joe/.tractable/finding-drafts/benchbox/2026-11-22-heavy-guard-pause-design.md"
   ],
@@ -64,6 +65,14 @@
       "op": "update",
       "op_id": "61e896095aed468eb09f120e01c20461",
       "session_id": "82293ce1c4134e7b8c22e7e87ba5dfc1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:077926c9617428089eeb68c6",
+      "at": "2026-11-23T00:17:14Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "d47e912c7fb6442caa4380294d288406",
+      "session_id": "703e90baefd545ccb42540a47d1ce09e"
     }
   ]
 }
