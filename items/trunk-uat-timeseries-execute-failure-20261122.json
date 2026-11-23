@@ -2,7 +2,7 @@
   "acceptance": [
     "Every failed cell of the four failed timeseries and query-engines trunk UAT jobs is named with its cause, and the sweep names failed cells in the job log."
   ],
-  "context": "Filed 2026-11-22 while closing out the run-timeout follow-ups (umbrella run-timeout-plan-20261120). Evidence was read on 2026-11-22; re-read run logs, file paths and line numbers before acting.\n\nOwner decisions 2026-11-22 (choice dialog): \"Fix forward; never raise the budget\"; serial item, not in a batch (\"Same, but UAT investigations separate\").",
+  "context": "Filed 2026-11-22 while closing out the run-timeout follow-ups (umbrella run-timeout-plan-20261120). Evidence was read on 2026-11-22; re-read run logs, file paths and line numbers before acting.\n\nOwner decisions 2026-11-22 (choice dialog): \"Fix forward; never raise the budget\"; serial item, not in a batch (\"Same, but UAT investigations separate\").\n\n2026-11-23: fix merged as BenchBox-dev/benchbox#4458 (44c34087bc). Item stays open until the next Trunk UAT timeseries and query-engines shards run green or fail only on a tracked cause (no Trunk UAT run after the merge yet).",
   "description": "## Problem\nTrunk UAT shards fail their execute phase without naming the failed cell in the job log. `UAT stage 3 timeseries` failed with the same signature (`release-gate-03-docker-oltp`, `phase_exit_codes` execute 1 and report 1, `make uat-sweep` Error 1) in three of the six runs from 2026-11-17 to 2026-11-22: 44278856759 (2026-11-18, 50fedc718f, job 134714807226), 44888589677 (2026-11-21, 3e09d4f43b, job 136799575543) and 45007293835 (2026-11-22, checkout d7197c9c12, job 137161944469; `log_dir` `/home/runner/Developer/benchmark_runs/logs/uat_20261122_094514`). It predates the run-timeout merges and is the most frequent single cause of red Trunk UAT. In the 11-22 run the visible QuestDB cells (tsbs_devops, nyctaxi, flightdata, datavault at SF 0.01) published results. `UAT stage 3 query-engines` failed the same way on 2026-11-21 (job 136799575513, execute 1), cell also unnamed. Other failures in the window have their own items (cedardb-server-crash-mid-shard-nightly-20261119, clickhouse-local-tpchavoc-sf1-timeout-nightly-20261119, trunk-uat-pandas-df-memory-breach-20261122).\n\n## Change\nFrom the shard artifacts of the four failed jobs, name each failed cell and its error; fix each cause or record it on the item that owns it. Make the UAT sweep print each failed cell and its exit status in the job log. Prior art: release-uat-evidence-keeps-failure-detail-20261030 (done).\n\n## Decision gates\n- Do not mark cells flaky or skip them without a recorded cause.\n- Keep BenchBox's `timed-out` (exit 124) distinct from the runner's `hung` outside kill; do not change either limit without the owner.\n- Live cloud platforms are out of scope.\n\n## Verification rubric\nPass: each failed cell of the four jobs named with its cause on this item, with a fix or a link to the owning item; a test shows a failed cell's name and exit status in the sweep's log output, failing before the change; the next timeseries and query-engines shard runs green or failing only on a tracked cause.\nFail: a cause unrecorded.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/actions/runs/45007293835"
@@ -30,6 +30,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "663e4f4220014bb88136d8b7009d9b2e",
+      "session_id": "301a72f40ca84d7ab9668f9bdc47da3b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18",
+      "at": "2026-11-23T13:34:20Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "75ea402a13314d3f8ed08930cb84e6d9",
       "session_id": "301a72f40ca84d7ab9668f9bdc47da3b"
     }
   ]
