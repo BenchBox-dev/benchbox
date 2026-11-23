@@ -24552,6 +24552,13 @@
       "status": "done",
       "title": "Derive credential/secondary-port literals (password=, http_port=, be_http_port=) from canonical sources"
     },
+    "derived-benchmark-data-copies-20261122": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide whether benchmarks derived from TPC-H keep their own copy of the source data"
+    },
     "derived-power-export-rounding-20261017": {
       "claim": null,
       "needs": [],
