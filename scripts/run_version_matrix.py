@@ -14,6 +14,7 @@ import subprocess
 import sys
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from importlib import metadata
@@ -45,7 +46,12 @@ CLI_DESCRIPTION = (
     "Each power cell is a separate BenchBox invocation, repeated per the spec.\n"
     "Results stay outside the checkout and are recorded in ``matrix-manifest.json``;\n"
     "analyze them with ``scripts/analyze_version_matrix.py``. Generated data and\n"
-    "databases are removed once the matrix completes.\n"
+    "databases are removed when the matrix ends, whether it completed or failed,\n"
+    "unless ``--keep-data`` is given; the log, records, qualification and manifest\n"
+    "always stay. A follow-up that needs matching data regenerates it at the\n"
+    "manifest's pinned ``benchbox_commit`` into the shared data folder and compares\n"
+    "the SHA-256 of each ``_datagen_manifest.json`` with the manifest's\n"
+    "``pins.datagen_manifests`` entry before using it.\n"
     "\n"
     "Run from the BenchBox checkout with ``uv run --no-sync`` because the runner\n"
     "changes the installed engine package between subprocesses while the project\n"
@@ -422,8 +428,8 @@ def run_matrix(spec: MatrixSpec, *, output_dir: Path, repo_root: Path, dry_run: 
         "records": records,
     }
     if not dry_run:
+        manifest["pins"] = current_pins(repo_root, output_dir / "datagen", spec)
         _write_json(output_dir / "matrix-manifest.json", manifest)
-        remove_regenerable_data(output_dir)
     return manifest
 
 
@@ -821,8 +827,40 @@ def run_polars_matrix(
             check_pins(pins, current_pins(repo_root, output_dir / "datagen", spec))
     manifest["complete"] = True
     _write_json(output_dir / "matrix-manifest.json", manifest)
-    remove_regenerable_data(output_dir)
     return manifest
+
+
+def _settle_data(output_dir: Path, *, keep_data: bool, failed: bool) -> bool:
+    stream = sys.stderr if failed else sys.stdout
+    if keep_data:
+        print(f"Generated data kept at {output_dir / 'datagen'} and {output_dir / 'databases'}", file=stream)
+        return True
+    try:
+        remove_regenerable_data(output_dir)
+    except OSError as exc:
+        print(f"ERROR: could not remove generated data under {output_dir}: {exc}", file=sys.stderr)
+        return False
+    print(f"Generated data removed from {output_dir / 'datagen'} and {output_dir / 'databases'}", file=stream)
+    return True
+
+
+def _run_and_settle(
+    run: Callable[[], dict[str, Any]],
+    output_dir: Path,
+    *,
+    keep_data: bool,
+    errors: tuple[type[BaseException], ...],
+    settle: bool = True,
+) -> dict[str, Any] | None:
+    settle = settle and not (output_dir.exists() and any(output_dir.iterdir()))
+    manifest: dict[str, Any] | None = None
+    try:
+        manifest = run()
+    except errors as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+    finally:
+        removed = _settle_data(output_dir, keep_data=keep_data, failed=manifest is None) if settle else True
+    return manifest if removed else None
 
 
 def main(argv: list[str] | None = None, *, spec: MatrixSpec | None = None, description: str = CLI_DESCRIPTION) -> int:
@@ -835,6 +873,9 @@ def main(argv: list[str] | None = None, *, spec: MatrixSpec | None = None, descr
     parser.add_argument("--first-round", type=int, default=1, help="Index of the first round")
     parser.add_argument("--rounds", type=int, default=None, help="Number of rounds to run")
     parser.add_argument("--qualification", type=Path, default=None, help="Qualification file named by the spec")
+    parser.add_argument(
+        "--keep-data", action="store_true", help="Keep generated data and databases on success or failure"
+    )
     args = parser.parse_args(argv)
     selected = spec or SPECS[args.engine]
     repo_root = REPO_ROOT
@@ -852,26 +893,34 @@ def main(argv: list[str] | None = None, *, spec: MatrixSpec | None = None, descr
             return 0
         if args.shuffle_seed is None or args.qualification is None:
             parser.error("--shuffle-seed and --qualification are required unless --dry-run is given")
-        try:
-            manifest = run_polars_matrix(
+        qualification = args.qualification.expanduser().resolve()
+        manifest = _run_and_settle(
+            lambda: run_polars_matrix(
                 selected,
                 output_dir=output_dir,
                 repo_root=repo_root,
                 shuffle_seed=args.shuffle_seed,
                 first_round=args.first_round,
                 rounds=rounds,
-                qualification=args.qualification.expanduser().resolve(),
-            )
-        except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
+                qualification=qualification,
+            ),
+            output_dir,
+            keep_data=args.keep_data,
+            errors=(OSError, RuntimeError, ValueError, subprocess.CalledProcessError),
+        )
+        if manifest is None:
             return 1
         print(f"{selected.display_name} matrix complete: {len(manifest['records'])} runs")
         print(f"Manifest: {output_dir / 'matrix-manifest.json'}")
         return 0
-    try:
-        manifest = run_matrix(selected, output_dir=output_dir, repo_root=repo_root, dry_run=args.dry_run)
-    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
+    manifest = _run_and_settle(
+        lambda: run_matrix(selected, output_dir=output_dir, repo_root=repo_root, dry_run=args.dry_run),
+        output_dir,
+        keep_data=args.keep_data,
+        errors=(OSError, RuntimeError, ValueError, json.JSONDecodeError),
+        settle=not args.dry_run,
+    )
+    if manifest is None:
         return 1
     print(
         f"{selected.display_name} matrix {'planned' if args.dry_run else 'complete'}: "

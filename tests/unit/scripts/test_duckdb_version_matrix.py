@@ -203,3 +203,115 @@ def test_duckdb_analyzer_wrapper_writes_outputs_to_requested_directory(tmp_path:
         "median_power_at_size",
     ]
     assert not (root / "duckdb-version-matrix-analysis.json").exists()
+
+
+def _seed_run(output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for name in ("datagen/tpch_sf10/_datagen_manifest.json", "databases/tpch_sf10/db"):
+        path = output_dir / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"x")
+    for name in ("matrix.log", "matrix-records.jsonl", "matrix-manifest.json"):
+        (output_dir / name).write_text("kept", encoding="utf-8")
+
+
+def _failing_matrix(monkeypatch: pytest.MonkeyPatch, output_dir: Path) -> None:
+    def fail(*args: object, **kwargs: object) -> dict[str, object]:
+        _seed_run(output_dir)
+        raise RuntimeError("BenchBox load failed; see matrix.log")
+
+    monkeypatch.setattr(matrix, "run_matrix", fail)
+
+
+def test_failed_matrix_removes_data_by_default_and_keeps_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    output_dir = tmp_path / "out"
+    _failing_matrix(monkeypatch, output_dir)
+
+    assert matrix.main(["--engine", "duckdb", "--output-dir", str(output_dir)]) == 1
+
+    assert sorted(entry.name for entry in output_dir.iterdir()) == [
+        "matrix-manifest.json",
+        "matrix-records.jsonl",
+        "matrix.log",
+    ]
+    err = capsys.readouterr().err
+    assert "BenchBox load failed" in err and "Generated data removed" in err
+
+
+def test_failed_matrix_with_keep_data_keeps_everything_and_names_the_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    output_dir = tmp_path / "out"
+    _failing_matrix(monkeypatch, output_dir)
+
+    assert matrix.main(["--engine", "duckdb", "--output-dir", str(output_dir), "--keep-data"]) == 1
+
+    assert (output_dir / "datagen").is_dir() and (output_dir / "databases").is_dir()
+    assert f"Generated data kept at {output_dir / 'datagen'}" in capsys.readouterr().err
+
+
+def test_successful_matrix_with_keep_data_keeps_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    output_dir = tmp_path / "out"
+
+    def succeed(*args: object, **kwargs: object) -> dict[str, object]:
+        _seed_run(output_dir)
+        return {"records": []}
+
+    monkeypatch.setattr(matrix, "run_matrix", succeed)
+
+    assert matrix.main(["--engine", "duckdb", "--output-dir", str(output_dir), "--keep-data"]) == 0
+    assert (output_dir / "datagen").is_dir() and (output_dir / "databases").is_dir()
+
+
+def test_removal_error_keeps_the_original_failure_message_and_exits_non_zero(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    output_dir = tmp_path / "out"
+    _failing_matrix(monkeypatch, output_dir)
+
+    def refuse(path: Path) -> None:
+        raise OSError("busy")
+
+    monkeypatch.setattr(matrix, "remove_regenerable_data", refuse)
+
+    assert matrix.main(["--engine", "duckdb", "--output-dir", str(output_dir)]) == 1
+    err = capsys.readouterr().err
+    assert "BenchBox load failed" in err and "could not remove generated data" in err
+
+
+def test_matrix_records_pins_so_a_follow_up_can_regenerate_matching_data(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output_dir = tmp_path / "out"
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    pins = {"benchbox_commit": "abc", "datagen_manifests": {"tpch_sf10": "h"}}
+    monkeypatch.setattr(matrix, "current_pins", lambda *args: pins)
+    monkeypatch.setattr(matrix, "plan_steps", lambda spec: [])
+
+    manifest = matrix.run_matrix(DUCKDB, output_dir=output_dir, repo_root=repo_root, dry_run=False)
+
+    assert manifest["pins"] == pins
+    assert json.loads((output_dir / "matrix-manifest.json").read_text(encoding="utf-8"))["pins"] == pins
+
+
+def test_failing_cell_command_through_the_runner_removes_data_and_keeps_the_log(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    output_dir = tmp_path / "out"
+    calls: list[str] = []
+
+    def runner(command: list[str], *, cwd: Path, env: dict[str, str], log_path: Path, dry_run: bool):
+        calls.append(command[0])
+        _seed_run(output_dir)
+        return (1, "boom", 0.0) if len(calls) > 2 else (0, "", 0.0)
+
+    monkeypatch.setattr(matrix, "_run_command", runner)
+
+    assert matrix.main(["--engine", "duckdb", "--output-dir", str(output_dir)]) == 1
+
+    assert not (output_dir / "datagen").exists() and not (output_dir / "databases").exists()
+    assert (output_dir / "matrix.log").is_file() and (output_dir / "matrix-records.jsonl").is_file()
+    assert "Generated data removed" in capsys.readouterr().err
