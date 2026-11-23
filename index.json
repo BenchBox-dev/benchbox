@@ -49141,7 +49141,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Theseus review brief does not tell the reviewer that each changed binary needs one read"
     },
     "theseus-review-cannot-withdraw-finding-on-staged-upstream-path-20261109": {
