@@ -41850,10 +41850,15 @@
       "title": "Scale and TPC-DI remediation: revised plan, owner decisions and work order"
     },
     "remediation-worktree-and-scratch-cleanup-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T21:03:05Z",
+        "generation": "82525cece4c84068afa5a214d926209d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:a5dffb67f2f8103a3765a88b"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Remove the remediation session's worktrees, branches and scratch files"
     },
     "remote-closeout-arm-landing-20261018": {
