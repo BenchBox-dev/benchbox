@@ -30425,7 +30425,9 @@
     },
     "gateway-insecure-option-help-text": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "gateway-transport-options-connector-5"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Correct the allow_insecure_gateway help text: it skips only OCSP revocation checks"

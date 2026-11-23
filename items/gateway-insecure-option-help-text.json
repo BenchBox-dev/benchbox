@@ -4,6 +4,13 @@
     "Or, if accepting self-signed gateways is the intended behaviour, the option implements it and a test proves a self-signed endpoint is accepted only with the option set",
     "The site page docs/platforms/snowflake-gateways.md stays consistent with the result"
   ],
+  "batch": {
+    "batch_id": "release-readiness",
+    "implementation_dependencies": [
+      "gateway-transport-options-connector-5"
+    ],
+    "member_id": "gateway-insecure-option-help-text"
+  },
   "context": "Found by an independent review of the site page docs/platforms/snowflake-gateways.md against core v0.5.1 (91d357a); each claim was re-verified by a second reviewer.",
   "description": "core/gateway.py:222 describes allow_insecure_gateway as 'Allow insecure (TLS disabled / self-signed) gateway connection'. The option only sets the Snowflake connector's insecure_mode (platforms/snowflake.py:684-685), which turns off OCSP revocation checks. Certificate and host name verification still run, so a self-signed or untrusted gateway still fails TLS. From connector 4.8.0, insecure_mode also turns OCSP off when gateway_ocsp_fail_open is set, so the two options interact.",
   "links": [
@@ -19,6 +26,14 @@
       "op": "create",
       "op_id": "dde48689208f471dae35117663a0abde",
       "session_id": "61f73a6f08cd4699913cbb0090203dc7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e8526faa0e732223dd79589d",
+      "at": "2026-11-23T13:48:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9929f75f0b0b4e2eae6a1909204597df",
+      "session_id": "24cca4279aeb4583a89b2c57ce255d32"
     }
   ]
 }
