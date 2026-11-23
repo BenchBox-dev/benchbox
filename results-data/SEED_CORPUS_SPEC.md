@@ -25,9 +25,9 @@ platform name, so two execution variants of one platform (for example
 runs of one variant do not pad the floor. A bundle that ran in a container (recorded in
 `environment.execution_class` or attested in its manifest sidecar) adds a `^container`
 suffix, so a container run and a native run of one engine are distinct identities; a bundle
-that records no class stays native (see `CORPUS_NOTES.md`, "Execution-class identity"). Bundles in
-the explicitly segregated `duckdb-version-matrix/` corpus count platform plus version;
-repeated runs of one platform/version do not pad that matrix.
+that records no class stays native (see `CORPUS_NOTES.md`, "Execution-class identity"). Versions of
+one platform never add identities: the floor counts platforms, engine settings and container runs,
+not versions (see [Version-over-version cohorts](#version-over-version-cohorts)).
 
 A cohort is one benchmark, scale factor and measured phase. Power timings and
 throughput timings are never mixed, and a throughput cohort is further split by
@@ -197,17 +197,30 @@ gate when changed.
 
 ### Version-over-version cohorts
 
-Operator-run version matrices may repeat a platform name at several versions. The admitted
-DuckDB matrix is segregated under `results-data/bundles/duckdb-version-matrix/`, which is
-the only corpus location where the depth gate counts versions as distinct identities.
-Results Explorer disambiguates their rows by engine and resolved driver versions. The runner is
-`scripts/run_version_matrix.py`, and its median analyzer is
-`scripts/analyze_version_matrix.py`; both take an engine spec from
+A result's identity is its platform, its execution variant and its comparison version, all read
+from fields in the result file by one function
+(`benchbox/core/results/comparison_identity.py`). No folder name, file name or directory
+decides identity. The comparison version is resolved by a declarative table
+(`benchbox/core/results/comparison_identity.json`) keyed by platform-manifest key. For each platform
+family it names, in order, the result-file fields that hold the version and how a pre-release is
+recognised; a platform without an entry reads `platform.version`. The table records where a fact
+is stored. It is not an admission or ranking rule.
+
+A value that is missing, empty or `unknown` in every named field resolves to `version not recorded`.
+Every result with no recorded version shares that one identity, which is never a release and is
+never the newest version. A version the table recognises as a pre-release or development build
+(for example a development wheel or a release candidate) is recorded as a pre-release and never
+stands for its platform on a leaderboard.
+
+The comparison version is never a cohort-floor input. The depth gate counts execution variants
+and container runs; any number of versions of one platform is one identity there. Version
+matrices are ordinary results under this rule. The runner is `scripts/run_version_matrix.py`,
+and its median analyzer is `scripts/analyze_version_matrix.py`; both take an engine spec from
 `scripts/version_matrix_specs.py`. `scripts/run_duckdb_version_matrix.py` and
-`scripts/analyze_duckdb_version_matrix.py` run the DuckDB spec. The analyzer emits one median bundle per
-version/benchmark cell for promotion; raw repetitions stay outside the checkout. The
-current DuckDB matrix is documented in `results-data/CORPUS_NOTES.md` when its bundles
-are promoted.
+`scripts/analyze_duckdb_version_matrix.py` run the DuckDB spec. The analyzer emits one median
+bundle per version/benchmark cell for promotion; raw repetitions stay outside the checkout. The
+current DuckDB matrix is documented in `results-data/CORPUS_NOTES.md` when its bundles are
+promoted.
 
 ## Benchmark Notes
 
