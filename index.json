@@ -3783,6 +3783,7 @@
         "crr-a2-writer-and-score-from-timings": "e489a4cf38c4fc346afb6d166b125e65caffe8cd",
         "crr-a3-validators-staging-and-admission": "aa198c0dbc342b84c8cc7eb383d081e6c43e37e6",
         "crr-a4-database-metrics-and-cli-readers": "7430efa087909cfafa17e45d7d4740ce8f4c7aaf",
+        "crr-a5-published-results-mirror": "dc3f73f6dc075f5e0e313dfe6d59e38cfd519d56",
         "crr-b1-identity-and-comparison-version": "b8476bed2c90140f84813231be0a52218dbdb8a3",
         "crr-c1-validation-status-vocabulary": "37f31ba22c582643360aa2bd4392884d10130087",
         "crr-d1-observed-engine-contract-and-dataframe": "d604a887132187c5a0875f0700aa01c23c2670e4"
@@ -3942,6 +3943,33 @@
           "integration_head": "33e123bab73a4a27686e77fcee3b3e5c7138f3a6",
           "integration_seq": 7
         },
+        "crr-a5-published-results-mirror": {
+          "accepted_head": "dc3f73f6dc075f5e0e313dfe6d59e38cfd519d56",
+          "changed_files": [
+            ".github/ci-units.yml",
+            ".github/workflows/ci.yml",
+            ".github/workflows/sync-results-data-to-published.yml",
+            ".github/workflows/validate-submission.yml",
+            "_project/inert-doc-readers.json",
+            "benchbox/core/results/corpus_rule.py",
+            "benchbox/core/results/corpus_rule_data.json",
+            "benchbox/core/results/corpus_score.py",
+            "benchbox/validation/bundle.py",
+            "changelog.d/feat-staging-crr-a5.json",
+            "docs/internal/adr/adr-published-results-slim-corpus-branch.md",
+            "results-data/validate_corpus.py",
+            "scripts/check_mirror_validator_parity.py",
+            "scripts/corpus_drift.py",
+            "scripts/corpus_outcome_probe.py",
+            "scripts/generate_corpus_rule_data.py",
+            "tests/system/test_ci_lint_parity.py",
+            "tests/unit/scripts/test_check_mirror_validator_parity.py",
+            "tests/unit/scripts/test_generate_corpus_rule_data.py",
+            "tests/unit/workflows/test_ci_short_checks.py"
+          ],
+          "integration_head": "9c3c10affa02c5539e86a6ed43d3f2c7e31a4aa1",
+          "integration_seq": 9
+        },
         "crr-b1-identity-and-comparison-version": {
           "accepted_head": "b8476bed2c90140f84813231be0a52218dbdb8a3",
           "changed_files": [
@@ -4060,7 +4088,7 @@
         }
       },
       "integration_branch": "feat/corpus-rule-r4",
-      "integration_head": "0b345e2df84a189a5a1607dbb319d47adb72b676",
+      "integration_head": "9c3c10affa02c5539e86a6ed43d3f2c7e31a4aa1",
       "integration_log": [
         {
           "at": "2026-11-22T23:06:06Z",
@@ -4139,6 +4167,15 @@
           "op_id": "b49d34899ee74a79aa05c8e4417a5f07",
           "previous_head": "33e123bab73a4a27686e77fcee3b3e5c7138f3a6",
           "seq": 8
+        },
+        {
+          "at": "2026-11-23T21:59:51Z",
+          "head": "9c3c10affa02c5539e86a6ed43d3f2c7e31a4aa1",
+          "kind": "prepare",
+          "member": "crr-a5-published-results-mirror",
+          "op_id": "a60e9f19665c4dbf92ec50dca9906cc7",
+          "previous_head": "0b345e2df84a189a5a1607dbb319d47adb72b676",
+          "seq": 9
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r4",
@@ -24650,17 +24687,12 @@
       "title": "Move the results database, metrics and CLI readers to the rule"
     },
     "crr-a5-published-results-mirror": {
-      "claim": {
-        "expires_at": "2026-11-24T21:15:01Z",
-        "generation": "3647f702198b432ab955502c7ae1cc1c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:69ad863fb6a91a23281f8dfd"
-      },
+      "claim": null,
       "needs": [
         "crr-a3-validators-staging-and-admission"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Make the published-results validator run the same rule"
     },
     "crr-a6-reader-allowlist-guard": {
