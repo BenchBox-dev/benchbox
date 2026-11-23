@@ -38483,9 +38483,9 @@
     },
     "pre-rule-private-run-root-data-20261122": {
       "claim": {
-        "expires_at": "2026-11-24T14:23:20Z",
-        "generation": "6cc2ed247fd1404891dea8d879facd17",
-        "renewals": 0,
+        "expires_at": "2026-11-24T14:23:30Z",
+        "generation": "610372841b044e808be188fc587be4ab",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:168e8ae0963ab5b908f95b5b"
       },
       "needs": [],
