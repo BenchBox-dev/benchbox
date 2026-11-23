@@ -6,6 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from benchbox.core.results.status import result_non_clean_reason
 from benchbox.core.results.submit_classification import result_public_refusal_reason
 from benchbox.core.results.subscale_policy import normalize_tpc_benchmark_id
 from benchbox.core.results.tpcdi_audit import LEGACY_TPCDI_REFUSAL, legacy_tpcdi_note
@@ -30,7 +31,7 @@ def publish_admission(result: Any, label: str) -> PublishAdmissionDecision:
             code="unofficial_compliance"
             if refusal in {"unofficial_nonstandard", "unofficial_subscale"}
             else "non_clean",
-            reason=refusal,
+            reason=(result_non_clean_reason(result) or refusal) if refusal == "validation_failed" else refusal,
         )
     return PublishAdmissionDecision(allowed=True)
 

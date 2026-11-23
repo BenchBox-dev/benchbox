@@ -81,3 +81,35 @@ def test_no_reference_is_refused_when_a_reference_exists() -> None:
     result.validation_status = "no_reference"
     assert not publish_admission(result, "community").allowed
     assert classify_loaded_result(result) is not SubmitTerminalState.submittable
+
+
+def test_tpcdi_direct_audited_result_preserves_public_admission() -> None:
+    from tests.fixtures.result_dict_fixtures import make_benchmark_results
+
+    result = make_benchmark_results(
+        benchmark_id="tpcdi",
+        benchmark_name="TPC-DI",
+        validation_status="PASSED",
+        validation_details={"tpcdi_audit": {"status": "recorded"}},
+    )
+    assert classify_loaded_result(result) is SubmitTerminalState.submittable
+    assert publish_admission(result, "community").allowed
+
+
+def test_tpcdi_file_paths_remain_refused(tmp_path) -> None:
+    import json
+
+    from benchbox.core.results.loader import load_result_file
+    from benchbox.validation.bundle import validate_bundles
+    from scripts.stage_seed_corpus_bundle import admission_reason, stage_seed_bundle
+
+    payload = _result_payload(1.0, None, evidenced=True)
+    payload["benchmark"].update(id="tpcdi", name="TPC-DI")
+    path = tmp_path / "result.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    loaded, _ = load_result_file(path)
+    assert classify_loaded_result(loaded) is SubmitTerminalState.unvalidated
+    assert not publish_admission(loaded, "community").allowed
+    assert any("TPC-DI bundles are not accepted" in error for error in validate_bundles([path])[0].errors)
+    assert admission_reason(payload, path) == "not_admitted_undetermined"
+    assert not stage_seed_bundle(path, tmp_path / "staged")

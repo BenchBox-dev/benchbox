@@ -26,24 +26,29 @@ def _function(function: str, set_id: int) -> dict:
 
 def _eligible_results() -> tuple[dict, dict]:
     power = {
-        "benchmark": {"id": "tpch", "name": "TPC-H", "compliance_class": "official"},
+        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0, "compliance_class": "official"},
         "summary": {"queries": {"failed": 0}},
+        "queries": [
+            {"id": str(n), "iter": 1, "ms": 36000 * 36000 ** (2 / 22), "run_type": "measurement", "status": "SUCCESS"}
+            for n in range(1, 23)
+        ],
         "phases": {
             "power_test": {
                 "status": "COMPLETED",
                 "query_count": 22,
                 "refresh_first_set": 5,
-                "refresh_functions": [_function("RF1", 5), _function("RF2", 5)],
+                "refresh_functions": [{**_function(name, 5), "duration_ms": 1} for name in ("RF1", "RF2")],
             }
         },
     }
     throughput = {
-        "benchmark": {"id": "tpch", "name": "TPC-H", "compliance_class": "official"},
+        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0, "compliance_class": "official"},
         "summary": {"queries": {"failed": 0}},
         "phases": {
             "throughput_test": {
                 "status": "COMPLETED",
                 "num_streams": 2,
+                "duration_ms": 792000,
                 "stream_results": [{"stream_id": stream, "success": True} for stream in (1, 2)],
                 "refresh_stream": {
                     "first_set": 6,

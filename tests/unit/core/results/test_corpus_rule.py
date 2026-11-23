@@ -144,7 +144,14 @@ def test_undetermined_only_when_a_needed_fact_is_missing() -> None:
         if outcome.class_name == rule.CLASS_UNDETERMINED:
             assert outcome.missing_facts, facts
             assert not outcome.ranked
-            assert not outcome.public_admission and not outcome.maintainer_admission
+            if (
+                outcome.row != "tpcdi"
+                or outcome.held_reason is not None
+                or outcome.missing_facts != (rule.MISSING_TPCDI_RULE,)
+            ):
+                assert not outcome.public_admission and not outcome.maintainer_admission
+            else:
+                assert outcome.public_admission and not outcome.maintainer_admission
         else:
             assert outcome.missing_facts == (), facts
 

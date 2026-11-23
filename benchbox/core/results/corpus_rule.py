@@ -353,6 +353,10 @@ def _undetermined(missing: tuple[str, ...], row: str | None = None) -> Outcome:
     return Outcome(CLASS_UNDETERMINED, False, False, (), None, (), None, missing, row)
 
 
+def tpcdi_default_admission(facts: Facts) -> Outcome:
+    return Outcome(CLASS_UNDETERMINED, True, False, (), None, (), None, (MISSING_TPCDI_RULE,), "tpcdi")
+
+
 def _labels(row: Row, benchmark: str | None, data: Mapping[str, Any]) -> tuple[str, ...]:
     labels: list[str] = []
     base = benchmark if benchmark in BENCHMARK_LABELS else data["tpc_derived_benchmarks"].get(benchmark)
@@ -416,7 +420,7 @@ def derive_outcome(
         return _hold(outcome, held, validation_failed=facts.validation_failed) if held else outcome
     if row.delegate is not None:
         delegate = (delegates or {}).get(row.delegate)
-        outcome = delegate(facts) if delegate is not None else _undetermined((MISSING_TPCDI_RULE,), row.name)
+        outcome = delegate(facts) if delegate is not None else tpcdi_default_admission(facts)
     else:
         benchmark = normalize_benchmark_id(facts.benchmark)
         outcome = Outcome(
@@ -694,6 +698,15 @@ def public_refusal(benchmark_id: str | None, scale_factor: float | None, *, gate
 
 def public_refusal_for_facts(facts: Facts) -> str | None:
     outcome = derive_outcome(facts)
+    held = _held_reason(facts)
+    if held in (HELD_GATEWAY_ROUTED, HELD_FAILED_VALIDATION):
+        return held
+    if (
+        normalize_benchmark_id(facts.benchmark) == "tpcdi"
+        and outcome.held_reason == HELD_NO_TIMED_PHASE
+        and _held_reason(facts) is None
+    ):
+        outcome = tpcdi_default_admission(facts)
     if outcome.held_reason is not None and not outcome.public_admission:
         return outcome.held_reason
     if facts.public_validation_refused:
