@@ -8,6 +8,7 @@ import pyarrow as pa
 import pyarrow.csv as pa_csv
 import pyarrow.parquet as pq
 
+from benchbox.utils.arrow_rows import open_csv_over_stream
 from benchbox.utils.compression import CompressionManager
 from benchbox.utils.file_format import (
     TRAILING_DUMMY_COLUMN,
@@ -101,10 +102,12 @@ def delimited_batches(
     path: Path, schema: pa.Schema, dialect: CsvDialect, max_batch_bytes: int = DEFAULT_INGEST_BATCH_BYTES
 ) -> Iterator[pa.RecordBatch]:
     read_options, parse_options, convert_options = _csv_options(path, schema, dialect, max_batch_bytes)
-    with open_binary(path) as stream:
-        reader = pa_csv.open_csv(
+    with (
+        open_binary(path) as stream,
+        open_csv_over_stream(
             stream, read_options=read_options, parse_options=parse_options, convert_options=convert_options
-        )
+        ) as reader,
+    ):
         target = plain_schema(schema)
         for batch in bounded_batches(reader, max_batch_bytes):
             yield pa.RecordBatch.from_arrays(batch.columns, schema=target)
