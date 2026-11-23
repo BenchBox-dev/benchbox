@@ -15,11 +15,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from _project.scripts.explorer_pipeline.compare_math import speedup_vs_best
 from _project.scripts.explorer_pipeline.contract import (
     EXPLORER_QPH_READ_MODEL_VERSION,
     EXPLORER_READ_MODEL_VERSION,
 )
 from _project.scripts.explorer_pipeline.duckdb_builder import DuckDBSnapshotBuilder
+from _project.scripts.explorer_pipeline.medians import IdentityMedian, build_identity_medians
 from _project.scripts.explorer_pipeline.models import (
     BenchmarkSummary,
     DetailResult,
@@ -32,7 +34,7 @@ from _project.scripts.explorer_pipeline.models import (
     primary_metric_value,
     ranking_exclusion_reason,
 )
-from _project.scripts.explorer_pipeline.ranking import RankedCohort, rank_platforms
+from _project.scripts.explorer_pipeline.ranking import RankedCohort, rank_platforms, rank_scores
 from _project.scripts.explorer_pipeline.transformer import (
     BundleTransformer,
     CompanionPrivacyError,
@@ -294,6 +296,16 @@ def _platform_row_sort_key(benchmark: str, phase: str) -> Callable[[PlatformRow]
     return _key
 
 
+def summary_key(entry: ManifestEntry, detail: DetailResult) -> _SummaryKey:
+    in_lane = entry.ranking_lane is not None
+    return (
+        canonical_benchmark_slug(entry.benchmark),
+        entry.scale_factor,
+        canonical_phase(entry.test_type if in_lane else detail.test_type),
+        entry.stream_count if in_lane else detail.stream_count,
+    )
+
+
 def _build_benchmark_summaries(
     accum: _SummaryAccum,
     full_to_short: dict[str, str],
@@ -354,6 +366,9 @@ def _build_benchmark_summaries(
                 cost_usd=entry.cost_usd,
                 compliance_class=entry.compliance_class,
                 power_score_source=entry.power_score_source,
+                lane=entry.ranking_lane,
+                comparison_version=entry.comparison_version,
+                version_is_release=entry.version_is_release,
                 percentile_stats=_platform_percentile_stats(detail.display_timings),
                 phase_durations=detail.phase_durations,
                 timings=timings,
@@ -474,13 +489,39 @@ def _compute_average_ranks(platform_agg: dict[str, dict[str, Any]]) -> list[dict
     return records
 
 
+def _leaderboard_ranks(
+    key: _SummaryKey, medians: list[IdentityMedian], higher_is_better: bool
+) -> dict[str, dict[str, Any]]:
+    standing = [
+        median
+        for median in medians
+        if median.key == key and median.is_leaderboard_version and median.median_score is not None
+    ]
+    if len(standing) < 2:
+        return {}
+    scores = [median.median_score for median in standing if median.median_score is not None]
+    ranks = rank_scores(scores, higher_is_better=higher_is_better)
+    best = max(scores) if higher_is_better else min(scores)
+    return {
+        median.variant_id: {
+            "rank": rank,
+            "total": len(standing),
+            "metric_value": median.median_score,
+            "speedup_vs_best": speedup_vs_best(median.median_score, best, higher_is_better=higher_is_better),
+        }
+        for median, rank in zip(standing, ranks, strict=True)
+    }
+
+
 def _build_meta_leaderboard(
     summaries: list[tuple[_SummaryKey, BenchmarkSummary]],
     generated_at: str,
     full_to_short: dict[str, str] | None = None,
+    medians: list[IdentityMedian] | None = None,
 ) -> dict[str, Any]:
     if full_to_short is None:
         full_to_short = {}
+    medians = medians or []
     ranked_summaries = [(key, s, rank_platforms(s)) for key, s in summaries]
     eligible = [(key, s, ranked) for key, s, ranked in ranked_summaries if ranked.total_ranked >= 2]
     if not eligible:
@@ -488,8 +529,10 @@ def _build_meta_leaderboard(
 
     cohort_records: list[dict[str, Any]] = []
     platform_agg: dict[str, dict[str, Any]] = {}
+    identities = {row.variant_id or row.platform_id: row for _, summary in summaries for row in summary.platforms}
 
-    for (benchmark, scale_factor, phase, stream_count), summary, ranked in eligible:
+    for key, summary, ranked in eligible:
+        benchmark, scale_factor, phase, stream_count = key
         sf = _sf_str(scale_factor)
         streams_suffix = "" if stream_count is None else f"-{stream_count}streams"
         cohort_key = f"{benchmark}-sf{sf}-{phase}{streams_suffix}"
@@ -499,27 +542,18 @@ def _build_meta_leaderboard(
             summary, cohort_key, full_to_short, ranked
         )
 
-        for entry in platform_entries:
-            rank = entry["rank"]
-            if rank is None:
-                continue
-            pid = entry["variant_id"] or entry["platform_id"]
-            if pid not in platform_agg:
-                platform_agg[pid] = {
-                    "platform_id": entry["platform_id"],
-                    "variant_id": entry["variant_id"],
-                    "variant_label": entry["variant_label"],
-                    "platform": entry["platform"],
+        for variant_id, standing in _leaderboard_ranks(key, medians, higher_is_better).items():
+            identity = identities[variant_id]
+            platform_agg.setdefault(
+                variant_id,
+                {
+                    "platform_id": identity.platform_id,
+                    "variant_id": identity.variant_id,
+                    "variant_label": identity.variant_label,
+                    "platform": identity.platform,
                     "ranks": {},
-                }
-            existing = platform_agg[pid]["ranks"].get(cohort_key)
-            if existing is None or rank < existing["rank"]:
-                platform_agg[pid]["ranks"][cohort_key] = {
-                    "rank": rank,
-                    "total": entry["total"],
-                    "metric_value": entry["metric_value"],
-                    "speedup_vs_best": entry["speedup_vs_best"],
-                }
+                },
+            )["ranks"][cohort_key] = standing
 
         cohort_platforms = [{k: v for k, v in e.items() if k != "total"} for e in platform_entries]
         cohort_records.append(
@@ -591,6 +625,7 @@ class ExplorerPipeline:
             manifest_entries: list[ManifestEntry] = []
             summary_accum: _SummaryAccum = defaultdict(list)
             details_map: dict[str, DetailResult] = {}
+            data_by_result: dict[str, dict[str, Any]] = {}
             skipped_bundles = 0
             seen_result_ids: dict[str, tuple[Path, str]] = {}
 
@@ -720,15 +755,10 @@ class ExplorerPipeline:
 
                     manifest_entries.append(entry)
 
-                    phase = canonical_phase(detail.test_type)
-                    summary_key: _SummaryKey = (
-                        canonical_benchmark_slug(entry.benchmark),
-                        entry.scale_factor,
-                        phase,
-                        detail.stream_count,
-                    )
-                    summary_accum[summary_key].append((entry, detail))
+                    for lane_entry in self._transformer.lane_entries(entry, public_bundle):
+                        summary_accum[summary_key(lane_entry, detail)].append((lane_entry, detail))
                     details_map[entry.result_id] = detail
+                    data_by_result[entry.result_id] = public_bundle
 
                     logger.debug("Processed bundle %s → %s", bundle_path.name, result_id)
 
@@ -751,7 +781,8 @@ class ExplorerPipeline:
                 len(summaries),
             )
 
-            meta = _build_meta_leaderboard(summaries, generated_at, full_to_short)
+            medians = build_identity_medians(summaries, data_by_result, details_map)
+            meta = _build_meta_leaderboard(summaries, generated_at, full_to_short, medians)
             logger.info(
                 "Built meta-leaderboard (%d cohorts, %d platforms) for DuckDB population",
                 len(meta["cohorts"]),
@@ -769,6 +800,7 @@ class ExplorerPipeline:
                 bundle_url_prefix=bundle_url_prefix,
                 output_path=duckdb_path,
                 read_model_version=read_model_version,
+                medians=medians,
             )
             invariant_errors = check_snapshot(duckdb_path)
             if invariant_errors:

@@ -23,7 +23,6 @@ on:
       - "benchbox/core/results/subscale_policy.py"
       - "benchbox/core/results/timing_fields.py"
       - "scripts/generate_corpus_inventory.py"
-      - "scripts/unpublished_rule_rankings.txt"
   workflow_dispatch:
 
 permissions:
@@ -78,8 +77,7 @@ jobs:
             'benchbox/core/results/subscale_policy.py' \
             'benchbox/core/results/timing_fields.py' \
             'scripts/validate_submission.py' 'scripts/publication/validator_parity.py' \
-            'scripts/generate_corpus_inventory.py' \
-            'scripts/unpublished_rule_rankings.txt')
+            'scripts/generate_corpus_inventory.py')
 
           if [[ ${#DIFFED[@]} -eq 0 ]]; then
             echo "No drift between develop and published-results in mirrored paths."
@@ -199,7 +197,6 @@ jobs:
             'scripts/validate_submission.py'
             'scripts/publication/validator_parity.py'
             'scripts/generate_corpus_inventory.py'
-            'scripts/unpublished_rule_rankings.txt'
           )
 
           if git cat-file -e "${SOURCE_REF}:${BUNDLES_DIR}" 2>/dev/null; then

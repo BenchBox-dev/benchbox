@@ -11,7 +11,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_valid
 from benchbox.core.cost.models import NormalizedCost
 from benchbox.core.cost.pricing import PRICING_VERSION
 from benchbox.core.results.status import validation_status_is_non_clean
-from benchbox.core.results.subscale_policy import RANKING_EXCLUDED_COMPLIANCE_CLASSES
 
 _COST_MODEL_SOURCE = "benchbox.core.cost.pricing"
 
@@ -118,14 +117,13 @@ RANKING_ELIGIBLE_TRUST_LABELS: frozenset[str] = frozenset(
     }
 )
 
-UNOFFICIAL_COMPLIANCE_CLASSES: frozenset[str] = frozenset(
-    {
-        "unofficial_nonstandard",
-        "unofficial_subscale",
-    }
-)
-
 APPLIED_TUNING_STATUSES: frozenset[str] = frozenset({"applied_unverified", "applied_verified"})
+
+
+class CorpusLaneScore(BaseModel):
+    lane: str
+    score: float | None
+    score_source: str | None
 
 
 class ManifestEntry(BaseModel):
@@ -203,6 +201,17 @@ class ManifestEntry(BaseModel):
     service_size: str | None = None
     benchbox_version: str | None = None
     benchbox_version_basis: str | None = None
+    corpus_class: str = "none"
+    corpus_lanes: list[str] = Field(default_factory=list)
+    corpus_labels: list[str] = Field(default_factory=list)
+    comparison_identity: str = ""
+    comparison_version: str = "version not recorded"
+    version_is_release: bool = False
+    observed_engine: str | None = None
+    row_count_evidence_label: str | None = None
+    iteration_label: str | None = None
+    lane_scores: list[CorpusLaneScore] = Field(default_factory=list)
+    ranking_lane: str | None = None
 
     @field_serializer("normalized_cost")
     def _serialize_normalized_cost(self, cost: NormalizedCost) -> dict[str, Any]:
@@ -489,7 +498,6 @@ def is_ranking_eligible(entry: ManifestEntry) -> bool:
     return (
         entry.visibility in RANKING_ELIGIBLE_VISIBILITIES
         and entry.trust_label in RANKING_ELIGIBLE_TRUST_LABELS
-        and entry.compliance_class not in RANKING_EXCLUDED_COMPLIANCE_CLASSES
         and entry.failed_query_count == 0
         and not validation_status_is_non_clean(entry.validation_status)
         and custom_tuning_is_materially_applied(entry)
@@ -506,8 +514,6 @@ def ranking_exclusion_reason(entry: ManifestEntry, primary_metric: str | None = 
         return "visibility_not_rankable"
     if entry.trust_label not in RANKING_ELIGIBLE_TRUST_LABELS:
         return "trust_not_rankable"
-    if entry.compliance_class in RANKING_EXCLUDED_COMPLIANCE_CLASSES:
-        return "unofficial_compliance"
     if entry.failed_query_count != 0:
         return "failed_queries"
     if validation_status_is_non_clean(entry.validation_status):
@@ -681,6 +687,9 @@ class PlatformRow(BaseModel):
     cost_usd: float | None
     compliance_class: str | None = None
     power_score_source: str | None = None
+    lane: str | None = None
+    comparison_version: str = "version not recorded"
+    version_is_release: bool = False
     percentile_stats: PercentileStats | None = None
     phase_durations: dict[str, float] | None = None
     timings: dict[str, float | None]
@@ -1025,6 +1034,7 @@ __all__ = [
     "BundleTuningBlock",
     "CANONICAL_BENCHMARK_ALIASES",
     "COMBINED_PHASE",
+    "CorpusLaneScore",
     "DetailResult",
     "ExplorerEnvironment",
     "ManifestEntry",
@@ -1034,8 +1044,6 @@ __all__ = [
     "QueryTiming",
     "RankingConfig",
     "RANKING_ELIGIBLE_TRUST_LABELS",
-    "RANKING_EXCLUDED_COMPLIANCE_CLASSES",
-    "UNOFFICIAL_COMPLIANCE_CLASSES",
     "RANKING_ELIGIBLE_VISIBILITIES",
     "RANKING_METRIC_BY_FAMILY",
     "RANKING_METRIC_BY_FAMILY_PHASE",

@@ -38,8 +38,20 @@ def test_every_stored_result_has_identity_today_and_rule_outcomes(recorded) -> N
         assert entry["rule"]["class"] != corpus_rule.CLASS_UNDETERMINED or entry["rule"]["missing_facts"]
 
 
-def test_a_drifted_today_outcome_fails_and_names_the_result(recorded) -> None:
-    drifted = copy.deepcopy(recorded)
+def test_the_published_outcome_is_the_rule_outcome_for_every_stored_result(recorded) -> None:
+    for name, entry in recorded.items():
+        today, rule = entry["today"], entry["rule"]
+        if "skipped" in today:
+            continue
+        assert today["class"] == rule["class"], name
+        if rule["lanes"]:
+            assert rule["ranks"], name
+            assert today["rank"] in {rank["rank"] for rank in rule["ranks"].values()}, name
+        assert not script.differences({name: entry}), name
+
+
+def test_a_drifted_today_outcome_fails_and_names_the_result(recorded, computed) -> None:
+    drifted = copy.deepcopy(computed)
     name = next(name for name, entry in drifted.items() if entry["today"].get("rank") is not None)
     drifted[name]["today"]["rank"] += 1
 

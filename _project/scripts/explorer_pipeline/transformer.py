@@ -14,6 +14,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, cast
 
+from _project.scripts.explorer_pipeline import corpus_outcome
 from _project.scripts.explorer_pipeline.models import (
     COMBINED_PHASE,
     KNOWN_DEFECT_RANKING_EXCLUSION,
@@ -24,6 +25,7 @@ from _project.scripts.explorer_pipeline.models import (
     BundleLogicalProfile,
     BundlePlatformRuntime,
     BundleTuningBlock,
+    CorpusLaneScore,
     DetailResult,
     ExplorerEnvironment,
     ManifestEntry,
@@ -33,6 +35,8 @@ from _project.scripts.explorer_pipeline.models import (
     _platform_id,
     canonical_benchmark_slug,
     canonical_phase,
+    get_ranking_config,
+    primary_metric_value,
     ranking_exclusion_reason,
     timing_eligibility,
     variant_label,
@@ -46,7 +50,7 @@ from benchbox.core.cost.pricing import (
     resolve_snowflake_credit_price,
     resolve_snowflake_warehouse_credits_per_hour,
 )
-from benchbox.core.results import corpus_score
+from benchbox.core.results import corpus_rule, corpus_score
 from benchbox.core.results.anonymization import AnonymizationManager, find_public_path_leaks
 from benchbox.core.results.canonical_json import canonical_json_bytes
 from benchbox.core.results.execution_variant import (
@@ -58,7 +62,6 @@ from benchbox.core.results.hardware_class import CLASS_MANAGED, classify_hardwar
 from benchbox.core.results.release_history import resolve_benchbox_version
 from benchbox.core.results.schema_policy import EXPLORER_INPUT_SCHEMA_POLICY, result_schema_version_value
 from benchbox.core.results.status import bundle_failed_query_count, bundle_non_clean_reason, normalize_validation_status
-from benchbox.core.results.subscale_policy import effective_compliance_class
 from benchbox.core.tuning.modes import is_canonical_mode
 from benchbox.validation.bundle import (
     APPLIED_COMPANION_MAX_BYTES,
@@ -1513,9 +1516,7 @@ def _environment_facets(
 
 
 def _compliance_class(bundle: BundleDocument) -> str | None:
-    return effective_compliance_class(
-        bundle.benchmark.id, bundle.benchmark.scale_factor, bundle.benchmark.compliance_class
-    )
+    return bundle.benchmark.compliance_class
 
 
 def _benchmark_support_status(benchmark_id: str) -> str | None:
@@ -1914,14 +1915,73 @@ class BundleTransformer:
             **translator,
             **hardware,
         )
-        reason = ranking_exclusion_reason(entry)
-        reason = _throughput_stream_exclusion(bundle, bundle_data, test_type, reason)
-        reason = _combined_exclusion(bundle_data, test_type, reason)
+        outcome = corpus_outcome.derive_outcome(
+            bundle_data,
+            bundle_path,
+            validation_status=entry.validation_status,
+            failed_query_count=failed_query_count,
+        )
+        entry = entry.model_copy(
+            update=corpus_outcome.corpus_columns(
+                outcome,
+                bundle_data,
+                variant_id=entry.variant_id,
+                recorded_observed_engine=bundle.platform.execution_engine.observed,
+                measured_iterations=entry.basis_availability.measurement_pass_count if entry.basis_availability else 0,
+            )
+        )
+        lane_entries, reason = self._ranking_reason(entry, outcome, bundle_data)
+        entry = entry.model_copy(
+            update={
+                "lane_scores": [
+                    CorpusLaneScore(
+                        lane=lane,
+                        score=primary_metric_value(
+                            lane_entry,
+                            get_ranking_config(
+                                canonical_benchmark_slug(benchmark), lane_entry.test_type
+                            ).primary_metric,
+                        ),
+                        score_source=outcome.score_source,
+                    )
+                    for lane, lane_entry in lane_entries.items()
+                ]
+            }
+        )
         defect_reason = None
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION
             defect_reason = manifest_known_defect_reason(bundle_path)
         return entry.model_copy(update={"ranking_exclusion_reason": reason, "known_defect_reason": defect_reason})
+
+    def _ranking_reason(
+        self, entry: ManifestEntry, outcome: corpus_rule.Outcome, bundle_data: dict[str, Any]
+    ) -> tuple[dict[str, ManifestEntry], str | None]:
+        lane_entries = {lane: self.lane_entry(entry, lane, bundle_data) for lane in outcome.lanes}
+        if not lane_entries:
+            return lane_entries, ranking_exclusion_reason(entry) or corpus_outcome.unranked_reason(outcome)
+        reasons = [lane_entry.ranking_exclusion_reason for lane_entry in lane_entries.values()]
+        return lane_entries, None if None in reasons else reasons[0]
+
+    def lane_entry(self, entry: ManifestEntry, lane: str, bundle_data: dict[str, Any]) -> ManifestEntry:
+        phase = corpus_outcome.lane_phase(lane, bundle_data)
+        slug = canonical_benchmark_slug(entry.benchmark)
+        updates: dict[str, Any] = {"test_type": phase, "ranking_lane": lane, "stream_count": None}
+        if phase == THROUGHPUT_PHASE:
+            updates["throughput_at_size"] = _throughput_at_size(_parse_bundle(bundle_data), bundle_data)
+            updates["stream_count"] = corpus_rule.executed_stream_count(bundle_data)
+        if phase == COMBINED_PHASE:
+            updates.update(_qph_columns(bundle_data, phase, slug))
+        candidate = entry.model_copy(update=updates)
+        reason = ranking_exclusion_reason(candidate, get_ranking_config(slug, phase).primary_metric)
+        reason = _throughput_stream_exclusion(_parse_bundle(bundle_data), bundle_data, phase, reason)
+        reason = _combined_exclusion(bundle_data, phase, reason)
+        return candidate.model_copy(update={"ranking_exclusion_reason": reason})
+
+    def lane_entries(self, entry: ManifestEntry, bundle_data: dict[str, Any]) -> list[ManifestEntry]:
+        if not entry.corpus_lanes:
+            return [entry]
+        return [self.lane_entry(entry, lane, bundle_data) for lane in entry.corpus_lanes]
 
     def to_detail_result(
         self,
@@ -2058,9 +2118,13 @@ class BundleTransformer:
             compliance_class=detail.compliance_class,
             gateway_routed=detail.gateway_routed,
         )
-        reason = ranking_exclusion_reason(manifest_peer)
-        reason = _throughput_stream_exclusion(bundle, bundle_data, test_type, reason)
-        reason = _combined_exclusion(bundle_data, test_type, reason)
+        outcome = corpus_outcome.derive_outcome(
+            bundle_data,
+            bundle_path,
+            validation_status=detail.validation_status,
+            failed_query_count=detail.failed_query_count,
+        )
+        _, reason = self._ranking_reason(manifest_peer, outcome, bundle_data)
         defect_reason = None
         if _sidecar_known_defects(bundle_path):
             reason = KNOWN_DEFECT_RANKING_EXCLUSION

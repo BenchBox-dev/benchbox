@@ -57,11 +57,11 @@ def test_custom_tuning_with_applied_evidence_remains_rankable(status: str) -> No
     assert ranking_exclusion_reason(entry) is None
 
 
-def test_nonstandard_compliance_is_never_ranked() -> None:
+def test_a_recorded_nonstandard_stamp_does_not_decide_ranking() -> None:
     entry = _rankable_entry(compliance_class="unofficial_nonstandard")
 
-    assert not is_ranking_eligible(entry)
-    assert ranking_exclusion_reason(entry) == "unofficial_compliance"
+    assert is_ranking_eligible(entry)
+    assert ranking_exclusion_reason(entry) is None
 
 
 def test_subscale_compliance_is_ranked() -> None:

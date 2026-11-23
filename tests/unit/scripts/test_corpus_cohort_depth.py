@@ -128,7 +128,6 @@ KNOWN_DEFECTIVE_SHALLOW_COHORTS = {
     ("read_primitives", "0.01"): {"clickhouse-local^container", "datafusion"},
     ("read_primitives", "0.1"): {"clickhouse-local^container", "datafusion"},
     ("tpcds_obt", "1.0"): {"datafusion", "duckdb"},
-    ("tpch", "1.0"): {"duckdb"},
     ("tpchavoc", "0.01"): {"datafusion"},
     ("tpchavoc", "0.1"): {"datafusion"},
     ("tpchavoc", "1.0"): {"datafusion"},
@@ -1508,16 +1507,6 @@ def _parity_variants() -> dict[str, dict]:
     }
 
 
-EXPECTED_RULE_DIVERGENCE = {
-    "combined-phase-with-power-score-only": ((), "missing_primary_metric"),
-    "combined-phase-with-throughput-score-only": ((), "missing_primary_metric"),
-    "combined-tpcds-second-round-missing": (("power_only",), None),
-    "combined-tpcds-second-throughput-failed": (("power_only",), None),
-    "combined-tpch-failed-throughput-stream": (("power_only",), None),
-    "combined-tpch-no-refresh-evidence": (("throughput",), None),
-}
-
-
 @pytest.mark.parametrize("name", sorted(_parity_variants()))
 def test_validator_agrees_with_the_explorer_on_phase_and_rankability(tmp_path: Path, name: str) -> None:
     validator = _load_validator()
@@ -1529,12 +1518,6 @@ def test_validator_agrees_with_the_explorer_on_phase_and_rankability(tmp_path: P
 
     assert validator.bundle_phase(payload) == explorer_phase
     validator_reason = validator.exclusion_reason(payload)
-    if name in EXPECTED_RULE_DIVERGENCE:
-        lanes, reason = EXPECTED_RULE_DIVERGENCE[name]
-        assert explorer_reason in COMBINED_EVIDENCE_REASONS
-        assert validator.bundle_lanes(payload) == lanes
-        assert validator_reason == reason
-        return
     assert validator_reason == explorer_reason
     assert validator.bundle_rankable(payload) is (explorer_reason is None)
 
@@ -1581,14 +1564,7 @@ def test_inventory_validator_and_explorer_agree_on_the_cohort_phase(tmp_path: Pa
     assert (scale.split("#")[1] if "#" in scale else "power") == explorer_phase
 
 
-STAMP_REFUSAL_REASON = "unofficial_compliance"
-RULE_NEWLY_RANKED_COMMITTED_BUNDLES = 19
-
-
-DIVERGENCE_LIST = REPO_ROOT / "scripts" / "unpublished_rule_rankings.txt"
-
-
-def test_validator_and_explorer_disagree_on_exactly_the_bundles_the_rule_newly_ranks() -> None:
+def test_validator_and_explorer_agree_on_every_committed_bundle() -> None:
     validator = _load_validator()
     bundles = validator.discover_bundles(BUNDLES)
     assert bundles
@@ -1601,9 +1577,7 @@ def test_validator_and_explorer_disagree_on_exactly_the_bundles_the_rule_newly_r
         if validator.bundle_rankable(payload, path) is not (explorer_reason is None):
             disagreements.add(path.relative_to(BUNDLES).as_posix())
 
-    expected = set(DIVERGENCE_LIST.read_text(encoding="utf-8").split())
-    assert len(expected) == RULE_NEWLY_RANKED_COMMITTED_BUNDLES
-    assert disagreements == expected
+    assert disagreements == set()
 
 
 def test_every_committed_bundle_declares_a_phase() -> None:
@@ -1772,7 +1746,8 @@ def test_subscale_tpc_bundles_rank_on_power_recomputed_from_timings(
     assert validator._power_score(payload) == pytest.approx(expected_power)
     entry = BundleTransformer().to_manifest_entry(path, result_id="r")
     assert entry.ranking_exclusion_reason is None
-    assert entry.compliance_class == "unofficial_subscale"
+    assert entry.corpus_class == "subscale"
+    assert entry.corpus_lanes == ["subscale"]
     assert entry.power_score == pytest.approx(expected_power)
     assert entry.power_score_source == "derived_from_timings"
 
@@ -1809,14 +1784,17 @@ def test_a_stamp_at_a_standard_scale_does_not_stop_the_validator_ranking_the_bun
     assert validator.exclusion_reason(payload) is None
     assert validator._power_score(payload) == pytest.approx(1.0 * 3600 / 0.02)
     entry = BundleTransformer().to_manifest_entry(path, result_id="r")
-    assert entry.ranking_exclusion_reason == STAMP_REFUSAL_REASON
+    assert entry.ranking_exclusion_reason is None
+    assert entry.corpus_class == "power_only"
     assert entry.power_score == pytest.approx(1.0 * 3600 / 0.02)
 
 
-def test_a_recorded_official_class_below_sf1_is_read_as_subscale(tmp_path: Path) -> None:
+def test_a_recorded_official_class_below_sf1_is_classed_subscale_by_the_rule(tmp_path: Path) -> None:
     path = _subscale_bundle(tmp_path, "duckdb.json", "DuckDB", {"power_at_size": 1800.0}, compliance_class="official")
 
-    assert BundleTransformer().to_manifest_entry(path, result_id="r").compliance_class == "unofficial_subscale"
+    entry = BundleTransformer().to_manifest_entry(path, result_id="r")
+    assert entry.corpus_class == "subscale"
+    assert entry.compliance_class == "official"
 
 
 def test_recorded_subscale_power_that_disagrees_with_timings_is_ignored(tmp_path: Path) -> None:
@@ -2001,23 +1979,9 @@ def test_unclean_throughput_evidence_keeps_a_full_spec_run_out_of_the_combined_l
     assert validator._combined_score(payload) is None
 
 
-def test_the_depth_gate_does_not_count_rankings_the_explorer_does_not_publish() -> None:
+def test_the_depth_gate_counts_the_rankings_the_rule_assigns() -> None:
     validator = _load_validator()
-    bundles = validator.discover_bundles(BUNDLES)
-    listed = validator.unpublished_rule_rankings()
-    assert len(listed) == RULE_NEWLY_RANKED_COMMITTED_BUNDLES
+    cohorts = validator.cohort_platforms(validator.discover_bundles(BUNDLES))
 
-    shallow = validator.shallow_cohorts(validator.cohort_platforms(bundles))
-    assert shallow[("tpch", "1.0")] == {"duckdb"}
-
-    without = validator.cohort_platforms(bundles, frozenset())
-    assert len(without[("tpch", "1.0")]) == 4
-    sqlite_run = next(entry for entry in listed if "tpch_sf1_sqlite" in entry)
-    one_less = validator.cohort_platforms(bundles, listed - {sqlite_run})
-    assert one_less[("tpch", "1.0")] == {"duckdb", "sqlite"}
-
-
-def test_a_missing_unpublished_rankings_list_fails_the_depth_gate(tmp_path: Path) -> None:
-    validator = _load_validator()
-    with pytest.raises(validator.CorpusReadError, match="unpublished rule rankings"):
-        validator.unpublished_rule_rankings(tmp_path / "missing.txt")
+    assert len(cohorts[("tpch", "1.0")]) == 4
+    assert ("tpch", "1.0") not in validator.shallow_cohorts(cohorts)

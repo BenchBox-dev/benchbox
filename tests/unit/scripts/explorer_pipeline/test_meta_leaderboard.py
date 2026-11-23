@@ -2,13 +2,48 @@ from __future__ import annotations
 
 import pytest
 
-from _project.scripts.explorer_pipeline.models import BenchmarkSummary, PlatformRow, RankingConfig
-from _project.scripts.explorer_pipeline.pipeline import _build_meta_leaderboard
+from _project.scripts.explorer_pipeline.medians import IdentityMedian, cohort_key_text
+from _project.scripts.explorer_pipeline.models import (
+    BenchmarkSummary,
+    PlatformRow,
+    RankingConfig,
+    get_ranking_config,
+    primary_metric_value,
+)
+from _project.scripts.explorer_pipeline.pipeline import _build_meta_leaderboard as _meta_from_medians
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
 _GENERATED_AT = "2026-04-17T00:00:00Z"
+
+
+def _single_run_medians(summaries: list) -> list[IdentityMedian]:
+    medians = []
+    for key, summary in summaries:
+        metric = (summary.ranking or get_ranking_config(summary.benchmark, summary.phase)).primary_metric
+        for row in summary.platforms:
+            score = primary_metric_value(row, metric) if row.is_ranking_eligible else None
+            medians.append(
+                IdentityMedian(
+                    key=key,
+                    cohort_key=cohort_key_text(key),
+                    lane="power_only",
+                    platform_id=row.platform_id,
+                    variant_id=row.variant_id or row.platform_id,
+                    comparison_version="1.0.0",
+                    version_is_release=True,
+                    run_count=1,
+                    median_score=score,
+                    spread=0.0,
+                    is_leaderboard_version=score is not None,
+                )
+            )
+    return medians
+
+
+def _build_meta_leaderboard(summaries: list, generated_at: str) -> dict:
+    return _meta_from_medians(summaries, generated_at, medians=_single_run_medians(summaries))
 
 
 def _make_summary(

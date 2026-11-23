@@ -82,7 +82,6 @@ jobs:
             benchbox/core/results/timing_fields.py \
             results-data/validate_corpus.py \
             scripts/generate_corpus_inventory.py \
-            scripts/unpublished_rule_rankings.txt \
             .github/workflows/validate-submission.yml \
             || true)
           if [ -n "$CHANGED_GUARD" ]; then

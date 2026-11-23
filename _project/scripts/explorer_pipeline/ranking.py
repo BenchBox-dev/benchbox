@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from _project.scripts.explorer_pipeline.compare_math import speedup_vs_best, speedup_vs_slowest
@@ -27,6 +28,17 @@ class RankedCohort:
     total_ranked: int
     best_value: float | None
     slowest_value: float | None
+
+
+def rank_scores(scores: Sequence[float], *, higher_is_better: bool) -> list[int]:
+    order = sorted(range(len(scores)), key=lambda index: -scores[index] if higher_is_better else scores[index])
+    ranks = [0] * len(scores)
+    current_rank = 1
+    for position, index in enumerate(order, start=1):
+        if position > 1 and scores[index] != scores[order[position - 2]]:
+            current_rank = position
+        ranks[index] = current_rank
+    return ranks
 
 
 def rank_platforms(summary: BenchmarkSummary) -> RankedCohort:

@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from _project.scripts.explorer_pipeline import transformer as transformer_module
+from _project.scripts.explorer_pipeline.corpus_outcome import UndeterminedOutcomeError
 from _project.scripts.explorer_pipeline.models import DetailResult, ManifestEntry
 from _project.scripts.explorer_pipeline.transformer import BundleTransformer
 from benchbox.core.cost.models import DeploymentMetadata, NormalizedCost
@@ -288,8 +289,10 @@ class TestToDetailResult:
 
         assert detail.run_date == "2026-03-15"
 
-    def test_detail_ranking_exclusion_matches_manifest_for_unofficial_nonstandard(self, tmp_path: Path) -> None:
-        data = copy.deepcopy(MINIMAL_BUNDLE)
+    def test_detail_ranking_exclusion_matches_manifest_when_a_nonstandard_stamp_is_recorded(
+        self, tmp_path: Path
+    ) -> None:
+        data = scored_minimal_bundle()
         data["benchmark"]["compliance_class"] = "unofficial_nonstandard"
         bundle = tmp_path / "unofficial-nonstandard.json"
         bundle.write_text(json.dumps(data), encoding="utf-8")
@@ -300,7 +303,8 @@ class TestToDetailResult:
         detail = transformer.to_detail_result(bundle, rid)
 
         assert entry.compliance_class == "unofficial_nonstandard"
-        assert entry.ranking_exclusion_reason == "unofficial_compliance"
+        assert entry.corpus_class == "power_only"
+        assert entry.ranking_exclusion_reason is None
         assert detail.ranking_exclusion_reason == entry.ranking_exclusion_reason
 
 
@@ -680,18 +684,7 @@ class TestExtendedManifestFields:
         assert entry.benchmark == "tpch"
         assert entry.benchmark_support_status == "stable"
 
-    def test_benchmark_support_status_canonicalizes_legacy_slug(self, tmp_path: Path) -> None:
-        import copy
-
-        data = copy.deepcopy(MINIMAL_BUNDLE)
-        data["benchmark"]["id"] = "star_schema"
-        bundle = tmp_path / "legacy_slug.json"
-        bundle.write_text(json.dumps(data), encoding="utf-8")
-
-        entry = BundleTransformer().to_manifest_entry(bundle)
-        assert entry.benchmark_support_status == "stable"
-
-    def test_benchmark_support_status_none_for_unknown_slug(self, tmp_path: Path) -> None:
+    def test_a_benchmark_the_rule_cannot_place_is_refused(self, tmp_path: Path) -> None:
         import copy
 
         data = copy.deepcopy(MINIMAL_BUNDLE)
@@ -699,8 +692,8 @@ class TestExtendedManifestFields:
         bundle = tmp_path / "custom_slug.json"
         bundle.write_text(json.dumps(data), encoding="utf-8")
 
-        entry = BundleTransformer().to_manifest_entry(bundle)
-        assert entry.benchmark_support_status is None
+        with pytest.raises(UndeterminedOutcomeError, match="scale_registry_entry"):
+            BundleTransformer().to_manifest_entry(bundle)
 
     def test_config_hashes_none_for_legacy_bundle(self, bundle_file: Path) -> None:
         entry = BundleTransformer().to_manifest_entry(bundle_file)

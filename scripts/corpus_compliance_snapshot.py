@@ -21,32 +21,15 @@ if str(CHECKOUT_ROOT) not in sys.path:
     sys.path.insert(0, str(CHECKOUT_ROOT))
 
 from _project.scripts.explorer_pipeline import pipeline as explorer_pipeline, transformer as explorer_transformer
-from _project.scripts.explorer_pipeline.models import (
-    KNOWN_DEFECT_RANKING_EXCLUSION,
-    ManifestEntry,
-    canonical_benchmark_slug,
-    canonical_phase,
-    get_ranking_config,
-    ranking_exclusion_reason,
-)
+from _project.scripts.explorer_pipeline.models import ManifestEntry, canonical_benchmark_slug, canonical_phase
 from _project.scripts.explorer_pipeline.ranking import rank_platforms
-from benchbox.core.results import comparison_identity, corpus_rule, corpus_score
-from benchbox.core.results.subscale_policy import RANKING_EXCLUDED_COMPLIANCE_CLASSES
+from benchbox.core.results import comparison_identity, corpus_rule
 from benchbox.validation.bundle import discover_bundles
 
 CLI_DESCRIPTION = (
-    "Record or check the outcome of every committed result bundle as today's readers compute it and as the "
+    "Record or check the outcome of every committed result bundle as the Explorer pipeline emits it and as the "
     "corpus rule computes it, so a code change that moves a stored result fails visibly."
 )
-
-LANE_PHASES = {
-    corpus_rule.LANE_COMBINED: "combined",
-    corpus_rule.LANE_POWER_ONLY: "power",
-    corpus_rule.LANE_SUBSCALE: "power",
-    corpus_rule.LANE_OWN: "power",
-    corpus_rule.LANE_THROUGHPUT: "throughput",
-}
-POWER_LANES = frozenset({corpus_rule.LANE_COMBINED, corpus_rule.LANE_POWER_ONLY, corpus_rule.LANE_SUBSCALE})
 
 Outcome = dict[str, Any]
 Snapshot = dict[str, Outcome]
@@ -72,7 +55,6 @@ class _Loaded:
         self.detail = detail
         self.slug = canonical_benchmark_slug(entry.benchmark)
         self.phase = canonical_phase(detail.test_type)
-        self.today_key: CohortKey = (self.slug, entry.scale_factor, self.phase, detail.stream_count)
 
 
 def _load(bundles_dir: Path, path: Path, seen: dict[str, str]) -> tuple[_Loaded | None, str | None]:
@@ -117,38 +99,6 @@ def _rank_cohorts(accum: dict[CohortKey, list[tuple[ManifestEntry, Any]]]) -> di
     return ranks
 
 
-def _rule_entry(item: _Loaded, lane: str, outcome: corpus_rule.Outcome) -> tuple[CohortKey, ManifestEntry]:
-    phase = LANE_PHASES.get(lane, item.phase)
-    updates: dict[str, Any] = {"compliance_class": None}
-    if lane in LANE_PHASES:
-        updates["test_type"] = phase
-        updates["power_score_source"] = outcome.score_source
-    if lane in POWER_LANES:
-        updates["power_score"] = corpus_score.power_at_size(item.data)
-    if lane == corpus_rule.LANE_THROUGHPUT:
-        updates["throughput_at_size"] = corpus_score.throughput_at_size(item.data)
-    if lane == corpus_rule.LANE_COMBINED:
-        updates.update(explorer_transformer._qph_columns(item.data, phase, item.slug))
-    candidate = item.entry.model_copy(update=updates)
-    metric = get_ranking_config(item.slug, phase).primary_metric
-    reason = ranking_exclusion_reason(candidate, metric)
-    bundle = explorer_transformer._parse_bundle(item.data)
-    reason = explorer_transformer._throughput_stream_exclusion(bundle, item.data, phase, reason)
-    reason = explorer_transformer._combined_exclusion(item.data, phase, reason)
-    if explorer_transformer._sidecar_known_defects(item.path):
-        reason = KNOWN_DEFECT_RANKING_EXCLUSION
-    key = (item.slug, item.entry.scale_factor, phase, outcome_stream_count(item, lane))
-    return key, candidate.model_copy(update={"ranking_exclusion_reason": reason})
-
-
-def outcome_stream_count(item: _Loaded, lane: str) -> int | None:
-    if lane == corpus_rule.LANE_THROUGHPUT:
-        return corpus_rule.throughput_stream_count(item.data)
-    if lane in LANE_PHASES:
-        return None
-    return item.detail.stream_count
-
-
 def _identity(item: _Loaded) -> Outcome:
     entry = item.entry
     version = comparison_identity.resolve_comparison_version(item.data)
@@ -166,14 +116,15 @@ def _identity(item: _Loaded) -> Outcome:
     }
 
 
-def _today(item: _Loaded, ranks: Mapping[tuple[CohortKey, str], Outcome]) -> Outcome:
+def _today(
+    item: _Loaded, ranks: Mapping[tuple[CohortKey, str], Outcome], keys: Mapping[str | None, CohortKey]
+) -> Outcome:
     entry = item.entry
-    rank = ranks[(item.today_key, entry.result_id)]
+    natural = next((key for key in keys.values() if key[2] == item.phase), next(iter(keys.values())))
     return {
-        "class": entry.compliance_class,
-        "ranking_excluded": entry.compliance_class in RANKING_EXCLUDED_COMPLIANCE_CLASSES,
+        "class": entry.corpus_class,
         "score_source": entry.power_score_source,
-        **rank,
+        **ranks[(natural, entry.result_id)],
     }
 
 
@@ -181,7 +132,7 @@ def _rule(
     item: _Loaded,
     outcome: corpus_rule.Outcome,
     ranks: Mapping[tuple[CohortKey, str], Outcome],
-    keys: Mapping[str, CohortKey],
+    keys: Mapping[str | None, CohortKey],
 ) -> Outcome:
     return {
         "class": outcome.class_name,
@@ -208,14 +159,18 @@ def compute_snapshot(bundles_dir: Path) -> Snapshot:
         else:
             loaded.append(item)
 
-    today_accum: dict[CohortKey, list[tuple[ManifestEntry, Any]]] = defaultdict(list)
+    transformer = explorer_transformer.BundleTransformer()
+    keys: dict[str, dict[str | None, CohortKey]] = {}
+    accum: dict[CohortKey, list[tuple[ManifestEntry, Any]]] = defaultdict(list)
     for item in loaded:
-        today_accum[item.today_key].append((item.entry, item.detail))
-    today_ranks = _rank_cohorts(today_accum)
+        keys[item.name] = {}
+        for lane_entry in transformer.lane_entries(item.entry, item.data):
+            key = explorer_pipeline.summary_key(lane_entry, item.detail)
+            keys[item.name][lane_entry.ranking_lane] = key
+            accum[key].append((lane_entry, item.detail))
+    ranks = _rank_cohorts(accum)
 
-    outcomes: dict[str, corpus_rule.Outcome] = {}
-    lane_keys: dict[str, dict[str, CohortKey]] = {}
-    rule_accum: dict[CohortKey, list[tuple[ManifestEntry, Any]]] = defaultdict(list)
+    snapshot: Snapshot = {}
     for item in loaded:
         facts = corpus_rule.facts_from_result(
             item.data,
@@ -223,21 +178,10 @@ def compute_snapshot(bundles_dir: Path) -> Snapshot:
             validation_status=item.entry.validation_status,
             failed_queries=item.entry.failed_query_count,
         )
-        outcome = corpus_rule.derive_outcome(facts)
-        outcomes[item.name] = outcome
-        lane_keys[item.name] = {}
-        for lane in outcome.lanes:
-            key, entry = _rule_entry(item, lane, outcome)
-            lane_keys[item.name][lane] = key
-            rule_accum[key].append((entry, item.detail))
-    rule_ranks = _rank_cohorts(rule_accum)
-
-    snapshot: Snapshot = {}
-    for item in loaded:
         snapshot[item.name] = {
             "identity": _identity(item),
-            "today": _today(item, today_ranks),
-            "rule": _rule(item, outcomes[item.name], rule_ranks, lane_keys[item.name]),
+            "today": _today(item, ranks, keys[item.name]),
+            "rule": _rule(item, corpus_rule.derive_outcome(facts), ranks, keys[item.name]),
         }
     for name, problem in skipped.items():
         snapshot[name] = {"identity": None, "today": {"skipped": problem}, "rule": {"skipped": problem}}

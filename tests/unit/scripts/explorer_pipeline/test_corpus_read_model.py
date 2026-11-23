@@ -1,0 +1,285 @@
+from __future__ import annotations
+
+import importlib.util
+import json
+import re
+from pathlib import Path
+from typing import Any
+
+import duckdb
+import pytest
+
+from _project.scripts.explorer_pipeline import corpus_outcome
+from _project.scripts.explorer_pipeline.medians import version_order
+from _project.scripts.explorer_pipeline.pipeline import ExplorerPipeline
+from benchbox.core.results import corpus_rule, corpus_score
+from tests.unit.scripts.explorer_pipeline.conftest import combined_bundle, scored_minimal_bundle
+
+pytestmark = [pytest.mark.unit, pytest.mark.medium]
+
+REPO_ROOT = Path(__file__).resolve().parents[4]
+FIXTURE = REPO_ROOT / "tests" / "fixtures" / "explorer_read_model" / "next_read_model_contract.json"
+CHECKER = REPO_ROOT / "scripts" / "publication" / "check_explorer_compat.py"
+PIPELINE_DIR = REPO_ROOT / "_project" / "scripts" / "explorer_pipeline"
+BASE_SCORE = 1000.0
+SLOW_FACTORS = (10.0, 20.0, 40.0)
+
+
+def _checker() -> Any:
+    spec = importlib.util.spec_from_file_location("check_explorer_compat_corpus", CHECKER)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _power_run(name: str, *, version: str = "1.2.0", slow: tuple[str, float] | None = None) -> dict:
+    data = scored_minimal_bundle(BASE_SCORE)
+    data["run"]["id"] = name
+    data["run"]["timestamp"] = f"2026-03-15T10:{len(name) % 60:02d}:{sum(map(ord, name)) % 60:02d}.000000"
+    data["platform"]["version"] = version
+    data["execution"].update(driver_actual_version=version, driver_resolved_version=version)
+    if slow is not None:
+        query_id, factor = slow
+        for query in data["queries"]:
+            if query["id"] == query_id:
+                query["ms"] *= factor
+    return data
+
+
+def _build(tmp_path: Path, bundles: dict[str, dict]) -> Path:
+    bundles_dir = tmp_path / "data" / "bundles"
+    bundles_dir.mkdir(parents=True)
+    for name, payload in bundles.items():
+        (bundles_dir / f"{name}.json").write_text(json.dumps(payload), encoding="utf-8")
+    ExplorerPipeline().run(tmp_path / "data", tmp_path / "out")
+    return tmp_path / "out" / "results.duckdb"
+
+
+def _medians(db: Path) -> list[tuple]:
+    with duckdb.connect(str(db), read_only=True) as con:
+        return con.execute(
+            "SELECT comparison_version, version_is_release, run_count, median_score, spread, is_leaderboard_version "
+            "FROM identity_medians ORDER BY comparison_version"
+        ).fetchall()
+
+
+def test_the_emitted_read_model_matches_the_contract_fixture(tmp_path: Path) -> None:
+    contract = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    checker = _checker()
+    db = _build(
+        tmp_path,
+        {"partial": _partial_run("partial"), "full": _full_run("full")},
+    )
+
+    with duckdb.connect(str(db), read_only=True) as con:
+        assert con.execute("SELECT read_model_version FROM metadata").fetchone() == (contract["read_model_version"],)
+        assert checker.validate_database_schema(con, contract["read_model_version"]) == []
+        assert checker.validate_database_queries(con, contract["read_model_version"]) == []
+        columns = {
+            row[0]: row[1]
+            for row in con.execute(
+                "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'results'"
+            ).fetchall()
+        }
+        view_columns = {row[0] for row in con.execute("DESCRIBE result_detail_metrics").fetchall()}
+        for column in contract["tables"]["results"]["added_columns"]:
+            assert checker.normalize_type(columns[column["name"]]) == column["type"]
+        assert set(contract["views"]["result_detail_metrics"]) <= view_columns
+        for table in ("result_lane_scores", "identity_medians"):
+            declared = {column["name"]: column["type"] for column in contract["tables"][table]["columns"]}
+            stored = {
+                row[0]: checker.normalize_type(row[1])
+                for row in con.execute(
+                    f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table}'"
+                ).fetchall()
+            }
+            assert stored == declared
+        allowed = {
+            column["name"]: set(column["allowed_values"])
+            for column in contract["tables"]["results"]["added_columns"]
+            if "allowed_values" in column
+        }
+        for corpus_class, lanes in con.execute("SELECT corpus_class, corpus_lanes FROM results").fetchall():
+            assert corpus_class in allowed["corpus_class"]
+            assert set(json.loads(lanes)) <= allowed["corpus_lanes"]
+        for lane, source in con.execute("SELECT lane, score_source FROM result_lane_scores").fetchall():
+            assert lane in allowed["corpus_lanes"]
+            assert source in {
+                value
+                for name, value in vars(corpus_rule).items()
+                if name.startswith("SCORE_") and isinstance(value, str)
+            }
+
+
+def _stamped(data: dict) -> dict:
+    data["benchmark"]["compliance_class"] = "unofficial_nonstandard"
+    data["summary"]["tpc_metrics"] = {"suppressed": True}
+    data["run"]["id"] = "stamped"
+    data["run"]["timestamp"] = "2026-03-16T10:00:00.000000"
+    return data
+
+
+def _full_run(name: str) -> dict:
+    data = combined_bundle(name)
+    data["run"]["id"] = name
+    return data
+
+
+def _partial_run(name: str) -> dict:
+    data = combined_bundle(name)
+    data["run"]["id"] = name
+    data["phases"]["throughput_test"].pop("refresh_stream")
+    return data
+
+
+def test_a_stamp_the_writer_recorded_does_not_change_the_outcome(tmp_path: Path) -> None:
+    db = _build(tmp_path, {"plain": _power_run("plain"), "stamped": _stamped(_power_run("other"))})
+
+    with duckdb.connect(str(db), read_only=True) as con:
+        rows = con.execute(
+            "SELECT corpus_class, corpus_lanes, is_ranking_eligible, ranking_exclusion_reason FROM results"
+        ).fetchall()
+        ranks = con.execute("SELECT rank FROM benchmark_rankings ORDER BY rank").fetchall()
+
+    assert rows == [("power_only", '["power_only"]', True, None)] * 2
+    assert len(ranks) == 2
+    assert all(rank is not None for (rank,) in ranks)
+
+
+def test_the_median_row_takes_the_score_of_per_query_medians(tmp_path: Path) -> None:
+    runs = {
+        f"run{index}": _power_run(f"run{index}", slow=(f"Q{index + 1}", factor))
+        for index, factor in enumerate(SLOW_FACTORS)
+    }
+    run_scores = sorted(corpus_score.power_at_size(run) for run in runs.values())
+    median_of_scores = run_scores[1]
+    db = _build(tmp_path, runs)
+
+    ((version, is_release, run_count, median_score, spread, standing),) = _medians(db)
+
+    assert (version, is_release, run_count, standing) == ("1.2.0", True, 3, True)
+    assert median_score == pytest.approx(BASE_SCORE)
+    assert abs(median_score - median_of_scores) / BASE_SCORE > 0.01
+    assert spread == pytest.approx((run_scores[-1] - run_scores[0]) / median_score)
+    with duckdb.connect(str(db), read_only=True) as con:
+        assert con.execute("SELECT count(*) FROM benchmark_rankings WHERE rank IS NOT NULL").fetchone() == (3,)
+
+
+def test_a_release_stands_for_the_platform_and_a_pre_release_stays_in_the_version_view(tmp_path: Path) -> None:
+    db = _build(
+        tmp_path,
+        {
+            "release": _power_run("release", version="1.2.0"),
+            "pre": _power_run("pre", version="1.3.0.dev4"),
+        },
+    )
+
+    assert _medians(db) == [
+        ("1.2.0", True, 1, pytest.approx(BASE_SCORE), 0.0, True),
+        ("1.3.0.dev4", False, 1, pytest.approx(BASE_SCORE), 0.0, False),
+    ]
+
+
+def test_a_newest_version_without_a_ranked_result_does_not_hide_an_older_ranked_one(tmp_path: Path) -> None:
+    failed = _power_run("failed", version="1.3.0")
+    failed["queries"].pop()
+    db = _build(tmp_path, {"old": _power_run("old", version="1.2.0"), "new": failed})
+
+    assert _medians(db) == [
+        ("1.2.0", True, 1, pytest.approx(BASE_SCORE), 0.0, True),
+        ("1.3.0", True, 0, None, None, False),
+    ]
+
+
+def test_a_partial_result_enters_both_the_power_and_the_throughput_cohort(tmp_path: Path) -> None:
+    db = _build(tmp_path, {"partial": _partial_run("partial")})
+
+    with duckdb.connect(str(db), read_only=True) as con:
+        corpus_class, lanes = con.execute("SELECT corpus_class, corpus_lanes FROM results").fetchone()
+        phases = con.execute("SELECT phase, rank FROM benchmark_rankings ORDER BY phase").fetchall()
+        scores = con.execute("SELECT lane, score IS NOT NULL FROM result_lane_scores ORDER BY lane").fetchall()
+        lanes_of_medians = con.execute("SELECT lane FROM identity_medians ORDER BY lane").fetchall()
+
+    assert corpus_class == corpus_rule.CLASS_PARTIAL
+    assert json.loads(lanes) == [corpus_rule.LANE_POWER_ONLY, corpus_rule.LANE_THROUGHPUT]
+    assert phases == [("power", 1), ("throughput", 1)]
+    assert scores == [("power_only", True), ("throughput", True)]
+    assert lanes_of_medians == [("power_only",), ("throughput",)]
+
+
+def test_a_result_the_rule_cannot_place_is_not_published(tmp_path: Path) -> None:
+    unknown = _power_run("unknown")
+    unknown["benchmark"]["id"] = "not-a-registered-benchmark"
+    bundles_dir = tmp_path / "data" / "bundles"
+    bundles_dir.mkdir(parents=True)
+    (bundles_dir / "known.json").write_text(json.dumps(_power_run("known")), encoding="utf-8")
+    (bundles_dir / "unknown.json").write_text(json.dumps(unknown), encoding="utf-8")
+
+    stats = ExplorerPipeline().run(tmp_path / "data", tmp_path / "out")
+
+    assert (stats.processed, stats.skipped) == (1, 1)
+
+
+def test_labels_and_identity_come_from_the_rule_modules(tmp_path: Path) -> None:
+    single = _power_run("single")
+    single["phases"] = {"power_test": {"status": "COMPLETED"}}
+    db = _build(tmp_path, {"single": single})
+
+    with duckdb.connect(str(db), read_only=True) as con:
+        row = con.execute(
+            "SELECT corpus_labels, comparison_identity, comparison_version, version_is_release, observed_engine, "
+            "row_count_evidence_label, iteration_label FROM results"
+        ).fetchone()
+
+    labels, identity, version, is_release, observed, row_counts, iterations = row
+    assert json.loads(labels) == [
+        "Derived from TPC-H, not an official TPC result",
+        corpus_rule.CLASS_WORDS[corpus_rule.CLASS_POWER_ONLY],
+        corpus_rule.ROW_COUNTS_NOT_CHECKED_LABEL,
+    ]
+    assert (identity, version, is_release) == ("duckdb v1.2.0", "1.2.0", True)
+    assert observed is None
+    assert row_counts == corpus_rule.ROW_COUNTS_NOT_CHECKED_LABEL
+    assert iterations == corpus_outcome.SINGLE_ITERATION_LABEL
+
+
+def test_three_measured_iterations_carry_no_iteration_label() -> None:
+    assert corpus_outcome.iteration_label(3) is None
+    assert corpus_outcome.iteration_label(2) == corpus_outcome.SINGLE_ITERATION_LABEL
+
+
+@pytest.mark.parametrize(
+    ("older", "newer"),
+    [("1.9.0", "1.10.0"), ("1.2.0", "1.2.1"), ("0.9", "1.0")],
+)
+def test_version_order_compares_numbers_not_text(older: str, newer: str) -> None:
+    assert version_order(older) < version_order(newer)
+
+
+FORBIDDEN_IN_THE_PIPELINE = (
+    "RANKING_EXCLUDED_COMPLIANCE_CLASSES",
+    "effective_compliance_class",
+    "subscale_policy",
+    "unofficial_nonstandard",
+    "unofficial_subscale",
+    "is_nonstandard_scale",
+    "is_subscale_tpc",
+)
+
+
+def test_the_pipeline_holds_no_class_or_stamp_logic_of_its_own() -> None:
+    offenders = {
+        path.name: [token for token in FORBIDDEN_IN_THE_PIPELINE if re.search(rf"\b{token}\b", text)]
+        for path in sorted(PIPELINE_DIR.glob("*.py"))
+        if (text := path.read_text(encoding="utf-8"))
+    }
+
+    assert {name: tokens for name, tokens in offenders.items() if tokens} == {}
+
+
+def test_the_pipeline_takes_class_and_identity_from_the_rule_modules() -> None:
+    text = (PIPELINE_DIR / "corpus_outcome.py").read_text(encoding="utf-8")
+
+    assert "corpus_rule.derive_outcome" in text
+    assert "comparison_identity.comparison_identity" in text
