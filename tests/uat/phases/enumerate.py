@@ -7,6 +7,7 @@ from benchbox.core.run_service import unavailable_benchmark_message
 from tests.uat.compatibility import CompatibilityRule, compatibility_rule_for
 from tests.uat.config import UATConfig
 from tests.uat.matrix import (
+    UAT_UNCERTIFIED_SCALES,
     BenchmarkInfo,
     filter_scales_by_registry,
     load_benchmarks,
@@ -260,18 +261,34 @@ def _ladder_pruned_rows(
     benchmark: str,
     dropped: list[float],
 ) -> list[CompatibilityPrunedCell]:
+    uncertified = UAT_UNCERTIFIED_SCALES.get(benchmark, ())
     return [
-        CompatibilityPrunedCell(
-            platform=platform,
-            benchmark=benchmark,
-            scale=scale,
-            rule_id=f"uat.ladder.{benchmark}.scale-not-in-registry",
-            status=REGISTRY_PRUNE_STATUS,
-            reason=(
-                f"scale {scale} is outside {benchmark}'s registered scale_options and was dropped "
-                "by the scale-ladder registry filter."
-            ),
-            evidence="tests.uat.matrix.filter_scales_by_registry against benchmark registry scale_options",
+        (
+            CompatibilityPrunedCell(
+                platform=platform,
+                benchmark=benchmark,
+                scale=scale,
+                rule_id=f"uat.ladder.{benchmark}.scale-not-certified",
+                status=REGISTRY_PRUNE_STATUS,
+                reason=(
+                    f"scale {scale} is a registered scale_option of {benchmark} that no UAT run certifies "
+                    "and was dropped by the UAT uncertified-scale exclusion."
+                ),
+                evidence="tests.uat.matrix.UAT_UNCERTIFIED_SCALES",
+            )
+            if scale in uncertified
+            else CompatibilityPrunedCell(
+                platform=platform,
+                benchmark=benchmark,
+                scale=scale,
+                rule_id=f"uat.ladder.{benchmark}.scale-not-in-registry",
+                status=REGISTRY_PRUNE_STATUS,
+                reason=(
+                    f"scale {scale} is outside {benchmark}'s registered scale_options and was dropped "
+                    "by the scale-ladder registry filter."
+                ),
+                evidence="tests.uat.matrix.filter_scales_by_registry against benchmark registry scale_options",
+            )
         )
         for scale in dropped
     ]
