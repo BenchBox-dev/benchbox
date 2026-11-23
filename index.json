@@ -50917,10 +50917,15 @@
       "title": "Evaluate whether trimming post-merge Trunk work is worthwhile after coverage selection stabilizes"
     },
     "trunk-uat-pandas-df-memory-breach-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-24T02:27:44Z",
+        "generation": "ddf789045b054649905e3b9bb650217a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Trunk UAT pandas-df shard killed by the heavy-work watchdog at 13.07 GiB (budget 13 GiB)"
     },
     "trunk-uat-timeseries-execute-failure-20261122": {
