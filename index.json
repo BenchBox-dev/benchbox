@@ -10584,20 +10584,42 @@
       "terminal_outcome": "deliver"
     },
     "run-timeout-hardening": {
-      "accepted_members": {},
+      "accepted_members": {
+        "tpcds-q57-expression-order-float-tie-flake-20261122": "5150a1b189fe676b9a60b92b7aa36936c7cfbe97"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "tpcds-q57-expression-order-float-tie-flake-20261122": {
+          "accepted_head": "5150a1b189fe676b9a60b92b7aa36936c7cfbe97",
+          "changed_files": [
+            "benchbox/core/equivalence/cross_surface.py",
+            "changelog.d/fix-tpcds-q57-order-float-tie.json",
+            "tests/unit/core/equivalence/test_cross_surface.py"
+          ],
+          "integration_head": "e194aca80e6bd98bcf388adc0446fff1a25f74aa",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/run-timeout-hardening",
-      "integration_head": "1def2325473a89eced3a96b02ced91fb1e44b13f",
+      "integration_head": "e194aca80e6bd98bcf388adc0446fff1a25f74aa",
       "integration_log": [
         {
           "at": "2026-11-22T21:01:02Z",
           "head": "1def2325473a89eced3a96b02ced91fb1e44b13f",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-23T00:22:21Z",
+          "head": "e194aca80e6bd98bcf388adc0446fff1a25f74aa",
+          "kind": "prepare",
+          "member": "tpcds-q57-expression-order-float-tie-flake-20261122",
+          "op_id": "a65ef4a8cd5b46b8b073dd6bff26e45c",
+          "previous_head": "1def2325473a89eced3a96b02ced91fb1e44b13f",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-hardening",
@@ -49878,15 +49900,10 @@
       "title": "Remove the now-redundant NULL filter before `n_unique()` in TPC-DS DataFrame Q28"
     },
     "tpcds-q57-expression-order-float-tie-flake-20261122": {
-      "claim": {
-        "expires_at": "2026-11-24T00:22:17Z",
-        "generation": "0b9a62e1c0204dc58a01ac72beef403d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Fix the TPC-DS Q57 expression-backend ORDER BY check failing on a last-digit float tie"
     },
     "tpcds-q9-generation-above-sf5000-owner-decision-20261120": {
