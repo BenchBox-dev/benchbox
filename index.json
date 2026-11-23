@@ -42189,7 +42189,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "benchbox run ignores BENCHBOX_RESULTS_DIR for the result file and creates an empty folder there"
+      "title": "Say in the benchbox run --output help that it reuses shared data for local runs"
     },
     "results-explorer-accessibility-copy-and-facet-cleanup": {
       "claim": null,
