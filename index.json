@@ -10641,7 +10641,8 @@
     "run-timeout-hardening": {
       "accepted_members": {
         "hard-stop-exit-bound-term-kill-wait-20261122": "c5889509257b76e2ced7570006444873b97d3479",
-        "tpcds-q57-expression-order-float-tie-flake-20261122": "5150a1b189fe676b9a60b92b7aa36936c7cfbe97"
+        "tpcds-q57-expression-order-float-tie-flake-20261122": "5150a1b189fe676b9a60b92b7aa36936c7cfbe97",
+        "tpch-dbgen-small-scale-process-count-20261122": "042982144fe708d4235e9999988349f7b23a6543"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -10669,10 +10670,22 @@
           ],
           "integration_head": "e194aca80e6bd98bcf388adc0446fff1a25f74aa",
           "integration_seq": 1
+        },
+        "tpch-dbgen-small-scale-process-count-20261122": {
+          "accepted_head": "042982144fe708d4235e9999988349f7b23a6543",
+          "changed_files": [
+            "benchbox/core/benchmark_loader.py",
+            "benchbox/core/generation_estimate.json",
+            "changelog.d/perf-tpch-dbgen-small-scale-process-count.json",
+            "tests/unit/cli/test_cli_orchestrator.py",
+            "tests/unit/core/test_tpch_dbgen_process_count.py"
+          ],
+          "integration_head": "24609963c9aefeca4a72ca584d2bcebf3e69ab22",
+          "integration_seq": 4
         }
       },
       "integration_branch": "feat/run-timeout-hardening",
-      "integration_head": "1336a739efaffb40fabb2a9d9e3a4ce620a3763d",
+      "integration_head": "24609963c9aefeca4a72ca584d2bcebf3e69ab22",
       "integration_log": [
         {
           "at": "2026-11-22T21:01:02Z",
@@ -10712,6 +10725,15 @@
           "op_id": "f2aade57146c41d69b74661fb59ea165",
           "previous_head": "3f577182f12c9bd1ca65f4663df2aede74015fa5",
           "seq": 3
+        },
+        {
+          "at": "2026-11-23T02:44:56Z",
+          "head": "24609963c9aefeca4a72ca584d2bcebf3e69ab22",
+          "kind": "prepare",
+          "member": "tpch-dbgen-small-scale-process-count-20261122",
+          "op_id": "c031c2165b7a4373add919b2de3f4824",
+          "previous_head": "1336a739efaffb40fabb2a9d9e3a4ce620a3763d",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-run-timeout-hardening",
@@ -50235,15 +50257,10 @@
       "title": "Find and regenerate TPC-H data generated before canonical addresses"
     },
     "tpch-dbgen-small-scale-process-count-20261122": {
-      "claim": {
-        "expires_at": "2026-11-24T02:44:52Z",
-        "generation": "d3b0a2403d224058bb736b953a97d3db",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7c75c21cf3817e94d8f20d18"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "open",
       "title": "Cut TPC-H generation time at small scales: dbgen pays a fixed text-pool cost per process and BenchBox starts one per CPU core"
     },
     "tpch-dbgen-source-tree-hygiene": {
