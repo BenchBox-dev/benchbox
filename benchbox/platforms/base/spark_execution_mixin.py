@@ -548,6 +548,7 @@ class SparkQueryExecutionMixin:
         except Exception as e:
             return self._build_query_failure_result(query_id, start_time, e)
 
+        self.record_query_engine_observation(connection, query, query_id)
         self._merge_plan_capture_into_result(result_dict, connection, query, query_id)
 
         return result_dict
