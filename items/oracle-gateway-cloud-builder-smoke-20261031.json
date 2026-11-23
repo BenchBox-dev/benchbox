@@ -2,7 +2,7 @@
   "acceptance": [
     "Cloud-session outputs for each check above recorded in context."
   ],
-  "context": "2026-11-11: merged duplicate oracle-cloud-review-reachability-smoke-20261030 into this item. That item asked for the same cloud-session observation: make cloud-bootstrap reports gateway=reachable with gateway_proxy set in cloud-gateway status, and make pr-open completes a local review through the cloud client. Both checks are in this item's steps.",
+  "context": "2026-11-11: merged duplicate oracle-cloud-review-reachability-smoke-20261030 into this item. That item asked for the same cloud-session observation: make cloud-bootstrap reports gateway=reachable with gateway_proxy set in cloud-gateway status, and make pr-open completes a local review through the cloud client. Both checks are in this item's steps.\n\n2026-11-23: depends on cloud-builder-review-gateway-access-20261119. tag:oracle-cloud was removed from the tailnet on 2026-11-19, so cloud sessions cannot reach the gateway until that item restores access under tag:review-cloud. The smoke's 'through oracle-cloud' step now means through the review-cloud tag.",
   "description": "The owner waived the live cloud smoke for cloud-builder gateway access on 2026-10-30 so the code (#3830, 800fcc09ca) could land. In an owner-launched Claude cloud session: make cloud-bootstrap reports gateway=reachable; make pr-open on a clean branch runs the review through oracle-cloud and opens a PR (closed as a smoke artifact); a connection to any other tailnet host or port is refused. Record outputs.",
   "not_before": "2026-11-06T00:00:00Z",
   "sessions": [
@@ -21,6 +21,14 @@
       "op": "update",
       "op_id": "24fbeef7dc124073a2732f5db98ac5ae",
       "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f0306fe42dc404288de80bb6",
+      "at": "2026-11-23T18:40:36Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b92499c36bf986f8491962eb684031ca",
+      "session_id": "85f847e9be7f4d2f8dd166c7531f637d"
     }
   ]
 }

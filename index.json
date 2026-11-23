@@ -36367,7 +36367,9 @@
     },
     "oracle-gateway-cloud-builder-smoke-20261031": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "cloud-builder-review-gateway-access-20261119"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Observe cloud-builder gateway access in a Claude cloud session"
