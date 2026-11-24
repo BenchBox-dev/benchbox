@@ -81,6 +81,14 @@ file	benchbox/core/results/timing_fields.py
 file	benchbox/core/results/subscale_policy.py
 file	benchbox/core/results/corpus_rule_data.json
 file	scripts/generate_corpus_rule_data.py
+file	benchbox/core/results/corpus_rule.py
+file	benchbox/core/results/corpus_score.py
+file	benchbox/core/results/comparison_identity.py
+file	benchbox/core/results/comparison_identity.json
+file	benchbox/core/results/result_outcome.py
+file	benchbox/core/results/submit_classification.py
+file	scripts/check_mirror_validator_parity.py
+file	scripts/corpus_outcome_probe.py
 file	results-data/validate_corpus.py
 file	benchbox/core/results/loader.py
 file	benchbox/core/results/schema.py
