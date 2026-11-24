@@ -1,7 +1,7 @@
 {
   "acceptance": [
     "bundle-data-generation-hash-missing-from-corpus is verified done and fresh TPC-H/TPC-DS runs export non-null data_generation_hash values.",
-    "Gate A, Gate B (all 8 TPC-H tables, all 24 TPC-DS tables, and all 6 derived benchmarks), and Gate D pass on the pinned tpcgen-cli version across all supported CI platforms.",
+    "Gate A, Gate B (all 8 TPC-H tables, all 24 TPC-DS tables, and all 7 derived consumers: 6 local smoke suites plus ai_primitives datagen/dry-run), and Gate D pass on the pinned tpcgen-cli version across all supported CI platforms.",
     "Owner decision on published-run Parquet layout default (keep BenchBox streaming converter vs adopt direct tpcgen-cli Parquet and re-baseline) is recorded in docs/internal/adr/adr-benchbox-datagen.md and implemented.",
     "tpch and tpcds default backend cutover is merged on develop honoring the ADR's missing-extra rule, with --datagen-backend legacy still passing tests, Windows arm64 and refresh paths safely preserved, and a changelog.d/ fragment added."
   ],
@@ -19,6 +19,14 @@
       "client": "antigravity-client",
       "op": "create",
       "op_id": "d9a01011b87fd8a4c6e54982b8310c11",
+      "session_id": "85b2c240cd2b4c709f5c56393a05342d"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032",
+      "at": "2026-11-24T00:21:48Z",
+      "client": "antigravity-client",
+      "op": "update",
+      "op_id": "d9a02005b87fd8a4c6e54982b8310c05",
       "session_id": "85b2c240cd2b4c709f5c56393a05342d"
     }
   ]
