@@ -19962,7 +19962,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "blocked",
+      "status": "open",
       "title": "Let registered batches land changes to generated repository indexes that member work makes stale"
     },
     "batch-server-engine-bulk-load-umbrella-20261109": {
