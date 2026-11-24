@@ -63,17 +63,20 @@ replication:
 | Recurring maintainer seed and curated release-preview corpus | `develop` |
 | Complete accepted Phase 2 archive, including direct operator and community submissions | `published-results` |
 | Corpus inventory | Generated independently from each branch's own bundle tree |
-| Independent publication input | Exact `published-results` SHA pinned by a reviewed publication manifest; every validator-clean accepted result is input by default |
+| Independent publication manifest *(retired)* | Retired by [`adr-site-repo-split.md`](adr-site-repo-split.md) D12; the legacy publication manifest control plane was removed |
 | Explorer code, admission policy, visibility, trust, withdrawal, and ranking policy | `develop` |
-| Public Results Explorer | Built and deployed from `BenchBox-dev/benchbox-site` using the attested core site-inputs bundle (see [`adr-site-repo-split.md`](adr-site-repo-split.md)) |
+| Public Results Explorer | Built and deployed from `BenchBox-dev/benchbox-site` using the attested core site-inputs bundle built from `results-data/` on `develop` (`scripts/site_inputs.py`; see [`adr-site-repo-split.md`](adr-site-repo-split.md)) |
 
 Published-only bundles are therefore expected archive growth, not missing
-backports. There is no automatic `published-results` to `develop` sync. Acceptance,
-withdrawal, and readmission rules follow
-[`adr-independent-publication-authorities.md`](adr-independent-publication-authorities.md):
-every valid accepted result reachable from the pinned corpus commit is publication
-input by default, while orthogonal visibility, trust, withdrawal, and ranking
-fields on `develop` control presentation without creating a second corpus authority.
+backports. There is no automatic `published-results` to `develop` sync. Today's
+site-inputs bundle (`scripts/site_inputs.py`) reads `results-data/` on `develop`
+rather than a pinned `published-results` manifest commit (the legacy publication
+manifest control plane was retired under
+[`adr-site-repo-split.md`](adr-site-repo-split.md) D12). Acceptance, withdrawal,
+and readmission rules still follow
+[`adr-independent-publication-authorities.md`](adr-independent-publication-authorities.md),
+and orthogonal visibility, trust, withdrawal, and ranking fields on `develop`
+control presentation without creating a second corpus authority.
 
 ### Allowlist
 
@@ -90,7 +93,7 @@ fields on `develop` control presentation without creating a second corpus author
 | `.github/workflows/validate-submission.yml` | The submission CI gate. |
 | `.gitignore` | Repository-root ignore — kept minimal. |
 | `LICENSE`, `COPYRIGHT.md`, `DISCLAIMER.md` | Required for any public repo branch; near-zero churn. |
-| `CONTRIBUTING.md` | Slim, points contributors at `https://benchbox.dev/docs/contributing-results.html` for the full guide. |
+| `CONTRIBUTING.md` | Slim; intended to point contributors at `https://benchbox.dev/docs/contributing-results.html` for the full guide *(note 2026-11-24: live `origin/published-results:CONTRIBUTING.md` still carries a broken link to `develop/docs/contributing-results.md` and is tracked for update)*. |
 | `README.md` | A `published-results`-specific README (not the develop one) explaining what the branch is, why it is slim, and how to contribute. |
 
 Total expected file count: **on the order of hundreds**, dominated by
@@ -109,8 +112,10 @@ in the slim-down.
 - `_binaries/` — TPC-H/DS binaries. Not required for corpus validation.
 - `_sources/` — vendored upstream sources. Not required for corpus
   validation.
-- `docs/`, `examples/`, `docker/` (and site/explorer assets now owned by
-  `BenchBox-dev/benchbox-site`) — not part of the slim corpus branch.
+- `_blog/`, `landing/`, `results-explorer/`, `docs/`, `examples/`,
+  `docker/` — not part of the slim corpus branch *(historical slim-down list;
+  `_blog/`, `landing/`, `results-explorer/`, and published user docs later
+  moved to `BenchBox-dev/benchbox-site`)*.
 - All other `.github/workflows/*.yml` except `validate-submission.yml`
   — the slim branch only needs the submission validator workflow.
 - All other top-level dotfiles, `Makefile`, `pyproject.toml`,
@@ -144,8 +149,7 @@ even there).
 This means `pyproject.toml` and `uv.lock` are **not** added to the
 allowlist and stay excluded. The on-branch copy of
 `validate-submission.yml` is the one that has to change; that change
-is part of W2 of the parent TODO (it lands together with the
-orphan-branch reset).
+landed together with the orphan-branch reset.
 
 ### Python version pinning
 
@@ -238,11 +242,12 @@ differences.
   `CONTRIBUTING.md` on the slim branch, in `docs/contributing-results.md`
   on `develop`, and in the runbook before the force-push.
 - Vendoring `validate_submission.py` and `generate_corpus_inventory.py`
-  introduces a sync surface. Mitigated by W4 of the parent TODO and by
-  treating `develop` as authoritative for vendored validation tooling.
+  introduces a sync surface. Mitigated by `.github/workflows/sync-results-data-to-published.yml`
+  and by treating `develop` as authoritative for vendored validation tooling.
 - The branch loses the May-1 history. Project history overall is
-  preserved on `develop` and `main`; `published-results`'s own log is
-  intentionally short and corpus-focused.
+  preserved on `develop` (and was preserved on `main` before that branch was
+  retired); `published-results`'s own log is intentionally short and
+  corpus-focused.
 
 ## Alternatives considered
 
@@ -306,8 +311,7 @@ Re-review this ADR when:
 
 ## References
 
-- Parent TODO: `_project/DONE/main/published-results-slim-down-and-corpus-mirror.yaml` (completed)
-- Originating handoff: `_project/handoffs/results-explorer-uat-corpus-integration-20260503.md`
+- Historical provenance: parent TODO `published-results-slim-down-and-corpus-mirror` and originating handoff `results-explorer-uat-corpus-integration-20260503` (both retired after tracker migration)
 - Runbook: `docs/internal/results-phase-2-runbook.md`
 - Contributor guide: `https://benchbox.dev/docs/contributing-results.html`
 - Sync workflow (authoritative mirror list): `.github/workflows/sync-results-data-to-published.yml`

@@ -64,7 +64,9 @@ a smooth scroll still in flight at capture; the capture spec now waits for it.
 Trunk runs do not cancel running work. Amended 2026-10-30: develop pushes share
 one concurrency group, so one run is in flight and a newer push replaces a
 waiting one (see `trunk-latest-head-runs-2026-10-30.md`, which supersedes the
-per-commit groups of 2026-10-27 and the earlier `concurrency.queue: max`). Runs can still wait for runner capacity. This cannot prove
+per-commit groups of 2026-10-27 and the earlier `concurrency.queue: max`).
+Amended 2026-11-06: per-commit `trunk-${{ github.sha }}` concurrency was
+restored in `.github/workflows/trunk.yml` (see `docs/internal/adr/adr-dev-loop-v2.md`). Runs can still wait for runner capacity. This cannot prove
 that GitHub delivered every push event. The fast-lane test-count ceiling and
 growth baseline are retired; marker and forbidden-path checks remain.
 
