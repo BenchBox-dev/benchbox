@@ -22329,6 +22329,13 @@
       "status": "done",
       "title": "✅ ClickBench Empty String vs NULL Constraint Issue (COMPLETED)"
     },
+    "clickbench-q4-average-exact-float-compare-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Compare the ClickBench Q4 DataFrame average with a tolerance instead of exact float equality"
+    },
     "clickhouse-alias-removal-post-deprecation": {
       "claim": null,
       "needs": [],
