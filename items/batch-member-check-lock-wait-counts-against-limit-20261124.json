@@ -5,6 +5,7 @@
     "The member-check output reports lock-wait time and run time separately.",
     "docs/agent/batch-feature-delivery.md (or the page that documents batch-member-check) states how the limit is measured."
   ],
+  "context": "Owner decision 2026-11-24 (choice dialog): start the member-check timer only after the host lock is granted and report the wait separately; member checks and pr-preflight honour HEAVY_ADMIT_WAIT (pr-preflight-honours-heavy-admit-wait-20261124). Do not change the host lock's own one-hour wait (BENCHBOX_TEST_LOCK_WAIT_SECONDS).",
   "description": "## Problem\nmake batch-member-check runs make pr-preflight through scripts/batch_integration.py::_run with a fixed timeout of 3600 s. The preflight's pytest step waits for the shared host lock, and that wait counts against the same limit. On 2026-11-24 other sessions held the lock for up to about 55 minutes, so most member checks timed out before running a test ('TimeoutExpired ... make pr-preflight ... timed out after 3600 seconds'). batch-member-check makes three timed _run calls (preflight, changelog-check, verification tests); the preflight and the verification tests each wait for the host lock. host_lock's own wait limit is also 3600 s (DEFAULT_WAIT_SECONDS, BENCHBOX_TEST_LOCK_WAIT_SECONDS), so a holder past one hour still ends in LockUnavailable even if the outer timer is fixed. Plain pr-preflight has the same exposure: one run failed with LockUnavailable after waiting the full hour.\n\n## Decision gate\nKeep a bound on the work itself. Choose: (a) start the member-check limit only after the host lock is admitted, reporting the wait separately, or (b) remove the outer limit and rely on the per-step limits the preflight already enforces. Default: (a). State how the check learns the lock was granted; default: batch_integration takes the lock itself and child steps inherit it through BENCHBOX_TEST_SESSION_OWNER. Whether raising BENCHBOX_TEST_LOCK_WAIT_SECONDS for the member check counts as an admission change is the owner's decision. If neither option can be done without changing host_lock admission rules, stop and ask the owner.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check). Do not change lock admission order, the lock file, or the watchdog; do not add retries that re-run a failed preflight automatically.",
   "links": [
     "scripts/batch_integration.py",
@@ -26,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "6a4fc5bba5f7437bb97622a970bbef2d",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:41:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8a78f90fd1db42bb8d460d097bf1a46a",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
