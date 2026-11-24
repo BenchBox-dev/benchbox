@@ -4,6 +4,7 @@
     "A submission PR that edits the file is rejected, shown by a test or a recorded run on published-results.",
     "Whether the published-results validator reads the file from the submission's own tree is answered and recorded."
   ],
+  "context": "Blocked 2026-11-24: owner approved Option 1 (site-inputs-published-results-corpus-gap-20261124) to consolidate corpus intake onto develop and freeze published-results read-only post-release (retire-published-results-mirror-and-freeze-20261124). Do not invest further in published-results mirror validator guards; drop during Step 5 retirement.",
   "description": "## Problem\n#4463 (merged af84bc8a36; mirrored to published-results by #4478) added `benchbox/core/results/standard_scales.json` to the files mirrored to published-results; the standalone validator reads it to decide which scales are standard and so which bundles are rankable. The submission guard in `.github/workflows/validate-submission.yml` must stay byte-identical between develop and published-results, and the published-results copy changes only through a hand-opened PR there, so #4463 left the guard list unchanged. A community submission PR can therefore edit `standard_scales.json` without the guard rejecting it. If the validator reads that file from the submission's own checkout, an edited copy could make an off-list bundle rankable; a maintainer review is then the only defence.\n\n## Change\nFirst answer whether the published-results validator reads the file from the submission's tree. Then land a coordinated pair: add the file to the guard list on published-results (hand-opened PR) and on develop, in an order that keeps the validator sync check green.\n\n## Decision gates\n- The published-results PR is hand-opened and its merge follows the published-results process; the owner merges it unless the owner delegates.\n- Do not change which scales are standard or which bundles rank.\n\n## Verification rubric\nPass: both copies list the file; the sync check (\"Submission validator stays in sync\") passes on develop; a submission PR touching the file is rejected (test or recorded run).\n\n## Guardrails\n- Work in a linked worktree from `make worktree-create`; never write in the primary clone. Stage named paths only; commit as the pinned human identity with no agent attribution.\n- Push only after `make pr-preflight` passes on the exact head. Never `--no-verify`, force-push, or rewrite authorship.\n- Arm only with `make pr-arm`, once per head. A second attempt only when the refusal named a cause that is now fixed; a third needs the owner. `make pr-rerun` only for a job the runner cancelled or never ran, never to re-roll a failed test.\n- Never post a stand-in review. Resolve a review thread only after the bot has reviewed the new head and did not raise the finding again.\n- Heavy work only through `make heavy-run` or a lock-taking target. Never set `BENCHBOX_HEAVY_ADMIT=force`, `BENCHBOX_SKIP_TEST_LOCK` or `BENCHBOX_HEAVY_WATCHDOG=off`.\n- Any new limit, threshold, default or user-facing label is shown to the owner before it is committed.\n- Do not mark a test skip, xfail, quarantine or slow to make it pass.\n- Report only what merged and what was verified, with run ids and heads.",
   "links": [
     ".github/workflows/validate-submission.yml",
@@ -27,6 +28,14 @@
       "op": "update",
       "op_id": "de58e88175874824b3b5f1037dcf3d44",
       "session_id": "c81aa4dd49e04ffea4f29cb72ae09d11"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T20:21:48Z",
+      "client": "antigravity-client",
+      "op": "update",
+      "op_id": "b1c2d3e4f5061728394a5b6c7d8e9f07",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
     }
   ]
 }

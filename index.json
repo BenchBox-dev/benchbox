@@ -36066,7 +36066,7 @@
         "mirror-validator-refuses-offlist-tpch-tpcds-bundles-20261120"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Reject community edits to standard_scales.json in the published-results submission guard"
     },
     "mirrored-file-local-imports-audit-20261020": {
