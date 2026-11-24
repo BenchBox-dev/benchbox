@@ -25875,15 +25875,10 @@
       "title": "Write and get owner approval for docs/internal/adr/adr-benchbox-datagen.md"
     },
     "datagen-p0-tpcgen-parity-spike": {
-      "claim": {
-        "expires_at": "2026-11-25T01:15:28Z",
-        "generation": "10023749155a4e58b68fc93eb23966d4",
-        "renewals": 0,
-        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Complete Tier 1 tpcgen-cli parity, sub-scale, Parquet-type, and refresh-set spike"
     },
     "datagen-p0-vectorization-prototype": {
