@@ -179,13 +179,15 @@ because it runs the workflow file from the pull request. See
 [`docs/internal/repo-admin-settings.md`](../repo-admin-settings.md) and
 `_project/decisions/oracle-review-check-retired-2026-10-24.md`.
 
-Amended 2026-11-23: the required review check was renamed from `oracle-gate` to
-`review-gate`, posted by the `benchbox-review` App from the `review` environment
-(`.github/review.yml`), and widened from soundness paths only to every pull request not
-confined to `.github/inert-paths.txt`. Live required contexts, environment bindings, and
-review rules are maintained in
+Reconciled 2026-11-23 (effective 2026-10-21 to 2026-11-09): the required review
+check was renamed from `oracle-gate` to `review-gate`, posted by the
+`benchbox-review` App from the `review` environment (`.github/review.yml`), and
+widened from soundness paths only to every pull request not confined to
+`.github/inert-paths.txt` (widening beyond soundness paths has no separate
+decision record; live required contexts, environment bindings, and review rules
+are maintained in
 [`docs/internal/repo-admin-settings.md`](../repo-admin-settings.md) and
-[`docs/internal/review-v2.md`](../review-v2.md).
+[`docs/internal/review-v2.md`](../review-v2.md)).
 
 ### D5: Retain agent write tooling, retire PR-loop scripts
 
