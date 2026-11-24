@@ -49529,7 +49529,9 @@
     },
     "theseus-classifier-402-skips-fallback-20261124": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "review-classifier-degraded-remediation-20261124"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Theseus: a TypeSafe 402 skips the OpenAI Decisions fallback and the unavailable bucket, so no reviewer runs"
