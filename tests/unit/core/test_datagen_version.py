@@ -866,12 +866,17 @@ def test_backend_reuse_safety_and_native_tpc_manifest_provenance(tmp_path: Path)
     assert _validate_manifest_if_present(_Benchmark(), cfg_legacy)[::2] == (False, True)
     assert _validate_manifest_if_present(_Benchmark(), cfg_native)[::2] == (True, True)
 
-    class _NativeBenchmark:
-        output_dir = tmp_path
-        datagen_backend = "native"
-
-    result = _attach_datagen_version(
+    result_native = _attach_datagen_version(
         make_benchmark_results(benchmark_id="h2odb", benchmark_name="h2odb", scale_factor=1.0),
-        _NativeBenchmark(),
+        _Benchmark(),
+        config=cfg_native,
     )
-    assert result.data_generation_hash == native_h2o_manifest["data_generation_identity_hash"]
+    assert result_native.data_generation_hash == native_h2o_manifest["data_generation_identity_hash"]
+
+    result_legacy = _attach_datagen_version(
+        make_benchmark_results(benchmark_id="h2odb", benchmark_name="h2odb", scale_factor=1.0),
+        _Benchmark(),
+        config=cfg_legacy,
+    )
+    assert result_legacy.data_generation_hash is None
+    assert result_legacy.data_generation_version is None

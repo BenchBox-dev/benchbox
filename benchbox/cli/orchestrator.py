@@ -103,6 +103,9 @@ class BenchmarkOrchestrator:
                 shared_path = self.directory_manager.get_datagen_path(source_name, config.scale_factor)
                 benchmark_instance.output_dir = shared_path
 
+        if opts.get("datagen_backend") is not None:
+            benchmark_instance.datagen_backend = str(opts["datagen_backend"])
+
         return benchmark_instance
 
     def _resolve_construction_output_dir(self, config: BenchmarkConfig, benchmark_class) -> Optional[Union[str, Path]]:

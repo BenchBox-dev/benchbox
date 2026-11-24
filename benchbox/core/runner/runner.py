@@ -402,7 +402,11 @@ def _collect_reused_table_stats(adapter: Any, benchmark: Any, connection: Any) -
 
 
 def _attach_datagen_version(
-    result: BenchmarkResults, benchmark: Any = None, *, dataset_identity_established: bool = True
+    result: BenchmarkResults,
+    benchmark: Any = None,
+    *,
+    config: Any = None,
+    dataset_identity_established: bool = True,
 ) -> BenchmarkResults:
     try:
         if not dataset_identity_established:
@@ -422,6 +426,9 @@ def _attach_datagen_version(
         with manifest_path.open("r", encoding="utf-8") as handle:
             manifest = _json.load(handle)
         expected_backend = getattr(benchmark, "datagen_backend", None) if benchmark is not None else None
+        if expected_backend is None and config is not None:
+            config_options = getattr(config, "options", None) or {}
+            expected_backend = config_options.get("datagen_backend")
         if not manifest_datagen_is_current(manifest, expected_backend=expected_backend):
             return result
         if not _manifest_matches_result(manifest, result, benchmark):
@@ -1129,7 +1136,7 @@ def _build_data_only_result(
     result_obj = _enrich_driver_runtime_metadata(result_obj, adapter=None, database_config=database_config)
     if execution_context is not None:
         result_obj.execution_context = execution_context.model_dump()
-    return _attach_datagen_version(result_obj, benchmark)
+    return _attach_datagen_version(result_obj, benchmark, config=benchmark_config)
 
 
 def _clickhouse_load_failure_details(
@@ -1606,6 +1613,7 @@ def run_benchmark_lifecycle(
         return _attach_datagen_version(
             result_obj,
             benchmark,
+            config=benchmark_config,
             dataset_identity_established=dataset_identity_established and not _adapter_reused_database(adapter),
         )
 
@@ -1686,6 +1694,7 @@ def run_benchmark_lifecycle(
     return _attach_datagen_version(
         finalized,
         benchmark,
+        config=benchmark_config,
         dataset_identity_established=dataset_identity_established and not _adapter_reused_database(adapter),
     )
 
