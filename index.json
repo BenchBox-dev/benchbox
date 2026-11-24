@@ -40656,15 +40656,10 @@
       "title": "Automate drift detection for pypi environment required_reviewers"
     },
     "pypi-github-security-review-20261023": {
-      "claim": {
-        "expires_at": "2026-11-25T14:45:45Z",
-        "generation": "c6d7005b724040078e4c1e60584db31c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Owner review of PyPI and GitHub security history for the eMudhra CA exposure window"
     },
     "pypi-installability-canary-and-rollback": {
