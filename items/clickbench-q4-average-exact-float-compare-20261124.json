@@ -3,7 +3,7 @@
     "The test (and any sibling fixed with it) passes 50 consecutive runs locally with random test ordering (command and result in the PR).",
     "The tolerance is relative 1e-12 or tighter."
   ],
-  "description": "## Problem\ntests/unit/core/clickbench/test_clickbench_dataframe_execution.py::TestClickBenchQueryExecution::test_q4_average_user_id asserts `[4.350909328996494e16]` exactly. On 2026-11-24 it got 4.350909328996495e16 once in pr-preflight and passed on rerun: summation order changes the last digit.\n\n## Change\nCompare with pytest.approx at a relative tolerance no looser than 1e-12. Check the other ClickBench DataFrame tests for exact float comparisons of aggregates and fix the same way.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check). Do not round or change product query code.",
+  "description": "## Problem\ntests/unit/core/clickbench/test_clickbench_dataframe_execution.py::TestClickBenchQueryExecution::test_q4_average_user_id asserts `[4.350909328996494e16]` exactly. On 2026-11-24 it got 4.350909328996495e16 once in pr-preflight and passed on rerun: summation order changes the last digit.\n\n## Change\nCompare with pytest.approx at a relative tolerance no looser than 1e-12. Check the other ClickBench DataFrame tests for exact float comparisons of aggregates and fix the same way.\n\n## Decision gate\nIf the value differs by more than a relative 1e-12 in any of the 50 runs, the cause is not summation order: stop and record the values here instead of loosening the tolerance.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check). Do not round or change product query code.",
   "links": [
     "tests/unit/core/clickbench/test_clickbench_dataframe_execution.py"
   ],
@@ -14,6 +14,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "40bc6b684bff4d5f92c8fa64cd0761a9",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:23:48Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a211963f04c9410985a5c27d8f58f7c7",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
