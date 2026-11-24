@@ -51897,6 +51897,13 @@
       "status": "done",
       "title": "tpcds-parity-draws exits 1 although every draw reports the surfaces equivalent"
     },
+    "tpcds-platform-identity-sf1-refresh-sets-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Extend the TPC-DS platform identity check to SF 1 refresh sets"
+    },
     "tpcds-pyspark-compatibility": {
       "claim": null,
       "needs": [],

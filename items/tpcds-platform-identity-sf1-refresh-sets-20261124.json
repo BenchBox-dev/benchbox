@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "The platform identity manifest includes per-file row counts and SHA-256 for SF 1 refresh sets 1 and 2 (seed 20260709) and the compare step reports any cross-platform difference.",
+    "Run against the pre-#4426 binaries, the comparison flags the darwin/Linux difference in s_web_order_lineitem_1.dat and s_web_returns_1.dat (shown by a test or a recorded run).",
+    "tpcds-platform-identity.yml passes on develop with the current binaries; the workflow's measured duration on each runner is recorded in context."
+  ],
+  "context": "Gap identified while shipping #4426: its PR body notes darwin-x86_64 and Windows binaries were not run locally and platform identity covers them only at SF 0.01.",
+  "description": "## Problem\n`tpcds-platform-identity.yml` (via `scripts/tpcds_platform_identity.py`) compares base data and `dsqgen` parameters at SF 0.01 across the six bundled binaries. The web lineitem item-wrap bug appeared only in SF 1 refresh sets, so this check could not have caught it, and it still cannot catch a platform-specific refresh defect. The darwin-x86_64 and Windows binaries rebuilt in #4426 were never checked at SF 1 refresh; only darwin-arm64 and both Linux binaries were compared locally.\n\n## Change\nAdd SF 1 refresh sets 1 and 2 (seed 20260709) to the manifest the workflow builds on every platform, as row counts and SHA-256 per refresh file, and compare them across platforms the same way base tables are compared. dsdgen generates one SF 1 refresh set in about 2 seconds.\n\n## Decision gate\nIf adding SF 1 refresh sets pushes the workflow past its current time budget on any runner, bring the measured cost to the owner before reducing scope or changing the trigger.\n\n## Guardrails\n- Linux and macOS cells must agree; Windows cells keep their advisory status (owner decision 2026-10-04) unless the owner changes it.\n- Do not loosen existing base-table or query comparisons.\n- The check must fail, not skip, when a refresh file is missing.\n\n## Verification rubric\n- A manifest built with the pre-#4426 binaries shows a mismatch between darwin and Linux for `s_web_order_lineitem_1.dat` and `s_web_returns_1.dat`.\n- The workflow passes on develop with the current binaries on all six runners, with Windows advisory.",
+  "links": [
+    ".github/workflows/tpcds-platform-identity.yml",
+    "scripts/tpcds_platform_identity.py",
+    "https://github.com/BenchBox-dev/benchbox/pull/4426"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:46b8aecc4947f9228ee7b958",
+      "at": "2026-11-24T14:45:25Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "95472a9d7e614ef4a0468bd13497d5b6",
+      "session_id": "a724ea91942f4b2591aae926a47c7dd1"
+    }
+  ]
+}
