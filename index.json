@@ -38857,7 +38857,8 @@
     "perf-smoke-rebaseline-after-power-query-generation-20261103": {
       "claim": null,
       "needs": [
-        "power-test-times-query-generation-20261031"
+        "power-test-times-query-generation-20261031",
+        "perf-smoke-gate-verdict-follows-runner-cpu-model-20261124"
       ],
       "priority": "medium-high",
       "status": "open",
