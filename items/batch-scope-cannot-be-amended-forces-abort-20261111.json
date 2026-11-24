@@ -3,6 +3,7 @@
     "The chosen mechanism is implemented with a bounded end-to-end test.",
     "A scope amendment, if allowed, is visible in show_batch and in final evidence, and a path outside amended scope is still refused."
   ],
+  "context": "Owner decision 2026-11-24 (choice dialog): option (b): an owner-recorded scope amendment hashed into the ledger and receipt, applying from the integration head forward, for files that are not generated indexes (those are covered by batch-scope-excludes-generated-indexes-20261124). Batch tooling ships serially after the lock-wait fix.",
   "description": "Across 2026-11-04 to 2026-11-10, batches were aborted or re-registered because a needed file was outside the frozen scope: tpc-timer-boundaries (docs-ownership.json), arrow-result-fetch, server-engine-bulk-load (twice; make/platform-tests.mk and tests/uat files), ci-and-preflight-reliability. Each abort costs a re-land of every member plus a new CI cycle. batch-advance REASON=fix refuses paths outside the union of scopes, and scopes are immutable by design (batch-feature-delivery.md).\n\nChange. Reduce the cost without weakening the audit: (a) batch-start warns when a member's changed or likely-coupled files (compose files with guards, quality/*.json, make/*.mk named in tests) fall outside scope; (b) allow an owner-recorded scope amendment that is hashed into the ledger and the receipt, applying only to the integration head forward; or (c) document a standard broad scope template. Batch tooling ships serially.\n\nGuardrails: linked worktree; no explanatory comments; changelog fragment if user-facing; no live cloud without owner approval quoted in context; heavy runs through make heavy-run.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "op": "create",
       "op_id": "1e8b2233ae634e4faabf9f0793f20316",
       "session_id": "be2833e191bb4cfb8fe53ecc26763b4b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:41:41Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1eea71ca6f3f40cd864aa72d692356f3",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
 }
