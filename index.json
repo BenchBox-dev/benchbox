@@ -51709,6 +51709,13 @@
       "status": "blocked",
       "title": "Audit whether Redshift, Snowflake and Databricks planners exploit the TPC-DS informational keys (needs live-cloud approval)"
     },
+    "tpcds-k9-refresh-key-base-root-fix-decision-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Decide whether to fix dsdgen's refresh key base (K9) at its root now that the 4.0.0 source is available"
+    },
     "tpcds-maintenance-data-source-decision-20261103": {
       "claim": null,
       "needs": [],
