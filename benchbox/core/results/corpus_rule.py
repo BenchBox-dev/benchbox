@@ -490,6 +490,48 @@ def _refresh_evidence(data: Mapping[str, Any], phases: Mapping[str, Any]) -> boo
     return _tpch_refresh_clean(phases) or _tpcds_maintenance_clean(phases)
 
 
+def _failed(block: Any, success: str) -> bool:
+    status = str(block.get("status") or "").upper() if isinstance(block, Mapping) else ""
+    return status not in ("", "NOT_RUN", success)
+
+
+def _any_failed(items: Any) -> bool:
+    return isinstance(items, list) and any(_failed(item, "SUCCESS") for item in items)
+
+
+def _phase_block(data: Mapping[str, Any], name: str) -> Mapping[str, Any]:
+    phases = data.get("phases")
+    block = phases.get(name) if isinstance(phases, Mapping) else None
+    return block if isinstance(block, Mapping) else {}
+
+
+def power_refresh_failed(data: Mapping[str, Any]) -> bool:
+    return _any_failed(_phase_block(data, "power_test").get("refresh_functions"))
+
+
+def throughput_refresh_failed(data: Mapping[str, Any]) -> bool:
+    stream = _phase_block(data, "throughput_test").get("refresh_stream")
+    return _failed(stream, "COMPLETED") or (isinstance(stream, Mapping) and _any_failed(stream.get("pairs")))
+
+
+def _maintenance_failed(data: Mapping[str, Any]) -> bool:
+    for name in ("maintenance_test", "maintenance_test_2"):
+        block = _phase_block(data, name)
+        if _failed(block, "COMPLETED") or _any_failed(block.get("operations")):
+            return True
+    return False
+
+
+def _refresh_failed(data: Mapping[str, Any]) -> bool:
+    benchmark = normalize_benchmark_id(_benchmark_id(data))
+    tpch = power_refresh_failed(data) or throughput_refresh_failed(data)
+    if benchmark == "tpch":
+        return tpch
+    if benchmark == "tpcds":
+        return _maintenance_failed(data)
+    return tpch or _maintenance_failed(data)
+
+
 def _benchmark_id(data: Mapping[str, Any]) -> Any:
     benchmark = data.get("benchmark")
     return benchmark.get("id") if isinstance(benchmark, Mapping) else None
@@ -538,7 +580,7 @@ def phases_ran(data: Mapping[str, Any]) -> frozenset[str] | None:
         ran.add(PHASE_POWER)
     if _executed(phases.get("throughput_test")):
         ran.add(PHASE_THROUGHPUT)
-    if _refresh_evidence(data, phases):
+    if _refresh_evidence(data, phases) or _refresh_failed(data):
         ran.add(PHASE_REFRESH)
     if not ran & {PHASE_POWER, PHASE_THROUGHPUT} and _measured_rows(data):
         ran.add(PHASE_OTHER_TIMED)

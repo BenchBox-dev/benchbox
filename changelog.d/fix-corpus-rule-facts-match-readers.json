@@ -1,4 +1,4 @@
 {
   "schema": 1,
-  "internal": "Make the corpus outcome rule's fact extraction no looser than today's readers: failed validation, routed gateways, refresh and throughput stream evidence now follow the existing cleanliness checks."
+  "internal": "Make the corpus outcome rule's fact extraction no looser than today's readers: failed validation, routed gateways, refresh and throughput stream evidence now follow the existing cleanliness checks. A refresh or maintenance phase that ran and failed counts as run rather than absent, so a combined run with a failed refresh is not ranked and a failed refresh leaves the power or throughput test that contains it unscored."
 }

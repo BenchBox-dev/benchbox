@@ -1511,13 +1511,8 @@ def _parity_variants() -> dict[str, dict]:
 EXPECTED_RULE_DIVERGENCE = {
     "combined-phase-with-power-score-only": ((), "missing_primary_metric"),
     "combined-phase-with-throughput-score-only": ((), "missing_primary_metric"),
-    "combined-tpcds-failed-maintenance-operation": (("power_only",), None),
-    "combined-tpcds-maintenance-phase-failed": (("power_only",), None),
     "combined-tpcds-second-round-missing": (("power_only",), None),
     "combined-tpcds-second-throughput-failed": (("power_only",), None),
-    "combined-tpch-failed-power-refresh": (("throughput",), None),
-    "combined-tpch-failed-refresh-pair": (("power_only", "throughput"), None),
-    "combined-tpch-failed-refresh-stream": (("power_only", "throughput"), None),
     "combined-tpch-failed-throughput-stream": (("power_only",), None),
     "combined-tpch-no-refresh-evidence": (("throughput",), None),
 }

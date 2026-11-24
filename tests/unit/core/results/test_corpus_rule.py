@@ -558,33 +558,43 @@ def test_a_routed_gateway_holds_the_result_with_or_without_a_name() -> None:
         assert not rule.facts_from_result(data).gateway_routed
 
 
-def test_failed_or_partial_refresh_is_not_refresh_evidence() -> None:
+def _broken(data: dict, mutate) -> dict:
+    copy = json.loads(json.dumps(data))
+    mutate(copy)
+    return copy
+
+
+def test_refresh_that_ran_and_failed_counts_as_run_but_incomplete_refresh_does_not() -> None:
     clean = result(throughput_streams=3, refresh=True)
     assert rule.PHASE_REFRESH in rule.phases_ran(clean)
 
-    def broken(mutate) -> dict:
-        data = json.loads(json.dumps(clean))
-        mutate(data)
-        return data
-
-    cases = [
-        broken(lambda d: d["phases"]["power_test"]["refresh_functions"][1].update(status="FAILED")),
-        broken(lambda d: d["phases"]["power_test"]["refresh_functions"].pop()),
-        broken(lambda d: d["phases"]["throughput_test"]["refresh_stream"].update(pairs=[{"status": "FAILED"}])),
-        broken(lambda d: d["phases"]["throughput_test"]["refresh_stream"].update(status="FAILED")),
-        broken(lambda d: d["phases"]["throughput_test"].pop("refresh_stream")),
+    failed = [
+        _broken(clean, lambda d: d["phases"]["power_test"]["refresh_functions"][1].update(status="FAILED")),
+        _broken(clean, lambda d: d["phases"]["throughput_test"]["refresh_stream"].update(pairs=[{"status": "FAILED"}])),
+        _broken(clean, lambda d: d["phases"]["throughput_test"]["refresh_stream"].update(status="FAILED")),
     ]
-    for data in cases:
+    for data in failed:
+        assert rule.PHASE_REFRESH in rule.phases_ran(data)
+        assert rule.derive_outcome(rule.facts_from_result(data)).lanes == (rule.LANE_COMBINED,)
+
+    incomplete = [
+        _broken(clean, lambda d: d["phases"]["power_test"]["refresh_functions"].pop()),
+        _broken(clean, lambda d: d["phases"]["throughput_test"].pop("refresh_stream")),
+    ]
+    for data in incomplete:
         assert rule.PHASE_REFRESH not in rule.phases_ran(data)
         assert rule.derive_outcome(rule.facts_from_result(data)).class_name != rule.CLASS_FULL_SPEC
 
 
-def test_tpcds_refresh_evidence_needs_both_maintenance_tests_to_complete() -> None:
+def test_tpcds_failed_maintenance_counts_as_run_and_missing_maintenance_does_not() -> None:
     assert rule.PHASE_REFRESH in rule.phases_ran(_tpcds_result())
     assert rule.PHASE_REFRESH not in rule.phases_ran(_tpcds_result(maintenance=1))
     failed = _tpcds_result()
     failed["phases"]["maintenance_test_2"]["operations"][0]["status"] = "FAILED"
-    assert rule.PHASE_REFRESH not in rule.phases_ran(failed)
+    assert rule.PHASE_REFRESH in rule.phases_ran(failed)
+    phase_failed = _tpcds_result()
+    phase_failed["phases"]["maintenance_test"]["status"] = "FAILED"
+    assert rule.PHASE_REFRESH in rule.phases_ran(phase_failed)
     not_run = _tpcds_result()
     not_run["phases"]["maintenance_test_2"]["status"] = "NOT_RUN"
     assert rule.PHASE_REFRESH not in rule.phases_ran(not_run)

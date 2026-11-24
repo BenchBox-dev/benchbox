@@ -66,6 +66,8 @@ def power_at_size(data: Mapping[str, Any]) -> float | None:
     if benchmark_id is None or scale is None:
         return None
     rule = _corpus_rule()
+    if benchmark_id == "tpch" and rule.power_refresh_failed(data):
+        return None
     legacy = rule.legacy_query_timing_defaults(data)
     default_run_type = "measurement" if legacy else None
     default_iteration = 1 if legacy else 0
@@ -108,6 +110,8 @@ def throughput_at_size(data: Mapping[str, Any]) -> float | None:
     block = phases.get("throughput_test") if isinstance(phases, Mapping) else None
     duration_ms = block.get("duration_ms") if isinstance(block, Mapping) else None
     if scale is None or isinstance(duration_ms, bool) or not isinstance(duration_ms, int | float) or duration_ms <= 0:
+        return None
+    if _corpus_rule().throughput_refresh_failed(data):
         return None
     stream_results = block.get("stream_results")
     if isinstance(stream_results, list) and not all(

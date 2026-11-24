@@ -136,6 +136,41 @@ def test_throughput_is_queries_per_stream_times_streams_over_the_phase_duration(
     assert corpus_score.throughput_at_size(data) is None
 
 
+@pytest.mark.parametrize(
+    "refresh_stream",
+    [{"status": "FAILED", "pairs": [{"status": "SUCCESS"}]}, {"status": "COMPLETED", "pairs": [{"status": "FAILED"}]}],
+)
+def test_throughput_is_unavailable_when_its_refresh_stream_failed(refresh_stream: dict) -> None:
+    data = _data([], scale=1.0)
+    data["phases"] = {
+        "throughput_test": {
+            "duration_ms": 2000,
+            "status": "COMPLETED",
+            "stream_results": [{"success": True}],
+            "refresh_stream": refresh_stream,
+        }
+    }
+
+    assert corpus_score.throughput_at_size(data) is None
+    data["phases"]["throughput_test"]["refresh_stream"] = {"status": "COMPLETED", "pairs": [{"status": "SUCCESS"}]}
+    assert corpus_score.throughput_at_size(data) == pytest.approx(22 * 3600 / 2)
+
+
+def test_power_is_unavailable_when_its_refresh_functions_failed_in_every_lane() -> None:
+    data = _data(_full_run(), scale=1.0)
+    data["phases"] = {
+        "power_test": {
+            "status": "COMPLETED",
+            "refresh_functions": [{"function": "RF1", "status": "SUCCESS"}, {"function": "RF2", "status": "FAILED"}],
+        },
+        "throughput_test": {"status": "NOT_RUN"},
+    }
+
+    outcome = corpus_rule.derive_outcome(corpus_rule.facts_from_result(data))
+    assert outcome.score_source == corpus_rule.SCORE_POWER_QUERY_TIMINGS_ONLY
+    assert corpus_score.power_at_size(data) is None
+
+
 def _stub_executor_results() -> list[dict]:
     return [
         {
