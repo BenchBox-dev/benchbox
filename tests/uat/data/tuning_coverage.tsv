@@ -125,10 +125,10 @@ cedardb	nyctaxi	basic_constraints	waived	basic constraints are acceptable until 
 cedardb	flightdata	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 cedardb	datavault	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 cedardb	vector_search	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-starrocks	tpch	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-starrocks	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
+starrocks	tpch	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/starrocks/tpch_tuned.yaml
+starrocks	tpcds	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/starrocks/tpcds_tuned.yaml
 starrocks	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-starrocks	ssb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
+starrocks	ssb	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/starrocks/ssb_tuned.yaml
 starrocks	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	h2odb	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	amplab	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-

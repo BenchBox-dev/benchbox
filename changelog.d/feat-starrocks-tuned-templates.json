@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "StarRocks has tuned templates for TPC-H, TPC-DS and SSB.",
+      "platforms": ["starrocks"]
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed StarRocks results recording the MySQL compatibility version (8.0.33) instead of the StarRocks version.",
+      "platforms": ["starrocks"]
+    }
+  ]
+}

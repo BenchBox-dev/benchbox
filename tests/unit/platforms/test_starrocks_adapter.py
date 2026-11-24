@@ -284,6 +284,7 @@ class TestStarRocksAdapter:
         info = adapter.get_platform_info(mock_conn)
 
         assert info["platform_version"] == "3.3.0-starrocks"
+        mock_cursor.execute.assert_called_once_with("SELECT current_version()")
 
     def test_get_existing_tables(self, mock_pymysql):
         mock_conn = Mock()

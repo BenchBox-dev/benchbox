@@ -194,13 +194,20 @@ def classify_error(message: str | None, *, timed_out: bool = False) -> str | Non
     if not message:
         return None
     lowered = message.lower()
-    if "timeout_exceeded" in lowered or "timeout exceeded" in lowered:
+    if any(marker in lowered for marker in ("timeout_exceeded", "timeout exceeded", "reached its timeout")):
         return "timeout"
     if "memory_limit_exceeded" in lowered or "out of memory" in lowered or MEMORY_LIMIT.search(lowered):
         return "memory_limit"
     if any(
         marker in lowered
-        for marker in ("connection refused", "unexpected eof", "connection reset", "networkerror", "socket")
+        for marker in (
+            "connection refused",
+            "unexpected eof",
+            "connection reset",
+            "networkerror",
+            "socket",
+            "backend node not found",
+        )
     ):
         return "connection_lost"
     return "error"

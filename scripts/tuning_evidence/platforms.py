@@ -594,17 +594,18 @@ class ChDBSeam(ClickHouseSeam):
         raise ValueError("throughput streams are not supported on chDB: its client is shared within the process")
 
 
-class ClickHouseServerSeam(ClickHouseSeam):
-    platform_name = "clickhouse-server"
-    cold_cache_support = "partial: drops the mark, uncompressed and query caches; the guest page cache is kept"
-    cache_statements = ("SYSTEM DROP MARK CACHE", "SYSTEM DROP UNCOMPRESSED CACHE", "SYSTEM DROP QUERY CACHE")
+class ServerSeam(AdapterSeam):
+    engine_label = ""
+    default_port = 0
+    default_user = ""
+    password_env = ""
 
     def __init__(
         self,
         *,
         host: str = "localhost",
-        port: int = 9000,
-        user: str = "default",
+        port: int | None = None,
+        user: str | None = None,
         password: str = "",
         container: str | None = None,
         container_cli: str | None = None,
@@ -615,8 +616,8 @@ class ClickHouseServerSeam(ClickHouseSeam):
     ) -> None:
         super().__init__(**kwargs)
         self.host = host
-        self.port = port
-        self.user = user
+        self.port = self.default_port if port is None else port
+        self.user = self.default_user if user is None else user
         self.password = password
         self.settle_timeout_seconds = settle_timeout_seconds
         self.settle_sleep = settle_sleep
@@ -641,6 +642,65 @@ class ClickHouseServerSeam(ClickHouseSeam):
         environment["container"] = self.container_start or None
         return environment
 
+    def connection_kwargs(self, database: str) -> dict[str, Any]:
+        return {"database": database}
+
+    def remove_database(self, adapter: Any, database: str) -> None:
+        adapter.drop_database(database=database)
+
+    def connect(self, handle: ArmHandle) -> Any:
+        connection = self.wrap(handle.adapter.create_connection(**self.connection_kwargs(handle.database)))
+        self.configure_session(handle, connection)
+        return connection
+
+    def release(self, handle: ArmHandle, connection: Any) -> None:
+        handle.adapter.close_connection(raw_connection(connection))
+
+    def round_evidence(self) -> dict[str, Any]:
+        if self.probe is None:
+            return {}
+        return {"stats": self.probe.stats(), "memory_events": self.probe.memory_events()}
+
+    def run_evidence(self) -> dict[str, Any]:
+        if self.probe is None:
+            return {
+                "container": None,
+                "blockers": ["no container named: guest memory.max, stats and OOM state were not captured"],
+            }
+        events_end = self.probe.memory_events()
+        blockers = []
+        oom_kills = None
+        if self.events_start is None or events_end is None:
+            blockers.append("OOM state unknown: memory.events could not be read")
+        else:
+            oom_kills = events_end.get("oom_kill", 0) - self.events_start.get("oom_kill", 0)
+            if oom_kills > 0:
+                blockers.append(f"the container recorded {oom_kills} OOM kills during the run")
+        if not self.container_start.get("memory_max"):
+            blockers.append("guest memory.max could not be read")
+        notes = []
+        if Path(self.probe.cli).name == "mocker":
+            notes.append(f"{self.engine_label} ran in a Linux VM under Apple container, not under Linux Docker")
+        return {
+            **self.container_start,
+            "memory_events_end": events_end,
+            "oom_kill_delta": oom_kills,
+            "oom_killed": None if oom_kills is None else oom_kills > 0,
+            "stats_end": self.probe.stats(),
+            "notes": notes,
+            "blockers": blockers,
+        }
+
+
+class ClickHouseServerSeam(ServerSeam, ClickHouseSeam):
+    platform_name = "clickhouse-server"
+    engine_label = "ClickHouse server"
+    default_port = 9000
+    default_user = "default"
+    password_env = "CLICKHOUSE_PASSWORD"
+    cold_cache_support = "partial: drops the mark, uncompressed and query caches; the guest page cache is kept"
+    cache_statements = ("SYSTEM DROP MARK CACHE", "SYSTEM DROP UNCOMPRESSED CACHE", "SYSTEM DROP QUERY CACHE")
+
     def adapter_options(self, arm: ArmSpec, database: str) -> dict[str, Any]:
         return {"host": self.host, "port": self.port, "username": self.user, "password": self.password}
 
@@ -648,12 +708,6 @@ class ClickHouseServerSeam(ClickHouseSeam):
         super().configure_adapter(adapter, database)
         adapter.database = database
         adapter.send_receive_timeout = int(self.timeout_seconds) + 60
-
-    def connection_kwargs(self, database: str) -> dict[str, Any]:
-        return {"database": database}
-
-    def remove_database(self, adapter: Any, database: str) -> None:
-        adapter.drop_database(database=database)
 
     def load_includes_settle(self, adapter: Any) -> bool:
         return bool(adapter.tuning_enabled)
@@ -735,14 +789,6 @@ class ClickHouseServerSeam(ClickHouseSeam):
         self.start_session(handle)
         return handle
 
-    def connect(self, handle: ArmHandle) -> Any:
-        connection = self.wrap(handle.adapter.create_connection(**self.connection_kwargs(handle.database)))
-        self.configure_session(handle, connection)
-        return connection
-
-    def release(self, handle: ArmHandle, connection: Any) -> None:
-        handle.adapter.close_connection(raw_connection(connection))
-
     def settle(self, handle: ArmHandle) -> SettleRecord:
         from benchbox.platforms.clickhouse.merge_settle import wait_for_merges_to_settle
 
@@ -799,44 +845,108 @@ class ClickHouseServerSeam(ClickHouseSeam):
                 }
         return costs
 
-    def round_evidence(self) -> dict[str, Any]:
-        if self.probe is None:
-            return {}
-        return {"stats": self.probe.stats(), "memory_events": self.probe.memory_events()}
 
-    def run_evidence(self) -> dict[str, Any]:
-        if self.probe is None:
-            return {
-                "container": None,
-                "blockers": ["no container named: guest memory.max, stats and OOM state were not captured"],
-            }
-        events_end = self.probe.memory_events()
-        blockers = []
-        oom_kills = None
-        if self.events_start is None or events_end is None:
-            blockers.append("OOM state unknown: memory.events could not be read")
-        else:
-            oom_kills = events_end.get("oom_kill", 0) - self.events_start.get("oom_kill", 0)
-            if oom_kills > 0:
-                blockers.append(f"the container recorded {oom_kills} OOM kills during the run")
-        if not self.container_start.get("memory_max"):
-            blockers.append("guest memory.max could not be read")
-        notes = []
-        if Path(self.probe.cli).name == "mocker":
-            notes.append("ClickHouse server ran in a Linux VM under Apple container, not under Linux Docker")
+STARROCKS_SESSION_VARIABLES = (
+    "enable_profile",
+    "enable_query_cache",
+    "new_planner_optimize_timeout",
+    "pipeline_dop",
+    "query_mem_limit",
+    "query_timeout",
+    "sql_mode",
+)
+STARROCKS_PENDING_STATISTICS = frozenset({"PENDING", "RUNNING"})
+STARROCKS_SETTLE_POLL_SECONDS = 5.0
+STARROCKS_SETTLE_STABLE_POLLS = 3
+
+
+def starrocks_rows(connection: Any, sql: str) -> list[dict[str, Any]]:
+    cursor = connection.cursor()
+    try:
+        cursor.execute(sql)
+        names = [str(column[0]).lower() for column in cursor.description]
+        return [dict(zip(names, row, strict=True)) for row in cursor.fetchall()]
+    finally:
+        cursor.close()
+
+
+class StarRocksSeam(ServerSeam):
+    platform_name = "starrocks"
+    engine_label = "StarRocks"
+    default_port = 9030
+    default_user = "root"
+    password_env = "STARROCKS_PASSWORD"
+
+    def __init__(self, *, timeout_seconds: float = 300.0, http_port: int = 8040, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.timeout_seconds = timeout_seconds
+        self.http_port = http_port
+
+    def adapter_options(self, arm: ArmSpec, database: str) -> dict[str, Any]:
         return {
-            **self.container_start,
-            "memory_events_end": events_end,
-            "oom_kill_delta": oom_kills,
-            "oom_killed": None if oom_kills is None else oom_kills > 0,
-            "stats_end": self.probe.stats(),
-            "notes": notes,
-            "blockers": blockers,
+            "host": self.host,
+            "port": self.port,
+            "username": self.user,
+            "password": self.password,
+            "http_port": self.http_port,
+            "database": database,
         }
+
+    def configure_adapter(self, adapter: Any, database: str) -> None:
+        adapter.database = database
+        adapter.max_execution_time = int(self.timeout_seconds)
+
+    def engine_version(self, handle: ArmHandle) -> str | None:
+        return handle.adapter.get_platform_info(handle.connection)["platform_version"]
+
+    def session_settings(self, handle: ArmHandle) -> dict[str, Any]:
+        rows = starrocks_rows(handle.connection, "SHOW VARIABLES")
+        values = {row["variable_name"]: row["value"] for row in rows}
+        return {name: values[name] for name in STARROCKS_SESSION_VARIABLES if name in values}
+
+    def background_work(self, handle: ArmHandle) -> tuple[int, int]:
+        statistics = starrocks_rows(handle.connection, "SHOW ANALYZE STATUS")
+        pending = sum(
+            str(row["database"]).rsplit(".", 1)[-1] == handle.database
+            and str(row["status"]).split(" ", 1)[0].upper() in STARROCKS_PENDING_STATISTICS
+            for row in statistics
+        )
+        tablets = starrocks_rows(
+            handle.connection,
+            "SELECT COALESCE(SUM(t.NUM_ROWSET), 0) AS rowsets FROM information_schema.be_tablets t "
+            "JOIN information_schema.tables_config c ON t.TABLE_ID = c.TABLE_ID "
+            f"WHERE c.TABLE_SCHEMA = '{handle.database}'",
+        )
+        return pending, int(tablets[0]["rowsets"])
+
+    def settle(self, handle: ArmHandle) -> SettleRecord:
+        started = mono_time()
+        stable = 0
+        previous_rowsets: int | None = None
+        while True:
+            pending, rowsets = self.background_work(handle)
+            quiet = pending == 0 and rowsets > 0 and rowsets == previous_rowsets
+            stable = stable + 1 if quiet else 0
+            previous_rowsets = rowsets
+            settled = stable >= STARROCKS_SETTLE_STABLE_POLLS
+            waited = elapsed_seconds(started)
+            if settled or waited >= self.settle_timeout_seconds:
+                return SettleRecord(
+                    hook="starrocks_statistics_and_compaction_settle",
+                    settled=settled,
+                    waited_seconds=waited,
+                    detail={
+                        "pending_statistics_jobs": pending,
+                        "rowsets": rowsets,
+                        "timeout_seconds": self.settle_timeout_seconds,
+                    },
+                )
+            self.settle_sleep(STARROCKS_SETTLE_POLL_SECONDS)
 
 
 SEAMS: dict[str, type[AdapterSeam]] = {
     "duckdb": DuckDBSeam,
     "clickhouse-server": ClickHouseServerSeam,
     "clickhouse-local": ChDBSeam,
+    "starrocks": StarRocksSeam,
 }

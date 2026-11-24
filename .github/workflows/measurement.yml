@@ -13,6 +13,9 @@ on:
           - duckdb-tpcds-sf10
           - clickhouse-tpcds-sf1
           - clickhouse-tpch-q21
+          - starrocks-tpch-sf1
+          - starrocks-ssb-sf1
+          - starrocks-tpcds-sf1
       seed:
         description: "Harness seed"
         type: string
@@ -41,6 +44,8 @@ env:
   CLICKHOUSE_IMAGE: ghcr.io/benchbox-dev/clickhouse:25.8@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77
   CLICKHOUSE_CONTAINER_MEMORY: 5376m
   CLICKHOUSE_PASSWORD: benchbox
+  STARROCKS_IMAGE: starrocks/allin1-ubuntu:3.5.16@sha256:00ca71aa2bcb6675016284ca34aa62e391b1fdf27c8b971c2bfe244b68e47338
+  STARROCKS_CONTAINER_MEMORY: 8g
   HOST_CLASS: github-hosted ubuntu-latest, 4 vCPU, 16 GB RAM
 
 defaults:
@@ -84,7 +89,7 @@ jobs:
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
 
       - name: Install dependencies
-        run: uv sync --group dev --extra duckdb --extra clickhouse
+        run: uv sync --group dev --extra duckdb --extra clickhouse --extra starrocks
 
       - name: Prepare the run directory and record the runner
         run: |
@@ -180,6 +185,49 @@ jobs:
             --load-ceiling 12 --round-retries 5 --keep-databases --out "$OUT/harness" 2>&1 | tee "$OUT/run.log"
           uv run -- python -m scripts.tuning_evidence.capture "$OUT/harness/harness.json" --query 21 \
             --commit "$(git rev-parse HEAD)" --out "$OUT/capture" 2>&1 | tee "$OUT/capture.log"
+
+      - name: Start StarRocks under the compose memory limit
+        if: ${{ startsWith(inputs.cell, 'starrocks-') }}
+        run: |
+          docker run -d --name sr \
+            --memory "$STARROCKS_CONTAINER_MEMORY" --memory-swap "$STARROCKS_CONTAINER_MEMORY" \
+            -p 9030:9030 -p 8040:8040 \
+            "$STARROCKS_IMAGE"
+          mysql_exec() { docker exec sr mysql -h127.0.0.1 -P9030 -uroot --skip-password -N -e "$1"; }
+          for _ in $(seq 1 120); do
+            if mysql_exec 'SHOW BACKENDS\G' 2>/dev/null | grep -q 'true' \
+              && mysql_exec 'SELECT current_version()' > "$OUT/env/starrocks-version.txt" 2>/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          [ "${ready:-0}" = 1 ] || { docker logs sr | tail -50; exit 1; }
+          docker inspect sr > "$OUT/env/docker-inspect.json"
+          docker info > "$OUT/env/docker-info.txt"
+          docker exec sr cat /sys/fs/cgroup/memory.max | tee "$OUT/env/guest-memory-max-start.txt"
+          docker exec sr cat /sys/fs/cgroup/memory.events > "$OUT/env/guest-memory-events-start.txt"
+          cat "$OUT/env/starrocks-version.txt"
+
+      - name: Run the StarRocks tuned-versus-notuning cell
+        if: ${{ startsWith(inputs.cell, 'starrocks-') }}
+        run: |
+          benchmark="${CELL#starrocks-}"
+          benchmark="${benchmark%-sf1}"
+          uv run -- python -m scripts.tuning_evidence run --platform starrocks --container sr \
+            --benchmark "$benchmark" --scale 1 --data-dir "$DATA/${benchmark}_sf1" \
+            --arm N=notuning --arm N2=notuning --arm T=tuned \
+            --baseline N --calibration-arm N2 --rounds "$ROUNDS" --seed "$SEED" \
+            --load-ceiling 12 --round-retries 5 --out "$OUT/harness" 2>&1 | tee "$OUT/run.log"
+
+      - name: Record the StarRocks end state
+        if: ${{ always() && startsWith(inputs.cell, 'starrocks-') }}
+        run: |
+          docker exec sr cat /sys/fs/cgroup/memory.events > "$OUT/env/guest-memory-events-end.txt" || true
+          docker stats --no-stream sr > "$OUT/env/docker-stats-end.txt" || true
+          docker logs sr > "$OUT/env/starrocks.log" 2>&1 || true
+          docker cp sr:/data/deploy/starrocks/fe/log/fe.log "$OUT/env/fe.log" || true
+          docker cp sr:/data/deploy/starrocks/be/log/be.WARNING "$OUT/env/be.WARNING" || true
 
       - name: Record the container end state
         if: ${{ always() && startsWith(inputs.cell, 'clickhouse-') }}

@@ -77,3 +77,25 @@ def test_report_renders_a_saved_run(tmp_path: Path, capsys: pytest.CaptureFixtur
     source.write_text(json.dumps(payload))
     assert cli.main(["report", str(source)]) == 0
     assert "# Tuning evidence: duckdb tpch SF0.01" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("platform", "port", "user", "password"),
+    [("clickhouse-server", 9000, "default", "ch-test"), ("starrocks", 9030, "root", "sr-test")],
+)
+def test_server_platforms_use_their_own_connection_defaults(
+    platform: str, port: int, user: str, password: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CLICKHOUSE_PASSWORD", "ch-test")
+    monkeypatch.setenv("STARROCKS_PASSWORD", "sr-test")
+    arguments = cli.build_parser().parse_args(["run", "--platform", platform, "--scale", "1", "--out", "x"])
+    seam = cli.seam_from(arguments, "t1")
+    assert (seam.port, seam.user, seam.password) == (port, user, password)
+
+
+def test_starrocks_http_port_reaches_the_seam() -> None:
+    arguments = cli.build_parser().parse_args(
+        ["run", "--platform", "starrocks", "--scale", "1", "--out", "x", "--port", "19030", "--http-port", "18040"]
+    )
+    seam = cli.seam_from(arguments, "t1")
+    assert (seam.port, seam.http_port) == (19030, 18040)
