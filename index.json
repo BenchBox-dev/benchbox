@@ -25857,15 +25857,10 @@
       "title": "Fail datagen when the manifest records zero tables, and fail validation when zero rows load"
     },
     "datagen-p0-baseline-measurements": {
-      "claim": {
-        "expires_at": "2026-11-25T03:42:30Z",
-        "generation": "a9298b84ad0e488d9dfbe6ea9955dc3b",
-        "renewals": 0,
-        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Measure current data generator wall time, peak RSS, and conversion time at SF 1 and SF 10"
     },
     "datagen-p0-companion-adr": {
