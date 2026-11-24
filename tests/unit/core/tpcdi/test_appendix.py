@@ -66,6 +66,14 @@ def test_unknown_name_is_refused():
         load_appendix_sql("missing")
 
 
+@pytest.mark.parametrize("name", sorted(APPENDIX_FILES))
+def test_missing_file_in_a_distribution_is_named_in_the_error(name: str, tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(appendix, "APPENDIX_DIR", tmp_path)
+    for call in (appendix.appendix_path, stored_sha256, load_appendix_sql):
+        with pytest.raises(FileNotFoundError, match=APPENDIX_FILES[name]):
+            call(name)
+
+
 @pytest.mark.parametrize("platform", ["duckdbb", "", "no-such-platform"])
 def test_unknown_platform_is_refused(platform: str):
     with pytest.raises(UnknownSqlDialectError):
