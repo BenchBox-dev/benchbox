@@ -2063,7 +2063,7 @@ def _validate_manifest_if_present(
 
         from benchbox.utils.datagen_version import describe_datagen_staleness, manifest_datagen_is_current
 
-        expected_backend = (config.options or {}).get("datagen_backend")
+        expected_backend = (getattr(config, "options", None) or {}).get("datagen_backend")
         if not manifest_datagen_is_current(
             manifest,
             benchmark=manifest_benchmark,

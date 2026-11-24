@@ -58,7 +58,6 @@ from benchbox.cli.run_platform_resolution import (
     _check_platforms_status,
     _parse_plat_bench_options,
     _platform_option_config_entries,
-    _resolve_data_organization_payload as _resolve_data_organization_payload,
     _resolve_platform_mode,
     normalize_benchmark_name,
 )
@@ -86,6 +85,7 @@ from benchbox.cli.tuning_runtime import (
     infer_runtime_tuning_mode,
     resolve_dataframe_tuning_config,
 )
+from benchbox.core.benchmark_registry import get_presort_table_configs, presort_capable_benchmarks
 from benchbox.core.config import DatabaseConfig
 from benchbox.core.constants import (
     DEFAULT_OUTPUT_COMPRESSION_TYPE,
@@ -160,6 +160,39 @@ def _apply_platform_optimization_overrides(
             platform_optimizations.liquid_clustering_enabled = True
 
     platform_optimizations.__post_init__()
+
+
+def _resolve_data_organization_payload(
+    benchmark_name: str | None,
+    presort: str | None,
+    tuning_payload: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if presort not in {"parquet-sorted", "delta-sorted", "iceberg-sorted"}:
+        return tuning_payload
+
+    if tuning_payload is not None:
+        if presort in {"delta-sorted", "iceberg-sorted"}:
+            payload = dict(tuning_payload)
+            payload["output_format"] = "delta" if presort == "delta-sorted" else "iceberg"
+            return payload
+        return tuning_payload
+
+    benchmark_key = (benchmark_name or "").lower()
+    output_format_map = {
+        "parquet-sorted": "parquet",
+        "delta-sorted": "delta",
+        "iceberg-sorted": "iceberg",
+    }
+    output_format = output_format_map[presort]
+
+    table_configs = get_presort_table_configs(benchmark_key) if benchmark_key else None
+    if table_configs:
+        return {"table_configs": table_configs, "output_format": output_format}
+
+    if benchmark_key:
+        supported = ", ".join(sorted(presort_capable_benchmarks()))
+        raise ValueError(f"--presort sorted modes are currently supported for {supported} benchmarks")
+    return tuning_payload
 
 
 def _render_post_run_charts(

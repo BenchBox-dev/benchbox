@@ -7,8 +7,8 @@ import pytest
 from click.testing import CliRunner
 
 from benchbox.cli.commands.datagen import datagen
-from benchbox.cli.commands.run import run
 from benchbox.cli.exit_codes import ExitCode
+from benchbox.cli.main import cli
 from benchbox.utils import datagen_backend as datagen_backend_module
 from benchbox.utils.datagen_backend import (
     DEFAULT_DATAGEN_BACKENDS,
@@ -166,8 +166,9 @@ def test_cli_datagen_rejects_auto_and_forwards_legacy(monkeypatch: pytest.Monkey
 def test_cli_run_rejects_unsupported_native_backend() -> None:
     runner = CliRunner()
     result = runner.invoke(
-        run,
+        cli,
         [
+            "run",
             "--benchmark",
             "h2odb",
             "--scale",
@@ -179,7 +180,6 @@ def test_cli_run_rejects_unsupported_native_backend() -> None:
             "--non-interactive",
             "--no-progress",
         ],
-        obj={},
     )
     assert result.exit_code == ExitCode.USAGE
     assert "does not support --datagen-backend native" in result.output

@@ -17,11 +17,7 @@ from benchbox.cli.platform import (
 from benchbox.cli.platform_hooks import PlatformHookRegistry, PlatformOptionError
 from benchbox.cli.shared import console, set_quiet_output
 from benchbox.cli.verbose_logging import setup_verbose_logging
-from benchbox.core.benchmark_registry import (
-    get_benchmark_default_scale,
-    get_presort_table_configs,
-    presort_capable_benchmarks,
-)
+from benchbox.core.benchmark_registry import get_benchmark_default_scale
 from benchbox.core.execution_engine import UnsupportedExecutionEngineError, resolve_requested
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.platform_registry import PlatformRegistry
@@ -495,36 +491,3 @@ def _build_data_organization_from_tuning(unified_tuning: Any) -> dict[str, Any] 
         "table_cluster_configs": table_cluster_configs,
         "clustering_method": method,
     }
-
-
-def _resolve_data_organization_payload(
-    benchmark_name: str | None,
-    presort: str | None,
-    tuning_payload: dict[str, Any] | None,
-) -> dict[str, Any] | None:
-    if presort not in {"parquet-sorted", "delta-sorted", "iceberg-sorted"}:
-        return tuning_payload
-
-    if tuning_payload is not None:
-        if presort in {"delta-sorted", "iceberg-sorted"}:
-            payload = dict(tuning_payload)
-            payload["output_format"] = "delta" if presort == "delta-sorted" else "iceberg"
-            return payload
-        return tuning_payload
-
-    benchmark_key = (benchmark_name or "").lower()
-    output_format_map = {
-        "parquet-sorted": "parquet",
-        "delta-sorted": "delta",
-        "iceberg-sorted": "iceberg",
-    }
-    output_format = output_format_map[presort]
-
-    table_configs = get_presort_table_configs(benchmark_key) if benchmark_key else None
-    if table_configs:
-        return {"table_configs": table_configs, "output_format": output_format}
-
-    if benchmark_key:
-        supported = ", ".join(sorted(presort_capable_benchmarks()))
-        raise ValueError(f"--presort sorted modes are currently supported for {supported} benchmarks")
-    return tuning_payload
