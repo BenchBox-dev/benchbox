@@ -25890,6 +25890,15 @@
       "status": "open",
       "title": "Prototype vectorized Python/PyArrow generation on the slowest measured synthetic generator"
     },
+    "datagen-p1-streaming-parquet-converter": {
+      "claim": null,
+      "needs": [
+        "datagen-p0-companion-adr"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Make BaseFormatConverter and ParquetConverter stream batches instead of materializing full tables"
+    },
     "dataproc-serverless-platform": {
       "claim": null,
       "needs": [

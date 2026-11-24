@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "BaseFormatConverter and ParquetConverter stream delimited inputs in bounded batches (no full-table csv.read_csv/pa.concat_tables materialization) and count rows inline during conversion without a second decompression pass.",
+    "Bidirectional DuckDB EXCEPT ALL returns 0 rows comparing legacy converter vs streaming converter Parquet output for TPC-H SF 0.01, 0.1, and 1.0 plus at least one headered CSV benchmark (e.g., tsbs_devops), with identical logical Arrow/Parquet schemas.",
+    "Downstream Delta, Iceberg, Vortex, and DuckLake converter tests pass with zero regressions.",
+    "Measured peak RSS at SF 1 and SF 10 under make heavy-run shows bounded memory materially below the datagen-p0-baseline-measurements baseline and within the ADR budget."
+  ],
+  "context": "Phase 1 step 2 of the faster data-generation plan. Implements adr-python-core-runtime.md's first remedy across every backend and keeps BenchBox's streaming Parquet converter viable as the published-run default during parallel buildout.",
+  "description": "## Problem\nbenchbox/utils/format_converters/base.py currently reads entire delimited tables into memory (pyarrow.csv.read_csv + pa.concat_tables) to write Parquet and then re-opens/decompresses source text files line by line to validate row counts. This causes unnecessary peak RSS spikes and triple I/O for every generator backend.\n\n## Change\n- Replace full-table materialization in BaseFormatConverter and ParquetConverter (benchbox/utils/format_converters/base.py, parquet_converter.py) with streaming batch conversion (pyarrow.csv.open_csv -> pyarrow.parquet.ParquetWriter, or equivalent streaming Arrow/DuckDB COPY pipeline).\n- Count rows inline during the streaming conversion pass rather than re-reading source delimited files for validate_row_count.\n- Preserve existing logical Arrow/Parquet schemas, null/empty-string semantics, compression options, partitioning, and metadata.\n\n## Decision gates\n- If streaming batch conversion changes Parquet physical row-group layout materially enough to shift Parquet-scan query timings on DuckDB/DataFusion/Polars, record the timing delta in the PR and ensure row-group size matches the ADR specification before merging.\n- Stop and report if any downstream table-format converter (Delta, Iceberg, Vortex, DuckLake) relies on full-table in-memory batches in a way that requires explicit refactoring.\n\n## Guardrails\n- Preserve existing Parquet logical types (DECIMAL, DATE32, INT32/INT64, UTF8, nullability) and existing converter default behavior for published runs.\n- Verify with bidirectional DuckDB EXCEPT ALL (never plain EXCEPT).\n- Follow AGENTS.md ([COMMENT-POLICY-001], [HEAVY-LOCK-001] for SF 1/SF 10 measurements, linked worktree, make pr-preflight, merged PR closeout).",
+  "links": [
+    "benchbox/utils/format_converters/base.py",
+    "benchbox/utils/format_converters/parquet_converter.py",
+    "docs/internal/adr/adr-benchbox-datagen.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032",
+      "at": "2026-11-24T00:17:47Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "d9a01005b87fd8a4c6e54982b8310c05",
+      "session_id": "85b2c240cd2b4c709f5c56393a05342d"
+    }
+  ]
+}
