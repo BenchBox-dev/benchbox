@@ -9254,62 +9254,12 @@
       "terminal_outcome": "deliver"
     },
     "release-readiness": {
-      "accepted_members": {
-        "release-prep-tooling-leaves-lock-stale-and-overflows-changelog-20261101": "2ba8f0648ff6766af6a029cbb6ff153b52da3031",
-        "release-v2-probe-runs-head-script-with-merge-ref-permissions-20261119": "a090a9af681314859638bbf84495610805dd239c",
-        "snowflake-session-query-acceleration-invalid-20261013": "7905758459adb0778c86690bea515236606c5e03",
-        "snowflake-test-fixture-real-username-20261013": "96a5dd0ccbf201ca2d51d8a1ba3f740170e5b5f7"
-      },
+      "accepted_members": {},
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {
-        "release-prep-tooling-leaves-lock-stale-and-overflows-changelog-20261101": {
-          "accepted_head": "2ba8f0648ff6766af6a029cbb6ff153b52da3031",
-          "changed_files": [
-            "changelog.d/feat-release-readiness--release-prep-tooling-leaves-lock-stale-and-overflows-changelog-20261101.json",
-            "docs/internal/release-guide.md",
-            "make/build.mk",
-            "make/help.mk",
-            "scripts/generate_changelog_entry.py",
-            "scripts/release_flow.py",
-            "tests/unit/scripts/test_release_flow.py"
-          ],
-          "integration_head": "73904854fc5f84a8947d3beabf4354f4af117309",
-          "integration_seq": 4
-        },
-        "release-v2-probe-runs-head-script-with-merge-ref-permissions-20261119": {
-          "accepted_head": "a090a9af681314859638bbf84495610805dd239c",
-          "changed_files": [
-            ".github/workflows/release-v2-probe.yml",
-            "changelog.d/feat-release-readiness--release-v2-probe-runs-head-script-with-merge-ref-permissions-20261119.json",
-            "docs/internal/release-guide.md",
-            "tests/unit/workflows/test_release_v2_probe.py"
-          ],
-          "integration_head": "39b6053602a3565efc696378fdae070ad6d16c34",
-          "integration_seq": 3
-        },
-        "snowflake-session-query-acceleration-invalid-20261013": {
-          "accepted_head": "7905758459adb0778c86690bea515236606c5e03",
-          "changed_files": [
-            "benchbox/platforms/snowflake.py",
-            "changelog.d/feat-release-readiness--snowflake-session-query-acceleration-invalid-20261013.json",
-            "tests/unit/platforms/test_snowflake_adapter.py"
-          ],
-          "integration_head": "0e3d1cc9aad0ff7abdc9705111b465d8ce20f382",
-          "integration_seq": 2
-        },
-        "snowflake-test-fixture-real-username-20261013": {
-          "accepted_head": "96a5dd0ccbf201ca2d51d8a1ba3f740170e5b5f7",
-          "changed_files": [
-            "changelog.d/feat-release-readiness--snowflake-test-fixture-real-username-20261013.json",
-            "tests/unit/platforms/credentials/test_snowflake_defaults.py"
-          ],
-          "integration_head": "94e949503418acb767ab56b8875fce547fbfe2ec",
-          "integration_seq": 1
-        }
-      },
+      "integrated_members": {},
       "integration_branch": "feat/release-readiness",
       "integration_head": "73904854fc5f84a8947d3beabf4354f4af117309",
       "integration_log": [
@@ -9357,7 +9307,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-release-readiness",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "release-prep-tooling-leaves-lock-stale-and-overflows-changelog-20261101",
         "release-from-replaced-develop-commit-has-no-artifact-20261101",

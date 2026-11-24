@@ -4,11 +4,6 @@
     "Unit tests cover the current column layout and a layout with an inserted column.",
     "A bundle produced afterwards records a numeric query_acceleration_max_scale_factor (or null) and a boolean-like enable_query_acceleration."
   ],
-  "batch": {
-    "batch_id": "release-readiness",
-    "implementation_dependencies": [],
-    "member_id": "snowflake-warehouse-metadata-positional-columns-20261013"
-  },
   "context": "Found 2026-10-13 in tpch_sf1_snowflake_sql_20261012_172155_3067b960 platform.raw_metadata.compute_configuration.",
   "description": "## Problem\n`SnowflakeAdapter` reads `SHOW WAREHOUSES LIKE ...` by fixed column positions (`benchbox/platforms/snowflake.py:283-295`): auto_suspend 11, auto_resume 12, enable_query_acceleration 21, query_acceleration_max_scale_factor 22, scaling_policy 27. The column layout does not match the current Snowflake release (10.36.101). Published bundles record wrong values:\n- `query_acceleration_max_scale_factor: \"true\"`\n- `enable_query_acceleration: \"\"`\n- `scaling_policy: 0`\n\nThese go into `platform.compute` and `platform.raw_metadata.compute_configuration`. The warehouse size, state and auto_suspend values appear correct, but every positional field is at risk whenever Snowflake adds a column.\n\n## Change\n- Map the columns by name from `cursor.description`, lowercased.\n- Record null for any column that is absent.\n- Add a unit test with a SHOW WAREHOUSES row in the current column order and one with an extra column inserted.",
   "links": [
@@ -39,6 +34,14 @@
       "op": "recover",
       "op_id": "c781d164e62b4af4b11cf24be6879342",
       "reason": "The leader's previous MCP server process ended with its agent session; the same leader resumed under a new server identity and cannot use the old one.",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T17:18:03Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "a935883904f84e0f9d4640bd1e94d459",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]

@@ -2,63 +2,11 @@
   "acceptance": [
     "No real account username remains in tests/unit/platforms/credentials/test_snowflake_defaults.py; the test passes."
   ],
-  "batch": {
-    "batch_id": "release-readiness",
-    "implementation_dependencies": [],
-    "member_id": "snowflake-test-fixture-real-username-20261013"
-  },
   "context": "Found 2026-10-13 while checking public exposure of Snowflake trial account identifiers.",
   "description": "## Problem\n`tests/unit/platforms/credentials/test_snowflake_defaults.py` (lines 35, 47 and 62 on develop) uses the maintainer's real Snowflake login name as fixture data. The repository is public. A username is not a credential, but it identifies a real account and can help target it.\n\n## Change\nReplace it with a neutral placeholder such as `TEST_USER` and keep the test's assertions equivalent.",
   "links": [
     "tests/unit/platforms/credentials/test_snowflake_defaults.py"
   ],
-  "prepared": {
-    "accepted_head": "96a5dd0ccbf201ca2d51d8a1ba3f740170e5b5f7",
-    "batch_id": "release-readiness",
-    "changed_files": [
-      "changelog.d/feat-release-readiness--snowflake-test-fixture-real-username-20261013.json",
-      "tests/unit/platforms/credentials/test_snowflake_defaults.py"
-    ],
-    "integration_head": "94e949503418acb767ab56b8875fce547fbfe2ec",
-    "integration_seq": 1,
-    "member_id": "snowflake-test-fixture-real-username-20261013",
-    "overlaps": [],
-    "owner_epoch": 0,
-    "schema": "prepared_work_v2",
-    "scope_hash": "bf6f29fc7f614f2899d65533a7a36ecea1a0b80919a8b17f14fe5a4e67cd7233",
-    "source_base": "9b3087d4048d5be48ec0e39b4c9f3e5ec679b724",
-    "source_revision": "96a5dd0ccbf201ca2d51d8a1ba3f740170e5b5f7",
-    "source_worktree": "/Users/joe/Developer/BenchBox.wt-rr-sfuser",
-    "verification": {
-      "clean": true,
-      "command": [
-        "uv",
-        "run",
-        "--",
-        "python",
-        "-m",
-        "pytest",
-        "-n",
-        "0",
-        "-q",
-        "tests/unit/platforms/credentials/test_snowflake_defaults.py",
-        "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index"
-      ],
-      "review": {
-        "base_sha": "9b3087d4048d5be48ec0e39b4c9f3e5ec679b724",
-        "head_sha": "96a5dd0ccbf201ca2d51d8a1ba3f740170e5b5f7",
-        "head_tree": "f5a649b53e9399a0a9a2588626a95f110b24c998",
-        "outcome": "clear",
-        "patch_digest": "6cac49e55a0d4fe55a1bee59823f3b1f",
-        "reason": "decided SHIP with no Critical or High findings",
-        "schema": "benchbox_member_review_v1",
-        "trusted_sha": "5e784d60394b5ec4f7535c6ea9a3c8fc5c4dc491"
-      },
-      "revision": "96a5dd0ccbf201ca2d51d8a1ba3f740170e5b5f7",
-      "status": "passed",
-      "suite": "member-tests"
-    }
-  },
   "sessions": [
     {
       "actor": "mcp:claude-code:joe@joe-mac-mini.local:b6a9b2717134da204bff5042",
@@ -102,6 +50,14 @@
       "op": "recover",
       "op_id": "c781d164e62b4af4b11cf24be6879342",
       "reason": "The leader's previous MCP server process ended with its agent session; the same leader resumed under a new server identity and cannot use the old one.",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T17:18:03Z",
+      "client": "omp-coding-agent",
+      "op": "abort",
+      "op_id": "a935883904f84e0f9d4640bd1e94d459",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
