@@ -53303,15 +53303,10 @@
       "title": "Trunk UAT dask-df h2odb SF1 cell stopped at its run limit (exit 124) on 2026-11-23"
     },
     "trunk-uat-doris-joinorder-17d-mem-limit-20261123": {
-      "claim": {
-        "expires_at": "2026-11-25T19:08:49Z",
-        "generation": "b79981d540f04e879cf65933937b2ce0",
-        "renewals": 2,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Trunk UAT doris joinorder SF1 query 17d fails with MEM_LIMIT_EXCEEDED on 2026-11-23"
     },
     "trunk-uat-pandas-df-memory-breach-20261122": {
