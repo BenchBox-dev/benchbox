@@ -2,6 +2,7 @@
   "acceptance": [
     "CONTRIBUTING.md on the published-results branch links to https://benchbox.dev/docs/contributing-results.html (no 404 link to develop/docs/contributing-results.md) and uses BenchBox-dev/benchbox repository URLs."
   ],
+  "closing_note": "Merged BenchBox-dev/benchbox#4490 onto published-results fixing the 404 docs/contributing-results.md link (now https://benchbox.dev/docs/contributing-results.html) and old joeharris76/BenchBox URLs in CONTRIBUTING.md, and merged BenchBox-dev/benchbox#4495 (e4e34900c6) on develop removing the temporary broken-link note from docs/internal/adr/adr-published-results-slim-corpus-branch.md.",
   "context": "Verified on 2026-11-24: origin/published-results:CONTRIBUTING.md line 13 links to https://github.com/joeharris76/BenchBox/blob/develop/docs/contributing-results.md, which returns 404 after user docs moved to BenchBox-dev/benchbox-site. Lines 5 and 7 also still use joeharris76/BenchBox.",
   "description": "## Problem\\n`CONTRIBUTING.md` on the public `published-results` branch links to `https://github.com/joeharris76/BenchBox/blob/develop/docs/contributing-results.md` (line 13), which returns 404 since user documentation moved to `BenchBox-dev/benchbox-site`, and still uses the old `joeharris76/BenchBox` repository URLs (lines 5 and 7).\\n\\n## Change\\nOpen a PR against `published-results` updating `CONTRIBUTING.md` to link to `https://benchbox.dev/docs/contributing-results.html` and `BenchBox-dev/benchbox`, then remove the live-broken-link note from `docs/internal/adr/adr-published-results-slim-corpus-branch.md`.",
   "sessions": [
@@ -38,6 +39,15 @@
       "generation": "a06f3c20e28c4dafb440f4d3b5d6a7e4",
       "op": "take",
       "op_id": "a1b2c3d4e5f60718293a4b5c6d7e8f07",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T20:29:27Z",
+      "client": "antigravity-client",
+      "generation": "a06f3c20e28c4dafb440f4d3b5d6a7e4",
+      "op": "finish",
+      "op_id": "b1c2d3e4f5061728394a5b6c7d8e9f09",
       "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
     }
   ]
