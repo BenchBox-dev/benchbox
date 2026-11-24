@@ -22274,10 +22274,15 @@
       "title": "ClickHouse-native sketch variants using -State / -Merge combinators"
     },
     "clickhouse-notuning-rerun-table-exists": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-25T20:43:48Z",
+        "generation": "523984f146364404bf325b2c8ac29086",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "clickhouse-server notuning rerun fails with Table default.region already exists"
     },
     "clickhouse-nyctaxi-extract-overrides": {
