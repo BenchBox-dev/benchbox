@@ -17324,7 +17324,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-uat-green",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "trunk-uat-dask-df-h2odb-sf1-timed-out-20261123",
         "trunk-uat-doris-joinorder-17d-mem-limit-20261123",
