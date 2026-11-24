@@ -4088,7 +4088,7 @@
         }
       },
       "integration_branch": "feat/corpus-rule-r4",
-      "integration_head": "0512d49b99b2b174d5df30d7fae98f57f2d99158",
+      "integration_head": "ef5419c2d0283e28ed0d33da565093fe2ca92a29",
       "integration_log": [
         {
           "at": "2026-11-22T23:06:06Z",
@@ -4555,6 +4555,20 @@
             "crr-d1-observed-engine-contract-and-dataframe"
           ],
           "seq": 14
+        },
+        {
+          "at": "2026-11-24T21:46:31Z",
+          "changed_files": [
+            "changelog.d/fix-corpus-rule-facts-match-readers.json"
+          ],
+          "head": "ef5419c2d0283e28ed0d33da565093fe2ca92a29",
+          "kind": "fix",
+          "op_id": "b23a42223fc140adaf783b51a2d4de40",
+          "previous_head": "0512d49b99b2b174d5df30d7fae98f57f2d99158",
+          "requires_acceptance": [
+            "crr-a1-rule-module-and-snapshot"
+          ],
+          "seq": 15
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r4",
