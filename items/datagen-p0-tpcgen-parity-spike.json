@@ -1,0 +1,29 @@
+{
+  "acceptance": [
+    "Spike report records SHA-256 delimited parity after framing normalization (trailing pipe stripped) and DuckDB EXCEPT ALL bidirectional zero-row Parquet parity for all 8 TPC-H tables and all 24 TPC-DS tables at SF 0.01, 0.1, and 1.0, tested at --num-threads 1 and default threads.",
+    "Report explicitly documents TPC-DS fractional sub-scale behavior (vs tpcds_subscale_row_counts.json), NULL vs empty-string counts per column, and Latin-1/UTF-8 character handling under --compat c.",
+    "Report records Parquet logical-type comparison against BaseFormatConverter (DECIMAL, DATE32, INT32/INT64, UTF8), physical layout differences (row-group size, encodings, statistics), and DuckDB/DataFusion query timing delta on Parquet scans.",
+    "Report documents chunk file naming, stdout/streaming support for single-pass framing + compression, refresh-set support (TPC-H RF1/RF2 and TPC-DS -update), and confirmed wheel platform coverage (including Windows arm64 gap).",
+    "Any parity gap has a concrete disposition (adapter shim, upstream issue, or cutover block); zero tracked repository files or _binaries/ are modified."
+  ],
+  "context": "Phase 0 step 2 of the faster data-generation plan. An initial 2026-11-23 probe verified byte-identical TPC-H SF 0.01 output from tpcgen-cli 4.0.0 once trailing pipes were stripped; TPC-DS, higher scales, fractional TPC-DS scales, refresh sets, and Parquet logical types remain unverified and are covered here.",
+  "description": "## Problem\nUpstream datafusion-contrib/tpcgen-rs publishes tpcgen-cli 4.0.0 wheels on PyPI covering TPC-H and TPC-DS, and a quick SF 0.01 TPC-H probe matched bundled dbgen after stripping trailing pipes. Before building an adapter, TPC-DS parity, fractional sub-scale behavior, Parquet logical/physical differences, refresh-set coverage, and chunk/stdout framing must be verified empirically.\n\n## Change\n- Pin tpcgen-cli 4.0.0 in an isolated scratch environment and execute Gate B checks at SF 0.01, 0.1, and 1.0 for both tpch and tpcds (--compat c):\n  1. Delimited SHA-256 byte identity against bundled dbgen/dsdgen after trailing-pipe removal (comparing against normalize_tbl_trailing_delimiters behavior), at --num-threads 1 and default thread count.\n  2. TPC-DS fractional sub-scale row counts vs tpcds_subscale_row_counts.json, NULL vs empty-string counts per column, and Latin-1/UTF-8 encoding parity.\n  3. Parquet comparison vs BaseFormatConverter: bidirectional DuckDB EXCEPT ALL (must be 0 rows), logical Arrow/Parquet schema comparison, physical layout comparison (row-group size, encodings, statistics), and Parquet-scan query timing delta on DuckDB and DataFusion.\n  4. Chunk file naming compatibility with loaders and derived benchmarks (tpchavoc, read_primitives, write_primitives, transaction_primitives, datavault, tpcds_obt), plus stdout/streaming capability for single-pass stripping + compression.\n  5. Refresh-set capability check (TPC-H RF1/RF2 and TPC-DS -update) and PyPI wheel platform inventory (confirming Windows arm64 absence).\n- Measure wall time (mono_time()) and peak RSS vs legacy generation + conversion.\n\n## Decision gates\n- Go/no-go evidence for adopting tpcgen-cli on tpch and tpcds in Phase 1, naming exact adapter shims required.\n- If tpcgen-cli fails byte parity on any table or sub-scale, record the exact failing table/column/row and block Phase 1 cutover for that benchmark until resolved upstream or shimmed.\n- Confirms which refresh paths still require bundled C dbgen/dsdgen.\n\n## Guardrails\n- Run SF 1 checks under make heavy-run ([HEAVY-LOCK-001]) in isolated temp directories deleted after the spike ([RUN-DATA-001]).\n- Use SHA-256 byte hashes and EXCEPT ALL (never plain EXCEPT, which ignores duplicate counts); treat 6-sigfig value digests (result_digest.py) as secondary only.\n- Never modify shared datagen/ folders or benchbox/_binaries/.",
+  "links": [
+    "benchbox/core/tpch/generator.py",
+    "benchbox/core/tpcds/generator/runner.py",
+    "benchbox/core/expected_results/reference_digests/tpch_value_digests_sf1.json",
+    "benchbox/core/expected_results/reference_digests/tpcds_subscale_row_counts.json",
+    "benchbox/core/expected_results/reference_row_counts/tpch_row_counts_sf0.01.json",
+    "benchbox/core/expected_results/reference_row_counts/tpch_row_counts_sf0.1.json"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032",
+      "at": "2026-11-24T00:16:50Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "d9a01002b87fd8a4c6e54982b8310c02",
+      "session_id": "85b2c240cd2b4c709f5c56393a05342d"
+    }
+  ]
+}

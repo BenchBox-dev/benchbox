@@ -25863,6 +25863,13 @@
       "status": "open",
       "title": "Measure current data generator wall time, peak RSS, and conversion time at SF 1 and SF 10"
     },
+    "datagen-p0-tpcgen-parity-spike": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Complete Tier 1 tpcgen-cli parity, sub-scale, Parquet-type, and refresh-set spike"
+    },
     "dataproc-serverless-platform": {
       "claim": null,
       "needs": [
