@@ -1,12 +1,17 @@
 {
   "acceptance": [
-    "Test bundle submission PR opened from an external fork into develop runs validate-submission.yml and posts its summary comment.",
-    "Heavy code-test lanes are skipped on that PR while required checks remain satisfiable.",
-    "Auto-merge is mechanically blocked (no-auto-merge / hold) until manual review.",
-    "After manual merge (or verified test bundle), the bundle appears in the next site-inputs bundle and passes deploy gates."
+    "A real fork PR adding a valid bundle under results-data/bundles/ and updating results-data/corpus-inventory.json against develop triggers validate-submission.yml and receives its summary comment.",
+    "Heavy Python unit/medium/correctness code lanes are skipped on that fork PR while all required develop ruleset checks reach a green/mergeable state (aside from the intentional manual-review hold).",
+    "Auto-merge is mechanically blocked (no-auto-merge label applied and enforced by hold) until a maintainer manually reviews and lifts the hold.",
+    "Either (a) an owner-approved real bundle merges and is verified in the subsequent site-inputs bundle + benchbox-site deploy gates, or (b) a synthetic fork test PR verifies steps 1-3 and is closed unmerged while a real maintainer bundle verifies step 4 (no fake data ever merges into live Explorer)."
   ],
   "context": "Step 6 of the owner-approved Option 1 corpus consolidation plan (2026-11-24). End-to-end verification of Step 2 on a real fork PR into develop.",
-  "description": "## Problem\\nChanges to `pull_request_target`, `ci-units.yml`, fork-PR required checks, and `no-auto-merge` guards cannot be proven purely by unit tests.\\n\\n## Change (Step 6 of 6)\\nOpen a test bundle submission PR from a fork into `develop` and verify end to end:\\n1. `validate-submission.yml` runs from trusted base code and posts its summary comment.\\n2. Heavy code-test lanes are skipped while required checks stay satisfiable.\\n3. Auto-merge is blocked mechanically (`no-auto-merge` / `hold`).\\n4. After manual merge, the bundle appears in the next `site-inputs` bundle and passes `benchbox-site` deploy gates.",
+  "description": "## Problem\nUnit tests cannot prove the full GitHub Actions interaction of `pull_request_target`, fork permissions, `develop` ruleset required checks, automatic `no-auto-merge` holding, and downstream `site-inputs.yml` -> `benchbox-site` deployment.\n\n## Change\nExecute an end-to-end verification of the Step 2 (`corpus-intake-on-develop-20261124`) fork submission flow into `develop`:\n1. Open a test bundle submission PR from a fork into `develop` touching only `results-data/bundles/**` and `results-data/corpus-inventory.json`.\n2. Confirm `validate-submission.yml` runs from trusted `develop` base code and posts its summary comment.\n3. Confirm heavy code-test lanes are skipped while `develop`'s required ruleset checks complete cleanly.\n4. Confirm auto-merge is mechanically blocked (`no-auto-merge` applied, `hold` blocks auto-merge, `make pr-arm` refuses).\n5. Verify a negative fork check (or rely on Step 2's workflow test) that mixing a code edit with a bundle is rejected.\n6. Confirm end-to-end publication into the next `site-inputs` bundle and passing `benchbox-site` deploy gates using an owner-approved real bundle (close any synthetic fork test PR unmerged).\n\n## Decision gates\n- NEVER merge a synthetic or dummy result bundle into `develop` or live Explorer. Only an owner-approved real benchmark bundle may be merged for step 6; close any synthetic fork test PR unmerged.\n- Opening a fork PR from a separate GitHub account or owner fork may require owner action — stop and coordinate with the owner rather than spoofing or bypassing fork boundaries.\n- Lifting a `no-auto-merge` hold on a PR requires explicit owner authorization naming that PR (`[MERGE-AUTHORITY-001]`).\n\n## Verification rubric\n- Pass: recorded PR URL(s), workflow run ID(s), and check snapshots showing (1) validator comment posted on fork PR, (2) heavy code lanes skipped, (3) `no-auto-merge` / `hold` blocking auto-merge, and (4) merged real bundle present in `site-inputs` artifact with passing `benchbox-site` deploy gates.\n- Fail: verification uses only same-repo branches (never testing fork context), merges fake data into `results-data/`, or leaves a test PR open.\n\n## Guardrails\nNo live cloud runs or credentials. Never bypass `hold`, `no-auto-merge`, or branch rulesets (`[MERGE-AUTHORITY-001]`). Record live run IDs and PR URLs directly in the closing note (`[EVIDENCE-FRESHNESS-001]`). Clean up any temporary fork branches and linked worktrees after verification.",
+  "links": [
+    ".github/workflows/validate-submission.yml",
+    ".github/workflows/site-inputs.yml",
+    ".github/ci-units.yml"
+  ],
   "sessions": [
     {
       "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
@@ -14,6 +19,14 @@
       "client": "antigravity-client",
       "op": "create",
       "op_id": "b1c2d3e4f5061728394a5b6c7d8e9f06",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T21:14:08Z",
+      "client": "antigravity-client",
+      "op": "update",
+      "op_id": "c1d2e3f4a5061728394a5b6c7d8e9f06",
       "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
     }
   ]
