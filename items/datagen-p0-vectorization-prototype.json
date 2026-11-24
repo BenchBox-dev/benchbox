@@ -1,6 +1,6 @@
 {
   "acceptance": [
-    "Prototype report records SF 1 and SF 10 wall time (mono_time()), peak RSS, speedup factor vs the datagen-p0-baseline-measurements baseline, Arrow/SQL schema compatibility against schema.py, and determinism verification across repeated seeded runs.",
+    "Prototype report is recorded in this tracker item (context_append / closing_note per [SESSION-STATE-001]) with SF 1 and SF 10 wall time (mono_time()), peak RSS, speedup factor vs the datagen-p0-baseline-measurements baseline, Arrow/SQL schema compatibility against schema.py, and determinism verification across repeated seeded runs.",
     "Report states clearly whether vectorized Python clears target throughput/memory needs or documents specific residual bottlenecks (such as string assembly or FK graphs) that would justify a Rust generator.",
     "Zero default behavior changes or mutations to shared datagen/ folders are made."
   ],
@@ -17,6 +17,14 @@
       "client": "antigravity-client",
       "op": "create",
       "op_id": "d9a01003b87fd8a4c6e54982b8310c03",
+      "session_id": "85b2c240cd2b4c709f5c56393a05342d"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032",
+      "at": "2026-11-24T00:21:39Z",
+      "client": "antigravity-client",
+      "op": "update",
+      "op_id": "d9a02003b87fd8a4c6e54982b8310c03",
       "session_id": "85b2c240cd2b4c709f5c56393a05342d"
     }
   ]
