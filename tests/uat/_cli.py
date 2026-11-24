@@ -80,14 +80,17 @@ def _handle_cell(args: argparse.Namespace) -> int:
 
 
 def _failed_cell_lines(outcome: object) -> list[str]:
-    from tests.uat.cells_io import failed_query_details
+    from tests.uat.cells_io import failed_query_details, timeout_stop_point
 
     lines: list[str] = []
     for cell in getattr(outcome, "results", ()):
         if cell.status == "passed":
             continue
         name = f"{cell.platform}/{cell.benchmark}@{cell.scale:g}"
-        lines.append(f"[sweep] FAILED CELL {name} status={cell.status} exit={cell.exit_code} log={cell.log_path}")
+        stop_point = "".join(f" {key}={value}" for key, value in timeout_stop_point(cell).items())
+        lines.append(
+            f"[sweep] FAILED CELL {name} status={cell.status} exit={cell.exit_code} log={cell.log_path}{stop_point}"
+        )
         for detail in failed_query_details(cell):
             error = " ".join(detail["error"].split())
             lines.append(f"[sweep]   query {detail['query_id']} {detail['status']}: {error}")

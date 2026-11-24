@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as _dt
 import json
 import os
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -407,6 +408,7 @@ def run_cell(
             if status == "passed":
                 status = "failed"
                 exit_code = exit_code or 1
+    _keep_failed_result(status, result_path, log_path)
     return CellResult(
         platform=platform,
         benchmark=benchmark,
@@ -420,6 +422,19 @@ def run_cell(
         throughput_check=throughput_check,
         load_failure_path=load_failure_path,
     )
+
+
+def _keep_failed_result(status: str, result_path: Path | None, log_path: Path) -> None:
+    if status == "passed" or result_path is None:
+        return
+    try:
+        shutil.copyfile(result_path, failed_result_copy_path(log_path))
+    except OSError:
+        return
+
+
+def failed_result_copy_path(log_path: Path) -> Path:
+    return log_path.with_suffix(".result.json")
 
 
 def _path_exists(path: Path) -> bool:
