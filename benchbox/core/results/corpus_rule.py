@@ -380,14 +380,11 @@ def _held_reason(facts: Facts) -> str | None:
 
 
 def _hold(outcome: Outcome, reason: str, *, validation_failed: bool = False) -> Outcome:
+    keeps_admission = reason == HELD_KNOWN_DEFECT and not validation_failed and outcome.class_name != CLASS_UNDETERMINED
     return replace(
         outcome,
-        public_admission=reason == HELD_KNOWN_DEFECT
-        and not validation_failed
-        and outcome.class_name != CLASS_UNDETERMINED,
-        maintainer_admission=reason == HELD_KNOWN_DEFECT
-        and not validation_failed
-        and outcome.class_name != CLASS_UNDETERMINED,
+        public_admission=keeps_admission and outcome.public_admission,
+        maintainer_admission=keeps_admission and outcome.maintainer_admission,
         lanes=(),
         score_source=None,
         labels=(*outcome.labels, HELD_LABELS[reason]),
@@ -434,11 +431,10 @@ def derive_outcome(
             (),
             row.name,
         )
-    held = _held_reason(facts)
-    if held is not None:
-        return _hold(outcome, held, validation_failed=facts.validation_failed)
     if facts.public_validation_refused:
         outcome = replace(outcome, public_admission=False)
+    if held is not None:
+        return _hold(outcome, held, validation_failed=facts.validation_failed)
     if not facts.row_counts_checked and outcome.class_name != CLASS_UNDETERMINED:
         return replace(outcome, labels=(*outcome.labels, ROW_COUNTS_NOT_CHECKED_LABEL))
     return outcome
@@ -732,15 +728,15 @@ def public_refusal_for_facts(facts: Facts) -> str | None:
         return held
     if outcome.class_name == CLASS_SUBSCALE and not outcome.public_admission:
         return CLASS_SUBSCALE
-    if held == HELD_FAILED_VALIDATION:
-        return held
+    if facts.validation_failed:
+        return HELD_FAILED_VALIDATION
     if (
         normalize_benchmark_id(facts.benchmark) == "tpcdi"
         and outcome.held_reason == HELD_NO_TIMED_PHASE
         and _held_reason(facts) is None
     ):
         outcome = tpcdi_default_admission(facts)
-    if outcome.held_reason is not None and not outcome.public_admission:
+    if outcome.held_reason not in (None, HELD_KNOWN_DEFECT) and not outcome.public_admission:
         return outcome.held_reason
     if facts.public_validation_refused:
         return HELD_FAILED_VALIDATION

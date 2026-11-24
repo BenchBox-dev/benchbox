@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Iterator, Sequence
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -689,19 +690,49 @@ def test_hold_precedes_missing_stream_evidence_and_refuses_public_failure() -> N
     assert not failed.public_admission
 
 
-@pytest.mark.parametrize("scale_factor", [1.0, 0.01])
 @pytest.mark.parametrize(
-    ("flags", "public", "maintainer"),
+    ("scale_factor", "flags", "public", "maintainer", "refusal"),
     [
-        ({"gateway_routed": True}, False, False),
-        ({"validation_failed": True}, False, False),
-        ({"known_defect": True}, True, True),
-        ({"known_defect": True, "validation_failed": True}, False, False),
+        (1.0, {"gateway_routed": True}, False, False, rule.HELD_GATEWAY_ROUTED),
+        (0.01, {"gateway_routed": True}, False, False, rule.HELD_GATEWAY_ROUTED),
+        (1.0, {"validation_failed": True}, False, False, rule.HELD_FAILED_VALIDATION),
+        (0.01, {"validation_failed": True}, False, False, rule.CLASS_SUBSCALE),
+        (1.0, {"known_defect": True}, True, True, None),
+        (0.01, {"known_defect": True}, False, True, rule.CLASS_SUBSCALE),
+        (1.0, {"known_defect": True, "validation_failed": True}, False, False, rule.HELD_FAILED_VALIDATION),
+        (0.01, {"known_defect": True, "validation_failed": True}, False, False, rule.CLASS_SUBSCALE),
     ],
 )
-def test_hold_admission_matches_the_two_paths(scale_factor: float, flags: dict, public: bool, maintainer: bool) -> None:
+def test_hold_admission_matches_the_two_paths(
+    scale_factor: float, flags: dict, public: bool, maintainer: bool, refusal: str | None
+) -> None:
     facts = rule.Facts("tpch", scale_factor, frozenset({rule.PHASE_POWER}), **flags)
     outcome = rule.derive_outcome(facts)
     assert (outcome.public_admission, outcome.maintainer_admission) == (public, maintainer)
     assert not outcome.ranked
-    assert (rule.public_refusal_for_facts(facts) is None) == public
+    assert rule.public_refusal_for_facts(facts) == refusal
+
+
+def test_a_known_defect_changes_ranking_only_for_every_combination() -> None:
+    checked = 0
+    for facts in all_facts():
+        if not facts.known_defect or facts.gateway_routed:
+            continue
+        for public_validation_refused in (False, True):
+            held = replace(facts, public_validation_refused=public_validation_refused)
+            clean = replace(held, known_defect=False, validation_failed=False)
+            outcome = rule.derive_outcome(held)
+            unheld = rule.derive_outcome(clean)
+            if unheld.class_name == rule.CLASS_UNDETERMINED or unheld.held_reason is not None:
+                continue
+            checked += 1
+            assert not outcome.ranked, held
+            assert outcome.lanes == () and outcome.score_source is None, held
+            if facts.validation_failed:
+                assert not outcome.public_admission and not outcome.maintainer_admission, held
+                assert rule.public_refusal_for_facts(held) is not None, held
+                continue
+            assert outcome.public_admission == unheld.public_admission, held
+            assert outcome.maintainer_admission == unheld.maintainer_admission, held
+            assert rule.public_refusal_for_facts(held) == rule.public_refusal_for_facts(clean), held
+    assert checked
