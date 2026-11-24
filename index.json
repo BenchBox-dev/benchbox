@@ -14739,11 +14739,22 @@
         "tpcdi-historical-facts-20261121",
         "tpcdi-12-duckdb-historical-load-and-audit-20261120"
       ],
-      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b9c0e3a9d406db652098bdd",
-      "owner_epoch": 0,
-      "owner_generation": "b7a88889e85a1dd88e3b990839883133",
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4e373c3ffd2cd229e1d72fba",
+      "owner_epoch": 1,
+      "owner_generation": "6cc3248799de9bd807161c7bffb985e0",
       "project_id": "tpcdi-correction-plan-20261120",
-      "recoveries": [],
+      "recoveries": [
+        {
+          "at": "2026-11-24T18:38:27Z",
+          "client": "omp-coding-agent",
+          "epoch": 1,
+          "new_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4e373c3ffd2cd229e1d72fba",
+          "op_id": "77d3bb2a95434c01ab3edc18daa6fde8",
+          "previous_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b9c0e3a9d406db652098bdd",
+          "reason": "leader session restarted; same leader resumes the batch",
+          "session_id": "053d0f09537e4b5c969ecfcd0c07eb07"
+        }
+      ],
       "repository": "https://github.com/BenchBox-dev/BenchBox.git",
       "scope": {
         "tpcdi-12-duckdb-historical-load-and-audit-20261120": [
