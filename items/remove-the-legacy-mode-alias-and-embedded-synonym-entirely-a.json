@@ -3,7 +3,7 @@
     "After the deprecation window set by ADR D13, the clickhouse `mode` alias and the `embedded` synonym are rejected with an error naming the manifest selector, in the CLI, MCP and saved configs",
     "Docs and CHANGELOG record the removal"
   ],
-  "context": "Updated 2026-10-09: the ClickHouse `mode` alias is now one of several deployment aliases that core-exec-deployment-selection-recorded routes through the manifest selector (ADR docs/development/adr/adr-core-execution-variants.md D12/D13). Remove it together with the other deprecated execution-variant aliases in core-exec-remove-deprecated-aliases after the deprecation window; if that item covers it, close this one as superseded with a pointer.",
+  "context": "Updated 2026-10-09: the ClickHouse `mode` alias is now one of several deployment aliases that core-exec-deployment-selection-recorded routes through the manifest selector (ADR docs/development/adr/adr-core-execution-variants.md D12/D13). Remove it together with the other deprecated execution-variant aliases in core-exec-remove-deprecated-aliases after the deprecation window; if that item covers it, close this one as superseded with a pointer.\n\n2026-11-24: delivered by core-exec-remove-deprecated-aliases in batch release-gates (its acceptance closes this item as done in the same change). Finish this item when that batch's pull request merges.",
   "description": "Promoted from deferral #575 of standardize-clickhouse-deployment-mode-contract.\nDeferred: Remove the legacy `mode` alias and `embedded` synonym entirely after one deprecation window\nReason deferred: Current callers and old config files may still depend on these spellings; this TODO should normalize reads and canonicalize writes first",
   "legacy": {
     "item_meta": {
@@ -19,6 +19,14 @@
       "op": "update",
       "op_id": "1702e5722bc84eae8a3e74d8c85799b3",
       "session_id": "ece27cd7b1e84cfdb901409d637eabe8"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T14:47:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9022be6538454a68a263429541826c40",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
 }
