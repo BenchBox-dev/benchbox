@@ -316,6 +316,7 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
 
                 cursor.execute(f"DROP TABLE IF EXISTS {qualified_staging}")
                 cursor.execute(rename)
+                cursor.execute(f"ALTER TABLE {qualified_staging} SET (autovacuum_enabled = false)")
                 connection.commit()
                 try:
                     cursor.execute(create)
@@ -354,6 +355,7 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
         mirror_error: BaseException | None = None,
     ) -> None:
         try:
+            cursor.execute(f"ALTER TABLE {qualified_staging} RESET (autovacuum_enabled)")
             cursor.execute(f'ALTER TABLE {qualified_staging} RENAME TO "{table_name}"')
             connection.commit()
         except Exception as exc:

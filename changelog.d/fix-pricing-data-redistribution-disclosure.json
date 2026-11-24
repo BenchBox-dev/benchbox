@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "documentation",
+      "breaking": false,
+      "text": "Added the residual redistribution risk disclosure to the bundled pricing_data.yaml metadata header."
+    }
+  ]
+}

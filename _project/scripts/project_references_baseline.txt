@@ -9,7 +9,6 @@ _sources/tpcds-duckdb-diagnostic.md::_project/TODO/main/active/support-unofficia
 _sources/tpcds-subscale-probe.md::_project/TODO/main/active/support-unofficial-tpcds-scales-with-methodology-guardrails.yaml
 _sources/tpcds-subscale-probe.md::_project/TODO/main/planning/patch-and-redistribute-tpcds-dsdgen-subscale-support.yaml
 docs/internal/adr/adr-explorer-cli-surface.md::_project/DONE/main/active/explorer-emit-comparison-artifact-from-pipeline.yaml
-docs/internal/adr/adr-published-results-slim-corpus-branch.md::_project/DONE/main/published-results-slim-down-and-corpus-mirror.yaml
 docs/internal/benchbox-results-platform-strategy.md::_project/_archive/specs/cli/config.md
 docs/internal/release-guide.md::_project/TODO/main/active/release-recovery-v0-3-1.yaml
 docs/internal/uat-release-campaign.md::_project/release-evidence/uat-gate-summary.json

@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Release-gate UAT prunes the CedarDB FlightData SF1 cell, whose 1200s timeout came from the BTS source download rather than the engine; no user-facing effect"
+}

@@ -55,12 +55,12 @@ hide maintenance surface.
 
 | Implementation | Source Shape | Loading Shape | Notes |
 | --- | --- | --- | --- |
-| `benchbox/core/write_primitives/catalog/loader.py:111` | YAML operation catalog | Runtime loader function | Reads package resource only inside `_load_catalog_payload()`; `load_write_primitives_catalog()` calls it explicitly. |
-| `benchbox/core/primitives/catalog/loader.py:408` | YAML operation/query catalogs | Runtime loader helper | Shared `_load_yaml()` centralizes resource reads and validation for two catalog families. |
-| `benchbox/core/ai_primitives/catalog/loader.py:59` | YAML query catalog | Runtime loader function | Same lazy-by-call convention as write primitives. |
-| `benchbox/core/metadata_primitives/catalog/loader.py:55` | YAML query catalog | Runtime loader function | Small direct loader; no import-time parse. |
-| `benchbox/core/benchmark_registry.py:70` | YAML benchmark metadata | Lazy cached module data | `@functools.lru_cache(maxsize=1)` builds derived structures on first access; `__getattr__` preserves public names. |
-| `benchbox/core/results/benchmark_specs.py:87` | YAML benchmark specs | Lazy cached module data | Same cache plus `__getattr__` pattern for compatibility exports. |
+| `benchbox/core/write_primitives/catalog/loader.py` | YAML operation catalog | Runtime loader function | Reads package resource only inside `_load_catalog_payload()`; `load_write_primitives_catalog()` calls it explicitly. |
+| `benchbox/core/primitives/catalog/loader.py` | YAML operation/query catalogs | Runtime loader helper | Shared `_load_yaml()` centralizes resource reads and validation for two catalog families. |
+| `benchbox/core/ai_primitives/catalog/loader.py` | YAML query catalog | Runtime loader function | Same lazy-by-call convention as write primitives. |
+| `benchbox/core/metadata_primitives/catalog/loader.py` | YAML query catalog | Runtime loader function | Small direct loader; no import-time parse. |
+| `benchbox/core/benchmark_registry.py` | YAML benchmark metadata | Lazy cached module data | `SingleFlightValueCache` (formerly `functools.lru_cache`) builds derived structures on first access; `__getattr__` preserves public names. |
+| `benchbox/core/results/benchmark_specs.py` | YAML benchmark specs | Lazy cached module data | `SingleFlightValueCache` plus `__getattr__` pattern for compatibility exports. |
 
 The registry lazy-load follow-up measured the import regression from eager YAML
 loads before repairing it:

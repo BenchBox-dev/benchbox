@@ -520,13 +520,13 @@
   {
    "disposition": "historical-record",
    "kinds": {
-    "unresolved": 3
+    "unresolved": 1
    },
-   "occurrences": 4,
+   "occurrences": 1,
    "path": "_project/analysis/results-data-extraction-trigger.md",
    "rule": "project-records",
-   "target_count": 3,
-   "targets_sha256": "89ced1202e0f61bf2c6f677fc3c0a8a546965c642366733ed5c324a18374793d"
+   "target_count": 1,
+   "targets_sha256": "b9eeecc0b729c61400bb09c2f4b7c0202bace97b8bc0b78ddf54c7881499c99e"
   },
   {
    "disposition": "historical-record",
@@ -4444,9 +4444,9 @@
    "generated": 3,
    "pattern": 339,
    "root": 204,
-   "unresolved": 2084
+   "unresolved": 2081
   },
-  "references": 33260,
+  "references": 33257,
   "unclassified": 0
  }
 }

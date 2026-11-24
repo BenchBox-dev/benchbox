@@ -297,15 +297,18 @@ freshness changed. The
 `tests/conftest.py` coverage warning reads the data file named by
 `COVERAGE_FILE` so sharded runs report their own file.
 
-Develop pushes share one `trunk-develop` concurrency group. One run is in flight
-and the newest push waits behind it; a newer push replaces a waiting one, and a
-started run is never cancelled. A replaced commit has no run of its own, so a red
-run covers every commit merged since the last run, and the arm gate and
+Develop pushes use a per-commit `trunk-${{ github.sha }}` concurrency group
+with `cancel-in-progress: false` (restored 2026-11-06; see
+[`docs/internal/adr/adr-dev-loop-v2.md`](adr/adr-dev-loop-v2.md)). Every
+delivered push runs rather than replacing a waiting push. If GitHub drops a
+push event or multiple commits land before a green run, a red run still covers
+every commit merged since the last green run, and the arm gate and
 `make trunk-status` name all of them. A revert of any of those commits is exempt
 from the gate, and one revert does not reopen arming for other PRs until a run
-is green. Runs started by `ci.yml` and by manual dispatch keep a per-commit group.
-This covers runs for delivered events, not push-event delivery itself. See
-[the latest-head trunk decision](../../_project/decisions/trunk-latest-head-runs-2026-10-30.md).
+is green. Runs started by `ci.yml` and by manual dispatch also use a per-commit
+group. This covers runs for delivered events, not push-event delivery itself.
+See [the latest-head trunk decision](../../_project/decisions/trunk-latest-head-runs-2026-10-30.md)
+for the range-blame and advisory stale-run rules that remain in effect.
 Release admission requires the latest exact-commit trunk `push` run on `develop`
 to succeed and have a matching artifact attempt; it never falls back to an
 older success. See [the release artifact contract](release-artifacts.md).

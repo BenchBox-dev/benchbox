@@ -1,7 +1,7 @@
 # ADR Template: Extract `results-data/` to a Separate Repository
 
 > **This is a template.** Copy to
-> `docs/development/adr/YYYY-MM-DD-results-data-extraction.md` and fill
+> `docs/internal/adr/YYYY-MM-DD-results-data-extraction.md` and fill
 > in when an extraction trigger fires (see
 > [`_project/analysis/results-data-extraction-trigger.md`][trigger]).
 
@@ -44,19 +44,19 @@ _Snapshot at evaluation time. Pull from `du -sh`,
 |-------------------------------|---------|
 | CI workflows                   | Unchanged. `validate-submission.yml` and friends keep their current paths. |
 | Contributor friction           | Unchanged. One PR per submission, one repo to clone. |
-| SHA stability                  | Unchanged. Existing pins (in the explorer, in archived bundles) keep working. |
+| SHA stability                  | Unchanged. Existing pins (in site-inputs bundles, in archived bundles) keep working. |
 | Cross-repo SHA tracking        | N/A. |
 | Operational cost               | Lowest. No migration; no cross-repo glue. |
 | Recurring cost                 | Linear in repo size — clone time, fork time, fetch time. |
 
-### B. Extract to `joeharris76/benchbox-results` (full extraction)
+### B. Extract to `BenchBox-dev/benchbox-results` (full extraction)
 
 | Dimension                      | Outcome |
 |-------------------------------|---------|
-| CI workflows                   | Must move or duplicate. `validate-submission.yml` lives where the data lives; explorer build needs cross-repo data fetch. |
+| CI workflows                   | Must move or duplicate. `validate-submission.yml` lives where the data lives; `scripts/site_inputs.py` and the Explorer pipeline need cross-repo data fetch before dispatching to `BenchBox-dev/benchbox-site`. |
 | Contributor friction           | One additional repo to clone, but each is smaller. PR flow now lands in the data repo, not the main repo. |
 | SHA stability                  | Broken on extract day unless `git filter-repo --to-subdirectory-filter` is used carefully. Pre-existing pins fail. |
-| Cross-repo SHA tracking        | Required. Explorer must pin a `benchbox-results` commit (submodule, fixed-SHA download, or `package.json`-style version). |
+| Cross-repo SHA tracking        | Required. Core site-inputs assembly (and `BenchBox-dev/benchbox-site` corpus pins) must pin a `benchbox-results` commit. |
 | Operational cost               | One-time migration: large. Reversible only with effort. |
 | Recurring cost                 | Constant — main repo stays small regardless of corpus growth. |
 

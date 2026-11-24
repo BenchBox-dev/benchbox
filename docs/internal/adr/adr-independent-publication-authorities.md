@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted (2026-08-31). Superseded by
+Accepted (2026-08-31). Superseded in part by
+[`adr-dev-loop-v2.md`](adr-dev-loop-v2.md) (D2) and
 [`adr-site-repo-split.md`](adr-site-repo-split.md).
 
 The publication control plane that implemented this contract has been retired from

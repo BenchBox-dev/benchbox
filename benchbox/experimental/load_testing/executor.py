@@ -251,9 +251,6 @@ class ConcurrentLoadExecutor:
 
                 while elapsed_seconds(phase_start) < phase.duration_seconds:
                     with self._lock:
-                        current_active = self._active_streams
-                        if current_active > self._max_concurrency_reached:
-                            self._max_concurrency_reached = current_active
                         targets = self._role_targets(phase)
 
                     for role, streams_to_launch in targets.items():
@@ -266,6 +263,8 @@ class ConcurrentLoadExecutor:
 
                             with self._lock:
                                 self._active_streams += 1
+                                if self._active_streams > self._max_concurrency_reached:
+                                    self._max_concurrency_reached = self._active_streams
                                 self._active_roles[role] = self._active_roles.get(role, 0) + 1
                                 if self._config.track_queue_times:
                                     self._queue.append((stream_id, enqueue_time))
