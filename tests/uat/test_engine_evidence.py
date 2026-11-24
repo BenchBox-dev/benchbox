@@ -196,3 +196,67 @@ def test_pg_mooncake_capture_collects_logs_events_state_and_memory_redacted(tmp_
     assert any("logs" in argv and "--timestamps" in argv for argv in calls)
     assert any("events" in argv and "container=abc123" in argv for argv in calls)
     assert any(".State" in " ".join(argv) and "inspect" in argv for argv in calls)
+
+
+def _doris_runner(calls, *, failing=()):
+    def runner(argv, **kwargs):
+        calls.append(argv)
+        joined = " ".join(argv)
+        if "-q" in argv:
+            return docker_assets.DockerCommandResult(tuple(argv), 0, "abc123", "")
+        if any(marker in joined for marker in failing):
+            return docker_assets.DockerCommandResult(tuple(argv), 1, "", "curl: (7) refused")
+        return docker_assets.DockerCommandResult(
+            tuple(argv), 0, "doris_be_memory_allocated_bytes 123 password=hidden-value", ""
+        )
+
+    return runner
+
+
+def test_doris_capture_collects_backend_frontend_logs_events_state_memory_redacted(tmp_path):
+    spec = docker_assets.docker_platform_spec("doris")
+    calls = []
+
+    failures = engine_evidence.capture_engine_evidence(
+        "doris", spec, "evidence-test", log_dir=tmp_path, runner=_doris_runner(calls), env={}
+    )
+    destination = tmp_path / "doris-evidence"
+    assert "doris" in engine_evidence.EVIDENCE_PLATFORMS
+    assert failures == ()
+    assert {path.name for path in destination.iterdir()} == {
+        "host.json",
+        "containers.txt",
+        "container-state.json",
+        "container.log",
+        "events.txt",
+        "memory.txt",
+        "be-logs.txt",
+        "fe-logs.txt",
+        "be-memory-metrics.txt",
+        "manifest.json",
+    }
+    assert "doris_be_memory_allocated_bytes" in (destination / "be-memory-metrics.txt").read_text(encoding="utf-8")
+    assert "hidden-value" not in "".join(path.read_text(encoding="utf-8") for path in destination.iterdir())
+    scripts = [argv[-1] for argv in calls if argv[-2:-1] == ["-c"]]
+    assert any("/opt/apache-doris/be/log/be.INFO" in script for script in scripts)
+    assert any("/opt/apache-doris/fe/log/fe.log" in script for script in scripts)
+    assert any("127.0.0.1:8040/metrics" in script and "--max-time" in script for script in scripts)
+    assert any("events" in argv and "container=abc123" in argv for argv in calls)
+    assert any(".HostConfig.Memory" in " ".join(argv) and "inspect" in argv for argv in calls)
+
+
+def test_doris_capture_reports_unreachable_metrics_and_keeps_other_artifacts(tmp_path):
+    spec = docker_assets.docker_platform_spec("doris")
+
+    failures = engine_evidence.capture_engine_evidence(
+        "doris",
+        spec,
+        "evidence-test",
+        log_dir=tmp_path,
+        runner=_doris_runner([], failing=("8040/metrics",)),
+        env={},
+    )
+    destination = tmp_path / "doris-evidence"
+    assert failures == ("be-memory-metrics.txt: exit=1, timed_out=False",)
+    assert (destination / "be-logs.txt").exists()
+    assert (destination / "fe-logs.txt").exists()
