@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "A test runs a local review with a fake TypeSafe answering 402 (and one with the service unreachable) and asserts the printed output and the unavailable record name that cause, and that 'classification unreadable' is not printed.",
+    "A test with a corrupt classification.json still reports 'classification unreadable'.",
+    "BenchBox `make pr-open` shows the cause after the Theseus release is pinned (fake TYPESAFE_BASE_URL, no live spend).",
+    "Released in a Theseus version and locked by Theseus and BenchBox; hosted SHIP and independent review of the exact head before merge."
+  ],
+  "description": "Problem: in a local review (theseus local / BenchBox `make pr-open`), local.py:943 `_relay` passes on only stdout lines starting with `slot `, `review-verdict:` or `review-local:`. When the prepare phase cannot classify, cli.py `command_select` reports `classification unavailable: <cause>` (for example `TypeSafe answered 402`) and exits 0, so `_relay` drops it. The attempts phase then reads no classification.json and prints `slot 1: pending (classification unreadable)`, and REVIEW_LOCAL_UNAVAILABLE_OUT is empty. On 2026-11-24 this sent one agent session to a wrong diagnosis (it concluded local.py never runs classification; it does, in prepare) and cost a second investigation to find the 402.\n\nOutcome: the person running a local review sees the real cause on the first failure, and the unavailable record names it.\n\nDecision gate: choose one surface. Either relay `classification unavailable` lines from prepare, or have prepare write the cause next to classification.json so the attempts phase reports `classification unavailable (<cause>)` instead of `unreadable`. Prefer the second: it also fixes the hosted job summary and keeps one message. 'Unreadable' must then mean only a present-but-corrupt file.\n\nGuardrails: never print secrets, response bodies beyond the existing 500-character _error_message cap, or the API key. Do not change exit codes or the refusal itself: a review with no classification still refuses to open a PR. Keep the summary within the existing status-text limits.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:85211dc6cc54201508c6fab8",
+      "at": "2026-11-24T13:59:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "cd3f63acb4b29c9a9f4ce3794ff7af51",
+      "session_id": "ba268bb399814e16b3d44ff7bdc73914"
+    }
+  ]
+}

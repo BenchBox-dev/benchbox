@@ -49597,6 +49597,13 @@
       "status": "done",
       "title": "Prepare pinned local review and gateway-host tooling and track every upstream port"
     },
+    "theseus-local-review-hides-classification-cause-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Theseus local review reports 'classification unreadable' and drops the real classification error"
+    },
     "theseus-lock-self-review-format-release-b-20261110": {
       "claim": null,
       "needs": [
