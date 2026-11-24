@@ -9,12 +9,13 @@ compatibility architecture under `benchbox/`.
 
 ## Context
 
-BenchBox is an integration-breadth benchmarking harness spanning 52 active
-platforms (`benchbox/core/platform_manifest.py`), 23 benchmarks
+BenchBox is an integration-breadth benchmarking harness spanning 50+ active
+platforms (`benchbox/core/platform_manifest.py`), 20+ benchmarks
 (`benchbox/core/benchmark_registry.yaml`), DataFrame and SQL execution modes,
-cloud-Spark job runners, 17 query-plan parsers, and a vendored SQLGlot fork
-(`benchbox/_vendor/`, `BenchBox-dev/benchbox-sqlglot`) governed by 93
-`sql_compat` rules across 78 rule modules.
+cloud-Spark job runners, platform-specific query-plan parsers
+(`benchbox/core/query_plans/parsers/`), and a vendored SQLGlot fork
+(`benchbox/_vendor/`, `BenchBox-dev/benchbox-sqlglot`) governed by 100+
+`sql_compat` rules (`benchbox/sql_compat/rules/`).
 
 We evaluated replacing the Python core with a standalone Rust or Go core, or
 converting BenchBox into a DuckDB extension, to pursue single-binary
@@ -51,7 +52,7 @@ BenchBox's primary advantages for negligible runtime gain:
    ports (`polyglot-sql`, `sqlglot-go`) creates a second custom transpiler fork
    to maintain without addressing a real performance bottleneck.
 3. **Fatal tradeoffs specific to each native target:**
-   - **Rust core:** Slows iteration across 52 adapters (compile times,
+   - **Rust core:** Slows iteration across dozens of platform adapters (compile times,
      borrow-checker and async friction, dual-toolchain CI, and cross-OS/arch
      `maturin`/wheel matrices if hybrid via PyO3).
    - **Go core:** Faster to compile and strong for networked SQL and cloud
@@ -63,7 +64,7 @@ BenchBox's primary advantages for negligible runtime gain:
      itself, blocks multi-version DuckDB comparisons, and binds distribution to
      DuckDB's per-OS/arch/ABI extension matrix.
 4. **Maintainer velocity.** A single-language Python codebase (`uv`, `pytest`,
-   `ruff`, `ty`, pure-Python wheel) is what makes maintaining 52 platforms and
+   `ruff`, `ty`, pure-Python wheel) is what makes maintaining 50+ platforms and
    rapidly tracking vendor changes sustainable.
 
 ## Future Path: Accelerating Data Generation
@@ -72,7 +73,8 @@ Synthetic data generation for non-TPC benchmarks (`ssb`, `clickbench`,
 `amplab`, `tsbs_devops`, `coffeeshop`, `h2odb`, `vector_search`) is the one
 CPU-bound subsystem where pure Python can become a bottleneck at large scale
 factors. TPC-H and TPC-DS already delegate to precompiled C binaries
-(`dbgen`/`dsdgen` in `benchbox/_binaries/`).
+(`dbgen`/`dsdgen` in `benchbox/_binaries/`), and TPC-DI delegates to the
+official `DIGen` generator.
 
 If a non-TPC generator hits a measured throughput or memory wall, accelerate it
 in this order:

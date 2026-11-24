@@ -1,4 +1,5 @@
 # ADR: maintenance freeze supersedes claim-check for todo-db cutover
+- Status: Historical (completed one-off todo-db 0.3 cutover decision).
 - Date: 2026-08-08
 - Decides: cutover-record-corrections-and-quiescence-probe-v2 w1
 - Migration item migrate-hosted-tracker-db-to-todo-db-0-3-schema has 5 dependents; must-preserve is create-time-only and cannot be recreated without losing edges. Therefore the operative precondition is updated in place rather than re-creating the item.

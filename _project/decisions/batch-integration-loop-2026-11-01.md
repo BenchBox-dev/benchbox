@@ -26,6 +26,11 @@ capability is present. One feature branch with one PR per feature, built by one
 session, is the default for related work. The capability requirement and the
 serial delivery of changes to the loop itself are unchanged.
 
+Status update (2026-11-23): `todo-db` was renamed to `tractable` (the batch v2
+contract in [`docs/agent/batch-tracker-contract.md`](../../docs/agent/batch-tracker-contract.md)
+cites the same ADR 0012 under `tractable`). The dated body below retains the
+name in use when recorded.
+
 ## Context
 
 Related items were delivered either as separate serial PRs, each with its own
