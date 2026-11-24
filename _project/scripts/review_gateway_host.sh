@@ -533,7 +533,7 @@ check_monitor_snapshot() {
   current=$(git -C "$REPO_ROOT" show "origin/develop:_project/scripts/review_gateway_host.sh") \
     || fail "origin/develop has no gateway host script"
   [ "$current" = "$(cat "$snapshot")" ] \
-    || note_degraded "the installed monitor script differs from origin/develop; run '$(basename "$0") monitor-install'"
+    || note_degraded "the installed monitor script differs from origin/develop; run 'review_gateway_host.sh monitor-install'"
 }
 
 health_collect() {
@@ -720,9 +720,8 @@ monitor_evaluate() {
 }
 
 dispatch_sweep() {
-  local now last=0
+  local now=$1 last=0
   [ "$MONITOR_STATE" != broken ] || return 0
-  now=$(date +%s)
   last=$(cat "$SWEEP_FILE" 2>/dev/null || echo 0)
   case $last in '' | *[!0-9]*) last=0 ;; esac
   [ $((now - last)) -ge "$SWEEP_INTERVAL" ] || return 0
@@ -734,8 +733,10 @@ dispatch_sweep() {
 }
 
 cmd_monitor() {
+  local started
+  started=$(date +%s)
   monitor_evaluate
-  dispatch_sweep
+  dispatch_sweep "$started"
 }
 
 cmd_monitor_install() {

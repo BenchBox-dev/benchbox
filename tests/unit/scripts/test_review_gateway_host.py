@@ -974,8 +974,10 @@ def test_check_reports_a_monitor_snapshot_that_differs_from_develop_as_degraded(
     (host["dir"] / "monitor-host.sh").write_text("#!/bin/bash\necho stale\n", encoding="utf-8")
     checked = _check(host)
     assert checked.returncode == 3, checked.stdout + checked.stderr
-    assert "degraded: the installed monitor script differs from origin/develop; run '" in checked.stdout
-    assert "monitor-install'" in checked.stdout
+    assert (
+        "degraded: the installed monitor script differs from origin/develop; "
+        "run 'review_gateway_host.sh monitor-install'" in checked.stdout
+    )
     reported = json.loads(_check(host, "--json").stdout)
     assert reported["state"] == "degraded"
     assert any("installed monitor script differs" in line for line in reported["degraded"])
