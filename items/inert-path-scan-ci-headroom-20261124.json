@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Setup durations from at least 10 medium CI runs recorded.",
+    "p95 within the owner-agreed threshold, before or after a change."
+  ],
+  "context": "Filed 2026-11-24 from the close-out of the scale and TPC-DI remediation (umbrella remediation-revised-plan-20261120, done 2026-11-23).",
+  "description": "## Problem\nThe session fixture `inert_scan_reads` in `tests/unit/scripts/conftest.py` scans the whole tree. In the medium lane (`--timeout=60 -n 5`) five tests that use it errored at setup with a pytest-timeout: run 45114295701 job 137494385681 (#4455) and run 45091780600 job 137424556936 (#4322). #4455 (cdac8deefd) made the scan walk each module's AST once; it took 16.3 s locally on an idle host (3841 files). The duration in CI was not measured, and the tree keeps growing.\n\n## Change\nRead the fixture's setup duration in medium shards over at least 10 runs after d8d51e9b59. If p95 exceeds the threshold below, make the scan cheaper again (for example a cache keyed by the git tree id, shared across xdist workers).\n\n## Decision gates\n- Proposed threshold: p95 at most 30 s, half the per-test limit. Show it to the owner before acting on it.\n- Raising the 60 s limit or marking these tests slow needs the owner.\n\n## Verification rubric\nPass: a table of setup durations from at least 10 medium runs is recorded; and either p95 is within the agreed threshold, or the change lands and a further 10 runs show p95 within it.\n\n## Guardrails\n- Work in a linked worktree from `make worktree-create`; never write in the primary clone. Stage named paths only; commit as the pinned human identity with no agent attribution.\n- Push only after `make pr-preflight` passes on the exact head. Never `--no-verify`, force-push, or rewrite authorship.\n- Arm only with `make pr-arm`, once per head. A second attempt only when the refusal named a cause that is now fixed; a third needs the owner. `make pr-rerun` only for a job the runner cancelled or never ran, never to re-roll a failed test.\n- Never post a stand-in review. Resolve a review thread only after the bot has reviewed the new head and did not raise the finding again.\n- Heavy work only through `make heavy-run` or a lock-taking target. Never set `BENCHBOX_HEAVY_ADMIT=force`, `BENCHBOX_SKIP_TEST_LOCK` or `BENCHBOX_HEAVY_WATCHDOG=off`.\n- Any new limit, threshold, default or user-facing label is shown to the owner before it is committed.\n- Do not mark a test skip, xfail, quarantine or slow to make it pass.\n- Report only what merged and what was verified, with run ids and heads.",
+  "links": [
+    "tests/unit/scripts/conftest.py",
+    "_project/scripts/inert_paths.py",
+    "tests/unit/scripts/test_inert_paths.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7df5251ec4291d5bac245463",
+      "at": "2026-11-24T14:27:07Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a53f0406c5624faeaca7c4d5c023465e",
+      "session_id": "c81aa4dd49e04ffea4f29cb72ae09d11"
+    }
+  ]
+}

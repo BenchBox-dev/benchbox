@@ -32818,6 +32818,13 @@
       "status": "done",
       "title": "The inert-path guard cannot see files read through a computed path"
     },
+    "inert-path-scan-ci-headroom-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Measure the inert-path tree scan against the medium lane's 60 s limit"
+    },
     "inert-paths-manifest-20261021": {
       "claim": null,
       "needs": [
