@@ -55492,6 +55492,13 @@
       "status": "dropped",
       "title": "is_snowflake_stage_path silently returns False for Path inputs on Windows"
     },
+    "windows-test-child-process-hang-guard-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop a hung child process from stalling the Windows test job without naming the test"
+    },
     "windows-tpcds-dsqgen-q46-distribution-fork-golden-corpus-20261021": {
       "claim": null,
       "needs": [],
