@@ -4,6 +4,12 @@
 
 Accepted (2026-05-06). Path: **smoke + monitor**, do not vendor.
 
+*(Note 2026-11-23: on DuckDB 2.x, `benchbox.utils.duckdb_extensions` skips
+`datasketches` by default and installs from the third-party Query.Farm
+repository only when the user opts in via
+`--platform-option allow_third_party_extensions=true`. Context and Option C
+below describe the DuckDB 1.x community-extension behavior at decision time.)*
+
 **Maintenance protocol**: Re-review if `extension-smoke.yml` catches
 new family drift more than once per quarter, if the upstream extension
 version changes while `theta` / `frequent_items` are still absent, or if
@@ -17,11 +23,7 @@ depends on.
 ## Context
 
 The DuckDB community `datasketches` extension is loaded on demand via
-`INSTALL datasketches FROM community` on DuckDB 1.x; on DuckDB 2.x
-it is installed from the Query.Farm repository through
-`benchbox.utils.duckdb_extensions` only when the user passes
-`--platform-option allow_third_party_extensions=true`; otherwise the
-sketch operations are skipped. Blind-spot
+`INSTALL datasketches FROM community`. Blind-spot
 `2026-05-02-155524` recorded that the extension build silently dropped
 the `theta` and `frequent_items` families between PR #114 morning and an
 audit later that day -- both families are referenced by four ops in
@@ -72,9 +74,7 @@ HLL.
 
 ### C. Smoke + monitor (chosen)
 
-Keep on-demand extension installation (`INSTALL ... FROM community` on DuckDB
-1.x; opt-in Query.Farm installation on DuckDB 2.x via
-`benchbox.utils.duckdb_extensions`). Run the daily smoke. If a new family
+Keep `INSTALL ... FROM community`. Run the daily smoke. If a new family
 disappears, the smoke fires, and we file an issue against the upstream
 extension repository. If the upstream fix lands fast (the 2026-05-02 audit
 suggests builds change daily), that is sufficient. If it does not, escalate to
@@ -98,9 +98,11 @@ PR." If the cron flips red repeatedly across consecutive weeks the
 maintenance trigger above promotes us to A or B; until then, smoke +
 monitor is enough.
 
-The four affected ops stay in `operations.yaml` and are documented as
-"blocked on upstream extension stability" in
-`https://benchbox.dev/docs/benchmarks/write-primitives-sketch-functions.html`.
+The four affected ops stay in `operations.yaml` and are documented under
+"DuckDB community-extension status" in
+`https://benchbox.dev/docs/benchmarks/write-primitives-sketch-functions.html`
+as not running on DuckDB with extension build `2e38607` (which dropped the
+`theta` and `frequent_items` families).
 
 ## Consequences
 

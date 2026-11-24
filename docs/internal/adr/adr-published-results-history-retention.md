@@ -47,8 +47,9 @@ The commits carrying the old content remain reachable in that branch's history.
    outside contributors, and by the Explorer build pipeline.
 4. **Rotation is available and cheaper.** Pseudonym identity can be rotated by
    re-deriving the corpus under a new `machine_id_salt`, which changes every
-   published pseudonym without touching history. See the "Salt rotation"
-   section of `https://benchbox.dev/docs/reference/result-formats.html`.
+   published pseudonym without touching history. See the "Pseudonym salt"
+   section of `results-data/README.md` (and `docs/agent/maintainer-bundles.md`
+   for maintainer staging).
 
 ## Consequences
 

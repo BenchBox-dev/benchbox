@@ -73,9 +73,9 @@ are required to fire the evaluation by qualitative-only path.
 
 ## Evaluation Procedure (run when triggered)
 
-1. **Open** a new active TODO `evaluate-results-data-extraction-decision`
-   under `_project/TODO/main/active/`. Owner = current maintainer
-   rotation. Reference this checkpoint TODO.
+1. **Open** a new TODO `evaluate-results-data-extraction-decision` in the
+   `tractable` tracker. Owner = current maintainer rotation. Reference this
+   extraction-trigger evaluation.
 2. **Copy** the template
    `docs/internal/adr/TEMPLATE-results-data-extraction.md` to
    `docs/internal/adr/YYYY-MM-DD-results-data-extraction.md`.

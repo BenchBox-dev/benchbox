@@ -14,8 +14,9 @@ platforms (`benchbox/core/platform_manifest.py`), 20+ benchmarks
 (`benchbox/core/benchmark_registry.yaml`), DataFrame and SQL execution modes,
 cloud-Spark job runners, platform-specific query-plan parsers
 (`benchbox/core/query_plans/parsers/`), and a vendored SQLGlot fork
-(`benchbox/_vendor/`, `BenchBox-dev/benchbox-sqlglot`) governed by 100+
-`sql_compat` rules (`benchbox/sql_compat/rules/`).
+(`benchbox/_vendor/`, `BenchBox-dev/benchbox-sqlglot`) governed by 90+
+`sql_compat` rule definitions expanding to 1,000+ registered entries
+(`benchbox/sql_compat/rules/`).
 
 We evaluated replacing the Python core with a standalone Rust or Go core, or
 converting BenchBox into a DuckDB extension, to pursue single-binary
