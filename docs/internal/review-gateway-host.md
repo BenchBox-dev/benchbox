@@ -163,7 +163,11 @@ Then:
      at all, is `degraded: usage probe: omp auth-gateway check failed` (the
      probe fails closed). An `unknown` entry (no usage data, or no probe for
      the provider) is not a failure. A gateway that
-     lists fewer models than `clients.json` grants is also degraded.
+     lists fewer models than `clients.json` grants is also degraded, as is an
+     installed monitor snapshot (`monitor-host.sh`) that differs from
+     `origin/develop`'s script: `degraded: the installed monitor script differs
+     from origin/develop; run 'review_gateway_host.sh monitor-install'`. No
+     snapshot installed adds no line.
    - **Notice** (exit 0): `notice: <provider> removed by owner; develop still
      names <provider>` for each provider on the denylist, and `notice: usage
      probe for <login> failed; <login> is not served` for a failing login
@@ -201,7 +205,9 @@ named steps (`--only`).
 - **omp pin bumped** in `.github/review.yml`: after the change
   merges, run `broker` and `gateway` at a quiet moment. Each installs the new
   pinned build and restarts its agent because the plist and `run.sh` name the
-  new path; a restart interrupts reviews in flight. Then run `check`.
+  new path; a restart interrupts reviews in flight. If the change also
+  altered `review_gateway_host.sh`, run `monitor-install` too, or `check`
+  reports the stale monitor snapshot as degraded. Then run `check`.
 - **Provider login changed:** log in again with `<pinned omp> auth-broker login
   <provider>`, then run `gateway` so the pinned accounts match. `check` reports
   `degraded: <provider>: stale pin` until you do.

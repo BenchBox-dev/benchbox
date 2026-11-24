@@ -524,6 +524,15 @@ cmd_secrets() {
   echo "secrets: REVIEW_GATEWAY_TOKEN and REVIEW_GATEWAY_URL=$url set on the review environment"
 }
 
+check_monitor_snapshot() {
+  local snapshot=$GATEWAY_DIR/monitor-host.sh current
+  [ -e "$snapshot" ] || return 0
+  current=$(git -C "$REPO_ROOT" show "origin/develop:_project/scripts/review_gateway_host.sh") \
+    || fail "origin/develop has no gateway host script"
+  [ "$current" = "$(cat "$snapshot")" ] \
+    || note_degraded "the installed monitor script differs from origin/develop; run '$(basename "$0") monitor-install'"
+}
+
 health_collect() {
   trap cleanup EXIT
   DEGRADED_COUNT=0
@@ -531,6 +540,7 @@ health_collect() {
   broker_ok || fail "the broker is not running"
   echo "broker: ok on 127.0.0.1:$BROKER_PORT"
   check_builds
+  check_monitor_snapshot
   load_denylist
   fetch_accounts
   require_valid_token_files

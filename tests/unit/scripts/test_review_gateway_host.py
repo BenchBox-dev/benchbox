@@ -962,6 +962,24 @@ def test_check_passes_when_every_provider_is_granted_and_served(host: dict) -> N
     assert "secrets: REVIEW_GATEWAY_TOKEN and REVIEW_GATEWAY_URL are set" in checked.stdout
 
 
+def test_check_adds_no_degraded_line_when_the_installed_monitor_snapshot_matches_develop(host: dict) -> None:
+    (host["dir"] / "monitor-host.sh").write_bytes((host["origin"] / HOST_RELATIVE).read_bytes())
+    checked = _check(host)
+    assert checked.returncode == 0, checked.stdout + checked.stderr
+    assert "monitor script" not in checked.stdout
+
+
+def test_check_reports_a_monitor_snapshot_that_differs_from_develop_as_degraded(host: dict) -> None:
+    (host["dir"] / "monitor-host.sh").write_text("#!/bin/bash\necho stale\n", encoding="utf-8")
+    checked = _check(host)
+    assert checked.returncode == 3, checked.stdout + checked.stderr
+    assert "degraded: the installed monitor script differs from origin/develop; run '" in checked.stdout
+    assert "monitor-install'" in checked.stdout
+    reported = json.loads(_check(host, "--json").stdout)
+    assert reported["state"] == "degraded"
+    assert any("installed monitor script differs" in line for line in reported["degraded"])
+
+
 def test_check_names_a_granted_provider_the_gateway_does_not_serve(host: dict) -> None:
     host["served"].write_text("anthropic/from-develop\nopenai-codex/model-b\n", encoding="utf-8")
     checked = _check(host)
