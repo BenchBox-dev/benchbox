@@ -697,6 +697,8 @@ def public_refusal(benchmark_id: str | None, scale_factor: float | None, *, gate
 
 
 def public_refusal_for_facts(facts: Facts) -> str | None:
+    if facts.phases is None:
+        return CLASS_UNDETERMINED
     outcome = derive_outcome(facts)
     held = _held_reason(facts)
     if held == HELD_GATEWAY_ROUTED:

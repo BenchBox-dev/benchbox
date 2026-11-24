@@ -348,7 +348,7 @@ def _minimal_bundle() -> dict:
             "validation": "passed",
             "queries": {"total": 22, "passed": 22, "failed": 0},
         },
-        "phases": {"validation": {"status": "PASSED"}},
+        "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
         "queries": [
             {
                 "id": f"Q{i}",
@@ -1049,14 +1049,14 @@ class TestValidateBundle:
             "summary.validation='passed' contradicts phases.validation.status='not_run'" in error for error in vr.errors
         )
 
-    def test_validation_claim_allows_absent_optional_phases(self):
+    def test_validation_claim_refuses_absent_phases(self):
         data = _minimal_bundle()
         del data["phases"]
         vr = ValidationResult("test")
 
         _validate_bundle(data, vr)
 
-        assert vr.ok, vr.errors
+        assert "result admission is undetermined: missing phases" in vr.errors
 
     @pytest.mark.parametrize(
         "phases",
@@ -1736,7 +1736,10 @@ def _timing_bundle(
         "benchmark": {"id": benchmark, "name": benchmark, "scale_factor": scale_factor},
         "platform": {"name": platform, "version": "1.0"},
         "summary": summary,
-        "phases": {"validation": {"status": "PASSED" if validation == "passed" else "PARTIAL"}},
+        "phases": {
+            "validation": {"status": "PASSED" if validation == "passed" else "PARTIAL"},
+            "power_test": {"status": "COMPLETED"},
+        },
         "queries": queries,
     }
 
@@ -2097,6 +2100,7 @@ class TestSubmissionDeterministicGates:
     def test_unofficial_compliance_allowed_on_mirror_lane(self):
         data = _minimal_bundle()
         data["benchmark"]["compliance_class"] = "unofficial_subscale"
+        data["benchmark"]["scale_factor"] = 0.01
         vr = ValidationResult("test")
         _validate_bundle(data, vr, allow_partial_validation=True)
         assert vr.ok, vr.errors

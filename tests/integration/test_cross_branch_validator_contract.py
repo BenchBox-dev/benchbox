@@ -9,7 +9,9 @@ from types import SimpleNamespace
 import pytest
 from click.testing import CliRunner
 
+from benchbox.core.results.models import QueryExecution
 from benchbox.validation.bundle import format_summary, validate_bundles, validation_failed
+from tests.fixtures.result_dict_fixtures import make_power_only_phases
 
 pytestmark = [
     pytest.mark.integration,
@@ -23,12 +25,16 @@ def _run_validator(paths: list[Path]) -> tuple[int, str]:
 
 
 def _fake_result() -> SimpleNamespace:
+    query = QueryExecution(query_id="1", execution_time_ms=10.0, status="SUCCESS", run_type="measurement")
     return SimpleNamespace(
         benchmark_name="tpch",
         platform="duckdb",
         scale_factor=1.0,
         total_queries=22,
         duration_seconds=12.34,
+        execution_phases=make_power_only_phases(query_executions=[query]),
+        query_results=[query],
+        execution_metadata={},
     )
 
 
@@ -43,7 +49,7 @@ def _minimal_schema_v2_bundle() -> dict:
         "benchmark": {"id": "tpch", "scale_factor": 1.0},
         "platform": {"name": "duckdb"},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
-        "phases": {"validation": {"status": "PASSED"}},
+        "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
         "queries": [
             {
                 "id": f"Q{i}",

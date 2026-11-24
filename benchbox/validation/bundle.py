@@ -1778,13 +1778,13 @@ def _warn_empty_result_rows(data: dict[str, Any], vr: ValidationResult) -> None:
 
 
 def _validate_compliance_section(
-    benchmark: Any,
+    data: dict[str, Any],
     vr: ValidationResult,
     *,
-    platform: Any = None,
     allow_partial_validation: bool = False,
     internal_source: bool = False,
 ) -> None:
+    benchmark = data.get("benchmark")
     if not isinstance(benchmark, dict):
         return
     compliance = benchmark.get("compliance_class")
@@ -1796,7 +1796,15 @@ def _validate_compliance_section(
         return
     benchmark_id = benchmark.get("id")
     scale_factor = benchmark.get("scale_factor")
-    gateway_routed = _is_gateway_routed(platform)
+    facts = _corpus_rule.facts_from_result(data)
+    outcome = _corpus_rule.derive_outcome(facts)
+    if outcome.class_name == _corpus_rule.CLASS_UNDETERMINED and "phases" in outcome.missing_facts:
+        vr.error("result admission is undetermined: missing phases")
+        return
+    if outcome.held_reason == _corpus_rule.HELD_NO_TIMED_PHASE:
+        vr.error("result admission is refused: no timed phase")
+        return
+    gateway_routed = _is_gateway_routed(data.get("platform"))
     refusal = _corpus_rule.public_refusal(benchmark_id, scale_factor, gateway_routed=gateway_routed)
     if refusal is not None:
         if allow_partial_validation or internal_source:
@@ -1806,9 +1814,6 @@ def _validate_compliance_section(
             "only results at scale factor 1 or above that were not routed through a gateway may be submitted"
         )
         return
-    outcome = _corpus_rule.derive_outcome(
-        _corpus_rule.Facts(benchmark_id, scale_factor, frozenset({_corpus_rule.PHASE_POWER}))
-    )
     if outcome.class_name == _corpus_rule.CLASS_NONSTANDARD_SCALE:
         vr.warn(
             f"nonstandard-scale: scale_factor={scale_factor!r} is not a standard scale for "
@@ -2462,7 +2467,7 @@ def _direct_cost_total_fields(data: dict[str, Any]) -> list[tuple[str, Any]]:
 
 def _is_gateway_routed(platform: Any) -> bool:
     gateway = platform.get("gateway") if isinstance(platform, dict) else None
-    return isinstance(gateway, dict) and bool(gateway.get("name")) and gateway.get("routed") is True
+    return isinstance(gateway, dict) and bool(gateway.get("routed"))
 
 
 def _validate_gateway_cost(data: dict[str, Any], vr: ValidationResult) -> None:
@@ -3155,15 +3160,19 @@ def _validate_execution_consistency(
                     )
                 ):
                     vr.error(f"{claim} contradicts queries[{i}].row_count_validation.status={rcv_status!r}")
-    if unchecked_row_count_evidence(queries) and not (
-        no_reference
-        and all(
-            isinstance(q.get("row_count_validation", {}).get("warning"), str)
-            and q["row_count_validation"]["warning"].startswith(_query_status.NO_REFERENCE_REASON)
-            for q in queries
-            if isinstance(q, dict)
-            and isinstance(q.get("row_count_validation"), dict)
-            and q["row_count_validation"].get("status") == "SKIPPED"
+    if (
+        isinstance(queries, list)
+        and unchecked_row_count_evidence(queries)
+        and not (
+            no_reference
+            and all(
+                isinstance(q.get("row_count_validation", {}).get("warning"), str)
+                and q["row_count_validation"]["warning"].startswith(_query_status.NO_REFERENCE_REASON)
+                for q in queries
+                if isinstance(q, dict)
+                and isinstance(q.get("row_count_validation"), dict)
+                and q["row_count_validation"].get("status") == "SKIPPED"
+            )
         )
     ):
         vr.error(f"{claim} counts row counts as validated, but every recorded row count was skipped")
@@ -3227,9 +3236,8 @@ def _validate_bundle(
     _validate_run_section(data.get("run", {}), vr)
     _validate_benchmark_section(data.get("benchmark", {}), vr)
     _validate_compliance_section(
-        data.get("benchmark", {}),
+        data,
         vr,
-        platform=data.get("platform", {}),
         allow_partial_validation=allow_partial_validation,
         internal_source=internal_source,
     )

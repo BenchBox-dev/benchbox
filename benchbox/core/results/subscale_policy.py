@@ -70,7 +70,7 @@ def effective_compliance_class(benchmark_id: Any, scale_factor: Any, recorded: A
 
 
 def gateway_routed(gateway: Any) -> bool:
-    return isinstance(gateway, Mapping) and bool(gateway.get("name")) and gateway.get("routed") is True
+    return isinstance(gateway, Mapping) and bool(gateway.get("routed"))
 
 
 def routed_compliance_class(compliance_class: Any, gateway: Any) -> str | None:

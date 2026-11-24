@@ -123,7 +123,7 @@ def _submission_bundle(benchmark: str, scale: float, **benchmark_fields: object)
             "validation": "passed",
             "queries": {"total": len(canonical), "passed": len(canonical), "failed": 0},
         },
-        "phases": {"validation": {"status": "PASSED"}},
+        "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
         "queries": [
             {"id": qid, "ms": 100 + index * 10, "status": "SUCCESS", **(_PASSED_ROW_COUNT if index == 0 else {})}
             for index, qid in enumerate(canonical)
@@ -280,7 +280,7 @@ def test_unknown_compliance_class_is_refused_under_partial_validation_and_intern
         for scale in (1.0, 2.0):
             vr = ValidationResult("test")
             _validate_compliance_section(
-                {"id": "tpch", "scale_factor": scale, "compliance_class": "garbage"}, vr, **flags
+                {"benchmark": {"id": "tpch", "scale_factor": scale, "compliance_class": "garbage"}}, vr, **flags
             )
             assert any("not a recognised compliance class" in error for error in vr.errors), (flags, scale)
 
@@ -576,24 +576,33 @@ def test_new_bundles_at_a_standard_scale_record_no_class() -> None:
 
 
 def test_cli_submit_and_publish_accept_an_off_list_result_and_refuse_the_rest() -> None:
+    from benchbox.core.results.models import QueryExecution
+    from tests.fixtures.result_dict_fixtures import make_power_only_phases
+
+    def timed_result(benchmark: str, scale: float, compliance: str | None = None) -> BenchmarkResults:
+        result = _result(benchmark, scale, compliance)
+        query = QueryExecution(query_id="1", execution_time_ms=1.0, status="SUCCESS", run_type="measurement")
+        result.execution_phases = make_power_only_phases(query_executions=[query])
+        return result
+
     for off_list in (
-        _result("ssb", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
-        _result("tpch", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
-        _result("tpch", 1.0, NONSTANDARD_COMPLIANCE_CLASS),
-        _result("tpch", 1.0),
+        timed_result("ssb", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
+        timed_result("tpch", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
+        timed_result("tpch", 1.0, NONSTANDARD_COMPLIANCE_CLASS),
+        timed_result("tpch", 1.0),
     ):
         assert classify_loaded_result(off_list) is SubmitTerminalState.submittable
         assert publish_admission(off_list, "community").allowed
 
-    routed = _result("ssb", 2.0)
+    routed = timed_result("ssb", 2.0)
     routed.platform_info["gateway"] = {"name": "espresso", "routed": True}
     assert classify_loaded_result(routed) is SubmitTerminalState.unofficial
     assert not publish_admission(routed, "community").allowed
 
     for refused in (
-        _result("tpch", 0.5),
-        _result("tpch", 0.1, "unofficial_subscale"),
-        _result("tpcds", 0.01, "official"),
+        timed_result("tpch", 0.5),
+        timed_result("tpch", 0.1, "unofficial_subscale"),
+        timed_result("tpcds", 0.01, "official"),
     ):
         assert classify_loaded_result(refused) is SubmitTerminalState.unofficial
         assert not publish_admission(refused, "community").allowed

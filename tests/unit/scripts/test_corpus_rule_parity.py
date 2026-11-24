@@ -213,9 +213,10 @@ def test_the_stamp_never_moves_a_result_between_paths(case: Case, tmp_path: Path
         assert any(PUBLIC_GATE_MESSAGE in error for error in errors) is (not case.public), stamp
 
 
-def test_a_gateway_routed_result_is_refused_publicly_on_every_public_path(tmp_path: Path, monkeypatch) -> None:
+@pytest.mark.parametrize("gateway", [{"routed": True}, {"routed": "yes"}], ids=["unnamed", "truthy"])
+def test_a_gateway_routed_result_is_refused_publicly_on_every_public_path(tmp_path: Path, monkeypatch, gateway) -> None:
     data = _bundle(CASES[0])
-    data["platform"]["gateway"] = {"name": "proxy", "routed": True}
+    data["platform"]["gateway"] = gateway
     path = _write(tmp_path / "public", "result.json", data)
     trusted = _write(tmp_path / "trusted", "result.json", data, internal=True)
     gateway_error = "gateway-routed results must declare normalized_cost.cost_status 'not_comparable_gateway'; got None"
@@ -232,6 +233,26 @@ def test_a_gateway_routed_result_is_refused_publicly_on_every_public_path(tmp_pa
     assert validator.admission_reason(data, path) == "gateway_routed"
     assert validator.bundle_lanes(data, path) == ()
     assert "Not ranked: routed through a gateway" in validator.rule_outcome(data, path).labels
+
+
+@pytest.mark.parametrize("missing", [True, False], ids=["missing", "null"])
+def test_missing_phases_are_refused_on_every_path(tmp_path: Path, monkeypatch, missing: bool) -> None:
+    data = _bundle(CASES[0])
+    if missing:
+        del data["phases"]
+    else:
+        data["phases"] = None
+    path = _write(tmp_path / "public", "result.json", data)
+    trusted = _write(tmp_path / "trusted", "result.json", data, internal=True)
+    outcome = corpus_rule.derive_outcome(corpus_rule.facts_from_result(data))
+    assert outcome.class_name == corpus_rule.CLASS_UNDETERMINED
+    assert outcome.missing_facts == ("phases",)
+    assert classify_result_path(path) is SubmitTerminalState.schema_violation
+    assert not _publish_admitted(path)
+    assert "result admission is undetermined: missing phases" in _gate_errors(path, trusted=False)
+    assert "result admission is undetermined: missing phases" in _gate_errors(trusted, trusted=True)
+    assert not _staged(tmp_path, path, monkeypatch)
+    assert _validator().admission_reason(data, path) == "not_admitted_undetermined"
 
 
 def test_failed_validation_is_refused_on_every_path(tmp_path, monkeypatch):

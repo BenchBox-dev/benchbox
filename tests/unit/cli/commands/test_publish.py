@@ -7,6 +7,9 @@ from types import SimpleNamespace
 import pytest
 from click.testing import CliRunner
 
+from benchbox.core.results.models import QueryExecution
+from tests.fixtures.result_dict_fixtures import make_power_only_phases
+
 pub = importlib.import_module("benchbox.cli.commands.publish")
 
 pytestmark = [
@@ -23,12 +26,16 @@ def _allow_maintainer_label(monkeypatch: pytest.MonkeyPatch) -> None:
 def _fake_result(
     compliance_class: str | None = None, benchmark_name: str = "tpcds", scale_factor: float = 1.0
 ) -> SimpleNamespace:
+    query = QueryExecution(query_id="1", execution_time_ms=10.0, status="SUCCESS", run_type="measurement")
     ns = SimpleNamespace(
         benchmark_name=benchmark_name,
         platform="duckdb",
         scale_factor=scale_factor,
         total_queries=99,
         duration_seconds=30.0,
+        execution_phases=make_power_only_phases(query_executions=[query]),
+        query_results=[query],
+        execution_metadata={},
     )
     if compliance_class is not None:
         ns.compliance_class = compliance_class

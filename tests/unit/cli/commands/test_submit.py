@@ -12,6 +12,8 @@ from click.testing import CliRunner
 
 from benchbox.core.results.anonymization import public_pseudonym_salt_path
 from benchbox.core.results.canonical_json import canonical_json_bytes
+from benchbox.core.results.models import QueryExecution
+from tests.fixtures.result_dict_fixtures import make_power_only_phases
 
 sub = importlib.import_module("benchbox.cli.commands.submit")
 
@@ -32,12 +34,16 @@ def _acknowledge_hosted_submission(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _fake_result() -> SimpleNamespace:
+    query = QueryExecution(query_id="1", execution_time_ms=10.0, status="SUCCESS", run_type="measurement")
     return SimpleNamespace(
         benchmark_name="tpch",
         platform="duckdb",
         scale_factor=1.0,
         total_queries=22,
         duration_seconds=12.34,
+        execution_phases=make_power_only_phases(query_executions=[query]),
+        query_results=[query],
+        execution_metadata={},
     )
 
 
@@ -55,7 +61,7 @@ def _valid_submission_bundle() -> dict:
         "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0},
         "platform": {"name": "duckdb", "version": "1.3.0"},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
-        "phases": {"validation": {"status": "PASSED"}},
+        "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
         "queries": [
             {"id": f"Q{i}", "ms": 123, "status": "SUCCESS", **(_PASSED_ROW_COUNT if i == 1 else {})}
             for i in range(1, 23)
@@ -430,7 +436,7 @@ def _write_flat_plateau_bundle(path: Path) -> None:
         "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0},
         "platform": {"name": "duckdb", "version": "1.3.0"},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
-        "phases": {"validation": {"status": "PASSED"}},
+        "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
         "queries": queries,
     }
     path.write_text(json.dumps(bundle), encoding="utf-8")

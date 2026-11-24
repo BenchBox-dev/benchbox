@@ -191,13 +191,14 @@ def _read_bundle_metadata(bundle_path: Path) -> tuple[str, str, str, str | None]
         scale_factor = raw_benchmark.get("scale_factor")
         if scale_factor is not None:
             scale = str(scale_factor)
-        raw_gateway = raw_platform.get("gateway") if isinstance(raw_platform, dict) else None
-        refusal = corpus_rule.public_refusal(
-            benchmark_id if isinstance(benchmark_id, str) else None,
-            scale_factor if isinstance(scale_factor, int | float) and not isinstance(scale_factor, bool) else None,
-            gateway_routed=isinstance(raw_gateway, dict) and raw_gateway.get("routed") is True,
-        )
-        compliance_class = None if refusal is None else PUBLIC_REFUSAL_REASONS[refusal]
+        refusal = corpus_rule.public_refusal_for_facts(corpus_rule.facts_from_result(data))
+        if refusal in {
+            corpus_rule.HELD_GATEWAY_ROUTED,
+            corpus_rule.CLASS_SUBSCALE,
+            corpus_rule.CLASS_UNDETERMINED,
+            corpus_rule.HELD_NO_TIMED_PHASE,
+        }:
+            compliance_class = PUBLIC_REFUSAL_REASONS[refusal]
 
     return platform, benchmark, scale, compliance_class
 

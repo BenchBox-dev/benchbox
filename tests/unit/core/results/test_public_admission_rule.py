@@ -5,17 +5,20 @@ from types import SimpleNamespace
 import pytest
 
 from benchbox.core.publishing.admission import publish_admission
+from benchbox.core.results.models import QueryExecution
 from benchbox.core.results.submit_classification import (
     SubmitTerminalState,
     classify_loaded_result,
     result_refused_at_submission,
 )
+from tests.fixtures.result_dict_fixtures import make_power_only_phases
 from tests.unit.core.results.test_tpch_refresh_metrics import _result_payload
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
 def _loaded(scale_factor: float, *, stamp: str | None = None, benchmark_name: str = "tpch") -> SimpleNamespace:
+    query = QueryExecution(query_id="1", execution_time_ms=10.0, status="SUCCESS", run_type="measurement")
     result = SimpleNamespace(
         benchmark_name=benchmark_name,
         platform="platform-a",
@@ -23,11 +26,21 @@ def _loaded(scale_factor: float, *, stamp: str | None = None, benchmark_name: st
         total_queries=22,
         duration_seconds=1.0,
         validation_status="PASSED",
+        execution_phases=make_power_only_phases(query_executions=[query]),
+        query_results=[query],
+        execution_metadata={},
         failed_queries=0,
     )
     if stamp is not None:
         result.compliance_class = stamp
     return result
+
+
+def test_incomplete_result_is_undetermined_without_crashing() -> None:
+    result = SimpleNamespace(benchmark_name="tpch", scale_factor=1.0, total_queries=22, duration_seconds=1.0)
+    assert classify_loaded_result(result) is SubmitTerminalState.schema_violation
+    decision = publish_admission(result, "community")
+    assert (decision.allowed, decision.reason) == (False, "undetermined")
 
 
 @pytest.mark.parametrize("benchmark_name", ["tpch", "tpcds"])
@@ -86,9 +99,12 @@ def test_no_reference_is_refused_when_a_reference_exists() -> None:
 def test_tpcdi_direct_audited_result_preserves_public_admission() -> None:
     from tests.fixtures.result_dict_fixtures import make_benchmark_results
 
+    query = QueryExecution(query_id="1", execution_time_ms=10.0, status="SUCCESS", run_type="measurement")
     result = make_benchmark_results(
         benchmark_id="tpcdi",
         benchmark_name="TPC-DI",
+        execution_phases=make_power_only_phases(query_executions=[query]),
+        query_results=[query],
         validation_status="PASSED",
         validation_details={"tpcdi_audit": {"status": "recorded"}},
     )

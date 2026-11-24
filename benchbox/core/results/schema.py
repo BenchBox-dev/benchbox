@@ -1198,7 +1198,7 @@ def _build_phases_block(result: BenchmarkResults) -> dict[str, Any]:
 
     phases.update(_maintenance_and_migration_payloads(result.execution_phases))
 
-    if isinstance(result.execution_metadata, Mapping):
+    if isinstance(getattr(result, "execution_metadata", None), Mapping):
         phase_status = result.execution_metadata.get("phase_status") or {}
         for name, status in phase_status.items():
             if name not in phases:

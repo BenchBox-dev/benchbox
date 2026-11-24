@@ -30,7 +30,7 @@ def _minimal_bundle(
         "benchmark": benchmark_payload,
         "platform": {"name": platform},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
-        "phases": {"validation": {"status": "PASSED"}},
+        "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
         "queries": [
             {
                 "id": f"Q{i}",
@@ -56,6 +56,21 @@ def _write_tsv(path: Path, statuses: list[str]) -> None:
     for i, status in enumerate(statuses):
         lines.append(f"duckdb\ttpch\t0.01\t/tmp/r{i}.json\t{status}\t0\t0\t")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+@pytest.mark.parametrize("phases", [None, "missing"])
+def test_run_validate_refuses_absent_phases_as_undetermined(tmp_path: Path, phases: str | None) -> None:
+    data = _minimal_bundle()
+    if phases == "missing":
+        del data["phases"]
+    else:
+        data["phases"] = phases
+    path = _write_bundle(tmp_path / "result.json", data)
+
+    result = validate.run_validate([path], output_tsv=tmp_path / "rollup.tsv")
+
+    assert result.refused_count == 1
+    assert "compliance_class=undetermined" in result.rollup_tsv_path.read_text(encoding="utf-8")
 
 
 def test_run_validate_writes_rollup_and_computes_counts_without_subprocess(tmp_path: Path):

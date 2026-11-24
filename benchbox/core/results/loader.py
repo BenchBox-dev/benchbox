@@ -297,6 +297,7 @@ def reconstruct_benchmark_results(
         self_run=provenance_section.get("self_run"),
         execution_engine=read_execution_engine(data),
     )
+    result._corpus_rule_data = data
     mark_legacy_tpcdi_result(result)
     return result
 
