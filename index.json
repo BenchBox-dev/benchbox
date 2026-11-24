@@ -31334,6 +31334,13 @@
       "status": "done",
       "title": "validate_submission refuses all 34 corpus bundles with an unofficial compliance_class (incl. 4 flagged local bundles and the ranked subscale TPC-H cohorts): decide the gate/corpus policy"
     },
+    "flaky-batch-integration-member-check-refusal-test-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make test_member_check_refusal_names_every_failed_step deterministic"
+    },
     "flaky-bigquery-credential-defaults-confirm-prompt": {
       "claim": null,
       "needs": [],

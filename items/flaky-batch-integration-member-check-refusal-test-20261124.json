@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "The context records the root cause with a reproduction or code-path evidence.",
+    "After the fix, the test passes 200 consecutive runs under the CI medium-tier pytest settings (xdist workers and random order), recorded in context.",
+    "The test fails immediately, with a clear message, if any real `make pr-preflight` subprocess is started during it.",
+    "No retry, skip, xfail or loosened regex is added."
+  ],
+  "context": "Distinct from rv2r-10-flaky-ci-investigation, which measures overall first-pass CI green rate and threshold changes. Found while landing #4426 on 2026-11-22; recurrence search covered the last 60 ci.yml runs.",
+  "description": "## Problem\n`tests/unit/scripts/test_batch_integration.py::test_member_check_refusal_names_every_failed_step` fails intermittently in the CI medium tier, unrelated to the PR under test. Seen on four PR runs between 2026-11-22 and 2026-11-23: 45047836311 (#4426), 45105002749, 45105485796 and 45224640328. Rerunning the failed job passes.\n\nThe failure message is \"preflight failed (exit 2), no receipt for this tree at <tmp>/receipts/<tree>.json; output tail: WARNING: the primary clone's .agents/skills copy is not at …\". The test fakes `make pr-preflight` by monkeypatching `bi._run` (`_preflight_that_fails`), but that output tail comes from the real `make pr-preflight` and `agent-write-preflight`. [Inference] In the failing runs the fake was bypassed, so the test ran a real preflight against the host environment; the cause could be the argv match (`list(argv)[:2] == [\"make\", \"pr-preflight\"]`), a second call path that does not use `bi._run`, or test-order/xdist state.\n\nEach occurrence costs a CI rerun and delays merges.\n\n## Guardrails\n- Fix the cause; do not loosen the asserted message, add retries, or mark the test flaky/skip.\n- The test must never run a real `make pr-preflight` or touch the primary clone.\n- Keep the sibling test `test_member_check_refusal_names_the_failed_step_and_first_failing_test` passing.\n\n## Verification rubric\n- Root cause stated with evidence (a reproduction under the CI's pytest-xdist and random-order settings, or a code path shown to bypass the fake).\n- The test is run at least 200 times under the CI's medium-tier settings (`-n` workers, random order) with no failure.\n- A guard makes the test fail loudly if a real preflight subprocess starts.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/45047836311",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/45105002749",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/45105485796",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/45224640328",
+    "tests/unit/scripts/test_batch_integration.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:46b8aecc4947f9228ee7b958",
+      "at": "2026-11-24T14:45:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4001723d82f447a4a1d8b90a4cf67485",
+      "session_id": "a724ea91942f4b2591aae926a47c7dd1"
+    }
+  ]
+}
