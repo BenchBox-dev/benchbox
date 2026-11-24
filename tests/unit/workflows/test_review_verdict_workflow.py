@@ -205,6 +205,13 @@ def _run_title(event_name: str, event: dict[str, Any] | None = None, inputs: dic
         ),
         ("issue_comment", {"issue": {"number": 10}}, None, "review-verdict (issue_comment pr=10)"),
         ("schedule", {}, None, "review-verdict (schedule pr=sweep)"),
+        ("workflow_dispatch", {}, {"sweep": True}, "review-verdict (workflow_dispatch pr=sweep)"),
+        (
+            "workflow_dispatch",
+            {},
+            {"sweep": True, "pr": "7", "head": SHA},
+            "review-verdict (workflow_dispatch pr=sweep)",
+        ),
     ],
 )
 def test_the_run_title_records_the_head_the_run_targets(
@@ -212,4 +219,4 @@ def test_the_run_title_records_the_head_the_run_targets(
 ) -> None:
     rendered = _run_title(event_name, event, inputs)
     assert rendered == title
-    assert (RUN_TITLE_PULL.search(rendered) is not None) == (event_name != "schedule")
+    assert (RUN_TITLE_PULL.search(rendered) is not None) == (title.endswith(")") and "pr=sweep" not in title)
