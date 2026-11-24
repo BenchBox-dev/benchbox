@@ -1,4 +1,4 @@
 {
   "schema": 1,
-  "internal": "Trunk UAT prunes the Doris JoinOrder SF1 cell after query 17d hit an intermittent engine memory-limit failure; a restoration item tracks re-enabling it"
+  "internal": "UAT now captures Doris evidence before teardown (backend and frontend logs, container events and state, cgroup memory and the backend's memory metrics) so a memory-limit recurrence shows the peak"
 }
