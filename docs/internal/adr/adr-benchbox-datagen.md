@@ -4,7 +4,7 @@
 
 ## Status
 
-Proposed (2026-11-23; revised 2026-11-24). Extends
+Accepted (2026-11-24). Extends
 `docs/internal/adr/adr-python-core-runtime.md` to cover TPC data generation,
 streaming format conversion, synthetic generator vectorization, provenance
 versioning, and the entry criteria for any future standalone Rust generator
@@ -283,7 +283,7 @@ non-quiesced development host; cutover enforcement requires 3-run medians
 
 | Subsystem / Benchmark | SF 1 Wall Budget | SF 10 Wall Budget | SF 1 Peak RSS | SF 10 Peak RSS | Basis & Margin |
 | :--- | ---: | ---: | ---: | ---: | :--- |
-| Streaming `ParquetConverter` (all 11 benchmarks, incl. the 4 currently failing) | <= 6 s (successful baselines) / <= 10 s (repaired 4) | <= 60 s / <= 100 s | <= 512 MiB | <= 1,024 MiB | SF 1 successful baselines 1.45–5.56 s at 695–2,184 MiB RSS; streaming 122,880-row RGs bounds RAM O(1). |
+| Streaming `ParquetConverter` (all 11 benchmarks, incl. the 4 currently failing) | <= 6 s (successful baselines) / <= 10 s (repaired 4) | <= 60 s / <= 100 s *(benchmarks supporting SF 10; `amplab` evaluated at max SF 1, `joinorder_synthetic` at max SF 2)* | <= 512 MiB | <= 1,024 MiB *(where SF 10 supported)* | SF 1 successful baselines 1.45–5.56 s at 695–2,184 MiB RSS; streaming 122,880-row RGs bounds RAM O(1). |
 | `tpch` (`tpcgen-cli` delimited / direct Parquet) | <= 3 s / <= 5 s | <= 30 s / <= 50 s | <= 1,536 MiB (default threads) / <= 768 MiB (`-n 1`) | <= 2,048 MiB (or cap `--num-threads`) | SF 1 measured 1.34 s / 2.52 s (932 / 616 MiB on 10 CPUs); margin accounts for thread-scaled RSS. |
 | `tpcds` `SF >= 1` (`tpcgen-cli` delimited / direct Parquet) | <= 3 s / <= 5 s | <= 30 s / <= 50 s | <= 1,024 MiB | <= 2,048 MiB | SF 1 measured 0.91 s / 1.05 s (156 / 586 MiB on 10 CPUs). |
 | `h2odb`, `tsbs_devops`, `clickbench` (synthetic), `ssb`, `vector_search`, `coffeeshop` | <= 15 s (target <= 10 s) | <= 150 s (target <= 100 s) | <= 512 MiB | <= 512 MiB | Vectorized `h2odb` prototype measured 6.20 s / 389 MiB (SF 1) and 62.14 s / 396 MiB (SF 10); ~2x margin. |
@@ -304,22 +304,20 @@ every supported platform:
   `_generation_in_progress` marker.
 - **Exact parity gate (TPC-H and TPC-DS `SF >= 1.0`):**
   - **PR required check** (path-filtered to the adapter, TPC generators, or
-    `tpcgen-cli` pin): TPC-H SHA-256 delimited byte identity (after
-    unconditional trailing-`|` stripping on `tpcgen-cli` output, at
-    `--num-threads 1` and default) and bidirectional DuckDB `EXCEPT ALL` = 0
-    rows on Parquet at **SF 0.01 and 0.1**, plus validation of all 7 derived
-    TPC consumers (`tpchavoc`, `read_primitives`, `write_primitives`,
-    `transaction_primitives`, `datavault`, `tpcds_obt` smoke suites and
-    `ai_primitives` datagen/dry-run).
-  - **Pin-bump and pre-cutover required check:** SHA-256 delimited byte
-    identity (`--num-threads 1` and default), bidirectional DuckDB
-    `EXCEPT ALL` = 0 rows on Parquet, secondary single-engine
-    `result_digest.py` verification on the Parquet path, and TPC-DS NULL vs
-    empty-string and UTF-8 parity under `--compat c` across the supported
-    parity matrix: **TPC-H SF 0.01, 0.1, 1.0, and 10.0**, and **TPC-DS SF 1.0
-    and 10.0** (all 24 tables). Scales above SF 10 are not exhaustively
-    byte-diffed against C binaries in CI and instead verify specification row
-    counts and thread-count invariance.
+    `tpcgen-cli` pin): SHA-256 delimited byte identity (after unconditional
+    trailing-`|` stripping on `tpcgen-cli` output, at `--num-threads 1` and
+    default) and bidirectional DuckDB `EXCEPT ALL` = 0 rows on Parquet for
+    **TPC-H at SF 0.01 and 0.1** and **TPC-DS at SF 1.0** (all 24 tables,
+    including `--compat c` NULL vs empty-string and UTF-8 parity), plus
+    validation of all 7 derived TPC consumers (`tpchavoc`, `read_primitives`,
+    `write_primitives`, `transaction_primitives`, `datavault`, `tpcds_obt` smoke
+    suites and `ai_primitives` datagen/dry-run).
+  - **Pin-bump and pre-cutover required check:** Extends the parity matrix to
+    **TPC-H SF 0.01, 0.1, 1.0, and 10.0** and **TPC-DS SF 1.0 and 10.0** (all
+    24 tables), adding secondary single-engine `result_digest.py` verification
+    on the Parquet path. Scales above SF 10 are not exhaustively byte-diffed
+    against C binaries in CI and instead verify specification row counts and
+    thread-count invariance.
 - **Rewritten synthetic and SSB acceptance gate:** Exact table row counts, zero
   orphan foreign keys, documented hit rates, a one-time owner-approved
   acceptance report comparing legacy vs new distributions and every benchmark
@@ -327,12 +325,13 @@ every supported platform:
   per-table SHA-256 hashes and expected row counts (catching NumPy/PyArrow
   drift in CI). Never use arbitrary tolerance bands on deterministic output.
 - **Performance and memory gate (ownership and execution):** Wall time
-  (`mono_time()`) and peak RSS at both SF 1 and SF 10 measured as `N=3`
-  medians on a quiet host meeting the table above. Owned and run by the
-  PR author on the maintainer host via `make heavy-run` (macOS arm64) and on
-  the Linux CI/agent runner for PRs touching the streaming converter,
-  `tpcgen-cli` pin/adapter, or any rewritten synthetic generator, with raw
-  medians recorded in the PR body.
+  (`mono_time()`) and peak RSS at SF 1 and SF 10 (or each benchmark's maximum
+  supported registry scale where lower than SF 10: SF 1 for `amplab`, SF 2 for
+  `joinorder_synthetic`) measured as `N=3` medians on a quiet host meeting the
+  table above. Owned and run by the PR author on the maintainer host via
+  `make heavy-run` (macOS arm64) and on the Linux CI/agent runner for PRs
+  touching the streaming converter, `tpcgen-cli` pin/adapter, or any rewritten
+  synthetic generator, with raw medians recorded in the PR body.
 
 ## Consequences
 
