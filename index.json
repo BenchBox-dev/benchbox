@@ -42611,15 +42611,10 @@
       "title": "Correct the release guide on when to move the accounting literal and the changelog compare link"
     },
     "release-prep-tooling-leaves-lock-stale-and-overflows-changelog-20261101": {
-      "claim": {
-        "expires_at": "2026-11-25T20:42:47Z",
-        "generation": "d7ab09b444fc447e9a272974ccbadbb1",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "make release-prep leaves the sql-translation-ml lockfile at the old version and writes about 105 changelog bullets against a 45 limit"
     },
     "release-readiness-py310-utc-compat": {
