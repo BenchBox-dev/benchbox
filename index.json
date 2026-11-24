@@ -40323,6 +40323,13 @@
       "status": "done",
       "title": "Published pseudonyms are guess-confirmable and the fields they protect have no reader"
     },
+    "published-results-contributing-broken-link-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "published-results: fix broken docs/contributing-results.md link in CONTRIBUTING.md"
+    },
     "published-results-corpus-leak-and-mirror-gap": {
       "claim": null,
       "needs": [],
