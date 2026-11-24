@@ -267,7 +267,7 @@ _REDSHIFT_ADAPTER_CREDENTIAL_KEYS = (
     "aws_access_key_id",
     "aws_secret_access_key",
     "aws_region",
-    "cluster_identifier",
+    "compute_resource",
     "admin_database",
     "connect_timeout",
     "statement_timeout",

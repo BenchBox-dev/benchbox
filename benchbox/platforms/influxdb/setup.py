@@ -21,7 +21,7 @@ class InfluxDBSetupMixin:
         self.ssl = config.get("ssl", True)
         self.verify_ssl = config.get("verify_ssl") if config.get("verify_ssl") is not None else True
         self.ca_cert_path = config.get("ca_cert_path")
-        self.mode = select_adapter_deployment("influxdb", config, config.get("mode") or "cloud")
+        self.mode = select_adapter_deployment("influxdb", config, "cloud")
         port = config.get("port")
         self.port = int(port) if port is not None else DEFAULT_PORT_BY_MODE.get(self.mode)
 

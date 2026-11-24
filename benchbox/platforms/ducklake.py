@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.core.config_inheritance import resolve_dialect_for_query_translation
-from benchbox.core.deployment import deployment_class, select_adapter_deployment
+from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION, deployment_class, select_adapter_deployment
 from benchbox.platforms.base.data_loading import escape_sql_string_literal
 from benchbox.utils.cloud_storage import get_cloud_path_info, is_cloud_path
 from benchbox.utils.dialect_utils import translate_ddl
@@ -290,10 +290,10 @@ class DuckLakeAdapter(DuckDBAdapter):
 
         catalog = config.get("ducklake_catalog") or _resolve_option("catalog")
 
-        deployment_mode = config.get("deployment_mode") or _resolve_option("deployment_mode")
+        deployment_mode = select_adapter_deployment("ducklake", config, None)
         catalog = _resolve_catalog_with_deployment_mode(deployment_mode, catalog)
         _warn_if_deployment_mode_contradicts_storage(deployment_mode, data_path)
-        adapter_config["deployment_mode"] = deployment_mode
+        adapter_config[DEPLOYMENT_SELECTOR_OPTION] = deployment_mode
 
         if catalog is not None:
             adapter_config["catalog"] = catalog

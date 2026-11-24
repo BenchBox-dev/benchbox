@@ -1147,7 +1147,6 @@ def _enforce_billable_acknowledgement(s: types.SimpleNamespace) -> dict[str, obj
     return enforce_billable_acknowledgement(
         s.platform_key,
         deployment=getattr(s, "deployment_selector", None),
-        options=s.parsed_platform_options,
         flag=bool(getattr(s, "acknowledge_billable_platform", False)),
         non_interactive=bool(s.non_interactive),
     )
@@ -2023,7 +2022,7 @@ def _data_or_load_handle_result(
     is_flag=True,
     default=False,
     hidden=True,
-    help="Deprecated alias for --execution-engine streaming on polars-df.",
+    help="Removed in 0.6.0; use --execution-engine streaming.",
 )
 @advanced_option(
     "--gateway",
@@ -2184,19 +2183,17 @@ def run(
     acknowledge_billable_platform: bool = False,
 ) -> None:
     from benchbox.cli.unavailable_benchmark import exit_if_benchmark_unavailable, exit_unavailable_benchmark
-    from benchbox.core.run_service import BenchmarkUnavailableError, apply_polars_streaming_flag, begin_run
+    from benchbox.core.removed_options import removed_polars_streaming_flag_message
+    from benchbox.core.run_service import BenchmarkUnavailableError, begin_run
 
+    if polars_streaming:
+        raise click.UsageError(removed_polars_streaming_flag_message())
     exit_if_benchmark_unavailable(benchmark)
 
     if publish:
         enforce_maintainer_label(publish_label)
 
     begin_run()
-    if polars_streaming:
-        try:
-            platform_option_pairs = apply_polars_streaming_flag(platform_option_pairs, execution_engine)
-        except ValueError as exc:
-            raise click.UsageError(str(exc)) from exc
     s = types.SimpleNamespace(
         ctx=ctx,
         platform=platform,
@@ -2250,7 +2247,6 @@ def run(
         client_region=client_region,
         client_cloud=client_cloud,
         no_link_probe=no_link_probe,
-        polars_streaming=polars_streaming,
         allow_greybeam_inline_load=allow_greybeam_inline_load,
         acknowledge_billable_platform=acknowledge_billable_platform,
     )

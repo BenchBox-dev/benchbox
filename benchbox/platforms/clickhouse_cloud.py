@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
+from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION
 from benchbox.platforms.base.adapter import DriverIsolationCapability
 from benchbox.platforms.base.config_utils import make_registered_platform_config_builder
 from benchbox.platforms.base.runtime_metadata import build_default_normalized_result_metadata, with_canonical_compute
@@ -39,7 +40,7 @@ class ClickHouseCloudAdapter(ClickHouseAdapter):
     supports_external_tables = True
 
     def __init__(self, **config):
-        config["deployment_mode"] = "cloud"
+        config[DEPLOYMENT_SELECTOR_OPTION] = "cloud"
         config["_is_cloud_subclass"] = True
 
         self._apply_cloud_defaults(config)
@@ -146,9 +147,6 @@ class ClickHouseCloudAdapter(ClickHouseAdapter):
 
     @classmethod
     def from_config(cls, config: dict[str, Any]):
-        from benchbox.core.compute_resource import normalize_compute_options
-
-        config = normalize_compute_options("clickhouse-cloud", config)
         adapter_config: dict[str, Any] = {}
 
         for key in [
@@ -161,7 +159,6 @@ class ClickHouseCloudAdapter(ClickHouseAdapter):
             "region",
             "cloud_region",
             "cloud_provider",
-            "service_id",
             "service_name",
             "service_tier",
             "compute_size",
@@ -212,9 +209,7 @@ class ClickHouseCloudAdapter(ClickHouseAdapter):
         info["configuration"]["secure"] = getattr(self, "secure", None)
         info["configuration"]["region"] = self.platform_config.get("region") or self.platform_config.get("cloud_region")
         info["configuration"]["cloud_provider"] = self.platform_config.get("cloud_provider")
-        info["configuration"]["service_id"] = self.platform_config.get("compute_resource") or self.platform_config.get(
-            "service_id"
-        )
+        info["configuration"]["service_id"] = self.platform_config.get("compute_resource")
         info["configuration"]["service_name"] = self.platform_config.get("service_name")
         info["configuration"]["service_tier"] = self.platform_config.get("service_tier")
         info["configuration"]["compute_size"] = self.platform_config.get("compute_size")
@@ -865,7 +860,6 @@ _build_clickhouse_cloud_config = make_registered_platform_config_builder(
         "region",
         "cloud_region",
         "cloud_provider",
-        "service_id",
         "service_name",
         "service_tier",
         "compute_size",

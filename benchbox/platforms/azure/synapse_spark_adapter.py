@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     )
 
 from benchbox.core.exceptions import ConfigurationError
+from benchbox.core.removed_options import reject_removed_adapter_keywords
 from benchbox.platforms._spark_helpers import adaptive_enabled_from_config, spark_aqe_conf_entries
 from benchbox.platforms.azure._credentials import AzureTokenProvider
 from benchbox.platforms.azure._livy_mixin import LivyStatementMixin
@@ -74,7 +75,7 @@ class SynapseSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter)
     def __init__(
         self,
         workspace_name: str | None = None,
-        spark_pool_name: str | None = None,
+        compute_resource: str | None = None,
         storage_account: str | None = None,
         storage_container: str | None = None,
         storage_path: str | None = None,
@@ -86,6 +87,7 @@ class SynapseSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter)
         adaptive_enabled: bool = True,
         **kwargs: Any,
     ) -> None:
+        reject_removed_adapter_keywords(type(self), kwargs)
         if not AZURE_IDENTITY_AVAILABLE:
             deps_satisfied, missing = check_platform_dependencies("synapse-spark")
             if not deps_satisfied:
@@ -94,8 +96,8 @@ class SynapseSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter)
         if not workspace_name:
             raise ConfigurationError("workspace_name is required (Synapse workspace name)")
 
-        if not spark_pool_name:
-            raise ConfigurationError("spark_pool_name is required (Synapse Spark pool name)")
+        if not compute_resource:
+            raise ConfigurationError("compute_resource is required (Synapse Spark pool name)")
 
         if not storage_account:
             raise ConfigurationError("storage_account is required (ADLS Gen2 storage account name)")
@@ -104,7 +106,7 @@ class SynapseSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter)
             raise ConfigurationError("storage_container is required (ADLS Gen2 container name)")
 
         self.workspace_name = workspace_name
-        self.spark_pool_name = spark_pool_name
+        self.spark_pool_name = compute_resource
         self.storage_account = storage_account
         self.storage_container = storage_container
         self.storage_path = storage_path or "benchbox"
@@ -506,12 +508,6 @@ class SynapseSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter)
             dest="workspace_name",
         )
         parser.add_argument(
-            "--spark-pool",
-            help="Spark pool name",
-            dest="spark_pool_name",
-            required=True,
-        )
-        parser.add_argument(
             "--storage-account",
             help="ADLS Gen2 storage account name",
             dest="storage_account",
@@ -549,13 +545,11 @@ class SynapseSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter)
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> SynapseSparkAdapter:
-        from benchbox.core.compute_resource import normalize_compute_options
         from benchbox.platforms.base.config_utils import forward_plan_options
 
-        config = normalize_compute_options("synapse-spark", config)
         params: dict[str, Any] = {
             "workspace_name": config.get("workspace_name"),
-            "spark_pool_name": config.get("compute_resource") or config.get("spark_pool_name"),
+            "compute_resource": config.get("compute_resource"),
             "storage_account": config.get("storage_account"),
             "storage_container": config.get("storage_container"),
             "storage_path": config.get("storage_path"),

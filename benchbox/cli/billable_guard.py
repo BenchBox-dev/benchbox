@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping
 
 from rich.markup import escape
 
@@ -33,11 +32,10 @@ def enforce_billable_acknowledgement(
     platform: str,
     *,
     deployment: str | None = None,
-    options: Mapping[str, object] | None = None,
     flag: bool = False,
     non_interactive: bool = False,
 ) -> dict[str, object] | None:
-    assessment = assess_platform(platform, deployment, options)
+    assessment = assess_platform(platform, deployment)
     acknowledgement = resolve_acknowledgement(flag)
     if assessment.billable and acknowledgement is None and is_non_interactive_session(non_interactive):
         console.print(f"[red]❌ {escape(refusal_message(assessment))}[/red]")

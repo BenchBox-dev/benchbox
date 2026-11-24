@@ -19,6 +19,7 @@ except ImportError:
 from benchbox.core.dataframe.tuning import DataFrameTuningConfiguration
 from benchbox.core.execution_engine import ExecutionEngineReceipt, ExecutionEngineUnavailableError
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
+from benchbox.core.removed_options import reject_removed_keywords
 from benchbox.platforms.dataframe.expression_family import (
     ExpressionFamilyAdapter,
 )
@@ -71,13 +72,16 @@ class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, Pol
         working_dir: str | Path | None = None,
         verbose: bool = False,
         very_verbose: bool = False,
-        streaming: bool = False,
         rechunk: bool = True,
         n_rows: int | None = None,
         tuning_config: DataFrameTuningConfiguration | None = None,
         execution_engine: str = "default",
         allow_third_party_extensions: bool = False,
+        **removed: Any,
     ) -> None:
+        reject_removed_keywords("polars", removed)
+        if removed:
+            raise TypeError(f"PolarsDataFrameAdapter got unexpected keyword arguments: {sorted(removed)}")
         if not POLARS_AVAILABLE:
             raise ImportError("Polars not installed. Install with: pip install polars")
 
@@ -88,7 +92,6 @@ class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, Pol
             tuning_config=tuning_config,
         )
 
-        self.streaming = streaming
         self.rechunk = rechunk
         self.n_rows = n_rows
         self.allow_third_party_extensions = bool(allow_third_party_extensions)
@@ -118,7 +121,6 @@ class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, Pol
     def resolve_execution_engine(self, requested: str) -> ExecutionEngineReceipt:
         from benchbox.core.execution_engine import (
             ExecutionEngineResolution,
-            legacy_option_engine,
             resolve_requested,
             supported_execution_engines,
         )
@@ -126,11 +128,9 @@ class PolarsDataFrameAdapter(ExpressionFamilyAdapter[PolarsDF, PolarsLazyDF, Pol
         resolved = resolve_requested("polars", requested)
         explicit = None if resolved == DEFAULT_EXECUTION_ENGINE else resolved
         tuning = self._tuning_engine()
-        legacy = legacy_option_engine("polars", "streaming", bool(self.streaming))
         ordered: tuple[tuple[str, str | None, ExecutionEngineResolution], ...] = (
             ("explicit setting", explicit, "explicit"),
             ("tuning file", tuning, "tuning_profile"),
-            ("legacy option", legacy, "legacy_option"),
         )
         present = [(source, value, resolution) for source, value, resolution in ordered if value is not None]
         if len({value for _, value, _ in present}) > 1:

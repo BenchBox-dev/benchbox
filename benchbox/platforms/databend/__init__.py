@@ -19,7 +19,6 @@ _build_databend_config = make_platform_config_builder(
         "password",
         "database",
         "dsn",
-        "warehouse",
         "compute_resource",
         "ssl",
         "disable_result_cache",

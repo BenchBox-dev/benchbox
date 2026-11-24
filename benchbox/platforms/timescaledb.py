@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from benchbox.core.deployment import deployment_class, select_adapter_deployment
+from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION, deployment_class, select_adapter_deployment
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 from .base import DriverIsolationCapability
@@ -98,12 +98,8 @@ class TimescaleDBAdapter(PostgreSQLAdapter):
         adapter_config["chunk_interval"] = config.get("chunk_interval", "1 day")
         adapter_config["compression_enabled"] = config.get("compression_enabled", False)
         adapter_config["compression_after"] = config.get("compression_after", "7 days")
-        nested = config.get("options")
-        deployment_mode = config.get("deployment_mode") or (
-            nested.get("deployment_mode") if isinstance(nested, dict) else None
-        )
-        if deployment_mode is not None:
-            adapter_config["deployment_mode"] = deployment_mode
+        if config.get(DEPLOYMENT_SELECTOR_OPTION) is not None:
+            adapter_config[DEPLOYMENT_SELECTOR_OPTION] = config[DEPLOYMENT_SELECTOR_OPTION]
         if config.get("service_url"):
             adapter_config["service_url"] = config["service_url"]
         return cls(**adapter_config)

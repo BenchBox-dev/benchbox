@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION
+
 from ._dependencies import import_chdb
 from .deployment_mode import resolve_clickhouse_deployment_mode
 
@@ -18,12 +20,6 @@ class ClickHouseMetadataMixin:
         ch_group.add_argument(
             "--data-path", type=str, default="/tmp/benchbox_ch_local", help="Path for local mode data"
         )
-        ch_group.add_argument(
-            "--deployment-mode",
-            type=str,
-            default="local",
-            help="ClickHouse deployment mode (server or local)",
-        )
 
     @classmethod
     def from_config(cls, config: dict[str, Any]):
@@ -33,7 +29,7 @@ class ClickHouseMetadataMixin:
 
         deployment_mode = resolve_clickhouse_deployment_mode(config)
         adapter_config = {
-            "deployment_mode": deployment_mode,
+            DEPLOYMENT_SELECTOR_OPTION: deployment_mode,
             "data_path": config.get("data_path", "/tmp/benchbox_ch_local"),
         }
 

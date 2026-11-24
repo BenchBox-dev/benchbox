@@ -162,16 +162,14 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         self.database = config.get("database") or os.environ.get("FIREBOLT_DATABASE") or "benchbox"
 
         self.account_name = config.get("account_name") or os.environ.get("FIREBOLT_ACCOUNT_NAME")
-        self.engine_name = (
-            config.get("compute_resource") or config.get("engine_name") or os.environ.get("FIREBOLT_ENGINE_NAME")
-        )
+        self.engine_name = config.get("compute_resource") or os.environ.get("FIREBOLT_ENGINE_NAME")
         self.api_endpoint = (
             config.get("api_endpoint") or os.environ.get("FIREBOLT_API_ENDPOINT") or "api.app.firebolt.io"
         )
         self.region = config.get("region") or config.get("cloud_region") or os.environ.get("FIREBOLT_REGION")
         self.cloud_provider = config.get("cloud_provider") or os.environ.get("FIREBOLT_CLOUD_PROVIDER")
         self.engine_type = config.get("engine_type")
-        self.engine_size = config.get("compute_size") or config.get("engine_size")
+        self.engine_size = config.get("compute_size")
 
         _validate_firebolt_mode_config(self)
 
@@ -283,16 +281,13 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
                 "client_id",
                 "client_secret",
                 "account_name",
-                "engine_name",
                 "compute_resource",
                 "api_endpoint",
                 "region",
                 "cloud_region",
                 "cloud_provider",
                 "engine_type",
-                "engine_size",
                 "compute_size",
-                "deployment_mode",
                 "s3_staging_url",
                 "s3_region",
                 "core_native_load",
@@ -301,11 +296,6 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
             ],
             include_none=False,
         )
-
-        if config.get("deployment_mode"):
-            mode = config["deployment_mode"]
-            if mode == "core" and "url" not in adapter_config:
-                adapter_config["url"] = "http://localhost:3473"
 
         return cls(**adapter_config)
 
@@ -1581,16 +1571,14 @@ _build_firebolt_config = make_registered_platform_config_builder(
         "client_id",
         "client_secret",
         "account_name",
-        "engine_name",
+        "compute_resource",
         "api_endpoint",
         "database",
         "region",
         "cloud_region",
         "cloud_provider",
         "engine_type",
-        "engine_size",
         "compute_size",
-        "deployment_mode",
         "s3_staging_url",
         "s3_region",
         "core_native_load",

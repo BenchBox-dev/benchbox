@@ -83,13 +83,6 @@ def redshift_deployment_type(hostname: str | None) -> str:
     return "unknown"
 
 
-_RESOURCE_KEY_BY_DEPLOYMENT = {"serverless": "workgroup_name", "provisioned": "cluster_identifier"}
-
-
-def redshift_resource_key(config: Mapping[str, Any]) -> str | None:
-    return _RESOURCE_KEY_BY_DEPLOYMENT.get(redshift_deployment_type(config.get("host")))
-
-
 REDSHIFT_HISTORY_ATTEMPTS = 3
 REDSHIFT_HISTORY_RETRY_DELAY_SECONDS = 0.5
 REDSHIFT_TIMING_COLUMNS = (
@@ -152,11 +145,8 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         self.database = config.get("database") or "dev"
         self.username = config.get("username")
         self.password = config.get("password")
-        from benchbox.core.compute_resource import bind_resource_key
-
-        compute = bind_resource_key("redshift", config, redshift_resource_key(config))
-        self.cluster_identifier = compute.get("cluster_identifier")
-        self.compute_resource = compute.get("compute_resource")
+        self.compute_resource = config.get("compute_resource")
+        self.cluster_identifier = None
 
         self.admin_database = config.get("admin_database") or "dev"
 
@@ -217,8 +207,10 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         self.strict_validation = config.get("strict_validation", True)
 
         self.deployment_type = self._detect_deployment_type(self.host or "")
-        self.workgroup_name = compute.get("workgroup_name")
-        if self.workgroup_name is None and self.deployment_type == "serverless" and self.cluster_identifier is None:
+        self.workgroup_name = self.compute_resource if self.deployment_type == "serverless" else None
+        if self.deployment_type == "provisioned":
+            self.cluster_identifier = self.compute_resource
+        if self.workgroup_name is None and self.deployment_type == "serverless":
             self.workgroup_name = self._extract_identifier_from_hostname(self.host or "", self.deployment_type)
 
         if not all([self.host, self.username, self.password]):
@@ -284,7 +276,6 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
             **build_adapter_config(
                 config,
                 platform="redshift",
-                resource_key=redshift_resource_key(config),
                 fields=[
                     "host",
                     "port",
@@ -299,9 +290,7 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
                     "aws_secret_access_key",
                     "aws_session_token",
                     "aws_region",
-                    "cluster_identifier",
                     "compute_resource",
-                    "workgroup_name",
                     "admin_database",
                     "connect_timeout",
                     "statement_timeout",
@@ -2489,7 +2478,6 @@ _build_redshift_config = make_registered_platform_config_builder(
         "aws_secret_access_key",
         "aws_session_token",
         "aws_region",
-        "cluster_identifier",
         "admin_database",
         "connect_timeout",
         "statement_timeout",
@@ -2498,5 +2486,4 @@ _build_redshift_config = make_registered_platform_config_builder(
         "strict_validation",
     ],
     base_options={"admin_database": "dev"},
-    resource_key=redshift_resource_key,
 )

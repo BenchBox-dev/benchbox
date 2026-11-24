@@ -92,7 +92,7 @@ class AthenaAdapter(PlatformAdapter):
         self.aws_secret_access_key = config.get("aws_secret_access_key")
         self.aws_profile = config.get("aws_profile")
 
-        self.workgroup = config.get("compute_resource") or config.get("workgroup") or "primary"
+        self.workgroup = config.get("compute_resource") or "primary"
         self.database = config.get("database") or "default"
         self.catalog = config.get("catalog") or "AwsDataCatalog"
 
@@ -240,7 +240,6 @@ class AthenaAdapter(PlatformAdapter):
     def add_cli_arguments(parser) -> None:
         athena_group = parser.add_argument_group("Athena Arguments")
         athena_group.add_argument("--region", type=str, default="us-east-1", help="AWS region for Athena")
-        athena_group.add_argument("--workgroup", type=str, default="primary", help="Athena workgroup")
         athena_group.add_argument("--database", type=str, default="default", help="Athena database/schema")
         athena_group.add_argument("--s3-output-location", type=str, help="S3 location for query results")
         athena_group.add_argument("--s3-staging-dir", type=str, help="S3 location for data staging")
@@ -261,7 +260,6 @@ class AthenaAdapter(PlatformAdapter):
                     "aws_secret_access_key",
                     "aws_profile",
                     "compute_resource",
-                    "workgroup",
                     "catalog",
                     "s3_output_location",
                     "s3_staging_dir",
@@ -1232,7 +1230,7 @@ _build_athena_config = make_registered_platform_config_builder(
     "AWS Athena",
     "pyathena",
     [
-        "workgroup",
+        "compute_resource",
         "database",
         "catalog",
         "s3_output_location",

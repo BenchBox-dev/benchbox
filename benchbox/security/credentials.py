@@ -49,13 +49,26 @@ class CredentialManager:
 
         try:
             with open(self.credentials_path, encoding="utf-8") as f:
-                raw_data = yaml.safe_load(f) or {}
+                raw_data = self._migrate_compute_keys(yaml.safe_load(f) or {})
 
             self._raw_credentials = raw_data if isinstance(raw_data, dict) else {}
             return self._substitute_env_vars(raw_data)
 
         except Exception as e:
             raise ValueError(f"Failed to load credentials from {self.credentials_path}: {e}") from e
+
+    @staticmethod
+    def _migrate_compute_keys(data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        from benchbox.core.compute_resource import migrate_saved_compute_keys
+
+        return {
+            platform: migrate_saved_compute_keys(str(platform), section)
+            if isinstance(section, dict) and not str(platform).startswith("_")
+            else section
+            for platform, section in data.items()
+        }
 
     def _substitute_env_vars(self, data: Any) -> Any:
         if isinstance(data, dict):

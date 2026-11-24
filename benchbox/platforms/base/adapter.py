@@ -10,6 +10,7 @@ from typing import Any
 
 from benchbox.core.execution_engine import ExecutionEngineHook
 from benchbox.core.loaded_tables import is_data_loading_skipped, require_loaded_tables
+from benchbox.core.removed_options import reject_removed_adapter_keywords
 from benchbox.core.results.fetch_mode import FETCH_MODE_ROWS, resolve_fetch_mode
 from benchbox.core.results.query_plan_models import DEFAULT_PLAN_MAX_DEPTH
 from benchbox.core.results.schema import compute_plan_capture_stats
@@ -137,6 +138,7 @@ class PlatformAdapter(
     default_fetch_mode: str = FETCH_MODE_ROWS
 
     def __init__(self, **config):
+        reject_removed_adapter_keywords(type(self), config)
         self.platform_config = config
         self.connection = None
         self.connection_pool = None
