@@ -1,0 +1,29 @@
+{
+  "acceptance": [
+    "tpc-binary-release.md no longer says the container build deploys only to untracked `_binaries/`, and describes the actual deploy and manifest steps.",
+    "Running compile-all-platforms.sh in a clean worktree changes no tracked query template and leaves no untracked EULA.txt under _binaries/tpc-ds/*/query_templates.",
+    "REBUILD.md's extract step no longer overwrites tracked files under _sources/tpc-ds/tools, or says exactly which to restore and how.",
+    "PATCHES.md is handled per the recorded owner decision; make comment-policy-check passes.",
+    "Changing bundled binaries without regenerating SHA256MANIFEST.json fails a local or PR check with a message naming scripts/bundled_binary_manifest.py --write, or the owner's decision not to add one is recorded."
+  ],
+  "context": "Observed during the #4426 rebuild on 2026-11-21: the rebuild modified ~150 tracked template files and three tracked .exe files that had to be reverted; the first CI run failed on all six TPC-DS manifest jobs because SHA256MANIFEST.json was stale (run 44916436288).",
+  "description": "## Problem\nRebuilding the TPC-DS binaries for #4426 exposed several procedure defects. Each cost manual work and can mislead the next maintainer:\n1. `docs/internal/tpc-binary-release.md` still says the full container build \"only deploys to `_binaries/` (untracked)\" and must be copied by hand. `compile-all-platforms.sh` now calls `_deploy_tpcds_to_package` for every platform, and `_binaries/tpc-ds/` is tracked.\n2. The build copies `_sources/tpc-ds/query_templates` over the tracked `_binaries/tpc-ds/<platform>/query_templates`, which differ from the sources on develop (`sqlserver.tpl` and `EULA.txt` on darwin/linux; 105 files on windows-arm64, apparently line-ending differences). Every rebuild therefore dirties about 150 tracked template files that must be reverted by hand.\n3. `REBUILD.md` says to extract the 4.0.0 `tools/` into `_sources/tpc-ds/tools/`, which overwrites the tracked `dsdgen.exe`, `dsqgen.exe` and `mkheader.exe` there.\n4. `_sources/tpc-ds/PATCHES.md` is stale: \"Applying the Patch\" lists only `stdout-support.patch`; the sub-SF1 section says it is \"validated on darwin-arm64 only\" and points at finished TODO w4; \"Related Files\" names `tests/unit/core/tpcds/test_stdout_datagen.py`, which does not exist (the file is `test_tpcds_stdout_datagen.py`). Its bytes are pinned by `quality/comment-cleanup-scope.json` (candidate notice, retained-byte digest), so it cannot be edited without updating that pin.\n5. `make pr-open` and `make pr-arm` gave no hint that `scripts/bundled_binary_manifest.py --write` was needed; the first CI run failed on six platforms. (The release doc now lists the step; nothing enforces it before push.)\n\n## Decision gates (owner)\n- Item 4: either (a) update `PATCHES.md` and its pinned digest in `quality/comment-cleanup-scope.json`, or (b) leave it frozen and add a pointer at the top to `REBUILD.md` (still needs the pin updated), or (c) leave it and accept the drift. The pin was set by owner decision on 2026-10-01.\n- Item 2: decide which copy of the templates is canonical (`_sources` or the per-platform `_binaries` copies), and whether `windows-arm64` should keep CRLF templates.\n\n## Guardrails\n- Do not change any shipped binary or `benchbox/_binaries/` content in this item.\n- Do not weaken the comment-cleanup scope check; any change to the pin follows its documented procedure.\n- Build-script changes must keep all six platform builds working; prove with one full rebuild that reproduces the current shipped binaries' checksums or explains any difference.\n\n## Verification rubric\n- A full rebuild with `compile-all-platforms.sh` from a clean worktree leaves `git status` showing only the binary and checksum files that actually changed.\n- `tpc-binary-release.md` matches what the script does.\n- `PATCHES.md` handled per the owner's choice, with `make comment-policy-check` passing.\n- A pre-push or CI check fails with a clear message when bundled binaries change without a matching SHA256MANIFEST.json (or the owner records that the existing CI failure is enough).",
+  "links": [
+    "docs/internal/tpc-binary-release.md",
+    "_sources/compilation/scripts/compile-all-platforms.sh",
+    "_sources/tpc-ds/REBUILD.md",
+    "_sources/tpc-ds/PATCHES.md",
+    "quality/comment-cleanup-scope.json",
+    "https://github.com/BenchBox-dev/benchbox/pull/4426"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:46b8aecc4947f9228ee7b958",
+      "at": "2026-11-24T14:45:29Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "90294112d986434d97dceb03810a6d79",
+      "session_id": "a724ea91942f4b2591aae926a47c7dd1"
+    }
+  ]
+}

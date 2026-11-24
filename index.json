@@ -50796,6 +50796,13 @@
       "status": "done",
       "title": "todo wrapper silently falls back to a stale local database when no backend is selected"
     },
+    "tpc-binary-rebuild-procedure-drift-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Fix drift in the TPC-DS binary rebuild procedure, build script side effects and PATCHES.md"
+    },
     "tpc-bundles-missing-generation-and-power-stream-identity-20261013": {
       "claim": null,
       "needs": [],
