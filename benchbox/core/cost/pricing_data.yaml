@@ -11,7 +11,9 @@ metadata:
   residual_risk: >-
     These are selected derived list-price values, not vendor catalog mirrors.
     Per-table provenance is retained below; values with unknown retrieval dates
-    are stale-by-default and cannot support normalized publication.
+    are stale-by-default and cannot support normalized publication. BenchBox
+    accepts residual redistribution risk for these derived values and does not
+    declare vendor redistribution cleared.
 provenance:
   snowflake_credit_prices:
     source: 'https://www.snowflake.com/pricing/'
