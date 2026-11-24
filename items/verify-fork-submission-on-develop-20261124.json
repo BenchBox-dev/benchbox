@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Test bundle submission PR opened from an external fork into develop runs validate-submission.yml and posts its summary comment.",
+    "Heavy code-test lanes are skipped on that PR while required checks remain satisfiable.",
+    "Auto-merge is mechanically blocked (no-auto-merge / hold) until manual review.",
+    "After manual merge (or verified test bundle), the bundle appears in the next site-inputs bundle and passes deploy gates."
+  ],
+  "context": "Step 6 of the owner-approved Option 1 corpus consolidation plan (2026-11-24). End-to-end verification of Step 2 on a real fork PR into develop.",
+  "description": "## Problem\\nChanges to `pull_request_target`, `ci-units.yml`, fork-PR required checks, and `no-auto-merge` guards cannot be proven purely by unit tests.\\n\\n## Change (Step 6 of 6)\\nOpen a test bundle submission PR from a fork into `develop` and verify end to end:\\n1. `validate-submission.yml` runs from trusted base code and posts its summary comment.\\n2. Heavy code-test lanes are skipped while required checks stay satisfiable.\\n3. Auto-merge is blocked mechanically (`no-auto-merge` / `hold`).\\n4. After manual merge, the bundle appears in the next `site-inputs` bundle and passes `benchbox-site` deploy gates.",
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T20:21:43Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "b1c2d3e4f5061728394a5b6c7d8e9f06",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    }
+  ]
+}

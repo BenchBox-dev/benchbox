@@ -55591,6 +55591,15 @@
       "status": "done",
       "title": "todo create --verify splits on :: and silently truncates pytest node-id commands"
     },
+    "verify-fork-submission-on-develop-20261124": {
+      "claim": null,
+      "needs": [
+        "corpus-intake-on-develop-20261124"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Step 6: prove fork bundle submission flow into develop end to end"
+    },
     "verify-fresh-install-first-command-20261113": {
       "claim": null,
       "needs": [
