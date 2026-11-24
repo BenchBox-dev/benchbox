@@ -24524,6 +24524,13 @@
       "status": "done",
       "title": "Concurrent Queries Configuration ✅ COMPLETED"
     },
+    "concurrent-sessions-implement-same-item-without-claim-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Two agent sessions can implement the same tracker item; the overlap is detected only at pr-open"
+    },
     "configurable-platform-version-pinning": {
       "claim": null,
       "needs": [],

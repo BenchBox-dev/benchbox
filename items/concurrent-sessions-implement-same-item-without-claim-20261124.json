@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "The owner's choice and date are recorded in context.",
+    "For option 1 or 3: a test reproduces the 2026-11-20 sequence and shows worktree-create warning or refusing with the claim holder, open PR and worktree named; a run without ITEM proceeds unchanged.",
+    "For option 2 or 3: AGENTS.md and the todo skill source state the claim-before-work and overlap-check rule, and the mirrors are regenerated.",
+    "The pr-open textual-conflict warning still fires as before (test or recorded run)."
+  ],
+  "context": "Filed 2026-11-24 from the 2026-11-20 duplicate work on fullspec-sf1-first-runs-chdb-cedardb-20261119. Related: tracker-claims-shared-identity-parallel-agents (claims stranded when an MCP session is replaced).",
+  "description": "## Problem\nOn 2026-11-20 two sessions fixed the same nightly failures (fullspec-sf1-first-runs-chdb-cedardb-20261119) in parallel for about an hour:\n- 14:30Z session A created `BenchBox.wt-fullspec-nightly` without claiming the item.\n- 14:44Z session B claimed the item (tracker showed it open and unclaimed) and created its own worktree 1 minute later without checking existing worktrees or open PRs.\n- 14:50Z A opened #4405; 14:53Z A created `BenchBox.wt-cedardb-q75` for Q75 while B's claim was live.\n- 15:18Z B ran `make pr-open` for #4406, whose warning \"textual conflict with PR #4405 … coordinate before landing\" was the first signal. #4406 was closed; A's work merged.\nNothing stops work before a claim, and the only overlap check runs after the work is done. Claims are cooperative by design (tractable: \"Claims are cooperative, not access control\").\n\n## Expected outcome\nA session that starts work on an item, or on files another open branch is changing, learns that before it writes code.\n\n## Decision gate\nOwner chooses one or more:\n1. **Earlier detection:** `make worktree-create` takes an optional `ITEM=<id>` and refuses (or warns, owner's choice) when the item has a live claim by another worker, or when an open PR or another worktree's branch names the item; it also prints open PRs whose changed files match paths the item names.\n2. **Policy:** AGENTS.md and the todo skill require a claim (`take`) before `worktree-create` for tracker work, and an overlap check (open PRs, branches, worktrees) before starting and before `pr-open`.\n3. **Both.**\nRecommendation: 3; option 1 alone cannot see work started without an item id, option 2 alone depends on every agent reading it.\n\n## Verification rubric\n- Replaying the 2026-11-20 sequence (fixture: a live claim held by another worker, an open PR naming the item, a second worktree) makes the second `worktree-create` warn or refuse as chosen, naming the claim holder, PR and worktree.\n- Work with no item id still proceeds (no false refusal), and the existing pr-open conflict warning is unchanged.\n\n## Guardrails\n- Work in a linked worktree (`make worktree-create`, `make agent-write-preflight`); never edit the primary clone.\n- Before starting, check the tracker claim, open PRs, branches and existing worktrees for the same files; check again before `make pr-open`.\n- No skip, xfail, rerun marker, raised timeout, relaxed threshold or weakened assertion to turn a check green.\n- Heavy work only through `make heavy-run` or a lock-taking entry point; no admission or watchdog override.\n- No explanatory comments or docstrings (`make comment-policy-check`); user-facing changes add a `changelog.d/` fragment.\n- Anchors (run ids, file names) are orientation from 2026-11-24; re-read before editing and update the item on a mismatch.\n- Never take over, release or edit another session's claim, worktree or branch to make the check pass.\n- Do not turn claims into access control in tractable itself; this is a BenchBox workflow change.\n- Changes to AGENTS.md or skills follow the writing-for-agents skill; generated skill mirrors are regenerated with `make skill-sync`, never hand-edited.",
+  "links": [
+    "#4405",
+    "#4406",
+    "Makefile (worktree-create)",
+    "AGENTS.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:78577982789d137a526d6d7d",
+      "at": "2026-11-24T22:37:40Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "96ca03c7247e59a369c451ef6ce009a4",
+      "session_id": "7a80d04581544190805d0df585b8bd05"
+    }
+  ]
+}
