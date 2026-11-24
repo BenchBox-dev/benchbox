@@ -51740,6 +51740,13 @@
       "status": "active",
       "title": "Keep the TPC-DI appendix SQL out of the 0.6.0 wheel and sdist until its source is settled"
     },
+    "tpcdi-appendix-sql-excluded-from-distributions-20261124-deferral-1": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Bundled TPC-DI NOTICE still says the appendix SQL ships in distributions"
+    },
     "tpcdi-bundle-tpc-di-tools-20261121": {
       "claim": null,
       "needs": [

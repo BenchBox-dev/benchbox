@@ -10,7 +10,9 @@
       "from_item": "tpcdi-appendix-sql-excluded-from-distributions-20261124",
       "id": 1,
       "reason": "The bundled NOTICE has a whole-file comment-policy pin, and the commit hook refuses any change to its bytes, so the addendum cannot land with the exclusion. It needs the owner to approve a pin change (or a different place for the statement).",
-      "resolution": "open",
+      "resolution": "promoted",
+      "resolved_at": "2026-11-24T19:09:50Z",
+      "resolved_item": "tpcdi-appendix-sql-excluded-from-distributions-20261124-deferral-1",
       "summary": "Bundled TPC-DI NOTICE still says the appendix SQL is distributed; add a line that wheels and sdists omit it."
     }
   ],
@@ -73,6 +75,14 @@
       "generation": "13d0ed0f9bab45c891ed001b257803b9",
       "op": "take",
       "op_id": "2272ba26f8cb4bcfb68642732472c879",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T19:09:51Z",
+      "client": "omp-coding-agent",
+      "op": "promote",
+      "op_id": "dd126245204642769540b03476dc9f41",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
