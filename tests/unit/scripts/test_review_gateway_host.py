@@ -461,7 +461,7 @@ def host(tmp_path: Path, mirror: dict[str, bytes]) -> dict:
         f' *) echo "tailscale $*" >> "{calls}";; esac\n',
     )
     env = {
-        **os.environ,
+        **{key: value for key, value in os.environ.items() if key != "GATEWAY_HOST_REPO"},
         **GIT_IDENTITY,
         "HOME": str(home),
         "GATEWAY_DIR": str(gateway_dir),
