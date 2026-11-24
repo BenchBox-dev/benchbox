@@ -361,6 +361,48 @@ def test_result_without_a_phases_block_is_undetermined_not_guessed() -> None:
     assert outcome.missing_facts == (rule.MISSING_PHASES,)
 
 
+@pytest.mark.parametrize("version_key", ["version", "result_schema_version"])
+def test_legacy_omitted_phases_with_measured_queries_are_other_timed(version_key: str) -> None:
+    data = result()
+    del data["phases"]
+    data[version_key] = "2.2"
+    data["queries"] = [{"id": "1", "ms": 10, "status": "SUCCESS"}]
+
+    assert rule.phases_ran(data) == frozenset({rule.PHASE_OTHER_TIMED})
+    assert rule.public_refusal_for_facts(rule.facts_from_result(data)) is None
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        {"ms": 10, "run_type": "warmup"},
+        {"ms": 10, "iter": 0},
+        {"ms": 10, "status": "NOT_RUN"},
+        {"ms": 10, "status": "FAILED"},
+        {"ms": None, "status": "SUCCESS"},
+        {"ms": float("nan"), "status": "SUCCESS"},
+        {"ms": float("inf"), "status": "SUCCESS"},
+        {"ms": 0, "status": "SUCCESS"},
+    ],
+)
+def test_legacy_omitted_phases_without_measured_work_remain_unknown(row: dict) -> None:
+    data = {"version": "2.2", "queries": [row]}
+    assert rule.phases_ran(data) is None
+    data["phases"] = {}
+    assert rule.phases_ran(data) == frozenset()
+
+
+@pytest.mark.parametrize("phases", [None, [], "invalid"])
+def test_explicit_malformed_phases_are_not_replaced_by_query_evidence(phases) -> None:
+    data = {"version": "2.2", "phases": phases, "queries": [{"ms": 1, "status": "SUCCESS"}]}
+    assert rule.phases_ran(data) is None
+
+
+def test_modern_omitted_phases_are_not_inferred_from_queries() -> None:
+    data = {"result_schema_version": "2.6", "queries": [{"ms": 1, "status": "SUCCESS"}]}
+    assert rule.phases_ran(data) is None
+
+
 def test_gateway_known_defect_and_validation_come_from_the_file_and_sidecar(tmp_path: Path) -> None:
     data = result(extra={"platform": {"name": "engine", "gateway": {"name": "g", "routed": True}}})
     data["summary"]["validation"] = {"status": "FAILED"}

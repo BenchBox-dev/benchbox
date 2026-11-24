@@ -501,13 +501,36 @@ def _benchmark_id(data: Mapping[str, Any]) -> Any:
 
 def _measured_rows(data: Mapping[str, Any]) -> bool:
     queries = data.get("queries")
-    return isinstance(queries, list) and any(
-        isinstance(query, Mapping) and query.get("run_type") == "measurement" for query in queries
-    )
+    if not isinstance(queries, list):
+        return False
+    for query in queries:
+        if not isinstance(query, Mapping) or (query.get("run_type") or "measurement") != "measurement":
+            continue
+        iteration = query.get("iter", query.get("iteration", 1))
+        duration = query.get("ms", query.get("execution_time_ms"))
+        status = query.get("status")
+        if isinstance(iteration, bool) or not isinstance(iteration, int) or iteration <= 0:
+            continue
+        if (
+            isinstance(duration, bool)
+            or not isinstance(duration, int | float)
+            or not math.isfinite(duration)
+            or duration <= 0
+        ):
+            continue
+        if status is not None and str(status).upper() not in {"SUCCESS", "PASS"}:
+            continue
+        return True
+    return False
 
 
 def phases_ran(data: Mapping[str, Any]) -> frozenset[str] | None:
     phases = data.get("phases")
+    if "phases" not in data:
+        version = data.get("result_schema_version", data.get("version"))
+        if version in ("2.0", "2.1", "2.2", "2.3") and _measured_rows(data):
+            return frozenset({PHASE_OTHER_TIMED})
+        return None
     if not isinstance(phases, Mapping):
         return None
     ran: set[str] = set()

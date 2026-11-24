@@ -70,6 +70,24 @@ def test_power_accepts_pass_statuses(status: str) -> None:
     assert corpus_score.power_at_size(_data(_full_run(status=status))) == pytest.approx(0.01 * 3600 / 0.02)
 
 
+@pytest.mark.parametrize("omitted", [("run_type",), ("iter",), ("run_type", "iter")])
+def test_power_scores_legacy_rows_with_omitted_measurement_defaults(omitted: tuple[str, ...]) -> None:
+    queries = _full_run()
+    for query in queries:
+        for field in omitted:
+            del query[field]
+    assert corpus_score.power_at_size(_data(queries)) == pytest.approx(0.01 * 3600 / 0.02)
+
+
+def test_legacy_defaults_do_not_hide_failed_or_untimed_queries() -> None:
+    queries = [{"id": row["id"], "ms": row["ms"], "status": row["status"]} for row in _full_run()]
+    queries[0]["status"] = "FAILED"
+    assert corpus_score.power_at_size(_data(queries)) is None
+    queries[0]["status"] = "SUCCESS"
+    queries[0]["ms"] = float("nan")
+    assert corpus_score.power_at_size(_data(queries)) is None
+
+
 @pytest.mark.parametrize("bad_ms", [None, 0.0, -1.0, "fast"])
 def test_power_is_unavailable_when_a_final_query_has_no_usable_timing(bad_ms) -> None:
     queries = _full_run()

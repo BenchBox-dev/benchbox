@@ -35,7 +35,7 @@ def _scale_factor(data: Mapping[str, Any]) -> float | None:
 
 
 def _iteration(query: Mapping[str, Any]) -> int:
-    value = query.get("iter", query.get("iteration"))
+    value = query.get("iter", query.get("iteration", 1))
     if isinstance(value, bool):
         return 0
     try:
@@ -68,7 +68,7 @@ def power_at_size(data: Mapping[str, Any]) -> float | None:
     measurement = [
         query
         for query in _queries(data)
-        if query.get("run_type") == "measurement"
+        if (query.get("run_type") or "measurement") == "measurement"
         and _iteration(query) > 0
         and str(query.get("test_type") or "power").lower() not in _NON_POWER_TEST_TYPES
     ]
