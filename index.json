@@ -9211,7 +9211,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-release-gates",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "core-exec-remove-deprecated-aliases",
         "tpcdi-appendix-sql-excluded-from-distributions-20261124"
