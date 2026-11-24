@@ -499,6 +499,7 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
             ("starrocks", "tpcds_obt", 1.0),
             ("starrocks", "write_primitives", 1.0),
             ("cedardb", "tpcds_obt", 1.0),
+            ("cedardb", "flightdata", 1.0),
             ("cedardb", "tpchavoc", 0.01),
             ("cedardb", "tpchavoc", 0.1),
             ("cedardb", "tpchavoc", 1.0),
