@@ -40574,10 +40574,15 @@
       "title": "Published pseudonyms are guess-confirmable and the fields they protect have no reader"
     },
     "published-results-contributing-broken-link-20261124": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-25T17:38:02Z",
+        "generation": "d2652a448ba84e4b958236654e0d8583",
+        "renewals": 0,
+        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "published-results: fix broken docs/contributing-results.md link in CONTRIBUTING.md"
     },
     "published-results-corpus-leak-and-mirror-gap": {
