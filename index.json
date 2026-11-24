@@ -44423,7 +44423,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "blocked",
+      "status": "open",
       "title": "Rotate credentials that passed through TLS clients trusting the compromised eMudhra CAs"
     },
     "ruleset-break-glass-procedure-20261025": {
