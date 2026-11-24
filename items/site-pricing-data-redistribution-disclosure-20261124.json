@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "User-facing cost/pricing documentation in BenchBox-dev/benchbox-site discloses vendor sources, retrieval dates, and that BenchBox accepts residual redistribution risk rather than declaring vendor redistribution cleared."
+  ],
+  "context": "Follow-up from _project/decisions/pricing-vendor-api-redistribution-aws-azure-2026-09-18.md:115-118. Core PR #4487 added the residual redistribution risk disclosure to benchbox/core/cost/pricing_data.yaml; user-facing docs live in BenchBox-dev/benchbox-site and had no matching disclosure on 2026-11-24.",
+  "description": "## Problem\\n`_project/decisions/pricing-vendor-api-redistribution-aws-azure-2026-09-18.md` (lines 115-118) requires both `pricing_data.yaml` and user-facing docs to disclose vendor sources, retrieval dates, and that BenchBox accepts residual redistribution risk rather than declaring vendor redistribution cleared. Core PR #4487 updated `benchbox/core/cost/pricing_data.yaml`, but user-facing docs live in `BenchBox-dev/benchbox-site` and do not yet carry this disclosure.\\n\\n## Change\\nAdd the required vendor-source, retrieval-date, and residual-redistribution-risk disclosure to the user-facing cost estimation documentation in `BenchBox-dev/benchbox-site` via a site PR.",
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T14:26:44Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "547d039ca993482b90312f7dd61d76e3",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    }
+  ]
+}

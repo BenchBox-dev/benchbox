@@ -45990,6 +45990,13 @@
       "status": "done",
       "title": "Prune the 36 site-parity allowances for broken links that now resolve"
     },
+    "site-pricing-data-redistribution-disclosure-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "benchbox-site: add pricing data vendor provenance and residual redistribution risk disclosure to user-facing docs"
+    },
     "site-primitives-count-docs-20261111": {
       "claim": null,
       "needs": [
