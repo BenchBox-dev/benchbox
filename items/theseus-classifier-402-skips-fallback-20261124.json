@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "The owner's choice of degrading statuses is recorded on this item before the code change.",
+    "Unit tests: a fake TypeSafe answering 402 with fallback: decisions produces a Decisions classification whose degraded_from names 'TypeSafe answered 402'; with Decisions also failing, the unavailable bucket (max) is written; 401 and 403 (unless the owner chose otherwise) and a missing key still end with no classification.",
+    "An integration run with the fake-Jev harness answering 402 reaches a reviewer on slot 1, locally (theseus local review) and through the hosted select step.",
+    "Released in a Theseus version, locked by Theseus, and BenchBox's .github/theseus-lock.json and review workflows pin that release.",
+    "After the BenchBox repin, a `make pr-open` run with TypeSafe answering 402 (fake TYPESAFE_BASE_URL, no live spend) clears slot 1 or stops for a reason other than classification."
+  ],
+  "description": "Problem: in theseus-reviewer 0.2.18 (still unchanged on Theseus main 139930e), jev.py:35 `JevError.is_outage` counts only no-status, 429 and >=500 as an outage. cli.py:1487 (`_classify_plan`) tries the configured `classifier.fallback: decisions` only for an outage, and cli.py:1560 (`command_select`) uses `classifier.unavailable_bucket` only for an outage. So when TypeSafe answered HTTP 402 (Payment Required, account out of credit) on 2026-11-23/24, both safety nets were skipped. No classification.json was written, select-1 ended with `slot 1: pending (classification unavailable: TypeSafe answered 402)`, and no reviewer ran. Locally, `make pr-open` refused every PR (`slot 1: pending (classification unreadable)`). The hosted review-verdict takes the same path (`_empty_selection`) and would also pend. BenchBox's .github/review.yml already sets `unavailable_bucket: max`, `fallback: decisions`, `fallback_min_bucket: large`; the policy was right and the code ignored it.\n\nOutcome: a TypeSafe refusal that says the account cannot be served right now (402) degrades like an outage: OpenAI Decisions classifies, and if that also fails the unavailable bucket (max) applies, with the cause named in the summary and classification note.\n\nDecision gate (owner, choice dialog, before code): which statuses degrade. Recommendation: add 402 only. Keep 401 and 403 failing closed, so a wrong or revoked key is loud instead of silently sending every review through the fallback. Keep 400, 404, 413 and 422 failing closed because they mean the request is wrong. Record the answer here.\n\nGuardrails: a missing TYPESAFE_API_KEY stays fail-closed (missing_key). Do not change size floors, fallback_min_bucket, gate flags or the max-bucket behaviour when Decisions also fails. The fallback may only make classification more conservative or equal, never pick a smaller bucket than a TypeSafe answer would. Hosted and local paths must share one rule (no local-only switch). The PR touches the review gate, so it needs a hosted SHIP and an independent fresh-agent review of the exact head before merge.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:85211dc6cc54201508c6fab8",
+      "at": "2026-11-24T13:59:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e880ea19b157faa16e88fc6c61c043bc",
+      "session_id": "ba268bb399814e16b3d44ff7bdc73914"
+    }
+  ]
+}

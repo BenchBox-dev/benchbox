@@ -49457,6 +49457,13 @@
       "status": "open",
       "title": "Theseus: a claimed prior finding stays open after the reviewer withdraws it"
     },
+    "theseus-classifier-402-skips-fallback-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Theseus: a TypeSafe 402 skips the OpenAI Decisions fallback and the unavailable bucket, so no reviewer runs"
+    },
     "theseus-close-known-defects-trigger-scan-20261112": {
       "claim": null,
       "needs": [],
