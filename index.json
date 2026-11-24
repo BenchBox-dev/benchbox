@@ -31930,15 +31930,10 @@
       "title": "Keep gateway runs out of the internal cost total and its log line"
     },
     "gateway-transport-options-connector-5": {
-      "claim": {
-        "expires_at": "2026-11-25T20:43:08Z",
-        "generation": "b60f5cb8de494b82ac995973c4bf7d09",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Make the gateway transport options work on snowflake-connector-python 5.x, or refuse them there"
     },
     "gcloud-emsign-ca-workaround-revert": {
