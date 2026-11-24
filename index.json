@@ -41049,15 +41049,10 @@
       "title": "Draft the blog post on Polars 2.0 performance across versions"
     },
     "pyarrow-open-csv-early-close-audit": {
-      "claim": {
-        "expires_at": "2026-11-25T20:43:42Z",
-        "generation": "910ac970be46400fb72389ca0b93dbde",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Audit pyarrow open_csv readers over Python streams for early close while the reader thread runs"
     },
     "pypi-environment-protection-20261023": {
