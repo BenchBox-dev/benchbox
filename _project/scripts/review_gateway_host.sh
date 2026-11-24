@@ -17,6 +17,8 @@ DENYLIST_FILE=$GATEWAY_DIR/disabled-providers
 GATEWAY_CONFIG=$GATEWAY_DIR/home/.omp/agent/config.yml
 STATE_FILE=$GATEWAY_DIR/monitor.state
 PENDING_FILE=$GATEWAY_DIR/monitor.pending
+SWEEP_FILE=$GATEWAY_DIR/sweep.dispatched
+SWEEP_INTERVAL=3600
 SCRATCH=
 DEVELOP_DIR=
 ACCOUNTS_FILE=
@@ -30,6 +32,7 @@ BROKER_LABEL=dev.omp.auth-broker
 GATEWAY_LABEL=dev.omp.auth-gateway
 MONITOR_LABEL=dev.omp.review-gateway-monitor
 MONITOR_INTERVAL=900
+MONITOR_STATE=
 HEALTH_LABEL=review-gateway-health
 PROVIDER_REASON_NO_LOGIN="no logged-in broker account"
 
@@ -682,10 +685,11 @@ publish_health() {
   fi
 }
 
-cmd_monitor() {
+monitor_evaluate() {
   local output rc=0 state signature previous previous_state pending summary
   output=$(health_collect 2>&1) || rc=$?
   state=$(health_state "$rc")
+  MONITOR_STATE=$state
   summary=$(health_lines "$output" 'degraded|error')
   signature=$(printf '%s\n%s\n' "$state" "$summary" | grep -v '^$' | sort)
   previous=$(cat "$STATE_FILE" 2>/dev/null || echo healthy)
@@ -713,6 +717,25 @@ cmd_monitor() {
   printf '%s\n' "$signature" > "$STATE_FILE"
   rm -f "$PENDING_FILE"
   echo "monitor: $state"
+}
+
+dispatch_sweep() {
+  local now last=0
+  [ "$MONITOR_STATE" != broken ] || return 0
+  now=$(date +%s)
+  last=$(cat "$SWEEP_FILE" 2>/dev/null || echo 0)
+  case $last in '' | *[!0-9]*) last=0 ;; esac
+  [ $((now - last)) -ge "$SWEEP_INTERVAL" ] || return 0
+  if gh api --method POST "repos/$REPO_SLUG/dispatches" -f event_type=review-sweep >/dev/null 2>&1; then
+    printf '%s\n' "$now" > "$SWEEP_FILE"
+  else
+    echo "monitor: review-sweep dispatch failed"
+  fi
+}
+
+cmd_monitor() {
+  monitor_evaluate
+  dispatch_sweep
 }
 
 cmd_monitor_install() {

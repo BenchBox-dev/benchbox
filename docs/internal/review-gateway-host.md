@@ -276,6 +276,17 @@ published, it:
    (the label is created on first use);
 3. records the new state.
 
+After the health evaluation, every monitor run whose state is not broken sends
+a `review-sweep` `repository_dispatch` event to the repository
+(`gh api --method POST repos/<repo>/dispatches -f event_type=review-sweep`)
+unless one was sent in the last hour. `review-verdict` runs its sweep on that
+event, because GitHub delivers the hourly `schedule` only a few times a day and
+quota-pending heads would otherwise wait hours for their retry. The time of
+the last successful send is `~/.omp/review-gateway/sweep.dispatched`; a failed
+send logs `monitor: review-sweep dispatch failed`, leaves that file alone and
+does not change the monitor's exit status or recorded state. A broken gateway
+sends nothing, since it cannot review.
+
 If the issue cannot be filed, the state is not recorded, so the next run
 notifies and tries again. Steady state, an unconfirmed change and a deliberate removal are
 silent. The scheduled `review-verdict` run in CI also goes red when the gateway
