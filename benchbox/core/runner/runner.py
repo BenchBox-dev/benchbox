@@ -409,7 +409,7 @@ def _attach_datagen_version(
             return result
         if getattr(result, "data_generation_version", None) is not None:
             return result
-        from benchbox.utils.datagen_version import manifest_datagen_is_current
+        from benchbox.utils.datagen_version import manifest_datagen_is_current, resolve_manifest_datagen_hash
 
         output_dir = getattr(benchmark, "output_dir", None) if benchmark is not None else None
         if output_dir is None:
@@ -421,7 +421,8 @@ def _attach_datagen_version(
 
         with manifest_path.open("r", encoding="utf-8") as handle:
             manifest = _json.load(handle)
-        if not manifest_datagen_is_current(manifest):
+        expected_backend = getattr(benchmark, "datagen_backend", None) if benchmark is not None else None
+        if not manifest_datagen_is_current(manifest, expected_backend=expected_backend):
             return result
         if not _manifest_matches_result(manifest, result, benchmark):
             return result
@@ -429,7 +430,7 @@ def _attach_datagen_version(
         if callable(identity_matches) and not identity_matches(manifest):
             return result
         result.data_generation_version = manifest.get("data_generation_version")
-        result.data_generation_hash = manifest.get("data_generation_identity_hash", manifest.get("base_constants_hash"))
+        result.data_generation_hash = resolve_manifest_datagen_hash(manifest)
         if str(manifest.get("benchmark", "")).lower() == "tpcdi":
             seed = manifest.get("seed")
             if isinstance(seed, int) and not isinstance(seed, bool):
@@ -2062,8 +2063,17 @@ def _validate_manifest_if_present(
 
         from benchbox.utils.datagen_version import describe_datagen_staleness, manifest_datagen_is_current
 
-        if not manifest_datagen_is_current(manifest, benchmark=manifest_benchmark):
-            reason = describe_datagen_staleness(manifest, benchmark=manifest_benchmark)
+        expected_backend = (config.options or {}).get("datagen_backend")
+        if not manifest_datagen_is_current(
+            manifest,
+            benchmark=manifest_benchmark,
+            expected_backend=expected_backend,
+        ):
+            reason = describe_datagen_staleness(
+                manifest,
+                benchmark=manifest_benchmark,
+                expected_backend=expected_backend,
+            )
             logger.warning("Datagen manifest is stale (%s); regenerating benchmark data", reason)
             if not quiet:
                 emit(f"\u26a0\ufe0f Cached data is stale ({reason}); regenerating (as if --force datagen)")

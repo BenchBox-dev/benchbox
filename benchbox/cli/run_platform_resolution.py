@@ -17,7 +17,11 @@ from benchbox.cli.platform import (
 from benchbox.cli.platform_hooks import PlatformHookRegistry, PlatformOptionError
 from benchbox.cli.shared import console, set_quiet_output
 from benchbox.cli.verbose_logging import setup_verbose_logging
-from benchbox.core.benchmark_registry import get_benchmark_default_scale
+from benchbox.core.benchmark_registry import (
+    get_benchmark_default_scale,
+    get_presort_table_configs,
+    presort_capable_benchmarks,
+)
 from benchbox.core.execution_engine import UnsupportedExecutionEngineError, resolve_requested
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.platform_registry import PlatformRegistry
@@ -446,3 +450,81 @@ def _interactive_resolve_mode_for_selected_platform(s: types.SimpleNamespace) ->
     else:
         s.resolved_mode = s.mode if s.mode is not None else "sql"
         s.database_config.execution_mode = s.resolved_mode
+
+
+def _build_data_organization_from_tuning(unified_tuning: Any) -> dict[str, Any] | None:
+    if unified_tuning is None:
+        return None
+
+    table_configs: dict[str, list[dict[str, str]]] = {}
+    table_partition_configs: dict[str, list[str]] = {}
+    table_cluster_configs: dict[str, list[str]] = {}
+
+    table_tunings = getattr(unified_tuning, "table_tunings", {}) or {}
+    for table_name, table_tuning in table_tunings.items():
+        sorting = sorted(getattr(table_tuning, "sorting", []) or [], key=lambda c: c.order)
+        partitioning = sorted(getattr(table_tuning, "partitioning", []) or [], key=lambda c: c.order)
+        clustering = sorted(getattr(table_tuning, "clustering", []) or [], key=lambda c: c.order)
+
+        if sorting:
+            table_configs[table_name] = [{"name": c.name, "order": str(c.sort_order).lower()} for c in sorting]
+        if partitioning:
+            table_partition_configs[table_name] = [c.name for c in partitioning]
+        if clustering:
+            table_cluster_configs[table_name] = [c.name for c in clustering]
+
+    if not table_configs and not table_partition_configs and not table_cluster_configs:
+        return None
+
+    platform_opts = getattr(unified_tuning, "platform_optimizations", None)
+    method = "z_order"
+    method_hint = str(getattr(platform_opts, "sorted_ingestion_method", "auto") or "auto").lower()
+    databricks_strategy = str(getattr(platform_opts, "databricks_clustering_strategy", "") or "").lower()
+    if databricks_strategy in {"liquid_clustering", "liquid_clustering_auto"} or getattr(
+        platform_opts, "liquid_clustering_enabled", False
+    ):
+        method = "liquid_clustering"
+    elif method_hint == "hilbert":
+        method = "hilbert"
+    elif method_hint == "z_order" or getattr(platform_opts, "z_ordering_enabled", False):
+        method = "z_order"
+
+    return {
+        "table_configs": table_configs,
+        "table_partition_configs": table_partition_configs,
+        "table_cluster_configs": table_cluster_configs,
+        "clustering_method": method,
+    }
+
+
+def _resolve_data_organization_payload(
+    benchmark_name: str | None,
+    presort: str | None,
+    tuning_payload: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if presort not in {"parquet-sorted", "delta-sorted", "iceberg-sorted"}:
+        return tuning_payload
+
+    if tuning_payload is not None:
+        if presort in {"delta-sorted", "iceberg-sorted"}:
+            payload = dict(tuning_payload)
+            payload["output_format"] = "delta" if presort == "delta-sorted" else "iceberg"
+            return payload
+        return tuning_payload
+
+    benchmark_key = (benchmark_name or "").lower()
+    output_format_map = {
+        "parquet-sorted": "parquet",
+        "delta-sorted": "delta",
+        "iceberg-sorted": "iceberg",
+    }
+    output_format = output_format_map[presort]
+
+    table_configs = get_presort_table_configs(benchmark_key) if benchmark_key else None
+    if table_configs:
+        return {"table_configs": table_configs, "output_format": output_format}
+
+    if benchmark_key:
+        supported = ", ".join(sorted(presort_capable_benchmarks()))
+        raise ValueError(f"--presort sorted modes are currently supported for {supported} benchmarks")
+    return tuning_payload

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "Added the --datagen-backend (legacy|native) option on benchbox datagen and benchbox run, along with per-benchmark datagen versioning and backend/Parquet layout provenance in _datagen_manifest.json."
+    }
+  ]
+}

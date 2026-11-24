@@ -597,3 +597,190 @@ def test_result_without_generation_seed_omits_the_field(tmp_path) -> None:
     result = _attach_datagen_version(make_benchmark_results(), _Benchmark())
     assert result.data_generation_seed is None
     assert "data_generation_seed" not in build_result_payload(result)["benchmark"]
+
+
+def test_per_benchmark_version_bump_isolates_staleness(monkeypatch: pytest.MonkeyPatch) -> None:
+    import benchbox.utils.datagen_version as datagen_version
+
+    assert DATA_GENERATION_VERSION == 1
+    tpch_before = compute_base_constants_hash("tpch")
+    ssb_before = compute_base_constants_hash("ssb")
+    old_ssb_manifest = {"benchmark": "ssb", **current_datagen_stamp("ssb")}
+    old_tpch_manifest = {"benchmark": "tpch", **current_datagen_stamp("tpch")}
+
+    monkeypatch.setitem(datagen_version.BENCHMARK_DATAGEN_VERSIONS, "ssb", 2)
+
+    assert compute_base_constants_hash("tpch") == tpch_before
+    assert compute_base_constants_hash("ssb") != ssb_before
+    assert manifest_datagen_is_current(old_tpch_manifest, benchmark="tpch") is True
+    assert manifest_datagen_is_current(old_ssb_manifest, benchmark="ssb") is False
+    reason = describe_datagen_staleness(old_ssb_manifest, benchmark="ssb")
+    assert reason is not None and "datagen version" in reason
+
+    new_ssb_manifest = {"benchmark": "ssb", **current_datagen_stamp("ssb")}
+    assert new_ssb_manifest["benchmark_datagen_version"] == 2
+    assert manifest_datagen_is_current(new_ssb_manifest, benchmark="ssb") is True
+
+
+def test_manifest_emits_optional_backend_fields_without_breaking_legacy(tmp_path: Path) -> None:
+    from benchbox.utils.datagen_manifest import DataGenerationManifest
+
+    legacy_manifest = DataGenerationManifest(output_dir=tmp_path, benchmark="h2odb", scale_factor=1.0).to_dict()
+    assert "generator_backend" not in legacy_manifest
+    assert "generator_backend_version" not in legacy_manifest
+    assert "data_generation_identity_hash" not in legacy_manifest
+    assert manifest_datagen_is_current(legacy_manifest, benchmark="h2odb") is True
+    assert manifest_datagen_is_current(legacy_manifest, benchmark="h2odb", expected_backend="legacy") is True
+
+    native_manifest = DataGenerationManifest(
+        output_dir=tmp_path,
+        benchmark="h2odb",
+        scale_factor=1.0,
+        generator_backend="native",
+        generator_backend_version="vec-1.0",
+        parquet_writer="benchbox-streaming",
+        parquet_row_group_size=122880,
+        formats=["parquet"],
+    ).to_dict()
+    assert native_manifest["generator_backend"] == "native"
+    assert native_manifest["generator_backend_version"] == "vec-1.0"
+    assert native_manifest["data_generation_identity_hash"] == compute_datagen_identity_hash(
+        "h2odb",
+        backend="native",
+        backend_version="vec-1.0",
+        parquet_writer="benchbox-streaming",
+        parquet_row_group_size=122880,
+        output_format="parquet",
+        scale_factor=1.0,
+    )
+    assert manifest_datagen_is_current(native_manifest, benchmark="h2odb", expected_backend="native") is True
+    assert manifest_datagen_is_current(native_manifest, benchmark="h2odb", expected_backend="legacy") is False
+
+
+def test_identity_hash_collapses_byte_identical_tpc_and_separates_parquet_or_synthetic() -> None:
+    assert compute_datagen_identity_hash(
+        "tpch", backend="legacy", output_format="tbl"
+    ) == compute_datagen_identity_hash(
+        "tpch",
+        backend="native",
+        backend_version="4.0.0",
+        output_format="tbl",
+    )
+    assert compute_datagen_identity_hash(
+        "tpcds",
+        backend="legacy",
+        output_format="dat",
+        scale_factor=1.0,
+    ) == compute_datagen_identity_hash(
+        "tpcds",
+        backend="native",
+        backend_version="4.0.0",
+        output_format="dat",
+        scale_factor=1.0,
+    )
+
+    assert compute_datagen_identity_hash(
+        "tpcds",
+        backend="legacy",
+        output_format="dat",
+        scale_factor=0.1,
+    ) != compute_datagen_identity_hash(
+        "tpcds",
+        backend="native",
+        backend_version="4.0.0",
+        output_format="dat",
+        scale_factor=0.1,
+    )
+
+    assert compute_datagen_identity_hash(
+        "tpch",
+        output_format="parquet",
+        parquet_writer="benchbox-streaming",
+        parquet_row_group_size=122880,
+    ) != compute_datagen_identity_hash(
+        "tpch",
+        output_format="parquet",
+        parquet_writer="benchbox-streaming",
+        parquet_row_group_size=128 * 1024 * 1024,
+    )
+
+    assert compute_datagen_identity_hash(
+        "tpch",
+        backend="legacy",
+        output_format="parquet",
+        parquet_writer="benchbox-streaming",
+    ) != compute_datagen_identity_hash(
+        "tpch",
+        backend="native",
+        backend_version="4.0.0",
+        output_format="parquet",
+        parquet_writer="tpcgen-cli",
+    )
+
+    assert compute_datagen_identity_hash("h2odb", backend="legacy") != compute_datagen_identity_hash(
+        "h2odb",
+        backend="native",
+        backend_version="vec-1.0",
+    )
+
+
+def test_backend_reuse_safety_and_native_tpc_manifest_provenance(tmp_path: Path) -> None:
+    from benchbox.core.runner.runner import _attach_datagen_version, _validate_manifest_if_present
+    from benchbox.core.schemas import BenchmarkConfig
+    from tests.fixtures.result_dict_fixtures import make_benchmark_results
+
+    native_tpc_stamp = current_datagen_stamp("tpch", backend="native", backend_version="4.0.0")
+    assert "generator_binary_sha256" not in native_tpc_stamp
+    native_tpc_manifest = {"benchmark": "tpch", "scale_factor": 1.0, "formats": ["tbl"], **native_tpc_stamp}
+    assert manifest_datagen_is_current(native_tpc_manifest, benchmark="tpch", expected_backend="native") is True
+    assert manifest_datagen_is_current(native_tpc_manifest, benchmark="tpch", expected_backend="legacy") is True
+
+    missing_version = dict(native_tpc_manifest)
+    missing_version.pop("generator_backend_version")
+    assert manifest_datagen_is_current(missing_version, benchmark="tpch") is False
+
+    h2o_file = tmp_path / "trips.tbl"
+    h2o_file.write_bytes(b"1|2\n")
+    h2o_manifest = {
+        "benchmark": "h2odb",
+        "scale_factor": 1.0,
+        "formats": ["tbl"],
+        "tables": {"trips": {"formats": {"tbl": [{"path": "trips.tbl", "size_bytes": 4}]}}},
+        **current_datagen_stamp("h2odb"),
+    }
+    (tmp_path / "_datagen_manifest.json").write_text(json.dumps(h2o_manifest))
+
+    class _Benchmark:
+        output_dir = tmp_path
+        tables = None
+
+    cfg_legacy = BenchmarkConfig(
+        name="h2odb", display_name="H2ODB", scale_factor=1.0, options={"datagen_backend": "legacy"}
+    )
+    cfg_native = BenchmarkConfig(
+        name="h2odb", display_name="H2ODB", scale_factor=1.0, options={"datagen_backend": "native"}
+    )
+    assert _validate_manifest_if_present(_Benchmark(), cfg_legacy)[::2] == (True, True)
+    assert _validate_manifest_if_present(_Benchmark(), cfg_native)[::2] == (False, True)
+
+    native_h2o_manifest = {
+        "benchmark": "h2odb",
+        "scale_factor": 1.0,
+        "formats": ["parquet"],
+        "generator_backend": "native",
+        "generator_backend_version": "vec-1.0",
+        "data_generation_identity_hash": compute_datagen_identity_hash(
+            "h2odb",
+            backend="native",
+            backend_version="vec-1.0",
+            output_format="parquet",
+            scale_factor=1.0,
+        ),
+        **current_datagen_stamp("h2odb", backend="native", backend_version="vec-1.0"),
+    }
+    (tmp_path / "_datagen_manifest.json").write_text(json.dumps(native_h2o_manifest))
+    result = _attach_datagen_version(
+        make_benchmark_results(benchmark_id="h2odb", benchmark_name="h2odb", scale_factor=1.0),
+        _Benchmark(),
+    )
+    assert result.data_generation_hash == native_h2o_manifest["data_generation_identity_hash"]
