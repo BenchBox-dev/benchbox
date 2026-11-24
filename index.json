@@ -46589,12 +46589,17 @@
       "title": "Site docs: state the real scale-factor range and remove SF 0.001"
     },
     "site-snowflake-gateways-page-connector-5-20261123": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-25T21:00:33Z",
+        "generation": "e75c74e15e834f4aa5e798f37972299d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
+      },
       "needs": [
         "feature-fix-release-readiness-20261123"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "benchbox-site: bring the Snowflake gateways page in line with the connector 5.x gateway behaviour"
     },
     "site-sphinx-fallback-exposure": {
