@@ -6,8 +6,10 @@ Accepted 2026-10-03 under standing approval S1 (gate G0, tracker item
 `astro-site-00-decisions-adr`), after independent review. See
 [Approval](#approval).
 
-Partly superseded by [the site repo split](../../docs/internal/adr/adr-site-repo-split.md):
-the site, its inventory and its deploy plane moved to `BenchBox-dev/benchbox-site`,
+Partly superseded by [the site repo split](../../docs/internal/adr/adr-site-repo-split.md)
+and [published documentation ownership](../../docs/internal/adr/adr-site-docs-ownership.md):
+the site, its inventory, its deploy plane, and published documentation authorship
+(superseding D4) moved to `BenchBox-dev/benchbox-site`,
 Sphinx was retired at cutover (D11), and docs revision follows trunk only (D7,
 which supersedes ADR D13). Paths below that name `landing/`, `website/`,
 `docs/_templates/`, `docs/conf.py` or `_project/design/site-inventory/` describe

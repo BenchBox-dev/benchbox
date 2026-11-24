@@ -26,12 +26,12 @@ and rollback throughout.
 | D6 | Deploy trigger | Automatic on site `main` push and on each `core-bundle` dispatch; `workflow_dispatch` for rollback and redeploy. `github-pages` has no required reviewer and a deployment branch policy of `main` only. |
 | D7 | Docs revision | Trunk only. `/docs/` and `/docs/dev/` both render from the newest certified develop bundle, as production does today. Supersedes ADR D13. Release-pinned docs are a follow-up. |
 | D8 | Visual regression | Advisory on site PRs. The baseline is the currently deployed artifact. No approval variables. |
-| D9 | Language rule | Source only: no `.py`, `pyproject.toml` or `uv.lock` in the site repo, and no `.js`, `.mjs`, `.cjs`, `.ts`, `.tsx`, `.astro` or `package.json` in core. Third-party tools fetched at run time are allowed. Site hooks use lefthook, cspell and markdownlint-cli2. |
+| D9 | Language rule | Source only: no `.py`, `pyproject.toml` or `uv.lock` in the site repo, and no `.js`, `.mjs`, `.cjs`, `.ts`, `.tsx`, `.astro` or `package.json` in core, except agent-harness hooks under `.omp/` (amended 2026-11-23 for `.omp/hooks/pre/primary-clone-write-guard.ts`). Third-party tools fetched at run time are allowed. Site hooks use lefthook, cspell and markdownlint-cli2. |
 | D10 | `_blog/` | Moves to the site repo as `drafts/`. Each non-Markdown asset is re-evaluated: kept, deleted or ported to TS. Python never enters the site repo, including its history. |
 | D11 | Sphinx retirement | At cutover. The rule that keeps the last Sphinx artifact redeployable is waived. Between cutover and the site removal, rollback is "move the domain back to core Pages"; after the removal, rollback uses site receipts. |
 | D12 | Publication plane | The publication control plane retirement, including the GitHub clean-up (D18), is in this batch. |
 | D13 | Runner pool | Decided 2026-10-30: stay on GitHub Free. The site has no runner pool of its own on the Free plan: its jobs share the organisation's 20-job concurrent cap with core and benchbox-sqlglot, so the site runner choice is the org-wide capacity decision. Staying on Free costs nothing. Queue waits of roughly 15-40 minutes at peak load continue; reducing CI fan-out is the remaining lever. Measured 2026-10-26 to 2026-10-30: peak 20 running jobs; core waits median 22 min, p90 38 min in the 2026-10-30 21:00-22:40 UTC window; site receipts since the production cutover (run 38177778939) show core merge to live median about 64 minutes, p90 about 4.1 hours. Considered and not taken: the Team plan, asking GitHub Support for a higher cap, and self-hosted runners. |
-| D14 | Oracle review | Amended 2026-10-07. Soundness paths are never narrowed ahead of a deletion. C1 only *adds* `scripts/site_inputs.py` and `_project/scripts/explorer_pipeline/browser_fixtures.py` as soundness files. C2 removes the entries for the files it deletes, in the same commit, and keeps `prefix .github/workflows/`, `prefix publication/` and `prefix scripts/publication/`. Core PRs that touch soundness paths request the Codex connector; if it is unavailable, the owner posts the stand-in comment after the agent has dispositioned every blocking `oracle-review-shadow` finding on that head. Amended 2026-10-09: the self-hosted oracle replaced the Codex connector, so core PRs that touch soundness paths need the oracle's success review of the head; the stand-in applies when the oracle cannot pass it. See [`docs/internal/review-v2.md`](../review-v2.md). |
+| D14 | Oracle review | Amended 2026-10-07. Soundness paths are never narrowed ahead of a deletion. C1 only *adds* `scripts/site_inputs.py` and `_project/scripts/explorer_pipeline/browser_fixtures.py` as soundness files. C2 removes the entries for the files it deletes, in the same commit, and keeps `prefix .github/workflows/`, `prefix publication/` and `prefix scripts/publication/`. Core PRs that touch soundness paths request the Codex connector; if it is unavailable, the owner posts the stand-in comment after the agent has dispositioned every blocking `oracle-review-shadow` finding on that head. Amended 2026-10-09: the self-hosted oracle replaced the Codex connector, so core PRs that touch soundness paths need the oracle's success review of the head; the stand-in applies when the oracle cannot pass it. Amended 2026-11-23: superseded by [`adr-dev-loop-v2.md`](adr-dev-loop-v2.md) D4 (`review-gate` via `benchbox-review` now gates every non-inert PR). See [`docs/internal/review-v2.md`](../review-v2.md). |
 | D15 | External links | A nightly lychee job in the site repo opens or updates one issue. It never blocks a deploy. |
 | D16 | Bundle compatibility | Refined by [published documentation ownership](adr-site-docs-ownership.md#bundle-compatibility-and-activation). `schema` is an integer major; removals and renames bump it, and exact member sets are checked per schema. The site supports adjacent majors, proven in CI. Core producer capability lands first without changing default emission; compatible site support is deployed second; new-schema emission activates only afterward. The original “core first” ordering does not authorize publishing a bundle unsupported by the deployed site. |
 | D17 | Ruleset edit | One hosted-ruleset change only: remove the `landing` required context from ruleset 15611785, right after the site removal merges. No other ruleset change. |
@@ -42,22 +42,32 @@ and rollback throughout.
 
 ## Language rule
 
-No Python source in the site repo, no JS/TS source in core. Run-time
+No Python source in the site repo; no JS/TS source in core except agent-harness
+hooks under `.omp/` (amended 2026-11-23). Run-time
 third-party tools are allowed. The site-inputs bundle schema uses integer
 majors; the site supports adjacent majors for one release. Producer capability
 lands first, then compatible site support deploys, then new emission activates.
 See the [ownership decision](adr-site-docs-ownership.md) for the documentation
 schema transition and the supersession of core-owned published prose.
 
-The bundle includes each tracked TPC-DS or TPC-H EULA only when that benchmark's
-query templates are selected; the site publishes it beside those query
-downloads. Unrelated EULAs are not included.
+*(Superseded by [`adr-site-docs-ownership.md`](adr-site-docs-ownership.md): `downloads`
+were removed from schema 5/6 site-inputs bundles; canonical TPC-H and TPC-DS EULAs now
+live beside their query templates in core and are linked via commit-pinned GitHub URLs.)*
+Originally, the bundle included each tracked TPC-DS or TPC-H EULA only when that
+benchmark's query templates were selected, and the site published it beside those query
+downloads. Unrelated EULAs were not included.
 
 ## Supersessions
 
+- [`docs/internal/adr/adr-dev-loop-v2.md`](adr-dev-loop-v2.md) D2 and Standing Approval 6:
+  the in-core `site-deploy` workflow, release-tag `/docs/` split, and `github-pages`
+  deployment approval are replaced by the site repository's Node deploy plane (D4),
+  automatic deploys without required reviewers (D6), and trunk-only docs (D7).
 - `_project/decisions/single-repo-migration.md`, in part: its A3 tree split
   places `landing/`, `website/` and `deploy/` on `main`. Those paths leave core
-  under this ADR; the `main`-is-released-code rule is unchanged.
+  under this ADR; the `main`-is-released-code rule was unchanged at split time
+  *(note 2026-11-23: `main` became `release` and `release` was deleted on 2026-11-07;
+  `develop` and owner-created `release/X.Y.x` branches are now the release lines)*.
 - `_project/decisions/adr-astro-unified-site.md` D12, D13 and D14, where they
   conflict: D12 plugs the site into the publication deploy plane (replaced by
   the bundle plus the Node plane); D13 describes the renderer cutover (done;
@@ -65,11 +75,10 @@ downloads. Unrelated EULAs are not included.
   comment-cleanup items with `astro-site-*` items (those items are folded by
   the tracker reconciliation).
 - `docs/internal/adr/adr-independent-publication-authorities.md`:
-  superseded by this ADR for the site and deploy control-plane scope. Its
-  corpus authority statements stay normative until the publication retirement
-  re-homes them; that change applies the superseded marker.
-  `tests/unit/docs/test_publication_architecture.py` keeps enforcing the record
-  set until then.
+  superseded in part by this ADR for the site and deploy control-plane scope.
+  The legacy control plane has been retired and the superseded banner is applied;
+  its corpus acceptance, withdrawal, and readmission rules remain the active
+  reference, enforced by `tests/unit/docs/test_publication_architecture.py`.
 
 ## Consumers appendix
 
