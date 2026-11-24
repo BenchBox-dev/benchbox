@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "release-prep now relocks every project lock that records benchbox, release-check names a stale one, and release-prep fails before writing when the assembled section exceeds the bullet limit"
+}

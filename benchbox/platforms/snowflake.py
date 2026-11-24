@@ -105,6 +105,34 @@ SNOWFLAKE_STATISTICS_COLUMNS = (
     "CLUSTER_NUMBER",
 )
 
+SNOWFLAKE_CRL_CONNECTOR_MAJOR = 5
+
+
+def _connector_major_version() -> int:
+    return int(snowflake.connector.__version__.split(".", 1)[0])
+
+
+def _ocsp_disable_parameter() -> str:
+    configuration = snowflake.connector.connection.DEFAULT_CONFIGURATION
+    return "disable_ocsp_checks" if "disable_ocsp_checks" in configuration else "insecure_mode"
+
+
+def _gateway_connector_params(endpoint: GatewayEndpoint, connector_major: int) -> dict[str, Any]:
+    params: dict[str, Any] = {}
+    if connector_major >= SNOWFLAKE_CRL_CONNECTOR_MAJOR:
+        if endpoint.ca_bundle is not None:
+            params["extra_root_store_path"] = endpoint.ca_bundle
+        if endpoint.insecure:
+            params["crl_check_mode"] = "DISABLED"
+        elif endpoint.ocsp_fail_open is not None:
+            params["crl_check_mode"] = "ADVISORY" if endpoint.ocsp_fail_open else "ENABLED"
+        return params
+    if endpoint.ocsp_fail_open is not None:
+        params["ocsp_fail_open"] = endpoint.ocsp_fail_open
+    if endpoint.insecure:
+        params[_ocsp_disable_parameter()] = True
+    return params
+
 
 class SnowflakeAdapter(PlatformAdapter):
     gateway_endpoint: GatewayEndpoint | None = None
@@ -224,7 +252,11 @@ class SnowflakeAdapter(PlatformAdapter):
 
     def _require_environment_ca_bundle(self) -> None:
         endpoint = self.gateway_endpoint
-        if endpoint is None or endpoint.ca_bundle is None:
+        if (
+            endpoint is None
+            or endpoint.ca_bundle is None
+            or _connector_major_version() >= SNOWFLAKE_CRL_CONNECTOR_MAJOR
+        ):
             return
         active = os.environ.get("REQUESTS_CA_BUNDLE")
         if not active or Path(active).expanduser().resolve() != Path(endpoint.ca_bundle).resolve():
@@ -400,26 +432,31 @@ class SnowflakeAdapter(PlatformAdapter):
                 if self.warehouse:
                     try:
                         warehouse_escaped = self.warehouse.replace("'", "''")
-                        result = cursor.execute(f"SHOW WAREHOUSES LIKE '{warehouse_escaped}'").fetchone()
+                        cursor.execute(f"SHOW WAREHOUSES LIKE '{warehouse_escaped}'")
+                        result = cursor.fetchone()
 
                         if result:
-                            platform_info["compute_configuration"] = {
-                                "warehouse_name": self._row_value(result, 0),
-                                "warehouse_state": self._row_value(result, 1),
-                                "warehouse_type": self._row_value(result, 2),
-                                "warehouse_size": self._row_value(result, 3),
-                                "min_cluster_count": self._row_value(result, 4),
-                                "max_cluster_count": self._row_value(result, 5),
-                                "auto_suspend": self._row_value(result, 11),
-                                "auto_resume": self._row_value(result, 12),
-                                "enable_query_acceleration": self._row_value(result, 21),
-                                "query_acceleration_max_scale_factor": self._row_value(result, 22),
-                                "scaling_policy": self._row_value(result, 27),
+                            columns = self._row_by_column_name(cursor, result)
+                            compute_configuration = {
+                                "warehouse_name": columns.get("name"),
+                                "warehouse_state": columns.get("state"),
+                                "warehouse_type": columns.get("type"),
+                                "warehouse_size": columns.get("size"),
+                                "min_cluster_count": columns.get("min_cluster_count"),
+                                "max_cluster_count": columns.get("max_cluster_count"),
+                                "auto_suspend": columns.get("auto_suspend"),
+                                "auto_resume": columns.get("auto_resume"),
+                                "enable_query_acceleration": columns.get("enable_query_acceleration"),
+                                "query_acceleration_max_scale_factor": columns.get(
+                                    "query_acceleration_max_scale_factor"
+                                ),
+                                "scaling_policy": columns.get("scaling_policy"),
                             }
-                            observed_size = platform_info["compute_configuration"]["warehouse_size"]
+                            platform_info["compute_configuration"] = compute_configuration
+                            observed_size = compute_configuration["warehouse_size"]
                             if observed_size:
                                 platform_info["configuration"]["warehouse_size"] = observed_size
-                            if len(result) <= 27:
+                            if not columns.keys() >= self._WAREHOUSE_COLUMNS:
                                 degraded = True
 
                             self.logger.debug(
@@ -471,6 +508,53 @@ class SnowflakeAdapter(PlatformAdapter):
             return row[index]
         except (IndexError, KeyError, TypeError):
             return None
+
+    _WAREHOUSE_INFO_COLUMNS = (
+        "name",
+        "state",
+        "type",
+        "size",
+        "min_cluster_count",
+        "max_cluster_count",
+        "started_clusters",
+        "running",
+        "queued",
+        "auto_suspend",
+        "auto_resume",
+        "available",
+        "provisioning",
+        "quiescing",
+        "other",
+        "created_on",
+        "resumed_on",
+        "updated_on",
+        "owner",
+        "comment",
+        "scaling_policy",
+    )
+
+    _WAREHOUSE_COLUMNS = frozenset(
+        {
+            "name",
+            "state",
+            "type",
+            "size",
+            "min_cluster_count",
+            "max_cluster_count",
+            "auto_suspend",
+            "auto_resume",
+            "enable_query_acceleration",
+            "query_acceleration_max_scale_factor",
+            "scaling_policy",
+        }
+    )
+
+    @staticmethod
+    def _row_by_column_name(cursor: Any, row: Any) -> dict[str, Any]:
+        description = getattr(cursor, "description", None)
+        if not isinstance(description, (list, tuple)):
+            return {}
+        return {str(column[0]).lower(): value for column, value in zip(description, row, strict=False)}
 
     @staticmethod
     def _iso_timestamp(value: Any) -> str | None:
@@ -688,10 +772,7 @@ class SnowflakeAdapter(PlatformAdapter):
             conn_params["protocol"] = endpoint.protocol
             if endpoint.port is not None:
                 conn_params["port"] = endpoint.port
-            if endpoint.ocsp_fail_open is not None:
-                conn_params["ocsp_fail_open"] = endpoint.ocsp_fail_open
-            if endpoint.insecure:
-                conn_params["insecure_mode"] = True
+            conn_params.update(_gateway_connector_params(endpoint, _connector_major_version()))
         return conn_params
 
     def _create_admin_connection(self, **connection_config) -> Any:
@@ -1319,7 +1400,6 @@ class SnowflakeAdapter(PlatformAdapter):
                 cache_setting = "FALSE" if self.disable_result_cache else "TRUE"
                 session_settings.extend(
                     [
-                        "ALTER SESSION SET QUERY_ACCELERATION_MAX_SCALE_FACTOR = 8",
                         f"ALTER SESSION SET USE_CACHED_RESULT = {cache_setting}",
                         "ALTER SESSION SET STATEMENT_TIMEOUT_IN_SECONDS = 1800",
                     ]
@@ -1816,36 +1896,9 @@ class SnowflakeAdapter(PlatformAdapter):
             wh_result = cursor.fetchall()
             if wh_result:
                 wh_info = wh_result[0]
-                warehouse_keys = (
-                    "name",
-                    "state",
-                    "type",
-                    "size",
-                    "min_cluster_count",
-                    "max_cluster_count",
-                    "started_clusters",
-                    "running",
-                    "queued",
-                    None,
-                    None,
-                    None,
-                    "auto_suspend",
-                    "auto_resume",
-                    "available",
-                    "provisioning",
-                    "quiescing",
-                    "other",
-                    "created_on",
-                    "resumed_on",
-                    "updated_on",
-                    "owner",
-                    "comment",
-                )
-                metadata["warehouse_info"] = {
-                    key: self._row_value(wh_info, i) for i, key in enumerate(warehouse_keys) if key is not None
-                }
-                metadata["warehouse_info"]["scaling_policy"] = self._row_value(wh_info, 25)
-                degraded = degraded or len(wh_info) <= 25
+                columns = self._row_by_column_name(cursor, wh_info)
+                metadata["warehouse_info"] = {key: columns.get(key) for key in self._WAREHOUSE_INFO_COLUMNS}
+                degraded = degraded or not columns.keys() >= set(self._WAREHOUSE_INFO_COLUMNS)
             else:
                 degraded = True
 

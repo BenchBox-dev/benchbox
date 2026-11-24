@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Snowflake runs no longer issue the invalid ALTER SESSION SET QUERY_ACCELERATION_MAX_SCALE_FACTOR statement, which Snowflake rejected on every OLAP, TPC-H and TPC-DS run and recorded as a failed tuning statement."
+    }
+  ]
+}

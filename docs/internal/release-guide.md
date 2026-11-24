@@ -530,6 +530,19 @@ from a branch of this repository so that the status can be required without leav
 unrelated pull requests pending. If a dispatch fails, or the job graph check fails, the
 status is posted as `failure` carrying the error.
 
+The job checks out the pull request head and, separately, the base commit
+(`github.event.pull_request.base.sha`). The job graph check runs from the head so it
+validates the head's `release-v2.yml`; the launch script
+(`scripts.release_probe_launch`) runs from the base checkout. On `pull_request` the
+workflow file, and so the token permissions, come from the merge ref, which carries the
+base's posting contract; a head older than that contract would otherwise run a launcher
+that posts check runs with a statuses-only token and get HTTP 403. A stacked pull
+request whose base predates the contract runs the base's older launcher under the same
+base's workflow, so the two still agree. `scripts/release_probe_verdict.py` needs no
+such change: it runs in the `probe report` job of `release-v2.yml`, dispatched on the
+branch, where the workflow and the script both come from the head. This removes version
+skew only; a pull request can still edit the workflow file the merge ref supplies.
+
 The required context is a commit status, not a check run, because GitHub files a check
 run created with `GITHUB_TOKEN` into an arbitrary existing github-actions check suite of
 the commit, and one filed in the `CI` workflow's suite is not counted by the ruleset (the
@@ -1028,9 +1041,23 @@ make release-check VERSION=X.Y.Z [BASE_REF=<immutable-predecessor-sha>] [RELEASE
 ```
 
 `release-prep` runs `scripts/update_version.py` (`pyproject.toml`,
-`benchbox/__init__.py` and the documentation release markers), then `uv lock`,
-then `scripts/generate_changelog_entry.py --compile-fragments`, which builds the
-`[X.Y.Z]` section from `changelog.d` (see "Release notes from fragments").
+`benchbox/__init__.py` and the documentation release markers), then `uv lock`
+and `uv lock --project` for every `_project/*/uv.lock` that records a `benchbox`
+package, then `scripts/generate_changelog_entry.py --compile-fragments`, which
+builds the `[X.Y.Z]` section from `changelog.d` (see "Release notes from
+fragments"). Every fragment is validated first. When the assembled section
+would exceed the curated bullet limit (45), `release-prep` fails before
+writing or bumping anything, prints the bullet count and the limit, and writes
+the assembled draft body and the fragment worksheet to
+`benchbox-X.Y.Z-changelog-draft.md` and `benchbox-X.Y.Z-changelog-worksheet.txt`
+in the system temporary directory. Curate the draft into a section body (the
+`###` groups and bullets, no `## ` header) outside the repository and rerun
+with `make release-prep VERSION=X.Y.Z SECTION_FILE=<curated file>`. With
+`SECTION_FILE`, the file is checked against the same curation limits as
+`release-check` before anything changes, then becomes the `[X.Y.Z]` body; the
+fragments are deleted, the compare links are updated, and the version bump and
+relocks run as usual. `release-check` names any `_project/*/uv.lock` whose
+`benchbox` version differs from `VERSION`.
 Commit the changed files, including the deleted fragments, as one PR.
 
 Before a minor release, the owner re-reads the vendor terms recorded in

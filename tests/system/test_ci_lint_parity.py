@@ -120,6 +120,10 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
 }
 
 MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
+    ("ci.yml", "snowflake-connector5", "Run Snowflake unit tests on snowflake-connector-python 5.x"): (
+        "The Snowflake unit tests that make test-fast and pr-preflight already run, repeated against "
+        "snowflake-connector-python 5.x while the lock stays on 4.x; run the step's command locally to reproduce."
+    ),
     ("ci.yml", "generator-volume", "Run the generator volume gate"): (
         "A heavy SF 1 DuckDB run, so it has no Make target (the target count is capped); run it locally with "
         "make heavy-run CMD='uv run -- python -m scripts.generator_volume_gate --base-ref origin/develop'."

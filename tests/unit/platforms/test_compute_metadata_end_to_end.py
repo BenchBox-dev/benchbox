@@ -12,6 +12,7 @@ from benchbox.core.runner.runner import _enrich_normalized_runtime_metadata
 from benchbox.platforms import get_adapter
 from benchbox.utils.runtime_env import DriverResolution
 from tests.fixtures.result_dict_fixtures import make_benchmark_results
+from tests.fixtures.snowflake_warehouses import warehouse_description, warehouse_row
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -42,10 +43,12 @@ def _dependencies_present(monkeypatch: pytest.MonkeyPatch) -> None:
 class _SnowflakeCursor:
     def __init__(self) -> None:
         self._row: tuple[Any, ...] | None = None
+        self.description: list[tuple[Any, ...]] | None = None
 
     def execute(self, sql: str) -> _SnowflakeCursor:
         if sql.startswith("SHOW WAREHOUSES"):
-            self._row = ("BIG_WH", "STARTED", "STANDARD", "Large", 1, 1)
+            self._row = warehouse_row(name="BIG_WH", size="Large", min_cluster_count=1, max_cluster_count=1)
+            self.description = warehouse_description()
         elif "CURRENT_REGION" in sql:
             self._row = ("AWS_US_EAST_1",)
         else:

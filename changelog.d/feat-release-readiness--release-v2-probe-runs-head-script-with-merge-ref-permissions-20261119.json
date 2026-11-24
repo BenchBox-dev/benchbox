@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "The release-v2 probe dispatch job now runs its launch script from the pull request base commit, so a head older than the posting contract no longer gets a 403 and a missing required status"
+}

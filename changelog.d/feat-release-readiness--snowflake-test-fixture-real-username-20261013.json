@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Replaced a real account login name in a Snowflake credentials test fixture with a neutral placeholder"
+}
