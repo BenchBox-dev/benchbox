@@ -20,11 +20,12 @@ Rules set by the owner:
 - DIGen output, the appendix SQL and the audit SQL are never edited. Staging
   files produced by DIGen are never edited; the copy is.
 
-`benchbox/core/tpcdi/etl/DEPARTURES.yaml` does not exist yet. Until it does,
-every entry of the expected-differences list cites the specification clause that
-makes BenchBox's value right, and the harness accepts an entry without a
-`departure` field. Once the catalogue exists the harness refuses any entry
-whose `departure` is not a row of it.
+`benchbox/core/tpcdi/etl/DEPARTURES.yaml` is the catalogue. Every entry of the
+expected-differences list cites a row of it in its `departure` field, and the
+harness refuses an entry that cites none or cites a row that is not in the
+catalogue. A catalogue row whose `status` is `pending` names a behaviour of
+BenchBox that a later load step implements; the row exists so the difference is
+already accounted for when that step lands.
 
 ## Pinned versions
 
@@ -165,7 +166,8 @@ for is always a finding.
 
 `scripts/tpcdi/EXPECTED_DIFFERENCES.yaml` holds one entry per known, explained
 difference. Every entry has `id`, `kind`, `clause` (the specification clause that
-makes BenchBox right) and `reason`, plus `departure` once the catalogue exists.
+makes BenchBox right), `reason` and `departure` (the id of the catalogue row that
+records the difference).
 
 | `kind` | Fields | Accepts |
 |---|---|---|

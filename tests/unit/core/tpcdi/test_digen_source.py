@@ -764,3 +764,24 @@ def test_the_benchmark_generate_phase_honours_the_run_time_limit(
     bench.generate_digen_source_data(timeout_seconds=120)
     assert seen[0] is not None
     assert seen[0].timeout_seconds == 120
+
+
+@pytest.mark.skipif(os.name == "nt", reason="non-blocking pipe reads are POSIX only")
+def test_digen_standard_input_stays_open_while_the_tool_runs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[Any] = []
+
+    def fake(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        descriptor = kwargs["stdin"]
+        seen.append(os.read(descriptor, 64))
+        os.set_blocking(descriptor, False)
+        try:
+            os.read(descriptor, 64)
+        except BlockingIOError:
+            seen.append("open")
+        else:
+            seen.append("closed")
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(digen, "run_child", fake)
+    digen._run_digen(["digen"], tmp_path)
+    assert seen == [digen.LICENCE_ANSWER, "open"]

@@ -1,0 +1,117 @@
+{
+  "base": {
+    "project": "shannon-barrow/databricks-tpc-di",
+    "url": "https://github.com/shannon-barrow/databricks-tpc-di",
+    "commit": "8e0f944612b2919ba0a3f47e70969faa8cc38c68",
+    "licence_file": "LICENSE-databricks-tpc-di.txt"
+  },
+  "duckdb_implementation": {
+    "project": "djouallah/tpcdi",
+    "url": "https://github.com/djouallah/tpcdi",
+    "commit": "5305b1e7f8cc15a4cb80c0633c859d03f8005acb"
+  },
+  "files": [
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/dim_date.sql",
+      "source": "src/incremental_batches/bronze/raw_ingestion.ipynb",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/dim_time.sql",
+      "source": "src/incremental_batches/bronze/raw_ingestion.ipynb",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/industry.sql",
+      "source": "src/incremental_batches/bronze/raw_ingestion.ipynb",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/status_type.sql",
+      "source": "src/incremental_batches/bronze/raw_ingestion.ipynb",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/tax_rate.sql",
+      "source": "src/incremental_batches/bronze/raw_ingestion.ipynb",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/trade_type.sql",
+      "source": "src/incremental_batches/bronze/raw_ingestion.ipynb",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/batch_date.sql",
+      "source": "src/incremental_batches/bronze/Ingest_Incremental.ipynb",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/dim_broker.sql",
+      "source": "src/incremental_batches/silver/DimBroker.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/finwire.sql",
+      "source": "src/incremental_batches/bronze/ingest_finwire.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql",
+      "source": "src/incremental_batches/bronze/CustomerMgmtRaw.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/models/reference/stg_customermgmt.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/prospect.sql",
+      "source": "src/incremental_batches/bronze/ingest_prospectincremental.sql",
+      "kind": "rewritten",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/trade.sql",
+      "source": "src/incremental_batches/silver/DimTrade Historical.sql",
+      "kind": "rewritten",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/trade_history.sql",
+      "source": "src/incremental_batches/silver/DimTrade Historical.sql",
+      "kind": "rewritten",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/holding_history.sql",
+      "source": "src/incremental_batches/silver/DimTrade Historical.sql",
+      "kind": "rewritten",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/watch_history.sql",
+      "source": "src/incremental_batches/silver/FactWatches Historical.sql",
+      "kind": "rewritten",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/cash_transaction.sql",
+      "source": "src/incremental_batches/gold/FactCashBalances Historical.sql",
+      "kind": "rewritten",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/ingest/daily_market.sql",
+      "source": "src/incremental_batches/bronze/ingest_dailymarketincremental.sql",
+      "kind": "rewritten",
+      "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    }
+  ]
+}

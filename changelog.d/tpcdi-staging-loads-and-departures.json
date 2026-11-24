@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Added DuckDB staging loads for the TPC-DI DIGen source files with a provenance record and departures catalogue, moved the old Python ETL to tpcdi/_legacy_etl, fixed DIGen generation stopping early, and set TPC-DI scales to 3, 5 (default), 10 and 100; TPC-DI stays unavailable"
+}
