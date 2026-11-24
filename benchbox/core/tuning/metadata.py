@@ -999,6 +999,8 @@ class TuningMetadataManager:
 
             if self._platform_key() in _TSQL_PLATFORMS:
                 delete_sql = f"DELETE FROM {self._metadata_table_name}"
+            elif self._platform_key() == "starrocks":
+                delete_sql = f"DELETE FROM {self._metadata_table_name} WHERE table_name IS NOT NULL"
             else:
                 delete_sql = f"DELETE FROM {self._metadata_table_name} WHERE TRUE"
             with self._managed_connection() as conn:

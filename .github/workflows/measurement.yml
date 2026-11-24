@@ -16,6 +16,7 @@ on:
           - starrocks-tpch-sf1
           - starrocks-ssb-sf1
           - starrocks-tpcds-sf1
+          - starrocks-joinorder-sf1
       seed:
         description: "Harness seed"
         type: string

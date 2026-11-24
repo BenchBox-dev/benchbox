@@ -17,7 +17,12 @@ pytestmark = [
 REPO_ROOT = Path(__file__).resolve().parents[4]
 EXAMPLES = REPO_ROOT / "examples" / "tunings" / "starrocks"
 PACKAGED = REPO_ROOT / "benchbox" / "core" / "tuning" / "templates" / "starrocks"
-BENCHMARKS = {"ssb": benchbox.SSB, "tpch": benchbox.TPCH, "tpcds": benchbox.TPCDS}
+BENCHMARKS = {
+    "ssb": benchbox.SSB,
+    "tpch": benchbox.TPCH,
+    "tpcds": benchbox.TPCDS,
+    "joinorder": benchbox.JoinOrder,
+}
 EXPECTED_LAYOUTS = {
     "ssb": {"lineorder": ("lo_orderkey", "lo_orderdate, lo_orderkey")},
     "tpch": {
@@ -32,6 +37,18 @@ EXPECTED_LAYOUTS = {
         "web_sales": ("ws_item_sk", "ws_sold_date_sk, ws_item_sk"),
         "web_returns": ("wr_item_sk", "wr_returned_date_sk, wr_item_sk"),
         "inventory": ("inv_item_sk", "inv_date_sk, inv_item_sk"),
+    },
+    "joinorder": {
+        "cast_info": ("id", "movie_id, person_id"),
+        "movie_companies": ("id", "movie_id"),
+        "movie_info": ("id", "movie_id"),
+        "movie_info_idx": ("id", "movie_id"),
+        "movie_keyword": ("id", "movie_id"),
+        "movie_link": ("id", "movie_id"),
+        "complete_cast": ("id", "movie_id"),
+        "aka_title": ("id", "movie_id"),
+        "person_info": ("id", "person_id"),
+        "aka_name": ("id", "person_id"),
     },
 }
 
@@ -62,7 +79,7 @@ def test_template_renders_its_layout_on_every_tuned_table(benchmark_id: str) -> 
     for table, (distribution, sort) in EXPECTED_LAYOUTS[benchmark_id].items():
         assert re.search(rf"distributed by hash ?\({distribution}\) buckets 8", rendered[table]), rendered[table]
         assert re.search(rf"order by \({sort}\)", rendered[table]), rendered[table]
-        assert "primary key" not in rendered[table]
+        assert ("primary key" in rendered[table]) is (benchmark_id == "joinorder")
 
 
 @pytest.mark.parametrize("benchmark_id", sorted(BENCHMARKS))

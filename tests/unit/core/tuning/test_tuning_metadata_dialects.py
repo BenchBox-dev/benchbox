@@ -174,3 +174,12 @@ def test_athena_reports_an_unsupported_store_for_every_spelling():
         assert reason is not None
         assert "Athena" in reason
     assert TuningMetadataManager(_Adapter("synapse")).unsupported_reason() is None
+
+
+def test_starrocks_clears_tunings_with_a_column_predicate() -> None:
+    connection = _Connection()
+    _run_marker_flow("StarRocks", connection)
+    deletes = [sql for sql in _statements(connection) if sql.startswith("DELETE FROM")]
+    assert deletes
+    assert all(sql.endswith("WHERE table_name IS NOT NULL") or "table_name = " in sql for sql in deletes), deletes
+    assert any(sql.endswith("WHERE table_name IS NOT NULL") for sql in deletes)

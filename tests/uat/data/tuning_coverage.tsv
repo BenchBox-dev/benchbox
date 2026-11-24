@@ -137,7 +137,7 @@ starrocks	write_primitives	basic_constraints	waived	basic constraints are accept
 starrocks	metadata_primitives	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	transaction_primitives	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	ai_primitives	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-starrocks	joinorder	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
+starrocks	joinorder	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/starrocks/joinorder_tuned.yaml
 starrocks	coffeeshop	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	tpchavoc	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	tpch_skew	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-

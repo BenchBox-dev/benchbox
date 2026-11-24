@@ -1,0 +1,94 @@
+primary_keys:
+  enabled: false
+
+foreign_keys:
+  enabled: false
+
+unique_constraints:
+  enabled: false
+
+check_constraints:
+  enabled: false
+
+platform_optimizations:
+  z_ordering_enabled: false
+  z_ordering_columns: []
+  auto_optimize_enabled: false
+  auto_compact_enabled: false
+  bloom_filters_enabled: false
+  bloom_filter_columns: []
+  materialized_views_enabled: false
+
+table_tunings:
+  cast_info:
+    table_name: cast_info
+    sorting:
+    - name: movie_id
+      type: INTEGER
+      order: 1
+    - name: person_id
+      type: INTEGER
+      order: 2
+
+  movie_companies:
+    table_name: movie_companies
+    sorting:
+    - name: movie_id
+      type: INTEGER
+      order: 1
+
+  movie_info:
+    table_name: movie_info
+    sorting:
+    - name: movie_id
+      type: INTEGER
+      order: 1
+
+  movie_info_idx:
+    table_name: movie_info_idx
+    sorting:
+    - name: movie_id
+      type: INTEGER
+      order: 1
+
+  movie_keyword:
+    table_name: movie_keyword
+    sorting:
+    - name: movie_id
+      type: INTEGER
+      order: 1
+
+  movie_link:
+    table_name: movie_link
+    sorting:
+    - name: movie_id
+      type: INTEGER
+      order: 1
+
+  complete_cast:
+    table_name: complete_cast
+    sorting:
+    - name: movie_id
+      type: INTEGER
+      order: 1
+
+  aka_title:
+    table_name: aka_title
+    sorting:
+    - name: movie_id
+      type: INTEGER
+      order: 1
+
+  person_info:
+    table_name: person_info
+    sorting:
+    - name: person_id
+      type: INTEGER
+      order: 1
+
+  aka_name:
+    table_name: aka_name
+    sorting:
+    - name: person_id
+      type: INTEGER
+      order: 1

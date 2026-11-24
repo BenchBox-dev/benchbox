@@ -4,13 +4,19 @@
     {
       "category": "added",
       "breaking": false,
-      "text": "StarRocks has tuned templates for TPC-H, TPC-DS and SSB.",
+      "text": "StarRocks has tuned templates for TPC-H, TPC-DS, SSB and Join Order.",
       "platforms": ["starrocks"]
     },
     {
       "category": "fixed",
       "breaking": false,
       "text": "Fixed StarRocks results recording the MySQL compatibility version (8.0.33) instead of the StarRocks version.",
+      "platforms": ["starrocks"]
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed tuned StarRocks runs failing to clear earlier tuning metadata, because StarRocks rejects DELETE with WHERE TRUE.",
       "platforms": ["starrocks"]
     }
   ]
