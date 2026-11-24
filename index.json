@@ -4366,9 +4366,9 @@
         "crr-c1-validation-status-vocabulary",
         "crr-d1-observed-engine-contract-and-dataframe"
       ],
-      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:69ad863fb6a91a23281f8dfd",
-      "owner_epoch": 1,
-      "owner_generation": "6018d3c360009fd31195a8042079eb7c",
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fe0d5ea650efa9081231444",
+      "owner_epoch": 2,
+      "owner_generation": "e4b88c04a4fa7f509d6ac06bf5d35128",
       "project_id": "benchbox",
       "recoveries": [
         {
@@ -4380,6 +4380,16 @@
           "previous_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:3e613bcaa72a5729bb2166c2",
           "reason": "the leader's MCP server process restarted; the same session resumed under a new worker identity",
           "session_id": "026f18fa65004631adc919a50f67108b"
+        },
+        {
+          "at": "2026-11-24T16:28:35Z",
+          "client": "omp-coding-agent",
+          "epoch": 2,
+          "new_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fe0d5ea650efa9081231444",
+          "op_id": "a2adbc48bd8c41febd0cb448d7b8869e",
+          "previous_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:69ad863fb6a91a23281f8dfd",
+          "reason": "the leader's MCP server process restarted; the same session resumed under a new worker identity",
+          "session_id": "8d65b6279fea44c7a8b615865c347a10"
         }
       ],
       "repository": "https://github.com/BenchBox-dev/BenchBox.git",
