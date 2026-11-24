@@ -1,11 +1,16 @@
 {
   "acceptance": [
-    "benchbox/cli/commands/submit.py (both README instructions and console Next steps) directs contributors to open PRs against develop instead of published-results, with updated unit tests and a changelog.d/ fragment.",
-    "results-data/README.md directs contributors to develop instead of published-results.",
-    "Released in the next core BenchBox release before Step 5 freezes published-results."
+    "benchbox/cli/commands/submit.py (both generated README instructions and console Next steps) directs contributors to open PRs against develop instead of published-results, with zero remaining user-facing references to published-results in submit.py.",
+    "results-data/README.md documents the develop PR submission flow and no longer instructs contributors to target published-results.",
+    "Unit tests in tests/unit/cli/ assert the develop PR target text (failing before, passing after) and a changelog.d/ fragment documents the user-facing CLI change.",
+    "make pr-preflight and hosted review-gate pass on the merged head; Step 5 remains gated until this change ships in a released core version."
   ],
   "context": "Step 3 of the owner-approved Option 1 corpus consolidation plan (2026-11-24). Must ship in a core release before Step 5 freezes published-results so released CLI users are not sent to a frozen branch.",
-  "description": "## Problem\\nThe released CLI in `benchbox/cli/commands/submit.py` (lines 107 and 619) prints `PR target: published-results` and instructs contributors to open PRs against `published-results`. Core `results-data/README.md` also directs submissions to `published-results`.\\n\\n## Change (Step 3 of 6)\\n1. Update `benchbox/cli/commands/submit.py` and its tests to target `develop` (with a `changelog.d/` fragment).\\n2. Update core `results-data/README.md` to document the `develop` submission flow.\\n3. Ship in the next core release before Step 5 retires mirror workflows and freezes `published-results`.",
+  "description": "## Problem\nThe released CLI in `benchbox/cli/commands/submit.py` prints `PR target: published-results` in its `Next steps` output and writes `Open a pull request against the published-results branch` into the generated submission `README.md`. Core `results-data/README.md` also directs contributors to `published-results`. Until a core release updates `benchbox submit`, users on 0.5.x will keep opening PRs against `published-results`.\n\n## Change\n1. Update `benchbox/cli/commands/submit.py` (both the generated submission `README.md` template and the CLI `Next steps` console output) to target `develop` instead of `published-results`, noting that bundle PRs undergo manual review.\n2. Update core `results-data/README.md` to document the `develop` PR submission flow cleanly.\n3. Update and add unit tests asserting the new `develop` PR target output, and add a `changelog.d/` fragment.\n\n## Decision gates\n- Do not change `benchbox submit` CLI option names, manifest schema, validation rules, or exit codes without owner approval.\n- Confirm Step 2 (`corpus-intake-on-develop-20261124`) is merged on `develop` before merging this PR so contributors directed to `develop` hit the working validator and no-auto-merge guard.\n- Note for release coordination: Step 5 (`retire-published-results-mirror-and-freeze-20261124`) must not start until a tagged core release includes this change.\n\n## Verification rubric\n- Pass: unit tests assert `PR target: develop` and the generated README target `develop` (and fail against the old `published-results` output); `rg 'published-results' benchbox/cli/commands/submit.py` returns 0 matches; `changelog.d/` fragment passes `make changelog-check`; `make pr-preflight` and hosted `review-gate` pass.\n- Fail: any user-facing output from `benchbox submit` still names `published-results`, or the PR ships without a `changelog.d/` fragment.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. No explanatory comments or docstrings in first-party Python (`make comment-policy-check`). Stage named paths only; commit with pinned human Git identity and no agent attribution or session labels. Heavy work only via `make pr-preflight` / `make heavy-run`; never bypass `~/.benchbox/test.lock`. Open with `make pr-open`, arm with `make pr-arm`, and monitor to merge.",
+  "links": [
+    "benchbox/cli/commands/submit.py",
+    "results-data/README.md"
+  ],
   "sessions": [
     {
       "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
@@ -13,6 +18,14 @@
       "client": "antigravity-client",
       "op": "create",
       "op_id": "b1c2d3e4f5061728394a5b6c7d8e9f03",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T21:13:53Z",
+      "client": "antigravity-client",
+      "op": "update",
+      "op_id": "c1d2e3f4a5061728394a5b6c7d8e9f03",
       "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
     }
   ]
