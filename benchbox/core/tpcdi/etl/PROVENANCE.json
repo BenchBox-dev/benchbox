@@ -112,6 +112,42 @@
       "source": "src/incremental_batches/bronze/ingest_dailymarketincremental.sql",
       "kind": "rewritten",
       "duckdb_implementation": "sequential/macros/tpcdi.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/historical/dim_company.sql",
+      "source": "src/incremental_batches/silver/DimCompany.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/models/reference/DimCompany.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/historical/dim_security.sql",
+      "source": "src/incremental_batches/silver/DimSecurity.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/models/reference/DimSecurity.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/historical/financial.sql",
+      "source": "src/incremental_batches/silver/Financial.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/models/reference/Financial.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/historical/dim_customer.sql",
+      "source": "src/incremental_batches/silver/DimCustomer Historical.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/models/incremental/DimCustomer.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/historical/dim_account.sql",
+      "source": "src/incremental_batches/silver/DimAccount Historical.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/models/incremental/DimAccount.sql"
+    },
+    {
+      "path": "benchbox/core/tpcdi/etl/historical/prospect.sql",
+      "source": "src/incremental_batches/silver/Prospect.sql",
+      "kind": "adapted",
+      "duckdb_implementation": "sequential/models/incremental/Prospect.sql"
     }
   ]
 }

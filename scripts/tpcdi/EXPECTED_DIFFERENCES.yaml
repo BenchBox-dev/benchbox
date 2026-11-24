@@ -143,3 +143,37 @@ entries:
     batch: "1"
     left_result: "OK"
     right_result: "Mismatch"
+
+  - id: later-batch-dates-after-the-historical-phase
+    departure: only-the-first-batch-is-read
+    kind: rows_only
+    clause: "4.3.5.5"
+    reason: "After the historical phase BenchBox's BatchDate holds Batch 1 only, because the phase reads no later batch. The DuckDB implementation loads the dates of Batches 2 and 3 with Batch 1."
+    table: BatchDate
+    side: right
+    condition: "t.batchid IN (2, 3) AND NOT EXISTS (SELECT 1 FROM lhs.main.BatchDate o WHERE o.batchid = t.batchid)"
+
+  - id: security-keys-by-date-and-symbol
+    departure: deterministic-security-keys
+    kind: column_value
+    clause: "3.4.3"
+    reason: "BenchBox numbers DimSecurity records by EffectiveDate and then Symbol. The DuckDB implementation numbers them by EffectiveDate only, so records that become effective on one day get their keys in no defined order. Accepted only when the BenchBox key is the record's position in that order."
+    table: DimSecurity
+    column: SK_SecurityID
+    condition: >-
+      l.sk_securityid = (SELECT count(*) FROM lhs.main.DimSecurity x
+      WHERE x.effectivedate < l.effectivedate OR (x.effectivedate = l.effectivedate AND x.symbol <= l.symbol))
+
+  - id: historical-alerts-written-in-the-phase
+    departure: alerts-written-inside-transformations
+    kind: messages
+    clause: "4.5.3.3, 4.5.4.4, 4.5.4.5"
+    reason: "BenchBox writes the DimCompany and DimCustomer alerts during the historical phase. The DuckDB implementation writes every alert in one pass after Batch 3, so after its historical phase its DImessages holds none."
+    condition: "g.messagetype = 'Alert' AND g.batchid = 1 AND g.messagesource IN ('DimCompany', 'DimCustomer') AND g.right_count IS NULL"
+
+  - id: sprating-alert-per-record
+    departure: one-alert-per-source-record
+    kind: messages
+    clause: "4.5.3.3"
+    reason: "BenchBox writes one Invalid SPRating alert for each CMP record with an invalid rating. The DuckDB implementation writes distinct alerts, so a company whose records repeat an invalid rating gets one (113 against 154 at scale 3)."
+    condition: "g.messagetype = 'Alert' AND g.messagesource = 'DimCompany' AND g.messagetext = 'Invalid SPRating' AND g.left_count > g.right_count"

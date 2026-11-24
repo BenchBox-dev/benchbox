@@ -9,6 +9,8 @@ departures:
       - benchbox/core/tpcdi/etl/ingest/trade.sql
       - benchbox/core/tpcdi/etl/ingest/cash_transaction.sql
       - benchbox/core/tpcdi/etl/ingest/daily_market.sql
+      - benchbox/core/tpcdi/etl/historical/dim_security.sql
+      - benchbox/core/tpcdi/etl/historical/financial.sql
     status: implemented
     approval: pending
 
@@ -63,6 +65,8 @@ departures:
     benchbox_behaviour: "FinWire keeps the record type of the file (CMP, FIN, SEC); the Financial transformation decides between company identifier and company name from the stored text."
     files:
       - benchbox/core/tpcdi/etl/ingest/finwire.sql
+      - benchbox/core/tpcdi/etl/historical/dim_security.sql
+      - benchbox/core/tpcdi/etl/historical/financial.sql
     status: implemented
     approval: pending
 
@@ -141,9 +145,19 @@ departures:
 
   - id: prospect-status-messages
     kind: changed
-    clause: "4.5.15, 4.6.14.2"
+    clause: "4.5.15"
     project_behaviour: "The Prospect transformation writes no status message to DImessages."
-    benchbox_behaviour: "The Prospect transformation writes its status messages to DImessages with the BatchID of its phase."
+    benchbox_behaviour: "The historical Prospect transformation writes the number of rows it inserted to DImessages as MessageSource Prospect, MessageType Status, MessageText Inserted rows, with BatchID 1."
+    files:
+      - benchbox/core/tpcdi/etl/historical/prospect.sql
+    status: implemented
+    approval: pending
+
+  - id: prospect-incremental-status-messages
+    kind: changed
+    clause: "4.6.14.2"
+    project_behaviour: "The incremental Prospect transformation writes no status message to DImessages."
+    benchbox_behaviour: "The incremental Prospect transformation writes its source, inserted and updated row counts to DImessages with the BatchID of its phase."
     files: []
     status: pending
     approval: pending
@@ -155,4 +169,127 @@ departures:
     benchbox_behaviour: "BenchBox loads the Audit table from the generator's files and corrects only the attributes that an independent recount shows to be wrong, listing each correction in the result. Generated files are never edited."
     files: []
     status: pending
+    approval: pending
+
+  - id: alerts-written-inside-transformations
+    kind: changed
+    clause: "4.5.3.3, 4.5.4.4, 4.5.4.5"
+    project_behaviour: "Alerts for invalid SPRating, invalid customer tier and date of birth are written in one pass after Batch 3, read back from the finished dimension tables, with the time of that pass."
+    benchbox_behaviour: "The DimCompany and DimCustomer transformations write their alerts to DImessages from the source records they process, in the historical phase, with BatchID 1."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_company.sql
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+    status: implemented
+    approval: pending
+
+  - id: one-alert-per-source-record
+    kind: changed
+    clause: "4.5.3.3, 4.5.4.4, 4.5.4.5"
+    project_behaviour: "SPRating and date-of-birth alerts are made distinct, so a company or customer whose records repeat the same invalid value gets one alert; the tier alert is written once per customer from its last record."
+    benchbox_behaviour: "One alert is written for each CMP record with an invalid SPRating and for each NEW or UPDCUST action with an invalid tier or date of birth. A NEW action without a tier is invalid; an UPDCUST action without a tier changes nothing and raises no alert."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_company.sql
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+    status: implemented
+    approval: pending
+
+  - id: date-of-birth-range-by-date
+    kind: changed
+    clause: "4.5.4.5"
+    project_behaviour: "A date of birth is out of range when the difference in calendar years to the batch date is 100 or more, or when it is after the batch date."
+    benchbox_behaviour: "A date of birth is out of range when it is before the batch date minus 100 years, or after the batch date."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+    status: implemented
+    approval: pending
+
+  - id: status-names-from-lookup
+    kind: changed
+    clause: "4.5.1, 4.5.3, 4.5.4, 4.5.6"
+    project_behaviour: "DimCompany, DimSecurity, DimCustomer and DimAccount decode status codes into the literals Active, Inactive and the other names."
+    benchbox_behaviour: "Each transformation joins StatusType on the status code and stores ST_NAME. No status name appears in the SQL."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_company.sql
+      - benchbox/core/tpcdi/etl/historical/dim_security.sql
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+      - benchbox/core/tpcdi/etl/historical/dim_account.sql
+    status: implemented
+    approval: pending
+
+  - id: date-and-key-surrogate-keys
+    kind: kept
+    clause: "3.4.3"
+    project_behaviour: "SK_CompanyID, SK_CustomerID and SK_AccountID are the effective date as yyyyMMdd followed by the natural key."
+    benchbox_behaviour: "Kept."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_company.sql
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+      - benchbox/core/tpcdi/etl/historical/dim_account.sql
+    status: implemented
+    approval: pending
+
+  - id: deterministic-security-keys
+    kind: changed
+    clause: "3.4.3"
+    project_behaviour: "SK_SecurityID comes from monotonically_increasing_id, which depends on how the engine splits the work. The DuckDB implementation numbers records by EffectiveDate and leaves records of one day in no defined order."
+    benchbox_behaviour: "SK_SecurityID is the row number of the record ordered by EffectiveDate and then Symbol, so every run and platform gives the same keys."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_security.sql
+    status: implemented
+    approval: pending
+
+  - id: daily-grain-history
+    kind: kept
+    clause: "4.4.1.5"
+    project_behaviour: "When a company, security, customer or account changes more than once on one day, only the last change of the day is kept as a record."
+    benchbox_behaviour: "Kept."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_company.sql
+      - benchbox/core/tpcdi/etl/historical/dim_security.sql
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+      - benchbox/core/tpcdi/etl/historical/dim_account.sql
+    status: implemented
+    approval: pending
+
+  - id: dependent-records-split-at-parent-changes
+    kind: kept
+    clause: "4.5.1, 4.5.6"
+    project_behaviour: "A DimSecurity record is split where its company changes, and a DimAccount record where its customer changes, so each record's SK_CompanyID or SK_CustomerID names the parent record valid for its whole date range."
+    benchbox_behaviour: "Kept. The effective date of each FINWIRE record is the date of its PTS field."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_security.sql
+      - benchbox/core/tpcdi/etl/historical/dim_account.sql
+    status: implemented
+    approval: pending
+
+  - id: customer-tax-rates-left-joined
+    kind: changed
+    clause: "4.5.4"
+    project_behaviour: "DimCustomer inner-joins TaxRate for the national and local rates, which drops a customer whose tax identifier has no rate."
+    benchbox_behaviour: "TaxRate is left-joined, so every customer record is kept and a missing rate stays NULL."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+    status: implemented
+    approval: pending
+
+  - id: phone-country-code-needs-area-code
+    kind: changed
+    clause: "4.5.4"
+    project_behaviour: "A phone number with a country code but no area code is written as the country code followed by the local number."
+    benchbox_behaviour: "The country code is written only together with an area code; with no area code the phone number is the local number, followed by the extension."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
+    status: implemented
+    approval: pending
+
+  - id: prospect-demographics-matched-by-name-and-address
+    kind: kept
+    clause: "4.5.4, 4.5.15"
+    project_behaviour: "DimCustomer takes AgencyID, CreditRating, NetWorth and MarketingNameplate from the Batch 1 prospect file, and Prospect.IsCustomer is set from current DimCustomer records, both matched case-insensitively on first name, last name, both address lines and postal code."
+    benchbox_behaviour: "Kept. MarketingNameplate is computed once, when the prospect file is read."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/prospect.sql
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+      - benchbox/core/tpcdi/etl/historical/prospect.sql
+    status: implemented
     approval: pending
