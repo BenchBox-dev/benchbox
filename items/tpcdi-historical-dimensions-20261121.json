@@ -71,6 +71,15 @@
       "op_id": "77d3bb2a95434c01ab3edc18daa6fde8",
       "reason": "leader session restarted; same leader resumes the batch",
       "session_id": "053d0f09537e4b5c969ecfcd0c07eb07"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4e373c3ffd2cd229e1d72fba",
+      "at": "2026-11-24T22:23:59Z",
+      "client": "omp-coding-agent",
+      "generation": "ca891ef1e97345c3bd0e80df218af1ed",
+      "op": "take",
+      "op_id": "1035307cba9243c9a81a3070d611c368",
+      "session_id": "053d0f09537e4b5c969ecfcd0c07eb07"
     }
   ]
 }

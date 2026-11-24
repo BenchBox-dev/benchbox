@@ -52214,12 +52214,17 @@
       "title": "TPC-DI generator: per-customer row ratios differ from the specification, and secondary fact tables generate single-threaded"
     },
     "tpcdi-historical-dimensions-20261121": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-25T22:23:59Z",
+        "generation": "ca891ef1e97345c3bd0e80df218af1ed",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4e373c3ffd2cd229e1d72fba"
+      },
       "needs": [
         "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI step 15: historical load, dimension tables, with alerts written inside the transformation"
     },
     "tpcdi-historical-facts-20261121": {
