@@ -26169,10 +26169,10 @@
     },
     "datagen-p0-companion-adr": {
       "claim": {
-        "expires_at": "2026-11-25T04:08:04Z",
-        "generation": "83484b36040f47c2a01c17fb0ae54cf3",
+        "expires_at": "2026-11-25T18:18:59Z",
+        "generation": "c962712f97a44eb585298217e347def7",
         "renewals": 0,
-        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032"
+        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:d84499826d46cd4fe1e3cd0d"
       },
       "needs": [
         "datagen-p0-baseline-measurements",

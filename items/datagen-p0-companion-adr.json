@@ -70,6 +70,17 @@
       "op": "update",
       "op_id": "3613bbfe48dd7a3db471795d6bf9728b",
       "session_id": "225d565f6fd14bf58157e6eb4b9f29f9"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:d84499826d46cd4fe1e3cd0d",
+      "at": "2026-11-24T18:18:59Z",
+      "client": "antigravity-client",
+      "displaced": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032",
+      "generation": "c962712f97a44eb585298217e347def7",
+      "op": "takeover",
+      "op_id": "89e6787ce362a98be0f090c8826cd21e",
+      "reason": "Same Antigravity conversation after MCP client restart; PR #4483 merged (89e6787ce362a98be0f090c8826cd21d38b9b87e) and ready to close.",
+      "session_id": "225d565f6fd14bf58157e6eb4b9f29f9"
     }
   ]
 }
