@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Retirement audit records platform coverage (including Windows arm64 wheel status for tpcgen-cli), refresh-stream coverage (TPC-H RF1/RF2 and TPC-DS -update), and published-result reproduction requirements for every legacy binary and legacy Python generator.",
+    "At least one minor BenchBox release has shipped after each benchmark's default cutover before any legacy path is removed.",
+    "Owner decision on Windows arm64 (owner decision A4: keep C binaries vs drop native TPC datagen support on Windows arm64) and legacy retention is recorded in docs/internal/adr/adr-benchbox-datagen.md.",
+    "Only confirmed-obsolete binaries or legacy generator loops are removed; benchbox/_binaries/SHA256MANIFEST.json and datagen_version.py are updated cleanly, qgen/dsqgen/tpcds.idx/templates remain intact, and all required CI gates pass."
+  ],
+  "context": "Phase 3 final cleanup and retirement gate. Encapsulates owner decision A4 (defer Windows arm64 keep-vs-drop decision until after validation) and enforces the minimum one-minor-release retention window before removing any legacy generator or C binary.",
+  "description": "## Problem\nKeeping retired legacy generators and per-OS C dbgen/dsdgen binaries indefinitely adds maintenance burden, but deleting them prematurely would break Windows arm64 (where tpcgen-cli 4.0.0 ships no wheel), TPC-H/TPC-DS refresh paths (RF1/RF2 and -update), or reproduction of published corpus results.\n\n## Change\n- After at least one minor BenchBox release running on the validated new defaults, perform a retirement audit across every migrated benchmark:\n  1. Re-check upstream tpcgen-cli wheel coverage for Windows arm64 and refresh-stream support (TPC-H RF1/RF2, TPC-DS -update).\n  2. Audit whether published-result reproduction still requires --datagen-backend legacy for any Tier 1, Tier 2 (SSB v1), or Tier 3 benchmark.\n  3. Obtain explicit owner sign-off on Windows arm64 policy (owner decision A4: keep bundled C binaries there vs drop native TPC datagen support on Windows arm64) and on which legacy generators/binaries to retire; record the decision in docs/internal/adr/adr-benchbox-datagen.md.\n  4. Remove only confirmed-obsolete dbgen/dsdgen binaries (updating benchbox/_binaries/SHA256MANIFEST.json and benchbox/utils/datagen_version.py) and confirmed-obsolete legacy Python generator code paths, with a changelog.d/ fragment if user-facing.\n\n## Decision gates\n- Hard waiting gate: do not remove any legacy path until at least one minor release has shipped on the new defaults.\n- Hard owner decision gate: explicit owner approval required for Windows arm64 keep-vs-drop (A4) and before deleting any binary or legacy generator needed to reproduce published results.\n\n## Guardrails\n- NEVER remove qgen, dsqgen, tpcds.idx, or TPC query templates from benchbox/_binaries/.\n- NEVER delete dsdgen (or dbgen) while TPC-DS or TPC-H refresh paths still require it.\n- NEVER delete a platform binary without confirmed wheel coverage or explicit owner authorization to drop that platform.\n- Follow AGENTS.md ([CHANGELOG-001], [COMMENT-POLICY-001], linked worktree, make pr-preflight, merged PR).",
+  "links": [
+    "benchbox/_binaries/SHA256MANIFEST.json",
+    "benchbox/core/tpch/generator.py",
+    "benchbox/core/tpcds/generator/runner.py",
+    "docs/internal/adr/adr-benchbox-datagen.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032",
+      "at": "2026-11-24T00:20:02Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "d9a01014b87fd8a4c6e54982b8310c14",
+      "session_id": "85b2c240cd2b4c709f5c56393a05342d"
+    }
+  ]
+}

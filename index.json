@@ -25950,6 +25950,17 @@
       "status": "open",
       "title": "Vectorize over-budget Tier 3 synthetic generators in Python with Gate C acceptance reports"
     },
+    "datagen-p3-legacy-retirement-decision": {
+      "claim": null,
+      "needs": [
+        "datagen-p3-tpc-default-cutover",
+        "datagen-p3-synthetic-cutover",
+        "datagen-p3-ssb-cutover"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Evaluate Windows arm64 support and retire eligible legacy generators and C binaries"
+    },
     "datagen-p3-ssb-cutover": {
       "claim": null,
       "needs": [
