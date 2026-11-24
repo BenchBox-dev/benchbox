@@ -219,4 +219,4 @@ def test_the_run_title_records_the_head_the_run_targets(
 ) -> None:
     rendered = _run_title(event_name, event, inputs)
     assert rendered == title
-    assert (RUN_TITLE_PULL.search(rendered) is not None) == (title.endswith(")") and "pr=sweep" not in title)
+    assert (RUN_TITLE_PULL.search(rendered) is not None) == ("pr=sweep" not in title)

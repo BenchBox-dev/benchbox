@@ -280,8 +280,9 @@ After the health evaluation, every monitor run whose state is not broken sends
 a `workflow_dispatch` of `review-verdict.yml` with `sweep=true` on `develop`
 (`gh workflow run review-verdict.yml --ref develop -f sweep=true`) unless one
 was sent in the last hour. `review-verdict` runs its sweep and health check on
-that dispatch (GitHub refuses a `repository_dispatch` here), because GitHub delivers the hourly `schedule` only a few times a day and
-quota-pending heads would otherwise wait hours for their retry. The time of
+that dispatch (GitHub refuses a `repository_dispatch` here), because GitHub
+delivers the hourly `schedule` only a few times a day and quota-pending heads
+would otherwise wait hours for their retry. The time of
 the last successful send is `~/.omp/review-gateway/sweep.dispatched`; a failed
 send logs `monitor: sweep dispatch failed`, leaves that file alone and
 does not change the monitor's exit status or recorded state. A broken gateway
