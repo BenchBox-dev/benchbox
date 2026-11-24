@@ -1,9 +1,10 @@
 {
   "acceptance": [
     "All three members are finished with their acceptance met.",
-    "Theseus release, self-lock and BenchBox repin PRs are merged; the gateway check is healthy and #4417 closed by the monitor."
+    "Theseus release, self-lock and BenchBox repin PRs are merged; the gateway check is healthy and #4417 closed by the monitor.",
+    "review-provider-loss-resilience-20261106 finished, or each unmet acceptance bullet re-homed with owner approval."
   ],
-  "description": "Umbrella for one session delivering three related items on feature branches: theseus-classifier-402-skips-fallback-20261124, theseus-local-review-hides-classification-cause-20261124 (Theseus PR: fallback on every TypeSafe error, owner issue notice, cause without provider text; then release and self-lock) and review-gateway-host-behind-omp-pin-20261124 (gateway host update plus a BenchBox PR that adds the monitor snapshot check and repins Theseus). Delivery: Theseus feat branch -> PR -> release PR -> self-lock PR; BenchBox feat branch with the repin and monitor check -> one PR; host update at an idle moment. Owner decisions are recorded on each member.\n\nGuardrails: no merge without the gate rules (hosted SHIP, green CI, independent fresh-agent review of the exact head, branch current). No live model spend beyond what the hosted reviews use. No hand edits under ~/.omp/review-gateway. No bypass of make pr-open.",
+  "description": "Umbrella for one session delivering three related items on feature branches: theseus-classifier-402-skips-fallback-20261124, theseus-local-review-hides-classification-cause-20261124 (Theseus PR: fallback on every TypeSafe error, owner issue notice, cause without provider text; then release and self-lock) and review-gateway-host-behind-omp-pin-20261124 (gateway host update plus a BenchBox PR that adds the monitor snapshot check and repins Theseus). Delivery: Theseus feat branch -> PR -> release PR -> self-lock PR; BenchBox feat branch with the repin and monitor check -> one PR; host update at an idle moment. Owner decisions are recorded on each member.\n\nGuardrails: no merge without the gate rules (hosted SHIP, green CI, independent fresh-agent review of the exact head, branch current). No live model spend beyond what the hosted reviews use. No hand edits under ~/.omp/review-gateway. No bypass of make pr-open.\n\nAlso delivers review-provider-loss-resilience-20261106 (the critical provider-loss item): its residual work lands in the same Theseus PR or BenchBox PR where it fits.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:85211dc6cc54201508c6fab8",
@@ -20,6 +21,14 @@
       "generation": "f534aeba298c411ea1b4e69b3d414bda",
       "op": "take",
       "op_id": "9dc13147066c48a999534a6772f60489",
+      "session_id": "ba268bb399814e16b3d44ff7bdc73914"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:85211dc6cc54201508c6fab8",
+      "at": "2026-11-24T14:46:55Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "810a83956eb6c582dcc5d0de84364ba1",
       "session_id": "ba268bb399814e16b3d44ff7bdc73914"
     }
   ]
