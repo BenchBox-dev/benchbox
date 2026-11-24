@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Unit test: with the connector major patched to 5, the connect parameters contain no network_timeout and contain the chosen 5.x replacement(s) with the decided values.",
+    "Unit test: with the connector major patched to 4, the connect parameters are unchanged from before.",
+    "In the snowflake-connector5 CI job, building the adapter's connect parameters and validating them against ConnectionConfig raises no DeprecationWarning or FutureWarning (test runs with those warnings as errors).",
+    "The registry test's exemption list shrinks to options the installed connector genuinely accepts through another path, each named in the test."
+  ],
+  "context": "Verified 2026-11-24 with snowflake-connector-python 5.2.0: ConnectionConfig(network_timeout=5) raises TypeError; connect() accepts it with a DeprecationWarning.",
+  "description": "## Problem\nOn snowflake-connector-python 5.2.0, `snowflake.connector.connect(..., network_timeout=...)` warns \"'network_timeout' is deprecated; use 'query_timeout' and 'request_timeout' instead\", and network_timeout is not a field of the 5.x ConnectionConfig. The adapter passes network_timeout=60 (benchbox/platforms/snowflake.py, admin connection). Connecting also warns that enable_server_session_keep_alive_auto_detection is unset and its default will change. The registry test exempts network_timeout, login_timeout and client_session_keep_alive instead of checking them.\n\n## Decision gate\nRead the 5.x documentation for request_timeout and query_timeout and decide the mapping for the current 60-second network_timeout. If no 5.x option keeps the same meaning (a per-request network limit), stop and bring the options to the owner. For keep-alive, set the 5.x option explicitly to today's behaviour.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check). Keep connector 4.x behaviour unchanged; keep the lock on 4.8.1; no live Snowflake connections.",
+  "links": [
+    "benchbox/platforms/snowflake.py",
+    "tests/unit/platforms/test_snowflake_adapter.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:21:35Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7b2c5947579c44acbf8f186bdf58949d",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    }
+  ]
+}

@@ -47371,6 +47371,13 @@
       "status": "done",
       "title": "Snowflake clustering: dead pre-ALTER comparison (LINEAR vs bare parens) re-fires ALTER+RESUME RECLUSTER on every reuse; introspector schema filter is case-sensitive raw interpolation"
     },
+    "snowflake-connector-5-deprecated-connect-options-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop passing options that snowflake-connector-python 5.x deprecates when the Snowflake adapter connects"
+    },
     "snowflake-databricks-desc-nulls-last-audit-20261025": {
       "claim": null,
       "needs": [],
