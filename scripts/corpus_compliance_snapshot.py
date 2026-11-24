@@ -274,7 +274,14 @@ def load_snapshot(path: Path) -> Snapshot:
 
 
 def render(snapshot: Snapshot) -> str:
-    return json.dumps({"schema_version": SNAPSHOT_SCHEMA_VERSION, "results": snapshot}, indent=2) + "\n"
+    entries = ",\n".join(
+        f"    {json.dumps(name)}: {{\n"
+        + ",\n".join(f"      {json.dumps(section)}: {json.dumps(value)}" for section, value in entry.items())
+        + "\n    }"
+        for name, entry in snapshot.items()
+    )
+    results = "{\n" + entries + "\n  }" if entries else "{}"
+    return f'{{\n  "schema_version": {SNAPSHOT_SCHEMA_VERSION},\n  "results": {results}\n}}\n'
 
 
 def _primary_rule_lane(entry: Outcome) -> str | None:
