@@ -103,9 +103,9 @@ Clock readers that define no specification interval, listed so the grep count re
 
 | File and symbol | Reason |
 |---|---|
-| `tpcdi/etl/data_quality_monitor.py` `DataQualityRuleEngine.execute_rule`, `DataQualityMonitor.run_quality_check_batch` | Quality monitor durations. |
-| `tpcdi/etl/incremental_loader.py` `IncrementalDataLoader._process_table_incremental_changes` | Per-table statistic. |
-| `tpcdi/etl/scd_processor.py` `EnhancedSCDType2Processor._analyze_dimension_changes` | Analysis duration statistic. |
+| `tpcdi/_legacy_etl/data_quality_monitor.py` `DataQualityRuleEngine.execute_rule`, `DataQualityMonitor.run_quality_check_batch` | Quality monitor durations. |
+| `tpcdi/_legacy_etl/incremental_loader.py` `IncrementalDataLoader._process_table_incremental_changes` | Per-table statistic. |
+| `tpcdi/_legacy_etl/scd_processor.py` `EnhancedSCDType2Processor._analyze_dimension_changes` | Analysis duration statistic. |
 | `tpcds/power_test.py` `TPCDSPowerTest._execute_query` | No caller on the `run` path (unit tests only); `run` uses D1. |
 | `tpcds/qualification/runner.py` `worker`, `supervise`, `main` | Qualification harness elapsed reporting and deadlines. |
 | `tpcds/c_tools.py` `DSQGenBinary._generate_parameter_variations` | `time.time()` seeds a random generator; not a duration. |

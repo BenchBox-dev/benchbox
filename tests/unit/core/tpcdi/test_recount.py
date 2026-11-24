@@ -290,11 +290,11 @@ def imported_modules(path: Path) -> set[str]:
     return names
 
 
-def test_recount_imports_nothing_from_the_etl_package() -> None:
+def test_recount_imports_nothing_from_the_etl_packages() -> None:
     imports = imported_modules(Path(recount.__file__))
     assert imports
     assert not [
-        name for name in imports if name == "benchbox.core.tpcdi.etl" or name.startswith("benchbox.core.tpcdi.etl.")
+        name for name in imports if name.startswith(("benchbox.core.tpcdi.etl", "benchbox.core.tpcdi._legacy_etl"))
     ]
     assert {name for name in imports if name.startswith("benchbox")} == {
         "benchbox.utils.run_deadline",

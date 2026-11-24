@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from benchbox.core.tpcdi.etl.sql_backend import bulk_insert_dataframe
+from benchbox.core.tpcdi._legacy_etl.sql_backend import bulk_insert_dataframe
 from benchbox.platforms.base.data_loading import insert_arrow_table
 from benchbox.utils.duckdb_extensions import finish_unfinished_result
 

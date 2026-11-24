@@ -24,7 +24,7 @@ MODULE_PATHS = [
     Path("benchbox/cli/app.py"),
     Path("benchbox/core/tpcds/benchmark/runner.py"),
     Path("benchbox/core/tpcds/generator/manager.py"),
-    Path("benchbox/core/tpcdi/etl/pipeline.py"),
+    Path("benchbox/core/tpcdi/_legacy_etl/pipeline.py"),
     Path("benchbox/core/tpcdi/generator/data.py"),
     Path("benchbox/platforms/clickhouse/adapter.py"),
 ]
