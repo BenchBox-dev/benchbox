@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "In a PR that touches benchbox/platforms/snowflake.py, CI runs the Snowflake unit tests twice: once with the connector version pinned in uv.lock (version asserted) and once with 5.x (version asserted), and neither run skips the registry tests.",
+    "A change to tests/fixtures/snowflake_connector.py alone triggers the job.",
+    "tests/system/test_ci_lint_parity.py passes with the step documented; core still requires the job when it runs."
+  ],
+  "description": "## Problem\nCI installs `uv sync --group dev`, which does not include the snowflake extra, so tests that import snowflake.connector skip in every CI job except snowflake-connector5, which overlays connector 5.x. The tests that check every parameter BenchBox sends against the connector's registry (test_installed_connector_accepts_every_gateway_parameter, test_create_admin_connection) and the 4.x TLS test therefore never run in CI on the 4.8.1 connector that uv.lock pins and users install. Local pr-preflight skips them the same way (\"No module named 'snowflake'\").\nAlso, the snowflake-connector5 path filter in .github/workflows/ci.yml does not include tests/fixtures/snowflake_connector.py, which these tests import.\n\n## Change\nExtend the snowflake-connector5 job (or add a sibling step in it) so it first runs the same Snowflake unit tests with the locked connector (`uv run --group dev --extra snowflake`, asserting the loaded version matches uv.lock), then on 5.x as today. Add the fixture path to the job's path filter. Rename the job only if the parity test and core aggregation are updated with it.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check). Keep the lock on 4.8.1; do not move the >=3.0.0 floor; no live Snowflake connections.",
+  "links": [
+    ".github/workflows/ci.yml",
+    "tests/fixtures/snowflake_connector.py",
+    "tests/unit/platforms/test_snowflake_gateway.py",
+    "tests/unit/platforms/test_snowflake_gateway_tls.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:21:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9dcb23776afd442885f9916fcea69279",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    }
+  ]
+}

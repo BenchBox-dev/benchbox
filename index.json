@@ -47378,6 +47378,13 @@
       "status": "done",
       "title": "Audit the explicit NULLS LAST that translation adds on Snowflake (DESC), and on Databricks and BigQuery (ASC), since v0.4.1"
     },
+    "snowflake-locked-connector-tests-not-in-ci-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Run the Snowflake connector-parameter tests in CI on the locked 4.8.1 connector, not only on 5.x"
+    },
     "snowflake-session-query-acceleration-invalid-20261013": {
       "claim": null,
       "needs": [],
