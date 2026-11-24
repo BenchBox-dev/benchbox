@@ -58,7 +58,7 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
             "catalog": catalog,
             "schema": schema,
             "staging_root": staging_root,
-            "cluster_id": cluster_id,
+            "compute_resource": cluster_id,
             "execution_mode": "dataframe",
         },
     )
@@ -85,7 +85,7 @@ def run_example(scale_factor: float = 0.01, dry_run: bool = False) -> None:
             print(f"  Benchmark: {benchmark_config.name}")
             print(f"  Scale Factor: {benchmark_config.scale_factor}")
             print(f"  Catalog: {db_config.options.get('catalog', 'workspace')}")
-            print(f"  Cluster ID: {db_config.options.get('cluster_id', 'Not set')}")
+            print(f"  Cluster ID: {db_config.options.get('compute_resource', 'Not set')}")
             print()
             print("[OK] Configuration valid")
             return
@@ -112,7 +112,7 @@ def run_example(scale_factor: float = 0.01, dry_run: bool = False) -> None:
     print("Configuration:")
     print(f"  Host: {db_config.options.get('server_hostname')}")
     print(f"  Catalog: {db_config.options.get('catalog')}")
-    print(f"  Cluster ID: {db_config.options.get('cluster_id', 'Not set')}")
+    print(f"  Cluster ID: {db_config.options.get('compute_resource', 'Not set')}")
     print(f"  Execution Mode: {db_config.options.get('execution_mode')}")
     print(f"  Scale Factor: {scale_factor}")
     print()

@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "before-you-upgrade",
+      "breaking": true,
+      "lead": "Deprecated option spellings are removed",
+      "text": "BenchBox 0.6.0 removes every deprecated option spelling that 0.5.0 warned about. Each one now fails with an error that names its replacement, in the CLI, the MCP server, config files and the Python API.",
+      "details": [
+        "Compute keys: use compute_resource instead of warehouse, workgroup, workgroup_name, cluster_identifier, cluster_id, cluster_name, spark_pool_name, application_id, service_id, warehouse_id and engine_name, and use compute_size instead of warehouse_size, engine_size and cluster_size. Fabric Warehouse uses database instead of warehouse.",
+        "Deployment keys: use the platform selector (for example --platform clickhouse:local or firebolt:core) instead of deployment_mode, mode, embedded, sail_mode, firebolt_mode or Velox deployment. The ClickHouse values embedded and mode=local|server are no longer accepted.",
+        "Engine keys: use --execution-engine streaming instead of the Polars streaming option, --polars-streaming and the MCP streaming parameter; --execution-engine threaded or distributed instead of Dask use_distributed; --execution-engine postgres or duckdb instead of pg-duckdb force_execution; runtime_version instead of Athena Spark engine_version.",
+        "Python API: adapter constructors and DatabaseConfig raise TypeError for a removed keyword argument and name the replacement. get_adapter() and PlatformRegistry.create_adapter() reject them before building an adapter.",
+        "Saved credentials: ~/.benchbox/credentials.yaml still loads an old key such as Snowflake warehouse as compute_resource and writes the new key on the next save. The SNOWFLAKE_WAREHOUSE environment variable and --official are unchanged."
+      ]
+    }
+  ]
+}
