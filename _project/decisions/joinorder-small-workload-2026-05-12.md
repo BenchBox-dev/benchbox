@@ -2,7 +2,10 @@
 
 Date: 2026-05-12
 
-Status: No public small scale in Step 1; revisit through separate JOB-light design
+Status: No public small scale in Step 1; revisit through separate JOB-light design.
+*(Note 2026-11-23: `benchbox/core/joinorder/dataframe_queries.py` has since
+implemented all 113 canonical query IDs, superseding the 13-of-113 partial
+DataFrame note in Consequences below.)*
 
 ## Question
 
