@@ -26195,12 +26195,17 @@
       "title": "Prototype vectorized Python/PyArrow generation on the slowest measured synthetic generator"
     },
     "datagen-p1-provenance-and-backend-selector": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-25T18:19:40Z",
+        "generation": "6b087833961648e3a417830006f64bf7",
+        "renewals": 0,
+        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:d84499826d46cd4fe1e3cd0d"
+      },
       "needs": [
         "datagen-p0-companion-adr"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Add per-benchmark datagen versioning, backend provenance, and --datagen-backend selector"
     },
     "datagen-p1-streaming-parquet-converter": {
