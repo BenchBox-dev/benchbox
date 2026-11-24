@@ -269,15 +269,10 @@ class DataGenerationManifest:
                     backend=self._generator_backend,
                     backend_version=self._generator_backend_version,
                 )
-                primary_format = (
-                    "parquet" if "parquet" in self._formats else (self._formats[0] if self._formats else None)
-                )
                 byte_identical = is_byte_identical_backend_output(
                     self._benchmark,
                     backend_version=self._generator_backend_version,
-                    output_format=primary_format,
                     parquet_writer=self._parquet_writer,
-                    parquet_row_group_size=self._parquet_row_group_size,
                     scale_factor=self._scale_factor,
                 )
                 has_distinct_identity = (
@@ -293,7 +288,6 @@ class DataGenerationManifest:
                         backend_version=self._generator_backend_version,
                         parquet_writer=self._parquet_writer,
                         parquet_row_group_size=self._parquet_row_group_size,
-                        output_format=primary_format,
                         scale_factor=self._scale_factor,
                     )
             except Exception as exc:

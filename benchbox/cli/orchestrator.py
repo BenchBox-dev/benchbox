@@ -130,7 +130,7 @@ class BenchmarkOrchestrator:
                 backend=str(backend),
                 scale_factor=config.scale_factor,
                 backend_version=opts.get("datagen_backend_version"),
-                output_format=opts.get("table_format"),
+                parquet_writer=opts.get("parquet_writer"),
             )
         return base_path
 

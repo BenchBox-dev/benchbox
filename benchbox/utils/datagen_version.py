@@ -17,7 +17,7 @@ VERIFIED_BYTE_IDENTICAL_BACKENDS: Mapping[tuple[str, str], frozenset[float]] = M
     }
 )
 
-_DELIMITED_FORMATS: frozenset[str] = frozenset({"tbl", "dat", "delimited"})
+_BENCHBOX_PARQUET_WRITERS: frozenset[str] = frozenset({"benchbox-legacy", "benchbox-streaming"})
 
 
 _BENCHMARK_SPECS_FILES: dict[str, tuple[str, ...]] = {
@@ -98,25 +98,40 @@ def get_benchmark_datagen_version(benchmark: str | None) -> int:
     return int(BENCHMARK_DATAGEN_VERSIONS.get(str(benchmark).lower(), 1))
 
 
-def is_byte_identical_backend_output(
+def is_byte_identical_source_data(
     benchmark: str | None,
     *,
     backend_version: str | None = None,
-    output_format: str | None = None,
-    parquet_writer: str | None = None,
-    parquet_row_group_size: int | None = None,
     scale_factor: float | None = None,
 ) -> bool:
     if not benchmark or not backend_version or scale_factor is None:
-        return False
-    if parquet_writer is not None or parquet_row_group_size is not None:
-        return False
-    if output_format is not None and str(output_format).lower() not in _DELIMITED_FORMATS:
         return False
     verified_scales = VERIFIED_BYTE_IDENTICAL_BACKENDS.get((str(benchmark).lower(), str(backend_version).strip()))
     if not verified_scales:
         return False
     return float(scale_factor) in verified_scales
+
+
+def is_benchbox_parquet_writer(parquet_writer: str | None) -> bool:
+    if parquet_writer is None:
+        return True
+    return str(parquet_writer).strip().lower() in _BENCHBOX_PARQUET_WRITERS
+
+
+def is_byte_identical_backend_output(
+    benchmark: str | None,
+    *,
+    backend_version: str | None = None,
+    parquet_writer: str | None = None,
+    scale_factor: float | None = None,
+) -> bool:
+    if not is_benchbox_parquet_writer(parquet_writer):
+        return False
+    return is_byte_identical_source_data(
+        benchmark,
+        backend_version=backend_version,
+        scale_factor=scale_factor,
+    )
 
 
 def compute_base_constants_hash(benchmark: str | None = None) -> str:
@@ -165,7 +180,6 @@ def compute_datagen_identity_hash(
     backend_version: str | None = None,
     parquet_writer: str | None = None,
     parquet_row_group_size: int | None = None,
-    output_format: str | None = None,
     scale_factor: float | None = None,
 ) -> str:
 
@@ -184,9 +198,7 @@ def compute_datagen_identity_hash(
     byte_identical = is_byte_identical_backend_output(
         benchmark,
         backend_version=backend_version,
-        output_format=output_format,
         parquet_writer=parquet_writer,
-        parquet_row_group_size=parquet_row_group_size,
         scale_factor=scale_factor,
     )
     if not byte_identical:
@@ -200,26 +212,12 @@ def compute_datagen_identity_hash(
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
-def _manifest_output_format(manifest: Mapping[str, Any], expected_output_format: str | None) -> str | None:
-    if expected_output_format is not None:
-        return str(expected_output_format).lower()
-    formats = manifest.get("formats") or manifest.get("format_preference") or []
-    if isinstance(formats, (list, tuple)):
-        lowered = [str(fmt).lower() for fmt in formats if fmt]
-        if "parquet" in lowered:
-            return "parquet"
-        if lowered:
-            return lowered[0]
-    return None
-
-
 def _backend_staleness(
     manifest: Mapping[str, Any],
     benchmark: str | None,
     *,
     expected_backend: str | None,
     expected_backend_version: str | None,
-    expected_output_format: str | None,
 ) -> str | None:
     from benchbox.utils.datagen_backend import get_default_datagen_backend
 
@@ -227,7 +225,6 @@ def _backend_staleness(
     wanted_backend = (
         str(expected_backend).lower() if expected_backend is not None else get_default_datagen_backend(benchmark)
     )
-    output_format = _manifest_output_format(manifest, expected_output_format)
     scale_factor_raw = manifest.get("scale_factor")
     scale_factor = (
         float(scale_factor_raw)
@@ -235,21 +232,13 @@ def _backend_staleness(
         else None
     )
     parquet_writer = manifest.get("parquet_writer")
-    parquet_row_group_raw = manifest.get("parquet_row_group_size")
-    parquet_row_group_size = (
-        int(parquet_row_group_raw)
-        if isinstance(parquet_row_group_raw, int) and not isinstance(parquet_row_group_raw, bool)
-        else None
-    )
     native_version = (
         manifest.get("generator_backend_version") if recorded_backend != "legacy" else expected_backend_version
     )
     if recorded_backend != wanted_backend and is_byte_identical_backend_output(
         benchmark,
         backend_version=str(native_version) if native_version is not None else None,
-        output_format=output_format,
         parquet_writer=str(parquet_writer) if parquet_writer is not None else None,
-        parquet_row_group_size=parquet_row_group_size,
         scale_factor=scale_factor,
     ):
         return None
@@ -273,7 +262,6 @@ def manifest_datagen_is_current(
     *,
     expected_backend: str | None = None,
     expected_backend_version: str | None = None,
-    expected_output_format: str | None = None,
 ) -> bool:
     return (
         describe_datagen_staleness(
@@ -281,7 +269,6 @@ def manifest_datagen_is_current(
             benchmark=benchmark,
             expected_backend=expected_backend,
             expected_backend_version=expected_backend_version,
-            expected_output_format=expected_output_format,
         )
         is None
     )
@@ -317,7 +304,6 @@ def describe_datagen_staleness(
     *,
     expected_backend: str | None = None,
     expected_backend_version: str | None = None,
-    expected_output_format: str | None = None,
 ) -> str | None:
 
     if not isinstance(manifest, Mapping):
@@ -350,7 +336,6 @@ def describe_datagen_staleness(
         name,
         expected_backend=expected_backend,
         expected_backend_version=expected_backend_version,
-        expected_output_format=expected_output_format,
     )
 
 
@@ -369,15 +354,12 @@ def resolve_manifest_datagen_hash(manifest: Mapping[str, Any]) -> str | None:
         else None
     )
     benchmark_version = manifest.get("benchmark_datagen_version", 1)
-    output_format = _manifest_output_format(manifest, None)
     scale_raw = manifest.get("scale_factor")
     scale_factor = float(scale_raw) if isinstance(scale_raw, (int, float)) and not isinstance(scale_raw, bool) else None
     byte_identical = is_byte_identical_backend_output(
         benchmark,
         backend_version=str(backend_version) if backend_version is not None else None,
-        output_format=output_format,
         parquet_writer=str(parquet_writer) if parquet_writer is not None else None,
-        parquet_row_group_size=parquet_row_group_size,
         scale_factor=scale_factor,
     )
     if (
@@ -392,7 +374,6 @@ def resolve_manifest_datagen_hash(manifest: Mapping[str, Any]) -> str | None:
             backend_version=str(backend_version) if backend_version is not None else None,
             parquet_writer=str(parquet_writer) if parquet_writer is not None else None,
             parquet_row_group_size=parquet_row_group_size,
-            output_format=output_format,
             scale_factor=scale_factor,
         )
     base_hash = manifest.get("base_constants_hash")

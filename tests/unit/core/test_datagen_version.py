@@ -652,7 +652,6 @@ def test_manifest_emits_optional_backend_fields_without_breaking_legacy(tmp_path
         backend_version="vec-1.0",
         parquet_writer="benchbox-streaming",
         parquet_row_group_size=122880,
-        output_format="parquet",
         scale_factor=1.0,
     )
     assert manifest_datagen_is_current(native_manifest, benchmark="h2odb", expected_backend="native") is True
@@ -675,90 +674,113 @@ def test_manifest_emits_optional_backend_fields_without_breaking_legacy(tmp_path
     assert resolve_manifest_datagen_hash(native_tpch) == resolve_manifest_datagen_hash(legacy_tpch)
     assert resolve_manifest_datagen_hash(native_tpch) == compute_base_constants_hash("tpch")
 
+    legacy_tpch_parquet = DataGenerationManifest(
+        output_dir=tmp_path,
+        benchmark="tpch",
+        scale_factor=1.0,
+        formats=["tbl", "parquet"],
+        parquet_writer="benchbox-streaming",
+        parquet_row_group_size=122880,
+    ).to_dict()
+    native_tpch_parquet = DataGenerationManifest(
+        output_dir=tmp_path,
+        benchmark="tpch",
+        scale_factor=1.0,
+        formats=["tbl", "parquet"],
+        generator_backend="native",
+        generator_backend_version="4.0.0",
+        parquet_writer="benchbox-streaming",
+        parquet_row_group_size=122880,
+    ).to_dict()
+    assert resolve_manifest_datagen_hash(native_tpch_parquet) == resolve_manifest_datagen_hash(legacy_tpch_parquet)
+    assert resolve_manifest_datagen_hash(native_tpch_parquet) != compute_base_constants_hash("tpch")
+    assert manifest_datagen_is_current(native_tpch_parquet, benchmark="tpch", expected_backend="legacy") is True
+    assert manifest_datagen_is_current(native_tpch_parquet, benchmark="tpch", expected_backend="native") is True
+
 
 def test_identity_hash_collapses_byte_identical_tpc_and_separates_parquet_or_synthetic() -> None:
-    assert compute_datagen_identity_hash(
-        "tpch", backend="legacy", output_format="tbl", scale_factor=1.0
-    ) == compute_datagen_identity_hash(
+    assert compute_datagen_identity_hash("tpch", backend="legacy", scale_factor=1.0) == compute_datagen_identity_hash(
         "tpch",
         backend="native",
         backend_version="4.0.0",
-        output_format="tbl",
         scale_factor=1.0,
     )
     assert compute_datagen_identity_hash(
         "tpcds",
         backend="legacy",
-        output_format="dat",
         scale_factor=1.0,
     ) == compute_datagen_identity_hash(
         "tpcds",
         backend="native",
         backend_version="4.0.0",
-        output_format="dat",
         scale_factor=1.0,
     )
 
     assert compute_datagen_identity_hash(
         "tpch",
         backend="legacy",
-        output_format="tbl",
+        parquet_writer="benchbox-streaming",
+        parquet_row_group_size=122880,
+        scale_factor=1.0,
+    ) == compute_datagen_identity_hash(
+        "tpch",
+        backend="native",
+        backend_version="4.0.0",
+        parquet_writer="benchbox-streaming",
+        parquet_row_group_size=122880,
+        scale_factor=1.0,
+    )
+
+    assert compute_datagen_identity_hash(
+        "tpch",
+        backend="legacy",
         scale_factor=1.0,
     ) != compute_datagen_identity_hash(
         "tpch",
         backend="native",
         backend_version="5.0.0",
-        output_format="tbl",
         scale_factor=1.0,
     )
 
     assert compute_datagen_identity_hash(
         "tpch",
         backend="legacy",
-        output_format="tbl",
         scale_factor=100.0,
     ) != compute_datagen_identity_hash(
         "tpch",
         backend="native",
         backend_version="4.0.0",
-        output_format="tbl",
         scale_factor=100.0,
     )
 
     assert compute_datagen_identity_hash(
         "tpchavoc",
         backend="legacy",
-        output_format="tbl",
         scale_factor=1.0,
     ) != compute_datagen_identity_hash(
         "tpchavoc",
         backend="native",
         backend_version="4.0.0",
-        output_format="tbl",
         scale_factor=1.0,
     )
 
     assert compute_datagen_identity_hash(
         "tpcds",
         backend="legacy",
-        output_format="dat",
         scale_factor=0.1,
     ) != compute_datagen_identity_hash(
         "tpcds",
         backend="native",
         backend_version="4.0.0",
-        output_format="dat",
         scale_factor=0.1,
     )
 
     assert compute_datagen_identity_hash(
         "tpch",
-        output_format="parquet",
         parquet_writer="benchbox-streaming",
         parquet_row_group_size=122880,
     ) != compute_datagen_identity_hash(
         "tpch",
-        output_format="parquet",
         parquet_writer="benchbox-streaming",
         parquet_row_group_size=128 * 1024 * 1024,
     )
@@ -766,14 +788,14 @@ def test_identity_hash_collapses_byte_identical_tpc_and_separates_parquet_or_syn
     assert compute_datagen_identity_hash(
         "tpch",
         backend="legacy",
-        output_format="parquet",
         parquet_writer="benchbox-streaming",
+        scale_factor=1.0,
     ) != compute_datagen_identity_hash(
         "tpch",
         backend="native",
         backend_version="4.0.0",
-        output_format="parquet",
         parquet_writer="tpcgen-cli",
+        scale_factor=1.0,
     )
 
     assert compute_datagen_identity_hash("h2odb", backend="legacy") != compute_datagen_identity_hash(
@@ -856,7 +878,6 @@ def test_backend_reuse_safety_and_native_tpc_manifest_provenance(tmp_path: Path)
             "h2odb",
             backend="native",
             backend_version="vec-1.0",
-            output_format="parquet",
             scale_factor=1.0,
         ),
         **current_datagen_stamp("h2odb", backend="native", backend_version="vec-1.0"),

@@ -170,46 +170,42 @@ def test_resolve_env_executable_scopes_to_active_python_env(tmp_path: Path) -> N
 
 
 def test_resolve_backend_output_dir_isolates_non_identical_backends(tmp_path: Path) -> None:
+    from benchbox.utils.datagen_version import current_datagen_stamp, manifest_datagen_is_current
+
     shared = tmp_path / "datagen" / "tpch_sf1"
     assert resolve_backend_output_dir(shared, "tpch", backend="legacy", scale_factor=1.0) == shared
-    assert (
-        resolve_backend_output_dir(
-            shared,
-            "tpch",
+
+    cases = [
+        ("tpch", 1.0, "4.0.0", None, True),
+        ("tpch", 1.0, "4.0.0", "benchbox-streaming", True),
+        ("tpch", 1.0, "4.0.0", "tpcgen-cli", False),
+        ("tpch", 1.0, "5.0.0", None, False),
+        ("tpch", 10.0, "4.0.0", None, False),
+        ("h2odb", 1.0, "vec-1.0", None, False),
+    ]
+    for benchmark, sf, version, parquet_writer, expect_shared in cases:
+        base = tmp_path / "datagen" / f"{benchmark}_sf{sf:g}"
+        resolved = resolve_backend_output_dir(
+            base,
+            benchmark,
             backend="native",
-            scale_factor=1.0,
-            backend_version="4.0.0",
-            output_format="tbl",
+            scale_factor=sf,
+            backend_version=version,
+            parquet_writer=parquet_writer,
         )
-        == shared
-    )
-    assert (
-        resolve_backend_output_dir(
-            shared,
-            "tpch",
-            backend="native",
-            scale_factor=1.0,
-            backend_version="5.0.0",
-            output_format="tbl",
-        )
-        == tmp_path / "datagen" / "tpch_sf1__backend_native"
-    )
-    assert (
-        resolve_backend_output_dir(
-            shared,
-            "tpch",
-            backend="native",
-            scale_factor=1.0,
-            backend_version="4.0.0",
-            output_format="parquet",
-        )
-        == tmp_path / "datagen" / "tpch_sf1__backend_native"
-    )
-    h2o_shared = tmp_path / "datagen" / "h2odb_sf1"
-    assert (
-        resolve_backend_output_dir(h2o_shared, "h2odb", backend="native", scale_factor=1.0)
-        == tmp_path / "datagen" / "h2odb_sf1__backend_native"
-    )
+        assert (resolved == base) is expect_shared
+        if not expect_shared:
+            assert resolved == tmp_path / "datagen" / f"{benchmark}_sf{sf:g}__backend_native"
+
+        manifest: dict[str, object] = {
+            "benchmark": benchmark,
+            "scale_factor": sf,
+            "formats": ["tbl", "parquet"] if parquet_writer else ["tbl"],
+            **current_datagen_stamp(benchmark, backend="native", backend_version=version),
+        }
+        if parquet_writer is not None:
+            manifest["parquet_writer"] = parquet_writer
+        assert manifest_datagen_is_current(manifest, benchmark=benchmark, expected_backend="legacy") is expect_shared
 
 
 def test_cli_datagen_rejects_auto_and_forwards_legacy(monkeypatch: pytest.MonkeyPatch) -> None:

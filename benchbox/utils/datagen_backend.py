@@ -291,7 +291,7 @@ def resolve_backend_output_dir(
     backend: str | None,
     scale_factor: float | None = None,
     backend_version: str | None = None,
-    output_format: str | None = None,
+    parquet_writer: str | None = None,
 ) -> Path:
     if backend is None or str(backend).strip().lower() == "legacy":
         return base_dir
@@ -300,7 +300,7 @@ def resolve_backend_output_dir(
     if is_byte_identical_backend_output(
         benchmark,
         backend_version=backend_version,
-        output_format=output_format,
+        parquet_writer=parquet_writer,
         scale_factor=scale_factor,
     ):
         return base_dir
