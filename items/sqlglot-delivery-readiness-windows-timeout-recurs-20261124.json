@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Child duration on windows-latest recorded from at least 20 runs, with p50 and p99.",
+    "Limit or code change lands; no Windows timeout of this test in the next 20 PR CI runs that execute it.",
+    "The test still fails when the readiness path mutates the repository."
+  ],
+  "context": "Filed 2026-11-24 from the close-out of the scale and TPC-DI remediation (umbrella remediation-revised-plan-20261120, done 2026-11-23).",
+  "description": "## Problem\n`tests/unit/workflows/test_sqlglot_delivery_workflow.py::test_readiness_authenticates_without_repository_mutations[ready-Verified configured App authentication]` raises `subprocess.TimeoutExpired` when its `node -` child runs past the test's 20 s limit on `windows-latest`. sqlglot-delivery-readiness-windows-flake-20261120 was dropped as a single occurrence. It has since recurred:\n- CI run 43887923771, 2026-11-16 (the occurrence recorded on the dropped item);\n- #4410 at 7d8966ea57, 2026-11-20, rerun of run 44777675803 (recorded on feature-fix-corpus-classification-and-seed-provenance-20261120);\n- #4331 at aa403069cc, 2026-11-22, run 45059651205.\nEach time the PR under test did not touch the workflow or the test, `core` failed, and the merge needed an owner-authorised re-run.\n\n## Change\nMeasure how long the `node -` child takes on `windows-latest` (cold and warm). Then either set the limit from that evidence or remove the cold-start cost from the measured path, keeping what the test asserts: readiness authenticates without mutating the repository.\n\n## Decision gates\n- The new limit, if any, is shown to the owner with the measured distribution before it is committed.\n- Skipping or marking the test on Windows needs the owner's approval; it is not the default fix.\n\n## Verification rubric\nPass: the child's duration on `windows-latest` is recorded from at least 20 runs (CI history or a dispatched loop); the limit is at least 3x the observed p99, or the cold start is gone from the measured path; and a deliberate repository mutation in the readiness path still makes the test fail.\n\n## Guardrails\n- Work in a linked worktree from `make worktree-create`; never write in the primary clone. Stage named paths only; commit as the pinned human identity with no agent attribution.\n- Push only after `make pr-preflight` passes on the exact head. Never `--no-verify`, force-push, or rewrite authorship.\n- Arm only with `make pr-arm`, once per head. A second attempt only when the refusal named a cause that is now fixed; a third needs the owner. `make pr-rerun` only for a job the runner cancelled or never ran, never to re-roll a failed test.\n- Never post a stand-in review. Resolve a review thread only after the bot has reviewed the new head and did not raise the finding again.\n- Heavy work only through `make heavy-run` or a lock-taking target. Never set `BENCHBOX_HEAVY_ADMIT=force`, `BENCHBOX_SKIP_TEST_LOCK` or `BENCHBOX_HEAVY_WATCHDOG=off`.\n- Any new limit, threshold, default or user-facing label is shown to the owner before it is committed.\n- Do not mark a test skip, xfail, quarantine or slow to make it pass.\n- Report only what merged and what was verified, with run ids and heads.",
+  "links": [
+    "tests/unit/workflows/test_sqlglot_delivery_workflow.py",
+    "sqlglot-delivery-readiness-windows-flake-20261120"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7df5251ec4291d5bac245463",
+      "at": "2026-11-24T14:26:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e3a9e6d1544941b39a313c88f61d9154",
+      "session_id": "c81aa4dd49e04ffea4f29cb72ae09d11"
+    }
+  ]
+}

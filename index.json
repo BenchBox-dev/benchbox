@@ -47560,6 +47560,13 @@
       "status": "dropped",
       "title": "Windows CI: a readiness test's Node subprocess timed out at 20 seconds once"
     },
+    "sqlglot-delivery-readiness-windows-timeout-recurs-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop the Windows sqlglot-delivery readiness test timing out on its node child"
+    },
     "sqlglot-delivery-schedules-start-hours-late-20261117": {
       "claim": null,
       "needs": [],
