@@ -4088,7 +4088,7 @@
         }
       },
       "integration_branch": "feat/corpus-rule-r4",
-      "integration_head": "e21c7c2c7781c38419f8d0c9cb3fba133cc95077",
+      "integration_head": "0512d49b99b2b174d5df30d7fae98f57f2d99158",
       "integration_log": [
         {
           "at": "2026-11-22T23:06:06Z",
@@ -4521,6 +4521,40 @@
           "op_id": "28585a8ed6f84ce5aeb909c50630c447",
           "previous_head": "db68fbedc523f2d53b659e34cc11edb6367777bf",
           "seq": 13
+        },
+        {
+          "at": "2026-11-24T21:23:28Z",
+          "changed_files": [
+            ".github/soundness-paths.txt",
+            "benchbox/core/results/corpus_rule.py",
+            "benchbox/core/results/corpus_score.py",
+            "benchbox/core/results/schema.py",
+            "changelog.d/fix-corpus-rule-facts-match-readers.json",
+            "results-data/compliance-classes.json",
+            "scripts/stage_seed_corpus_bundle.py",
+            "tests/unit/core/results/test_corpus_rule.py",
+            "tests/unit/core/results/test_corpus_score.py",
+            "tests/unit/core/results/test_qphds.py",
+            "tests/unit/core/results/test_tpch_refresh_metrics.py",
+            "tests/unit/scripts/test_corpus_cohort_depth.py",
+            "tests/unit/scripts/test_soundness_manifest.py",
+            "tests/unit/workflows/test_seed_corpus_pr_base.py"
+          ],
+          "head": "0512d49b99b2b174d5df30d7fae98f57f2d99158",
+          "kind": "fix",
+          "op_id": "6e0741e80c8e4826a4571636ce447981",
+          "previous_head": "e21c7c2c7781c38419f8d0c9cb3fba133cc95077",
+          "requires_acceptance": [
+            "crr-a1-rule-module-and-snapshot",
+            "crr-a2-writer-and-score-from-timings",
+            "crr-a3-validators-staging-and-admission",
+            "crr-a4-database-metrics-and-cli-readers",
+            "crr-a5-published-results-mirror",
+            "crr-b1-identity-and-comparison-version",
+            "crr-c1-validation-status-vocabulary",
+            "crr-d1-observed-engine-contract-and-dataframe"
+          ],
+          "seq": 14
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r4",
