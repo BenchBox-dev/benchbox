@@ -1,6 +1,6 @@
 {
   "acceptance": [
-    "Measurement report records exact CLI/Python commands, host hardware/OS, Python/PyArrow/DuckDB versions, and per-benchmark generation wall time, Parquet conversion wall time, total wall time, output bytes, and peak RSS at SF 1 and SF 10.",
+    "Measurement report is recorded in this tracker item (context_append / closing_note per [SESSION-STATE-001]) with exact CLI/Python commands, host hardware/OS, Python/PyArrow/DuckDB versions, and per-benchmark generation wall time, Parquet conversion wall time, total wall time, output bytes, and peak RSS at SF 1 and SF 10.",
     "All 11 in-scope benchmarks are measured (tpch, tpcds, ssb, h2odb, tsbs_devops across all 5 tables tags/cpu/mem/disk/net, vector_search, coffeeshop, amplab, clickbench synthetic, joinorder_synthetic, tpch_skew), with explicit notes for any capped SF 10 run.",
     "The single slowest or highest-RSS non-TPC synthetic generator is unambiguously identified as the target for datagen-p0-vectorization-prototype.",
     "Zero tracked repository source files or shared datagen caches are modified by this measurement task."
@@ -19,6 +19,14 @@
       "client": "antigravity-client",
       "op": "create",
       "op_id": "d9a01001b87fd8a4c6e54982b8310c01",
+      "session_id": "85b2c240cd2b4c709f5c56393a05342d"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032",
+      "at": "2026-11-24T00:21:29Z",
+      "client": "antigravity-client",
+      "op": "update",
+      "op_id": "d9a02001b87fd8a4c6e54982b8310c01",
       "session_id": "85b2c240cd2b4c709f5c56393a05342d"
     }
   ]
