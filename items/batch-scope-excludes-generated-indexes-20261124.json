@@ -5,6 +5,7 @@
     "Test: a hand-edited generated index that differs from a fresh regeneration is refused at landing.",
     "The list of generated files and their generator commands lives in one place and the docs link to it."
   ],
+  "context": "Blocked on the owner's choice among options 1-3 in the description; unblock after it is recorded.",
   "description": "## Problem\nA registered batch freezes each member's path scope, and a leader fix must stay inside the union of member scopes. Some repository files are generated indexes that any member can make stale, for example _project/inert-doc-readers.json, which changes when a new test file reads a document. On 2026-11-24 a release-readiness member added a test, its check failed on tests/unit/scripts/test_inert_paths.py (\"inert-doc-readers.json is stale\"), and neither the member nor the leader could land the regenerated file. The only exits were dropping the test or aborting the batch; the owner chose to abort three batches and deliver them as ordinary PRs.\n\n## Decision gate (owner)\nOptions: (1) batch tooling treats a fixed, named set of generated files as always landable when the leader regenerates them with their generator and the result matches a fresh regeneration; (2) register_batch adds those files to every scope automatically; (3) document that batches must list them in scope at registration. Recommendation: (1). Record the owner's choice in this item before implementation.\n\n## Change\nImplement the chosen option in scripts/batch_integration.py (scope check at land and at batch-advance), list the generated files and their generator commands in one place, and document it in docs/agent/batch-feature-delivery.md.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check). A hand-edited generated file must still be refused; only byte-identical regeneration is accepted.",
   "links": [
     "scripts/batch_integration.py",
@@ -18,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "261034c3729644109b6a16734e26df76",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:23:08Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c4c8007b237f48e7bcc99b3151475971",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
