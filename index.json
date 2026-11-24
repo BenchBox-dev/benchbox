@@ -52862,6 +52862,13 @@
       "status": "open",
       "title": "Evaluate whether trimming post-merge Trunk work is worthwhile after coverage selection stabilizes"
     },
+    "trunk-uat-cedardb-shard-failed-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Trunk UAT UAT stage 2 cedardb failed on 2026-11-24 (develop ee2e196e3c)"
+    },
     "trunk-uat-dask-df-h2odb-sf1-timed-out-20261123": {
       "claim": null,
       "needs": [],
