@@ -10,6 +10,7 @@ import pytest
 
 pl = pytest.importorskip("polars")
 
+from benchbox.core.results import corpus_score
 from benchbox.core.results.metrics import TPCMetricsCalculator
 from benchbox.core.tpch import dataframe_throughput, throughput_test as throughput_module
 from benchbox.core.tpch.dataframe_refresh import DataFrameRefresher, execute_refresh_function
@@ -470,15 +471,36 @@ class TestThroughputWithRefreshStream:
         test, _observations = throughput
 
         result = test.run()
+        assert result.success, result.errors
+        assert result.refresh_stream is not None
 
-        valid, first_set, streams = TPCMetricsCalculator._throughput_refresh_evidence(
-            {
-                "num_streams": 2,
-                "stream_results": [{}, {}],
-                "refresh_stream": result.refresh_stream.to_dict(),
-            }
-        )
-        assert (valid, first_set, streams) == (True, 2, 2)
+        phase = {
+            "status": "COMPLETED" if result.success else "FAILED",
+            "num_streams": result.config.num_streams,
+            "stream_results": [
+                {
+                    "stream_id": stream.stream_id,
+                    "success": stream.success,
+                    "duration_ms": stream.duration * 1000,
+                    "query_count": stream.queries_executed,
+                }
+                for stream in result.stream_results
+            ],
+            "refresh_stream": result.refresh_stream.to_dict(),
+        }
+        assert sorted((stream["stream_id"], stream["query_count"]) for stream in phase["stream_results"]) == [
+            (1, 22),
+            (2, 22),
+        ]
+        assert TPCMetricsCalculator._throughput_refresh_evidence(phase) == (True, 2, 2)
+        minimum_reason = "QphH requires the scale's minimum number of successful throughput streams"
+        refresh_reason = "Throughput phase must complete one successful RF1/RF2 pair per query stream"
+        sf1_reasons = corpus_score.qphh_structure_problems(None, phase, scale_factor=1.0)
+        sf10_reasons = corpus_score.qphh_structure_problems(None, phase, scale_factor=10.0)
+        assert minimum_reason not in sf1_reasons
+        assert minimum_reason in sf10_reasons
+        assert refresh_reason not in sf1_reasons
+        assert refresh_reason not in sf10_reasons
 
     def test_a_failing_refresh_marks_the_stream_failed_and_the_run_unsuccessful(
         self, throughput: Any, tmp_path: Path
