@@ -52,8 +52,8 @@ below in a dated note. A passing unit suite never closes G3.
    parity on three consecutive checks).
 3. Run the same power phase with `--gateway <name>` and the gateway options
    for the endpoint. Add `--platform-option gateway_ca_bundle=...` only for a
-   private-CA endpoint, with `REQUESTS_CA_BUNDLE` set to the same file before
-   BenchBox starts.
+   private-CA endpoint. On snowflake-connector-python below 5, also set
+   `REQUESTS_CA_BUNDLE` to the same file before BenchBox starts.
 4. Run the same command a second time to observe warm-run behavior.
 5. For Databricks, repeat steps 1 and 3 with `--gateway espresso` or
    `--gateway custom` and an explicit `server_hostname` and `access_token`.
