@@ -1,11 +1,11 @@
 {
   "acceptance": [
     "The owner's choice (a, b or c) and reason are recorded in this item's context.",
-    "For (a) or (b): an installed 0.6.0 wheel's tpc-di directory contains text stating that the appendix SQL files are not included, and the TPC legend bytes are unchanged (hash check in a test).",
+    "For (a) or (b): an installed 0.6.0 wheel's tpc-di directory and the sdist's _sources/tpc-di contain the statement that the appendix SQL files are not included, and bytes 0-1907 of each NOTICE.txt keep SHA-256 6b2cdb563ec3ec2611da682f694f8b64c157cdf037232036dd0877e05ca8bdf4 (quality/comment-cleanup-scope.json), checked in a test.",
     "For (a): make comment-policy-check passes on the merged head and the pin change has its soundness review.",
-    "The release item release-v0-6-0-20261124 records whether this must close before the final v0.6.0 tag."
+    "release-v0-6-0-20261124 lists this item in needs, or records that the owner waived it."
   ],
-  "context": "Blocked on the owner's choice (a, b or c) in the description; unblock after it is recorded.",
+  "context": "Blocked on the owner's choice (a, b or c) in the description; unblock after it is recorded.\n\nRelated: tpcdi-settle-appendix-sql-source-20261121 may rewrite the same NOTICE when the official appendix source is settled; record which lands first.",
   "description": "## Problem\nFrom 0.6.0 the wheel and sdist leave out the four TPC-DI appendix SQL files (tpcdi_audit.sql, tpcdi_validation.sql, tpcdi_visibility_1.sql, tpcdi_visibility_2.sql), but the bundled benchbox/_binaries/tpc-di/NOTICE.txt (and _sources/tpc-di/NOTICE.txt) still says \"The SQL files are distributed unmodified ... with the EULA and this legend\" and lists their SHA-256 values. A user reading the installed NOTICE is told the files are present when they are not.\n\nThe planned fix appends a paragraph saying distributions omit the files and that the file statements describe the repository copies. It cannot land as a normal change: quality/comment-cleanup-scope.json pins the bundled NOTICE as a whole-file external notice, and the comment-policy commit hook refuses any byte change (\"protected external notice blob changed\"). docs/internal/comment-policy.md says a candidate notice must keep the pinned bytes identical to the base.\n\n## Decision gate (owner)\nChoose one: (a) approve changing the pin for these two NOTICE files through the soundness-review path, then append the paragraph; (b) leave NOTICE.txt unchanged and put the statement in a separate, unpinned file next to it (for example DISTRIBUTION.txt) that the NOTICE does not contradict; (c) accept the current wording for 0.6.0 and record why. Record the choice and its reason in this item before any change.\n\n## Guardrails\nNever bypass the commit hook (--no-verify) or edit the scope pin without the owner's choice recorded here. The legend text required by the TPC EULA stays byte-identical. Work in a linked worktree; ship through make pr-open and make pr-arm.",
   "links": [
     "benchbox/_binaries/tpc-di/NOTICE.txt",
@@ -36,6 +36,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "aa3c1bfd8ded4d9889814d6c68b454d0",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:34:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "19fc4a0221ba4e0da0015c052e700ea9",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
