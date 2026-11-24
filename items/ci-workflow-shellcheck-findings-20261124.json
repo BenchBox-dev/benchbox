@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "actionlint reports no error-level findings on ci.yml.",
+    "Each remaining finding is fixed or listed as accepted in the PR with a reason.",
+    "The owner's decision on running actionlint in CI is recorded here."
+  ],
+  "description": "## Problem\nactionlint on .github/workflows/ci.yml (develop, 2026-11-24) reports one shellcheck error, SC1087 (\"Use braces when expanding arrays\"), and style or info findings SC2129 and SC2086. The error can change what the script runs. No CI step runs actionlint, so new findings are not caught.\n\n## Decision gate\nFix the SC1087 finding after confirming what the line intends. For style findings, fix them or list them as accepted. Whether to add actionlint to CI is an owner decision; record it here.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check). ci.yml is a soundness path: follow its review rules.",
+  "links": [
+    ".github/workflows/ci.yml"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:22:07Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "7f588401656e42768988605123f17040",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    }
+  ]
+}

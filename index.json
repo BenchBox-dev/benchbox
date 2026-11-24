@@ -22081,6 +22081,13 @@
       "status": "done",
       "title": "Measure oracle and text-edit workflow fan-out per PR before choosing the next CI optimization"
     },
+    "ci-workflow-shellcheck-findings-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Fix or justify the shellcheck findings actionlint reports in ci.yml"
+    },
     "circular-import-issues-completed": {
       "claim": null,
       "needs": [],
