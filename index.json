@@ -49671,7 +49671,9 @@
     },
     "theseus-local-review-hides-classification-cause-20261124": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "review-classifier-degraded-remediation-20261124"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Theseus local review reports 'classification unreadable' and drops the real classification error"
