@@ -50117,6 +50117,13 @@
       "status": "done",
       "title": "Harden the testing correctness gate and close review follow-ups"
     },
+    "tests-depend-on-host-free-memory-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Stop integration tests that run small DataFrame benchmarks from failing when the host is short of free memory"
+    },
     "tests-inherit-outer-make-variables": {
       "claim": null,
       "needs": [],
