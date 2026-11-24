@@ -51729,10 +51729,15 @@
       "title": "TPC-DI step 31: Results Explorer shows TPC_DI_RPS and phase throughputs (benchbox-site, with the core read-model check)"
     },
     "tpcdi-appendix-sql-excluded-from-distributions-20261124": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-25T19:09:24Z",
+        "generation": "45895430dffa418b928081de44581198",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Keep the TPC-DI appendix SQL out of the 0.6.0 wheel and sdist until its source is settled"
     },
     "tpcdi-bundle-tpc-di-tools-20261121": {
