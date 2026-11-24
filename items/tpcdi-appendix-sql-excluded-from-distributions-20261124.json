@@ -4,6 +4,11 @@
     "A source checkout still has them and the TPC-DI rework tests that read them still pass.",
     "No installed-distribution code path crashes on their absence."
   ],
+  "batch": {
+    "batch_id": "release-gates",
+    "implementation_dependencies": [],
+    "member_id": "tpcdi-appendix-sql-excluded-from-distributions-20261124"
+  },
   "description": "## Problem\nBenchBox-dev/benchbox#4467 ships the TPC-DI appendix SQL (tpcdi_audit.sql, tpcdi_validation.sql, tpcdi_visibility_1.sql, tpcdi_visibility_2.sql) unmodified in benchbox/_binaries/tpc-di/ and _sources/tpc-di/. Their source is an unofficial shared copy, and tpcdi-settle-appendix-sql-source-20261121 forbids a release that includes them until the source is settled. TPC-DI is unavailable in 0.6.0, so no user path needs them.\n\n## Owner decision (choice dialog, 2026-11-24)\n\"Exclude the four appendix SQL files from the 0.6.0 wheel and sdist; keep them in the repository for the rework. Settle the source before the release that reopens TPC-DI.\"\n\n## Change\n- Exclude exactly those four files from both distributions (package data and MANIFEST.in / sdist), keeping them in the repository and usable from a source checkout.\n- Code that loads them (benchbox/core/tpcdi/appendix.py and its callers) must fail with a clear message, not a crash, when they are absent from an installed distribution. TPC-DI already refuses to run, so this only affects internal callers and tests.\n- Keep the integrity manifest, NOTICE text and README licence section truthful for what each distribution contains.\n- A test builds the wheel and the sdist (or inspects their file lists through the existing package checks) and asserts the four files are absent and the TPC-DI tools archive, EULA and NOTICE files are unchanged.\n- Append to tpcdi-settle-appendix-sql-source-20261121 that the release gate is met by exclusion for 0.6.0; that item stays open for the reopening release.\n\n## Guardrails\nNo change to the files themselves. Do not remove the TPC-DI tools archive or licence files. No comments or docstrings in first-party code; changelog fragment under Before you upgrade only if a user can observe it, otherwise internal.",
   "sessions": [
     {
@@ -12,6 +17,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "b39763365078470c96d9eee42b9c4f1b",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T14:47:56Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "88e80bebb4494195b2528337db54171f",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
