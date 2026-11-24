@@ -1,11 +1,19 @@
 {
   "acceptance": [
-    "BenchBox-dev/benchbox-site on next updates docs/contributing-results.md, docs/reference/cli/submit.md, docs/guides/hosted-submission.md, docs/reference/hosted-results-contract.md, docs/operations/uat-framework.md, and docs/operations/uat-methodology.md to target develop instead of published-results.",
-    "docs/development/adr/adr-published-identifier-field-set.md carries a dated note if needed without altering historical context.",
-    "Changes merge into next and ride the normal release PR into main alongside the core release that ships Step 3."
+    "BenchBox-dev/benchbox-site on next updates all six pages (docs/contributing-results.md, docs/reference/cli/submit.md, docs/guides/hosted-submission.md, docs/reference/hosted-results-contract.md, docs/operations/uat-framework.md, docs/operations/uat-methodology.md) so user-facing submission instructions target develop with manual review rather than published-results.",
+    "docs/development/adr/adr-published-identifier-field-set.md carries a brief dated note if its published-results reference would mislead readers, without rewriting historical text.",
+    "All site CI checks pass on next (npm run lint:docs, npm run docs:check, inventory:core-links, unit/browser suites) and the PR is squash-merged into next to ride the Step 3 core release PR into main."
   ],
   "context": "Step 4 of the owner-approved Option 1 corpus consolidation plan (2026-11-24). Tracked in core per benchbox-site/AGENTS.md (cross-repo work tracked in core with site paths listed). Edits go to benchbox-site next so they reach main with the core release that updates benchbox submit.",
-  "description": "## Problem\\nSix user-facing pages in `BenchBox-dev/benchbox-site` describe the released `published-results` PR target: `docs/contributing-results.md`, `docs/reference/cli/submit.md`, `docs/guides/hosted-submission.md`, `docs/reference/hosted-results-contract.md`, `docs/operations/uat-framework.md`, and `docs/operations/uat-methodology.md` (plus `docs/development/adr/adr-published-identifier-field-set.md`).\\n\\n## Change (Step 4 of 6)\\nUpdate those pages on `BenchBox-dev/benchbox-site` `next` to describe the `develop` bundle submission workflow and manual-review guard, marked for the release that ships Step 3 so they reach `main` through the normal release documentation PR.",
+  "description": "## Problem\nSix published documentation pages in `BenchBox-dev/benchbox-site` describe the released `published-results` PR submission flow: `docs/contributing-results.md`, `docs/reference/cli/submit.md`, `docs/guides/hosted-submission.md`, `docs/reference/hosted-results-contract.md`, `docs/operations/uat-framework.md`, and `docs/operations/uat-methodology.md` (plus `docs/development/adr/adr-published-identifier-field-set.md`). Because these describe behavior that changes with the Step 3 CLI release, they must land on `benchbox-site`'s `next` branch so they reach `main` with that release.\n\n## Change\nIn a linked worktree of `BenchBox-dev/benchbox-site` branched from `origin/next`:\n1. Update the six user-facing pages above to target `develop` for bundle PRs, explain that external bundle PRs undergo manual review (never auto-merged) before entering the next `site-inputs` Explorer build, and remove obsolete two-step `published-results` archive guidance.\n2. Add a brief dated note on `docs/development/adr/adr-published-identifier-field-set.md` if needed without altering historical context.\n3. Verify no broken internal links, MyST constructs, or spelling errors; open a PR targeting `next` and squash-merge once `CI/ci` is green.\n\n## Decision gates\n- Target `next` ONLY, never `main`: updating `main` ahead of the Step 3 core release would contradict the released 0.5.x `benchbox submit` CLI.\n- Never copy core maintainer-only material (`docs/internal/`, `docs/agent/`) into `benchbox-site`, and never introduce Python or read core files outside `$SITE_INPUTS`.\n- If any relative core link changes, regenerate `inventory/core-linked-paths.json` via `npm run inventory:core-links -w website`.\n\n## Verification rubric\n- Pass: `npm run lint:docs` (markdownlint + cspell), `npm run docs:check`, and all `BenchBox-dev/benchbox-site` `CI/ci` jobs pass on the PR targeting `next`; grep for `published-results` across the six updated pages shows no remaining active instruction to open PRs against `published-results`; PR squash-merged into `next`.\n- Fail: PR targets `main` ahead of release, breaks `docs:check` / `llms.txt` / anchor links, or leaves stale `published-results` PR instructions in any of the six pages.\n\n## Guardrails\nFollow `benchbox-site/AGENTS.md`: work in a linked worktree of `/Users/joe/Developer/benchbox-site`, never the primary clone; zero Python in `benchbox-site`; stage files by explicit path; commit as `Joe Harris <joeharris76@gmail.com>` with no agent/co-author trailers or session/tracker IDs in committed prose; merge with `gh pr merge --squash` once `CI/ci` is green (auto-merge is off in `benchbox-site`).",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-site/blob/next/docs/contributing-results.md",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/next/docs/reference/cli/submit.md",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/next/docs/guides/hosted-submission.md",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/next/docs/reference/hosted-results-contract.md",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/next/docs/operations/uat-framework.md",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/next/docs/operations/uat-methodology.md"
+  ],
   "sessions": [
     {
       "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
@@ -13,6 +21,14 @@
       "client": "antigravity-client",
       "op": "create",
       "op_id": "b1c2d3e4f5061728394a5b6c7d8e9f04",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T21:13:58Z",
+      "client": "antigravity-client",
+      "op": "update",
+      "op_id": "c1d2e3f4a5061728394a5b6c7d8e9f04",
       "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
     }
   ]
