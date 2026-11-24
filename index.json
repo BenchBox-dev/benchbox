@@ -25960,6 +25960,17 @@
       "status": "open",
       "title": "Cut over validated versioned SSB generator default while preserving v1 legacy reproducibility"
     },
+    "datagen-p3-synthetic-cutover": {
+      "claim": null,
+      "needs": [
+        "datagen-p2-vectorize-synthetic-generators",
+        "datagen-p2-rust-repo-gate",
+        "bundle-data-generation-hash-missing-from-corpus"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Cut over validated Tier 3 synthetic generator defaults while preserving legacy reproducibility"
+    },
     "datagen-p3-tpc-default-cutover": {
       "claim": null,
       "needs": [
