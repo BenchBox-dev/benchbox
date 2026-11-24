@@ -72,6 +72,9 @@ MERGE_GATE_GUARD_TOKENS = (
 
 MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "tuning-liveness", "Run real-CLI tuning liveness matrix"): "tuning-liveness-gate",
+    ("ci.yml", "snowflake-connector5", "Run Snowflake unit tests on snowflake-connector-python 5.x"): (
+        "snowflake-connector5-gate"
+    ),
     ("ci.yml", "sql-execution-evidence", "Run the executed SQL comparison gate"): "sql-execution-gate",
     ("ci.yml", "package-smoke", "Build package"): "test-package",
     ("ci.yml", "package-smoke", "Run the README first command from the built wheel"): "test-package",

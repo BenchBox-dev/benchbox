@@ -241,6 +241,7 @@ jobs:
       api-contract-changed: ${{ steps.path-flags.outputs.api-contract-changed }}
       tuning-paths-changed: ${{ steps.path-flags.outputs.tuning-paths-changed }}
       sql-evidence-paths-changed: ${{ steps.path-flags.outputs.sql-evidence-paths-changed }}
+      snowflake-connector5-needed: ${{ steps.path-flags.outputs.snowflake-connector5-needed }}
       windows-leg-needed: ${{ steps.windows-select.outputs.windows-leg-needed }}
       trunk-lane-plain-needed: ${{ steps.path-flags.outputs.trunk-lane-plain-needed }}
       trunk-lane-coverage-needed: ${{ steps.path-flags.outputs.trunk-lane-coverage-needed }}
@@ -411,6 +412,9 @@ jobs:
           echo "trunk-lane-plain-needed=$trunk_plain" >> "$GITHUB_OUTPUT"
           echo "trunk-lane-coverage-needed=$trunk_coverage" >> "$GITHUB_OUTPUT"
           echo "sql-evidence-paths-changed=$sql_evidence" >> "$GITHUB_OUTPUT"
+          snowflake_connector5=false
+          if grep -qE '^(benchbox/platforms/snowflake|benchbox/core/gateway\.py|benchbox/core/hooks/|tests/unit/platforms/(.*/)?test_snowflake|pyproject\.toml$|uv\.lock$)' .ci-paths/changed.txt; then snowflake_connector5=true; fi
+          echo "snowflake-connector5-needed=$snowflake_connector5" >> "$GITHUB_OUTPUT"
 
       - name: Classify merge units
         id: units
@@ -1658,6 +1662,29 @@ jobs:
       - name: Run real-CLI tuning liveness matrix
         run: make tuning-liveness-gate
 
+  snowflake-connector5:
+    name: snowflake-connector5
+    needs: ci-paths
+    if: ${{ needs.ci-paths.outputs.snowflake-connector5-needed == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
+
+      - name: Run Snowflake unit tests on snowflake-connector-python 5.x
+        run: make snowflake-connector5-gate
+
   sql-execution-evidence:
     name: sql-execution-evidence
     needs: ci-paths
@@ -1847,7 +1874,7 @@ jobs:
 
   core:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'core (text edit)' || 'core' }}
-    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, sql-execution-evidence, windows-tests, package-smoke, dependency-audit, trunk-lane-plain, trunk-lane-coverage]
+    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, snowflake-connector5, sql-execution-evidence, windows-tests, package-smoke, dependency-audit, trunk-lane-plain, trunk-lane-coverage]
     if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
@@ -1943,6 +1970,7 @@ jobs:
             --expect correctness-gate=${{ needs.ci-paths.outputs.heavy-needed == 'true' }} \
             --expect tpch-binary-framing=${{ needs.ci-paths.outputs.heavy-needed == 'true' || needs.ci-paths.outputs.framing-needed == 'true' }} \
             --expect tuning-liveness=${{ needs.ci-paths.outputs.tuning-paths-changed == 'true' }} \
+            --expect snowflake-connector5=${{ needs.ci-paths.outputs.snowflake-connector5-needed == 'true' }} \
             --expect sql-execution-evidence=${{ needs.ci-paths.outputs.sql-evidence-paths-changed == 'true' }} \
             --expect windows-tests=${{ needs.ci-paths.outputs.windows-leg-needed == 'true' }} \
             --expect package-smoke=${{ needs.ci-paths.outputs.packaging-needed == 'true' || needs.ci-paths.outputs.first-command-needed == 'true' }} \

@@ -57,6 +57,7 @@
     "tests/unit/scripts/test_release_maintenance_admission.py",
     "tests/unit/scripts/test_release_probe_launch.py",
     "tests/unit/scripts/test_release_releasable.py",
+    "tests/unit/scripts/test_release_replaced_commit.py",
     "tests/unit/scripts/test_review_policy_pin.py"
   ],
   "AGENTS.md": [

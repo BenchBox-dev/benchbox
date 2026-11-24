@@ -87,6 +87,10 @@ tuning-liveness-gate:
 	command -v zstd
 	uv run -- python -m pytest tests/integration/tuning/test_tuning_liveness_e2e.py -m slow -q -n 0 --tb=short -p no:randomly
 
+.PHONY: snowflake-connector5-gate
+snowflake-connector5-gate:
+	uv run --group dev --extra snowflake --with "snowflake-connector-python>=5,<6" -- python -m pytest tests/unit/platforms -k snowflake -q -n 0 --tb=short
+
 .PHONY: correctness-gate-digests-regen
 correctness-gate-digests-regen:
 	BENCHBOX_CORRECTNESS_GATE_QUERY_IDS=$(CORRECTNESS_GATE_QUERY_IDS) uv run -- python _project/scripts/regenerate_correctness_gate_digests.py
