@@ -143,8 +143,8 @@ def resolve_gateway_endpoint(
                 f"require {INSECURE_GATEWAY_ENV}=1"
             )
         logger.warning(
-            "Gateway %s is configured without TLS verification or over plain HTTP; credentials and results "
-            "can be intercepted. Use only on a trusted network.",
+            "Gateway %s is configured without certificate revocation checks or over plain HTTP; credentials and "
+            "results can be intercepted. Use only on a trusted network.",
             selected,
         )
 

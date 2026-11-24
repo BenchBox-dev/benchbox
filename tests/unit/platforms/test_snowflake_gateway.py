@@ -9,6 +9,7 @@ import pytest
 from benchbox.core.exceptions import ConfigurationError
 from benchbox.core.gateway import INSECURE_GATEWAY_ENV, GatewayConfigurationError, UnsupportedGatewayError
 from benchbox.platforms.snowflake import SnowflakeAdapter
+from tests.fixtures.snowflake_connector import installed_connector_major, installed_connector_parameters
 from tests.fixtures.snowflake_warehouses import SHOW_WAREHOUSES_COLUMNS
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium, pytest.mark.cloud_import]
@@ -25,6 +26,7 @@ def snowflake_dependencies(monkeypatch):
         patch("benchbox.platforms.snowflake.check_platform_dependencies", return_value=(True, [])),
         patch("benchbox.platforms.snowflake.snowflake") as mock_snowflake,
     ):
+        mock_snowflake.connector.connection.DEFAULT_CONFIGURATION = {"disable_ocsp_checks": (False, bool)}
         yield mock_snowflake
 
 
@@ -36,7 +38,7 @@ def test_native_adapter_has_no_gateway_endpoint() -> None:
     adapter = _adapter()
     assert adapter.gateway_endpoint is None
     params = adapter._connect_params({}, include_database=True)
-    assert not {"host", "port", "protocol", "insecure_mode", "ocsp_fail_open"} & set(params)
+    assert not {"host", "port", "protocol", "disable_ocsp_checks", "insecure_mode", "ocsp_fail_open"} & set(params)
     assert "gateway" not in adapter.get_platform_info()
 
 
@@ -165,12 +167,24 @@ def test_insecure_gateway_requires_environment_opt_in() -> None:
         _adapter(gateway="custom", gateway_host="gw.example.com", allow_insecure_gateway=True)
 
 
-def test_insecure_gateway_maps_insecure_mode_and_warns(monkeypatch, caplog) -> None:
+def test_insecure_gateway_turns_off_ocsp_checks_and_warns(monkeypatch, caplog) -> None:
     monkeypatch.setenv(INSECURE_GATEWAY_ENV, "1")
     with caplog.at_level("WARNING", logger="benchbox.core.gateway"):
         adapter = _adapter(gateway="custom", gateway_host="gw.example.com", allow_insecure_gateway=True)
-    assert adapter._connect_params({}, include_database=False)["insecure_mode"] is True
-    assert any("without TLS verification" in record.message for record in caplog.records)
+    assert adapter._connect_params({}, include_database=False)["disable_ocsp_checks"] is True
+    assert any("without certificate revocation checks" in record.message for record in caplog.records)
+
+
+def test_insecure_gateway_uses_insecure_mode_on_connectors_without_disable_ocsp_checks(
+    snowflake_dependencies, monkeypatch
+) -> None:
+    snowflake_dependencies.connector.connection.DEFAULT_CONFIGURATION = {"insecure_mode": (False, bool)}
+    monkeypatch.setenv(INSECURE_GATEWAY_ENV, "1")
+    params = _adapter(gateway="custom", gateway_host="gw.example.com", allow_insecure_gateway=True)._connect_params(
+        {}, include_database=False
+    )
+    assert params["insecure_mode"] is True
+    assert "disable_ocsp_checks" not in params
 
 
 def test_plain_http_to_remote_host_requires_environment_opt_in(monkeypatch, caplog) -> None:
@@ -182,7 +196,7 @@ def test_plain_http_to_remote_host_requires_environment_opt_in(monkeypatch, capl
         adapter = _adapter(gateway="custom", gateway_host="gw.example.com", gateway_protocol="http")
     params = adapter._connect_params({}, include_database=False)
     assert params["protocol"] == "http"
-    assert "insecure_mode" not in params
+    assert not {"disable_ocsp_checks", "insecure_mode"} & set(params)
     assert caplog.records
 
 
@@ -226,10 +240,10 @@ def test_routed_platform_info_records_gateway() -> None:
     assert "gw.example.com" not in repr(info)
 
 
-def test_connector_accepts_every_gateway_parameter(monkeypatch) -> None:
+def test_installed_connector_accepts_every_gateway_parameter(snowflake_dependencies, monkeypatch) -> None:
     connection = pytest.importorskip("snowflake.connector.connection")
-    if not connection.DEFAULT_CONFIGURATION:
-        pytest.skip("snowflake-connector-python 5.x has no parameter registry; test_snowflake_gateway_tls.py covers it")
+    snowflake_dependencies.connector.connection.DEFAULT_CONFIGURATION = connection.DEFAULT_CONFIGURATION
+    _connector_major(monkeypatch, installed_connector_major())
     monkeypatch.setenv(INSECURE_GATEWAY_ENV, "1")
     adapter = _adapter(
         gateway="custom",
@@ -239,8 +253,9 @@ def test_connector_accepts_every_gateway_parameter(monkeypatch) -> None:
         allow_insecure_gateway=True,
     )
     params = adapter._connect_params({}, include_database=True)
-    assert set(params) - {"insecure_mode"} <= set(connection.DEFAULT_CONFIGURATION)
-    assert "insecure_mode" in params
+    assert set(params) <= installed_connector_parameters()
+    revocation = "crl_check_mode" if installed_connector_major() >= 5 else "disable_ocsp_checks"
+    assert revocation in params
 
 
 def test_explicit_gateway_options_reach_the_adapter_config() -> None:
@@ -980,13 +995,19 @@ def test_connector_5_maps_revocation_options_to_crl_check_mode(option, expected,
         {}, include_database=False
     )
     assert params["crl_check_mode"] == expected
-    assert not {"ocsp_fail_open", "insecure_mode"} & set(params)
+    assert not {"ocsp_fail_open", "disable_ocsp_checks", "insecure_mode"} & set(params)
 
 
 def test_connector_5_passes_no_revocation_setting_by_default(monkeypatch) -> None:
     _connector_major(monkeypatch, 5)
     params = _adapter(gateway="custom", gateway_host="gw.example.com")._connect_params({}, include_database=False)
-    assert not {"crl_check_mode", "ocsp_fail_open", "insecure_mode", "extra_root_store_path"} & set(params)
+    assert not {
+        "crl_check_mode",
+        "ocsp_fail_open",
+        "disable_ocsp_checks",
+        "insecure_mode",
+        "extra_root_store_path",
+    } & set(params)
 
 
 def test_connector_5_passes_ca_bundle_without_environment(tmp_path: Path, monkeypatch) -> None:
@@ -997,7 +1018,7 @@ def test_connector_5_passes_ca_bundle_without_environment(tmp_path: Path, monkey
     assert adapter._connect_params({}, include_database=False)["extra_root_store_path"] == str(bundle)
 
 
-def test_connector_below_5_keeps_ocsp_and_insecure_mode_parameters(monkeypatch) -> None:
+def test_connector_below_5_keeps_ocsp_parameters(monkeypatch) -> None:
     _connector_major(monkeypatch, 4)
     monkeypatch.setenv(INSECURE_GATEWAY_ENV, "1")
     adapter = _adapter(
@@ -1005,5 +1026,5 @@ def test_connector_below_5_keeps_ocsp_and_insecure_mode_parameters(monkeypatch) 
     )
     params = adapter._connect_params({}, include_database=False)
     assert params["ocsp_fail_open"] is False
-    assert params["insecure_mode"] is True
+    assert params["disable_ocsp_checks"] is True
     assert not {"crl_check_mode", "extra_root_store_path"} & set(params)

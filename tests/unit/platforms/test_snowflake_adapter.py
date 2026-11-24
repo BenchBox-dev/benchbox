@@ -11,6 +11,7 @@ import pytest
 from benchbox.platforms.base import DriverIsolationCapability
 from benchbox.platforms.base.data_loading import NO_BENCHMARK, DataSource
 from benchbox.platforms.snowflake import SnowflakeAdapter
+from tests.fixtures.snowflake_connector import installed_connector_parameters
 from tests.fixtures.snowflake_warehouses import warehouse_description, warehouse_row
 
 pytestmark = [
@@ -206,11 +207,8 @@ class TestSnowflakeAdapter:
         assert call_kwargs["user"] == "test_user"
         assert "username" not in call_kwargs
 
-        snowflake_connection = pytest.importorskip("snowflake.connector.connection")
-        DEFAULT_CONFIGURATION = snowflake_connection.DEFAULT_CONFIGURATION
         extra = {"client_session_keep_alive", "login_timeout", "network_timeout"}
-        if DEFAULT_CONFIGURATION:
-            assert set(call_kwargs) - extra <= set(DEFAULT_CONFIGURATION)
+        assert set(call_kwargs) - extra <= installed_connector_parameters()
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_create_admin_connection_with_key_pair(self, mock_snowflake, tmp_path):

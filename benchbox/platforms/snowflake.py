@@ -112,6 +112,11 @@ def _connector_major_version() -> int:
     return int(snowflake.connector.__version__.split(".", 1)[0])
 
 
+def _ocsp_disable_parameter() -> str:
+    configuration = snowflake.connector.connection.DEFAULT_CONFIGURATION
+    return "disable_ocsp_checks" if "disable_ocsp_checks" in configuration else "insecure_mode"
+
+
 def _gateway_connector_params(endpoint: GatewayEndpoint, connector_major: int) -> dict[str, Any]:
     params: dict[str, Any] = {}
     if connector_major >= SNOWFLAKE_CRL_CONNECTOR_MAJOR:
@@ -125,7 +130,7 @@ def _gateway_connector_params(endpoint: GatewayEndpoint, connector_major: int) -
     if endpoint.ocsp_fail_open is not None:
         params["ocsp_fail_open"] = endpoint.ocsp_fail_open
     if endpoint.insecure:
-        params["insecure_mode"] = True
+        params[_ocsp_disable_parameter()] = True
     return params
 
 
