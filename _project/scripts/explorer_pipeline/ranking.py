@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from _project.scripts.explorer_pipeline.compare_math import speedup_vs_best, speedup_vs_slowest
 from _project.scripts.explorer_pipeline.models import BenchmarkSummary, PlatformRow, primary_metric_value
 
+MINIMUM_RANKED_COHORT = 2
+
 
 @dataclass(frozen=True)
 class RankedPlatform:

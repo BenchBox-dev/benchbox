@@ -345,6 +345,9 @@ CREATE TABLE IF NOT EXISTS benchmark_rankings (
     qphds_at_size                DOUBLE,
     load_scope                   VARCHAR,
     transactional_steps          VARCHAR,
+    cohort_key                   VARCHAR  NOT NULL,
+    lane                         VARCHAR,
+    comparison_version           VARCHAR  NOT NULL,
     PRIMARY KEY (benchmark, scale_factor, phase, result_id)
 );
 
@@ -480,5 +483,8 @@ CREATE TABLE IF NOT EXISTS identity_medians (
     median_score           DOUBLE,
     spread                 DOUBLE,
     is_leaderboard_version BOOLEAN  NOT NULL,
+    rank                   INTEGER,
+    total_in_cohort        INTEGER  NOT NULL,
+    ranking_exclusion_reason VARCHAR,
     PRIMARY KEY (cohort_key, lane, variant_id, comparison_version)
 );

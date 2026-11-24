@@ -7,6 +7,8 @@ from typing import Any
 
 import pytest
 
+from _project.scripts.explorer_pipeline.medians import IdentityMedian, rank_leaderboard_versions
+from _project.scripts.explorer_pipeline.models import get_ranking_config
 from benchbox.core.results import corpus_rule
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -26,7 +28,8 @@ REQUIRED_RESULT_FIELDS = (
     "row_count_evidence_label",
     "iteration_label",
 )
-REQUIRED_MEDIAN_FIELDS = ("run_count", "median_score", "spread")
+REQUIRED_MEDIAN_FIELDS = ("run_count", "median_score", "spread", "rank", "total_in_cohort", "ranking_exclusion_reason")
+REQUIRED_RANKING_FIELDS = ("cohort_key", "lane", "comparison_version")
 DEFAULTS_BY_TYPE = {"VARCHAR": "placeholder", "DOUBLE": 0.0, "INTEGER": 0, "BOOLEAN": False, "BIGINT": 0}
 
 
@@ -52,6 +55,7 @@ def _column_definitions(contract: dict[str, Any]) -> dict[str, list[dict[str, An
     tables = contract["tables"]
     return {
         "results": tables["results"]["added_columns"],
+        "benchmark_rankings": tables["benchmark_rankings"]["added_columns"],
         "result_lane_scores": tables["result_lane_scores"]["columns"],
         "identity_medians": tables["identity_medians"]["columns"],
     }
@@ -68,22 +72,27 @@ def _schema_at_next_version(checker: Any, contract: dict[str, Any]) -> Any:
     base = contract["extends_version"]
     con = checker.create_in_memory_schema(base)
     definitions = _column_definitions(contract)
-    for column in definitions["results"]:
-        nullable = "" if column["nullable"] else " DEFAULT ''" if column["type"] == "VARCHAR" else " DEFAULT false"
-        con.execute(f"ALTER TABLE results ADD COLUMN {column['name']} {column['type']}{nullable}")
+    for table in ("results", "benchmark_rankings"):
+        for column in definitions[table]:
+            default = " DEFAULT ''" if column["type"] == "VARCHAR" else " DEFAULT false"
+            con.execute(
+                f"ALTER TABLE {table} ADD COLUMN {column['name']} {column['type']}"
+                f"{'' if column['nullable'] else default}"
+            )
     for table in ("result_lane_scores", "identity_medians"):
         con.execute(_ddl(table, definitions[table], contract["tables"][table].get("primary_key")))
     return con
 
 
-def _insert_base_result(con: Any, result_id: str) -> None:
+def _insert_with_defaults(con: Any, table: str, row: dict[str, Any]) -> None:
     required = con.execute(
         "SELECT column_name, data_type FROM information_schema.columns "
-        "WHERE table_name = 'results' AND is_nullable = 'NO' AND column_default IS NULL ORDER BY ordinal_position"
+        "WHERE table_name = ? AND is_nullable = 'NO' AND column_default IS NULL ORDER BY ordinal_position",
+        [table],
     ).fetchall()
-    values = {name: result_id if name == "result_id" else DEFAULTS_BY_TYPE[kind] for name, kind in required}
+    values = {name: DEFAULTS_BY_TYPE[kind] for name, kind in required} | row
     con.execute(
-        f"INSERT INTO results ({', '.join(values)}) VALUES ({', '.join('?' for _ in values)})", list(values.values())
+        f"INSERT INTO {table} ({', '.join(values)}) VALUES ({', '.join('?' for _ in values)})", list(values.values())
     )
 
 
@@ -98,6 +107,7 @@ def test_fixture_carries_every_field_the_site_and_pipeline_agree_on(contract) ->
 
     assert tuple(column["name"] for column in definitions["results"]) == REQUIRED_RESULT_FIELDS
     assert {column["name"] for column in definitions["identity_medians"]} >= set(REQUIRED_MEDIAN_FIELDS)
+    assert tuple(column["name"] for column in definitions["benchmark_rankings"]) == REQUIRED_RANKING_FIELDS
     assert {column["name"] for column in definitions["result_lane_scores"]} == {
         "result_id",
         "lane",
@@ -111,7 +121,8 @@ def test_the_new_columns_only_add_to_the_current_schema(contract, checker) -> No
     definitions = _column_definitions(contract)
 
     assert not {column["name"] for column in definitions["results"]} & set(existing["results"])
-    assert (set(definitions) - {"results"}) & set(existing) == set()
+    assert not {column["name"] for column in definitions["benchmark_rankings"]} & set(existing["benchmark_rankings"])
+    assert (set(definitions) - {"results", "benchmark_rankings"}) & set(existing) == set()
 
 
 def _constants(prefix: str) -> set[str]:
@@ -136,17 +147,19 @@ def test_fixture_rows_load_into_the_schema_at_the_next_version(contract, checker
     assert checker.validate_database_schema(con, contract["extends_version"]) == []
     results = contract["rows"]["results"]
     for row in results:
-        _insert_base_result(con, row["result_id"])
-        assignments = [name for name in row if name != "result_id"]
-        con.execute(
-            f"UPDATE results SET {', '.join(f'{name} = ?' for name in assignments)} WHERE result_id = ?",
-            [row[name] for name in assignments] + [row["result_id"]],
-        )
+        _insert_with_defaults(con, "results", row)
+    for row in contract["rows"]["benchmark_rankings"]:
+        _insert_with_defaults(con, "benchmark_rankings", row)
     for table in ("result_lane_scores", "identity_medians"):
         for row in contract["rows"][table]:
             con.execute(
                 f"INSERT INTO {table} ({', '.join(row)}) VALUES ({', '.join('?' for _ in row)})", list(row.values())
             )
+    joined = con.execute(
+        "SELECT r.result_id, m.rank, m.ranking_exclusion_reason FROM benchmark_rankings r JOIN identity_medians m "
+        "USING (cohort_key, lane, variant_id, comparison_version) ORDER BY r.result_id"
+    ).fetchall()
+    assert joined == [("example-pre-release", None, "not_leaderboard_version"), ("example-ranked-release", 1, None)]
 
     stored = con.execute(f"SELECT {', '.join(REQUIRED_RESULT_FIELDS)} FROM results ORDER BY result_id").fetchall()
     expected = [
@@ -187,6 +200,27 @@ def test_fixture_medians_pick_one_release_per_identity(contract) -> None:
     assert standing and all(row["version_is_release"] for row in standing)
     assert any(not row["version_is_release"] and not row["is_leaderboard_version"] for row in medians)
     assert all(row["run_count"] >= 1 and (row["run_count"] > 1 or row["spread"] == 0) for row in medians)
+
+
+def test_fixture_median_ranks_are_the_ones_the_pipeline_ranker_gives(contract) -> None:
+    rows = contract["rows"]["identity_medians"]
+    benchmark, _, phase = rows[0]["cohort_key"].split("/")
+    assert all(row["cohort_key"] == rows[0]["cohort_key"] for row in rows)
+    medians = [
+        IdentityMedian(
+            key=(benchmark, 1.0, phase, None),
+            **{name: row[name] for name in row if name not in {"rank", "total_in_cohort", "ranking_exclusion_reason"}},
+        )
+        for row in rows
+    ]
+
+    ranked = rank_leaderboard_versions(
+        medians, higher_is_better=get_ranking_config(benchmark, phase).primary_order == "desc"
+    )
+
+    assert [(m.rank, m.total_in_cohort, m.ranking_exclusion_reason) for m in ranked] == [
+        (row["rank"], row["total_in_cohort"], row["ranking_exclusion_reason"]) for row in rows
+    ]
 
 
 def test_every_declared_column_type_is_a_type_the_checker_normalises(contract, checker) -> None:

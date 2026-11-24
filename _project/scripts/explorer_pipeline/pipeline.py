@@ -34,7 +34,7 @@ from _project.scripts.explorer_pipeline.models import (
     primary_metric_value,
     ranking_exclusion_reason,
 )
-from _project.scripts.explorer_pipeline.ranking import RankedCohort, rank_platforms, rank_scores
+from _project.scripts.explorer_pipeline.ranking import MINIMUM_RANKED_COHORT, RankedCohort, rank_platforms
 from _project.scripts.explorer_pipeline.transformer import (
     BundleTransformer,
     CompanionPrivacyError,
@@ -492,24 +492,19 @@ def _compute_average_ranks(platform_agg: dict[str, dict[str, Any]]) -> list[dict
 def _leaderboard_ranks(
     key: _SummaryKey, medians: list[IdentityMedian], higher_is_better: bool
 ) -> dict[str, dict[str, Any]]:
-    standing = [
-        median
-        for median in medians
-        if median.key == key and median.is_leaderboard_version and median.median_score is not None
-    ]
-    if len(standing) < 2:
-        return {}
+    standing = [median for median in medians if median.key == key and median.rank is not None]
     scores = [median.median_score for median in standing if median.median_score is not None]
-    ranks = rank_scores(scores, higher_is_better=higher_is_better)
+    if not scores:
+        return {}
     best = max(scores) if higher_is_better else min(scores)
     return {
         median.variant_id: {
-            "rank": rank,
-            "total": len(standing),
+            "rank": median.rank,
+            "total": median.total_in_cohort,
             "metric_value": median.median_score,
             "speedup_vs_best": speedup_vs_best(median.median_score, best, higher_is_better=higher_is_better),
         }
-        for median, rank in zip(standing, ranks, strict=True)
+        for median in standing
     }
 
 
@@ -523,7 +518,7 @@ def _build_meta_leaderboard(
         full_to_short = {}
     medians = medians or []
     ranked_summaries = [(key, s, rank_platforms(s)) for key, s in summaries]
-    eligible = [(key, s, ranked) for key, s, ranked in ranked_summaries if ranked.total_ranked >= 2]
+    eligible = [(key, s, ranked) for key, s, ranked in ranked_summaries if ranked.total_ranked >= MINIMUM_RANKED_COHORT]
     if not eligible:
         return {"generated_at": generated_at, "cohorts": [], "platforms": []}
 

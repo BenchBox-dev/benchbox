@@ -22,7 +22,7 @@ from _project.scripts.explorer_pipeline.contract import (
     SELECTABLE_READ_MODEL_VERSIONS,
     TRANSLATOR_RESULT_COLUMNS,
 )
-from _project.scripts.explorer_pipeline.medians import IdentityMedian
+from _project.scripts.explorer_pipeline.medians import IdentityMedian, cohort_key_text
 from _project.scripts.explorer_pipeline.models import (
     BenchmarkSummary,
     DetailResult,
@@ -652,6 +652,7 @@ class DuckDBSnapshotBuilder:
                 stream_count                 INTEGER,
                 power_score_source           VARCHAR"""
             + self._qph_ddl(read_model_version)
+            + self._corpus_ranking_ddl(read_model_version)
             + """,
                 PRIMARY KEY (benchmark, scale_factor, phase, result_id)
             )
@@ -786,7 +787,8 @@ class DuckDBSnapshotBuilder:
                 "cohort_key VARCHAR NOT NULL, lane VARCHAR NOT NULL, platform_id VARCHAR NOT NULL, "
                 "variant_id VARCHAR NOT NULL, comparison_version VARCHAR NOT NULL, "
                 "version_is_release BOOLEAN NOT NULL, run_count INTEGER NOT NULL, median_score DOUBLE, "
-                "spread DOUBLE, is_leaderboard_version BOOLEAN NOT NULL, "
+                "spread DOUBLE, is_leaderboard_version BOOLEAN NOT NULL, rank INTEGER, "
+                "total_in_cohort INTEGER NOT NULL, ranking_exclusion_reason VARCHAR, "
                 "PRIMARY KEY (cohort_key, lane, variant_id, comparison_version))"
             )
 
@@ -865,6 +867,22 @@ class DuckDBSnapshotBuilder:
         return "".join(f"\n                r.{name}," for name, _ in CORPUS_RESULT_COLUMNS)
 
     @staticmethod
+    def _corpus_ranking_ddl(read_model_version: int) -> str:
+        if read_model_version < EXPLORER_CORPUS_READ_MODEL_VERSION:
+            return ""
+        return (
+            ",\n                cohort_key           VARCHAR  NOT NULL"
+            ",\n                lane                 VARCHAR"
+            ",\n                comparison_version   VARCHAR  NOT NULL"
+        )
+
+    @staticmethod
+    def _corpus_ranking_values(key: _SummaryKey, row: PlatformRow, read_model_version: int) -> tuple:
+        if read_model_version < EXPLORER_CORPUS_READ_MODEL_VERSION:
+            return ()
+        return (cohort_key_text(key), row.lane, row.comparison_version)
+
+    @staticmethod
     def _corpus_values(entry: ManifestEntry, read_model_version: int) -> tuple:
         if read_model_version < EXPLORER_CORPUS_READ_MODEL_VERSION:
             return ()
@@ -905,6 +923,9 @@ class DuckDBSnapshotBuilder:
                 _finite_or_none(median.median_score),
                 _finite_or_none(median.spread),
                 median.is_leaderboard_version,
+                median.rank,
+                median.total_in_cohort,
+                median.ranking_exclusion_reason,
             )
             for median in medians
         ]
@@ -1208,7 +1229,8 @@ class DuckDBSnapshotBuilder:
         read_model_version: int = EXPLORER_READ_MODEL_VERSION,
     ) -> None:
         rows: list[tuple] = []
-        for (benchmark, scale_factor, phase, stream_count), summary in summaries:
+        for key, summary in summaries:
+            benchmark, scale_factor, phase, stream_count = key
             ranked = rank_platforms(summary)
 
             for ranked_row in ranked.rows:
@@ -1270,6 +1292,7 @@ class DuckDBSnapshotBuilder:
                         stream_count,
                         platform_row.power_score_source,
                         *self._qph_values(platform_row, read_model_version),
+                        *self._corpus_ranking_values(key, platform_row, read_model_version),
                     )
                 )
         if rows:

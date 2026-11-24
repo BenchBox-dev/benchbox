@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from _project.scripts.explorer_pipeline.medians import IdentityMedian, cohort_key_text
+from _project.scripts.explorer_pipeline.medians import IdentityMedian, cohort_key_text, rank_leaderboard_versions
 from _project.scripts.explorer_pipeline.models import (
     BenchmarkSummary,
     PlatformRow,
@@ -21,10 +21,11 @@ _GENERATED_AT = "2026-04-17T00:00:00Z"
 def _single_run_medians(summaries: list) -> list[IdentityMedian]:
     medians = []
     for key, summary in summaries:
-        metric = (summary.ranking or get_ranking_config(summary.benchmark, summary.phase)).primary_metric
+        ranking = summary.ranking or get_ranking_config(summary.benchmark, summary.phase)
+        cohort = []
         for row in summary.platforms:
-            score = primary_metric_value(row, metric) if row.is_ranking_eligible else None
-            medians.append(
+            score = primary_metric_value(row, ranking.primary_metric) if row.is_ranking_eligible else None
+            cohort.append(
                 IdentityMedian(
                     key=key,
                     cohort_key=cohort_key_text(key),
@@ -39,6 +40,7 @@ def _single_run_medians(summaries: list) -> list[IdentityMedian]:
                     is_leaderboard_version=score is not None,
                 )
             )
+        medians.extend(rank_leaderboard_versions(cohort, higher_is_better=ranking.primary_order == "desc"))
     return medians
 
 

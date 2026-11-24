@@ -16,6 +16,7 @@ from _project.scripts.explorer_pipeline.models import (
     get_ranking_config,
     primary_metric_value,
 )
+from _project.scripts.explorer_pipeline.ranking import MINIMUM_RANKED_COHORT, rank_scores
 from benchbox.core.results import corpus_rule, corpus_score
 
 _TIMING_KEYS = frozenset({"ms", "execution_time_ms", "duration_ms"})
@@ -38,6 +39,9 @@ class IdentityMedian:
     median_score: float | None
     spread: float | None
     is_leaderboard_version: bool
+    rank: int | None = None
+    total_in_cohort: int = 0
+    ranking_exclusion_reason: str | None = None
 
 
 def cohort_key_text(key: _SummaryKey) -> str:
@@ -145,7 +149,8 @@ def build_identity_medians(
 ) -> list[IdentityMedian]:
     medians: list[IdentityMedian] = []
     for key, summary in summaries:
-        metric = get_ranking_config(summary.benchmark, summary.phase).primary_metric
+        ranking = get_ranking_config(summary.benchmark, summary.phase)
+        metric = ranking.primary_metric
         groups: dict[tuple[str, str, str, str, bool], list[PlatformRow]] = defaultdict(list)
         for row in summary.platforms:
             if row.lane is None:
@@ -172,7 +177,8 @@ def build_identity_medians(
                     is_leaderboard_version=False,
                 )
             )
-        medians.extend(_mark_leaderboard_versions(cohort_medians))
+        marked = _mark_leaderboard_versions(cohort_medians)
+        medians.extend(rank_leaderboard_versions(marked, higher_is_better=ranking.primary_order == "desc"))
     return medians
 
 
@@ -189,6 +195,41 @@ def _mark_leaderboard_versions(medians: list[IdentityMedian]) -> list[IdentityMe
         replace(
             median,
             is_leaderboard_version=standing.get((median.lane, median.platform_id, median.variant_id)) is median,
+        )
+        for median in medians
+    ]
+
+
+def _identity(median: IdentityMedian) -> tuple[str, str, str]:
+    return (median.lane, median.variant_id, median.comparison_version)
+
+
+def _exclusion_reason(median: IdentityMedian) -> str:
+    if median.median_score is None:
+        return "no_median_score"
+    if not median.is_leaderboard_version:
+        return "not_leaderboard_version"
+    return "below_cohort_minimum"
+
+
+def rank_leaderboard_versions(medians: list[IdentityMedian], *, higher_is_better: bool) -> list[IdentityMedian]:
+    standing_by_lane: dict[str, list[IdentityMedian]] = defaultdict(list)
+    for median in medians:
+        if median.is_leaderboard_version and median.median_score is not None:
+            standing_by_lane[median.lane].append(median)
+    ranks: dict[tuple[str, str, str], int] = {}
+    for standing in standing_by_lane.values():
+        if len(standing) < MINIMUM_RANKED_COHORT:
+            continue
+        scores = [median.median_score for median in standing if median.median_score is not None]
+        for median, rank in zip(standing, rank_scores(scores, higher_is_better=higher_is_better), strict=True):
+            ranks[_identity(median)] = rank
+    return [
+        replace(
+            median,
+            rank=ranks.get(_identity(median)),
+            total_in_cohort=len(standing_by_lane.get(median.lane, [])),
+            ranking_exclusion_reason=None if _identity(median) in ranks else _exclusion_reason(median),
         )
         for median in medians
     ]

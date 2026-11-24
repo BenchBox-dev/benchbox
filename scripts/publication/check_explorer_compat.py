@@ -18,6 +18,7 @@ if str(Path(__file__).resolve().parents[2]) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from _project.scripts.explorer_pipeline.contract import (
+    CORPUS_RANKING_COLUMNS as _CORPUS_RANKING_COLUMNS,
     CORPUS_RESULT_COLUMNS as _CORPUS_RESULT_COLUMNS,
     EXPLORER_BUILD_CONTRACT_VERSION as _CONTRACT_VERSION,
     EXPLORER_READ_MODEL_VERSION as _READ_MODEL_VERSION,
@@ -441,6 +442,10 @@ TABLE_COLUMNS_V21: dict[str, dict[str, str]] = {
         **TABLE_COLUMNS_V20["results"],
         **dict(_CORPUS_RESULT_COLUMNS),
     },
+    "benchmark_rankings": {
+        **TABLE_COLUMNS_V20["benchmark_rankings"],
+        **dict(_CORPUS_RANKING_COLUMNS),
+    },
     "result_lane_scores": dict(_RESULT_LANE_SCORE_COLUMNS),
     "identity_medians": dict(_IDENTITY_MEDIAN_COLUMNS),
 }
@@ -827,7 +832,13 @@ CORPUS_EXPLORER_QUERIES: list[tuple[str, str]] = [
     (
         "Identity medians",
         "SELECT cohort_key, lane, platform_id, variant_id, comparison_version, version_is_release, run_count, "
-        "median_score, spread, is_leaderboard_version FROM identity_medians LIMIT 50",
+        "median_score, spread, is_leaderboard_version, rank, total_in_cohort, ranking_exclusion_reason "
+        "FROM identity_medians LIMIT 50",
+    ),
+    (
+        "Runs behind a median row",
+        "SELECT m.cohort_key, m.rank, r.result_id, r.rank FROM identity_medians m JOIN benchmark_rankings r "
+        "USING (cohort_key, lane, variant_id, comparison_version) LIMIT 50",
     ),
 ]
 

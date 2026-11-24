@@ -11,7 +11,9 @@ import pytest
 
 from _project.scripts.explorer_pipeline import corpus_outcome
 from _project.scripts.explorer_pipeline.medians import version_order
+from _project.scripts.explorer_pipeline.models import get_ranking_config
 from _project.scripts.explorer_pipeline.pipeline import ExplorerPipeline
+from _project.scripts.explorer_pipeline.ranking import MINIMUM_RANKED_COHORT, rank_scores
 from benchbox.core.results import corpus_rule, corpus_score
 from tests.unit.scripts.explorer_pipeline.conftest import combined_bundle, scored_minimal_bundle
 
@@ -64,6 +66,31 @@ def _medians(db: Path) -> list[tuple]:
         ).fetchall()
 
 
+def _stored_types(con: Any, checker: Any, table: str) -> dict[str, str]:
+    return {
+        row[0]: checker.normalize_type(row[1])
+        for row in con.execute(
+            "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = ?", [table]
+        ).fetchall()
+    }
+
+
+def _engine_run(engine: str, power: float, *, version: str = "1.2.0") -> dict:
+    data = scored_minimal_bundle(power)
+    data["run"]["id"] = f"{engine}-{version}"
+    data["platform"] = {"name": engine, "version": version}
+    data["execution"] = {}
+    return data
+
+
+def _ranked_medians(db: Path) -> list[tuple]:
+    with duckdb.connect(str(db), read_only=True) as con:
+        return con.execute(
+            "SELECT variant_id, comparison_version, median_score, rank, total_in_cohort, ranking_exclusion_reason "
+            "FROM identity_medians ORDER BY variant_id, comparison_version"
+        ).fetchall()
+
+
 def test_the_emitted_read_model_matches_the_contract_fixture(tmp_path: Path) -> None:
     contract = json.loads(FIXTURE.read_text(encoding="utf-8"))
     checker = _checker()
@@ -88,13 +115,17 @@ def test_the_emitted_read_model_matches_the_contract_fixture(tmp_path: Path) -> 
         assert set(contract["views"]["result_detail_metrics"]) <= view_columns
         for table in ("result_lane_scores", "identity_medians"):
             declared = {column["name"]: column["type"] for column in contract["tables"][table]["columns"]}
-            stored = {
-                row[0]: checker.normalize_type(row[1])
-                for row in con.execute(
-                    f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table}'"
-                ).fetchall()
-            }
-            assert stored == declared
+            assert _stored_types(con, checker, table) == declared
+        ranking_types = _stored_types(con, checker, "benchmark_rankings")
+        for column in contract["tables"]["benchmark_rankings"]["added_columns"]:
+            assert ranking_types[column["name"]] == column["type"]
+        median_reasons = next(
+            set(column["allowed_values"])
+            for column in contract["tables"]["identity_medians"]["columns"]
+            if column["name"] == "ranking_exclusion_reason"
+        )
+        for (reason,) in con.execute("SELECT DISTINCT ranking_exclusion_reason FROM identity_medians").fetchall():
+            assert reason is None or reason in median_reasons
         allowed = {
             column["name"]: set(column["allowed_values"])
             for column in contract["tables"]["results"]["added_columns"]
@@ -206,6 +237,70 @@ def test_a_partial_result_enters_both_the_power_and_the_throughput_cohort(tmp_pa
     assert phases == [("power", 1), ("throughput", 1)]
     assert scores == [("power_only", True), ("throughput", True)]
     assert lanes_of_medians == [("power_only",), ("throughput",)]
+
+
+def test_median_rows_carry_the_rank_the_pipeline_ranker_gives_their_scores(tmp_path: Path) -> None:
+    powers = {"engine-a": 2000.0, "engine-b": 1000.0, "engine-c": 1000.0, "engine-d": 500.0}
+    db = _build(tmp_path, {engine: _engine_run(engine, power) for engine, power in powers.items()})
+
+    medians = _ranked_medians(db)
+    scores = [score for _, _, score, *_ in medians]
+    higher_is_better = get_ranking_config("tpch", "power").primary_order == "desc"
+
+    assert [variant for variant, *_ in medians] == list(powers)
+    assert [rank for *_, rank, _, _ in medians] == rank_scores(scores, higher_is_better=higher_is_better)
+    assert [(rank, total, reason) for *_, rank, total, reason in medians] == [
+        (1, 4, None),
+        (2, 4, None),
+        (2, 4, None),
+        (4, 4, None),
+    ]
+
+
+def test_a_cohort_below_the_minimum_ranks_no_median_row(tmp_path: Path) -> None:
+    db = _build(
+        tmp_path,
+        {
+            "release": _engine_run("engine-a", 1000.0),
+            "pre": _engine_run("engine-a", 1500.0, version="1.3.0.dev1"),
+        },
+    )
+
+    assert MINIMUM_RANKED_COHORT == 2
+    assert [(version, rank, total, reason) for _, version, _, rank, total, reason in _ranked_medians(db)] == [
+        ("1.2.0", None, 1, "below_cohort_minimum"),
+        ("1.3.0.dev1", None, 1, "not_leaderboard_version"),
+    ]
+
+
+def test_run_rows_join_their_median_row_on_equal_keys(tmp_path: Path) -> None:
+    runs = {
+        "a1": _engine_run("engine-a", 2000.0),
+        "a2": _engine_run("engine-a", 1800.0),
+        "b1": _engine_run("engine-b", 1000.0),
+        "a-pre": _engine_run("engine-a", 2500.0, version="1.3.0.dev1"),
+    }
+    runs["a2"]["run"]["id"] = "engine-a-second"
+    db = _build(tmp_path, runs)
+
+    with duckdb.connect(str(db), read_only=True) as con:
+        joined = con.execute(
+            "SELECT m.variant_id, m.comparison_version, m.run_count, count(r.result_id), m.rank "
+            "FROM identity_medians m JOIN benchmark_rankings r "
+            "USING (cohort_key, lane, variant_id, comparison_version) "
+            "GROUP BY ALL ORDER BY m.variant_id, m.comparison_version"
+        ).fetchall()
+        unmatched = con.execute(
+            "SELECT count(*) FROM benchmark_rankings r ANTI JOIN identity_medians m "
+            "USING (cohort_key, lane, variant_id, comparison_version)"
+        ).fetchone()
+
+    assert joined == [
+        ("engine-a", "1.2.0", 2, 2, 1),
+        ("engine-a", "1.3.0.dev1", 1, 1, None),
+        ("engine-b", "1.2.0", 1, 1, 2),
+    ]
+    assert unmatched == (0,)
 
 
 def test_a_result_the_rule_cannot_place_is_not_published(tmp_path: Path) -> None:

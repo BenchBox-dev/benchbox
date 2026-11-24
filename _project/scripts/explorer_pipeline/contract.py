@@ -63,6 +63,14 @@ IDENTITY_MEDIAN_COLUMNS = (
     ("median_score", "DOUBLE"),
     ("spread", "DOUBLE"),
     ("is_leaderboard_version", "BOOLEAN"),
+    ("rank", "INTEGER"),
+    ("total_in_cohort", "INTEGER"),
+    ("ranking_exclusion_reason", "VARCHAR"),
+)
+CORPUS_RANKING_COLUMNS = (
+    ("cohort_key", "VARCHAR"),
+    ("lane", "VARCHAR"),
+    ("comparison_version", "VARCHAR"),
 )
 EXPLORER_READ_MODEL_COMPATIBILITY = {
     "minimum_supported": EXPLORER_MINIMUM_READ_MODEL_VERSION,
@@ -98,6 +106,7 @@ EXPLORER_BUILD_CONTRACT = {
 }
 
 __all__ = [
+    "CORPUS_RANKING_COLUMNS",
     "CORPUS_RESULT_COLUMNS",
     "EXPLORER_BUILD_CONTRACT",
     "EXPLORER_CORPUS_READ_MODEL_VERSION",

@@ -380,6 +380,64 @@ metrics:
     display_surfaces: [home, benchmark_index]
     notes: "True for the newest released version of the platform and variant that has a ranked result"
 
+  - table: identity_medians
+    column: rank
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.medians.rank_leaderboard_versions"
+    tolerance: 0
+    display_surfaces: [home, benchmark_index, compare]
+    notes: >
+      1-based rank of the median row among the leaderboard-version medians of its cohort and lane, by
+      primary_metric direction; equal scores share a rank and the next rank skips (1, 1, 3). Null when
+      the row is not ranked; ranking_exclusion_reason says why.
+
+  - table: identity_medians
+    column: total_in_cohort
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.medians.rank_leaderboard_versions"
+    tolerance: 0
+    display_surfaces: [home, benchmark_index, compare]
+    notes: >
+      Number of leaderboard-version medians with a score in the row's cohort and lane. Ranks run from 1
+      to this number; below ranking.MINIMUM_RANKED_COHORT (2) no row in the cohort and lane is ranked.
+
+  - table: identity_medians
+    column: ranking_exclusion_reason
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.medians.rank_leaderboard_versions"
+    tolerance: 0
+    display_surfaces: [home, benchmark_index, compare]
+    notes: >
+      Null for a ranked row. Otherwise no_median_score (no ranked run behind the row),
+      not_leaderboard_version (an older or pre-release version of the identity), or below_cohort_minimum
+      (fewer leaderboard-version medians in the cohort and lane than the minimum).
+
+  - table: benchmark_rankings
+    column: cohort_key
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.medians.cohort_key_text"
+    tolerance: 0
+    display_surfaces: [benchmark_index, compare]
+    notes: >
+      Same value as identity_medians.cohort_key for the run's cohort. A run row joins its median row on
+      (cohort_key, lane, variant_id, comparison_version).
+
+  - table: benchmark_rankings
+    column: lane
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.transformer.BundleTransformer.lane_entries"
+    tolerance: 0
+    display_surfaces: [benchmark_index, compare]
+    notes: "Rule lane the run ranks in for this cohort; null when the rule places the run in no lane"
+
+  - table: benchmark_rankings
+    column: comparison_version
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.corpus_columns"
+    tolerance: 0
+    display_surfaces: [benchmark_index, compare]
+    notes: "Same value as results.comparison_version; part of the key that joins a run row to its median row"
+
   - table: results
     column: is_ranking_eligible
     kind: derived
