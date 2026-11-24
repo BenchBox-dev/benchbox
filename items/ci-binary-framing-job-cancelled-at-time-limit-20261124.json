@@ -4,6 +4,7 @@
     "Either a fix lands that keeps the 95th-percentile duration under the limit with margin stated in the PR, or the owner's decision on the limit is recorded here.",
     "A cancelled framing job whose runner started records the step it stopped in; for cancellations with no runner, the classification in this item's context names the queue time."
   ],
+  "context": "Owner decision 2026-11-24 (choice dialog): keep the 15-minute job limit. For the Windows hang add a step-level time limit and print diagnostics; accept a rerun when no runner was assigned.",
   "description": "## Problem\nThe 'TPC-H binary framing' job was cancelled at its 15-minute limit twice, failing the required core check and needing make pr-rerun each time:\n- macOS, PR #4491 (run 45457165961 attempt 1, job 138670951695, 2026-11-24): no runner was ever assigned (runner_name empty, 0 steps, the log endpoint returns BlobNotFound). It was cancelled after waiting 15 minutes for a runner, not because a step ran long.\n- Windows, PR #4464 (run 45109062453 attempt 1, 2026-11-23): stuck in the step 'Verify bundled dbgen binaries emit clean framing' from 04:00:35 until the cancel at 04:19:56.\nThese are two different causes: runner queueing and a hanging step.\n\n## Decision gate (owner)\nFirst collect the duration of this job per OS over the last 50 runs (gh api) and classify the long runs (queued time vs. run time, which step). Then: if the cause is a slow or stuck runner, propose detection or a retry rule; if a step is slow, fix the step. Any increase of the job's time limit needs the owner's approval with the duration data attached.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check).",
   "links": [
     ".github/workflows/ci.yml",
@@ -24,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "034bc32060cb495f9e9a5ef28043634a",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:41:51Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "55f9a98eca1e4dcb9fdfeb926a91f4e2",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
