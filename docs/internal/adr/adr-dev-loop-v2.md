@@ -4,7 +4,10 @@
 
 Accepted (2026-09-28).
 
-Superseded in part: the stand-in review attesters are listed in `.github/review.yml` (`consumer.attesters`) and the comment marker is `Stand-in review: APPROVE <full head SHA>`; `STANDIN_ATTESTERS` and `_project/scripts/oracle_review_check.py` no longer exist in this repository.
+Superseded in part:
+
+- D2 (`site-deploy` control plane, release-tag `/docs/`, and `github-pages` reviewers) and Standing Approval 6 are superseded by [`adr-site-repo-split.md`](adr-site-repo-split.md) (D4, D6, D7).
+- D4's review gate is now `review-gate` via the `benchbox-review` App (`review` environment) across every pull request not confined to `.github/inert-paths.txt`; the stand-in review attesters are listed in `.github/review.yml` (`consumer.attesters`) and the comment marker is `Stand-in review: APPROVE <full head SHA>`. `STANDIN_ATTESTERS` and `_project/scripts/oracle_review_check.py` no longer exist in this repository. Live required contexts and review policy live in [`docs/internal/repo-admin-settings.md`](../repo-admin-settings.md) and [`docs/internal/review-v2.md`](../review-v2.md).
 
 Supersedes:
 
@@ -37,8 +40,10 @@ Amended 2026-10-03: the merge queue and the strict up-to-date rule on `develop` 
 retired, and a pull request merges by auto-merge once its required checks pass on its
 own head. The queue's failures were mostly its own machinery: 38 of the 40 most recent
 failed merge-group runs, with no confirmed cross-PR integration failure. A post-merge
-workflow, `.github/workflows/trunk.yml`, tests pushes to `develop` one at a time, with
-only the newest waiting push following the run in flight (amended 2026-10-30), and produces verified release distributions.
+workflow, `.github/workflows/trunk.yml`, runs every `develop` push independently in a
+per-SHA concurrency group (amended 2026-11-06; see Amendment 2026-11-06 item 7 below,
+which reversed the 2026-10-30 latest-waiting-push-only rule) and produces verified
+release distributions.
 A red trunk is reverted first. The sections below describe the replacement;
 dated queue decisions remain historical. See
 `_project/decisions/merge-queue-retirement-2026-10-03.md`.
@@ -56,6 +61,12 @@ branches, cut from a release tag, are the only other release line. The `release`
 this ADR retires is not one of them.
 
 ### D2: Replace the publication control plane
+
+Superseded by [`adr-site-repo-split.md`](adr-site-repo-split.md) (D4, D6, D7): the public
+site and its Node deployment control plane moved to `BenchBox-dev/benchbox-site`,
+`github-pages` has no required reviewer, docs render from trunk only, and core no longer
+carries a `site-deploy` workflow. The criteria below remain as historical context for the
+transition.
 
 The multi-workflow publication control plane is replaced with a single unified
 `site-deploy` workflow for `benchbox.dev`. Entry criteria for the replacement:
@@ -147,8 +158,7 @@ The soundness path list covers expected and reference results, digests,
 result-validation and equivalence comparators, result capture, corpus overrides,
 publication scripts, every workflow, and the arming helper. Release and binary
 protections remain. Documentation, ordinary decision records, runbooks, threat
-models, and `AGENTS.md` leave the list. The `single-repo-migration.md` decision
-remains protected because release curation parses it as configuration. The manifest-based
+models, and `AGENTS.md` leave the list. The manifest-based
 `oracle-review` check replaces the former `tooling` attestation flag. The external
 review requirement is unchanged except for the stand-in review above.
 A new push or refresh changes the head and needs fresh CI and a fresh connector review
@@ -168,6 +178,14 @@ integration ID. It applies the same rule as `oracle-review`, which no longer is 
 because it runs the workflow file from the pull request. See
 [`docs/internal/repo-admin-settings.md`](../repo-admin-settings.md) and
 `_project/decisions/oracle-review-check-retired-2026-10-24.md`.
+
+Amended 2026-11-23: the required review check was renamed from `oracle-gate` to
+`review-gate`, posted by the `benchbox-review` App from the `review` environment
+(`.github/review.yml`), and widened from soundness paths only to every pull request not
+confined to `.github/inert-paths.txt`. Live required contexts, environment bindings, and
+review rules are maintained in
+[`docs/internal/repo-admin-settings.md`](../repo-admin-settings.md) and
+[`docs/internal/review-v2.md`](../review-v2.md).
 
 ### D5: Retain agent write tooling, retire PR-loop scripts
 
@@ -257,8 +275,8 @@ the release workflow) shipped without live execution. The owner decided:
 4. **Theseus and the oracle are consumed as a pinned dependency.** One commit SHA, the
    lock's `workflow_sha`, names every Theseus reference, and
    `tests/unit/workflows/test_theseus_pin_consistency.py` fails when a workflow reference
-   disagrees with it. A bump branch cannot exercise the new pin, because the `oracle`
-   environment deploys only from `develop`. A bump is therefore verified after it merges
+   disagrees with it. A bump branch cannot exercise the new pin, because the `review`
+   environment (formerly `oracle`) deploys only from `develop`. A bump is therefore verified after it merges
    on `develop`, and rollback is a revert of the pin commit; no separate oracle policy
    applies to bump branches (the "Theseus pin bump and rollback" section of `docs/internal/review-v2.md`). A detector that fails
    closed when `review-verdict` or `review-gate` post no result for a head is not yet
@@ -302,10 +320,9 @@ Owner decisions after the dev-loop v2 retrospective:
    `develop`. This amends D1: the release lines are `develop` and those branches. The
    owner applied the `release-branches` and `release-branch-lifecycle` rulesets on
    2026-11-07, and the maintenance procedure is in `docs/internal/release-guide.md`.
-   Three capabilities were not yet available for these lines: a `trunk.yml` run on pushes
-   to `release/**`, review-gate support for a base other than `develop`, and a release
-   canary that tests a release line. A maintenance release needed them first.
-   Review-gate support for `release/*` bases has since landed.
+   Three capabilities were not yet available when that decision was recorded: a `trunk.yml`
+   run on pushes to `release/**`, review-gate support for a base other than `develop`, and a
+   release canary that tests a release line. All three have since landed.
 9. **A release also requires a fresh green release canary** (at most 48 hours old) on an
    ancestor commit of the release commit. `release-v2.yml` enforces it in `admit` for
    every tag, on both the evidence-reuse and the full-UAT paths.
@@ -321,10 +338,10 @@ once corresponding preconditions and backups (per Guardrail G5) are satisfied:
    - Remove legacy checks after the transition window.
    - Historical queue-parameter adjustments are retired with the queue. The dated
      retirement decision records the specific queue, strict-rule and review changes.
-   - Delete the obsolete `release-only` ruleset.
+   - Delete the obsolete `release-only` ruleset (completed on 2026-11-07).
 
 2. **Branches:**
-   - Delete `release` and `publication` branches after creating immutable archive tags.
+   - Delete `release` and `publication` branches after creating immutable archive tags (`release` deleted by the owner on 2026-11-07; `publication` retired under [`adr-site-repo-split.md`](adr-site-repo-split.md) D18).
    - Delete stale `gh-readonly-queue/*` branches with no active queue entry.
    - Delete merged `auto-revert/*` branches and merged feature/fix branches.
 
@@ -333,20 +350,21 @@ once corresponding preconditions and backups (per Guardrail G5) are satisfied:
      deleted on 2026-10-27. Keep `incident:release-canary-red` (owner decision of 2026-10-27) and `no-auto-merge`
      (amendment of 2026-10-15).
    - Create `quarantine` and `t3:*` labels.
-   - Delete the `publication-attestation` environment after site deployment cutover.
+   - Delete the `publication-attestation` environment after site deployment cutover (retired under [`adr-site-repo-split.md`](adr-site-repo-split.md) D18).
 
 4. **Secrets and GitHub Apps:**
-   - Delete `PUBLICATION_APP_ID` and `PUBLICATION_PRIVATE_KEY`, and uninstall the
-     publication GitHub App after `site-deploy` cutover.
+   - Delete `PUBLICATION_APP_ID` and `PUBLICATION_APP_PRIVATE_KEY`, and uninstall the
+     publication GitHub App after `site-deploy` cutover (retired under [`adr-site-repo-split.md`](adr-site-repo-split.md) D18).
    - Delete unused legacy tracker secrets if no repository references exist.
 
 5. **Self-service merge:**
    - Autonomous merge of modernization PRs targeting `develop` once all required checks,
      self-review, and required soundness reviews pass.
 
-6. **Site deployment approval:**
-   - Approve pending `github-pages` deployments via GitHub API once pre-deployment
-     verification passes.
+6. **Site deployment approval (superseded by [`adr-site-repo-split.md`](adr-site-repo-split.md) D6):**
+   - Originally authorized approving pending `github-pages` deployments via GitHub API once
+     pre-deployment verification passed; `BenchBox-dev/benchbox-site` deploys automatically
+     with no `github-pages` required reviewer.
 
 7. **Release flow rehearsal:**
    - Execute TestPyPI publication rehearsals autonomously.
