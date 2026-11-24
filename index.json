@@ -54558,6 +54558,13 @@
       "status": "done",
       "title": "Fix make uat-report regeneration prune-drop and registry_pruned mislabel"
     },
+    "uat-restore-cedardb-flightdata-sf1-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Restore cedardb FlightData SF1 to the stage 2 release gate"
+    },
     "uat-resume-retirement-artifact-durability": {
       "claim": null,
       "needs": [

@@ -1,0 +1,16 @@
+{
+  "acceptance": [
+    "cedardb/flightdata@1 is back in the stage 2 gate with the coverage floor at 38, and it passes in three consecutive scheduled trunk UAT runs."
+  ],
+  "description": "## Problem\nIn scheduled trunk UAT run 45389336355 (job 138429445576, develop ee2e196e3c), `cedardb/flightdata@1` timed out at 1200 s (ran 1231 s). Server evidence showed no restart, no OOM kill (cgroup oom_kill 0) and no logged error. The first server statement arrived 18.5 minutes into the cell, against 7 minutes in passing run 45155067627; the engine phase took about 2 minutes in both. The wait is the download of the 41 monthly BTS On-Time archives from transtats.bts.gov, which BenchBox does not control. The cell passed in runs 44712884700 (799 s), 44888589677 (560 s), 45007293835 (693 s) and 45155067627 (553 s), so it already used 46-67% of the 1200 s limit on a normal day.\n\nPruned under the owner decision of 2026-11-24 (\"Fix forward. If a cell's cause is proven to be outside BenchBox (engine bug, runner limit), prune that cell from the gate and file a restoration item, without asking. Never raise a budget or timeout.\"): the prune is (\"cedardb\", \"flightdata\", 1.0) in tests/uat/compatibility.py, and cross_scale_coverage_min_pairs in tests/uat/configs/release-gate-02-docker-nonoltp.yaml went from 38 to 37 (the test requires floor(0.8 x eligible)).\n\n## Change\nMake the FlightData SF1 source data reliably fast to obtain on the release runner (for example a pinned or cached copy of the monthly archives keyed by their checksums), record download time separately from transform time in the cell log, then remove the prune and restore the floor of 38.\n\n## Guardrails\nDo not raise the 1200 s cell timeout or the 8 GiB container limit.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T14:59:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1858caf7eb074b2ba32d066ba9470eef",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    }
+  ]
+}
