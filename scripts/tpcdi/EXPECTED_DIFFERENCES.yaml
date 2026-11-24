@@ -1,5 +1,6 @@
 entries:
   - id: exact-numerics
+    departure: exact-numerics
     kind: column_type
     clause: "3.2, Table 3.2.1"
     reason: "The specification types every non-integer measure as NUMERIC(p,s). BenchBox stores DECIMAL(p,s); the DuckDB implementation stores DOUBLE. Values are compared after the DOUBLE side is rounded to the scale of the DECIMAL side."
@@ -9,6 +10,7 @@ entries:
     right_type: "DOUBLE"
 
   - id: yield-multiplied-by-100
+    departure: yield-multiplied-by-100
     kind: column_value
     clause: "4.5.11.2, 4.6.10"
     reason: "The specification defines Yield as the dividend divided by the closing price multiplied by 100. The DuckDB implementation divides by 100 instead (its yield equals dividend / close / 100 on every FactMarketHistory row at scales 3, 5 and 10), so its value is the specification value divided by 10000."
@@ -17,6 +19,7 @@ entries:
     condition: "l.yield = ROUND(r.yield * 10000, 2)"
 
   - id: fifty-two-week-high-window
+    departure: fifty-two-week-date-range
     kind: column_value
     clause: "4.5.11.2"
     reason: "The specification takes the high over the dates after DM_DATE minus one year. The DuckDB implementation takes the 364 preceding rows plus the current one. DailyMarket has one row per calendar day for every security at scales 3, 5 and 10 (no gaps), so its window is the specification window except that it is one day short when the specification window spans a 29 February. Only then can the specification high be larger, and only when it is the high of that one extra day (DM_DATE minus 365 days)."
@@ -31,6 +34,7 @@ entries:
       AND l.sk_fiftytwoweekhighdate = CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 365 DAY, '%Y%m%d') AS BIGINT)
 
   - id: fifty-two-week-high-date
+    departure: fifty-two-week-earliest-date-on-ties
     kind: column_value
     clause: "4.5.11.2"
     reason: "The specification takes the earliest date on which the high occurs in its window; the DuckDB implementation picks one of the tied dates without ordering. Accepted only when the highs are equal, the specification date is the earlier, and both sides carry the high as DayHigh on their own date, or when the specification window spans a 29 February and its high and date are those of the one extra day (see fifty-two-week-high-window)."
@@ -53,6 +57,7 @@ entries:
       AND l.sk_fiftytwoweekhighdate = CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 365 DAY, '%Y%m%d') AS BIGINT))
 
   - id: fifty-two-week-low-window
+    departure: fifty-two-week-date-range
     kind: column_value
     clause: "4.5.11.2"
     reason: "Same window difference as fifty-two-week-high-window: only when the specification window spans a 29 February can the specification low be smaller, and only when it is the low of the one extra day."
@@ -67,6 +72,7 @@ entries:
       AND l.sk_fiftytwoweeklowdate = CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 365 DAY, '%Y%m%d') AS BIGINT)
 
   - id: fifty-two-week-low-date
+    departure: fifty-two-week-earliest-date-on-ties
     kind: column_value
     clause: "4.5.11.2"
     reason: "Same tie and window difference as fifty-two-week-high-date, for the low and DayLow."
@@ -89,6 +95,7 @@ entries:
       AND l.sk_fiftytwoweeklowdate = CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 365 DAY, '%Y%m%d') AS BIGINT))
 
   - id: dimtrade-batchid-fixed-at-creation
+    departure: dimtrade-batchid-fixed-at-creation
     kind: column_value
     clause: "4.6.7.2"
     reason: "The specification fixes DimTrade.BatchID at the batch that created the row. The DuckDB implementation overwrites it with the batch of the last update. Accepted only when BenchBox's value is the first batch whose BatchDate is on or after the trade's create date, and the implementation's value is not earlier."
@@ -99,12 +106,14 @@ entries:
       AND l.batchid <= r.batchid
 
   - id: prospect-status-messages
+    departure: prospect-status-messages
     kind: messages
     clause: "4.5.15, 4.6.14.2"
     reason: "The specification has the Prospect transformation write status messages to DImessages. The DuckDB implementation writes none (its DImessages has no Prospect row of type Status at scales 3, 5 and 10)."
     condition: "g.messagetype = 'Status' AND g.messagesource = 'Prospect' AND g.right_count IS NULL"
 
   - id: answer-key-tier-inv-batch1-left
+    departure: answer-key-corrected-at-audit-load
     kind: rows_only
     clause: "2.4.5, 7.2.6.7"
     reason: "DIGen's Batch1 answer key for DimCustomer C_TIER_INV is off by one; BenchBox corrects it while loading the Audit table and records the correction. The DuckDB implementation loads the key as generated. Accepted only when BenchBox's Value equals the implementation's Value plus one; the recount itself is not computable from the warehouse tables."
@@ -115,6 +124,7 @@ entries:
       AND EXISTS (SELECT 1 FROM rhs.main.Audit o WHERE o.dataset = t.dataset AND o.attribute = t.attribute AND o.batchid = t.batchid AND t.value = o.value + 1)
 
   - id: answer-key-tier-inv-batch1-right
+    departure: answer-key-corrected-at-audit-load
     kind: rows_only
     clause: "2.4.5, 7.2.6.7"
     reason: "Counterpart of answer-key-tier-inv-batch1-left: the uncorrected key row held by the DuckDB implementation, accepted only when BenchBox's row for the same key holds that value plus one."
@@ -125,6 +135,7 @@ entries:
       AND EXISTS (SELECT 1 FROM lhs.main.Audit o WHERE o.dataset = t.dataset AND o.attribute = t.attribute AND o.batchid = t.batchid AND o.value = t.value + 1)
 
   - id: audit-customer-tier-alerts-batch1
+    departure: answer-key-corrected-at-audit-load
     kind: audit
     clause: "2.4.5, 7.2.6.7"
     reason: "With the uncorrected C_TIER_INV key the official audit reports Mismatch for the customer tier alert count of Batch 1 over the DuckDB implementation's tables at scales 3 and 5; BenchBox's corrected key gives OK."

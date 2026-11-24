@@ -29,21 +29,21 @@ from benchbox.base import BaseBenchmark, GeneratorOutputDirMixin
 from benchbox.core.dataframe.maintenance_interface import get_maintenance_operations_for_platform
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.run_service import refuses_unavailable_benchmark
-from benchbox.core.tpcdi.config import TPCDIConfig
-from benchbox.core.tpcdi.etl import (
+from benchbox.core.tpcdi._legacy_etl import (
     DataFrameETLBackend,
     ETLResult,
     SQLETLBackend,
     TPCDIETLBackend,
     TPCDIETLPipeline,
 )
-from benchbox.core.tpcdi.etl.customer_mgmt_processor import CustomerManagementProcessor
-from benchbox.core.tpcdi.etl.data_quality_monitor import DataQualityMonitor
-from benchbox.core.tpcdi.etl.error_recovery import ErrorRecoveryManager
-from benchbox.core.tpcdi.etl.finwire_processor import FinWireParser, FinWireProcessor
-from benchbox.core.tpcdi.etl.incremental_loader import IncrementalDataLoader
-from benchbox.core.tpcdi.etl.results import ETLPhaseResult
-from benchbox.core.tpcdi.etl.scd_processor import EnhancedSCDType2Processor
+from benchbox.core.tpcdi._legacy_etl.customer_mgmt_processor import CustomerManagementProcessor
+from benchbox.core.tpcdi._legacy_etl.data_quality_monitor import DataQualityMonitor
+from benchbox.core.tpcdi._legacy_etl.error_recovery import ErrorRecoveryManager
+from benchbox.core.tpcdi._legacy_etl.finwire_processor import FinWireParser, FinWireProcessor
+from benchbox.core.tpcdi._legacy_etl.incremental_loader import IncrementalDataLoader
+from benchbox.core.tpcdi._legacy_etl.results import ETLPhaseResult
+from benchbox.core.tpcdi._legacy_etl.scd_processor import EnhancedSCDType2Processor
+from benchbox.core.tpcdi.config import TPCDIConfig
 from benchbox.core.tpcdi.generator import TPCDIDataGenerator
 from benchbox.core.tpcdi.loader import TPCDIDataLoader
 from benchbox.core.tpcdi.metrics import BenchmarkMetrics, BenchmarkReport, TPCDIMetrics
@@ -1283,13 +1283,13 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             self.customer_mgmt_processor = CustomerManagementProcessor(connection, dialect)
 
         if self.scd_processor is None:
-            from benchbox.core.tpcdi.etl.scd_processor import SCDProcessingConfig
+            from benchbox.core.tpcdi._legacy_etl.scd_processor import SCDProcessingConfig
 
             scd_config = SCDProcessingConfig()
             self.scd_processor = EnhancedSCDType2Processor(connection, config=scd_config)
 
         if self.incremental_loader is None:
-            from benchbox.core.tpcdi.etl.incremental_loader import IncrementalLoadConfig
+            from benchbox.core.tpcdi._legacy_etl.incremental_loader import IncrementalLoadConfig
 
             incremental_config = IncrementalLoadConfig()
             self.incremental_loader = IncrementalDataLoader(connection, config=incremental_config)
@@ -1793,7 +1793,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
 
         try:
             if self.data_quality_monitor:
-                from benchbox.core.tpcdi.etl.data_quality_monitor import DataQualityRule
+                from benchbox.core.tpcdi._legacy_etl.data_quality_monitor import DataQualityRule
 
                 quality_rules = [
                     DataQualityRule(

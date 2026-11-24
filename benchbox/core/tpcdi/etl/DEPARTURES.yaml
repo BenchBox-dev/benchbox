@@ -1,0 +1,158 @@
+departures:
+  - id: exact-numerics
+    kind: changed
+    clause: "3.2, Table 3.2.1"
+    project_behaviour: "Staging and warehouse columns that hold prices, amounts, rates and ratios are DOUBLE or FLOAT."
+    benchbox_behaviour: "Every non-integer staging read is typed DECIMAL(p,s) with the precision and scale of the specification, and the warehouse columns carry the same types."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/tax_rate.sql
+      - benchbox/core/tpcdi/etl/ingest/trade.sql
+      - benchbox/core/tpcdi/etl/ingest/cash_transaction.sql
+      - benchbox/core/tpcdi/etl/ingest/daily_market.sql
+    status: implemented
+    approval: pending
+
+  - id: staging-files-read-as-generated
+    kind: changed
+    clause: "2.4.4, 2.4.5"
+    project_behaviour: "The project reads split files (CustomerMgmt_1.xml, FINWIRE_1.txt) through brace globs and expects the generator to have split them."
+    benchbox_behaviour: "The files are read exactly as DIGen wrote them: CustomerMgmt.xml whole, FINWIRE files through one character-class glob. No staging file is split, rewritten or repaired."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
+      - benchbox/core/tpcdi/etl/ingest/finwire.sql
+    status: implemented
+    approval: pending
+
+  - id: only-the-first-batch-is-read
+    kind: changed
+    clause: "4.3.5.5"
+    project_behaviour: "The ingestion notebooks read Batch1 together with Batch2 and Batch3 (DailyMarket, Prospect, CashTransaction, BatchDate) and precompute work for later batches."
+    benchbox_behaviour: "Every ingestion statement names the Batch1 directory only; the batch number of each row comes from the path of the file it was read from."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/batch_date.sql
+      - benchbox/core/tpcdi/etl/ingest/prospect.sql
+      - benchbox/core/tpcdi/etl/ingest/daily_market.sql
+      - benchbox/core/tpcdi/etl/ingest/cash_transaction.sql
+    status: implemented
+    approval: pending
+
+  - id: xml-parsed-in-the-timed-load
+    kind: kept
+    clause: "2.2.2.5, 7.2.4.3"
+    project_behaviour: "CustomerMgmt.xml is parsed by the engine inside the load, with its own XML reader."
+    benchbox_behaviour: "CustomerMgmt.xml is parsed inside the load by the community extension webbed, which BenchBox installs only when the setting allow_third_party_extensions is on and otherwise refuses with the owner's message."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
+    status: implemented
+    approval: pending
+
+  - id: customer-status-from-lookup
+    kind: changed
+    clause: "4.5.4.3"
+    project_behaviour: "CustomerMgmtRaw decodes the action type into the literals Active and Inactive."
+    benchbox_behaviour: "CustomerMgmtRaw keeps the action type and has no status column; the dimension transformations join StatusType for the names."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
+    status: implemented
+    approval: pending
+
+  - id: finwire-record-type-is-not-split-at-ingest
+    kind: changed
+    clause: "2.2.2.8, 4.5.14.2"
+    project_behaviour: "The FINWIRE ingestion splits financial records into FIN_COMPANYID and FIN_NAME by testing whether the company field is numeric."
+    benchbox_behaviour: "FinWire keeps the record type of the file (CMP, FIN, SEC); the Financial transformation decides between company identifier and company name from the stored text."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/finwire.sql
+    status: implemented
+    approval: pending
+
+  - id: transaction-files-land-in-raw-tables
+    kind: changed
+    clause: "7.2.4.1"
+    project_behaviour: "Trade, TradeHistory, HoldingHistory, WatchHistory, CashTransaction, DailyMarket and Prospect are read from the files inside each silver and gold transformation."
+    benchbox_behaviour: "Each of these files is read once, into a typed raw table that carries the batch number of its file, so row counts can be checked against the generator's audit files and every transformation reads the same typed image."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/prospect.sql
+      - benchbox/core/tpcdi/etl/ingest/trade.sql
+      - benchbox/core/tpcdi/etl/ingest/trade_history.sql
+      - benchbox/core/tpcdi/etl/ingest/holding_history.sql
+      - benchbox/core/tpcdi/etl/ingest/watch_history.sql
+      - benchbox/core/tpcdi/etl/ingest/cash_transaction.sql
+      - benchbox/core/tpcdi/etl/ingest/daily_market.sql
+    status: implemented
+    approval: pending
+
+  - id: dimbroker-keys-kept
+    kind: kept
+    clause: "4.5.2"
+    project_behaviour: "DimBroker takes the employee identifier as the surrogate key, sets BatchID to 1, and takes the earliest date of DimDate as the effective date."
+    benchbox_behaviour: "Kept."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/dim_broker.sql
+    status: implemented
+    approval: pending
+
+  - id: databricks-tuning-left-out
+    kind: left_out
+    clause: "0.2"
+    project_behaviour: "Partitioning by batch or action type, table properties, liquid clustering, the session time zone setting and INSERT OVERWRITE with Delta semantics."
+    benchbox_behaviour: "None of these appears in the ingestion SQL. The statements are the same on every platform; platform tuning goes through BenchBox's tuning configuration."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
+      - benchbox/core/tpcdi/etl/ingest/finwire.sql
+    status: implemented
+    approval: pending
+
+  - id: yield-multiplied-by-100
+    kind: changed
+    clause: "4.5.11.2, 4.6.10"
+    project_behaviour: "FactMarketHistory.Yield is the dividend divided by the closing price, divided by 100."
+    benchbox_behaviour: "Yield is the dividend divided by the closing price, multiplied by 100."
+    files: []
+    status: pending
+    approval: pending
+
+  - id: fifty-two-week-date-range
+    kind: changed
+    clause: "4.5.11.2"
+    project_behaviour: "The 52-week high and low are taken over the 364 preceding rows and the current row."
+    benchbox_behaviour: "The 52-week high and low are taken over the dates after DM_DATE minus one year."
+    files: []
+    status: pending
+    approval: pending
+
+  - id: fifty-two-week-earliest-date-on-ties
+    kind: changed
+    clause: "4.5.11.2"
+    project_behaviour: "When several dates carry the 52-week high or low, one of them is picked without an ordering."
+    benchbox_behaviour: "The earliest date on which the value occurs in the window is stored."
+    files: []
+    status: pending
+    approval: pending
+
+  - id: dimtrade-batchid-fixed-at-creation
+    kind: changed
+    clause: "4.6.7.2"
+    project_behaviour: "DimTrade.BatchID is overwritten with the batch of the last update."
+    benchbox_behaviour: "DimTrade.BatchID keeps the batch that created the row."
+    files: []
+    status: pending
+    approval: pending
+
+  - id: prospect-status-messages
+    kind: changed
+    clause: "4.5.15, 4.6.14.2"
+    project_behaviour: "The Prospect transformation writes no status message to DImessages."
+    benchbox_behaviour: "The Prospect transformation writes its status messages to DImessages with the BatchID of its phase."
+    files: []
+    status: pending
+    approval: pending
+
+  - id: answer-key-corrected-at-audit-load
+    kind: changed
+    clause: "2.4.5, 7.2.6.7"
+    project_behaviour: "The DuckDB implementation loads DIGen's answer key as generated; the Databricks project's own generator avoids the defect."
+    benchbox_behaviour: "BenchBox loads the Audit table from the generator's files and corrects only the attributes that an independent recount shows to be wrong, listing each correction in the result. Generated files are never edited."
+    files: []
+    status: pending
+    approval: pending

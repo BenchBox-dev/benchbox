@@ -173,7 +173,7 @@ or declaration appears unused.
 | `mutmut` | DEV | (CLI tool) | 0 | KEEP - `[tool.mutmut]` config block targets specific files |
 | `codespell` | DEV | (CLI tool) | 0 | KEEP - invoked via `pre-commit` and CI |
 | `pre-commit` | DEV | (CLI tool) | 0 | KEEP - invoked by local hooks and content-guard CI |
-| `lxml` | DEV | `tests/unit/core/tpcdi/test_etl_sources.py` | 1 | **FLAG-UNUSED-RUNTIME** - only test imports; verify whether `benchbox/core/tpcdi/etl/sources.py` actually requires lxml at runtime (it parses XML). If yes, promote to runtime extra; if no, keep dev-only. See finding F3. |
+| `lxml` | DEV | `tests/unit/core/tpcdi/test_etl_sources.py` | 1 | **FLAG-UNUSED-RUNTIME** - only test imports; verify whether `benchbox/core/tpcdi/_legacy_etl/sources.py` actually requires lxml at runtime (it parses XML). If yes, promote to runtime extra; if no, keep dev-only. See finding F3. |
 | `clickhouse-connect` | DEV | (also in dev for tests) | covered above | KEEP |
 | `cloudpathlib[s3,gs,azure]` | DEV | tests use `cloudpathlib` core | covered above | KEEP - extras pin S3/GCS/Azure providers for live tests |
 | `pyiceberg[sql-sqlite,pyarrow]` | DEV | tests use `pyiceberg` core | covered above | KEEP - extras pin SQL-SQLite catalog for tests |
