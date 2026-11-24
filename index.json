@@ -18887,6 +18887,13 @@
       "status": "done",
       "title": "Audit all imported dependencies and eliminate any not strictly required"
     },
+    "audit-project-decisions-contradictions-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Audit remaining ~80 non-ADR records in _project/decisions/ for contradictions and stale runbook links"
+    },
     "audit-sha-stamps-drift-silently": {
       "claim": null,
       "needs": [],

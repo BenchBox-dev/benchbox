@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "All ~80 remaining non-ADR decision records in _project/decisions/ are audited against live code, workflows, and docs/internal/ runbooks, with a structured read-only report listing every contradiction, reversed decision lacking a supersession note, and live runbook citing a reversed record.",
+    "After owner adjudication of the audit report, accepted remediations are landed via PR(s) preserving dated historical prose (appending dated status notes rather than rewriting point-in-time records) and updating live docs/internal/ runbooks.",
+    "make docs-reference-inventory-check, check_project_references.py, make pr-preflight, and hosted review-gate pass on any remediation PR(s)."
+  ],
+  "context": "Surfaced during the 2026-11-23/24 ADR audit adjudication: _project/decisions/ holds 89 markdown records, and the ADR audit covered only the ADR-titled files (plus 3 trunk records where direct contradictions with live runbooks merge-queue-governance.md, pr-triage.md, and develop-post-merge-gaps.md were uncovered). The remaining ~80 operational/campaign decision records remain unaudited.",
+  "description": "## Problem\n`_project/decisions/` contains 89 markdown decision records. The 2026-11-23/24 ADR audit covered only the ADR-titled records (and incidentally uncovered reversed trunk-concurrency decisions still cited as current by live `docs/internal/` runbooks). Roughly 80 non-ADR decision records in `_project/decisions/` have not been audited for reversals, missing supersession headers, or stale citations from live operational runbooks.\n\n## Change\n1. Conduct a read-only adversarial audit of the unaudited records in `_project/decisions/` against live workflows (`.github/workflows/`), scripts (`scripts/`), code (`benchbox/`), and live runbooks (`docs/internal/`).\n2. Classify findings by severity (verifying live behavior directly, not from summaries) and identify any live runbook citing a reversed decision.\n3. Present the audit report to the owner for adjudication; once approved, land the accepted status-note and live-runbook updates in focused PR(s).\n\n## Decision gates\n- STOP after the read-only audit and report findings to the owner before editing any tracked file (`[REVIEW-AUTH-001]`).\n- Preserve point-in-time dated records: append dated status/supersession notes rather than rewriting historical Decision/Options prose.\n- If a finding uncovers wrong shipped code or workflow behavior (not just stale prose), file a separate implementation item or confirm scope with the owner before mixing code fixes into a docs PR.\n\n## Verification rubric\n- Pass: audit report accounts for all 89 files in `_project/decisions/` (noting which were already covered by #4482–#4488 and which are newly verified), cites live file/workflow evidence for every finding, and every owner-accepted fix merges cleanly with passing `docs-reference-inventory-check`, `check_project_references.py`, `make pr-preflight`, and hosted `review-gate`.\n- Fail: edits land without owner adjudication, historical decision prose is rewritten in place, or unverified `benchbox.dev` URLs are introduced.\n\n## Guardrails\nAudit phase is strictly read-only (`[REVIEW-AUTH-001]`). Remediation phase runs in a linked worktree (`make worktree-create`), never the primary clone. Verify every cited external `benchbox.dev` URL and section live before committing. Stage named paths only; commit with pinned human Git identity and no agent attribution or session labels (`[DURABLE-ARTIFACTS-001]`). Heavy work only via `make pr-preflight` / `make heavy-run`; never bypass `~/.benchbox/test.lock`. Open with `make pr-open`, arm with `make pr-arm`, and monitor to merge.",
+  "links": [
+    "_project/decisions/",
+    "docs/internal/README.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T21:15:07Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "c1d2e3f4a5061728394a5b6c7d8e9f14",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    }
+  ]
+}
