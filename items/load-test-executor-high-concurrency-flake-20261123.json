@@ -3,6 +3,11 @@
     "The test no longer depends on a stream starting within 0.5 s, shown by 200 consecutive passes under xdist with CPU contention.",
     "The test still fails when the executor starts no streams (mutation check)."
   ],
+  "batch": {
+    "batch_id": "uat-green",
+    "implementation_dependencies": [],
+    "member_id": "load-test-executor-high-concurrency-flake-20261123"
+  },
   "description": "## Problem\n`tests/unit/core/load_testing/test_executor.py::TestConcurrentLoadExecutorEdgeCases::test_high_concurrency` runs `SteadyPattern(concurrency=20, duration_seconds=0.5)` and asserts `max_concurrency_reached > 0`. On a busy runner no stream started before the pattern ended: trunk run 45188452490 (develop 5e784d6039, medium-test shard 0) failed with `max_concurrency_reached == 0` and turned develop red, which blocked `make pr-arm` for every PR. The six earlier trunk runs passed, and the merged change did not touch load testing. The failed job was re-run once on owner instruction and passed.\n\n## Change\nMake the assertion independent of scheduler timing: wait for streams to start, or assert the outcome the test means to pin, instead of racing a 0.5 s window.\n\n## Decision gates\n- Lengthening the pattern duration alone is not a fix; if it is part of the fix, show the owner why.\n- If the executor genuinely can end a run with no stream started, that is a product defect: record it and ask the owner whether to fix the executor instead.\n\n## Verification rubric\nPass: 200 consecutive passes under pytest-xdist with CPU contention (or an equivalent deterministic proof), and a mutation in which the executor starts no streams still fails the test.\n\n## Guardrails\n- Work in a linked worktree from `make worktree-create`; never write in the primary clone. Stage named paths only; commit as the pinned human identity with no agent attribution.\n- Push only after `make pr-preflight` passes on the exact head. Never `--no-verify`, force-push, or rewrite authorship.\n- Arm only with `make pr-arm`, once per head. A second attempt only when the refusal named a cause that is now fixed; a third needs the owner. `make pr-rerun` only for a job the runner cancelled or never ran, never to re-roll a failed test.\n- Never post a stand-in review. Resolve a review thread only after the bot has reviewed the new head and did not raise the finding again.\n- Heavy work only through `make heavy-run` or a lock-taking target. Never set `BENCHBOX_HEAVY_ADMIT=force`, `BENCHBOX_SKIP_TEST_LOCK` or `BENCHBOX_HEAVY_WATCHDOG=off`.\n- Any new limit, threshold, default or user-facing label is shown to the owner before it is committed.\n- Do not mark a test skip, xfail, quarantine or slow to make it pass.\n- Report only what merged and what was verified, with run ids and heads.",
   "links": [
     "tests/unit/core/load_testing/test_executor.py",
@@ -24,6 +29,14 @@
       "op": "update",
       "op_id": "2671f64ab7a64485a8495a95d5ea9b82",
       "session_id": "c81aa4dd49e04ffea4f29cb72ae09d11"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T14:48:30Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9caaff276f934a29986ffb524b203b38",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
 }
