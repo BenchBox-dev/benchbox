@@ -42739,10 +42739,15 @@
       "title": "Release v0.6.0: gates, release-prep and the v0.6.0rc1 tag (notes; not a work item)"
     },
     "release-v2-probe-runs-head-script-with-merge-ref-permissions-20261119": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-25T20:43:00Z",
+        "generation": "31b5dc48868b4504afe496211891f070",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "release-v2 probe runs the PR head's launch script under the merge ref's token, so a head older than its base's #4390 gets 403"
     },
     "relocate-cli-hook-registries": {
