@@ -1,6 +1,6 @@
 {
   "acceptance": [
-    "In a PR that touches benchbox/platforms/snowflake.py, CI runs the Snowflake unit tests twice: once with the connector version pinned in uv.lock (version asserted) and once with 5.x (version asserted), and neither run skips the registry tests.",
+    "In a PR that touches benchbox/platforms/snowflake.py, CI runs the Snowflake unit tests twice: once with the connector version pinned in uv.lock (version asserted) and once with 5.x (version asserted), and neither run skips the registry tests. (shown by -rs output listing no skip for the registry and TLS tests).",
     "A change to tests/fixtures/snowflake_connector.py alone triggers the job.",
     "tests/system/test_ci_lint_parity.py passes with the step documented; core still requires the job when it runs."
   ],
@@ -26,6 +26,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "e4065a661add48c8b34a2f201c330f8e",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:33:43Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "9bfaaae5f22846c783e66c9865b7593a",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
