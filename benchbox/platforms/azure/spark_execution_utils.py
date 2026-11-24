@@ -10,6 +10,10 @@ from benchbox.core.exceptions import ConfigurationError
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 
+class LivyStatementTimeout(ConfigurationError):
+    pass
+
+
 class LivyStatementState:
     WAITING = "waiting"
     RUNNING = "running"
@@ -54,7 +58,34 @@ def wait_for_livy_statement(
 
         time.sleep(2)
 
-    raise ConfigurationError(f"Timeout waiting for statement {statement_id} after {timeout_seconds}s")
+    raise LivyStatementTimeout(f"Timeout waiting for statement {statement_id} after {timeout_seconds}s")
+
+
+def cancel_livy_statement(
+    livy_endpoint: str,
+    session_id: int,
+    statement_id: int | str,
+    get_headers: Callable[[], dict[str, str]],
+) -> None:
+    response = requests.post(
+        f"{livy_endpoint}/{session_id}/statements/{statement_id}/cancel",
+        headers=get_headers(),
+        timeout=30,
+    )
+    response.raise_for_status()
+
+
+def delete_livy_session(
+    livy_endpoint: str,
+    session_id: int,
+    get_headers: Callable[[], dict[str, str]],
+) -> None:
+    response = requests.delete(
+        f"{livy_endpoint}/{session_id}",
+        headers=get_headers(),
+        timeout=30,
+    )
+    response.raise_for_status()
 
 
 def execute_livy_statement(

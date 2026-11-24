@@ -8,6 +8,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Callable
 
 from benchbox.core.results.timer_scope import RequestLedger, excluded_from_query_timer, outside_query_timer
+from benchbox.platforms.base import PlatformAdapter
 from benchbox.platforms.databricks.adapter import DatabricksAdapter, _normalize_table_format
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dependencies import get_package_install_message
@@ -50,6 +51,7 @@ except ImportError:
 class DatabricksDataFrameAdapter(DatabricksAdapter):
     platform_timing_source = None
     plan_capture_phase_eligible = True
+    cancel_remote_work = PlatformAdapter.cancel_remote_work
 
     def __init__(self, **config: Any) -> None:
         self.cluster_id = config.pop("compute_resource", None) or config.pop("cluster_id", None)

@@ -31,6 +31,7 @@ from benchbox.platforms.base.cloud_spark import (
     SparkTuningMixin,
 )
 from benchbox.platforms.base.cloud_spark.config import CloudPlatform
+from benchbox.platforms.base.remote_work import StartedRemoteWork
 from benchbox.utils.dependencies import (
     check_platform_dependencies,
     get_dependency_error_message,
@@ -76,6 +77,8 @@ class LivySessionState:
 
 
 class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
+    remote_cleanup_label = "Fabric Spark"
+
     timing_method = TIMING_METHOD_QUERY_ONLY
     plan_capture_phase_eligible = True
 
@@ -139,6 +142,7 @@ class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
 
         self._session_id: int | None = None
         self._session_created_by_us = False
+        self._started_work = StartedRemoteWork()
 
         self._query_count = 0
         self._total_statement_time_seconds = 0.0
