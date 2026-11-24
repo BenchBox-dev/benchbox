@@ -4,7 +4,7 @@
     "The owner's confirmation of the published bundle's edition is recorded in `docs/internal/results-vendor-publication-terms.md`.",
     "No published bundle is edited."
   ],
-  "context": "Filed 2026-11-19 from the remediation of 2026-11-17 to 2026-11-19.",
+  "context": "Filed 2026-11-19 from the remediation of 2026-11-17 to 2026-11-19.\n\n2026-11-24: no longer waiting on other CedarDB work (#4426 merged 2026-11-22); no commit has touched benchbox/platforms/cedardb.py since 2026-11-19, so the defect stands. The owner has not yet confirmed the published bundle's edition.",
   "description": "Problem. The published CedarDB bundle `tpch_sf001_cedardb_sql_20260825_095330_cf0d9e4d.json` records `platform.version: \"unknown\"` and no edition; the adapter (`benchbox/platforms/cedardb.py`, `SELECT version()` into `cedardb_version_string`) does not reach the bundle's version field. The owner's vendor-terms decision D4 (`_project/decisions/vendor-publication-terms-2026-11-19.md`) relies on the Community Edition, which the bundle cannot show, and readers cannot tell which CedarDB release produced a result.\nExpected outcome. A new CedarDB bundle records the server version and edition, or states that the edition is not discoverable.\n\n## Decision gate\n(agent): establish from a local CedarDB run (the pinned mirror image used by nightly throughput-cedardb) what `SELECT version()` and any licence or edition query return. If no query exposes the edition, stop and ask the owner whether to record the image digest as the edition evidence instead.\nOwner gate: the owner confirms the edition of the published bundle; the confirmation is recorded in the terms record (section 1, D4) by the agent.\n\n## Guardrails\n- Work in a linked worktree (`make worktree-create`, `make agent-write-preflight`); never edit the primary clone.\n- No skip, xfail, rerun marker, raised timeout or weakened assertion to turn a check green.\n- Heavy work only through `make heavy-run` or a lock-taking entry point; no admission or watchdog override.\n- No live vendor cloud without owner approval in the task.\n- No explanatory comments or docstrings (`make comment-policy-check`); user-facing changes add a `changelog.d/` fragment.\n- Anchors (file:line, run ids) are orientation from 2026-11-19; re-read before editing and stop to update the item on a mismatch.\n- Local container runs use mocker, through `make heavy-run`.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "op": "create",
       "op_id": "7300c8c84b433672a2d73681a30af813",
       "session_id": "1401fc36e42b41aea66be43c11e87a56"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:78577982789d137a526d6d7d",
+      "at": "2026-11-24T22:38:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "63f4b3089ab5888650066976e90e2114",
+      "session_id": "7a80d04581544190805d0df585b8bd05"
     }
   ]
 }
