@@ -44420,15 +44420,10 @@
       "title": "Two more tests assume a non-root user, beyond the one already tracked"
     },
     "rotate-credentials-emudhra-exposure-20261023": {
-      "claim": {
-        "expires_at": "2026-11-25T14:46:05Z",
-        "generation": "a13fdbe3e0f54dd8b9ee3c3406d24f55",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Rotate credentials that passed through TLS clients trusting the compromised eMudhra CAs"
     },
     "ruleset-break-glass-procedure-20261025": {
