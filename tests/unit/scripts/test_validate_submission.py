@@ -883,12 +883,12 @@ class TestValidateBundle:
         assert not vr.ok
         assert any("Missing keys in 'platform'" in e for e in vr.errors)
 
-    def test_unknown_benchmark_warns(self):
+    def test_unknown_benchmark_warns_and_is_undetermined(self):
         data = _minimal_bundle()
         data["benchmark"]["id"] = "my-custom-bench"
         vr = ValidationResult("test")
         _validate_bundle(data, vr)
-        assert vr.ok
+        assert vr.errors == ["result admission is undetermined: missing scale_registry_entry"]
         assert any("Unknown benchmark id" in w for w in vr.warnings)
 
     @pytest.mark.parametrize("benchmark_id", ["flightdata", "tsbs_devops"])
@@ -1049,8 +1049,9 @@ class TestValidateBundle:
             "summary.validation='passed' contradicts phases.validation.status='not_run'" in error for error in vr.errors
         )
 
-    def test_validation_claim_refuses_absent_phases(self):
+    def test_validation_claim_refuses_absent_phases_in_a_current_result(self):
         data = _minimal_bundle()
+        data["version"] = "2.4"
         del data["phases"]
         vr = ValidationResult("test")
 
@@ -2083,6 +2084,42 @@ class TestSubmissionDeterministicGates:
             assert not vr.ok
             assert any("not accepted for public submissions" in e for e in vr.errors)
 
+    @pytest.mark.parametrize("benchmark_id", ["star_schema", "tsbs-devops"])
+    def test_unregistered_scale_is_undetermined(self, benchmark_id):
+        data = _minimal_bundle()
+        data["benchmark"]["id"] = benchmark_id
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+        assert any("undetermined: missing scale_registry_entry" in error for error in vr.errors)
+
+    def test_started_throughput_without_stream_evidence_is_undetermined(self):
+        data = _minimal_bundle()
+        data["phases"]["power_test"]["refresh_functions"] = [{"status": "SUCCESS"}, {"status": "SUCCESS"}]
+        data["phases"]["throughput_test"] = {
+            "status": "IN_PROGRESS",
+            "refresh_stream": {"status": "COMPLETED", "pairs": [{"status": "SUCCESS"}]},
+        }
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+        assert any("undetermined: missing streams" in error for error in vr.errors)
+
+    @pytest.mark.parametrize("benchmark_id", ["TPC-H", "tpc_h"])
+    def test_tpc_alias_does_not_skip_query_coverage(self, benchmark_id):
+        data = _minimal_bundle()
+        data["benchmark"]["id"] = benchmark_id
+        data["queries"] = data["queries"][:21]
+        data["summary"]["queries"] = {"total": 21, "passed": 21, "failed": 0}
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+        assert any("canonical queries" in error for error in vr.errors)
+        assert not any("Unknown benchmark id" in warning for warning in vr.warnings)
+
+    @pytest.mark.parametrize("benchmark_id", ["TPC-H", "tpc_h", "TPC-DS", "tpc_ds"])
+    def test_tpc_alias_does_not_skip_combined_evidence(self, benchmark_id):
+        data = _minimal_bundle()
+        data["benchmark"]["id"] = benchmark_id
+        assert bundle_module.COMBINED_THROUGHPUT_NOT_CLEAN in bundle_module.combined_evidence_defects(data)
+
     def test_official_compliance_passes(self):
         data = _minimal_bundle()
         data["benchmark"]["compliance_class"] = "official"
@@ -2156,12 +2193,12 @@ class TestSubmissionDeterministicGates:
         _validate_bundle(data, vr, allow_partial_validation=True)
         assert vr.ok, vr.errors
 
-    def test_unknown_benchmark_skips_coverage(self):
+    def test_unknown_benchmark_has_no_canonical_coverage_check(self):
         data = _minimal_bundle()
         data["benchmark"]["id"] = "some_new_benchmark"
         vr = ValidationResult("test")
         _validate_bundle(data, vr)
-        assert vr.ok, vr.errors
+        assert vr.errors == ["result admission is undetermined: missing scale_registry_entry"]
 
     def test_case_variant_benchmark_id_still_gated(self):
         for bm_id in ("TPCH", "tpch ", " Tpch"):
@@ -2256,6 +2293,13 @@ class TestSubmissionDeterministicGates:
             vr = ValidationResult("test")
             _validate_execution_consistency(data, vr)
             assert vr.ok, vr.errors
+
+        @pytest.mark.parametrize("benchmark_id", ["TPC-H", "tpc_h"])
+        def test_tpc_alias_does_not_skip_stream_coverage(self, benchmark_id):
+            data = self._bundle([1, 2], {1: self._full_tpch(), 2: self._full_tpch()[:21]}, benchmark=benchmark_id)
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert any("throughput stream 2 covers 21 of 22" in error for error in vr.errors)
 
         def test_non_contiguous_stream_ids_rejected(self):
             full = self._full_tpch()

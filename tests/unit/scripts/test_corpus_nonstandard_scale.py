@@ -461,11 +461,11 @@ def test_the_registry_less_validator_fails_closed_without_the_projection(tmp_pat
         ("tpch", 2.0, "official", "not_ranked_nonstandard_scale"),
         ("tpcds", 30.0, None, "not_ranked_nonstandard_scale"),
         ("ssb", 2.0, None, "not_ranked_nonstandard_scale"),
-        ("tpch", 1.0, None, "missing_primary_metric"),
-        ("tpcds", 1000.0, None, "missing_primary_metric"),
+        ("tpch", 1.0, None, None),
+        ("tpcds", 1000.0, None, None),
     ],
 )
-def test_the_registry_less_exclusion_reason_sees_an_off_list_scale(
+def test_the_registry_less_exclusion_reason_uses_scale_and_timing_evidence(
     slim_mirror: Path, benchmark_id: str, scale: float, compliance_class: str | None, expected: str | None
 ) -> None:
     destination = slim_mirror / "results-data" / "validate_corpus.py"

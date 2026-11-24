@@ -238,6 +238,7 @@ def test_a_gateway_routed_result_is_refused_publicly_on_every_public_path(tmp_pa
 @pytest.mark.parametrize("missing", [True, False], ids=["missing", "null"])
 def test_missing_phases_are_refused_on_every_path(tmp_path: Path, monkeypatch, missing: bool) -> None:
     data = _bundle(CASES[0])
+    data["version"] = "2.4"
     if missing:
         del data["phases"]
     else:
@@ -255,6 +256,25 @@ def test_missing_phases_are_refused_on_every_path(tmp_path: Path, monkeypatch, m
     assert _validator().admission_reason(data, path) == "not_admitted_undetermined"
 
 
+def test_legacy_measured_rows_without_phases_are_admitted_but_not_ranked(tmp_path: Path, monkeypatch) -> None:
+    data = _bundle(CASES[0])
+    del data["phases"]
+    for row in data["queries"]:
+        del row["run_type"]
+        del row["iter"]
+    path = _write(tmp_path / "public", "result.json", data)
+    trusted = _write(tmp_path / "trusted", "result.json", data, internal=True)
+
+    assert classify_result_path(path) is SubmitTerminalState.submittable
+    assert _publish_admitted(path)
+    assert _gate_errors(path, trusted=False) == []
+    assert _gate_errors(trusted, trusted=True) == []
+    assert _staged(tmp_path, path, monkeypatch)
+    validator = _validator()
+    assert validator.admission_reason(data, path) is None
+    assert validator.bundle_lanes(data, path) == ()
+
+
 def test_failed_validation_is_refused_on_every_path(tmp_path, monkeypatch):
     data = _bundle(CASES[0])
     data["summary"]["validation"] = "failed"
@@ -263,8 +283,9 @@ def test_failed_validation_is_refused_on_every_path(tmp_path, monkeypatch):
     assert classify_result_path(path) is SubmitTerminalState.schema_violation
     assert _publish_admitted(path) is False
     assert _gate_errors(path, trusted=False) == [
+        "result admission is refused: failed_validation",
         "summary.validation must be 'passed' for public submissions (or 'no_reference' when no row-count "
-        "reference exists), got 'failed'"
+        "reference exists), got 'failed'",
     ]
     assert _gate_errors(trusted, trusted=True) == [
         "summary.validation must be one of ['no_reference', 'not_run', 'partial', 'passed'] "
@@ -303,7 +324,8 @@ def test_no_reference_claims_match_every_path(tmp_path, monkeypatch, scale, shap
         SubmitTerminalState.submittable if admitted else SubmitTerminalState.unvalidated
     )
     assert _publish_admitted(path) is admitted
-    assert _gate_errors(path, trusted=False) == errors
+    public_errors = errors if admitted else ["result admission is refused: failed_validation", *errors]
+    assert _gate_errors(path, trusted=False) == public_errors
     assert _gate_errors(trusted, trusted=True) == errors
     assert _staged(tmp_path, path, monkeypatch) is admitted
     validator = _validator()
@@ -334,7 +356,7 @@ def test_known_defect_is_admitted_but_not_ranked(tmp_path, monkeypatch):
 def test_a_bundle_the_rule_does_not_admit_to_the_maintainer_path_is_refused_by_admission(tmp_path: Path) -> None:
     validator = _validator()
     undetermined = _bundle(CASES[0])
-    undetermined.pop("phases")
+    undetermined["phases"] = None
     assert validator.admission_reason(undetermined, _write(tmp_path / "a", "result.json", undetermined)) is not None
 
     tpcdi = _bundle(CASES[0])

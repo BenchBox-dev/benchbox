@@ -524,11 +524,15 @@ def _measured_rows(data: Mapping[str, Any]) -> bool:
     return False
 
 
+def legacy_query_timing_defaults(data: Mapping[str, Any]) -> bool:
+    version = data.get("result_schema_version", data.get("version"))
+    return version in ("2.0", "2.1", "2.2", "2.3")
+
+
 def phases_ran(data: Mapping[str, Any]) -> frozenset[str] | None:
     phases = data.get("phases")
     if "phases" not in data:
-        version = data.get("result_schema_version", data.get("version"))
-        if version in ("2.0", "2.1", "2.2", "2.3") and _measured_rows(data):
+        if legacy_query_timing_defaults(data) and _measured_rows(data):
             return frozenset({PHASE_OTHER_TIMED})
         return None
     if not isinstance(phases, Mapping):

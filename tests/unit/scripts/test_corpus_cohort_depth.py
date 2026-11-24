@@ -1782,12 +1782,13 @@ def test_subscale_tpc_bundles_rank_on_power_recomputed_from_timings(
     assert entry.power_score_source == "derived_from_timings"
 
 
-def test_subscale_bundle_without_iteration_numbers_has_no_primary_metric(tmp_path: Path) -> None:
+def test_modern_subscale_bundle_without_iteration_numbers_has_no_primary_metric(tmp_path: Path) -> None:
     validator = _load_validator()
     path = _subscale_bundle(
         tmp_path, "duckdb.json", "DuckDB", {"suppressed": True}, compliance_class="unofficial_subscale"
     )
     payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["result_schema_version"] = "2.4"
     for query in payload["queries"]:
         query.pop("iter")
     path.write_text(json.dumps(payload), encoding="utf-8")

@@ -34,8 +34,8 @@ def _scale_factor(data: Mapping[str, Any]) -> float | None:
     return scale if math.isfinite(scale) and scale > 0 else None
 
 
-def _iteration(query: Mapping[str, Any]) -> int:
-    value = query.get("iter", query.get("iteration", 1))
+def _iteration(query: Mapping[str, Any], default: int) -> int:
+    value = query.get("iter", query.get("iteration", default))
     if isinstance(value, bool):
         return 0
     try:
@@ -65,17 +65,21 @@ def power_at_size(data: Mapping[str, Any]) -> float | None:
     scale = _scale_factor(data)
     if benchmark_id is None or scale is None:
         return None
+    rule = _corpus_rule()
+    legacy = rule.legacy_query_timing_defaults(data)
+    default_run_type = "measurement" if legacy else None
+    default_iteration = 1 if legacy else 0
     measurement = [
         query
         for query in _queries(data)
-        if (query.get("run_type") or "measurement") == "measurement"
-        and _iteration(query) > 0
+        if query.get("run_type", default_run_type) == "measurement"
+        and _iteration(query, default_iteration) > 0
         and str(query.get("test_type") or "power").lower() not in _NON_POWER_TEST_TYPES
     ]
     if not measurement:
         return None
-    final_iteration = max(_iteration(query) for query in measurement)
-    final = [query for query in measurement if _iteration(query) == final_iteration]
+    final_iteration = max(_iteration(query, default_iteration) for query in measurement)
+    final = [query for query in measurement if _iteration(query, default_iteration) == final_iteration]
     if any(str(query.get("status") or "").upper() not in _PASSING_STATUSES for query in final):
         return None
     if len({str(query.get("id", query.get("query_id"))) for query in final}) < POWER_QUERY_COUNTS[benchmark_id]:
@@ -84,8 +88,8 @@ def power_at_size(data: Mapping[str, Any]) -> float | None:
     if any(ms is None or ms <= 0 for ms in durations):
         return None
     seconds = [ms / 1000.0 for ms in durations if ms is not None]
-    score_source = _corpus_rule().derive_outcome(_corpus_rule().facts_from_result(data)).score_source
-    if benchmark_id == "tpch" and score_source != _corpus_rule().SCORE_POWER_QUERY_TIMINGS_ONLY:
+    score_source = rule.derive_outcome(rule.facts_from_result(data)).score_source
+    if benchmark_id == "tpch" and score_source != rule.SCORE_POWER_QUERY_TIMINGS_ONLY:
         phases = data.get("phases")
         power_phase = phases.get("power_test") if isinstance(phases, Mapping) else None
         refresh_configured = isinstance(power_phase, Mapping) and power_phase.get("refresh_first_set") is not None

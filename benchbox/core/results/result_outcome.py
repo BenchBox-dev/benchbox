@@ -2,15 +2,36 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
+from dataclasses import replace
 from typing import Any
 
 from benchbox.core.results import corpus_rule
+from benchbox.core.results.builder import normalize_benchmark_id
 from benchbox.core.results.models import BenchmarkResults
-from benchbox.core.results.schema import build_result_payload
+from benchbox.core.results.schema import _build_phases_block, _build_query_results_section
+from benchbox.core.results.status import result_failed_query_count, result_non_clean_reason
+from benchbox.core.results.subscale_policy import result_gateway_routed
 
 
-def facts_for_result(result: BenchmarkResults) -> corpus_rule.Facts:
-    return corpus_rule.facts_from_result(build_result_payload(result))
+def facts_for_result(result: Any) -> corpus_rule.Facts:
+    data = getattr(result, "_corpus_rule_data", None)
+    if data is not None:
+        return corpus_rule.facts_from_result(data)
+    benchmark = getattr(result, "benchmark_id", None)
+    if not benchmark:
+        name = getattr(result, "benchmark_name", None)
+        benchmark = normalize_benchmark_id(name) if isinstance(name, str) else None
+    phases = _build_phases_block(result) if hasattr(result, "execution_phases") else None
+    queries = _build_query_results_section(result)[1] if getattr(result, "query_results", None) else []
+    data = {
+        "benchmark": {"id": benchmark, "scale_factor": getattr(result, "scale_factor", None)},
+        "platform": {"gateway": {"routed": result_gateway_routed(result)}},
+        "phases": phases,
+        "summary": {"validation": getattr(result, "validation_status", None)},
+        "queries": queries,
+    }
+    facts = corpus_rule.facts_from_result(data, failed_queries=result_failed_query_count(result))
+    return replace(facts, validation_failed=True) if result_non_clean_reason(result) else facts
 
 
 def outcome_for_result(result: Any) -> corpus_rule.Outcome:

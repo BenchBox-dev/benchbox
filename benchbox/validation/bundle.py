@@ -1369,7 +1369,7 @@ def _validate_benchmark_section(benchmark: Any, vr: ValidationResult) -> None:
         vr.error(TPCDI_BUNDLE_REFUSAL)
 
     bm_id = benchmark.get("id", "")
-    if isinstance(bm_id, str) and bm_id and bm_id not in KNOWN_BENCHMARKS:
+    if isinstance(bm_id, str) and bm_id and _corpus_rule.normalize_benchmark_id(bm_id) not in KNOWN_BENCHMARKS:
         vr.warn(f"Unknown benchmark id: {bm_id!r}")
 
     sf = benchmark.get("scale_factor")
@@ -1449,7 +1449,7 @@ def _bundle_benchmark_id(data: dict[str, Any]) -> str | None:
     bm_id = benchmark.get("id")
     if not isinstance(bm_id, str) or not bm_id.strip():
         return None
-    return bm_id.strip().casefold()
+    return _corpus_rule.normalize_benchmark_id(bm_id)
 
 
 def _bundle_platform_key(data: dict[str, Any]) -> str | None:
@@ -1798,21 +1798,23 @@ def _validate_compliance_section(
     scale_factor = benchmark.get("scale_factor")
     facts = _corpus_rule.facts_from_result(data)
     outcome = _corpus_rule.derive_outcome(facts)
-    if outcome.class_name == _corpus_rule.CLASS_UNDETERMINED and "phases" in outcome.missing_facts:
-        vr.error("result admission is undetermined: missing phases")
-        return
-    if outcome.held_reason == _corpus_rule.HELD_NO_TIMED_PHASE:
-        vr.error("result admission is refused: no timed phase")
-        return
-    gateway_routed = _is_gateway_routed(data.get("platform"))
-    refusal = _corpus_rule.public_refusal(benchmark_id, scale_factor, gateway_routed=gateway_routed)
+    refusal = _corpus_rule.public_refusal_for_facts(facts)
     if refusal is not None:
-        if allow_partial_validation or internal_source:
+        if refusal in {_corpus_rule.CLASS_SUBSCALE, _corpus_rule.HELD_GATEWAY_ROUTED}:
+            if allow_partial_validation or internal_source:
+                return
+            vr.error(
+                f"benchmark scale_factor={scale_factor!r} is not accepted for public submissions ({refusal}); "
+                "only results at scale factor 1 or above that were not routed through a gateway may be submitted"
+            )
+        elif refusal == _corpus_rule.HELD_FAILED_VALIDATION and (allow_partial_validation or internal_source):
             return
-        vr.error(
-            f"benchmark scale_factor={scale_factor!r} is not accepted for public submissions ({refusal}); "
-            "only results at scale factor 1 or above that were not routed through a gateway may be submitted"
-        )
+        elif refusal == _corpus_rule.CLASS_UNDETERMINED:
+            vr.error(f"result admission is undetermined: missing {', '.join(outcome.missing_facts)}")
+        elif refusal == _corpus_rule.HELD_NO_TIMED_PHASE:
+            vr.error("result admission is refused: no timed phase")
+        else:
+            vr.error(f"result admission is refused: {refusal}")
         return
     if outcome.class_name == _corpus_rule.CLASS_NONSTANDARD_SCALE:
         vr.warn(
@@ -1838,11 +1840,7 @@ def _validate_query_coverage(
 ) -> None:
     if allow_partial_validation:
         return
-    benchmark = data.get("benchmark")
-    if not isinstance(benchmark, dict):
-        return
-    bm_id = benchmark.get("id")
-    normalized_id = bm_id.strip().casefold() if isinstance(bm_id, str) else None
+    normalized_id = _bundle_benchmark_id(data)
     canonical = CANONICAL_LOGICAL_QUERY_IDS.get(normalized_id) if normalized_id else None
     if not canonical:
         return
@@ -1890,7 +1888,7 @@ def _validate_query_coverage(
             shown += f", … (+{len(missing) - 12} more)"
         hint = f" ({uncounted} queries carry a non-string or blank id)" if uncounted else ""
         vr.error(
-            f"benchmark {bm_id!r} covers {covered} of {len(canonical)} canonical queries{hint} "
+            f"benchmark {normalized_id!r} covers {covered} of {len(canonical)} canonical queries{hint} "
             f"(missing: {shown}){variant_hint}; partial runs remain local artifacts "
             "unless validated through the trusted mirror path"
         )
@@ -2851,9 +2849,7 @@ def _validate_throughput_stream_completeness(data: dict[str, Any], vr: Validatio
         rounds.append((name, ids))
         stream_ids.extend(ids)
         first_id += len(ids)
-    benchmark = data.get("benchmark")
-    benchmark_id = benchmark.get("id") if isinstance(benchmark, dict) else None
-    normalized_benchmark = benchmark_id.strip().casefold() if isinstance(benchmark_id, str) else None
+    normalized_benchmark = _bundle_benchmark_id(data)
     if normalized_benchmark not in _THROUGHPUT_STREAM_QUERY_BENCHMARKS:
         return
     observed_by_stream = _grouped_throughput_observations(_throughput_measurement_queries(data.get("queries")), vr)

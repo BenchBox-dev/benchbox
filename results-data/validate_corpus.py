@@ -609,8 +609,6 @@ def rule_outcome(payload: dict, bundle: pathlib.Path | None = None):
         CORPUS_RULE.facts_from_result(
             payload,
             known_defects=known_defects,
-            validation_status=bundle_validation_status(payload),
-            failed_queries=failed_query_count(payload),
         )
     )
 

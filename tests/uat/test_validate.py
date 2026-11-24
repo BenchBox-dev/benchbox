@@ -61,6 +61,7 @@ def _write_tsv(path: Path, statuses: list[str]) -> None:
 @pytest.mark.parametrize("phases", [None, "missing"])
 def test_run_validate_refuses_absent_phases_as_undetermined(tmp_path: Path, phases: str | None) -> None:
     data = _minimal_bundle()
+    data["version"] = "2.4"
     if phases == "missing":
         del data["phases"]
     else:

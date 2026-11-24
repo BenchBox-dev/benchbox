@@ -76,16 +76,20 @@ def test_power_scores_legacy_rows_with_omitted_measurement_defaults(omitted: tup
     for query in queries:
         for field in omitted:
             del query[field]
-    assert corpus_score.power_at_size(_data(queries)) == pytest.approx(0.01 * 3600 / 0.02)
+    legacy = _data(queries) | {"version": "2.2"}
+    modern = _data(queries) | {"result_schema_version": "2.4"}
+    assert corpus_score.power_at_size(legacy) == pytest.approx(0.01 * 3600 / 0.02)
+    assert corpus_score.power_at_size(modern) is None
 
 
 def test_legacy_defaults_do_not_hide_failed_or_untimed_queries() -> None:
     queries = [{"id": row["id"], "ms": row["ms"], "status": row["status"]} for row in _full_run()]
+    payload = _data(queries) | {"version": "2.2"}
     queries[0]["status"] = "FAILED"
-    assert corpus_score.power_at_size(_data(queries)) is None
+    assert corpus_score.power_at_size(payload) is None
     queries[0]["status"] = "SUCCESS"
     queries[0]["ms"] = float("nan")
-    assert corpus_score.power_at_size(_data(queries)) is None
+    assert corpus_score.power_at_size(payload) is None
 
 
 @pytest.mark.parametrize("bad_ms", [None, 0.0, -1.0, "fast"])

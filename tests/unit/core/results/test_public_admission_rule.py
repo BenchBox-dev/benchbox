@@ -129,3 +129,47 @@ def test_tpcdi_file_paths_remain_refused(tmp_path) -> None:
     assert any("TPC-DI bundles are not accepted" in error for error in validate_bundles([path])[0].errors)
     assert admission_reason(payload, path) == "not_admitted_undetermined"
     assert not stage_seed_bundle(path, tmp_path / "staged")
+
+
+def test_in_memory_timed_queries_share_submit_and_outcome_facts() -> None:
+    from benchbox.core.results import corpus_rule
+    from benchbox.core.results.result_outcome import facts_for_result
+
+    result = _loaded(1.0)
+    result.execution_phases = None
+    facts = facts_for_result(result)
+    assert facts.phases == frozenset({corpus_rule.PHASE_OTHER_TIMED})
+    assert corpus_rule.public_refusal_for_facts(facts) is None
+    assert classify_loaded_result(result) is SubmitTerminalState.submittable
+
+
+def test_query_counts_without_measured_rows_do_not_establish_timed_work() -> None:
+    from benchbox.core.results import corpus_rule
+    from benchbox.core.results.result_outcome import facts_for_result
+
+    result = _loaded(1.0)
+    result.execution_phases = None
+    result.query_results = []
+    facts = facts_for_result(result)
+    assert facts.phases == frozenset()
+    assert corpus_rule.public_refusal_for_facts(facts) == corpus_rule.HELD_NO_TIMED_PHASE
+
+
+def test_loaded_explicit_null_phases_remain_undetermined() -> None:
+    from benchbox.core.results import corpus_rule
+    from benchbox.core.results.loader import reconstruct_benchmark_results
+    from benchbox.core.results.result_outcome import facts_for_result, outcome_for_result
+
+    payload = _result_payload(1.0, None, power_refresh=False, evidenced=True)
+    payload["phases"] = None
+    result = reconstruct_benchmark_results(payload)
+    assert facts_for_result(result).phases is None
+    assert outcome_for_result(result).class_name == corpus_rule.CLASS_UNDETERMINED
+    assert classify_loaded_result(result) is SubmitTerminalState.schema_violation
+
+
+def test_underscore_benchmark_name_is_not_squashed() -> None:
+    from benchbox.core.results.result_outcome import facts_for_result
+
+    result = _loaded(1.0, benchmark_name="read_primitives")
+    assert facts_for_result(result).benchmark == "read_primitives"

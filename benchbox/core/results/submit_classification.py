@@ -11,12 +11,12 @@ from benchbox.core.results.loader import (
     UnsupportedSchemaError,
     load_result_file,
 )
+from benchbox.core.results.result_outcome import facts_for_result
 from benchbox.core.results.status import (
     result_failed_query_count,
     result_non_clean_reason,
     result_unvalidated_reason,
 )
-from benchbox.core.results.subscale_policy import normalize_tpc_benchmark_id, result_gateway_routed
 
 
 class SubmitTerminalState(str, Enum):
@@ -30,32 +30,7 @@ class SubmitTerminalState(str, Enum):
 
 
 def result_public_refusal(result: Any) -> str | None:
-    benchmark = getattr(result, "benchmark_id", None) or normalize_tpc_benchmark_id(
-        getattr(result, "benchmark_name", None)
-    )
-    from benchbox.core.results.schema import _build_phases_block, _build_query_results_section
-
-    data = getattr(result, "_corpus_rule_data", None)
-    if data is None:
-        phases = None
-        if getattr(result, "execution_phases", None) is not None:
-            phases = _build_phases_block(result)
-        queries = []
-        if getattr(result, "query_results", None):
-            _, queries, _, _, _ = _build_query_results_section(result)
-        data = {
-            "benchmark": {"id": benchmark, "scale_factor": getattr(result, "scale_factor", None)},
-            "platform": {"gateway": {"routed": result_gateway_routed(result)}},
-            "phases": phases,
-            "summary": {"validation": getattr(result, "validation_status", None)},
-            "queries": queries,
-        }
-    facts = corpus_rule.facts_from_result(data, failed_queries=result_failed_query_count(result))
-    if result_non_clean_reason(result):
-        from dataclasses import replace
-
-        facts = replace(facts, validation_failed=True)
-    return corpus_rule.public_refusal_for_facts(facts)
+    return corpus_rule.public_refusal_for_facts(facts_for_result(result))
 
 
 PUBLIC_REFUSAL_REASONS = {
