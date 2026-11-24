@@ -25864,14 +25864,19 @@
       "title": "Measure current data generator wall time, peak RSS, and conversion time at SF 1 and SF 10"
     },
     "datagen-p0-companion-adr": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-25T04:08:04Z",
+        "generation": "83484b36040f47c2a01c17fb0ae54cf3",
+        "renewals": 0,
+        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032"
+      },
       "needs": [
         "datagen-p0-baseline-measurements",
         "datagen-p0-tpcgen-parity-spike",
         "datagen-p0-vectorization-prototype"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Write and get owner approval for docs/internal/adr/adr-benchbox-datagen.md"
     },
     "datagen-p0-tpcgen-parity-spike": {
