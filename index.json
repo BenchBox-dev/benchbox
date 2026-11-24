@@ -53304,9 +53304,9 @@
     },
     "trunk-uat-doris-joinorder-17d-mem-limit-20261123": {
       "claim": {
-        "expires_at": "2026-11-25T19:08:41Z",
-        "generation": "470e5a6d52304882a1dad0d592bc6287",
-        "renewals": 1,
+        "expires_at": "2026-11-25T19:08:49Z",
+        "generation": "b79981d540f04e879cf65933937b2ce0",
+        "renewals": 2,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
       },
       "needs": [],
