@@ -9255,6 +9255,7 @@
     },
     "release-readiness": {
       "accepted_members": {
+        "release-prep-tooling-leaves-lock-stale-and-overflows-changelog-20261101": "2ba8f0648ff6766af6a029cbb6ff153b52da3031",
         "release-v2-probe-runs-head-script-with-merge-ref-permissions-20261119": "a090a9af681314859638bbf84495610805dd239c",
         "snowflake-session-query-acceleration-invalid-20261013": "7905758459adb0778c86690bea515236606c5e03",
         "snowflake-test-fixture-real-username-20261013": "96a5dd0ccbf201ca2d51d8a1ba3f740170e5b5f7"
@@ -9264,6 +9265,20 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "release-prep-tooling-leaves-lock-stale-and-overflows-changelog-20261101": {
+          "accepted_head": "2ba8f0648ff6766af6a029cbb6ff153b52da3031",
+          "changed_files": [
+            "changelog.d/feat-release-readiness--release-prep-tooling-leaves-lock-stale-and-overflows-changelog-20261101.json",
+            "docs/internal/release-guide.md",
+            "make/build.mk",
+            "make/help.mk",
+            "scripts/generate_changelog_entry.py",
+            "scripts/release_flow.py",
+            "tests/unit/scripts/test_release_flow.py"
+          ],
+          "integration_head": "73904854fc5f84a8947d3beabf4354f4af117309",
+          "integration_seq": 4
+        },
         "release-v2-probe-runs-head-script-with-merge-ref-permissions-20261119": {
           "accepted_head": "a090a9af681314859638bbf84495610805dd239c",
           "changed_files": [
@@ -9296,7 +9311,7 @@
         }
       },
       "integration_branch": "feat/release-readiness",
-      "integration_head": "39b6053602a3565efc696378fdae070ad6d16c34",
+      "integration_head": "73904854fc5f84a8947d3beabf4354f4af117309",
       "integration_log": [
         {
           "at": "2026-11-23T13:47:59Z",
@@ -9330,6 +9345,15 @@
           "op_id": "bf5e69408ca248b188f7fd95ab74bd69",
           "previous_head": "0e3d1cc9aad0ff7abdc9705111b465d8ce20f382",
           "seq": 3
+        },
+        {
+          "at": "2026-11-24T16:44:36Z",
+          "head": "73904854fc5f84a8947d3beabf4354f4af117309",
+          "kind": "prepare",
+          "member": "release-prep-tooling-leaves-lock-stale-and-overflows-changelog-20261101",
+          "op_id": "2dd3c7c7e18a4252923962bd7b3d9fc0",
+          "previous_head": "39b6053602a3565efc696378fdae070ad6d16c34",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-release-readiness",
@@ -42436,15 +42460,10 @@
       "title": "Correct the release guide on when to move the accounting literal and the changelog compare link"
     },
     "release-prep-tooling-leaves-lock-stale-and-overflows-changelog-20261101": {
-      "claim": {
-        "expires_at": "2026-11-25T16:44:32Z",
-        "generation": "5b9307a333624389ada7dedf9ddbaac2",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "make release-prep leaves the sql-translation-ml lockfile at the old version and writes about 105 changelog bullets against a 45 limit"
     },
     "release-readiness-py310-utc-compat": {

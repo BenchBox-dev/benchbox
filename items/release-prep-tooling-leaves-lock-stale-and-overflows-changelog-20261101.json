@@ -12,6 +12,75 @@
     "PR #3882",
     "PR #3737"
   ],
+  "prepared": {
+    "accepted_head": "2ba8f0648ff6766af6a029cbb6ff153b52da3031",
+    "batch_id": "release-readiness",
+    "changed_files": [
+      "changelog.d/feat-release-readiness--release-prep-tooling-leaves-lock-stale-and-overflows-changelog-20261101.json",
+      "docs/internal/release-guide.md",
+      "make/build.mk",
+      "make/help.mk",
+      "scripts/generate_changelog_entry.py",
+      "scripts/release_flow.py",
+      "tests/unit/scripts/test_release_flow.py"
+    ],
+    "integration_head": "73904854fc5f84a8947d3beabf4354f4af117309",
+    "integration_seq": 4,
+    "member_id": "release-prep-tooling-leaves-lock-stale-and-overflows-changelog-20261101",
+    "overlaps": [
+      {
+        "kind": "member",
+        "member": "release-v2-probe-runs-head-script-with-merge-ref-permissions-20261119",
+        "paths": [
+          "docs/internal/release-guide.md"
+        ]
+      }
+    ],
+    "owner_epoch": 1,
+    "schema": "prepared_work_v2",
+    "scope_hash": "bf6f29fc7f614f2899d65533a7a36ecea1a0b80919a8b17f14fe5a4e67cd7233",
+    "source_base": "39b6053602a3565efc696378fdae070ad6d16c34",
+    "source_revision": "2ba8f0648ff6766af6a029cbb6ff153b52da3031",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-rr-prep",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/cli/test_shipped_docs_urls.py",
+        "tests/unit/scripts/test_check_make_targets.py",
+        "tests/unit/scripts/test_ci_units.py",
+        "tests/unit/scripts/test_generate_changelog_entry.py",
+        "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index",
+        "tests/unit/scripts/test_path_filter_decision.py",
+        "tests/unit/scripts/test_pr_preflight_base.py",
+        "tests/unit/scripts/test_release_flow.py",
+        "tests/unit/scripts/test_release_maintenance_admission.py",
+        "tests/unit/test_ledger_coverage.py",
+        "tests/unit/test_standardized_test_commands.py"
+      ],
+      "review": {
+        "base_sha": "39b6053602a3565efc696378fdae070ad6d16c34",
+        "head_sha": "2ba8f0648ff6766af6a029cbb6ff153b52da3031",
+        "head_tree": "83899f556ef48beb4b6cb1df0b39e0eeb333ae43",
+        "outcome": "clear",
+        "patch_digest": "8fe96c8624a7738cf3cfd7325d62a067",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "41165f58bfb89bde249f38a1b794817c976ad9d3"
+      },
+      "revision": "2ba8f0648ff6766af6a029cbb6ff153b52da3031",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:44087b544fee5237bdde41f8",
@@ -46,6 +115,15 @@
       "generation": "5b9307a333624389ada7dedf9ddbaac2",
       "op": "take",
       "op_id": "08f685aaa8714f788c436634b500ebcf",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T16:44:36Z",
+      "client": "omp-coding-agent",
+      "generation": "5b9307a333624389ada7dedf9ddbaac2",
+      "op": "prepare",
+      "op_id": "2dd3c7c7e18a4252923962bd7b3d9fc0",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
