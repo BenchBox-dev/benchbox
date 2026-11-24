@@ -47159,10 +47159,15 @@
       "title": "Audit the explicit NULLS LAST that translation adds on Snowflake (DESC), and on Databricks and BigQuery (ASC), since v0.4.1"
     },
     "snowflake-session-query-acceleration-invalid-20261013": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-25T20:43:22Z",
+        "generation": "4200381d909b473ab060782d07239cc7",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Snowflake: stop issuing ALTER SESSION SET QUERY_ACCELERATION_MAX_SCALE_FACTOR, which fails on every OLAP run"
     },
     "snowflake-shared-database-recreate-drops-shared-tables-20261013": {
