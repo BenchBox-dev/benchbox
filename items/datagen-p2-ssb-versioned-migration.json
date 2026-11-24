@@ -4,7 +4,7 @@
     "Versioned vectorized SSB generator is registered under an explicit per-benchmark version in datagen_version.py (zero change to global DATA_GENERATION_VERSION) while legacy random.Random(42) remains intact behind --datagen-backend legacy.",
     "Owner-approved Gate C acceptance report compares legacy vs new SSB column distributions, FK integrity across all 5 tables (date, customer, supplier, part, lineorder), and exact dual-engine DuckDB and DataFusion row-count agreement on all 13 SSB queries at SF 0.01, 0.1, 1.0, and 10.0.",
     "benchbox/core/expected_results/ssb_results.py cleanly keys/versions v1 (legacy) and v2 (new) SSB_EXPECTED_ROW_COUNTS with frozen golden per-table hashes, and both legacy and native modes validate without cache collisions.",
-    "Gate D measurement under make heavy-run confirms SSB meets its ADR budget (or logs a budget miss routing SSB to datagen-p2-rust-repo-gate)."
+    "Gate D measurement under make heavy-run confirms SSB meets its ADR budget; if it misses budget, a blocking Rust SSB follow-up item is created and added to datagen-p3-ssb-cutover needs before closing this item so SSB cutover cannot start on an over-budget generator."
   ],
   "context": "Owner decision A3 (2026-11-23): include SSB in scope via a versioned per-benchmark RNG and reference-count migration, explicitly gated after open SSB reference and Polars publication items close so active SSB corpus work is not disrupted.",
   "description": "## Problem\nbenchbox/core/ssb/generator.py relies on single-threaded Python random.Random(42) loops, and benchbox/core/expected_results/ssb_results.py pins SSB_EXPECTED_ROW_COUNTS to that exact Python MT19937 stream. Changing SSB's RNG without per-benchmark versioning and sequencing after active SSB reference/publication items would break corpus comparability and in-flight SSB work.\n\n## Change\n- Once crr-c2-row-count-references-tpc-and-ssb, pvm-p1-run-ssb-clickbench, and pvm-p2-publish-ssb-clickbench are done, implement a vectorized Python/PyArrow SSB generator behind opt-in --datagen-backend native (following adr-python-core-runtime.md's vectorized-Python-first order).\n- Assign an explicit per-benchmark SSB generator version in datagen_version.py (never bumping global DATA_GENERATION_VERSION) and keep legacy random.Random(42) available behind --datagen-backend legacy for reproducing v1 published results.\n- Produce a Gate C owner acceptance report comparing legacy vs new SSB distributions, 0-orphan FK integrity across all 5 tables (date, customer, supplier, part, lineorder), and all 13 SSB query row counts at SF 0.01, 0.1, 1.0, and 10.0 on both DuckDB and DataFusion (requiring exact two-engine agreement).\n- Update benchbox/core/expected_results/ssb_results.py so SSB_EXPECTED_ROW_COUNTS supports both v1 (legacy) and v2 (new) cleanly, and freeze golden per-table hashes.\n- Measure wall time (mono_time()) and peak RSS under make heavy-run against SSB's Phase 0 ADR budget (Gate D).\n\n## Decision gates\n- Hard blocked on crr-c2-row-count-references-tpc-and-ssb, pvm-p1-run-ssb-clickbench, and pvm-p2-publish-ssb-clickbench closing first.\n- Stop and report if DuckDB and DataFusion disagree on any of the 13 SSB queries at any recorded scale; never pick one engine arbitrarily.\n- Owner must sign off on the Gate C acceptance report before merging.\n- If vectorized Python SSB still misses its ADR budget at SF 1/SF 10, record the residual bottleneck and route SSB to datagen-p2-rust-repo-gate (or follow-up on the Rust repo).\n\n## Guardrails\n- Zero unversioned change to SSB data or SSB_EXPECTED_ROW_COUNTS.\n- Never bump global DATA_GENERATION_VERSION.\n- Enforce [RUN-DATA-001], [HEAVY-LOCK-001], [COMMENT-POLICY-001], and AGENTS.md PR closeout.",
@@ -21,6 +21,14 @@
       "client": "antigravity-client",
       "op": "create",
       "op_id": "d9a01009b87fd8a4c6e54982b8310c09",
+      "session_id": "85b2c240cd2b4c709f5c56393a05342d"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032",
+      "at": "2026-11-24T00:21:53Z",
+      "client": "antigravity-client",
+      "op": "update",
+      "op_id": "d9a02006b87fd8a4c6e54982b8310c06",
       "session_id": "85b2c240cd2b4c709f5c56393a05342d"
     }
   ]
