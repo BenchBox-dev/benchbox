@@ -42,8 +42,10 @@ def _plans_payload() -> dict:
 
 def _source(tmp_path: Path, plans: dict | None, test_type: str | None = None) -> Path:
     result = make_benchmark_results(
+        benchmark_id="tpch",
         benchmark_name="TPC-H",
         platform="duckdb",
+        scale_factor=1.0,
         execution_id="boundary-exec",
         timestamp=datetime(2026, 10, 9, 12, 0, 0),
         duration_seconds=3.0,
@@ -53,6 +55,7 @@ def _source(tmp_path: Path, plans: dict | None, test_type: str | None = None) ->
             {
                 "query_id": "Q1",
                 "execution_time": 1.0,
+                "run_type": "measurement",
                 "status": "SUCCESS",
                 "rows_returned": 4,
                 **({"test_type": test_type, "stream_id": 0} if test_type else {}),

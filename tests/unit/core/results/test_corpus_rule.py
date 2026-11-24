@@ -647,6 +647,7 @@ def test_hold_precedes_missing_stream_evidence_and_refuses_public_failure() -> N
     assert not failed.public_admission
 
 
+@pytest.mark.parametrize("scale_factor", [1.0, 0.01])
 @pytest.mark.parametrize(
     ("flags", "public", "maintainer"),
     [
@@ -656,8 +657,8 @@ def test_hold_precedes_missing_stream_evidence_and_refuses_public_failure() -> N
         ({"known_defect": True, "validation_failed": True}, False, False),
     ],
 )
-def test_hold_admission_matches_the_two_paths(flags: dict, public: bool, maintainer: bool) -> None:
-    facts = rule.Facts("tpch", 1.0, frozenset({rule.PHASE_POWER}), **flags)
+def test_hold_admission_matches_the_two_paths(scale_factor: float, flags: dict, public: bool, maintainer: bool) -> None:
+    facts = rule.Facts("tpch", scale_factor, frozenset({rule.PHASE_POWER}), **flags)
     outcome = rule.derive_outcome(facts)
     assert (outcome.public_admission, outcome.maintainer_admission) == (public, maintainer)
     assert not outcome.ranked

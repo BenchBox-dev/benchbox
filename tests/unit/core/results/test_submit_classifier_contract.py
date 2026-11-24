@@ -45,7 +45,7 @@ def _write_result_json(
             "queries": {"total": 1, "passed": passed, "failed": failed},
             "validation": {"status": validation},
         },
-        "queries": [{"id": "Q1", "status": "SUCCESS" if failed == 0 else "ERROR", "ms": 1}],
+        "queries": [{"id": "Q1", "status": "SUCCESS" if failed == 0 else "ERROR", "ms": 1, "run_type": "measurement"}],
         "phases": {},
     }
     if compliance_class is not None:
@@ -127,6 +127,20 @@ def test_submit_classifier_contract_loaded_and_path_agree(tmp_path: Path):
 
         loaded, _raw = load_result_file(path)
         assert classify_loaded_result(loaded) is expected, label
+
+
+def test_submit_classifier_uses_evidence_not_recorded_class(tmp_path: Path) -> None:
+    path = tmp_path / "evidence.json"
+    _write_result_json(path, compliance_class="unofficial_subscale", scale_factor=1.0)
+    assert classify_result_path(path) is SubmitTerminalState.submittable
+
+    _write_result_json(path, compliance_class="full_spec", scale_factor=0.01, validation="not_validated")
+    assert classify_result_path(path) is SubmitTerminalState.unofficial
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["queries"] = []
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    assert classify_result_path(path) is SubmitTerminalState.unvalidated
 
 
 def test_submit_classifier_contract_path_only_states(tmp_path: Path):

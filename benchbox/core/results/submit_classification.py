@@ -33,17 +33,18 @@ def result_public_refusal(result: Any) -> str | None:
     benchmark = getattr(result, "benchmark_id", None) or normalize_tpc_benchmark_id(
         getattr(result, "benchmark_name", None)
     )
+    from benchbox.core.results.schema import _build_phases_block, _build_query_results_section
+
     phases = None
     if getattr(result, "execution_phases", None) is not None:
-        from benchbox.core.results.schema import _build_phases_block
-
         phases = _build_phases_block(result)
+    _, queries, _, _, _ = _build_query_results_section(result)
     data = {
         "benchmark": {"id": benchmark, "scale_factor": getattr(result, "scale_factor", None)},
         "platform": {"gateway": {"routed": result_gateway_routed(result)}},
         "phases": phases or {},
         "summary": {"validation": getattr(result, "validation_status", None)},
-        "queries": [{"run_type": "measurement"}] if getattr(result, "total_queries", 0) else [],
+        "queries": queries,
     }
     facts = corpus_rule.facts_from_result(data, failed_queries=result_failed_query_count(result))
     if result_non_clean_reason(result):

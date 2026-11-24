@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
@@ -10,7 +11,9 @@ from click.testing import CliRunner
 from benchbox.cli.app import cli
 from benchbox.core.results import corpus_rule
 from benchbox.core.results.builder import BenchmarkInfoInput, ResultBuilder
+from benchbox.core.results.exporter import ResultExporter
 from benchbox.core.results.models import (
+    BenchmarkResults,
     ExecutionPhases,
     PowerTestPhase,
     SetupPhase,
@@ -19,7 +22,6 @@ from benchbox.core.results.models import (
 )
 from benchbox.core.results.platform_info import PlatformInfoInput
 from benchbox.core.results.query_normalizer import normalize_query_result
-from benchbox.core.results.schema import build_result_payload
 from benchbox.core.results.submit_classification import result_refused_at_submission
 from benchbox.core.run_service import map_phases_to_execution_type
 from tests.unit.core.results.test_tpch_refresh_metrics import _function
@@ -76,7 +78,7 @@ def _measured_rows(stream_id: int, test_type: str) -> list[dict[str, Any]]:
     ]
 
 
-def _result_from_cli_request(captured: dict[str, Any]) -> dict[str, Any]:
+def _result_from_cli_request(captured: dict[str, Any]) -> BenchmarkResults:
     phases: list[str] = captured["phases"]
     config = captured["config"]
     builder = ResultBuilder(
@@ -86,7 +88,7 @@ def _result_from_cli_request(captured: dict[str, Any]) -> dict[str, Any]:
             test_type=map_phases_to_execution_type(phases),
             benchmark_id="tpch",
         ),
-        platform=PlatformInfoInput(name="DuckDB", execution_mode="sql"),
+        platform=PlatformInfoInput(name="Stub", execution_mode="sql"),
     )
     refresh = "maintenance" in phases
     power = throughput = None
@@ -124,53 +126,60 @@ def _result_from_cli_request(captured: dict[str, Any]) -> dict[str, Any]:
             refresh_stream=_refresh_stream() if refresh else None,
         )
     builder.set_execution_phases(ExecutionPhases(setup=SetupPhase(), power_test=power, throughput_test=throughput))
-    return build_result_payload(builder.build())
+    return builder.build()
 
 
-def _build_through_the_cli(cli_benchmark_mocks: dict[str, Any], arguments: list[str]) -> dict[str, Any]:
+def _build_through_the_cli(cli_benchmark_mocks: dict[str, Any], arguments: list[str], output_dir: Path) -> Path:
     captured: dict[str, Any] = {}
+    exported: dict[str, Any] = {}
 
     def stub_executor(orchestrator, benchmark_config, system_profile, database_config, phases_to_run, **_kwargs):
         captured.update(phases=list(phases_to_run), config=benchmark_config)
-        return cli_benchmark_mocks["orchestrator"].return_value.result
+        return _result_from_cli_request(captured)
 
-    cli_benchmark_mocks["orchestrator"].return_value.result = type(
-        "StubResult", (), {"validation_status": "PASSED", "execution_id": "stub", "query_results": []}
-    )()
-    with patch.object(_run_module, "_execute_orchestrated_run", stub_executor):
+    def export_result(*, result, **_kwargs):
+        exported.update(ResultExporter(output_dir=output_dir, anonymize=False).export_result(result, ["json"]))
+        return exported
+
+    platform = cli_benchmark_mocks["db_manager"].return_value.create_config().type
+    with (
+        patch.object(_run_module, "_execute_orchestrated_run", stub_executor),
+        patch.object(_run_module, "_export_orchestrated_result", export_result),
+    ):
         outcome = CliRunner().invoke(
             cli,
-            ["run", "--platform", "duckdb", "--benchmark", "tpch", *arguments, "--non-interactive"],
+            ["run", "--platform", platform, "--benchmark", "tpch", *arguments, "--non-interactive"],
         )
     assert outcome.exit_code == 0, outcome.output
     assert captured, "the CLI never reached the executor"
-    return _result_from_cli_request(captured)
+    return Path(exported["json"])
 
 
 @pytest.mark.parametrize("lane", sorted(LANE_CASES))
-def test_a_result_built_through_the_cli_enters_its_lane(cli_benchmark_mocks: dict[str, Any], lane: str) -> None:
+def test_a_result_built_through_the_cli_enters_its_lane(
+    cli_benchmark_mocks: dict[str, Any], lane: str, tmp_path: Path
+) -> None:
     arguments, expected_lanes, publicly_admitted = LANE_CASES[lane]
 
-    payload = _build_through_the_cli(cli_benchmark_mocks, arguments)
-    outcome = corpus_rule.derive_outcome(corpus_rule.facts_from_result(payload))
+    path = _build_through_the_cli(cli_benchmark_mocks, arguments, tmp_path)
+    facts = corpus_rule.facts_from_path(path)
+    outcome = corpus_rule.derive_outcome(facts)
 
     assert outcome.lanes == expected_lanes, (lane, outcome)
     assert outcome.class_name != corpus_rule.CLASS_UNDETERMINED
     assert outcome.maintainer_admission
     assert outcome.public_admission is publicly_admitted
-    assert corpus_rule.public_refusal("tpch", payload["benchmark"]["scale_factor"]) == (
+    assert corpus_rule.public_refusal("tpch", facts.scale_factor) == (
         None if publicly_admitted else corpus_rule.CLASS_SUBSCALE
     )
 
 
 def test_a_stub_run_through_the_cli_is_not_refused_by_the_submit_classifier_unless_subscale(
-    cli_benchmark_mocks: dict[str, Any],
+    cli_benchmark_mocks: dict[str, Any], tmp_path: Path
 ) -> None:
-    from types import SimpleNamespace
+    from benchbox.core.results.loader import load_result_file
 
     for lane, (arguments, _lanes, publicly_admitted) in LANE_CASES.items():
-        payload = _build_through_the_cli(cli_benchmark_mocks, arguments)
-        result = SimpleNamespace(
-            benchmark_name="tpch", scale_factor=payload["benchmark"]["scale_factor"], platform_info=None
-        )
+        path = _build_through_the_cli(cli_benchmark_mocks, arguments, tmp_path / lane)
+        result, _raw = load_result_file(path)
         assert result_refused_at_submission(result) is (not publicly_admitted), lane

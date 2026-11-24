@@ -699,7 +699,11 @@ def public_refusal(benchmark_id: str | None, scale_factor: float | None, *, gate
 def public_refusal_for_facts(facts: Facts) -> str | None:
     outcome = derive_outcome(facts)
     held = _held_reason(facts)
-    if held in (HELD_GATEWAY_ROUTED, HELD_FAILED_VALIDATION):
+    if held == HELD_GATEWAY_ROUTED:
+        return held
+    if outcome.class_name == CLASS_SUBSCALE and not outcome.public_admission:
+        return CLASS_SUBSCALE
+    if held == HELD_FAILED_VALIDATION:
         return held
     if (
         normalize_benchmark_id(facts.benchmark) == "tpcdi"

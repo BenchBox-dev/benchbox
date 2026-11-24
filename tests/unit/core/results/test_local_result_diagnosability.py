@@ -53,15 +53,23 @@ def _applied_ledger() -> dict:
 
 def _tuned_result():
     return make_benchmark_results(
+        benchmark_id="tpch",
         benchmark_name="TPC-H",
         platform="duckdb",
+        scale_factor=1.0,
         execution_id="diag-probe-exec",
         timestamp=datetime(2026, 10, 9, 12, 0, 0),
         duration_seconds=3.0,
         total_queries=1,
         successful_queries=1,
         query_results=[
-            {"query_id": "Q1", "execution_time": 1.0, "status": "SUCCESS", "rows_returned": 4},
+            {
+                "query_id": "Q1",
+                "execution_time": 1.0,
+                "status": "SUCCESS",
+                "rows_returned": 4,
+                "run_type": "measurement",
+            },
         ],
         validation_status="PASSED",
         validation_details={},
