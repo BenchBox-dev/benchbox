@@ -1,13 +1,13 @@
 # results-data/ Extraction Trigger
 
 Forcing function for the question raised in
-[`docs/development/benchbox-results-platform-strategy.md`][strategy]:
+[`docs/internal/benchbox-results-platform-strategy.md`][strategy]:
 
 > A dedicated `benchbox-results` repository remains an optional future
 > extraction if corpus size or contribution volume starts to overwhelm
 > the main repo. It is not a Phase 1 or early Phase 2 requirement.
 
-[strategy]: ../../docs/development/benchbox-results-platform-strategy.md
+[strategy]: ../../docs/internal/benchbox-results-platform-strategy.md
 
 This document **does not pre-decide** extraction. It defines the
 conditions that fire an evaluation, the procedure to run that
@@ -73,12 +73,12 @@ are required to fire the evaluation by qualitative-only path.
 
 ## Evaluation Procedure (run when triggered)
 
-1. **Open** a new active TODO `evaluate-results-data-extraction-decision`
-   under `_project/TODO/main/active/`. Owner = current maintainer
-   rotation. Reference this checkpoint TODO.
+1. **Open** a new TODO `evaluate-results-data-extraction-decision` in the
+   `tractable` tracker. Owner = current maintainer rotation. Reference this
+   extraction-trigger evaluation.
 2. **Copy** the template
-   `docs/development/adr/TEMPLATE-results-data-extraction.md` to
-   `docs/development/adr/YYYY-MM-DD-results-data-extraction.md`.
+   `docs/internal/adr/TEMPLATE-results-data-extraction.md` to
+   `docs/internal/adr/YYYY-MM-DD-results-data-extraction.md`.
 3. **Measure**: snapshot `results-data/` size, PR volume from the most
    recent two quarterly metrics reports (the former `phase2_metrics.py`
    script was retired, so gather them by hand), and any qualitative
