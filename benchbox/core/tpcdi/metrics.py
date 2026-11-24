@@ -14,7 +14,7 @@ from typing import Any
 from benchbox.core.tpc_disclaimer import derived_results_disclaimer
 from benchbox.utils.printing import emit
 
-from .etl import ETLResult
+from ._legacy_etl import ETLResult
 from .validation import DataQualityResult
 
 logger = logging.getLogger(__name__)
