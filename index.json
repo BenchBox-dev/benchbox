@@ -19721,6 +19721,13 @@
       "status": "done",
       "title": "Add the absolute-path rule to the batch member brief template in the skill catalog"
     },
+    "batch-member-check-lock-wait-counts-against-limit-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop host-lock waiting from counting against the batch member check's one-hour limit"
+    },
     "batch-member-check-refusal-message-20261122": {
       "claim": null,
       "needs": [

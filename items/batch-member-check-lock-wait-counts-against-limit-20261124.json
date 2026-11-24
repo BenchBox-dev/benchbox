@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "A test simulates a lock holder for longer than the member-check limit; the member check waits, then runs, and succeeds when the run itself is short.",
+    "A test shows the member check still fails with a clear message when the run itself exceeds the limit after admission.",
+    "The member-check output reports lock-wait time and run time separately.",
+    "docs/agent/batch-feature-delivery.md (or the page that documents batch-member-check) states how the limit is measured."
+  ],
+  "description": "## Problem\nmake batch-member-check runs make pr-preflight through scripts/batch_integration.py::_run with a fixed timeout of 3600 s. The preflight's pytest step waits for the shared host lock, and that wait counts against the same limit. On 2026-11-24 other sessions held the lock for up to about 55 minutes, so most member checks timed out before running a test ('TimeoutExpired ... make pr-preflight ... timed out after 3600 seconds'). Plain pr-preflight has the same exposure: one run failed with LockUnavailable after waiting the full hour.\n\n## Decision gate\nKeep a bound on the work itself. Choose: (a) start the member-check limit only after the host lock is admitted, reporting the wait separately, or (b) remove the outer limit and rely on the per-step limits the preflight already enforces. Default: (a). If neither can be done without changing host_lock admission rules, stop and ask the owner.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check). Do not change lock admission order, the lock file, or the watchdog; do not add retries that re-run a failed preflight automatically.",
+  "links": [
+    "scripts/batch_integration.py",
+    "benchbox/utils/host_lock.py",
+    "docs/agent/heavy-work.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:21:15Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "df3e9656511e492eb3eee6210343c189",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    }
+  ]
+}
