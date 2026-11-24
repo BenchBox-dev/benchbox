@@ -274,6 +274,7 @@ class DataGenerationManifest:
                 )
                 byte_identical = is_byte_identical_backend_output(
                     self._benchmark,
+                    backend_version=self._generator_backend_version,
                     output_format=primary_format,
                     parquet_writer=self._parquet_writer,
                     parquet_row_group_size=self._parquet_row_group_size,

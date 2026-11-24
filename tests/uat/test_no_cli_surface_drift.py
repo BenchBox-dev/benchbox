@@ -113,7 +113,7 @@ ACCEPTED_CLI_SURFACE_DIGESTS = {
     "benchbox/cli/commands/report.py": "e373d381a336a479b892334a140a35e8804bc8d2ac5513d18edff21999ef2b60",
     "benchbox/cli/commands/results.py": "d7e157d2e82397b62e671476c7aa2ee4bf897b5c41a33549a70ee33fd3fd0eac",
     "benchbox/cli/commands/metrics.py": "170f47a581bd13aa1e57a5ddbbb7743630f3600524c3508eb17dccea7f0fe096",
-    "benchbox/cli/commands/datagen.py": "50f2566215609d38020e7f489a35d691e788feedff2e5d61aa404da72adc77c7",
+    "benchbox/cli/commands/datagen.py": "2454bcb52a4b38646955fc49da81b50e2917d7a415fb4b5ca1f5dd49a0cc8aa0",
 }
 FORBIDDEN_CLI_SURFACE_DECORATORS = {"argument", "command", "group", "option"}
 FORBIDDEN_CLI_SURFACE_FUNCTIONS = {

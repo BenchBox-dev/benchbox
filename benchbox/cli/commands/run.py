@@ -1058,9 +1058,16 @@ def _build_benchmark_config(
         **({"data_organization": dict(plan.data_organization)} if plan.data_organization is not None else {}),
         **({"seed": plan.seed} if plan.seed is not None else {}),
         **(
-            {"datagen_backend": s.resolved_datagen_backend.backend}
-            if getattr(s, "datagen_backend", None) is not None
-            and getattr(s, "resolved_datagen_backend", None) is not None
+            {
+                "datagen_backend": s.resolved_datagen_backend.backend,
+                **(
+                    {"datagen_backend_version": s.resolved_datagen_backend.backend_version}
+                    if s.resolved_datagen_backend.backend_version is not None
+                    else {}
+                ),
+                **({"datagen_backend_explicit": True} if getattr(s, "datagen_backend", None) is not None else {}),
+            }
+            if getattr(s, "resolved_datagen_backend", None) is not None
             else {}
         ),
         **({"power_iterations": plan.iterations} if plan.iterations is not None else {}),
@@ -2014,6 +2021,7 @@ def _data_or_load_handle_result(
     "datagen_backend",
     type=click.Choice(["legacy", "native"], case_sensitive=False),
     default=None,
+    hidden=True,
     help="Data generation backend ('legacy' or 'native'; omit for benchmark default).",
 )
 @advanced_option(

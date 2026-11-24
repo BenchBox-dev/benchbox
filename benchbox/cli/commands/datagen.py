@@ -79,6 +79,7 @@ from benchbox.core.run_service import resolve_lifecycle_phases
     "datagen_backend",
     type=click.Choice(["legacy", "native"], case_sensitive=False),
     default=None,
+    hidden=True,
     help="Data generation backend ('legacy' or 'native'; omit for benchmark default).",
 )
 @click.option(

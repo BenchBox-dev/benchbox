@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import stat
+from pathlib import Path
 from types import MappingProxyType
 from unittest.mock import MagicMock
 
@@ -18,7 +20,9 @@ from benchbox.utils.datagen_backend import (
     NativeBackendSpec,
     get_default_datagen_backend,
     normalize_datagen_backend,
+    resolve_backend_output_dir,
     resolve_datagen_backend,
+    resolve_env_executable,
 )
 
 pytestmark = [
@@ -89,7 +93,41 @@ def test_explicit_native_fails_loudly_on_windows_arm64() -> None:
             )
 
 
-def test_explicit_native_fails_loudly_when_extra_missing() -> None:
+def test_unimplemented_adapter_errors_before_suggesting_extra() -> None:
+    assert NATIVE_BACKEND_SPECS["tpch"].implemented is False
+    with pytest.raises(
+        DatagenBackendError, match="not enabled in this build yet.*--datagen-backend legacy"
+    ) as exc_info:
+        resolve_datagen_backend(
+            "tpch",
+            requested="native",
+            scale_factor=1.0,
+            platform_system="Linux",
+            platform_machine="x86_64",
+            extra_checker=lambda _: False,
+        )
+    assert "uv sync --extra" not in str(exc_info.value)
+
+
+def test_implemented_spec_fails_loudly_when_extra_missing_and_succeeds_when_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        datagen_backend_module,
+        "NATIVE_BACKEND_SPECS",
+        MappingProxyType(
+            {
+                "tpch": NativeBackendSpec(
+                    benchmark="tpch",
+                    mechanism="tpcgen-cli",
+                    implemented=True,
+                    required_extra="native-datagen",
+                    required_executable="tpcgen-cli",
+                    required_package="tpcgen-cli",
+                )
+            }
+        ),
+    )
     with pytest.raises(
         DatagenBackendError, match="native-datagen.*uv sync --extra native-datagen.*--datagen-backend legacy"
     ):
@@ -102,36 +140,6 @@ def test_explicit_native_fails_loudly_when_extra_missing() -> None:
             extra_checker=lambda _: False,
         )
 
-
-def test_explicit_native_fails_loudly_while_adapter_unimplemented() -> None:
-    assert NATIVE_BACKEND_SPECS["tpch"].implemented is False
-    with pytest.raises(DatagenBackendError, match="not enabled in this build yet.*--datagen-backend legacy"):
-        resolve_datagen_backend(
-            "tpch",
-            requested="native",
-            scale_factor=1.0,
-            platform_system="Linux",
-            platform_machine="x86_64",
-            extra_checker=lambda _: True,
-        )
-
-
-def test_explicit_native_succeeds_when_spec_implemented(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        datagen_backend_module,
-        "NATIVE_BACKEND_SPECS",
-        MappingProxyType(
-            {
-                "tpch": NativeBackendSpec(
-                    benchmark="tpch",
-                    mechanism="tpcgen-cli",
-                    implemented=True,
-                    required_extra="native-datagen",
-                    required_executable="tpcgen-cli",
-                )
-            }
-        ),
-    )
     selection = resolve_datagen_backend(
         "tpch",
         requested="native",
@@ -139,10 +147,69 @@ def test_explicit_native_succeeds_when_spec_implemented(monkeypatch: pytest.Monk
         platform_system="Darwin",
         platform_machine="arm64",
         extra_checker=lambda exe: exe == "tpcgen-cli",
+        version_resolver=lambda pkg: "4.0.0" if pkg == "tpcgen-cli" else None,
     )
     assert selection.backend == "native"
     assert selection.source == "explicit"
     assert selection.mechanism == "tpcgen-cli"
+    assert selection.backend_version == "4.0.0"
+
+
+def test_resolve_env_executable_scopes_to_active_python_env(tmp_path: Path) -> None:
+    bin_dir = tmp_path / "venv" / "bin"
+    bin_dir.mkdir(parents=True)
+    fake_py = bin_dir / "python"
+    fake_py.write_text("#!/bin/sh\n", encoding="utf-8")
+
+    assert resolve_env_executable("tpcgen-cli", python_executable=fake_py) is None
+
+    fake_cli = bin_dir / "tpcgen-cli"
+    fake_cli.write_text("#!/bin/sh\n", encoding="utf-8")
+    fake_cli.chmod(fake_cli.stat().st_mode | stat.S_IXUSR)
+    assert resolve_env_executable("tpcgen-cli", python_executable=fake_py) == fake_cli
+
+
+def test_resolve_backend_output_dir_isolates_non_identical_backends(tmp_path: Path) -> None:
+    shared = tmp_path / "datagen" / "tpch_sf1"
+    assert resolve_backend_output_dir(shared, "tpch", backend="legacy", scale_factor=1.0) == shared
+    assert (
+        resolve_backend_output_dir(
+            shared,
+            "tpch",
+            backend="native",
+            scale_factor=1.0,
+            backend_version="4.0.0",
+            output_format="tbl",
+        )
+        == shared
+    )
+    assert (
+        resolve_backend_output_dir(
+            shared,
+            "tpch",
+            backend="native",
+            scale_factor=1.0,
+            backend_version="5.0.0",
+            output_format="tbl",
+        )
+        == tmp_path / "datagen" / "tpch_sf1__backend_native"
+    )
+    assert (
+        resolve_backend_output_dir(
+            shared,
+            "tpch",
+            backend="native",
+            scale_factor=1.0,
+            backend_version="4.0.0",
+            output_format="parquet",
+        )
+        == tmp_path / "datagen" / "tpch_sf1__backend_native"
+    )
+    h2o_shared = tmp_path / "datagen" / "h2odb_sf1"
+    assert (
+        resolve_backend_output_dir(h2o_shared, "h2odb", backend="native", scale_factor=1.0)
+        == tmp_path / "datagen" / "h2odb_sf1__backend_native"
+    )
 
 
 def test_cli_datagen_rejects_auto_and_forwards_legacy(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -167,7 +234,7 @@ def test_cli_datagen_rejects_auto_and_forwards_legacy(monkeypatch: pytest.Monkey
     assert captured["datagen_backend"] == "legacy"
 
 
-def test_dryrun_preview_preserves_datagen_backend() -> None:
+def test_dryrun_preview_preserves_explicit_datagen_backend_and_omits_default() -> None:
     from io import StringIO
 
     from rich.console import Console
@@ -176,23 +243,37 @@ def test_dryrun_preview_preserves_datagen_backend() -> None:
     from benchbox.cli.dryrun import display_interactive_preview
     from benchbox.core.config import DatabaseConfig
 
-    buf = StringIO()
-    preview_console = Console(file=buf, force_terminal=False, width=160)
     db_cfg = DatabaseConfig(type="duckdb", name="duckdb")
-    bench_cfg = BenchmarkConfig(
-        name="tpch",
-        display_name="TPC-H",
-        scale_factor=0.01,
-        options={"datagen_backend": "legacy"},
-    )
+
+    explicit_buf = StringIO()
     display_interactive_preview(
         database_config=db_cfg,
-        benchmark_config=bench_cfg,
+        benchmark_config=BenchmarkConfig(
+            name="tpch",
+            display_name="TPC-H",
+            scale_factor=0.01,
+            options={"datagen_backend": "legacy", "datagen_backend_explicit": True},
+        ),
         phases=["generate"],
         tuning="notuning",
-        console_obj=preview_console,
+        console_obj=Console(file=explicit_buf, force_terminal=False, width=160),
     )
-    assert "--datagen-backend legacy" in buf.getvalue()
+    assert "--datagen-backend legacy" in explicit_buf.getvalue()
+
+    default_buf = StringIO()
+    display_interactive_preview(
+        database_config=db_cfg,
+        benchmark_config=BenchmarkConfig(
+            name="tpch",
+            display_name="TPC-H",
+            scale_factor=0.01,
+            options={"datagen_backend": "legacy"},
+        ),
+        phases=["generate"],
+        tuning="notuning",
+        console_obj=Console(file=default_buf, force_terminal=False, width=160),
+    )
+    assert "--datagen-backend" not in default_buf.getvalue()
 
 
 def test_cli_run_rejects_unsupported_native_backend() -> None:

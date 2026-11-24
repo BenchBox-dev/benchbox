@@ -115,7 +115,21 @@ class BenchmarkOrchestrator:
 
         data_source = getattr(benchmark_class, "DATA_SOURCE_BENCHMARK", None)
         source_name = (data_source or config.name).lower()
-        return self.directory_manager.get_datagen_path(source_name, config.scale_factor)
+        base_path = self.directory_manager.get_datagen_path(source_name, config.scale_factor)
+        opts = getattr(config, "options", None) or {}
+        backend = opts.get("datagen_backend")
+        if backend is not None and str(backend).lower() != "legacy":
+            from benchbox.utils.datagen_backend import resolve_backend_output_dir
+
+            return resolve_backend_output_dir(
+                base_path,
+                source_name,
+                backend=str(backend),
+                scale_factor=config.scale_factor,
+                backend_version=opts.get("datagen_backend_version"),
+                output_format=opts.get("table_format"),
+            )
+        return base_path
 
     def _get_platform_config(
         self,
