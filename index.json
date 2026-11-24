@@ -26228,6 +26228,13 @@
       "status": "done",
       "title": "Implement DataFrame Maintenance Operations for TPC-H/TPC-DS"
     },
+    "dataframe-memory-guard-overstates-small-runs-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Size the DataFrame memory guard to the run: count real generator processes and treat the Polars allowance consistently"
+    },
     "dataframe-memory-management-and-scale-factor-limits": {
       "claim": null,
       "needs": [],
