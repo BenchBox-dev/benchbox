@@ -208,6 +208,40 @@ def test_resolve_backend_output_dir_isolates_non_identical_backends(tmp_path: Pa
         assert manifest_datagen_is_current(manifest, benchmark=benchmark, expected_backend="legacy") is expect_shared
 
 
+def test_orchestrator_output_root_isolates_non_identical_native_backend(tmp_path: Path) -> None:
+    from benchbox.cli.benchmarks import BenchmarkConfig
+    from benchbox.cli.orchestrator import BenchmarkOrchestrator
+
+    orchestrator = BenchmarkOrchestrator(base_dir=str(tmp_path))
+
+    class _FakeBenchmark:
+        output_dir = None
+
+    native_sf10 = BenchmarkConfig(
+        name="tpch",
+        display_name="TPC-H",
+        scale_factor=10.0,
+        options={"datagen_backend": "native", "datagen_backend_version": "4.0.0"},
+    )
+    local_root = orchestrator._resolve_output_root(native_sf10, _FakeBenchmark(), None)
+    assert isinstance(local_root, str)
+    assert Path(local_root).name.endswith("__backend_native")
+
+    native_sf1 = BenchmarkConfig(
+        name="tpch",
+        display_name="TPC-H",
+        scale_factor=1.0,
+        options={"datagen_backend": "native", "datagen_backend_version": "4.0.0"},
+    )
+    shared_root = orchestrator._resolve_output_root(native_sf1, _FakeBenchmark(), None)
+    assert isinstance(shared_root, str)
+    assert not Path(shared_root).name.endswith("__backend_native")
+
+    orchestrator.set_custom_output_dir("s3://example-bucket/benchbox-staging")
+    cloud_root = orchestrator._resolve_custom_output_root(native_sf10, _FakeBenchmark(), {})
+    assert cloud_root.name.endswith("__backend_native")
+
+
 def test_cli_datagen_rejects_auto_and_forwards_legacy(monkeypatch: pytest.MonkeyPatch) -> None:
     import click
 
