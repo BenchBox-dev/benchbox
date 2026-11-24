@@ -65,18 +65,21 @@ replication:
 | Corpus inventory | Generated independently from each branch's own bundle tree |
 | Independent publication manifest *(retired)* | Retired by [`adr-site-repo-split.md`](adr-site-repo-split.md) D12; the legacy publication manifest control plane was removed |
 | Explorer code, admission policy, visibility, trust, withdrawal, and ranking policy | `develop` |
-| Public Results Explorer | Built and deployed from `BenchBox-dev/benchbox-site` using the attested core site-inputs bundle built from `results-data/` on `develop` (`scripts/site_inputs.py`; see [`adr-site-repo-split.md`](adr-site-repo-split.md)) |
+| Public Results Explorer | Built and deployed from `BenchBox-dev/benchbox-site` using the attested core site-inputs bundle, which currently reads `results-data/` on `develop` (`scripts/site_inputs.py`; see [`adr-site-repo-split.md`](adr-site-repo-split.md)) |
 
 Published-only bundles are therefore expected archive growth, not missing
-backports. There is no automatic `published-results` to `develop` sync. Today's
-site-inputs bundle (`scripts/site_inputs.py`) reads `results-data/` on `develop`
-rather than a pinned `published-results` manifest commit (the legacy publication
-manifest control plane was retired under
-[`adr-site-repo-split.md`](adr-site-repo-split.md) D12). Acceptance, withdrawal,
-and readmission rules still follow
-[`adr-independent-publication-authorities.md`](adr-independent-publication-authorities.md),
-and orthogonal visibility, trust, withdrawal, and ranking fields on `develop`
-control presentation without creating a second corpus authority.
+backports. There is no automatic `published-results` to `develop` sync.
+**Current implementation gap:** today's attested site-inputs bundle
+(`scripts/site_inputs.py`) reads `results-data/` on `develop` rather than
+pinning a `published-results` commit (the legacy publication manifest control
+plane was retired under [`adr-site-repo-split.md`](adr-site-repo-split.md) D12),
+so results accepted only on `published-results` are not currently included in
+the deployed Explorer bundle. Acceptance, withdrawal, and readmission rules
+still reference
+[`adr-independent-publication-authorities.md`](adr-independent-publication-authorities.md);
+reconciling `scripts/site_inputs.py` with the `published-results` archive (or
+formally superseding published-only Explorer ingestion) requires an explicit
+owner decision and is tracked separately.
 
 ### Allowlist
 
