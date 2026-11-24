@@ -43013,7 +43013,9 @@
     },
     "release-v0-6-0-20261124": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "removed-options-from-config-silently-ignored-20261124"
+      ],
       "priority": "high",
       "status": "blocked",
       "title": "Release v0.6.0: gates, release-prep and the v0.6.0rc1 tag (notes; not a work item)"
