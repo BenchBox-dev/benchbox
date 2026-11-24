@@ -25950,6 +25950,16 @@
       "status": "open",
       "title": "Vectorize over-budget Tier 3 synthetic generators in Python with Gate C acceptance reports"
     },
+    "datagen-p3-tpc-default-cutover": {
+      "claim": null,
+      "needs": [
+        "datagen-p1-tpcgen-cli-adapter",
+        "bundle-data-generation-hash-missing-from-corpus"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Cut over TPC-H and TPC-DS default backend and decide published-run Parquet layout default"
+    },
     "dataproc-serverless-platform": {
       "claim": null,
       "needs": [

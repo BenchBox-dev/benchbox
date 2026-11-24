@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "bundle-data-generation-hash-missing-from-corpus is verified done and fresh TPC-H/TPC-DS runs export non-null data_generation_hash values.",
+    "Gate A, Gate B (all 8 TPC-H tables, all 24 TPC-DS tables, and all 6 derived benchmarks), and Gate D pass on the pinned tpcgen-cli version across all supported CI platforms.",
+    "Owner decision on published-run Parquet layout default (keep BenchBox streaming converter vs adopt direct tpcgen-cli Parquet and re-baseline) is recorded in docs/internal/adr/adr-benchbox-datagen.md and implemented.",
+    "tpch and tpcds default backend cutover is merged on develop honoring the ADR's missing-extra rule, with --datagen-backend legacy still passing tests, Windows arm64 and refresh paths safely preserved, and a changelog.d/ fragment added."
+  ],
+  "context": "Phase 3 Tier 1 cutover of the faster data-generation plan. Separated from Tier 3/SSB cutover and legacy retirement so validated TPC-H/TPC-DS cutover and Owner Decision A2 (Parquet layout default) can land independently.",
+  "description": "## Problem\nAfter Phase 1 proves tpcgen-cli parity for TPC-H and TPC-DS behind opt-in --datagen-backend native, defaults cannot safely flip until corpus provenance hashing (bundle-data-generation-hash-missing-from-corpus) is fixed and the deferred published-run Parquet layout decision (owner decision A2) is settled with measured validation evidence.\n\n## Change\n- Verify bundle-data-generation-hash-missing-from-corpus is done and Gate A, Gate B, and Gate D are green on the pinned tpcgen-cli version across every supported CI platform.\n- Present the measured Parquet layout and query-timing comparison (streaming BaseFormatConverter vs direct tpcgen-cli Parquet on DuckDB, DataFusion, Polars) to the owner to settle the published-run Parquet default (owner decision A2), and record the outcome in docs/internal/adr/adr-benchbox-datagen.md.\n- Flip tpch and tpcds in benchbox/utils/datagen_backend.py's default table per the ADR's optional-extra default rule (keeping Windows arm64 and TPC-H/TPC-DS refresh paths routed cleanly to bundled C binaries).\n- Retain --datagen-backend legacy as a fully tested escape hatch and add a changelog.d/ fragment ([CHANGELOG-001]).\n\n## Decision gates\n- Hard blocked on bundle-data-generation-hash-missing-from-corpus closing.\n- Hard stop for explicit owner sign-off on published-run Parquet layout default (A2: keep BenchBox streaming converter as default vs adopt direct tpcgen-cli Parquet with a documented re-baseline) before changing Parquet default behavior.\n\n## Guardrails\n- Never promote tpcgen-cli to a required dependency of core benchbox (conflicts with adr-python-core-runtime.md).\n- Never remove --datagen-backend legacy or any binary from benchbox/_binaries/ in this item (at least one minor release retention is required before retirement).\n- Never break Windows arm64 or TPC-H/TPC-DS refresh streams.\n- Follow AGENTS.md ([CHANGELOG-001], [COMMENT-POLICY-001], linked worktree, make pr-preflight, merged PR).",
+  "links": [
+    "benchbox/utils/datagen_backend.py",
+    "benchbox/utils/datagen_version.py",
+    "docs/internal/adr/adr-benchbox-datagen.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032",
+      "at": "2026-11-24T00:19:24Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "d9a01011b87fd8a4c6e54982b8310c11",
+      "session_id": "85b2c240cd2b4c709f5c56393a05342d"
+    }
+  ]
+}
