@@ -7,7 +7,7 @@ from pathlib import Path
 import click
 
 from benchbox.cli.shared import console
-from benchbox.core.tpc_disclaimer import derived_results_disclaimer
+from benchbox.core.results.corpus_rule import derived_results_disclaimer
 
 
 @click.group(

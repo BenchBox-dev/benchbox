@@ -50,7 +50,7 @@ existing `compliance_class` vocabulary as information only.
 - no timed phase (load-only, data-only) -> not a result: not staged, not stored
 - TPC-DI -> decided by the TPC-DI admission rule (tpcdi-* items); this rule calls it and does not restate it
 - gateway-routed, known defect, failed validation -> unchanged from today
-Every ranked TPC row carries "Derived from TPC-H/TPC-DS ... not an official TPC result" plus the class in plain words. Vendor terms, anonymization, tuning and timing coverage stay separate admission checks behind the same entry point; they are not class inputs.
+Every ranked TPC row carries the accepted derived-results sentence ("Derived from TPC-H. These results do not comply with the TPC-H Specification and must not be compared with official TPC-H results.", with TPC-DS substituted where it applies) plus the class in plain words. Vendor terms, anonymization, tuning and timing coverage stay separate admission checks behind the same entry point; they are not class inputs.
 
 Precedence: rows are evaluated in the order listed and the first matching row
 decides. A TPC-H or TPC-DS result below scale 1 is `subscale` (refused on the

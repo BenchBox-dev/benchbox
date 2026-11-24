@@ -1,6 +1,7 @@
 import pytest
 
-from benchbox.core.tpc_disclaimer import derived_results_disclaimer, official_mode_disclaimer
+from benchbox.core.results.corpus_rule import derived_results_disclaimer
+from benchbox.core.tpc_disclaimer import official_mode_disclaimer
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 

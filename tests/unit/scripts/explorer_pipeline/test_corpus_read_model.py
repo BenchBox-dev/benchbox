@@ -234,7 +234,8 @@ def test_labels_and_identity_come_from_the_rule_modules(tmp_path: Path) -> None:
 
     labels, identity, version, is_release, observed, row_counts, iterations = row
     assert json.loads(labels) == [
-        "Derived from TPC-H, not an official TPC result",
+        "Derived from TPC-H. These results do not comply with the TPC-H Specification "
+        "and must not be compared with official TPC-H results.",
         corpus_rule.CLASS_WORDS[corpus_rule.CLASS_POWER_ONLY],
         corpus_rule.ROW_COUNTS_NOT_CHECKED_LABEL,
     ]
