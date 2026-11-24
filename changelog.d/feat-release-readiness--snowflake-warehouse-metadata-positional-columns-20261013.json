@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Snowflake warehouse metadata in result bundles is now read from SHOW WAREHOUSES by column name, so auto-suspend, query acceleration and scaling policy are no longer recorded from the wrong column; an absent column is recorded as null."
+    }
+  ]
+}

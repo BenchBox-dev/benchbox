@@ -9,6 +9,7 @@ import pytest
 from benchbox.core.exceptions import ConfigurationError
 from benchbox.core.gateway import INSECURE_GATEWAY_ENV, GatewayConfigurationError, UnsupportedGatewayError
 from benchbox.platforms.snowflake import SnowflakeAdapter
+from tests.fixtures.snowflake_warehouses import SHOW_WAREHOUSES_COLUMNS
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium, pytest.mark.cloud_import]
 
@@ -524,10 +525,17 @@ def test_greybeam_query_only_real_validation_smoke(
 
 
 class _Cursor:
-    def __init__(self, answers: dict[str, object], fail: set[str] | None = None) -> None:
+    def __init__(
+        self,
+        answers: dict[str, object],
+        fail: set[str] | None = None,
+        warehouse_columns: tuple[str, ...] | None = None,
+    ) -> None:
         self.answers = answers
         self.fail = fail or set()
+        self.warehouse_columns = warehouse_columns or SHOW_WAREHOUSES_COLUMNS
         self.current: object = None
+        self.description: list[tuple[str]] | None = None
         self.statements: list[str] = []
 
     def execute(self, sql: str, *args):
@@ -536,6 +544,9 @@ class _Cursor:
             if needle in sql:
                 raise RuntimeError("synthetic gateway failure")
         self.current = next((value for key, value in self.answers.items() if key in sql), None)
+        self.description = None
+        if "SHOW WAREHOUSES" in sql and isinstance(self.current, list) and self.current:
+            self.description = [(name,) for name in self.warehouse_columns[: len(self.current[0])]]
         return self
 
     def fetchone(self):
@@ -555,7 +566,7 @@ def _connection(answers: dict[str, object], fail: set[str] | None = None) -> Moc
     return connection
 
 
-FULL_WAREHOUSE_ROW = tuple(f"c{i}" for i in range(28))
+FULL_WAREHOUSE_ROW = tuple(f"c{i}" for i in range(len(SHOW_WAREHOUSES_COLUMNS)))
 HEALTHY_ANSWERS = {
     "current_version()": [("8.1",)],
     "CURRENT_REGION()": [("AWS_US_EAST_1",)],
@@ -727,14 +738,55 @@ def test_platform_metadata_probe_healthy_rows_are_not_degraded() -> None:
     answers = {
         "CURRENT_VERSION()": [("8.1",)],
         "CURRENT_USER()": [tuple("abcdefg")],
-        "SHOW WAREHOUSES": [tuple(f"c{i}" for i in range(26))],
+        "SHOW WAREHOUSES": [FULL_WAREHOUSE_ROW],
         "INFORMATION_SCHEMA.TABLES": [("T1", 1, 2, 3, None, None, None)],
     }
     metadata = _adapter()._get_platform_metadata(_connection(answers))
     assert "metadata_degraded" not in metadata
     assert metadata["warehouse_info"]["name"] == "c0"
-    assert metadata["warehouse_info"]["scaling_policy"] == "c25"
+    assert metadata["warehouse_info"]["scaling_policy"] == "c30"
+    assert metadata["warehouse_info"]["auto_suspend"] == "c11"
+    assert metadata["warehouse_info"]["comment"] == "c21"
     assert metadata["tables"][0]["table_name"] == "T1"
+
+
+def _metadata_for_warehouse_columns(columns: tuple[str, ...]) -> dict:
+    row = tuple(f"v_{name}" for name in columns)
+    answers = {
+        "CURRENT_VERSION()": [("8.1",)],
+        "CURRENT_USER()": [tuple("abcdefg")],
+        "SHOW WAREHOUSES": [row],
+        "INFORMATION_SCHEMA.TABLES": [("T1", 1, 2, 3, None, None, None)],
+    }
+    connection = Mock()
+    connection.cursor.return_value = _Cursor(answers, warehouse_columns=columns)
+    return _adapter()._get_platform_metadata(connection)
+
+
+def test_platform_metadata_warehouse_info_survives_inserted_column() -> None:
+    columns = list(SHOW_WAREHOUSES_COLUMNS)
+    columns.insert(3, "new_snowflake_column")
+    columns.insert(20, "another_new_column")
+
+    metadata = _metadata_for_warehouse_columns(tuple(columns))
+
+    assert "metadata_degraded" not in metadata
+    assert metadata["warehouse_info"]["name"] == "v_name"
+    assert metadata["warehouse_info"]["size"] == "v_size"
+    assert metadata["warehouse_info"]["auto_suspend"] == "v_auto_suspend"
+    assert metadata["warehouse_info"]["comment"] == "v_comment"
+    assert metadata["warehouse_info"]["scaling_policy"] == "v_scaling_policy"
+    assert "new_snowflake_column" not in metadata["warehouse_info"]
+
+
+def test_platform_metadata_warehouse_info_records_none_for_absent_column() -> None:
+    columns = tuple(name for name in SHOW_WAREHOUSES_COLUMNS if name != "scaling_policy")
+
+    metadata = _metadata_for_warehouse_columns(columns)
+
+    assert metadata["warehouse_info"]["scaling_policy"] is None
+    assert metadata["warehouse_info"]["owner"] == "v_owner"
+    assert metadata["metadata_degraded"] is True
 
 
 def test_platform_metadata_probe_failure_is_degraded() -> None:

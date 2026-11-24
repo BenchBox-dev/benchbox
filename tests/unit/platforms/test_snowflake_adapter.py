@@ -11,6 +11,7 @@ import pytest
 from benchbox.platforms.base import DriverIsolationCapability
 from benchbox.platforms.base.data_loading import NO_BENCHMARK, DataSource
 from benchbox.platforms.snowflake import SnowflakeAdapter
+from tests.fixtures.snowflake_warehouses import warehouse_description, warehouse_row
 
 pytestmark = [
     pytest.mark.unit,
@@ -1510,6 +1511,7 @@ benchbox-fixture-key-material
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
+        mock_cursor.description = warehouse_description()
 
         mock_cursor.fetchone.side_effect = [
             ["6.21.0"],
@@ -1530,34 +1532,17 @@ benchbox-fixture-key-material
 
         mock_cursor.fetchall.side_effect = [
             [
-                [
-                    "TEST_WH",
-                    "STARTED",
-                    "STANDARD",
-                    "MEDIUM",
-                    1,
-                    1,
-                    1,
-                    1,
-                    0,
-                    0,
-                    0,
-                    0,
-                    300,
-                    True,
-                    True,
-                    False,
-                    False,
-                    False,
-                    "2024-01-01",
-                    "2024-01-01",
-                    "2024-01-01",
-                    "test_user",
-                    "Test warehouse",
-                    None,
-                    None,
-                    "STANDARD",
-                ]
+                list(
+                    warehouse_row(
+                        name="TEST_WH",
+                        size="MEDIUM",
+                        min_cluster_count=1,
+                        max_cluster_count=1,
+                        auto_suspend=300,
+                        auto_resume=True,
+                        scaling_policy="STANDARD",
+                    )
+                )
             ],
             [["TABLE1", 1000, 1024000, 7, mock_datetime, mock_datetime, None]],
         ]
@@ -1578,6 +1563,8 @@ benchbox-fixture-key-material
         assert metadata["snowflake_version"] == "6.21.0"
         assert "session_info" in metadata
         assert "warehouse_info" in metadata
+        assert metadata["warehouse_info"]["name"] == "TEST_WH"
+        assert metadata["warehouse_info"]["auto_suspend"] == 300
         assert "tables" in metadata
 
         mock_cursor.close.assert_called()
