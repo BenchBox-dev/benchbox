@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "tests/unit/core/throughput/test_stream_timing.py verifies that connection setup and teardown durations are excluded from stream.duration, start_time/end_time, and start_wall_time/end_wall_time deterministically without depending on real-time CPU speed (< 0.1s wall sleep margin).",
+    "A regression check confirms the test fails if setup or close time is moved inside the measured stream window.",
+    "The test passes 50+ consecutive iterations without flakes and make pr-preflight passes on the merged head."
+  ],
+  "context": "Observed on 2026-11-24 on PR #4487 (unrelated 1-line YAML metadata edit), CI job test (ubuntu-latest, 3.14) run 45410492566 job 138504495685: FAILED tests/unit/core/throughput/test_stream_timing.py::test_tpch_stream_window_excludes_connection_setup_and_close - AssertionError: assert 0.11047438899998951 < (0.2 / 2). Passed on rerun with no code changes.",
+  "description": "## Problem\n`tests/unit/core/throughput/test_stream_timing.py::test_tpch_stream_window_excludes_connection_setup_and_close` (and sibling tests using `_assert_window_excludes_setup_and_teardown`) sleeps `0.2s` in `_SlowSetupConnection.__init__` and `close()` and asserts that real elapsed execution time for 22 mock queries is `< 0.2 / 2` (`0.1s`). Under CPU contention on hosted CI runners, 22 mock queries took `0.110s` on PR #4487 (`job/138504495685`), causing an unrelated red `core` check.\n\n## Change\nReplace real `time.sleep` timing margins in `tests/unit/core/throughput/test_stream_timing.py` with a deterministic controllable clock (monkeypatching the monotonic clock and wall-clock time source read by the throughput runner so setup advances the clock by e.g. `10.0s`, query execution advances by `0.001s`, and close advances by `10.0s`), preserving full coverage of both monotonic `duration` and `start_wall_time`/`end_wall_time` exclusion while eliminating real-time runner jitter and speeding up the fast suite.\n\n## Decision gates\n- Do not skip, xfail, quarantine, or simply weaken the assertion without proving setup and teardown remain strictly excluded from the timed window.\n- Do not change production timing behavior (`benchbox.utils.clock.mono_time()` / `elapsed_seconds()`) unless a real production bug is found; if one is found, report it before broadening scope.\n\n## Verification rubric\n- Pass: running `uv run -- pytest tests/unit/core/throughput/test_stream_timing.py` 50 times in a loop passes 50/50 with sub-second total runtime; manually advancing the fake clock inside query execution or moving setup inside the window causes the test to fail; `make pr-preflight` passes.\n- Fail: test still depends on `time.sleep` vs wall-clock CPU speed, or passes when setup/teardown is erroneously included in `stream.duration`.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Follow BenchBox timing invariants (`benchbox.utils.clock.mono_time()` / `elapsed_seconds()`). No explanatory comments or docstrings in first-party Python (`make comment-policy-check`). Stage named paths only; commit with pinned human Git identity and no agent attribution. Heavy work only via `make pr-preflight` / `make heavy-run`; never bypass `~/.benchbox/test.lock`. Open with `make pr-open`, arm with `make pr-arm`, and monitor to merge.",
+  "links": [
+    "tests/unit/core/throughput/test_stream_timing.py",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/45410492566/job/138504495685"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T21:14:55Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "c1d2e3f4a5061728394a5b6c7d8e9f12",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    }
+  ]
+}

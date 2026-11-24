@@ -50693,6 +50693,13 @@
       "status": "done",
       "title": "Propagate per-stream success into exported throughput results; make dead streams fatal outside the UAT lane"
     },
+    "throughput-stream-timing-test-jitter-flake-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make test_stream_timing.py deterministic instead of flaking on real-time sleep margins in CI"
+    },
     "throughput-stream-timing-window-and-timestamps": {
       "claim": null,
       "needs": [],
