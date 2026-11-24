@@ -17229,6 +17229,85 @@
       "scope_hash": "d98a09e46beb966c286e304e63a24dcb95953dc9de6d2f316fa826dd65df22f6",
       "start_head": "3fa547ab997527ea2fc34b4111cfa3fe42b39648",
       "terminal_outcome": "deliver"
+    },
+    "uat-green": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/uat-green",
+      "integration_head": "1d2828e85f2cac38fda65b8337be1cf5371ab4cb",
+      "integration_log": [
+        {
+          "at": "2026-11-24T14:48:10Z",
+          "head": "1d2828e85f2cac38fda65b8337be1cf5371ab4cb",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-uat-green",
+      "lifecycle": "active",
+      "members": [
+        "trunk-uat-dask-df-h2odb-sf1-timed-out-20261123",
+        "trunk-uat-doris-joinorder-17d-mem-limit-20261123",
+        "trunk-uat-postgres-family-shard-failed-20261124",
+        "trunk-uat-cedardb-shard-failed-20261124",
+        "load-test-executor-high-concurrency-flake-20261123"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "owner_epoch": 0,
+      "owner_generation": "a080fde0350a375b50d0a81a9ea0ecc5",
+      "project_id": "release-v0-6-0-20261124",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "load-test-executor-high-concurrency-flake-20261123": [
+          "benchbox/core/load_testing/*",
+          "tests/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "trunk-uat-cedardb-shard-failed-20261124": [
+          "benchbox/*",
+          "tests/*",
+          "docs/*",
+          "docker/*",
+          "scripts/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "trunk-uat-dask-df-h2odb-sf1-timed-out-20261123": [
+          "benchbox/*",
+          "tests/*",
+          "docs/*",
+          "scripts/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "trunk-uat-doris-joinorder-17d-mem-limit-20261123": [
+          "benchbox/*",
+          "tests/*",
+          "docs/*",
+          "docker/*",
+          "scripts/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "trunk-uat-postgres-family-shard-failed-20261124": [
+          "benchbox/*",
+          "tests/*",
+          "docs/*",
+          "docker/*",
+          "scripts/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "b98e4873ab81a7a4db6dffb27aef2e9b5b6f05ac51c79145687e078b838672c7",
+      "start_head": "1d2828e85f2cac38fda65b8337be1cf5371ab4cb",
+      "terminal_outcome": "deliver"
     }
   },
   "items": {
