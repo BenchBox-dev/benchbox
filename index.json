@@ -46330,6 +46330,15 @@
       "status": "done",
       "title": "Correct site documentation that contradicts current CLI and MCP behaviour"
     },
+    "site-docs-corpus-target-develop-20261124": {
+      "claim": null,
+      "needs": [
+        "submit-cli-target-develop-20261124"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Step 4 (benchbox-site next): update contributing-results and five site pages from published-results to develop"
+    },
     "site-duckdb-file-format-note-review-20261117": {
       "claim": null,
       "needs": [],

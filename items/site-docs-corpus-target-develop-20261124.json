@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "BenchBox-dev/benchbox-site on next updates docs/contributing-results.md, docs/reference/cli/submit.md, docs/guides/hosted-submission.md, docs/reference/hosted-results-contract.md, docs/operations/uat-framework.md, and docs/operations/uat-methodology.md to target develop instead of published-results.",
+    "docs/development/adr/adr-published-identifier-field-set.md carries a dated note if needed without altering historical context.",
+    "Changes merge into next and ride the normal release PR into main alongside the core release that ships Step 3."
+  ],
+  "context": "Step 4 of the owner-approved Option 1 corpus consolidation plan (2026-11-24). Tracked in core per benchbox-site/AGENTS.md (cross-repo work tracked in core with site paths listed). Edits go to benchbox-site next so they reach main with the core release that updates benchbox submit.",
+  "description": "## Problem\\nSix user-facing pages in `BenchBox-dev/benchbox-site` describe the released `published-results` PR target: `docs/contributing-results.md`, `docs/reference/cli/submit.md`, `docs/guides/hosted-submission.md`, `docs/reference/hosted-results-contract.md`, `docs/operations/uat-framework.md`, and `docs/operations/uat-methodology.md` (plus `docs/development/adr/adr-published-identifier-field-set.md`).\\n\\n## Change (Step 4 of 6)\\nUpdate those pages on `BenchBox-dev/benchbox-site` `next` to describe the `develop` bundle submission workflow and manual-review guard, marked for the release that ships Step 3 so they reach `main` through the normal release documentation PR.",
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T20:21:34Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "b1c2d3e4f5061728394a5b6c7d8e9f04",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    }
+  ]
+}
