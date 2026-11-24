@@ -5,7 +5,7 @@
     "If B: a tracked patch fixes `getUpdateBase`; all six platform binaries and SHA256MANIFEST.json are rebuilt; SF 0.01 and SF 1 base tables are byte-identical to the previous build; every refresh id in sets 1-4 at SF 0.01 and SF 1 is above its table's base maximum.",
     "If B: the primary-key refusal is removed, a test runs all 11 maintenance functions on DuckDB with primary keys enforced, and results record a field that keeps regression lookbacks from comparing across the key change."
   ],
-  "context": "Found while fixing the web lineitem item-wrap bug (PRs #4429, #4426). The 4.0.0 `tools/scaling.c` was inspected on 2026-11-21 from the TPC download: `getUpdateBase` reads arRowcount[nTable - S_BRAND]; `setUpdateScaling` writes arRowcount[nTable]. The S_BRAND offset belongs to s_tdef_funcs (tdef_functions.c), not arRowcount.",
+  "context": "Found while fixing the web lineitem item-wrap bug (PRs #4429, #4426). The 4.0.0 `tools/scaling.c` was inspected on 2026-11-21 from the TPC download: `getUpdateBase` reads arRowcount[nTable - S_BRAND]; `setUpdateScaling` writes arRowcount[nTable]. The S_BRAND offset belongs to s_tdef_funcs (tdef_functions.c), not arRowcount.\n\nBlocked: waiting for the owner's A/B decision (see Decision gate). Do not implement either option before it is recorded here.",
   "description": "## Problem\nK9 in `docs/internal/tpc-measured-intervals.md` records that the bundled TPC-DS `dsdgen` numbers `s_purchase`, `s_catalog_order` and `s_web_order` ids from 1 in every refresh set, overlapping base keys. Because of that, maintenance refuses to run on DuckDB, PostgreSQL and SQLite when a maintenance target table has a primary key (owner decision 2026-11-06 on `tpcds-maintenance-dsdgen-refresh-data-20261103`: keep the kit's keys unchanged).\n\nK9 says \"The 4.0.0 source is not available here\" and identifies the cause from the public tpcds-kit. The 4.0.0 source is now available (TPC download; rebuild steps in `_sources/tpc-ds/REBUILD.md`), and it has the same defect: `getUpdateBase(int nTable)` in `tools/scaling.c` returns `arRowcount[nTable - S_BRAND].kNextInsertValue`, while `setUpdateScaling` writes `arRowcount[nTable].kNextInsertValue`. That K9 sentence is now stale.\n\n## Decision gate (owner)\nChoose one before any code change:\n- **A. Keep the kit's keys** (status quo). Only update the K9 text to say the 4.0.0 source confirms the cause.\n- **B. Patch dsdgen at the root** (new tracked patch under `_sources/tpc-ds/`, all six platforms rebuilt), so refresh keys continue after the base maximum; then lift the primary-key refusal.\nOption B changes refresh-set keys for every scale and seed, so maintenance results before and after are not comparable. The owner must also decide how results record the change (for example a new maintenance method or datagen version), so regression lookbacks never compare across it.\n\n## Guardrails\n- No BenchBox-side rewriting or filtering of refresh rows; any key fix goes into dsdgen as a tracked patch (owner rejected loader workarounds for dsdgen defects on 2026-11-20).\n- Base data must stay byte-identical: SF 0.01 and SF 1 base tables before and after, seed 20260709.\n- Rebuild all six platforms together and regenerate `benchbox/_binaries/SHA256MANIFEST.json` (procedure in `docs/internal/tpc-binary-release.md`).\n- Do not lift the primary-key refusal unless option B has landed and its acceptance is met.\n\n## Verification rubric\n- Option A: K9 text names the 4.0.0 source, file and function; the comment-policy and docs checks pass.\n- Option B: for SF 0.01 and SF 1, refresh sets 1-4, every refresh order/ticket id exceeds the base maximum of its table; base data is unchanged; DuckDB, PostgreSQL and SQLite run all 11 maintenance functions with primary keys enforced; result metadata distinguishes the new key scheme.",
   "links": [
     "docs/internal/tpc-measured-intervals.md",
@@ -19,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "e5b908239b484f79b1b9b41436bdf434",
+      "session_id": "a724ea91942f4b2591aae926a47c7dd1"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:46b8aecc4947f9228ee7b958",
+      "at": "2026-11-24T14:46:33Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "09a7dc754f2745359e28738b39fdf8d4",
       "session_id": "a724ea91942f4b2591aae926a47c7dd1"
     }
   ]
