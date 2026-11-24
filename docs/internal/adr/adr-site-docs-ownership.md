@@ -12,9 +12,10 @@
 > and frozen-source references as pre-removal.
 
 Accepted 2026-10-18. Supersedes D1 and refines D16 of the
-[site repository split](adr-site-repo-split.md). This record defines the target
-ownership and migration constraints; it does not change publication, bundle
-emission, generators, or deployed behavior.
+[site repository split](adr-site-repo-split.md), and supersedes D4 of the
+[unified Astro site ADR](../../../_project/decisions/adr-astro-unified-site.md).
+This record defines the target ownership and migration constraints; it does not
+change publication, bundle emission, generators, or deployed behavior.
 
 ## Context
 
