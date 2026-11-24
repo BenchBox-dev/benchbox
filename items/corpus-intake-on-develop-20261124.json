@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    ".github/workflows/validate-submission.yml triggers on pull_request_target for develop gated strictly to paths results-data/bundles/**, checks out only trusted develop base validator code, enforces the data-only file rule before reading PR files, and posts a PR summary comment.",
+    "External bundle PRs into develop are mechanically blocked from auto-merge (no-auto-merge label applied automatically and enforced by hold) so no community submission merges straight into live Explorer deployment without manual review.",
+    "Fork PRs touching only results-data/bundles/** and results-data/corpus-inventory.json satisfy develop's required ruleset checks without running heavy Python unit/medium/correctness lanes or stalling on secret-scoped jobs.",
+    "Updating publication/ledger-seed.json does not trigger heavy code-test lanes, and the ledger is rewritten as accepted and withdrawn entries cut from develop (removing published_only and legacy_overlay).",
+    "tests/unit/docs/test_publication_architecture.py is rewritten to name develop as the archive while preserving every surviving invariant (acceptance != publication, manual review / no auto-merge, accepted bytes never purged)."
+  ],
+  "context": "Step 2 of the owner-approved Option 1 corpus consolidation plan (2026-11-24). Must land before Step 3 (benchbox submit CLI change) and Step 5 (retiring published-results mirror machinery). Includes three security/ruleset refinements: verify develop required checks on fork PRs, strict paths + trusted base-only checkout for pull_request_target, and mechanical no-auto-merge label application enforced by hold.",
+  "description": "## Problem\\nBefore `benchbox submit` can direct contributors to `develop`, `develop` needs fork-safe bundle validation, a mechanical manual-review / no-auto-merge guard (because merging to `develop` immediately triggers `site-inputs.yml` and live Explorer deployment), and clean CI path isolation so `publication/ledger-seed.json` does not trigger medium/correctness code lanes.\\n\\n## Change (Step 2 of 6)\\n1. Trigger `.github/workflows/validate-submission.yml` (`pull_request_target`) on `develop` gated by `paths: [\"results-data/bundles/**\"]`, checking out only trusted `develop` base validator code and enforcing the data-only rule before touching any PR file.\\n2. Mechanically block auto-merge for external bundle submissions (e.g., auto-apply `no-auto-merge` enforced by `hold`, plus `pr-arm` refusal).\\n3. Verify how `develop`'s required ruleset checks (`core`, `docs`, `explorer`, `results-data`, `hold`, `review-gate`, `release-v2 probe`) behave on a `results-data/**`-only fork PR so it gets green required statuses without running heavy code tests or stalling on secret-scoped jobs.\\n4. Stop `publication/ledger-seed.json` from triggering heavy code-test lanes in `.github/ci-units.yml`.\\n5. Rewrite `publication/ledger-seed.json` and `scripts/publication/create_ledger_seed.py` as accepted and withdrawn entries cut from `develop` (dropping `published_only` and `legacy_overlay`).\\n6. Rewrite `tests/unit/docs/test_publication_architecture.py` to name `develop` as the archive while preserving all surviving invariants (acceptance != publication, manual review / no auto-merge, accepted bytes never purged).",
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T20:21:25Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "b1c2d3e4f5061728394a5b6c7d8e9f02",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    }
+  ]
+}

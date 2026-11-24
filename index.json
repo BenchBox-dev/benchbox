@@ -24720,6 +24720,15 @@
       "status": "done",
       "title": "Corpus inventory, validator and explorer disagree on engine identity and phase, and ignore stream count"
     },
+    "corpus-intake-on-develop-20261124": {
+      "claim": null,
+      "needs": [
+        "site-inputs-published-results-corpus-gap-20261124"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Step 2: move fork-safe corpus intake, no-auto-merge guard, ledger, and architecture tests to develop"
+    },
     "corpus-integrity-validator-failures-triage-20261113": {
       "claim": null,
       "needs": [],
