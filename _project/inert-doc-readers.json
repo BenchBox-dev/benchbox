@@ -138,6 +138,9 @@
   "_sources/tpc-h/PATCHES.md": [
     "tests/unit/scripts/test_comment_cleanup_scope.py"
   ],
+  "benchbox/_binaries/tpc-di/tools/SOURCING.md": [
+    "tests/unit/core/tpcdi/test_tools_bundle.py"
+  ],
   "benchbox/core/cost/README.md": [
     "tests/unit/cli/test_shipped_docs_urls.py"
   ],

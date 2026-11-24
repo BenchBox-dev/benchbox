@@ -82,3 +82,12 @@ def test_core_checkout_includes_the_verify_script_inputs() -> None:
         "tests/fixtures/fast_tier_baseline/",
     ):
         assert path in sparse
+
+
+def test_the_attempt_that_measures_and_the_attempt_that_verifies_are_both_recorded() -> None:
+    run = named(STEP_NAME)["run"]
+    assert '--run-id "${{ github.run_id }}"' in run
+    assert '--run-attempt "${{ github.run_attempt }}"' in run
+    fast = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))["jobs"]["code-test"]
+    calibration = next(step for step in fast["steps"] if step.get("name") == "Record fast-tier runner calibration")
+    assert '--run-attempt "${{ github.run_attempt }}"' in calibration["run"]

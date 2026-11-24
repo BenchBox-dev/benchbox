@@ -458,6 +458,35 @@ def test_run_cell_marks_a_timeout_the_product_stopped_as_timed_out(tmp_path: Pat
     assert "verbose diagnostic re-run" not in log_text
 
 
+def test_run_cell_keeps_the_partial_result_of_a_timed_out_cell_beside_its_log(tmp_path: Path):
+    result_path = tmp_path / "benchmark_runs" / "results" / "partial.json"
+    _write_result_json(result_path)
+    payload = json.loads(result_path.read_text(encoding="utf-8"))
+    payload["execution"] = {"timeout": {"timeout_seconds": 1200, "phase": "power", "query_id": "Q3"}}
+    result_path.write_text(json.dumps(payload), encoding="utf-8")
+    fake_argv = [sys.executable, "-c", f"print({str(result_path)!r}); raise SystemExit(124)"]
+
+    with patch.object(runner, "benchbox_run_argv", return_value=fake_argv):
+        result = runner.run_cell("dask-df", "h2odb", 1.0, timeout_s=1, log_dir=tmp_path / "logs")
+
+    assert result.status == "timed-out"
+    kept = runner.failed_result_copy_path(result.log_path)
+    assert kept.parent == result.log_path.parent
+    assert json.loads(kept.read_text(encoding="utf-8"))["execution"]["timeout"]["phase"] == "power"
+
+
+def test_run_cell_keeps_no_result_copy_for_a_passing_cell(tmp_path: Path):
+    result_path = tmp_path / "benchmark_runs" / "results" / "ok.json"
+    _write_result_json(result_path)
+    fake_argv = [sys.executable, "-c", f"print({str(result_path)!r})"]
+
+    with patch.object(runner, "benchbox_run_argv", return_value=fake_argv):
+        result = runner.run_cell("duckdb", "tpch", 0.01, timeout_s=10, log_dir=tmp_path / "logs")
+
+    assert result.status == "passed"
+    assert not runner.failed_result_copy_path(result.log_path).exists()
+
+
 @pytest.mark.parametrize("exit_code", [124, -9, 0, 2])
 def test_run_cell_marks_a_cell_the_runner_killed_as_hung_whatever_its_exit_code(tmp_path: Path, exit_code: int):
     with (

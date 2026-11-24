@@ -259,6 +259,20 @@ def _failed_query_error(entries: list[tuple[str, str]], cursor: dict[str, int], 
     return entries[min(index, len(entries) - 1)][1]
 
 
+def timeout_stop_point(cell: CellResult) -> dict[str, str]:
+    if cell.status != "timed-out" or cell.result_path is None:
+        return {}
+    try:
+        data = json.loads(Path(cell.result_path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    execution = data.get("execution") if isinstance(data, dict) else None
+    timeout = execution.get("timeout") if isinstance(execution, dict) else None
+    if not isinstance(timeout, dict):
+        return {}
+    return {key: str(timeout[key]) for key in ("phase", "query_id") if timeout.get(key)}
+
+
 def failed_query_details(cell: CellResult) -> list[dict[str, str]]:
     if cell.status == "passed" or cell.result_path is None:
         return []

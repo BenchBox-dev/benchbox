@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "UAT now captures Doris evidence before teardown (backend and frontend logs, container events and state, cgroup memory and the backend's memory metrics) so a memory-limit recurrence shows the peak"
+}

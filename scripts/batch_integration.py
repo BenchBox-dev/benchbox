@@ -14,7 +14,6 @@ import shlex
 import subprocess
 import sys
 import tempfile
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
@@ -735,17 +734,35 @@ def _validate_verification_command(command: object) -> list[str]:
     return list(command)
 
 
-def _preflight_refusal(repo: Path, proc, started: float) -> str:
+def _receipt_path(repo: Path) -> Path | None:
+    try:
+        import preflight_receipt
+
+        return preflight_receipt.receipt_dir() / f"{_git(repo, 'rev-parse', 'HEAD^{tree}')}.json"
+    except (ImportError, BatchError, OSError):
+        return None
+
+
+def _receipt_stamp(path: Path | None) -> tuple[int, int, int] | None:
+    if path is None:
+        return None
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    return (stat.st_ino, stat.st_mtime_ns, stat.st_size)
+
+
+def _preflight_refusal(path: Path | None, proc, stamp_before: tuple[int, int, int] | None) -> str:
     import preflight_receipt
 
-    path = None
     receipt = None
-    try:
-        path = preflight_receipt.receipt_dir() / f"{_git(repo, 'rev-parse', 'HEAD^{tree}')}.json"
-        if path.stat().st_mtime >= started:
+    stamp = _receipt_stamp(path)
+    if path is not None and stamp is not None and stamp != stamp_before:
+        try:
             receipt = json.loads(path.read_text(encoding="utf-8"))
-    except (BatchError, OSError, ValueError):
-        receipt = None
+        except (OSError, ValueError):
+            receipt = None
     steps = receipt.get("steps") if isinstance(receipt, dict) else None
     if not isinstance(steps, list):
         tail = (proc.stderr or proc.stdout).strip()[-400:]
@@ -811,10 +828,11 @@ def check_member(
         if not (repo / test.split("::", 1)[0]).exists():
             raise BatchError(f"named test {test!r} does not exist in this worktree")
     preflight = [*(preflight_command or DEFAULT_PREFLIGHT_COMMAND), f"BASE={integration_head}"]
-    preflight_started = time.time()
+    receipt_path = _receipt_path(repo)
+    receipt_before = _receipt_stamp(receipt_path)
     proc = _run(preflight, repo)
     if proc.returncode != 0:
-        raise BatchError(_preflight_refusal(repo, proc, preflight_started))
+        raise BatchError(_preflight_refusal(receipt_path, proc, receipt_before))
     proc = _run(["make", "-s", "changelog-check"], repo)
     if proc.returncode != 0:
         raise BatchError(f"changelog check failed: {(proc.stderr or proc.stdout).strip()[-400:]}")

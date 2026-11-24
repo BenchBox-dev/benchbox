@@ -8,6 +8,16 @@
       "provenance": "_sources/README.md"
     },
     {
+      "path": "_sources/tpc-di/",
+      "owner": "TPC",
+      "provenance": "_sources/tpc-di/NOTICE.txt"
+    },
+    {
+      "path": "benchbox/_binaries/tpc-di/",
+      "owner": "TPC",
+      "provenance": "benchbox/_binaries/tpc-di/NOTICE.txt"
+    },
+    {
       "path": "_sources/tpc-ds/tools/",
       "owner": "TPC",
       "provenance": "_sources/README.md"
@@ -31483,19 +31493,6 @@
       "necessity": "In `TestUnifiedRunnerIntegration.test_unified_runner_list_platforms` the test starts a subprocess whose program or inline source (sys.executable) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
       "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
       "owner": "comment-cleanup-unit-tests-core",
-      "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
-    },
-    {
-      "path": "tests/unit/publication/test_validator_parity.py",
-      "symbol": "test_parity_executes_real_payloads_in_an_isolated_slim_checkout",
-      "text": "unresolved executable source: sys.executable",
-      "payload": "sha256:2949197c61e9b5dbc2d0f4bb30a45fadb6e7f44b7449fa27d25727d8beb1272f",
-      "finding_kind": "payload-error",
-      "kind": "fixture",
-      "consumer": "tests/unit/publication/test_validator_parity.py",
-      "necessity": "In `test_parity_executes_real_payloads_in_an_isolated_slim_checkout` the test starts a subprocess whose program or inline source (sys.executable) is assembled at runtime, so the checker cannot read it statically. The test exercises that runtime-built command; the fixture is bound to the test's complete AST digest.",
-      "alternative": "Rewrite the subprocess input as a static literal the checker can parse; that changes the test and was not taken in the cleanup.",
-      "owner": "comment-cleanup-unit-tests-cli-scripts-rest",
       "removal": "Remove when the test's subprocess input becomes a static literal or the executable-payload adapter can reconstruct it."
     },
     {

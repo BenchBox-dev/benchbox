@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "BenchBox now ships the official TPC-DI tools archive (DIGen and PDGF) unmodified, with the TPC and PDGF licence texts and a sourcing file, and unpacks it into its cache directory on first use after verifying its SHA-256.",
+      "details": [
+        "PDGF is licensed by bankmark for generating TPC-DI data for internal, academic and research purposes only; read tpc-di/tools/PDGF-LICENSE.txt in the package before generating data.",
+        "The package licence metadata stays MIT."
+      ],
+      "benchmarks": ["tpcdi"]
+    }
+  ]
+}

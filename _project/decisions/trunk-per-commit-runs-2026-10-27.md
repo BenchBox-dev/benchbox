@@ -1,7 +1,10 @@
 # Run trunk per commit in parallel and warn only on a stale run
 
 Date: 2026-10-27
-Status: Superseded 2026-10-30 by `trunk-latest-head-runs-2026-10-30.md`. Decided
+Status: Superseded 2026-10-30 by `trunk-latest-head-runs-2026-10-30.md`;
+decision 1 (per-commit `trunk-${{ github.sha }}` concurrency in
+`.github/workflows/trunk.yml`) was restored on 2026-11-06 (see
+`docs/internal/adr/adr-dev-loop-v2.md` 2026-11-06 amendment). Decided
 by the owner; it superseded the `concurrency.queue: max` part of the rationale
 for `.github/workflows/trunk.yml` in `merge-queue-retirement-2026-10-03.md`.
 Related: `docs/internal/merge-queue-governance.md`; `scripts/trunk_revert.py`.

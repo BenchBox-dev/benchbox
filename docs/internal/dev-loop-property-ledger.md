@@ -363,6 +363,7 @@ with maintainer and release-manager escalation as described in
 | `check_dependency_bounds.py` | product-safety | Dependency bounds |
 | `ci_failures.py` | tooling | Read-only excerpt of the failing lines of failed CI jobs for a PR head or a run |
 | `corpus_compliance_snapshot.py` | product-safety | Fails when a code change alters the compliance class or ranking exclusion of a committed result bundle |
+| `generate_standard_scales.py` | product-safety | Fails when the standard-scale projection read by the registry-less published-results validator differs from the benchmark registry |
 | `changelog_fragments.py` | tooling | Changelog fragment validation, rendering, required-entry decision and Unreleased guard |
 | `check_sqlglot_upstream_freshness.py` | product-safety | Bundled SQLGlot freshness release gate |
 | `check_sqlglot_advisories.py` | product-safety | Bundled SQLGlot published-advisory release gate |

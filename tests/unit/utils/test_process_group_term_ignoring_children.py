@@ -41,18 +41,24 @@ TERM_IGNORING_TREE = (
 
 HARD_STOP_LIMIT = 1
 
+HARD_STOP_EXIT_SECONDS = 5.0
+
 HARD_STOP_DRIVER = (
     "import psutil, subprocess, sys, time\n"
     "from benchbox.cli.run_time_limit import hard_stop\n"
     "from benchbox.utils.run_deadline import RunDeadline, arm_hard_stop\n"
     "deadline = RunDeadline(1)\n"
+    "began = time.monotonic()\n"
+    "def recording_hard_stop(target):\n"
+    "    print(f'hard-stop {time.monotonic()}', flush=True)\n"
+    "    hard_stop(target)\n"
     "leaf = 'import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); print(1, flush=True); "
     "time.sleep(300)'\n"
     "child = subprocess.Popen([sys.executable, '-c', leaf], stdout=subprocess.PIPE, start_new_session=True)\n"
     "child.stdout.readline()\n"
     "with deadline.tracking(child):\n"
-    "    arm_hard_stop(deadline, hard_stop)\n"
-    "    print(f'armed {child.pid} {psutil.Process(child.pid).create_time()}', flush=True)\n"
+    "    arm_hard_stop(deadline, recording_hard_stop)\n"
+    "    print(f'armed {child.pid} {psutil.Process(child.pid).create_time()} {began}', flush=True)\n"
     "    time.sleep(300)\n"
 )
 
@@ -169,7 +175,7 @@ def test_a_supervised_worker_that_ignores_sigterm_is_ended_at_the_overall_timeou
 
 
 @pytest.mark.slow
-def test_the_hard_stop_exits_within_the_limit_plus_grace_when_a_child_ignores_sigterm() -> None:
+def test_the_hard_stop_starts_at_limit_plus_grace_and_exits_in_bound_with_a_term_ignoring_child() -> None:
     limit = HARD_STOP_LIMIT
     env = {**os.environ, "PYTHONPATH": os.pathsep.join([str(REPO_ROOT), os.environ.get("PYTHONPATH", "")])}
     driver = subprocess.Popen(
@@ -185,12 +191,18 @@ def test_the_hard_stop_exits_within_the_limit_plus_grace_when_a_child_ignores_si
         armed = driver.stdout.readline().split()
         assert armed[0] == "armed"
         child_pid = (int(armed[1]), float(armed[2]))
+        began = float(armed[3])
         started = mono_time()
         assert _wait_until_gone([child_pid], limit + 5.0)
         assert elapsed_seconds(started) < limit + 5.0
         assert driver.poll() is None
-        assert driver.wait(limit + HARD_STOP_GRACE_SECONDS + 15.0) == ExitCode.TIMEOUT
-        assert elapsed_seconds(started) < limit + HARD_STOP_GRACE_SECONDS + 2.0
+        assert driver.wait(limit + HARD_STOP_GRACE_SECONDS + HARD_STOP_EXIT_SECONDS + 10.0) == ExitCode.TIMEOUT
+        exited = time.monotonic()
+        hard_stop_lines = [line.split() for line in driver.stdout.read().splitlines() if line.startswith("hard-stop ")]
+        assert len(hard_stop_lines) == 1
+        hard_stop_began = float(hard_stop_lines[0][1]) - began
+        assert abs(hard_stop_began - (limit + HARD_STOP_GRACE_SECONDS)) <= 0.5, hard_stop_began
+        assert exited - began - hard_stop_began < HARD_STOP_EXIT_SECONDS
     finally:
         if child_pid is not None:
             _reap(child_pid)

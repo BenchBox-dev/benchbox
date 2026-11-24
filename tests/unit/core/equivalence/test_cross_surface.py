@@ -1670,6 +1670,54 @@ def test_derived_order_allows_any_order_within_ties():
     assert _derived_order_violation(sql, columns, [(5.0, 1.0), (3.0, 2.0)]) is not None
 
 
+def test_derived_order_treats_float_sort_keys_within_relative_tolerance_as_tied():
+    sql = "SELECT d, n FROM t ORDER BY d, n"
+    columns = [("d", "DOUBLE"), ("n", "DECIMAL(7,2)")]
+    from decimal import Decimal
+
+    low, high = -109.64909090909092, -109.64909090909093
+    assert _derived_order_violation(sql, columns, [(low, Decimal("20.18")), (high, Decimal("265.34"))]) is None
+    assert _derived_order_violation(sql, columns, [(high, Decimal("20.18")), (low, Decimal("265.34"))]) is None
+    assert _derived_order_violation(sql, columns, [(low, Decimal("265.34")), (high, Decimal("20.18"))]) is None
+    keyed = "SELECT g, d, n FROM t ORDER BY g, d, n"
+    keyed_columns = [("g", "INTEGER"), *columns]
+    assert (
+        _derived_order_violation(keyed, keyed_columns, [(2, low, Decimal("1.00")), (1, high, Decimal("2.00"))])
+        is not None
+    )
+    far = [(-109.0, Decimal("20.18")), (-110.0, Decimal("265.34"))]
+    assert _derived_order_violation(sql, columns, far) is not None
+    assert _derived_order_violation(sql, columns, far[::-1]) is None
+    wide = [(1.0, Decimal("2.00")), (1.0 + 1e-6, Decimal("1.00"))]
+    assert _derived_order_violation(sql, columns, wide) is None
+    assert _derived_order_violation(sql, columns, wide[::-1]) is not None
+
+
+def test_float_tie_snap_anchors_groups_at_their_representative_instead_of_chaining():
+    from benchbox.core.equivalence.cross_surface import _float_tie_snap
+
+    first, middle, last = 1.0, 1.0 + 0.9e-9, 1.0 + 1.8e-9
+    snap = _float_tie_snap([last, middle, first])
+    assert snap[first] == snap[middle] == first
+    assert snap[last] == last
+    assert snap[first] != snap[last]
+
+
+def test_derived_order_float_tie_tolerance_never_ties_infinities_or_nan_with_finite_keys():
+    ascending = "SELECT x FROM t ORDER BY x"
+    columns = [("x", "DOUBLE")]
+    inf = float("inf")
+    assert _derived_order_violation(ascending, columns, [(inf,), (5.0,)]) is not None
+    assert _derived_order_violation(ascending, columns, [(5.0,), (inf,)]) is None
+    assert _derived_order_violation(ascending, columns, [(-5.0,), (-inf,)]) is not None
+    assert _derived_order_violation(ascending, columns, [(-inf,), (-5.0,)]) is None
+    assert _derived_order_violation(ascending, columns, [(inf,), (inf,)]) is None
+    difference = "SELECT a, b FROM t ORDER BY a - b"
+    pair_columns = [("a", "DOUBLE"), ("b", "DOUBLE")]
+    assert _derived_order_violation(difference, pair_columns, [(inf, inf), (5.0, 1.0)]) is not None
+    assert _derived_order_violation(difference, pair_columns, [(5.0, 1.0), (inf, inf)]) is None
+
+
 def test_derived_order_is_not_checked_when_a_key_is_not_in_the_result():
     sql = "SELECT a FROM t ORDER BY hidden"
     assert _derived_order_violation(sql, [("a", "INTEGER")], [(2,), (1,)]) is None

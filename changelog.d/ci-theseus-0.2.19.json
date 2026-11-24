@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "Promote Theseus 0.2.19 so every TypeSafe classifier error falls back to OpenAI Decisions and a 'Review classifier degraded' issue reports it, a quota skips only the models that hit it, and the gateway host dispatches the review sweep hourly and reports a stale monitor snapshot."}

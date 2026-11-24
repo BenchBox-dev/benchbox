@@ -4,15 +4,18 @@
 
 > **Core removal (2026-10-26).** The migration this ADR constrains has
 > landed: the site-owned Markdown and the Python Markdown generators named
-> below now live in the `benchbox-site` repository, and the site-inputs
-> bundle default is schema 5 with no `docs`/`downloads` members. The body
-> below is kept as the historical record; treat generator and frozen-source
-> references as pre-removal.
+> below now live in the `benchbox-site` repository, and `docs`/`downloads`
+> members were removed starting in schema 5 (later raised to schema 6 by
+> [`adr-result-bundle-json-schema.md`](adr-result-bundle-json-schema.md) to
+> add `result-bundle.schema.json`; `scripts/site_inputs.py` holds the live
+> default). The body below is kept as the historical record; treat generator
+> and frozen-source references as pre-removal.
 
 Accepted 2026-10-18. Supersedes D1 and refines D16 of the
-[site repository split](adr-site-repo-split.md). This record defines the target
-ownership and migration constraints; it does not change publication, bundle
-emission, generators, or deployed behavior.
+[site repository split](adr-site-repo-split.md), and supersedes D4 of the
+[unified Astro site ADR](../../../_project/decisions/adr-astro-unified-site.md).
+This record defines the target ownership and migration constraints; it does not
+change publication, bundle emission, generators, or deployed behavior.
 
 ## Context
 
@@ -100,7 +103,9 @@ drift after merge, as the split ADR permits; a failing consumer must retain the
 last good site, not publish inconsistent docs. No Node build is added to core.
 No Python source, project/lock files, tooling invocation or Python source history
 enters the site; Python, uv and uvx examples in documentation remain allowed.
-No JavaScript or TypeScript source enters core.
+No JavaScript or TypeScript source enters core (amended 2026-11-23 to match
+[`adr-site-repo-split.md`](adr-site-repo-split.md) D9: agent-harness hooks under
+`.omp/` are exempt).
 
 ## Bundle compatibility and activation
 

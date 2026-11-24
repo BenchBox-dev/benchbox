@@ -124,6 +124,10 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "The Snowflake unit tests that make test-fast and pr-preflight already run, repeated against "
         "snowflake-connector-python 5.x while the lock stays on 4.x; run the step's command locally to reproduce."
     ),
+    ("ci.yml", "generator-volume", "Run the generator volume gate"): (
+        "A heavy SF 1 DuckDB run, so it has no Make target (the target count is capped); run it locally with "
+        "make heavy-run CMD='uv run -- python -m scripts.generator_volume_gate --base-ref origin/develop'."
+    ),
     ("ci.yml", "ci-paths", "Guard SQLGlot adoption on a maintenance line"): (
         "Hosted check on pull requests into a release/X.Y.x line; it reads the pull request base and body, "
         "which exist only on the hosted event, and its logic is pinned by "

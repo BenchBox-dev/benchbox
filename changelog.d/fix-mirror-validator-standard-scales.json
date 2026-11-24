@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "A TPC-H or TPC-DS result at a scale factor outside the standard list is no longer refused by the published-results validator. It is accepted, shown with the nonstandard-scale warning and left out of ranking, as `benchbox submit` already reported locally. This holds whether the result is stamped unofficial_nonstandard, unofficial_subscale or official, or carries no compliance class, and for every benchmark: results at an unlisted scale are now excluded from ranking there as well."
+    }
+  ]
+}

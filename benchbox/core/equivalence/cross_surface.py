@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator, Sequence
@@ -315,6 +316,27 @@ def _is_text_type(declared: str) -> bool:
     return declared.upper().startswith(("VARCHAR", "CHAR", "BPCHAR", "TEXT"))
 
 
+FLOAT_SORT_KEY_RELATIVE_TOLERANCE = 1e-9
+
+
+def _is_float_type(declared: str) -> bool:
+    return declared.upper() in ("DOUBLE", "FLOAT", "REAL")
+
+
+def _float_tie_snap(values: Sequence[Any]) -> dict[float, float]:
+    finite = sorted({value for value in values if isinstance(value, float) and math.isfinite(value)})
+    snap: dict[float, float] = {}
+    representative: float | None = None
+    for value in finite:
+        if representative is None or not (
+            value == representative
+            or abs(value - representative) <= FLOAT_SORT_KEY_RELATIVE_TOLERANCE * max(abs(value), abs(representative))
+        ):
+            representative = value
+        snap[value] = representative
+    return snap
+
+
 def _plan_order_violation(plan: _DerivedOrderPlan, rows: list[tuple[Any, ...]]) -> str | None:
     import duckdb
 
@@ -338,18 +360,57 @@ def _plan_order_violation(plan: _DerivedOrderPlan, rows: list[tuple[Any, ...]]) 
         )
         keys = ", ".join(f"{expression} AS __k{index}" for index, (expression, _) in enumerate(plan.terms))
         keyed = f"SELECT __pos, {keys} FROM candidate"
-        returned = connection.execute(f"SELECT * EXCLUDE (__pos) FROM ({keyed}) ORDER BY __pos").fetchall()
-        required = connection.execute(
-            f"SELECT * EXCLUDE (__pos) FROM ({keyed}) ORDER BY {', '.join(key for _, key in plan.terms)}, __pos"
-        ).fetchall()
+        key_types = [str(described[1]) for described in connection.execute(f"DESCRIBE {keyed}").fetchall()]
+        key_rows = connection.execute(f"{keyed} ORDER BY __pos").fetchall()
+        snaps = [
+            _float_tie_snap([row[index] for row in key_rows]) if _is_float_type(kind) else None
+            for index, kind in enumerate(key_types)
+        ]
+        snapped_rows = [
+            tuple(value if snap is None else snap.get(value, value) for value, snap in zip(row, snaps, strict=True))
+            for row in key_rows
+        ]
+        connection.execute(
+            "CREATE TABLE sort_keys ("
+            + ", ".join(
+                f"{name} {kind}"
+                for name, kind in zip(["__pos", *(f"__k{i}" for i in range(len(plan.terms)))], key_types, strict=True)
+            )
+            + ")"
+        )
+        connection.executemany(f"INSERT INTO sort_keys VALUES ({', '.join('?' for _ in key_types)})", snapped_rows)
+        term_keys = [key for _, key in plan.terms]
+        prefix_ranks = ", ".join(
+            f"DENSE_RANK() OVER (ORDER BY {', '.join(term_keys[: index + 1])})" for index in range(len(term_keys))
+        )
+        ranks = connection.execute(f"SELECT {prefix_ranks} FROM sort_keys ORDER BY __pos").fetchall()
     except duckdb.Error as exc:
         return f"the ORDER BY check could not evaluate the sort keys over the returned rows: {exc}"
     finally:
         connection.close()
-    for position, (actual, expected) in enumerate(zip(returned, required, strict=True)):
-        if actual != expected:
-            return f"returned row {position} breaks the ORDER BY: sort key {actual}, expected {expected}"
+    for position in range(len(ranks) - 1):
+        if _precedes_strictly(ranks[position + 1], ranks[position], key_rows[position], key_rows[position + 1], snaps):
+            return (
+                f"returned row {position} breaks the ORDER BY: sort key {tuple(key_rows[position][1:])}, "
+                f"expected {tuple(key_rows[position + 1][1:])}"
+            )
     return None
+
+
+def _precedes_strictly(
+    later: Sequence[int],
+    earlier: Sequence[int],
+    earlier_keys: Sequence[Any],
+    later_keys: Sequence[Any],
+    snaps: Sequence[dict[float, float] | None],
+) -> bool:
+    for index, (later_rank, earlier_rank) in enumerate(zip(later, earlier, strict=True)):
+        if later_rank != earlier_rank:
+            return later_rank < earlier_rank
+        first, second = earlier_keys[index + 1], later_keys[index + 1]
+        if snaps[index + 1] is not None and first != second and not (first != first and second != second):
+            return False
+    return False
 
 
 def _derived_order_violation(sql: str, columns: Sequence[tuple[str, str]], rows: list[tuple[Any, ...]]) -> str | None:

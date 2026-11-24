@@ -288,6 +288,49 @@ def test_sweep_main_names_failed_cells_with_exit_status(tmp_path, monkeypatch, c
     assert "questdb/tpch@0.01" not in err
 
 
+@pytest.mark.parametrize(
+    ("timeout", "expected_suffix"),
+    [
+        ({"timeout_seconds": 1200, "phase": "power", "query_id": "Q3"}, " phase=power query_id=Q3"),
+        ({"timeout_seconds": 1200, "phase": "load"}, " phase=load"),
+        (None, ""),
+    ],
+)
+def test_sweep_main_names_where_a_timed_out_cell_stopped(tmp_path, monkeypatch, capsys, timeout, expected_suffix):
+    from tests.uat.phases.execute import ExecuteOutcome
+    from tests.uat.runner import CellResult
+
+    result_json = tmp_path / "h2odb.json"
+    result_json.write_text(json.dumps({"execution": {"timeout": timeout} if timeout else {}}), encoding="utf-8")
+    log_path = tmp_path / "h2odb.log"
+    outcome = ExecuteOutcome(
+        phase="execute",
+        results=(CellResult("dask-df", "h2odb", 1.0, "timed-out", 124, 1231.5, log_path, result_json),),
+        pruned=(),
+        skipped_unreachable=(),
+        startup_failed=(),
+    )
+
+    class StubResult:
+        name = "stub"
+        log_dir = tmp_path
+        aborted_phase = None
+        abort_reason = None
+        phase_exit_codes = {"execute": 1}
+        plan = None
+        execute_outcome = outcome
+
+        def exit_code(self):
+            return 1
+
+    monkeypatch.setattr("tests.uat.orchestrator.run_sweep_from_path", lambda *args, **kwargs: StubResult())
+
+    assert _cli.main(["sweep", "--config", "any.yaml"]) == 1
+
+    expected = f"[sweep] FAILED CELL dask-df/h2odb@1 status=timed-out exit=124 log={log_path}{expected_suffix}\n"
+    assert expected in capsys.readouterr().err
+
+
 def test_stress_main_forwards_platform_benchmark_scale_as_stress_overrides(monkeypatch, capsys):
     calls: list[tuple[Path, dict]] = []
 

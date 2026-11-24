@@ -2,12 +2,12 @@
 
 ## Status
 
-Accepted (2026-05-03). The W2 force-push of `published-results` to the slim
-orphan commit `00260bd46` has shipped (pre-slim tip preserved as
-`refs/backups/published-results-pre-slim-20260503` on origin). The W3 mirror
-PR #166 is open as draft against `published-results`. The W4 sync workflow
-(`.github/workflows/sync-results-data-to-published.yml`) lands together
-with this ADR update.
+Accepted (2026-05-03) and implemented. `published-results` was reset to the slim
+orphan commit `00260bd46` (pre-slim tip preserved as
+`refs/backups/published-results-pre-slim-20260503` on origin), the initial corpus
+mirror landed, and `.github/workflows/sync-results-data-to-published.yml` keeps
+the mirrored corpus and validation runtime synced from `develop`. Historical
+paragraphs in Context below describe the branch as it stood on 2026-05-03.
 
 ## Date
 
@@ -63,19 +63,23 @@ replication:
 | Recurring maintainer seed and curated release-preview corpus | `develop` |
 | Complete accepted Phase 2 archive, including direct operator and community submissions | `published-results` |
 | Corpus inventory | Generated independently from each branch's own bundle tree |
-| Independent publication input | Exact `published-results` SHA pinned by a reviewed publication manifest; every validator-clean accepted result is input by default |
+| Independent publication manifest *(retired)* | Retired by [`adr-site-repo-split.md`](adr-site-repo-split.md) D12; the legacy publication manifest control plane was removed |
 | Explorer code, admission policy, visibility, trust, withdrawal, and ranking policy | `develop` |
-| Current static Results Explorer | Legacy curated `release` snapshot sourced from `develop` until the independent-publication migration gates pass |
+| Public Results Explorer | Built and deployed from `BenchBox-dev/benchbox-site` using the attested core site-inputs bundle, which currently reads `results-data/` on `develop` (`scripts/site_inputs.py`; see [`adr-site-repo-split.md`](adr-site-repo-split.md)) |
 
 Published-only bundles are therefore expected archive growth, not missing
-backports. There is no automatic `published-results` to `develop` sync. The legacy
-curated release preview uses develop-side data today, but the accepted future-state
-contract is
-[`adr-independent-publication-authorities.md`](adr-independent-publication-authorities.md):
-a reviewed publication manifest pins an exact `published-results` SHA and every valid
-accepted result is publication input by default. Orthogonal visibility, trust,
-withdrawal, and ranking fields on `develop` control presentation without creating a
-second corpus authority.
+backports. There is no automatic `published-results` to `develop` sync.
+**Current implementation gap:** today's attested site-inputs bundle
+(`scripts/site_inputs.py`) reads `results-data/` on `develop` rather than
+pinning a `published-results` commit (the legacy publication manifest control
+plane was retired under [`adr-site-repo-split.md`](adr-site-repo-split.md) D12),
+so results accepted only on `published-results` are not currently included in
+the deployed Explorer bundle. Acceptance, withdrawal, and readmission rules
+still reference
+[`adr-independent-publication-authorities.md`](adr-independent-publication-authorities.md);
+reconciling `scripts/site_inputs.py` with the `published-results` archive (or
+formally superseding published-only Explorer ingestion) requires an explicit
+owner decision and is tracked separately.
 
 ### Allowlist
 
@@ -88,16 +92,11 @@ second corpus authority.
 | `results-data/SEED_CORPUS_SPEC.md` | Maintainer-run seed lane spec. |
 | `results-data/validate_corpus.py` | The cohort-depth gate enforced by CI. |
 | `results-data/.gitignore` | Local-clone hygiene for the corpus directory. |
-| `scripts/validate_submission.py` | Per-bundle validator entrypoint — a thin CLI wrapper that must run inside the submission CI without shipping the rest of `benchbox/`. Imports the shared implementation from `benchbox/validation/bundle.py` (with an `importlib` file-loader fallback). |
-| `benchbox/validation/bundle.py` | The shared validator implementation used by both develop and this branch. Mirrored here so `validate_submission.py` runs without installing BenchBox; kept in sync by `sync-results-data-to-published.yml`. |
-| `benchbox/core/results/query_status.py` | Stdlib-only failed-query policy shared by publication, ranking, and the slim validator so both branches judge measurement failures identically. |
-| `benchbox/core/results/schema_policy.py` | Stdlib-only schema-version policy required by the shared bundle validator. |
-| `scripts/publication/validator_parity.py` | Trusted validator entry point comparing the PR-head and merge payload outcomes. Its runtime consists only of the allowlisted shared validator files. |
-| `scripts/generate_corpus_inventory.py` | Inventory generator — same rationale as above. |
+| Validation and inventory runtime (`scripts/validate_submission.py`, `scripts/generate_corpus_inventory.py`, `scripts/publication/validator_parity.py`, plus mirrored stdlib modules/data under `benchbox/validation/` and `benchbox/core/results/`) | Exact mirrored file set is defined in `.github/workflows/sync-results-data-to-published.yml` (and guarded by `.github/workflows/validate-submission.yml`) so submission CI runs the shared validator without installing BenchBox. |
 | `.github/workflows/validate-submission.yml` | The submission CI gate. |
 | `.gitignore` | Repository-root ignore — kept minimal. |
 | `LICENSE`, `COPYRIGHT.md`, `DISCLAIMER.md` | Required for any public repo branch; near-zero churn. |
-| `CONTRIBUTING.md` | Slim, points contributors at `docs/contributing-results.md` on `develop`/`main` for the full guide. |
+| `CONTRIBUTING.md` | Slim; intended to point contributors at `https://benchbox.dev/docs/contributing-results.html` for the full guide *(note 2026-11-24: live `origin/published-results:CONTRIBUTING.md` still carries a broken link to `develop/docs/contributing-results.md` and is tracked for update)*. |
 | `README.md` | A `published-results`-specific README (not the develop one) explaining what the branch is, why it is slim, and how to contribute. |
 
 Total expected file count: **on the order of hundreds**, dominated by
@@ -106,20 +105,20 @@ in the slim-down.
 
 ### Explicit exclusions (deleted in the slim-down)
 
-- `benchbox/` (the package source) — **except** the three mirrored validation
-  files listed above. The rest of the
-  package is not needed to validate or display bundles; `validate_submission.py`
-  is a thin wrapper over that one shared module.
+- `benchbox/` (the package source) — **except** the mirrored validation
+  runtime files defined in `.github/workflows/sync-results-data-to-published.yml`.
+  The rest of the package is not needed to validate or display bundles;
+  `validate_submission.py` is a thin wrapper over the shared validation module.
 - `tests/` — the develop-side test suite. The corpus depth and
   per-bundle validators run against `results-data/` directly.
-- `_project/` — TODO/DONE/handoffs/blind-spots. Project tracking
-  belongs on develop.
+- `_project/` — project tracking, scripts, and internal records belong on `develop`.
 - `_binaries/` — TPC-H/DS binaries. Not required for corpus validation.
 - `_sources/` — vendored upstream sources. Not required for corpus
   validation.
-- `_blog/`, `docs/`, `landing/`, `examples/`, `results-explorer/`,
-  `docker/` — develop-side artefacts; the explorer is built from
-  `main` and feeds the public site, not from `published-results`.
+- `_blog/`, `landing/`, `results-explorer/`, `docs/`, `examples/`,
+  `docker/` — not part of the slim corpus branch *(historical slim-down list;
+  `_blog/`, `landing/`, `results-explorer/`, and published user docs later
+  moved to `BenchBox-dev/benchbox-site`)*.
 - All other `.github/workflows/*.yml` except `validate-submission.yml`
   — the slim branch only needs the submission validator workflow.
 - All other top-level dotfiles, `Makefile`, `pyproject.toml`,
@@ -131,10 +130,11 @@ in the slim-down.
 `generate_corpus_inventory.py`, `validate_submission.py`, and
 `scripts/publication/validator_parity.py` use the same stdlib-only runtime on
 both branches. The validator entry points import `benchbox/validation/bundle.py`,
-which loads the mirrored `query_status.py` and `schema_policy.py` policies.
+which loads its mirrored policy and data modules from `benchbox/core/results/`.
 File-loader fallbacks support the slim checkout without an installed BenchBox;
 they load those same shared policy files rather than substitute inline rules.
-The mirror must carry all six runtime files together. CI invokes the scripts
+The mirror must carry the complete runtime file set defined in
+`.github/workflows/sync-results-data-to-published.yml` together. CI invokes the scripts
 with `uv run --no-project --python 3.11 -- python`, so neither project metadata
 nor an installed BenchBox is required.
 
@@ -152,8 +152,7 @@ even there).
 This means `pyproject.toml` and `uv.lock` are **not** added to the
 allowlist and stay excluded. The on-branch copy of
 `validate-submission.yml` is the one that has to change; that change
-is part of W2 of the parent TODO (it lands together with the
-orphan-branch reset).
+landed together with the orphan-branch reset.
 
 ### Python version pinning
 
@@ -177,23 +176,23 @@ host the same mix of `maintainer-run` (seed corpus, no sidecar) and
 
 ### Vendored scripts: source of truth and divergence detection
 
-The complete six-file runtime listed below exists on `develop` (the canonical
-home) and is vendored to `published-results` for self-contained CI. Sync is automated by
-[`.github/workflows/sync-results-data-to-published.yml`](https://github.com/BenchBox-dev/BenchBox/blob/develop/.github/workflows/sync-results-data-to-published.yml):
-when develop's copy of any runtime file changes, the workflow opens a
-draft mirror PR vs `published-results` carrying the change. Maintainers
-review and flip ready when the develop change is intended to surface on
-the public corpus branch.
+The authoritative mirrored runtime file set lives in
+[`.github/workflows/sync-results-data-to-published.yml`](https://github.com/BenchBox-dev/BenchBox/blob/develop/.github/workflows/sync-results-data-to-published.yml)
+(`on.push.paths` and the `DIFFED` list) on `develop` and is vendored to
+`published-results` for self-contained CI. Whenever `develop`'s copy of any
+mirrored runtime file changes, the sync workflow opens a mirror PR against
+`published-results` carrying the change and squash-merges it once validation
+and freshness checks pass.
 
 This means `published-results` will normally be at most one mirror PR
-behind develop on the vendored runtime. If a develop PR modifies one
-of these files but the mirror PR is left as a draft (e.g. waiting on a
-matching slim-branch contributor PR), divergence is bounded and visible
-in the open-PR list against `published-results`.
+behind `develop` on the vendored runtime. If a `develop` PR modifies one
+of these files and the mirror PR is still open or failing validation,
+divergence is bounded and visible in the open-PR list against
+`published-results`.
 
 If the workflow itself ever misfires (e.g. detects no drift when there
 is one), the manual recovery is to trigger it via `workflow_dispatch`
-from the develop branch. In the absence of any sync at all, `develop`
+from the `develop` branch. In the absence of any sync at all, `develop`
 remains authoritative for these vendored implementation files —
 `published-results` copies are treated as read-only mirrors, and any
 develop-side validator or generator bug fix is the canonical fix. This does
@@ -201,33 +200,27 @@ not make `develop` authoritative for published-only archive bundles.
 
 ### The workflow file itself is NOT auto-mirrored — this is permanent, not a gap to close
 
-`sync-results-data-to-published.yml`'s automated mirror covers these six files:
-
-- `scripts/validate_submission.py`
-- `scripts/generate_corpus_inventory.py`
-- `scripts/publication/validator_parity.py`
-- `benchbox/validation/bundle.py`
-- `benchbox/core/results/query_status.py`
-- `benchbox/core/results/schema_policy.py`
-
-It deliberately does **not** include
-`.github/workflows/validate-submission.yml` itself, and never will:
+`sync-results-data-to-published.yml`'s automated mirror covers the corpus paths
+and validation runtime files enumerated in that workflow. It deliberately does
+**not** include `.github/workflows/validate-submission.yml` itself, and never will:
 `GITHUB_TOKEN` cannot push changes under `.github/workflows/` regardless
 of the `permissions:` block granted to it — this is a hard-coded GitHub
 Actions restriction (the token needs an actual `workflows` OAuth scope,
 which `GITHUB_TOKEN` never carries), not a configuration choice that
 could be relaxed by editing the sync workflow.
 
-Practical effect: whenever `validate-submission.yml` changes on develop
+Practical effect: whenever `validate-submission.yml` changes on `develop`
 (new CI logic, a new guard step, an invocation change), a maintainer
 must **manually** diff and re-apply it onto `published-results`
 (`git diff origin/develop:.github/workflows/validate-submission.yml
 origin/published-results:.github/workflows/validate-submission.yml`),
 preserving the slim-branch's `--no-project --python 3.11` invocation —
-exactly the one-time sync PR #985 did. There is no automated drift
-alarm for this specific file; treat every develop-side PR that touches
-`validate-submission.yml` as carrying an implicit "and re-sync
-published-results by hand" follow-up.
+exactly as sync PR #985 did. Automated drift detection is provided by
+`.github/workflows/submission-validator-drift-check.yml`
+(`scripts/check_submission_validator_sync.py`), which runs weekly and on every
+`develop` push touching `.github/workflows/validate-submission.yml` and fails
+whenever the two copies diverge outside the permitted slim-branch invocation
+differences.
 
 ## Consequences
 
@@ -252,11 +245,12 @@ published-results by hand" follow-up.
   `CONTRIBUTING.md` on the slim branch, in `docs/contributing-results.md`
   on `develop`, and in the runbook before the force-push.
 - Vendoring `validate_submission.py` and `generate_corpus_inventory.py`
-  introduces a sync surface. Mitigated by W4 of the parent TODO and by
-  treating `develop` as authoritative for vendored validation tooling.
+  introduces a sync surface. Mitigated by `.github/workflows/sync-results-data-to-published.yml`
+  and by treating `develop` as authoritative for vendored validation tooling.
 - The branch loses the May-1 history. Project history overall is
-  preserved on `develop` and `main`; `published-results`'s own log is
-  intentionally short and corpus-focused.
+  preserved on `develop` (and was preserved on `main` before that branch was
+  retired); `published-results`'s own log is intentionally short and
+  corpus-focused.
 
 ## Alternatives considered
 
@@ -292,20 +286,19 @@ published-results by hand" follow-up.
 
 ## Operational footprint
 
-- One-time force-push of `published-results` to a new orphan commit
-  containing only the allowlisted paths. Documented in W2 of the
-  parent TODO; gated on user authorization.
-- W3 of the parent TODO mirrors the UAT-20260502 corpus delta (188
-  community-submission bundles + 188 manifests + regenerated inventory
-  + slim README) onto the post-slim `published-results`.
-- W4 of the parent TODO ships
-  `.github/workflows/sync-results-data-to-published.yml`. The workflow
-  watches develop for changes under the slim-branch allowlist paths
-  (`results-data/bundles/`, the corpus docs, the two vendored
-  validators) and opens a draft mirror PR vs `published-results`. Since
-  2026-11-17 the workflow squash-merges the mirror PR itself once it passes
-  validation and the freshness check: its content was already reviewed on
-  develop, and manual merging left the public branch behind for weeks.
+- One-time force-push of `published-results` to the slim orphan commit
+  containing only the allowlisted paths (completed 2026-05-03).
+- Initial corpus mirror of the UAT-20260502 delta (188 community-submission
+  bundles + 188 manifests + regenerated inventory + slim README) onto the
+  post-slim `published-results` (completed).
+- Ongoing sync via `.github/workflows/sync-results-data-to-published.yml`. The
+  workflow watches `develop` for changes under the mirrored allowlist paths
+  (`results-data/bundles/`, the corpus docs, and the mirrored validation runtime
+  files listed in that workflow) and opens a mirror PR against
+  `published-results`. Since 2026-11-17 the workflow squash-merges the mirror PR
+  itself once it passes validation and the freshness check: its content was
+  already reviewed on `develop`, and manual merging left the public branch
+  behind for weeks.
 
 ## Maintenance protocol
 
@@ -321,10 +314,11 @@ Re-review this ADR when:
 
 ## References
 
-- Parent TODO: `_project/DONE/main/published-results-slim-down-and-corpus-mirror.yaml` (completed)
-- Originating handoff: `_project/handoffs/results-explorer-uat-corpus-integration-20260503.md`
+- Historical provenance: parent TODO `published-results-slim-down-and-corpus-mirror` and originating handoff `results-explorer-uat-corpus-integration-20260503` (both retired after tracker migration)
 - Runbook: `docs/internal/results-phase-2-runbook.md`
-- Contributor guide: `docs/contributing-results.md`
+- Contributor guide: `https://benchbox.dev/docs/contributing-results.html`
+- Sync workflow (authoritative mirror list): `.github/workflows/sync-results-data-to-published.yml`
+- Workflow drift check: `.github/workflows/submission-validator-drift-check.yml` (`scripts/check_submission_validator_sync.py`)
 - Submission validator: `scripts/validate_submission.py`
 - Inventory generator: `scripts/generate_corpus_inventory.py`
 - Corpus depth gate: `results-data/validate_corpus.py`
