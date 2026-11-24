@@ -44265,7 +44265,9 @@
     },
     "review-gateway-host-behind-omp-pin-20261124": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "review-classifier-degraded-remediation-20261124"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Review gateway host still runs omp 18.16.0 after the pin moved to 18.20.0, and its monitor snapshot checks the retired oracle environment"
