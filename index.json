@@ -19932,6 +19932,13 @@
       "status": "open",
       "title": "A frozen batch scope cannot be amended, so a needed file outside it forces abort and re-registration"
     },
+    "batch-scope-excludes-generated-indexes-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Let registered batches land changes to generated repository indexes that member work makes stale"
+    },
     "batch-server-engine-bulk-load-umbrella-20261109": {
       "claim": null,
       "needs": [],
