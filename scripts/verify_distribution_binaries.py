@@ -1,14 +1,30 @@
 from __future__ import annotations
 
 import argparse
+import json
 import stat
 import tarfile
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from benchbox.utils.binary_manifest import DEFAULT_ROOT, MANIFEST_NAME, verify_binary_payload, verify_binary_tree
+from benchbox.utils.binary_manifest import (
+    DEFAULT_ROOT,
+    MANIFEST_NAME,
+    read_binary_manifest,
+    verify_binary_payload,
+    verify_binary_tree,
+)
 
 CLI_DESCRIPTION = "Verify source, wheel, and sdist bundled generators against one manifest."
+
+DISTRIBUTION_EXCLUDED = frozenset(
+    {
+        "tpc-di/tpcdi_audit.sql",
+        "tpc-di/tpcdi_validation.sql",
+        "tpc-di/tpcdi_visibility_1.sql",
+        "tpc-di/tpcdi_visibility_2.sql",
+    }
+)
 
 
 def _member_name(raw_name: str, seen: dict[str, bool], binary_prefix: str, directory: bool) -> str:
@@ -44,7 +60,7 @@ def verify_distribution_binaries(distribution: Path, source_root: Path = DEFAULT
     source_files = {
         path.relative_to(source_root).as_posix(): path.stat().st_size
         for path in source_root.rglob("*")
-        if path.is_file()
+        if path.is_file() and path.relative_to(source_root).as_posix() not in DISTRIBUTION_EXCLUDED
     }
     source_execute_modes = {name: (source_root / name).stat().st_mode & 0o111 for name in source_files}
     payloads: dict[str, bytes] = {}
@@ -94,7 +110,12 @@ def verify_distribution_binaries(distribution: Path, source_root: Path = DEFAULT
     manifest = payloads.pop(MANIFEST_NAME, None)
     if manifest != trusted_manifest:
         raise ValueError("distribution manifest differs from the source manifest")
-    verify_binary_payload(trusted_manifest, payloads)
+    distribution_files = {
+        name: digest
+        for name, digest in read_binary_manifest(trusted_manifest).items()
+        if name not in DISTRIBUTION_EXCLUDED
+    }
+    verify_binary_payload(json.dumps({"schema": 1, "files": distribution_files}).encode(), payloads)
 
 
 def main(argv: list[str] | None = None) -> int:
