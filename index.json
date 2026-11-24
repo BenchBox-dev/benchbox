@@ -24477,6 +24477,13 @@
       "status": "done",
       "title": "Export the local-path privacy contract in the core bundle so the site gate can check drift"
     },
+    "core-d9-language-boundary-guard-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Enforce adr-site-repo-split.md D9 (no JS/TS or package.json in core outside .omp/) in required CI"
+    },
     "core-docs-advisory-site-build-20261017": {
       "claim": null,
       "needs": [],
