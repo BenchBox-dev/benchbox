@@ -3,7 +3,7 @@
     "Test or scripted check: with a benchbox.egg-info/SOURCES.txt that lists a file excluded by MANIFEST.in, make test-package's sdist does not contain that file.",
     "make test-package still passes on a clean checkout."
   ],
-  "description": "## Problem\nsetuptools reuses benchbox.egg-info/SOURCES.txt from an earlier build in the same checkout. On 2026-11-24 a worktree built before the TPC-DI appendix exclusion produced an sdist that still contained _sources/tpc-di/*.sql, so a test of the exclusion failed locally until the ignored benchbox.egg-info and build/ directories were deleted. CI builds from clean checkouts and is not affected, and package-smoke now runs scripts/verify_distribution_binaries.py, but local `make test-package` and any local release build can produce or verify a different sdist from the one CI builds.\n\n## Change\nMake the local build targets (make test-package and any other target that runs uv build) build from a clean metadata state, for example by removing benchbox.egg-info and build/ inside the checkout first, or by building from a clean export.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check). Delete only those generated directories inside the current checkout; do not change CI build steps.",
+  "description": "## Problem\nsetuptools reuses benchbox.egg-info/SOURCES.txt from an earlier build in the same checkout. On 2026-11-24 a worktree built before the TPC-DI appendix exclusion produced an sdist that still contained _sources/tpc-di/*.sql, so a test of the exclusion failed locally until the ignored benchbox.egg-info and build/ directories were deleted. CI builds from clean checkouts and is not affected, and package-smoke now runs scripts/verify_distribution_binaries.py, but local `make test-package` and any local release build can produce or verify a different sdist from the one CI builds.\n\n## Change\nMake the local build targets (make test-package and any other target that runs uv build) build from a clean metadata state, for example by removing benchbox.egg-info and build/ inside the checkout first, or by building from a clean export.\n\n## Decision gate\nIf cleaning metadata before a build would delete anything other than benchbox.egg-info and build/ inside the checkout, stop and ask. If uv or setuptools offers a supported option that ignores stale metadata, prefer it over deleting directories and record the choice in the PR.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check). Delete only those generated directories inside the current checkout; do not change CI build steps.",
   "links": [
     "make/quality.mk",
     "MANIFEST.in",
@@ -16,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "9e0177a6a10c4d4786d48563765dd44a",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:23:45Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "8c9579eebebc40afb816dacd3b26755a",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
