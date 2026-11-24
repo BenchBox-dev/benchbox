@@ -63,13 +63,25 @@ def test_cedardb_failing_cells_are_pruned_with_run_evidence(bench_name, scale):
     assert _PRUNED_CELLS[(bench_name, scale)] in rule.reason
 
 
+def test_cedardb_flightdata_sf1_is_pruned_with_server_side_evidence():
+    rule = _rule("cedardb", "flightdata", 1.0)
+
+    assert rule is not None
+    assert rule.rule_id == "uat.compat.cedardb.flightdata.sf1.release_gate_runtime_envelope"
+    assert rule.status == "blocked"
+    assert "45389336355" in rule.evidence
+    assert "138429445576" in rule.evidence
+    assert "timed out at 1200s" in rule.reason
+    assert "transtats.bts.gov" in rule.reason
+    assert "oom_kill 0" in rule.reason
+
+
 @pytest.mark.parametrize(
     ("bench_name", "scale"),
     [
         ("read_primitives", 1.0),
         ("flightdata", 0.01),
         ("flightdata", 0.1),
-        ("flightdata", 1.0),
         ("tpch", 0.01),
         ("datavault", 1.0),
     ],
@@ -94,8 +106,9 @@ def test_stage2_enumeration_keeps_only_the_passing_cedardb_cells():
         (cell.benchmark, cell.scale) for cell in enumerate_cells_with_pruning(stage).cells if cell.platform == "cedardb"
     }
 
-    assert len(cells) == 35
+    assert len(cells) == 34
     assert cells.isdisjoint(_PRUNED_CELLS)
+    assert ("flightdata", 1.0) not in cells
 
 
 @pytest.mark.parametrize(("platform", "bench_name"), sorted(_TRINO_PRESTO_PRUNED_CELLS))

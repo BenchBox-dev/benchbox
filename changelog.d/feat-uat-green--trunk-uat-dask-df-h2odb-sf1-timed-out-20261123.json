@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Release-gate harness change only: a timed-out or failed UAT cell now keeps its result JSON beside its log in the shard evidence, and the sweep names the phase and query where a timed-out cell stopped"
+}
