@@ -3,6 +3,11 @@
     "Every failed cell of this job is named with its cause.",
     "Each cause is fixed with a test, or the cell is pruned from the gate with proven external cause and a restoration item filed."
   ],
+  "batch": {
+    "batch_id": "uat-green",
+    "implementation_dependencies": [],
+    "member_id": "trunk-uat-postgres-family-shard-failed-20261124"
+  },
   "description": "## Problem\nScheduled trunk UAT run 45389336355 (develop ee2e196e3c, 2026-11-24) failed job `UAT stage 3 postgres-family` (job 138429445564) in step \"Run the stage shard against the trunk distribution\". The failed cells were not readable while the run was in progress; read the job log (`[sweep] FAILED CELL` lines) and the shard artifact.\n\n## Change\nName every failed cell and its first error with evidence; compare with the last green run of the shard. Fix a BenchBox cause with a regression test.\n\n## Owner decision (choice dialog, 2026-11-24)\n\"Fix forward. If a cell's cause is proven to be outside BenchBox (engine bug, runner limit), prune that cell from the gate and file a restoration item, without asking. Never raise a budget or timeout.\"\n\n## Guardrails\nHeavy work only through make heavy-run; no live cloud. No retry, timeout or budget increase to turn the shard green.",
   "sessions": [
     {
@@ -11,6 +16,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "f52814e815694965be0e14ca4789aa72",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T14:48:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "005900d8a93245f5bead507dd52c5fda",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
