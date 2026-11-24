@@ -83,7 +83,9 @@ def test_ingest_sql_reads_the_first_batch_only():
         text = step.path.read_text(encoding="utf-8")
         assert not re.search(r"Batch\s*[23]|Batch\*|Batch\[", text)
         assert f"${step.parameter}" in text
-        assert staging.step_parameters("out", step)[step.parameter].replace("\\", "/") == f"out/Batch1/{step.source}"
+        assert staging.step_parameters("out", step)[step.parameter] == str(
+            Path("out").resolve() / "Batch1" / step.source
+        )
 
 
 def test_staging_reads_use_decimal_not_floating_point():

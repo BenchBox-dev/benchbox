@@ -78,7 +78,7 @@ def batch_directory(source_dir: str | Path) -> Path:
 
 
 def step_parameters(source_dir: str | Path, step: IngestStep) -> dict[str, str]:
-    return {step.parameter: str(batch_directory(source_dir) / step.source)}
+    return {step.parameter: str(batch_directory(source_dir).resolve() / step.source)}
 
 
 def render_step(step: IngestStep, platform: str = SOURCE_DIALECT) -> list[str]:
@@ -99,8 +99,9 @@ def _count(connection: Any, table: str) -> int:
 def _run_step(connection: Any, source_dir: str | Path, step: IngestStep, platform: str) -> StepResult:
     parameters = step_parameters(source_dir, step)
     before = _count(connection, step.table) if step.loads_into_existing_table else 0
+    statements = render_step(step, platform)
     started = mono_time()
-    for statement in render_step(step, platform):
+    for statement in statements:
         connection.execute(statement, parameters)
     seconds = elapsed_seconds(started)
     return StepResult(step, _count(connection, step.table) - before, seconds)

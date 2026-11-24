@@ -4,6 +4,8 @@ import csv
 import hashlib
 import os
 import xml.etree.ElementTree as ET
+from collections import Counter
+from datetime import date, datetime
 from pathlib import Path
 
 import pytest
@@ -95,6 +97,37 @@ def python_action_count(path: Path) -> int:
     return count
 
 
+def _integer(value: str | None) -> int | None:
+    return int(value) if value else None
+
+
+def python_actions(path: Path) -> Counter[tuple]:
+    actions: Counter[tuple] = Counter()
+    for _, element in ET.iterparse(path, events=("end",)):
+        if element.tag.rpartition("}")[2] != "Action":
+            continue
+        customer = element.find("Customer")
+        account = customer.find("Account") if customer is not None else None
+        customer_attributes = customer.attrib if customer is not None else {}
+        account_attributes = account.attrib if account is not None else {}
+        broker = account.findtext("CA_B_ID") if account is not None else None
+        dob = customer_attributes.get("C_DOB")
+        actions[
+            (
+                element.get("ActionType"),
+                datetime.fromisoformat(element.get("ActionTS")),
+                _integer(customer_attributes.get("C_ID")),
+                _integer(account_attributes.get("CA_ID")),
+                _integer(broker),
+                _integer(account_attributes.get("CA_TAX_ST")),
+                _integer(customer_attributes.get("C_TIER")),
+                date.fromisoformat(dob) if dob else None,
+            )
+        ] += 1
+        element.clear()
+    return actions
+
+
 def staging_digests(source_dir: Path) -> dict[str, str]:
     return {
         path.relative_to(source_dir).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
@@ -137,6 +170,26 @@ def test_xml_action_count_equals_the_python_parser_count(loaded):
     source_dir, connection, _, _ = loaded
     staged = connection.execute("SELECT count(*) FROM CustomerMgmtRaw").fetchone()[0]
     assert staged == python_action_count(source_dir / "Batch1" / "CustomerMgmt.xml")
+
+
+@requires_output
+def test_xml_values_equal_the_python_parser_values(loaded):
+    source_dir, connection, _, _ = loaded
+    staged = Counter(
+        connection.execute(
+            "SELECT actiontype, update_ts, customerid, accountid, brokerid, taxstatus, tier, dob FROM CustomerMgmtRaw"
+        ).fetchall()
+    )
+    assert staged == python_actions(source_dir / "Batch1" / "CustomerMgmt.xml")
+
+
+@requires_output
+def test_every_raw_row_carries_batch_one(loaded):
+    _, connection, results, _ = loaded
+    for table in sorted({result.step.table for result in results}):
+        columns = {row[0].lower() for row in connection.execute(f"DESCRIBE {table}").fetchall()}
+        if "batchid" in columns:
+            assert connection.execute(f"SELECT DISTINCT batchid FROM {table}").fetchall() == [(1,)], table
 
 
 @requires_output

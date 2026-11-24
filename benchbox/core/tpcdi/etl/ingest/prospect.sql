@@ -1,7 +1,7 @@
 CREATE OR REPLACE TABLE ProspectRaw AS
 SELECT
   * EXCLUDE (filename),
-  try_cast(regexp_extract(filename, '[/\\]Batch([0-9]+)[/\\]', 1) AS INTEGER) AS batchid
+  CAST(regexp_extract(filename, '[/\\]Batch([0-9]+)[/\\][^/\\]+$', 1) AS INTEGER) AS batchid
 FROM read_csv(
   $prospect_path,
   delim = ',',

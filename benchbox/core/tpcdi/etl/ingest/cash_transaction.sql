@@ -1,7 +1,7 @@
 CREATE OR REPLACE TABLE CashTransactionRaw AS
 SELECT
   * EXCLUDE (filename),
-  try_cast(regexp_extract(filename, '[/\\]Batch([0-9]+)[/\\]', 1) AS INTEGER) AS batchid
+  CAST(regexp_extract(filename, '[/\\]Batch([0-9]+)[/\\][^/\\]+$', 1) AS INTEGER) AS batchid
 FROM read_csv(
   $cash_transaction_path,
   delim = '|',

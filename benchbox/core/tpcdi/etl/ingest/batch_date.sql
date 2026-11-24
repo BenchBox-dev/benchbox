@@ -1,7 +1,7 @@
 INSERT INTO BatchDate (batchdate, batchid)
 SELECT
   batchdate,
-  try_cast(regexp_extract(filename, '[/\\]Batch([0-9]+)[/\\]', 1) AS INTEGER) AS batchid
+  CAST(regexp_extract(filename, '[/\\]Batch([0-9]+)[/\\][^/\\]+$', 1) AS INTEGER) AS batchid
 FROM read_csv(
   $batch_date_path,
   delim = '|',

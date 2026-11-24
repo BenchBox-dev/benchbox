@@ -44,18 +44,18 @@ fields AS (
   FROM actions
 )
 SELECT
-  try_cast(nullif(customerid, '') AS BIGINT) AS customerid,
-  try_cast(nullif(accountid, '') AS BIGINT) AS accountid,
-  try_cast(nullif(brokerid, '') AS BIGINT) AS brokerid,
+  CAST(nullif(customerid, '') AS BIGINT) AS customerid,
+  CAST(nullif(accountid, '') AS BIGINT) AS accountid,
+  CAST(nullif(brokerid, '') AS BIGINT) AS brokerid,
   nullif(taxid, '') AS taxid,
   nullif(accountdesc, '') AS accountdesc,
-  try_cast(nullif(taxstatus, '') AS SMALLINT) AS taxstatus,
+  CAST(nullif(taxstatus, '') AS SMALLINT) AS taxstatus,
   nullif(lastname, '') AS lastname,
   nullif(firstname, '') AS firstname,
   nullif(middleinitial, '') AS middleinitial,
   nullif(gender, '') AS gender,
-  try_cast(nullif(tier, '') AS SMALLINT) AS tier,
-  try_cast(nullif(dob, '') AS DATE) AS dob,
+  CAST(nullif(tier, '') AS SMALLINT) AS tier,
+  CAST(nullif(dob, '') AS DATE) AS dob,
   nullif(addressline1, '') AS addressline1,
   nullif(addressline2, '') AS addressline2,
   nullif(postalcode, '') AS postalcode,
@@ -90,6 +90,6 @@ SELECT
   nullif(email2, '') AS email2,
   nullif(lcl_tx_id, '') AS lcl_tx_id,
   nullif(nat_tx_id, '') AS nat_tx_id,
-  try_cast(nullif(actionts, '') AS TIMESTAMP) AS update_ts,
+  CAST(nullif(actionts, '') AS TIMESTAMP) AS update_ts,
   actiontype
 FROM fields
