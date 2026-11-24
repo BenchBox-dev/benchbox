@@ -35642,7 +35642,7 @@
       "needs": [
         "mirror-validator-refuses-offlist-tpch-tpcds-bundles-20261120"
       ],
-      "priority": "low",
+      "priority": "medium",
       "status": "open",
       "title": "Reject community edits to standard_scales.json in the published-results submission guard"
     },
