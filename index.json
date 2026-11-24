@@ -44200,6 +44200,13 @@
       "status": "dropped",
       "title": "Let reviews fall back to Anthropic API credits when the Claude subscription hits its limit"
     },
+    "review-classifier-degraded-remediation-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Review classifier degradation and gateway drift remediation (umbrella)"
+    },
     "review-dependency-upper-bounds-quarterly": {
       "claim": null,
       "needs": [],
