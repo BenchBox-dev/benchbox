@@ -1,11 +1,22 @@
 {
   "acceptance": [
-    "Mirror and drift machinery removed from develop: sync-results-data-to-published.yml, submission-validator-drift-check.yml, scripts/check_submission_validator_sync.py, corpus-drift-check.yml, scripts/corpus_drift.py, ci.yml sync step, seed-corpus.yml published-results ledger recut, nightly-v2.yml published-results checks, slim-branch loader fallbacks, and obsolete tests/fixtures.",
-    "published-results branch is frozen read-only (not deleted, preserving accepted-bundle history) with a README and CONTRIBUTING notice pointing 0.5.x users to develop.",
-    "Superseded tracker items (such as mirror-validator-submission-guard-standard-scales-20261122 and any remaining published-results mirror items) and superseded PR #4481 (if still open) are closed/dropped."
+    "Core develop removes obsolete published-results mirror and drift machinery: .github/workflows/sync-results-data-to-published.yml, .github/workflows/submission-validator-drift-check.yml, scripts/check_submission_validator_sync.py, .github/workflows/corpus-drift-check.yml, scripts/corpus_drift.py, the ci.yml validator-sync step and published-results branch rule, the published-results ledger recut in seed-corpus.yml, the published-results checks in nightly-v2.yml, slim-branch stdlib file-loader fallbacks no longer needed, and obsolete mirror/drift tests and fixtures.",
+    "published-results branch is NOT deleted (preserving accepted-bundle history) and is frozen read-only with updated README.md and CONTRIBUTING.md pointing 0.5.x users to develop.",
+    "Superseded tracker items (mirror-validator-submission-guard-standard-scales-20261122 and any remaining published-results mirror items) are dropped with the owner's decision recorded, and PR #4481 is closed if still open.",
+    "make pr-preflight, make docs-reference-inventory-check, project-references, and full CI / hosted review-gate pass on the merged head."
   ],
   "context": "Step 5 of the owner-approved Option 1 corpus consolidation plan (2026-11-24). Must wait until after the core release shipping Step 3 and the corresponding benchbox-site release docs (Step 4) are live.",
-  "description": "## Problem\\nOnce `benchbox submit` and the published site docs direct contributors to `develop`, the entire `develop -> published-results` mirror and drift stack is obsolete maintenance overhead.\\n\\n## Change (Step 5 of 6 — post-release)\\n1. Remove `.github/workflows/sync-results-data-to-published.yml`, `.github/workflows/submission-validator-drift-check.yml`, `scripts/check_submission_validator_sync.py`, `.github/workflows/corpus-drift-check.yml`, `scripts/corpus_drift.py`, the `ci.yml` sync step and `published-results` rule, the `published-results` ledger recut in `seed-corpus.yml`, the `published-results` checks in `nightly-v2.yml`, the slim-branch stdlib file-loader fallbacks, and the ~30 obsolete test/fixture files.\\n2. Freeze `published-results` read-only with a README pointing 0.5.x users to `develop` (do not delete the branch; its history holds accepted bundles).\\n3. Close superseded tracker items and PR #4481 if still open.",
+  "description": "## Problem\nOnce the next core release ships `benchbox submit` targeting `develop` (Step 3) and `benchbox-site` releases the matching docs from `next` to `main` (Step 4), the entire `develop -> published-results` mirror, drift-detection, and slim-branch fallback stack is pure maintenance overhead.\n\n## Change\n1. Remove the mirror and drift machinery from `develop`:\n   - `.github/workflows/sync-results-data-to-published.yml`\n   - `.github/workflows/submission-validator-drift-check.yml` and `scripts/check_submission_validator_sync.py`\n   - `.github/workflows/corpus-drift-check.yml` and `scripts/corpus_drift.py`\n   - The `Submission validator stays in sync` step and `published-results` rule in `.github/workflows/ci.yml`\n   - The `origin/published-results` fetch/recut in `.github/workflows/seed-corpus.yml` (point ledger recut at `develop`)\n   - The `published-results` drift/privacy checks in `.github/workflows/nightly-v2.yml` (keep corpus privacy scan running on `develop:results-data/`)\n   - Slim-branch-only stdlib file-loader fallbacks where no caller remains, plus obsolete mirror/drift unit tests and fixtures (~30 files; verify every removed test has no remaining live contract).\n2. Refresh `quality/docs-reference-inventory.json` and `_project/scripts/project_references_baseline.txt` as needed.\n3. Update `README.md` and `CONTRIBUTING.md` on `published-results` to state the branch is frozen read-only and direct 0.5.x users to `develop` (plus `https://benchbox.dev/docs/contributing-results.html`). Ask the owner to lock/freeze the `published-results` branch via GitHub branch protection/ruleset (owner-only action). Never delete `published-results`.\n4. Drop superseded tracker items (`mirror-validator-submission-guard-standard-scales-20261122`, and check `crr-a5-published-results-mirror` / PR #4481) with owner confirmation.\n\n## Decision gates\n- HARD STOP before starting: confirm a tagged core release containing Step 3 (`submit-cli-target-develop-20261124`) is published AND `benchbox-site` `main` includes the Step 4 docs. Do not retire or freeze `published-results` while released CLI users are still sent there.\n- NEVER delete the `published-results` branch: its Git history holds accepted bundles and 0.5.x links point at it.\n- Owner-only action: applying a read-only GitHub branch ruleset/protection on `published-results` requires owner settings authority — stop and hand the exact ruleset step to the owner.\n- Before deleting any privacy scan in `nightly-v2.yml` or `corpus-drift-check.yml`, verify an equivalent privacy scan runs on `develop:results-data/` (never reduce corpus privacy coverage).\n\n## Verification rubric\n- Pass: `rg 'sync-results-data-to-published|submission-validator-drift-check|corpus-drift-check' .github/ scripts/ tests/` returns 0 live references; `develop:results-data/` privacy scanning still runs in CI/nightly; `make pr-preflight` and hosted `review-gate` pass; `published-results` tip displays the frozen pointer README and is protected read-only; superseded items dropped.\n- Fail: `published-results` is deleted, retirement lands before the Step 3 release + Step 4 site release, or corpus privacy scanning is lost.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Stage named paths only; commit with pinned human Git identity and no agent attribution. No explanatory comments or docstrings in first-party Python (`make comment-policy-check`). Heavy work only via `make pr-preflight` / `make heavy-run`; never bypass `~/.benchbox/test.lock`. Soundness paths touched (`.github/workflows/`, `scripts/publication/`): resolve every `benchbox-review` thread and arm only on a green review of the current head.",
+  "links": [
+    ".github/workflows/sync-results-data-to-published.yml",
+    ".github/workflows/submission-validator-drift-check.yml",
+    ".github/workflows/corpus-drift-check.yml",
+    ".github/workflows/ci.yml",
+    ".github/workflows/seed-corpus.yml",
+    ".github/workflows/nightly-v2.yml",
+    "scripts/check_submission_validator_sync.py",
+    "scripts/corpus_drift.py"
+  ],
   "sessions": [
     {
       "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
@@ -13,6 +24,14 @@
       "client": "antigravity-client",
       "op": "create",
       "op_id": "b1c2d3e4f5061728394a5b6c7d8e9f05",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T21:14:03Z",
+      "client": "antigravity-client",
+      "op": "update",
+      "op_id": "c1d2e3f4a5061728394a5b6c7d8e9f05",
       "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
     }
   ]
