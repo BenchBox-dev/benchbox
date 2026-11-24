@@ -34484,6 +34484,13 @@
       "status": "done",
       "title": "Loader ignores freshly generated datagen manifest in same run"
     },
+    "local-build-reuses-stale-egg-info-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Make local package builds ignore a stale benchbox.egg-info so the sdist follows MANIFEST.in"
+    },
     "local-ci-equivalents": {
       "claim": null,
       "needs": [
