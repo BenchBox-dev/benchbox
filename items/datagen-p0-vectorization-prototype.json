@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Prototype report records SF 1 and SF 10 wall time (mono_time()), peak RSS, speedup factor vs the datagen-p0-baseline-measurements baseline, Arrow/SQL schema compatibility against schema.py, and determinism verification across repeated seeded runs.",
+    "Report states clearly whether vectorized Python clears target throughput/memory needs or documents specific residual bottlenecks (such as string assembly or FK graphs) that would justify a Rust generator.",
+    "Zero default behavior changes or mutations to shared datagen/ folders are made."
+  ],
+  "context": "Phase 0 step 3 of the faster data-generation plan. Implements the measurement probe for docs/internal/adr/adr-python-core-runtime.md's first remedy (vectorized PyArrow/NumPy or embedded DuckDB SQL) before committing to Phase 2 budgets or any Rust repository.",
+  "description": "## Problem\ndocs/internal/adr/adr-python-core-runtime.md places vectorized PyArrow/NumPy or embedded DuckDB SQL ahead of creating a native Rust package for non-TPC synthetic generators. We lack empirical evidence on how much throughput and memory reduction vectorized Python achieves on BenchBox's slowest synthetic generator.\n\n## Change\n- Select the single slowest or highest-RSS non-TPC synthetic generator identified in datagen-p0-baseline-measurements.\n- Build an isolated prototype (in a scratch script or non-default branch) generating the same schema via vectorized NumPy/PyArrow or embedded DuckDB SQL with bounded-memory streaming output.\n- Measure wall time (mono_time()), peak RSS, output bytes, schema fidelity against benchbox/core/<benchmark>/schema.py, and deterministic reproducibility at SF 1 and SF 10.\n\n## Decision gates\n- Quantifies the ceiling of vectorized Python so datagen-p0-companion-adr sets realistic per-benchmark budgets and an objective miss threshold for triggering datagen-p2-rust-repo-gate.\n- Do not land prototype code into default generator paths; production migration happens in Phase 2 with per-benchmark versioning and Gate C acceptance.\n\n## Guardrails\n- Run SF 1 and SF 10 measurements exclusively under make heavy-run ([HEAVY-LOCK-001]).\n- Write outputs only to an isolated temporary root and delete afterwards ([RUN-DATA-001]).\n- Follow AGENTS.md worktree rules if any temporary branch is created; leave main clone untouched.",
+  "links": [
+    "docs/internal/adr/adr-python-core-runtime.md",
+    "benchbox/utils/arrow_rows.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032",
+      "at": "2026-11-24T00:17:05Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "d9a01003b87fd8a4c6e54982b8310c03",
+      "session_id": "85b2c240cd2b4c709f5c56393a05342d"
+    }
+  ]
+}

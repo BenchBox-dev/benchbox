@@ -25870,6 +25870,15 @@
       "status": "open",
       "title": "Complete Tier 1 tpcgen-cli parity, sub-scale, Parquet-type, and refresh-set spike"
     },
+    "datagen-p0-vectorization-prototype": {
+      "claim": null,
+      "needs": [
+        "datagen-p0-baseline-measurements"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Prototype vectorized Python/PyArrow generation on the slowest measured synthetic generator"
+    },
     "dataproc-serverless-platform": {
       "claim": null,
       "needs": [
