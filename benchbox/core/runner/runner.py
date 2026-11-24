@@ -425,11 +425,20 @@ def _attach_datagen_version(
 
         with manifest_path.open("r", encoding="utf-8") as handle:
             manifest = _json.load(handle)
+        config_options = (getattr(config, "options", None) or {}) if config is not None else {}
         expected_backend = getattr(benchmark, "datagen_backend", None) if benchmark is not None else None
-        if expected_backend is None and config is not None:
-            config_options = getattr(config, "options", None) or {}
+        if expected_backend is None:
             expected_backend = config_options.get("datagen_backend")
-        if not manifest_datagen_is_current(manifest, expected_backend=expected_backend):
+        expected_backend_version = (
+            getattr(benchmark, "datagen_backend_version", None) if benchmark is not None else None
+        )
+        if expected_backend_version is None:
+            expected_backend_version = config_options.get("datagen_backend_version")
+        if not manifest_datagen_is_current(
+            manifest,
+            expected_backend=expected_backend,
+            expected_backend_version=expected_backend_version,
+        ):
             return result
         if not _manifest_matches_result(manifest, result, benchmark):
             return result
@@ -2072,16 +2081,20 @@ def _validate_manifest_if_present(
 
         from benchbox.utils.datagen_version import describe_datagen_staleness, manifest_datagen_is_current
 
-        expected_backend = (getattr(config, "options", None) or {}).get("datagen_backend")
+        config_options = getattr(config, "options", None) or {}
+        expected_backend = config_options.get("datagen_backend")
+        expected_backend_version = config_options.get("datagen_backend_version")
         if not manifest_datagen_is_current(
             manifest,
             benchmark=manifest_benchmark,
             expected_backend=expected_backend,
+            expected_backend_version=expected_backend_version,
         ):
             reason = describe_datagen_staleness(
                 manifest,
                 benchmark=manifest_benchmark,
                 expected_backend=expected_backend,
+                expected_backend_version=expected_backend_version,
             )
             logger.warning("Datagen manifest is stale (%s); regenerating benchmark data", reason)
             if not quiet:

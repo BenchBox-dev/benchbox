@@ -105,6 +105,8 @@ class BenchmarkOrchestrator:
 
         if opts.get("datagen_backend") is not None:
             benchmark_instance.datagen_backend = str(opts["datagen_backend"])
+        if opts.get("datagen_backend_version") is not None:
+            benchmark_instance.datagen_backend_version = str(opts["datagen_backend_version"])
 
         return benchmark_instance
 

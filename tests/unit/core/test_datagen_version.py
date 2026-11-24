@@ -901,3 +901,40 @@ def test_backend_reuse_safety_and_native_tpc_manifest_provenance(tmp_path: Path)
     )
     assert result_legacy.data_generation_hash is None
     assert result_legacy.data_generation_version is None
+
+    tpch_dir = tmp_path / "tpch_legacy_cache"
+    tpch_dir.mkdir()
+    (tpch_dir / "customer.tbl").write_bytes(b"1|a\n")
+    legacy_tpch_manifest = {
+        "benchmark": "tpch",
+        "scale_factor": 1.0,
+        "formats": ["tbl"],
+        "tables": {"customer": {"formats": {"tbl": [{"path": "customer.tbl", "size_bytes": 4}]}}},
+        **current_datagen_stamp("tpch"),
+    }
+    (tpch_dir / "_datagen_manifest.json").write_text(json.dumps(legacy_tpch_manifest))
+
+    class _TpchBenchmark:
+        output_dir = tpch_dir
+        tables = None
+
+    cfg_tpch_native_verified = BenchmarkConfig(
+        name="tpch",
+        display_name="TPC-H",
+        scale_factor=1.0,
+        options={"datagen_backend": "native", "datagen_backend_version": "4.0.0"},
+    )
+    cfg_tpch_native_unverified = BenchmarkConfig(
+        name="tpch",
+        display_name="TPC-H",
+        scale_factor=1.0,
+        options={"datagen_backend": "native", "datagen_backend_version": "5.0.0"},
+    )
+    assert _validate_manifest_if_present(_TpchBenchmark(), cfg_tpch_native_verified)[::2] == (True, True)
+    assert _validate_manifest_if_present(_TpchBenchmark(), cfg_tpch_native_unverified)[::2] == (False, True)
+    tpch_result = _attach_datagen_version(
+        make_benchmark_results(benchmark_id="tpch", benchmark_name="tpch", scale_factor=1.0),
+        _TpchBenchmark(),
+        config=cfg_tpch_native_verified,
+    )
+    assert tpch_result.data_generation_hash == compute_base_constants_hash("tpch")
