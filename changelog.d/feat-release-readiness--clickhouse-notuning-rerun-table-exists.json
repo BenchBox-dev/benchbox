@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "ClickHouse server reruns no longer fail partway with 'Table already exists': --force now drops and recreates the database, a notuning run refuses an unusable database before creating any table with a message naming --force, and schema creation refuses up front when the benchmark's tables already exist."
+    }
+  ]
+}

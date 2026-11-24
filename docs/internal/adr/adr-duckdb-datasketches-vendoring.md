@@ -4,6 +4,12 @@
 
 Accepted (2026-05-06). Path: **smoke + monitor**, do not vendor.
 
+*(Note 2026-11-23: on DuckDB 2.x, `benchbox.utils.duckdb_extensions` skips
+`datasketches` by default and installs from the third-party Query.Farm
+repository only when the user opts in via
+`--platform-option allow_third_party_extensions=true`. Context and Option C
+below describe the DuckDB 1.x community-extension behavior at decision time.)*
+
 **Maintenance protocol**: Re-review if `extension-smoke.yml` catches
 new family drift more than once per quarter, if the upstream extension
 version changes while `theta` / `frequent_items` are still absent, or if
@@ -17,11 +23,7 @@ depends on.
 ## Context
 
 The DuckDB community `datasketches` extension is loaded on demand via
-`INSTALL datasketches FROM community` on DuckDB 1.x; on DuckDB 2.x
-it is installed from the Query.Farm repository through
-`benchbox.utils.duckdb_extensions` only when the user passes
-`--platform-option allow_third_party_extensions=true`; otherwise the
-sketch operations are skipped. Blind-spot
+`INSTALL datasketches FROM community`. Blind-spot
 `2026-05-02-155524` recorded that the extension build silently dropped
 the `theta` and `frequent_items` families between PR #114 morning and an
 audit later that day -- both families are referenced by four ops in
@@ -73,21 +75,20 @@ HLL.
 ### C. Smoke + monitor (chosen)
 
 Keep `INSTALL ... FROM community`. Run the daily smoke. If a new family
-disappears, the smoke fires, and we file an issue against
-duckdb-community-extensions. If the upstream fix lands fast (the
-2026-05-02 audit suggests builds change daily), that is sufficient. If
-it does not, escalate to A (vendor) or B (drop) per the maintenance
-trigger. The reviewed `2e38607` `theta` / `frequent_items` gap remains
-visible in CI output as known drift without blocking unrelated PRs.
+disappears, the smoke fires, and we file an issue against the upstream
+extension repository. If the upstream fix lands fast (the 2026-05-02 audit
+suggests builds change daily), that is sufficient. If it does not, escalate to
+A (vendor) or B (drop) per the maintenance trigger. The reviewed `2e38607`
+`theta` / `frequent_items` gap remains visible in CI output as known drift
+without blocking unrelated PRs.
 
 - Pro: zero artifact weight; routes regressions upstream where they can
   be fixed for everyone.
-- Pro: matches BenchBox's existing posture for community extensions.
+- Pro: matches BenchBox's existing posture for third-party extensions.
 - Con: a benchmark run during the reviewed `2e38607` drift window will
   still fail for `theta` and `frequent_items`; the smoke records that
   state but does not heal it.
-- Con: relies on upstream responsiveness. The issue filed under w4
-  is the durability test for this assumption.
+- Con: relies on upstream responsiveness.
 
 ## Decision
 
@@ -97,10 +98,11 @@ PR." If the cron flips red repeatedly across consecutive weeks the
 maintenance trigger above promotes us to A or B; until then, smoke +
 monitor is enough.
 
-The four affected ops stay in `operations.yaml` (per
-`must_preserve` on the source TODO) and are documented as "blocked on
-upstream extension stability" in
-`docs/benchmarks/write-primitives-sketch-functions.md`.
+The four affected ops stay in `operations.yaml` and are documented under
+"DuckDB community-extension status" in
+`https://benchbox.dev/docs/benchmarks/write-primitives-sketch-functions.html`
+as not running on DuckDB with extension build `2e38607` (which dropped the
+`theta` and `frequent_items` families).
 
 ## Consequences
 
@@ -114,7 +116,11 @@ upstream extension stability" in
 - If we ever need to revisit, the smoke output (with extension version
   printed on every run) doubles as the longitudinal evidence.
 
-## Appendix: upstream issue draft
+## Appendix: archived upstream issue draft
+
+*(Archived draft from 2026-05-06; no upstream issue URL is recorded on file,
+and DuckDB 2.x now installs `datasketches` from Query.Farm rather than
+`duckdb-community-extensions`.)*
 
 Smoke against extension version `2e38607` (2026-05-06) confirms drift:
 
@@ -128,7 +134,7 @@ kll: OK
 hll: OK
 ```
 
-The CI smoke now reports the two `2e38607` failures as `KNOWN-DRIFT`
+The CI smoke reports the two `2e38607` failures as `KNOWN-DRIFT`
 and exits zero only for that reviewed version/error combination.
 
 Suggested issue title: "datasketches community build drops theta and
@@ -138,7 +144,5 @@ Suggested body: link to BenchBox's
 `scripts/duckdb_datasketches_smoke.py`, list the dropped families,
 quote the Catalog Errors above, ask whether the omission is
 intentional (cmake guard, missing dep) or a build regression and
-whether a fix or workaround is planned. Filing this issue is a manual
-step under the TODO's w4 -- this appendix is the durable record of the
-evidence so the issue can be filed from any commit's checkout, not
-just the one where the drift was first observed.
+whether a fix or workaround is planned. This appendix preserves the
+observed smoke output as a historical record.

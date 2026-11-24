@@ -336,9 +336,15 @@ class TestConcurrentLoadExecutorEdgeCases:
             collect_resource_metrics=False,
         )
         executor = ConcurrentLoadExecutor(config)
-        result = executor.run()
+        real_sleep = time.sleep
 
-        assert result.max_concurrency_reached > 0
+        def stalled_sleep(seconds):
+            real_sleep(0.6)
+
+        with patch("benchbox.experimental.load_testing.executor.time.sleep", stalled_sleep):
+            result = executor.run()
+
+        assert result.max_concurrency_reached == 20
 
     def test_exception_in_query_execution(self, mock_connection_factory, mock_query_factory):
 

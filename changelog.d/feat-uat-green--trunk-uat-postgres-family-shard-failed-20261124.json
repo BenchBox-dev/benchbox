@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed pg-mooncake loads of larger tables failing with a lock timeout while creating the columnstore mirror: autovacuum is now switched off on the temporary heap copy before the mirror is created, so it can no longer hold the lock Moonlink needs.",
+      "platforms": [
+        "pg-mooncake"
+      ]
+    }
+  ]
+}

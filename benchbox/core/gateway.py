@@ -143,8 +143,8 @@ def resolve_gateway_endpoint(
                 f"require {INSECURE_GATEWAY_ENV}=1"
             )
         logger.warning(
-            "Gateway %s is configured without TLS verification or over plain HTTP; credentials and results "
-            "can be intercepted. Use only on a trusted network.",
+            "Gateway %s is configured without certificate revocation checks or over plain HTTP; credentials and "
+            "results can be intercepted. Use only on a trusted network.",
             selected,
         )
 
@@ -214,12 +214,18 @@ def register_gateway_connection_specs() -> None:
         PlatformOptionSpec(
             name="gateway_ocsp_fail_open",
             parser=parse_bool,
-            help="Allow OCSP validation to fail open when connecting via gateway (true or false).",
+            help=(
+                "Certificate revocation checking through the gateway (true or false): true lets the check fail open, "
+                "false requires it to pass. Connector 5.x and later check revocation with CRLs (ADVISORY or ENABLED)."
+            ),
         ),
         PlatformOptionSpec(
             name="allow_insecure_gateway",
             parser=parse_bool,
-            help="Allow insecure (TLS disabled / self-signed) gateway connection (true or false).",
+            help=(
+                "Turn off certificate revocation checking for the gateway connection (true or false). Certificate "
+                "and host name verification still apply, so a self-signed or untrusted gateway still fails."
+            ),
         ),
     ]
 

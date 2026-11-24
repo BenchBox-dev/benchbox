@@ -25,11 +25,13 @@ on:
         type: string
   schedule:
     - cron: '23 * * * *'
+  repository_dispatch:
+    types: [review-sweep]
 
 permissions: {}
 
 concurrency:
-  group: review-verdict-${{ ((github.event_name == 'schedule' || github.event_name == 'push') && 'sweep') || (((github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) || (github.event_name == 'issue_comment' && github.event.issue.pull_request && (startsWith(github.event.comment.body, '/review') || startsWith(github.event.comment.body, 'Review adjudication:')) && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) || github.event_name == 'workflow_dispatch') && format('pr-{0}', github.event.pull_request.number || github.event.issue.number || inputs.pr) || format('run-{0}', github.run_id)) }}
+  group: review-verdict-${{ ((github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'repository_dispatch') && 'sweep') || (((github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) || (github.event_name == 'issue_comment' && github.event.issue.pull_request && (startsWith(github.event.comment.body, '/review') || startsWith(github.event.comment.body, 'Review adjudication:')) && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) || github.event_name == 'workflow_dispatch') && format('pr-{0}', github.event.pull_request.number || github.event.issue.number || inputs.pr) || format('run-{0}', github.run_id)) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
 
 jobs:
@@ -38,10 +40,10 @@ jobs:
       actions: write
       contents: read
       pull-requests: read
-    uses: joeharris76/theseus/.github/workflows/review.yml@e97905790c4610c95cce6d27410bc94fc0c9efbb
+    uses: joeharris76/theseus/.github/workflows/review.yml@6fa558e1ee5522260172983e7112d89f233ca2a8
     with:
       environment: review
-      theseus_ref: e97905790c4610c95cce6d27410bc94fc0c9efbb
+      theseus_ref: 6fa558e1ee5522260172983e7112d89f233ca2a8
       gated_base: "develop,release/*"
       policy_path: .github/review.yml
       tailscale_tag: tag:review-ci

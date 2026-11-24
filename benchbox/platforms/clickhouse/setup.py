@@ -161,6 +161,30 @@ class ClickHouseSetupMixin:
         finally:
             admin_client.disconnect()
 
+    def _server_database_table_count(self, database: str, **connection_config) -> int:
+        self._quote_database_identifier(database)
+        admin_client = self._create_admin_client(**connection_config)
+        try:
+            rows = admin_client.execute(f"SELECT count() FROM system.tables WHERE database = '{database}'")
+            return int(rows[0][0]) if rows else 0
+        finally:
+            admin_client.disconnect()
+
+    def _remove_database(
+        self, is_file_based: bool, db_path: str, *, foreign_tables: tuple[str, ...] = (), **connection_config
+    ) -> None:
+        if self.deployment_mode == "server" and not self.force_recreate and not self.tuning_enabled:
+            database = connection_config.get("database", self.database)
+            admin_kwargs = {key: value for key, value in connection_config.items() if key != "database"}
+            if self._server_database_table_count(database, **admin_kwargs):
+                raise RuntimeError(
+                    f"Refusing to recreate ClickHouse database '{database}': it already holds tables that this "
+                    "notuning run cannot reuse (see the validation messages above), and BenchBox does not drop "
+                    "a database without being asked. Re-run with --force to drop and recreate it, or use an "
+                    "empty database."
+                )
+        super()._remove_database(is_file_based, db_path, foreign_tables=foreign_tables, **connection_config)
+
     def create_connection(self, **connection_config) -> Any:
         self.log_operation_start("ClickHouse connection", f"mode: {self.deployment_mode}")
 

@@ -47,7 +47,13 @@ class AppendixSql:
 def appendix_path(name: str) -> Path:
     if name not in APPENDIX_FILES:
         raise ValueError(f"Unknown appendix SQL: {name}")
-    return APPENDIX_DIR / APPENDIX_FILES[name]
+    path = APPENDIX_DIR / APPENDIX_FILES[name]
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"TPC-DI appendix SQL {APPENDIX_FILES[name]} is not available: it is excluded from BenchBox "
+            f"wheels and source distributions and is only present in a source checkout (expected at {path})"
+        )
+    return path
 
 
 def stored_sha256(name: str) -> str:

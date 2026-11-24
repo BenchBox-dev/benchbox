@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import contextlib
 import csv
 import gzip
 import hashlib
+import io
+import time
 from datetime import datetime
 from unittest.mock import patch
 
@@ -12,6 +15,7 @@ import pytest
 from benchbox.platforms.base.data_loading import DataLoadingError
 from benchbox.platforms.influxdb.adapter import InfluxDBAdapter
 from benchbox.platforms.influxdb.client import InfluxDBConnection, to_line_protocol
+from tests.unit.endless_csv_stream import EndlessStream
 
 pytestmark = [
     pytest.mark.unit,
@@ -253,3 +257,22 @@ class TestInfluxLoadFailsLoudly:
             'tags,hostname=host_0 region="us-east-1",datacenter="dc1",service_version="1.8.21"',
             'tags,hostname=host\\ 1 region="we\\"ird\\\\zone",service_version="2.0"',
         ]
+
+
+class TestAbandonedTsbsReader:
+    def test_closing_the_generator_early_never_reads_a_closed_stream(self, adapter, tmp_path):
+        config = adapter._tsbs_table_configs()["cpu"]
+        path = tmp_path / "cpu.csv"
+        path.write_text("time,hostname,usage_user\n", encoding="utf-8")
+        late = 0
+        for _ in range(10):
+            stream = EndlessStream(b"time,hostname,usage_user\n", b"2024-01-01T00:00:00Z,host_0,1.5\n")
+            with patch(
+                "benchbox.platforms.influxdb.adapter._open_binary_stream", return_value=contextlib.closing(stream)
+            ):
+                batches = adapter._iter_tsbs_batches(path, config)
+                assert next(batches).num_rows > 0
+                batches.close()
+            time.sleep(0.05)
+            late += stream.reads_after_close
+        assert late == 0

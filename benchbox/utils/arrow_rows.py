@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import csv
 import io
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
+from contextlib import contextmanager
 from typing import Any, BinaryIO
 
 DEFAULT_BATCH_ROWS = 65536
@@ -85,3 +86,51 @@ class ArrowRowWriter:
     def __exit__(self, exc_type, exc, traceback) -> None:
         if exc_type is None:
             self.flush()
+
+
+class _StoppableStream:
+    def __init__(self, stream: BinaryIO) -> None:
+        self._stream = stream
+        self._stopped = False
+
+    def stop(self) -> None:
+        self._stopped = True
+
+    def read(self, size: int = -1) -> bytes:
+        if self._stopped:
+            return b""
+        return self._stream.read(size)
+
+    def readable(self) -> bool:
+        return True
+
+    def seekable(self) -> bool:
+        return False
+
+    def writable(self) -> bool:
+        return False
+
+    @property
+    def closed(self) -> bool:
+        return False
+
+    def close(self) -> None:
+        return None
+
+
+@contextmanager
+def open_csv_over_stream(stream: BinaryIO, **options: Any) -> Iterator[Any]:
+    import pyarrow.csv as pacsv
+
+    gate = _StoppableStream(stream)
+    reader = pacsv.open_csv(gate, **options)
+    try:
+        yield reader
+    finally:
+        gate.stop()
+        try:
+            for _ in reader:
+                pass
+        except Exception:
+            pass
+        reader.close()

@@ -62,7 +62,14 @@ def test_the_workflow_keeps_the_protocol_name_one_caller_job_and_the_posting_che
 
 def test_triggers_are_trusted_only() -> None:
     triggers = _triggers()
-    assert set(triggers) == {"push", "pull_request_target", "issue_comment", "workflow_dispatch", "schedule"}
+    assert set(triggers) == {
+        "push",
+        "pull_request_target",
+        "issue_comment",
+        "workflow_dispatch",
+        "schedule",
+        "repository_dispatch",
+    }
     assert triggers["push"] == {"branches": ["develop"]}
     assert set(triggers["pull_request_target"]["types"]) == {
         "opened",
@@ -73,6 +80,7 @@ def test_triggers_are_trusted_only() -> None:
     }
     assert triggers["issue_comment"]["types"] == ["created"]
     assert triggers["schedule"] == [{"cron": "23 * * * *"}]
+    assert triggers["repository_dispatch"] == {"types": ["review-sweep"]}
     assert "pull_request" not in triggers
 
 
@@ -131,7 +139,8 @@ def test_the_concurrency_group_keeps_the_verdict_prefix() -> None:
 def test_push_and_schedule_sweeps_share_one_group_that_never_cancels() -> None:
     group = _load()["concurrency"]["group"]
     pushed = render(group, _context("push"))
-    assert pushed == render(group, _context("schedule")) == "review-verdict-sweep"
+    assert pushed == render(group, _context("schedule")) == render(group, _context("repository_dispatch"))
+    assert pushed == "review-verdict-sweep"
     pull_groups = {render(group, _context("workflow_dispatch", inputs={"pr": str(number)})) for number in (7, 8)} | {
         render(group, _context("pull_request_target", {"action": "synchronize", "pull_request": {"number": 9}})),
         render(group, _context("issue_comment", {"issue": {"number": 10}})),
@@ -139,6 +148,7 @@ def test_push_and_schedule_sweeps_share_one_group_that_never_cancels() -> None:
     assert pushed not in pull_groups
     assert _cancels("push") is False
     assert _cancels("schedule") is False
+    assert _cancels("repository_dispatch") is False
 
 
 @pytest.mark.parametrize(
@@ -148,6 +158,7 @@ def test_push_and_schedule_sweeps_share_one_group_that_never_cancels() -> None:
         ("workflow_dispatch", False),
         ("issue_comment", False),
         ("schedule", False),
+        ("repository_dispatch", False),
         ("push", False),
     ],
 )
