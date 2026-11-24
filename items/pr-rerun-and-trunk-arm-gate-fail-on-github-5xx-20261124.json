@@ -4,11 +4,12 @@
     "Test: a persistent 503 fails after the bounded retries with a message naming the endpoint and status.",
     "Test: a 404 fails immediately without retry."
   ],
-  "description": "## Problem\nOn 2026-11-24 `make pr-rerun PR=4491` stopped with \"pr-rerun refused: gh pr failed: HTTP 503\", and `make pr-arm` stopped with \"trunk-arm-gate: refusing: reading PR 4491 failed: HTTP 503\". pr-arm's main wait already backs off on transient GitHub failures (pr-arm-github-rate-limit-backoff-20261112), but these two calls do not use that handling.\n\n## Change\nRoute both calls through the existing transient-retry helper (scripts/gh_transient.py), with the same bounds as pr-arm.\n\n## Decision gate\nIf scripts/gh_transient.py cannot wrap these calls without changing its public behaviour for existing callers, stop and describe the needed change here before editing it.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check). Retry only 5xx, rate-limit and network errors, never 4xx; keep retries bounded and within WAIT for pr-arm.",
+  "description": "## Problem\nOn 2026-11-24 `make pr-rerun PR=4491` stopped with \"pr-rerun refused: gh pr failed: HTTP 503\", and `make pr-arm` stopped with \"trunk-arm-gate: refusing: reading PR 4491 failed: HTTP 503\". pr-arm's main wait already backs off on transient GitHub failures (pr-arm-github-rate-limit-backoff-20261112), but these two calls do not use that handling.\n\n## Change\npr-rerun: route _read_pull_request (scripts/pr_rerun.py, through _invoke/_json) to the existing _invoke_read in the same file, which already uses gh_transient.RetryingRunner. Trunk gate: wrap trunk_revert._check (scripts/trunk_revert.py), which pr-arm calls for the trunk-arm-gate refusal. Use the same bounds as pr-arm.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check). Retry only 5xx, rate-limit and network errors, never 4xx; keep retries bounded and within WAIT for pr-arm.",
   "links": [
     "scripts/gh_transient.py",
-    "scripts/pr_arm.py",
-    "make/pr-landing.mk"
+    "scripts/pr_rerun.py",
+    "scripts/trunk_revert.py",
+    "scripts/pr_arm.py"
   ],
   "sessions": [
     {
@@ -25,6 +26,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "3ecf79a98e5844e48a51bab1af5f2671",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:34:09Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "dd16fb447de445babdb82b40c0913e08",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
