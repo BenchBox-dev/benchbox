@@ -1,7 +1,7 @@
 # Run trunk on the latest develop head only
 
 Date: 2026-10-30
-Status: Decided by the owner. Supersedes `trunk-per-commit-runs-2026-10-27.md`.
+Status: Superseded on 2026-11-06 by Amendment 2026-11-06 item 7 of [`docs/internal/adr/adr-dev-loop-v2.md`](../../docs/internal/adr/adr-dev-loop-v2.md) (every `develop` push runs independently in a per-SHA concurrency group in `.github/workflows/trunk.yml`). Originally decided by the owner; superseded `trunk-per-commit-runs-2026-10-27.md`.
 Related: `docs/internal/merge-queue-governance.md`; `scripts/trunk_revert.py`.
 
 ## Decision
