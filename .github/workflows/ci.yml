@@ -1774,6 +1774,7 @@ jobs:
         run: |
           uv build
           uv run -- python -m scripts.verify_sqlglot_runtime_distribution dist/*.whl dist/*.tar.gz
+          uv run -- python scripts/verify_distribution_binaries.py dist/*.whl dist/*.tar.gz
 
       - name: Test package installation
         shell: bash
