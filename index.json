@@ -52061,7 +52061,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Bundled TPC-DI NOTICE still says the appendix SQL ships in distributions"
     },
     "tpcdi-bundle-tpc-di-tools-20261121": {
