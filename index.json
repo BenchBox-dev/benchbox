@@ -38833,6 +38833,13 @@
       "status": "done",
       "title": "Remove pandas/Python row steps in QuestDB and InfluxDB loading"
     },
+    "perf-smoke-gate-verdict-follows-runner-cpu-model-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "The nightly perf-smoke gate passes or fails according to the runner's CPU model, not the code"
+    },
     "perf-smoke-method2-baseline-20261117": {
       "claim": null,
       "needs": [],

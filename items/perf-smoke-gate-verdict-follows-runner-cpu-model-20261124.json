@@ -1,0 +1,29 @@
+{
+  "acceptance": [
+    "The owner's choice (1, 2 or 3) and date are recorded in context.",
+    "Replaying runs 44568679855, 44771598146, 44832232783, 44919358217, 45038537889, 45050812378, 45248299829 and 45465256446 under the new rule is recorded: no failure is caused only by the runner model, and each verdict names the baseline used.",
+    "A synthetic 25% uniform slowdown on one CPU model's results fails the gate (test or recorded replay).",
+    "The t3:perf job log prints the runner CPU model; docs/internal/perf-smoke.md describes the rule.",
+    "perf-smoke-rebaseline-after-power-query-generation-20261103 and nightly-perf-gate-sensitivity-review-20261010 have context notes pointing to the outcome."
+  ],
+  "context": "Filed 2026-11-24 from the review of the perf-smoke rebaseline evidence. Related: perf-smoke-rebaseline-after-power-query-generation-20261103 (its single-CPU-class acceptance cannot hold while runners vary), nightly-perf-gate-sensitivity-review-20261010 (floors).",
+  "description": "## Problem\nThe nightly `t3:perf` gate compares each DuckDB TPC-H SF 0.01 run with one baseline (`_project/baselines/perf_smoke_duckdb_tpch_001.json`, total 0.270 s) that #4332 built as a median pooled over four CPU models (selection_rule `pooled_median_over_all_models`: EPYC 7763 x2, EPYC 9V74, Xeon Platinum 8573C, Xeon 6975P-C). GitHub assigns `ubuntu-latest` runners of different CPU models night to night, and the verdict follows the model:\n\n| Run | Date | CPU | Total | Verdict |\n|---|---|---|---|---|\n| 44568679855 | 11-19 | Xeon 6975P-C | 0.263 s | pass |\n| 44771598146 | 11-20 | EPYC 9V45 | 0.199 s | pass |\n| 44832232783 | 11-20 (dispatch) | EPYC 7763 | 0.320 s (+18.3%) | fail |\n| 44919358217 | 11-21 | EPYC 7763 | 0.323 s (+19.5%) | fail |\n| 45038537889 | 11-22 | EPYC 9V74 | 0.248 s | pass |\n| 45050812378 | 11-22 (dispatch) | Xeon 6975P-C | 0.256 s | pass |\n| 45248299829 | 11-23 | EPYC 9V74 | 0.251 s | pass |\n| 45465256446 | 11-24 | EPYC 9V45 | 0.213 s | pass |\n\nBoth failures ran on EPYC 7763 and every pass on a newer model; the spread across models (0.199 s to 0.323 s) is about four times the 31 ms aggregate floor. So a failing night is a CPU lottery, and a real regression smaller than the gap between models is hidden on fast runners. The CPU model is recorded only inside the `t3-perf-result` artifact (`cpu_model`), not in the job log.\n\n## Expected outcome\nThe gate's verdict depends on the code under test, not on which runner model GitHub assigned, and a failing night names the runner model in its log.\n\n## Decision gate\nOwner chooses, after the agent records per-model medians from at least the retained `t3-perf-result` artifacts (14-day retention; download with `gh run download <id> -n t3-perf-result`; list artifacts with `--paginate`, the default page is 30):\n1. **Per-model baselines:** one baseline per CPU model with at least five results; a run on a model without a baseline is reported as \"not compared\" and does not fail.\n2. **Pin the runner class:** run `t3:perf` on a runner label with a fixed CPU (larger runner or self-hosted; needs owner approval for cost).\n3. **Normalise by a calibration probe:** scale the comparison by a short CPU benchmark run in the same job (reuse the fast-duration gate's calibration idea if it fits; see fast-duration-gate-calibration-skew-20261028 for its known skew).\nRecommendation for the owner: option 1, no new cost and no new mechanism. Record the choice and date in context before coding.\n\n## Verification rubric\n- Replaying the eight runs above against the new rule gives the same verdict for runs on the same model whose totals are within the floor, and the two EPYC 7763 runs no longer fail against a baseline from another model.\n- A synthetic 25% uniform slowdown on one model's results fails the gate for that model.\n- The job log names the runner CPU model and which baseline it was compared with.\n\n## Guardrails\n- Work in a linked worktree (`make worktree-create`, `make agent-write-preflight`); never edit the primary clone.\n- Before starting, check the tracker claim, open PRs, branches and existing worktrees for the same files; check again before `make pr-open`.\n- No skip, xfail, rerun marker, raised timeout, relaxed threshold or weakened assertion to turn a check green.\n- Heavy work only through `make heavy-run` or a lock-taking entry point; no admission or watchdog override.\n- No explanatory comments or docstrings (`make comment-policy-check`); user-facing changes add a `changelog.d/` fragment.\n- Anchors (run ids, file names) are orientation from 2026-11-24; re-read before editing and update the item on a mismatch.\n- Do not widen the 10% / 31 ms aggregate thresholds or the per-query floor; floor changes belong to nightly-perf-gate-sensitivity-review-20261010.\n- Do not mix timing-method-1 results into any baseline, and do not relax the compare's timing-method check.",
+  "links": [
+    "_project/baselines/perf_smoke_duckdb_tpch_001.json",
+    "_project/baselines/perf_smoke_duckdb_tpch_001.sources.json",
+    "scripts/perf_smoke_baseline.py",
+    "docs/internal/perf-smoke.md",
+    "#4332",
+    "#4352"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:78577982789d137a526d6d7d",
+      "at": "2026-11-24T22:37:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b12203c79fbf6e24c4c867986fc5936b",
+      "session_id": "7a80d04581544190805d0df585b8bd05"
+    }
+  ]
+}
