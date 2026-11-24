@@ -355,6 +355,7 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
         mirror_error: BaseException | None = None,
     ) -> None:
         try:
+            cursor.execute(f"ALTER TABLE {qualified_staging} RESET (autovacuum_enabled)")
             cursor.execute(f'ALTER TABLE {qualified_staging} RENAME TO "{table_name}"')
             connection.commit()
         except Exception as exc:

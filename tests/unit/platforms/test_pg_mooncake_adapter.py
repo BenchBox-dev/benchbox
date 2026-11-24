@@ -400,7 +400,7 @@ class TestPgMooncakeLoadPromotion:
         adapter = PgMooncakeAdapter()
         conn = Mock()
         cursor = Mock()
-        cursor.execute.side_effect = [None, None, None, RuntimeError("mirror creation failed"), None]
+        cursor.execute.side_effect = [None, None, None, RuntimeError("mirror creation failed"), None, None]
         conn.cursor.return_value = cursor
 
         with (
@@ -419,6 +419,7 @@ class TestPgMooncakeLoadPromotion:
             ('ALTER TABLE "orders" RENAME TO "__bb_moon_src_orders"',),
             ('ALTER TABLE "__bb_moon_src_orders" SET (autovacuum_enabled = false)',),
             ("CALL mooncake.create_table('orders', '__bb_moon_src_orders')",),
+            ('ALTER TABLE "__bb_moon_src_orders" RESET (autovacuum_enabled)',),
             ('ALTER TABLE "__bb_moon_src_orders" RENAME TO "orders"',),
         ]
         cursor.close.assert_called_once()
@@ -462,6 +463,7 @@ class TestPgMooncakeLoadPromotion:
             None,
             None,
             RuntimeError("channel closed"),
+            None,
             RuntimeError('relation "orders" already exists'),
         ]
         conn.cursor.return_value = cursor
