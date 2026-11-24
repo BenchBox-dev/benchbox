@@ -12,7 +12,8 @@
     "https://github.com/BenchBox-dev/benchbox-site/blob/next/docs/guides/hosted-submission.md",
     "https://github.com/BenchBox-dev/benchbox-site/blob/next/docs/reference/hosted-results-contract.md",
     "https://github.com/BenchBox-dev/benchbox-site/blob/next/docs/operations/uat-framework.md",
-    "https://github.com/BenchBox-dev/benchbox-site/blob/next/docs/operations/uat-methodology.md"
+    "https://github.com/BenchBox-dev/benchbox-site/blob/next/docs/operations/uat-methodology.md",
+    "https://github.com/BenchBox-dev/benchbox-site/blob/next/docs/development/adr/adr-published-identifier-field-set.md"
   ],
   "sessions": [
     {
@@ -29,6 +30,14 @@
       "client": "antigravity-client",
       "op": "update",
       "op_id": "c1d2e3f4a5061728394a5b6c7d8e9f04",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T21:17:10Z",
+      "client": "antigravity-client",
+      "op": "update",
+      "op_id": "d1e2f3a4b5061728394a5b6c7d8e9f03",
       "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
     }
   ]
