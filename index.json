@@ -49504,6 +49504,15 @@
       "status": "done",
       "title": "Close the plans and tuning companion bypass in submission validation"
     },
+    "submit-cli-target-develop-20261124": {
+      "claim": null,
+      "needs": [
+        "corpus-intake-on-develop-20261124"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Step 3: point benchbox submit CLI and results-data/README.md at develop for the next release"
+    },
     "submit-contract-uncertain-with-translation-fallback": {
       "claim": null,
       "needs": [

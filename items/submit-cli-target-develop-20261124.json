@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "benchbox/cli/commands/submit.py (both README instructions and console Next steps) directs contributors to open PRs against develop instead of published-results, with updated unit tests and a changelog.d/ fragment.",
+    "results-data/README.md directs contributors to develop instead of published-results.",
+    "Released in the next core BenchBox release before Step 5 freezes published-results."
+  ],
+  "context": "Step 3 of the owner-approved Option 1 corpus consolidation plan (2026-11-24). Must ship in a core release before Step 5 freezes published-results so released CLI users are not sent to a frozen branch.",
+  "description": "## Problem\\nThe released CLI in `benchbox/cli/commands/submit.py` (lines 107 and 619) prints `PR target: published-results` and instructs contributors to open PRs against `published-results`. Core `results-data/README.md` also directs submissions to `published-results`.\\n\\n## Change (Step 3 of 6)\\n1. Update `benchbox/cli/commands/submit.py` and its tests to target `develop` (with a `changelog.d/` fragment).\\n2. Update core `results-data/README.md` to document the `develop` submission flow.\\n3. Ship in the next core release before Step 5 retires mirror workflows and freezes `published-results`.",
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T20:21:29Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "b1c2d3e4f5061728394a5b6c7d8e9f03",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    }
+  ]
+}
