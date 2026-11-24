@@ -44201,10 +44201,15 @@
       "title": "Let reviews fall back to Anthropic API credits when the Claude subscription hits its limit"
     },
     "review-classifier-degraded-remediation-20261124": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-25T14:33:26Z",
+        "generation": "f534aeba298c411ea1b4e69b3d414bda",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:85211dc6cc54201508c6fab8"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Review classifier degradation and gateway drift remediation (umbrella)"
     },
     "review-dependency-upper-bounds-quarterly": {
