@@ -39021,6 +39021,13 @@
       "status": "done",
       "title": "Post one correcting comment on #4381, with the text approved first"
     },
+    "pr-arm-advises-rerun-for-real-test-failure-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make pr-arm stop advising make pr-rerun when core failed on a real test"
+    },
     "pr-arm-cut-repeated-github-reads-20261117": {
       "claim": null,
       "needs": [],

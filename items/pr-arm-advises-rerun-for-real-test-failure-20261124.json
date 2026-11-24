@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "A refusal for a core failure caused by a failed test job names the job and advises fix-and-push without pr-rerun.",
+    "Cancelled and never-acquired jobs keep the pr-rerun advice.",
+    "The owner's decision on pr-rerun refusing failed tests is recorded on this item."
+  ],
+  "context": "Filed 2026-11-24 from the close-out of the scale and TPC-DI remediation (umbrella remediation-revised-plan-20261120, done 2026-11-23).",
+  "description": "## Problem\nWhen `core` has concluded failure and no verify-fast-duration verdict exists, `_core_state` in `scripts/pr_arm.py` always returns \"rerun it with make pr-rerun PR=<n>, then arm again\". On 2026-11-22 `make pr-arm PR=4455` at 876a4343f gave that advice although `core` failed because `test (ubuntu-latest, 3.14)` failed a real test (`tests/unit/cli/test_benchmark_manager_behavioral.py::test_prompt_scale_single_standard_value_still_prompts`, CI run 45105490484). CONTRIBUTING.md says to fix and push after a real failure. `scripts/pr_rerun.py` only distinguishes cancelled jobs (around line 275) and does not refuse re-running a failed test, so following the advice re-rolls a real failure.\n\n## Change\nIn the no-verdict path, read the failing jobs of the full CI run. If a job failed (not cancelled, not unacquired), name it and advise fixing and pushing; keep the rerun advice for cancelled or never-run jobs.\n\n## Decision gates\n- Whether `make pr-rerun` itself should refuse to re-run a job that failed on a test is a policy change: ask the owner before implementing that part. The message change does not need it.\n\n## Verification rubric\nPass: unit tests in `tests/unit/scripts/test_pr_arm.py` cover three cases: a failed test job (message names the job, says fix and push, and does not mention pr-rerun); a cancelled job (rerun advice); a job the runner never acquired (rerun advice).\n\n## Guardrails\n- Work in a linked worktree from `make worktree-create`; never write in the primary clone. Stage named paths only; commit as the pinned human identity with no agent attribution.\n- Push only after `make pr-preflight` passes on the exact head. Never `--no-verify`, force-push, or rewrite authorship.\n- Arm only with `make pr-arm`, once per head. A second attempt only when the refusal named a cause that is now fixed; a third needs the owner. `make pr-rerun` only for a job the runner cancelled or never ran, never to re-roll a failed test.\n- Never post a stand-in review. Resolve a review thread only after the bot has reviewed the new head and did not raise the finding again.\n- Heavy work only through `make heavy-run` or a lock-taking target. Never set `BENCHBOX_HEAVY_ADMIT=force`, `BENCHBOX_SKIP_TEST_LOCK` or `BENCHBOX_HEAVY_WATCHDOG=off`.\n- Any new limit, threshold, default or user-facing label is shown to the owner before it is committed.\n- Do not mark a test skip, xfail, quarantine or slow to make it pass.\n- Report only what merged and what was verified, with run ids and heads.",
+  "links": [
+    "scripts/pr_arm.py",
+    "scripts/pr_rerun.py",
+    "tests/unit/scripts/test_pr_arm.py",
+    "CONTRIBUTING.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7df5251ec4291d5bac245463",
+      "at": "2026-11-24T14:26:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ecfd58829f05447c96087d2681f513f3",
+      "session_id": "c81aa4dd49e04ffea4f29cb72ae09d11"
+    }
+  ]
+}
