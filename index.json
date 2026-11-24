@@ -52107,7 +52107,9 @@
     },
     "tpcdi-appendix-sql-excluded-from-distributions-20261124-deferral-1": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "tpcdi-settle-appendix-sql-source-20261121"
+      ],
       "priority": "high",
       "status": "blocked",
       "title": "Bundled TPC-DI NOTICE still says the appendix SQL ships in distributions"
