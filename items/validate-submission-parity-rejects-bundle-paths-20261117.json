@@ -4,6 +4,7 @@
     "A unit test covers validator_parity with a bundle-plus-corpus diff in the form validate-submission produces",
     "A PR adding a bundle under a disallowed path is still refused (test or recorded run)"
   ],
+  "context": "2026-11-24: re-checked; no commit has touched .github/workflows/validate-submission.yml or scripts/publication/validator_parity.py since 2026-11-17, so the reproduced mismatch stands. Unclaimed, no open PR or branch for it.",
   "description": "## Problem\n.github/workflows/validate-submission.yml builds CORPUS_CHANGED_PATHS_FILE from both results-data/bundles/** and results-data/corpus/** (step \"Collect corpus changed paths\") and passes it to scripts/publication/validator_parity.py --corpus-changed-paths in \"Validate bundles\". validator_parity's corpus-path check returns 1 with \"::error::Corpus changed path not under results-data/corpus/\" for any other path. Reproduced 2026-11-17 against published-results HEAD (8aaa9921f7, 10 changed paths): the bundles-plus-corpus list exits 1, the corpus-only list exits 0 with \"Parity OK\". The last eight validate-submission runs all failed (2026-09-28 to 2026-10-17, including run 39072490523); their logs have expired, so the cause of those failures is unconfirmed. If the mismatch is the cause, every community submission that changes a bundle fails validation, and the publication path for outside contributors is broken.\n\n## Decision gate\nConfirm with a fresh run: open a throwaway same-repo PR to published-results that adds one valid fixture bundle (close it unmerged), or replay the workflow steps locally against a known-good bundle diff.\n- If it fails on this check: decide which side is wrong. If validator_parity is meant to see only corpus-subtree paths, pass it a corpus-only list; if it is meant to accept bundles, widen its check. Pick the one that matches the parity script's tests and its docstring contract.\n- If it fails for another reason, record that reason and fix that instead.\n\n## Guardrails\n- Do not weaken the allowlist check in validate_submission.py --corpus-changed-paths; it must still reject disallowed paths.\n- No merge of the throwaway PR; no change to published-results content.\n- The results mirror workflow (sync-results-data-to-published.yml) already passes a corpus-only list to validator_parity; keep the two consistent.",
   "links": [
     "https://github.com/BenchBox-dev/BenchBox/actions/runs/39072490523"
@@ -16,6 +17,14 @@
       "op": "create",
       "op_id": "0a72509020f846c6af716ae7123b225c",
       "session_id": "0362803867fb4929927e576283fffc32"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:78577982789d137a526d6d7d",
+      "at": "2026-11-24T22:38:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "828eceeaa6e608a287ee16e160383207",
+      "session_id": "7a80d04581544190805d0df585b8bd05"
     }
   ]
 }
