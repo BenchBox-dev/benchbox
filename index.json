@@ -53317,10 +53317,15 @@
       "title": "Trunk UAT pandas-df shard killed by the heavy-work watchdog at 13.07 GiB (budget 13 GiB)"
     },
     "trunk-uat-postgres-family-shard-failed-20261124": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-25T19:09:04Z",
+        "generation": "ca772fdf4c3e47acaa4307986dd8b9a5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Trunk UAT UAT stage 3 postgres-family failed on 2026-11-24 (develop ee2e196e3c)"
     },
     "trunk-uat-timeseries-execute-failure-20261122": {
