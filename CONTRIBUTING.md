@@ -2,16 +2,16 @@
 
 This branch accepts **result-bundle contributions only**. Source-code
 contributions to BenchBox itself go to the
-[`develop`](https://github.com/joeharris76/BenchBox/tree/develop) branch
+[`develop`](https://github.com/BenchBox-dev/benchbox/tree/develop) branch
 — see
-[`CONTRIBUTING.md` on develop](https://github.com/joeharris76/BenchBox/blob/develop/CONTRIBUTING.md)
+[`CONTRIBUTING.md` on develop](https://github.com/BenchBox-dev/benchbox/blob/develop/CONTRIBUTING.md)
 for that flow.
 
 ## Submitting a bundle
 
-The full contributor guide lives in
-[`docs/contributing-results.md`](https://github.com/joeharris76/BenchBox/blob/develop/docs/contributing-results.md)
-on `develop`. The 30-second version:
+The full contributor guide lives at
+[Contributing Benchmark Results](https://benchbox.dev/docs/contributing-results.html).
+The 30-second version:
 
 1. Run your benchmark with BenchBox:
    ```bash
@@ -73,7 +73,7 @@ fixes whenever you have cycles.
 
 The validator scripts on this branch are vendored from `develop`. File
 validator-side bug reports against
-[`joeharris76/BenchBox`](https://github.com/joeharris76/BenchBox/issues)
+[`BenchBox-dev/benchbox`](https://github.com/BenchBox-dev/benchbox/issues)
 on the develop branch. Fixes are mirrored back to this branch via the
 develop ↔ published-results sync mechanism.
 
