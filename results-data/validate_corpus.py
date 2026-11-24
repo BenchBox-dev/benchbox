@@ -283,9 +283,8 @@ def _throughput_streams_incomplete(payload: dict) -> bool:
     stream_ids = _throughput_stream_ids(streams)
     if stream_ids is None:
         return True
-    raw_benchmark = _mapping(payload.get("benchmark")).get("id")
-    benchmark = raw_benchmark.strip().casefold() if isinstance(raw_benchmark, str) else None
-    canonical = THROUGHPUT_STREAM_QUERY_IDS.get(benchmark)
+    benchmark = CORPUS_SCORE.tpc_benchmark_id(payload)
+    canonical = THROUGHPUT_STREAM_QUERY_IDS.get(benchmark or "")
     if canonical is None:
         return False
     observed = _usable_queries_by_stream(payload)
@@ -475,7 +474,8 @@ def _logical_query_count(payload: dict, display: list[tuple[str, float | None, i
         return raw
     if raw <= observed:
         return raw or observed
-    known = KNOWN_LOGICAL_QUERY_COUNTS.get(str(_mapping(payload.get("benchmark")).get("id", "unknown")))
+    benchmark_id = CORPUS_RULE.normalize_benchmark_id(_mapping(payload.get("benchmark")).get("id"))
+    known = KNOWN_LOGICAL_QUERY_COUNTS.get(benchmark_id or "")
     if known and observed <= known and raw % known == 0:
         return known
     if raw % observed == 0 and any(samples > 1 for _, _, samples in display):
@@ -568,7 +568,7 @@ def _combined_evidence_defects(payload: dict) -> list[str]:
 
 
 def _primary_metric_value(payload: dict, display: list[tuple[str, float | None, int]]) -> float | None:
-    benchmark_id = str(_mapping(payload.get("benchmark")).get("id", "unknown"))
+    benchmark_id = CORPUS_SCORE.tpc_benchmark_id(payload)
     phase = bundle_phase(payload)
     if phase == COMBINED_PHASE and benchmark_id in COMBINED_QPH_METRICS:
         return _combined_score(payload)
@@ -632,7 +632,7 @@ def _metric_reason(value: float | None) -> str | None:
 
 
 def _lane_reason(payload: dict, display: list[tuple[str, float | None, int]], lane: str) -> str | None:
-    benchmark_id = str(_mapping(payload.get("benchmark")).get("id", "unknown"))
+    benchmark_id = CORPUS_SCORE.tpc_benchmark_id(payload)
     if lane == CORPUS_RULE.LANE_COMBINED:
         defects = _combined_evidence_defects(payload)
         return defects[0] if defects else _metric_reason(_combined_score(payload))

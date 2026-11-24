@@ -1710,6 +1710,24 @@ def test_a_timed_out_stream_cannot_form_a_throughput_identity(tmp_path: Path) ->
     assert validator.main(tmp_path) == 1
 
 
+@pytest.mark.parametrize("benchmark_id", ["tpch", "TPC-H"])
+def test_tpc_power_lane_requires_all_query_timings_regardless_of_id_spelling(benchmark_id: str) -> None:
+    validator = _load_validator()
+    payload = {
+        "benchmark": {"id": benchmark_id, "scale_factor": 1.0, "test_type": "power"},
+        "platform": {"name": "example"},
+        "summary": {"queries": {"total": 2, "passed": 2, "failed": 0}, "validation": "passed"},
+        "queries": [
+            {"id": str(query), "ms": 20.0, "iter": 1, "run_type": "measurement", "status": "SUCCESS"}
+            for query in (1, 2)
+        ],
+        "phases": {"power_test": {"status": "COMPLETED"}},
+    }
+
+    assert validator.admission_reason(payload) == "missing_primary_metric"
+    assert validator.bundle_lanes(payload) == ()
+
+
 def _subscale_bundle(directory: Path, name: str, platform: str, tpc_metrics: dict, **benchmark: object) -> Path:
     payload: dict = {
         "benchmark": {"id": "tpch", "scale_factor": 0.01, "test_type": "power", **benchmark},
