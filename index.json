@@ -25856,6 +25856,13 @@
       "status": "done",
       "title": "Fail datagen when the manifest records zero tables, and fail validation when zero rows load"
     },
+    "datagen-p0-baseline-measurements": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Measure current data generator wall time, peak RSS, and conversion time at SF 1 and SF 10"
+    },
     "dataproc-serverless-platform": {
       "claim": null,
       "needs": [
