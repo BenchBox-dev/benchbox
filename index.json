@@ -42319,7 +42319,7 @@
       "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Release v0.6.0: gates, release-prep and the v0.6.0rc1 tag (notes; not a work item)"
     },
     "release-v2-probe-runs-head-script-with-merge-ref-permissions-20261119": {
