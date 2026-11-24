@@ -53296,15 +53296,10 @@
       "title": "Trunk UAT UAT stage 2 cedardb failed on 2026-11-24 (develop ee2e196e3c)"
     },
     "trunk-uat-dask-df-h2odb-sf1-timed-out-20261123": {
-      "claim": {
-        "expires_at": "2026-11-25T19:09:11Z",
-        "generation": "5d22b1a86a5243f48ba1d57bbf696c4b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Trunk UAT dask-df h2odb SF1 cell stopped at its run limit (exit 124) on 2026-11-23"
     },
     "trunk-uat-doris-joinorder-17d-mem-limit-20261123": {
