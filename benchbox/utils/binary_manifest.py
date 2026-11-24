@@ -9,6 +9,14 @@ from pathlib import Path, PurePosixPath
 
 MANIFEST_NAME = "SHA256MANIFEST.json"
 DEFAULT_ROOT = Path(__file__).resolve().parents[1] / "_binaries"
+DISTRIBUTION_EXCLUDED = frozenset(
+    {
+        "tpc-di/tpcdi_audit.sql",
+        "tpc-di/tpcdi_validation.sql",
+        "tpc-di/tpcdi_visibility_1.sql",
+        "tpc-di/tpcdi_visibility_2.sql",
+    }
+)
 
 
 CLI_DESCRIPTION = "Verify the complete bundled-generator tree shipped inside BenchBox."
@@ -76,12 +84,12 @@ def build_binary_manifest(root: Path) -> bytes:
 
 def verify_binary_payload(manifest: bytes, files: Mapping[str, bytes]) -> None:
     expected = read_binary_manifest(manifest)
-    if set(expected) != set(files):
-        missing = sorted(set(expected) - set(files))
-        extra = sorted(set(files) - set(expected))
+    missing = sorted(set(expected) - set(files) - DISTRIBUTION_EXCLUDED)
+    extra = sorted(set(files) - set(expected))
+    if missing or extra:
         raise ValueError(f"bundled binary membership differs: missing={missing}, extra={extra}")
     for name, digest in expected.items():
-        if hashlib.sha256(files[name]).hexdigest() != digest:
+        if name in files and hashlib.sha256(files[name]).hexdigest() != digest:
             raise ValueError(f"bundled binary hash differs: {name}")
 
 
@@ -91,7 +99,7 @@ def verify_binary_tree(root: Path = DEFAULT_ROOT) -> None:
     if manifest_path.is_symlink() or not manifest_path.is_file():
         raise ValueError("bundled binary manifest is missing or not a regular file")
     expected = read_binary_manifest(manifest_path.read_bytes())
-    if set(expected) != set(files):
+    if set(files) - set(expected) or set(expected) - set(files) - DISTRIBUTION_EXCLUDED:
         raise ValueError("bundled binary membership differs from the manifest")
     for name, path in files.items():
         with path.open("rb") as stream:

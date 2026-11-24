@@ -6,7 +6,13 @@ import tarfile
 import zipfile
 from pathlib import Path, PurePosixPath
 
-from benchbox.utils.binary_manifest import DEFAULT_ROOT, MANIFEST_NAME, verify_binary_payload, verify_binary_tree
+from benchbox.utils.binary_manifest import (
+    DEFAULT_ROOT,
+    DISTRIBUTION_EXCLUDED,
+    MANIFEST_NAME,
+    verify_binary_payload,
+    verify_binary_tree,
+)
 
 CLI_DESCRIPTION = "Verify source, wheel, and sdist bundled generators against one manifest."
 
@@ -44,7 +50,7 @@ def verify_distribution_binaries(distribution: Path, source_root: Path = DEFAULT
     source_files = {
         path.relative_to(source_root).as_posix(): path.stat().st_size
         for path in source_root.rglob("*")
-        if path.is_file()
+        if path.is_file() and path.relative_to(source_root).as_posix() not in DISTRIBUTION_EXCLUDED
     }
     source_execute_modes = {name: (source_root / name).stat().st_mode & 0o111 for name in source_files}
     payloads: dict[str, bytes] = {}

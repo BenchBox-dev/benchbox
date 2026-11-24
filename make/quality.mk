@@ -364,6 +364,7 @@ test-package:
 	rm -rf dist/
 	uv build
 	uv run -- python -m scripts.verify_sqlglot_runtime_distribution dist/*.whl dist/*.tar.gz
+	uv run -- python scripts/verify_distribution_binaries.py dist/*.whl dist/*.tar.gz
 	uvx twine check dist/*
 	@echo "Testing package installation..."
 	@wheel_count=$$(find "$$PWD/dist" -maxdepth 1 -type f -name '*.whl' | wc -l | tr -d '[:space:]'); \
