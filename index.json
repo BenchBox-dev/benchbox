@@ -39374,6 +39374,13 @@
       "status": "done",
       "title": "make pr-preflight does not show which test files it selected, so a required test cannot be confirmed from its output"
     },
+    "pr-preflight-honours-heavy-admit-wait-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Let make pr-preflight wait for heavy-work admission like make heavy-run"
+    },
     "pr-preflight-landing-quickstarts-check-20261014": {
       "claim": null,
       "needs": [],

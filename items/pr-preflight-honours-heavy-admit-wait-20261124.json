@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "make pr-preflight accepts HEAVY_ADMIT_WAIT with the heavy-run semantics, proven by a test that another process can take the lock during the wait.",
+    "Default behaviour without the variable is unchanged.",
+    "docs/agent/heavy-work.md updated."
+  ],
+  "context": "Filed 2026-11-24 from the close-out of the scale and TPC-DI remediation (umbrella remediation-revised-plan-20261120, done 2026-11-23).",
+  "description": "## Problem\n`docs/agent/heavy-work.md` says: on `Error 76`, run the command again with `HEAVY_ADMIT_WAIT`, do not write a retry loop, and \"only `make heavy-run` reads it\". `make pr-preflight` is gated by the same admission but has no wait. On 2026-11-23 it was refused twice (exit 76, memory pressure level 2, swap 78%, receipt tree 74b8d037d6) while preparing #4463. The only way through was a hand-written retry loop, which the doc forbids; that session wrote one (disclosed here).\n\n## Change\nMake `make pr-preflight` honour `HEAVY_ADMIT_WAIT` with the semantics heavy-run-admission-wait-20261111 established: re-check every 60 s for 1 to 60 minutes, release the host lock between attempts, and keep the default (no wait) unchanged. Update heavy-work.md.\n\n## Decision gates\n- The default stays \"no wait\" unless the owner decides otherwise.\n- The wait never sleeps while holding the host lock.\n\n## Verification rubric\nPass: a test shows `make pr-preflight HEAVY_ADMIT_WAIT=<n>` re-checks admission, releases the lock between attempts (another process can take it meanwhile), and exits 76 after n minutes if never admitted; heavy-work.md names pr-preflight as reading the variable.\n\n## Guardrails\n- Work in a linked worktree from `make worktree-create`; never write in the primary clone. Stage named paths only; commit as the pinned human identity with no agent attribution.\n- Push only after `make pr-preflight` passes on the exact head. Never `--no-verify`, force-push, or rewrite authorship.\n- Arm only with `make pr-arm`, once per head. A second attempt only when the refusal named a cause that is now fixed; a third needs the owner. `make pr-rerun` only for a job the runner cancelled or never ran, never to re-roll a failed test.\n- Never post a stand-in review. Resolve a review thread only after the bot has reviewed the new head and did not raise the finding again.\n- Heavy work only through `make heavy-run` or a lock-taking target. Never set `BENCHBOX_HEAVY_ADMIT=force`, `BENCHBOX_SKIP_TEST_LOCK` or `BENCHBOX_HEAVY_WATCHDOG=off`.\n- Any new limit, threshold, default or user-facing label is shown to the owner before it is committed.\n- Do not mark a test skip, xfail, quarantine or slow to make it pass.\n- Report only what merged and what was verified, with run ids and heads.",
+  "links": [
+    "docs/agent/heavy-work.md",
+    "benchbox/utils/host_lock.py",
+    "Makefile",
+    "heavy-run-admission-wait-20261111"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7df5251ec4291d5bac245463",
+      "at": "2026-11-24T14:27:00Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "df0de0a57d2e4dc1aeb18bceea34ab1b",
+      "session_id": "c81aa4dd49e04ffea4f29cb72ae09d11"
+    }
+  ]
+}
