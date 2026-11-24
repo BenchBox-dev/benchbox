@@ -14853,7 +14853,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-historical",
-      "integration_head": "90e06ab8e7ac2bc18d802cd7fa39c18e6c16be66",
+      "integration_head": "b91abbddced4c1cc5352f41faadb16134c5a42a7",
       "integration_log": [
         {
           "at": "2026-11-23T23:39:31Z",
@@ -14998,6 +14998,32 @@
           "op_id": "bc0f60fe8cd540ec9fa4827141b375b8",
           "previous_head": "071dae99d275e3f62d596641fb05bb1fa43b4bda",
           "seq": 2
+        },
+        {
+          "at": "2026-11-24T22:23:33Z",
+          "changed_files": [
+            "benchbox/core/tpcdi/etl/ingest/batch_date.sql",
+            "benchbox/core/tpcdi/etl/ingest/cash_transaction.sql",
+            "benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql",
+            "benchbox/core/tpcdi/etl/ingest/daily_market.sql",
+            "benchbox/core/tpcdi/etl/ingest/holding_history.sql",
+            "benchbox/core/tpcdi/etl/ingest/prospect.sql",
+            "benchbox/core/tpcdi/etl/ingest/trade.sql",
+            "benchbox/core/tpcdi/etl/ingest/trade_history.sql",
+            "benchbox/core/tpcdi/etl/ingest/watch_history.sql",
+            "benchbox/core/tpcdi/etl/staging.py",
+            "tests/integration/core/test_tpcdi_etl_staging_digen_output.py",
+            "tests/unit/core/tpcdi/test_etl_staging.py",
+            "tests/unit/sql_compat/golden_corpus/frozen/area_tpcdi_etl.json"
+          ],
+          "head": "b91abbddced4c1cc5352f41faadb16134c5a42a7",
+          "kind": "fix",
+          "op_id": "3e79684ea14948cba28c4f791989245a",
+          "previous_head": "90e06ab8e7ac2bc18d802cd7fa39c18e6c16be66",
+          "requires_acceptance": [
+            "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121"
+          ],
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-historical",
