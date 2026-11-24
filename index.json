@@ -9102,6 +9102,66 @@
       "start_head": "fb319236c37869f3268874e3d3f77e61c836f867",
       "terminal_outcome": "deliver"
     },
+    "release-gates": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/release-gates",
+      "integration_head": "1d2828e85f2cac38fda65b8337be1cf5371ab4cb",
+      "integration_log": [
+        {
+          "at": "2026-11-24T14:47:49Z",
+          "head": "1d2828e85f2cac38fda65b8337be1cf5371ab4cb",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-release-gates",
+      "lifecycle": "active",
+      "members": [
+        "core-exec-remove-deprecated-aliases",
+        "tpcdi-appendix-sql-excluded-from-distributions-20261124"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "owner_epoch": 0,
+      "owner_generation": "c6c0d64f589dfd1388749c68798f1dd6",
+      "project_id": "release-v0-6-0-20261124",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "core-exec-remove-deprecated-aliases": [
+          "benchbox/*",
+          "tests/*",
+          "docs/*",
+          "examples/*",
+          "README.md",
+          "scripts/*",
+          "docker/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "tpcdi-appendix-sql-excluded-from-distributions-20261124": [
+          "pyproject.toml",
+          "MANIFEST.in",
+          "benchbox/_binaries/*",
+          "benchbox/core/tpcdi/*",
+          "_sources/tpc-di/*",
+          "tests/*",
+          "docs/*",
+          "README.md",
+          "quality/*",
+          "scripts/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "0abd6cd226401daacfa1f27b6e165b08447c5abe3749b1cd8510d9935cb04c47",
+      "start_head": "1d2828e85f2cac38fda65b8337be1cf5371ab4cb",
+      "terminal_outcome": "deliver"
+    },
     "release-readiness": {
       "accepted_members": {
         "release-v2-probe-runs-head-script-with-merge-ref-permissions-20261119": "a090a9af681314859638bbf84495610805dd239c",
