@@ -51730,9 +51730,9 @@
     },
     "tpcdi-appendix-sql-excluded-from-distributions-20261124": {
       "claim": {
-        "expires_at": "2026-11-25T19:09:43Z",
-        "generation": "13d0ed0f9bab45c891ed001b257803b9",
-        "renewals": 2,
+        "expires_at": "2026-11-25T19:09:54Z",
+        "generation": "9b8f739035de40df8caf8ddf39c01624",
+        "renewals": 3,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
       },
       "needs": [],
