@@ -53289,15 +53289,10 @@
       "title": "Evaluate whether trimming post-merge Trunk work is worthwhile after coverage selection stabilizes"
     },
     "trunk-uat-cedardb-shard-failed-20261124": {
-      "claim": {
-        "expires_at": "2026-11-25T19:08:56Z",
-        "generation": "4cc8379c0b944af3987c415e72e661d4",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Trunk UAT UAT stage 2 cedardb failed on 2026-11-24 (develop ee2e196e3c)"
     },
     "trunk-uat-dask-df-h2odb-sf1-timed-out-20261123": {
