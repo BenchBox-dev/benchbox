@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "`_project/scripts/review_gateway_host.sh check` (from origin/develop) exits 0 and reports both agents on omp 18.20.0 with the pinned sha256, and secrets REVIEW_GATEWAY_TOKEN and REVIEW_GATEWAY_URL set on the review environment.",
+    "The installed ~/.omp/review-gateway/monitor-host.sh matches origin/develop's script (diff empty) after `monitor-install`.",
+    "The monitor's next two runs report healthy and issue #4417 is closed by the monitor.",
+    "A hosted review run after the restart reaches a verdict through the gateway (run id recorded).",
+    "Gate 2's choice is recorded; if (a) or (b) is chosen, it is implemented with a test (for (a): a stale snapshot makes `check` report degraded naming the script)."
+  ],
+  "description": "Problem (observed 2026-11-24 on the gateway host): launchd agents dev.omp.auth-broker (pid 899) and dev.omp.auth-gateway (pid 3542, started 2026-11-22) run ~/.cache/benchbox/omp/18.16.0/darwin-arm64/omp, but .github/review.yml on origin/develop pins omp 18.20.0. The monitor has reported `broken` since 2026-11-20 and opened BenchBox issue #4417 (still open, no comments). docs/internal/review-gateway-host.md says to run `broker` and `gateway` at a quiet moment after a pin bump; that step was not done.\nSecond defect: the installed monitor snapshot ~/.omp/review-gateway/monitor-host.sh (written 2026-11-19 08:54) predates #4201 (dd159b5bc6, 2026-11-19), which renamed the GitHub environment and secrets to `review` / REVIEW_GATEWAY_TOKEN / REVIEW_GATEWAY_URL. The snapshot still checks the `oracle` environment, which no longer exists (environments: github-pages, pypi, review, test-pypi). So even after the omp fix, the monitor will keep reporting broken on the secrets check until `monitor-install` is re-run from a current checkout.\n\nOutcome: broker and gateway run the pinned omp, the monitor runs the current script, `check` is healthy, and #4417 is closed by the monitor.\n\nDecision gates: (1) owner picks a quiet moment: restarting the gateway fails any review attempt in flight (the hourly retry sweep re-runs it). Ask before running `broker`/`gateway`; these are owner-host actions. (2) Decide whether to prevent recurrence, and how: a) the monitor compares its own snapshot with origin/develop's _project/scripts/review_gateway_host.sh and reports degraded when they differ; b) a pin-bump PR checklist step; or c) nothing beyond the existing broken alert. Recommendation: (a), because the broken alert already fired here and sat for four days, while the stale snapshot would have hidden the next real secret problem.\n\nGuardrails: run the script only from a clean checkout of origin/develop (not the primary clone's working tree if it is behind). Never print or log gateway or broker tokens. Do not edit ~/.omp/review-gateway/* by hand; only the script writes them. Do not change clients.json grants or providers as part of this. Do not close #4417 by hand; the monitor closes it when healthy.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:85211dc6cc54201508c6fab8",
+      "at": "2026-11-24T13:59:39Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6b2f93052f55412288edebdd3126c6ee",
+      "session_id": "ba268bb399814e16b3d44ff7bdc73914"
+    }
+  ]
+}

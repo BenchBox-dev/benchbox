@@ -44221,6 +44221,13 @@
       "status": "open",
       "title": "Verify and complete the review and gate reliability TODO group"
     },
+    "review-gateway-host-behind-omp-pin-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Review gateway host still runs omp 18.16.0 after the pin moved to 18.20.0, and its monitor snapshot checks the retired oracle environment"
+    },
     "review-gateway-muse-login-lost-20261106": {
       "claim": null,
       "needs": [],
