@@ -27,49 +27,6 @@ NOT_CAPTURED = "not_captured"
 RESERVED_OPTION_KEYS = frozenset({"engine", "mode", "backend", "runtime", "executor", "warehouse"})
 
 
-@dataclass(frozen=True)
-class DeprecatedOptionAlias:
-    target: str
-    removed_in: str
-    engines: tuple[str | None, str] | None = None
-
-
-_DEPLOYMENT_ALIAS = DeprecatedOptionAlias(target="deployment", removed_in="0.6.0")
-
-
-DEPRECATED_OPTION_ALIASES: Mapping[tuple[str, str], DeprecatedOptionAlias] = MappingProxyType(
-    {
-        ("athena-spark", "engine_version"): DeprecatedOptionAlias(target="runtime_version", removed_in="0.6.0"),
-        ("dask", "use_distributed"): DeprecatedOptionAlias(
-            target="execution_engine", removed_in="0.6.0", engines=("threaded", "distributed")
-        ),
-        ("databend", "warehouse"): DeprecatedOptionAlias(target="compute_resource", removed_in="0.6.0"),
-        ("fabric_dw", "warehouse"): DeprecatedOptionAlias(target="database", removed_in="0.6.0"),
-        ("pg-duckdb", "force_execution"): DeprecatedOptionAlias(
-            target="execution_engine", removed_in="0.6.0", engines=("postgres", "duckdb")
-        ),
-        ("polars", "streaming"): DeprecatedOptionAlias(
-            target="execution_engine", removed_in="0.6.0", engines=(None, "streaming")
-        ),
-        ("snowflake", "warehouse"): DeprecatedOptionAlias(target="compute_resource", removed_in="0.6.0"),
-        ("snowpark-connect", "warehouse"): DeprecatedOptionAlias(target="compute_resource", removed_in="0.6.0"),
-        ("clickhouse", "deployment_mode"): _DEPLOYMENT_ALIAS,
-        ("clickhouse", "mode"): _DEPLOYMENT_ALIAS,
-        ("databend", "deployment_mode"): _DEPLOYMENT_ALIAS,
-        ("ducklake", "deployment_mode"): _DEPLOYMENT_ALIAS,
-        ("firebolt", "deployment_mode"): _DEPLOYMENT_ALIAS,
-        ("firebolt", "firebolt_mode"): _DEPLOYMENT_ALIAS,
-        ("influxdb", "deployment_mode"): _DEPLOYMENT_ALIAS,
-        ("influxdb", "mode"): _DEPLOYMENT_ALIAS,
-        ("lakesail", "deployment_mode"): _DEPLOYMENT_ALIAS,
-        ("lakesail", "sail_mode"): _DEPLOYMENT_ALIAS,
-        ("pg-duckdb", "deployment_mode"): _DEPLOYMENT_ALIAS,
-        ("timescaledb", "deployment_mode"): _DEPLOYMENT_ALIAS,
-        ("velox", "deployment"): _DEPLOYMENT_ALIAS,
-    }
-)
-
-
 class UnsupportedExecutionEngineError(ValueError):
     pass
 
@@ -118,18 +75,6 @@ def resolve_requested(platform: str, value: str) -> str:
     return value
 
 
-def legacy_option_engine(platform: str, option: str, enabled: bool) -> str | None:
-    from benchbox.core.deprecation_notices import warn_deprecated_alias
-
-    entry = DEPRECATED_OPTION_ALIASES.get((_manifest_platform_key(platform), option.lower()))
-    if entry is None or entry.engines is None:
-        return None
-    engine = entry.engines[1] if enabled else entry.engines[0]
-    if engine is not None:
-        warn_deprecated_alias(platform, option, f"'--execution-engine {engine}' (execution_engine='{engine}')")
-    return engine
-
-
 def platform_default_receipt(platform: str, requested: str) -> ExecutionEngineReceipt:
     if requested != DEFAULT_EXECUTION_ENGINE:
         raise _reject(platform, requested, [])
@@ -167,11 +112,9 @@ def reject_engine_bypassing_benchmark(benchmark: object, benchmark_name: str, pl
 
 __all__ = [
     "DEFAULT_EXECUTION_ENGINE",
-    "DEPRECATED_OPTION_ALIASES",
     "EXECUTION_ENGINE_CLASSES",
     "NOT_CAPTURED",
     "RESERVED_OPTION_KEYS",
-    "DeprecatedOptionAlias",
     "EngineBypassedByBenchmarkError",
     "ExecutionEngineHook",
     "ExecutionEngineReceipt",
@@ -179,7 +122,6 @@ __all__ = [
     "ExecutionEngineUnavailableError",
     "ObservedSource",
     "UnsupportedExecutionEngineError",
-    "legacy_option_engine",
     "platform_default_receipt",
     "reject_engine_bypassing_benchmark",
     "resolve_requested",

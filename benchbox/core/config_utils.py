@@ -9,6 +9,7 @@ from typing import Any, Optional, Union
 
 import yaml
 
+from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION
 from benchbox.platforms.clickhouse.deployment_mode import resolve_clickhouse_deployment_mode
 from benchbox.utils.database_naming import generate_database_filename
 from benchbox.utils.output_path import normalize_output_root
@@ -185,22 +186,23 @@ def build_platform_adapter_config(
         )
 
     elif platform in {"clickhouse", "clickhouse-local", "clickhouse-server"}:
-        if platform == "clickhouse-local":
-            cfg["deployment_mode"] = "local"
-        elif platform == "clickhouse-server":
-            cfg["deployment_mode"] = "server"
-        else:
-            cfg["deployment_mode"] = resolve_clickhouse_deployment_mode(
-                {
-                    "deployment_mode": get_value("deployment_mode"),
-                    "mode": get_value("mode"),
-                    "embedded": get_value("embedded"),
-                }
-            )
-        cfg["data_path"] = get_value("data_path", "/tmp/benchbox_ch_local")
-        cfg.setdefault("mode", cfg["deployment_mode"])
+        from benchbox.core.removed_options import first_removed_option_message
 
-        if cfg["deployment_mode"] == "server":
+        removed = first_removed_option_message(
+            "clickhouse", [key for key in ("deployment_mode", "mode", "embedded") if get_value(key) is not None]
+        )
+        if removed is not None:
+            raise ValueError(removed)
+        if platform == "clickhouse-local":
+            deployment = "local"
+        elif platform == "clickhouse-server":
+            deployment = "server"
+        else:
+            deployment = resolve_clickhouse_deployment_mode({})
+        cfg[DEPLOYMENT_SELECTOR_OPTION] = deployment
+        cfg["data_path"] = get_value("data_path", "/tmp/benchbox_ch_local")
+
+        if deployment == "server":
             cfg.update(
                 {
                     "host": get_value("host", "localhost"),
@@ -403,7 +405,7 @@ def get_builtin_defaults(platform: str, benchmark: str) -> dict[str, Any]:
     elif platform in {"clickhouse", "clickhouse-local", "clickhouse-server"}:
         defaults.update(
             {
-                "deployment_mode": "local" if platform in {"clickhouse", "clickhouse-local"} else "server",
+                DEPLOYMENT_SELECTOR_OPTION: "local" if platform in {"clickhouse", "clickhouse-local"} else "server",
                 "data_path": "/tmp/benchbox_ch_local",
             }
         )
@@ -433,13 +435,13 @@ def get_builtin_defaults(platform: str, benchmark: str) -> dict[str, Any]:
                 "host": None,
                 "username": None,
                 "password": None,
-                "cluster_identifier": None,
+                "compute_resource": None,
             }
         )
     elif platform == "snowflake":
         defaults.update(
             {
-                "warehouse": "COMPUTE_WH",
+                "compute_resource": "COMPUTE_WH",
                 "database": "BENCHBOX",
                 "schema": "PUBLIC",
                 "account": None,
