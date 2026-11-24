@@ -40128,6 +40128,13 @@
       "status": "dropped",
       "title": "Verify the complete PR process against incident replays and live operating targets"
     },
+    "pr-rerun-and-trunk-arm-gate-fail-on-github-5xx-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Retry transient GitHub 5xx errors in make pr-rerun and the pr-arm trunk gate"
+    },
     "pr-rerun-cannot-clear-duration-would-block-20261107": {
       "claim": null,
       "needs": [],

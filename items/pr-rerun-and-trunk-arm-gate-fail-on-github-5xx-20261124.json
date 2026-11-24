@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Test: a simulated 503 followed by success makes pr-rerun and the trunk gate succeed.",
+    "Test: a persistent 503 fails after the bounded retries with a message naming the endpoint and status.",
+    "Test: a 404 fails immediately without retry."
+  ],
+  "description": "## Problem\nOn 2026-11-24 `make pr-rerun PR=4491` stopped with \"pr-rerun refused: gh pr failed: HTTP 503\", and `make pr-arm` stopped with \"trunk-arm-gate: refusing: reading PR 4491 failed: HTTP 503\". pr-arm's main wait already backs off on transient GitHub failures (pr-arm-github-rate-limit-backoff-20261112), but these two calls do not use that handling.\n\n## Change\nRoute both calls through the existing transient-retry helper (scripts/gh_transient.py), with the same bounds as pr-arm.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check). Retry only 5xx, rate-limit and network errors, never 4xx; keep retries bounded and within WAIT for pr-arm.",
+  "links": [
+    "scripts/gh_transient.py",
+    "scripts/pr_arm.py",
+    "make/pr-landing.mk"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:22:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "906d5eca169f4c8ea9ad59c996802ffa",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    }
+  ]
+}
