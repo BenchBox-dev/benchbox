@@ -1,6 +1,6 @@
 {
   "acceptance": [
-    "Spike report records SHA-256 delimited parity after framing normalization (trailing pipe stripped) and DuckDB EXCEPT ALL bidirectional zero-row Parquet parity for all 8 TPC-H tables and all 24 TPC-DS tables at SF 0.01, 0.1, and 1.0, tested at --num-threads 1 and default threads.",
+    "Spike report is recorded in this tracker item (context_append / closing_note per [SESSION-STATE-001]) with SHA-256 delimited parity after framing normalization (trailing pipe stripped) and DuckDB EXCEPT ALL bidirectional zero-row Parquet parity for all 8 TPC-H tables and all 24 TPC-DS tables at SF 0.01, 0.1, and 1.0, tested at --num-threads 1 and default threads.",
     "Report explicitly documents TPC-DS fractional sub-scale behavior (vs tpcds_subscale_row_counts.json), NULL vs empty-string counts per column, and Latin-1/UTF-8 character handling under --compat c.",
     "Report records Parquet logical-type comparison against BaseFormatConverter (DECIMAL, DATE32, INT32/INT64, UTF8), physical layout differences (row-group size, encodings, statistics), and DuckDB/DataFusion query timing delta on Parquet scans.",
     "Report documents chunk file naming, stdout/streaming support for single-pass framing + compression, refresh-set support (TPC-H RF1/RF2 and TPC-DS -update), and confirmed wheel platform coverage (including Windows arm64 gap).",
@@ -23,6 +23,14 @@
       "client": "antigravity-client",
       "op": "create",
       "op_id": "d9a01002b87fd8a4c6e54982b8310c02",
+      "session_id": "85b2c240cd2b4c709f5c56393a05342d"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032",
+      "at": "2026-11-24T00:21:34Z",
+      "client": "antigravity-client",
+      "op": "update",
+      "op_id": "d9a02002b87fd8a4c6e54982b8310c02",
       "session_id": "85b2c240cd2b4c709f5c56393a05342d"
     }
   ]
