@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import functools
 import logging
 import threading
 import uuid
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -104,6 +105,17 @@ def exclude_probe_wall_time(total_seconds: float, probe_seconds: float) -> float
     return max(0.0, total_seconds - probe_seconds)
 
 
+def _rejecting_removed_keywords(from_config: Callable[..., Any]) -> Callable[..., Any]:
+    @functools.wraps(from_config)
+    def checked(cls: type, config: Mapping[str, Any], *args: Any, **kwargs: Any) -> Any:
+        if isinstance(config, Mapping):
+            reject_removed_adapter_keywords(cls, config)
+        return from_config(cls, config, *args, **kwargs)
+
+    checked.rejects_removed_keywords = True
+    return checked
+
+
 class _ManifestStreamCapability:
     def __get__(self, instance: Any, owner: type) -> StreamConnectionCapability:
         capability, _declared = resolve_stream_connection_capability(owner if instance is None else type(instance))
@@ -136,6 +148,14 @@ class PlatformAdapter(
     deployment_selected: str | None = None
     deployment_selected_class: str | None = None
     default_fetch_mode: str = FETCH_MODE_ROWS
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        declared = next(
+            (klass.__dict__["from_config"] for klass in cls.__mro__ if "from_config" in klass.__dict__), None
+        )
+        if isinstance(declared, classmethod) and not getattr(declared.__func__, "rejects_removed_keywords", False):
+            cls.from_config = classmethod(_rejecting_removed_keywords(declared.__func__))
 
     def __init__(self, **config):
         reject_removed_adapter_keywords(type(self), config)

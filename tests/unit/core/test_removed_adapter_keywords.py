@@ -32,3 +32,10 @@ def test_adapter_constructor_rejects_removed_keyword(platform: str, key: str) ->
     cls = _adapter_class(platform)
     with pytest.raises(TypeError, match=f"Platform option '{key}' for '{platform}' was removed in BenchBox 0.6.0"):
         cls(**{key: "x"})
+
+
+@pytest.mark.parametrize(("platform", "key"), ADAPTER_PAIRS)
+def test_adapter_from_config_rejects_removed_keyword(platform: str, key: str) -> None:
+    cls = _adapter_class(platform)
+    with pytest.raises(TypeError, match=f"Platform option '{key}' for '{platform}' was removed in BenchBox 0.6.0"):
+        cls.from_config({key: "x"})
