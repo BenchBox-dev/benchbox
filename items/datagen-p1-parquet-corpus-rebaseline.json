@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Local Parquet published-results bundles affected by the 122,880-row-group streaming Parquet layout change (DataFusion, local Spark, LakeSail) are re-run with non-null data_generation_hash stamping parquet_writer='benchbox-streaming' and parquet_row_group_size=122880 and submitted via PR against published-results.",
+    "Cloud Parquet bundles (BigQuery, Databricks, Snowflake; 9 bundles as of 2026-11-24) are explicitly documented as pre-re-baseline single-row-group layout (separated by data_generation_hash) with zero unapproved live-cloud spend, to be refreshed on their next scheduled cloud cycle.",
+    "Explorer / corpus comparability checks distinguish pre-re-baseline single-row-group Parquet runs from post-re-baseline 122,880-row-group runs via data_generation_hash with no silent apples-to-oranges mixing."
+  ],
+  "context": "Created 2026-11-24 after owner approved Option 1 (adopt 122,880 rows/row-group as the default Parquet layout across all runs and re-baseline the Parquet corpus) and authorized proceeding with Option A (re-run local Parquet suites while leaving the 9 cloud bundles marked pre-re-baseline). Baseline audit of origin/published-results on 2026-11-24 found 89 of 496 bundles referencing Parquet (DataFusion: 69, Spark: 7, LakeSail: 3, BigQuery: 3, Databricks: 3, Snowflake: 3, unknown: 1).",
+  "description": "## Problem\\nAdopting 122,880 rows/row-group as the default Parquet layout in `datagen-p1-streaming-parquet-converter` (owner Option 1 approval, 2026-11-24) changes Parquet-scan query timings by ~2.5x-6x relative to historical single-row-group Parquet files, per `docs/internal/adr/adr-benchbox-datagen.md`.\\n\\n## Change\\n- Re-count Parquet-using bundles on `origin/published-results` at execution time.\\n- Re-run affected local Parquet suites (`DataFusion`, local `Spark`, `LakeSail`) using the streaming 122,880-row-group Parquet converter once `bundle-data-generation-hash-missing-from-corpus` ensures every bundle exports `data_generation_hash`.\\n- Submit refreshed local bundles via PR to `published-results`.\\n- Record the remaining cloud Parquet bundles (`BigQuery`, `Databricks`, `Snowflake`) as pre-re-baseline layout (distinct `data_generation_hash`) without incurring unapproved live-cloud spend.\\n\\n## Guardrails\\n- Heavy benchmark runs execute exclusively via `make heavy-run` (`[HEAVY-LOCK-001]`).\\n- Never incur live-cloud spend without explicit owner approval.\\n- Never edit `published-results` directly; submit through the standard PR and validation pipeline.",
+  "links": [
+    "docs/internal/adr/adr-benchbox-datagen.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:d84499826d46cd4fe1e3cd0d",
+      "at": "2026-11-24T23:39:32Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "b7b0bc58322e4bf0a3b2617ff8f3051a",
+      "session_id": "225d565f6fd14bf58157e6eb4b9f29f9"
+    }
+  ]
+}

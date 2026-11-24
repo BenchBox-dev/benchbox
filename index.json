@@ -26579,6 +26579,16 @@
       "status": "done",
       "title": "Prototype vectorized Python/PyArrow generation on the slowest measured synthetic generator"
     },
+    "datagen-p1-parquet-corpus-rebaseline": {
+      "claim": null,
+      "needs": [
+        "datagen-p1-streaming-parquet-converter",
+        "bundle-data-generation-hash-missing-from-corpus"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Re-baseline local published Parquet corpus for 122,880-row-group streaming layout"
+    },
     "datagen-p1-provenance-and-backend-selector": {
       "claim": {
         "expires_at": "2026-11-25T18:19:40Z",
