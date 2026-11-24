@@ -21436,6 +21436,13 @@
       "status": "done",
       "title": "Measure complete PR lifecycles and repair missing-head CI accounting"
     },
+    "ci-binary-framing-job-cancelled-at-time-limit-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Find why the TPC-H binary framing CI job sometimes runs into its 15-minute limit and stops the required core check"
+    },
     "ci-cancelled-run-summary-jobs-hold-slots-20261025": {
       "claim": null,
       "needs": [],

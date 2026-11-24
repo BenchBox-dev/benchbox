@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "This item's context records per-OS duration figures (median, 95th percentile, maximum) from at least 50 runs and the step that runs long.",
+    "Either a fix lands that keeps the 95th-percentile duration under the limit with margin stated in the PR, or the owner's decision on the limit is recorded here.",
+    "A cancelled framing job leaves its log or a step summary that names the step it stopped in."
+  ],
+  "description": "## Problem\nThe 'TPC-H binary framing' job was cancelled at its 15-minute limit on macos-latest for PR #4491 (run 45457165961, 2026-11-24) and on Windows for PR #4464 (2026-11-23). Each time the required core check failed and the PR needed make pr-rerun. The macOS job log had expired by the time it was read.\n\n## Decision gate (owner)\nFirst collect the duration of this job per OS over the last 50 runs (gh api) and classify the long runs (queued time vs. run time, which step). Then: if the cause is a slow or stuck runner, propose detection or a retry rule; if a step is slow, fix the step. Any increase of the job's time limit needs the owner's approval with the duration data attached.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check).",
+  "links": [
+    ".github/workflows/ci.yml",
+    "https://github.com/BenchBox-dev/benchbox/actions/runs/45457165961"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:21:55Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "113e53f4fb0a42cb8182add2d7ef40ff",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    }
+  ]
+}
