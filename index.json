@@ -49981,6 +49981,13 @@
       "status": "done",
       "title": "Bootstrap Theseus repository governance and preserve the BenchBox source provenance"
     },
+    "theseus-retry-selection-import-cycle-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Theseus: importing retry or selection first fails with a circular import"
+    },
     "theseus-review-brief-binary-read-requirement-20261122": {
       "claim": null,
       "needs": [],

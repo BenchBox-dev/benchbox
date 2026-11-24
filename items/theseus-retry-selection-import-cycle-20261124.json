@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "`python -c 'import theseus_reviewer.retry'` and `python -c 'import theseus_reviewer.selection'` both succeed from a clean interpreter.",
+    "`pytest tests/unit/reviewer/test_retry.py` and `pytest tests/unit/reviewer/test_selection.py` each pass when run alone.",
+    "A test imports each theseus_reviewer module in a fresh subprocess and fails on any ImportError.",
+    "Full suite green; merged under the Theseus review rule."
+  ],
+  "description": "Problem: on Theseus main (139930e, and PR #108), collecting tests/unit/reviewer/test_retry.py or test_selection.py on its own fails with `ImportError: cannot import name 'PoolBlock' from partially initialized module 'theseus_reviewer.selection'`. The cycle is retry -> selection -> capacity -> promotion -> github -> retry. The full suite passes only because another module imports first. A production entry point that imports retry or selection first would fail the same way.\n\nDecision gate: confirm the cycle with `uv run -- python -c 'import theseus_reviewer.retry'` and `... selection` on current main before changing code; if neither fails from a clean interpreter, record the exact import order that does fail.\n\nGuardrails: break the cycle by moving the shared type or deferring one import at its use site; do not change behaviour, public names or persisted state formats; no lazy-import shims kept for compatibility.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:85211dc6cc54201508c6fab8",
+      "at": "2026-11-24T15:37:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d73e4811a02f38db208322812c54fb99",
+      "session_id": "ba268bb399814e16b3d44ff7bdc73914"
+    }
+  ]
+}
