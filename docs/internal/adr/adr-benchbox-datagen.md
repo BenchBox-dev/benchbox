@@ -58,11 +58,12 @@ non-quiesced development host; cutover enforcement requires 3-run medians
   `vector_search`, `coffeeshop`, `clickbench`, `tpch_skew`) were stopped at a
   45 s safety cap during SF 10 probing; their legacy SF 10 wall times are
   unmeasured (linearly projected at ~290–1,200 s from SF 1).
-- `joinorder_synthetic` (3.13 GiB at SF 1; registry max SF 2.0), `amplab`
-  (1.42 GiB at SF 1; registry max SF 1.0), and full-table SF 10
-  `BaseFormatConverter` Parquet conversion (1.06–2.18 GiB at SF 1) were
-  **skipped** at SF 10 rather than OOM-tested because linear projection places
-  their working sets above this host's 8 GiB heavy-work memory budget.
+- `joinorder_synthetic` (3.13 GiB at SF 1; standard `scale_options` up to 2.0,
+  unbounded max), `amplab` (1.42 GiB at SF 1; standard `scale_options` up to
+  1.0, unbounded max), and full-table SF 10 `BaseFormatConverter` Parquet
+  conversion (1.06–2.18 GiB at SF 1) were **skipped** at SF 10 rather than
+  OOM-tested because linear projection places their working sets above this
+  host's 8 GiB heavy-work memory budget.
 
 ### Empirical Validation Probes (2026-11-23 and 2026-11-24)
 
@@ -283,12 +284,12 @@ non-quiesced development host; cutover enforcement requires 3-run medians
 
 | Subsystem / Benchmark | SF 1 Wall Budget | SF 10 Wall Budget | SF 1 Peak RSS | SF 10 Peak RSS | Basis & Margin |
 | :--- | ---: | ---: | ---: | ---: | :--- |
-| Streaming `ParquetConverter` (all 11 benchmarks, incl. the 4 currently failing) | <= 6 s (successful baselines) / <= 10 s (repaired 4) | <= 60 s / <= 100 s *(benchmarks supporting SF 10; `amplab` evaluated at max SF 1, `joinorder_synthetic` at max SF 2)* | <= 512 MiB | <= 1,024 MiB *(where SF 10 supported)* | SF 1 successful baselines 1.45–5.56 s at 695–2,184 MiB RSS; streaming 122,880-row RGs bounds RAM O(1). |
+| Streaming `ParquetConverter` (all 11 benchmarks, incl. the 4 currently failing) | <= 6 s (successful baselines) / <= 10 s (repaired 4) | <= 60 s / <= 100 s | <= 512 MiB | <= 1,024 MiB | SF 1 successful baselines 1.45–5.56 s at 695–2,184 MiB RSS; streaming 122,880-row RGs bounds RAM O(1). |
 | `tpch` (`tpcgen-cli` delimited / direct Parquet) | <= 3 s / <= 5 s | <= 30 s / <= 50 s | <= 1,536 MiB (default threads) / <= 768 MiB (`-n 1`) | <= 2,048 MiB (or cap `--num-threads`) | SF 1 measured 1.34 s / 2.52 s (932 / 616 MiB on 10 CPUs); margin accounts for thread-scaled RSS. |
 | `tpcds` `SF >= 1` (`tpcgen-cli` delimited / direct Parquet) | <= 3 s / <= 5 s | <= 30 s / <= 50 s | <= 1,024 MiB | <= 2,048 MiB | SF 1 measured 0.91 s / 1.05 s (156 / 586 MiB on 10 CPUs). |
 | `h2odb`, `tsbs_devops`, `clickbench` (synthetic), `ssb`, `vector_search`, `coffeeshop` | <= 15 s (target <= 10 s) | <= 150 s (target <= 100 s) | <= 512 MiB | <= 512 MiB | Vectorized `h2odb` prototype measured 6.20 s / 389 MiB (SF 1) and 62.14 s / 396 MiB (SF 10); ~2x margin. |
 | `tpch_skew` | <= 15 s | <= 150 s | <= 512 MiB | <= 1,024 MiB | SF 1 baseline 43.56 s / 451 MiB; streaming skew over `tpcgen-cli` / chunked batches. |
-| `amplab`, `joinorder_synthetic` | <= 15 s | <= 150 s *(where scale supported; `joinorder_synthetic` max SF 2, `amplab` max SF 1)* | <= 512 MiB | <= 1,024 MiB | Streaming-architecture target (not extrapolated from `h2odb`); legacy SF 1 RSS is 1,423 / 3,133 MiB. |
+| `amplab`, `joinorder_synthetic` | <= 15 s | <= 150 s | <= 512 MiB | <= 1,024 MiB | Streaming-architecture target (not extrapolated from `h2odb`); legacy SF 1 RSS is 1,423 / 3,133 MiB. |
 
 ### Mandatory Validation Gates
 
@@ -325,13 +326,12 @@ every supported platform:
   per-table SHA-256 hashes and expected row counts (catching NumPy/PyArrow
   drift in CI). Never use arbitrary tolerance bands on deterministic output.
 - **Performance and memory gate (ownership and execution):** Wall time
-  (`mono_time()`) and peak RSS at SF 1 and SF 10 (or each benchmark's maximum
-  supported registry scale where lower than SF 10: SF 1 for `amplab`, SF 2 for
-  `joinorder_synthetic`) measured as `N=3` medians on a quiet host meeting the
-  table above. Owned and run by the PR author on the maintainer host via
-  `make heavy-run` (macOS arm64) and on the Linux CI/agent runner for PRs
-  touching the streaming converter, `tpcgen-cli` pin/adapter, or any rewritten
-  synthetic generator, with raw medians recorded in the PR body.
+  (`mono_time()`) and peak RSS at both SF 1 and SF 10 across all 11 in-scope
+  benchmarks (none has a registry upper scale cap) measured as `N=3` medians on
+  a quiet host meeting the table above. Owned and run by the PR author on the
+  maintainer host via `make heavy-run` (macOS arm64) and on the Linux CI/agent
+  runner for PRs touching the streaming converter, `tpcgen-cli` pin/adapter, or
+  any rewritten synthetic generator, with raw medians recorded in the PR body.
 
 ## Consequences
 
