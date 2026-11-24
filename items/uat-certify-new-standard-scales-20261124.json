@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Owner decision recorded with the cost estimate shown.",
+    "Either certified with a linked passing UAT run, or documented as uncertified on the site and in the matrix."
+  ],
+  "context": "Filed 2026-11-24 from the close-out of the scale and TPC-DI remediation (umbrella remediation-revised-plan-20261120, done 2026-11-23).",
+  "description": "## Problem\n#4455 (merged d8d51e9b59) made ClickBench 0.1 and 10 and Read Primitives 1 and 10 standard scales, and 13 ClickBench bundles became rankable. To keep UAT matrices unchanged, `UAT_UNCERTIFIED_SCALES` in `tests/uat/matrix.py` excludes those scales from the UAT ladders, pruned as `uat.ladder.<benchmark>.scale-not-certified`. Their evidence is generation only (logs in ~/Developer/benchmark_runs/std-scales-20261122/). Users now see standard scales that no UAT stage runs.\n\n## Change\nBring the choice to the owner with cost: per platform cell, the expected run time and memory at each scale. Then either add the UAT cells, run them, and remove the scales from `UAT_UNCERTIFIED_SCALES`; or keep the exclusion and state in the docs which standard scales are not UAT-certified.\n\n## Decision gates\n- Owner decides certify or document; no matrix change before that.\n- Added UAT time and any live-cloud spend are shown to the owner first; live cloud runs need explicit approval.\n\n## Verification rubric\nPass: either `UAT_UNCERTIFIED_SCALES` is empty and a passing UAT stage run including those cells is linked; or the owner's decision is recorded here and the docs name the uncertified standard scales.\n\n## Guardrails\n- Work in a linked worktree from `make worktree-create`; never write in the primary clone. Stage named paths only; commit as the pinned human identity with no agent attribution.\n- Push only after `make pr-preflight` passes on the exact head. Never `--no-verify`, force-push, or rewrite authorship.\n- Arm only with `make pr-arm`, once per head. A second attempt only when the refusal named a cause that is now fixed; a third needs the owner. `make pr-rerun` only for a job the runner cancelled or never ran, never to re-roll a failed test.\n- Never post a stand-in review. Resolve a review thread only after the bot has reviewed the new head and did not raise the finding again.\n- Heavy work only through `make heavy-run` or a lock-taking target. Never set `BENCHBOX_HEAVY_ADMIT=force`, `BENCHBOX_SKIP_TEST_LOCK` or `BENCHBOX_HEAVY_WATCHDOG=off`.\n- Any new limit, threshold, default or user-facing label is shown to the owner before it is committed.\n- Do not mark a test skip, xfail, quarantine or slow to make it pass.\n- Report only what merged and what was verified, with run ids and heads.",
+  "links": [
+    "tests/uat/matrix.py",
+    "tests/uat/phases/enumerate.py",
+    "site-doc-rows-labelled-not-comparable-owner-decision-20261120"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7df5251ec4291d5bac245463",
+      "at": "2026-11-24T14:27:10Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "88f7962a43f240b9a0881572f7f95ca2",
+      "session_id": "c81aa4dd49e04ffea4f29cb72ae09d11"
+    }
+  ]
+}

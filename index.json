@@ -53837,6 +53837,13 @@
       "status": "done",
       "title": "UAT boundary reset: certification wording reset OR explicit charter decision"
     },
+    "uat-certify-new-standard-scales-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Decide whether to UAT-certify ClickBench 0.1 and 10 and Read Primitives 1 and 10"
+    },
     "uat-charter-spec-drift-post-t11": {
       "claim": null,
       "needs": [],
