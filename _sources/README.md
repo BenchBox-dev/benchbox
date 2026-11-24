@@ -95,13 +95,10 @@ _sources/tpc-ds/
 
 ### TPC-DI Appendix SQL and EULA
 
-`_sources/tpc-di/` and `benchbox/_binaries/tpc-di/` hold the same six files, byte for byte, in a source checkout:
+`_sources/tpc-di/` and `benchbox/_binaries/tpc-di/` hold the same six files, byte for byte:
 `EULA.txt`, `NOTICE.txt` (line 1 is the legend "THE TPC SOFTWARE IS AVAILABLE WITHOUT CHARGE FROM TPC."),
 and the specification's audit (Appendix A), validation (Appendix B) and visibility (Appendix C) SQL:
 `tpcdi_audit.sql`, `tpcdi_validation.sql`, `tpcdi_visibility_1.sql`, `tpcdi_visibility_2.sql`.
-The four SQL files are excluded from the BenchBox 0.6.0 wheel and sdist (`MANIFEST.in`). The integrity manifest
-`SHA256MANIFEST.json` still lists them; `scripts/verify_distribution_binaries.py` requires their absence from
-distributions, and `appendix.py` raises an error naming the missing file when they are absent.
 The SQL files are never edited. `benchbox/core/tpcdi/appendix.py` translates them at load time with the
 SQLGlot fork through `translate_sql_query`, the entry point other BenchBox benchmarks use, reading them as the
 `postgres` dialect and emitting the target platform's dialect (an unknown platform is refused). The
