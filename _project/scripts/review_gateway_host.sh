@@ -725,10 +725,10 @@ dispatch_sweep() {
   last=$(cat "$SWEEP_FILE" 2>/dev/null || echo 0)
   case $last in '' | *[!0-9]*) last=0 ;; esac
   [ $((now - last)) -ge "$SWEEP_INTERVAL" ] || return 0
-  if gh api --method POST "repos/$REPO_SLUG/dispatches" -f event_type=review-sweep >/dev/null 2>&1; then
+  if gh workflow run review-verdict.yml --repo "$REPO_SLUG" --ref develop -f sweep=true >/dev/null 2>&1; then
     printf '%s\n' "$now" > "$SWEEP_FILE"
   else
-    echo "monitor: review-sweep dispatch failed"
+    echo "monitor: sweep dispatch failed"
   fi
 }
 
