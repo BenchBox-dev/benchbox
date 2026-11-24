@@ -25950,6 +25950,16 @@
       "status": "open",
       "title": "Vectorize over-budget Tier 3 synthetic generators in Python with Gate C acceptance reports"
     },
+    "datagen-p3-ssb-cutover": {
+      "claim": null,
+      "needs": [
+        "datagen-p2-ssb-versioned-migration",
+        "bundle-data-generation-hash-missing-from-corpus"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Cut over validated versioned SSB generator default while preserving v1 legacy reproducibility"
+    },
     "datagen-p3-tpc-default-cutover": {
       "claim": null,
       "needs": [
