@@ -44578,6 +44578,16 @@
       "status": "done",
       "title": "Retire the oracle-review notification workflow once the verdict's gate dispatch has proved reliable"
     },
+    "retire-published-results-mirror-and-freeze-20261124": {
+      "claim": null,
+      "needs": [
+        "submit-cli-target-develop-20261124",
+        "site-docs-corpus-target-develop-20261124"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Step 5 (post-release): retire published-results mirror/drift machinery and freeze branch read-only"
+    },
     "retire-sqlglot-duckdb-all-workaround": {
       "claim": null,
       "needs": [],

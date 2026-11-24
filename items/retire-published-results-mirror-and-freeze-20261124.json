@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Mirror and drift machinery removed from develop: sync-results-data-to-published.yml, submission-validator-drift-check.yml, scripts/check_submission_validator_sync.py, corpus-drift-check.yml, scripts/corpus_drift.py, ci.yml sync step, seed-corpus.yml published-results ledger recut, nightly-v2.yml published-results checks, slim-branch loader fallbacks, and obsolete tests/fixtures.",
+    "published-results branch is frozen read-only (not deleted, preserving accepted-bundle history) with a README and CONTRIBUTING notice pointing 0.5.x users to develop.",
+    "Superseded tracker items (such as mirror-validator-submission-guard-standard-scales-20261122 and any remaining published-results mirror items) and superseded PR #4481 (if still open) are closed/dropped."
+  ],
+  "context": "Step 5 of the owner-approved Option 1 corpus consolidation plan (2026-11-24). Must wait until after the core release shipping Step 3 and the corresponding benchbox-site release docs (Step 4) are live.",
+  "description": "## Problem\\nOnce `benchbox submit` and the published site docs direct contributors to `develop`, the entire `develop -> published-results` mirror and drift stack is obsolete maintenance overhead.\\n\\n## Change (Step 5 of 6 — post-release)\\n1. Remove `.github/workflows/sync-results-data-to-published.yml`, `.github/workflows/submission-validator-drift-check.yml`, `scripts/check_submission_validator_sync.py`, `.github/workflows/corpus-drift-check.yml`, `scripts/corpus_drift.py`, the `ci.yml` sync step and `published-results` rule, the `published-results` ledger recut in `seed-corpus.yml`, the `published-results` checks in `nightly-v2.yml`, the slim-branch stdlib file-loader fallbacks, and the ~30 obsolete test/fixture files.\\n2. Freeze `published-results` read-only with a README pointing 0.5.x users to `develop` (do not delete the branch; its history holds accepted bundles).\\n3. Close superseded tracker items and PR #4481 if still open.",
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T20:21:39Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "b1c2d3e4f5061728394a5b6c7d8e9f05",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    }
+  ]
+}
