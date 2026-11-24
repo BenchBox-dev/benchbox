@@ -316,6 +316,7 @@ class PgMooncakeAdapter(PostgreSQLAdapter):
 
                 cursor.execute(f"DROP TABLE IF EXISTS {qualified_staging}")
                 cursor.execute(rename)
+                cursor.execute(f"ALTER TABLE {qualified_staging} SET (autovacuum_enabled = false)")
                 connection.commit()
                 try:
                     cursor.execute(create)

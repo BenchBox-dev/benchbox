@@ -336,9 +336,10 @@ class TestPgMooncakeLoadPromotion:
         with patch.object(postgresql_module.PostgreSQLAdapter, "load_data", return_value=({"orders": 2}, 1.25, None)):
             adapter.load_data(Mock(), conn, tmp_path)
 
-        assert events[:4] == [
+        assert events[:5] == [
             'execute:DROP TABLE IF EXISTS "__bb_moon_src_orders"',
             'execute:ALTER TABLE "orders"',
+            'execute:ALTER TABLE "__bb_moon_src_orders" SET ',
             "commit",
             "execute:CALL mooncake.create_table",
         ]
@@ -361,11 +362,13 @@ class TestPgMooncakeLoadPromotion:
         assert executed == [
             'DROP TABLE IF EXISTS "__bb_moon_src_orders"',
             'ALTER TABLE "orders" RENAME TO "__bb_moon_src_orders"',
+            'ALTER TABLE "__bb_moon_src_orders" SET (autovacuum_enabled = false)',
             "CALL mooncake.create_table('orders', '__bb_moon_src_orders')",
             'SELECT COUNT(*) FROM "orders"',
             'DROP TABLE IF EXISTS "__bb_moon_src_orders"',
             'DROP TABLE IF EXISTS "__bb_moon_src_lineitem"',
             'ALTER TABLE "lineitem" RENAME TO "__bb_moon_src_lineitem"',
+            'ALTER TABLE "__bb_moon_src_lineitem" SET (autovacuum_enabled = false)',
             "CALL mooncake.create_table('lineitem', '__bb_moon_src_lineitem')",
             'SELECT COUNT(*) FROM "lineitem"',
             'DROP TABLE IF EXISTS "__bb_moon_src_lineitem"',
@@ -397,7 +400,7 @@ class TestPgMooncakeLoadPromotion:
         adapter = PgMooncakeAdapter()
         conn = Mock()
         cursor = Mock()
-        cursor.execute.side_effect = [None, None, RuntimeError("mirror creation failed"), None]
+        cursor.execute.side_effect = [None, None, None, RuntimeError("mirror creation failed"), None]
         conn.cursor.return_value = cursor
 
         with (
@@ -414,6 +417,7 @@ class TestPgMooncakeLoadPromotion:
         assert executed == [
             ('DROP TABLE IF EXISTS "__bb_moon_src_orders"',),
             ('ALTER TABLE "orders" RENAME TO "__bb_moon_src_orders"',),
+            ('ALTER TABLE "__bb_moon_src_orders" SET (autovacuum_enabled = false)',),
             ("CALL mooncake.create_table('orders', '__bb_moon_src_orders')",),
             ('ALTER TABLE "__bb_moon_src_orders" RENAME TO "orders"',),
         ]
@@ -454,6 +458,7 @@ class TestPgMooncakeLoadPromotion:
         conn = Mock()
         cursor = Mock()
         cursor.execute.side_effect = [
+            None,
             None,
             None,
             RuntimeError("channel closed"),
