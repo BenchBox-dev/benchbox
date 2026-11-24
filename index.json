@@ -42581,10 +42581,15 @@
       "title": "Dry-run release on 0.3.0-rc.1 to validate the 2-command flow end-to-end"
     },
     "release-from-replaced-develop-commit-has-no-artifact-20261101": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-25T20:42:53Z",
+        "generation": "c6bb878b239540ca8ceee5d1489823b4",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Nothing tells a releaser which develop commit has a Trunk run when the chosen commit was replaced"
     },
     "release-full-suite-canary-and-ruleset-drift": {
