@@ -577,9 +577,9 @@ class TestLoadScope:
         assert "load_scope" not in metrics
 
 
-def test_a_full_specification_tpcds_run_without_the_official_flag_gets_qphds_and_the_official_class() -> None:
+def test_a_full_specification_tpcds_run_without_the_official_flag_gets_qphds_and_no_official_class() -> None:
     payload = _payload(_phases(), 1.0, None)
 
-    assert payload["benchmark"]["compliance_class"] == "official"
+    assert "compliance_class" not in payload["benchmark"]
     assert payload["summary"]["tpc_metrics"]["qphds_at_size"] == EXPECTED_QPHDS
     assert "qphds_unavailable" not in payload["summary"]["tpc_metrics"]

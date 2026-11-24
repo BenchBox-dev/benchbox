@@ -78,6 +78,7 @@ def _result_payload(
     power_refresh: bool = True,
     evidenced: bool = False,
     stream_failure: bool = False,
+    validation_status: str | None = None,
 ) -> dict:
     builder = ResultBuilder(
         benchmark=BenchmarkInfoInput(
@@ -180,7 +181,10 @@ def _result_payload(
             ),
         )
     )
-    return build_result_payload(builder.build())
+    result = builder.build()
+    if validation_status is not None:
+        result.validation_status = validation_status
+    return build_result_payload(result)
 
 
 def test_duckdb_sf001_records_refresh_evidence_without_qphh() -> None:
@@ -402,12 +406,23 @@ def test_qphh_accepts_zero_duration_successful_refresh() -> None:
     assert result["refresh_included"] is True
 
 
-def test_a_full_specification_tpch_run_without_the_official_flag_gets_qphh_and_the_official_class() -> None:
+def test_a_full_specification_tpch_run_without_the_official_flag_gets_qphh_and_no_official_class() -> None:
     payload = _result_payload(1.0, None, evidenced=True)
 
-    assert payload["benchmark"]["compliance_class"] == "official"
+    assert "compliance_class" not in payload["benchmark"]
     assert payload["summary"]["tpc_metrics"]["qphh_at_size"] > 0
     assert "qphh_unavailable" not in payload["summary"]["tpc_metrics"]
+
+
+@pytest.mark.parametrize(
+    ("validation_status", "recorded"), [("PASSED", "official"), ("FAILED", None), ("NOT_RUN", None)]
+)
+def test_only_an_official_mode_run_whose_validation_passed_is_recorded_as_official(
+    validation_status: str, recorded: str | None
+) -> None:
+    payload = _result_payload(1.0, "official", evidenced=True, validation_status=validation_status)
+
+    assert payload["benchmark"].get("compliance_class") == recorded
 
 
 def test_failed_executed_stream_withholds_writer_qphh() -> None:

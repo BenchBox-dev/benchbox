@@ -51,6 +51,7 @@ from benchbox.core.results.subscale_policy import (
     SUBSCALE_COMPLIANCE_CLASS,
     UNOFFICIAL_COMPLIANCE_CLASSES,
     platform_info_gateway,
+    result_compliance_class,
     unofficial_metric_marker,
 )
 from benchbox.core.results.timer_scope import TIMING_METHOD_LEGACY
@@ -1783,17 +1784,26 @@ def _recorded_compliance_class(
     result: BenchmarkResults, phases_block: Mapping[str, Any], queries: list[dict[str, Any]]
 ) -> str | None:
     gateway = platform_info_gateway(getattr(result, "platform_info", None))
+    validation = str(getattr(result, "validation_status", None) or "").strip().lower()
     facts = corpus_rule.facts_from_result(
         {
             "benchmark": {"id": result.benchmark_id, "scale_factor": result.scale_factor},
             "platform": {"gateway": gateway},
             "phases": phases_block,
             "queries": queries,
+            "summary": {"validation": validation or None},
         }
     )
     if facts.gateway_routed:
         return NONSTANDARD_COMPLIANCE_CLASS
-    return RECORDED_COMPLIANCE_CLASS_BY_RULE_CLASS.get(corpus_rule.derive_outcome(facts).class_name)
+    recorded = RECORDED_COMPLIANCE_CLASS_BY_RULE_CLASS.get(corpus_rule.derive_outcome(facts).class_name)
+    if recorded == OFFICIAL_COMPLIANCE_CLASS and not (
+        result_compliance_class(result) == OFFICIAL_COMPLIANCE_CLASS
+        and validation == "passed"
+        and not facts.validation_failed
+    ):
+        return None
+    return recorded
 
 
 def _build_tpc_metrics(result: BenchmarkResults, compliance_class: str | None) -> dict[str, Any] | None:
