@@ -5,6 +5,7 @@
     "At least one existing or new test still fails closed: a run whose estimate exceeds the pinned available memory raises InsufficientMemoryError.",
     "The PR lists each changed test and why it runs a real benchmark."
   ],
+  "context": "Owner decision 2026-11-24 (choice dialog): pin available memory with a fixture for in-process MCP runs; pass --ignore-memory-warnings to CLI subprocess runs only if the parity comparison still matches, otherwise stop. No product-code test setting.",
   "description": "## Problem\nIntegration tests that run a real Polars benchmark through MCP or the CLI fail with InsufficientMemoryError when the host is busy, because the memory guard reads the host's live free memory. Seen 2026-11-24 in pr-preflight on two consecutive runs: tests/integration/test_execution_engine_recording.py::test_mcp_run_benchmark_records_requested_engine_and_collect_kwargs (both cases; also fails on develop code) and tests/integration/test_cli_mcp_result_parity.py::test_dataframe_runs_record_host_load_samples_from_both_entry_points[polars-df]. The same file's test_current_cli_and_mcp_bundles_with_compression_disabled_compare_as_the_same_mode[polars-df] also runs real Polars through both entry points. These tests are about engine recording and result parity, not about memory, so their outcome must not depend on other processes on the host.\n\n## Decision gate\nThe CLI half of the parity tests runs in a subprocess (tests/integration/_cli_e2e_utils.py::run_cli_command), so an in-process patch of get_available_memory_gb cannot reach it, and MCP run_benchmark has no ignore-memory option (benchmark.py run_benchmark parameters). Default: pin get_available_memory_gb with a shared fixture for in-process MCP runs; for CLI subprocess runs pass --ignore-memory-warnings only if the parity comparisons still compare equal (the flag is recorded in the run config). If they do not, stop and ask the owner. Find every affected test by searching tests/ for real DataFrame runs through run_benchmark, benchbox run or the dataframe benchmark mixin; list them in the PR.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check). Do not disable the guard in a global conftest, do not change the guard's product behaviour in this item (that is dataframe-memory-guard-overstates-small-runs-20261124), and keep at least one test that proves the guard refuses a real shortage.",
   "links": [
     "tests/integration/test_execution_engine_recording.py",
@@ -26,6 +27,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "8220ac01ea0747b9aa0bdefe9c68ef2e",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:41:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "7c3f0bc0b8cc4c66a3ffb76a50fe12a3",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
