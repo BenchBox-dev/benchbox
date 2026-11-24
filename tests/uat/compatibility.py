@@ -234,6 +234,16 @@ _SINGLESTORE_JOINORDER_RUNTIME_ENVELOPE_REASON = (
     "query fails with 1735/1777. JoinOrder is fixed at the IMDb data set, so no smaller scale exists."
 )
 
+_DORIS_JOINORDER_MEMORY_ENVELOPE_REASON = (
+    "doris JoinOrder SF1 is out of the release-gate envelope on the 6 GiB Doris container: on the runner's 6 GB "
+    "of physical memory the backend's process limit is 4.3 GB, and query 17d intermittently fails with "
+    "MEM_LIMIT_EXCEEDED 'Allocator sys memory check failed: Cannot alloc 918.67 MB' at 3.95 GB of process memory "
+    "(trunk UAT run 45155067627). That was the only failure in the cell's 452 executions and 17d passed in "
+    "another; the cell passed on the next trunk UAT run (45389336355) with the same image, container limit and "
+    "session settings. "
+    "JoinOrder is fixed at the IMDb data set, so no smaller scale exists."
+)
+
 _CEDARDB_TPCDS_OBT_SF1_DISK_ENVELOPE_REASON = (
     "cedardb TPC-DS OBT SF1 cannot be loaded within the release-host disk: the 5,041,336-row, 715-column table "
     "exhausted the 144 GiB runner disk in release UAT dry runs 3 and 4. A local SF1 Parquet COPY with the pinned "
@@ -499,6 +509,7 @@ _RELEASE_GATE_RUNTIME_ENVELOPES = (
         ("timescaledb", "tpcds_obt", 0.01): _POSTGRES_TPCDS_OBT_SF001_REASON.format(platform="TimescaleDB"),
         ("pg-mooncake", "tpcds_obt", 0.01): _PG_MOONCAKE_TPCDS_OBT_SF001_REASON,
         ("singlestore", "joinorder"): _SINGLESTORE_JOINORDER_RUNTIME_ENVELOPE_REASON,
+        ("doris", "joinorder"): _DORIS_JOINORDER_MEMORY_ENVELOPE_REASON,
         ("pyspark-df", "tpchavoc", 0.1): _PYSPARK_DF_TPCHAVOC_SF01_RUNTIME_ENVELOPE_REASON,
     }
 )
@@ -525,6 +536,10 @@ _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
             "singlestore",
             "joinorder",
         ): "release UAT dry run 2 (run 41163626947) terminal=timeout at 1200s; local SF1 rerun 2026-11-07: kernel oom-kill of memsqld during query 7c on the 4 GiB stack",
+        (
+            "doris",
+            "joinorder",
+        ): "trunk UAT run 45155067627 stage 3 olap: query 17d MEM_LIMIT_EXCEEDED in 1 of 452 executions; trunk UAT run 45389336355 stage 3 olap: the same cell passed",
         (
             "sqlite",
             "datavault",

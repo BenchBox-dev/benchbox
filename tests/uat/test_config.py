@@ -520,6 +520,7 @@ _DOCKER_SF1_TIMEOUT_PRUNED_CELLS = {
     ),
     "release-gate-03-docker-oltp.yaml": frozenset(
         {
+            ("doris", "joinorder", 0.01),
             ("pg-duckdb", "joinorder", 0.01),
             ("postgresql", "joinorder", 0.01),
             ("singlestore", "joinorder", 0.01),
@@ -570,6 +571,7 @@ _DOCKER_NON_TIMEOUT_ENVELOPE_CELLS = frozenset(
         ("cedardb", "vector_search", 0.01),
         ("cedardb", "vector_search", 0.1),
         ("cedardb", "vector_search", 1.0),
+        ("doris", "joinorder", 0.01),
         ("presto", "joinorder", 0.01),
         ("trino", "joinorder", 0.01),
         ("questdb", "tpcds_obt", 0.01),
