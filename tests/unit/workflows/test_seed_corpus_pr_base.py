@@ -600,6 +600,24 @@ def test_internal_staging_writes_internal_manifest_matching_staged_bytes(tmp_pat
     }
 
 
+@pytest.mark.parametrize("internal_manifest", [False, True])
+def test_seed_staging_preserves_known_defect_evidence(tmp_path: Path, internal_manifest: bool) -> None:
+    defects = ["defective-variant-or-loader-wrong-result"]
+    process, destination = _stage_bundle(
+        tmp_path,
+        _clean_payload(),
+        (".manifest.json",),
+        internal_manifest=internal_manifest,
+        companion_payloads={".manifest.json": {"known_defects": defects}},
+    )
+
+    assert process.returncode == 0, process.stderr
+    path = destination / "bundle.json"
+    manifest = json.loads(path.with_suffix(".manifest.json").read_text(encoding="utf-8"))
+    assert manifest["known_defects"] == defects
+    assert manifest["bundle_hash"] == hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def test_seed_staging_writes_no_manifest_by_default(tmp_path: Path) -> None:
     process, destination = _stage_bundle(tmp_path, _local_run_payload())
 

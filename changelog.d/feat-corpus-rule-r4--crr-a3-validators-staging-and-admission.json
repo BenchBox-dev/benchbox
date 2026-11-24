@@ -4,7 +4,7 @@
     {
       "category": "changed",
       "breaking": false,
-      "text": "Seed-corpus staging, the corpus validator and the submission validator decide admission and ranking from the corpus rule instead of the stored compliance class: non-standard-scale results stage and validate as admitted and unranked, and TPC results carrying a stale class stamp at a standard scale rank. Parity and lane-canary tests keep every path on the same outcome."
+      "text": "Seed-corpus staging and both validators use result facts, not the stored compliance class, to decide admission and ranking. Nonstandard-scale results can be admitted without being ranked, and staging preserves known-defect holds. A standard-scale TPC run can rank even when its recorded class is stale."
     }
   ]
 }
