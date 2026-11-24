@@ -25882,12 +25882,17 @@
       "title": "Complete Tier 1 tpcgen-cli parity, sub-scale, Parquet-type, and refresh-set spike"
     },
     "datagen-p0-vectorization-prototype": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-25T04:04:04Z",
+        "generation": "ad9683d4f9c44a42998312c75d301c9a",
+        "renewals": 0,
+        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:3fd3f8b8ff408dfc76e35032"
+      },
       "needs": [
         "datagen-p0-baseline-measurements"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Prototype vectorized Python/PyArrow generation on the slowest measured synthetic generator"
     },
     "datagen-p1-provenance-and-backend-selector": {
