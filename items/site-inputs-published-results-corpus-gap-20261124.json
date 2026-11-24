@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Owner decides whether scripts/site_inputs.py should consume a pinned published-results archive commit or whether published-only Explorer ingestion in adr-independent-publication-authorities.md and adr-published-results-slim-corpus-branch.md is formally superseded.",
+    "Code and ADRs match the settled owner decision with no silent contradiction."
+  ],
+  "context": "Surfaced during ADR reconciliation on 2026-11-24: adr-site-repo-split.md D12 retired the publication manifest control plane, and scripts/site_inputs.py builds the Explorer site-inputs bundle from results-data/ on develop, whereas adr-published-results-slim-corpus-branch.md and adr-independent-publication-authorities.md still name published-results as the complete accepted archive.",
+  "description": "## Problem\\n`docs/internal/adr/adr-published-results-slim-corpus-branch.md` and `docs/internal/adr/adr-independent-publication-authorities.md` name `published-results` as the complete accepted Phase 2 archive whose validator-clean results feed the Explorer. However, `adr-site-repo-split.md` D12 retired the legacy publication manifest control plane, and `scripts/site_inputs.py` currently builds the attested Explorer site-inputs bundle exclusively from `results-data/` on `develop`. Any bundle accepted only on `published-results` is therefore omitted from the deployed Explorer.\\n\\n## Change\\nPresent the tradeoff to the owner and either (a) extend `scripts/site_inputs.py` to consume a pinned `published-results` commit, or (b) formally supersede published-only Explorer ingestion in the ADRs and update the contributor guide accordingly.",
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T15:31:53Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "c92a1092c6484a4e83735b99c30d1bfd",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    }
+  ]
+}
