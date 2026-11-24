@@ -44314,7 +44314,9 @@
     },
     "review-provider-loss-resilience-20261106": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "review-classifier-degraded-remediation-20261124"
+      ],
       "priority": "critical",
       "status": "open",
       "title": "Losing one model provider must never stop reviews or merges"
