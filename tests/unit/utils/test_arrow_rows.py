@@ -3,12 +3,15 @@ from __future__ import annotations
 import csv
 import io
 import random
+import time
 from datetime import date, datetime
 from decimal import Decimal
 
+import pyarrow.csv as pacsv
 import pytest
 
-from benchbox.utils.arrow_rows import ArrowRowWriter
+from benchbox.utils.arrow_rows import ArrowRowWriter, open_csv_over_stream
+from tests.unit.endless_csv_stream import EndlessStream
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -81,3 +84,30 @@ def test_exception_in_block_does_not_flush_partial_batch():
             writer.writerow([1, "a"])
             raise RuntimeError("boom")
     assert sink.getvalue() == b""
+
+
+def test_abandoned_reader_never_reads_a_closed_stream():
+    late = 0
+    for _ in range(10):
+        stream = EndlessStream(b"", b"1,2\n")
+        with open_csv_over_stream(
+            stream, read_options=pacsv.ReadOptions(block_size=1 << 12, column_names=["a", "b"])
+        ) as reader:
+            assert next(iter(reader)).num_rows > 0
+        stream.close()
+        time.sleep(0.05)
+        late += stream.reads_after_close
+    assert late == 0
+
+
+def test_reader_exception_propagates_and_stream_is_released():
+    stream = EndlessStream(b"", b"1,2\n")
+    with pytest.raises(RuntimeError, match="boom"):
+        with open_csv_over_stream(
+            stream, read_options=pacsv.ReadOptions(block_size=1 << 12, column_names=["a", "b"])
+        ) as reader:
+            next(iter(reader))
+            raise RuntimeError("boom")
+    stream.close()
+    time.sleep(0.05)
+    assert stream.reads_after_close == 0
