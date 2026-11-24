@@ -30,6 +30,16 @@
       "op": "update",
       "op_id": "774dfa1359ed4db28c069ac6c643fdad",
       "session_id": "24cca4279aeb4583a89b2c57ce255d32"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T16:40:13Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e8526faa0e732223dd79589d",
+      "op": "recover",
+      "op_id": "c781d164e62b4af4b11cf24be6879342",
+      "reason": "The leader's previous MCP server process ended with its agent session; the same leader resumed under a new server identity and cannot use the old one.",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
 }
