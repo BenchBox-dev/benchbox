@@ -83,6 +83,7 @@ class ClickHouseMetadataMixin:
             "verbose_enabled",
             "very_verbose",
             "optimize_after_load",
+            "force_recreate",
         ]:
             if key in config:
                 adapter_config[key] = config[key]
