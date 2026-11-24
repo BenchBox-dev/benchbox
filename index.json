@@ -34227,15 +34227,10 @@
       "title": "Umbrella: load-path live fixes batch (Databend, DuckDB Iceberg, QuestDB ILP x2, InfluxDB compressed TSBS)"
     },
     "load-test-executor-high-concurrency-flake-20261123": {
-      "claim": {
-        "expires_at": "2026-11-25T19:09:17Z",
-        "generation": "59d56309be9a4f598ce5a33744118b47",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "test_high_concurrency fails by chance when no stream starts within 0.5 s"
     },
     "loader-dialect-source-and-pandas-null-groups": {
