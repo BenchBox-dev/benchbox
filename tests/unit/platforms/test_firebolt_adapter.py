@@ -49,7 +49,7 @@ class TestFireboltAdapterInitialization:
                 client_id="test_client_id",
                 client_secret="test_client_secret",
                 account_name="test_account",
-                engine_name="test_engine",
+                compute_resource="test_engine",
                 database="cloud_db",
             )
         except ImportError:
@@ -69,7 +69,7 @@ class TestFireboltAdapterInitialization:
                 client_id="test_client_id",
                 client_secret="test_client_secret",
                 account_name="test_account",
-                engine_name="test_engine",
+                compute_resource="test_engine",
                 api_endpoint="custom.api.firebolt.io",
             )
         except ImportError:
@@ -84,7 +84,7 @@ class TestFireboltAdapterInitialization:
                 client_id="test_client_id",
                 client_secret="test_client_secret",
                 account_name="acct",
-                engine_name="engine",
+                compute_resource="engine",
             )
         except ImportError:
             pytest.skip("Firebolt SDK not installed")
@@ -94,7 +94,7 @@ class TestFireboltAdapterInitialization:
     def test_initialization_invalid_mode(self):
         try:
             with pytest.raises(ValueError):
-                FireboltAdapter(deployment_mode="invalid")
+                FireboltAdapter(_deployment_selector="invalid")
         except ImportError:
             pytest.skip("Firebolt SDK not installed")
 
@@ -115,7 +115,7 @@ class TestFireboltAdapterInitialization:
         try:
             with pytest.raises(ConfigurationError, match="Firebolt Cloud configuration is incomplete"):
                 FireboltAdapter(
-                    deployment_mode="cloud",
+                    _deployment_selector="cloud",
                     client_id="id",
                     client_secret="secret",
                     account_name="acct",
@@ -149,7 +149,7 @@ class TestFireboltConnectionParameters:
                 client_id="test_client_id",
                 client_secret="test_client_secret",
                 account_name="test_account",
-                engine_name="test_engine",
+                compute_resource="test_engine",
                 database="cloud_db",
             )
         except ImportError:
@@ -202,7 +202,7 @@ class TestFireboltConnection:
                 client_id="test_client_id",
                 client_secret="test_client_secret",
                 account_name="test_account",
-                engine_name="test_engine",
+                compute_resource="test_engine",
                 database="cloud_db",
             )
         except ImportError:
@@ -532,7 +532,7 @@ class TestFireboltPlatformInfo:
                 client_id="test_client_id",
                 client_secret="test_client_secret",
                 account_name="test_account",
-                engine_name="test_engine",
+                compute_resource="test_engine",
                 database="cloud_db",
             )
         except ImportError:
@@ -663,7 +663,7 @@ class TestFireboltFromConfig:
             "client_id": "test_client_id",
             "client_secret": "test_client_secret",
             "account_name": "test_account",
-            "engine_name": "test_engine",
+            "compute_resource": "test_engine",
             "database": "cloud_db",
             "benchmark": "tpch",
             "scale_factor": 1.0,
@@ -720,7 +720,7 @@ class TestFireboltDatabaseOperations:
                 client_id="id",
                 client_secret="secret",
                 account_name="acct",
-                engine_name="engine",
+                compute_resource="engine",
             )
         except ImportError:
             pytest.skip("Firebolt SDK not installed")
@@ -788,7 +788,7 @@ class TestFireboltResultCacheControl:
                 client_id="test_client_id",
                 client_secret="test_client_secret",
                 account_name="test_account",
-                engine_name="test_engine",
+                compute_resource="test_engine",
                 disable_result_cache=True,
             )
         except ImportError:
@@ -826,7 +826,7 @@ class TestFireboltResultCacheControl:
                 client_id="test_client_id",
                 client_secret="test_client_secret",
                 account_name="test_account",
-                engine_name="test_engine",
+                compute_resource="test_engine",
             )
         except ImportError:
             pytest.skip("Firebolt SDK not installed")
@@ -847,7 +847,7 @@ class TestFireboltResultCacheControl:
                 client_id="test_client_id",
                 client_secret="test_client_secret",
                 account_name="test_account",
-                engine_name="test_engine",
+                compute_resource="test_engine",
                 strict_validation=False,
             )
         except ImportError:
@@ -918,7 +918,7 @@ class TestFireboltAdminConnection:
                 client_id="test_client_id",
                 client_secret="test_client_secret",
                 account_name="test_account",
-                engine_name="test_engine",
+                compute_resource="test_engine",
                 database="user_db",
             )
         except ImportError:
@@ -963,7 +963,7 @@ class TestFireboltPlatformMetadata:
                 client_id="test_client_id",
                 client_secret="test_client_secret",
                 account_name="test_account",
-                engine_name="test_engine",
+                compute_resource="test_engine",
             )
         except ImportError:
             pytest.skip("Firebolt SDK not installed")

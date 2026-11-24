@@ -29,7 +29,7 @@ def _fabric_stubs(monkeypatch):
 def adapter(_fabric_stubs):
     return FabricWarehouseAdapter(
         workspace="ws-guid",
-        warehouse="test_wh",
+        database="test_wh",
         auth_method="default_credential",
     )
 
@@ -39,7 +39,7 @@ class TestServicePrincipalValidation:
         with pytest.raises(ConfigurationError, match="client_id"):
             FabricWarehouseAdapter(
                 workspace="ws",
-                warehouse="wh",
+                database="wh",
                 auth_method="service_principal",
                 client_secret="s",
                 tenant_id="t",
@@ -49,7 +49,7 @@ class TestServicePrincipalValidation:
         with pytest.raises(ConfigurationError, match="client_secret"):
             FabricWarehouseAdapter(
                 workspace="ws",
-                warehouse="wh",
+                database="wh",
                 auth_method="service_principal",
                 client_id="c",
                 tenant_id="t",
@@ -59,7 +59,7 @@ class TestServicePrincipalValidation:
         with pytest.raises(ConfigurationError, match="tenant_id"):
             FabricWarehouseAdapter(
                 workspace="ws",
-                warehouse="wh",
+                database="wh",
                 auth_method="service_principal",
                 client_id="c",
                 client_secret="s",
@@ -125,7 +125,7 @@ class TestCreateSchema:
         assert elapsed >= 0
 
     def test_non_dbo_schema_creates_schema(self, _fabric_stubs):
-        adp = FabricWarehouseAdapter(workspace="ws", warehouse="wh", auth_method="default_credential", schema="bench")
+        adp = FabricWarehouseAdapter(workspace="ws", database="wh", auth_method="default_credential", schema="bench")
         mock_cursor = MagicMock()
         mock_conn = MagicMock()
         mock_conn.cursor.return_value = mock_cursor
@@ -333,24 +333,18 @@ class TestCreateSchemaDdl:
 
 
 class TestFromConfig:
-    def test_warehouse_key_used_as_database(self, _fabric_stubs):
+    def test_database_key_is_used(self, _fabric_stubs):
         config = {
             "workspace": "ws-guid",
-            "warehouse": "my_wh",
+            "database": "my_wh",
             "auth_method": "default_credential",
         }
         adp = FabricWarehouseAdapter.from_config(config)
         assert adp.database == "my_wh"
 
-    def test_database_key_takes_precedence_over_warehouse(self, _fabric_stubs):
-        config = {
-            "workspace": "ws-guid",
-            "warehouse": "my_wh",
-            "database": "explicit_db",
-            "auth_method": "default_credential",
-        }
-        adp = FabricWarehouseAdapter.from_config(config)
-        assert adp.database == "explicit_db"
+    def test_removed_warehouse_keyword_is_rejected(self, _fabric_stubs):
+        with pytest.raises(TypeError, match="'warehouse'.*'database'"):
+            FabricWarehouseAdapter(workspace="ws-guid", warehouse="my_wh", auth_method="default_credential")
 
 
 class TestConfigureForBenchmark:

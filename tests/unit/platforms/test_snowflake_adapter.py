@@ -33,7 +33,7 @@ class TestSnowflakeAdapter:
                 account="test_account",
                 username="test_user",
                 password="test_pass",
-                warehouse="TEST_WH",
+                compute_resource="TEST_WH",
                 database="TEST_DB",
                 schema="TEST_SCHEMA",
             )
@@ -107,7 +107,7 @@ class TestSnowflakeAdapter:
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             role="TEST_ROLE",
         )
@@ -136,7 +136,7 @@ class TestSnowflakeAdapter:
             "account": "test_account",
             "username": "test_user",
             "password": "test_pass",
-            "warehouse": "TEST_WH",
+            "compute_resource": "TEST_WH",
             "tuning_config": None,
         }
 
@@ -154,7 +154,7 @@ class TestSnowflakeAdapter:
             "account": "test_account",
             "username": "test_user",
             "password": "test_pass",
-            "warehouse": "TEST_WH",
+            "compute_resource": "TEST_WH",
             "database": "CUSTOM_DATABASE",
         }
 
@@ -193,7 +193,7 @@ class TestSnowflakeAdapter:
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -233,7 +233,7 @@ class TestSnowflakeAdapter:
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             private_key_path=str(key_path),
         )
@@ -258,7 +258,7 @@ class TestSnowflakeAdapter:
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
         adapter._validate_database_compatibility = Mock(
@@ -284,7 +284,7 @@ class TestSnowflakeAdapter:
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -311,7 +311,7 @@ class TestSnowflakeAdapter:
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -328,7 +328,7 @@ class TestSnowflakeAdapter:
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -347,7 +347,7 @@ class TestSnowflakeAdapter:
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -363,7 +363,7 @@ class TestSnowflakeAdapter:
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -381,7 +381,7 @@ class TestSnowflakeAdapter:
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -413,7 +413,7 @@ benchbox-fixture-key-material
                 account="test_account",
                 username="test_user",
                 password="test_pass",
-                warehouse="TEST_WH",
+                compute_resource="TEST_WH",
                 database="TEST_DB",
                 private_key_path=key_path,
             )
@@ -458,7 +458,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -483,7 +483,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -530,7 +530,7 @@ benchbox-fixture-key-material
                 account="test_account",
                 username="test_user",
                 password="test_pass",
-                warehouse="TEST_WH",
+                compute_resource="TEST_WH",
                 database="TEST_DB",
             )
 
@@ -575,7 +575,7 @@ benchbox-fixture-key-material
                 account="test_account",
                 username="test_user",
                 password="test_pass",
-                warehouse="TEST_WH",
+                compute_resource="TEST_WH",
                 database="TEST_DB",
             )
 
@@ -598,7 +598,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -613,7 +613,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -631,7 +631,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
             staging_root="s3://benchbox-stage-root",
@@ -668,7 +668,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
             staging_root="s3://benchbox-stage-root/external-prefix",
@@ -701,7 +701,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
             staging_root="s3://benchbox-stage-root/external-prefix",
@@ -726,7 +726,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
             staging_root="s3://benchbox-stage-root",
@@ -756,7 +756,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
             staging_root="s3://bucket/it's-a-path",
@@ -798,7 +798,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
             compression="GZIP",
@@ -818,7 +818,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
         )
@@ -841,7 +841,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
         )
@@ -860,7 +860,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
         )
@@ -877,7 +877,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
         )
@@ -894,7 +894,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
         )
@@ -913,7 +913,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
         )
@@ -938,7 +938,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
         )
@@ -966,7 +966,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
         )
@@ -992,7 +992,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -1017,7 +1017,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
         )
@@ -1061,7 +1061,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
         )
@@ -1091,7 +1091,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             strict_validation=False,
         )
@@ -1116,7 +1116,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             multi_cluster_warehouse=True,
             modify_warehouse_settings=True,
@@ -1140,9 +1140,9 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
-            warehouse_size="LARGE",
+            compute_size="LARGE",
             auto_suspend=120,
             auto_resume=False,
             modify_warehouse_settings=True,
@@ -1169,7 +1169,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -1201,7 +1201,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             verbose_level=1,
         )
@@ -1222,7 +1222,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -1248,7 +1248,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -1274,7 +1274,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -1343,7 +1343,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -1376,7 +1376,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -1401,7 +1401,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -1435,7 +1435,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -1459,7 +1459,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             edition="enterprise",
         )
@@ -1535,7 +1535,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -1561,7 +1561,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -1578,7 +1578,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -1592,7 +1592,7 @@ benchbox-fixture-key-material
                 account="test_account",
                 username="test_user",
                 password="test_pass",
-                warehouse="TEST_WH",
+                compute_resource="TEST_WH",
                 database="TEST_DB",
             )
 
@@ -1611,7 +1611,7 @@ benchbox-fixture-key-material
                 account="test_account",
                 username="test_user",
                 password="test_pass",
-                warehouse="TEST_WH",
+                compute_resource="TEST_WH",
                 database="TEST_DB",
             )
 
@@ -1643,7 +1643,7 @@ benchbox-fixture-key-material
                 account="test_account",
                 username="test_user",
                 password="test_pass",
-                warehouse="TEST_WH",
+                compute_resource="TEST_WH",
                 database="TEST_DB",
             )
 
@@ -1662,7 +1662,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
         )
 
@@ -1707,7 +1707,7 @@ benchbox-fixture-key-material
                 account="test_account",
                 username="test_user",
                 password="test_pass",
-                warehouse="TEST_WH",
+                compute_resource="TEST_WH",
                 database="TEST_DB",
             )
 
@@ -1730,7 +1730,7 @@ benchbox-fixture-key-material
                 account="test_account",
                 username="test_user",
                 password="test_pass",
-                warehouse="TEST_WH",
+                compute_resource="TEST_WH",
                 database="TEST_DB",
             )
 
@@ -1756,7 +1756,7 @@ benchbox-fixture-key-material
                 account="test_account",
                 username="test_user",
                 password="test_pass",
-                warehouse="TEST_WH",
+                compute_resource="TEST_WH",
                 database="TEST_DB",
             )
 
@@ -1773,7 +1773,7 @@ class TestSnowflakeSchemaDdl:
     @staticmethod
     def _executed(ddl):
         with patch("benchbox.platforms.snowflake.snowflake"):
-            adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+            adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
         cursor = Mock()
         connection = Mock()
         connection.cursor.return_value = cursor
@@ -1818,7 +1818,7 @@ class TestSnowflakeSchemaDdl:
 class TestSnowflakeBuildCtasSortSql:
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_ctas_sort_generates_correct_sql(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         mock_col1 = Mock()
         mock_col1.name = "l_shipdate"
@@ -1832,7 +1832,7 @@ class TestSnowflakeBuildCtasSortSql:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_ctas_sort_returns_none_when_off(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         with patch.object(adapter, "resolve_sorted_ingestion_strategy", return_value=("off", "auto")):
             result = adapter._build_ctas_sort_sql("LINEITEM", [Mock(name="col1")])
@@ -1841,7 +1841,7 @@ class TestSnowflakeBuildCtasSortSql:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_ctas_sort_rejects_non_ctas_method(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         with patch.object(adapter, "resolve_sorted_ingestion_strategy", return_value=("on", "presort")):
             with pytest.raises(ValueError, match="not supported for Snowflake"):
@@ -1851,7 +1851,7 @@ class TestSnowflakeBuildCtasSortSql:
 class TestSnowflakeShouldSkipSchemaCreation:
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_skips_when_all_tables_exist_with_data(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         mock_connection = Mock()
         mock_cursor = Mock()
@@ -1871,7 +1871,7 @@ class TestSnowflakeShouldSkipSchemaCreation:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_does_not_skip_when_table_is_missing(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         mock_connection = Mock()
         mock_cursor = Mock()
@@ -1886,7 +1886,7 @@ class TestSnowflakeShouldSkipSchemaCreation:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_does_not_skip_when_table_is_empty(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         mock_connection = Mock()
         mock_cursor = Mock()
@@ -1904,7 +1904,7 @@ class TestSnowflakeShouldSkipSchemaCreation:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_does_not_skip_when_no_expected_tables(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         mock_connection = Mock()
         with patch.object(adapter, "_get_expected_tables", return_value=[]):
@@ -1914,7 +1914,7 @@ class TestSnowflakeShouldSkipSchemaCreation:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_returns_false_on_exception(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         mock_connection = Mock()
         mock_connection.cursor.side_effect = Exception("DB unavailable")
@@ -1928,7 +1928,7 @@ class TestSnowflakeShouldSkipSchemaCreation:
 class TestSnowflakeGetExistingTables:
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_returns_lowercase_table_names(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         mock_connection = Mock()
         mock_cursor = Mock()
@@ -1946,7 +1946,7 @@ class TestSnowflakeGetExistingTables:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_returns_empty_list_on_failure(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         mock_connection = Mock()
         mock_connection.cursor.side_effect = Exception("Permission denied")
@@ -1959,7 +1959,7 @@ class TestSnowflakeGetExistingTables:
 class TestSnowflakeValidateDataIntegrity:
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_passed_when_all_tables_accessible(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         mock_connection = Mock()
         mock_cursor = Mock()
@@ -1983,7 +1983,7 @@ class TestSnowflakeValidateDataIntegrity:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_quoted_lowercase_tables_accessible(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         mock_connection = Mock()
         mock_cursor = Mock()
@@ -2000,7 +2000,7 @@ class TestSnowflakeValidateDataIntegrity:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_failed_when_table_inaccessible(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         mock_connection = Mock()
         mock_cursor = Mock()
@@ -2023,7 +2023,7 @@ class TestSnowflakeValidateSessionCacheControl:
             account="a",
             username="u",
             password="p",
-            warehouse="WH",
+            compute_resource="WH",
             database="DB",
             disable_result_cache=True,
             strict_validation=False,
@@ -2060,7 +2060,7 @@ class TestSnowflakeGetPlatformInfo:
             account="test_account",
             username="u",
             password="p",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             schema="PUBLIC",
             role="SYSADMIN",
@@ -2085,7 +2085,7 @@ class TestSnowflakeGetPlatformInfo:
             account="a",
             username="u",
             password="p",
-            warehouse="WH",
+            compute_resource="WH",
             database="DB",
         )
 
@@ -2134,7 +2134,7 @@ class TestSnowflakeConfigValidation:
             SnowflakeAdapter(
                 username="u",
                 password="p",
-                warehouse="WH",
+                compute_resource="WH",
                 database="DB",
             )
 
@@ -2146,7 +2146,7 @@ class TestSnowflakeConfigValidation:
             SnowflakeAdapter(
                 account="a",
                 password="p",
-                warehouse="WH",
+                compute_resource="WH",
                 database="DB",
             )
 
@@ -2158,9 +2158,16 @@ class TestSnowflakeConfigValidation:
             SnowflakeAdapter(
                 account="a",
                 username="u",
-                warehouse="WH",
+                compute_resource="WH",
                 database="DB",
             )
+
+    @patch("benchbox.platforms.snowflake.snowflake")
+    def test_removed_compute_keywords_are_rejected(self, mock_snowflake):
+        with pytest.raises(TypeError, match="'warehouse'.*'compute_resource'"):
+            SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH")
+        with pytest.raises(TypeError, match="'warehouse_size'.*'compute_size'"):
+            SnowflakeAdapter(account="a", username="u", password="p", warehouse_size="LARGE")
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_missing_multiple_fields_error_message(self, mock_snowflake):
@@ -2176,7 +2183,7 @@ class TestSnowflakeConfigValidation:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_authenticator_default(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
         assert adapter.authenticator == "snowflake"
 
     @patch("benchbox.platforms.snowflake.snowflake")
@@ -2185,7 +2192,7 @@ class TestSnowflakeConfigValidation:
             account="a",
             username="u",
             password="p",
-            warehouse="WH",
+            compute_resource="WH",
             database="DB",
             authenticator="oauth",
         )
@@ -2197,7 +2204,7 @@ class TestSnowflakeConfigValidation:
             account="a",
             username="u",
             password="p",
-            warehouse="WH",
+            compute_resource="WH",
             database="DB",
             private_key_path="/path/to/key.pem",
             private_key_passphrase="secret",
@@ -2207,7 +2214,7 @@ class TestSnowflakeConfigValidation:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_disable_result_cache_default_true(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
         assert adapter.disable_result_cache is True
 
     @patch("benchbox.platforms.snowflake.snowflake")
@@ -2216,7 +2223,7 @@ class TestSnowflakeConfigValidation:
             account="a",
             username="u",
             password="p",
-            warehouse="WH",
+            compute_resource="WH",
             database="DB",
             disable_result_cache=False,
         )
@@ -2224,51 +2231,51 @@ class TestSnowflakeConfigValidation:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_modify_warehouse_settings_default_false(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
         assert adapter.modify_warehouse_settings is False
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_suppress_nondeterministic_errors_default_false(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
         assert adapter.suppress_nondeterministic_errors is False
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_auto_suspend_zero_is_preserved(self, mock_snowflake):
         adapter = SnowflakeAdapter(
-            account="a", username="u", password="p", warehouse="WH", database="DB", auto_suspend=0
+            account="a", username="u", password="p", compute_resource="WH", database="DB", auto_suspend=0
         )
         assert adapter.auto_suspend == 0
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_auto_resume_false_is_preserved(self, mock_snowflake):
         adapter = SnowflakeAdapter(
-            account="a", username="u", password="p", warehouse="WH", database="DB", auto_resume=False
+            account="a", username="u", password="p", compute_resource="WH", database="DB", auto_resume=False
         )
         assert adapter.auto_resume is False
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_multi_cluster_warehouse_false_by_default(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
         assert adapter.multi_cluster_warehouse is False
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_file_format_default_csv(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
         assert adapter.file_format == "CSV"
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_compression_default_auto(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
         assert adapter.compression == "AUTO"
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_query_tag_default(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
         assert adapter.query_tag == "BenchBox"
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_timezone_default_utc(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
         assert adapter.timezone == "UTC"
 
 
@@ -2283,7 +2290,7 @@ class TestSnowflakeConfigureForBenchmarkEdgeCases:
             account="a",
             username="u",
             password="p",
-            warehouse="WH",
+            compute_resource="WH",
             database="DB",
             suppress_nondeterministic_errors=True,
             strict_validation=False,
@@ -2305,7 +2312,7 @@ class TestSnowflakeConfigureForBenchmarkEdgeCases:
             account="a",
             username="u",
             password="p",
-            warehouse="WH",
+            compute_resource="WH",
             database="DB",
             modify_warehouse_settings=False,
             strict_validation=False,
@@ -2326,7 +2333,7 @@ class TestSnowflakeConfigureForBenchmarkEdgeCases:
             account="a",
             username="u",
             password="p",
-            warehouse="WH",
+            compute_resource="WH",
             database="DB",
             disable_result_cache=False,
             strict_validation=False,
@@ -2347,7 +2354,7 @@ class TestSnowflakeConfigureForBenchmarkEdgeCases:
             account="a",
             username="u",
             password="p",
-            warehouse="WH",
+            compute_resource="WH",
             database="DB",
             multi_cluster_warehouse=True,
             modify_warehouse_settings=True,
@@ -2377,7 +2384,7 @@ class TestSnowflakeConfigureForBenchmarkEdgeCases:
             account="a",
             username="u",
             password="p",
-            warehouse="WH",
+            compute_resource="WH",
             database="DB",
             modify_warehouse_settings=True,
             strict_validation=False,
@@ -2399,7 +2406,7 @@ class TestSnowflakeConfigureForBenchmarkEdgeCases:
             account="a",
             username="u",
             password="p",
-            warehouse="WH",
+            compute_resource="WH",
             database="DB",
             timezone="America/New_York",
             strict_validation=False,
@@ -2466,13 +2473,13 @@ class TestSnowflakeBuildSnowflakeConfig:
 
             config = _build_snowflake_config(
                 platform="snowflake",
-                options={"warehouse": "CLI_WH"},
+                options={"compute_resource": "CLI_WH"},
                 overrides={"account": "override_acct"},
                 info=mock_info,
             )
 
         assert config.account == "override_acct"
-        assert config.warehouse == "CLI_WH"
+        assert config.compute_resource == "CLI_WH"
         assert config.username == "saved_user"
         assert config.password == "saved_pass"
 
@@ -2534,7 +2541,7 @@ class TestSnowflakeFromConfigEdgeCases:
             "account": "a",
             "username": "u",
             "password": "p",
-            "warehouse": "WH",
+            "compute_resource": "WH",
             "disable_result_cache": False,
             "strict_validation": False,
             "suppress_nondeterministic_errors": True,
@@ -2573,7 +2580,7 @@ class TestSnowflakeFromConfigEdgeCases:
             "account": "a",
             "username": "u",
             "password": "p",
-            "warehouse_size": "XLARGE",
+            "compute_size": "XLARGE",
             "auto_suspend": 0,
             "auto_resume": False,
             "multi_cluster_warehouse": True,
@@ -2592,7 +2599,7 @@ class TestSnowflakeCreateLoadFileFormats:
     def test_default_compression_auto(self, mock_snowflake):
         mock_cursor = Mock()
         adapter = SnowflakeAdapter(
-            account="a", username="u", password="p", warehouse="WH", database="DB", schema="MY_SCHEMA"
+            account="a", username="u", password="p", compute_resource="WH", database="DB", schema="MY_SCHEMA"
         )
 
         adapter._create_load_file_formats(mock_cursor)
@@ -2617,14 +2624,14 @@ class TestSnowflakeCreateLoadFileFormats:
 class TestSnowflakeDriverIsolation:
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_driver_isolation_is_feasible_client_only(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
         assert adapter.driver_isolation_capability == DriverIsolationCapability.FEASIBLE_CLIENT_ONLY
 
 
 class TestSnowflakeGenerateTuningClauseEdgeCases:
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_partition_columns_used_as_clustering_when_no_explicit_clustering(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         mock_tuning = Mock()
         mock_tuning.has_any_tuning.return_value = True
@@ -2650,7 +2657,7 @@ class TestSnowflakeGenerateTuningClauseEdgeCases:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_multiple_clustering_columns_ordered(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         mock_tuning = Mock()
         mock_tuning.has_any_tuning.return_value = True
@@ -2679,7 +2686,7 @@ class TestSnowflakeGenerateTuningClauseEdgeCases:
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_no_tuning_returns_empty_string(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         mock_tuning = Mock()
         mock_tuning.has_any_tuning.return_value = False
@@ -2699,7 +2706,7 @@ class TestSnowflakeCreateSchemaSQL:
             account="a",
             username="u",
             password="p",
-            warehouse="WH",
+            compute_resource="WH",
             database="MY_DB",
             schema="MY_SCHEMA",
         )
@@ -2731,7 +2738,7 @@ class TestSnowflakeCreateSchemaSQL:
             account="a",
             username="u",
             password="p",
-            warehouse="WH",
+            compute_resource="WH",
             database="MY_DB",
             schema="MY_SCHEMA",
         )
@@ -2748,14 +2755,14 @@ class TestSnowflakeCreateSchemaSQL:
 class TestSnowflakeParseResultsEdgeCases:
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_skips_rows_with_3_or_fewer_columns(self, mock_snowflake):
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
         adapter._parse_copy_results([["a"], ["a", "b"], ["a", "b", "c"]])
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_loaded_status_is_silently_skipped(self, mock_snowflake):
         import logging
 
-        adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="WH", database="DB")
+        adapter = SnowflakeAdapter(account="a", username="u", password="p", compute_resource="WH", database="DB")
 
         with patch.object(adapter.logger, "warning") as mock_warn:
             adapter._parse_copy_results([["orders.csv.gz", "LOADED", None, 100, None, None]])
@@ -2825,7 +2832,7 @@ class TestSnowflakeIdempotentLoad:
                 account="test_account",
                 username="test_user",
                 password="test_pass",
-                warehouse="TEST_WH",
+                compute_resource="TEST_WH",
                 database="TEST_DB",
                 schema="PUBLIC",
                 **kwargs,
@@ -2930,7 +2937,7 @@ class TestSnowflakeIdempotentLoad:
             "account": "a",
             "username": "u",
             "password": "p",
-            "warehouse": "WH",
+            "compute_resource": "WH",
             "database": "DB",
             "schema": "PUBLIC",
             "benchmark": "tpch",

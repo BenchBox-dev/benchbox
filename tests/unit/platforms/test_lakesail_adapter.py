@@ -97,7 +97,7 @@ class TestLakeSailAdapter:
 
         config = {
             "endpoint": "sc://cluster-master:50051",
-            "sail_mode": "distributed",
+            "_deployment_selector": "distributed",
             "sail_workers": 8,
         }
 
@@ -106,6 +106,13 @@ class TestLakeSailAdapter:
         assert adapter.endpoint == "sc://cluster-master:50051"
         assert adapter.sail_mode == "distributed"
         assert not hasattr(adapter, "sail_workers")
+
+    @pytest.mark.parametrize("key", ["sail_mode", "deployment_mode"])
+    def test_removed_deployment_keywords_are_rejected(self, mock_pyspark, key):
+        from benchbox.platforms.lakesail import LakeSailAdapter
+
+        with pytest.raises(TypeError, match=f"'{key}' for 'lakesail' was removed.*--platform lakesail:"):
+            LakeSailAdapter(**{key: "distributed"})
 
     def test_get_target_dialect(self, mock_pyspark):
 
@@ -149,7 +156,7 @@ class TestLakeSailAdapter:
             "endpoint": "sc://sail:50051",
             "database": "benchmark",
             "driver_memory": "16g",
-            "sail_mode": "distributed",
+            "_deployment_selector": "distributed",
             "sail_workers": 4,
         }
 
@@ -762,7 +769,7 @@ class TestLakeSailServerLifecycle:
 
         from benchbox.platforms.lakesail import LakeSailAdapter
 
-        adapter = LakeSailAdapter(sail_mode="distributed", endpoint="sc://cluster:50051")
+        adapter = LakeSailAdapter(_deployment_selector="distributed", endpoint="sc://cluster:50051")
         with patch("benchbox.platforms.lakesail.is_spark_connect_reachable", return_value=False):
             with pytest.raises(RuntimeError, match="Cannot connect to LakeSail Sail server"):
                 adapter._ensure_server_ready()
@@ -771,7 +778,7 @@ class TestLakeSailServerLifecycle:
 
         from benchbox.platforms.lakesail import LakeSailAdapter
 
-        adapter = LakeSailAdapter(sail_mode="local")
+        adapter = LakeSailAdapter(_deployment_selector="local")
         with (
             patch("benchbox.platforms.lakesail.is_spark_connect_reachable", return_value=False),
             patch.dict("sys.modules", {"pysail": None}),
@@ -783,7 +790,7 @@ class TestLakeSailServerLifecycle:
 
         from benchbox.platforms.lakesail import LakeSailAdapter
 
-        adapter = LakeSailAdapter(sail_mode="local")
+        adapter = LakeSailAdapter(_deployment_selector="local")
         with (
             patch("benchbox.platforms.lakesail.is_spark_connect_reachable", return_value=False),
             patch.dict("sys.modules", {"pysail": MagicMock()}),

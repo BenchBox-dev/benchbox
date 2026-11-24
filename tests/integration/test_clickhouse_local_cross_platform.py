@@ -20,7 +20,7 @@ chdb = require_chdb()
 class TestClickHouseLocalCrossPlatform:
     def test_primary_keys_always_enabled(self):
 
-        adapter = ClickHouseAdapter(deployment_mode="local")
+        adapter = ClickHouseAdapter(_deployment_selector="local")
 
         enable_primary_keys, enable_foreign_keys = adapter._get_constraint_configuration()
 
@@ -79,7 +79,7 @@ class TestClickHouseLocalCrossPlatform:
     def test_benchmark_integration(self):
 
         benchmark = ClickBenchBenchmark(scale_factor=0.01)
-        ClickHouseAdapter(deployment_mode="local")
+        ClickHouseAdapter(_deployment_selector="local")
 
         assert hasattr(benchmark, "get_csv_loading_config")
 

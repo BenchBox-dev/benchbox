@@ -1,19 +1,23 @@
 import json
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+import yaml
 
 import benchbox.platforms
 from benchbox.core.compute_resource import (
+    compute_size_keys,
+    compute_value_keys,
     declares_compute,
     get_compute_declaration,
-    normalize_compute_options,
+    migrate_saved_compute_keys,
     register_compute_specs,
+    resolve_linked_compute_resource,
     resolve_resource_kind,
 )
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry, PlatformOptionError
-from tests.utilities.deprecation_capture import captured_deprecations
+from benchbox.security.credentials import CredentialManager
 
 pytestmark = [
     pytest.mark.unit,
@@ -50,14 +54,21 @@ def test_manifest_declares_compute_per_mapping(platform: str, expected: tuple) -
     declaration = get_compute_declaration(platform)
     assert declaration is not None
     assert declaration.resource_kind == expected[0]
-    assert declaration.resource_aliases == expected[1]
-    assert declaration.size_aliases == expected[2]
+    assert declaration.native_resource_keys == expected[1]
+    assert declaration.native_size_keys == expected[2]
 
 
 def test_platform_without_compute_declares_nothing() -> None:
     assert declares_compute("duckdb") is False
     assert get_compute_declaration("duckdb") is None
-    assert normalize_compute_options("duckdb", {"warehouse": "X"}) == {"warehouse": "X"}
+    assert compute_value_keys("duckdb") == ()
+    assert compute_size_keys("duckdb") == ()
+
+
+def test_value_and_size_keys_include_canonical_and_native() -> None:
+    assert compute_value_keys("redshift") == ("compute_resource", "workgroup_name", "cluster_identifier")
+    assert compute_size_keys("snowflake") == ("compute_size", "warehouse_size")
+    assert compute_size_keys("databend") == ("compute_size",)
 
 
 def test_spec_registration_is_idempotent() -> None:
@@ -68,44 +79,65 @@ def test_spec_registration_is_idempotent() -> None:
 @pytest.mark.parametrize(
     ("platform", "pairs", "canonical"),
     [
-        ("databend", [("warehouse", "CLOUD_WH")], {"compute_resource": "CLOUD_WH"}),
-        ("snowflake", [("warehouse", "ANALYTICS_WH")], {"compute_resource": "ANALYTICS_WH"}),
-        ("snowflake", [("warehouse_size", "XLARGE")], {"compute_size": "XLARGE"}),
-        ("databricks", [("warehouse_id", "abc123")], {"compute_resource": "abc123"}),
-        ("quanton", [("cluster_size", "large")], {"compute_size": "large"}),
-        ("firebolt", [("engine_name", "prod_eng")], {"compute_resource": "prod_eng"}),
-        ("firebolt", [("engine_size", "S")], {"compute_size": "S"}),
-        ("fabric_dw", [("warehouse", "WH1")], {"database": "WH1"}),
+        ("databend", [("compute_resource", "CLOUD_WH")], {"compute_resource": "CLOUD_WH"}),
+        ("snowflake", [("compute_resource", "ANALYTICS_WH")], {"compute_resource": "ANALYTICS_WH"}),
+        ("snowflake", [("compute_size", "XLARGE")], {"compute_size": "XLARGE"}),
+        ("databricks", [("compute_resource", "abc123")], {"compute_resource": "abc123"}),
+        ("quanton", [("compute_size", "large")], {"compute_size": "large"}),
+        ("firebolt", [("compute_resource", "prod_eng")], {"compute_resource": "prod_eng"}),
+        ("firebolt", [("compute_size", "M")], {"compute_size": "M"}),
+        ("clickhouse-cloud", [("compute_size", "M")], {"compute_size": "M"}),
+        ("databricks-df", [("compute_resource", "c-123")], {"compute_resource": "c-123"}),
+        ("athena-spark", [("compute_resource", "spark-wg")], {"compute_resource": "spark-wg"}),
+        ("synapse-spark", [("compute_resource", "pool1")], {"compute_resource": "pool1"}),
+        ("fabric-spark", [("compute_resource", "pool1")], {"compute_resource": "pool1"}),
+        ("dataproc", [("compute_resource", "dp-cluster")], {"compute_resource": "dp-cluster"}),
+        ("emr-serverless", [("compute_resource", "app-123")], {"compute_resource": "app-123"}),
+        ("clickhouse-cloud", [("compute_resource", "svc-1")], {"compute_resource": "svc-1"}),
+        ("redshift", [("compute_resource", "wg")], {"compute_resource": "wg"}),
+        ("athena", [("compute_resource", "primary")], {"compute_resource": "primary"}),
     ],
 )
-def test_native_alias_parses_to_canonical(
-    platform: str, pairs: list, canonical: dict, caplog: pytest.LogCaptureFixture
-) -> None:
-    with captured_deprecations(caplog) as seen:
-        parsed = PlatformHookRegistry.parse_options(platform, pairs)
-    assert len(seen) == 1
-    assert f"'{pairs[0][0]}'" in seen[0]
-    assert "0.6.0" in seen[0]
+def test_canonical_key_parses(platform: str, pairs: list, canonical: dict) -> None:
+    parsed = PlatformHookRegistry.parse_options(platform, pairs)
     for key, value in canonical.items():
         assert parsed[key] == value
 
 
 @pytest.mark.parametrize(
-    ("platform", "pairs", "canonical"),
+    ("platform", "key", "replacement"),
     [
-        ("snowflake", [("compute_resource", "ANALYTICS_WH")], {"compute_resource": "ANALYTICS_WH"}),
-        ("firebolt", [("compute_size", "M")], {"compute_size": "M"}),
-        ("clickhouse-cloud", [("compute_size", "M")], {"compute_size": "M"}),
+        ("databend", "warehouse", "compute_resource"),
+        ("snowflake", "warehouse", "compute_resource"),
+        ("snowflake", "warehouse_size", "compute_size"),
+        ("databricks", "warehouse_id", "compute_resource"),
+        ("databricks-df", "cluster_id", "compute_resource"),
+        ("quanton", "cluster_size", "compute_size"),
+        ("firebolt", "engine_name", "compute_resource"),
+        ("firebolt", "engine_size", "compute_size"),
+        ("athena", "workgroup", "compute_resource"),
+        ("athena-spark", "workgroup", "compute_resource"),
+        ("redshift", "workgroup_name", "compute_resource"),
+        ("redshift", "cluster_identifier", "compute_resource"),
+        ("dataproc", "cluster_name", "compute_resource"),
+        ("synapse-spark", "spark_pool_name", "compute_resource"),
+        ("fabric-spark", "spark_pool_name", "compute_resource"),
+        ("emr-serverless", "application_id", "compute_resource"),
+        ("clickhouse-cloud", "service_id", "compute_resource"),
     ],
 )
-def test_canonical_key_parses_without_warning(
-    platform: str, pairs: list, canonical: dict, caplog: pytest.LogCaptureFixture
-) -> None:
-    with captured_deprecations(caplog) as seen:
-        parsed = PlatformHookRegistry.parse_options(platform, pairs)
-    assert seen == []
-    for key, value in canonical.items():
-        assert parsed[key] == value
+def test_removed_native_key_is_rejected(platform: str, key: str, replacement: str) -> None:
+    with pytest.raises(PlatformOptionError) as raised:
+        PlatformHookRegistry.parse_options(platform, [(key, "X")])
+    message = str(raised.value)
+    assert f"'{key}'" in message
+    assert "was removed in BenchBox 0.6.0" in message
+    assert f"use '{replacement}' instead" in message
+
+
+def test_removed_fabric_dw_warehouse_key_is_rejected() -> None:
+    with pytest.raises(PlatformOptionError, match="'warehouse'.*removed in BenchBox 0.6.0.*'database'"):
+        PlatformHookRegistry.parse_options("fabric_dw", [("warehouse", "WH1")])
 
 
 def test_compute_size_rejected_where_unsupported() -> None:
@@ -118,28 +150,66 @@ def test_compute_resource_rejected_on_quanton() -> None:
         PlatformHookRegistry.parse_options("quanton", [("compute_resource", "X")])
 
 
-def test_deprecated_alias_warns_once(caplog: pytest.LogCaptureFixture) -> None:
-    with captured_deprecations(caplog) as seen:
-        normalize_compute_options("databend", {"warehouse": "A"})
-        normalize_compute_options("databend", {"warehouse": "A"})
-    assert len(seen) == 1
+@pytest.mark.parametrize("platform", ["databricks", "databricks-df", "athena", "athena-spark", "databend"])
+def test_compute_size_rejected_without_size_declaration(platform: str) -> None:
+    with pytest.raises(PlatformOptionError, match="Unknown platform option"):
+        PlatformHookRegistry.parse_options(platform, [("compute_size", "L")])
 
 
-def test_canonical_native_disagreement_fails() -> None:
-    with pytest.raises(PlatformOptionError, match="Conflicting compute settings"):
-        normalize_compute_options("snowflake", {"compute_resource": "NEW_WH", "warehouse": "COMPUTE_WH"})
+@pytest.mark.parametrize(
+    ("platform", "saved", "expected"),
+    [
+        ("snowflake", {"warehouse": "W", "warehouse_size": "L"}, {"compute_resource": "W", "compute_size": "L"}),
+        ("firebolt", {"engine_name": "E", "engine_size": "S"}, {"compute_resource": "E", "compute_size": "S"}),
+        ("quanton", {"cluster_size": "large"}, {"compute_size": "large"}),
+        ("redshift", {"workgroup_name": "wg"}, {"compute_resource": "wg"}),
+        ("duckdb", {"warehouse": "W"}, {"warehouse": "W"}),
+    ],
+)
+def test_saved_compute_keys_migrate(platform: str, saved: dict, expected: dict) -> None:
+    assert migrate_saved_compute_keys(platform, saved) == expected
 
 
-def test_conflicting_native_aliases_fail() -> None:
-    with pytest.raises(PlatformOptionError, match="Conflicting compute settings"):
-        normalize_compute_options(
-            "redshift", {"workgroup_name": "serverless-wg", "cluster_identifier": "provisioned-cluster"}
-        )
+def test_saved_migration_keeps_canonical_over_native() -> None:
+    migrated = migrate_saved_compute_keys("snowflake", {"warehouse": "OLD", "compute_resource": "NEW", "account": "a"})
+    assert migrated == {"compute_resource": "NEW", "account": "a"}
 
 
-def test_matching_native_aliases_agree() -> None:
-    resolved = normalize_compute_options("firebolt", {"engine_size": "S", "compute_size": "S"})
-    assert resolved["compute_size"] == "S"
+def test_saved_migration_leaves_unrelated_keys() -> None:
+    saved = {"account": "a", "password": "p"}
+    assert migrate_saved_compute_keys("snowflake", saved) == saved
+
+
+def test_credential_manager_migrates_saved_native_keys(tmp_path) -> None:
+    path = tmp_path / "credentials.yaml"
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "snowflake": {"account": "a", "warehouse": "OLD_WH", "warehouse_size": "LARGE"},
+                "firebolt": {"engine_name": "eng"},
+                "duckdb": {"warehouse": "untouched"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    path.chmod(0o600)
+    manager = CredentialManager(credentials_path=path)
+    snowflake = manager.get_platform_credentials("snowflake")
+    assert snowflake == {"account": "a", "compute_resource": "OLD_WH", "compute_size": "LARGE"}
+    assert manager.get_platform_credentials("firebolt") == {"compute_resource": "eng"}
+    assert manager.get_platform_credentials("duckdb") == {"warehouse": "untouched"}
+
+
+def test_resolve_linked_compute_resource_takes_first_layer_with_any_key() -> None:
+    merged = {"compute_resource": "A", "service_id": "B", "other": 1}
+    layers = [{"service_id": "B"}, {"compute_resource": "A"}]
+    resolved = resolve_linked_compute_resource(merged, layers, ("service_id",))
+    assert resolved == {"other": 1, "service_id": "B"}
+
+
+def test_resolve_linked_compute_resource_without_layer_drops_keys() -> None:
+    merged = {"compute_resource": "A", "other": 1}
+    assert resolve_linked_compute_resource(merged, [{}], ("service_id",)) == {"other": 1}
 
 
 @pytest.mark.parametrize(
@@ -150,16 +220,12 @@ def test_matching_native_aliases_agree() -> None:
         ("quanton", {"cluster_size": "small"}, None),
         ("redshift", {"workgroup_name": "wg"}, "workgroup"),
         ("redshift", {"cluster_identifier": "c"}, "cluster"),
+        ("redshift", {"compute_resource": "wg"}, None),
         ("duckdb", {"warehouse": "W"}, None),
     ],
 )
 def test_resource_kind_resolution(platform: str, merged: dict, expected: str | None) -> None:
     assert resolve_resource_kind(platform, merged) == expected
-
-
-def test_generic_only_kind_resolution_fails_closed_on_dict_kind() -> None:
-    with pytest.raises(PlatformOptionError, match="Ambiguous compute resource"):
-        resolve_resource_kind("redshift", {"compute_resource": "wg"})
 
 
 class TestSnowflakeComputeUnification:
@@ -192,12 +258,12 @@ class TestSnowflakeComputeUnification:
         assert adapter.warehouse == "COMPUTE_WH"
         assert adapter.warehouse_size == "MEDIUM"
 
-    def test_native_alias_still_resolves(self):
+    def test_native_keyword_is_rejected(self):
         from benchbox.platforms.snowflake import SnowflakeAdapter
 
         with patch("benchbox.platforms.snowflake.snowflake"):
-            adapter = SnowflakeAdapter(account="a", username="u", password="p", warehouse="LEGACY_WH")
-        assert adapter.warehouse == "LEGACY_WH"
+            with pytest.raises(TypeError, match="'warehouse'.*removed in BenchBox 0.6.0.*'compute_resource'"):
+                SnowflakeAdapter(account="a", username="u", password="p", warehouse="LEGACY_WH")
 
     def test_from_config_accepts_canonical_keys(self):
         from benchbox.platforms.snowflake import SnowflakeAdapter
@@ -229,7 +295,7 @@ class TestDatabricksComputeUnification:
             server_hostname="host",
             http_path="/sql/1.0/warehouses/abc123",
             access_token="tok",
-            warehouse_id="abc123",
+            compute_resource="abc123",
         )
         assert adapter.compute_resource == "abc123"
 
@@ -304,14 +370,6 @@ class TestFabricDwDatabaseRename:
         adapter = FabricWarehouseAdapter(server="ws.datawarehouse.fabric.microsoft.com", database="WH1")
         assert adapter.database == "WH1"
         assert adapter.warehouse == "WH1"
-
-    def test_warehouse_alias_warns_and_resolves(self, caplog: pytest.LogCaptureFixture):
-        from benchbox.platforms.fabric_warehouse import FabricWarehouseAdapter
-
-        with captured_deprecations(caplog) as seen:
-            adapter = FabricWarehouseAdapter(server="ws.datawarehouse.fabric.microsoft.com", warehouse="WH1")
-        assert len(seen) == 1
-        assert adapter.database == "WH1"
 
 
 class TestCanonicalResultsEmission:
@@ -418,38 +476,6 @@ class TestComputeAnonymizationGates:
         assert compute["spark_pool"].startswith("pool_")
 
 
-@pytest.mark.parametrize(
-    ("platform", "pairs", "canonical"),
-    [
-        ("databricks-df", [("cluster_id", "c-123")], {"compute_resource": "c-123"}),
-        ("athena-spark", [("workgroup", "spark-wg")], {"compute_resource": "spark-wg"}),
-        ("synapse-spark", [("spark_pool_name", "pool1")], {"compute_resource": "pool1"}),
-        ("fabric-spark", [("spark_pool_name", "pool1")], {"compute_resource": "pool1"}),
-        ("dataproc", [("cluster_name", "dp-cluster")], {"compute_resource": "dp-cluster"}),
-        ("emr-serverless", [("application_id", "app-123")], {"compute_resource": "app-123"}),
-        ("firebolt", [("engine_name", "eng")], {"compute_resource": "eng"}),
-        ("clickhouse-cloud", [("service_id", "svc-1")], {"compute_resource": "svc-1"}),
-        ("redshift", [("workgroup_name", "wg")], {"compute_resource": "wg"}),
-        ("redshift", [("cluster_identifier", "cl")], {"compute_resource": "cl"}),
-        ("athena", [("workgroup", "primary")], {"compute_resource": "primary"}),
-    ],
-)
-def test_remaining_native_aliases_parse_to_canonical(
-    platform: str, pairs: list, canonical: dict, caplog: pytest.LogCaptureFixture
-) -> None:
-    with captured_deprecations(caplog) as seen:
-        parsed = PlatformHookRegistry.parse_options(platform, pairs)
-    assert len(seen) == 1
-    for key, value in canonical.items():
-        assert parsed[key] == value
-
-
-@pytest.mark.parametrize("platform", ["databricks", "databricks-df", "athena", "athena-spark", "databend"])
-def test_compute_size_rejected_without_size_declaration(platform: str) -> None:
-    with pytest.raises(PlatformOptionError, match="Unknown platform option"):
-        PlatformHookRegistry.parse_options(platform, [("compute_size", "L")])
-
-
 class TestDatabricksDfComputeUnification:
     def test_canonical_cluster_reaches_session_builder(self):
         from benchbox.platforms.databricks.dataframe_adapter import DatabricksDataFrameAdapter
@@ -470,18 +496,16 @@ class TestAthenaSparkRuntimeVersion:
     def test_runtime_version_defaults_to_unrequested(self):
         from benchbox.platforms.aws.athena_spark_adapter import AthenaSparkAdapter
 
-        adapter = AthenaSparkAdapter(workgroup="wg", s3_staging_dir="s3://bucket/path")
+        adapter = AthenaSparkAdapter(compute_resource="wg", s3_staging_dir="s3://bucket/path")
         assert adapter.runtime_version is None
 
-    def test_deprecated_engine_version_warns_and_resolves(self, caplog: pytest.LogCaptureFixture):
+    def test_removed_engine_version_is_rejected(self):
         from benchbox.platforms.aws.athena_spark_adapter import AthenaSparkAdapter
 
-        with captured_deprecations(caplog) as seen:
-            adapter = AthenaSparkAdapter(
-                workgroup="wg", s3_staging_dir="s3://bucket/path", engine_version="PySpark engine version 2"
+        with pytest.raises(TypeError, match="'engine_version'.*removed in BenchBox 0.6.0.*'runtime_version'"):
+            AthenaSparkAdapter(
+                compute_resource="wg", s3_staging_dir="s3://bucket/path", engine_version="PySpark engine version 2"
             )
-        assert len(seen) == 1
-        assert adapter.runtime_version == "PySpark engine version 2"
 
     def test_canonical_workgroup_from_config(self):
         from benchbox.platforms.aws.athena_spark_adapter import AthenaSparkAdapter
@@ -492,8 +516,6 @@ class TestAthenaSparkRuntimeVersion:
 
 class TestSynapseSparkComputeUnification:
     def test_canonical_pool_from_config(self):
-        from unittest.mock import MagicMock
-
         with (
             patch("benchbox.platforms.azure.synapse_spark_adapter.AZURE_IDENTITY_AVAILABLE", True),
             patch("benchbox.platforms.azure.synapse_spark_adapter.DefaultAzureCredential", MagicMock()),
@@ -514,8 +536,6 @@ class TestSynapseSparkComputeUnification:
 
 class TestFabricSparkComputeUnification:
     def test_canonical_pool_from_config(self):
-        from unittest.mock import MagicMock
-
         with (
             patch("benchbox.platforms.azure.fabric_spark_adapter.AZURE_IDENTITY_AVAILABLE", True),
             patch("benchbox.platforms.azure.fabric_spark_adapter.DefaultAzureCredential", MagicMock()),
@@ -564,7 +584,6 @@ class TestFireboltComputeUnification:
 
         try:
             adapter = FireboltAdapter(
-                deployment_mode="core",
                 url="http://localhost:3473",
                 database="db",
                 compute_resource="eng",
@@ -580,7 +599,7 @@ class TestFireboltComputeUnification:
 
         monkeypatch.setenv("FIREBOLT_ENGINE_NAME", "ENV_ENG")
         try:
-            adapter = FireboltAdapter(deployment_mode="core", url="http://localhost:3473", database="db")
+            adapter = FireboltAdapter(url="http://localhost:3473", database="db")
         except ImportError:
             pytest.skip("Firebolt SDK not installed")
         assert adapter.engine_name == "ENV_ENG"
@@ -596,18 +615,8 @@ class TestClickhouseCloudComputeUnification:
         assert adapter.platform_config.get("compute_resource") == "svc-1"
 
 
-class TestQuantonComputeUnification:
-    def test_canonical_size_from_config(self):
-        from benchbox.core.compute_resource import normalize_compute_options
-
-        resolved = normalize_compute_options("quanton", {"compute_size": "large"})
-        assert resolved["compute_size"] == "large"
-        resolved = normalize_compute_options("quanton", {"cluster_size": "medium"})
-        assert resolved["compute_size"] == "medium"
-
-
 class TestRedshiftComputeUnification:
-    def test_canonical_workgroup_from_config(self):
+    def test_canonical_resource_from_config(self):
         from benchbox.platforms.redshift import RedshiftAdapter
 
         try:
@@ -617,14 +626,14 @@ class TestRedshiftComputeUnification:
                     "database": "dev",
                     "username": "u",
                     "password": "p",
-                    "workgroup_name": "wg",
+                    "compute_resource": "wg",
                     "benchmark": "tpch",
                     "scale_factor": 0.01,
                 }
             )
         except ImportError:
             pytest.skip("Redshift drivers not installed")
-        assert adapter.workgroup_name == "wg"
+        assert adapter.compute_resource == "wg"
 
 
 class TestAthenaComputeUnification:

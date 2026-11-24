@@ -73,7 +73,8 @@ def _sentinel_config(tmp_path: Path) -> dict[str, object]:
         "project_id": "EGRESS_PROJECT_SENTINEL",
         "project": "EGRESS_PROJECT_SENTINEL",
         "region": "us-east-1",
-        "warehouse": "EGRESS_WAREHOUSE_SENTINEL",
+        "compute_resource": "EGRESS_COMPUTE_RESOURCE_SENTINEL",
+        "compute_size": "EGRESS_COMPUTE_SIZE_SENTINEL",
         "schema": "public",
         "catalog": "duckdb",
         "storage_container": "EGRESS_CONTAINER_SENTINEL",
@@ -92,15 +93,11 @@ def _sentinel_config(tmp_path: Path) -> dict[str, object]:
         "spark_conf": {},
         "storage_options": {},
         "catalog_name": "benchbox",
-        "mode": "core",
-        "deployment": "local",
-        "deployment_mode": "local",
         "auth_method": "password",
         "benchmark": "tpch",
         "scale_factor": 0.01,
         "output_dir": str(tmp_path),
         "working_dir": str(tmp_path),
-        "workgroup": "EGRESS_WORKGROUP_SENTINEL",
         "workspace_id": "EGRESS_WORKSPACE_ID_SENTINEL",
         "workspace_name": "EGRESS_WORKSPACE_SENTINEL",
         "lakehouse_id": "EGRESS_LAKEHOUSE_ID_SENTINEL",
@@ -115,9 +112,7 @@ def _sentinel_config(tmp_path: Path) -> dict[str, object]:
         "aws_secret_access_key": "EGRESS_AWS_SECRET_SENTINEL",
         "storage_account_name": "EGRESS_STORAGE_SENTINEL",
         "storage_account": "EGRESS_STORAGE_SENTINEL",
-        "application_id": "EGRESS_APPLICATION_SENTINEL",
         "create_application": True,
-        "spark_pool_name": "EGRESS_SPARK_POOL_SENTINEL",
     }
 
 
@@ -128,22 +123,8 @@ def _registered_platform_names() -> tuple[str, ...]:
 
 def _prepare_config_for_platform(platform_name: str, tmp_path: Path) -> dict[str, object]:
     config = _sentinel_config(tmp_path)
-    if platform_name in {"clickhouse", "clickhouse-local"}:
-        config["deployment"] = "local"
-        config["deployment_mode"] = "local"
-        config["mode"] = "local"
-    elif platform_name == "clickhouse-server":
-        config["deployment_mode"] = "server"
-        config["mode"] = "server"
-    elif platform_name == "clickhouse-cloud":
-        config["deployment_mode"] = "cloud"
-        config["mode"] = "cloud"
-    elif platform_name == "ducklake":
+    if platform_name == "ducklake":
         config["catalog"] = "duckdb"
-    elif platform_name in {"pg-duckdb", "timescaledb"}:
-        config["deployment_mode"] = "self-hosted"
-    elif platform_name == "firebolt" or platform_name == "influxdb":
-        config["deployment_mode"] = "core"
     elif platform_name == "snowpark-connect":
         config["user"] = "EGRESS_USERNAME_SENTINEL"
     return config

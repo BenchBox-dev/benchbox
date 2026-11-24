@@ -66,10 +66,10 @@ def streaming_tuning(tmp_path: Path) -> str:
 @pytest.mark.parametrize(
     ("sources", "resolution"),
     [
-        (("--execution-engine", "streaming", "--tuning", "{tuning}", "--polars-streaming"), "explicit"),
-        (("--tuning", "{tuning}", "--polars-streaming"), "tuning_profile"),
+        (("--execution-engine", "streaming", "--tuning", "{tuning}"), "explicit"),
+        (("--tuning", "{tuning}"), "tuning_profile"),
     ],
-    ids=["explicit-tuning-legacy", "tuning-legacy"],
+    ids=["explicit-tuning", "tuning"],
 )
 def test_cli_agreeing_sources_resolve_to_the_highest_precedence(
     tmp_path: Path,
@@ -102,24 +102,11 @@ def test_cli_explicit_engine_conflicting_with_the_tuning_file_fails_before_any_w
     assert _bundles(tmp_path / "results") == []
 
 
-def test_mcp_explicit_engine_and_legacy_streaming_key_agree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_mcp_removed_streaming_key_is_rejected_before_any_work(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     response = _mcp_run(tmp_path, monkeypatch, execution_engine="streaming", platform_options={"streaming": True})
 
-    assert response["mcp_metadata"]["status"] == "completed", response
-    receipt = _only_receipt(tmp_path / "results")
-    assert receipt["requested"] == "streaming"
-    assert receipt["resolution"] == "explicit"
-
-
-def test_mcp_explicit_engine_conflicting_with_the_legacy_streaming_key_fails_before_any_work(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    response = _mcp_run(tmp_path, monkeypatch, execution_engine="in-memory", platform_options={"streaming": True})
-
     assert response["error"] is True, response
-    assert response["status"] == "failed"
-    assert "explicit setting requests 'in-memory'" in response["message"]
-    assert "legacy option streaming requests 'streaming'" in response["message"]
+    assert "execution_engine='streaming'" in response["message"]
     assert _bundles(tmp_path / "results") == []
 
 

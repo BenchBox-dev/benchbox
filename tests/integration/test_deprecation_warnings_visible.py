@@ -1,23 +1,16 @@
 from __future__ import annotations
 
-import json
-from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from tests.integration._cli_e2e_utils import run_cli_command
-from tests.utilities.deprecation_capture import captured_deprecations
 
 pytestmark = [pytest.mark.integration, pytest.mark.medium]
 
 
-def _deprecation_lines(output: str) -> list[str]:
-    return [line for line in output.splitlines() if "is deprecated and will be removed" in line]
-
-
-def _dry_run(tmp_path: Path, *args: str) -> list[str]:
-    result = run_cli_command(
+def _dry_run(tmp_path: Path, *args: str):
+    return run_cli_command(
         [
             "run",
             *args,
@@ -29,118 +22,57 @@ def _dry_run(tmp_path: Path, *args: str) -> list[str]:
             str(tmp_path / "dry"),
             "--non-interactive",
         ],
-        env={"BENCHBOX_OUTPUT_DIR": str(tmp_path), "PYTHONWARNINGS": "default"},
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    return _deprecation_lines(result.stdout + result.stderr)
-
-
-def test_polars_streaming_option_shows_one_warning(tmp_path: Path) -> None:
-    lines = _dry_run(tmp_path, "--platform", "polars-df", "--platform-option", "streaming=true")
-
-    assert len(lines) == 1, lines
-    assert "Platform option 'streaming' for 'polars'" in lines[0]
-    assert "BenchBox 0.6.0" in lines[0]
-    assert "'--execution-engine streaming'" in lines[0]
-
-
-def test_compute_alias_shows_one_warning(tmp_path: Path) -> None:
-    lines = _dry_run(tmp_path, "--platform", "snowflake", "--platform-option", "warehouse=ANALYTICS_WH")
-
-    assert len(lines) == 1, lines
-    assert "Platform option 'warehouse' for 'snowflake'" in lines[0]
-    assert "BenchBox 0.6.0" in lines[0]
-    assert "'compute_resource'" in lines[0]
-
-
-def test_athena_spark_engine_version_alias_shows_one_warning(tmp_path: Path) -> None:
-    lines = _dry_run(
-        tmp_path, "--platform", "athena-spark", "--platform-option", "engine_version=PySpark engine version 3"
+        env={"BENCHBOX_OUTPUT_DIR": str(tmp_path)},
     )
 
-    assert len(lines) == 1, lines
-    assert "Platform option 'engine_version' for 'athena-spark'" in lines[0]
-    assert "BenchBox 0.6.0" in lines[0]
-    assert "'runtime_version'" in lines[0]
 
-
-def test_clickhouse_mode_alias_names_only_the_supplied_key(tmp_path: Path) -> None:
-    lines = _dry_run(tmp_path, "--platform", "clickhouse", "--platform-option", "mode=local")
-
-    assert len(lines) == 1, lines
-    assert "Platform option 'mode' for 'clickhouse'" in lines[0]
-    assert "deployment_mode" not in lines[0]
-    assert "'--platform clickhouse-local'" in lines[0]
-
-
-def test_polars_streaming_flag_warns_once_and_records_legacy_option(
-    tmp_path: Path, tpch_sf001_data: Callable[[Path], str]
+@pytest.mark.parametrize(
+    ("platform", "option", "replacement"),
+    [
+        ("polars-df", "streaming=true", "--execution-engine streaming"),
+        ("snowflake", "warehouse=ANALYTICS_WH", "compute_resource"),
+        ("athena-spark", "engine_version=PySpark engine version 3", "runtime_version"),
+        ("clickhouse", "mode=local", "platform selector"),
+    ],
+)
+def test_removed_platform_option_is_rejected_naming_the_replacement(
+    tmp_path: Path, platform: str, option: str, replacement: str
 ) -> None:
-    result = run_cli_command(
-        [
-            "run",
-            "--platform",
-            "polars-df",
-            "--polars-streaming",
-            "--benchmark",
-            "tpch",
-            "--scale",
-            "0.01",
-            "--queries",
-            "6",
-            "--phases",
-            "generate,load,power",
-            "--non-interactive",
-            "--output",
-            tpch_sf001_data(tmp_path / "out"),
-        ],
-        env={"BENCHBOX_OUTPUT_DIR": str(tmp_path), "PYTHONWARNINGS": "default"},
-        timeout=300,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
+    result = _dry_run(tmp_path, "--platform", platform, "--platform-option", option)
 
-    lines = _deprecation_lines(result.stdout + result.stderr)
-    assert len(lines) == 1, lines
-    assert "Option '--polars-streaming' for 'polars'" in lines[0]
-    assert "BenchBox 0.6.0" in lines[0]
-
-    bundles = [path for path in (tmp_path / "results").glob("*.json") if not path.name.startswith("_")]
-    assert len(bundles) == 1, bundles
-    engine = json.loads(bundles[0].read_text(encoding="utf-8"))["platform"]["execution_engine"]
-    assert engine["requested"] == "streaming"
-    assert engine["resolution"] == "legacy_option"
+    output = " ".join((result.stdout + result.stderr).split())
+    assert result.returncode != 0, output
+    assert "was removed in BenchBox 0.6.0" in output
+    assert replacement in output
 
 
-def test_mcp_server_warns_once_per_run(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
+def test_polars_streaming_flag_is_rejected(tmp_path: Path) -> None:
+    result = _dry_run(tmp_path, "--platform", "polars-df", "--polars-streaming")
+
+    output = " ".join((result.stdout + result.stderr).split())
+    assert result.returncode != 0, output
+    assert "--polars-streaming" in output
+    assert "--execution-engine streaming" in output
+
+
+def test_mcp_rejects_a_removed_platform_option(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from benchbox.mcp import create_server
     from tests.unit.mcp.public_api import call_tool
 
     monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(tmp_path))
     server = create_server(results_dir=tmp_path / "results", charts_dir=tmp_path / "charts")
-    request = {
-        "platform": "polars-df",
-        "benchmark": "tpch",
-        "scale_factor": 0.01,
-        "queries": "6",
-        "phases": "load,power",
-        "platform_options": {"streaming": True},
-    }
+    response = call_tool(
+        server,
+        "run_benchmark",
+        platform="polars-df",
+        benchmark="tpch",
+        scale_factor=0.01,
+        queries="6",
+        phases="load,power",
+        platform_options={"streaming": True},
+    )
 
-    per_run: list[list[str]] = []
-    responses: list[dict] = []
-    for _ in range(2):
-        with captured_deprecations(caplog) as seen:
-            response = call_tool(server, "run_benchmark", **request)
-        assert response["mcp_metadata"]["status"] == "completed", response
-        assert response["platform"]["execution_engine"]["resolution"] == "legacy_option"
-        per_run.append(seen)
-        responses.append(response)
-
-    assert [len(seen) for seen in per_run] == [1, 1], per_run
-    assert "Platform option 'streaming' for 'polars'" in per_run[1][0]
-    for response in responses:
-        assert [entry["option"] for entry in response["deprecations"]] == ["streaming"]
-        assert response["deprecations"][0]["replacement"] == "execution_engine='streaming'"
-        assert response["deprecations"][0]["removed_in"] == "0.6.0"
+    assert response["error"] is True, response
+    assert "was removed in BenchBox 0.6.0" in response["message"]
+    assert "execution_engine='streaming'" in response["message"]
+    assert not list((tmp_path / "results").glob("*.json"))

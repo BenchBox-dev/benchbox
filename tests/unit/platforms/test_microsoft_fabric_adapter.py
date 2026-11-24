@@ -42,7 +42,7 @@ def fabric_stubs(monkeypatch):
 def fabric_adapter(fabric_stubs):
     return FabricWarehouseAdapter(
         workspace="test-workspace-guid",
-        warehouse="test_warehouse",
+        database="test_warehouse",
         auth_method="service_principal",
         tenant_id="test-tenant-id",
         client_id="test-client-id",
@@ -121,10 +121,10 @@ class TestFabricWarehouseAdapter:
 
         assert adapter.server == "abc123-def456.datawarehouse.fabric.microsoft.com"
 
-    def test_warehouse_used_as_database(self, fabric_stubs):
+    def test_database_is_used(self, fabric_stubs):
         adapter = FabricWarehouseAdapter(
             workspace="test-workspace",
-            warehouse="my_warehouse",
+            database="my_warehouse",
             auth_method="default_credential",
         )
 

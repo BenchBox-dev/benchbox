@@ -35,7 +35,7 @@ class _FakeClient:
 @pytest.fixture
 def adapter():
     with patch("benchbox.platforms.influxdb.adapter.INFLUXDB_AVAILABLE", True):
-        return InfluxDBAdapter(token="token", mode="core", host="localhost", ssl=False)
+        return InfluxDBAdapter(token="token", _deployment_selector="core", host="localhost", ssl=False)
 
 
 def _reference_lines(adapter, path, config, measurement):

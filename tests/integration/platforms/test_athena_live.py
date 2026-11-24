@@ -32,7 +32,7 @@ def athena_adapter():
     adapter = AthenaAdapter(
         region=region,
         s3_output_location=s3_output,
-        workgroup=workgroup,
+        compute_resource=workgroup,
         database=database,
     )
     yield adapter

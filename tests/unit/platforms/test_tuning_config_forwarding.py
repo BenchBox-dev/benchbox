@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 
 from benchbox.core.platform_registry import PlatformRegistry
+from benchbox.core.removed_options import removed_option_pairs
 from benchbox.platforms.base import PlatformAdapter
 
 pytestmark = [
@@ -42,15 +43,12 @@ def _build_stub_config(tmp_dir: str) -> dict[str, Any]:
         "schema": "benchbox_test",
         "catalog": "duckdb",
         "account": "dummy_account",
-        "warehouse": "COMPUTE_WH",
         "role": "SYSADMIN",
         "project_id": "dummy-project",
         "gcs_staging_dir": "gs://dummy-bucket/staging",
         "s3_staging_dir": "s3://dummy-bucket/staging",
         "s3_bucket": "dummy-bucket",
-        "workgroup": "dummy-workgroup",
         "execution_role_arn": "arn:aws:iam::123456789012:role/dummy",
-        "application_id": "dummy-app-id",
         "job_role": "arn:aws:iam::123456789012:role/dummy",
         "iam_role": "arn:aws:iam::123456789012:role/dummy",
         "s3_output_location": "s3://dummy-bucket/output",
@@ -60,7 +58,6 @@ def _build_stub_config(tmp_dir: str) -> dict[str, Any]:
         "client_id": "dummy-client-id",
         "client_secret": "dummy-client-secret",
         "account_name": "dummy-account",
-        "engine_name": "dummy-engine",
         "api_key": "dummy-api-key",
         "api_endpoint": "https://dummy.onehouse.ai",
         "motherduck_token": "dummy-motherduck-token",
@@ -69,7 +66,7 @@ def _build_stub_config(tmp_dir: str) -> dict[str, Any]:
         "tenant_id": "dummy-tenant-id",
         "livy_endpoint": "https://dummy.livy.endpoint",
         "workspace_name": "dummy-workspace",
-        "spark_pool_name": "dummy-pool",
+        "compute_resource": "dummy-resource",
         "storage_account": "dummystorageaccount",
         "storage_container": "dummy-container",
         "storage_path": "dummy/path",
@@ -117,3 +114,9 @@ def test_from_config_forwards_tuning_kwargs(platform_name: str, tmp_path, monkey
     assert (
         instance.platform_config.get("unified_tuning_configuration") is stub_config["unified_tuning_configuration"]
     ), f"{platform_name}: from_config() did not forward the literal unified_tuning_configuration key"
+
+
+@pytest.mark.parametrize(("platform_name", "key"), removed_option_pairs(), ids=lambda value: str(value))
+def test_create_adapter_rejects_removed_key(platform_name: str, key: str) -> None:
+    with pytest.raises(TypeError, match=f"'{key}' for '{platform_name}' was removed in BenchBox 0.6.0"):
+        PlatformRegistry.create_adapter(platform_name, {key: "x"})

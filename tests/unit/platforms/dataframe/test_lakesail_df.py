@@ -152,6 +152,13 @@ class TestLakeSailDataFrameAdapterConfig:
         adapter._endpoint = "sc://sail-cluster:50051"
         assert adapter._endpoint == "sc://sail-cluster:50051"
 
+    @pytest.mark.parametrize("key", ["deployment_mode", "sail_mode"])
+    def test_removed_deployment_keywords_are_rejected(self, key):
+        from benchbox.platforms.dataframe.lakesail_df import LakeSailDataFrameAdapter
+
+        with pytest.raises(TypeError, match=f"'{key}' for 'lakesail' was removed.*--platform lakesail:"):
+            LakeSailDataFrameAdapter(**{key: "distributed"})
+
     def test_get_platform_info_structure(self):
 
         if not PYSPARK_AVAILABLE:

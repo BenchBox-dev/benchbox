@@ -36,7 +36,7 @@ def test_fixture_restores_real_snowflake_cli_options_on_teardown() -> None:
             [
                 "--account",
                 "offline-account",
-                "--warehouse",
+                "--compute-resource",
                 "offline-warehouse",
                 "--schema",
                 "offline-schema",
@@ -46,7 +46,7 @@ def test_fixture_restores_real_snowflake_cli_options_on_teardown() -> None:
             ]
         )
         assert args.account == "offline-account"
-        assert args.warehouse == "offline-warehouse"
+        assert args.compute_resource == "offline-warehouse"
         assert args.schema == "offline-schema"
         assert args.private_key_path == "/offline/key.pem"
         assert args.modify_warehouse_settings is True

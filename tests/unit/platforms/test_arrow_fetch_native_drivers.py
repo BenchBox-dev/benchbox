@@ -156,14 +156,14 @@ class TestClickHouseLocalFetchMode:
         from benchbox.platforms.clickhouse import ClickHouseAdapter
 
         assert (
-            ClickHouseAdapter.default_fetch_mode.fget(self._config_only({"deployment_mode": "local"}))
+            ClickHouseAdapter.default_fetch_mode.fget(self._config_only({"_deployment_selector": "local"}))
             == FETCH_MODE_ARROW
         )
         assert ClickHouseAdapter.default_fetch_mode.fget(self._config_only({})) == FETCH_MODE_ARROW
 
     @pytest.mark.parametrize(
         "config",
-        [{"deployment_mode": "server"}, {"deployment_mode": "cloud", "_is_cloud_subclass": True}],
+        [{"_deployment_selector": "server"}, {"_deployment_selector": "cloud", "_is_cloud_subclass": True}],
     )
     def test_server_and_cloud_modes_default_to_rows(self, config):
         from benchbox.platforms.clickhouse import ClickHouseAdapter

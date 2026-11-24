@@ -325,11 +325,11 @@ def test_lifecycle_run_config_persists_sanitized_platform_options_with_provenanc
         display_name="TPC-H",
         options={
             "platform_options": {
-                "warehouse": "CLI_WH",
+                "compute_resource": "CLI_WH",
                 "password": "super-secret",
             },
             "platform_option_sources": {
-                "warehouse": "cli_option",
+                "compute_resource": "cli_option",
                 "password": "cli_option",
             },
         },
@@ -338,12 +338,12 @@ def test_lifecycle_run_config_persists_sanitized_platform_options_with_provenanc
         type="snowflake",
         name="Snowflake",
         options={
-            "warehouse": "SAVED_WH",
+            "compute_resource": "SAVED_WH",
             "region": "us-east-1",
             "access_token": "saved-token",
             "verbose": True,
         },
-        warehouse_size="XSMALL",
+        compute_size="XSMALL",
     )
 
     run_config = _build_run_config_from_options(
@@ -358,16 +358,16 @@ def test_lifecycle_run_config_persists_sanitized_platform_options_with_provenanc
     )
 
     assert run_config.platform_options == {
-        "warehouse": "CLI_WH",
+        "compute_resource": "CLI_WH",
         "region": "us-east-1",
-        "warehouse_size": "XSMALL",
+        "compute_size": "XSMALL",
         "access_token": REDACTED_VALUE,
         "password": REDACTED_VALUE,
     }
     assert run_config.platform_option_sources == {
-        "warehouse": "cli_option",
+        "compute_resource": "cli_option",
         "region": "applied_defaults",
-        "warehouse_size": "applied_defaults",
+        "compute_size": "applied_defaults",
         "access_token": "applied_defaults",
         "password": "cli_option",
     }

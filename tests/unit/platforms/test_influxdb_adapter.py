@@ -26,7 +26,7 @@ class TestInfluxDBAdapterInitialization:
                 token="test-token",
                 org="test-org",
                 database="benchmarks",
-                mode="cloud",
+                _deployment_selector="cloud",
             )
         except ImportError:
             pytest.skip("InfluxDB client not installed")
@@ -47,7 +47,7 @@ class TestInfluxDBAdapterInitialization:
                 port=8086,
                 token="test-token",
                 database="benchmarks",
-                mode="core",
+                _deployment_selector="core",
                 ssl=False,
             )
         except ImportError:
@@ -61,7 +61,7 @@ class TestInfluxDBAdapterInitialization:
 
     def test_core_mode_defaults_to_port_8181(self):
         try:
-            adapter = InfluxDBAdapter(token="test-token", mode="core")
+            adapter = InfluxDBAdapter(token="test-token", _deployment_selector="core")
         except ImportError:
             pytest.skip("InfluxDB client not installed")
 
@@ -69,7 +69,7 @@ class TestInfluxDBAdapterInitialization:
 
     def test_explicit_port_overrides_mode_default(self):
         try:
-            adapter = InfluxDBAdapter(token="test-token", mode="core", port=8086)
+            adapter = InfluxDBAdapter(token="test-token", _deployment_selector="core", port=8086)
         except ImportError:
             pytest.skip("InfluxDB client not installed")
 
@@ -104,22 +104,27 @@ class TestInfluxDBAdapterInitialization:
     def test_initialization_invalid_mode(self):
         try:
             with pytest.raises(ValueError, match="does not support deployment mode"):
-                InfluxDBAdapter(token="test", mode="invalid")
+                InfluxDBAdapter(token="test", _deployment_selector="invalid")
         except ImportError:
             pytest.skip("InfluxDB client not installed")
+
+    @pytest.mark.parametrize("key", ["mode", "deployment_mode"])
+    def test_removed_deployment_keywords_are_rejected(self, key):
+        with pytest.raises(TypeError, match=f"'{key}' for 'influxdb' was removed.*--platform influxdb:"):
+            InfluxDBAdapter(token="test", **{key: "core"})
 
 
 class TestInfluxDBAdapterMetadata:
     def test_platform_name_cloud(self):
         try:
-            adapter = InfluxDBAdapter(token="test", mode="cloud")
+            adapter = InfluxDBAdapter(token="test", _deployment_selector="cloud")
             assert adapter.platform_name == "InfluxDB (Cloud)"
         except ImportError:
             pytest.skip("InfluxDB client not installed")
 
     def test_platform_name_core(self):
         try:
-            adapter = InfluxDBAdapter(token="test", mode="core")
+            adapter = InfluxDBAdapter(token="test", _deployment_selector="core")
             assert adapter.platform_name == "InfluxDB (Core)"
         except ImportError:
             pytest.skip("InfluxDB client not installed")
@@ -138,7 +143,7 @@ class TestInfluxDBAdapterMetadata:
                 port=8086,
                 token="test-token",
                 database="test_db",
-                mode="core",
+                _deployment_selector="core",
             )
             info = adapter.get_platform_info()
 
@@ -162,7 +167,7 @@ class TestInfluxDBAdapterFromConfig:
             "org": "my-org",
             "database": "config-db",
             "ssl": True,
-            "mode": "cloud",
+            "_deployment_selector": "cloud",
         }
 
         try:

@@ -258,4 +258,10 @@ def test_snowflake_fixture_stub_does_not_hide_real_cli_options() -> None:
     real_parser = argparse.ArgumentParser()
     SnowflakeAdapter.add_cli_arguments.real(real_parser)
     options = {option for action in real_parser._actions for option in action.option_strings}
-    assert {"--account", "--warehouse", "--schema", "--private-key-path", "--modify-warehouse-settings"} <= options
+    assert {
+        "--account",
+        "--compute-resource",
+        "--schema",
+        "--private-key-path",
+        "--modify-warehouse-settings",
+    } <= options

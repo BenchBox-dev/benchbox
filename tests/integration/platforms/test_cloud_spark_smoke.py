@@ -39,7 +39,7 @@ def test_athena_spark_requires_s3_staging(monkeypatch):
     from benchbox.platforms.aws import AthenaSparkAdapter
 
     with pytest.raises(ConfigurationError) as excinfo:
-        AthenaSparkAdapter(workgroup="spark-workgroup")
+        AthenaSparkAdapter(compute_resource="spark-workgroup")
 
     assert "s3" in str(excinfo.value).lower()
 
@@ -54,7 +54,7 @@ def test_athena_spark_validates_s3_path(monkeypatch):
 
     with pytest.raises(ConfigurationError) as excinfo:
         AthenaSparkAdapter(
-            workgroup="spark-workgroup",
+            compute_resource="spark-workgroup",
             s3_staging_dir="/invalid/path",
         )
 
@@ -70,7 +70,7 @@ def test_athena_spark_platform_info(monkeypatch):
     from benchbox.platforms.aws import AthenaSparkAdapter
 
     adapter = AthenaSparkAdapter(
-        workgroup="spark-workgroup",
+        compute_resource="spark-workgroup",
         s3_staging_dir=f"s3://{state.bucket}/staging/",
         region=state.region,
     )
@@ -93,7 +93,7 @@ def test_athena_spark_configure_for_benchmark(monkeypatch):
     from benchbox.platforms.aws import AthenaSparkAdapter
 
     adapter = AthenaSparkAdapter(
-        workgroup="spark-workgroup",
+        compute_resource="spark-workgroup",
         s3_staging_dir=f"s3://{state.bucket}/staging/",
         region=state.region,
     )
@@ -113,7 +113,7 @@ def test_emr_serverless_requires_s3_staging(monkeypatch):
 
     with pytest.raises(ConfigurationError) as excinfo:
         EMRServerlessAdapter(
-            application_id="app-12345",
+            compute_resource="app-12345",
             execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
         )
 
@@ -130,7 +130,7 @@ def test_emr_serverless_requires_execution_role(monkeypatch):
 
     with pytest.raises(ConfigurationError) as excinfo:
         EMRServerlessAdapter(
-            application_id="app-12345",
+            compute_resource="app-12345",
             s3_staging_dir="s3://bucket/path",
         )
 
@@ -163,7 +163,7 @@ def test_emr_serverless_platform_info(monkeypatch):
     from benchbox.platforms.aws import EMRServerlessAdapter
 
     adapter = EMRServerlessAdapter(
-        application_id=state.application_id,
+        compute_resource=state.application_id,
         s3_staging_dir=f"s3://{state.bucket}/staging/",
         execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
         region=state.region,
@@ -186,7 +186,7 @@ def test_emr_serverless_configure_for_benchmark(monkeypatch):
     from benchbox.platforms.aws import EMRServerlessAdapter
 
     adapter = EMRServerlessAdapter(
-        application_id=state.application_id,
+        compute_resource=state.application_id,
         s3_staging_dir=f"s3://{state.bucket}/staging/",
         execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
         region=state.region,

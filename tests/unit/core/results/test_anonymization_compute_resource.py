@@ -25,7 +25,6 @@ def _snowflake() -> tuple[dict[str, Any], str]:
         account="acct",
         username="user",
         password="pw",
-        warehouse=SECRET,
         compute_resource=SECRET,
         compute_size="LARGE",
         database="BENCH_DB",
@@ -60,7 +59,6 @@ def _redshift() -> tuple[dict[str, Any], str]:
         password="pw",
         database="bench",
         compute_resource=SECRET,
-        workgroup_name=SECRET,
     )
     cursor = MagicMock()
     cursor.fetchone.return_value = ("PostgreSQL 8.0.2 on Amazon Redshift 1.0.50481",)
@@ -118,7 +116,6 @@ def _firebolt() -> tuple[dict[str, Any], str]:
         client_id="cid",
         client_secret="csec",
         account_name="acct",
-        engine_name=SECRET,
         compute_resource=SECRET,
         compute_size="large",
         database="bench",
@@ -138,7 +135,6 @@ def _clickhouse_cloud() -> tuple[dict[str, Any], str]:
         password="pw",
         database="bench",
         compute_resource=SECRET,
-        service_id=SECRET,
         service_name=SECRET,
         compute_size="large",
     )

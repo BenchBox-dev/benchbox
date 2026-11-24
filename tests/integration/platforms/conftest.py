@@ -85,7 +85,7 @@ def snowflake_credentials() -> dict[str, str | None]:
         "account": get_env_or_skip("SNOWFLAKE_ACCOUNT", "Snowflake"),
         "username": get_env_or_skip("SNOWFLAKE_USERNAME", "Snowflake"),
         "password": get_env_or_skip("SNOWFLAKE_PASSWORD", "Snowflake"),
-        "warehouse": os.getenv("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH"),
+        "compute_resource": os.getenv("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH"),
         "database": os.getenv("SNOWFLAKE_DATABASE", "BENCHBOX"),
         "schema": os.getenv("SNOWFLAKE_SCHEMA", "PUBLIC"),
         "role": os.getenv("SNOWFLAKE_ROLE"),
@@ -259,7 +259,7 @@ def firebolt_credentials() -> dict[str, str]:
         "client_id": get_env_or_skip("FIREBOLT_CLIENT_ID", "Firebolt"),
         "client_secret": get_env_or_skip("FIREBOLT_CLIENT_SECRET", "Firebolt"),
         "account_name": get_env_or_skip("FIREBOLT_ACCOUNT_NAME", "Firebolt"),
-        "engine_name": get_env_or_skip("FIREBOLT_ENGINE_NAME", "Firebolt"),
+        "compute_resource": get_env_or_skip("FIREBOLT_ENGINE_NAME", "Firebolt"),
         "database": os.getenv("FIREBOLT_DATABASE", "benchbox"),
     }
 

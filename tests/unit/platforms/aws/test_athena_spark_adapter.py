@@ -15,7 +15,7 @@ pytestmark = [
 
 
 class TestAthenaSparkAdapterInitialization:
-    def test_missing_workgroup_raises_error(self):
+    def test_missing_compute_resource_raises_error(self):
 
         with (
             patch("benchbox.platforms.aws.athena_spark_adapter.BOTO3_AVAILABLE", True),
@@ -23,7 +23,7 @@ class TestAthenaSparkAdapterInitialization:
         ):
             from benchbox.platforms.aws import AthenaSparkAdapter
 
-            with pytest.raises(ConfigurationError, match="workgroup"):
+            with pytest.raises(ConfigurationError, match="compute_resource"):
                 AthenaSparkAdapter(
                     s3_staging_dir="s3://my-bucket/benchbox-data",
                 )
@@ -38,7 +38,7 @@ class TestAthenaSparkAdapterInitialization:
 
             with pytest.raises(ConfigurationError, match="s3_staging_dir"):
                 AthenaSparkAdapter(
-                    workgroup="spark-workgroup",
+                    compute_resource="spark-workgroup",
                 )
 
     def test_invalid_s3_path_raises_error(self):
@@ -51,7 +51,7 @@ class TestAthenaSparkAdapterInitialization:
 
             with pytest.raises(ConfigurationError, match="Invalid S3"):
                 AthenaSparkAdapter(
-                    workgroup="spark-workgroup",
+                    compute_resource="spark-workgroup",
                     s3_staging_dir="/local/path",
                 )
 
@@ -67,7 +67,7 @@ class TestAthenaSparkAdapterInitialization:
             from benchbox.platforms.aws import AthenaSparkAdapter
 
             adapter = AthenaSparkAdapter(
-                workgroup="spark-workgroup",
+                compute_resource="spark-workgroup",
                 s3_staging_dir="s3://my-bucket/benchbox-data",
                 region="us-west-2",
                 database="my_benchmark_db",
@@ -91,7 +91,7 @@ class TestAthenaSparkAdapterInitialization:
             from benchbox.platforms.aws import AthenaSparkAdapter
 
             adapter = AthenaSparkAdapter(
-                workgroup="spark-workgroup",
+                compute_resource="spark-workgroup",
                 s3_staging_dir="s3://my-bucket/data",
             )
 
@@ -115,7 +115,7 @@ class TestAthenaSparkAdapterInitialization:
             from benchbox.platforms.aws import AthenaSparkAdapter
 
             adapter = AthenaSparkAdapter(
-                workgroup="spark-workgroup",
+                compute_resource="spark-workgroup",
                 s3_staging_dir="s3://my-bucket/data",
                 coordinator_dpu_size=2,
                 max_concurrent_dpus=40,
@@ -139,7 +139,7 @@ class TestAthenaSparkTableFormat:
             from benchbox.platforms.aws import AthenaSparkAdapter
 
             adapter = AthenaSparkAdapter(
-                workgroup="spark-wg",
+                compute_resource="spark-wg",
                 s3_staging_dir="s3://bucket/data",
             )
             assert adapter.table_format == "parquet"
@@ -155,7 +155,7 @@ class TestAthenaSparkTableFormat:
             from benchbox.platforms.aws import AthenaSparkAdapter
 
             adapter = AthenaSparkAdapter(
-                workgroup="spark-wg",
+                compute_resource="spark-wg",
                 s3_staging_dir="s3://bucket/data",
                 table_format="delta",
             )
@@ -173,7 +173,7 @@ class TestAthenaSparkTableFormat:
 
             adapter = AthenaSparkAdapter.from_config(
                 {
-                    "workgroup": "spark-wg",
+                    "compute_resource": "spark-wg",
                     "s3_staging_dir": "s3://bucket/data",
                     "table_format": "iceberg",
                 }
@@ -194,7 +194,7 @@ class TestAthenaSparkAdapterPlatformInfo:
             from benchbox.platforms.aws import AthenaSparkAdapter
 
             adapter = AthenaSparkAdapter(
-                workgroup="spark-workgroup",
+                compute_resource="spark-workgroup",
                 s3_staging_dir="s3://my-bucket/data",
                 region="eu-west-1",
             )
@@ -223,7 +223,7 @@ class TestAthenaSparkAdapterPlatformInfo:
             from benchbox.platforms.aws import AthenaSparkAdapter
 
             adapter = AthenaSparkAdapter(
-                workgroup="spark-workgroup",
+                compute_resource="spark-workgroup",
                 s3_staging_dir="s3://my-bucket/data",
             )
 
@@ -251,7 +251,7 @@ class TestAthenaSparkAdapterConnection:
             from benchbox.platforms.aws import AthenaSparkAdapter
 
             adapter = AthenaSparkAdapter(
-                workgroup="spark-workgroup",
+                compute_resource="spark-workgroup",
                 s3_staging_dir="s3://my-bucket/data",
             )
 
@@ -280,7 +280,7 @@ class TestAthenaSparkAdapterConnection:
             from benchbox.platforms.aws import AthenaSparkAdapter
 
             adapter = AthenaSparkAdapter(
-                workgroup="not-spark-workgroup",
+                compute_resource="not-spark-workgroup",
                 s3_staging_dir="s3://my-bucket/data",
             )
 
@@ -373,7 +373,7 @@ class TestAthenaSparkAdapterTuning:
             from benchbox.platforms.aws import AthenaSparkAdapter
 
             adapter = AthenaSparkAdapter(
-                workgroup="spark-workgroup",
+                compute_resource="spark-workgroup",
                 s3_staging_dir="s3://my-bucket/data",
             )
 
@@ -392,7 +392,7 @@ class TestAthenaSparkAdapterTuning:
             from benchbox.platforms.aws import AthenaSparkAdapter
 
             adapter = AthenaSparkAdapter(
-                workgroup="spark-workgroup",
+                compute_resource="spark-workgroup",
                 s3_staging_dir="s3://my-bucket/data",
             )
 
@@ -417,7 +417,7 @@ class TestAthenaSparkAdapterTuning:
             from benchbox.platforms.aws import AthenaSparkAdapter
 
             adapter = AthenaSparkAdapter(
-                workgroup="spark-workgroup",
+                compute_resource="spark-workgroup",
                 s3_staging_dir="s3://my-bucket/data",
             )
 
@@ -453,7 +453,7 @@ class TestAthenaSparkAdapterFromConfig:
             from benchbox.platforms.aws import AthenaSparkAdapter
 
             config = {
-                "workgroup": "test-spark-workgroup",
+                "compute_resource": "test-spark-workgroup",
                 "s3_staging_dir": "s3://test-bucket/data",
                 "region": "ap-southeast-1",
                 "database": "test_db",
@@ -484,7 +484,7 @@ class TestAthenaSparkAdapterClose:
             from benchbox.platforms.aws import AthenaSparkAdapter
 
             adapter = AthenaSparkAdapter(
-                workgroup="spark-workgroup",
+                compute_resource="spark-workgroup",
                 s3_staging_dir="s3://my-bucket/data",
             )
             adapter._session_id = "session-456"

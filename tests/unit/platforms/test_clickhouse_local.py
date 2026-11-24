@@ -28,7 +28,7 @@ from benchbox.platforms.clickhouse import ClickHouseAdapter, ClickHouseLocalClie
 
 class TestClickHouseEmbeddedMode:
     def test_local_mode_initialization(self):
-        adapter = ClickHouseAdapter(deployment_mode="local")
+        adapter = ClickHouseAdapter(_deployment_selector="local")
         assert adapter.deployment_mode == "local"
         assert adapter.platform_name == "ClickHouse (Local)"
         assert adapter.host is None
@@ -37,7 +37,7 @@ class TestClickHouseEmbeddedMode:
 
     def test_server_mode_initialization(self):
         try:
-            adapter = ClickHouseAdapter(deployment_mode="server", host="test.com", port=9999)
+            adapter = ClickHouseAdapter(_deployment_selector="server", host="test.com", port=9999)
             assert adapter.deployment_mode == "server"
             assert adapter.deployment_mode == "server"
             assert adapter.platform_name == "ClickHouse (Server)"
@@ -48,7 +48,7 @@ class TestClickHouseEmbeddedMode:
 
     def test_invalid_mode_error(self):
         with pytest.raises(ValueError) as exc_info:
-            ClickHouseAdapter(deployment_mode="invalid")
+            ClickHouseAdapter(_deployment_selector="invalid")
 
         assert "Invalid ClickHouse deployment mode 'invalid'" in str(exc_info.value)
         assert "local" in str(exc_info.value)
@@ -56,7 +56,7 @@ class TestClickHouseEmbeddedMode:
 
     def test_local_mode_configuration(self):
         adapter = ClickHouseAdapter(
-            deployment_mode="local",
+            _deployment_selector="local",
             data_path="/tmp/test",
             max_memory_usage="2GB",
             max_threads=2,
@@ -147,7 +147,7 @@ class TestClickHouseLocalClient:
 
 class TestClickHouseEmbeddedConnection:
     def test_create_local_connection(self):
-        adapter = ClickHouseAdapter(deployment_mode="local")
+        adapter = ClickHouseAdapter(_deployment_selector="local")
         with patch.object(ClickHouseAdapter, "get_database_path", return_value=None):
 
             class _FakeClient:
@@ -166,7 +166,7 @@ class TestClickHouseEmbeddedConnection:
         assert hasattr(connection, "execute")
 
     def test_database_operations_local_mode(self):
-        adapter = ClickHouseAdapter(deployment_mode="local")
+        adapter = ClickHouseAdapter(_deployment_selector="local")
 
         tmpdir = tempfile.mkdtemp()
         db_path = str(Path(tmpdir) / "clickhouse_local.chdb")
@@ -178,7 +178,7 @@ class TestClickHouseEmbeddedConnection:
             adapter.drop_database()
 
     def test_local_metadata_collection(self):
-        adapter = ClickHouseAdapter(deployment_mode="local", data_path="/tmp/test")
+        adapter = ClickHouseAdapter(_deployment_selector="local", data_path="/tmp/test")
         with patch.object(ClickHouseAdapter, "get_database_path", return_value=None):
 
             class _FakeClient:
@@ -206,7 +206,7 @@ class TestClickHouseEmbeddedConnection:
 
 class TestClickHouseEmbeddedIntegration:
     def test_query_execution_integration(self):
-        adapter = ClickHouseAdapter(deployment_mode="local")
+        adapter = ClickHouseAdapter(_deployment_selector="local")
         with patch.object(ClickHouseAdapter, "get_database_path", return_value=None):
 
             class _FakeClient:
@@ -232,7 +232,7 @@ class TestClickHouseEmbeddedIntegration:
         assert result["execution_time_seconds"] > 0
 
     def test_query_execution_error_handling(self):
-        adapter = ClickHouseAdapter(deployment_mode="local")
+        adapter = ClickHouseAdapter(_deployment_selector="local")
         with patch.object(ClickHouseAdapter, "get_database_path", return_value=None):
 
             class _FakeClient:
@@ -259,7 +259,7 @@ class TestClickHouseEmbeddedIntegration:
         assert result["error_type"] == "RuntimeError"
 
     def test_unparseable_query_fails_before_reaching_the_engine(self):
-        adapter = ClickHouseAdapter(deployment_mode="local")
+        adapter = ClickHouseAdapter(_deployment_selector="local")
         connection = Mock()
 
         result = adapter.execute_query(connection, "INVALID SQL QUERY HERE", "test_query")
@@ -269,7 +269,7 @@ class TestClickHouseEmbeddedIntegration:
         connection.execute.assert_not_called()
 
     def test_basic_table_operations(self):
-        adapter = ClickHouseAdapter(deployment_mode="local")
+        adapter = ClickHouseAdapter(_deployment_selector="local")
         with patch.object(ClickHouseAdapter, "get_database_path", return_value=None):
 
             class _FakeClient:

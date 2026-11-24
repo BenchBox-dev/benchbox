@@ -847,7 +847,7 @@ DATABRICKS = Spec(
 SPECS: dict[str, Spec] = {
     "athena": Spec(config=AWS),
     "athena-spark": Spec(
-        config={**AWS, "workgroup": "spark-wg"}, patches={"_wait_for_session_ready": lambda *a, **k: None}
+        config={**AWS, "compute_resource": "spark-wg"}, patches={"_wait_for_session_ready": lambda *a, **k: None}
     ),
     "bigquery": Spec(config={"project_id": "bench-project", "dataset_id": CATALOG_NAME}),
     "clickhouse-cloud": Spec(),
@@ -859,7 +859,7 @@ SPECS: dict[str, Spec] = {
     "dataproc-serverless": Spec(config=GCP),
     "ducklake": Spec(config=DUCKLAKE, scripted={r"version\(\)": [("v1.4.0",)]}),
     "emr-serverless": Spec(
-        config={**AWS, "execution_role_arn": ROLE_ARN, "application_id": "app-1"},
+        config={**AWS, "execution_role_arn": ROLE_ARN, "compute_resource": "app-1"},
         patches={"_ensure_application_started": lambda *a, **k: None},
     ),
     "fabric-lakehouse": Spec(config=FABRIC, connection_sites=("get_platform_info",)),
@@ -900,7 +900,7 @@ SPECS: dict[str, Spec] = {
     "synapse-spark": Spec(
         config={
             "workspace_name": "ws",
-            "spark_pool_name": "pool",
+            "compute_resource": "pool",
             "storage_account": "acct",
             "storage_container": "bench",
         },
@@ -919,11 +919,11 @@ VARIANTS: dict[str, dict[str, Spec]] = {
     "firebolt": {
         "cloud": Spec(
             config={
-                "deployment_mode": "cloud",
+                "_deployment_selector": "cloud",
                 "client_id": "id",
                 "client_secret": "secret",
                 "account_name": "acct",
-                "engine_name": "engine",
+                "compute_resource": "engine",
             }
         )
     },

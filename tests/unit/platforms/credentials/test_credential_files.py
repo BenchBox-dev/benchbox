@@ -315,6 +315,22 @@ class TestSnowflakeValidation:
         assert ok is False
         assert err == "Authentication failed. Check your username and password."
 
+    def test_saved_warehouse_loads_as_compute_resource_and_saves_under_the_new_key(self, tmp_path):
+        path = tmp_path / "credentials.yaml"
+        path.write_text(yaml.dump({"snowflake": {"account": "org-acct", "warehouse": "LEGACY_WH"}}), encoding="utf-8")
+
+        mgr = CredentialManager(credentials_path=path)
+        creds = mgr.get_platform_credentials("snowflake")
+
+        assert creds["compute_resource"] == "LEGACY_WH"
+        assert "warehouse" not in creds
+
+        mgr.save_credentials()
+        saved = yaml.safe_load(path.read_text(encoding="utf-8"))["snowflake"]
+
+        assert saved["compute_resource"] == "LEGACY_WH"
+        assert "warehouse" not in saved
+
 
 class TestDatabricksValidation:
     def test_missing_credentials(self, cred_file):

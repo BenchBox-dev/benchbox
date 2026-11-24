@@ -106,7 +106,7 @@ class TestDatabricksDataFrameAdapterInitialization:
             server_hostname="test.cloud.databricks.com",
             http_path="/sql/1.0/warehouses/test",
             access_token="test_token",
-            cluster_id="0101-123456-abc123",
+            compute_resource="0101-123456-abc123",
         )
 
         assert adapter.cluster_id == "0101-123456-abc123"
@@ -179,7 +179,7 @@ class TestDatabricksDataFrameAdapterFromConfig:
             "server_hostname": "test.cloud.databricks.com",
             "http_path": "/sql/1.0/warehouses/test",
             "access_token": "test_token",
-            "cluster_id": "0101-123456-abc123",
+            "compute_resource": "0101-123456-abc123",
         }
 
         adapter = DatabricksDataFrameAdapter.from_config(config)
@@ -204,7 +204,7 @@ class TestDatabricksDataFrameAdapterPlatformInfo:
             server_hostname="test.cloud.databricks.com",
             http_path="/sql/1.0/warehouses/test",
             access_token="test_token",
-            cluster_id="test-cluster",
+            compute_resource="test-cluster",
         )
 
         with patch.dict("sys.modules", {"databricks.sdk": MagicMock()}):

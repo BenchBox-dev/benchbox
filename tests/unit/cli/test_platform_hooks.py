@@ -15,7 +15,7 @@ pytestmark = [
 
 def test_clickhouse_platform_options_defaults():
     options = PlatformHookRegistry.parse_options("clickhouse", [])
-    assert options["deployment_mode"] == "server"
+    assert "deployment_mode" not in options
     assert options["secure"] is False
     assert options["port"] == 9000
 
@@ -24,14 +24,17 @@ def test_clickhouse_platform_options_overrides():
     parsed = PlatformHookRegistry.parse_options(
         "clickhouse",
         [
-            ("deployment_mode", "local"),
             ("secure", "true"),
             ("port", "9440"),
         ],
     )
-    assert parsed["deployment_mode"] == "local"
     assert parsed["secure"] is True
     assert parsed["port"] == 9440
+
+
+def test_clickhouse_platform_options_reject_the_removed_deployment_mode():
+    with pytest.raises(PlatformOptionError, match="'deployment_mode' for 'clickhouse' was removed in BenchBox 0.6.0"):
+        PlatformHookRegistry.parse_options("clickhouse", [("deployment_mode", "local")])
 
 
 def test_databricks_platform_options_support_tuning_overrides():
@@ -85,7 +88,6 @@ def test_lakesail_platform_options_adaptive_enabled():
     ("platform", "option", "expected"),
     [
         ("polars", "rechunk", True),
-        ("polars", "streaming", False),
         ("sqlite", "check_same_thread", False),
         ("datafusion", "batch_size", 8192),
         ("sqlite", "timeout", 30.0),
@@ -174,14 +176,14 @@ def test_database_manager_create_config_merges_options(monkeypatch):
     manager = DatabaseManager()
     config = manager.create_config(
         "clickhouse",
-        {"deployment_mode": "local", "secure": True},
+        {"secure": True},
         {"force_recreate": True},
     )
     assert config.type == "clickhouse"
-    assert config.options["deployment_mode"] == "local"
+    assert "deployment_mode" not in config.options
     assert config.options["secure"] is True
     assert config.options["force_recreate"] is True
-    if config.options.get("deployment_mode") == "local":
+    if config.options.get("_deployment_selector") == "local":
         assert config.options["data_path"]
     assert config.driver_package == "clickhouse-driver"
     assert config.driver_version_resolved == "local-dev"
@@ -341,10 +343,10 @@ class TestPlatformConfigBuilders:
             "account": "saved-account",
             "username": "saved-user",
             "password": "saved-pass",
-            "warehouse": "saved-wh",
+            "compute_resource": "saved-wh",
         }
 
-        options = {"warehouse": "cli-wh", "database": "cli-db"}
+        options = {"compute_resource": "cli-wh", "database": "cli-db"}
 
         overrides = {"database": "override-db"}
 
@@ -362,7 +364,7 @@ class TestPlatformConfigBuilders:
         assert config.options["account"] == "saved-account"
         assert config.options["username"] == "saved-user"
         assert config.options["password"] == "saved-pass"
-        assert config.options["warehouse"] == "saved-wh"
+        assert config.options["compute_resource"] == "saved-wh"
         assert config.options["database"] == "override-db"
 
     def test_snowflake_config_builder_no_saved_credentials(self, mock_credential_manager):

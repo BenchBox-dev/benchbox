@@ -247,7 +247,7 @@ def emr_adapter():
         from benchbox.platforms.aws import EMRServerlessAdapter
 
         yield EMRServerlessAdapter(
-            application_id="app-123",
+            compute_resource="app-123",
             s3_staging_dir="s3://bucket/prefix",
             execution_role_arn="arn:aws:iam::123:role/EMR",
         )
