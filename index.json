@@ -31907,17 +31907,12 @@
       "title": "Gate monitoring behind a benchbox[monitoring] optional extra"
     },
     "gateway-insecure-option-help-text": {
-      "claim": {
-        "expires_at": "2026-11-25T20:43:15Z",
-        "generation": "4d77e597dd7744769d563f924aee4c3c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe"
-      },
+      "claim": null,
       "needs": [
         "gateway-transport-options-connector-5"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Correct the allow_insecure_gateway help text: it skips only OCSP revocation checks"
     },
     "gateway-probe-served-providers-20261117": {
