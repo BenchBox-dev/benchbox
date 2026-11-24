@@ -15,6 +15,7 @@ import yaml
 
 import scripts.check_make_targets as make_targets
 from benchbox.core.results.anonymization import public_pseudonym_salt_path
+from benchbox.validation.bundle import _manifest_declares_internal_source
 
 pytestmark = [
     pytest.mark.unit,
@@ -616,6 +617,11 @@ def test_seed_staging_preserves_known_defect_evidence(tmp_path: Path, internal_m
     manifest = json.loads(path.with_suffix(".manifest.json").read_text(encoding="utf-8"))
     assert manifest["known_defects"] == defects
     assert manifest["bundle_hash"] == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert _manifest_declares_internal_source(path) is internal_manifest
+    if internal_manifest:
+        assert (manifest["result_source"], manifest["submitted_by"]) == ("internal", "maintainer")
+    else:
+        assert not {"result_source", "submitted_by", "funding"} & manifest.keys()
 
 
 def test_seed_staging_writes_no_manifest_by_default(tmp_path: Path) -> None:

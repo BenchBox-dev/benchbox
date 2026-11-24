@@ -131,11 +131,10 @@ def stage_seed_bundle(result_file: Path, destination: Path, *, internal_manifest
             "bundle_file": result_file.name,
             "bundle_hash": written.pop(result_file.name),
             "companion_hashes": written,
-            "funding": "unspecified",
             "manifest_version": MANIFEST_VERSION,
-            "result_source": "internal",
-            "submitted_by": "maintainer",
         }
+        if internal_manifest:
+            manifest |= {"funding": "unspecified", "result_source": "internal", "submitted_by": "maintainer"}
         if known_defects:
             manifest["known_defects"] = known_defects
         manifest_path = destination / f"{result_file.stem}{MANIFEST_SUFFIX}"
