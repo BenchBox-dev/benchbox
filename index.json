@@ -44598,7 +44598,8 @@
       "claim": null,
       "needs": [
         "submit-cli-target-develop-20261124",
-        "site-docs-corpus-target-develop-20261124"
+        "site-docs-corpus-target-develop-20261124",
+        "verify-fork-submission-on-develop-20261124"
       ],
       "priority": "medium",
       "status": "open",

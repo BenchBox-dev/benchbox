@@ -1,5 +1,6 @@
 {
   "acceptance": [
+    "Published core release tag shipping Step 3 (submit-cli-target-develop-20261124) and benchbox-site main release PR shipping Step 4 (site-docs-corpus-target-develop-20261124) are both live and cited by tag/SHA in the closing note.",
     "Core develop removes obsolete published-results mirror and drift machinery: .github/workflows/sync-results-data-to-published.yml, .github/workflows/submission-validator-drift-check.yml, scripts/check_submission_validator_sync.py, .github/workflows/corpus-drift-check.yml, scripts/corpus_drift.py, the ci.yml validator-sync step and published-results branch rule, the published-results ledger recut in seed-corpus.yml, the published-results checks in nightly-v2.yml, slim-branch stdlib file-loader fallbacks no longer needed, and obsolete mirror/drift tests and fixtures.",
     "published-results branch is NOT deleted (preserving accepted-bundle history) and is frozen read-only with updated README.md and CONTRIBUTING.md pointing 0.5.x users to develop.",
     "Superseded tracker items (mirror-validator-submission-guard-standard-scales-20261122 and any remaining published-results mirror items) are dropped with the owner's decision recorded, and PR #4481 is closed if still open.",
@@ -32,6 +33,14 @@
       "client": "antigravity-client",
       "op": "update",
       "op_id": "c1d2e3f4a5061728394a5b6c7d8e9f05",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T21:16:51Z",
+      "client": "antigravity-client",
+      "op": "update",
+      "op_id": "d1e2f3a4b5061728394a5b6c7d8e9f01",
       "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
     }
   ]
