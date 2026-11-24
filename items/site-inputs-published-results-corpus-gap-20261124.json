@@ -1,10 +1,10 @@
 {
   "acceptance": [
-    "Owner decides whether scripts/site_inputs.py should consume a pinned published-results archive commit or whether published-only Explorer ingestion in adr-independent-publication-authorities.md and adr-published-results-slim-corpus-branch.md is formally superseded.",
-    "Code and ADRs match the settled owner decision with no silent contradiction."
+    "New ADR accepted and merged on develop declaring develop:results-data/ as the single accepted corpus archive and sole Explorer source, superseding the published-results separate-archive clauses in adr-published-results-slim-corpus-branch.md and adr-independent-publication-authorities.md.",
+    "ADR documents the phased cutover order: move intake to develop, ship benchbox submit targeting develop, update benchbox-site docs on next to ride that release, then retire mirror/drift machinery and freeze published-results read-only without deleting its history."
   ],
-  "context": "Surfaced during ADR reconciliation on 2026-11-24: adr-site-repo-split.md D12 retired the publication manifest control plane, and scripts/site_inputs.py builds the Explorer site-inputs bundle from results-data/ on develop, whereas adr-published-results-slim-corpus-branch.md and adr-independent-publication-authorities.md still name published-results as the complete accepted archive.",
-  "description": "## Problem\\n`docs/internal/adr/adr-published-results-slim-corpus-branch.md` and `docs/internal/adr/adr-independent-publication-authorities.md` name `published-results` as the complete accepted Phase 2 archive whose validator-clean results feed the Explorer. However, `adr-site-repo-split.md` D12 retired the legacy publication manifest control plane, and `scripts/site_inputs.py` currently builds the attested Explorer site-inputs bundle exclusively from `results-data/` on `develop`. Any bundle accepted only on `published-results` is therefore omitted from the deployed Explorer.\\n\\n## Change\\nPresent the tradeoff to the owner and either (a) extend `scripts/site_inputs.py` to consume a pinned `published-results` commit, or (b) formally supersede published-only Explorer ingestion in the ADRs and update the contributor guide accordingly.",
+  "context": "Surfaced during ADR reconciliation on 2026-11-24: adr-site-repo-split.md D12 retired the publication manifest control plane, and scripts/site_inputs.py builds the Explorer site-inputs bundle from results-data/ on develop, whereas adr-published-results-slim-corpus-branch.md and adr-independent-publication-authorities.md still name published-results as the complete accepted archive.\n\nOwner approved amended Option 1 on 2026-11-24: develop:results-data/ becomes the single accepted corpus archive and sole Explorer source; freeze published-results read-only after shipping benchbox submit targeting develop and updating benchbox-site docs on next. Downstream items created: corpus-intake-on-develop-20261124 (Step 2), submit-cli-target-develop-20261124 (Step 3), site-docs-corpus-target-develop-20261124 (Step 4), retire-published-results-mirror-and-freeze-20261124 (Step 5), verify-fork-submission-on-develop-20261124 (Step 6).",
+  "description": "## Problem\\n`docs/internal/adr/adr-published-results-slim-corpus-branch.md` and `docs/internal/adr/adr-independent-publication-authorities.md` split corpus authority across `published-results` (accepted archive) and `develop` (Explorer input via `scripts/site_inputs.py`), with no promotion path after the publication manifest control plane was retired (`adr-site-repo-split.md` D12). Meanwhile `results-data/` is 22.3 MB with 470 maintainer-run bundles and 0 community submissions, yet core maintains a mirror workflow, two drift checks, manual withdrawals, and a stale ledger seed.\\n\\n## Change (Step 1 of 6 — owner-approved Option 1, 2026-11-24)\\nWrite and merge a new ADR under `docs/internal/adr/` recording the owner's decision that `develop:results-data/` is the single accepted corpus archive and sole Explorer source, superseding the separate-archive clauses of `adr-published-results-slim-corpus-branch.md` and `adr-independent-publication-authorities.md`, and cross-linking both older ADRs. Preserve surviving invariants: acceptance is distinct from deployed observation, community submissions require manual review with no auto-merge, accepted bytes are never purged, and `published-results` is frozen read-only (never deleted) only after a core release moves `benchbox submit` to `develop`.",
   "sessions": [
     {
       "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
@@ -12,6 +12,14 @@
       "client": "antigravity-client",
       "op": "create",
       "op_id": "c92a1092c6484a4e83735b99c30d1bfd",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    },
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T20:21:19Z",
+      "client": "antigravity-client",
+      "op": "update",
+      "op_id": "b1c2d3e4f5061728394a5b6c7d8e9f01",
       "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
     }
   ]

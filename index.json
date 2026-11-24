@@ -46354,7 +46354,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "Reconcile site_inputs.py develop-only corpus input with published-results accepted archive contract"
+      "title": "Step 1 (ADR): record develop:results-data/ as single accepted archive and Explorer source (freeze published-results post-release)"
     },
     "site-inputs-queue-max-live-verification-20261028": {
       "claim": null,
