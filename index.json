@@ -24214,8 +24214,8 @@
         "core-exec-engine-declarations-existing",
         "execution-variant-docs-leftovers-20261014"
       ],
-      "priority": "low",
-      "status": "blocked",
+      "priority": "high",
+      "status": "open",
       "title": "Remove the deprecated execution-variant aliases after the deprecation window"
     },
     "core-exec-result-schema-2-3": {
