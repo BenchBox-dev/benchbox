@@ -51651,6 +51651,13 @@
       "status": "done",
       "title": "dsdgen never finishes below SF 0.01: it loops in catalog_sales date scaling"
     },
+    "tpcds-dsdgen-memory-safety-sweep-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Sweep the bundled dsdgen for other out-of-bounds reads with sanitizers and a refresh-data integrity check"
+    },
     "tpcds-dsdgen-web-lineitem-item-wrap-20261120": {
       "claim": null,
       "needs": [],
