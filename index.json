@@ -25918,6 +25918,19 @@
       "status": "open",
       "title": "Implement opt-in tpcgen-cli adapter for TPC-H and TPC-DS with required CI Gates A, B, and D"
     },
+    "datagen-p2-ssb-versioned-migration": {
+      "claim": null,
+      "needs": [
+        "datagen-p0-companion-adr",
+        "datagen-p1-provenance-and-backend-selector",
+        "crr-c2-row-count-references-tpc-and-ssb",
+        "pvm-p1-run-ssb-clickbench",
+        "pvm-p2-publish-ssb-clickbench"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Migrate SSB generator with per-benchmark versioned RNG and regenerated reference row counts"
+    },
     "datagen-p2-vectorize-synthetic-generators": {
       "claim": null,
       "needs": [
