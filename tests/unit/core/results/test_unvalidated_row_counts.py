@@ -109,6 +109,8 @@ def test_range_checked_pass_is_recorded_as_skipped_with_a_documented_reason():
 
 def test_passed_run_whose_row_counts_were_all_skipped_is_not_reported_as_passed():
     result = make_benchmark_results(
+        benchmark_name="TPC-H",
+        scale_factor=1.0,
         validation_status="PASSED",
         validation_details={"row_count_matches": True},
         query_results=[_row("1", "SKIPPED"), _row("2", "SKIPPED")],
