@@ -45918,6 +45918,13 @@
       "status": "done",
       "title": "Rewrite the TPC-DS maintenance phase guide in benchbox-site for dsdgen refresh sets"
     },
+    "site-methodology-page-vendor-terms-and-perf-floor-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "benchbox-site: update benchmark methodology page for vendor terms (Answer 1) and perf-smoke floor (Answer 4)"
+    },
     "site-multi-warehouse-post-correction-20261112": {
       "claim": null,
       "needs": [

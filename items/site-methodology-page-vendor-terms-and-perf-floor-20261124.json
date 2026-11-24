@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "docs/concepts/benchmark-methodology.md in BenchBox-dev/benchbox-site reflects the 2026-11-19 vendor-terms owner decisions (D1-D6) and no longer says the page asserts nothing about vendor terms.",
+    "Answer 4 on the published methodology page documents the all-source perf-smoke spread, 5 ms flat floor, and 15 ms cap matching scripts/perf_smoke_baseline.py."
+  ],
+  "context": "Follow-up required by docs/internal/adr/adr-benchmark-methodology-provisional-policy.md (which states an amendment edits the ADR and the public methodology page together) after PR #4486 amended Answers 1 and 4. Live page on 2026-11-24 still says 'the page asserts nothing about what any vendor's terms allow'.",
+  "description": "## Problem\\n`docs/internal/adr/adr-benchmark-methodology-provisional-policy.md` was amended in core PR #4486 so Answer 1 points to `_project/decisions/vendor-publication-terms-2026-11-19.md` (D1-D6) and Answer 4 reflects the all-source perf-smoke spread, 5 ms flat floor, and 15 ms cap in `scripts/perf_smoke_baseline.py`. The live methodology page at `https://benchbox.dev/docs/concepts/benchmark-methodology.html` (owned by `BenchBox-dev/benchbox-site`) still says 'the page asserts nothing about what any vendor's terms allow' and omits the clamped perf-smoke floor details.\\n\\n## Change\\nUpdate the benchmark methodology page in `BenchBox-dev/benchbox-site` so Answer 1 and Answer 4 match the accepted core ADR, and open a PR against `BenchBox-dev/benchbox-site`.",
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T14:26:39Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "552f175630da43db81c3cdfdddb1e000",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    }
+  ]
+}
