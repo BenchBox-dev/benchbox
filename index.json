@@ -34961,6 +34961,13 @@
       "status": "open",
       "title": "Medium shards stay 1.22x unbalanced after the duration refresh because p95 weights overpredict unevenly"
     },
+    "medium-shard-refresh-prs-never-armed-20261124": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Decide who arms scheduled medium-shard duration refreshes that pass review"
+    },
     "medium-suite-job-setup-drift-20261031": {
       "claim": null,
       "needs": [],

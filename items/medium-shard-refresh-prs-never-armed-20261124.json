@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Owner decision on arming recorded.",
+    "One medium-shard refresh merged, or its single arm outcome recorded with GitHub's merge state."
+  ],
+  "context": "Filed 2026-11-24 from the close-out of the scale and TPC-DI remediation (umbrella remediation-revised-plan-20261120, done 2026-11-23).",
+  "description": "## Problem\nEvery scheduled medium-shard duration refresh has closed unmerged: #3927, #4003, #4065, #4089, #4284. #4476 (opened 2026-11-23 18:21Z by workflow run 45237292967, head f4f2a6ec3a) has a SHIP verdict, green required checks and merge state CLEAN, and nobody has armed it. `tests/fixtures/medium_shard_durations.json` balances the medium shards, so stale durations skew them. fast-baseline-refresh-commit-identity-owner-setting-20261120 covers only the fast-tier refresh, and the dropped fast-duration-baseline-scheduled-refresh-never-lands-20261119 covered only fast-tier review size. The scheduled run also started at 18:20Z against a 06:17Z cron.\n\n## Change\nAsk the owner who arms a scheduled refresh PR that passes review: the owner, an agent the owner names per PR, or the workflow itself. Then arm #4476 (or its successor) once under that decision and record GitHub's outcome.\n\n## Decision gates\n- An agent arms a refresh PR only when the owner names that PR and head.\n- Any workflow change that arms automatically needs the owner's approval.\n- No refresh commit is re-authored, amended or force-pushed.\n\n## Verification rubric\nPass: the owner's decision is recorded; and one medium-shard refresh is merged, or its single `make pr-arm` output and final merge state are recorded.\n\n## Guardrails\n- Work in a linked worktree from `make worktree-create`; never write in the primary clone. Stage named paths only; commit as the pinned human identity with no agent attribution.\n- Push only after `make pr-preflight` passes on the exact head. Never `--no-verify`, force-push, or rewrite authorship.\n- Arm only with `make pr-arm`, once per head. A second attempt only when the refusal named a cause that is now fixed; a third needs the owner. `make pr-rerun` only for a job the runner cancelled or never ran, never to re-roll a failed test.\n- Never post a stand-in review. Resolve a review thread only after the bot has reviewed the new head and did not raise the finding again.\n- Heavy work only through `make heavy-run` or a lock-taking target. Never set `BENCHBOX_HEAVY_ADMIT=force`, `BENCHBOX_SKIP_TEST_LOCK` or `BENCHBOX_HEAVY_WATCHDOG=off`.\n- Any new limit, threshold, default or user-facing label is shown to the owner before it is committed.\n- Do not mark a test skip, xfail, quarantine or slow to make it pass.\n- Report only what merged and what was verified, with run ids and heads.",
+  "links": [
+    ".github/workflows/fast-duration-baseline-refresh.yml",
+    "tests/fixtures/medium_shard_durations.json",
+    "fast-baseline-refresh-commit-identity-owner-setting-20261120"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7df5251ec4291d5bac245463",
+      "at": "2026-11-24T14:27:14Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ee2600679f0043b99e722c0b0c4cf4e4",
+      "session_id": "c81aa4dd49e04ffea4f29cb72ae09d11"
+    }
+  ]
+}
