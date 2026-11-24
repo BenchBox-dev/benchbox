@@ -72,9 +72,6 @@ MERGE_GATE_GUARD_TOKENS = (
 
 MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "tuning-liveness", "Run real-CLI tuning liveness matrix"): "tuning-liveness-gate",
-    ("ci.yml", "snowflake-connector5", "Run Snowflake unit tests on snowflake-connector-python 5.x"): (
-        "snowflake-connector5-gate"
-    ),
     ("ci.yml", "sql-execution-evidence", "Run the executed SQL comparison gate"): "sql-execution-gate",
     ("ci.yml", "package-smoke", "Build package"): "test-package",
     ("ci.yml", "package-smoke", "Run the README first command from the built wheel"): "test-package",
@@ -123,6 +120,10 @@ MERGE_GATE_LOCAL_EQUIVALENTS: dict[tuple[str, str, str], str] = {
 }
 
 MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
+    ("ci.yml", "snowflake-connector5", "Run Snowflake unit tests on snowflake-connector-python 5.x"): (
+        "The Snowflake unit tests that make test-fast and pr-preflight already run, repeated against "
+        "snowflake-connector-python 5.x while the lock stays on 4.x; run the step's command locally to reproduce."
+    ),
     ("ci.yml", "ci-paths", "Guard SQLGlot adoption on a maintenance line"): (
         "Hosted check on pull requests into a release/X.Y.x line; it reads the pull request base and body, "
         "which exist only on the hosted event, and its logic is pinned by "

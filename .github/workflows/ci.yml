@@ -1683,7 +1683,9 @@ jobs:
           enable-cache: false
 
       - name: Run Snowflake unit tests on snowflake-connector-python 5.x
-        run: make snowflake-connector5-gate
+        run: >-
+          uv run --group dev --extra snowflake --with "snowflake-connector-python>=5,<6"
+          -- python -m pytest tests/unit/platforms -k snowflake -q -n 0 --tb=short
 
   sql-execution-evidence:
     name: sql-execution-evidence
