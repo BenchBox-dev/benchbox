@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import stat
 import tarfile
 import zipfile
@@ -9,22 +8,13 @@ from pathlib import Path, PurePosixPath
 
 from benchbox.utils.binary_manifest import (
     DEFAULT_ROOT,
+    DISTRIBUTION_EXCLUDED,
     MANIFEST_NAME,
-    read_binary_manifest,
     verify_binary_payload,
     verify_binary_tree,
 )
 
 CLI_DESCRIPTION = "Verify source, wheel, and sdist bundled generators against one manifest."
-
-DISTRIBUTION_EXCLUDED = frozenset(
-    {
-        "tpc-di/tpcdi_audit.sql",
-        "tpc-di/tpcdi_validation.sql",
-        "tpc-di/tpcdi_visibility_1.sql",
-        "tpc-di/tpcdi_visibility_2.sql",
-    }
-)
 
 
 def _member_name(raw_name: str, seen: dict[str, bool], binary_prefix: str, directory: bool) -> str:
@@ -110,12 +100,7 @@ def verify_distribution_binaries(distribution: Path, source_root: Path = DEFAULT
     manifest = payloads.pop(MANIFEST_NAME, None)
     if manifest != trusted_manifest:
         raise ValueError("distribution manifest differs from the source manifest")
-    distribution_files = {
-        name: digest
-        for name, digest in read_binary_manifest(trusted_manifest).items()
-        if name not in DISTRIBUTION_EXCLUDED
-    }
-    verify_binary_payload(json.dumps({"schema": 1, "files": distribution_files}).encode(), payloads)
+    verify_binary_payload(trusted_manifest, payloads)
 
 
 def main(argv: list[str] | None = None) -> int:
