@@ -355,21 +355,39 @@ def resolve_manifest_datagen_hash(manifest: Mapping[str, Any]) -> str | None:
     identity_hash = manifest.get("data_generation_identity_hash")
     if isinstance(identity_hash, str) and identity_hash:
         return identity_hash
+    benchmark = manifest.get("benchmark")
     backend = manifest.get("generator_backend")
     backend_version = manifest.get("generator_backend_version")
+    parquet_writer = manifest.get("parquet_writer")
+    parquet_row_group_raw = manifest.get("parquet_row_group_size")
+    parquet_row_group_size = (
+        int(parquet_row_group_raw)
+        if isinstance(parquet_row_group_raw, int) and not isinstance(parquet_row_group_raw, bool)
+        else None
+    )
     benchmark_version = manifest.get("benchmark_datagen_version", 1)
-    if (backend is not None and str(backend).lower() != "legacy") or (
-        isinstance(benchmark_version, int) and benchmark_version > 1
+    output_format = _manifest_output_format(manifest, None)
+    scale_raw = manifest.get("scale_factor")
+    scale_factor = float(scale_raw) if isinstance(scale_raw, (int, float)) and not isinstance(scale_raw, bool) else None
+    byte_identical = is_byte_identical_backend_output(
+        benchmark,
+        output_format=output_format,
+        parquet_writer=str(parquet_writer) if parquet_writer is not None else None,
+        parquet_row_group_size=parquet_row_group_size,
+        scale_factor=scale_factor,
+    )
+    if (
+        (backend is not None and str(backend).lower() != "legacy" and not byte_identical)
+        or (isinstance(benchmark_version, int) and not isinstance(benchmark_version, bool) and benchmark_version > 1)
+        or parquet_writer is not None
+        or parquet_row_group_size is not None
     ):
-        output_format = _manifest_output_format(manifest, None)
-        scale_raw = manifest.get("scale_factor")
-        scale_factor = (
-            float(scale_raw) if isinstance(scale_raw, (int, float)) and not isinstance(scale_raw, bool) else None
-        )
         return compute_datagen_identity_hash(
-            manifest.get("benchmark"),
+            benchmark,
             backend=str(backend) if backend is not None else None,
             backend_version=str(backend_version) if backend_version is not None else None,
+            parquet_writer=str(parquet_writer) if parquet_writer is not None else None,
+            parquet_row_group_size=parquet_row_group_size,
             output_format=output_format,
             scale_factor=scale_factor,
         )

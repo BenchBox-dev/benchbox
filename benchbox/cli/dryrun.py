@@ -315,6 +315,7 @@ def display_interactive_preview(
         queries=benchmark_config.queries,
         tuning=tuning,
         seed=seed,
+        datagen_backend=options.get("datagen_backend"),
         timeout=timeout,
         output=output,
         table_mode=table_mode,

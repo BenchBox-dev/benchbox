@@ -146,6 +146,10 @@ def test_explicit_native_succeeds_when_spec_implemented(monkeypatch: pytest.Monk
 
 
 def test_cli_datagen_rejects_auto_and_forwards_legacy(monkeypatch: pytest.MonkeyPatch) -> None:
+    import click
+
+    from benchbox.cli.commands import datagen as datagen_module
+
     runner = CliRunner()
     bad = runner.invoke(datagen, ["--benchmark", "tpch", "--scale", "0.01", "--datagen-backend", "auto"])
     assert bad.exit_code == ExitCode.USAGE
@@ -153,14 +157,42 @@ def test_cli_datagen_rejects_auto_and_forwards_legacy(monkeypatch: pytest.Monkey
 
     captured: dict[str, object] = {}
 
-    def _fake_invoke(self, command, **kwargs):
-        captured["command"] = command
-        captured["kwargs"] = kwargs
+    @click.command("run")
+    def _stub_run(**kwargs: object) -> None:
+        captured.update(kwargs)
 
-    monkeypatch.setattr("click.Context.invoke", _fake_invoke)
+    monkeypatch.setattr(datagen_module, "run", _stub_run)
     good = runner.invoke(datagen, ["--benchmark", "tpch", "--scale", "0.01", "--datagen-backend", "legacy"])
     assert good.exit_code == 0, good.output
-    assert captured["kwargs"]["datagen_backend"] == "legacy"
+    assert captured["datagen_backend"] == "legacy"
+
+
+def test_dryrun_preview_preserves_datagen_backend() -> None:
+    from io import StringIO
+
+    from rich.console import Console
+
+    from benchbox.cli.benchmarks import BenchmarkConfig
+    from benchbox.cli.dryrun import display_interactive_preview
+    from benchbox.core.config import DatabaseConfig
+
+    buf = StringIO()
+    preview_console = Console(file=buf, force_terminal=False, width=160)
+    db_cfg = DatabaseConfig(type="duckdb", name="duckdb")
+    bench_cfg = BenchmarkConfig(
+        name="tpch",
+        display_name="TPC-H",
+        scale_factor=0.01,
+        options={"datagen_backend": "legacy"},
+    )
+    display_interactive_preview(
+        database_config=db_cfg,
+        benchmark_config=bench_cfg,
+        phases=["generate"],
+        tuning="notuning",
+        console_obj=preview_console,
+    )
+    assert "--datagen-backend legacy" in buf.getvalue()
 
 
 def test_cli_run_rejects_unsupported_native_backend() -> None:

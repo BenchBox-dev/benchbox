@@ -644,6 +644,8 @@ def test_manifest_emits_optional_backend_fields_without_breaking_legacy(tmp_path
     ).to_dict()
     assert native_manifest["generator_backend"] == "native"
     assert native_manifest["generator_backend_version"] == "vec-1.0"
+    assert native_manifest["parquet_writer"] == "benchbox-streaming"
+    assert native_manifest["parquet_row_group_size"] == 122880
     assert native_manifest["data_generation_identity_hash"] == compute_datagen_identity_hash(
         "h2odb",
         backend="native",
@@ -655,6 +657,23 @@ def test_manifest_emits_optional_backend_fields_without_breaking_legacy(tmp_path
     )
     assert manifest_datagen_is_current(native_manifest, benchmark="h2odb", expected_backend="native") is True
     assert manifest_datagen_is_current(native_manifest, benchmark="h2odb", expected_backend="legacy") is False
+
+    from benchbox.utils.datagen_version import resolve_manifest_datagen_hash
+
+    legacy_tpch = DataGenerationManifest(
+        output_dir=tmp_path, benchmark="tpch", scale_factor=1.0, formats=["tbl"]
+    ).to_dict()
+    native_tpch = DataGenerationManifest(
+        output_dir=tmp_path,
+        benchmark="tpch",
+        scale_factor=1.0,
+        formats=["tbl"],
+        generator_backend="native",
+        generator_backend_version="4.0.0",
+    ).to_dict()
+    assert "data_generation_identity_hash" not in native_tpch
+    assert resolve_manifest_datagen_hash(native_tpch) == resolve_manifest_datagen_hash(legacy_tpch)
+    assert resolve_manifest_datagen_hash(native_tpch) == compute_base_constants_hash("tpch")
 
 
 def test_identity_hash_collapses_byte_identical_tpc_and_separates_parquet_or_synthetic() -> None:

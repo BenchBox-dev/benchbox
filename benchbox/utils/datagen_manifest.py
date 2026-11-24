@@ -261,6 +261,7 @@ class DataGenerationManifest:
                     compute_datagen_identity_hash,
                     current_datagen_stamp,
                     get_benchmark_datagen_version,
+                    is_byte_identical_backend_output,
                 )
 
                 datagen_stamp = current_datagen_stamp(
@@ -268,16 +269,23 @@ class DataGenerationManifest:
                     backend=self._generator_backend,
                     backend_version=self._generator_backend_version,
                 )
-                has_non_default_identity = (
-                    (self._generator_backend is not None and self._generator_backend != "legacy")
+                primary_format = (
+                    "parquet" if "parquet" in self._formats else (self._formats[0] if self._formats else None)
+                )
+                byte_identical = is_byte_identical_backend_output(
+                    self._benchmark,
+                    output_format=primary_format,
+                    parquet_writer=self._parquet_writer,
+                    parquet_row_group_size=self._parquet_row_group_size,
+                    scale_factor=self._scale_factor,
+                )
+                has_distinct_identity = (
+                    (self._generator_backend is not None and self._generator_backend != "legacy" and not byte_identical)
                     or self._parquet_writer is not None
                     or self._parquet_row_group_size is not None
                     or get_benchmark_datagen_version(self._benchmark) > 1
                 )
-                if has_non_default_identity and "data_generation_identity_hash" not in self._extra_metadata:
-                    primary_format = (
-                        "parquet" if "parquet" in self._formats else (self._formats[0] if self._formats else None)
-                    )
+                if has_distinct_identity and "data_generation_identity_hash" not in self._extra_metadata:
                     datagen_stamp["data_generation_identity_hash"] = compute_datagen_identity_hash(
                         self._benchmark,
                         backend=self._generator_backend,
@@ -311,6 +319,12 @@ class DataGenerationManifest:
 
         if self._generator_backend_version is not None:
             manifest["generator_backend_version"] = self._generator_backend_version
+
+        if self._parquet_writer is not None:
+            manifest["parquet_writer"] = self._parquet_writer
+
+        if self._parquet_row_group_size is not None:
+            manifest["parquet_row_group_size"] = self._parquet_row_group_size
 
         if self._extra_metadata:
             manifest.update(self._extra_metadata)
