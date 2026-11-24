@@ -2,10 +2,10 @@
   "acceptance": [
     "A parametrized test calls from_config on every registered adapter with each of its removed keys and asserts the TypeError naming the replacement.",
     "SnowflakeAdapter.from_config with warehouse=... raises; with compute_resource=... it uses that warehouse (test).",
-    "No adapter's from_config falls back to a default compute resource when a removed key was supplied (covered by the parametrized test).",
-    "The 0.6.0 tag is not pushed while this item is open (recorded on release-v0-6-0-20261124)."
+    "No adapter's from_config falls back to a default compute resource when a removed key was supplied (covered by the parametrized test)."
   ],
-  "description": "## Problem\nOn the remove-deprecated-spellings branch (item core-exec-remove-deprecated-aliases), constructors, get_adapter, PlatformRegistry.create_adapter, the CLI, saved configuration and MCP reject removed spellings, but calling an adapter's from_config directly does not. Verified 2026-11-24: SnowflakeAdapter.from_config({..., 'warehouse': 'OLD_WH'}) succeeds and the adapter uses the default warehouse COMPUTE_WH; RedshiftAdapter.from_config({..., 'cluster_identifier': 'c'}) succeeds and drops the value. A Python user upgrading to 0.6.0 would silently run on, and be billed for, a different warehouse or cluster.\n\n## Change\nReject removed keys at the shared from_config entry (the base adapter path or benchbox/core/removed_options.py), raising the same TypeError as the constructors, for every adapter in the registry. Prefer landing this on the remove-deprecated-spellings branch before its PR merges; if that PR has merged, ship it as a follow-up before 0.6.0rc1.\n\n## Decision gate\nIf rejecting in a shared from_config entry would also reject a key that some adapter still documents as valid (check the removal table in removed_options.py), stop and list the conflicts here for the owner. If the remove-deprecated-spellings PR is already armed or merged, land this as its own PR rather than pushing to that branch.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check).",
+  "context": "Related: core-exec-remove-deprecated-aliases (branch feat/remove-deprecated-spellings; no PR open as of 2026-11-24). Listed in release-v0-6-0-20261124 needs: v0.6.0rc1 is not tagged while this is open.",
+  "description": "## Problem\nOn the remove-deprecated-spellings branch (item core-exec-remove-deprecated-aliases), constructors, get_adapter, PlatformRegistry.create_adapter, the CLI, saved configuration and MCP reject removed spellings, but calling an adapter's from_config directly does not. Verified 2026-11-24: SnowflakeAdapter.from_config({..., 'warehouse': 'OLD_WH'}) succeeds and the adapter uses the default warehouse COMPUTE_WH; RedshiftAdapter.from_config({..., 'cluster_identifier': 'c'}) succeeds and drops the value. A Python user upgrading to 0.6.0 would silently run on, and be billed for, a different warehouse or cluster.\n\n## Change\nThere is no shared concrete from_config: PlatformAdapter.from_config is abstract (benchbox/platforms/base/adapter.py), and build_adapter_config (benchbox/platforms/base/config_utils.py) is shared but about 30 adapters bypass it (for example bigquery.py, duckdb.py, postgresql.py, databricks/adapter.py). Reuse reject_removed_adapter_keywords (benchbox/core/removed_options.py) at a point every adapter's from_config passes through (for example a wrapper applied in the registry or a base-class hook), raising the same TypeError as the constructors, for every adapter in the registry. Prefer landing this on the remove-deprecated-spellings branch before its PR merges; if that PR has merged, ship it as a follow-up before 0.6.0rc1.\n\nGuardrails: work in a linked worktree (make worktree-create), never the primary clone; heavy test runs only through lock-taking entry points; never set BENCHBOX_SKIP_TEST_LOCK or force admission; stage explicit paths; add a changelog.d fragment if users can see the change; no explanatory comments (make comment-policy-check).",
   "links": [
     "benchbox/core/removed_options.py",
     "benchbox/platforms/snowflake.py",
@@ -26,6 +26,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "6a6fce89f4644bb4a81b878e58ce0e6f",
+      "session_id": "5b062ba33034415e869ca1e66d683f89"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:08814063f5868142fb9afebe",
+      "at": "2026-11-24T22:33:50Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "c4c28521eb324b8daabea3a3648260dd",
       "session_id": "5b062ba33034415e869ca1e66d683f89"
     }
   ]
