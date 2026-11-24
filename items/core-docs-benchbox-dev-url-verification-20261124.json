@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "Core CI (or a scheduled workflow) validates every https://benchbox.dev/... URL appearing in core docs/ and benchbox/ against live published pages or benchbox-site's exported route/anchor manifest, flagging 404 URLs and missing fragment anchors.",
+    "Unit tests remain 100% offline (zero non-loopback network calls); any network fetch occurs only in a dedicated CI job or via a cached/fetched site manifest with graceful degradation matching ci-paths (scripts/check_site_linked_paths.py).",
+    "A negative test confirms a nonexistent benchbox.dev/docs/... URL or missing #anchor fails the checker.",
+    "make pr-preflight and hosted review-gate pass on the merged head."
+  ],
+  "context": "Surfaced during the 2026-11-24 peer adversarial review of ADR PRs #4484 and #4486 (Blind spot 1): scripts/doc_reference_inventory.py and _project/scripts/check_project_references.py validate repository paths only, and tests/unit/cli/test_shipped_docs_urls.py checks only hostname allowlists in benchbox/. Replacing a dead local path with a benchbox.dev URL silently bypassed every local and CI check, letting three broken or section-mismatched benchbox.dev references slip through preflight.",
+  "description": "## Problem\n`scripts/doc_reference_inventory.py` and `_project/scripts/check_project_references.py` check local repository paths only, and `tests/unit/cli/test_shipped_docs_urls.py` checks only hostname allowlists under `benchbox/`. When a core doc or ADR replaces a moved local path with a `https://benchbox.dev/...` URL, every local and CI check stops inspecting it. During the 2026-11-24 ADR review, nonexistent or section-mismatched `benchbox.dev` references passed `make pr-preflight` undetected.\n\n## Change\nDesign and implement automated verification for `https://benchbox.dev/...` URLs cited in core (`docs/` and `benchbox/`), mirroring the existing `ci-paths` pattern (`scripts/check_site_linked_paths.py` consuming `benchbox-site`'s `inventory/core-linked-paths.json`):\n1. Check whether `benchbox-site` already exports a page/anchor manifest (or `llms.txt` / route manifest) that a core CI job can fetch and check offline against all `https://benchbox.dev/...` URLs and `#fragments` in core docs/source.\n2. Add the checker script, unit tests (offline with fixture manifests, including failing-before cases for 404 URLs and missing `#anchors`), and wire it into a non-unit CI job (or scheduled nightly check if network-dependent).\n\n## Decision gates\n- STOP and get owner confirmation if implementing this requires adding a new published manifest file in `BenchBox-dev/benchbox-site` (cross-repo contract) vs consuming an existing `benchbox-site` artifact (`llms.txt` or sitemap) or adding a scheduled check.\n- Unit and medium tests must remain strictly offline (`test_no_network` invariant); never make live HTTP calls inside pytest unit/medium lanes.\n- Decide with the owner whether dead `benchbox.dev` URLs in `docs/internal/` are blocking on PRs or advisory/nightly (note: `benchbox-site` `D15` keeps external lychee link checks nightly/non-blocking).\n\n## Verification rubric\n- Pass: offline unit tests prove the checker flags a nonexistent `https://benchbox.dev/docs/does-not-exist.html` URL and a nonexistent `#missing-section` anchor while passing on valid live URLs; zero network calls in unit tests; checker passes on the current core tree; `make pr-preflight` exits 0.\n- Fail: unit tests perform network I/O, or a dead `benchbox.dev` URL in `docs/internal/adr/` still passes unchecked.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Follow `benchbox-site/AGENTS.md` if touching `benchbox-site` (zero Python there). No explanatory comments or docstrings in first-party Python (`make comment-policy-check`). Stage named paths only; commit with pinned human Git identity and no agent attribution. Heavy work only via `make pr-preflight` / `make heavy-run`; never bypass `~/.benchbox/test.lock`. Open with `make pr-open`, arm with `make pr-arm`, and monitor to merge.",
+  "links": [
+    "scripts/doc_reference_inventory.py",
+    "scripts/check_site_linked_paths.py",
+    "tests/unit/cli/test_shipped_docs_urls.py",
+    "_project/scripts/check_project_references.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:antigravity-client:joe@joe-mac-mini.local:e1265f64eb366c9707b5dafd",
+      "at": "2026-11-24T21:15:01Z",
+      "client": "antigravity-client",
+      "op": "create",
+      "op_id": "c1d2e3f4a5061728394a5b6c7d8e9f13",
+      "session_id": "d77b5d45d6b4456c9340aa3323553d0a"
+    }
+  ]
+}
