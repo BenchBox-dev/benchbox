@@ -52679,10 +52679,10 @@
     },
     "tpcdi-historical-dimensions-20261121": {
       "claim": {
-        "expires_at": "2026-11-25T22:23:59Z",
-        "generation": "ca891ef1e97345c3bd0e80df218af1ed",
+        "expires_at": "2026-11-26T19:03:39Z",
+        "generation": "1900aa1e50f44c8293f5590e4ab3c66a",
         "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4e373c3ffd2cd229e1d72fba"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
       },
       "needs": [
         "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121"
