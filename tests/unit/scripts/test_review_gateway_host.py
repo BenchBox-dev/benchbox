@@ -526,9 +526,12 @@ def test_the_running_build_is_read_from_the_program_image_not_the_process_name(h
         host["stubs"] / "ps",
         '#!/bin/sh\ncase "$*" in *comm=*) echo omp;; *etime=*) echo 1-00:00:00;; esac\n',
     )
+    shared_memory = host["tmp"] / "agent.db-shm"
+    shared_memory.write_bytes(b"")
     _executable(
         host["stubs"] / "lsof",
-        f'#!/bin/sh\ncase "$*" in *LISTEN*) echo 4242;; *txt*) printf "p4242\\nftxt\\nn%s\\n" "{binary}";; esac\n',
+        '#!/bin/sh\ncase "$*" in *LISTEN*) echo 4242;; '
+        f'*txt*) printf "p4242\\nftxt\\nn%s\\nftxt\\nn%s\\n" "{binary}" "{shared_memory}";; esac\n',
     )
     result = _source(
         host,
