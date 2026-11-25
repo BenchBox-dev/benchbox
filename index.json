@@ -45100,17 +45100,12 @@
       "title": "Make docs/development/agent-review-protocol.md the single review-protocol authority; audit detects contradictions"
     },
     "review-provider-loss-resilience-20261106": {
-      "claim": {
-        "expires_at": "2026-11-26T07:02:01Z",
-        "generation": "22e29368ec3842138bd2700a5926e23d",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0a697a35e720a04d19e44a28"
-      },
+      "claim": null,
       "needs": [
         "review-classifier-degraded-remediation-20261124"
       ],
       "priority": "critical",
-      "status": "active",
+      "status": "done",
       "title": "Losing one model provider must never stop reviews or merges"
     },
     "review-remediations-verify-per-instance": {
