@@ -647,3 +647,302 @@ class TestParquetPartitioning:
         )
 
         assert result.metadata.get("partitioned") is False
+
+
+class TestParquetStreamingAndBenchmarkCompatibility:
+    def test_streaming_writes_exact_row_groups_without_second_count_pass(self, tmp_path, monkeypatch):
+        import duckdb
+
+        schema = {
+            "columns": [
+                {"name": "id", "type": "INTEGER"},
+                {"name": "label", "type": "VARCHAR(25)"},
+                {"name": "amount", "type": "DECIMAL(15,2)"},
+            ]
+        }
+        tbl_file = tmp_path / "orders.tbl"
+        lines = [f"{i}|row-{i}|{i * 1.25:.2f}|\n" for i in range(1, 351)]
+        tbl_file.write_text("".join(lines), encoding="utf-8")
+
+        converter = ParquetConverter()
+
+        def _forbid_count_rows(*_args, **_kwargs):
+            raise AssertionError("streaming conversion must count rows inline without calling count_rows()")
+
+        monkeypatch.setattr(converter, "count_rows", _forbid_count_rows)
+
+        result = converter.convert(
+            source_files=[tbl_file],
+            table_name="orders",
+            schema=schema,
+            options=ConversionOptions(output_dir=tmp_path, row_group_size=100),
+        )
+
+        assert result.success is True
+        assert result.row_count == 350
+        assert result.metadata["row_groups"] == 4
+
+        meta = pq.read_metadata(result.output_files[0])
+        assert [meta.row_group(i).num_rows for i in range(meta.num_row_groups)] == [100, 100, 100, 50]
+
+        con = duckdb.connect()
+        try:
+            ref_path = tmp_path / "ref.parquet"
+            ref_table = converter.read_tbl_files([tbl_file], schema)
+            pq.write_table(ref_table, ref_path)
+            diff_a = con.execute(
+                f"SELECT COUNT(*) FROM (SELECT * FROM read_parquet('{result.output_files[0]}') EXCEPT ALL SELECT * FROM read_parquet('{ref_path}'))"
+            ).fetchone()[0]
+            diff_b = con.execute(
+                f"SELECT COUNT(*) FROM (SELECT * FROM read_parquet('{ref_path}') EXCEPT ALL SELECT * FROM read_parquet('{result.output_files[0]}'))"
+            ).fetchone()[0]
+            assert diff_a == 0
+            assert diff_b == 0
+        finally:
+            con.close()
+
+    def test_converts_tsbs_devops_dict_schema_headered_csv(self, tmp_path):
+        schema = {
+            "description": "CPU metrics",
+            "columns": {
+                "hostname": {"type": "VARCHAR(64)"},
+                "usage_user": {"type": "DOUBLE"},
+            },
+        }
+        csv_file = tmp_path / "cpu.csv"
+        csv_file.write_text("hostname,usage_user\nhost_0,12.5\nhost_1,44.0\n", encoding="utf-8")
+
+        result = ParquetConverter().convert(
+            source_files=[csv_file],
+            table_name="cpu",
+            schema=schema,
+            options=ConversionOptions(output_dir=tmp_path),
+        )
+        assert result.success is True
+        assert result.row_count == 2
+        table = pq.read_table(result.output_files[0])
+        assert table.to_pydict() == {"hostname": ["host_0", "host_1"], "usage_user": [12.5, 44.0]}
+
+    def test_converts_vector_search_pipe_csv_with_header_and_float_array(self, tmp_path):
+        schema = {
+            "columns": [
+                {"name": "id", "type": "BIGINT", "nullable": False},
+                {"name": "embedding", "type": "FLOAT_ARRAY", "nullable": False},
+                {"name": "category", "type": "VARCHAR(50)", "nullable": False},
+            ]
+        }
+        csv_file = tmp_path / "vectors.csv"
+        csv_file.write_text("id|embedding|category\n1|[0.1,0.2]|cat_a\n2|[0.3,0.4]|cat_b\n", encoding="utf-8")
+
+        result = ParquetConverter().convert(
+            source_files=[csv_file],
+            table_name="vectors",
+            schema=schema,
+            options=ConversionOptions(output_dir=tmp_path, strict_schema=True),
+        )
+        assert result.success is True
+        assert result.row_count == 2
+        table = pq.read_table(result.output_files[0])
+        assert table.to_pydict()["embedding"] == ["[0.1,0.2]", "[0.3,0.4]"]
+
+    def test_converts_coffeeshop_comma_csv_without_header(self, tmp_path):
+        schema = {
+            "columns": [
+                {"name": "record_id", "type": "INTEGER"},
+                {"name": "location_id", "type": "VARCHAR(32)"},
+            ]
+        }
+        csv_file = tmp_path / "dim_locations.csv"
+        csv_file.write_text("1,loc_east\n2,loc_west\n", encoding="utf-8")
+
+        result = ParquetConverter().convert(
+            source_files=[csv_file],
+            table_name="dim_locations",
+            schema=schema,
+            options=ConversionOptions(output_dir=tmp_path),
+        )
+        assert result.success is True
+        assert result.row_count == 2
+        assert pq.read_table(result.output_files[0]).to_pydict() == {
+            "record_id": [1, 2],
+            "location_id": ["loc_east", "loc_west"],
+        }
+
+    def test_converts_joinorder_ddl_string_schema_and_preserves_manifest_provenance(self, tmp_path):
+        import json
+
+        from benchbox.core.runner.conversion import FormatConversionOrchestrator
+
+        schema = {
+            "title": {
+                "columns": [
+                    "id INTEGER PRIMARY KEY",
+                    "title TEXT NOT NULL",
+                    "production_year INTEGER",
+                ]
+            }
+        }
+        csv_file = tmp_path / "title.csv"
+        csv_file.write_text("1,Movie A,2020\n2,Movie B,2021\n", encoding="utf-8")
+        manifest_path = tmp_path / "_datagen_manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "version": 2,
+                    "benchmark": "joinorder_synthetic",
+                    "scale_factor": 0.01,
+                    "formats": ["csv"],
+                    "format_preference": ["csv"],
+                    "data_generation_version": 1,
+                    "base_constants_hash": "a" * 64,
+                    "csv_delimiter": ",",
+                    "csv_has_header": False,
+                    "tables": {
+                        "title": {
+                            "formats": {
+                                "csv": [{"path": "title.csv", "size_bytes": csv_file.stat().st_size, "row_count": 2}]
+                            }
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        from benchbox.utils.datagen_version import compute_datagen_identity_hash
+
+        results = FormatConversionOrchestrator().convert_benchmark_tables(
+            manifest_path=manifest_path,
+            output_dir=tmp_path,
+            target_format="parquet",
+            schemas=schema,
+        )
+        assert results["title"].row_count == 2
+        updated = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert updated["data_generation_version"] == 1
+        assert updated["base_constants_hash"] == "a" * 64
+        assert updated["csv_delimiter"] == ","
+        assert "parquet" in updated["formats"]
+        assert updated["format_preference"][0] == "parquet"
+        assert updated["parquet_writer"] == "benchbox-streaming"
+        assert updated["parquet_row_group_size"] == 122_880
+        assert updated["data_generation_identity_hash"] == compute_datagen_identity_hash(
+            "joinorder_synthetic",
+            parquet_writer="benchbox-streaming",
+            parquet_row_group_size=122_880,
+            scale_factor=0.01,
+        )
+
+    def test_pre_streaming_parquet_manifest_is_stale_for_parquet_runs(self, tmp_path):
+        from benchbox.core.tpch_skew.generator import TPCHSkewDataGenerator
+        from benchbox.core.tpch_skew.skew_config import SkewConfiguration
+        from benchbox.utils.datagen_version import (
+            compute_datagen_identity_hash,
+            current_datagen_stamp,
+            describe_datagen_staleness,
+            manifest_datagen_is_current,
+        )
+
+        legacy_pq_manifest = {
+            "benchmark": "h2odb",
+            "scale_factor": 1.0,
+            "formats": ["tbl", "parquet"],
+            "format_preference": ["parquet", "tbl"],
+            **current_datagen_stamp("h2odb"),
+        }
+        assert manifest_datagen_is_current(legacy_pq_manifest, benchmark="h2odb") is True
+        assert (
+            manifest_datagen_is_current(legacy_pq_manifest, benchmark="h2odb", expected_table_format="parquet") is False
+        )
+        reason = describe_datagen_staleness(legacy_pq_manifest, benchmark="h2odb", expected_table_format="parquet")
+        assert reason is not None and "streaming row-group layout" in reason
+
+        streaming_pq_manifest = {
+            **legacy_pq_manifest,
+            "parquet_writer": "benchbox-streaming",
+            "parquet_row_group_size": 122_880,
+        }
+        assert (
+            manifest_datagen_is_current(streaming_pq_manifest, benchmark="h2odb", expected_table_format="parquet")
+            is True
+        )
+
+        skew_cfg = SkewConfiguration(seed=42)
+        skew_gen = TPCHSkewDataGenerator(scale_factor=0.01, output_dir=tmp_path, skew_config=skew_cfg)
+        identity = skew_cfg.datagen_identity()
+        skew_pq_manifest = {
+            "benchmark": "tpch_skew",
+            "scale_factor": 0.01,
+            "skew_configuration": identity,
+            "skew_configuration_hash": skew_cfg.datagen_identity_hash(),
+            "parquet_writer": "benchbox-streaming",
+            "parquet_row_group_size": 122_880,
+            "data_generation_identity_hash": compute_datagen_identity_hash(
+                "tpch_skew",
+                identity,
+                parquet_writer="benchbox-streaming",
+                parquet_row_group_size=122_880,
+                scale_factor=0.01,
+            ),
+        }
+        assert skew_gen.manifest_matches_datagen_identity(skew_pq_manifest) is True
+
+    def test_duckdb_streaming_fast_path_matches_pyarrow_without_second_count_pass(self, tmp_path, monkeypatch):
+        import duckdb
+
+        schema = {
+            "columns": [
+                {"name": "id", "type": "INTEGER"},
+                {"name": "label", "type": "VARCHAR(25)"},
+                {"name": "amount", "type": "DECIMAL(15,2)"},
+            ]
+        }
+        tbl_file = tmp_path / "lineitem.tbl"
+        tbl_file.write_text("".join(f"{i}|item-{i}|{i * 2.5:.2f}\n" for i in range(1, 251)), encoding="utf-8")
+
+        converter = ParquetConverter()
+
+        def _forbid_count_rows(*_args, **_kwargs):
+            raise AssertionError("streaming conversion must count rows inline without calling count_rows()")
+
+        monkeypatch.setattr(converter, "count_rows", _forbid_count_rows)
+
+        fast_dir = tmp_path / "fast"
+        fallback_dir = tmp_path / "fallback"
+        fast_dir.mkdir()
+        fallback_dir.mkdir()
+
+        fast_res = converter.convert(
+            source_files=[tbl_file],
+            table_name="lineitem",
+            schema=schema,
+            options=ConversionOptions(output_dir=fast_dir, row_group_size=122_880),
+        )
+        fallback_res = converter.convert(
+            source_files=[tbl_file],
+            table_name="lineitem",
+            schema=schema,
+            options=ConversionOptions(output_dir=fallback_dir, row_group_size=122_880, data_page_version="1.0"),
+        )
+        assert fast_res.row_count == 250
+        assert fallback_res.row_count == 250
+        assert pq.read_schema(fast_res.output_files[0]).types == pq.read_schema(fallback_res.output_files[0]).types
+
+        con = duckdb.connect()
+        try:
+            a = fast_res.output_files[0]
+            b = fallback_res.output_files[0]
+            assert (
+                con.execute(
+                    f"SELECT COUNT(*) FROM (SELECT * FROM read_parquet('{a}') EXCEPT ALL SELECT * FROM read_parquet('{b}'))"
+                ).fetchone()[0]
+                == 0
+            )
+            assert (
+                con.execute(
+                    f"SELECT COUNT(*) FROM (SELECT * FROM read_parquet('{b}') EXCEPT ALL SELECT * FROM read_parquet('{a}'))"
+                ).fetchone()[0]
+                == 0
+            )
+        finally:
+            con.close()

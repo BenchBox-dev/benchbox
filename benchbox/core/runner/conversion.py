@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +57,8 @@ class FormatConversionOrchestrator:
 
         logger.info(f"Converting {total_tables} tables to {target_format}")
 
+        effective_options = self._resolve_conversion_options(manifest, options)
+
         for idx, table_name in enumerate(tables_list, 1):
             logger.info(f"[{idx}/{total_tables}] Converting table: {table_name}")
 
@@ -80,7 +83,7 @@ class FormatConversionOrchestrator:
                     source_files=source_files,
                     table_name=table_name,
                     schema=schema,
-                    options=options or ConversionOptions(),
+                    options=effective_options,
                 )
                 results[table_name] = result
 
@@ -97,12 +100,29 @@ class FormatConversionOrchestrator:
 
         if results:
             logger.info("Updating manifest with conversion results")
-            self._update_manifest_with_results(manifest, results, target_format, output_dir)
+            self._update_manifest_with_results(manifest, results, target_format, output_dir, effective_options)
 
             write_manifest(manifest, manifest_path)
             logger.info(f"Updated manifest: {manifest_path}")
 
         return results
+
+    def _resolve_conversion_options(
+        self,
+        manifest: ManifestV2,
+        options: ConversionOptions | None,
+    ) -> ConversionOptions:
+        base_opts = options or ConversionOptions()
+        extras = manifest.extra_fields or {}
+        delimiter = base_opts.delimiter
+        if delimiter is None and isinstance(extras.get("csv_delimiter"), str) and len(extras["csv_delimiter"]) == 1:
+            delimiter = extras["csv_delimiter"]
+        has_header = base_opts.has_header
+        if has_header is None and isinstance(extras.get("csv_has_header"), bool):
+            has_header = extras["csv_has_header"]
+        if delimiter == base_opts.delimiter and has_header == base_opts.has_header:
+            return base_opts
+        return replace(base_opts, delimiter=delimiter, has_header=has_header)
 
     def _get_converter(self, format_name: str):
         converter = self._converters.get(format_name.lower())
@@ -132,6 +152,7 @@ class FormatConversionOrchestrator:
         results: dict[str, ConversionResult],
         target_format: str,
         output_dir: Path,
+        effective_options: ConversionOptions | None = None,
     ) -> None:
         for table_name, result in results.items():
             table_formats = manifest.tables.get(table_name)
@@ -164,3 +185,45 @@ class FormatConversionOrchestrator:
         if target_format in manifest.format_preference:
             manifest.format_preference.remove(target_format)
         manifest.format_preference.insert(0, target_format)
+
+        formats_list = manifest.extra_fields.get("formats")
+        if isinstance(formats_list, list) and target_format not in formats_list:
+            manifest.extra_fields["formats"] = [*formats_list, target_format]
+
+        if target_format.lower() == "parquet":
+            self._stamp_parquet_provenance(manifest, results, effective_options)
+
+    def _stamp_parquet_provenance(
+        self,
+        manifest: ManifestV2,
+        results: dict[str, ConversionResult],
+        effective_options: ConversionOptions | None,
+    ) -> None:
+        from benchbox.utils.datagen_version import compute_datagen_identity_hash
+
+        row_group_size: int | None = None
+        if effective_options is not None and isinstance(effective_options.row_group_size, int):
+            row_group_size = effective_options.row_group_size
+        else:
+            for result in results.values():
+                candidate = result.conversion_options.get("row_group_size")
+                if isinstance(candidate, int) and not isinstance(candidate, bool):
+                    row_group_size = candidate
+                    break
+
+        manifest.extra_fields["parquet_writer"] = "benchbox-streaming"
+        if row_group_size is not None:
+            manifest.extra_fields["parquet_row_group_size"] = row_group_size
+
+        configuration = manifest.extra_fields.get("skew_configuration")
+        backend = manifest.extra_fields.get("generator_backend")
+        backend_version = manifest.extra_fields.get("generator_backend_version")
+        manifest.extra_fields["data_generation_identity_hash"] = compute_datagen_identity_hash(
+            manifest.benchmark,
+            configuration if isinstance(configuration, dict) else None,
+            backend=str(backend) if backend is not None else None,
+            backend_version=str(backend_version) if backend_version is not None else None,
+            parquet_writer="benchbox-streaming",
+            parquet_row_group_size=row_group_size,
+            scale_factor=manifest.scale_factor,
+        )

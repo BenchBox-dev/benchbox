@@ -157,10 +157,30 @@ class TPCHSkewDataGenerator(VerbosityMixin):
         from benchbox.utils.datagen_version import compute_datagen_identity_hash
 
         identity = self.skew_config.datagen_identity()
+        parquet_writer = manifest.get("parquet_writer")
+        parquet_rg_raw = manifest.get("parquet_row_group_size")
+        parquet_row_group_size = (
+            int(parquet_rg_raw) if isinstance(parquet_rg_raw, int) and not isinstance(parquet_rg_raw, bool) else None
+        )
+        backend = manifest.get("generator_backend")
+        backend_version = manifest.get("generator_backend_version")
+        scale_raw = manifest.get("scale_factor")
+        scale_factor = (
+            float(scale_raw) if isinstance(scale_raw, (int, float)) and not isinstance(scale_raw, bool) else None
+        )
+        expected_hash = compute_datagen_identity_hash(
+            "tpch_skew",
+            identity,
+            backend=str(backend) if backend is not None else None,
+            backend_version=str(backend_version) if backend_version is not None else None,
+            parquet_writer=str(parquet_writer) if parquet_writer is not None else None,
+            parquet_row_group_size=parquet_row_group_size,
+            scale_factor=scale_factor,
+        )
         return (
             manifest.get("skew_configuration") == identity
             and manifest.get("skew_configuration_hash") == self.skew_config.datagen_identity_hash()
-            and manifest.get("data_generation_identity_hash") == compute_datagen_identity_hash("tpch_skew", identity)
+            and manifest.get("data_generation_identity_hash") == expected_hash
         )
 
     def _write_manifest(self, table_paths: dict[str, Path]) -> None:

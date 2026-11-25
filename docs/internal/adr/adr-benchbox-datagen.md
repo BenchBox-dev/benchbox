@@ -183,6 +183,14 @@ non-quiesced development host; cutover enforcement requires 3-run medians
      engines), changing the published-run Parquet row-group layout requires
      explicit owner sign-off and a recorded Parquet-corpus re-baseline before
      becoming the default for published runs.
+   - **Owner sign-off (2026-11-24):** Approved adopting 122,880 rows per row
+     group as the default Parquet layout for all runs, with `parquet_writer`
+     and `parquet_row_group_size` hashed into `data_generation_hash` to
+     separate pre-change single-row-group bundles from streaming-layout
+     bundles, cached pre-streaming Parquet manifests treated as stale on
+     Parquet runs, and local published Parquet suites scheduled for
+     re-baselining separately without incurring live-cloud spend on existing
+     cloud bundles.
 3. **Keep a strict file/statistics boundary and Python-only manifest ownership.**
    Any native generator stays behind:
 

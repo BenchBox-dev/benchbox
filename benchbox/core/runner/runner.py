@@ -438,6 +438,7 @@ def _attach_datagen_version(
             manifest,
             expected_backend=expected_backend,
             expected_backend_version=expected_backend_version,
+            expected_table_format=config_options.get("table_format"),
         ):
             return result
         if not _manifest_matches_result(manifest, result, benchmark):
@@ -2084,17 +2085,20 @@ def _validate_manifest_if_present(
         config_options = getattr(config, "options", None) or {}
         expected_backend = config_options.get("datagen_backend")
         expected_backend_version = config_options.get("datagen_backend_version")
+        expected_table_format = config_options.get("table_format")
         if not manifest_datagen_is_current(
             manifest,
             benchmark=manifest_benchmark,
             expected_backend=expected_backend,
             expected_backend_version=expected_backend_version,
+            expected_table_format=expected_table_format,
         ):
             reason = describe_datagen_staleness(
                 manifest,
                 benchmark=manifest_benchmark,
                 expected_backend=expected_backend,
                 expected_backend_version=expected_backend_version,
+                expected_table_format=expected_table_format,
             )
             logger.warning("Datagen manifest is stale (%s); regenerating benchmark data", reason)
             if not quiet:

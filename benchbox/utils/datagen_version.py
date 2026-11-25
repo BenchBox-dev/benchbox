@@ -256,12 +256,49 @@ def _backend_staleness(
     return None
 
 
+def _manifest_has_parquet(manifest: Mapping[str, Any]) -> bool:
+    for key in ("formats", "format_preference"):
+        values = manifest.get(key)
+        if isinstance(values, (list, tuple)) and any(str(v).lower() == "parquet" for v in values):
+            return True
+    tables = manifest.get("tables")
+    if isinstance(tables, Mapping):
+        for table_entry in tables.values():
+            if not isinstance(table_entry, Mapping):
+                continue
+            table_formats = table_entry.get("formats")
+            if isinstance(table_formats, Mapping) and "parquet" in table_formats:
+                return True
+    return False
+
+
+def _parquet_layout_staleness(manifest: Mapping[str, Any], *, expected_table_format: str | None) -> str | None:
+    if expected_table_format is None or str(expected_table_format).strip().lower() != "parquet":
+        return None
+    if not _manifest_has_parquet(manifest):
+        return None
+    parquet_writer = manifest.get("parquet_writer")
+    parquet_rg = manifest.get("parquet_row_group_size")
+    if (
+        not isinstance(parquet_writer, str)
+        or not parquet_writer.strip()
+        or not isinstance(parquet_rg, int)
+        or isinstance(parquet_rg, bool)
+    ):
+        return (
+            "cached Parquet files predate streaming row-group layout stamping; "
+            "regenerating with the current Parquet layout"
+        )
+    return None
+
+
 def manifest_datagen_is_current(
     manifest: Mapping[str, Any] | None,
     benchmark: str | None = None,
     *,
     expected_backend: str | None = None,
     expected_backend_version: str | None = None,
+    expected_table_format: str | None = None,
 ) -> bool:
     return (
         describe_datagen_staleness(
@@ -269,6 +306,7 @@ def manifest_datagen_is_current(
             benchmark=benchmark,
             expected_backend=expected_backend,
             expected_backend_version=expected_backend_version,
+            expected_table_format=expected_table_format,
         )
         is None
     )
@@ -304,6 +342,7 @@ def describe_datagen_staleness(
     *,
     expected_backend: str | None = None,
     expected_backend_version: str | None = None,
+    expected_table_format: str | None = None,
 ) -> str | None:
 
     if not isinstance(manifest, Mapping):
@@ -331,12 +370,15 @@ def describe_datagen_staleness(
     binary_reason = _generator_binary_staleness(manifest, name)
     if binary_reason is not None:
         return binary_reason
-    return _backend_staleness(
+    backend_reason = _backend_staleness(
         manifest,
         name,
         expected_backend=expected_backend,
         expected_backend_version=expected_backend_version,
     )
+    if backend_reason is not None:
+        return backend_reason
+    return _parquet_layout_staleness(manifest, expected_table_format=expected_table_format)
 
 
 def resolve_manifest_datagen_hash(manifest: Mapping[str, Any]) -> str | None:

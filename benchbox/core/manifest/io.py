@@ -60,6 +60,22 @@ def _parse_v1(data: dict) -> ManifestV1:
     )
 
 
+_KNOWN_V2_TOP_LEVEL_KEYS = frozenset(
+    {
+        "version",
+        "benchmark",
+        "scale_factor",
+        "tables",
+        "format_preference",
+        "compression",
+        "parallel",
+        "created_at",
+        "generator_version",
+        "plan_metadata",
+    }
+)
+
+
 def _parse_v2(data: dict) -> ManifestV2:
     tables = {}
     for table_name, table_data in data.get("tables", {}).items():
@@ -86,6 +102,8 @@ def _parse_v2(data: dict) -> ManifestV2:
     if "plan_metadata" in data:
         plan_metadata = PlanMetadata.from_dict(data["plan_metadata"])
 
+    extra_fields = {k: v for k, v in data.items() if k not in _KNOWN_V2_TOP_LEVEL_KEYS}
+
     return ManifestV2(
         version=data.get("version", 2),
         benchmark=data.get("benchmark"),
@@ -97,6 +115,7 @@ def _parse_v2(data: dict) -> ManifestV2:
         created_at=data.get("created_at"),
         generator_version=data.get("generator_version"),
         plan_metadata=plan_metadata,
+        extra_fields=extra_fields,
     )
 
 
@@ -225,5 +244,9 @@ def _manifest_v2_to_dict(manifest: ManifestV2) -> dict:
         metadata_dict = manifest.plan_metadata.to_dict()
         if metadata_dict:
             result["plan_metadata"] = metadata_dict
+
+    for key, value in manifest.extra_fields.items():
+        if key not in result:
+            result[key] = value
 
     return result
