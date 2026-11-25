@@ -49290,7 +49290,9 @@
     },
     "sqlite-pass-engine-version-to-sqlglot": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "sqlglot-adopt-30-35-0-2"
+      ],
       "priority": "high",
       "status": "open",
       "title": "Pass the SQLite engine version to sqlglot so month and year offsets fail loudly on SQLite before 3.46"
