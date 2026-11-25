@@ -420,6 +420,10 @@ QUERY_VARIANTS["singlestore"] = {
     for _query_id, _sql in _QUERIES.items()
 }
 
+_DISTANCE_FUNCTIONS: dict[str, dict[str, str]] = {
+    "trino": {"array_cosine_similarity": "cosine_similarity", "array_distance": "euclidean_distance"}
+}
+
 
 class VectorSearchQueryManager:
     ALL_QUERY_IDS = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6"]
@@ -475,7 +479,9 @@ class VectorSearchQueryManager:
                 return legacy_sql
             if is_native_dialect("duckdb", dialect):
                 return self._queries[key]
-            return translate_sql_query(self._queries[key], dialect, source_dialect="duckdb")
+            functions = _DISTANCE_FUNCTIONS.get(dialect_lower)
+            rewrites = [("rename_functions", {"names": functions})] if functions else None
+            return translate_sql_query(self._queries[key], dialect, source_dialect="duckdb", rewrites=rewrites)
 
         return self._queries[key]
 

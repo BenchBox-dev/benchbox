@@ -11,6 +11,12 @@ from contextvars import ContextVar
 from dataclasses import asdict, dataclass
 from typing import Any, Callable
 
+from benchbox.utils.presto_family_rewrites import (
+    cast_temporal_literals,
+    inline_group_by_aliases,
+    regexp_group_references_to_dollar,
+    rename_functions,
+)
 from benchbox.utils.query_shape_rewrites import (
     add_dual_source_to_filtered_selects,
     alias_order_by_projections,
@@ -864,6 +870,7 @@ _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "alias_order_by_projections": alias_order_by_projections,
     "date_column_integer_arithmetic": date_column_integer_arithmetic,
     "alias_outer_table_references": alias_outer_table_references,
+    "cast_temporal_literals": cast_temporal_literals,
     "coalesce_count_subqueries": coalesce_count_subqueries,
     "drop_correlated_scalar_group_by": drop_correlated_scalar_group_by,
     "drop_empty_group_by": drop_empty_group_by,
@@ -873,10 +880,13 @@ _LOCAL_REWRITES: dict[str, Callable[..., object]] = {
     "hoist_aggregate_subqueries": hoist_aggregate_subqueries,
     "hoist_qualify_outer_clauses": hoist_qualify_outer_clauses,
     "in_subquery_or_to_left_join": in_subquery_or_to_left_join,
+    "inline_group_by_aliases": inline_group_by_aliases,
     "inline_named_windows": inline_named_windows,
     "inline_sourceless_exists": inline_sourceless_exists,
     "positive_count_subquery_to_exists": positive_count_subquery_to_exists,
     "qualify_aggregated_columns": qualify_aggregated_columns,
+    "regexp_group_references_to_dollar": regexp_group_references_to_dollar,
+    "rename_functions": rename_functions,
     "rollup_empty_input_row": rollup_empty_input_row,
     "trim_char_case_comparisons": trim_char_case_comparisons,
     "unwrap_single_grouping_set": unwrap_single_grouping_set,

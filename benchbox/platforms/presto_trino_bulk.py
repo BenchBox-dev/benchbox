@@ -154,7 +154,8 @@ def _bounded_varchar_projection(name: str, type_name: str) -> str | None:
         return None
     column = _quote(name)
     message = _sql_text(f"value longer than {limit} characters for {type_name} column {name}")
-    return f"CASE WHEN length({column}) > {limit} THEN CAST(fail({message}) AS varchar) ELSE {column} END"
+    checked = f"CASE WHEN length({column}) > {limit} THEN CAST(fail({message}) AS varchar) ELSE {column} END"
+    return f"CAST({checked} AS {type_name})"
 
 
 def _external_parquet_type(type_name: str) -> str:
