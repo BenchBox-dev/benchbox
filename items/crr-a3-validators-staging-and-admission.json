@@ -465,6 +465,16 @@
       "op_id": "a2adbc48bd8c41febd0cb448d7b8869e",
       "reason": "the leader's MCP server process restarted; the same session resumed under a new worker identity",
       "session_id": "8d65b6279fea44c7a8b615865c347a10"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-25T04:30:01Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1fe0d5ea650efa9081231444",
+      "op": "recover",
+      "op_id": "f143b2477c0a442b9e5c9f0422c6f612",
+      "reason": "the leader's MCP server process restarted; the same session resumed under a new worker identity",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
     }
   ]
 }
