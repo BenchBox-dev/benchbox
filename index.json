@@ -20551,6 +20551,13 @@
       "status": "done",
       "title": "Bidirectional Sync and True-Up Releases for Public/Private Repos"
     },
+    "bigquery-cost-config-location-warning-20261125": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "BigQuery runs warn 'Missing required config field location' although the stored config sets it"
+    },
     "bigquery-per-region-price-capture": {
       "claim": null,
       "needs": [

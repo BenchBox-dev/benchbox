@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Cost validation sees the stored platform settings, so BigQuery runs with a configured location no longer warn and price with that region."
+  ],
+  "context": "Filed 2026-11-25 at the close of the run-timeout effort (umbrella run-timeout-plan-20261120, done). Evidence read that day; re-read code, docs and run folders before acting.",
+  "description": "## Problem\nOn 2026-11-25 a `benchbox run --platform bigquery` with stored credentials (`~/.benchbox/credentials.yaml`, which sets `location: US`) printed `WARNING - Platform config validation: Missing required config field 'location' for bigquery cost calculation` and `ERROR - Platform configuration incomplete for bigquery. Cost estimation may fail or be inaccurate.` (run log `~/Developer/benchmark_runs/run-timeout-live-check-20261124/a2b/run.log`). The check is `validate_platform_config` in `benchbox/core/cost/integration.py`, which reads the config dict it is given; the adapter itself had `location` US. So the config passed to cost validation does not carry the stored platform settings, and cost results may use a default region.\n\n## Change\nTrace which dict reaches `validate_platform_config` and the cost calculator for a CLI run, and pass the adapter's effective configuration (including stored credentials' non-secret fields such as `location`). Check whether other platforms with required cost fields have the same gap.\n\n## Decision gates\n- Never pass secrets (keys, tokens, credential file contents) into cost metadata or result files.\n- If the region used for pricing changes, say so in the changelog; do not change prices.\n\n## Verification rubric\nPass: a test building the run's cost config from a stored BigQuery config with `location` set shows no missing-field warning and the location in the cost metadata, failing before; a result JSON from a dry run shows the region; `make pr-preflight` exits 0.\nFail: warning still printed when the field is configured, or secrets in the result.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:883ac124f68c0bb7e4b8a7aa",
+      "at": "2026-11-25T15:07:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "34a38d1c5e6d4ddf950d0c11e31d4825",
+      "session_id": "0b8d661071874e74901ab9bff63c57d9"
+    }
+  ]
+}
