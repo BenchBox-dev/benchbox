@@ -50382,17 +50382,12 @@
       "title": "Theseus: a claimed prior finding stays open after the reviewer withdraws it"
     },
     "theseus-classifier-402-skips-fallback-20261124": {
-      "claim": {
-        "expires_at": "2026-11-26T07:01:42Z",
-        "generation": "2f58b17a9dad46f2a7005e7517925133",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0a697a35e720a04d19e44a28"
-      },
+      "claim": null,
       "needs": [
         "review-classifier-degraded-remediation-20261124"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Theseus: a TypeSafe 402 skips the OpenAI Decisions fallback and the unavailable bucket, so no reviewer runs"
     },
     "theseus-close-known-defects-trigger-scan-20261112": {
