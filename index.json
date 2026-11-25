@@ -26599,12 +26599,17 @@
       "title": "Add per-benchmark datagen versioning, backend provenance, and --datagen-backend selector"
     },
     "datagen-p1-streaming-parquet-converter": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-26T03:00:57Z",
+        "generation": "1b4adabe4c73461db72a7e62d0eec671",
+        "renewals": 0,
+        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:09e72875364dbf224cdb1ab5"
+      },
       "needs": [
         "datagen-p0-companion-adr"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Make BaseFormatConverter and ParquetConverter stream batches instead of materializing full tables"
     },
     "datagen-p1-tpcgen-cli-adapter": {
