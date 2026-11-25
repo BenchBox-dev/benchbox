@@ -69,13 +69,20 @@ jobs:
         run: |
           CHANGED_GUARD=$(git diff --name-only "$BASE_SHA...${MERGE_SHA:-HEAD}" -- \
             scripts/validate_submission.py \
+            scripts/publication/validator_parity.py \
             benchbox/validation/bundle.py \
+            benchbox/core/results/corpus_rule.py \
+            benchbox/core/results/corpus_rule_data.json \
+            benchbox/core/results/corpus_score.py \
+            benchbox/core/results/comparison_identity.py \
+            benchbox/core/results/comparison_identity.json \
             benchbox/core/results/query_status.py \
             benchbox/core/results/schema_policy.py \
             benchbox/core/results/subscale_policy.py \
             benchbox/core/results/timing_fields.py \
             results-data/validate_corpus.py \
             scripts/generate_corpus_inventory.py \
+            scripts/unpublished_rule_rankings.txt \
             .github/workflows/validate-submission.yml \
             || true)
           if [ -n "$CHANGED_GUARD" ]; then
