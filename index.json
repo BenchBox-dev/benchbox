@@ -26898,6 +26898,13 @@
       "status": "open",
       "title": "Cut over TPC-H and TPC-DS default backend and decide published-run Parquet layout default"
     },
+    "datagen-parquet-partitioned-row-groups": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Fill partitioned Parquet row groups to the configured 122,880 rows"
+    },
     "dataproc-gcs-helpers-duplicated-20261125": {
       "claim": null,
       "needs": [],

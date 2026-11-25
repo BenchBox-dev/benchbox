@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "Regression test: with forced small blocks, every partition file's row groups are row_group_size except the last; the test fails without the fix.",
+    "A recorded partitioned conversion shows peak RSS not higher than before the change.",
+    "PR merged to develop with a changelog.d fragment."
+  ],
+  "context": "Split out on 2026-11-25 from an adversarial review of the datagen effort (finding C2). An uncommitted test and one-line fix exist in worktree ../BenchBox.wt-fix-parquet-single-writer; reuse only those hunks.",
+  "description": "## Problem\n`ParquetConverter._write_partitioned` calls `pyarrow.dataset.write_dataset(..., max_rows_per_group=row_group_size)` without `min_rows_per_group`, so each ~1 MiB CSV block becomes its own row group (observed ~1,971-row groups at 1M rows / 7 partitions) while the manifest and `parquet_data_generation_identity_hash` record 122,880. Reachable from `benchbox convert --partition` and runs with `table_format_partition_cols`.\n\n## Change\n- Pass `min_rows_per_group=opts.row_group_size` alongside `max_rows_per_group`.\n- Add a regression test that forces small input blocks and asserts partition files have full row groups plus one tail.\n\n## Decision gates\n- If the deterministic-writer item replaces the partitioned path's writer first, re-scope this to that writer instead of PyArrow `write_dataset`.\n\n## Guardrails\n- Measure peak RSS on one partitioned conversion (review probe: 12M rows / 1,000 partitions went 2,368 -> 1,578 MiB) and record it; stop if memory rises.\n- No change to non-partitioned output. AGENTS.md workflow, changelog fragment, merged PR.",
+  "links": [
+    "benchbox/utils/format_converters/parquet_converter.py"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-25T15:41:27Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b2d4f6a81c3e5f7a9b1d3e5f7a9c1e02",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
