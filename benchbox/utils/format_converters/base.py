@@ -561,6 +561,17 @@ class BaseFormatConverter(FormatConverter):
     def calculate_file_size(self, file_paths: list[Path]) -> int:
         return sum(f.stat().st_size for f in file_paths if f.exists())
 
+    def count_uncompressed_data_rows(self, file_paths: list[Path], *, has_header: bool = False) -> int:
+        total = 0
+        for file_path in file_paths:
+            with open(file_path, "rb") as raw_stream:
+                counting_stream = _CountingBinaryStream(raw_stream)
+                while counting_stream.read(4 * 1024 * 1024):
+                    pass
+            data_lines = counting_stream.nonempty_lines - (1 if has_header else 0)
+            total += max(0, data_lines)
+        return total
+
     def count_rows(self, file_paths: list[Path], delimiter: str = "|") -> int:
         total_rows = 0
         compression_manager = CompressionManager()

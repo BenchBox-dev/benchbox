@@ -155,6 +155,8 @@ class FormatConversionOrchestrator:
         return [output_dir / f.path for f in self._get_source_entries(manifest, table_name)]
 
     def _get_source_row_count(self, manifest: ManifestV2, table_name: str) -> int | None:
+        if manifest.extra_fields.get("row_counts_source") != "measured":
+            return None
         entries = self._get_source_entries(manifest, table_name)
         if not entries:
             return None

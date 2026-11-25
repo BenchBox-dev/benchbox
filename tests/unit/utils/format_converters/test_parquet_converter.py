@@ -1014,3 +1014,55 @@ class TestParquetStreamingAndBenchmarkCompatibility:
                 ),
             )
         assert not (part_dir / "orders").exists()
+
+    def test_orchestrator_ignores_unmeasured_estimated_manifest_row_counts(self, tmp_path):
+        import json
+
+        from benchbox.core.runner.conversion import FormatConversionOrchestrator
+
+        schema = {
+            "nation": {
+                "columns": [
+                    {"name": "n_nationkey", "type": "INTEGER"},
+                    {"name": "n_name", "type": "VARCHAR(25)"},
+                ]
+            }
+        }
+        tbl_file = tmp_path / "nation.tbl"
+        tbl_file.write_text("0|ALGERIA\n1|ARGENTINA\n2|BRAZIL\n", encoding="utf-8")
+        manifest_path = tmp_path / "_datagen_manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "version": 2,
+                    "benchmark": "tpch_skew",
+                    "scale_factor": 10.0,
+                    "formats": ["tbl"],
+                    "format_preference": ["tbl"],
+                    "tables": {
+                        "nation": {
+                            "formats": {
+                                "tbl": [
+                                    {
+                                        "path": "nation.tbl",
+                                        "size_bytes": tbl_file.stat().st_size,
+                                        "row_count": 250,
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        results = FormatConversionOrchestrator().convert_benchmark_tables(
+            manifest_path=manifest_path,
+            output_dir=tmp_path,
+            target_format="parquet",
+            schemas=schema,
+        )
+        assert results["nation"].row_count == 3
+        updated = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert updated["tables"]["nation"]["formats"]["parquet"][0]["row_count"] == 3

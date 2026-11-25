@@ -159,10 +159,8 @@ class ParquetConverter(BaseFormatConverter):
         opts: ConversionOptions,
         compression: str | None,
         progress_callback: Callable[[str, float], None] | None,
-    ) -> int | None:
+    ) -> tuple[int, int] | None:
         if opts.data_page_version is not None or opts.row_group_size < _DUCKDB_MIN_ROW_GROUP_SIZE:
-            return None
-        if opts.validate_row_count and opts.expected_row_count is None:
             return None
 
         col_types: list[tuple[str, str]] = []
@@ -174,9 +172,13 @@ class ParquetConverter(BaseFormatConverter):
 
         active_files: list[Path] = []
         framing: tuple[str, bool, bool] | None = None
+        all_uncompressed = True
         for file_path in source_files:
-            if detect_compression(file_path) not in _DUCKDB_SUPPORTED_COMPRESSIONS:
+            compression_type = detect_compression(file_path)
+            if compression_type not in _DUCKDB_SUPPORTED_COMPRESSIONS:
                 return None
+            if compression_type is not None:
+                all_uncompressed = False
             delimiter, has_header, has_trailing, is_empty = self._resolve_file_csv_settings(
                 file_path, column_names, opts
             )
@@ -190,6 +192,8 @@ class ParquetConverter(BaseFormatConverter):
             active_files.append(file_path)
 
         if not active_files or framing is None:
+            return None
+        if opts.validate_row_count and opts.expected_row_count is None and not all_uncompressed:
             return None
 
         try:
@@ -220,7 +224,7 @@ class ParquetConverter(BaseFormatConverter):
         con = duckdb.connect(":memory:", config={"memory_limit": _DUCKDB_STREAM_MEMORY_LIMIT})
         try:
             row = con.execute(copy_sql).fetchone()
-            return int(row[0]) if row is not None else int(pq.read_metadata(output_path).num_rows)
+            copied_rows = int(row[0]) if row is not None else int(pq.read_metadata(output_path).num_rows)
         except Exception as exc:
             logger.warning(
                 "DuckDB streaming Parquet path failed for %s (%s); falling back to PyArrow streaming writer",
@@ -233,6 +237,17 @@ class ParquetConverter(BaseFormatConverter):
             return None
         finally:
             con.close()
+
+        expected_rows = (
+            opts.expected_row_count
+            if opts.expected_row_count is not None
+            else (
+                self.count_uncompressed_data_rows(active_files, has_header=has_header)
+                if opts.validate_row_count
+                else copied_rows
+            )
+        )
+        return copied_rows, expected_rows
 
     def _write_single_file_pyarrow(
         self,
@@ -336,7 +351,7 @@ class ParquetConverter(BaseFormatConverter):
         output_path = output_dir / f"{table_name}.parquet"
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        duckdb_rows = self._try_write_single_file_duckdb(
+        duckdb_counts = self._try_write_single_file_duckdb(
             source_files=source_files,
             output_path=output_path,
             arrow_schema=arrow_schema,
@@ -347,8 +362,8 @@ class ParquetConverter(BaseFormatConverter):
         )
 
         source_line_counter = [0]
-        if duckdb_rows is not None:
-            rows_read = duckdb_rows
+        if duckdb_counts is not None:
+            rows_read, expected_source_rows = duckdb_counts
             writer_name = PARQUET_WRITER_DUCKDB
         else:
             rows_read = self._write_single_file_pyarrow(
@@ -361,6 +376,9 @@ class ParquetConverter(BaseFormatConverter):
                 progress_callback=progress_callback,
                 source_line_counter=source_line_counter,
             )
+            expected_source_rows = (
+                opts.expected_row_count if opts.expected_row_count is not None else source_line_counter[0]
+            )
             writer_name = PARQUET_WRITER_PYARROW
 
         source_size = self.calculate_file_size(source_files)
@@ -368,16 +386,15 @@ class ParquetConverter(BaseFormatConverter):
         parquet_meta = pq.read_metadata(output_path)
 
         if opts.validate_row_count:
-            expected_rows = opts.expected_row_count if opts.expected_row_count is not None else source_line_counter[0]
             try:
                 self._verify_inline_row_count(
-                    expected_rows=expected_rows,
+                    expected_rows=expected_source_rows,
                     written_rows=parquet_meta.num_rows,
                     table_name=table_name,
                 )
-                if rows_read != expected_rows:
+                if rows_read != expected_source_rows:
                     self._verify_inline_row_count(
-                        expected_rows=expected_rows,
+                        expected_rows=expected_source_rows,
                         written_rows=rows_read,
                         table_name=table_name,
                     )
