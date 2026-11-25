@@ -19776,6 +19776,13 @@
       "status": "done",
       "title": "Document the integration batch loop in AGENTS.md and docs/agent, keeping it opt-in until the pilot passes"
     },
+    "batch-loop-e2e-needs-rust-locally-20261125": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Batch Loop E2E tests cannot run locally: bootstrapping the tracker builds pydantic-core from source"
+    },
     "batch-loop-e2e-review-binding-failures-20261106": {
       "claim": null,
       "needs": [],
