@@ -1,0 +1,1 @@
+{"schema":1,"internal":"The Docker release-gate shards give the LakeSail server container 12g instead of 6g, because one server serves every LakeSail cell of the shard and the kernel OOM-killed it during JoinOrder SF 1 in trunk UAT run 45599221098."}
