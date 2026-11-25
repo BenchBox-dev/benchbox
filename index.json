@@ -25335,15 +25335,10 @@
       "title": "Dispatch the results-data sync to published-results and verify corpus drift clears"
     },
     "corpus-tpcds-sf1-stored-wrong-answers-20260826": {
-      "claim": {
-        "expires_at": "2026-11-26T19:55:37Z",
-        "generation": "46a39d4eef9445bdbd5cfa4ed5562a6e",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Decide the corpus outcome of two stored TPC-DS SF 1 results with wrong answers"
     },
     "corpus-tpch-shallow-cohort-replacements-20261018": {
