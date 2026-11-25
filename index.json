@@ -26821,7 +26821,9 @@
       "claim": null,
       "needs": [
         "datagen-p1-streaming-parquet-converter",
-        "bundle-data-generation-hash-missing-from-corpus"
+        "bundle-data-generation-hash-missing-from-corpus",
+        "datagen-p1-deterministic-parquet-writer",
+        "datagen-p1-parquet-semantic-fixes"
       ],
       "priority": "medium",
       "status": "open",
