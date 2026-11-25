@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import stat
 from pathlib import Path
 from types import MappingProxyType
@@ -156,16 +157,17 @@ def test_implemented_spec_fails_loudly_when_extra_missing_and_succeeds_when_pres
 
 
 def test_resolve_env_executable_scopes_to_active_python_env(tmp_path: Path) -> None:
-    bin_dir = tmp_path / "venv" / "bin"
+    bin_dir = tmp_path / "venv" / ("Scripts" if os.name == "nt" else "bin")
     bin_dir.mkdir(parents=True)
-    fake_py = bin_dir / "python"
+    fake_py = bin_dir / ("python.exe" if os.name == "nt" else "python")
     fake_py.write_text("#!/bin/sh\n", encoding="utf-8")
 
     assert resolve_env_executable("tpcgen-cli", python_executable=fake_py) is None
 
-    fake_cli = bin_dir / "tpcgen-cli"
+    fake_cli = bin_dir / ("tpcgen-cli.exe" if os.name == "nt" else "tpcgen-cli")
     fake_cli.write_text("#!/bin/sh\n", encoding="utf-8")
-    fake_cli.chmod(fake_cli.stat().st_mode | stat.S_IXUSR)
+    if os.name != "nt":
+        fake_cli.chmod(fake_cli.stat().st_mode | stat.S_IXUSR)
     assert resolve_env_executable("tpcgen-cli", python_executable=fake_py) == fake_cli
 
 
