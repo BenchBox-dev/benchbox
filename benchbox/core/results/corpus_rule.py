@@ -764,24 +764,22 @@ def public_refusal(benchmark_id: str | None, scale_factor: float | None, *, gate
 def public_refusal_for_facts(facts: Facts) -> str | None:
     if facts.phases is None:
         return CLASS_UNDETERMINED
+    if facts.validation_failed or facts.public_validation_refused:
+        return HELD_FAILED_VALIDATION
     outcome = derive_outcome(facts)
     held = _held_reason(facts)
     if held == HELD_GATEWAY_ROUTED:
         return held
     if outcome.class_name == CLASS_SUBSCALE and not outcome.public_admission:
         return CLASS_SUBSCALE
-    if facts.validation_failed:
-        return HELD_FAILED_VALIDATION
     if (
         normalize_benchmark_id(facts.benchmark) == "tpcdi"
         and outcome.held_reason == HELD_NO_TIMED_PHASE
-        and _held_reason(facts) is None
+        and held is None
     ):
         outcome = tpcdi_default_admission(facts)
     if outcome.held_reason not in (None, HELD_KNOWN_DEFECT) and not outcome.public_admission:
         return outcome.held_reason
-    if facts.public_validation_refused:
-        return HELD_FAILED_VALIDATION
     if not outcome.public_admission:
         return outcome.class_name
     return None

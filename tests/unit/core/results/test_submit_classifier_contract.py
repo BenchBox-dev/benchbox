@@ -91,14 +91,17 @@ def _loadable_cases(tmp_path: Path) -> list[tuple[str, Path, SubmitTerminalState
     unofficial = tmp_path / "unofficial.json"
     _write_result_json(unofficial, compliance_class="unofficial_subscale", scale_factor=0.01)
 
-    unofficial_and_unvalidated = tmp_path / "unofficial-and-unvalidated.json"
+    subscale_and_not_validated = tmp_path / "subscale-and-not-validated.json"
     _write_result_json(
-        unofficial_and_unvalidated,
+        subscale_and_not_validated,
         failed=0,
         scale_factor=0.01,
         validation="not_validated",
         compliance_class="unofficial_subscale",
     )
+
+    subscale_query_failure = tmp_path / "subscale-query-failure.json"
+    _write_result_json(subscale_query_failure, failed=1, scale_factor=0.01, compliance_class="unofficial_subscale")
 
     return [
         ("clean", clean, SubmitTerminalState.submittable),
@@ -115,7 +118,8 @@ def _loadable_cases(tmp_path: Path) -> list[tuple[str, Path, SubmitTerminalState
             SubmitTerminalState.unvalidated,
         ),
         ("unofficial", unofficial, SubmitTerminalState.unofficial),
-        ("unofficial_and_unvalidated", unofficial_and_unvalidated, SubmitTerminalState.unofficial),
+        ("subscale_and_not_validated", subscale_and_not_validated, SubmitTerminalState.unvalidated),
+        ("subscale_query_failure", subscale_query_failure, SubmitTerminalState.query_failure),
     ]
 
 
@@ -134,11 +138,12 @@ def test_submit_classifier_uses_evidence_not_recorded_class(tmp_path: Path) -> N
     _write_result_json(path, compliance_class="unofficial_subscale", scale_factor=1.0)
     assert classify_result_path(path) is SubmitTerminalState.submittable
 
-    _write_result_json(path, compliance_class="full_spec", scale_factor=0.01, validation="not_validated")
+    _write_result_json(path, compliance_class="full_spec", scale_factor=0.01)
     assert classify_result_path(path) is SubmitTerminalState.unofficial
 
     payload = json.loads(path.read_text(encoding="utf-8"))
     payload["queries"] = []
+    payload["summary"]["validation"] = {"status": "not_validated"}
     path.write_text(json.dumps(payload), encoding="utf-8")
     assert classify_result_path(path) is SubmitTerminalState.unvalidated
 

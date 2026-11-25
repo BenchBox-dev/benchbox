@@ -181,6 +181,7 @@ def _built_like_a_real_run(gateway: dict | None):
                 "iteration": 1,
                 "stream_id": 0,
                 "run_type": "measurement",
+                "row_count_validation": {"status": "PASSED", "expected": 1, "actual": 1},
             }
         )
     )

@@ -706,11 +706,13 @@ def test_hold_precedes_missing_stream_evidence_and_refuses_public_failure() -> N
         (1.0, {"gateway_routed": True}, False, False, rule.HELD_GATEWAY_ROUTED),
         (0.01, {"gateway_routed": True}, False, False, rule.HELD_GATEWAY_ROUTED),
         (1.0, {"validation_failed": True}, False, False, rule.HELD_FAILED_VALIDATION),
-        (0.01, {"validation_failed": True}, False, False, rule.CLASS_SUBSCALE),
+        (0.01, {"validation_failed": True}, False, False, rule.HELD_FAILED_VALIDATION),
+        (1.0, {"gateway_routed": True, "validation_failed": True}, False, False, rule.HELD_FAILED_VALIDATION),
+        (0.01, {"gateway_routed": True, "validation_failed": True}, False, False, rule.HELD_FAILED_VALIDATION),
         (1.0, {"known_defect": True}, True, True, None),
         (0.01, {"known_defect": True}, False, True, rule.CLASS_SUBSCALE),
         (1.0, {"known_defect": True, "validation_failed": True}, False, False, rule.HELD_FAILED_VALIDATION),
-        (0.01, {"known_defect": True, "validation_failed": True}, False, False, rule.CLASS_SUBSCALE),
+        (0.01, {"known_defect": True, "validation_failed": True}, False, False, rule.HELD_FAILED_VALIDATION),
     ],
 )
 def test_hold_admission_matches_the_two_paths(
@@ -745,4 +747,17 @@ def test_a_known_defect_changes_ranking_only_for_every_combination() -> None:
             assert outcome.public_admission == unheld.public_admission, held
             assert outcome.maintainer_admission == unheld.maintainer_admission, held
             assert rule.public_refusal_for_facts(held) == rule.public_refusal_for_facts(clean), held
+    assert checked
+
+
+def test_failed_validation_is_the_public_refusal_whatever_else_refuses() -> None:
+    checked = 0
+    for facts in all_facts():
+        if facts.phases is None:
+            continue
+        for public_validation_refused in (False, True):
+            candidate = replace(facts, public_validation_refused=public_validation_refused)
+            if candidate.validation_failed or candidate.public_validation_refused:
+                checked += 1
+                assert rule.public_refusal_for_facts(candidate) == rule.HELD_FAILED_VALIDATION, candidate
     assert checked

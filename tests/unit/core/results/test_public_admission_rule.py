@@ -96,6 +96,40 @@ def test_no_reference_is_refused_when_a_reference_exists() -> None:
     assert classify_loaded_result(result) is not SubmitTerminalState.submittable
 
 
+FAILED_VALIDATIONS = {
+    "failed_query": {"failed_queries": 1},
+    "failed_status": {"validation_status": "FAILED"},
+    "uncertain_status": {"validation_status": "uncertain"},
+    "translation_fallback": {"execution_metadata": {"translation": "fallback"}},
+}
+
+
+@pytest.mark.parametrize("label", ["community", "official", "unofficial-research"])
+@pytest.mark.parametrize("failure", sorted(FAILED_VALIDATIONS))
+@pytest.mark.parametrize("other_refusal", ["subscale", "gateway_routed"])
+def test_failed_validation_is_refused_under_every_label(label: str, failure: str, other_refusal: str) -> None:
+    result = _loaded(0.01 if other_refusal == "subscale" else 1.0)
+    if other_refusal == "gateway_routed":
+        result.platform_info = {"gateway": {"name": "proxy", "routed": True}}
+    for name, value in FAILED_VALIDATIONS[failure].items():
+        setattr(result, name, value)
+
+    decision = publish_admission(result, label)
+
+    assert (decision.allowed, decision.code) == (False, "non_clean")
+    assert classify_loaded_result(result) is not SubmitTerminalState.unofficial
+
+
+@pytest.mark.parametrize("label", ["community", "official", "unofficial-research"])
+def test_a_false_no_reference_claim_on_a_gateway_routed_run_is_refused_under_every_label(label: str) -> None:
+    result = _loaded(1.0)
+    result.platform_info = {"gateway": {"name": "proxy", "routed": True}}
+    result.validation_status = "no_reference"
+
+    decision = publish_admission(result, label)
+    assert (decision.allowed, decision.code) == (False, "non_clean")
+
+
 def test_tpcdi_direct_audited_result_preserves_public_admission() -> None:
     from tests.fixtures.result_dict_fixtures import make_benchmark_results
 
