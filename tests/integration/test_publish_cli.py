@@ -29,42 +29,44 @@ def runner():
     return CliRunner()
 
 
-@pytest.fixture
-def schema_v2_bundle(tmp_path) -> Path:
+BUNDLE_STEM = "tpch_sf1_duckdb_20260401_120000"
 
-    bundle = tmp_path / "tpch_sf0.01_duckdb_20260401_120000.json"
+
+def _write_bundle(directory: Path) -> Path:
+    bundle = directory / f"{BUNDLE_STEM}.json"
     payload = {
-        "version": "2.0",
-        "benchmark": {"name": "tpch", "scale_factor": 0.01},
+        "version": "2.2",
+        "benchmark": {"id": "tpch", "name": "tpch", "scale_factor": 1.0},
         "platform": {"name": "duckdb"},
         "run": {"id": "abc123", "timestamp": "2026-04-01T12:00:00"},
-        "summary": {"queries": {"total": 22, "passed": 22, "failed": 0}, "validation": "PASSED"},
-        "queries": [],
+        "summary": {"queries": {"total": 22, "passed": 22, "failed": 0}, "validation": "passed"},
+        "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
+        "queries": [
+            {
+                "id": f"Q{i}",
+                "ms": 100.0,
+                "status": "SUCCESS",
+                "run_type": "measurement",
+                "rows": 5,
+                "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5},
+            }
+            for i in range(1, 23)
+        ],
     }
     bundle.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return bundle
 
 
 @pytest.fixture
+def schema_v2_bundle(tmp_path) -> Path:
+    return _write_bundle(tmp_path)
+
+
+@pytest.fixture
 def schema_v2_bundle_with_companions(tmp_path) -> Path:
-
-    bundle = tmp_path / "tpch_sf0.01_duckdb_20260401_120000.json"
-    payload = {
-        "version": "2.0",
-        "benchmark": {"name": "tpch", "scale_factor": 0.01},
-        "platform": {"name": "duckdb"},
-        "run": {"id": "abc123", "timestamp": "2026-04-01T12:00:00"},
-        "summary": {"queries": {"total": 22, "passed": 22, "failed": 0}, "validation": "PASSED"},
-        "queries": [],
-    }
-    bundle.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-
-    plans_path = tmp_path / "tpch_sf0.01_duckdb_20260401_120000.plans.json"
-    plans_path.write_text(json.dumps({"plans": []}), encoding="utf-8")
-
-    tuning_path = tmp_path / "tpch_sf0.01_duckdb_20260401_120000.tuning.json"
-    tuning_path.write_text(json.dumps({"tuning": {}}), encoding="utf-8")
-
+    bundle = _write_bundle(tmp_path)
+    (tmp_path / f"{BUNDLE_STEM}.plans.json").write_text(json.dumps({"plans": []}), encoding="utf-8")
+    (tmp_path / f"{BUNDLE_STEM}.tuning.json").write_text(json.dumps({"tuning": {}}), encoding="utf-8")
     return bundle
 
 

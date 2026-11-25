@@ -270,7 +270,9 @@ class TestDuckLakeWritePrimitivesLive:
     def setup_method(self) -> None:
         _skip_unless_extensions("ducklake")
 
-    def test_write_primitives_success_and_engine_specific_skip(self, tmp_path: Path) -> None:
+    def test_write_primitives_succeed_skip_engine_specific_and_record_no_row_count_reference(
+        self, tmp_path: Path
+    ) -> None:
         result = run_cli_command(
             [
                 "run",
@@ -293,7 +295,7 @@ class TestDuckLakeWritePrimitivesLive:
         result_files = sorted((tmp_path / "benchmark_runs" / "results").glob("*.json"))
         assert len(result_files) == 1, result_files
         payload = json.loads(result_files[0].read_text(encoding="utf-8"))
-        assert payload["summary"]["validation"] == "passed"
+        assert payload["summary"]["validation"] == "no_reference"
         assert payload["summary"]["queries"]["failed"] == 0
         statuses: dict[str, set[str]] = {}
         for query in payload["queries"]:

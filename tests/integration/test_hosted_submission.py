@@ -138,8 +138,8 @@ def result_file(tmp_path: Path) -> Path:
     path.write_text(
         json.dumps(
             {
-                "version": "2.1",
-                "benchmark": {"id": "tpch", "name": "tpch", "scale_factor": 0.01},
+                "version": "2.2",
+                "benchmark": {"id": "tpch", "name": "tpch", "scale_factor": 1.0},
                 "platform": {"name": "duckdb"},
                 "run": {
                     "id": "run1",
@@ -150,7 +150,17 @@ def result_file(tmp_path: Path) -> Path:
                     "queries": {"total": 22, "passed": 22, "failed": 0},
                     "validation": "passed",
                 },
-                "queries": [{"id": f"Q{i}", "ms": 100.0, "status": "SUCCESS"} for i in range(1, 23)],
+                "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
+                "queries": [
+                    {
+                        "id": f"Q{i}",
+                        "ms": 100.0,
+                        "status": "SUCCESS",
+                        "rows": 5,
+                        "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5},
+                    }
+                    for i in range(1, 23)
+                ],
             }
         ),
         encoding="utf-8",
