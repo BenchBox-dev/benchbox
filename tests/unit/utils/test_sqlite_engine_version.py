@@ -19,7 +19,7 @@ from benchbox.utils.dialect_utils import (
     translate_ddl,
     translate_sql_query,
 )
-from tests.sqlite_engine_pin import pinned_sqlite_engine_version
+from tests.utilities.sqlite_engine_pin import pinned_sqlite_engine_version
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 

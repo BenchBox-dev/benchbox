@@ -345,7 +345,7 @@ def _restore_logging_state():
 
 @pytest.fixture(autouse=True)
 def _pinned_sqlite_engine_version():
-    from tests.sqlite_engine_pin import pinned_sqlite_engine_version
+    from tests.utilities.sqlite_engine_pin import pinned_sqlite_engine_version
 
     with pinned_sqlite_engine_version():
         yield

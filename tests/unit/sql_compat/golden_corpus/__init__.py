@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 
-from tests.sqlite_engine_pin import pinned_sqlite_engine_version
+from tests.utilities.sqlite_engine_pin import pinned_sqlite_engine_version
 
 RECORDED = Path(__file__).parent / "recorded"
 FROZEN = Path(__file__).parent / "frozen"
