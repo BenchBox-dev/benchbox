@@ -196,6 +196,16 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Write and lint the refresh summary
+        if: steps.check.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run -- python -m scripts.build_fast_duration_baseline summary \
+            --previous fast-refresh/previous-baseline \
+            --baseline tests/fixtures/fast_tier_baseline
+          npx --yes markdownlint-cli@0.49.1 --disable MD013 MD033 MD041 -- tests/fixtures/fast_tier_baseline/SUMMARY.md
+
       - name: Regenerate the docs reference inventory
         if: steps.check.outputs.changed == 'true'
         run: uv run -- python scripts/doc_reference_inventory.py

@@ -281,3 +281,24 @@ def test_refresh_never_writes_the_ceiling_file() -> None:
             if line.strip().startswith("git add"):
                 assert CEILING_PATH not in line
     assert not re.search(r">>?\s*\S*fast-duration-ceiling", all_run_text())
+
+
+def test_summary_is_written_and_linted_after_the_build_and_before_the_commit() -> None:
+    step = step_named("Write and lint the refresh summary")
+    assert step["if"] == "steps.check.outputs.changed == 'true'"
+    assert step_index("Check for baseline changes") < step_index("Write and lint the refresh summary")
+    assert step_index("Write and lint the refresh summary") < step_index("Create refresh PR")
+    run = step["run"]
+    assert "scripts.build_fast_duration_baseline summary" in run
+    assert "--previous fast-refresh/previous-baseline" in run
+    assert "--baseline tests/fixtures/fast_tier_baseline" in run
+    assert "markdownlint-cli" in run
+    assert "tests/fixtures/fast_tier_baseline/SUMMARY.md" in run
+    assert "--fix" not in run
+
+
+def test_refresh_commits_the_whole_baseline_directory_with_its_summary() -> None:
+    assert (
+        "git add tests/fixtures/fast_tier_baseline quality/docs-reference-inventory.json"
+        in (step_named("Create refresh PR")["run"])
+    )
