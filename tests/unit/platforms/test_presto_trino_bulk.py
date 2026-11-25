@@ -245,13 +245,15 @@ class TestBulkLoadTable:
 
     def test_text_projection_fails_on_values_longer_than_varchar_n(self):
         expression = _text_projection("name", "varchar(25)", "")
-        assert expression.startswith('CASE WHEN length("name") > 25 THEN CAST(fail(')
-        assert expression.endswith('ELSE "name" END')
+        assert expression.startswith('CAST(CASE WHEN length("name") > 25 THEN CAST(fail(')
+        assert expression.endswith('ELSE "name" END AS varchar(25))')
 
     def test_parquet_reads_bounded_varchar_unbounded_and_checks_the_length(self):
         assert _external_parquet_type("varchar(25)") == "varchar"
         assert _external_parquet_type("integer") == "integer"
-        assert _parquet_projection("name", "varchar(25)").startswith('CASE WHEN length("name") > 25 THEN CAST(fail(')
+        assert _parquet_projection("name", "varchar(25)").startswith(
+            'CAST(CASE WHEN length("name") > 25 THEN CAST(fail('
+        )
         assert _parquet_projection("id", "integer") == '"id"'
 
     def test_text_projection_keeps_unbounded_varchar_raw(self):

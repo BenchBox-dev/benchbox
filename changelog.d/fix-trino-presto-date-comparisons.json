@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Trino and Presto runs now give date and timestamp literals the type of the column they are compared with, expand GROUP BY aliases, and load VARCHAR(n) columns through the Presto external-table path."
+    }
+  ]
+}

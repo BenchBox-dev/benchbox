@@ -15,6 +15,7 @@ from benchbox.platforms.base.data_loading import resolve_adapter_data_source
 from benchbox.platforms.base.external_table_mixin import HiveExternalTableMixin
 from benchbox.platforms.presto_trino_bulk import BulkLoadSettings, bulk_load_table, remove_stage_root
 from benchbox.platforms.presto_trino_utils import (
+    base_type,
     fetch_columns,
     load_file_batches,
     normalize_existing_files,
@@ -28,6 +29,10 @@ from .base import PlatformAdapter
 _RUNTIME_QUERY_ID = re.compile(r"[A-Za-z0-9_]+")
 _RUNTIME_QUERIES_BUDGET_SECONDS = 5.0
 _RUNTIME_QUERIES_POLL_SECONDS = 0.25
+_READ_STATEMENT = re.compile(r"(?:\s|\(|--[^\n]*\n|/\*.*?\*/)*(?:SELECT|WITH)\b", re.IGNORECASE | re.DOTALL)
+_TYPE_REWRITE_CANDIDATE = re.compile(
+    r"'\s*\d{4}-\d{1,2}-\d{1,2}|\bGROUP\s+BY\b|[+-]\s*\d|\bREGEXP_REPLACE\b", re.IGNORECASE
+)
 
 
 class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTableMixin, PlatformAdapter):
@@ -106,6 +111,8 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
         self.ssl_cert_path = config.get("ssl_cert_path")
         self.session_properties = config.get("session_properties") or {}
         self._catalog_was_auto_selected = False
+        self._table_column_types: dict[tuple[str | None, str, str], dict[str, str]] = {}
+        self._strictly_typed_queries: dict[tuple[str | None, str, str], str] = {}
         self.query_timeout = config.get("query_timeout") if config.get("query_timeout") is not None else 0
         self.disable_result_cache = config.get("disable_result_cache", True)
         self.table_format = config.get("table_format") or self.default_table_format
@@ -493,6 +500,8 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
         from benchbox.platforms.presto_trino_utils import execute_schema_statements
 
         start_time = mono_time()
+        self._table_column_types.clear()
+        self._strictly_typed_queries.clear()
         schema_sql = self._create_schema_with_tuning(benchmark, source_dialect=self.get_target_dialect())
         execute_schema_statements(
             statements=self._schema_ddl(schema_sql),
@@ -713,6 +722,66 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
 
         return PrestoTrinoQueryPlanParser(platform_name=self.platform_key or "presto_trino")
 
+    def _load_table_column_types(self, connection: Any, tables: Sequence[str]) -> None:
+        names = ", ".join("'" + table.replace("'", "''") + "'" for table in tables)
+        schema = str(self.schema).lower().replace("'", "''")
+        cursor = connection.cursor()
+        try:
+            cursor.execute(
+                "SELECT table_name, column_name, data_type FROM information_schema.columns "
+                f"WHERE table_schema = '{schema}' AND table_name IN ({names})"
+            )
+            loaded: dict[tuple[str | None, str, str], dict[str, str]] = {}
+            for table, column, data_type in cursor.fetchall():
+                key = (self.catalog, self.schema, str(table).lower())
+                loaded.setdefault(key, {})[str(column).lower()] = base_type(str(data_type))
+            self._table_column_types.update(loaded)
+        finally:
+            cursor.close()
+
+    def _column_types(self, connection: Any, tables: Sequence[str]) -> dict[str, str]:
+        missing = [table for table in tables if (self.catalog, self.schema, table) not in self._table_column_types]
+        if missing:
+            self._load_table_column_types(connection, missing)
+        kinds: dict[str, set[str]] = {}
+        for table in tables:
+            for column, kind in self._table_column_types.get((self.catalog, self.schema, table), {}).items():
+                kinds.setdefault(column, set()).add(kind)
+        return {column: next(iter(found)) if len(found) == 1 else "" for column, found in kinds.items()}
+
+    def _with_strict_types(self, connection: Any, query: str) -> str:
+        from benchbox.utils.dialect_utils import apply_rewrites, unqualified_table_names
+
+        if not _READ_STATEMENT.match(query) or not _TYPE_REWRITE_CANDIDATE.search(query):
+            return query
+        cache_key = (self.catalog, self.schema, query)
+        cached = self._strictly_typed_queries.get(cache_key)
+        if cached is not None:
+            return cached
+        tables = [name.lower() for name in unqualified_table_names(query, self.target_dialect) or []]
+        try:
+            column_types = self._column_types(connection, tables) if tables else {}
+            if not column_types:
+                return query
+            rewritten = apply_rewrites(
+                query,
+                self.target_dialect,
+                [
+                    ("cast_temporal_literals", {"column_types": column_types}),
+                    (
+                        "date_integer_arithmetic_to_interval",
+                        {"date_columns": [name for name, kind in column_types.items() if kind == "date"]},
+                    ),
+                    ("inline_group_by_aliases", {"columns": list(column_types)}),
+                    ("regexp_group_references_to_dollar", {}),
+                ],
+            )
+        except Exception as error:
+            self.logger.debug(f"Could not apply {self.platform_log_name} type rewrites: {error}")
+            return query
+        self._strictly_typed_queries[cache_key] = rewritten
+        return rewritten
+
     def execute_query(
         self,
         connection: Any,
@@ -723,10 +792,12 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
         validate_row_count: bool = True,
         stream_id: int | None = None,
     ) -> dict[str, Any]:
+        with outside_query_timer():
+            query = self._with_strict_types(connection, query.rstrip().rstrip(";").rstrip())
         return self.execute_query_with_plan_capture(
             self._execute_timed_query,
             connection=connection,
-            query=query.rstrip().rstrip(";").rstrip(),
+            query=query,
             query_id=query_id,
             benchmark_type=benchmark_type,
             scale_factor=scale_factor,
