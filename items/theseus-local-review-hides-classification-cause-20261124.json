@@ -5,7 +5,7 @@
     "No new file is written to the review work directory for the cause, and no provider message text is printed.",
     "Released and locked with theseus-classifier-402-skips-fallback-20261124."
   ],
-  "context": "Owner decisions 2026-11-24: report the cause as the status code plus a fixed phrase only, printed to the terminal and the run summary; write nothing new to disk. With every TypeSafe error now falling back (see theseus-classifier-402-skips-fallback-20261124), a classification is always written, so the remaining work is: local runs relay a one-line 'classification degraded: <cause>' warning, and 'classification unreadable' means only a present-but-corrupt file.",
+  "context": "Owner decisions 2026-11-24: report the cause as the status code plus a fixed phrase only, printed to the terminal and the run summary; write nothing new to disk. With every TypeSafe error now falling back (see theseus-classifier-402-skips-fallback-20261124), a classification is always written, so the remaining work is: local runs relay a one-line 'classification degraded: <cause>' warning, and 'classification unreadable' means only a present-but-corrupt file.\n\n2026-11-25 acceptance evidence: Theseus #108 relays a single 'classification degraded:' line in local reviews naming the status cause (e.g. TypeSafe answered 402) and the backend used, and the review proceeds to a reviewer; tests cover a fake 402, a corrupt classification.json ('classification unreadable') and a malformed plan refusal with its cause. No cause file is written to the work directory and no provider text is printed. Released and locked with the 402 item (v0.2.19, then v0.2.20).",
   "description": "Problem: in a local review (theseus local / BenchBox `make pr-open`), local.py:943 `_relay` passes on only stdout lines starting with `slot `, `review-verdict:` or `review-local:`. When the prepare phase cannot classify, cli.py `command_select` reports `classification unavailable: <cause>` (for example `TypeSafe answered 402`) and exits 0, so `_relay` drops it. The attempts phase then reads no classification.json and prints `slot 1: pending (classification unreadable)`, and REVIEW_LOCAL_UNAVAILABLE_OUT is empty. On 2026-11-24 this sent one agent session to a wrong diagnosis (it concluded local.py never runs classification; it does, in prepare) and cost a second investigation to find the 402.\n\nOutcome: the person running a local review sees the real cause on the first failure, and the unavailable record names it.\n\nDecision gate: choose one surface. Either relay `classification unavailable` lines from prepare, or have prepare write the cause next to classification.json so the attempts phase reports `classification unavailable (<cause>)` instead of `unreadable`. Prefer the second: it also fixes the hosted job summary and keeps one message. 'Unreadable' must then mean only a present-but-corrupt file.\n\nGuardrails: never print secrets, response bodies beyond the existing 500-character _error_message cap, or the API key. Do not change exit codes or the refusal itself: a review with no classification still refuses to open a PR. Keep the summary within the existing status-text limits.",
   "sessions": [
     {
@@ -31,6 +31,14 @@
       "op": "update",
       "op_id": "8dc55c47c2ec3b18c3d5e2bf6eb41718",
       "session_id": "ba268bb399814e16b3d44ff7bdc73914"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0a697a35e720a04d19e44a28",
+      "at": "2026-11-25T07:01:26Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a206d3b116fa0d5b794884211f7faeca",
+      "session_id": "25f1c82986254513a0ef576dc2985dfb"
     }
   ]
 }
