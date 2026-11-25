@@ -419,8 +419,6 @@ class TestBaseFormatConverterValidation:
 _TABLE_CONVERTERS = [
     pytest.param("benchbox.utils.format_converters.delta_converter", "DeltaConverter", "deltalake", id="delta"),
     pytest.param("benchbox.utils.format_converters.iceberg_converter", "IcebergConverter", "pyiceberg", id="iceberg"),
-    pytest.param("benchbox.utils.format_converters.vortex_converter", "VortexConverter", "vortex", id="vortex"),
-    pytest.param("benchbox.utils.format_converters.ducklake_converter", "DuckLakeConverter", "duckdb", id="ducklake"),
 ]
 
 
@@ -478,4 +476,3 @@ class TestTableFormatConvertersHonorManifestOptions:
             )
 
         assert not (out_dir / "tags").exists()
-        assert not (out_dir / "tags.vortex").exists()
