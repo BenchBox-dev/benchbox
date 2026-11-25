@@ -22658,6 +22658,13 @@
       "status": "done",
       "title": "ClickHouse server TPC-H Q21 fails at SF1 in every tuning arm under the 5.25 GiB container limit"
     },
+    "clickhouse-server-uat-shared-database-refusal-20261125": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "ClickHouse server UAT cells refuse to reuse a database another benchmark created"
+    },
     "clickhouse-session-policy-link-sqlglot-ast-gap-issue": {
       "claim": null,
       "needs": [],

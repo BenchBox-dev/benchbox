@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Each benchmark run against clickhouse-server in one UAT sweep uses a database it can reuse or that it may recreate; tpcds_obt and write_primitives cells pass without --force.",
+    "A notuning rerun of the same benchmark still refuses to drop a database holding tables it cannot reuse.",
+    "A unit test reproduces the shared-name case: run tpcds, then tpcds_obt, on a fake server.",
+    "The UAT stage 2 clickhouse-server job passes on trunk."
+  ],
+  "context": "Decision gate: choose between (a) a database name per benchmark (tpcds_obt, write_primitives get their own names) and (b) treating a database whose tables belong to another benchmark as foreign. (a) matches how other server adapters name databases with format_benchmark_name; check which name config['benchmark'] carries for tpcds_obt before choosing. Code: benchbox/platforms/clickhouse/metadata.py from_config server branch; benchbox/platforms/clickhouse/setup.py refusal. Evidence: artifact release-uat-trunk-f1c6343bbf...-stage2-clickhouse-server, logs clickhouse-server_tpcds_obt_0.01_20261125_110523.log and clickhouse-server_write_primitives_0.01_20261125_111648.log. Blocks the two-green trunk UAT gate for v0.6.0rc1.",
+  "description": "Scheduled trunk UAT run 45599221098 (2026-11-25, develop f1c6343bbf) failed 'UAT stage 2 clickhouse-server' on four cells: tpcds_obt@0.01, tpcds_obt@0.1, write_primitives@0.01, write_primitives@0.1. Each stops with 'Refusing to recreate ClickHouse database benchbox_tpcds_sf001 (or benchbox_tpch_sf001): it already holds tables that this notuning run cannot reuse ... Re-run with --force'. The refusal was added in #4494 (fix(clickhouse): refuse a server rerun that cannot reuse its database). tpcds_obt and write_primitives derive their server database name from the shared data benchmark (tpcds, tpch), so the database already holds the tpcds/tpch tables loaded by earlier cells in the same sweep. Before #4494 the adapter dropped and recreated the database silently. The same job passed in runs 45389336355 and 45155067627.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e82e03734cad9d7732bbc3a5",
+      "at": "2026-11-25T14:55:53Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6a14dd907eca40b7887bf54ff4da463c",
+      "session_id": "8ba2da598ad24a19888c9b8f950272f3"
+    }
+  ]
+}
