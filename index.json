@@ -45063,12 +45063,17 @@
       "title": "Verify and complete the review and gate reliability TODO group"
     },
     "review-gateway-host-behind-omp-pin-20261124": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-26T07:01:55Z",
+        "generation": "0d61c107cf6f4b30884bd28fbc33e4cc",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0a697a35e720a04d19e44a28"
+      },
       "needs": [
         "review-classifier-degraded-remediation-20261124"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Review gateway host still runs omp 18.16.0 after the pin moved to 18.20.0, and its monitor snapshot checks the retired oracle environment"
     },
     "review-gateway-muse-login-lost-20261106": {
