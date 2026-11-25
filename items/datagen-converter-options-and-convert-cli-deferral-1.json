@@ -1,0 +1,13 @@
+{
+  "description": "Promoted from deferral 1 on datagen-converter-options-and-convert-cli: Pre-existing defect found while verifying the convert fix; out of scope for passing converter options.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-25T21:58:05Z",
+      "client": "omp-coding-agent",
+      "op": "promote",
+      "op_id": "993c6e4549614701b780be876e74e51c",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}

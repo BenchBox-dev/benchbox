@@ -13,7 +13,9 @@
       "from_item": "datagen-converter-options-and-convert-cli",
       "id": 1,
       "reason": "Pre-existing defect found while verifying the convert fix; out of scope for passing converter options.",
-      "resolution": "open",
+      "resolution": "promoted",
+      "resolved_at": "2026-11-25T21:58:05Z",
+      "resolved_item": "datagen-converter-options-and-convert-cli-deferral-1",
       "summary": "benchbox convert offers --format ducklake but FormatConversionOrchestrator rejects it with 'Unknown format: ducklake'."
     }
   ],
@@ -64,6 +66,14 @@
       "generation": "fc26ececc6f0445080d68c0a683f2a56",
       "op": "take",
       "op_id": "007e91ab5d4341bda55cc13c7bb41fda",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-25T21:58:05Z",
+      "client": "omp-coding-agent",
+      "op": "promote",
+      "op_id": "993c6e4549614701b780be876e74e51c",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
