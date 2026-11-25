@@ -25334,6 +25334,13 @@
       "status": "done",
       "title": "Dispatch the results-data sync to published-results and verify corpus drift clears"
     },
+    "corpus-tpcds-sf1-stored-wrong-answers-20260826": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Decide the corpus outcome of two stored TPC-DS SF 1 results with wrong answers"
+    },
     "corpus-tpch-shallow-cohort-replacements-20261018": {
       "claim": null,
       "needs": [
