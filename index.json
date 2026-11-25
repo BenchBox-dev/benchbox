@@ -48545,7 +48545,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "`test_sqlglot_delivery_workflow` times out on Windows CI waiting 20 seconds for `node.EXE`"
     },
     "sqlglot-dialect-translation-code-review-implementation": {
