@@ -25927,6 +25927,13 @@
       "status": "open",
       "title": "Find why TPC-DS query 93 returned no rows at SF 0.1 on three cloud platforms"
     },
+    "crr-i2-tpch-q15-empty-datafusion": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Find why DataFusion 53 returned no rows for TPC-H query 15"
+    },
     "crr-o1-official-power-after-load": {
       "claim": null,
       "needs": [
