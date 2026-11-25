@@ -144,3 +144,73 @@ def test_validator_checks_a_later_tpcds_stream_against_that_streams_counts() -> 
 
     assert not result.is_valid
     assert result.expected_row_count == reference.streams[1].row_counts[differing]
+
+
+def _write_reference(tmp_path, monkeypatch, payload: dict) -> None:
+    monkeypatch.setattr(references, "REFERENCE_DIR", tmp_path)
+    references.reference_path(payload["benchmark"], payload["scale_factor"]).write_text(
+        json.dumps(payload), encoding="utf-8"
+    )
+
+
+@pytest.mark.parametrize("benchmark_id", references.REFERENCE_BENCHMARKS)
+def test_loader_refuses_a_reference_without_provenance(benchmark_id: str, tmp_path, monkeypatch) -> None:
+    payload = copy.deepcopy(_payload(benchmark_id, 0.01))
+    del payload["provenance"]
+    _write_reference(tmp_path, monkeypatch, payload)
+
+    with pytest.raises(ValueError, match="provenance"):
+        references.load_row_count_reference(benchmark_id, 0.01)
+
+
+@pytest.mark.parametrize("benchmark_id", references.REFERENCE_BENCHMARKS)
+@pytest.mark.parametrize("field", ["data_generation_version", "base_constants_hash"])
+def test_loader_refuses_a_reference_with_a_stale_data_stamp(
+    benchmark_id: str, field: str, tmp_path, monkeypatch
+) -> None:
+    payload = copy.deepcopy(_payload(benchmark_id, 0.01))
+    payload["provenance"]["generator"]["data_stamp"][field] = "stale" if field.endswith("hash") else 0
+    _write_reference(tmp_path, monkeypatch, payload)
+
+    with pytest.raises(ValueError, match="data stamp"):
+        references.load_row_count_reference(benchmark_id, 0.01)
+
+
+def test_loader_refuses_a_reference_with_no_data_stamp(tmp_path, monkeypatch) -> None:
+    payload = copy.deepcopy(_payload("tpch", 0.01))
+    del payload["provenance"]["generator"]["data_stamp"]
+    _write_reference(tmp_path, monkeypatch, payload)
+
+    with pytest.raises(ValueError, match="data stamp"):
+        references.load_row_count_reference("tpch", 0.01)
+
+
+def test_a_four_seed_sensitivity_list_never_fails_a_seeded_tpcds_row() -> None:
+    from benchbox.core.dataframe.query_validation import validate_dataframe_query_results
+
+    reference = references.load_row_count_reference("tpcds", 0.01)
+    assert reference.parameter_sensitive_query_ids
+    for stream, entry in reference.streams.items():
+        results = references.expected_query_results(reference, stream)
+        assert not any(result.reference_parameters_only for result in results.values())
+        rows = [
+            {
+                "query_id": query_id,
+                "status": "SUCCESS",
+                "run_type": "measurement",
+                "stream_id": stream,
+                "rows_returned": entry.row_counts[query_id],
+            }
+            for query_id in sorted(reference.parameter_sensitive_query_ids)
+        ]
+        summary = validate_dataframe_query_results(rows, benchmark_name="tpcds", scale_factor=0.01)
+        assert summary.status == "PASSED"
+        assert all(row["row_count_validation"]["status"] == "PASSED" for row in rows)
+
+    for seed_context in (None, True, False):
+        set_reference_seed_context(seed_context)
+        for query_id in sorted(reference.parameter_sensitive_query_ids):
+            result = QueryValidator().validate_query_result(
+                "tpcds", query_id, reference.streams[0].row_counts[query_id], scale_factor=0.01, stream_id=0
+            )
+            assert result.is_valid

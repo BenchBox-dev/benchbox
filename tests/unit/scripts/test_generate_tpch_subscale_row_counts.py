@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from benchbox.core.expected_results import row_count_references as references
+from benchbox.utils.datagen_version import current_datagen_stamp
 
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = ROOT / "_project/scripts"
@@ -121,7 +122,7 @@ def test_a_built_payload_is_a_valid_reference_with_full_provenance(tmp_path, mon
         },
         sensitive=["11"],
         versions={"duckdb": "1", "datafusion": "2"},
-        generator={"data_generator": "dbgen"},
+        generator={"data_generator": "dbgen", "data_stamp": current_datagen_stamp("tpch")},
         checksum={"algorithm": "x", "sha256": "0" * 64},
         agreement=gen.agreement_record("tpch", [0, 1]),
         regenerate="make row-count-references-regen",

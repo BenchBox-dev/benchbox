@@ -165,12 +165,29 @@ def load_row_count_reference(benchmark: str, scale_factor: float) -> RowCountRef
     reference = parse_reference(json.loads(path.read_text(encoding="utf-8")), path.name)
     if reference.benchmark != benchmark or reference.scale_factor != scale:
         raise ValueError(f"{path.name} must describe {benchmark} at scale factor {scale}")
+    _require_current_data_stamp(reference, path.name)
     return reference
+
+
+def _require_current_data_stamp(reference: RowCountReference, name: str) -> None:
+    from benchbox.utils.datagen_version import DATA_GENERATION_VERSION, compute_base_constants_hash
+
+    generator = reference.provenance["generator"]
+    stamp = generator.get("data_stamp") if isinstance(generator, dict) else None
+    if (
+        not isinstance(stamp, dict)
+        or stamp.get("data_generation_version") != DATA_GENERATION_VERSION
+        or stamp.get("base_constants_hash") != compute_base_constants_hash(reference.benchmark)
+    ):
+        raise ValueError(
+            f"{name} was generated from data whose data stamp no longer matches the current data generation; "
+            "regenerate the reference"
+        )
 
 
 def write_reference(payload: dict[str, Any]) -> Path:
     path = reference_path(payload["benchmark"], payload["scale_factor"])
-    validate_payload(payload, path.name)
+    _require_current_data_stamp(parse_reference(payload, path.name), path.name)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return path
@@ -186,7 +203,8 @@ def expected_query_results(reference: RowCountReference, stream: int) -> dict[st
             scale_factor=reference.scale_factor,
             expected_row_count=row_count,
             validation_mode=ValidationMode.EXACT,
-            reference_parameters_only=query_id in reference.parameter_sensitive_query_ids,
+            reference_parameters_only=reference.benchmark != "tpcds"
+            and query_id in reference.parameter_sensitive_query_ids,
             reference_kind=reference.kind,
             reference_label=reference.label,
             notes=(

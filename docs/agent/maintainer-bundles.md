@@ -90,7 +90,7 @@ not (a seeded run checks fixed-count queries exactly and range-checks the parame
 ones; a count inside a range is recorded as passed, and a loose-tolerance query whose count is
 not exact is recorded as a documented skip); SSB and TPC-DS at every scale with a reference. A
 TPC-DS row is checked against the counts of its own stream when the run uses the reference seed
-(`--seed` unset or 1); throughput rows and other seeds are skipped. A scale with no recorded
+(`--seed` unset or 1); any other TPC-DS row records a documented skip. A scale with no recorded
 reference records `no_reference`. Any other combination records `uncertain` or `not_run` and
 cannot be staged.
 
