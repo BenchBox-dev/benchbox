@@ -8,6 +8,12 @@
       "platforms": ["starrocks"]
     },
     {
+      "category": "changed",
+      "breaking": false,
+      "text": "The local StarRocks Docker stack moves from StarRocks 3.5.16 to 4.1.8.",
+      "platforms": ["starrocks"]
+    },
+    {
       "category": "fixed",
       "breaking": false,
       "text": "Fixed StarRocks results recording the MySQL compatibility version (8.0.33) instead of the StarRocks version.",
