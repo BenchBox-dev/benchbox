@@ -13,6 +13,10 @@ BenchBox conventions for the automated reviewer. They add to the review template
 - A claim that a focused or fast test run certifies UAT or production behavior.
 - A new explanatory comment or docstring in maintained first-party source. The checker blocks them, so name the line and ask for clearer names or structure instead.
 
+## Reading a fast-tier duration refresh
+
+A refresh changes `tests/fixtures/fast_tier_baseline/` and its `SUMMARY.md`. Block only on a concrete inconsistency: a summary figure that contradicts the changed-file list, an impossible value (a negative or non-finite duration, a count that cannot add up), or a source run that contradicts the manifest. A large move in durations, tests added or tests removed is not a defect by itself.
+
 ## Do not flag
 
 - A missing docstring or explanatory comment in Python or other first-party source. BenchBox has a no-source-docstring policy: contracts live in API docs, and the comment-policy registry lists the few directives, notices and fixtures that must stay.
