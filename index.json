@@ -25952,7 +25952,8 @@
     "crr-o1-official-power-after-load": {
       "claim": null,
       "needs": [
-        "crr-v4-official-runs-qualify"
+        "crr-v4-official-runs-qualify",
+        "power-warmup-zero-coerced-to-one"
       ],
       "priority": "medium-high",
       "status": "open",
