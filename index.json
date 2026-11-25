@@ -25920,6 +25920,15 @@
       "status": "open",
       "title": "Record the observed execution engine on the SQL platforms that declare engines"
     },
+    "crr-o1-official-power-after-load": {
+      "claim": null,
+      "needs": [
+        "crr-v4-official-runs-qualify"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Official mode: start the power test immediately after the load, with no warm-up"
+    },
     "crr-v0-reference-reader-and-generator": {
       "claim": null,
       "needs": [
