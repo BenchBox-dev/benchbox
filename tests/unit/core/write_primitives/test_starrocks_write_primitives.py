@@ -21,7 +21,7 @@ def write(tmp_path):
 def test_returning_operations_are_skipped_on_starrocks(write, operation_id):
     sql, reason = write._get_effective_write_sql(write.get_operation(operation_id), "starrocks")
     assert sql is None
-    assert reason.startswith(f"Operation '{operation_id}' is skipped on StarRocks: StarRocks 3.5")
+    assert reason.startswith(f"Operation '{operation_id}' is skipped on StarRocks: StarRocks 4.1")
 
 
 def test_every_merge_into_operation_is_skipped_on_starrocks(write):

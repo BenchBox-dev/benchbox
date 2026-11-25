@@ -4,15 +4,15 @@ import re
 
 from benchbox.sql_compat.rules._registration import register_write_primitive_skips
 
-_NO_RETURNING = "StarRocks 3.5 has no RETURNING clause: the statement fails with \"Unexpected input 'RETURNING'\"."
+_NO_RETURNING = "StarRocks 4.1 has no RETURNING clause: the statement fails with \"Unexpected input 'RETURNING'\"."
 _NO_MERGE = (
-    "StarRocks 3.5 has no MERGE statement: `MERGE INTO ...` fails with \"Unexpected input 'MERGE', the most "
-    "similar input is {'DESCRIBE', 'BEGIN', 'TRACE', 'DELETE', 'EXPORT', '(', ';'}\"."
+    "StarRocks 4.1 has no MERGE statement: `MERGE INTO ...` fails with \"Unexpected input 'MERGE', the most "
+    "similar input is {'DESCRIBE', 'BEGIN', 'TRACE', 'DELETE', 'ENABLE', '(', ';'}\"."
 )
 
 STARROCKS_WRITE_PRIMITIVES_CATEGORY_SKIPS = {
     "bulk_load": (
-        "StarRocks 3.5 has no SQL statement that reads a client-side CSV or Parquet file: `COPY t FROM '<path>'` "
+        "StarRocks 4.1 has no SQL statement that reads a client-side CSV or Parquet file: `COPY t FROM '<path>'` "
         "fails with \"Unexpected input 'COPY'\"; files load through Stream Load over HTTP or Broker Load."
     ),
 }
