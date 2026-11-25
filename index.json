@@ -45359,15 +45359,10 @@
       "title": "Run timeout step 1b: generator and compiler processes honour the deadline; fixed generation limits removed; partial data never reused"
     },
     "run-timeout-plan-20261120": {
-      "claim": {
-        "expires_at": "2026-11-26T08:00:18Z",
-        "generation": "7d293871aaa146a9b50cfc5cbf303e93",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:883ac124f68c0bb7e4b8a7aa"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Run timeout: one optional limit for any run, replacing scattered timers (plan and decisions)"
     },
     "run-timeout-remote-cleanup-20261120": {
