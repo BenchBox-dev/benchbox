@@ -1,0 +1,26 @@
+{
+  "acceptance": [
+    "native-datagen pins an upstream tpcgen-cli release that supports --no-trailing-delimiter, with uv.lock hashes.",
+    "The adapter passes the flag and contains no post-write strip code; generation performs exactly one write per file.",
+    "native-datagen-parity passes the SF 0.01/0.1/1/10 TPC-H and SF 1/10 TPC-DS byte-parity matrix on the pin-bump PR.",
+    "Gate D medians for SF 1 and SF 10 recorded in the PR body and within the ADR budget.",
+    "PR merged to develop with a changelog.d fragment."
+  ],
+  "context": "Created 2026-11-25 from owner decision: \"make the fix, file the upstream PR, and proceed\" without fork distribution (wait for upstream). Upstream PR URL is appended once opened.",
+  "description": "## Problem\n`tpcgen-cli` 4.0.0 ends every `.tbl`/`.dat` row with `|`. BenchBox's canonical files have none (dbgen is built with `-DEOL_HANDLING`, dsdgen runs with `-terminate`). The opt-in adapter therefore rewrites each generated file in place (`strip_trailing_delimiters_in_place` in `benchbox/utils/tpcgen_adapter.py`), an extra read and write that grows linearly with scale. The owner chose to remove the delimiter at generation time: BenchBox contributed `--no-trailing-delimiter` upstream (PR from the BenchBox-dev/tpcgen-rs fork) and decided not to distribute a fork; BenchBox waits for an upstream release.\n\n## Change\n- When an upstream `tpcgen-cli` release contains the flag: bump the `native-datagen` pin and `uv.lock` hashes, pass `--no-trailing-delimiter` for `tpch tbl` and `tpcds dat`, and delete the strip code and its unit tests.\n- Record the new version in `VERIFIED_BYTE_IDENTICAL_BACKENDS` only for scales the parity job proves.\n\n## Decision gates\n- Blocked until an upstream release includes the flag. Unblock by checking `gh release list -R datafusion-contrib/tpcgen-rs` and the release notes.\n- If upstream rejects the PR or changes the flag's semantics, stop and ask the owner (options: keep the strip, or revisit fork distribution).\n\n## Guardrails\n- The pin bump triggers the SF 1 and SF 10 parity matrix in CI (`native-datagen-parity`); it must pass byte-for-byte against dbgen/dsdgen including TPC-DS `time_dim` empty last column (`a|`).\n- No fork wheels, no direct-URL dependencies (owner decision 2026-11-25).\n- AGENTS.md workflow, changelog fragment, merged PR.",
+  "links": [
+    "benchbox/utils/tpcgen_adapter.py",
+    "https://github.com/datafusion-contrib/tpcgen-rs",
+    "docs/internal/adr/adr-benchbox-datagen.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-25T15:41:56Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c3e5f7a92d4f6a8b0c2e4f6a8b0d2f03",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}

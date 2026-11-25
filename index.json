@@ -26912,6 +26912,15 @@
       "status": "open",
       "title": "Fill partitioned Parquet row groups to the configured 122,880 rows"
     },
+    "datagen-tpcgen-adopt-no-trailing-delimiter": {
+      "claim": null,
+      "needs": [
+        "datagen-p1-tpcgen-cli-adapter"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Adopt tpcgen-cli --no-trailing-delimiter and delete the post-write strip once upstream releases it"
+    },
     "dataproc-gcs-helpers-duplicated-20261125": {
       "claim": null,
       "needs": [],
