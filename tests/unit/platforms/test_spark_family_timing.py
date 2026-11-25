@@ -9,6 +9,7 @@ from benchbox.core.results.fetch_mode import ConversionClock
 from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger
 from benchbox.platforms.azure._livy_mixin import LivyStatementMixin
 from benchbox.platforms.azure.spark_execution_utils import execute_livy_statement
+from benchbox.platforms.base.remote_work import StartedRemoteWork
 from benchbox.platforms.base.spark_execution_mixin import SparkQueryExecutionMixin
 from benchbox.platforms.base.timing_contract import TimingContractMixin
 
@@ -99,6 +100,7 @@ class _Livy(LivyStatementMixin):
         self._total_statement_time_seconds = 0.0
         self._query_count = 0
         self.session_calls = 0
+        self._started_work = StartedRemoteWork()
 
     def _get_headers(self) -> dict[str, str]:
         return {}
