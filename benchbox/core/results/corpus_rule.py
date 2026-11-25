@@ -77,6 +77,8 @@ CLASS_WORDS = {
 }
 NONSTANDARD_SCALE_LABEL = "Non-standard scale: compared only at the same scale"
 ROW_COUNTS_NOT_CHECKED_LABEL = "Row counts not checked"
+SINGLE_ITERATION_LABEL = "Single iteration"
+MIN_MEASURED_ITERATIONS = 3
 HELD_LABELS = {
     HELD_GATEWAY_ROUTED: "Not ranked: routed through a gateway",
     HELD_KNOWN_DEFECT: "Not ranked: known defect",
@@ -95,6 +97,7 @@ class Facts:
     validation_failed: bool = False
     row_counts_checked: bool = True
     public_validation_refused: bool = False
+    measured_iterations: int | None = None
 
 
 @dataclass(frozen=True)
@@ -435,9 +438,18 @@ def derive_outcome(
         outcome = replace(outcome, public_admission=False)
     if held is not None:
         return _hold(outcome, held, validation_failed=facts.validation_failed)
-    if not facts.row_counts_checked and outcome.class_name != CLASS_UNDETERMINED:
-        return replace(outcome, labels=(*outcome.labels, ROW_COUNTS_NOT_CHECKED_LABEL))
-    return outcome
+    if outcome.class_name == CLASS_UNDETERMINED:
+        return outcome
+    return replace(outcome, labels=(*outcome.labels, *_evidence_labels(facts)))
+
+
+def _evidence_labels(facts: Facts) -> tuple[str, ...]:
+    labels: list[str] = []
+    if not facts.row_counts_checked:
+        labels.append(ROW_COUNTS_NOT_CHECKED_LABEL)
+    if facts.measured_iterations is not None and facts.measured_iterations < MIN_MEASURED_ITERATIONS:
+        labels.append(SINGLE_ITERATION_LABEL)
+    return tuple(labels)
 
 
 def _executed(block: Any) -> bool:
@@ -537,10 +549,11 @@ def _benchmark_id(data: Mapping[str, Any]) -> Any:
     return benchmark.get("id") if isinstance(benchmark, Mapping) else None
 
 
-def _measured_rows(data: Mapping[str, Any]) -> bool:
+def _measured_iterations(data: Mapping[str, Any]) -> frozenset[int]:
     queries = data.get("queries")
     if not isinstance(queries, list):
-        return False
+        return frozenset()
+    iterations: set[int] = set()
     for query in queries:
         if not isinstance(query, Mapping) or (query.get("run_type") or "measurement") != "measurement":
             continue
@@ -558,8 +571,8 @@ def _measured_rows(data: Mapping[str, Any]) -> bool:
             continue
         if status is not None and str(status).upper() not in {"SUCCESS", "PASS"}:
             continue
-        return True
-    return False
+        iterations.add(iteration)
+    return frozenset(iterations)
 
 
 def legacy_query_timing_defaults(data: Mapping[str, Any]) -> bool:
@@ -570,7 +583,7 @@ def legacy_query_timing_defaults(data: Mapping[str, Any]) -> bool:
 def phases_ran(data: Mapping[str, Any]) -> frozenset[str] | None:
     phases = data.get("phases")
     if "phases" not in data:
-        if legacy_query_timing_defaults(data) and _measured_rows(data):
+        if legacy_query_timing_defaults(data) and _measured_iterations(data):
             return frozenset({PHASE_OTHER_TIMED})
         return None
     if not isinstance(phases, Mapping):
@@ -582,7 +595,7 @@ def phases_ran(data: Mapping[str, Any]) -> frozenset[str] | None:
         ran.add(PHASE_THROUGHPUT)
     if _refresh_evidence(data, phases) or _refresh_failed(data):
         ran.add(PHASE_REFRESH)
-    if not ran & {PHASE_POWER, PHASE_THROUGHPUT} and _measured_rows(data):
+    if not ran & {PHASE_POWER, PHASE_THROUGHPUT} and _measured_iterations(data):
         ran.add(PHASE_OTHER_TIMED)
     return frozenset(ran)
 
@@ -724,6 +737,7 @@ def facts_from_result(
         row_counts_checked=row_counts_checked(data),
         public_validation_refused=status == "no_reference"
         and row_count_reference_exists(benchmark_id, benchmark.get("scale_factor")),
+        measured_iterations=len(_measured_iterations(data)) or None,
     )
 
 

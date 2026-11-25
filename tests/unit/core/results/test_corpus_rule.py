@@ -761,3 +761,80 @@ def test_failed_validation_is_the_public_refusal_whatever_else_refuses() -> None
                 checked += 1
                 assert rule.public_refusal_for_facts(candidate) == rule.HELD_FAILED_VALIDATION, candidate
     assert checked
+
+
+ITERATION_COUNTS = (None, 1, 2, 3, 4)
+
+
+def test_single_iteration_is_a_label_only_for_every_combination() -> None:
+    labelled = 0
+    for facts in all_facts():
+        for row_counts_checked, count in itertools.product((True, False), ITERATION_COUNTS):
+            baseline = rule.derive_outcome(replace(facts, row_counts_checked=row_counts_checked))
+            outcome = rule.derive_outcome(
+                replace(facts, row_counts_checked=row_counts_checked, measured_iterations=count)
+            )
+            expected = (
+                count is not None
+                and count < 3
+                and baseline.held_reason is None
+                and baseline.class_name != rule.CLASS_UNDETERMINED
+            )
+            labels = (*baseline.labels, rule.SINGLE_ITERATION_LABEL) if expected else baseline.labels
+            labelled += expected
+            assert outcome == replace(baseline, labels=labels), (facts, count)
+            assert rule.public_refusal_for_facts(replace(facts, measured_iterations=count)) == (
+                rule.public_refusal_for_facts(facts)
+            )
+    assert labelled
+
+
+def iteration_rows(*rows: dict) -> dict:
+    return result(extra={"queries": [{"id": "1", "run_type": "measurement", "ms": 1.0, **row} for row in rows]})
+
+
+@pytest.mark.parametrize(
+    ("rows", "count"),
+    [
+        ((), None),
+        (({},), 1),
+        (({"iter": 1}, {"iter": 1}), 1),
+        (({"iter": 1}, {"iter": 2}), 2),
+        (({"iter": 1}, {"iter": 2}, {"iter": 3}), 3),
+        (({"iteration": 1}, {"iteration": 2}, {"iteration": 3}), 3),
+        (({"iter": 0, "run_type": "warmup"}, {"iter": 1}, {"iter": 2}), 2),
+        (({"iter": 1}, {"iter": 2, "run_type": "warmup"}, {"iter": 3, "run_type": "warmup"}), 1),
+        (({"iter": 1}, {"iter": 2}, {"iter": 3, "status": "SKIPPED"}), 2),
+        (({"iter": 1}, {"iter": 2}, {"iter": 3, "ms": 0}), 2),
+        (({"iter": 1}, {"iter": 2}, {"iter": 3, "ms": None}), 2),
+        (({"iter": 1}, {"iter": 2}, {"iter": True}), 2),
+        (({"iter": 1}, {"iter": 2}, {"iter": -3}), 2),
+        (({"iter": 1}, {"iter": 2}, {"iter": "3"}), 2),
+        (({"iter": 1, "stream": 1}, {"iter": 1, "stream": 2}, {"iter": 1, "stream": 3}), 1),
+        (({"iter": 1}, {"iter": 2}, {"iter": 3}, {"iter": 4}), 4),
+    ],
+)
+def test_measured_iterations_come_from_the_timed_query_rows(rows: tuple[dict, ...], count: int | None) -> None:
+    data = iteration_rows(*rows) if rows else result(queries=False)
+    facts = rule.facts_from_result(data)
+    outcome = rule.derive_outcome(facts)
+    baseline = rule.derive_outcome(replace(facts, measured_iterations=None))
+
+    assert facts.measured_iterations == count
+    assert (rule.SINGLE_ITERATION_LABEL in outcome.labels) is (count is not None and count < 3)
+    assert outcome.ranked and baseline.ranked
+    assert (outcome.class_name, outcome.lanes, outcome.score_source, outcome.public_admission) == (
+        baseline.class_name,
+        baseline.lanes,
+        baseline.score_source,
+        baseline.public_admission,
+    )
+
+
+def test_a_held_single_iteration_result_is_not_labelled() -> None:
+    data = iteration_rows({"iter": 1})
+    data["summary"]["validation"] = "failed"
+    outcome = rule.derive_outcome(rule.facts_from_result(data))
+
+    assert outcome.held_reason == rule.HELD_FAILED_VALIDATION
+    assert rule.SINGLE_ITERATION_LABEL not in outcome.labels

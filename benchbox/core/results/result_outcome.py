@@ -52,6 +52,7 @@ def facts_to_json(facts: corpus_rule.Facts) -> str:
             "validation_failed": facts.validation_failed,
             "public_validation_refused": facts.public_validation_refused,
             "row_counts_checked": facts.row_counts_checked,
+            "measured_iterations": facts.measured_iterations,
         },
         sort_keys=True,
     )
@@ -76,7 +77,12 @@ def facts_from_json(text: str | None) -> corpus_rule.Facts | None:
         validation_failed=bool(payload.get("validation_failed")),
         public_validation_refused=bool(payload.get("public_validation_refused")),
         row_counts_checked=bool(payload.get("row_counts_checked", True)),
+        measured_iterations=_positive_int(payload.get("measured_iterations")),
     )
+
+
+def _positive_int(value: Any) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else None
 
 
 def outcome_from_stored_facts(text: str | None) -> corpus_rule.Outcome:

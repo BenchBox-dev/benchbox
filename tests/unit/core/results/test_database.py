@@ -5,6 +5,7 @@ import os
 import sqlite3
 import subprocess
 import sys
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -848,6 +849,24 @@ def test_public_validation_refusal_survives_fact_persistence_and_reimport(tmp_pa
         conn.execute("UPDATE results SET facts_json = ? WHERE execution_id = 'refusal'", (json.dumps(legacy),))
     assert db._backfill_facts(result, facts)
     assert db.get_result("refusal").outcome.public_admission is False
+
+
+@pytest.mark.parametrize(
+    ("stored", "restored"), [(1, 1), (2, 2), (3, 3), (None, None), (0, None), (True, None), ("1", None)]
+)
+def test_measured_iteration_count_survives_fact_persistence(tmp_path, stored, restored):
+    facts = corpus_rule.Facts(benchmark="tpch", scale_factor=1.0, phases=frozenset({"power"}))
+    payload = json.loads(facts_to_json(replace(facts, measured_iterations=restored)))
+    assert facts_from_json(json.dumps(payload)).measured_iterations == restored
+    payload["measured_iterations"] = stored
+
+    db = ResultDatabase(tmp_path / "results.db")
+    result = create_test_result(execution_id="iterations", platform="example")
+    db.store_result(result, facts)
+    with sqlite3.connect(db.db_path) as conn:
+        conn.execute("UPDATE results SET facts_json = ? WHERE execution_id = 'iterations'", (json.dumps(payload),))
+    labelled = restored is not None and restored < corpus_rule.MIN_MEASURED_ITERATIONS
+    assert (corpus_rule.SINGLE_ITERATION_LABEL in db.get_result("iterations").outcome.labels) is labelled
 
 
 @pytest.mark.parametrize("recorded", [None, 7])

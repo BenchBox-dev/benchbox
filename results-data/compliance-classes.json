@@ -34,7 +34,7 @@
     "amplab_sf01_bigquery_sql_20260920_000055_35490af7.json": {
       "identity": {"result_id": "amplab-bigquery-sf0.1-20260920-1da08002", "benchmark": "amplab", "scale_factor": 0.1, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "amplab/sf0.1/power", "rank": 7, "total": 7, "score": 1006.12, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "amplab/sf0.1/power", "rank": 7, "total": 7, "score": 1006.12, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "amplab/sf0.1/power", "rank": 7, "total": 7, "score": 1006.12, "exclusion_reason": null}}}
     },
     "amplab_sf01_clickhouse_local_sql_20260826_113055_4d4d5bcd.json": {
       "identity": {"result_id": "amplab-clickhouse-local-sf0.1-20260826-be8ac637", "benchmark": "amplab", "scale_factor": 0.1, "platform_id": "clickhouse-local", "variant_id": "clickhouse-local", "platform_version": null, "comparison_version": "4.1.6", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -69,7 +69,7 @@
     "amplab_sf01_snowflake_sql_20260920_000319_c0a92e84.json": {
       "identity": {"result_id": "amplab-snowflake-sf0.1-20260920-111bc635", "benchmark": "amplab", "scale_factor": 0.1, "platform_id": "snowflake", "variant_id": "snowflake", "platform_version": "10.33.101", "comparison_version": "10.33.101", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "amplab/sf0.1/power", "rank": 6, "total": 7, "score": 407.12, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "amplab/sf0.1/power", "rank": 6, "total": 7, "score": 407.12, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "amplab/sf0.1/power", "rank": 6, "total": 7, "score": 407.12, "exclusion_reason": null}}}
     },
     "amplab_sf01_sqlite_sql_20260826_173851_fc7e8195.json": {
       "identity": {"result_id": "amplab-sqlite-sf0.1-20260826-2453165d", "benchmark": "amplab", "scale_factor": 0.1, "platform_id": "sqlite", "variant_id": "sqlite", "platform_version": "3.53.1", "comparison_version": "3.53.1", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -79,7 +79,7 @@
     "amplab_sf1_bigquery_sql_20260920_000619_033ba1cd.json": {
       "identity": {"result_id": "amplab-bigquery-sf1.0-20260920-9e9d13a0", "benchmark": "amplab", "scale_factor": 1.0, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "amplab/sf1/power", "rank": 8, "total": 8, "score": 1256.41, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "amplab/sf1/power", "rank": 8, "total": 8, "score": 1256.41, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "amplab/sf1/power", "rank": 8, "total": 8, "score": 1256.41, "exclusion_reason": null}}}
     },
     "amplab_sf1_clickhouse_local_sql_20260824_090414_e3e40917.json": {
       "identity": {"result_id": "amplab-clickhouse-local-sf1.0-20260824-fe25e374", "benchmark": "amplab", "scale_factor": 1.0, "platform_id": "clickhouse-local", "variant_id": "clickhouse-local", "platform_version": null, "comparison_version": "4.1.6", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -119,7 +119,7 @@
     "amplab_sf1_snowflake_sql_20260920_000911_e1dbbcf8.json": {
       "identity": {"result_id": "amplab-snowflake-sf1.0-20260920-5b978cab", "benchmark": "amplab", "scale_factor": 1.0, "platform_id": "snowflake", "variant_id": "snowflake", "platform_version": "10.33.101", "comparison_version": "10.33.101", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "amplab/sf1/power", "rank": 6, "total": 8, "score": 310.78, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "amplab/sf1/power", "rank": 6, "total": 8, "score": 310.78, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "amplab/sf1/power", "rank": 6, "total": 8, "score": 310.78, "exclusion_reason": null}}}
     },
     "amplab_sf1_sqlite_sql_20260826_173907_42b777c2.json": {
       "identity": {"result_id": "amplab-sqlite-sf1.0-20260826-52fba27e", "benchmark": "amplab", "scale_factor": 1.0, "platform_id": "sqlite", "variant_id": "sqlite", "platform_version": "3.53.1", "comparison_version": "3.53.1", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -139,12 +139,12 @@
     "clickbench_sf01_snowflake_sql_20260920_024607_616ff980.json": {
       "identity": {"result_id": "clickbench-snowflake-sf0.1-20260920-5db25e33", "benchmark": "clickbench", "scale_factor": 0.1, "platform_id": "snowflake", "variant_id": "snowflake", "platform_version": "10.33.101", "comparison_version": "10.33.101", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "clickbench/sf0.1/power", "rank": 1, "total": 2, "score": 258.19, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "clickbench/sf0.1/power", "rank": 1, "total": 2, "score": 258.19, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "clickbench/sf0.1/power", "rank": 1, "total": 2, "score": 258.19, "exclusion_reason": null}}}
     },
     "clickbench_sf10_bigquery_sql_20260919_211134_6c9c5414.json": {
       "identity": {"result_id": "clickbench-bigquery-sf10.0-20260919-4327e369", "benchmark": "clickbench", "scale_factor": 10.0, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "clickbench/sf10/power", "rank": 9, "total": 9, "score": 1049.16, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "clickbench/sf10/power", "rank": 9, "total": 9, "score": 1049.16, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "clickbench/sf10/power", "rank": 9, "total": 9, "score": 1049.16, "exclusion_reason": null}}}
     },
     "clickbench_sf10_databricks_sql_20261003_231900_2437b487.json": {
       "identity": {"result_id": "clickbench-databricks-sf10.0-20261003-fa8a31f6", "benchmark": "clickbench", "scale_factor": 10.0, "platform_id": "databricks", "variant_id": "databricks", "platform_version": "2026.36", "comparison_version": "2026.36", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -154,12 +154,12 @@
     "clickbench_sf10_snowflake_sql_20260919_213657_c9c32b6f.json": {
       "identity": {"result_id": "clickbench-snowflake-sf10.0-20260919-f25de4d4", "benchmark": "clickbench", "scale_factor": 10.0, "platform_id": "snowflake", "variant_id": "snowflake", "platform_version": "10.33.101", "comparison_version": "10.33.101", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "clickbench/sf10/power", "rank": 8, "total": 9, "score": 341.48, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "clickbench/sf10/power", "rank": 8, "total": 9, "score": 341.48, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "clickbench/sf10/power", "rank": 8, "total": 9, "score": 341.48, "exclusion_reason": null}}}
     },
     "clickbench_sf1_bigquery_sql_20260919_201018_dd899402.json": {
       "identity": {"result_id": "clickbench-bigquery-sf1.0-20260919-4cb6dd98", "benchmark": "clickbench", "scale_factor": 1.0, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "clickbench/sf1/power", "rank": 7, "total": 7, "score": 812.48, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "clickbench/sf1/power", "rank": 7, "total": 7, "score": 812.48, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "clickbench/sf1/power", "rank": 7, "total": 7, "score": 812.48, "exclusion_reason": null}}}
     },
     "clickbench_sf1_clickhouse_local_sql_20260826_171228_3bd30206.json": {
       "identity": {"result_id": "clickbench-clickhouse-local-sf1.0-20260826-7db41b73", "benchmark": "clickbench", "scale_factor": 1.0, "platform_id": "clickhouse-local", "variant_id": "clickhouse-local", "platform_version": null, "comparison_version": "4.1.6", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -204,7 +204,7 @@
     "clickbench_sf1_snowflake_sql_20260920_025738_7ac21810.json": {
       "identity": {"result_id": "clickbench-snowflake-sf1.0-20260920-d36b1aa8", "benchmark": "clickbench", "scale_factor": 1.0, "platform_id": "snowflake", "variant_id": "snowflake", "platform_version": "10.33.101", "comparison_version": "10.33.101", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "clickbench/sf1/power", "rank": 6, "total": 7, "score": 258.61, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "clickbench/sf1/power", "rank": 6, "total": 7, "score": 258.61, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "clickbench/sf1/power", "rank": 6, "total": 7, "score": 258.61, "exclusion_reason": null}}}
     },
     "clickbench_sf1_sqlite_sql_20260824_101152_6eb94fe6.json": {
       "identity": {"result_id": "clickbench-sqlite-sf1.0-20260824-87734cc9", "benchmark": "clickbench", "scale_factor": 1.0, "platform_id": "sqlite", "variant_id": "sqlite", "platform_version": "3.53.1", "comparison_version": "3.53.1", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -264,7 +264,7 @@
     "coffeeshop_sf01_bigquery_sql_20260919_215952_d90b07cc.json": {
       "identity": {"result_id": "coffeeshop-bigquery-sf0.1-20260919-922007e2", "benchmark": "coffeeshop", "scale_factor": 0.1, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "coffeeshop/sf0.1/power", "rank": 7, "total": 7, "score": 1016.74, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "coffeeshop/sf0.1/power", "rank": 7, "total": 7, "score": 1016.74, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "coffeeshop/sf0.1/power", "rank": 7, "total": 7, "score": 1016.74, "exclusion_reason": null}}}
     },
     "coffeeshop_sf01_clickhouse_local_sql_20260826_113300_975cb3a1.json": {
       "identity": {"result_id": "coffeeshop-clickhouse-local-sf0.1-20260826-a2abd849", "benchmark": "coffeeshop", "scale_factor": 0.1, "platform_id": "clickhouse-local", "variant_id": "clickhouse-local", "platform_version": null, "comparison_version": "4.1.6", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -309,7 +309,7 @@
     "coffeeshop_sf01_snowflake_sql_20260919_220303_a0040982.json": {
       "identity": {"result_id": "coffeeshop-snowflake-sf0.1-20260919-daa96d00", "benchmark": "coffeeshop", "scale_factor": 0.1, "platform_id": "snowflake", "variant_id": "snowflake", "platform_version": "10.33.101", "comparison_version": "10.33.101", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "coffeeshop/sf0.1/power", "rank": 5, "total": 7, "score": 494.29, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "coffeeshop/sf0.1/power", "rank": 5, "total": 7, "score": 494.29, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "coffeeshop/sf0.1/power", "rank": 5, "total": 7, "score": 494.29, "exclusion_reason": null}}}
     },
     "coffeeshop_sf01_sqlite_sql_20260826_182615_3aadc9a8.json": {
       "identity": {"result_id": "coffeeshop-sqlite-sf0.1-20260826-4df22d31", "benchmark": "coffeeshop", "scale_factor": 0.1, "platform_id": "sqlite", "variant_id": "sqlite", "platform_version": "3.53.1", "comparison_version": "3.53.1", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -324,7 +324,7 @@
     "coffeeshop_sf1_bigquery_sql_20260919_220733_e34b9d5d.json": {
       "identity": {"result_id": "coffeeshop-bigquery-sf1.0-20260919-513e9aaf", "benchmark": "coffeeshop", "scale_factor": 1.0, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "coffeeshop/sf1/power", "rank": 6, "total": 7, "score": 1737.09, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "coffeeshop/sf1/power", "rank": 6, "total": 7, "score": 1737.09, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "coffeeshop/sf1/power", "rank": 6, "total": 7, "score": 1737.09, "exclusion_reason": null}}}
     },
     "coffeeshop_sf1_clickhouse_local_sql_20260826_171552_4ce8154e.json": {
       "identity": {"result_id": "coffeeshop-clickhouse-local-sf1.0-20260826-04e614c1", "benchmark": "coffeeshop", "scale_factor": 1.0, "platform_id": "clickhouse-local", "variant_id": "clickhouse-local", "platform_version": null, "comparison_version": "4.1.6", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -364,7 +364,7 @@
     "coffeeshop_sf1_snowflake_sql_20260919_221140_a33dc417.json": {
       "identity": {"result_id": "coffeeshop-snowflake-sf1.0-20260919-396a864b", "benchmark": "coffeeshop", "scale_factor": 1.0, "platform_id": "snowflake", "variant_id": "snowflake", "platform_version": "10.33.101", "comparison_version": "10.33.101", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "coffeeshop/sf1/power", "rank": 4, "total": 7, "score": 765.62, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "coffeeshop/sf1/power", "rank": 4, "total": 7, "score": 765.62, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "coffeeshop/sf1/power", "rank": 4, "total": 7, "score": 765.62, "exclusion_reason": null}}}
     },
     "coffeeshop_sf1_sqlite_sql_20260826_183039_5bd85b97.json": {
       "identity": {"result_id": "coffeeshop-sqlite-sf1.0-20260826-3f6ea7f8", "benchmark": "coffeeshop", "scale_factor": 1.0, "platform_id": "sqlite", "variant_id": "sqlite", "platform_version": "3.53.1", "comparison_version": "3.53.1", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -629,7 +629,7 @@
     "flightdata_sf01_bigquery_sql_20260920_115330_5dd56bc3.json": {
       "identity": {"result_id": "flightdata-bigquery-sf0.1-20260920-ef199e55", "benchmark": "flightdata", "scale_factor": 0.1, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "flightdata/sf0.1/power", "rank": 7, "total": 7, "score": 859.32, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "flightdata/sf0.1/power", "rank": 7, "total": 7, "score": 859.32, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "flightdata/sf0.1/power", "rank": 7, "total": 7, "score": 859.32, "exclusion_reason": null}}}
     },
     "flightdata_sf01_clickhouse_local_sql_20260826_172228_49be64a3.json": {
       "identity": {"result_id": "flightdata-clickhouse-local-sf0.1-20260826-0da04bef", "benchmark": "flightdata", "scale_factor": 0.1, "platform_id": "clickhouse-local", "variant_id": "clickhouse-local", "platform_version": null, "comparison_version": "4.1.6", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -744,7 +744,7 @@
     "h2odb_sf01_bigquery_sql_20260919_221927_c38c03f2.json": {
       "identity": {"result_id": "h2odb-bigquery-sf0.1-20260919-277db6ea", "benchmark": "h2odb", "scale_factor": 0.1, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "h2odb/sf0.1/power", "rank": 7, "total": 7, "score": 836.02, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "h2odb/sf0.1/power", "rank": 7, "total": 7, "score": 836.02, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "h2odb/sf0.1/power", "rank": 7, "total": 7, "score": 836.02, "exclusion_reason": null}}}
     },
     "h2odb_sf01_clickhouse_local_sql_20260826_113046_9dcc57ae.json": {
       "identity": {"result_id": "h2odb-clickhouse-local-sf0.1-20260826-3d433b8f", "benchmark": "h2odb", "scale_factor": 0.1, "platform_id": "clickhouse-local", "variant_id": "clickhouse-local", "platform_version": null, "comparison_version": "4.1.6", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -779,7 +779,7 @@
     "h2odb_sf01_snowflake_sql_20260919_222222_58b4e7b0.json": {
       "identity": {"result_id": "h2odb-snowflake-sf0.1-20260919-1a77d035", "benchmark": "h2odb", "scale_factor": 0.1, "platform_id": "snowflake", "variant_id": "snowflake", "platform_version": "10.33.101", "comparison_version": "10.33.101", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "h2odb/sf0.1/power", "rank": 5, "total": 7, "score": 278.93, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "h2odb/sf0.1/power", "rank": 5, "total": 7, "score": 278.93, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "h2odb/sf0.1/power", "rank": 5, "total": 7, "score": 278.93, "exclusion_reason": null}}}
     },
     "h2odb_sf01_sqlite_sql_20260826_173507_2f578a88.json": {
       "identity": {"result_id": "h2odb-sqlite-sf0.1-20260826-e47de19e", "benchmark": "h2odb", "scale_factor": 0.1, "platform_id": "sqlite", "variant_id": "sqlite", "platform_version": "3.53.1", "comparison_version": "3.53.1", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -789,7 +789,7 @@
     "h2odb_sf1_bigquery_sql_20260919_222849_eae9a72b.json": {
       "identity": {"result_id": "h2odb-bigquery-sf1.0-20260919-4465f261", "benchmark": "h2odb", "scale_factor": 1.0, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "h2odb/sf1/power", "rank": 6, "total": 7, "score": 1066.36, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "h2odb/sf1/power", "rank": 6, "total": 7, "score": 1066.36, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "h2odb/sf1/power", "rank": 6, "total": 7, "score": 1066.36, "exclusion_reason": null}}}
     },
     "h2odb_sf1_clickhouse_local_sql_20260825_175439_252ba7d7.json": {
       "identity": {"result_id": "h2odb-clickhouse-local-sf1.0-20260825-4f554ece", "benchmark": "h2odb", "scale_factor": 1.0, "platform_id": "clickhouse-local", "variant_id": "clickhouse-local", "platform_version": null, "comparison_version": "4.1.6", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -824,7 +824,7 @@
     "h2odb_sf1_snowflake_sql_20260919_223457_01856170.json": {
       "identity": {"result_id": "h2odb-snowflake-sf1.0-20260919-1b2d33ac", "benchmark": "h2odb", "scale_factor": 1.0, "platform_id": "snowflake", "variant_id": "snowflake", "platform_version": "10.33.101", "comparison_version": "10.33.101", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "h2odb/sf1/power", "rank": 4, "total": 7, "score": 354.34, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "h2odb/sf1/power", "rank": 4, "total": 7, "score": 354.34, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "h2odb/sf1/power", "rank": 4, "total": 7, "score": 354.34, "exclusion_reason": null}}}
     },
     "h2odb_sf1_sqlite_sql_20260826_173846_911ddfd1.json": {
       "identity": {"result_id": "h2odb-sqlite-sf1.0-20260826-ea3d6a31", "benchmark": "h2odb", "scale_factor": 1.0, "platform_id": "sqlite", "variant_id": "sqlite", "platform_version": "3.53.1", "comparison_version": "3.53.1", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -834,7 +834,7 @@
     "joinorder_sf1_bigquery_sql_20260920_004131_ebcd21b8.json": {
       "identity": {"result_id": "joinorder-bigquery-sf1.0-20260920-ab4880d2", "benchmark": "joinorder", "scale_factor": 1.0, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "joinorder/sf1/power", "rank": 8, "total": 8, "score": 3484.99, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "joinorder/sf1/power", "rank": 8, "total": 8, "score": 3484.99, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "joinorder/sf1/power", "rank": 8, "total": 8, "score": 3484.99, "exclusion_reason": null}}}
     },
     "joinorder_sf1_clickhouse_local_sql_20260825_175643_45832acd.json": {
       "identity": {"result_id": "joinorder-clickhouse-local-sf1.0-20260825-50e2c8d2", "benchmark": "joinorder", "scale_factor": 1.0, "platform_id": "clickhouse-local", "variant_id": "clickhouse-local", "platform_version": null, "comparison_version": "4.1.6", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -869,7 +869,7 @@
     "joinorder_sf1_snowflake_sql_20260920_012237_b41d3b54.json": {
       "identity": {"result_id": "joinorder-snowflake-sf1.0-20260920-7d5f2ef4", "benchmark": "joinorder", "scale_factor": 1.0, "platform_id": "snowflake", "variant_id": "snowflake", "platform_version": "10.33.101", "comparison_version": "10.33.101", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "joinorder/sf1/power", "rank": 6, "total": 8, "score": 634.35, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "joinorder/sf1/power", "rank": 6, "total": 8, "score": 634.35, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "joinorder/sf1/power", "rank": 6, "total": 8, "score": 634.35, "exclusion_reason": null}}}
     },
     "joinorder_sf1_sqlite_sql_20260826_182543_788c3eb2.json": {
       "identity": {"result_id": "joinorder-sqlite-sf1.0-20260826-4f7bae8e", "benchmark": "joinorder", "scale_factor": 1.0, "platform_id": "sqlite", "variant_id": "sqlite", "platform_version": "3.53.1", "comparison_version": "3.53.1", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -1219,7 +1219,7 @@
     "ssb_sf01_bigquery_sql_20260919_224527_9cb04d2f.json": {
       "identity": {"result_id": "ssb-bigquery-sf0.1-20260919-13927168", "benchmark": "ssb", "scale_factor": 0.1, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "ssb/sf0.1/power", "rank": 11, "total": 11, "score": 899.99, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "ssb/sf0.1/power", "rank": 11, "total": 11, "score": 899.99, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "ssb/sf0.1/power", "rank": 11, "total": 11, "score": 899.99, "exclusion_reason": null}}}
     },
     "ssb_sf01_clickhouse_local_sql_20260826_171214_5f654805.json": {
       "identity": {"result_id": "ssb-clickhouse-local-sf0.1-20260826-eb064d66", "benchmark": "ssb", "scale_factor": 0.1, "platform_id": "clickhouse-local", "variant_id": "clickhouse-local", "platform_version": null, "comparison_version": "4.1.6", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -1254,7 +1254,7 @@
     "ssb_sf01_snowflake_sql_20260919_224858_fb7ff357.json": {
       "identity": {"result_id": "ssb-snowflake-sf0.1-20260919-fa812871", "benchmark": "ssb", "scale_factor": 0.1, "platform_id": "snowflake", "variant_id": "snowflake", "platform_version": "10.33.101", "comparison_version": "10.33.101", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "ssb/sf0.1/power", "rank": 9, "total": 11, "score": 333.42, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "ssb/sf0.1/power", "rank": 9, "total": 11, "score": 333.42, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "ssb/sf0.1/power", "rank": 9, "total": 11, "score": 333.42, "exclusion_reason": null}}}
     },
     "ssb_sf01_sqlite_sql_20260825_192631_9f5ef60f.json": {
       "identity": {"result_id": "ssb-sqlite-sf0.1-20260825-6049fa7e", "benchmark": "ssb", "scale_factor": 0.1, "platform_id": "sqlite", "variant_id": "sqlite", "platform_version": "3.53.1", "comparison_version": "3.53.1", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -1264,7 +1264,7 @@
     "ssb_sf10_bigquery_sql_20260919_231739_a394ecad.json": {
       "identity": {"result_id": "ssb-bigquery-sf10.0-20260919-15aac0e0", "benchmark": "ssb", "scale_factor": 10.0, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "ssb/sf10/power", "rank": 10, "total": 10, "score": 1229.69, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "ssb/sf10/power", "rank": 10, "total": 10, "score": 1229.69, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "ssb/sf10/power", "rank": 10, "total": 10, "score": 1229.69, "exclusion_reason": null}}}
     },
     "ssb_sf10_databricks_sql_20261003_214042_3ee6078e.json": {
       "identity": {"result_id": "ssb-databricks-sf10.0-20261003-e8157037", "benchmark": "ssb", "scale_factor": 10.0, "platform_id": "databricks", "variant_id": "databricks", "platform_version": "2026.36", "comparison_version": "2026.36", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -1274,12 +1274,12 @@
     "ssb_sf10_snowflake_sql_20260919_233632_2df658e9.json": {
       "identity": {"result_id": "ssb-snowflake-sf10.0-20260919-ad51ff5c", "benchmark": "ssb", "scale_factor": 10.0, "platform_id": "snowflake", "variant_id": "snowflake", "platform_version": "10.33.101", "comparison_version": "10.33.101", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "ssb/sf10/power", "rank": 8, "total": 10, "score": 570.94, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "ssb/sf10/power", "rank": 8, "total": 10, "score": 570.94, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "ssb/sf10/power", "rank": 8, "total": 10, "score": 570.94, "exclusion_reason": null}}}
     },
     "ssb_sf1_bigquery_sql_20260919_225336_2580eecf.json": {
       "identity": {"result_id": "ssb-bigquery-sf1.0-20260919-6e5072c7", "benchmark": "ssb", "scale_factor": 1.0, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "ssb/sf1/power", "rank": 7, "total": 8, "score": 869.45, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "ssb/sf1/power", "rank": 7, "total": 8, "score": 869.45, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "ssb/sf1/power", "rank": 7, "total": 8, "score": 869.45, "exclusion_reason": null}}}
     },
     "ssb_sf1_clickhouse_local_sql_20260825_175425_7134f926.json": {
       "identity": {"result_id": "ssb-clickhouse-local-sf1.0-20260825-b1539699", "benchmark": "ssb", "scale_factor": 1.0, "platform_id": "clickhouse-local", "variant_id": "clickhouse-local", "platform_version": null, "comparison_version": "4.1.6", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -1319,7 +1319,7 @@
     "ssb_sf1_snowflake_sql_20260919_225814_ec4b3865.json": {
       "identity": {"result_id": "ssb-snowflake-sf1.0-20260919-7b9b4102", "benchmark": "ssb", "scale_factor": 1.0, "platform_id": "snowflake", "variant_id": "snowflake", "platform_version": "10.33.101", "comparison_version": "10.33.101", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": null, "ranking_excluded": false, "score_source": null, "cohort": "ssb/sf1/power", "rank": 5, "total": 8, "score": 387.96, "exclusion_reason": null},
-      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "ssb/sf1/power", "rank": 5, "total": 8, "score": 387.96, "exclusion_reason": null}}}
+      "rule": {"class": "none", "public_admission": true, "maintainer_admission": true, "lanes": ["own"], "score_source": "own", "labels": ["Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "other_standard_scale", "ranks": {"own": {"cohort": "ssb/sf1/power", "rank": 5, "total": 8, "score": 387.96, "exclusion_reason": null}}}
     },
     "ssb_sf1_sqlite_sql_20260826_173350_a6b8db82.json": {
       "identity": {"result_id": "ssb-sqlite-sf1.0-20260826-0f7dac40", "benchmark": "ssb", "scale_factor": 1.0, "platform_id": "sqlite", "variant_id": "sqlite", "platform_version": "3.53.1", "comparison_version": "3.53.1", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -1449,7 +1449,7 @@
     "tpcds_sf01_bigquery_sql_20260920_015238_a9f40f37.json": {
       "identity": {"result_id": "tpcds-bigquery-sf0.1-20260920-4441e69f", "benchmark": "tpcds", "scale_factor": 0.1, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": "unofficial_subscale", "ranking_excluded": false, "score_source": "derived_from_timings", "cohort": "tpcds/sf0.1/power", "rank": 1, "total": 3, "score": 435.79, "exclusion_reason": null},
-      "rule": {"class": "subscale", "public_admission": false, "maintainer_admission": true, "lanes": ["subscale"], "score_source": "power_at_size_from_timings", "labels": ["Derived from TPC-DS, not an official TPC result", "Scale below the TPC minimum", "Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "tpc_subscale", "ranks": {"subscale": {"cohort": "tpcds/sf0.1/power", "rank": 1, "total": 3, "score": 435.79, "exclusion_reason": null}}}
+      "rule": {"class": "subscale", "public_admission": false, "maintainer_admission": true, "lanes": ["subscale"], "score_source": "power_at_size_from_timings", "labels": ["Derived from TPC-DS, not an official TPC result", "Scale below the TPC minimum", "Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "tpc_subscale", "ranks": {"subscale": {"cohort": "tpcds/sf0.1/power", "rank": 1, "total": 3, "score": 435.79, "exclusion_reason": null}}}
     },
     "tpcds_sf01_databricks_sql_20261003_204005_294ed3a2.json": {
       "identity": {"result_id": "tpcds-databricks-sf0.1-20261003-9d1e2028", "benchmark": "tpcds", "scale_factor": 0.1, "platform_id": "databricks", "variant_id": "databricks", "platform_version": "2026.36", "comparison_version": "2026.36", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -1464,7 +1464,7 @@
     "tpcds_sf10_bigquery_sql_20260920_050846_0fbf6500.json": {
       "identity": {"result_id": "tpcds-bigquery-sf10.0-20260920-a884cd21", "benchmark": "tpcds", "scale_factor": 10.0, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": "unofficial_nonstandard", "ranking_excluded": true, "score_source": "derived_from_timings", "cohort": "tpcds/sf10/power", "rank": null, "total": 3, "score": 21379.65, "exclusion_reason": "unofficial_compliance"},
-      "rule": {"class": "power_only", "public_admission": true, "maintainer_admission": true, "lanes": ["power_only"], "score_source": "power_at_size_from_timings", "labels": ["Derived from TPC-DS, not an official TPC result", "Power test only", "Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "tpc_power_only", "ranks": {"power_only": {"cohort": "tpcds/sf10/power", "rank": 11, "total": 12, "score": 21379.65, "exclusion_reason": null}}}
+      "rule": {"class": "power_only", "public_admission": true, "maintainer_admission": true, "lanes": ["power_only"], "score_source": "power_at_size_from_timings", "labels": ["Derived from TPC-DS, not an official TPC result", "Power test only", "Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "tpc_power_only", "ranks": {"power_only": {"cohort": "tpcds/sf10/power", "rank": 11, "total": 12, "score": 21379.65, "exclusion_reason": null}}}
     },
     "tpcds_sf10_databricks_sql_20261003_212424_15e05c0c.json": {
       "identity": {"result_id": "tpcds-databricks-sf10.0-20261003-752d5924", "benchmark": "tpcds", "scale_factor": 10.0, "platform_id": "databricks", "variant_id": "databricks", "platform_version": "2026.36", "comparison_version": "2026.36", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -1499,7 +1499,7 @@
     "tpcds_sf1_bigquery_sql_20260920_034529_dab15f22.json": {
       "identity": {"result_id": "tpcds-bigquery-sf1.0-20260920-7ae8837e", "benchmark": "tpcds", "scale_factor": 1.0, "platform_id": "bigquery", "variant_id": "bigquery", "platform_version": null, "comparison_version": "version not recorded", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": "unofficial_nonstandard", "ranking_excluded": true, "score_source": "derived_from_timings", "cohort": "tpcds/sf1/power", "rank": null, "total": 6, "score": 3820.32, "exclusion_reason": "unofficial_compliance"},
-      "rule": {"class": "power_only", "public_admission": true, "maintainer_admission": true, "lanes": ["power_only"], "score_source": "power_at_size_from_timings", "labels": ["Derived from TPC-DS, not an official TPC result", "Power test only", "Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "tpc_power_only", "ranks": {"power_only": {"cohort": "tpcds/sf1/power", "rank": 9, "total": 11, "score": 3820.32, "exclusion_reason": null}}}
+      "rule": {"class": "power_only", "public_admission": true, "maintainer_admission": true, "lanes": ["power_only"], "score_source": "power_at_size_from_timings", "labels": ["Derived from TPC-DS, not an official TPC result", "Power test only", "Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "tpc_power_only", "ranks": {"power_only": {"cohort": "tpcds/sf1/power", "rank": 9, "total": 11, "score": 3820.32, "exclusion_reason": null}}}
     },
     "tpcds_sf1_clickhouse_local_sql_20260826_112830_c250741b.json": {
       "identity": {"result_id": "tpcds-clickhouse-local-sf1.0-20260826-dd649872", "benchmark": "tpcds", "scale_factor": 1.0, "platform_id": "clickhouse-local", "variant_id": "clickhouse-local", "platform_version": null, "comparison_version": "4.1.6", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -1864,7 +1864,7 @@
     "tpch_sf1_doris_sql_20261007_172956_5e453c54.json": {
       "identity": {"result_id": "tpch-apache-doris-sf1.0-20261007-2c74ef0a", "benchmark": "tpch", "scale_factor": 1.0, "platform_id": "apache-doris", "variant_id": "apache-doris^container", "platform_version": "4.0.3-rc03", "comparison_version": "4.0.3-rc03", "version_is_release": false, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": "official", "ranking_excluded": false, "score_source": null, "cohort": "tpch/sf1/throughput/streams=3", "rank": 2, "total": 3, "score": 25667.06, "exclusion_reason": null},
-      "rule": {"class": "throughput_only", "public_admission": true, "maintainer_admission": true, "lanes": ["throughput"], "score_source": "throughput_from_timings", "labels": ["Derived from TPC-H, not an official TPC result", "Throughput test only", "Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "tpc_throughput_only", "ranks": {"throughput": {"cohort": "tpch/sf1/throughput/streams=3", "rank": 2, "total": 3, "score": 25667.06, "exclusion_reason": null}}}
+      "rule": {"class": "throughput_only", "public_admission": true, "maintainer_admission": true, "lanes": ["throughput"], "score_source": "throughput_from_timings", "labels": ["Derived from TPC-H, not an official TPC result", "Throughput test only", "Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "tpc_throughput_only", "ranks": {"throughput": {"cohort": "tpch/sf1/throughput/streams=3", "rank": 2, "total": 3, "score": 25667.06, "exclusion_reason": null}}}
     },
     "tpch_sf1_duckdb_sql_20260826_162117_67e59fb6.json": {
       "identity": {"result_id": "tpch-duckdb-sf1.0-20260826-e175e64f", "benchmark": "tpch", "scale_factor": 1.0, "platform_id": "duckdb", "variant_id": "duckdb", "platform_version": "1.3.2", "comparison_version": "1.3.2", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -1884,7 +1884,7 @@
     "tpch_sf1_duckdb_sql_20261007_155030_c3a60388.json": {
       "identity": {"result_id": "tpch-duckdb-sf1.0-20261007-83a01707", "benchmark": "tpch", "scale_factor": 1.0, "platform_id": "duckdb", "variant_id": "duckdb", "platform_version": "1.5.5", "comparison_version": "1.5.5", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": "official", "ranking_excluded": false, "score_source": null, "cohort": "tpch/sf1/throughput/streams=3", "rank": 1, "total": 3, "score": 297744.36, "exclusion_reason": null},
-      "rule": {"class": "throughput_only", "public_admission": true, "maintainer_admission": true, "lanes": ["throughput"], "score_source": "throughput_from_timings", "labels": ["Derived from TPC-H, not an official TPC result", "Throughput test only", "Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "tpc_throughput_only", "ranks": {"throughput": {"cohort": "tpch/sf1/throughput/streams=3", "rank": 1, "total": 3, "score": 297744.36, "exclusion_reason": null}}}
+      "rule": {"class": "throughput_only", "public_admission": true, "maintainer_admission": true, "lanes": ["throughput"], "score_source": "throughput_from_timings", "labels": ["Derived from TPC-H, not an official TPC result", "Throughput test only", "Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "tpc_throughput_only", "ranks": {"throughput": {"cohort": "tpch/sf1/throughput/streams=3", "rank": 1, "total": 3, "score": 297744.36, "exclusion_reason": null}}}
     },
     "tpch_sf1_ducklake_sql_20260828_091755_137bc87e.json": {
       "identity": {"result_id": "tpch-ducklake-sf1.0-20260828-e325d601", "benchmark": "tpch", "scale_factor": 1.0, "platform_id": "ducklake", "variant_id": "ducklake", "platform_version": "1.3.2", "comparison_version": "1.3.2", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
@@ -1919,7 +1919,7 @@
     "tpch_sf1_spark_sql_20261007_152057_cc60a6b0.json": {
       "identity": {"result_id": "tpch-spark-sf1.0-20261007-9c57f2ae", "benchmark": "tpch", "scale_factor": 1.0, "platform_id": "spark", "variant_id": "spark", "platform_version": "4.2.0", "comparison_version": "4.2.0", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
       "today": {"class": "official", "ranking_excluded": false, "score_source": null, "cohort": "tpch/sf1/throughput/streams=3", "rank": 3, "total": 3, "score": 1541.97, "exclusion_reason": null},
-      "rule": {"class": "throughput_only", "public_admission": true, "maintainer_admission": true, "lanes": ["throughput"], "score_source": "throughput_from_timings", "labels": ["Derived from TPC-H, not an official TPC result", "Throughput test only", "Row counts not checked"], "held_reason": null, "missing_facts": [], "row": "tpc_throughput_only", "ranks": {"throughput": {"cohort": "tpch/sf1/throughput/streams=3", "rank": 3, "total": 3, "score": 1541.97, "exclusion_reason": null}}}
+      "rule": {"class": "throughput_only", "public_admission": true, "maintainer_admission": true, "lanes": ["throughput"], "score_source": "throughput_from_timings", "labels": ["Derived from TPC-H, not an official TPC result", "Throughput test only", "Row counts not checked", "Single iteration"], "held_reason": null, "missing_facts": [], "row": "tpc_throughput_only", "ranks": {"throughput": {"cohort": "tpch/sf1/throughput/streams=3", "rank": 3, "total": 3, "score": 1541.97, "exclusion_reason": null}}}
     },
     "tpch_sf1_sqlite_sql_20260825_180529_b9fdd7ba.json": {
       "identity": {"result_id": "tpch-sqlite-sf1.0-20260825-57eefaba", "benchmark": "tpch", "scale_factor": 1.0, "platform_id": "sqlite", "variant_id": "sqlite", "platform_version": "3.53.1", "comparison_version": "3.53.1", "version_is_release": true, "execution_mode": "sql", "tuning_mode": "notuning"},
