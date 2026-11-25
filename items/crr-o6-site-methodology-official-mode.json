@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The site methodology page states the official-mode amendments with the same wording as the core record",
+    "Site docs checks (lint:docs, docs:check) pass and the change lands on the branch the site's AGENTS.md requires"
+  ],
+  "context": "Owner decision 6 of 2026-11-25. Serial site pull request.",
+  "description": "## Problem\nThe site's methodology page states answers 2, 5 and 6 without the official-mode amendments made in the core record.\n\n## Change (benchbox-site)\nMirror the core amendments: official mode follows the specification sequence (no warm-up, power immediately after load on stream 0, seed from the load end time, two TPC-H runs); non-official runs keep the warm-up and three measured iterations. Documentation of unreleased behaviour goes to next per the site's AGENTS.md. No rendering change, no new label.\n\n## Guardrails (apply to every step of this plan)\n- Fix the root cause for every platform and benchmark. No rule, check, exception, label or test may name a platform or a version matrix; only the pvm items may name Polars, and only to run and stage that run's files.\n- Never edit a stored result file. Stored outcomes change only through the rule; any change shows in the committed snapshot diff (scripts/corpus_compliance_snapshot.py) and is explained per bundle in the pull request body.\n- No new stored class value. No reader decides anything from benchmark.compliance_class, conformance_class or summary.tpc_metrics.suppressed.\n- One implementation per concept: reuse existing helpers; make duplicate-check-delta stays at +0; no second copy of the rule, the roll-up, the row decision or the qualification comparator.\n- No explanatory comments or docstrings (make comment-policy-check). User-facing changes add a changelog.d fragment; never edit CHANGELOG.md.\n- Heavy work only through make heavy-run, after make heavy-status, with command, maximum run time and log path announced first. No live cloud runs. Never touch the lock, set BENCHBOX_SKIP_TEST_LOCK, BENCHBOX_HEAVY_ADMIT=force or BENCHBOX_HEAVY_WATCHDOG=off.\n- Work in a linked worktree on the step's feature batch. Each batch is one pull request; run the local review before opening it; fix hosted-review findings; never post a stand-in or adjudication.\n- Paths and line numbers were read on 2026-11-25 at the corpus rule head; re-read before editing and report drift instead of guessing.\n- At a decision gate, follow the recorded owner decision. If its stop condition is met, stop and report to the owner; never substitute a different decision.\n- Owner decisions: crr-00-corpus-rule-remediation-plan context, entries of 2026-11-22, 2026-11-24 and 2026-11-25. Design: the spec-faithful validation plan summarized in crr-00 (qualification test, integrity checks, official-mode sequence).",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-25T15:39:06Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "daadca18ce98469da65b57672b8c69ee",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
+    }
+  ]
+}
