@@ -135,21 +135,6 @@ class ParquetConverter(BaseFormatConverter):
             progress_callback=progress_callback,
         )
 
-    def _verify_inline_row_count(
-        self,
-        *,
-        expected_rows: int,
-        written_rows: int,
-        table_name: str,
-    ) -> None:
-        if expected_rows != written_rows:
-            raise ConversionError(
-                f"Row count mismatch for table '{table_name}': "
-                f"input={expected_rows:,} rows, output={written_rows:,} rows. "
-                f"Data loss detected during conversion! "
-                f"This violates TPC compliance and indicates a serious conversion error."
-            )
-
     def _try_write_single_file_duckdb(
         self,
         *,
