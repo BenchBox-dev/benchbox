@@ -940,7 +940,11 @@ class ReproduceFixture:
                 "name": f"fast-junit-{pr}-{sha}",
                 "workflow_run": {"id": run_id, "head_sha": sha},
             }
-            payloads[f"repos/o/r/pulls/{pr}"] = {"merged": True, "head": {"sha": sha, "repo": {"full_name": "o/r"}}}
+            payloads[f"repos/o/r/pulls/{pr}"] = {
+                "merged": True,
+                "merged_at": "2026-10-24T12:00:00Z",
+                "head": {"sha": sha, "repo": {"full_name": "o/r"}},
+            }
         for path, changes in (overrides or {}).items():
             payloads[path] = {**payloads[path], **changes}
 
@@ -1037,7 +1041,7 @@ def test_reproduce_reads_the_commit_not_the_worktree(reproduce: ReproduceFixture
         (RUN_PATH, {"head_repository": {"full_name": "attacker/r"}}, ["run-fork"]),
         (RUN_PATH, {"head_repository": None}, ["run-fork"]),
         (RUN_PATH, {"created_at": "2026-09-01T00:00:00Z"}, ["generated-too-late"]),
-        (RUN_PATH, {"created_at": "2026-10-26T00:00:00Z"}, ["generated-before-run"]),
+        (RUN_PATH, {"created_at": "2026-10-26T00:00:00Z"}, ["generated-before-run", "run-after-merge"]),
         (RUN_PATH, {"created_at": "yesterday"}, ["run-created"]),
         (ARTIFACT_PATH, {"name": f"fast-junit-9999-{SHA[0]}"}, ["artifact-name"]),
         (ARTIFACT_PATH, {"workflow_run": {"id": 7, "head_sha": SHA[0]}}, ["artifact-run"]),
@@ -1046,6 +1050,9 @@ def test_reproduce_reads_the_commit_not_the_worktree(reproduce: ReproduceFixture
         (PULL_PATH, {"head": {"sha": SHA[5], "repo": {"full_name": "o/r"}}}, ["pr-head"]),
         (PULL_PATH, {"head": {"sha": SHA[0], "repo": {"full_name": "attacker/r"}}}, ["pr-fork"]),
         (PULL_PATH, {"head": {"sha": SHA[0], "repo": None}}, ["pr-fork"]),
+        (PULL_PATH, {"merged_at": "2026-10-23T23:59:59Z"}, ["run-after-merge"]),
+        (PULL_PATH, {"merged_at": RUN_CREATED_AT}, []),
+        (PULL_PATH, {"merged_at": None}, ["pr-merged-at"]),
     ],
 )
 def test_reproduce_rejects_source_runs_whose_provenance_does_not_match(

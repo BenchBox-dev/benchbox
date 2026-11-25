@@ -521,7 +521,7 @@ def _artifact_codes(artifact: dict[str, Any], entry: dict[str, Any]) -> list[str
     return codes
 
 
-def _pull_codes(pull: dict[str, Any], entry: dict[str, Any], repo: str) -> list[str]:
+def _pull_codes(pull: dict[str, Any], entry: dict[str, Any], repo: str, run_created: datetime | None) -> list[str]:
     codes: list[str] = []
     if pull.get("merged") is not True:
         codes.append("pr-not-merged")
@@ -530,6 +530,11 @@ def _pull_codes(pull: dict[str, Any], entry: dict[str, Any], repo: str) -> list[
         codes.append("pr-head")
     elif not _same_repo(head.get("repo"), repo):
         codes.append("pr-fork")
+    merged_at = _utc(pull.get("merged_at"))
+    if merged_at is None:
+        codes.append("pr-merged-at")
+    elif run_created is not None and run_created > merged_at:
+        codes.append("run-after-merge")
     return codes
 
 
@@ -540,7 +545,8 @@ def provenance_codes(entry: dict[str, Any], repo: str, api: Api, generated_at: d
     artifact = _fetch(api, f"repos/{repo}/actions/artifacts/{entry['artifact_id']}")
     codes += ["artifact-unavailable"] if artifact is None else _artifact_codes(artifact, entry)
     pull = _fetch(api, f"repos/{repo}/pulls/{entry['pr']}")
-    codes += ["pr-unavailable"] if pull is None else _pull_codes(pull, entry, repo)
+    created = _utc(run.get("created_at")) if run is not None else None
+    codes += ["pr-unavailable"] if pull is None else _pull_codes(pull, entry, repo, created)
     return codes
 
 
