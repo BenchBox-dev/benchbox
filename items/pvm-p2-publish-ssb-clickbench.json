@@ -7,7 +7,7 @@
     "CORPUS_NOTES.md lists every configuration without a result",
     "The core findings pages' SSB and ClickBench figures equal the published medians"
   ],
-  "context": "Step of the corpus rule remediation plan (crr-00-corpus-rule-remediation-plan). Plan written 2026-11-22 and reviewed twice by an independent adversarial reviewer; counts marked (R) were measured by that reviewer and must be re-measured, not trusted. Owner decisions were given by choice dialog on 2026-11-22 and are quoted in crr-00.\n\nPublished together with pvm-p2 and pvm-p3/p4 in one core pull request where their runs are ready together (owner, 2026-11-24); each run starts as soon as its needs land (owner decision 11, 2026-11-25). The needs no longer chain through pvm-p2, which avoids a deadlock with the shared publication pull request.",
+  "context": "Step of the corpus rule remediation plan (crr-00-corpus-rule-remediation-plan). Plan written 2026-11-22 and reviewed twice by an independent adversarial reviewer; counts marked (R) were measured by that reviewer and must be re-measured, not trusted. Owner decisions were given by choice dialog on 2026-11-22 and are quoted in crr-00.\n\nPublished together with pvm-p2 and pvm-p3/p4 in one core pull request where their runs are ready together (owner, 2026-11-24); each run starts as soon as its needs land (owner decision 11, 2026-11-25). The needs no longer chain through pvm-p2, which avoids a deadlock with the shared publication pull request.\n\nCorrection to the entry above: published together with pvm-p3 and pvm-p4 where their runs are ready together.",
   "description": "## Problem\nNothing from the Polars matrix is in the corpus. Owner decision 9 reverses pvm-d1; decision 13 publishes SSB and ClickBench first.\n\n## Change\n- Stage every completed result from pvm-p1 with make corpus-stage-local (all three engine settings; runs the matrix's swap rule left out of its medians are included, owner decision 10). Validate with validate_submission.py --require-manifest --trust-internal-source and validate_corpus.py.\n- Pull request to develop adding them under results-data/bundles/, with a CORPUS_NOTES.md entry listing configurations that did not complete. Then the published-results mirror.\n- In the same core pull request, update _project/analysis/polars-version-matrix/ findings and methodology for SSB and ClickBench.\n- ClickBench at scale factor 10 is a non-standard scale: admitted, unranked.\n\n## Decision gates\n- Authorized by the owner's instruction to publish all Polars runs as maintainer (2026-11-22). Stop if any file fails validation; never edit a result file.\n- Do not use benchbox submit.\n- After the site deploys, open the Explorer and confirm the three engine settings are separate series; if not, stop and report (do not adjust data to make it appear).\n\n## Guardrails (apply to every item of this plan)\n- Fix the root cause for every platform and benchmark. No rule, exception, label or test may name a platform or a version matrix. Only the pvm-p* items may name Polars, and only to run and stage that run's files.\n- Never edit a stored result file to make it pass. Outcomes change only through the rule.\n- Any change to the outcome of a stored result must show in the committed outcome snapshot diff in the same pull request and be explained in its body.\n- No new stored class value. No reader may decide anything from benchmark.compliance_class, conformance_class or summary.tpc_metrics.suppressed.\n- Paths, line numbers and counts in this plan were read on 2026-11-22 at develop 93f3360. Re-read before editing; report drift, do not guess.\n- AGENTS.md applies: linked worktree, one pull request per item, close at the merged pull request, heavy work only through make heavy-run, no live cloud run without owner approval in that task.\n- At a decision gate, follow the recorded default. If its stop condition is met, stop and report to the owner. Never substitute a different owner decision.\n- Read crr-00-corpus-rule-remediation-plan first: it holds the owner decisions, the rule table and the fault types (T1 to T5).",
   "sessions": [
     {
@@ -32,6 +32,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "0da9d6b3a5a244a08cd16689da84c8ed",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-25T15:55:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "20d3dbfe27e6488582cc2593ff978a9b",
       "session_id": "51a05311b8f040aabf2f02456b50b932"
     }
   ]
