@@ -26816,6 +26816,13 @@
       "status": "open",
       "title": "Cut over TPC-H and TPC-DS default backend and decide published-run Parquet layout default"
     },
+    "dataproc-gcs-helpers-duplicated-20261125": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Share the GCS upload and result-read helpers between the Dataproc and Dataproc Serverless adapters"
+    },
     "dataproc-serverless-platform": {
       "claim": null,
       "needs": [
