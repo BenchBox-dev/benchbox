@@ -141,9 +141,18 @@ class FormatConversionOrchestrator:
             if isinstance(raw_header, bool):
                 has_header = raw_header
 
-        if delimiter == base_opts.delimiter and has_header == base_opts.has_header:
+        null_marker = base_opts.null_marker
+        if null_marker == "":
+            for source in (entry_meta, extras):
+                if "csv_null_marker" in source and (
+                    source["csv_null_marker"] is None or isinstance(source["csv_null_marker"], str)
+                ):
+                    null_marker = source["csv_null_marker"]
+                    break
+
+        if (delimiter, has_header, null_marker) == (base_opts.delimiter, base_opts.has_header, base_opts.null_marker):
             return base_opts
-        return replace(base_opts, delimiter=delimiter, has_header=has_header)
+        return replace(base_opts, delimiter=delimiter, has_header=has_header, null_marker=null_marker)
 
     def _get_converter(self, format_name: str):
         converter = self._converters.get(format_name.lower())

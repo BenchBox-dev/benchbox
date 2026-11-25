@@ -1137,6 +1137,57 @@ class TestParquetStreamingAndBenchmarkCompatibility:
             )
         assert not (tmp_path / "out" / "t.parquet").exists()
 
+    def test_manifest_null_marker_keeps_empty_strings_in_not_null_columns(self, tmp_path):
+        import json
+
+        from benchbox.core.runner.conversion import FormatConversionOrchestrator
+
+        source = tmp_path / "hits.csv"
+        source.write_text('1,"",x\n2,,__NULL__\n3,ref,y\n', encoding="utf-8")
+        (tmp_path / "_datagen_manifest.json").write_text(
+            json.dumps(
+                {
+                    "version": 2,
+                    "benchmark": "clickbench",
+                    "scale_factor": 0.01,
+                    "formats": ["csv"],
+                    "format_preference": ["csv"],
+                    "csv_delimiter": ",",
+                    "csv_has_header": False,
+                    "csv_null_marker": "__NULL__",
+                    "tables": {
+                        "hits": {
+                            "formats": {
+                                "csv": [{"path": "hits.csv", "size_bytes": source.stat().st_size, "row_count": 3}]
+                            }
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        schema = {
+            "hits": {
+                "columns": [
+                    {"name": "id", "type": "INTEGER", "nullable": False},
+                    {"name": "referer", "type": "VARCHAR", "nullable": False},
+                    {"name": "tag", "type": "VARCHAR"},
+                ]
+            }
+        }
+
+        results = FormatConversionOrchestrator().convert_benchmark_tables(
+            manifest_path=tmp_path / "_datagen_manifest.json",
+            output_dir=tmp_path,
+            target_format="parquet",
+            schemas=schema,
+        )
+
+        table = pq.read_table(results["hits"].output_files[0])
+        assert table.column("referer").to_pylist() == ["", "", "ref"]
+        assert table.column("tag").to_pylist() == ["x", None, "y"]
+        assert table.schema.field("referer").nullable is False
+
     def test_independent_row_count_validation_detects_mismatch_on_all_paths(self, tmp_path):
         schema = {
             "columns": [
