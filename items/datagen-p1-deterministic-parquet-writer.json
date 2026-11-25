@@ -1,0 +1,30 @@
+{
+  "acceptance": [
+    "ParquetConverter has exactly one writer (PyArrow); no DuckDB code remains in the conversion path; manifests always record parquet_writer=benchbox-pyarrow-streaming.",
+    "On TPC-H SF 1 and SF 10 with default zstd chunked input, output Parquet is byte-identical (sha256) to the pre-change single-threaded PyArrow output for all 8 tables, and identical across 3 repeated runs.",
+    "Every non-final row group is exactly 122,880 rows; NOT NULL columns stay required fields.",
+    "Measured N=3 medians recorded in the PR body with host load: TPC-H SF 1 <= 6 s / <= 512 MiB and SF 10 <= 60 s / <= 1,024 MiB (Linux CI or quiet local host).",
+    "Cached manifests from any other writer are stale on Parquet runs (unit test).",
+    "A test converts a multi-chunk compressed input and asserts the single writer identity and exact row groups, failing on the pre-change code.",
+    "ADR corrected (DuckDB not core; writer decision and rejected alternatives recorded).",
+    "PR merged to develop with a changelog.d fragment."
+  ],
+  "context": "Evidence: researcher report 2026-11-25 (agent ParquetWriterWhys). Measurements were on a loaded host (load ~14); acceptance requires re-measurement.",
+  "description": "## Problem\nPR #4506 made `ParquetConverter` try a DuckDB `COPY` first and silently fall back to PyArrow streaming. A five-whys investigation (2026-11-25) found:\n- DuckDB is not a core dependency (extras only); ADR line ~232 wrongly says it is \"already shipped\".\n- On default data (zstd, chunked) DuckDB runs out of its 320 MB limit and falls back for 6 of 8 TPC-H tables, so the writer depends on host and chunk count and the manifest records \"duckdb+pyarrow\". Where DuckDB runs, row groups are 84k-124k (not 122,880), bytes vary between runs, NOT NULL columns become nullable, decimals round silently.\n- PyArrow `open_csv` is single-threaded: 9.5 s at SF 1 and 100 s at SF 10 on TPC-H (budget 6 s / 60 s).\n- Reading chunk files in parallel with PyArrow (2 files, bounded queue, one ParquetWriter consuming in manifest order) measured 4.8 s / 431 MiB at SF 1 and 52.6 s / 512 MiB at SF 10 on a loaded host, with bytes identical to today's PyArrow output on all 8 TPC-H tables.\n\nOwner decision 2026-11-25: PyArrow parallel per chunk file; remove the DuckDB path; semantic fixes go to a separate item (datagen-p1-parquet-semantic-fixes).\n\n## Change\n- `benchbox/utils/format_converters/base.py` / `parquet_converter.py`: read up to N chunk files concurrently (default 2; size-aware increase only if measured within the memory budget), each into a bounded queue, consumed strictly in input order by one ParquetWriter that keeps exact 122,880-row groups; count rows per file inside the readers.\n- Delete `_try_write_single_file_duckdb`, `PARQUET_WRITER_DUCKDB`, `_arrow_type_to_duckdb`, and helpers only it used. Writer identity is always `benchbox-pyarrow-streaming`.\n- Treat cached Parquet manifests whose writer is not the current writer (including any `benchbox-duckdb-streaming` component) as stale on Parquet runs, via one rule rather than a retired-writer list.\n- Correct the ADR: DuckDB is not core; record the writer decision, the measurements, and that DataFusion/Polars were evaluated and rejected (dependency size 105/160 MB, silent decimal truncation, Polars memory).\n\n## Decision gates\n- Byte gate: on TPC-H SF 1 and SF 10 with default zstd chunked input, every table's Parquet file is byte-identical to the current single-threaded PyArrow output. If not, stop and report (a hash change needs a re-baseline decision).\n- Budget gate: N=3 medians on Linux CI or a quiet local host (load < 3): SF 1 <= 6 s / <= 512 MiB and SF 10 <= 60 s / <= 1,024 MiB for TPC-H; record TPC-DS and one headered synthetic benchmark. If SF 10 misses on Linux, record it as the measured miss for datagen-p2-rust-repo-gate and stop for the owner.\n- Converting all 11 ADR benchmarks at SF 0.01 must not regress versus develop except ClickBench, whose NOT NULL empty-string failure belongs to datagen-p1-parquet-semantic-fixes (record the result either way).\n\n## Guardrails\n- No new dependency. No DuckDB, DataFusion or Polars in the conversion path.\n- Memory stays bounded: queue depth fixed; no full-table materialisation.\n- Heavy measurements only via make heavy-run; private output dirs cleaned up.\n- AGENTS.md workflow, changelog fragment, merged PR. Prior uncommitted experiment in ../BenchBox.wt-fix-parquet-single-writer (removes the DuckDB path) may be reused for the deletion hunks only; its tests that assume single-threaded behaviour must be checked.",
+  "links": [
+    "benchbox/utils/format_converters/base.py",
+    "benchbox/utils/format_converters/parquet_converter.py",
+    "benchbox/utils/datagen_version.py",
+    "docs/internal/adr/adr-benchbox-datagen.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-25T17:02:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "c9e1a3b58d0f2b4c6e8a0c2e4a6c8e09",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
