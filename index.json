@@ -26827,6 +26827,15 @@
       "status": "open",
       "title": "Re-baseline local published Parquet corpus for 122,880-row-group streaming layout"
     },
+    "datagen-p1-parquet-semantic-fixes": {
+      "claim": null,
+      "needs": [
+        "datagen-p1-deterministic-parquet-writer"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Fix Parquet conversion value semantics in one versioned writer change before the corpus re-baseline"
+    },
     "datagen-p1-provenance-and-backend-selector": {
       "claim": null,
       "needs": [
