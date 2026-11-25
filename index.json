@@ -45374,6 +45374,13 @@
       "status": "open",
       "title": "Run-timeout cleanup does not cancel load or DDL statements on cursor-based platforms and BigQuery"
     },
+    "run-timeout-cleanup-remaining-platforms-20261125": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide run-timeout cleanup for Snowflake, ClickHouse Cloud, Databricks DataFrame and Snowpark Connect"
+    },
     "run-timeout-decision-record-refresh-20261122": {
       "claim": null,
       "needs": [],
