@@ -26021,7 +26021,8 @@
     "crr-v1-row-evidence-roll-up": {
       "claim": null,
       "needs": [
-        "crr-c1-validation-status-vocabulary"
+        "crr-c1-validation-status-vocabulary",
+        "crr-v0-reference-reader-and-generator"
       ],
       "priority": "high",
       "status": "open",
