@@ -38935,6 +38935,13 @@
       "status": "done",
       "title": "pandas-df write_primitives SF1 intermittently segfaults in trunk UAT"
     },
+    "pandas-tpch-q15-exact-float-equality": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Compare the DataFrame TPC-H Q15 revenue with a tolerance instead of exact float equality"
+    },
     "parallel-test-run-lock": {
       "claim": null,
       "needs": [],

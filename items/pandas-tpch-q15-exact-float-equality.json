@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "A reproduction (or evidence it does not reproduce) is recorded",
+    "Every DataFrame Q15 implementation uses one shared tolerance comparison; a test with revenues differing in the last bits returns the row",
+    "Stored files unchanged"
+  ],
+  "context": "From crr-i2-tpch-q15-empty-datafusion (2026-11-25).",
+  "description": "## Problem\nThe pandas DataFrame implementation of TPC-H Q15 still selects the supplier whose revenue equals the maximum by exact floating-point equality. A stored DataFrame TPC-H Skew result (4e7cd354) returned no Q15 row, most likely for this reason (not reproduced). DataFusion SQL was fixed by loading money columns as DECIMAL (b83a7b61d8); dc9aa9106c added a tolerance to another DataFrame family.\n\n## Change\nFind every DataFrame Q15 implementation (pandas family and any others) that compares computed revenue by exact equality and use the same tolerance dc9aa9106c introduced, in one shared helper. Reproduce first with a DataFrame run that varies only the float type.\n\n## Decision gates\n- If it does not reproduce, record the evidence and stop.\n- Never edit stored result files.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-25T16:48:05Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3ce83eebe684468ca0db7fc965b48359",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
+    }
+  ]
+}
