@@ -50665,6 +50665,13 @@
       "status": "done",
       "title": "Owner decision: approve one vendored soundness-path matcher module as the only embedded exception"
     },
+    "theseus-derived-paths-reproduce-review-20261125": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Theseus: review generated files by reproduction plus a summary instead of reading every hunk"
+    },
     "theseus-format-proposal-doc-status-note-20261113": {
       "claim": null,
       "needs": [],

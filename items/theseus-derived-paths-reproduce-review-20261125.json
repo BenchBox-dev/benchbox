@@ -1,0 +1,24 @@
+{
+  "acceptance": [
+    "Theseus parses and validates derived_paths (paths, check, summary), refuses unknown or malformed entries, and documents the key in docs/consumer-policy.md.",
+    "A pull request whose every changed file matches one derived_paths entry and that changes the entry summary file is planned with only the summary as required reading; capacity and size bucket ignore the other derived files; the brief tells the reviewer the data files are verified by the named check.",
+    "Fail closed: a pull request that changes any file outside the entry, or does not change the summary, is planned exactly as today; tested.",
+    "The gate does not pass a derived-path review until the named check has succeeded on the exact head, reported by GitHub Actions; a missing, pending or failed check keeps it pending; tested.",
+    "BenchBox: CI reproduces the fast-tier baseline and its summary byte for byte from manifest.json (source artifacts and generated_at) and the base baseline, the refresh workflow writes the summary, and .github/review.yml declares the entry; pinned to the Theseus release.",
+    "A baseline refresh pull request gets a hosted review verdict without an owner stand-in."
+  ],
+  "description": "Pull requests that only regenerate data files (the weekly fast-tier duration baseline refresh, e.g. BenchBox #4477: 9 JSON files, 8.3 MB diff, about 3.8M tokens of required reading against an 872k capacity) are refused as too large to review and need an owner stand-in every week. Root cause: the policy can only require every hunk to be read or exempt a path; it cannot say a file is the deterministic output of a reviewed generator. Exempting would hide changes such as the 33% fall in the baseline total in #4477.\n\nDesign: a consumer policy key derived_paths. Each entry names path globs, a CI check that rebuilds those files from their recorded inputs and compares bytes, and a summary file (also reproduced by that check) that the reviewer reads instead of the data. The treatment applies only when every changed file of the pull request matches the entry, so the pull request cannot also change the generator, the check or a workflow; anything else falls back to todays full reading. The gate stays pending until the named check succeeds on the exact head.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4477"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0a697a35e720a04d19e44a28",
+      "at": "2026-11-25T15:41:12Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "05a1e3becc9ecf99f6b0194e6881c2f3",
+      "session_id": "25f1c82986254513a0ef576dc2985dfb"
+    }
+  ]
+}
