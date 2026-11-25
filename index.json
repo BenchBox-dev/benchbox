@@ -4101,7 +4101,7 @@
         }
       },
       "integration_branch": "feat/corpus-rule-r4",
-      "integration_head": "66e1e75b54fecb2c35931bf3aa04e0de5ffdda48",
+      "integration_head": "aac258e471eb6006edb54e12eb53865be03f0b62",
       "integration_log": [
         {
           "at": "2026-11-22T23:06:06Z",
@@ -4611,6 +4611,57 @@
             "crr-d1-observed-engine-contract-and-dataframe"
           ],
           "seq": 16
+        },
+        {
+          "at": "2026-11-25T17:45:01Z",
+          "changed_files": [
+            ".github/ci-units.yml",
+            ".github/soundness-paths.txt",
+            "benchbox/core/plan_capture_phase.py",
+            "benchbox/core/results/corpus_rule.py",
+            "benchbox/core/results/corpus_score.py",
+            "benchbox/core/results/database.py",
+            "benchbox/core/results/metrics.py",
+            "benchbox/core/results/query_status.py",
+            "benchbox/core/results/result_outcome.py",
+            "benchbox/core/tpcds/power_test.py",
+            "benchbox/core/tpcds/throughput_test.py",
+            "benchbox/core/tpch/platform_power.py",
+            "benchbox/core/tpch/power_test.py",
+            "benchbox/core/tpch/throughput_test.py",
+            "changelog.d/feat-corpus-rule-r4--crr-a4-database-metrics-and-cli-readers.json",
+            "changelog.d/feat-corpus-rule-single-iteration-label.json",
+            "results-data/compliance-classes.json",
+            "scripts/corpus_compliance_snapshot.py",
+            "tests/integration/test_ducklake_integration.py",
+            "tests/integration/test_hosted_submission.py",
+            "tests/integration/test_hosted_submit_validator_contract.py",
+            "tests/integration/test_publish_cli.py",
+            "tests/integration/test_submission_validation.py",
+            "tests/uat/phases/validate.py",
+            "tests/uat/test_validate.py",
+            "tests/unit/core/results/test_corpus_rule.py",
+            "tests/unit/core/results/test_corpus_score.py",
+            "tests/unit/core/results/test_database.py",
+            "tests/unit/core/test_query_execution_propagation.py",
+            "tests/unit/core/test_row_count_evidence_propagation.py",
+            "tests/unit/scripts/test_ci_units.py",
+            "tests/unit/scripts/test_soundness_manifest.py"
+          ],
+          "head": "aac258e471eb6006edb54e12eb53865be03f0b62",
+          "kind": "fix",
+          "op_id": "2de9ef6807ad4a8198fa935a27e4183b",
+          "previous_head": "66e1e75b54fecb2c35931bf3aa04e0de5ffdda48",
+          "requires_acceptance": [
+            "crr-a1-rule-module-and-snapshot",
+            "crr-a2-writer-and-score-from-timings",
+            "crr-a4-database-metrics-and-cli-readers",
+            "crr-a5-published-results-mirror",
+            "crr-b1-identity-and-comparison-version",
+            "crr-c1-validation-status-vocabulary",
+            "crr-d1-observed-engine-contract-and-dataframe"
+          ],
+          "seq": 17
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r4",
