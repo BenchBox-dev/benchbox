@@ -25938,6 +25938,15 @@
       "status": "open",
       "title": "Official TPC-DS mode: run power as dsqgen stream 0 in Appendix D order from one dsqgen generation shared with both throughput tests"
     },
+    "crr-o3-official-seed-from-load-end": {
+      "claim": null,
+      "needs": [
+        "crr-o2-official-tpcds-stream-zero"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Official mode: take the query seed from the load end time, refuse --seed, and seed each TPC-H throughput stream with seed0+n"
+    },
     "crr-v0-reference-reader-and-generator": {
       "claim": null,
       "needs": [
