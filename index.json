@@ -4088,7 +4088,7 @@
         }
       },
       "integration_branch": "feat/corpus-rule-r4",
-      "integration_head": "ef5419c2d0283e28ed0d33da565093fe2ca92a29",
+      "integration_head": "66e1e75b54fecb2c35931bf3aa04e0de5ffdda48",
       "integration_log": [
         {
           "at": "2026-11-22T23:06:06Z",
@@ -4569,6 +4569,35 @@
             "crr-a1-rule-module-and-snapshot"
           ],
           "seq": 15
+        },
+        {
+          "at": "2026-11-25T06:32:59Z",
+          "changed_files": [
+            "benchbox/core/results/corpus_rule.py",
+            "results-data/validate_corpus.py",
+            "tests/uat/test_runner.py",
+            "tests/unit/core/results/test_corpus_rule.py",
+            "tests/unit/core/results/test_public_admission_rule.py",
+            "tests/unit/core/results/test_routed_compliance.py",
+            "tests/unit/core/results/test_submit_classifier_contract.py",
+            "tests/unit/scripts/test_corpus_cohort_depth.py",
+            "tests/unit/scripts/test_validate_submission.py"
+          ],
+          "head": "66e1e75b54fecb2c35931bf3aa04e0de5ffdda48",
+          "kind": "fix",
+          "op_id": "dce83dc1f43c4281b93d7e98eb10cfa7",
+          "previous_head": "ef5419c2d0283e28ed0d33da565093fe2ca92a29",
+          "requires_acceptance": [
+            "crr-a1-rule-module-and-snapshot",
+            "crr-a2-writer-and-score-from-timings",
+            "crr-a3-validators-staging-and-admission",
+            "crr-a4-database-metrics-and-cli-readers",
+            "crr-a5-published-results-mirror",
+            "crr-b1-identity-and-comparison-version",
+            "crr-c1-validation-status-vocabulary",
+            "crr-d1-observed-engine-contract-and-dataframe"
+          ],
+          "seq": 16
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r4",
