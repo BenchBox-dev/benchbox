@@ -313,3 +313,21 @@ def test_refresh_only_keeps_runs_that_are_the_final_head_of_a_merged_same_reposi
     assert '[ "$cross" = "false" ] || continue' in text
     assert '[ "$sha" = "$pr_head" ] || continue' in text
     assert '[ "$sha" = "$run_sha" ] || continue' in text
+
+
+def test_refresh_mirrors_the_merge_time_and_head_repository_rules_of_the_reproduction() -> None:
+    text = all_run_text()
+    assert "createdAt" in text
+    assert "mergedAt" in text
+    assert '[[ "$run_created" > "$merged_at" ]] && continue' in text
+    assert "-q .head_repository.full_name" in text
+    assert '[ "${run_repo,,}" = "${GITHUB_REPOSITORY,,}" ] || continue' in text
+
+
+def test_refresh_takes_its_run_bounds_from_the_script_and_fails_below_the_floor() -> None:
+    fetch = step_named("Fetch recent merged-PR fast-junit artifacts")
+    assert "MAX_SOURCE_RUNS" not in fetch["env"]
+    run = fetch["run"]
+    assert "from scripts.build_fast_duration_baseline import MAX_SOURCE_RUNS, MIN_SOURCE_RUNS" in run
+    assert '[ "$kept" -lt "$MIN_SOURCE_RUNS" ]' in run
+    assert "exit 1" in run.split('"$kept" -lt "$MIN_SOURCE_RUNS"')[1].split("\n          fi")[0].split("\nfi")[0]

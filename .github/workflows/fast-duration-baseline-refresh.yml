@@ -42,11 +42,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MAX_RUNS_SCAN: "60"
-          MAX_SOURCE_RUNS: "20"
+          GITHUB_REPOSITORY: ${{ github.repository }}
           API_CALL_BUDGET: "120"
         shell: bash
         run: |
           set -euo pipefail
+          read -r MAX_SOURCE_RUNS MIN_SOURCE_RUNS < <(python3 -c "from scripts.build_fast_duration_baseline import MAX_SOURCE_RUNS, MIN_SOURCE_RUNS; print(MAX_SOURCE_RUNS, MIN_SOURCE_RUNS)")
           mkdir -p fast-refresh/runs
           : > fast-refresh/api-calls.log
           calls=0
@@ -60,20 +61,20 @@ jobs:
           }
           api_call "run list --workflow ci.yml --limit $MAX_RUNS_SCAN"
           gh run list --workflow ci.yml --event pull_request --limit "$MAX_RUNS_SCAN" \
-            --json databaseId,status,conclusion,headSha > fast-refresh/ci-runs.json
+            --json databaseId,status,conclusion,headSha,createdAt > fast-refresh/ci-runs.json
           python3 - <<'PY' > fast-refresh/run-ids.txt
           import json
           runs = json.load(open("fast-refresh/ci-runs.json"))
           for run in runs:
               if run["status"] == "completed" and run.get("conclusion") == "success":
-                  print(run["databaseId"], run["headSha"])
+                  print(run["databaseId"], run["headSha"], run["createdAt"])
           PY
           : > fast-refresh/manifest.json
           echo "[" > fast-refresh/manifest.json
           first=1
           kept=0
           declare -A seen_pr=()
-          while read -r run_id run_sha; do
+          while read -r run_id run_sha run_created; do
             [ "$kept" -ge "$MAX_SOURCE_RUNS" ] && break
             api_call "run $run_id artifacts"
             names=$(gh api "repos/${{ github.repository }}/actions/runs/$run_id/artifacts?per_page=100" \
@@ -91,15 +92,19 @@ jobs:
               case "$pr_number" in ''|*[!0-9]*) continue;; esac
               [ -n "${seen_pr[$pr_number]:-}" ] && continue
               api_call "pr $pr_number state"
-              pr_facts=$(gh pr view "$pr_number" --json state,headRefOid,isCrossRepository \
-                -q '[.state, .headRefOid, (.isCrossRepository | tostring)] | join(" ")' 2>/dev/null || echo "UNKNOWN none true")
-              read -r state pr_head cross <<< "$pr_facts"
+              pr_facts=$(gh pr view "$pr_number" --json state,headRefOid,isCrossRepository,mergedAt \
+                -q '[.state, .headRefOid, (.isCrossRepository | tostring), .mergedAt] | join(" ")' 2>/dev/null || echo "UNKNOWN none true none")
+              read -r state pr_head cross merged_at <<< "$pr_facts"
               echo "run $run_id artifact $artifact_id pr $pr_number state $state cross-repository $cross" >> fast-refresh/api-calls.log
               [ "$state" = "MERGED" ] || continue
               [ "$cross" = "false" ] || continue
               sha="${name##*-}"
               [ "$sha" = "$pr_head" ] || continue
               [ "$sha" = "$run_sha" ] || continue
+              [[ "$run_created" > "$merged_at" ]] && continue
+              api_call "run $run_id head repository"
+              run_repo=$(gh api "repos/${{ github.repository }}/actions/runs/$run_id" -q .head_repository.full_name 2>/dev/null || echo none)
+              [ "${run_repo,,}" = "${GITHUB_REPOSITORY,,}" ] || continue
               if [ "$first" -eq 1 ]; then first=0; else echo "," >> fast-refresh/manifest.json; fi
               printf '  {"run_id": %s, "pr": %s, "sha": "%s", "artifact_id": %s, "dir": "fast-refresh/runs/run-%s"}' \
                 "$run_id" "$pr_number" "$sha" "$artifact_id" "$run_id" >> fast-refresh/manifest.json
@@ -112,6 +117,10 @@ jobs:
           echo "" >> fast-refresh/manifest.json
           echo "]" >> fast-refresh/manifest.json
           echo "kept=$kept" >> "$GITHUB_OUTPUT"
+          if [ "$kept" -lt "$MIN_SOURCE_RUNS" ]; then
+            echo "::error::Only $kept source runs qualified and a reproducible baseline needs at least $MIN_SOURCE_RUNS, so no baseline PR was opened."
+            exit 1
+          fi
           {
             echo "## Source runs"
             echo ""
