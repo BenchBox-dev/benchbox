@@ -4,7 +4,7 @@
     "The outcome decision is recorded with the evidence, and any change shows in the snapshot diff",
     "Stored files unchanged"
   ],
-  "context": "Evidence: ~/.cache/benchbox/crr/v2/aug26-settlement.md (from the integrity-checks sanity test, 2026-11-25).",
+  "context": "Evidence: ~/.cache/benchbox/crr/v2/aug26-settlement.md (from the integrity-checks sanity test, 2026-11-25).\n\nResolved 2026-11-25 with no change: both files are already in the corpus wrong-answer audit (results-data/CORPUS_NOTES.md groups CH-2 and DF-2), and the rule outcome in results-data/compliance-classes.json for each is power_only with held_reason known_defect and the label Not ranked: known defect (no lane, no rank). The integrity-check evidence adds q31 (ClickHouse local) and q34/q73 (DataFusion 53) row-count errors to the same defect. Stored files unchanged; no snapshot change.",
   "description": "## Problem\nTwo stored TPC-DS SF 1 results from 2026-08-26 returned wrong row counts: ClickHouse local (c250741b) q31 one row short on three streams; DataFusion 53 SQL (5207d224) q34 and q73 short on most streams. DuckDB on data from the same generator returns the reference counts, and the statement text is identical to today's. The new integrity checks apply only to new runs, so the rule does not see these errors.\n\n## Change\nRecord each file's current rule outcome. If either is ranked, decide (owner) between a manifest known-defect entry through the existing corpus admission policy and leaving it, without editing stored files.\n\n## Guardrails\nNever edit stored result files; any outcome change shows in the compliance snapshot diff.",
   "sessions": [
     {
@@ -22,6 +22,14 @@
       "generation": "46a39d4eef9445bdbd5cfa4ed5562a6e",
       "op": "take",
       "op_id": "5ecc3d91d5bc475b8da9b7b0562d47f8",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-25T19:55:40Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1784028fc36242f285282afbb55a7363",
       "session_id": "51a05311b8f040aabf2f02456b50b932"
     }
   ]
