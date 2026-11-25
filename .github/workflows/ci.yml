@@ -2214,9 +2214,133 @@ jobs:
           gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
           sleep 90
 
+  reproduce-fast-baseline:
+    name: Reproduce the fast-tier duration baseline
+    if: ${{ !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    env:
+      BASELINE_DIR: tests/fixtures/fast_tier_baseline
+    steps:
+      - name: Detect baseline changes
+        id: changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" \
+            -q '.[] | [.filename, (.previous_filename // "")] | @tsv' > "$RUNNER_TEMP/changed-files.tsv"
+          total=$(wc -l < "$RUNNER_TEMP/changed-files.tsv")
+          if [ "$total" -ge 3000 ] || tr '\t' '\n' < "$RUNNER_TEMP/changed-files.tsv" | grep -q "^$BASELINE_DIR/"; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Nothing under $BASELINE_DIR changed; nothing to reproduce."
+          fi
+
+      - name: Checkout the pull request head
+        if: steps.changed.outputs.changed == 'true'
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: head
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Checkout the base commit that supplies the reproduction script
+        if: steps.changed.outputs.changed == 'true'
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        if: steps.changed.outputs.changed == 'true'
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        if: steps.changed.outputs.changed == 'true'
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
+          working-directory: base
+
+      - name: Download the source run artifacts named by the manifest
+        if: steps.changed.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > "$RUNNER_TEMP/artifacts.txt"
+          import json
+          import sys
+
+          manifest = json.load(open("head/tests/fixtures/fast_tier_baseline/manifest.json", encoding="utf-8"))
+          seen = []
+          for group in ("runs", "rejected_runs"):
+              for run in manifest.get(group, []):
+                  ids = (run.get("run_id"), run.get("artifact_id"))
+                  if not all(isinstance(value, int) and not isinstance(value, bool) and value > 0 for value in ids):
+                      sys.exit("manifest run records must carry positive integer run and artifact ids")
+                  seen.append(ids)
+          if not seen or len(seen) > 20:
+              sys.exit("manifest must name between 1 and 20 source runs")
+          for run_id, artifact_id in seen:
+              print(run_id, artifact_id)
+          PY
+          mkdir -p base/fast-refresh/runs
+          while read -r run_id artifact_id; do
+            gh api "repos/$REPO/actions/artifacts/$artifact_id/zip" > "$RUNNER_TEMP/artifact.zip"
+            unzip -q "$RUNNER_TEMP/artifact.zip" -d "base/fast-refresh/runs/run-$run_id"
+            rm "$RUNNER_TEMP/artifact.zip"
+          done < "$RUNNER_TEMP/artifacts.txt"
+
+      - name: Install dependencies for collection
+        if: steps.changed.outputs.changed == 'true'
+        working-directory: head
+        run: uv sync --group dev
+
+      - name: Collect the current fast tier
+        if: steps.changed.outputs.changed == 'true'
+        working-directory: head
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run -- python -m pytest --collect-only -q -p no:cacheprovider -n 0 --assert=plain \
+            -m "fast and not (slow or stress or resource_heavy or live_integration)" tests/ \
+            | grep -E "^tests/.*::" | sort -u > "$RUNNER_TEMP/collected-ids.txt"
+          wc -l "$RUNNER_TEMP/collected-ids.txt"
+
+      - name: Reproduce the baseline from its source runs
+        if: steps.changed.outputs.changed == 'true'
+        working-directory: base
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 -m scripts.build_fast_duration_baseline reproduce \
+            --baseline "../head/$BASELINE_DIR" \
+            --previous "$BASELINE_DIR" \
+            --scratch "$RUNNER_TEMP/reproduced" \
+            --collected-ids "$RUNNER_TEMP/collected-ids.txt" \
+            --ceiling quality/fast-duration-ceiling.json
+
   tooling:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'tooling (text edit)' || 'tooling' }}
-    needs: [ci-paths, content-guard, skill-integrity, audit-sha, short-checks]
+    needs: [ci-paths, content-guard, skill-integrity, audit-sha, short-checks, reproduce-fast-baseline]
     if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -2242,6 +2366,7 @@ jobs:
             --unit tooling \
             --needs "$NEEDS_JSON" \
             --always ci-paths \
+            --always reproduce-fast-baseline \
             --always short-checks.comment-policy \
             --always short-checks.copy-guard \
             --expect content-guard=${{ needs.ci-paths.outputs.content-guard-needed == 'true' }} \
