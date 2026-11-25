@@ -40681,6 +40681,13 @@
       "status": "open",
       "title": "pr-preflight can write a 'passed' receipt with no test step when the run is cut short"
     },
+    "preflight-receipt-passes-when-killed-20261125": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "pr-preflight writes a passed receipt when the target is killed before the test steps"
+    },
     "preflight-receipt-step-accepted-exit-code-20261122": {
       "claim": null,
       "needs": [],
