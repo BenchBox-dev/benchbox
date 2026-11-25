@@ -25957,6 +25957,16 @@
       "status": "open",
       "title": "Build the TPC qualification test as a library: TPC-DS Appendix B and TPC-H qgen defaults compared with the TPC answer sets"
     },
+    "crr-v4-official-runs-qualify": {
+      "claim": null,
+      "needs": [
+        "crr-v3-qualification-library",
+        "crr-v2-measured-stream-integrity-checks"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Run the qualification test in official mode on a separate SF 1 database, record it, and stamp official only for runs that meet the owner's conditions"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],
