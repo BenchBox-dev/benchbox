@@ -26960,13 +26960,18 @@
       "title": "Prototype vectorized Python/PyArrow generation on the slowest measured synthetic generator"
     },
     "datagen-p1-deterministic-parquet-writer": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-26T21:58:18Z",
+        "generation": "bc5a8ccf494847a1b968dcd3e92f75a9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
+      },
       "needs": [
         "datagen-converter-options-and-convert-cli",
         "datagen-parquet-partitioned-row-groups"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Make PyArrow the single Parquet writer, read chunk files in parallel, and remove the DuckDB fallback path"
     },
     "datagen-p1-parquet-corpus-rebaseline": {
