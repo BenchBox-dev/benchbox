@@ -25,6 +25,7 @@ class CombinedHarnessCapability:
 POWER_HARNESS_CAPABILITIES: tuple[PhaseHarnessCapability, ...] = (
     PhaseHarnessCapability("tpch", "_execute_tpch_power_test"),
     PhaseHarnessCapability("tpcds", "_execute_tpcds_power_test"),
+    PhaseHarnessCapability("tpcdi", "_execute_tpcdi_power_test"),
 )
 
 THROUGHPUT_HARNESS_CAPABILITIES: tuple[PhaseHarnessCapability, ...] = (

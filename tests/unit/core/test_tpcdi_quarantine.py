@@ -133,7 +133,6 @@ class TestPythonEntryPoints:
             ("run_etl_benchmark", (object(),)),
             ("calculate_official_metrics", (object(), object())),
             ("execute_dataframe_workload", ()),
-            ("get_queries", ()),
             ("get_query", ("Q1",)),
             ("run_benchmark", (object(),)),
             ("run_benchmark", (object(), [])),

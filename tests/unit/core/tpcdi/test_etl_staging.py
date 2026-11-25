@@ -108,7 +108,8 @@ def test_departure_rows_follow_the_catalogue_shape():
         assert row["project_behaviour"].strip()
         assert row["benchbox_behaviour"].strip()
         for path in row["files"]:
-            assert path in etl_sql_files()
+            assert path.startswith("benchbox/core/tpcdi/")
+            assert (REPO_ROOT / path).is_file()
         assert (row["status"] == "implemented") == bool(row["files"])
 
 

@@ -239,6 +239,59 @@ sum. Both sides divide in DOUBLE, so a yield whose exact quotient ends in half a
 cent may round either way on either side; the yield entry therefore accepts a
 BenchBox value within half a cent of the scaled implementation value.
 
+## Initialization, historical load and audit (2026-11-25)
+
+`scripts/tpcdi/run_phases.py` runs initialization, the historical load and the
+audit on DuckDB in one invocation, through the DuckDB adapter:
+
+```bash
+uv run -- python scripts/tpcdi/run_phases.py --scale-factor 3 \
+  --staging <DIGen output> --database <new .duckdb> --output <result .json> \
+  --allow-third-party-extensions
+```
+
+The CLI still refuses TPC-DI. The adapter's load phase first checks the staging
+manifest, refusing staging that changed or was generated at another scale
+factor, and loads the extension that reads CustomerMgmt.xml; neither step is
+timed. It then runs initialization: it drops and
+recreates the warehouse and the raw staging tables, runs Appendix B for BatchID
+0 and stores the completion record's timestamp and the monotonic time taken
+when it commits. The power phase refuses to start unless initialization ran in
+the same invocation. It loads Batch 1 and runs the historical transformations
+and Appendix B for BatchID 1.
+The measured time is the difference between the two monotonic times. The audit
+then loads every `*_audit.csv`, corrects only the attributes the independent
+recount finds wrong, runs Appendix A unchanged apart from the recorded
+`FROM DUMMY TABLE` substitution, and changes no warehouse table other than
+Audit.
+
+The result's `validation_details.tpcdi_audit` block lists every audit row with
+its outcome and whether it can be evaluated after Batch 1, the excluded tests,
+the answer-key corrections, the DValues too wide for `DECIMAL(15,5)` (stored as
+NULL; Appendix A reads no DValue) and both phase records. The status is FAILED
+when an evaluable test is not OK and NOT_VALIDATED otherwise; no TPC-DI result
+reads PASSED.
+
+Which rows can be evaluated is read from the audit SQL itself: a per-batch row
+counts when its batch is no later than the latest loaded batch; a whole-run test
+is excluded when it requires 3 batches or 4 completion records, or when it sums
+an Audit attribute that has rows for a later batch.
+
+| Scale | Evaluable audit rows OK | Excluded whole-run tests | Answer-key correction | Historical load | Unaccepted differences, 20 Batch 1 tables |
+|---|---|---|---|---|---|
+| 3 | 135 of 135 | 13 | C_TIER_INV 251 → 252 | 6.65 s | 0 |
+| 5 | 135 of 135 | 13 | C_TIER_INV 380 → 381 | 10.42 s | 0 |
+
+The excluded tests are DImessages Phase complete records, DImessages batches,
+the eight `<table> batches` tests (DimAccount, DimCustomer, DimTrade,
+FactCashBalances, FactHoldings, FactMarketHistory, FactWatches, Prospect), and
+DimTrade canceled trades, charge alerts and commission alerts, which sum Audit
+attributes that also have rows for Batches 2 and 3. Three negative controls (an
+invalid trade type, one suppressed customer-tier alert, one Trade row removed
+from a copy of staging with the manifest check bypassed) each make the run
+FAILED and are refused by `publish_admission`; the same copy is refused by the
+manifest check when it is not bypassed.
+
 ## Results of the early run (2026-11-22)
 
 Staging by BenchBox at `24b7592956` with Zulu 8, DIGen 1.1.0, tools SHA-256

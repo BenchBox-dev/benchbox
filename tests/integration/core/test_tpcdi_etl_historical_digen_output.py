@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-import os
-from pathlib import Path
-
 import pytest
 
 from benchbox.core.tpcdi.appendix import load_appendix_sql
-from benchbox.core.tpcdi.etl.historical import load_historical
-from benchbox.core.tpcdi.etl.staging import load_batch1
-from benchbox.core.tpcdi.schema import TPCDISchemaManager
-from benchbox.core.tpcdi.sources.recount import recount_answer_key
+from benchbox.core.tpcdi.audit import load_audit_table
+from benchbox.core.tpcdi.phases import run_historical_load, run_initialization
+from tests.integration._tpcdi_digen_outputs import OUTPUTS_ENV, digen_outputs
 
 pytestmark = [
     pytest.mark.integration,
@@ -20,7 +16,6 @@ pytestmark = [
 
 duckdb = pytest.importorskip("duckdb")
 
-OUTPUTS_ENV = "BENCHBOX_TPCDI_DIGEN_OUTPUTS"
 
 TABLES = (
     "DimCompany",
@@ -50,55 +45,7 @@ NEEDS_ALL_BATCHES = {
 
 VALUES_WIDER_THAN_DVALUE = ["ONE_YEAR_IN_MILLISECONDS"]
 
-AUDIT_FILES = """
-read_csv(
-  $paths,
-  header = true,
-  columns = {'DataSet': 'VARCHAR', 'BatchID': 'VARCHAR', 'Date': 'VARCHAR', 'Attribute': 'VARCHAR',
-             'Value': 'VARCHAR', 'DValue': 'VARCHAR'}
-)
-"""
-
-LOAD_AUDIT = f"""
-INSERT INTO Audit
-SELECT
-  trim(DataSet),
-  CAST(nullif(trim(BatchID), '') AS INTEGER),
-  CAST(nullif(trim(Date), '') AS DATE),
-  trim(Attribute),
-  CAST(nullif(trim(Value), '') AS BIGINT),
-  TRY_CAST(nullif(trim(DValue), '') AS DECIMAL(15, 5))
-FROM {AUDIT_FILES}
-"""
-
-DROPPED_DVALUES = f"""
-SELECT trim(Attribute)
-FROM {AUDIT_FILES}
-WHERE nullif(trim(DValue), '') IS NOT NULL AND TRY_CAST(trim(DValue) AS DECIMAL(15, 5)) IS NULL
-ORDER BY 1
-"""
-
-
-def digen_outputs() -> dict[int, Path]:
-    outputs = {}
-    for item in filter(None, (part.strip() for part in os.environ.get(OUTPUTS_ENV, "").split(","))):
-        scale, _, path = item.partition("=")
-        outputs[int(scale)] = Path(path)
-    return outputs
-
-
 OUTPUTS = digen_outputs()
-
-
-def load_corrected_audit(connection, source_dir: Path) -> None:
-    paths = {"paths": [str(path) for path in sorted(source_dir.rglob("*_audit.csv"))]}
-    assert [row[0] for row in connection.execute(DROPPED_DVALUES, paths).fetchall()] == VALUES_WIDER_THAN_DVALUE
-    connection.execute(LOAD_AUDIT, paths)
-    for difference in recount_answer_key(source_dir):
-        connection.execute(
-            "UPDATE Audit SET Value = ? WHERE DataSet = ? AND BatchID = ? AND Attribute = ?",
-            [difference.recount_value, difference.data_set, difference.batch, difference.attribute],
-        )
 
 
 @pytest.fixture(scope="module", params=sorted(OUTPUTS) or [None])
@@ -107,15 +54,10 @@ def warehouse(request):
         pytest.skip(f"{OUTPUTS_ENV} lists no DIGen output")
     source_dir = OUTPUTS[request.param]
     connection = duckdb.connect()
-    TPCDISchemaManager().create_schema(connection, "duckdb")
-    validation = load_appendix_sql("validation").statements()
-    for statement in validation:
-        connection.execute(statement)
-    load_batch1(connection, source_dir, allow_third_party_extensions=True)
-    load_historical(connection)
-    for statement in validation:
-        connection.execute(statement)
-    load_corrected_audit(connection, source_dir)
+    run_initialization(connection)
+    run_historical_load(connection, source_dir, allow_third_party_extensions=True)
+    _, not_stored = load_audit_table(connection, source_dir)
+    assert [row["attribute"] for row in not_stored] == VALUES_WIDER_THAN_DVALUE
     audit_rows = []
     for statement in load_appendix_sql("audit").statements():
         audit_rows = connection.execute(statement).fetchall()
