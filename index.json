@@ -41434,7 +41434,8 @@
       "needs": [
         "pvm-p2-publish-ssb-clickbench",
         "crr-c2-row-count-references-tpc-and-ssb",
-        "tpcds-expression-q41-row-count-differs-from-sql"
+        "tpcds-expression-q41-row-count-differs-from-sql",
+        "crr-v2-measured-stream-integrity-checks"
       ],
       "priority": "medium-high",
       "status": "open",

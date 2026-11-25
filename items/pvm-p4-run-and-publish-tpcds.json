@@ -5,7 +5,7 @@
     "validate_corpus.py passes on both branches; CORPUS_NOTES.md lists configurations without a result",
     "The core findings pages' TPC-DS figures equal the published medians"
   ],
-  "context": "Step of the corpus rule remediation plan (crr-00-corpus-rule-remediation-plan). Plan written 2026-11-22 and reviewed twice by an independent adversarial reviewer; counts marked (R) were measured by that reviewer and must be re-measured, not trusted. Owner decisions were given by choice dialog on 2026-11-22 and are quoted in crr-00.\n\n2026-11-22 owner decision: if query 41's root cause is a Polars defect, TPC-DS is not blocked. This item still needs the query 41 item done (root cause proven and recorded). In that case publish with query 41 recorded as a known defect citing the upstream issue; the rule then shows the results unranked, and CORPUS_NOTES.md and the post say why. This replaces the gate text 'do not publish' for the upstream-defect case only.",
+  "context": "Step of the corpus rule remediation plan (crr-00-corpus-rule-remediation-plan). Plan written 2026-11-22 and reviewed twice by an independent adversarial reviewer; counts marked (R) were measured by that reviewer and must be re-measured, not trusted. Owner decisions were given by choice dialog on 2026-11-22 and are quoted in crr-00.\n\n2026-11-22 owner decision: if query 41's root cause is a Polars defect, TPC-DS is not blocked. This item still needs the query 41 item done (root cause proven and recorded). In that case publish with query 41 recorded as a known defect citing the upstream issue; the rule then shows the results unranked, and CORPUS_NOTES.md and the post say why. This replaces the gate text 'do not publish' for the upstream-defect case only.\n\n2026-11-25: DataFrame TPC-DS records 'uncertain' until the integrity checks (crr-v2) land, so this run waits for them (owner decision 11). Polars runs are non-official and need no qualification test.",
   "description": "## Change\n- Run the TPC-DS cells of the Polars matrix as in pvm-p1, at a commit containing crr-c2 and the fix from tpcds-expression-q41-row-count-differs-from-sql. Stage, validate and publish as in pvm-p2. In the same core pull request, update the core findings pages for TPC-DS. The blog draft is updated in pvm-p7.\n\n## Decision gates\n- Owner, 2026-11-22: \"This is important. We must identify the true root cause of the row count difference.\" This item does not start until that item is done with the root cause recorded. There is no fallback publication.\n- If the root cause is outside BenchBox (for example a Polars defect) and cannot be fixed here, stop and report to the owner with the evidence; do not publish.\n- Same heavy-work, validation and no-edit gates as pvm-p1 and pvm-p2. Configurations that run out of memory are recorded, not retried with different settings.\n\n## Guardrails (apply to every item of this plan)\n- Fix the root cause for every platform and benchmark. No rule, exception, label or test may name a platform or a version matrix. Only the pvm-p* items may name Polars, and only to run and stage that run's files.\n- Never edit a stored result file to make it pass. Outcomes change only through the rule.\n- Any change to the outcome of a stored result must show in the committed outcome snapshot diff in the same pull request and be explained in its body.\n- No new stored class value. No reader may decide anything from benchmark.compliance_class, conformance_class or summary.tpc_metrics.suppressed.\n- Paths, line numbers and counts in this plan were read on 2026-11-22 at develop 93f3360. Re-read before editing; report drift, do not guess.\n- AGENTS.md applies: linked worktree, one pull request per item, close at the merged pull request, heavy work only through make heavy-run, no live cloud run without owner approval in that task.\n- At a decision gate, follow the recorded default. If its stop condition is met, stop and report to the owner. Never substitute a different owner decision.\n- Read crr-00-corpus-rule-remediation-plan first: it holds the owner decisions, the rule table and the fault types (T1 to T5).",
   "sessions": [
     {
@@ -31,6 +31,14 @@
       "op": "update",
       "op_id": "d467fbfe1edd410395d22f1263eb27a1",
       "session_id": "c07e5ac3266b4133b46582fc1e496cdf"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-25T15:39:29Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ea33faf6252b4c988ebf3436156fc8a2",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
     }
   ]
 }
