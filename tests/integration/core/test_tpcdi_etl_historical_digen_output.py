@@ -22,9 +22,31 @@ duckdb = pytest.importorskip("duckdb")
 
 OUTPUTS_ENV = "BENCHBOX_TPCDI_DIGEN_OUTPUTS"
 
-TABLES = ("DimCompany", "DimSecurity", "Financial", "DimCustomer", "DimAccount", "Prospect")
+TABLES = (
+    "DimCompany",
+    "DimSecurity",
+    "Financial",
+    "DimCustomer",
+    "DimAccount",
+    "Prospect",
+    "DimTrade",
+    "FactCashBalances",
+    "FactHoldings",
+    "FactWatches",
+    "FactMarketHistory",
+)
 
-NEEDS_ALL_BATCHES = {"DimAccount batches", "DimCustomer batches", "Prospect batches"}
+NEEDS_ALL_BATCHES = {
+    "DimAccount batches",
+    "DimCustomer batches",
+    "Prospect batches",
+    "DimTrade batches",
+    "DimTrade canceled trades",
+    "FactCashBalances batches",
+    "FactHoldings batches",
+    "FactWatches batches",
+    "FactMarketHistory batches",
+}
 
 VALUES_WIDER_THAN_DVALUE = ["ONE_YEAR_IN_MILLISECONDS"]
 
@@ -86,9 +108,12 @@ def warehouse(request):
     source_dir = OUTPUTS[request.param]
     connection = duckdb.connect()
     TPCDISchemaManager().create_schema(connection, "duckdb")
+    validation = load_appendix_sql("validation").statements()
+    for statement in validation:
+        connection.execute(statement)
     load_batch1(connection, source_dir, allow_third_party_extensions=True)
     load_historical(connection)
-    for statement in load_appendix_sql("validation").statements():
+    for statement in validation:
         connection.execute(statement)
     load_corrected_audit(connection, source_dir)
     audit_rows = []
@@ -106,10 +131,10 @@ def historical_results(audit_rows) -> dict[tuple[str, int | None], str]:
     }
 
 
-def test_every_dimension_audit_test_of_the_historical_load_is_ok(warehouse):
+def test_every_audit_test_of_the_historical_tables_is_ok(warehouse):
     _, audit_rows = warehouse
     results = historical_results(audit_rows)
-    assert len(results) == 71
+    assert len(results) == 103
     assert {key: result for key, result in results.items() if result != "OK"} == {}
 
 

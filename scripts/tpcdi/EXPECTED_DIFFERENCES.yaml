@@ -13,10 +13,10 @@ entries:
     departure: yield-multiplied-by-100
     kind: column_value
     clause: "4.5.11.2, 4.6.10"
-    reason: "The specification defines Yield as the dividend divided by the closing price multiplied by 100. The DuckDB implementation divides by 100 instead (its yield equals dividend / close / 100 on every FactMarketHistory row at scales 3, 5 and 10), so its value is the specification value divided by 10000."
+    reason: "The specification defines Yield as the dividend divided by the closing price multiplied by 100. The DuckDB implementation divides by 100 instead (its yield equals dividend / close / 100 on every FactMarketHistory row at scales 3, 5 and 10), so its value is the specification value divided by 10000. Both sides divide in DOUBLE, so a quotient that ends in exactly half a cent may round either way; the BenchBox value is accepted when it lies within half a cent of the scaled implementation value."
     table: FactMarketHistory
     column: Yield
-    condition: "l.yield = ROUND(r.yield * 10000, 2)"
+    condition: "ABS(l.yield - r.yield * 10000) <= 0.005000001"
 
   - id: fifty-two-week-high-window
     departure: fifty-two-week-date-range
@@ -177,3 +177,34 @@ entries:
     clause: "4.5.3.3"
     reason: "BenchBox writes one Invalid SPRating alert for each CMP record with an invalid rating. The DuckDB implementation writes distinct alerts, so a company whose records repeat an invalid rating gets one (113 against 154 at scale 3)."
     condition: "g.messagetype = 'Alert' AND g.messagesource = 'DimCompany' AND g.messagetext = 'Invalid SPRating' AND g.left_count > g.right_count"
+
+  - id: historical-fact-alerts-written-in-the-phase
+    departure: fact-alerts-written-inside-transformations
+    kind: messages
+    clause: "4.5.8.3, 4.5.8.4, 4.5.11.3"
+    reason: "BenchBox writes the DimTrade commission and fee alerts and the FactMarketHistory missing-earnings alerts during the historical phase. The DuckDB implementation writes them in one pass after Batch 3, so after its historical phase its DImessages holds none."
+    condition: "g.messagetype = 'Alert' AND g.batchid = 1 AND g.messagesource IN ('DimTrade', 'FactMarketHistory') AND g.right_count IS NULL"
+
+  - id: price-earnings-over-calendar-quarters
+    departure: price-earnings-prior-four-calendar-quarters
+    kind: column_value
+    clause: "4.5.11.2"
+    reason: "BenchBox sums FI_BASIC_EPS over the company's Financial rows whose quarter starts in the four calendar quarters before the quarter of DM_DATE. The DuckDB implementation sums the four Financial rows before the current quarter's row, however old, so it has a ratio where BenchBox has none (4464 rows at scale 3) and a different ratio where quarters are missing (74 rows). Accepted only when the BenchBox value is the calendar-quarter ratio."
+    table: FactMarketHistory
+    column: PERatio
+    condition: >-
+      l.peratio IS NOT DISTINCT FROM CAST(l.closeprice / NULLIF((SELECT sum(f.fi_basic_eps)
+      FROM lhs.main.DimCompany c JOIN lhs.main.Financial f ON f.sk_companyid = c.sk_companyid
+      WHERE c.companyid = (SELECT x.companyid FROM lhs.main.DimCompany x WHERE x.sk_companyid = l.sk_companyid)
+      AND f.fi_qtr_start_date >= date_trunc('quarter', strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) - INTERVAL 1 YEAR
+      AND f.fi_qtr_start_date < date_trunc('quarter', strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d'))), 0) AS DECIMAL(10,2))
+
+  - id: time-value-typed-time
+    departure: time-value-typed-time
+    kind: column_type
+    clause: "3.2"
+    reason: "The specification types DimTime.TimeValue as TIME, which BenchBox stores. The DuckDB implementation stores the text of the time."
+    table: DimTime
+    column: TimeValue
+    left_type: "TIME"
+    right_type: "VARCHAR"

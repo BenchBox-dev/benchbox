@@ -27,6 +27,11 @@ HISTORICAL_STEPS: tuple[TransformStep, ...] = (
     TransformStep("dim_customer", "DimCustomer"),
     TransformStep("dim_account", "DimAccount"),
     TransformStep("prospect", "Prospect"),
+    TransformStep("dim_trade", "DimTrade"),
+    TransformStep("fact_cash_balances", "FactCashBalances"),
+    TransformStep("fact_holdings", "FactHoldings"),
+    TransformStep("fact_watches", "FactWatches"),
+    TransformStep("fact_market_history", "FactMarketHistory"),
 )
 
 
