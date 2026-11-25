@@ -8,6 +8,7 @@ from typing import Any, Callable, Optional
 from benchbox.core.connection import DatabaseConnection
 from benchbox.core.plan_capture_phase import (
     propagate_query_execution_metadata,
+    propagate_row_count_validation,
 )
 from benchbox.core.result_receipt import cursor_result_count
 from benchbox.core.results.fetch_mode import ConversionClock
@@ -360,7 +361,7 @@ class TPCDSThroughputTest:
         )
 
     def _run_single_stream_query(
-        self, connection, query_text: str, query_display_id: str, stream_id: int
+        self, connection, query_text: str, query_display_id: str, stream_id: int, query_result: dict[str, Any]
     ) -> tuple[dict[str, Any] | None, int]:
         if hasattr(connection, "set_query_context"):
             connection.set_query_context(query_display_id, stream_id=stream_id)
@@ -370,10 +371,12 @@ class TPCDSThroughputTest:
         finally:
             clear_reference_seed_context()
         platform_result = getattr(cursor, "platform_result", None)
-        if isinstance(platform_result, dict) and platform_result.get("status") == "FAILED":
-            raise RuntimeError(
-                platform_result.get("error", platform_result.get("row_count_validation_error", "Query failed"))
-            )
+        if isinstance(platform_result, dict):
+            propagate_row_count_validation(platform_result, query_result)
+            if platform_result.get("status") == "FAILED":
+                raise RuntimeError(
+                    platform_result.get("error", platform_result.get("row_count_validation_error", "Query failed"))
+                )
         row_count = cursor_result_count(cursor)
         if hasattr(connection, "commit"):
             connection.commit()
@@ -415,7 +418,7 @@ class TPCDSThroughputTest:
             label = f"Stream_{stream_id}_Position_{position + 1}_Query_{query_display_id}"
             try:
                 platform_result, row_count = self._run_single_stream_query(
-                    connection, query_text, query_display_id, stream_id
+                    connection, query_text, query_display_id, stream_id, query_result
                 )
             finally:
                 with self._capture_lock:

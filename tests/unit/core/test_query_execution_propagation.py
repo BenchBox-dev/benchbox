@@ -31,3 +31,10 @@ def test_propagate_query_execution_metadata_ignores_missing_and_none():
     target = {"existing": "val"}
     propagate_query_execution_metadata(source, target)
     assert target == {"existing": "val"}
+
+
+def test_propagate_query_execution_metadata_carries_row_count_evidence_to_the_result_row():
+    evidence = {"status": "PASSED", "expected": 3, "actual": 3}
+    target = {}
+    propagate_query_execution_metadata({"row_count_validation": evidence}, target)
+    assert target == {"row_count_validation": evidence}
