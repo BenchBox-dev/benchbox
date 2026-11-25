@@ -1,0 +1,21 @@
+{
+  "acceptance": [
+    "Load and DDL statements started by a run are cancelled at the run limit on every platform the owner chose, or the documented limit stays by the owner's decision."
+  ],
+  "context": "Filed 2026-11-25 at the close of the run-timeout effort (umbrella run-timeout-plan-20261120, done). Evidence read that day; re-read code, docs and run folders before acting.",
+  "description": "## Problem\nOn Synapse, Fabric Warehouse, Fabric Lakehouse, Databricks SQL, Athena, Starburst and BigQuery, the run-timeout cleanup (`cancel_remote_work`, `StartedRemoteWork`) tracks only queries run through `execute_query` (#4507, #4435). Load and DDL statements run on other cursors or clients are never tracked, for example `cursor.execute(copy_sql)` and the INSERT batches in `benchbox/platforms/azure_synapse.py` data loading, and BigQuery load jobs. A run that reaches its limit during loading can leave a long COPY INTO, INSERT, CTAS or load job running and billing after BenchBox exits 124. docs/operations/run-safety.md (capability table) now states this limit (review finding D6 on #4507, narrowed by the leader rather than fixed).\n\n## Change\nPer platform, find every place the load and DDL paths submit remote work, and register what was started in `_started_work` at submission, discarding it on completion, using the existing pattern. Where a platform cannot cancel a load (or cannot tell what this run started), record why in the table.\n\n## Decision gates\n- STOP and ask the owner (choice dialog) before starting: all seven platforms, a subset (for example the ones with the longest loads), or keep the documented limit. Include the measured or estimated load duration at SF 1 and 10 per platform.\n- Only cancel what this run started; never stop a warehouse, cluster or session the run did not create.\n- Keep the owner's two warning texts verbatim.\n\n## Verification rubric\nPass: per implemented platform, a stubbed-client test that fails before the change shows a load or DDL statement started by the run is cancelled at timeout, pre-existing work is not, and a failed cancel is reported with exit 124 kept; the table and changelog updated; `make platform-manifest-check` and `make pr-preflight` exit 0.\nFail: any load path of an implemented platform still untracked, or docs claiming more than the code does.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4507",
+    "https://github.com/BenchBox-dev/benchbox/pull/4435"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:883ac124f68c0bb7e4b8a7aa",
+      "at": "2026-11-25T15:07:00Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "d2f4a80c64ef4411955778f3b5be1599",
+      "session_id": "0b8d661071874e74901ab9bff63c57d9"
+    }
+  ]
+}

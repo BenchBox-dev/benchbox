@@ -45367,6 +45367,13 @@
       "status": "done",
       "title": "benchbox.core.run_service exports three underscore-prefixed names in __all__"
     },
+    "run-timeout-cleanup-load-ddl-statements-20261125": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Run-timeout cleanup does not cancel load or DDL statements on cursor-based platforms and BigQuery"
+    },
     "run-timeout-decision-record-refresh-20261122": {
       "claim": null,
       "needs": [],
