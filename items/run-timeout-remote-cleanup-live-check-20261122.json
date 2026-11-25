@@ -65,6 +65,15 @@
       "op_id": "95dd81b0bfcd43dd85f0d30139662954",
       "reason": "The claiming OMP process exited (host restart of the session); this is the same leader continuing the same work.",
       "session_id": "0b8d661071874e74901ab9bff63c57d9"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:883ac124f68c0bb7e4b8a7aa",
+      "at": "2026-11-25T04:33:11Z",
+      "client": "omp-coding-agent",
+      "generation": "84abf5508c424a9bae4e07ddabe482a9",
+      "op": "finish",
+      "op_id": "e1c8a14a11734e1f9c8888becd0736d6",
+      "session_id": "0b8d661071874e74901ab9bff63c57d9"
     }
   ]
 }

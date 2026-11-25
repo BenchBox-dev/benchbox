@@ -45351,15 +45351,10 @@
       "title": "Run timeout step 3: cancel remote work on cloud platforms when a run times out"
     },
     "run-timeout-remote-cleanup-live-check-20261122": {
-      "claim": {
-        "expires_at": "2026-11-26T04:33:08Z",
-        "generation": "84abf5508c424a9bae4e07ddabe482a9",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:883ac124f68c0bb7e4b8a7aa"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Check run-timeout remote cleanup against live cloud services"
     },
     "run-timeout-remote-cleanup-more-adapters-20261122": {
