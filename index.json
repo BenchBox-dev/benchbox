@@ -53490,7 +53490,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "dropped",
       "title": "Tracker worker identity changes when the MCP server restarts, so claims and batch ownership need recovery"
     },
     "tracker-claims-shared-identity-parallel-agents": {
