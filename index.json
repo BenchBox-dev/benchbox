@@ -41463,7 +41463,9 @@
     "pvm-p3-run-and-publish-tpch": {
       "claim": null,
       "needs": [
-        "pvm-p2-publish-ssb-clickbench",
+        "pvm-p1-run-ssb-clickbench",
+        "crr-a5-published-results-mirror",
+        "crr-b5-site-median-rows-version-view-and-trend",
         "crr-c2-row-count-references-tpc-and-ssb"
       ],
       "priority": "medium-high",
