@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 from benchbox.core.exceptions import ConfigurationError, ReadOnlyPlatformError
 from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
+from benchbox.platforms.base.remote_work import StartedRemoteWork
 from benchbox.utils.dependencies import check_platform_dependencies, get_dependency_error_message
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ class FabricLakehouseAdapter(PlatformAdapter):
 
     def __init__(self, **config: Any) -> None:
         super().__init__(**config)
+        self._started_work = StartedRemoteWork()
 
         available, missing = check_platform_dependencies("fabric")
         if not available:
@@ -273,6 +275,7 @@ class FabricLakehouseAdapter(PlatformAdapter):
         with outside_query_timer():
             cursor = connection.cursor()
         try:
+            self._started_work.add(str(id(cursor)), cursor)
             start_time = mono_time()
             ledger.add_request()
             cursor.execute(query)
@@ -297,7 +300,11 @@ class FabricLakehouseAdapter(PlatformAdapter):
                 "error_type": type(exc).__name__,
             }
         finally:
+            self._started_work.discard(str(id(cursor)))
             cursor.close()
+
+    def cancel_remote_work(self) -> None:
+        self._started_work.cancel_all("Fabric Lakehouse", lambda _key, cursor: cursor.cancel())
 
     def get_existing_tables(self, connection: Any) -> list[str]:
         cursor = connection.cursor()

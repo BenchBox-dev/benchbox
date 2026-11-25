@@ -518,4 +518,20 @@ def test_the_manifest_declares_cleanup_exactly_where_the_adapter_implements_it(e
 def test_the_adapters_with_cleanup_are_the_ones_the_survey_found_workable() -> None:
     declared = {entry.key for entry in PLATFORM_MANIFEST if entry.capabilities.get("run_timeout_cleanup")}
 
-    assert declared == {"quanton", "bigquery", "emr-serverless", "glue", "dataproc"}
+    assert declared == {
+        "quanton",
+        "bigquery",
+        "emr-serverless",
+        "glue",
+        "dataproc",
+        "dataproc-serverless",
+        "athena",
+        "athena-spark",
+        "databricks",
+        "starburst",
+        "synapse",
+        "fabric_dw",
+        "fabric-lakehouse",
+        "fabric-spark",
+        "synapse-spark",
+    }
