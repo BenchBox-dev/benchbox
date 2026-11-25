@@ -30,6 +30,17 @@
       "op": "update",
       "op_id": "810a83956eb6c582dcc5d0de84364ba1",
       "session_id": "ba268bb399814e16b3d44ff7bdc73914"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0a697a35e720a04d19e44a28",
+      "at": "2026-11-25T07:02:18Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:85211dc6cc54201508c6fab8",
+      "generation": "45f2609365534d36b1e09d667e71ad17",
+      "op": "takeover",
+      "op_id": "7c0123d70a1768fe0d0bb10eba2b1cb2",
+      "reason": "Holder is this same agent session before the host rebooted overnight; its MCP connection ended with the reboot and cannot resume. All four members are finished with evidence recorded.",
+      "session_id": "25f1c82986254513a0ef576dc2985dfb"
     }
   ]
 }
