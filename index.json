@@ -45352,10 +45352,10 @@
     },
     "run-timeout-remote-cleanup-live-check-20261122": {
       "claim": {
-        "expires_at": "2026-11-25T22:32:18Z",
-        "generation": "629e323f6117405c940d11f8da9a5ac9",
+        "expires_at": "2026-11-26T04:33:08Z",
+        "generation": "84abf5508c424a9bae4e07ddabe482a9",
         "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:b46d896efffc87928dc74550"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:883ac124f68c0bb7e4b8a7aa"
       },
       "needs": [],
       "priority": "medium",
