@@ -470,6 +470,39 @@ def test_throughput_counts_one_round_of_queries_per_stream_like_the_runtime(fami
     assert corpus_score.throughput_at_size(data) == pytest.approx(expected)
 
 
+def _tpcds_without_second_round(*, power: bool) -> dict:
+    data = combined_bundle(benchmark="tpcds")
+    for name in ("throughput_test_2", "maintenance_test", "maintenance_test_2", *(() if power else ("power_test",))):
+        del data["phases"][name]
+    return data
+
+
+@pytest.mark.parametrize(
+    ("power", "class_name"), [(False, corpus_rule.CLASS_THROUGHPUT_ONLY), (True, corpus_rule.CLASS_PARTIAL)]
+)
+def test_a_tpcds_run_without_a_second_throughput_round_scores_its_throughput_lane(power: bool, class_name: str) -> None:
+    data = _tpcds_without_second_round(power=power)
+    block = data["phases"]["throughput_test"]
+    outcome = corpus_rule.derive_outcome(corpus_rule.facts_from_result(data))
+
+    assert outcome.class_name == class_name
+    assert corpus_rule.LANE_THROUGHPUT in outcome.lanes
+    assert corpus_score.throughput_at_size(data) == pytest.approx(
+        99 * len(block["stream_results"]) * 3600 / (block["duration_ms"] / 1000.0)
+    )
+
+
+def test_tpcds_throughput_divides_the_first_round_duration_by_the_first_round_streams() -> None:
+    data = combined_bundle(benchmark="tpcds")
+    first = data["phases"]["throughput_test"]
+    expected = 99 * len(first["stream_results"]) * 3600 / (first["duration_ms"] / 1000.0)
+    data["phases"]["throughput_test_2"]["stream_results"][0]["success"] = False
+
+    assert corpus_score.throughput_at_size(data) == pytest.approx(expected)
+    data["phases"]["throughput_test_2"]["stream_results"] += [{"stream_id": 99, "success": True}] * 3
+    assert corpus_score.throughput_at_size(data) == pytest.approx(expected)
+
+
 def test_power_refresh_without_throughput_excludes_refresh_from_score() -> None:
     data = combined_bundle(benchmark="tpch", power=1234.5)
     data["phases"]["throughput_test"] = {"status": "NOT_RUN"}

@@ -125,11 +125,15 @@ def throughput_at_size(data: Mapping[str, Any]) -> float | None:
             for query in _queries(data)
             if query.get("test_type") == "throughput" and query.get("run_type") == "measurement"
         )
-        return executed * scale * 3600 / (duration_ms / 1000) if executed else None
-    streams = _corpus_rule().executed_stream_count(data) or 0
+        return throughput_from_queries(executed, duration_ms / 1000, scale) if executed else None
+    streams = _corpus_rule().throughput_stream_count(data) or 0
     if streams <= 0:
         return None
-    return POWER_QUERY_COUNTS[benchmark_id] * streams * scale * 3600 / (duration_ms / 1000)
+    return throughput_from_queries(POWER_QUERY_COUNTS[benchmark_id] * streams, duration_ms / 1000, scale)
+
+
+def throughput_from_queries(queries: int, seconds: float, scale: float) -> float:
+    return queries * scale * 3600 / seconds
 
 
 def qphh_at_size(power: float, throughput: float) -> float:

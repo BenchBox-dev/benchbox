@@ -89,7 +89,7 @@ class TPCMetricsCalculator:
         if total_time_seconds <= 0 or num_streams <= 0:
             return 0.0
 
-        return (total_queries * scale_factor * 3600) / total_time_seconds
+        return corpus_score.throughput_from_queries(total_queries, total_time_seconds, scale_factor)
 
     @staticmethod
     def calculate_qphh_at_size(power_at_size: float, throughput_at_size: float) -> float:

@@ -594,14 +594,16 @@ def _succeeded_streams(block: Any) -> int | None:
     return sum(1 for stream in streams if isinstance(stream, Mapping) and stream.get("success") is True)
 
 
-def executed_stream_count(data: Mapping[str, Any]) -> int | None:
+def throughput_stream_count(data: Mapping[str, Any]) -> int | None:
     phases = data.get("phases")
-    if not isinstance(phases, Mapping):
-        return None
-    first = _succeeded_streams(phases.get("throughput_test"))
+    return _succeeded_streams(phases.get("throughput_test")) if isinstance(phases, Mapping) else None
+
+
+def executed_stream_count(data: Mapping[str, Any]) -> int | None:
+    first = throughput_stream_count(data)
     if first is None or normalize_benchmark_id(_benchmark_id(data)) != "tpcds":
         return first
-    return min(first, _succeeded_streams(phases.get("throughput_test_2")) or 0)
+    return min(first, _succeeded_streams(data["phases"].get("throughput_test_2")) or 0)
 
 
 def _gateway_routed(data: Mapping[str, Any]) -> bool:

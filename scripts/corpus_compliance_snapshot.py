@@ -143,7 +143,7 @@ def _rule_entry(item: _Loaded, lane: str, outcome: corpus_rule.Outcome) -> tuple
 
 def outcome_stream_count(item: _Loaded, lane: str) -> int | None:
     if lane == corpus_rule.LANE_THROUGHPUT:
-        return corpus_rule.executed_stream_count(item.data)
+        return corpus_rule.throughput_stream_count(item.data)
     if lane in LANE_PHASES:
         return None
     return item.detail.stream_count
