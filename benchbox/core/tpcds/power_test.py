@@ -304,7 +304,9 @@ class TPCDSPowerTest:
                     connection.set_query_context(query_display_id, stream_id=self.config.stream_id)
                 from benchbox.core.expected_results.tpcds_results import tpcds_subscale_reference_seed
 
-                set_reference_seed_context(tpcds_subscale_reference_seed(self.config.seed, self.config.stream_id))
+                set_reference_seed_context(
+                    tpcds_subscale_reference_seed(self.config.seed, self.config.stream_id, self.config.scale_factor)
+                )
                 try:
                     cursor = connection.execute(query_text)
 

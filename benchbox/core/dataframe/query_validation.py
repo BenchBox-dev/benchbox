@@ -170,7 +170,7 @@ def _apply_reference_row_counts(
             _apply_row_count_oracle(
                 successful_rows,
                 lambda query_id, actual, row: _validate_tpcds_subscale_row_count(
-                    counts, query_id, actual, _tpcds_row_reference_parameters(seed, row)
+                    counts, query_id, actual, _tpcds_row_reference_parameters(seed, row, scale_factor)
                 ),
                 evidence,
             )
@@ -178,20 +178,24 @@ def _apply_reference_row_counts(
     from benchbox.core.tpch.benchmark import binds_answer_set_parameters
 
     previous = get_reference_seed_context()
-    set_reference_seed_context(binds_answer_set_parameters(seed))
+    set_reference_seed_context(
+        tpcds_subscale_reference_seed(seed, 0, scale_factor)
+        if benchmark_id == "tpcds"
+        else binds_answer_set_parameters(seed)
+    )
     try:
         return _apply_expected_row_counts(successful_rows, benchmark_id, scale_factor, evidence)
     finally:
         set_reference_seed_context(previous)
 
 
-def _tpcds_row_reference_parameters(seed: int | None, row: dict[str, Any]) -> bool:
+def _tpcds_row_reference_parameters(seed: int | None, row: dict[str, Any], scale_factor: float) -> bool:
     stream_id = row.get("stream_id", row.get("stream"))
     if stream_id is not None and not (
         isinstance(stream_id, int) and not isinstance(stream_id, bool) and stream_id == 0
     ):
         return False
-    return tpcds_subscale_reference_seed(seed, 0)
+    return tpcds_subscale_reference_seed(seed, 0, scale_factor)
 
 
 def _normalize_tpcds_query_id(query_id: object) -> str:
