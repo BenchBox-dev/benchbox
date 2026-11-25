@@ -78,12 +78,18 @@ class FormatConversionOrchestrator:
                 logger.warning(f"No schema found for table: {table_name}, skipping")
                 continue
 
+            table_options = effective_options
+            if table_options.expected_row_count is None:
+                source_row_count = self._get_source_row_count(manifest, table_name)
+                if source_row_count is not None:
+                    table_options = replace(table_options, expected_row_count=source_row_count)
+
             try:
                 result = converter.convert(
                     source_files=source_files,
                     table_name=table_name,
                     schema=schema,
-                    options=effective_options,
+                    options=table_options,
                 )
                 results[table_name] = result
 
@@ -131,20 +137,39 @@ class FormatConversionOrchestrator:
             raise ValueError(f"Unknown format: {format_name}. Available formats: {available}")
         return converter
 
-    def _get_source_files(self, manifest: ManifestV2, table_name: str, output_dir: Path) -> list[Path]:
+    def _get_source_entries(self, manifest: ManifestV2, table_name: str) -> list[Any]:
         table_formats = manifest.tables.get(table_name)
         if not table_formats:
             return []
 
         if "tbl" in table_formats.formats:
-            files = table_formats.formats["tbl"]
-            return [output_dir / f.path for f in files]
+            return list(table_formats.formats["tbl"])
 
         for format_name, files in table_formats.formats.items():
             logger.info(f"Using {format_name} files as source for {table_name}")
-            return [output_dir / f.path for f in files]
+            return list(files)
 
         return []
+
+    def _get_source_files(self, manifest: ManifestV2, table_name: str, output_dir: Path) -> list[Path]:
+        return [output_dir / f.path for f in self._get_source_entries(manifest, table_name)]
+
+    def _get_source_row_count(self, manifest: ManifestV2, table_name: str) -> int | None:
+        entries = self._get_source_entries(manifest, table_name)
+        if not entries:
+            return None
+        total = 0
+        has_nonzero_size = False
+        for entry in entries:
+            rc = getattr(entry, "row_count", None)
+            if not isinstance(rc, int) or isinstance(rc, bool) or rc < 0:
+                return None
+            if getattr(entry, "size_bytes", 0) > 0:
+                has_nonzero_size = True
+            total += rc
+        if total == 0 and has_nonzero_size:
+            return None
+        return total
 
     def _update_manifest_with_results(
         self,
@@ -211,7 +236,16 @@ class FormatConversionOrchestrator:
                     row_group_size = candidate
                     break
 
-        manifest.extra_fields["parquet_writer"] = "benchbox-streaming"
+        writers = sorted(
+            {
+                str(result.metadata["parquet_writer"])
+                for result in results.values()
+                if isinstance(result.metadata.get("parquet_writer"), str) and result.metadata["parquet_writer"]
+            }
+        )
+        parquet_writer = "+".join(writers) if writers else "benchbox-pyarrow-streaming"
+
+        manifest.extra_fields["parquet_writer"] = parquet_writer
         if row_group_size is not None:
             manifest.extra_fields["parquet_row_group_size"] = row_group_size
 
@@ -223,7 +257,7 @@ class FormatConversionOrchestrator:
             configuration if isinstance(configuration, dict) else None,
             backend=str(backend) if backend is not None else None,
             backend_version=str(backend_version) if backend_version is not None else None,
-            parquet_writer="benchbox-streaming",
+            parquet_writer=parquet_writer,
             parquet_row_group_size=row_group_size,
             scale_factor=manifest.scale_factor,
         )

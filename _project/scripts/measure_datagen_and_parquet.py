@@ -174,6 +174,98 @@ def _run_worker(mode: str, bench: str, sf: float, data_dir: Path, pq_dir: Path, 
         )
         return
 
+    if mode == "legacy_reference":
+        import pyarrow as pa
+        import pyarrow.csv as pacsv
+        import pyarrow.parquet as pq
+
+        from benchbox.core.runner.runner import _get_table_schemas_from_benchmark
+        from benchbox.utils.file_format import (
+            get_column_names_with_trailing,
+            get_delimiter_for_file,
+            has_trailing_delimiter,
+        )
+        from benchbox.utils.format_converters.base import ArrowTypeMapper
+
+        instance = _make_benchmark(bench, sf, data_dir)
+        manifest_path = data_dir / "_datagen_manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        schemas = _get_table_schemas_from_benchmark(instance)
+        pq_dir.mkdir(parents=True, exist_ok=True)
+        csv_delim_meta = manifest.get("csv_delimiter")
+        csv_header_meta = manifest.get("csv_has_header")
+        t0 = mono_time()
+        converted = []
+        errors = []
+        for table_name, table_info in (manifest.get("tables") or {}).items():
+            schema = schemas.get(table_name)
+            if not schema:
+                continue
+            formats_map = table_info.get("formats") or {}
+            entries = formats_map.get("tbl") or next(iter(formats_map.values()), [])
+            src_files = [data_dir / e["path"] for e in entries if (data_dir / e["path"]).exists()]
+            if not src_files:
+                continue
+            arrow_schema = ArrowTypeMapper.build_arrow_schema(schema)
+            col_names = [f.name for f in arrow_schema]
+            try:
+                tables = []
+                for src in src_files:
+                    first_line = src.open("r", encoding="utf-8", errors="replace").readline().rstrip("\r\n")
+                    if isinstance(csv_delim_meta, str) and len(csv_delim_meta) == 1:
+                        delim = csv_delim_meta
+                    else:
+                        delim = get_delimiter_for_file(src)
+                        if delim == "," and len(col_names) > 1 and "|" in first_line:
+                            if len(first_line.split("|")) in (len(col_names), len(col_names) + 1):
+                                delim = "|"
+                    if isinstance(csv_header_meta, bool):
+                        has_header = csv_header_meta
+                    else:
+                        hdr_parts = [p.strip().strip('"').lower() for p in first_line.split(delim)]
+                        has_header = hdr_parts[: len(col_names)] == [c.lower() for c in col_names]
+                    if has_header:
+                        with src.open("r", encoding="utf-8", errors="replace") as fh:
+                            fh.readline()
+                            second = fh.readline().rstrip("\r\n")
+                        trailing = bool(second) and len(second.split(delim)) > len(col_names) and second.endswith(delim)
+                    else:
+                        trailing = has_trailing_delimiter(src, delim, col_names)
+                    read_cols = get_column_names_with_trailing(col_names, trailing)
+                    tbl = pacsv.read_csv(
+                        src,
+                        read_options=pacsv.ReadOptions(
+                            column_names=read_cols,
+                            autogenerate_column_names=False,
+                            skip_rows=1 if has_header else 0,
+                        ),
+                        parse_options=pacsv.ParseOptions(delimiter=delim, quote_char='"', escape_char="\\"),
+                        convert_options=pacsv.ConvertOptions(
+                            column_types=arrow_schema,
+                            null_values=[""],
+                            strings_can_be_null=True,
+                            include_columns=col_names,
+                        ),
+                    )
+                    tables.append(tbl)
+                combined = pa.concat_tables(tables) if len(tables) > 1 else tables[0]
+                pq.write_table(combined, pq_dir / f"{table_name}.parquet", compression="SNAPPY")
+                converted.append(table_name)
+            except Exception as exc:
+                errors.append(f"{table_name}: {exc}")
+        dt = elapsed_seconds(t0)
+        print(
+            "RESULT:"
+            + json.dumps(
+                {
+                    "wall_s": round(dt, 4),
+                    "converted_tables": sorted(converted),
+                    "errors": errors,
+                }
+            )
+        )
+        return
+
     raise ValueError(f"Unknown worker mode: {mode}")
 
 
@@ -242,17 +334,29 @@ def run_step(
 
 def _verify_except_all(ref_dir: Path, test_dir: Path) -> dict[str, Any]:
     import duckdb
+    import pyarrow.parquet as pq
 
     conn = duckdb.connect(":memory:")
     try:
         ref_files = sorted(ref_dir.glob("*.parquet"))
-        mismatches: dict[str, dict[str, int]] = {}
+        mismatches: dict[str, dict[str, Any]] = {}
         checked_tables: list[str] = []
         for ref_file in ref_files:
             table_name = ref_file.stem
             test_file = test_dir / ref_file.name
             if not test_file.exists():
                 mismatches[table_name] = {"missing_in_test": 1}
+                continue
+            ref_schema = pq.read_schema(ref_file)
+            test_schema = pq.read_schema(test_file)
+            if ref_schema.names != test_schema.names or ref_schema.types != test_schema.types:
+                mismatches[table_name] = {
+                    "schema_mismatch": {
+                        "ref": [(f.name, str(f.type)) for f in ref_schema],
+                        "test": [(f.name, str(f.type)) for f in test_schema],
+                    }
+                }
+                checked_tables.append(table_name)
                 continue
             ref_sql = str(ref_file).replace("'", "''")
             test_sql = str(test_file).replace("'", "''")
@@ -390,13 +494,12 @@ def main() -> None:
                                 (data_dir / "_datagen_manifest.json").write_bytes(manifest_backup)
                             ref_pq_dir = work_root / f"{bench}_{sf_key}_ref_pq"
                             ref_res = run_step(
-                                "convert",
+                                "legacy_reference",
                                 bench,
                                 sf,
                                 data_dir,
                                 ref_pq_dir,
                                 timeout_s,
-                                row_group_size=100_000_000,
                             )
                             if ref_res.get("status") == "ok":
                                 except_all_res = _verify_except_all(ref_pq_dir, pq_dir)

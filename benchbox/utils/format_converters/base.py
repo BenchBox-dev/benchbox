@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
@@ -133,7 +134,63 @@ class ConversionOptions:
     data_page_version: Literal["1.0", "2.0"] | None = None
     delimiter: str | None = None
     has_header: bool | None = None
+    expected_row_count: int | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+class _CountingBinaryStream(io.RawIOBase):
+    def __init__(self, raw_stream: Any) -> None:
+        self._raw = raw_stream
+        self._cur_nonspace = False
+        self.nonempty_lines = 0
+
+    def readable(self) -> bool:
+        return True
+
+    def read(self, size: int = -1) -> bytes:
+        data = self._raw.read(size)
+        if data:
+            self._scan(data)
+        elif self._cur_nonspace:
+            self.nonempty_lines += 1
+            self._cur_nonspace = False
+        return data
+
+    def readinto(self, b: Any) -> int:
+        data = self.read(len(b))
+        n = len(data)
+        b[:n] = data
+        return n
+
+    def _scan(self, data: bytes) -> None:
+        if (
+            b"\n\n" not in data
+            and b"\r\n\r\n" not in data
+            and b"\n " not in data
+            and b"\n\t" not in data
+            and b"\n\r" not in data
+            and not data.startswith((b"\n", b"\r", b" ", b"\t"))
+        ):
+            nl = data.count(b"\n")
+            if nl > 0:
+                self.nonempty_lines += nl
+                self._cur_nonspace = bool(data[data.rfind(b"\n") + 1 :].strip())
+                return
+            if not self._cur_nonspace and data.strip():
+                self._cur_nonspace = True
+            return
+
+        start = 0
+        while True:
+            idx = data.find(b"\n", start)
+            if idx == -1:
+                if not self._cur_nonspace and data[start:].strip():
+                    self._cur_nonspace = True
+                break
+            if self._cur_nonspace or data[start:idx].strip():
+                self.nonempty_lines += 1
+            self._cur_nonspace = False
+            start = idx + 1
 
     def __post_init__(self) -> None:
         valid_compressions = {"snappy", "gzip", "zstd", "none", None}
@@ -384,6 +441,7 @@ class BaseFormatConverter(FormatConverter):
         progress_start: float = 0.0,
         progress_end: float = 0.8,
         block_size: int = DEFAULT_STREAM_BLOCK_SIZE,
+        source_line_counter: list[int] | None = None,
     ) -> Iterator[pa.RecordBatch]:
         strict = bool(options.strict_schema) if options is not None else False
         arrow_schema = self._build_arrow_schema(schema, strict=strict)
@@ -429,9 +487,10 @@ class BaseFormatConverter(FormatConverter):
                 compression_type = detect_compression(file_path)
                 if compression_type:
                     compressor = compression_manager.get_compressor(compression_type)
-                    with compressor.open_for_read(file_path, mode="rb") as stream:
+                    with compressor.open_for_read(file_path, mode="rb") as raw_stream:
+                        counting_stream = _CountingBinaryStream(raw_stream)
                         reader = csv.open_csv(
-                            stream,
+                            counting_stream,
                             read_options=read_options,
                             parse_options=parse_options,
                             convert_options=convert_options,
@@ -443,20 +502,28 @@ class BaseFormatConverter(FormatConverter):
                                     if batch.schema != arrow_schema
                                     else batch
                                 )
+                        if source_line_counter is not None:
+                            data_lines = counting_stream.nonempty_lines - (1 if has_header else 0)
+                            source_line_counter[0] += max(0, data_lines)
                 else:
-                    reader = csv.open_csv(
-                        file_path,
-                        read_options=read_options,
-                        parse_options=parse_options,
-                        convert_options=convert_options,
-                    )
-                    for batch in reader:
-                        if batch.num_rows > 0:
-                            yield (
-                                pa.RecordBatch.from_arrays(batch.columns, schema=arrow_schema)
-                                if batch.schema != arrow_schema
-                                else batch
-                            )
+                    with open(file_path, "rb") as raw_stream:
+                        counting_stream = _CountingBinaryStream(raw_stream)
+                        reader = csv.open_csv(
+                            counting_stream,
+                            read_options=read_options,
+                            parse_options=parse_options,
+                            convert_options=convert_options,
+                        )
+                        for batch in reader:
+                            if batch.num_rows > 0:
+                                yield (
+                                    pa.RecordBatch.from_arrays(batch.columns, schema=arrow_schema)
+                                    if batch.schema != arrow_schema
+                                    else batch
+                                )
+                        if source_line_counter is not None:
+                            data_lines = counting_stream.nonempty_lines - (1 if has_header else 0)
+                            source_line_counter[0] += max(0, data_lines)
 
         except Exception as e:
             raise ConversionError(f"Failed to read TBL files: {e}") from e

@@ -17,7 +17,14 @@ VERIFIED_BYTE_IDENTICAL_BACKENDS: Mapping[tuple[str, str], frozenset[float]] = M
     }
 )
 
-_BENCHBOX_PARQUET_WRITERS: frozenset[str] = frozenset({"benchbox-legacy", "benchbox-streaming"})
+_BENCHBOX_PARQUET_WRITERS: frozenset[str] = frozenset(
+    {
+        "benchbox-legacy",
+        "benchbox-streaming",
+        "benchbox-duckdb-streaming",
+        "benchbox-pyarrow-streaming",
+    }
+)
 
 
 _BENCHMARK_SPECS_FILES: dict[str, tuple[str, ...]] = {
@@ -115,7 +122,8 @@ def is_byte_identical_source_data(
 def is_benchbox_parquet_writer(parquet_writer: str | None) -> bool:
     if parquet_writer is None:
         return True
-    return str(parquet_writer).strip().lower() in _BENCHBOX_PARQUET_WRITERS
+    parts = [part.strip().lower() for part in str(parquet_writer).split("+") if part.strip()]
+    return bool(parts) and all(part in _BENCHBOX_PARQUET_WRITERS for part in parts)
 
 
 def is_byte_identical_backend_output(

@@ -824,11 +824,11 @@ class TestParquetStreamingAndBenchmarkCompatibility:
         assert updated["csv_delimiter"] == ","
         assert "parquet" in updated["formats"]
         assert updated["format_preference"][0] == "parquet"
-        assert updated["parquet_writer"] == "benchbox-streaming"
+        assert updated["parquet_writer"] == "benchbox-duckdb-streaming"
         assert updated["parquet_row_group_size"] == 122_880
         assert updated["data_generation_identity_hash"] == compute_datagen_identity_hash(
             "joinorder_synthetic",
-            parquet_writer="benchbox-streaming",
+            parquet_writer="benchbox-duckdb-streaming",
             parquet_row_group_size=122_880,
             scale_factor=0.01,
         )
@@ -890,6 +890,8 @@ class TestParquetStreamingAndBenchmarkCompatibility:
     def test_duckdb_streaming_fast_path_matches_pyarrow_without_second_count_pass(self, tmp_path, monkeypatch):
         import duckdb
 
+        from benchbox.utils.datagen_version import compute_datagen_identity_hash
+
         schema = {
             "columns": [
                 {"name": "id", "type": "INTEGER"},
@@ -916,7 +918,7 @@ class TestParquetStreamingAndBenchmarkCompatibility:
             source_files=[tbl_file],
             table_name="lineitem",
             schema=schema,
-            options=ConversionOptions(output_dir=fast_dir, row_group_size=122_880),
+            options=ConversionOptions(output_dir=fast_dir, row_group_size=122_880, expected_row_count=250),
         )
         fallback_res = converter.convert(
             source_files=[tbl_file],
@@ -926,6 +928,19 @@ class TestParquetStreamingAndBenchmarkCompatibility:
         )
         assert fast_res.row_count == 250
         assert fallback_res.row_count == 250
+        assert fast_res.metadata["parquet_writer"] == "benchbox-duckdb-streaming"
+        assert fallback_res.metadata["parquet_writer"] == "benchbox-pyarrow-streaming"
+        assert compute_datagen_identity_hash(
+            "tpch",
+            parquet_writer=fast_res.metadata["parquet_writer"],
+            parquet_row_group_size=122_880,
+            scale_factor=1.0,
+        ) != compute_datagen_identity_hash(
+            "tpch",
+            parquet_writer=fallback_res.metadata["parquet_writer"],
+            parquet_row_group_size=122_880,
+            scale_factor=1.0,
+        )
         assert pq.read_schema(fast_res.output_files[0]).types == pq.read_schema(fallback_res.output_files[0]).types
 
         con = duckdb.connect()
@@ -946,3 +961,56 @@ class TestParquetStreamingAndBenchmarkCompatibility:
             )
         finally:
             con.close()
+
+    def test_independent_row_count_validation_detects_mismatch_on_all_paths(self, tmp_path):
+        schema = {
+            "columns": [
+                {"name": "id", "type": "INTEGER"},
+                {"name": "region", "type": "VARCHAR(16)"},
+            ]
+        }
+        tbl_file = tmp_path / "orders.tbl"
+        tbl_file.write_text("1|EAST\n2|WEST\n3|NORTH\n", encoding="utf-8")
+        converter = ParquetConverter()
+
+        duck_dir = tmp_path / "duck_bad"
+        duck_dir.mkdir()
+        with pytest.raises(ConversionError, match="Row count mismatch"):
+            converter.convert(
+                source_files=[tbl_file],
+                table_name="orders",
+                schema=schema,
+                options=ConversionOptions(output_dir=duck_dir, row_group_size=122_880, expected_row_count=99),
+            )
+        assert not (duck_dir / "orders.parquet").exists()
+
+        pa_dir = tmp_path / "pa_bad"
+        pa_dir.mkdir()
+        with pytest.raises(ConversionError, match="Row count mismatch"):
+            converter.convert(
+                source_files=[tbl_file],
+                table_name="orders",
+                schema=schema,
+                options=ConversionOptions(
+                    output_dir=pa_dir,
+                    row_group_size=122_880,
+                    data_page_version="1.0",
+                    expected_row_count=99,
+                ),
+            )
+        assert not (pa_dir / "orders.parquet").exists()
+
+        part_dir = tmp_path / "part_bad"
+        part_dir.mkdir()
+        with pytest.raises(ConversionError, match="Row count mismatch"):
+            converter.convert(
+                source_files=[tbl_file],
+                table_name="orders",
+                schema=schema,
+                options=ConversionOptions(
+                    output_dir=part_dir,
+                    partition_cols=["region"],
+                    expected_row_count=99,
+                ),
+            )
+        assert not (part_dir / "orders").exists()

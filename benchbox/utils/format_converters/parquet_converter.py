@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 _DUCKDB_SUPPORTED_COMPRESSIONS = frozenset({None, "gzip", "zstd"})
 _DUCKDB_MIN_ROW_GROUP_SIZE = 2048
 _DUCKDB_STREAM_MEMORY_LIMIT = "320MB"
+PARQUET_WRITER_DUCKDB = "benchbox-duckdb-streaming"
+PARQUET_WRITER_PYARROW = "benchbox-pyarrow-streaming"
 
 
 def _arrow_type_to_duckdb(arrow_type: pa.DataType) -> str | None:
@@ -160,6 +162,8 @@ class ParquetConverter(BaseFormatConverter):
     ) -> int | None:
         if opts.data_page_version is not None or opts.row_group_size < _DUCKDB_MIN_ROW_GROUP_SIZE:
             return None
+        if opts.validate_row_count and opts.expected_row_count is None:
+            return None
 
         col_types: list[tuple[str, str]] = []
         for field in arrow_schema:
@@ -218,8 +222,10 @@ class ParquetConverter(BaseFormatConverter):
             row = con.execute(copy_sql).fetchone()
             return int(row[0]) if row is not None else int(pq.read_metadata(output_path).num_rows)
         except Exception as exc:
-            logger.debug(
-                "DuckDB streaming Parquet path unavailable for %s, falling back to PyArrow: %s", output_path.name, exc
+            logger.warning(
+                "DuckDB streaming Parquet path failed for %s (%s); falling back to PyArrow streaming writer",
+                output_path.name,
+                exc,
             )
             if output_path.exists():
                 with contextlib.suppress(Exception):
@@ -238,6 +244,7 @@ class ParquetConverter(BaseFormatConverter):
         opts: ConversionOptions,
         compression: str | None,
         progress_callback: Callable[[str, float], None] | None,
+        source_line_counter: list[int],
     ) -> int:
         writer_kwargs: dict[str, Any] = {
             "compression": compression,
@@ -262,6 +269,7 @@ class ParquetConverter(BaseFormatConverter):
                     progress_callback=progress_callback,
                     progress_start=0.0,
                     progress_end=0.8,
+                    source_line_counter=source_line_counter,
                 ):
                     rows_read += batch.num_rows
                     buffer.append(batch)
@@ -338,8 +346,10 @@ class ParquetConverter(BaseFormatConverter):
             progress_callback=progress_callback,
         )
 
+        source_line_counter = [0]
         if duckdb_rows is not None:
             rows_read = duckdb_rows
+            writer_name = PARQUET_WRITER_DUCKDB
         else:
             rows_read = self._write_single_file_pyarrow(
                 source_files=source_files,
@@ -349,19 +359,28 @@ class ParquetConverter(BaseFormatConverter):
                 opts=opts,
                 compression=compression,
                 progress_callback=progress_callback,
+                source_line_counter=source_line_counter,
             )
+            writer_name = PARQUET_WRITER_PYARROW
 
         source_size = self.calculate_file_size(source_files)
         output_size = output_path.stat().st_size
         parquet_meta = pq.read_metadata(output_path)
 
         if opts.validate_row_count:
+            expected_rows = opts.expected_row_count if opts.expected_row_count is not None else source_line_counter[0]
             try:
                 self._verify_inline_row_count(
-                    expected_rows=rows_read,
+                    expected_rows=expected_rows,
                     written_rows=parquet_meta.num_rows,
                     table_name=table_name,
                 )
+                if rows_read != expected_rows:
+                    self._verify_inline_row_count(
+                        expected_rows=expected_rows,
+                        written_rows=rows_read,
+                        table_name=table_name,
+                    )
             except ConversionError:
                 if output_path.exists():
                     with contextlib.suppress(Exception):
@@ -373,6 +392,7 @@ class ParquetConverter(BaseFormatConverter):
             "compression": opts.compression,
             "num_columns": len(column_names),
             "partitioned": False,
+            "parquet_writer": writer_name,
         }
 
         if progress_callback:
@@ -413,6 +433,7 @@ class ParquetConverter(BaseFormatConverter):
         partitioned_dir.mkdir(parents=True, exist_ok=True)
 
         rows_read = 0
+        source_line_counter = [0]
         partition_values: dict[str, set[Any]] = {col: set() for col in opts.partition_cols}
 
         def _stream_batches() -> Iterator[pa.RecordBatch]:
@@ -424,6 +445,7 @@ class ParquetConverter(BaseFormatConverter):
                 progress_callback=progress_callback,
                 progress_start=0.0,
                 progress_end=0.8,
+                source_line_counter=source_line_counter,
             ):
                 rows_read += batch.num_rows
                 for col in opts.partition_cols:
@@ -472,12 +494,19 @@ class ParquetConverter(BaseFormatConverter):
 
         if opts.validate_row_count:
             written_rows = sum(pq.read_metadata(f).num_rows for f in output_files)
+            expected_rows = opts.expected_row_count if opts.expected_row_count is not None else source_line_counter[0]
             try:
                 self._verify_inline_row_count(
-                    expected_rows=rows_read,
+                    expected_rows=expected_rows,
                     written_rows=written_rows,
                     table_name=table_name,
                 )
+                if rows_read != expected_rows:
+                    self._verify_inline_row_count(
+                        expected_rows=expected_rows,
+                        written_rows=rows_read,
+                        table_name=table_name,
+                    )
             except ConversionError:
                 if partitioned_dir.exists():
                     shutil.rmtree(partitioned_dir, ignore_errors=True)
@@ -488,6 +517,7 @@ class ParquetConverter(BaseFormatConverter):
         metadata = {
             "compression": opts.compression,
             "num_columns": len(column_names),
+            "parquet_writer": PARQUET_WRITER_PYARROW,
             "partitioned": True,
             "partition_cols": opts.partition_cols,
             "partition_counts": partition_counts,
