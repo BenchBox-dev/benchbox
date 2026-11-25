@@ -10,6 +10,7 @@ from benchbox._vendor import sqlglot
 from benchbox._vendor.sqlglot import exp
 from benchbox.core.tuning.interface import UnifiedTuningConfiguration
 from benchbox.core.tuning.metadata import TuningMetadataManager
+from benchbox.platforms.starrocks.workload import _alias_derived_tables
 
 pytestmark = [
     pytest.mark.unit,
@@ -176,10 +177,9 @@ def test_athena_reports_an_unsupported_store_for_every_spelling():
     assert TuningMetadataManager(_Adapter("synapse")).unsupported_reason() is None
 
 
-def test_starrocks_clears_tunings_with_a_column_predicate() -> None:
+def test_starrocks_clears_tunings_with_a_statement_its_adapter_sends_unchanged() -> None:
     connection = _Connection()
     _run_marker_flow("StarRocks", connection)
-    deletes = [sql for sql in _statements(connection) if sql.startswith("DELETE FROM")]
-    assert deletes
-    assert all(sql.endswith("WHERE table_name IS NOT NULL") or "table_name = " in sql for sql in deletes), deletes
-    assert any(sql.endswith("WHERE table_name IS NOT NULL") for sql in deletes)
+    clears = {sql for sql in _statements(connection) if sql.upper().startswith("TRUNCATE")}
+    assert {_alias_derived_tables(sql) for sql in clears} == {"TRUNCATE TABLE benchbox_tuning_metadata"}
+    assert not any("WHERE TRUE" in sql.upper() for sql in _statements(connection))
