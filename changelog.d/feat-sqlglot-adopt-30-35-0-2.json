@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "SQLite SQL translation now targets the installed SQLite version, fails instead of emitting wrong dates for month-end interval arithmetic on SQLite older than 3.46 (strict and non-strict), and records the targeted SQLite version in translation outcomes."
+    }
+  ]
+}

@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 
+from tests.sqlite_engine_pin import pinned_sqlite_engine_version
+
 RECORDED = Path(__file__).parent / "recorded"
 FROZEN = Path(__file__).parent / "frozen"
 
@@ -52,10 +54,11 @@ def area_cases(area: str) -> list[Case]:
 
 def differences(area: str) -> dict[str, dict[str, str]]:
     found: dict[str, dict[str, str]] = {}
-    for case in area_cases(area):
-        legacy, fork = outcome(case.legacy), outcome(case.fork)
-        if legacy != fork:
-            found[case.id] = {"legacy": legacy, "fork": fork}
+    with pinned_sqlite_engine_version():
+        for case in area_cases(area):
+            legacy, fork = outcome(case.legacy), outcome(case.fork)
+            if legacy != fork:
+                found[case.id] = {"legacy": legacy, "fork": fork}
     return found
 
 
