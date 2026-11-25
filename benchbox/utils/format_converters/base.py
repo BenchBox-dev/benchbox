@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-import io
+import queue
 import re
+import threading
 from abc import ABC, abstractmethod
+from collections import deque
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -22,6 +24,10 @@ from benchbox.utils.file_format import (
 
 DEFAULT_ROW_GROUP_SIZE = 122_880
 DEFAULT_STREAM_BLOCK_SIZE = 1 * 1024 * 1024
+PARALLEL_FILE_READERS = 2
+_READER_QUEUE_DEPTH = 32
+_QUEUE_POLL_SECONDS = 0.1
+_ARROW_STREAM_CODECS = {"zstd": "zstd", "gzip": "gzip"}
 
 _SQL_DDL_TYPE_PREFIXES = (
     "INTEGER",
@@ -152,61 +158,6 @@ class ConversionOptions:
             raise ValueError(f"delimiter must be a single character, got {self.delimiter!r}")
 
         self.validate_row_count = bool(self.validate_row_count)
-
-
-class _CountingBinaryStream(io.RawIOBase):
-    def __init__(self, raw_stream: Any) -> None:
-        self._raw = raw_stream
-        self._cur_nonspace = False
-        self.nonempty_lines = 0
-
-    def readable(self) -> bool:
-        return True
-
-    def read(self, size: int = -1) -> bytes:
-        data = self._raw.read(size)
-        if data:
-            self._scan(data)
-        elif self._cur_nonspace:
-            self.nonempty_lines += 1
-            self._cur_nonspace = False
-        return data
-
-    def readinto(self, b: Any) -> int:
-        data = self.read(len(b))
-        n = len(data)
-        b[:n] = data
-        return n
-
-    def _scan(self, data: bytes) -> None:
-        if (
-            b"\n\n" not in data
-            and b"\r\n\r\n" not in data
-            and b"\n " not in data
-            and b"\n\t" not in data
-            and b"\n\r" not in data
-            and not data.startswith((b"\n", b"\r", b" ", b"\t"))
-        ):
-            nl = data.count(b"\n")
-            if nl > 0:
-                self.nonempty_lines += nl
-                self._cur_nonspace = bool(data[data.rfind(b"\n") + 1 :].strip())
-                return
-            if not self._cur_nonspace and data.strip():
-                self._cur_nonspace = True
-            return
-
-        start = 0
-        while True:
-            idx = data.find(b"\n", start)
-            if idx == -1:
-                if not self._cur_nonspace and data[start:].strip():
-                    self._cur_nonspace = True
-                break
-            if self._cur_nonspace or data[start:idx].strip():
-                self.nonempty_lines += 1
-            self._cur_nonspace = False
-            start = idx + 1
 
 
 @dataclass
@@ -442,91 +393,143 @@ class BaseFormatConverter(FormatConverter):
         progress_end: float = 0.8,
         block_size: int = DEFAULT_STREAM_BLOCK_SIZE,
         source_line_counter: list[int] | None = None,
+        readers: int = PARALLEL_FILE_READERS,
     ) -> Iterator[pa.RecordBatch]:
         strict = bool(options.strict_schema) if options is not None else False
         arrow_schema = self._build_arrow_schema(schema, strict=strict)
-        column_names = [field.name for field in arrow_schema]
         total_files = len(source_files)
         progress_range = progress_end - progress_start
-        compression_manager = CompressionManager()
+        stop = threading.Event()
+        pending: deque[tuple[Path, queue.Queue[tuple[bool, Any]], threading.Thread, list[int]]] = deque()
+        next_index = 0
+
+        def start_next() -> None:
+            nonlocal next_index
+            file_path = source_files[next_index]
+            line_count = [0]
+            out: queue.Queue[tuple[bool, Any]] = queue.Queue(maxsize=_READER_QUEUE_DEPTH)
+            thread = threading.Thread(
+                target=self._produce_file_batches,
+                args=(file_path, arrow_schema, options, block_size, line_count, out, stop),
+                name=f"benchbox-csv-reader-{file_path.name}",
+                daemon=True,
+            )
+            thread.start()
+            pending.append((file_path, out, thread, line_count))
+            next_index += 1
 
         try:
-            for i, file_path in enumerate(source_files):
+            while next_index < total_files and len(pending) < max(1, readers):
+                start_next()
+            consumed = 0
+            while pending:
+                file_path, out, thread, line_count = pending[0]
                 if progress_callback:
-                    progress = progress_start + (i / total_files) * progress_range
-                    progress_callback(f"Reading {file_path.name}", progress)
-
-                delimiter, has_header, has_trailing, is_empty = self._resolve_file_csv_settings(
-                    file_path, column_names, options
-                )
-                if is_empty:
-                    continue
-
-                column_names_for_file = get_column_names_with_trailing(column_names, has_trailing)
-
-                read_options = csv.ReadOptions(
-                    column_names=column_names_for_file,
-                    autogenerate_column_names=False,
-                    skip_rows=1 if has_header else 0,
-                    block_size=block_size,
-                )
-
-                parse_options = csv.ParseOptions(
-                    delimiter=delimiter,
-                    quote_char='"',
-                    escape_char="\\",
-                )
-
-                convert_options = csv.ConvertOptions(
-                    column_types=arrow_schema,
-                    null_values=[""],
-                    strings_can_be_null=True,
-                    include_columns=column_names,
-                )
-
-                compression_type = detect_compression(file_path)
-                if compression_type:
-                    compressor = compression_manager.get_compressor(compression_type)
-                    with compressor.open_for_read(file_path, mode="rb") as raw_stream:
-                        counting_stream = _CountingBinaryStream(raw_stream)
-                        reader = csv.open_csv(
-                            counting_stream,
-                            read_options=read_options,
-                            parse_options=parse_options,
-                            convert_options=convert_options,
-                        )
-                        for batch in reader:
-                            if batch.num_rows > 0:
-                                yield (
-                                    pa.RecordBatch.from_arrays(batch.columns, schema=arrow_schema)
-                                    if batch.schema != arrow_schema
-                                    else batch
-                                )
-                        if source_line_counter is not None:
-                            data_lines = counting_stream.nonempty_lines - (1 if has_header else 0)
-                            source_line_counter[0] += max(0, data_lines)
-                else:
-                    with open(file_path, "rb") as raw_stream:
-                        counting_stream = _CountingBinaryStream(raw_stream)
-                        reader = csv.open_csv(
-                            counting_stream,
-                            read_options=read_options,
-                            parse_options=parse_options,
-                            convert_options=convert_options,
-                        )
-                        for batch in reader:
-                            if batch.num_rows > 0:
-                                yield (
-                                    pa.RecordBatch.from_arrays(batch.columns, schema=arrow_schema)
-                                    if batch.schema != arrow_schema
-                                    else batch
-                                )
-                        if source_line_counter is not None:
-                            data_lines = counting_stream.nonempty_lines - (1 if has_header else 0)
-                            source_line_counter[0] += max(0, data_lines)
-
+                    progress_callback(
+                        f"Reading {file_path.name}", progress_start + (consumed / total_files) * progress_range
+                    )
+                while True:
+                    has_batch, value = out.get()
+                    if not has_batch:
+                        break
+                    yield value
+                pending.popleft()
+                thread.join()
+                if value is not None:
+                    raise value
+                consumed += 1
+                if source_line_counter is not None:
+                    source_line_counter[0] += line_count[0]
+                if next_index < total_files:
+                    start_next()
         except Exception as e:
             raise ConversionError(f"Failed to read TBL files: {e}") from e
+        finally:
+            stop.set()
+            for _, _, thread, _ in pending:
+                thread.join()
+
+    def _produce_file_batches(
+        self,
+        file_path: Path,
+        arrow_schema: pa.Schema,
+        options: ConversionOptions | None,
+        block_size: int,
+        line_count: list[int],
+        out: queue.Queue[tuple[bool, Any]],
+        stop: threading.Event,
+    ) -> None:
+        def put(entry: tuple[bool, Any]) -> bool:
+            while not stop.is_set():
+                try:
+                    out.put(entry, timeout=_QUEUE_POLL_SECONDS)
+                    return True
+                except queue.Full:
+                    continue
+            return False
+
+        try:
+            for batch in self._iter_file_batches(file_path, arrow_schema, options, block_size, line_count):
+                if not put((True, batch)):
+                    return
+        except Exception as e:
+            put((False, e))
+            return
+        put((False, None))
+
+    def _iter_file_batches(
+        self,
+        file_path: Path,
+        arrow_schema: pa.Schema,
+        options: ConversionOptions | None,
+        block_size: int,
+        line_count: list[int],
+    ) -> Iterator[pa.RecordBatch]:
+        column_names = [field.name for field in arrow_schema]
+        delimiter, has_header, has_trailing, is_empty = self._resolve_file_csv_settings(
+            file_path, column_names, options
+        )
+        if is_empty:
+            return
+
+        read_options = csv.ReadOptions(
+            column_names=get_column_names_with_trailing(column_names, has_trailing),
+            autogenerate_column_names=False,
+            skip_rows=1 if has_header else 0,
+            block_size=block_size,
+        )
+        parse_options = csv.ParseOptions(
+            delimiter=delimiter,
+            quote_char='"',
+            escape_char="\\",
+        )
+        convert_options = csv.ConvertOptions(
+            column_types=arrow_schema,
+            null_values=[""],
+            strings_can_be_null=True,
+            include_columns=column_names,
+        )
+
+        compression_type = detect_compression(file_path)
+        if compression_type is None or compression_type in _ARROW_STREAM_CODECS:
+            raw_stream = pa.input_stream(str(file_path), compression=_ARROW_STREAM_CODECS.get(compression_type))
+        else:
+            raw_stream = CompressionManager().get_compressor(compression_type).open_for_read(file_path, mode="rb")
+        with raw_stream:
+            reader = csv.open_csv(
+                raw_stream,
+                read_options=read_options,
+                parse_options=parse_options,
+                convert_options=convert_options,
+            )
+            for batch in reader:
+                if batch.num_rows > 0:
+                    line_count[0] += batch.num_rows
+                    yield (
+                        pa.RecordBatch.from_arrays(batch.columns, schema=arrow_schema)
+                        if batch.schema != arrow_schema
+                        else batch
+                    )
 
     def read_tbl_files(
         self,
@@ -562,17 +565,6 @@ class BaseFormatConverter(FormatConverter):
 
     def calculate_file_size(self, file_paths: list[Path]) -> int:
         return sum(f.stat().st_size for f in file_paths if f.exists())
-
-    def count_uncompressed_data_rows(self, file_paths: list[Path], *, has_header: bool = False) -> int:
-        total = 0
-        for file_path in file_paths:
-            with open(file_path, "rb") as raw_stream:
-                counting_stream = _CountingBinaryStream(raw_stream)
-                while counting_stream.read(4 * 1024 * 1024):
-                    pass
-            data_lines = counting_stream.nonempty_lines - (1 if has_header else 0)
-            total += max(0, data_lines)
-        return total
 
     def _verify_inline_row_count(
         self,

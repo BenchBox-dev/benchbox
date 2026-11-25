@@ -241,7 +241,11 @@ class FormatConversionOrchestrator:
         results: dict[str, ConversionResult],
         effective_options: ConversionOptions | None,
     ) -> None:
-        from benchbox.utils.datagen_version import compute_datagen_identity_hash
+        from benchbox.utils.datagen_version import (
+            PARQUET_WRITER,
+            PARTITIONED_PARQUET_WRITER,
+            compute_datagen_identity_hash,
+        )
 
         row_group_size: int | None = None
         if effective_options is not None and isinstance(effective_options.row_group_size, int):
@@ -253,15 +257,11 @@ class FormatConversionOrchestrator:
                     row_group_size = candidate
                     break
 
-        writers = sorted(
-            {
-                str(result.metadata["parquet_writer"])
-                for result in results.values()
-                if isinstance(result.metadata.get("parquet_writer"), str) and result.metadata["parquet_writer"]
-            }
+        parquet_writer = (
+            PARTITIONED_PARQUET_WRITER
+            if any(result.metadata.get("partitioned") for result in results.values())
+            else PARQUET_WRITER
         )
-        parquet_writer = "+".join(writers) if writers else "benchbox-pyarrow-streaming"
-
         manifest.extra_fields["parquet_writer"] = parquet_writer
         if row_group_size is not None:
             manifest.extra_fields["parquet_row_group_size"] = row_group_size

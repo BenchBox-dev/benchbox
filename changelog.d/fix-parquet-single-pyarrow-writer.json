@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Parquet conversion always uses one writer (PyArrow) and reads up to two chunk files at once, so output no longer depends on whether DuckDB is installed or how much memory it can use. Row groups hold the configured row_group_size (122,880 by default; the last holds the remainder) and NOT NULL columns stay required. Cached Parquet written by the retired DuckDB path is regenerated on the next Parquet run."
+    }
+  ]
+}

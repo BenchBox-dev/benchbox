@@ -17,15 +17,10 @@ VERIFIED_BYTE_IDENTICAL_BACKENDS: Mapping[tuple[str, str], frozenset[float]] = M
     }
 )
 
-_BENCHBOX_PARQUET_WRITERS: frozenset[str] = frozenset(
-    {
-        "benchbox-legacy",
-        "benchbox-streaming",
-        "benchbox-duckdb-streaming",
-        "benchbox-pyarrow-streaming",
-        "benchbox-pyarrow-partitioned",
-    }
-)
+PARQUET_WRITER = "benchbox-pyarrow-streaming"
+PARTITIONED_PARQUET_WRITER = "benchbox-pyarrow-partitioned"
+_CURRENT_PARQUET_WRITERS = frozenset({PARQUET_WRITER, PARTITIONED_PARQUET_WRITER})
+_BENCHBOX_PARQUET_WRITER_PREFIX = "benchbox-"
 
 
 _BENCHMARK_SPECS_FILES: dict[str, tuple[str, ...]] = {
@@ -124,7 +119,7 @@ def is_benchbox_parquet_writer(parquet_writer: str | None) -> bool:
     if parquet_writer is None:
         return True
     parts = [part.strip().lower() for part in str(parquet_writer).split("+") if part.strip()]
-    return bool(parts) and all(part in _BENCHBOX_PARQUET_WRITERS for part in parts)
+    return bool(parts) and all(part.startswith(_BENCHBOX_PARQUET_WRITER_PREFIX) for part in parts)
 
 
 def is_byte_identical_backend_output(
@@ -298,6 +293,9 @@ def _parquet_layout_staleness(manifest: Mapping[str, Any], *, expected_table_for
             "cached Parquet files predate streaming row-group layout stamping; "
             "regenerating with the current Parquet layout"
         )
+    writer = parquet_writer.strip().lower()
+    if writer.startswith(_BENCHBOX_PARQUET_WRITER_PREFIX) and writer not in _CURRENT_PARQUET_WRITERS:
+        return f"cached Parquet files were written by {writer}; regenerating with the current Parquet writer"
     return None
 
 
