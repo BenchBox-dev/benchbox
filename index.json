@@ -43115,7 +43115,9 @@
     "release-v0-6-0-20261124": {
       "claim": null,
       "needs": [
-        "removed-options-from-config-silently-ignored-20261124"
+        "removed-options-from-config-silently-ignored-20261124",
+        "clickhouse-server-uat-shared-database-refusal-20261125",
+        "lakesail-uat-joinorder-sf1-server-dies-20261125"
       ],
       "priority": "high",
       "status": "blocked",
