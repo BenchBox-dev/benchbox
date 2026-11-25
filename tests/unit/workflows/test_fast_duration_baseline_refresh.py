@@ -302,3 +302,14 @@ def test_refresh_commits_the_whole_baseline_directory_with_its_summary() -> None
         "git add tests/fixtures/fast_tier_baseline quality/docs-reference-inventory.json"
         in (step_named("Create refresh PR")["run"])
     )
+
+
+def test_refresh_only_keeps_runs_that_are_the_final_head_of_a_merged_same_repository_pull_request() -> None:
+    text = all_run_text()
+    assert "gh run list --workflow ci.yml --event pull_request" in text
+    assert "headSha" in text
+    assert "--json state,headRefOid,isCrossRepository" in text
+    assert '[ "$state" = "MERGED" ] || continue' in text
+    assert '[ "$cross" = "false" ] || continue' in text
+    assert '[ "$sha" = "$pr_head" ] || continue' in text
+    assert '[ "$sha" = "$run_sha" ] || continue' in text
