@@ -25938,6 +25938,16 @@
       "status": "open",
       "title": "Roll up row-count evidence with one rule shared by the writer, the validators, the DataFrame summary and the corpus rule"
     },
+    "crr-v2-measured-stream-integrity-checks": {
+      "claim": null,
+      "needs": [
+        "crr-v0-reference-reader-and-generator",
+        "crr-v1-row-evidence-roll-up"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Check every measured TPC-H and TPC-DS row against an exact count, a recorded invariant, 'must return rows' or a LIMIT/one-row bound"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],
