@@ -26837,7 +26837,7 @@
         "datagen-p2-vectorize-synthetic-generators"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Conditional gate: bootstrap minimal BenchBox-dev/benchbox-datagen Rust package only if Phase 2 misses budget"
     },
     "datagen-p2-ssb-versioned-migration": {
