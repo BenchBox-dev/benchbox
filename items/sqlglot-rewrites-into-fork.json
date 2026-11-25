@@ -4,6 +4,7 @@
     "Fork PR(s) merged with each moved rewrite and its tests; delivered wheel version and sha256 recorded.",
     "One BenchBox PR merged that adopts the wheel, leaves _LOCAL_REWRITES with only the approved exceptions and UNRESOLVED_VIOLATIONS empty, and passes the translation tests and golden corpus unchanged."
   ],
+  "context": "2026-11-25 inventory (BenchBox origin/develop f1c6343bbf, fork origin/main a235246d85): of the 22 _LOCAL_REWRITES, 20 move unchanged (date_column_integer_arithmetic takes its '_date' suffix as an argument), 1 is a duplicate (inline_named_windows = upstream transforms.eliminate_window_clause), 0 cannot move. UNRESOLVED_VIOLATIONS has 11 keys (the ten plus NYC Taxi).\nOwner decisions 2026-11-25:\n- Transactional operation scripts go through translate_sql_query. Series generation becomes a new named fork rewrite; QuestDB CURRENT_TIMESTAMP is written as now() by the fork QuestDB generator; BEGIN; comes from the fork.\n- Confirmed exceptions that stay in BenchBox, moved out of benchmark code into the adapter or operation catalog: SingleStore removal of SET TRANSACTION ISOLATION LEVEL READ COMMITTED; PostgreSQL SET ISOLATION + BEGIN -> COMMIT; BEGIN ... ISOLATION LEVEL x; ClickHouse LAG fixed by writing lag( in the hand-written ClickHouse variant in catalog/queries.yaml.\n- SingleStore vector search goes through fork parser/generator patches (ARRAY_DISTANCE, ARRAY_COSINE_SIMILARITY), not hand-written variants.\n- Approved output changes: V1 NYC Taxi SingleStore EPOCH fix; V3 TPC-DS maintenance statements re-rendered (SingleStore ':> INT'); V10 T-SQL tuning-metadata guard form, with BigQuery/Snowflake types kept by explicit type_map; V11 SingleStore vector queries re-rendered.\n- inline_named_windows: delete; add eliminate_window_clause to the Doris and StarRocks generators as a fork carried patch.\n- Doris/StarRocks GROUP BY () (V4): SUPPORTS_EMPTY_GROUP_BY = False carried patch.",
   "description": "Feature umbrella for migrate-local-sql-rewrites-into-sqlglot-fork-20261120 and migrate-core-sql-text-rewrites-to-translator-20261122. Starts after sqlglot-adopt-30-35-0-2 merges, because both build on the adopted 30.35 wheel.\n\nOwner decisions (2026-11-25):\n- Scope is these two items only; cedardb-release-gate-cell-restoration and generalize-compat-lint-to-enforce-query-adapter-and-schema-e stay out.\n- New named rewrites created for the ten core text rewrites go to the fork, not to _LOCAL_REWRITES.\n- The '(c) list' of rewrites that depend on BenchBox-only state and cannot move must be shown to the owner and confirmed before any migration starts.\n- Fork PRs are allowed under the fork's own rules; BenchBox adopts the resulting wheel through its adoption tooling.\n- Delivery is serial: this umbrella is in each member's needs; one fork change set, one wheel, one BenchBox cutover PR.\n\nOrder: one combined inventory of the 22 _LOCAL_REWRITES entries and the ten UNRESOLVED_VIOLATIONS rewrites (move, delete as duplicate, or exception) recorded in context; owner confirms the exception list; fork PR(s) with the moved rewrites and tests; fork release delivered; one BenchBox PR adopting it and deleting the local copies and violations.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "f2660d9dc4304e5ca972b8fb40e47849",
+      "session_id": "3370a2a2447845cd8a89682f505a3484"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9f9c6d68051f4bb162aa05a7",
+      "at": "2026-11-25T17:00:59Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "356a82e863e84caf8ca3d032c6e36b36",
       "session_id": "3370a2a2447845cd8a89682f505a3484"
     }
   ]
