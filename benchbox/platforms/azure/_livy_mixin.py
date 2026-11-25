@@ -4,8 +4,12 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any
 
+from benchbox.core.exceptions import ConfigurationError
 from benchbox.core.results.timer_scope import REQUEST_KIND_QUERY, RequestLedger, outside_query_timer
 from benchbox.platforms.base.remote_work import StartedRemoteWork
+from benchbox.utils.clock import elapsed_seconds, mono_time
+
+FAILED_SESSION_STATES = frozenset({"error", "dead", "killed"})
 
 
 class LivyStatementMixin:
@@ -23,6 +27,38 @@ class LivyStatementMixin:
 
     def _ensure_session(self) -> int:
         raise NotImplementedError
+
+    def _wait_for_session_state(
+        self,
+        session_id: int,
+        target_states: list[str],
+        timeout_seconds: int = 600,
+    ) -> str:
+        from benchbox.platforms.azure.spark_execution_utils import livy_get, livy_pause
+
+        start_time = mono_time()
+        session_url = f"{self.livy_endpoint}/{session_id}"
+
+        while elapsed_seconds(start_time) < timeout_seconds:
+            response = livy_get(
+                session_url,
+                headers=self._get_headers(),
+                timeout=30,
+            )
+
+            if response.status_code != 200:
+                raise ConfigurationError(f"Failed to get session status: {response.status_code}")
+
+            state = response.json()["state"]
+
+            if state in target_states:
+                return state
+            if state in FAILED_SESSION_STATES:
+                raise ConfigurationError(f"Session is in {state} state")
+
+            livy_pause(5)
+
+        raise ConfigurationError(f"Timeout waiting for session {session_id}")
 
     @contextmanager
     def _tracked_statement(
