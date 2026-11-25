@@ -25936,15 +25936,10 @@
       "title": "Record the observed execution engine on the SQL platforms that declare engines"
     },
     "crr-i1-tpcds-q93-empty-sf01": {
-      "claim": {
-        "expires_at": "2026-11-26T16:10:57Z",
-        "generation": "164def7a8e49423d8ebab8c5aef259a5",
-        "renewals": 1,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Find why TPC-DS query 93 returned no rows at SF 0.1 on three cloud platforms"
     },
     "crr-i2-tpch-q15-empty-datafusion": {
