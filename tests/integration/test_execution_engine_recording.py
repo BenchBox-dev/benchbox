@@ -38,6 +38,7 @@ def _cli_run(tmp_path: Path, platform: str, *args: str, benchmark: str = "tpch",
             "--scale",
             "0.01",
             *args,
+            "--ignore-memory-warnings",
             "--non-interactive",
             "--output",
             output or str(tmp_path / "out"),
@@ -201,6 +202,7 @@ def _collect_calls() -> Iterator[list[dict[str, Any]]]:
         pl.LazyFrame.collect = original
 
 
+@pytest.mark.usefixtures("ample_available_memory")
 @pytest.mark.parametrize(("engine", "expected_engines"), [("streaming", {"streaming"}), ("default", set())])
 def test_mcp_run_benchmark_records_requested_engine_and_collect_kwargs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, engine: str, expected_engines: set[str]
@@ -228,6 +230,31 @@ def test_mcp_run_benchmark_records_requested_engine_and_collect_kwargs(
     bundle = _only_bundle(tmp_path / "results")
     assert bundle["config"]["execution_engine"] == engine
     assert bundle["platform"]["execution_engine"]["requested"] == engine
+
+
+def test_mcp_run_benchmark_refuses_a_run_that_exceeds_the_available_memory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from benchbox.mcp import create_server
+    from tests.unit.mcp.public_api import call_tool
+
+    monkeypatch.setattr("benchbox.core.dataframe.capabilities.get_available_memory_gb", lambda: 0.5)
+    monkeypatch.setenv("BENCHBOX_OUTPUT_DIR", str(tmp_path))
+    server = create_server(results_dir=tmp_path / "results", charts_dir=tmp_path / "charts")
+    with _collect_calls() as calls:
+        response = call_tool(
+            server,
+            "run_benchmark",
+            platform="polars-df",
+            benchmark="tpch",
+            scale_factor=0.01,
+            queries="6",
+            phases="load,power",
+        )
+
+    assert "mcp_metadata" not in response or response["mcp_metadata"]["status"] != "completed"
+    assert "Insufficient memory: 0.5 GB available" in json.dumps(response)
+    assert not calls
 
 
 _STREAMING_TUNING = """execution:

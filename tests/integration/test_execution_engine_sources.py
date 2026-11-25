@@ -47,6 +47,7 @@ def _cli_run(tmp_path: Path, *args: str, output: str | None = None) -> Any:
             "--phases",
             "generate,load,power",
             *args,
+            "--ignore-memory-warnings",
             "--non-interactive",
             "--output",
             output or str(tmp_path / "out"),

@@ -14,7 +14,6 @@ from benchbox.core.runner.runner import (
     _execute_load_only_mode,
     _finalize_validation_metadata,
     _flatten_manifest_v2_entries,
-    _get_table_schemas_from_benchmark,
     _read_datagen_stats_from_manifest,
     _resolve_manifest_allowed_names,
     _resolve_manifest_entry_paths,
@@ -23,6 +22,7 @@ from benchbox.core.runner.runner import (
     _run_manifest_validation,
     _run_postload_validation,
     _run_preflight_validation,
+    get_table_schemas_from_benchmark,
 )
 from benchbox.core.schemas import BenchmarkConfig, DatabaseConfig
 from benchbox.core.validation import ValidationResult
@@ -394,17 +394,17 @@ class TestSchemaAndFormatHelpers:
         dict_benchmark = SimpleNamespace(get_schema=lambda: {"customer": {"name": "customer", "columns": []}})
         list_benchmark = SimpleNamespace(get_schema=lambda: [{"name": "Customer", "columns": []}])
 
-        assert _get_table_schemas_from_benchmark(dict_benchmark) == {"customer": {"name": "customer", "columns": []}}
-        assert _get_table_schemas_from_benchmark(list_benchmark) == {"customer": {"name": "Customer", "columns": []}}
+        assert get_table_schemas_from_benchmark(dict_benchmark) == {"customer": {"name": "customer", "columns": []}}
+        assert get_table_schemas_from_benchmark(list_benchmark) == {"customer": {"name": "Customer", "columns": []}}
 
         with pytest.raises(RuntimeError, match="does not provide get_schema"):
-            _get_table_schemas_from_benchmark(SimpleNamespace())
+            get_table_schemas_from_benchmark(SimpleNamespace())
         with pytest.raises(RuntimeError, match="Failed to get schema"):
-            _get_table_schemas_from_benchmark(
+            get_table_schemas_from_benchmark(
                 SimpleNamespace(get_schema=lambda: (_ for _ in ()).throw(ValueError("bad")))
             )
         with pytest.raises(RuntimeError, match="Unexpected schema format"):
-            _get_table_schemas_from_benchmark(SimpleNamespace(get_schema=lambda: "bad"))
+            get_table_schemas_from_benchmark(SimpleNamespace(get_schema=lambda: "bad"))
 
     def test_run_format_conversion_handles_prerequisites_and_success(self, tmp_path: Path):
         benchmark = SimpleNamespace(

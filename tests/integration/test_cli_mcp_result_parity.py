@@ -31,6 +31,7 @@ def _isolated_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, config: str 
 
 
 def _cli_bundle(tmp_path: Path, platform: str) -> dict[str, Any]:
+    dataframe_flags = ["--ignore-memory-warnings"] if platform.endswith("-df") else []
     result = run_cli_command(
         [
             "run",
@@ -46,6 +47,7 @@ def _cli_bundle(tmp_path: Path, platform: str) -> dict[str, Any]:
             QUERY,
             "--seed",
             str(SEED),
+            *dataframe_flags,
             "--non-interactive",
             "--output",
             str(tmp_path / "cli_out"),
@@ -98,6 +100,7 @@ def test_cli_and_mcp_record_the_same_config_block_for_the_same_request(
     assert mcp["platform"]["config"]["memory_limit"] == cli["platform"]["config"]["memory_limit"]
 
 
+@pytest.mark.usefixtures("ample_available_memory")
 @pytest.mark.parametrize("platform", ["polars-df"])
 def test_dataframe_runs_record_host_load_samples_from_both_entry_points(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, platform: str
@@ -115,6 +118,7 @@ def test_dataframe_runs_record_host_load_samples_from_both_entry_points(
         assert host_load["start"]["sampled_at"] <= host_load["end"]["sampled_at"]
 
 
+@pytest.mark.usefixtures("ample_available_memory")
 @pytest.mark.parametrize("platform", ["duckdb", "polars-df"])
 def test_current_cli_and_mcp_bundles_with_compression_disabled_compare_as_the_same_mode(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, platform: str
