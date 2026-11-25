@@ -98,8 +98,11 @@ Every other cloud platform prints:
 
 > A run time limit is set. If the run times out, work BenchBox started on {platform} may keep running and billing: BenchBox cannot cancel it on this platform.
 
-Cleanup has not been checked against live services. It is verified only with stubbed clients: no cloud run was made
-and no credentials were used. Work may keep running and billing after a timeout until a live check has been done.
+Cleanup is verified with stubbed clients on every platform that has it. Only BigQuery has also been checked live: a
+query started through the adapter and cancelled by `cancel_remote_work` ended as `stopped` ("Job execution was
+cancelled: User requested cancellation") with nothing billed, and a TPC-H run stopped at its limit exited with code 124
+and left no job running. On the other platforms, work may keep running and billing after a timeout until a live check
+has been done.
 
 The cleanup starts when the run times out: when the timeout is recorded, or when the limit passes, whichever comes
 first. It calls one hook, `PlatformAdapter.cancel_remote_work`, on each adapter the run created. An adapter cancels
