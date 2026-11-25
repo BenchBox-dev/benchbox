@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "A restarted agent session keeps its tracker identity without letting concurrent sessions share one, or the owner keeps the current behaviour."
+  ],
+  "context": "Filed 2026-11-25 at the close of the run-timeout effort (umbrella run-timeout-plan-20261120, done). Evidence read that day; re-read code, docs and run folders before acting.",
+  "description": "## Problem\nThe tractable MCP actor is `mcp:omp-coding-agent:joe@joe-mac-mini.local:<suffix>` with a suffix that changed every time the agent process restarted. Twice this effort a restart orphaned work the same leader still owned: on 2026-11-23 the finished batch `run-timeout-hardening` refused `take` with E_BATCH_OWNER and needed `make batch-recover` + `recover_batch_owner`; on 2026-11-25 a live claim on run-timeout-remote-cleanup-live-check-20261122 needed `takeover` (\"stale claim ... only the holder can finish\"). The skill says the same stable actor may re-adopt after a restart, which presumes a stable `--actor`.\n\n## Change\nFind where the agent's tractable MCP server is configured (repository MCP config or the harness's server registration) and whether it can pass a stable `--actor` / `TRACTABLE_ACTOR` per agent session or per human operator, without letting concurrent sessions share an actor (the skill forbids that). Propose the option to the owner.\n\n## Decision gates\n- STOP and ask the owner (choice dialog) before changing MCP or harness configuration; it may be outside this repository.\n- Never let two concurrent servers share one actor.\n\n## Verification rubric\nPass: after restarting the agent's MCP server, the same session finishes a claim it took before the restart without takeover or batch recovery; concurrent sessions still get different actors. Or the owner's recorded decision to keep the current behaviour.\nFail: a configuration that makes concurrent sessions share an actor.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:883ac124f68c0bb7e4b8a7aa",
+      "at": "2026-11-25T15:07:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1a6663039d4e4b108c7e3942f6f75df7",
+      "session_id": "0b8d661071874e74901ab9bff63c57d9"
+    }
+  ]
+}

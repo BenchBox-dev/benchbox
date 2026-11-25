@@ -53486,6 +53486,13 @@
       "status": "done",
       "title": "Track-2: statistics-phase reset/persist control, per-table breakdown, and idempotence check"
     },
+    "tracker-actor-changes-on-mcp-restart-20261125": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Tracker worker identity changes when the MCP server restarts, so claims and batch ownership need recovery"
+    },
     "tracker-claims-shared-identity-parallel-agents": {
       "claim": null,
       "needs": [],
