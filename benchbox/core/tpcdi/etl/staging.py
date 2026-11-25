@@ -3,11 +3,14 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import split_sql_statements, translate_sql_query
 from benchbox.utils.duckdb_extensions import THIRD_PARTY_EXTENSION_OPTION, install_webbed
+
+if TYPE_CHECKING:
+    from benchbox.core.tpcdi.etl.historical import TransformStep
 
 ETL_DIR = Path(__file__).resolve().parent
 INGEST_DIR = ETL_DIR / "ingest"
@@ -40,7 +43,7 @@ class IngestStep:
 
 @dataclass(frozen=True)
 class StepResult:
-    step: IngestStep
+    step: IngestStep | TransformStep
     rows: int
     seconds: float
 
@@ -81,7 +84,7 @@ def step_parameters(source_dir: str | Path, step: IngestStep) -> dict[str, str]:
     return {step.parameter: str(batch_directory(source_dir).resolve() / step.source)}
 
 
-def render_step(step: IngestStep, platform: str = SOURCE_DIALECT) -> list[str]:
+def render_step(step: IngestStep | TransformStep, platform: str = SOURCE_DIALECT) -> list[str]:
     sql = translate_sql_query(
         step.path.read_text(encoding="utf-8"),
         platform,
@@ -96,15 +99,26 @@ def _count(connection: Any, table: str) -> int:
     return int(connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0])
 
 
-def _run_step(connection: Any, source_dir: str | Path, step: IngestStep, platform: str) -> StepResult:
-    parameters = step_parameters(source_dir, step)
-    before = _count(connection, step.table) if step.loads_into_existing_table else 0
+def run_step(
+    connection: Any,
+    step: IngestStep | TransformStep,
+    platform: str,
+    parameters: dict[str, str],
+    *,
+    table_exists: bool,
+) -> StepResult:
+    before = _count(connection, step.table) if table_exists else 0
     statements = render_step(step, platform)
     started = mono_time()
     for statement in statements:
         connection.execute(statement, parameters)
     seconds = elapsed_seconds(started)
     return StepResult(step, _count(connection, step.table) - before, seconds)
+
+
+def _run_ingest_step(connection: Any, source_dir: str | Path, step: IngestStep, platform: str) -> StepResult:
+    parameters = step_parameters(source_dir, step)
+    return run_step(connection, step, platform, parameters, table_exists=step.loads_into_existing_table)
 
 
 def load_batch1(
@@ -119,4 +133,4 @@ def load_batch1(
         if not allow_third_party_extensions:
             raise ThirdPartyExtensionRequired(xml_refusal_message())
         install_webbed(connection)
-    return [_run_step(connection, source_dir, step, platform) for step in steps]
+    return [_run_ingest_step(connection, source_dir, step, platform) for step in steps]

@@ -64,7 +64,7 @@ SELECT
   nullif(country, '') AS country,
   CASE
     WHEN nullif(phone1_local, '') IS NOT NULL THEN concat(
-      CASE WHEN nullif(phone1_ctry, '') IS NOT NULL THEN '+' || phone1_ctry || ' ' ELSE '' END,
+      CASE WHEN nullif(phone1_ctry, '') IS NOT NULL AND nullif(phone1_area, '') IS NOT NULL THEN '+' || phone1_ctry || ' ' ELSE '' END,
       CASE WHEN nullif(phone1_area, '') IS NOT NULL THEN '(' || phone1_area || ') ' ELSE '' END,
       phone1_local,
       coalesce(phone1_ext, '')
@@ -72,7 +72,7 @@ SELECT
   END AS phone1,
   CASE
     WHEN nullif(phone2_local, '') IS NOT NULL THEN concat(
-      CASE WHEN nullif(phone2_ctry, '') IS NOT NULL THEN '+' || phone2_ctry || ' ' ELSE '' END,
+      CASE WHEN nullif(phone2_ctry, '') IS NOT NULL AND nullif(phone2_area, '') IS NOT NULL THEN '+' || phone2_ctry || ' ' ELSE '' END,
       CASE WHEN nullif(phone2_area, '') IS NOT NULL THEN '(' || phone2_area || ') ' ELSE '' END,
       phone2_local,
       coalesce(phone2_ext, '')
@@ -80,7 +80,7 @@ SELECT
   END AS phone2,
   CASE
     WHEN nullif(phone3_local, '') IS NOT NULL THEN concat(
-      CASE WHEN nullif(phone3_ctry, '') IS NOT NULL THEN '+' || phone3_ctry || ' ' ELSE '' END,
+      CASE WHEN nullif(phone3_ctry, '') IS NOT NULL AND nullif(phone3_area, '') IS NOT NULL THEN '+' || phone3_ctry || ' ' ELSE '' END,
       CASE WHEN nullif(phone3_area, '') IS NOT NULL THEN '(' || phone3_area || ') ' ELSE '' END,
       phone3_local,
       coalesce(phone3_ext, '')

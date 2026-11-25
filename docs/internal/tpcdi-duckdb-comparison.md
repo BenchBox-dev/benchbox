@@ -184,11 +184,40 @@ condition holds for every differing row; one row outside it leaves the whole
 column unaccepted. Entries that accept nothing in a run are printed as unused.
 
 The list holds the differences that follow from the project's known departures
-and from the observations below. It has not been exercised against a BenchBox
-warehouse, which does not exist at this commit; the entries other than the
-answer-key ones are derived from the project's SQL and from its tables at
-scales 3, 5 and 10, and the owner's review has to confirm each against the
-first BenchBox build.
+and from the observations below. The entries for the historical dimension tables
+have been exercised against a BenchBox warehouse (see the next section); the
+others are derived from the project's SQL and from its tables at scales 3, 5 and
+10, and the owner's review has to confirm each against the BenchBox build that
+first loads their tables.
+
+## Historical dimension tables (2026-11-24)
+
+The implementation can stop after its historical phase
+(`sequential/scripts/run.py --batches 1`). Its historical warehouse was built at
+scales 3 and 5 from the same DIGen output as BenchBox's (DIGen output is
+identical between runs at one scale) and compared with BenchBox's warehouse
+after staging and the historical DimCompany, DimSecurity, Financial,
+DimCustomer, DimAccount and Prospect transformations. Both sides were reduced
+to those tables, the reference tables and the Alert and Status rows of
+`DImessages`, because the fact tables and the batch validation are not built
+yet.
+
+| Scale | Rows equal on all six tables | Differences | Unaccepted |
+|---|---|---|---|
+| 3 | yes | `SK_SecurityID` on 2243 rows, BatchDate rows of Batches 2 and 3, alert and status message groups, exact numeric types | 0 |
+| 5 | yes | `SK_SecurityID` on 3750 rows, BatchDate rows of Batches 2 and 3, alert and status message groups, exact numeric types | 0 |
+
+The implementation writes its alerts after Batch 3, so its historical warehouse
+holds none. Against its full three-batch run, BenchBox's Batch 1 alert counts at
+scale 3 are equal for customer tier (252) and date of birth (8) and larger for
+SPRating (154 against 113), because the implementation makes repeated alerts
+distinct.
+
+The fact tables key `FactMarketHistory`, `FactHoldings`, `FactWatches` and
+`DimTrade` on `SK_SecurityID`. BenchBox numbers securities by effective date and
+symbol, the implementation by effective date alone with ties in no defined order,
+so a comparison of those tables has to match securities through `Symbol` and
+`EffectiveDate`.
 
 ## Results of the early run (2026-11-22)
 
