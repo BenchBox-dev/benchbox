@@ -36306,7 +36306,9 @@
     },
     "migrate-local-sql-rewrites-into-sqlglot-fork-20261120": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "sqlglot-rewrites-into-fork"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Move BenchBox's local SQL compatibility rewrites into the SQLGlot fork"
