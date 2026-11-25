@@ -120,9 +120,8 @@ Row-count references live in `benchbox/core/expected_results/reference_row_count
 benchmark and scale factor, read through `row_count_references.py`. Each file lists the exact
 streams (TPC-H qgen defaults, TPC-DS per-template RNGSEED 1001-1004 and STREAMS RNGSEED 42 files 0-8,
 SSB stream 0) and records how it was made: data generator and stamp, query generation identity, data
-checksum, reference engines and versions, date and the agreement result. The TPC answer set is the
-reference for TPC-H at SF 1 on the default parameters; every other reference is labelled "agreement
-with <engine versions>" because no TPC answer exists for it. Validator output carries the
+checksum, reference engines and versions, date and the agreement result. Every reference is labelled "agreement with <engine versions>"; the TPC-H SF 1 file also records
+that its default-parameter counts equal the TPC answer set. Validator output carries the
 reference kind (`reference_kind`, `reference_label`; DataFrame evidence lists `reference_kinds`). A
 reference is regenerated, never edited:
 `make row-count-references-regen BENCHMARK=<tpch|tpcds|ssb> SCALE=<scale factor> WORK_DIR=<durable directory>`

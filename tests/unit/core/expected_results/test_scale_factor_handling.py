@@ -55,8 +55,8 @@ class TestScaleFactorHandling:
         )
 
         assert result.is_valid
-        assert result.expected_row_count == 4
-        assert result.validation_mode == ValidationMode.EXACT
+        assert result.unvalidated
+        assert result.expected_row_count is None
 
     def test_scale_dependent_query_skipped_at_sf_10(self):
         validator = QueryValidator()
@@ -72,7 +72,7 @@ class TestScaleFactorHandling:
         assert result.unvalidated
         assert result.validation_mode == ValidationMode.SKIP
         assert result.warning_message is not None
-        assert "no reference answers exist" in result.warning_message
+        assert "no row-count reference" in result.warning_message
 
     def test_validation_with_none_scale_factor_defaults_to_1(self):
         validator = QueryValidator()
@@ -215,6 +215,5 @@ class TestScaleFactorHandling:
 
         assert all(r.is_valid for r in results)
 
-        expected_counts = [r.expected_row_count for r in results]
-        assert len(set(expected_counts)) == 1
-        assert expected_counts[0] == 4
+        assert [r.expected_row_count for r in results] == [4, None, None, 4]
+        assert [r.unvalidated for r in results] == [False, True, True, False]

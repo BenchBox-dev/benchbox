@@ -17,7 +17,7 @@ from benchbox.core.results.query_status import (
     row_evidence_roll_up,
 )
 from benchbox.core.validation.query_validation import validation_skipped_by_configuration
-from benchbox.core.validation.stream_checks import QueryGeneration, decide_row_count
+from benchbox.core.validation.stream_checks import QueryGeneration, decide_row_count, reference_for
 
 _MAX_EVIDENCE_MESSAGE_CHARS = 500
 
@@ -150,6 +150,10 @@ def _apply_reference_row_counts(
             evidence,
         )
         return None
+    try:
+        reference_for(benchmark_id, scale_factor)
+    except Exception as exc:
+        return _record_oracle_initialization_error(successful_rows, evidence, exc)
     _apply_row_count_oracle(
         successful_rows,
         lambda query_id, actual, row: _decide_stream_row(benchmark_id, scale_factor, query_id, actual, row, seed),

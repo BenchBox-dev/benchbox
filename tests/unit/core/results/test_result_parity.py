@@ -397,8 +397,8 @@ def test_exported_sql_and_dataframe_bundles_share_cross_mode_contract(tmp_path):
     }
     assert required_top_level.issubset(sql_payload)
     assert required_top_level.issubset(df_payload)
-    assert set(sql_payload) - set(df_payload) <= {"tables"}
-    assert set(df_payload) - set(sql_payload) <= {"tables"}
+    assert set(sql_payload) - set(df_payload) <= {"tables", "validation"}
+    assert set(df_payload) - set(sql_payload) <= {"tables", "validation"}
     assert sql_payload["result_schema_version"] == df_payload["result_schema_version"]
     assert sql_payload["version"] == "2.7"
     assert df_payload["version"] == "2.7"

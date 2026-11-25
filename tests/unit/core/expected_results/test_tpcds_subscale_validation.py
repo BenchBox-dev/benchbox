@@ -147,7 +147,7 @@ def test_tpcds_invalid_env_mode_does_not_opt_out(monkeypatch) -> None:
 
 
 def test_tpcds_unrecorded_scale_is_unvalidated_and_structural_bounds_still_run() -> None:
-    unvalidated = _sql("3", 999, QueryGeneration(seed=1), scale=0.5)
+    unvalidated = _sql("2", 999, QueryGeneration(seed=1), scale=0.5)
     too_many = _sql("1", 150, QueryGeneration(seed=1), scale=0.5)
 
     assert unvalidated.unvalidated and unvalidated.validation_mode == ValidationMode.SKIP
@@ -171,8 +171,14 @@ def test_tpcds_dataframe_row_passes_at_the_reference_seed(seed: int | None) -> N
 
 
 def test_tpcds_dataframe_mutated_count_fails() -> None:
+    from benchbox.core.expected_results.structural_bounds import structural_bound
+
     reference = _reference()
-    query = next(q for q in QUERY_IDS["tpcds"] if q not in reference.integrity.invariant_counts)
+    query = next(
+        q
+        for q in QUERY_IDS["tpcds"]
+        if q not in reference.integrity.invariant_counts and not structural_bound("tpcds", q)
+    )
     wrong = _measurement(query_id=query, rows=_stream_counts()[query] + 1)
 
     summary = validate_dataframe_query_results([wrong], benchmark_name="tpcds", scale_factor=SCALE)

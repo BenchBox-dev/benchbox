@@ -90,14 +90,14 @@ def normalize_statement_id(benchmark: str, query_id: str | int) -> str:
 
 
 @lru_cache(maxsize=16)
-def _reference(benchmark: str, scale_factor: float) -> RowCountReference | None:
+def reference_for(benchmark: str, scale_factor: float) -> RowCountReference | None:
     if not has_reference(benchmark, scale_factor):
         return None
     return load_row_count_reference(benchmark, scale_factor, require_current=False)
 
 
 def clear_reference_cache() -> None:
-    _reference.cache_clear()
+    reference_for.cache_clear()
 
 
 def _short(stamp: str | None) -> str:
@@ -250,7 +250,7 @@ def decide_row_count(
         raise ValueError(f"stream checks cover TPC-H and TPC-DS, not {benchmark_type!r}")
     scale = float(scale_factor or 1.0)
     statement = normalize_statement_id(benchmark, query_id)
-    reference = _reference(benchmark, scale)
+    reference = reference_for(benchmark, scale)
     if reference is not None and statement not in QUERY_IDS[benchmark]:
         return ValidationResult(
             is_valid=False,
@@ -431,7 +431,7 @@ def stream_checks_record(benchmark_id: str, scale_factor: float, query_rows: lis
             counts[check] = counts.get(check, 0) + 1
     if not counts:
         return None
-    reference = _reference(benchmark, float(scale_factor))
+    reference = reference_for(benchmark, float(scale_factor))
     references = []
     if reference is not None and reference.file_sha256 and reference.integrity is not None:
         references.append(
