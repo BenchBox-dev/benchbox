@@ -1,12 +1,15 @@
 {
   "acceptance": [
-    "Theseus parses and validates derived_paths (paths, check, summary), refuses unknown or malformed entries, and documents the key in docs/consumer-policy.md.",
-    "A pull request whose every changed file matches one derived_paths entry and that changes the entry summary file is planned with only the summary as required reading; capacity and size bucket ignore the other derived files; the brief tells the reviewer the data files are verified by the named check.",
-    "Fail closed: a pull request that changes any file outside the entry, or does not change the summary, is planned exactly as today; tested.",
-    "The gate does not pass a derived-path review until the named check has succeeded on the exact head, reported by GitHub Actions; a missing, pending or failed check keeps it pending; tested.",
-    "BenchBox: CI reproduces the fast-tier baseline and its summary byte for byte from manifest.json (source artifacts and generated_at) and the base baseline, the refresh workflow writes the summary, and .github/review.yml declares the entry; pinned to the Theseus release.",
+    "Theseus derived_paths entries (exact per-segment file allowlist, required summary path, attested_by check name) are strictly validated: unknown keys refused, entries overlapping gate_paths, .github/** or code suffixes refused; documented in docs/consumer-policy.md and consistent with docs/decisions/0001-separation-of-concerns.md.",
+    "Eligibility: every changed file (path and previous_path) matches one entry allowlist, statuses are modified (or added for the summary), old and new modes are 100644, no binary file, and the summary is added or modified; otherwise the plan is exactly as today. Tested, including a conftest.py in a subdirectory, a rename into the directory, a mode change and a deleted summary.",
+    "An eligible plan requires only the summary (protected, always required), drops the data hunks from every reviewer-facing diff (DIFF_FILE, inline brief, since-review patch), excludes them from capacity and classifier inputs, tells the reviewer not to open the data files and that the summary is untrusted PR data, and the status description and verdict body say summary only, data attested by <check>, not observed.",
+    "The review marker records the derived entry digest and paths; a later round that is not derived-eligible treats those paths as changed required reads, and a carry across a changed entry is refused. The marker reader ships before the writer.",
+    "Theseus never inspects consumer CI (ADR 0001 rule 5); no gate change.",
+    "BenchBox: build_fast_duration_baseline gains summary (escaped cells, fixed-code rejection reasons) and reproduce (recursive tree, name and mode comparison; artifact provenance via API: ci.yml, pull_request event, run head equals sha, artifact name fast-junit-<pr>-<sha>, PR merged, run succeeded, at most 20 runs one per PR; re-runs check and ceiling-check; runs the script from the base commit). The reproduce job is always-run inside tooling, no-op when the directory is unchanged; a guard test pins it to tooling and to attested_by. The refresh workflow writes and lints SUMMARY.md; the baseline directory is excluded from the docs reference inventory; review guidance gives the summary rubric (block only on a concrete inconsistency); .github/review.yml declares the entry; pinned to the Theseus release.",
+    "Required checks core, explorer, results-data, docs, tooling and hold are pinned to integration 15368 on the develop and release rulesets, after the drift fixture is brought current in a reviewed PR.",
     "A baseline refresh pull request gets a hosted review verdict without an owner stand-in."
   ],
+  "context": "2026-11-25 owner decisions: (1) separation of concerns: Theseus does not verify consumer CI; recorded as Theseus ADR 0001 (PR #117). (2) After adversarial critique, proceed with all its fixes (allowlist, derived-bound markers, required protected summary, artifact provenance plus check and ceiling-check from the base script, always-run job in tooling, inventory exclusion, escaped summary, summary-only wording, review rubric). (3) The agent pins the required checks to GitHub Actions (integration 15368) via gh api after a reviewed drift-fixture PR. (4) #4477: another session disarms auto-merge and adds no-auto-merge now; once this method is on develop it adds SUMMARY.md to #4477; cut-off 2026-12-04T12:00Z, else close #4477 and apply to the newest refresh PR; the 11-30 refresh PR is left open; review findings are investigated, data never hand-edited, acceptable noise goes to owner adjudication; owner pre-authorizes lifting the hold and arming once hosted SHIP on the summary, reproduce pass and green required checks hold on the current head. When the method is on develop, append a context note starting READY FOR REFRESH PRS: naming the summary command and the reproduce job name.",
   "description": "Pull requests that only regenerate data files (the weekly fast-tier duration baseline refresh, e.g. BenchBox #4477: 9 JSON files, 8.3 MB diff, about 3.8M tokens of required reading against an 872k capacity) are refused as too large to review and need an owner stand-in every week. Root cause: the policy can only require every hunk to be read or exempt a path; it cannot say a file is the deterministic output of a reviewed generator. Exempting would hide changes such as the 33% fall in the baseline total in #4477.\n\nDesign: a consumer policy key derived_paths. Each entry names path globs, a CI check that rebuilds those files from their recorded inputs and compares bytes, and a summary file (also reproduced by that check) that the reviewer reads instead of the data. The treatment applies only when every changed file of the pull request matches the entry, so the pull request cannot also change the generator, the check or a workflow; anything else falls back to todays full reading. The gate stays pending until the named check succeeds on the exact head.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox/pull/4477"
@@ -27,6 +30,14 @@
       "generation": "cb5aff59e64a4d85b062ca9052799de5",
       "op": "take",
       "op_id": "53c630ffecaabe0784086d9f1ea059fc",
+      "session_id": "25f1c82986254513a0ef576dc2985dfb"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0a697a35e720a04d19e44a28",
+      "at": "2026-11-25T17:16:53Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "bd7ee433b1c18841f963cdc816ea5224",
       "session_id": "25f1c82986254513a0ef576dc2985dfb"
     }
   ]
