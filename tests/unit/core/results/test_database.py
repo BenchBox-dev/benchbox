@@ -917,6 +917,32 @@ def test_rankings_use_comparison_version_for_grouping_and_trends(tmp_path):
     assert {row.platform_version: row.trend for row in rankings} == {"1": "up", "2": "stable"}
 
 
+@pytest.mark.parametrize("metric", ["geometric_mean", "cost_efficiency"])
+def test_rankings_list_each_result_once_per_lane_and_restart_ranks_per_lane(tmp_path, metric):
+    db = ResultDatabase(tmp_path / "results.db")
+    for platform, facts, score in [
+        ("full", FULL_SPEC, 100),
+        ("partial", _facts("tpch", 1, "power", "throughput"), 50),
+        ("power", _facts("tpch", 1, "power"), 200),
+        ("throughput", _facts("tpch", 1, "throughput"), 300),
+    ]:
+        db.store_result(create_test_result(execution_id=platform, platform=platform), facts)
+        with sqlite3.connect(db.db_path) as conn:
+            conn.execute(
+                "UPDATE results SET geometric_mean_ms = ?, total_cost = ?, successful_queries = 1 "
+                "WHERE execution_id = ?",
+                (score, score, platform),
+            )
+    rankings = db.calculate_rankings("TPC-H", 1, RankingConfig(metric=metric))
+    assert [(row.lane, row.rank, row.platform) for row in rankings] == [
+        ("combined", 1, "full"),
+        ("power_only", 1, "partial"),
+        ("power_only", 2, "power"),
+        ("throughput", 1, "partial"),
+        ("throughput", 2, "throughput"),
+    ]
+
+
 SPEC_METRIC_CASES = [
     pytest.param(
         "TPC-H",

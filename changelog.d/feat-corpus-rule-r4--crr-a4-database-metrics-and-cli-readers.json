@@ -9,7 +9,7 @@
     {
       "category": "changed",
       "breaking": false,
-      "text": "Report rankings recompute scores from timings and group runs by derived lane and comparison identity."
+      "text": "Report rankings recompute scores from timings and group runs by derived lane and comparison identity; each lane is its own ranking, so a result appears once per lane and rank numbers restart for each lane."
     }
   ]
 }

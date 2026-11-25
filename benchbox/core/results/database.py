@@ -829,7 +829,7 @@ class ResultDatabase:
                     {mode_filter}
                 GROUP BY ranking_groups.lane, ranking_groups.variant, ranking_groups.version
                 HAVING COUNT(*) >= ?
-                ORDER BY avg_score {order}
+                ORDER BY ranking_groups.lane, avg_score {order}
             """,
                 (benchmark, scale_factor, cutoff.isoformat(), config.min_samples),
             )
@@ -869,7 +869,9 @@ class ResultDatabase:
             }
 
             rankings = []
-            for rank, row in enumerate(current_results, 1):
+            lane_ranks: dict[str, int] = {}
+            for row in current_results:
+                rank = lane_ranks[row["lane"]] = lane_ranks.get(row["lane"], 0) + 1
                 platform = row["platform"]
                 current_score = row["avg_score"]
                 prev_score = previous_scores.get((row["lane"], row["variant"], row["version"]))
