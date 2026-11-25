@@ -94,9 +94,9 @@ def _bundle_paths(results_dir: Path | Sequence[Path]) -> list[Path] | None:
 def _build_rows(bundle_paths: Sequence[Path]) -> list[_RollupRow]:
     rows: list[_RollupRow] = []
     for bundle_path in bundle_paths:
-        platform, benchmark, scale, compliance_class = _read_bundle_metadata(bundle_path)
+        platform, benchmark, scale, refusal = _read_bundle_metadata(bundle_path)
 
-        if compliance_class is not None:
+        if refusal in _UNOFFICIAL_REFUSALS:
             rows.append(
                 _RollupRow(
                     platform=platform,
@@ -106,7 +106,7 @@ def _build_rows(bundle_paths: Sequence[Path]) -> list[_RollupRow]:
                     validator_status="refused-by-cli",
                     error_count=0,
                     warning_count=0,
-                    first_error=f"compliance_class={compliance_class}",
+                    first_error=_refusal_text(refusal),
                 )
             )
             continue
@@ -128,19 +128,30 @@ def _build_rows(bundle_paths: Sequence[Path]) -> list[_RollupRow]:
             continue
 
         result = results[0]
+        errors = list(result.errors)
+        if refusal in _SCHEMA_VIOLATION_REFUSALS:
+            errors.insert(0, _refusal_text(refusal))
         rows.append(
             _RollupRow(
                 platform=platform,
                 benchmark=benchmark,
                 scale=scale,
                 result_path=str(bundle_path),
-                validator_status=_classify(len(result.errors), len(result.warnings)),
-                error_count=len(result.errors),
+                validator_status=_classify(len(errors), len(result.warnings)),
+                error_count=len(errors),
                 warning_count=len(result.warnings),
-                first_error=(result.errors or result.warnings or [""])[0],
+                first_error=(errors or result.warnings or [""])[0],
             )
         )
     return rows
+
+
+_UNOFFICIAL_REFUSALS = frozenset({corpus_rule.HELD_GATEWAY_ROUTED, corpus_rule.CLASS_SUBSCALE})
+_SCHEMA_VIOLATION_REFUSALS = frozenset({corpus_rule.CLASS_UNDETERMINED, corpus_rule.HELD_NO_TIMED_PHASE})
+
+
+def _refusal_text(refusal: str) -> str:
+    return f"compliance_class={PUBLIC_REFUSAL_REASONS[refusal]}"
 
 
 _TUNING_PRIVACY_PREFIX = "Public privacy contract rejects unanonymized tuning diagnostics"
@@ -182,7 +193,7 @@ def _read_bundle_metadata(bundle_path: Path) -> tuple[str, str, str, str | None]
 
     benchmark = "-"
     scale = "-"
-    compliance_class: str | None = None
+    refusal: str | None = None
     raw_benchmark = data.get("benchmark")
     if isinstance(raw_benchmark, dict):
         benchmark_id = raw_benchmark.get("id")
@@ -192,15 +203,8 @@ def _read_bundle_metadata(bundle_path: Path) -> tuple[str, str, str, str | None]
         if scale_factor is not None:
             scale = str(scale_factor)
         refusal = corpus_rule.public_refusal_for_facts(corpus_rule.facts_from_result(data))
-        if refusal in {
-            corpus_rule.HELD_GATEWAY_ROUTED,
-            corpus_rule.CLASS_SUBSCALE,
-            corpus_rule.CLASS_UNDETERMINED,
-            corpus_rule.HELD_NO_TIMED_PHASE,
-        }:
-            compliance_class = PUBLIC_REFUSAL_REASONS[refusal]
 
-    return platform, benchmark, scale, compliance_class
+    return platform, benchmark, scale, refusal
 
 
 def _classify(error_count: int, warning_count: int) -> str:

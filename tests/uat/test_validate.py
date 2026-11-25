@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from benchbox.core.results.submit_classification import SubmitTerminalState, classify_result_path
 from tests.uat.phases import validate
 
 pytestmark = pytest.mark.medium
@@ -58,20 +59,44 @@ def _write_tsv(path: Path, statuses: list[str]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-@pytest.mark.parametrize("phases", [None, "missing"])
-def test_run_validate_refuses_absent_phases_as_undetermined(tmp_path: Path, phases: str | None) -> None:
+def _without_phases(data: dict) -> None:
+    del data["phases"]
+
+
+def _null_phases(data: dict) -> None:
+    data["phases"] = None
+
+
+def _untimed(data: dict) -> None:
+    data["phases"] = {"validation": {"status": "PASSED"}}
+    data["queries"] = []
+
+
+@pytest.mark.parametrize(
+    ("mutate", "reason"),
+    [(_without_phases, "undetermined"), (_null_phases, "undetermined"), (_untimed, "no_timed_phase")],
+)
+def test_run_validate_counts_bundles_the_cli_treats_as_schema_violations_as_errors(
+    tmp_path: Path, mutate, reason: str
+) -> None:
     data = _minimal_bundle()
     data["version"] = "2.4"
-    if phases == "missing":
-        del data["phases"]
-    else:
-        data["phases"] = phases
+    mutate(data)
     path = _write_bundle(tmp_path / "result.json", data)
+    clean = _write_bundle(tmp_path / "clean.json", _minimal_bundle())
 
-    result = validate.run_validate([path], output_tsv=tmp_path / "rollup.tsv")
+    result = validate.run_validate([path, clean], output_tsv=tmp_path / "rollup.tsv", floor=0.80)
 
-    assert result.refused_count == 1
-    assert "compliance_class=undetermined" in result.rollup_tsv_path.read_text(encoding="utf-8")
+    assert classify_result_path(path) is SubmitTerminalState.schema_violation
+    assert result.refused_count == 0
+    assert result.error_count == 1
+    assert result.clean_rate == 0.5
+    assert result.exit_code() == 1
+    row = next(
+        line for line in result.rollup_tsv_path.read_text(encoding="utf-8").splitlines() if "result.json" in line
+    )
+    assert row.split("\t")[4] == "error"
+    assert row.split("\t")[7] == f"compliance_class={reason}"
 
 
 def test_run_validate_writes_rollup_and_computes_counts_without_subprocess(tmp_path: Path):
