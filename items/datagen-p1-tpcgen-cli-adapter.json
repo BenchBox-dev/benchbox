@@ -48,6 +48,17 @@
       "op": "take",
       "op_id": "d03fd9b3293d44aa80fea6f51182a6cc",
       "session_id": "0b38a6aeb0a54a6c8285decb5b958f61"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-25T13:33:02Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:antigravity-client:joe@joe-mac-mini.local:09e72875364dbf224cdb1ab5",
+      "generation": "83bbd75e3724479b8d4c7cdf7c37627d",
+      "op": "takeover",
+      "op_id": "7c1e2a9f3b5d4e6f8a0b1c2d3e4f5a61",
+      "reason": "Owner asked this session to take over the effort. No antigravity client process is running on joe-mac-mini; the holder's worktree feat/tpcgen-cli-adapter is clean at f7e06d44c4 with no index.lock or open writers.",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
 }

@@ -26661,10 +26661,10 @@
     },
     "datagen-p1-tpcgen-cli-adapter": {
       "claim": {
-        "expires_at": "2026-11-26T07:00:24Z",
-        "generation": "c7387672632340f6ade6a46c8595c90d",
+        "expires_at": "2026-11-26T13:33:02Z",
+        "generation": "83bbd75e3724479b8d4c7cdf7c37627d",
         "renewals": 0,
-        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:09e72875364dbf224cdb1ab5"
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
       },
       "needs": [
         "datagen-p1-provenance-and-backend-selector",
