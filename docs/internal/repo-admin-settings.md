@@ -227,8 +227,10 @@ do first).
    that comment it stays bound; an agent never substitutes for it.
 5. Merge the named pull request at the named head.
 6. Restore the context immediately, whether the merge succeeded or failed,
-   before retrying, starting other work, or recording notes. If `review-gate`
-   was removed, restore it bound to integration 5201041 (`benchbox-review` App).
+   before retrying, starting other work, or recording notes. Restore it with
+   the `integration_id` the capture shows: 15368 (GitHub Actions) for the six
+   result contexts and `release-v2 probe`, 5201041 (`benchbox-review` App) for
+   `review-gate`. The GitHub UI defaults to any source, so set it explicitly.
 7. Read back and compare with the capture, using a token that can see
    `bypass_actors`:
    `gh auth token | uv run -- python scripts/ruleset_drift_check.py --token-stdin --compare-capture /tmp/ruleset-15611785-before.json`.
@@ -446,9 +448,10 @@ The soundness gate, as operated:
   soundness-path commit that merged without a success review or
   another review signal. The develop review check
   (`review_enforcement_findings`) fails unless `review-gate` is required with
-  the App's integration ID, but the drift check's context comparison ignores
-  `integration_id`, so read the binding by hand after any ruleset edit with the
-  `required_check_bindings` field of the Verify command above, or
+  the App's integration ID, and the drift check compares every required
+  context's `integration_id` with the binding this runbook lists. To read the
+  bindings by hand after a ruleset edit, use the `required_check_bindings` field
+  of the Verify command above, or
   `gh api repos/BenchBox-dev/benchbox/rulesets/15611785 --jq '[.rules[] | select(.type == "required_status_checks") | .parameters.required_status_checks[]? | {context, integration_id}]'`,
   and compare the `review-gate` entry with `gh api apps/benchbox-review --jq .id`.
 - `make pr-open` does not arm auto-merge when it creates a PR. `make pr-arm`
