@@ -22,17 +22,17 @@ def _payload(benchmark: str, scale: float) -> dict:
     return json.loads(references.reference_path(benchmark, scale).read_text(encoding="utf-8"))
 
 
-@pytest.mark.parametrize(("benchmark", "scale"), INTEGRITY_REFERENCES)
-def test_every_reference_is_current_with_the_data_stamp_and_the_query_generation(benchmark, scale) -> None:
-    reference = references.load_row_count_reference(benchmark, scale)
+@pytest.mark.parametrize(("suite", "scale"), INTEGRITY_REFERENCES)
+def test_every_reference_is_current_with_the_data_stamp_and_the_query_generation(suite, scale) -> None:
+    reference = references.load_row_count_reference(suite, scale)
 
-    assert reference.query_generation_hash == current_query_generation_hash(benchmark)
-    assert reference.data_stamp == datagen_version.compute_base_constants_hash(benchmark)
+    assert reference.query_generation_hash == current_query_generation_hash(suite)
+    assert reference.data_stamp == datagen_version.compute_base_constants_hash(suite)
 
 
-@pytest.mark.parametrize(("benchmark", "scale"), INTEGRITY_REFERENCES)
-def test_every_integrity_section_lists_the_required_draws_engines_and_stamp(benchmark, scale) -> None:
-    reference = references.load_row_count_reference(benchmark, scale)
+@pytest.mark.parametrize(("suite", "scale"), INTEGRITY_REFERENCES)
+def test_every_integrity_section_lists_the_required_draws_engines_and_stamp(suite, scale) -> None:
+    reference = references.load_row_count_reference(suite, scale)
     sample = reference.integrity.sample
     minimum = references.MIN_INTEGRITY_DRAWS if scale <= 1.0 else references.MIN_INTEGRITY_DRAWS_ABOVE_SF1
 
@@ -42,7 +42,7 @@ def test_every_integrity_section_lists_the_required_draws_engines_and_stamp(benc
     assert sample["agreement"]["draws"] >= references.MIN_AGREEMENT_DRAWS
     assert {group["group"] for group in sample["groups"]} == references.INTEGRITY_GROUPS
     assert {group["path"] for group in sample["groups"]} >= (
-        {"per_template", "streams"} if benchmark == "tpcds" else {"qgen"}
+        {"per_template", "streams"} if suite == "tpcds" else {"qgen"}
     )
     assert sample["data_stamp"] == reference.provenance["generator"]["data_stamp"]
     assert sample["query_generation"] == reference.provenance["generator"]["query_generation"]

@@ -250,7 +250,8 @@ def decide_row_count(
         raise ValueError(f"stream checks cover TPC-H and TPC-DS, not {benchmark_type!r}")
     scale = float(scale_factor or 1.0)
     statement = normalize_statement_id(benchmark, query_id)
-    if statement not in QUERY_IDS[benchmark]:
+    reference = _reference(benchmark, scale)
+    if reference is not None and statement not in QUERY_IDS[benchmark]:
         return ValidationResult(
             is_valid=False,
             query_id=str(query_id),
@@ -264,7 +265,6 @@ def decide_row_count(
             ),
         )
     generation = generation or QueryGeneration()
-    reference = _reference(benchmark, scale)
 
     bound, failure = _structural(benchmark, statement, actual_row_count, generation, reference)
     if failure is not None:
