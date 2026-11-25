@@ -26918,7 +26918,7 @@
         "datagen-p1-tpcgen-cli-adapter"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Adopt tpcgen-cli --no-trailing-delimiter and delete the post-write strip once upstream releases it"
     },
     "dataproc-gcs-helpers-duplicated-20261125": {
