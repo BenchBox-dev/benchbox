@@ -15086,9 +15086,9 @@
         "tpcdi-historical-facts-20261121",
         "tpcdi-12-duckdb-historical-load-and-audit-20261120"
       ],
-      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4e373c3ffd2cd229e1d72fba",
-      "owner_epoch": 1,
-      "owner_generation": "6cc3248799de9bd807161c7bffb985e0",
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42bf49f5647c029c274baf89",
+      "owner_epoch": 2,
+      "owner_generation": "14740335c3d759dc21b21faa71a110b2",
       "project_id": "tpcdi-correction-plan-20261120",
       "recoveries": [
         {
@@ -15100,6 +15100,16 @@
           "previous_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1b9c0e3a9d406db652098bdd",
           "reason": "leader session restarted; same leader resumes the batch",
           "session_id": "053d0f09537e4b5c969ecfcd0c07eb07"
+        },
+        {
+          "at": "2026-11-25T14:22:34Z",
+          "client": "omp-coding-agent",
+          "epoch": 2,
+          "new_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42bf49f5647c029c274baf89",
+          "op_id": "bf32e5efbdda4155abd2129c4e7045d1",
+          "previous_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4e373c3ffd2cd229e1d72fba",
+          "reason": "The leader session ended with a host restart and its MCP client cannot resume; this session continues the batch.",
+          "session_id": "874b2c1c7639488a851143d397e95e0b"
         }
       ],
       "repository": "https://github.com/BenchBox-dev/BenchBox.git",

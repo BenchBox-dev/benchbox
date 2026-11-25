@@ -71,6 +71,16 @@
       "op_id": "77d3bb2a95434c01ab3edc18daa6fde8",
       "reason": "leader session restarted; same leader resumes the batch",
       "session_id": "053d0f09537e4b5c969ecfcd0c07eb07"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42bf49f5647c029c274baf89",
+      "at": "2026-11-25T14:22:35Z",
+      "client": "omp-coding-agent",
+      "displaced": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4e373c3ffd2cd229e1d72fba",
+      "op": "recover",
+      "op_id": "bf32e5efbdda4155abd2129c4e7045d1",
+      "reason": "The leader session ended with a host restart and its MCP client cannot resume; this session continues the batch.",
+      "session_id": "874b2c1c7639488a851143d397e95e0b"
     }
   ]
 }
