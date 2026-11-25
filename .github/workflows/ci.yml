@@ -1149,7 +1149,7 @@ jobs:
           name: fast-junit-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
           path: fast-junit/
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 30
           overwrite: true
 
       - name: Upload xdist failure trace
@@ -2214,17 +2214,16 @@ jobs:
           gh run cancel "${{ github.run_id }}" --repo "${{ github.repository }}" || true
           sleep 90
 
-  reproduce-fast-baseline:
-    name: Reproduce the fast-tier duration baseline
+  fast-baseline-changes:
+    name: Detect fast-tier baseline changes
     if: ${{ !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
     permissions:
-      actions: read
       contents: read
       pull-requests: read
-    env:
-      BASELINE_DIR: tests/fixtures/fast_tier_baseline
+    outputs:
+      changed: ${{ steps.changed.outputs.changed }}
     steps:
       - name: Detect baseline changes
         id: changed
@@ -2238,109 +2237,149 @@ jobs:
           gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" \
             -q '.[] | [.filename, (.previous_filename // "")] | @tsv' > "$RUNNER_TEMP/changed-files.tsv"
           total=$(wc -l < "$RUNNER_TEMP/changed-files.tsv")
-          if [ "$total" -ge 3000 ] || tr '\t' '\n' < "$RUNNER_TEMP/changed-files.tsv" | grep -q "^$BASELINE_DIR/"; then
+          if [ "$total" -ge 3000 ]; then
+            echo "::error::The pull request lists 3000 or more changed files, which is the limit of the files API, so a change under tests/fixtures/fast_tier_baseline/ cannot be ruled out. Split the pull request."
+            exit 1
+          fi
+          if tr '\t' '\n' < "$RUNNER_TEMP/changed-files.tsv" | grep -q "^tests/fixtures/fast_tier_baseline/"; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "Nothing under $BASELINE_DIR changed; nothing to reproduce."
+            echo "Nothing under tests/fixtures/fast_tier_baseline/ changed; nothing to reproduce."
           fi
 
+  collect-fast-tier-ids:
+    name: Collect the fast tier for the baseline reproduction
+    needs: fast-baseline-changes
+    if: ${{ !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
       - name: Checkout the pull request head
-        if: steps.changed.outputs.changed == 'true'
+        if: needs.fast-baseline-changes.outputs.changed == 'true'
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          path: head
           fetch-depth: 1
           persist-credentials: false
 
+      - name: Set up Python 3.12
+        if: needs.fast-baseline-changes.outputs.changed == 'true'
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        if: needs.fast-baseline-changes.outputs.changed == 'true'
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
+
+      - name: Install dependencies
+        if: needs.fast-baseline-changes.outputs.changed == 'true'
+        run: uv sync --group dev
+
+      - name: Collect the current fast tier
+        if: needs.fast-baseline-changes.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/collected"
+          uv run -- python -m pytest --collect-only -q -p no:cacheprovider -n 0 --assert=plain \
+            -m "fast and not (slow or stress or resource_heavy or live_integration)" tests/ \
+            | grep -E "^tests/.*::" | sort -u > "$RUNNER_TEMP/collected/collected-ids.txt"
+          wc -l "$RUNNER_TEMP/collected/collected-ids.txt"
+
+      - name: Upload the collected ids
+        if: needs.fast-baseline-changes.outputs.changed == 'true'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: fast-baseline-collected-ids
+          path: ${{ runner.temp }}/collected/collected-ids.txt
+          if-no-files-found: error
+          retention-days: 1
+
+  reproduce-fast-baseline:
+    name: Reproduce the fast-tier duration baseline
+    needs: [fast-baseline-changes, collect-fast-tier-ids]
+    if: ${{ !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    env:
+      BASELINE_DIR: tests/fixtures/fast_tier_baseline
+    steps:
+      - name: Require the upstream jobs
+        if: needs.fast-baseline-changes.result != 'success' || needs.collect-fast-tier-ids.result != 'success'
+        run: |
+          echo "::error::The change detection or the fast-tier collection did not succeed, so the baseline cannot be reproduced."
+          exit 1
+
       - name: Checkout the base commit that supplies the reproduction script
-        if: steps.changed.outputs.changed == 'true'
+        if: needs.fast-baseline-changes.outputs.changed == 'true'
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           path: base
           fetch-depth: 1
           persist-credentials: false
+          sparse-checkout: |
+            scripts/build_fast_duration_baseline.py
+            scripts/release_canary_sharding.py
+            tests/__init__.py
+            tests/duration_policy.py
+            tests/fixtures/fast_tier_baseline/
+            quality/fast-duration-ceiling.json
+          sparse-checkout-cone-mode: false
+
+      - name: Checkout the pull request head for its committed baseline only
+        if: needs.fast-baseline-changes.outputs.changed == 'true'
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: head
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: tests/fixtures/fast_tier_baseline/
+          sparse-checkout-cone-mode: false
 
       - name: Set up Python 3.12
-        if: steps.changed.outputs.changed == 'true'
+        if: needs.fast-baseline-changes.outputs.changed == 'true'
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.12"
 
-      - name: Install uv
-        if: steps.changed.outputs.changed == 'true'
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - name: Download the collected ids
+        if: needs.fast-baseline-changes.outputs.changed == 'true'
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          enable-cache: false
-          working-directory: base
-
-      - name: Download the source run artifacts named by the manifest
-        if: steps.changed.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY' > "$RUNNER_TEMP/artifacts.txt"
-          import json
-          import sys
-
-          manifest = json.load(open("head/tests/fixtures/fast_tier_baseline/manifest.json", encoding="utf-8"))
-          seen = []
-          for group in ("runs", "rejected_runs"):
-              for run in manifest.get(group, []):
-                  ids = (run.get("run_id"), run.get("artifact_id"))
-                  if not all(isinstance(value, int) and not isinstance(value, bool) and value > 0 for value in ids):
-                      sys.exit("manifest run records must carry positive integer run and artifact ids")
-                  seen.append(ids)
-          if not seen or len(seen) > 20:
-              sys.exit("manifest must name between 1 and 20 source runs")
-          for run_id, artifact_id in seen:
-              print(run_id, artifact_id)
-          PY
-          mkdir -p base/fast-refresh/runs
-          while read -r run_id artifact_id; do
-            gh api "repos/$REPO/actions/artifacts/$artifact_id/zip" > "$RUNNER_TEMP/artifact.zip"
-            unzip -q "$RUNNER_TEMP/artifact.zip" -d "base/fast-refresh/runs/run-$run_id"
-            rm "$RUNNER_TEMP/artifact.zip"
-          done < "$RUNNER_TEMP/artifacts.txt"
-
-      - name: Install dependencies for collection
-        if: steps.changed.outputs.changed == 'true'
-        working-directory: head
-        run: uv sync --group dev
-
-      - name: Collect the current fast tier
-        if: steps.changed.outputs.changed == 'true'
-        working-directory: head
-        shell: bash
-        run: |
-          set -euo pipefail
-          uv run -- python -m pytest --collect-only -q -p no:cacheprovider -n 0 --assert=plain \
-            -m "fast and not (slow or stress or resource_heavy or live_integration)" tests/ \
-            | grep -E "^tests/.*::" | sort -u > "$RUNNER_TEMP/collected-ids.txt"
-          wc -l "$RUNNER_TEMP/collected-ids.txt"
+          name: fast-baseline-collected-ids
+          path: ${{ runner.temp }}/collected
 
       - name: Reproduce the baseline from its source runs
-        if: steps.changed.outputs.changed == 'true'
+        if: needs.fast-baseline-changes.outputs.changed == 'true'
         working-directory: base
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          EVENT_UPDATED_AT: ${{ github.event.pull_request.updated_at }}
         run: |
           python3 -m scripts.build_fast_duration_baseline reproduce \
             --baseline "../head/$BASELINE_DIR" \
             --previous "$BASELINE_DIR" \
-            --scratch "$RUNNER_TEMP/reproduced" \
-            --collected-ids "$RUNNER_TEMP/collected-ids.txt" \
-            --ceiling quality/fast-duration-ceiling.json
+            --workdir "$RUNNER_TEMP/reproduce" \
+            --collected-ids "$RUNNER_TEMP/collected/collected-ids.txt" \
+            --ceiling quality/fast-duration-ceiling.json \
+            --not-after "$EVENT_UPDATED_AT"
 
   tooling:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'tooling (text edit)' || 'tooling' }}
-    needs: [ci-paths, content-guard, skill-integrity, audit-sha, short-checks, reproduce-fast-baseline]
+    needs: [ci-paths, content-guard, skill-integrity, audit-sha, short-checks, fast-baseline-changes, collect-fast-tier-ids, reproduce-fast-baseline]
     if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -2366,6 +2405,8 @@ jobs:
             --unit tooling \
             --needs "$NEEDS_JSON" \
             --always ci-paths \
+            --always fast-baseline-changes \
+            --always collect-fast-tier-ids \
             --always reproduce-fast-baseline \
             --always short-checks.comment-policy \
             --always short-checks.copy-guard \
