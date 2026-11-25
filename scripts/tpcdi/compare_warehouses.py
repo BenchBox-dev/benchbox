@@ -40,6 +40,9 @@ NATURAL_KEYS: dict[str, tuple[str, ...]] = {
 }
 
 MESSAGES_TABLE = "dimessages"
+SECURITY_TABLE = "dimsecurity"
+SECURITY_KEY = "sk_securityid"
+CATALOGS = ("lhs", "rhs")
 MESSAGE_COLUMNS = ("batchid", "messagetype", "messagesource", "messagetext")
 AUDIT_ABSENT = "<absent>"
 
@@ -238,11 +241,36 @@ def normalized(reference: str, own_type: str, other_type: str) -> str:
     return f"CAST({value} AS HUGEINT)"
 
 
+def stored(catalog: str) -> str:
+    return f"{catalog}_file"
+
+
 def connect(left: Path, right: Path) -> duckdb.DuckDBPyConnection:
     connection = duckdb.connect(":memory:")
-    connection.execute(f"ATTACH '{left}' AS lhs (READ_ONLY)")
-    connection.execute(f"ATTACH '{right}' AS rhs (READ_ONLY)")
+    for catalog, path in zip(CATALOGS, (left, right), strict=True):
+        connection.execute(f"ATTACH '{path}' AS {stored(catalog)} (READ_ONLY)")
+        connection.execute(f"ATTACH ':memory:' AS {catalog}")
+    resolve = all(SECURITY_TABLE in list_tables(connection, stored(catalog)) for catalog in CATALOGS)
+    for catalog in CATALOGS:
+        tables = list_tables(connection, stored(catalog))
+        for lowered, table in tables.items():
+            security = tables[SECURITY_TABLE] if resolve and lowered != SECURITY_TABLE else None
+            connection.execute(
+                f"CREATE VIEW {source(catalog, table)} AS {projection(connection, catalog, table, security)}"
+            )
     return connection
+
+
+def projection(connection: duckdb.DuckDBPyConnection, catalog: str, table: str, security: str | None) -> str:
+    columns = list_columns(connection, stored(catalog), table)
+    if security is None or SECURITY_KEY not in columns:
+        return f"SELECT * FROM {source(stored(catalog), table)}"
+    key = quote(columns[SECURITY_KEY][0])
+    return (
+        f"SELECT t.* REPLACE (s.symbol || ' ' || CAST(s.effectivedate AS VARCHAR) AS {key}) "
+        f"FROM {source(stored(catalog), table)} t "
+        f"LEFT JOIN {source(stored(catalog), security)} s ON s.{SECURITY_KEY} = t.{key}"
+    )
 
 
 def list_tables(connection: duckdb.DuckDBPyConnection, catalog: str) -> dict[str, str]:
@@ -615,8 +643,8 @@ def compare(
     report = Report(left_name, right_name)
     used: set[str] = set()
     try:
-        left_tables = list_tables(connection, "lhs")
-        right_tables = list_tables(connection, "rhs")
+        left_tables = list_tables(connection, stored("lhs"))
+        right_tables = list_tables(connection, stored("rhs"))
         for lowered in sorted(set(left_tables) | set(right_tables)):
             if lowered not in left_tables or lowered not in right_tables:
                 side = "left" if lowered in left_tables else "right"

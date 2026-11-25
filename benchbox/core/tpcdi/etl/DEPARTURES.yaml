@@ -112,8 +112,9 @@ departures:
     clause: "4.5.11.2, 4.6.10"
     project_behaviour: "FactMarketHistory.Yield is the dividend divided by the closing price, divided by 100."
     benchbox_behaviour: "Yield is the dividend divided by the closing price, multiplied by 100."
-    files: []
-    status: pending
+    files:
+      - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+    status: implemented
     approval: pending
 
   - id: fifty-two-week-date-range
@@ -121,8 +122,9 @@ departures:
     clause: "4.5.11.2"
     project_behaviour: "The 52-week high and low are taken over the 364 preceding rows and the current row."
     benchbox_behaviour: "The 52-week high and low are taken over the dates after DM_DATE minus one year."
-    files: []
-    status: pending
+    files:
+      - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+    status: implemented
     approval: pending
 
   - id: fifty-two-week-earliest-date-on-ties
@@ -130,8 +132,9 @@ departures:
     clause: "4.5.11.2"
     project_behaviour: "When several dates carry the 52-week high or low, one of them is picked without an ordering."
     benchbox_behaviour: "The earliest date on which the value occurs in the window is stored."
-    files: []
-    status: pending
+    files:
+      - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+    status: implemented
     approval: pending
 
   - id: dimtrade-batchid-fixed-at-creation
@@ -291,5 +294,69 @@ departures:
       - benchbox/core/tpcdi/etl/ingest/prospect.sql
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
       - benchbox/core/tpcdi/etl/historical/prospect.sql
+    status: implemented
+    approval: pending
+
+  - id: price-earnings-prior-four-calendar-quarters
+    kind: changed
+    clause: "4.5.11.2"
+    project_behaviour: "PERatio divides the close by the sum of the four Financial rows that precede the company's row for the quarter of DM_DATE, so a quarter without its own Financial row gets no ratio and missing quarters shift the sum back in time."
+    benchbox_behaviour: "PERatio divides the close by the sum of FI_BASIC_EPS over the company's Financial rows whose quarter starts in the four calendar quarters before the quarter of DM_DATE."
+    files:
+      - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+    status: implemented
+    approval: pending
+
+  - id: trade-status-and-type-from-lookup
+    kind: changed
+    clause: "4.5.8.2"
+    project_behaviour: "DimTrade decodes status and trade type codes into literal names."
+    benchbox_behaviour: "DimTrade joins StatusType and TradeType and stores ST_NAME and TT_NAME."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_trade.sql
+    status: implemented
+    approval: pending
+
+  - id: fact-alerts-written-inside-transformations
+    kind: changed
+    clause: "4.5.8.3, 4.5.8.4, 4.5.11.3"
+    project_behaviour: "Commission, fee and missing-earnings alerts are written in one pass after Batch 3, read back from DimTrade and FactMarketHistory, distinct per trade or symbol, with the time of that pass."
+    benchbox_behaviour: "The DimTrade and FactMarketHistory transformations write one alert per source record they process, in the historical phase, with BatchID 1."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_trade.sql
+      - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+    status: implemented
+    approval: pending
+
+  - id: fact-lookups-at-trade-creation
+    kind: kept
+    clause: "4.5.8.2, 4.5.10, 4.5.12"
+    project_behaviour: "DimTrade takes its security and account keys from the records effective on the trade's creation date; FactHoldings takes its keys and date from the current trade's DimTrade row; FactWatches and FactCashBalances take theirs from the records effective on the watch placement date and the transaction date."
+    benchbox_behaviour: "Kept. Date and time keys are read from DimDate and DimTime instead of being formatted from the timestamp."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_trade.sql
+      - benchbox/core/tpcdi/etl/historical/fact_cash_balances.sql
+      - benchbox/core/tpcdi/etl/historical/fact_holdings.sql
+      - benchbox/core/tpcdi/etl/historical/fact_watches.sql
+    status: implemented
+    approval: pending
+
+  - id: watch-placed-on-activation
+    kind: changed
+    clause: "4.5.12"
+    project_behaviour: "A watch's placement date is the earliest WatchHistory record of the customer and symbol, whatever its action."
+    benchbox_behaviour: "The placement date is the earliest ACTV record; the removal date is the latest CNCL record."
+    files:
+      - benchbox/core/tpcdi/etl/historical/fact_watches.sql
+    status: implemented
+    approval: pending
+
+  - id: time-value-typed-time
+    kind: changed
+    clause: "3.2"
+    project_behaviour: "DimTime.TimeValue is a STRING."
+    benchbox_behaviour: "DimTime.TimeValue is a TIME, the type the specification gives it."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/dim_time.sql
     status: implemented
     approval: pending

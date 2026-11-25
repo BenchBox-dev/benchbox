@@ -525,3 +525,36 @@ def test_a_tie_date_of_the_implementation_outside_the_window_is_refused(tmp_path
     implementation = replace(IMPLEMENTATION_MARKET, (2, LEAP, 0.000125, 10.0, 20200302, 5.0, 20200106))
     report = market_report(tmp_path, implementation=implementation)
     assert ("FactMarketHistory", "SK_FiftyTwoWeekHighDate") in refused(report)
+
+
+SECURITIES = [("AAA", "2020-01-01"), ("BBB", "2020-01-01"), ("AAA", "2020-02-01")]
+
+
+def build_securities(path: Path, numbering: list[int], watches: list[tuple]) -> Path:
+    connection = duckdb.connect(str(path))
+    connection.execute("CREATE TABLE DimSecurity (SK_SecurityID BIGINT, Symbol VARCHAR, EffectiveDate DATE)")
+    connection.executemany(
+        "INSERT INTO DimSecurity VALUES (?, ?, ?)",
+        [(key, *security) for key, security in zip(numbering, SECURITIES, strict=True)],
+    )
+    connection.execute(
+        "CREATE TABLE FactWatches (SK_CustomerID BIGINT, SK_SecurityID BIGINT, SK_DateID_DatePlaced BIGINT)"
+    )
+    connection.executemany("INSERT INTO FactWatches VALUES (?, ?, ?)", watches)
+    connection.close()
+    return path
+
+
+def security_findings(tmp_path: Path, right_watches: list[tuple]) -> set[tuple[str, str]]:
+    left = build_securities(tmp_path / "left.duckdb", [1, 2, 3], [(7, 1, 20200105), (7, 3, 20200205)])
+    right = build_securities(tmp_path / "right.duckdb", [2, 1, 3], right_watches)
+    return {(difference.table, difference.kind) for difference in run(left, right).unaccepted()}
+
+
+def test_fact_rows_match_through_the_security_they_reference(tmp_path):
+    assert security_findings(tmp_path, [(7, 2, 20200105), (7, 3, 20200205)]) == {("DimSecurity", "column_value")}
+
+
+def test_a_fact_row_referencing_another_security_is_a_difference(tmp_path):
+    findings = security_findings(tmp_path, [(7, 1, 20200105), (7, 3, 20200205)])
+    assert {("FactWatches", "rows_only_left"), ("FactWatches", "rows_only_right")} <= findings

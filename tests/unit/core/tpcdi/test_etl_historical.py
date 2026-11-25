@@ -16,6 +16,8 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast, pytest.mark.tpcdi]
 duckdb = pytest.importorskip("duckdb")
 
 STATUS_NAMES = ("Active", "Inactive", "Completed", "Canceled", "Pending", "Submitted")
+CREATED_TABLE = re.compile(r"CREATE TEMPORARY TABLE (\w+)")
+DROPPED_TABLE = re.compile(r"DROP TABLE (\w+)")
 
 BATCH_FILES = {
     "Date.txt": "20170707|2017-07-07|July 7, 2017|2017|2017|20173|2017 Q3|201707|2017 July|201727|2017-W27|5|Friday|2017|2017|20173|2017 Q3|false\n",
@@ -31,6 +33,8 @@ BATCH_FILES = {
 }
 
 INGEST = ("dim_date", "status_type", "industry", "tax_rate", "batch_date", "dim_broker", "prospect")
+DIMENSION_TABLES = ("DimCompany", "DimSecurity", "Financial", "DimCustomer", "DimAccount", "Prospect")
+DIMENSION_STEPS = tuple(step for step in HISTORICAL_STEPS if step.table in DIMENSION_TABLES)
 
 
 def company(name: str, cik: str, rating: str) -> str:
@@ -167,7 +171,7 @@ def warehouse(tmp_path):
         connection.execute(
             f"INSERT INTO CustomerMgmtRaw ({columns}) VALUES ({', '.join('?' for _ in row)})", list(row.values())
         )
-    results = historical.load_historical(connection)
+    results = historical.load_historical(connection, steps=DIMENSION_STEPS)
     yield connection, results
     connection.close()
 
@@ -320,4 +324,12 @@ def test_rendered_historical_sql_goes_through_the_translator():
     for step in HISTORICAL_STEPS:
         statements = staging.render_step(step)
         assert statements
-        assert all(f"INTO {step.table}" in statement or "INTO DImessages" in statement for statement in statements)
+        created = {match.group(1) for match in map(CREATED_TABLE.match, statements) if match}
+        dropped = {match.group(1) for match in map(DROPPED_TABLE.match, statements) if match}
+        assert created == dropped
+        assert all(
+            f"INTO {step.table}" in statement
+            or "INTO DImessages" in statement
+            or statement.startswith(("CREATE TEMPORARY TABLE", "DROP TABLE"))
+            for statement in statements
+        )

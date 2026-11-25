@@ -213,11 +213,31 @@ scale 3 are equal for customer tier (252) and date of birth (8) and larger for
 SPRating (154 against 113), because the implementation makes repeated alerts
 distinct.
 
-The fact tables key `FactMarketHistory`, `FactHoldings`, `FactWatches` and
-`DimTrade` on `SK_SecurityID`. BenchBox numbers securities by effective date and
-symbol, the implementation by effective date alone with ties in no defined order,
-so a comparison of those tables has to match securities through `Symbol` and
-`EffectiveDate`.
+The trade and fact tables refer to securities through `SK_SecurityID`. BenchBox
+numbers securities by effective date and symbol, the implementation by effective
+date alone with ties in no defined order. When both warehouses hold
+`DimSecurity`, the harness therefore compares every other table's
+`SK_SecurityID` as the `Symbol` and `EffectiveDate` of the security it refers to.
+
+## Historical trade and fact tables (2026-11-25)
+
+The same comparison was repeated after the historical DimTrade,
+FactCashBalances, FactHoldings, FactWatches and FactMarketHistory
+transformations, with those tables and `DimTime` kept on both sides.
+
+| Scale | Rows equal on all five tables | Differences | Unaccepted |
+|---|---|---|---|
+| 3 | yes | PERatio on 4538 rows, Yield on 1272413 rows, trade and market alert groups, `DimTime.TimeValue` type | 0 |
+| 5 | yes | PERatio on 6192 rows, Yield on 2400580 rows, trade and market alert groups, `DimTime.TimeValue` type | 0 |
+
+DimTrade, FactCashBalances, FactHoldings and FactWatches are equal row for row,
+and so are the 52-week highs and lows with their dates. Of the PERatio
+differences at scale 3, 4464 are rows where the implementation falls back to
+Financial rows older than the four calendar quarters before the trading date
+and BenchBox stores no ratio, and 74 are rows where missing quarters change the
+sum. Both sides divide in DOUBLE, so a yield whose exact quotient ends in half a
+cent may round either way on either side; the yield entry therefore accepts a
+BenchBox value within half a cent of the scaled implementation value.
 
 ## Results of the early run (2026-11-22)
 
