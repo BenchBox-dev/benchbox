@@ -25989,7 +25989,9 @@
     "crr-o5-cohort-power-stream-policy": {
       "claim": null,
       "needs": [
+        "crr-o1-official-power-after-load",
         "crr-o2-official-tpcds-stream-zero",
+        "crr-o4-official-tpch-two-runs",
         "crr-b1-identity-and-comparison-version"
       ],
       "priority": "medium-high",
