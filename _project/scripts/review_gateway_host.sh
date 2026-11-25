@@ -124,7 +124,7 @@ check_running_build() {
   listener=$(lsof -nP "-iTCP:$port" -sTCP:LISTEN -t 2>/dev/null | sort -u | paste -sd ' ' -)
   [ "$listener" = "$pid" ] \
     || fail "$label is process $pid but port $port is held by '${listener:-nothing}'; see its log in $LOG_DIR"
-  binary=$(ps -o comm= -p "$pid" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+  binary=$(lsof -a -p "$pid" -d txt -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1)
   [ -n "$binary" ] && [ -x "$binary" ] || fail "$label runs '$binary', which is not an executable file"
   ! process_predates_file "$pid" "$binary" \
     || fail "$label started before $binary was last written, so it may run an older build; run '$(basename "$0") broker' and '$(basename "$0") gateway'"

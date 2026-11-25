@@ -519,6 +519,26 @@ def _source(host: dict, body: str, env: dict | None = None) -> subprocess.Comple
     return _run(host, f"bash -c '. \"$0\"; {body}' {shlex.quote(str(host['script']))}", env)
 
 
+def test_the_running_build_is_read_from_the_program_image_not_the_process_name(host: dict) -> None:
+    binary = _executable(host["tmp"] / "pinned" / "omp", "#!/bin/sh\n")
+    os.utime(binary, (1_700_000_000, 1_700_000_000))
+    _executable(
+        host["stubs"] / "ps",
+        '#!/bin/sh\ncase "$*" in *comm=*) echo omp;; *etime=*) echo 1-00:00:00;; esac\n',
+    )
+    _executable(
+        host["stubs"] / "lsof",
+        f'#!/bin/sh\ncase "$*" in *LISTEN*) echo 4242;; *txt*) printf "p4242\\nftxt\\nn%s\\n" "{binary}";; esac\n',
+    )
+    result = _source(
+        host,
+        f"running_pid() {{ echo 4242; }}; binary_version() {{ echo 1.2.3; }}; PINNED_VERSION=1.2.3; "
+        f'PINNED_SHA=$(file_sha256 "{binary}"); check_running_build dev.omp.auth-broker 8765',
+    )
+    assert result.returncode == 0, result.stderr
+    assert f"dev.omp.auth-broker: omp 1.2.3 sha256={hashlib.sha256(binary.read_bytes()).hexdigest()}" in result.stdout
+
+
 def _revoke(host: dict, name: str) -> subprocess.CompletedProcess[str]:
     return _script(host, "revoke", name)
 
