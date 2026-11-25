@@ -556,6 +556,14 @@ def test_the_runbook_binds_every_required_check_to_the_app_that_posts_it() -> No
         }
 
 
+def test_a_runbook_context_without_an_integration_is_refused() -> None:
+    runbook = (REPO_ROOT / "docs" / "internal" / "repo-admin-settings.md").read_text(encoding="utf-8")
+    unbound = runbook.replace("- tooling (integration 15368)", "- tooling", 1)
+
+    with pytest.raises(ValueError, match="must read '- <context> \\(integration <id>\\)'"):
+        parse_expected_rulesets(unbound)
+
+
 CAPTURE_FIXTURE = REPO_ROOT / "tests" / "fixtures" / "ruleset-develop-squash-only.json"
 
 

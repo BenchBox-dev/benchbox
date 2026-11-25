@@ -316,6 +316,15 @@ History of the required contexts:
   The migration is done: `review-gate` is the only required review check, and
   `scripts/ruleset_drift_check.py` treats `oracle-gate` as drift like any other
   unexpected required context. No BenchBox script reads an `oracle-*` status.
+- 2026-11-25: every required context on `develop-squash-only` and
+  `release-branches` is bound to the App that posts it: `core`, `explorer`,
+  `results-data`, `docs`, `tooling` and `hold` to GitHub Actions (integration
+  15368), alongside the existing `review-gate` (5201041) and `release-v2 probe`
+  (15368) bindings. Before this, the six result contexts were required by name
+  only, so a commit status of that name from any token with status write access
+  satisfied them. The hosted rulesets are changed right after this runbook
+  change merges, and the drift check reports any context bound to another
+  source or listed here without an integration.
 - Review infrastructure rename: the review workflows moved from the `oracle`
   environment and its secrets to the `review` environment with `REVIEW_*`
   secrets, and the runner tag from `tag:oracle-ci` to `tag:review-ci`. The App

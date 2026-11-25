@@ -200,10 +200,10 @@ def _section_for_ruleset(text: str, name: str) -> str:
     return text[start:] if next_heading < 0 else text[start:next_heading]
 
 
-REQUIRED_CHECK_LINE = re.compile(r"^- (?P<context>.+?)(?: \(integration (?P<integration>\d+)\))?$")
+REQUIRED_CHECK_LINE = re.compile(r"^- (?P<context>.+?) \(integration (?P<integration>\d+)\)$")
 
 
-def _required_checks(section: str, name: str) -> tuple[tuple[str, int | None], ...]:
+def _required_checks(section: str, name: str) -> tuple[tuple[str, int], ...]:
     match = re.search(r"Required status checks:\n\n```text\n(.*?)\n```", section, re.DOTALL)
     if not match:
         raise ValueError(f"could not find required checks block for {name!r}")
@@ -213,9 +213,8 @@ def _required_checks(section: str, name: str) -> tuple[tuple[str, int | None], .
             continue
         parsed = REQUIRED_CHECK_LINE.match(line.strip())
         if not parsed:
-            raise ValueError(f"unreadable required check line {line!r} for {name!r}")
-        integration = parsed.group("integration")
-        checks.append((parsed.group("context").strip(), None if integration is None else int(integration)))
+            raise ValueError(f"required check line {line!r} for {name!r} must read '- <context> (integration <id>)'")
+        checks.append((parsed.group("context").strip(), int(parsed.group("integration"))))
     if not checks:
         raise ValueError(f"required checks block for {name!r} is empty")
     return tuple(checks)
@@ -253,9 +252,7 @@ def parse_expected_rulesets(runbook_text: str) -> dict[str, ExpectedRuleset]:
             deletion=props["deletion"].lower() == "blocked",
             bypass_actors_none=props["bypass_actors"].lower() == "(none)",
             do_not_enforce_on_create=_bool_from_text(props["do_not_enforce_on_create"]),
-            check_integrations=tuple(
-                (context, integration) for context, integration in checks if integration is not None
-            ),
+            check_integrations=checks,
         )
     return expected
 
