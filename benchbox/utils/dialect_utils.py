@@ -1172,6 +1172,7 @@ def translate_ddl(
     write = resolve_sql_dialect(target_dialect)
     strict_mode = current_sql_translation_strict_mode()
     fingerprint = _fingerprint_sql(ddl) if translation_collection_active() else None
+    sqlite_version = sqlite_engine_version() if write == "sqlite" else None
 
     def record(status: str, error: Exception | None = None) -> None:
         record_sql_translation_outcome(
@@ -1187,6 +1188,7 @@ def translate_ddl(
                 message=None if error is None else str(error),
                 scope=SCHEMA_DDL_SCOPE,
                 query_fingerprint=fingerprint,
+                sqlite_version=sqlite_version,
             )
         )
 
@@ -1194,7 +1196,7 @@ def translate_ddl(
         statements = ddl_module.transpile_ddl(
             ddl,
             read=read,
-            write=write,
+            write=_sqlite_generation_dialect(sqlite_version) if sqlite_version else write,
             options=ddl_module.DdlOptions(**options),
             identify=identify and write not in NO_IDENTIFY_DIALECTS,
         )

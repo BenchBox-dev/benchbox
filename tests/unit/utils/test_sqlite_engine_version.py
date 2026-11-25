@@ -16,6 +16,7 @@ from benchbox.utils.dialect_utils import (
     sql_translation_context,
     sqlite_engine_version as real_sqlite_engine_version,
     summarize_sql_translation_outcomes,
+    translate_ddl,
     translate_sql_query,
 )
 from tests.sqlite_engine_pin import pinned_sqlite_engine_version
@@ -189,3 +190,11 @@ def test_threshold_or_newer_matches_unversioned_ddl(module, monkeypatch):
         versioned = _ddl(module)
     _unversioned_sqlite(monkeypatch)
     assert versioned == _ddl(module)
+
+
+def test_schema_ddl_translation_targets_and_records_the_version():
+    with pinned_sqlite_engine_version(BELOW), sql_translation_context() as outcomes:
+        statements = translate_ddl("CREATE TABLE t (a INTEGER)", "sqlite", identify=False)
+    assert statements
+    assert outcomes[0].sqlite_version == BELOW
+    assert outcomes[0].normalized_target_dialect == "sqlite"
