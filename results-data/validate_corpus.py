@@ -821,8 +821,8 @@ UNPUBLISHED_RANKINGS_PATH = pathlib.Path(__file__).resolve().parents[1] / "scrip
 def unpublished_rule_rankings(path: pathlib.Path = UNPUBLISHED_RANKINGS_PATH) -> frozenset[str]:
     try:
         return frozenset(path.read_text(encoding="utf-8").split())
-    except OSError:
-        return frozenset()
+    except OSError as exc:
+        raise CorpusReadError(f"ERROR reading unpublished rule rankings {path}: {exc}") from exc
 
 
 def _unpublished(bundle: pathlib.Path, listed: frozenset[str]) -> bool:

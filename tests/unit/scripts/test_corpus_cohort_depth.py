@@ -2015,3 +2015,9 @@ def test_the_depth_gate_does_not_count_rankings_the_explorer_does_not_publish() 
     sqlite_run = next(entry for entry in listed if "tpch_sf1_sqlite" in entry)
     one_less = validator.cohort_platforms(bundles, listed - {sqlite_run})
     assert one_less[("tpch", "1.0")] == {"duckdb", "sqlite"}
+
+
+def test_a_missing_unpublished_rankings_list_fails_the_depth_gate(tmp_path: Path) -> None:
+    validator = _load_validator()
+    with pytest.raises(validator.CorpusReadError, match="unpublished rule rankings"):
+        validator.unpublished_rule_rankings(tmp_path / "missing.txt")
