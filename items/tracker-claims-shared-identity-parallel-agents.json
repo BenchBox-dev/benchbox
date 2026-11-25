@@ -4,7 +4,7 @@
     "A replaced MCP session of the same worker can re-adopt its own live claim with `take` (or the documented recovery is a single step), demonstrated once.",
     "No change weakens the one-claim-per-worker rule for a single worker."
   ],
-  "context": "DECISION GATE: changes to todo-db itself belong in the todo-db repository; this item covers the BenchBox-side configuration and guidance unless the owner directs otherwise.\n\n2026-11-11: merged duplicate todo-db-parallel-batch-leaders-share-claim-slot-20261106 into this item. Batch-leader case: on 2026-11-04 and 2026-11-06 four batch leaders on one MCP server shared one worker identity, so a leader's take/prepare was refused while a sibling held a claim and audit records could not tell leaders apart. Options from that item: start each leader with its own TRACTABLE_ACTOR/--actor, or have tractable scope claims per batch owner generation; record the choice in docs/agent/batch-feature-delivery.md.\n\n2026-11-20 evidence of a stranded claim after an MCP session restart: the session holding nightly-slow-tier-test-failures-reported-as-success-20261119 (worker ...ddf0baaf19c0dc8f5268288c) was restarted; the new server got a new default identity, take was refused, and the claim could only be released through takeover with a recorded reason before the owner-approved drop. A second claim (fullspec-sf1-first-runs-chdb-cedardb-20261119) was left to expire. BenchBox .mcp.json starts tractable-mcp without a stable --actor.",
+  "context": "DECISION GATE: changes to todo-db itself belong in the todo-db repository; this item covers the BenchBox-side configuration and guidance unless the owner directs otherwise.\n\n2026-11-11: merged duplicate todo-db-parallel-batch-leaders-share-claim-slot-20261106 into this item. Batch-leader case: on 2026-11-04 and 2026-11-06 four batch leaders on one MCP server shared one worker identity, so a leader's take/prepare was refused while a sibling held a claim and audit records could not tell leaders apart. Options from that item: start each leader with its own TRACTABLE_ACTOR/--actor, or have tractable scope claims per batch owner generation; record the choice in docs/agent/batch-feature-delivery.md.\n\n2026-11-20 evidence of a stranded claim after an MCP session restart: the session holding nightly-slow-tier-test-failures-reported-as-success-20261119 (worker ...ddf0baaf19c0dc8f5268288c) was restarted; the new server got a new default identity, take was refused, and the claim could only be released through takeover with a recorded reason before the owner-approved drop. A second claim (fullspec-sf1-first-runs-chdb-cedardb-20261119) was left to expire. BenchBox .mcp.json starts tractable-mcp without a stable --actor.\n\n2026-11-23: batch run-timeout-hardening refused take with E_BATCH_OWNER after the leader's MCP server restarted (actor 7c75c21c… → 4f39bd68…); needed make batch-recover + recover_batch_owner. 2026-11-25: the live claim on run-timeout-remote-cleanup-live-check-20261122 needed takeover (b46d896e… → 883ac124…). Fix lives in .mcp.json (tractable-mcp started without --actor) or the harness's server registration.",
   "description": "Observed repeatedly 2026-10-30 to 2026-11-01 while running tracker items in parallel subagents. All subagents share one todo-db worker identity, so only one can hold a claim: the others got E_MULTIPLE_CLAIMS and worked unclaimed, finishing only after merge. When a subagent's MCP session was replaced mid-run, its `finish` returned E_CLAIM_STALE and `take` returned E_CONFLICT for a claim still held under the same identity, so the parent had to `takeover` to close sqlglot-fork-refresh-v30-26-0 and public-pseudonym-salt-automatic. The repository guide says separate servers with distinct --actor values are needed for concurrent workers, but the agent harness starts subagents on the parent's server.",
   "sessions": [
     {
@@ -30,6 +30,14 @@
       "op": "update",
       "op_id": "d9d6d14d22f80cacd2537593f174440e",
       "session_id": "7a80d04581544190805d0df585b8bd05"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:883ac124f68c0bb7e4b8a7aa",
+      "at": "2026-11-25T15:13:25Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "007f9db8b76b4fd1b5eab006baa3c7c4",
+      "session_id": "0b8d661071874e74901ab9bff63c57d9"
     }
   ]
 }
