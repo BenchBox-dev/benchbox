@@ -186,3 +186,25 @@ def test_tuned_rerun_still_drops_and_recreates_without_force(server, tpch):
     assert adapter.database_was_reused is False
     assert len(server.statements_matching(r"drop database")) == 1
     assert len(_create_statements(server)) == len(TPCH_ROWS)
+
+
+@pytest.mark.parametrize(
+    ("data_source", "run_benchmark", "own_database"),
+    [
+        ("tpcds", "tpcds_obt", "benchbox_tpcds_obt_sf001"),
+        ("tpch", "write_primitives", "benchbox_write_primitives_sf001"),
+    ],
+)
+def test_benchmark_sharing_data_with_another_gets_its_own_database(server, data_source, run_benchmark, own_database):
+    shared_database = f"benchbox_{data_source}_sf001"
+    server.databases[shared_database] = {"loaded_by_data_benchmark": 10}
+    config = {"deployment_mode": "server", "benchmark": data_source, "scale_factor": 0.01}
+
+    shared = ClickHouseAdapter.from_config(config)
+    own = ClickHouseAdapter.from_config({**config, "run_benchmark_name": run_benchmark})
+
+    assert shared.database == shared_database
+    assert own.database == own_database
+    assert own._server_database_table_count(own.database) == 0
+    assert server.databases[shared_database] == {"loaded_by_data_benchmark": 10}
+    assert server.statements_matching(r"drop database") == []
