@@ -36284,7 +36284,8 @@
     "migrate-core-sql-text-rewrites-to-translator-20261122": {
       "claim": null,
       "needs": [
-        "sql-translation-single-entry-guidance-and-check-20261122"
+        "sql-translation-single-entry-guidance-and-check-20261122",
+        "sqlglot-rewrites-into-fork"
       ],
       "priority": "medium",
       "status": "open",
