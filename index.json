@@ -25898,7 +25898,9 @@
     "crr-c2-row-count-references-tpc-and-ssb": {
       "claim": null,
       "needs": [
-        "crr-c1-validation-status-vocabulary"
+        "crr-c1-validation-status-vocabulary",
+        "crr-v0-reference-reader-and-generator",
+        "crr-v2-measured-stream-integrity-checks"
       ],
       "priority": "high",
       "status": "open",
