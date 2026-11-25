@@ -25920,6 +25920,13 @@
       "status": "open",
       "title": "Record the observed execution engine on the SQL platforms that declare engines"
     },
+    "crr-i1-tpcds-q93-empty-sf01": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Find why TPC-DS query 93 returned no rows at SF 0.1 on three cloud platforms"
+    },
     "crr-o1-official-power-after-load": {
       "claim": null,
       "needs": [
