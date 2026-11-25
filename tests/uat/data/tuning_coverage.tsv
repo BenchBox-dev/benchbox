@@ -126,7 +126,7 @@ cedardb	flightdata	basic_constraints	waived	basic constraints are acceptable unt
 cedardb	datavault	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 cedardb	vector_search	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	tpch	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/starrocks/tpch_tuned.yaml
-starrocks	tpcds	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/starrocks/tpcds_tuned.yaml
+starrocks	tpcds	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	tpcds_obt	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	ssb	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/starrocks/ssb_tuned.yaml
 starrocks	clickbench	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
@@ -137,7 +137,7 @@ starrocks	write_primitives	basic_constraints	waived	basic constraints are accept
 starrocks	metadata_primitives	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	transaction_primitives	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	ai_primitives	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
-starrocks	joinorder	tuned_template	done	benchmark-specific tuned template exists	examples/tunings/starrocks/joinorder_tuned.yaml
+starrocks	joinorder	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	coffeeshop	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	tpchavoc	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-
 starrocks	tpch_skew	basic_constraints	waived	basic constraints are acceptable until measured benefit justifies a template	-

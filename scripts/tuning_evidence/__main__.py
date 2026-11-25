@@ -62,6 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--work-dir", type=Path, help="where file databases go (default: OUT/databases)")
     run.add_argument("--out", type=Path, required=True)
     run.add_argument("--keep-databases", action="store_true")
+    run.add_argument("--statistics", action="store_true", help="gather optimizer statistics on every arm after loading")
     run.add_argument("--min-rounds", type=int, default=stats.RuleThresholds.min_rounds)
     run.add_argument("--aa-point-low", type=float, default=stats.RuleThresholds.aa_point_low)
     run.add_argument("--aa-point-high", type=float, default=stats.RuleThresholds.aa_point_high)
@@ -137,6 +138,7 @@ def seam_from(args: argparse.Namespace, run_tag: str) -> Any:
         "run_tag": run_tag,
         "data_dir": args.data_dir,
         "max_checksum_rows": args.max_checksum_rows,
+        "gather_statistics": args.statistics,
     }
     if issubclass(seam_class, (ClickHouseSeam, StarRocksSeam)):
         kwargs["timeout_seconds"] = args.timeout

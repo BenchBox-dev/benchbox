@@ -4,9 +4,12 @@
 
 from __future__ import annotations
 
+from unittest.mock import Mock
+
 import pytest
 
 from benchbox._vendor.sqlglot.errors import ParseError
+from benchbox.platforms.base.data_loading import DataLoadingError
 from benchbox.platforms.starrocks.stream_load import treats_empty_as_null
 from benchbox.platforms.starrocks.workload import (
     StarRocksWorkloadMixin,
@@ -116,3 +119,28 @@ class TestStreamLoadEmptyAsNull:
 
     def test_pipe_without_null_marker_keeps_empty_literal(self):
         assert treats_empty_as_null("|", None) is False
+
+
+def _analyze_connection(*rows):
+    connection = Mock()
+    connection.cursor.return_value.fetchall.return_value = rows
+    return connection
+
+
+def test_analyze_table_gathers_full_statistics():
+    connection = _analyze_connection(("db.lineitem", "analyze", "status", "OK"))
+    StarRocksWorkloadMixin().analyze_table(connection, "lineitem")
+    connection.cursor.return_value.execute.assert_called_once_with("ANALYZE FULL TABLE `lineitem`")
+
+
+def test_analyze_table_raises_when_starrocks_reports_an_error():
+    connection = _analyze_connection(("db.lineitem", "analyze", "error", "no backend"))
+    with pytest.raises(RuntimeError, match="ANALYZE failed for lineitem: no backend"):
+        StarRocksWorkloadMixin().analyze_table(connection, "lineitem")
+
+
+def test_analyze_table_rejects_an_unsafe_name():
+    connection = Mock()
+    with pytest.raises(DataLoadingError, match="Invalid table name"):
+        StarRocksWorkloadMixin().analyze_table(connection, "lineitem`; DROP TABLE x")
+    connection.cursor.assert_not_called()

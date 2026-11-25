@@ -12,6 +12,7 @@ from benchbox.platforms.base.data_loading import (
     DataSource,
     FileFormatRegistry,
     resolve_csv_dialect,
+    validate_sql_identifier,
 )
 from benchbox.platforms.base.sql_execution import execute_sql_query
 from benchbox.platforms.starrocks.stream_load import (
@@ -220,6 +221,17 @@ class StarRocksWorkloadMixin:
         )
         table_stats, loading_time = loader.load()
         return table_stats, loading_time, None
+
+    def analyze_table(self, connection: Any, table_name: str) -> None:
+        validate_sql_identifier(table_name, "table name")
+        cursor = connection.cursor()
+        try:
+            cursor.execute(f"ANALYZE FULL TABLE `{table_name}`")
+            for _, _, message_type, message in cursor.fetchall():
+                if str(message_type).lower() == "error":
+                    raise RuntimeError(f"ANALYZE failed for {table_name}: {message}")
+        finally:
+            cursor.close()
 
     def _get_existing_tables(self, connection) -> list[str]:
         try:

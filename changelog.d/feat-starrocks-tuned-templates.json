@@ -4,7 +4,13 @@
     {
       "category": "added",
       "breaking": false,
-      "text": "StarRocks has tuned templates for TPC-H, TPC-DS, SSB and Join Order.",
+      "text": "StarRocks has tuned templates for TPC-H and SSB.",
+      "platforms": ["starrocks"]
+    },
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "StarRocks supports the statistics phase, which gathers full optimizer statistics after loading.",
       "platforms": ["starrocks"]
     },
     {

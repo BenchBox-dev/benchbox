@@ -21,7 +21,7 @@ under `env/runner.txt`.
 | `duckdb-tpch-sf10`, `duckdb-ssb-sf10`, `duckdb-tpcds-sf10` | The DuckDB tuned template at SF10 in four arms plus an A/A copy: `N` notuning, `N2` notuning (calibration), `C` constraints only, `S` sort order only, `T` the full template. `C` and `S` are derived from the shipped template by `scripts/tuning_evidence/duckdb_arms.py`. Load time is counted. |
 | `clickhouse-tpcds-sf1` | ClickHouse server TPC-DS SF1: `N`, `N2` (A/A), `S` (tuned layout, notuning session) and `T` (full template) in a Docker container limited to 5.25 GiB (5376 MiB, swap disabled), so the release memory envelope is unchanged. |
 | `clickhouse-tpch-q21` | ClickHouse server TPC-H Q21 at SF1 under the same 5.25 GiB container. Runs Q6 (control) and Q21 in the four arms, then `scripts/tuning_evidence/capture.py` records the error, peak memory from `system.query_log` and the join algorithm per arm, and sweeps candidate join and spill settings on the notuning arm. |
-| `starrocks-tpch-sf1`, `starrocks-ssb-sf1`, `starrocks-tpcds-sf1`, `starrocks-joinorder-sf1` | StarRocks at SF1 in a Docker container limited to 8 GiB: `N`, `N2` (A/A) and `T` (the tuned template). Each arm waits for automatic statistics jobs and compaction before timing. |
+| `starrocks-tpch-sf1`, `starrocks-ssb-sf1` | StarRocks at SF1 in a Docker container limited to 8 GiB: `N`, `N2` (A/A) and `T` (the tuned template). Each arm waits for automatic statistics jobs and compaction before timing. |
 
 Inputs: `cell`, `seed` (default 42), `rounds` (default 9, at least 7) and `ref` (commit to
 measure, default the dispatched commit). The workflow only dispatches from the default branch.

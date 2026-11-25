@@ -191,14 +191,39 @@ snowflake:
           tuned/untuned 0.925 (95% CI 0.898-0.958), no detectable effect;
           campaign rule (95% CI bound vs 0.95/1.05), outside the harness, no A/A calibration
 starrocks:
-  joinorder:
-    measurements: []
   tpch:
-    measurements: []
-  tpcds:
-    measurements: []
+    measurements:
+      - state: measured-benefit
+        scale_factor: 1.0
+        memory:
+          basis: container_limit
+          value: 8589934592
+        engine_version: "4.1.8-b16342f"
+        measured_on: "2026-11-25"
+        evidence: >-
+          scripts.tuning_evidence on StarRocks in Docker on a GitHub-hosted ubuntu-latest runner
+          (4 vCPU, 16 GB; workflow run 45517459912 in the alberttwong/benchbox fork, commit
+          d1e926673), 15 shuffled rounds, seed 1729, 22 queries, no failures or answer mismatches,
+          A/A passed (G 1.0195, 95% CI 0.9734-1.0316): tuned template G 0.9056 (0.8715-0.9359)
+          with load plus settle 37.1 s against 47.9 s notuning; no query exceeds the 1.5x bound
+          (Q7 1.10 is the only interval above 1.0); an ORDERS sort key was dropped after a
+          separate 9-round run found it neutral (G 1.0145); SF1 only, 8 GiB container
   ssb:
-    measurements: []
+    measurements:
+      - state: measured-benefit
+        scale_factor: 1.0
+        memory:
+          basis: container_limit
+          value: 8589934592
+        engine_version: "4.1.8-b16342f"
+        measured_on: "2026-11-25"
+        evidence: >-
+          scripts.tuning_evidence on StarRocks in Docker on a GitHub-hosted ubuntu-latest runner
+          (4 vCPU, 16 GB; workflow run 45517459912 in the alberttwong/benchbox fork, commit
+          d1e926673), 15 shuffled rounds, seed 1729, 13 queries, no failures or answer mismatches,
+          A/A passed (G 0.9845, 95% CI 0.9519-1.0498): tuned template G 0.7659 (0.7449-0.8206)
+          with load plus settle 28.5 s against 29.7 s notuning; no query exceeds the 1.5x bound;
+          SF1 only, 8 GiB container
 timescaledb:
   tpch:
     measurements: []

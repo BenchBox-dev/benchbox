@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 import time
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -492,3 +493,39 @@ def test_starrocks_session_settings_report_only_the_relevant_variables(tmp_path:
         {"SHOW VARIABLES": (["Variable_name", "Value"], [("query_timeout", "300"), ("autocommit", "true")])}
     )
     assert starrocks_seam(tmp_path).session_settings(handle) == {"query_timeout": "300"}
+
+
+def statistics_handle(phase: Any) -> tuple[ArmHandle, list[dict[str, Any]]]:
+    calls: list[dict[str, Any]] = []
+
+    def run_statistics_phase(benchmark: Any, connection: Any, **kwargs: Any) -> Any:
+        calls.append(kwargs)
+        return phase
+
+    handle = starrocks_handle({})
+    handle.adapter = SimpleNamespace(run_statistics_phase=run_statistics_phase)
+    return handle, calls
+
+
+def statistics_phase(status: str, stats_mode: str, error_message: str | None = None) -> SimpleNamespace:
+    return SimpleNamespace(
+        status=status, stats_mode=stats_mode, duration_ms=1200, tables_analyzed=2, error_message=error_message
+    )
+
+
+def test_statistics_run_through_the_adapter_phase(tmp_path: Path) -> None:
+    handle, calls = statistics_handle(statistics_phase("COMPLETED", "explicit"))
+    record = starrocks_seam(tmp_path).run_statistics(handle, ["lineitem", "orders"])
+    assert record == {"duration_ms": 1200, "tables_analyzed": 2}
+    assert calls == [{"benchmark_name": "tpch", "table_names": ["lineitem", "orders"]}]
+
+
+@pytest.mark.parametrize(
+    "phase",
+    [None, statistics_phase("COMPLETED", "unsupported"), statistics_phase("FAILED", "explicit", "boom")],
+    ids=["benchmark-not-opted-in", "adapter-unsupported", "failed"],
+)
+def test_missing_statistics_stop_the_run(tmp_path: Path, phase: Any) -> None:
+    handle, _ = statistics_handle(phase)
+    with pytest.raises(RuntimeError, match="arm N: statistics were not gathered"):
+        starrocks_seam(tmp_path).run_statistics(handle, ["lineitem"])

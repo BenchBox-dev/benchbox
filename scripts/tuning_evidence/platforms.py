@@ -229,8 +229,10 @@ class AdapterSeam:
         data_dir: Path | None = None,
         max_checksum_rows: int = DEFAULT_MAX_CHECKSUM_ROWS,
         repo_root: Path | None = None,
+        gather_statistics: bool = False,
     ) -> None:
         self.benchmark_id = benchmark
+        self.gather_statistics = gather_statistics
         self.scale_factor = scale_factor
         self.work_dir = work_dir
         self.run_tag = run_tag
@@ -288,6 +290,7 @@ class AdapterSeam:
                 "memory_total_gb": getattr(profile, "memory_total_gb", None),
             },
             "cold_cache_support": self.cold_cache_support,
+            "statistics_phase": self.gather_statistics,
             "query_source": "benchmark queries in the adapter's dialect, default substitution parameters",
         }
 
@@ -380,8 +383,19 @@ class AdapterSeam:
                 "load_includes_adapter_settle": self.load_includes_settle(adapter),
             },
         )
+        if self.gather_statistics:
+            handle.details["statistics"] = self.run_statistics(handle, sorted(table_stats))
         self.start_session(handle)
         return handle
+
+    def run_statistics(self, handle: ArmHandle, table_names: list[str]) -> dict[str, Any]:
+        phase = handle.adapter.run_statistics_phase(
+            self.benchmark, handle.connection, benchmark_name=self.benchmark_id, table_names=table_names
+        )
+        if phase is None or phase.status != "COMPLETED" or phase.stats_mode != "explicit":
+            detail = getattr(phase, "error_message", None) or getattr(phase, "stats_mode", "not supported")
+            raise RuntimeError(f"arm {handle.spec.name}: statistics were not gathered: {detail}")
+        return {"duration_ms": phase.duration_ms, "tables_analyzed": phase.tables_analyzed}
 
     def load_includes_settle(self, adapter: Any) -> bool:
         return False
