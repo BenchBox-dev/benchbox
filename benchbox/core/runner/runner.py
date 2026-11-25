@@ -402,14 +402,18 @@ def _collect_reused_table_stats(adapter: Any, benchmark: Any, connection: Any) -
 
 
 def _attach_datagen_version(
-    result: BenchmarkResults, benchmark: Any = None, *, dataset_identity_established: bool = True
+    result: BenchmarkResults,
+    benchmark: Any = None,
+    *,
+    config: Any = None,
+    dataset_identity_established: bool = True,
 ) -> BenchmarkResults:
     try:
         if not dataset_identity_established:
             return result
         if getattr(result, "data_generation_version", None) is not None:
             return result
-        from benchbox.utils.datagen_version import manifest_datagen_is_current
+        from benchbox.utils.datagen_version import manifest_datagen_is_current, resolve_manifest_datagen_hash
 
         output_dir = getattr(benchmark, "output_dir", None) if benchmark is not None else None
         if output_dir is None:
@@ -421,7 +425,20 @@ def _attach_datagen_version(
 
         with manifest_path.open("r", encoding="utf-8") as handle:
             manifest = _json.load(handle)
-        if not manifest_datagen_is_current(manifest):
+        config_options = (getattr(config, "options", None) or {}) if config is not None else {}
+        expected_backend = getattr(benchmark, "datagen_backend", None) if benchmark is not None else None
+        if expected_backend is None:
+            expected_backend = config_options.get("datagen_backend")
+        expected_backend_version = (
+            getattr(benchmark, "datagen_backend_version", None) if benchmark is not None else None
+        )
+        if expected_backend_version is None:
+            expected_backend_version = config_options.get("datagen_backend_version")
+        if not manifest_datagen_is_current(
+            manifest,
+            expected_backend=expected_backend,
+            expected_backend_version=expected_backend_version,
+        ):
             return result
         if not _manifest_matches_result(manifest, result, benchmark):
             return result
@@ -429,7 +446,7 @@ def _attach_datagen_version(
         if callable(identity_matches) and not identity_matches(manifest):
             return result
         result.data_generation_version = manifest.get("data_generation_version")
-        result.data_generation_hash = manifest.get("data_generation_identity_hash", manifest.get("base_constants_hash"))
+        result.data_generation_hash = resolve_manifest_datagen_hash(manifest)
         if str(manifest.get("benchmark", "")).lower() == "tpcdi":
             seed = manifest.get("seed")
             if isinstance(seed, int) and not isinstance(seed, bool):
@@ -1128,7 +1145,7 @@ def _build_data_only_result(
     result_obj = _enrich_driver_runtime_metadata(result_obj, adapter=None, database_config=database_config)
     if execution_context is not None:
         result_obj.execution_context = execution_context.model_dump()
-    return _attach_datagen_version(result_obj, benchmark)
+    return _attach_datagen_version(result_obj, benchmark, config=benchmark_config)
 
 
 def _clickhouse_load_failure_details(
@@ -1605,6 +1622,7 @@ def run_benchmark_lifecycle(
         return _attach_datagen_version(
             result_obj,
             benchmark,
+            config=benchmark_config,
             dataset_identity_established=dataset_identity_established and not _adapter_reused_database(adapter),
         )
 
@@ -1685,6 +1703,7 @@ def run_benchmark_lifecycle(
     return _attach_datagen_version(
         finalized,
         benchmark,
+        config=benchmark_config,
         dataset_identity_established=dataset_identity_established and not _adapter_reused_database(adapter),
     )
 
@@ -2062,8 +2081,21 @@ def _validate_manifest_if_present(
 
         from benchbox.utils.datagen_version import describe_datagen_staleness, manifest_datagen_is_current
 
-        if not manifest_datagen_is_current(manifest, benchmark=manifest_benchmark):
-            reason = describe_datagen_staleness(manifest, benchmark=manifest_benchmark)
+        config_options = getattr(config, "options", None) or {}
+        expected_backend = config_options.get("datagen_backend")
+        expected_backend_version = config_options.get("datagen_backend_version")
+        if not manifest_datagen_is_current(
+            manifest,
+            benchmark=manifest_benchmark,
+            expected_backend=expected_backend,
+            expected_backend_version=expected_backend_version,
+        ):
+            reason = describe_datagen_staleness(
+                manifest,
+                benchmark=manifest_benchmark,
+                expected_backend=expected_backend,
+                expected_backend_version=expected_backend_version,
+            )
             logger.warning("Datagen manifest is stale (%s); regenerating benchmark data", reason)
             if not quiet:
                 emit(f"\u26a0\ufe0f Cached data is stale ({reason}); regenerating (as if --force datagen)")
