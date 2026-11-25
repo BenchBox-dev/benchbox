@@ -25956,6 +25956,16 @@
       "status": "open",
       "title": "Official TPC-H mode: run the performance test as two runs and report the run with the lower QphH"
     },
+    "crr-o5-cohort-power-stream-policy": {
+      "claim": null,
+      "needs": [
+        "crr-o2-official-tpcds-stream-zero",
+        "crr-b1-identity-and-comparison-version"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Separate spec-sequence official results from warm results by adding the power-stream policy to the comparison identity"
+    },
     "crr-v0-reference-reader-and-generator": {
       "claim": null,
       "needs": [
