@@ -33,17 +33,3 @@ table_tunings:
     - name: L_ORDERKEY
       type: INTEGER
       order: 2
-
-  ORDERS:
-    table_name: ORDERS
-    distribution:
-    - name: O_ORDERKEY
-      type: INTEGER
-      order: 1
-    sorting:
-    - name: O_ORDERDATE
-      type: DATE
-      order: 1
-    - name: O_ORDERKEY
-      type: INTEGER
-      order: 2

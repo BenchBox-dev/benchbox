@@ -28,7 +28,7 @@ a matching `<benchmark>_notuning.yaml`):
   All constraints are disabled, because the sort key is ClickHouse's primary
   index
 - `starrocks/` - `tpch`, `tpcds`, `ssb`, `joinorder`. Sets a date-leading `ORDER BY` sort key on
-  each fact table. TPC-H and SSB keep the order-key hash distribution, and TPC-DS
+  `LINEITEM` (TPC-H) and each SSB and TPC-DS fact table. TPC-H and SSB keep the order-key hash distribution, and TPC-DS
   distributes its fact tables by item instead of by date. All constraints are
   disabled, so these tables use the duplicate key model. Join Order tables keep the
   primary keys in their schema, which fixes their hash key to `id`, and sort by the

@@ -27,7 +27,6 @@ EXPECTED_LAYOUTS = {
     "ssb": {"lineorder": ("lo_orderkey", "lo_orderdate, lo_orderkey")},
     "tpch": {
         "lineitem": ("l_orderkey", "l_shipdate, l_orderkey"),
-        "orders": ("o_orderkey", "o_orderdate, o_orderkey"),
     },
     "tpcds": {
         "store_sales": ("ss_item_sk", "ss_sold_date_sk, ss_item_sk"),
