@@ -262,6 +262,7 @@ class DataGenerationManifest:
                     current_datagen_stamp,
                     get_benchmark_datagen_version,
                     is_byte_identical_backend_output,
+                    is_byte_identical_source_data,
                 )
 
                 datagen_stamp = current_datagen_stamp(
@@ -269,20 +270,11 @@ class DataGenerationManifest:
                     backend=self._generator_backend,
                     backend_version=self._generator_backend_version,
                 )
-                byte_identical = is_byte_identical_backend_output(
-                    self._benchmark,
-                    backend_version=self._generator_backend_version,
-                    parquet_writer=self._parquet_writer,
-                    scale_factor=self._scale_factor,
-                )
-                has_distinct_identity = (
-                    (self._generator_backend is not None and self._generator_backend != "legacy" and not byte_identical)
-                    or self._parquet_writer is not None
-                    or self._parquet_row_group_size is not None
-                    or get_benchmark_datagen_version(self._benchmark) > 1
-                )
-                if has_distinct_identity and "data_generation_identity_hash" not in self._extra_metadata:
-                    datagen_stamp["data_generation_identity_hash"] = compute_datagen_identity_hash(
+                formats_lower = {str(fmt).strip().lower() for fmt in self._formats if str(fmt).strip()}
+                parquet_only = "parquet" in formats_lower and not bool(formats_lower & {"tbl", "csv", "dat"})
+                has_parquet_metadata = self._parquet_writer is not None or self._parquet_row_group_size is not None
+                if has_parquet_metadata and "parquet_data_generation_identity_hash" not in self._extra_metadata:
+                    datagen_stamp["parquet_data_generation_identity_hash"] = compute_datagen_identity_hash(
                         self._benchmark,
                         backend=self._generator_backend,
                         backend_version=self._generator_backend_version,
@@ -290,6 +282,49 @@ class DataGenerationManifest:
                         parquet_row_group_size=self._parquet_row_group_size,
                         scale_factor=self._scale_factor,
                     )
+                if parquet_only:
+                    byte_identical = is_byte_identical_backend_output(
+                        self._benchmark,
+                        backend_version=self._generator_backend_version,
+                        parquet_writer=self._parquet_writer,
+                        scale_factor=self._scale_factor,
+                    )
+                    has_distinct_identity = (
+                        (
+                            self._generator_backend is not None
+                            and self._generator_backend != "legacy"
+                            and not byte_identical
+                        )
+                        or has_parquet_metadata
+                        or get_benchmark_datagen_version(self._benchmark) > 1
+                    )
+                    if has_distinct_identity and "data_generation_identity_hash" not in self._extra_metadata:
+                        datagen_stamp["data_generation_identity_hash"] = compute_datagen_identity_hash(
+                            self._benchmark,
+                            backend=self._generator_backend,
+                            backend_version=self._generator_backend_version,
+                            parquet_writer=self._parquet_writer,
+                            parquet_row_group_size=self._parquet_row_group_size,
+                            scale_factor=self._scale_factor,
+                        )
+                else:
+                    source_byte_identical = is_byte_identical_source_data(
+                        self._benchmark,
+                        backend_version=self._generator_backend_version,
+                        scale_factor=self._scale_factor,
+                    )
+                    has_distinct_source_identity = (
+                        self._generator_backend is not None
+                        and self._generator_backend != "legacy"
+                        and not source_byte_identical
+                    ) or get_benchmark_datagen_version(self._benchmark) > 1
+                    if has_distinct_source_identity and "data_generation_identity_hash" not in self._extra_metadata:
+                        datagen_stamp["data_generation_identity_hash"] = compute_datagen_identity_hash(
+                            self._benchmark,
+                            backend=self._generator_backend,
+                            backend_version=self._generator_backend_version,
+                            scale_factor=self._scale_factor,
+                        )
             except Exception as exc:
                 logging.getLogger(__name__).debug("datagen stamp unavailable for %s: %s", self._benchmark, exc)
 

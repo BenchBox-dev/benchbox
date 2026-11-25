@@ -447,7 +447,10 @@ def _attach_datagen_version(
         if callable(identity_matches) and not identity_matches(manifest):
             return result
         result.data_generation_version = manifest.get("data_generation_version")
-        result.data_generation_hash = resolve_manifest_datagen_hash(manifest)
+        result.data_generation_hash = resolve_manifest_datagen_hash(
+            manifest,
+            table_format=config_options.get("table_format"),
+        )
         if str(manifest.get("benchmark", "")).lower() == "tpcdi":
             seed = manifest.get("seed")
             if isinstance(seed, int) and not isinstance(seed, bool):

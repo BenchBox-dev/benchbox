@@ -91,6 +91,152 @@ def _make_benchmark(name: str, scale: float, out: Path) -> Any:
     raise ValueError(f"Unknown benchmark: {name}")
 
 
+_LEGACY_FIXED_DIALECTS: dict[str, tuple[str, bool]] = {
+    "tsbs_devops": (",", True),
+    "vector_search": ("|", True),
+    "coffeeshop": (",", False),
+    "joinorder_synthetic": (",", False),
+}
+
+
+def _legacy_map_sql_type(sql_type: str) -> Any:
+    import pyarrow as pa
+
+    sql_upper = sql_type.upper().strip()
+    if sql_upper in ("INTEGER", "INT", "BIGINT"):
+        return pa.int64()
+    if sql_upper.startswith("DECIMAL"):
+        if "(" in sql_upper and ")" in sql_upper:
+            parts = sql_upper[sql_upper.index("(") + 1 : sql_upper.index(")")].split(",")
+            return pa.decimal128(int(parts[0].strip()), int(parts[1].strip()) if len(parts) > 1 else 0)
+        return pa.decimal128(15, 2)
+    if sql_upper == "DATE":
+        return pa.date32()
+    if sql_upper == "TIMESTAMP":
+        return pa.timestamp("us")
+    if sql_upper.startswith(("VARCHAR", "CHAR")):
+        return pa.string()
+    if sql_upper in ("FLOAT", "REAL"):
+        return pa.float32()
+    if sql_upper == "DOUBLE":
+        return pa.float64()
+    if sql_upper in ("BOOLEAN", "BOOL"):
+        return pa.bool_()
+    return pa.string()
+
+
+def _legacy_schema_fields(raw_schema: dict[str, Any]) -> Any:
+    import pyarrow as pa
+
+    cols = raw_schema["columns"]
+    fields = []
+    if isinstance(cols, dict):
+        for col_name, spec in cols.items():
+            sql_type = spec.get("type", "VARCHAR") if isinstance(spec, dict) else str(spec)
+            nullable = spec.get("nullable", True) if isinstance(spec, dict) else True
+            fields.append(pa.field(col_name, _legacy_map_sql_type(sql_type), nullable=nullable))
+        return pa.schema(fields)
+    for col in cols:
+        if isinstance(col, str):
+            tokens = col.strip().split()
+            col_name = tokens[0].strip('"`[]')
+            sql_type = tokens[1] if len(tokens) > 1 else "VARCHAR"
+            nullable = "NOT NULL" not in col.upper()
+        else:
+            col_name = col["name"]
+            sql_type = col["type"]
+            nullable = col.get("nullable", True)
+        fields.append(pa.field(col_name, _legacy_map_sql_type(sql_type), nullable=nullable))
+    return pa.schema(fields)
+
+
+def _legacy_convert_table(
+    src_files: list[Path],
+    arrow_schema: Any,
+    delim: str,
+    has_header: bool,
+    output_path: Path,
+) -> None:
+    import pyarrow as pa
+    import pyarrow.csv as pacsv
+    import pyarrow.parquet as pq
+
+    col_names = [f.name for f in arrow_schema]
+    tables = []
+    for src in src_files:
+        with src.open("r", encoding="utf-8", errors="replace") as fh:
+            if has_header:
+                fh.readline()
+            sample_line = fh.readline().rstrip("\r\n")
+        trailing = (
+            bool(sample_line) and sample_line.endswith(delim) and len(sample_line.split(delim)) == len(col_names) + 1
+        )
+        read_cols = [*col_names, "_trailing_empty"] if trailing else list(col_names)
+        tables.append(
+            pacsv.read_csv(
+                src,
+                read_options=pacsv.ReadOptions(
+                    column_names=read_cols,
+                    autogenerate_column_names=False,
+                    skip_rows=1 if has_header else 0,
+                ),
+                parse_options=pacsv.ParseOptions(delimiter=delim, quote_char='"', escape_char="\\"),
+                convert_options=pacsv.ConvertOptions(
+                    column_types=arrow_schema,
+                    null_values=[""],
+                    strings_can_be_null=True,
+                    include_columns=col_names,
+                ),
+            )
+        )
+    combined = pa.concat_tables(tables) if len(tables) > 1 else tables[0]
+    pq.write_table(combined, output_path, compression="SNAPPY")
+
+
+def _run_legacy_reference_worker(bench: str, sf: float, data_dir: Path, pq_dir: Path) -> None:
+    from benchbox.core.runner.runner import _get_table_schemas_from_benchmark
+
+    instance = _make_benchmark(bench, sf, data_dir)
+    manifest = json.loads((data_dir / "_datagen_manifest.json").read_text(encoding="utf-8"))
+    schemas = _get_table_schemas_from_benchmark(instance)
+    pq_dir.mkdir(parents=True, exist_ok=True)
+    delim, has_header = _LEGACY_FIXED_DIALECTS.get(bench, ("|", False))
+    t0 = mono_time()
+    converted: list[str] = []
+    errors: list[str] = []
+    for table_name, table_info in (manifest.get("tables") or {}).items():
+        schema = schemas.get(table_name)
+        if not schema:
+            continue
+        formats_map = table_info.get("formats") or {}
+        entries = formats_map.get("tbl") or next(iter(formats_map.values()), [])
+        src_files = [data_dir / e["path"] for e in entries if (data_dir / e["path"]).exists()]
+        if not src_files:
+            continue
+        try:
+            _legacy_convert_table(
+                src_files,
+                _legacy_schema_fields(schema),
+                delim,
+                has_header,
+                pq_dir / f"{table_name}.parquet",
+            )
+            converted.append(table_name)
+        except Exception as exc:
+            errors.append(f"{table_name}: {exc}")
+    dt = elapsed_seconds(t0)
+    print(
+        "RESULT:"
+        + json.dumps(
+            {
+                "wall_s": round(dt, 4),
+                "converted_tables": sorted(converted),
+                "errors": errors,
+            }
+        )
+    )
+
+
 def _run_worker(mode: str, bench: str, sf: float, data_dir: Path, pq_dir: Path, row_group_size: int) -> None:
     if mode == "generate":
         data_dir.mkdir(parents=True, exist_ok=True)
@@ -175,101 +321,7 @@ def _run_worker(mode: str, bench: str, sf: float, data_dir: Path, pq_dir: Path, 
         return
 
     if mode == "legacy_reference":
-        import pyarrow as pa
-        import pyarrow.csv as pacsv
-        import pyarrow.parquet as pq
-
-        from benchbox.core.runner.runner import _get_table_schemas_from_benchmark
-        from benchbox.utils.file_format import (
-            get_column_names_with_trailing,
-            get_delimiter_for_file,
-            has_trailing_delimiter,
-        )
-        from benchbox.utils.format_converters.base import ArrowTypeMapper
-
-        instance = _make_benchmark(bench, sf, data_dir)
-        manifest_path = data_dir / "_datagen_manifest.json"
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        schemas = _get_table_schemas_from_benchmark(instance)
-        pq_dir.mkdir(parents=True, exist_ok=True)
-        csv_delim_meta = manifest.get("csv_delimiter")
-        csv_header_meta = manifest.get("csv_has_header")
-        t0 = mono_time()
-        converted = []
-        errors = []
-        for table_name, table_info in (manifest.get("tables") or {}).items():
-            schema = schemas.get(table_name)
-            if not schema:
-                continue
-            formats_map = table_info.get("formats") or {}
-            entries = formats_map.get("tbl") or next(iter(formats_map.values()), [])
-            src_files = [data_dir / e["path"] for e in entries if (data_dir / e["path"]).exists()]
-            if not src_files:
-                continue
-            arrow_schema = ArrowTypeMapper.build_arrow_schema(schema)
-            col_names = [f.name for f in arrow_schema]
-            try:
-                tables = []
-                for entry in entries:
-                    src = data_dir / entry["path"]
-                    if not src.exists():
-                        continue
-                    entry_meta = entry.get("metadata") if isinstance(entry.get("metadata"), dict) else {}
-                    entry_delim = entry_meta.get("csv_delimiter", csv_delim_meta)
-                    entry_header = entry_meta.get("csv_has_header", csv_header_meta)
-                    first_line = src.open("r", encoding="utf-8", errors="replace").readline().rstrip("\r\n")
-                    if isinstance(entry_delim, str) and len(entry_delim) == 1:
-                        delim = entry_delim
-                    else:
-                        delim = get_delimiter_for_file(src)
-                        if delim == "," and len(col_names) > 1 and "|" in first_line:
-                            if len(first_line.split("|")) in (len(col_names), len(col_names) + 1):
-                                delim = "|"
-                    if isinstance(entry_header, bool):
-                        has_header = entry_header
-                    else:
-                        hdr_parts = [p.strip().strip('"').lower() for p in first_line.split(delim)]
-                        has_header = hdr_parts[: len(col_names)] == [c.lower() for c in col_names]
-                    if has_header:
-                        with src.open("r", encoding="utf-8", errors="replace") as fh:
-                            fh.readline()
-                            second = fh.readline().rstrip("\r\n")
-                        trailing = bool(second) and len(second.split(delim)) > len(col_names) and second.endswith(delim)
-                    else:
-                        trailing = has_trailing_delimiter(src, delim, col_names)
-                    read_cols = get_column_names_with_trailing(col_names, trailing)
-                    tbl = pacsv.read_csv(
-                        src,
-                        read_options=pacsv.ReadOptions(
-                            column_names=read_cols,
-                            autogenerate_column_names=False,
-                            skip_rows=1 if has_header else 0,
-                        ),
-                        parse_options=pacsv.ParseOptions(delimiter=delim, quote_char='"', escape_char="\\"),
-                        convert_options=pacsv.ConvertOptions(
-                            column_types=arrow_schema,
-                            null_values=[""],
-                            strings_can_be_null=True,
-                            include_columns=col_names,
-                        ),
-                    )
-                    tables.append(tbl)
-                combined = pa.concat_tables(tables) if len(tables) > 1 else tables[0]
-                pq.write_table(combined, pq_dir / f"{table_name}.parquet", compression="SNAPPY")
-                converted.append(table_name)
-            except Exception as exc:
-                errors.append(f"{table_name}: {exc}")
-        dt = elapsed_seconds(t0)
-        print(
-            "RESULT:"
-            + json.dumps(
-                {
-                    "wall_s": round(dt, 4),
-                    "converted_tables": sorted(converted),
-                    "errors": errors,
-                }
-            )
-        )
+        _run_legacy_reference_worker(bench, sf, data_dir, pq_dir)
         return
 
     raise ValueError(f"Unknown worker mode: {mode}")

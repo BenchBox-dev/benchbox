@@ -692,8 +692,14 @@ def test_manifest_emits_optional_backend_fields_without_breaking_legacy(tmp_path
         parquet_writer="benchbox-streaming",
         parquet_row_group_size=122880,
     ).to_dict()
-    assert resolve_manifest_datagen_hash(native_tpch_parquet) == resolve_manifest_datagen_hash(legacy_tpch_parquet)
-    assert resolve_manifest_datagen_hash(native_tpch_parquet) != compute_base_constants_hash("tpch")
+    assert resolve_manifest_datagen_hash(native_tpch_parquet, table_format="parquet") == resolve_manifest_datagen_hash(
+        legacy_tpch_parquet, table_format="parquet"
+    )
+    assert resolve_manifest_datagen_hash(native_tpch_parquet, table_format="parquet") != compute_base_constants_hash(
+        "tpch"
+    )
+    assert resolve_manifest_datagen_hash(native_tpch_parquet) == compute_base_constants_hash("tpch")
+    assert resolve_manifest_datagen_hash(legacy_tpch_parquet) == compute_base_constants_hash("tpch")
     assert manifest_datagen_is_current(native_tpch_parquet, benchmark="tpch", expected_backend="legacy") is True
     assert manifest_datagen_is_current(native_tpch_parquet, benchmark="tpch", expected_backend="native") is True
 

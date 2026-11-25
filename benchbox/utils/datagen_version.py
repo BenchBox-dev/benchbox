@@ -389,10 +389,34 @@ def describe_datagen_staleness(
     return _parquet_layout_staleness(manifest, expected_table_format=expected_table_format)
 
 
-def resolve_manifest_datagen_hash(manifest: Mapping[str, Any]) -> str | None:
-    identity_hash = manifest.get("data_generation_identity_hash")
-    if isinstance(identity_hash, str) and identity_hash:
-        return identity_hash
+_DELIMITED_FORMATS: frozenset[str] = frozenset({"tbl", "csv", "dat"})
+
+
+def _manifest_is_parquet_only(manifest: Mapping[str, Any]) -> bool:
+    formats = manifest.get("formats")
+    if isinstance(formats, (list, tuple)) and formats:
+        normalized = {str(fmt).strip().lower() for fmt in formats if str(fmt).strip()}
+        if normalized:
+            return "parquet" in normalized and not bool(normalized & _DELIMITED_FORMATS)
+    tables = manifest.get("tables")
+    if isinstance(tables, Mapping) and tables:
+        found: set[str] = set()
+        for table_entry in tables.values():
+            if not isinstance(table_entry, Mapping):
+                continue
+            table_formats = table_entry.get("formats")
+            if isinstance(table_formats, Mapping):
+                found.update(str(k).strip().lower() for k in table_formats)
+        if found:
+            return "parquet" in found and not bool(found & _DELIMITED_FORMATS)
+    return False
+
+
+def resolve_manifest_datagen_hash(
+    manifest: Mapping[str, Any],
+    *,
+    table_format: str | None = None,
+) -> str | None:
     benchmark = manifest.get("benchmark")
     backend = manifest.get("generator_backend")
     backend_version = manifest.get("generator_backend_version")
@@ -406,24 +430,43 @@ def resolve_manifest_datagen_hash(manifest: Mapping[str, Any]) -> str | None:
     benchmark_version = manifest.get("benchmark_datagen_version", 1)
     scale_raw = manifest.get("scale_factor")
     scale_factor = float(scale_raw) if isinstance(scale_raw, (int, float)) and not isinstance(scale_raw, bool) else None
-    byte_identical = is_byte_identical_backend_output(
+    configuration_raw = manifest.get("skew_configuration")
+    configuration = configuration_raw if isinstance(configuration_raw, Mapping) else None
+
+    use_parquet_identity = (table_format is not None and str(table_format).strip().lower() == "parquet") or (
+        table_format is None and _manifest_is_parquet_only(manifest)
+    )
+    if use_parquet_identity:
+        parquet_identity_hash = manifest.get("parquet_data_generation_identity_hash")
+        if isinstance(parquet_identity_hash, str) and parquet_identity_hash:
+            return parquet_identity_hash
+        if parquet_writer is not None or parquet_row_group_size is not None:
+            return compute_datagen_identity_hash(
+                benchmark,
+                configuration,
+                backend=str(backend) if backend is not None else None,
+                backend_version=str(backend_version) if backend_version is not None else None,
+                parquet_writer=str(parquet_writer) if parquet_writer is not None else None,
+                parquet_row_group_size=parquet_row_group_size,
+                scale_factor=scale_factor,
+            )
+
+    identity_hash = manifest.get("data_generation_identity_hash")
+    if isinstance(identity_hash, str) and identity_hash:
+        return identity_hash
+    source_byte_identical = is_byte_identical_source_data(
         benchmark,
         backend_version=str(backend_version) if backend_version is not None else None,
-        parquet_writer=str(parquet_writer) if parquet_writer is not None else None,
         scale_factor=scale_factor,
     )
-    if (
-        (backend is not None and str(backend).lower() != "legacy" and not byte_identical)
-        or (isinstance(benchmark_version, int) and not isinstance(benchmark_version, bool) and benchmark_version > 1)
-        or parquet_writer is not None
-        or parquet_row_group_size is not None
+    if (backend is not None and str(backend).lower() != "legacy" and not source_byte_identical) or (
+        isinstance(benchmark_version, int) and not isinstance(benchmark_version, bool) and benchmark_version > 1
     ):
         return compute_datagen_identity_hash(
             benchmark,
+            configuration,
             backend=str(backend) if backend is not None else None,
             backend_version=str(backend_version) if backend_version is not None else None,
-            parquet_writer=str(parquet_writer) if parquet_writer is not None else None,
-            parquet_row_group_size=parquet_row_group_size,
             scale_factor=scale_factor,
         )
     base_hash = manifest.get("base_constants_hash")

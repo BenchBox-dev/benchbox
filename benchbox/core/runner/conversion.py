@@ -269,7 +269,7 @@ class FormatConversionOrchestrator:
         configuration = manifest.extra_fields.get("skew_configuration")
         backend = manifest.extra_fields.get("generator_backend")
         backend_version = manifest.extra_fields.get("generator_backend_version")
-        manifest.extra_fields["data_generation_identity_hash"] = compute_datagen_identity_hash(
+        manifest.extra_fields["parquet_data_generation_identity_hash"] = compute_datagen_identity_hash(
             manifest.benchmark,
             configuration if isinstance(configuration, dict) else None,
             backend=str(backend) if backend is not None else None,

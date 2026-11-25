@@ -177,20 +177,28 @@ non-quiesced development host; cutover enforcement requires 3-run medians
      `128 * 1024 * 1024` rows-vs-bytes default bug to an explicit streaming
      target of **122,880 rows per row group** (matching DuckDB's standard row
      group size, recorded in `ConversionOptions` and `data_generation_hash`).
-   - Because switching from 1 row group per table to multi-row-group Parquet
-     shifts Parquet-scan query timings by ~2.5x–6x on identical data (and
-     historical 1-RG Parquet files likely understated Parquet-scanning
-     engines), changing the published-run Parquet row-group layout requires
-     explicit owner sign-off and a recorded Parquet-corpus re-baseline before
-     becoming the default for published runs.
-   - **Owner sign-off (2026-11-24):** Approved adopting 122,880 rows per row
-     group as the default Parquet layout for all runs, with `parquet_writer`
-     and `parquet_row_group_size` hashed into `data_generation_hash` to
-     separate pre-change single-row-group bundles from streaming-layout
-     bundles, cached pre-streaming Parquet manifests treated as stale on
-     Parquet runs, and local published Parquet suites scheduled for
-     re-baselining separately without incurring live-cloud spend on existing
-     cloud bundles.
+   - **Owner decision (2026-11-24):** Switching from 1 row group per table to
+     multi-row-group Parquet shifts Parquet-scan query timings by ~2.5x–6x on
+     identical data (historical 1-RG Parquet files understated Parquet-scanning
+     engines). The owner signed off on adopting **122,880 rows per row group**
+     as the default Parquet layout for all runs immediately, under three
+     provenance and corpus controls:
+     1. `parquet_writer` and `parquet_row_group_size` are hashed into a
+        Parquet-scoped identity (`parquet_data_generation_identity_hash`,
+        emitted as `data_generation_hash` on Parquet runs while leaving
+        delimited TBL/CSV runs on `base_constants_hash`), preventing silent
+        cross-layout comparison between pre-change single-row-group bundles
+        and streaming-layout bundles.
+     2. Cached pre-streaming Parquet manifests lacking `parquet_writer` /
+        `parquet_row_group_size` are treated as stale on Parquet runs and
+        regenerated automatically.
+     3. Pre-change Parquet corpus baseline inventory audited on
+        `origin/published-results` (89 of 496 bundles reference Parquet:
+        DataFusion 69, Spark 7, LakeSail 3, BigQuery 3, Databricks 3,
+        Snowflake 3, unknown 1). Local Parquet suites (DataFusion, Spark,
+        LakeSail) are scheduled for re-baselining once the streaming converter
+        lands; existing cloud bundles (BigQuery, Databricks, Snowflake) remain
+        marked pre-change without incurring live-cloud spend.
 3. **Keep a strict file/statistics boundary and Python-only manifest ownership.**
    Any native generator stays behind:
 

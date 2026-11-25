@@ -687,8 +687,16 @@ class TestParquetStreamingAndBenchmarkCompatibility:
 
         con = duckdb.connect()
         try:
+            from decimal import Decimal
+
             ref_path = tmp_path / "ref.parquet"
-            ref_table = converter.read_tbl_files([tbl_file], schema)
+            ref_table = pa.table(
+                {
+                    "id": pa.array(list(range(1, 351)), type=pa.int64()),
+                    "label": pa.array([f"row-{i}" for i in range(1, 351)], type=pa.string()),
+                    "amount": pa.array([Decimal(f"{i * 1.25:.2f}") for i in range(1, 351)], type=pa.decimal128(15, 2)),
+                }
+            )
             pq.write_table(ref_table, ref_path)
             diff_a = con.execute(
                 f"SELECT COUNT(*) FROM (SELECT * FROM read_parquet('{result.output_files[0]}') EXCEPT ALL SELECT * FROM read_parquet('{ref_path}'))"
@@ -826,12 +834,89 @@ class TestParquetStreamingAndBenchmarkCompatibility:
         assert updated["format_preference"][0] == "parquet"
         assert updated["parquet_writer"] == "benchbox-duckdb-streaming"
         assert updated["parquet_row_group_size"] == 122_880
-        assert updated["data_generation_identity_hash"] == compute_datagen_identity_hash(
+        assert "data_generation_identity_hash" not in updated
+        assert updated["parquet_data_generation_identity_hash"] == compute_datagen_identity_hash(
             "joinorder_synthetic",
             parquet_writer="benchbox-duckdb-streaming",
             parquet_row_group_size=122_880,
             scale_factor=0.01,
         )
+
+    def test_parquet_conversion_does_not_change_tbl_run_datagen_hash(self, tmp_path):
+        import json
+
+        from benchbox.core.runner.conversion import FormatConversionOrchestrator
+        from benchbox.core.runner.runner import _attach_datagen_version
+        from benchbox.core.schemas import BenchmarkConfig
+        from benchbox.utils.datagen_version import (
+            compute_base_constants_hash,
+            compute_datagen_identity_hash,
+            current_datagen_stamp,
+        )
+        from tests.fixtures.result_dict_fixtures import make_benchmark_results
+
+        schema = {
+            "nation": {
+                "columns": [
+                    {"name": "n_nationkey", "type": "INTEGER"},
+                    {"name": "n_name", "type": "VARCHAR(25)"},
+                ]
+            }
+        }
+        tbl_file = tmp_path / "nation.tbl"
+        tbl_file.write_text("0|ALGERIA|\n1|ARGENTINA|\n", encoding="utf-8")
+        manifest_path = tmp_path / "_datagen_manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "version": 2,
+                    "benchmark": "tpch",
+                    "scale_factor": 1.0,
+                    "formats": ["tbl"],
+                    "format_preference": ["tbl"],
+                    **current_datagen_stamp("tpch"),
+                    "tables": {
+                        "nation": {
+                            "formats": {
+                                "tbl": [{"path": "nation.tbl", "size_bytes": tbl_file.stat().st_size, "row_count": 2}]
+                            }
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        FormatConversionOrchestrator().convert_benchmark_tables(
+            manifest_path=manifest_path,
+            output_dir=tmp_path,
+            target_format="parquet",
+            schemas=schema,
+        )
+
+        class _TpchBench:
+            output_dir = tmp_path
+
+        tbl_result = _attach_datagen_version(
+            make_benchmark_results(benchmark_id="tpch", benchmark_name="tpch", scale_factor=1.0),
+            _TpchBench(),
+            config=BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=1.0, options={}),
+        )
+        pq_result = _attach_datagen_version(
+            make_benchmark_results(benchmark_id="tpch", benchmark_name="tpch", scale_factor=1.0),
+            _TpchBench(),
+            config=BenchmarkConfig(
+                name="tpch", display_name="TPC-H", scale_factor=1.0, options={"table_format": "parquet"}
+            ),
+        )
+        assert tbl_result.data_generation_hash == compute_base_constants_hash("tpch")
+        assert pq_result.data_generation_hash == compute_datagen_identity_hash(
+            "tpch",
+            parquet_writer="benchbox-duckdb-streaming",
+            parquet_row_group_size=122_880,
+            scale_factor=1.0,
+        )
+        assert pq_result.data_generation_hash != tbl_result.data_generation_hash
 
     def test_pre_streaming_parquet_manifest_is_stale_for_parquet_runs(self, tmp_path):
         from benchbox.core.tpch_skew.generator import TPCHSkewDataGenerator
@@ -877,7 +962,8 @@ class TestParquetStreamingAndBenchmarkCompatibility:
             "skew_configuration_hash": skew_cfg.datagen_identity_hash(),
             "parquet_writer": "benchbox-streaming",
             "parquet_row_group_size": 122_880,
-            "data_generation_identity_hash": compute_datagen_identity_hash(
+            "data_generation_identity_hash": compute_datagen_identity_hash("tpch_skew", identity, scale_factor=0.01),
+            "parquet_data_generation_identity_hash": compute_datagen_identity_hash(
                 "tpch_skew",
                 identity,
                 parquet_writer="benchbox-streaming",
