@@ -898,25 +898,90 @@ class TestParquetStreamingAndBenchmarkCompatibility:
             output_dir = tmp_path
 
         tbl_result = _attach_datagen_version(
-            make_benchmark_results(benchmark_id="tpch", benchmark_name="tpch", scale_factor=1.0),
+            make_benchmark_results(benchmark_id="tpch", benchmark_name="tpch", platform="DuckDB", scale_factor=1.0),
             _TpchBench(),
             config=BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=1.0, options={}),
         )
         pq_result = _attach_datagen_version(
-            make_benchmark_results(benchmark_id="tpch", benchmark_name="tpch", scale_factor=1.0),
+            make_benchmark_results(benchmark_id="tpch", benchmark_name="tpch", platform="DuckDB", scale_factor=1.0),
             _TpchBench(),
             config=BenchmarkConfig(
                 name="tpch", display_name="TPC-H", scale_factor=1.0, options={"table_format": "parquet"}
             ),
         )
-        assert tbl_result.data_generation_hash == compute_base_constants_hash("tpch")
-        assert pq_result.data_generation_hash == compute_datagen_identity_hash(
+        spark_implicit_pq_result = _attach_datagen_version(
+            make_benchmark_results(benchmark_id="tpch", benchmark_name="tpch", platform="Spark", scale_factor=1.0),
+            _TpchBench(),
+            config=BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=1.0, options={}),
+        )
+        external_implicit_pq_result = _attach_datagen_version(
+            make_benchmark_results(benchmark_id="tpch", benchmark_name="tpch", platform="DuckDB", scale_factor=1.0),
+            _TpchBench(),
+            config=BenchmarkConfig(
+                name="tpch", display_name="TPC-H", scale_factor=1.0, options={"table_mode": "external"}
+            ),
+        )
+        expected_pq_hash = compute_datagen_identity_hash(
             "tpch",
             parquet_writer="benchbox-duckdb-streaming",
             parquet_row_group_size=122_880,
             scale_factor=1.0,
         )
+        assert tbl_result.data_generation_hash == compute_base_constants_hash("tpch")
+        assert pq_result.data_generation_hash == expected_pq_hash
+        assert spark_implicit_pq_result.data_generation_hash == expected_pq_hash
+        assert external_implicit_pq_result.data_generation_hash == expected_pq_hash
         assert pq_result.data_generation_hash != tbl_result.data_generation_hash
+
+        from benchbox.core.runner.runner import _validate_manifest_if_present
+
+        legacy_pq_dir = tmp_path / "legacy_mixed_pq"
+        legacy_pq_dir.mkdir()
+        (legacy_pq_dir / "nation.tbl").write_text("0|ALGERIA|\n", encoding="utf-8")
+        (legacy_pq_dir / "nation.parquet").write_bytes(b"PAR1")
+        (legacy_pq_dir / "_datagen_manifest.json").write_text(
+            json.dumps(
+                {
+                    "version": 2,
+                    "benchmark": "tpch",
+                    "scale_factor": 1.0,
+                    "formats": ["tbl", "parquet"],
+                    "format_preference": ["parquet", "tbl"],
+                    **current_datagen_stamp("tpch"),
+                    "tables": {
+                        "nation": {
+                            "formats": {
+                                "tbl": [{"path": "nation.tbl", "size_bytes": 11, "row_count": 1}],
+                                "parquet": [{"path": "nation.parquet", "size_bytes": 4, "row_count": 1}],
+                            }
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        class _LegacyMixedBench:
+            output_dir = legacy_pq_dir
+            tables = None
+
+        cfg_no_fmt = BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=1.0, options={})
+        cfg_ext = BenchmarkConfig(
+            name="tpch", display_name="TPC-H", scale_factor=1.0, options={"table_mode": "external"}
+        )
+        assert _validate_manifest_if_present(_LegacyMixedBench(), cfg_no_fmt, quiet=True, platform_name="duckdb")[
+            ::2
+        ] == (
+            True,
+            True,
+        )
+        assert _validate_manifest_if_present(_LegacyMixedBench(), cfg_no_fmt, quiet=True, platform_name="lakesail")[
+            ::2
+        ] == (False, True)
+        assert _validate_manifest_if_present(_LegacyMixedBench(), cfg_ext, quiet=True, platform_name="duckdb")[::2] == (
+            False,
+            True,
+        )
 
     def test_pre_streaming_parquet_manifest_is_stale_for_parquet_runs(self, tmp_path):
         from benchbox.core.tpch_skew.generator import TPCHSkewDataGenerator
