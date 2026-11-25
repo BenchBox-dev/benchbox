@@ -60,7 +60,7 @@ def test_failed_warmup_validation_is_exported_without_corrupting_measurement_met
     validation = ValidationResult("test")
     _validate_execution_consistency(payload, validation)
     assert not validation.ok
-    assert any("row_count_validation.status='FAILED'" in error for error in validation.errors)
+    assert any("1 failed row-count check" in error for error in validation.errors)
 
 
 def test_unvalidated_measurement_is_exported_and_never_summarised_as_passed():
@@ -104,7 +104,7 @@ def test_unvalidated_measurement_is_exported_and_never_summarised_as_passed():
     payload["summary"]["validation"] = "passed"
     validation = ValidationResult("test")
     _validate_execution_consistency(payload, validation)
-    assert any("counts queries[0] as validated" in error for error in validation.errors)
+    assert any("no row-count reference" in error for error in validation.errors)
 
 
 @pytest.mark.parametrize(
@@ -953,4 +953,4 @@ def test_all_skipped_row_counts_are_never_summarised_as_passed():
     payload["summary"]["validation"] = "passed"
     validation = ValidationResult("test")
     _validate_execution_consistency(payload, validation)
-    assert any("every recorded row count was skipped" in error for error in validation.errors)
+    assert any("no row count was checked" in error for error in validation.errors)

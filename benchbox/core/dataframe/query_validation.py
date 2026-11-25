@@ -12,7 +12,10 @@ from benchbox.core.expected_results.tpcds_results import tpcds_known_query_ids, 
 from benchbox.core.results.query_status import (
     NO_REFERENCE_REASON,
     NO_REFERENCE_VALIDATION_STATUS,
+    NOT_VALIDATED_VALIDATION_STATUS,
+    PASSED_VALIDATION_STATUS,
     row_count_skip_is_documented,
+    row_evidence_roll_up,
     within_tolerance_warning,
 )
 from benchbox.core.validation.query_validation import (
@@ -108,19 +111,11 @@ def validate_dataframe_query_results(
         return DataFrameQueryValidationSummary(status, evidence)
 
     evidence["skipped"] += selected_skips
-    documented_skips = evidence.get("documented_skips", 0)
-    if evidence["failed"]:
-        status = "FAILED"
-    elif execution_failures:
-        status = "PARTIAL"
-    elif evidence["errors"] or evidence["skipped"] > documented_skips:
-        status = "UNCERTAIN"
-    elif evidence["checked"] and evidence["checked"] + documented_skips == len(successful_rows):
-        status = "PASSED"
-    elif documented_skips:
-        status = "UNCERTAIN"
-    else:
-        status = "NOT_RUN"
+    status, _ = row_evidence_roll_up(successful_rows, reference_exists=True, failed_queries=execution_failures)
+    if status == NOT_VALIDATED_VALIDATION_STATUS or (
+        status == PASSED_VALIDATION_STATUS and evidence["skipped"] > evidence.get("documented_skips", 0)
+    ):
+        status = "UNCERTAIN" if successful_rows or evidence["skipped"] else "NOT_RUN"
     return DataFrameQueryValidationSummary(status, evidence)
 
 
@@ -457,7 +452,7 @@ def _attach_skipped_validation(row: dict[str, Any], warning: str, status: str = 
 def _attach_validation_error(row: dict[str, Any], message: str) -> None:
     row["rows_returned"] = None
     row["row_count_validation"] = {
-        "status": "ERROR",
+        "status": "FAILED",
         "expected": None,
         "actual": None,
         "error": message,
