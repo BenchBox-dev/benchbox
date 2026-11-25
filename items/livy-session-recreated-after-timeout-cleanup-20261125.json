@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "No session or application is created after run-timeout cleanup, proven by a race test, or the item is dropped with evidence."
+  ],
+  "context": "Filed 2026-11-25 at the close of the run-timeout effort (umbrella run-timeout-plan-20261120, done). Evidence read that day; re-read code, docs and run folders before acting.",
+  "description": "## Problem\nReported as unverified by the implementer of #4507: at the run limit, `cancel_remote_work` on Fabric Spark and Synapse Spark deletes the Livy session the run created and clears it, but the main thread may still be running a statement. If it then calls `_ensure_session` (which creates a session whenever `_session_id` is unset), the run starts a new session that nothing deletes, billing until its idle timeout. The same shape was noted for EMR Serverless application stop. Not reproduced.\n\n## Change\nWrite a stubbed test that runs a statement on one thread, triggers cleanup from another, and checks whether `_create_session` (or the EMR application start) is called afterwards. If it is, stop new session or application creation once cleanup has run for this run (for example a cleaned-up flag checked in `_ensure_session` that raises the run timeout), and fix every affected adapter the same way.\n\n## Decision gates\n- If the test shows no new session can be created, record the evidence and drop the item (owner decision).\n- Do not add a deadline check inside a query timer; no new default timeout.\n\n## Verification rubric\nPass: the race test fails before the fix and passes after for Fabric Spark, Synapse Spark and EMR Serverless (or the recorded evidence that it cannot happen); existing run-timeout cleanup tests pass.\nFail: a fix without a test that reproduces the race.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4507"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:883ac124f68c0bb7e4b8a7aa",
+      "at": "2026-11-25T15:07:22Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "790eee842397445e8ddcfc69a70b8396",
+      "session_id": "0b8d661071874e74901ab9bff63c57d9"
+    }
+  ]
+}

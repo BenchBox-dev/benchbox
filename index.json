@@ -34578,6 +34578,13 @@
       "status": "done",
       "title": "Live-engine verification evidence for the merged performance batches (#3948, #3949, #3950, #3952), run 2026-11-06"
     },
+    "livy-session-recreated-after-timeout-cleanup-20261125": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Suspected: a Livy or EMR run still in progress can start a new session after timeout cleanup deleted its session"
+    },
     "livy-spark-adapters-open-table-format-loading": {
       "claim": null,
       "needs": [
