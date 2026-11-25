@@ -49187,6 +49187,15 @@
       "status": "done",
       "title": "Extend SQLGlot repro harness to cover wrapper call shapes (cross-dialect probes)"
     },
+    "sqlglot-rewrites-into-fork": {
+      "claim": null,
+      "needs": [
+        "sqlglot-adopt-30-35-0-2"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Move BenchBox's local and core SQL rewrites into the SQLGlot fork"
+    },
     "sqlglot-soft-fork-adoption": {
       "claim": null,
       "needs": [
