@@ -45367,6 +45367,13 @@
       "status": "done",
       "title": "benchbox.core.run_service exports three underscore-prefixed names in __all__"
     },
+    "run-timeout-cleanup-live-check-more-platforms-20261125": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Live-check run-timeout cleanup beyond BigQuery, including a query in flight at the limit"
+    },
     "run-timeout-cleanup-load-ddl-statements-20261125": {
       "claim": null,
       "needs": [],

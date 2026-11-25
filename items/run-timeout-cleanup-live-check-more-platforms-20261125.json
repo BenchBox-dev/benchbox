@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "Every platform the owner approves has live evidence that run-timeout cleanup stops in-flight work, and the docs name the live-checked platforms."
+  ],
+  "context": "Filed 2026-11-25 at the close of the run-timeout effort (umbrella run-timeout-plan-20261120, done). Evidence read that day; re-read code, docs and run folders before acting. Blocked: needs the owner's per-platform live-run approval.",
+  "description": "## Problem\nOnly BigQuery cleanup has been checked against a live service (2026-11-25, evidence `~/Developer/benchmark_runs/run-timeout-live-check-20261124/`, ~$0.003): a job started through `BigQueryAdapter.execute_query` was stopped by `cancel_remote_work()` (\"Job execution was cancelled: User requested cancellation\"), and TPC-H SF 0.01 runs stopped at their limit exited 124 with no job left running. Two gaps remain: (1) the chain from the run limit to the cancel with a query actually in flight was never exercised live (SF 0.01 queries take ~0.3 s, so a timed limit lands between queries; it is stub-tested only); (2) the other fourteen platforms with cleanup (Onehouse Quanton, EMR Serverless, Glue, Dataproc, and the ten added in #4507) are stub-tested only, and their cancel calls rely on upstream client behaviour read from source, not run.\n\n## Change\nFor the platforms the owner approves, run the same three-step check: a timed TPC-H SF 0.01 run (exit 124, partial result, warning), a long query or job submitted through the adapter and cancelled by `cancel_remote_work()` with the provider's job state recorded, and before/after inventories of what the run created. For gap (1), use a query long enough that the limit lands inside it (for example a benchmark or scale where one query runs for tens of seconds) on one approved platform.\n\n## Decision gates\n- Blocked until the owner approves, in the session that runs it, each platform, account or credentials, spend ceiling and attempt count (choice dialog). No live run without that.\n- Stop at the ceiling or attempt count; never delete anything that existed before the check.\n- If a cancel does not stop the work, fix it with a stubbed regression test before any further live attempt.\n\n## Verification rubric\nPass: per approved platform, evidence folder with exit code, provider job/statement final states showing cancellation, cost, and identical before/after inventories; docs/operations/run-safety.md (capability table) updated to name the live-checked platforms.\nFail: any platform claimed as live-checked without that evidence.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4507"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:883ac124f68c0bb7e4b8a7aa",
+      "at": "2026-11-25T15:07:08Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e0bf7d1f913643b68d5ddf6e92238aa9",
+      "session_id": "0b8d661071874e74901ab9bff63c57d9"
+    }
+  ]
+}
