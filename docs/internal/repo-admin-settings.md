@@ -51,16 +51,20 @@ Ruleset name: `develop-squash-only` (id `15611785`), targets
 Required status checks:
 
 ```text
-- core
-- explorer
-- results-data
-- docs
-- tooling
-- hold
-- review-gate
-- release-v2 probe
+- core (integration 15368)
+- explorer (integration 15368)
+- results-data (integration 15368)
+- docs (integration 15368)
+- tooling (integration 15368)
+- hold (integration 15368)
+- review-gate (integration 5201041)
+- release-v2 probe (integration 15368)
 ```
 
+Every context is bound to the App that posts it, so a status or check run
+from any other source does not satisfy it. The six result contexts are check
+runs of GitHub Actions jobs (`integration_id` 15368); a commit status posted
+with a personal token or another App under the same name does not count.
 `review-gate` is bound to the `benchbox-review` App
 (`integration_id` 5201041). `release-v2 probe` is a commit status that
 `.github/workflows/release-v2-probe.yml` posts on the pull request head
@@ -173,12 +177,12 @@ The PUT replaces the whole rule list, so the payload carries every rule:
         "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
-          {"context": "core"},
-          {"context": "explorer"},
-          {"context": "results-data"},
-          {"context": "docs"},
-          {"context": "tooling"},
-          {"context": "hold"},
+          {"context": "core", "integration_id": 15368},
+          {"context": "explorer", "integration_id": 15368},
+          {"context": "results-data", "integration_id": 15368},
+          {"context": "docs", "integration_id": 15368},
+          {"context": "tooling", "integration_id": 15368},
+          {"context": "hold", "integration_id": 15368},
           {"context": "review-gate", "integration_id": 5201041},
           {"context": "release-v2 probe", "integration_id": 15368}
         ]
@@ -604,14 +608,14 @@ approval in the `pypi` environment.
 Required status checks:
 
 ```text
-- core
-- explorer
-- results-data
-- docs
-- tooling
-- hold
-- review-gate
-- release-v2 probe
+- core (integration 15368)
+- explorer (integration 15368)
+- results-data (integration 15368)
+- docs (integration 15368)
+- tooling (integration 15368)
+- hold (integration 15368)
+- review-gate (integration 5201041)
+- release-v2 probe (integration 15368)
 ```
 
 `review-gate` is bound to the `benchbox-review` App (`integration_id` 5201041)
@@ -670,12 +674,12 @@ Apply (owner only; save the block as `release-branches.json`, then
         "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": true,
         "required_status_checks": [
-          {"context": "core"},
-          {"context": "explorer"},
-          {"context": "results-data"},
-          {"context": "docs"},
-          {"context": "tooling"},
-          {"context": "hold"},
+          {"context": "core", "integration_id": 15368},
+          {"context": "explorer", "integration_id": 15368},
+          {"context": "results-data", "integration_id": 15368},
+          {"context": "docs", "integration_id": 15368},
+          {"context": "tooling", "integration_id": 15368},
+          {"context": "hold", "integration_id": 15368},
           {"context": "review-gate", "integration_id": 5201041},
           {"context": "release-v2 probe", "integration_id": 15368}
         ]

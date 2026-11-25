@@ -473,10 +473,8 @@ def _verified_develop_ruleset() -> dict:
         strict=False,
     )
     live["name"] = "develop-squash-only"
-    bound = {"review-gate": 5201041, "release-v2 probe": 15368}
     for check in live["rules"][0]["parameters"]["required_status_checks"]:
-        if check["context"] in bound:
-            check["integration_id"] = bound[check["context"]]
+        check["integration_id"] = 5201041 if check["context"] == "review-gate" else 15368
     live["rules"].append(
         {
             "type": "pull_request",
@@ -535,6 +533,29 @@ def test_missing_develop_required_check_is_blocking(context: str) -> None:
     assert ruleset_drift_check.blocking_findings(findings)
 
 
+@pytest.mark.parametrize("binding", [None, 5201041, 1])
+@pytest.mark.parametrize("context", ["core", "tooling", "hold", "release-v2 probe"])
+def test_a_required_check_bound_to_another_source_is_blocking(context: str, binding: int | None) -> None:
+    live = _verified_develop_ruleset()
+    check = next(check for check in _required_checks(live) if check["context"] == context)
+    if binding is None:
+        check.pop("integration_id")
+    else:
+        check["integration_id"] = binding
+
+    findings = _develop_findings(live)
+
+    assert any(f"required check {context!r} is bound" in finding for finding in findings)
+    assert ruleset_drift_check.blocking_findings(findings)
+
+
+def test_the_runbook_binds_every_required_check_to_the_app_that_posts_it() -> None:
+    for ruleset in _runbook_rulesets().values():
+        assert dict(ruleset.check_integrations) == {
+            context: 5201041 if context == "review-gate" else 15368 for context in ruleset.required_checks
+        }
+
+
 CAPTURE_FIXTURE = REPO_ROOT / "tests" / "fixtures" / "ruleset-develop-squash-only.json"
 
 
@@ -583,7 +604,7 @@ def _set_integration(context: str, value: int | None):
     [
         (_drop_tooling, "tooling"),
         (_drop_review_gate, "review-gate"),
-        (_set_integration("core", 15368), "core"),
+        (_set_integration("core", None), "core"),
         (_set_integration("core", 1), "integration_id"),
         (_set_integration("review-gate", None), "review-gate"),
         (_set_integration("review-gate", 15368), "review-gate"),
@@ -648,10 +669,12 @@ def test_capture_comparison_distinguishes_null_from_numeric_integration_id() -> 
 
 
 def test_capture_comparison_treats_absent_integration_id_as_null() -> None:
+    capture = _capture()
+    _check(capture, "core").pop("integration_id")
     live = _capture()
     _check(live, "core")["integration_id"] = None
 
-    assert ruleset_drift_check.capture_comparison_findings(_capture(), live) == []
+    assert ruleset_drift_check.capture_comparison_findings(capture, live) == []
 
 
 def test_capture_comparison_review_gate_removed_fails_and_rebound_passes() -> None:

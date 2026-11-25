@@ -66,6 +66,7 @@ class ExpectedRuleset:
     deletion: bool
     bypass_actors_none: bool
     do_not_enforce_on_create: bool = False
+    check_integrations: tuple[tuple[str, int], ...] = ()
 
 
 def environment_protection_findings(live: dict[str, Any]) -> list[str]:
@@ -199,14 +200,25 @@ def _section_for_ruleset(text: str, name: str) -> str:
     return text[start:] if next_heading < 0 else text[start:next_heading]
 
 
-def _required_checks(section: str, name: str) -> tuple[str, ...]:
+REQUIRED_CHECK_LINE = re.compile(r"^- (?P<context>.+?)(?: \(integration (?P<integration>\d+)\))?$")
+
+
+def _required_checks(section: str, name: str) -> tuple[tuple[str, int | None], ...]:
     match = re.search(r"Required status checks:\n\n```text\n(.*?)\n```", section, re.DOTALL)
     if not match:
         raise ValueError(f"could not find required checks block for {name!r}")
-    checks = tuple(line.removeprefix("- ").strip() for line in match.group(1).splitlines() if line.strip())
+    checks = []
+    for line in match.group(1).splitlines():
+        if not line.strip():
+            continue
+        parsed = REQUIRED_CHECK_LINE.match(line.strip())
+        if not parsed:
+            raise ValueError(f"unreadable required check line {line!r} for {name!r}")
+        integration = parsed.group("integration")
+        checks.append((parsed.group("context").strip(), None if integration is None else int(integration)))
     if not checks:
         raise ValueError(f"required checks block for {name!r} is empty")
-    return checks
+    return tuple(checks)
 
 
 def _other_properties(section: str, name: str) -> dict[str, str]:
@@ -230,16 +242,20 @@ def parse_expected_rulesets(runbook_text: str) -> dict[str, ExpectedRuleset]:
         if not ref_match:
             raise ValueError(f"could not find target ref for {name!r}")
         props = _other_properties(section, name)
+        checks = _required_checks(section, name)
         expected[name] = ExpectedRuleset(
             name=name,
             ref=ref_match.group(1),
-            required_checks=_required_checks(section, name),
+            required_checks=tuple(context for context, _ in checks),
             strict_required_status_checks_policy=_bool_from_text(props["strict_required_status_checks_policy"]),
             required_linear_history=_bool_from_text(props["required_linear_history"]),
             non_fast_forward=_bool_from_text(props["non_fast_forward"]),
             deletion=props["deletion"].lower() == "blocked",
             bypass_actors_none=props["bypass_actors"].lower() == "(none)",
             do_not_enforce_on_create=_bool_from_text(props["do_not_enforce_on_create"]),
+            check_integrations=tuple(
+                (context, integration) for context, integration in checks if integration is not None
+            ),
         )
     return expected
 
@@ -260,6 +276,19 @@ def _required_status_contexts(ruleset: dict[str, Any]) -> tuple[str, ...]:
         return ()
     checks = rule.get("parameters", {}).get("required_status_checks", [])
     return tuple(check.get("context", "") for check in checks if check.get("context"))
+
+
+def _check_integration_findings(expected: ExpectedRuleset, live: dict[str, Any]) -> list[str]:
+    rule = _rule_by_type(live, "required_status_checks")
+    checks = rule.get("parameters", {}).get("required_status_checks", []) if rule else []
+    findings = []
+    for context, integration in expected.check_integrations:
+        bindings = sorted({check.get("integration_id") for check in checks if check.get("context") == context}, key=str)
+        if bindings and bindings != [integration]:
+            findings.append(
+                f"{expected.name}: required check {context!r} is bound to {bindings!r}, expected integration {integration}"
+            )
+    return findings
 
 
 def _strict_required_status_checks_policy(ruleset: dict[str, Any]) -> bool | None:
@@ -299,6 +328,7 @@ def compare_ruleset(
         findings.append(
             f"{expected.name}: required checks {sorted(live_checks)!r}, expected {sorted(expected.required_checks)!r}"
         )
+    findings.extend(_check_integration_findings(expected, live))
     live_strict = _strict_required_status_checks_policy(live)
     if live_strict != expected.strict_required_status_checks_policy:
         findings.append(
