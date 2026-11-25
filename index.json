@@ -20563,7 +20563,7 @@
       "needs": [],
       "priority": "low",
       "status": "open",
-      "title": "BigQuery runs warn 'Missing required config field location' although the stored config sets it"
+      "title": "BigQuery cost estimation loses the configured location on some result paths (seen on timed-out runs)"
     },
     "bigquery-per-region-price-capture": {
       "claim": null,
