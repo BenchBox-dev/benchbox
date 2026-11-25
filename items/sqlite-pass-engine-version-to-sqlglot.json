@@ -5,7 +5,7 @@
     "On SQLite 3.46 or later, translated output is unchanged.",
     "The item records which SQLite versions BenchBox CI and the supported platforms use."
   ],
-  "context": "Confirmed on BenchBox develop: translate_sql_query (benchbox/utils/dialect_utils.py) calls expression.sql(dialect=tgt) with no SQLite version; benchbox/platforms/sqlite.py already queries SELECT sqlite_version(); the bundled fork is 30.33.0.1. The fork-side behaviour and evidence are in benchbox-sqlglot #148, #151 and #152. Kept as one item because the version plumbing and the unsupported-outcome handling touch the same code and land together.",
+  "context": "Confirmed on BenchBox develop: translate_sql_query (benchbox/utils/dialect_utils.py) calls expression.sql(dialect=tgt) with no SQLite version; benchbox/platforms/sqlite.py already queries SELECT sqlite_version(); the bundled fork is 30.33.0.1. The fork-side behaviour and evidence are in benchbox-sqlglot #148, #151 and #152. Kept as one item because the version plumbing and the unsupported-outcome handling touch the same code and land together.\n\nOrigin: the benchbox-sqlglot refresh onto upstream v30.35.0 on 2026-11-24. The owner chose to adopt upstream's SQLite interval arithmetic in full. I compared 2,288 interval cases with DuckDB: on SQLite 3.54 it makes 1,064 more cases correct and none wrong, but on SQLite 3.45.3, 576 of those newly correct cases return NULL. The fork documents the limit in `downstream/ENGINE-GAPS.md` (\"SQLite month, quarter and year offsets need SQLite 3.46\").\n\nRepro: `SELECT DATE('2024-01-15', '1 MONTH', 'floor')` returns NULL on SQLite 3.45.3 and 3.37.2, and `2024-02-15` on 3.46 or later.\n\nLand this before or with the adoption of fork 30.35.0.1. Check the dialect string with `sqlglot.dialects.Dialect.get_or_raise('sqlite, version=3.45').version`.",
   "description": "BenchBox translates SQLite queries without telling sqlglot which SQLite version it targets. translate_sql_query in benchbox/utils/dialect_utils.py calls expression.sql(dialect=tgt) with no version, although benchbox/platforms/sqlite.py already reads SELECT sqlite_version(). From fork wheel 30.35.0.1, sqlglot uses the dialect version to decide how month, quarter and year date offsets are written for SQLite; without a version, SQLite engines older than 3.46 can return NULL rows for those offsets instead of failing. BenchBox still bundles fork 30.33.0.1, so nothing returns NULL today; the exposure starts when the 30.35.0.1 adoption merges. Land this before or together with that adoption.",
   "links": [
     "https://github.com/BenchBox-dev/benchbox-sqlglot/issues/148",
@@ -19,6 +19,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "e2f829a48ac64bc78689d089a0a13e28",
+      "session_id": "692fcc79997f451aaa7c04181c6a2e9b"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:78b6d8d47866e7d93cae6f2f",
+      "at": "2026-11-25T13:57:24Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b3fbd973d93a4c869228ede265cc3266",
       "session_id": "692fcc79997f451aaa7c04181c6a2e9b"
     }
   ]
