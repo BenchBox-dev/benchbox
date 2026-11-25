@@ -273,6 +273,9 @@ class AthenaSparkAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalT
         except Exception:
             return AthenaSparkSessionState.TERMINATED
 
+    def _pause(self, seconds: float) -> None:
+        time.sleep(seconds)
+
     def _wait_for_session_ready(self, timeout_seconds: int = 300) -> None:
         client = self._get_athena_client()
         start_time = mono_time()
@@ -288,7 +291,7 @@ class AthenaSparkAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalT
                 reason = response["Status"].get("StateChangeReason", "Unknown")
                 raise ConfigurationError(f"Session failed: {state} - {reason}")
 
-            time.sleep(2)
+            self._pause(2)
 
         raise ConfigurationError(f"Session startup timed out after {timeout_seconds}s")
 
@@ -364,7 +367,7 @@ result.show(100, truncate=False)
             if state in AthenaSparkCalculationState.TERMINAL_STATES:
                 return state
 
-            time.sleep(2)
+            self._pause(2)
 
         raise RuntimeError(f"Calculation timed out after {timeout}s")
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -202,7 +201,9 @@ class SynapseSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter)
 
         logger.info(f"Creating Livy session in Synapse workspace {self.workspace_name}")
 
-        response = requests.post(
+        from benchbox.platforms.azure.spark_execution_utils import livy_post
+
+        response = livy_post(
             self.livy_endpoint,
             headers=self._get_headers(),
             json=session_config,
@@ -214,9 +215,10 @@ class SynapseSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter)
 
         session = response.json()
         session_id = session["id"]
+        self._session_id = session_id
+        self._session_created_by_us = True
 
         self._wait_for_session_state(session_id, [SynapseLivySessionState.IDLE])
-        self._session_created_by_us = True
 
         logger.info(f"Livy session created: {session_id}")
         return session_id
@@ -227,11 +229,13 @@ class SynapseSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter)
         target_states: list[str],
         timeout_seconds: int = 600,
     ) -> str:
+        from benchbox.platforms.azure.spark_execution_utils import livy_get, livy_pause
+
         start_time = mono_time()
         session_url = f"{self.livy_endpoint}/{session_id}"
 
         while elapsed_seconds(start_time) < timeout_seconds:
-            response = requests.get(
+            response = livy_get(
                 session_url,
                 headers=self._get_headers(),
                 timeout=30,
@@ -248,7 +252,7 @@ class SynapseSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter)
             if state in [SynapseLivySessionState.ERROR, SynapseLivySessionState.DEAD, SynapseLivySessionState.KILLED]:
                 raise ConfigurationError(f"Session is in {state} state")
 
-            time.sleep(5)
+            livy_pause(5)
 
         raise ConfigurationError(f"Timeout waiting for session {session_id}")
 

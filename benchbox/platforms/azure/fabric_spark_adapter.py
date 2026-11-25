@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -206,7 +205,9 @@ class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
 
         logger.info("Creating Livy session in workspace %s", self.workspace_id)
 
-        response = requests.post(
+        from benchbox.platforms.azure.spark_execution_utils import livy_post
+
+        response = livy_post(
             self.livy_endpoint,
             headers=self._get_headers(),
             json=session_config,
@@ -218,9 +219,10 @@ class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
 
         session = response.json()
         session_id = session["id"]
+        self._session_id = session_id
+        self._session_created_by_us = True
 
         self._wait_for_session_state(session_id, [LivySessionState.IDLE])
-        self._session_created_by_us = True
 
         logger.info("Livy session created: %s", session_id)
         return session_id
@@ -231,11 +233,13 @@ class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
         target_states: list[str],
         timeout_seconds: int = 600,
     ) -> str:
+        from benchbox.platforms.azure.spark_execution_utils import livy_get, livy_pause
+
         start_time = mono_time()
         session_url = f"{self.livy_endpoint}/{session_id}"
 
         while elapsed_seconds(start_time) < timeout_seconds:
-            response = requests.get(
+            response = livy_get(
                 session_url,
                 headers=self._get_headers(),
                 timeout=30,
@@ -252,7 +256,7 @@ class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
             if state in [LivySessionState.ERROR, LivySessionState.DEAD, LivySessionState.KILLED]:
                 raise ConfigurationError(f"Session is in {state} state")
 
-            time.sleep(5)
+            livy_pause(5)
 
         raise ConfigurationError(f"Timeout waiting for session {session_id}")
 

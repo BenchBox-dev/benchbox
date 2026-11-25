@@ -216,11 +216,11 @@ def athena_spark_case():
         patch("benchbox.platforms.aws.athena_spark_adapter.BOTO3_AVAILABLE", True),
         patch("benchbox.platforms.aws.athena_spark_adapter.boto3", MagicMock()),
         patch("benchbox.platforms.aws.athena_spark_adapter.CloudSparkStaging"),
-        patch("benchbox.platforms.aws.athena_spark_adapter.time"),
     ):
         from benchbox.platforms.aws import AthenaSparkAdapter
 
         adapter = AthenaSparkAdapter(workgroup="spark", s3_staging_dir="s3://bucket/data")
+        adapter._pause = lambda _seconds: None
         work = Work(lambda: adapter._submit_calculation("SELECT 1"))
         refuser = Refuser()
         cancels: list[str] = []
@@ -376,19 +376,22 @@ def _livy_case(label: str, adapter: Any) -> Case:
         work.begin()
         return "statement:1"
 
-    fake_requests = SimpleNamespace(post=post, get=get, delete=delete)
-    patcher = patch.object(spark_execution_utils, "requests", fake_requests)
-    patcher.start()
-    sleeper = patch.object(spark_execution_utils, "time", SimpleNamespace(sleep=lambda _seconds: None))
-    sleeper.start()
+    patchers = [
+        patch.object(spark_execution_utils, "livy_post", post),
+        patch.object(spark_execution_utils, "livy_get", get),
+        patch.object(spark_execution_utils, "livy_delete", delete),
+        patch.object(spark_execution_utils, "livy_pause", lambda _seconds: None),
+    ]
+    for patcher in patchers:
+        patcher.start()
     stopped = {"done": False}
 
     def stop() -> None:
         work.end()
         if not stopped["done"]:
             stopped["done"] = True
-            sleeper.stop()
-            patcher.stop()
+            for patcher in patchers:
+                patcher.stop()
 
     return Case(
         label, adapter, start, finish, lambda: setattr(refuser, "refuse", True), stop, cancels, always=["session:7"]
@@ -537,3 +540,38 @@ def test_the_databricks_dataframe_adapter_declares_no_cleanup() -> None:
     from benchbox.platforms.databricks.dataframe_adapter import DatabricksDataFrameAdapter
 
     assert DatabricksDataFrameAdapter.cancel_remote_work is PlatformAdapter.cancel_remote_work
+
+
+@pytest.mark.parametrize("name", ["fabric_spark_case", "synapse_spark_case"])
+def test_a_livy_session_still_starting_at_timeout_is_deleted(name: str, request: pytest.FixtureRequest) -> None:
+    case: Case = request.getfixturevalue(name)
+    adapter = case.adapter
+    del adapter._ensure_session
+    adapter._session_id = None
+    adapter._session_created_by_us = False
+    work = Work(adapter._ensure_session)
+    deleted: list[str] = []
+
+    def post(url: str, **_: Any) -> SimpleNamespace:
+        return _response({"id": 5})
+
+    def get(url: str, **_: Any) -> SimpleNamespace:
+        work.hold()
+        raise RuntimeError("session gone")
+
+    def delete(url: str, **_: Any) -> SimpleNamespace:
+        deleted.append(url.rsplit("/", 1)[-1])
+        work.release.set()
+        return _response()
+
+    with (
+        patch.object(spark_execution_utils, "livy_post", post),
+        patch.object(spark_execution_utils, "livy_get", get),
+        patch.object(spark_execution_utils, "livy_delete", delete),
+    ):
+        work.begin()
+        adapter.cancel_remote_work()
+        work.end()
+
+    assert deleted == ["5"]
+    assert adapter._session_id is None
