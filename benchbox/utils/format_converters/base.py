@@ -137,6 +137,22 @@ class ConversionOptions:
     expected_row_count: int | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        valid_compressions = {"snappy", "gzip", "zstd", "none", None}
+        if self.compression not in valid_compressions:
+            raise ValueError(f"Invalid compression: {self.compression}. Must be one of {valid_compressions}")
+
+        if self.row_group_size <= 0:
+            raise ValueError(f"row_group_size must be positive, got {self.row_group_size}")
+
+        if self.data_page_version is not None and self.data_page_version not in ("1.0", "2.0"):
+            raise ValueError(f"Invalid data_page_version: {self.data_page_version!r}. Must be '1.0' or '2.0'.")
+
+        if self.delimiter is not None and len(self.delimiter) != 1:
+            raise ValueError(f"delimiter must be a single character, got {self.delimiter!r}")
+
+        self.validate_row_count = bool(self.validate_row_count)
+
 
 class _CountingBinaryStream(io.RawIOBase):
     def __init__(self, raw_stream: Any) -> None:
@@ -191,22 +207,6 @@ class _CountingBinaryStream(io.RawIOBase):
                 self.nonempty_lines += 1
             self._cur_nonspace = False
             start = idx + 1
-
-    def __post_init__(self) -> None:
-        valid_compressions = {"snappy", "gzip", "zstd", "none", None}
-        if self.compression not in valid_compressions:
-            raise ValueError(f"Invalid compression: {self.compression}. Must be one of {valid_compressions}")
-
-        if self.row_group_size <= 0:
-            raise ValueError(f"row_group_size must be positive, got {self.row_group_size}")
-
-        if self.data_page_version is not None and self.data_page_version not in ("1.0", "2.0"):
-            raise ValueError(f"Invalid data_page_version: {self.data_page_version!r}. Must be '1.0' or '2.0'.")
-
-        if self.delimiter is not None and len(self.delimiter) != 1:
-            raise ValueError(f"delimiter must be a single character, got {self.delimiter!r}")
-
-        self.validate_row_count = bool(self.validate_row_count)
 
 
 @dataclass
