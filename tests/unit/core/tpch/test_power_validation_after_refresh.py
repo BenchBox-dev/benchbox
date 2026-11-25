@@ -136,7 +136,7 @@ def test_run_without_refresh_still_fails_a_wrong_row_count() -> None:
     result = power_test.run()
 
     assert result.success is False
-    assert "Query validation FAILED" in result.errors[0]
+    assert "Stream check FAILED" in result.errors[0]
     assert result.validation["failed_queries"] == [13]
 
 
