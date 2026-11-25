@@ -34230,6 +34230,13 @@
       "status": "done",
       "title": "LakeSail: TPC-DI load cast error, TPC-Havoc failures and SF1 timeouts in release UAT"
     },
+    "lakesail-uat-joinorder-sf1-server-dies-20261125": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "LakeSail server dies during joinorder SF1 in trunk UAT, failing every later cell"
+    },
     "land-and-observe-develop-post-merge-sweep-pr-1599-20260805": {
       "claim": null,
       "needs": [
