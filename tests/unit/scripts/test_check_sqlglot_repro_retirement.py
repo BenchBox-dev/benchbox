@@ -92,10 +92,10 @@ def test_wrong_execution_result_requires_retirement_review(guarded_repository: P
         check(guarded_repository, "HEAD")
 
 
-def test_unsupported_case_becoming_executable_requires_review(guarded_repository: Path) -> None:
+def test_changed_executable_result_requires_review(guarded_repository: Path) -> None:
     def alter(data):
         case = next(case for case in data["cases"] if case["id"] == "sqlite-month-interval")
-        case["sql"] = "SELECT DATE '2024-02-28' + INTERVAL '1' DAY"
+        case["sql"] = "SELECT DATE '2024-02-27' + INTERVAL '1' DAY"
 
     change_baseline(guarded_repository, alter)
     with pytest.raises(ValueError, match="sqlite-month-interval"):
