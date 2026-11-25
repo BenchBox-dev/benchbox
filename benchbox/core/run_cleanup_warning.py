@@ -10,12 +10,18 @@ from benchbox.core.platform_manifest import (
 from benchbox.utils.run_deadline import remote_cleanup_warning
 
 
-def cloud_cleanup_warning(platform: str | None) -> str | None:
+def cloud_cleanup_warning(platform: str | None, mode: str | None = None) -> str | None:
     if not platform:
         return None
     key = str(platform).lower()
     entry = get_platform_manifest_entry(get_all_platform_aliases().get(key, key))
-    return None if entry is None else _entry_cleanup_warning(entry)
+    if entry is None:
+        return None
+    if mode == "dataframe":
+        dataframe_entry = get_platform_manifest_entry(f"{entry.key}-df")
+        if dataframe_entry is not None:
+            entry = dataframe_entry
+    return _entry_cleanup_warning(entry)
 
 
 def adapter_cleanup_warning(adapter: Any) -> str | None:
