@@ -461,7 +461,7 @@ def host(tmp_path: Path, mirror: dict[str, bytes]) -> dict:
         f' *) echo "tailscale $*" >> "{calls}";; esac\n',
     )
     env = {
-        **os.environ,
+        **{key: value for key, value in os.environ.items() if key != "GATEWAY_HOST_REPO"},
         **GIT_IDENTITY,
         "HOME": str(home),
         "GATEWAY_DIR": str(gateway_dir),
@@ -807,7 +807,7 @@ def test_gateway_clients_follow_a_develop_config_that_changed_after_the_checkout
 FAKE_GH = """#!/bin/sh
 echo "$*" >> "$GH_LOG"
 case "$1 $2" in
-  "api --method") [ -z "${GH_FAIL_DISPATCH:-}" ] || exit 1;;
+  "workflow run") [ -z "${GH_FAIL_DISPATCH:-}" ] || exit 1;;
   "secret list") printf 'REVIEW_GATEWAY_TOKEN\\nREVIEW_GATEWAY_URL\\n';;
   "issue list") [ -f "$GH_STATE/open" ] && cat "$GH_STATE/open";;
   "issue create")
@@ -1241,7 +1241,7 @@ def _dispatches(log: Path) -> int:
     if not log.exists():
         return 0
     return sum(
-        "api --method POST repos/BenchBox-dev/benchbox/dispatches -f event_type=review-sweep" in line
+        "workflow run review-verdict.yml --repo BenchBox-dev/benchbox --ref develop -f sweep=true" in line
         for line in log.read_text(encoding="utf-8").splitlines()
     )
 
@@ -1283,7 +1283,7 @@ def test_a_failed_sweep_dispatch_is_logged_and_leaves_the_monitor_and_its_timest
     _fake_gh(host, GH_FAIL_DISPATCH="1")
     result = _monitor(host)
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "monitor: review-sweep dispatch failed" in result.stdout
+    assert "monitor: sweep dispatch failed" in result.stdout
     assert not (host["dir"] / "sweep.dispatched").exists()
 
 
