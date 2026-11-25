@@ -9,7 +9,7 @@
     "Owner decision on the NOT NULL empty-string policy recorded in context.",
     "PR merged to develop with a changelog.d fragment."
   ],
-  "context": "Owner chose (2026-11-25) to keep these out of the writer change so that change stays hash-neutral, and to land them as one versioned bump before the re-baseline.",
+  "context": "Owner chose (2026-11-25) to keep these out of the writer change so that change stays hash-neutral, and to land them as one versioned bump before the re-baseline.\n\n2026-11-25: with the single PyArrow writer (datagen-p1-deterministic-parquet-writer), ClickBench SF 0.01 Parquet conversion now fails on uncompressed input too ('Column Referer is declared non-nullable but contains nulls'); before, the DuckDB path wrote it as nullable. Defect (3) is therefore the only blocker for ClickBench Parquet runs and should be decided first.",
   "description": "## Problem\nThe 2026-11-25 writer investigation found value-level defects in the PyArrow conversion path (all predate #4506):\n1. `escape_char=\"\\\\\"` drops backslashes (`back\\slash` -> `backslash`); the platform loaders use `escape='\"'`.\n2. Decimal precision overflow is written silently (`12345678901234.5` into DECIMAL(15,2)).\n3. ClickBench fails: empty strings in NOT NULL columns (`Referer`).\n4. Trailing-delimiter detection breaks on quoted delimiters (`\"q|p\"`).\n5. Manifest chunk order is lexical (1, 10, 2, ...), so row order differs from a parallel=1 run.\n6. Bytes depend on input chunk boundaries (dictionary fallback); `combine_chunks()` before each write made 10-chunk and single-file output identical at SF 0.01.\n\n## Change\nFix each in the PyArrow path; bump the Parquet writer identity (for example `benchbox-pyarrow-streaming-v2`) so data_generation_hash separates old and new layouts; add a regression fixture per defect.\n\n## Decision gates\n- For (3), propose the empty-string policy (NULL vs empty string vs relaxing NOT NULL for that column) with the ClickBench reference semantics, and get owner approval before implementing.\n- Stop if any fix changes values for TPC-H or TPC-DS output (they must stay EXCEPT ALL = 0 against the platform loaders' reading of the same files).\n\n## Guardrails\n- One writer-version bump for all fixes together, landed before datagen-p1-parquet-corpus-rebaseline runs.\n- No new dependency. AGENTS.md workflow, changelog fragment, merged PR.",
   "links": [
     "benchbox/utils/format_converters/base.py",
@@ -31,6 +31,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "20091e27ced048fe930139f5075b3585",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-25T22:23:16Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "60e1fdd46f1d4854843a5e0902c7b961",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
