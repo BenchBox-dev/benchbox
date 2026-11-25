@@ -50755,10 +50755,15 @@
       "title": "Harden the testing correctness gate and close review follow-ups"
     },
     "tests-depend-on-host-free-memory-20261124": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-26T22:23:25Z",
+        "generation": "ced841b2d6474c57a18a00ad5eccab8b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e82e03734cad9d7732bbc3a5"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Stop integration tests that run small DataFrame benchmarks from failing when the host is short of free memory"
     },
     "tests-inherit-outer-make-variables": {
