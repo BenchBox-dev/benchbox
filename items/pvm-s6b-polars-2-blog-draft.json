@@ -1,13 +1,14 @@
 {
   "acceptance": [
-    "A draft exists in the blog drafts area following _blog/STYLE_GUIDE.md and passes the blog skill's critique, voice and style checks",
-    "Every figure in the draft traces to the pvm-s5 analysis output (a mapping table is in the draft's research notes)",
+    "Every figure in the draft traces to a published result id (mapping table from pvm-p5, pvm-p6 and pvm-p7 in the draft's research notes)",
+    "Every graph is a Results Explorer capture made by the site's image procedure",
+    "The draft passes the blog skill's critique, voice and style checks and follows the post's outline writing rules",
     "The disclosures listed in the description are present",
-    "The draft links to the published results from pvm-s6-publish-polars-results, or states where the data lives",
-    "The draft names the core --execution-engine setting (default, in-memory, streaming) in its setup descriptions and reproduce commands, matching the refreshed methodology, and never a Polars `engine` platform option"
+    "The draft names the core --execution-engine setting (default, in-memory, streaming) in its setup descriptions and reproduce commands, never a Polars engine platform option",
+    "The post remains a draft; title, pull quote, TL;DR and query 4 text are unchanged unless the owner changed them"
   ],
   "context": "2026-10-09: pvm-s5 is done. A draft exists uncommitted in worktree ../BenchBox.wt-polars-blog (branch docs/polars-2-matrix-blog-draft): _blog/platform-deep-dives/drafts/polars-2-version-matrix.md and research/polars-2-version-matrix-figures-2026-10-09.md. Held until core-exec-polars-matrix-docs-refresh lands, because the Polars `engine` option the draft describes is being replaced by the core --execution-engine setting (ADR docs/development/adr/adr-core-execution-variants.md). Before committing: change the reproduce commands and the setup descriptions to --execution-engine, re-run the blog skill critique and voice checks, and fix the 1.35.2 wording (the probe did not attribute its streaming divergence to Polars). Draft goes in _blog/platform-deep-dives/drafts/ and is not published (D5).\n\nRevalidated 2026-11-11: no unmet needs remain (core-exec-polars-matrix-docs-refresh is done), so the blocked status was stale; moved back to open. PR #3142 was closed and superseded by benchbox-site#51 (merged 2026-10-19), which holds an outline and research notes only, not a full draft.\n\n2026-11-22: the draft is merged in benchbox-site (drafts/platform-deep-dives/drafts/polars-2-version-matrix.md) on the 2026-11-20 run. Owner: \"I want to use Results Explorer graphs for the blog post not the Textcharts CLI graphs\". Graphs and the move to published figures are tracked in pvm-p5-post-and-findings-from-published-runs, pvm-p3 and pvm-p4.",
-  "description": "Write the post that presents the Polars 2.0 results, using the blog skill (plan, draft, critique, voice and style checks).\n\nGuardrails:\n- Choose the title and angle after reading the pvm-s5 findings, not before.\n- Lead with the default-settings comparison (setup A), then separate the engine-default change from engine improvements (setup B) and streaming against streaming (setup C).\n- Include the disclosures: host (Apple M4, 16 GiB), thread count, data generation, Parquet reads in each run, min–max per median, did-not-complete cells, the correctness evidence used, and no speed claims against DuckDB.\n- Every chart and number cites the analysis output.\n- Draft only: publishing goes through the blog skill's normal review, and its own approval.",
+  "description": "Write the post that presents the Polars 2.0 results, using the blog skill (plan, draft, critique, voice and style checks).\n\nGuardrails:\n- Choose the title and angle after reading the pvm-s5 findings, not before.\n- Lead with the default-settings comparison (setup A), then separate the engine-default change from engine improvements (setup B) and streaming against streaming (setup C).\n- Include the disclosures: host (Apple M4, 16 GiB), thread count, data generation, Parquet reads in each run, min–max per median, did-not-complete cells, the correctness evidence used, and no speed claims against DuckDB.\n- Every chart and number cites the analysis output.\n- Draft only: publishing goes through the blog skill's normal review, and its own approval.\n\n## Decision gates (2026-11-25)\n- The draft already exists in benchbox-site (drafts/platform-deep-dives/drafts/polars-2-version-matrix.md). Before editing, diff it against its last commit and edit in place; the owner edits it by hand.\n- Graphs are Results Explorer captures only (owner, 2026-11-22). No textcharts or other chart.\n- The post stays a draft (owner, 2026-11-24). Title, pull quote, TL;DR and the query 4 text change only by the owner: old and new figures and proposed wording go in the pull request description (owner, 2026-11-24).",
   "links": [
     "_blog/STYLE_GUIDE.md",
     "_blog/VOICE_REFERENCE.md",
@@ -77,6 +78,14 @@
       "op": "update",
       "op_id": "54b3f5be1bdb471eac91a64bb666bcac",
       "session_id": "c07e5ac3266b4133b46582fc1e496cdf"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-25T15:52:22Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5dd8d1329b844d48a0c9e9462cc10fc8",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
     }
   ]
 }
