@@ -23,29 +23,11 @@ from tests.sqlite_engine_pin import pinned_sqlite_engine_version
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 MONTH_OFFSET = "SELECT DATE '2024-01-31' + INTERVAL '1' MONTH"
-CLAMP_MESSAGE = "Clamping month-end interval arithmetic requires SQLite 3.46+"
+SAFE_MONTH_OFFSET = "SELECT DATE '2024-01-15' + INTERVAL '1' MONTH"
+UNSAFE_YEAR_OFFSET = "SELECT DATE '2024-02-29' + INTERVAL '1' YEAR"
+COLUMN_MONTH_OFFSET = "SELECT CAST(d AS DATE) + INTERVAL '1' MONTH FROM t"
 BELOW = "3.45.3"
 AT_LEAST = "3.46.0"
-
-
-@pytest.fixture
-def clamp_requires_346(monkeypatch):
-    from benchbox._vendor.sqlglot.generators.sqlite import SQLiteGenerator
-
-    original = SQLiteGenerator.interval_sql
-
-    def interval_sql(self, expression):
-        if self.dialect.version < (3, 46, 0):
-            self.unsupported(CLAMP_MESSAGE)
-        return original(self, expression)
-
-    from benchbox._vendor.sqlglot import generator as sqlglot_generator
-
-    monkeypatch.setattr(SQLiteGenerator, "interval_sql", interval_sql)
-    sqlglot_generator._DISPATCH_CACHE.pop(SQLiteGenerator, None)
-    yield
-    monkeypatch.undo()
-    sqlglot_generator._DISPATCH_CACHE.pop(SQLiteGenerator, None)
 
 
 def test_engine_version_reads_the_standard_library(monkeypatch):
@@ -96,7 +78,6 @@ def test_rewrite_outcome_records_version():
     assert outcomes[-1].sqlite_version == AT_LEAST
 
 
-@pytest.mark.usefixtures("clamp_requires_346")
 class TestMonthEndClampingBelowThreshold:
     def test_strict_mode_raises(self):
         with pinned_sqlite_engine_version(BELOW), sql_translation_context(strict=True) as outcomes:
@@ -119,7 +100,23 @@ class TestMonthEndClampingBelowThreshold:
     def test_at_or_above_the_threshold_translates(self):
         with pinned_sqlite_engine_version(AT_LEAST):
             sql = translate_sql_query(MONTH_OFFSET, "sqlite", source_dialect="postgres", strict=True)
-        assert sql.startswith("SELECT DATE(")
+        assert "'floor'" in sql
+
+    @pytest.mark.parametrize("query", [SAFE_MONTH_OFFSET, "SELECT DATE '1994-01-01' + INTERVAL '1' YEAR"])
+    @pytest.mark.parametrize("strict", [True, False])
+    def test_safe_literal_offsets_translate_without_floor(self, query, strict):
+        with pinned_sqlite_engine_version(BELOW):
+            sql = translate_sql_query(query, "sqlite", source_dialect="postgres", strict=strict)
+        assert "floor" not in sql.lower()
+        row = sqlite3.connect(":memory:").execute(sql).fetchone()
+        assert row[0] in {"2024-02-15", "1995-01-01"}
+
+    @pytest.mark.parametrize(
+        "query", [UNSAFE_YEAR_OFFSET, COLUMN_MONTH_OFFSET, "SELECT DATE '2024-01-31' + INTERVAL '3' MONTH"]
+    )
+    def test_every_unsafe_unit_raises(self, query):
+        with pinned_sqlite_engine_version(BELOW), pytest.raises(SQLTranslationError):
+            translate_sql_query(query, "sqlite", source_dialect="postgres", strict=True)
 
     def test_other_targets_are_unaffected(self):
         with pinned_sqlite_engine_version(BELOW):
@@ -149,12 +146,6 @@ def test_other_unsupported_messages_keep_warning_behaviour(version, strict, capl
         sql = translate_sql_query(query, "sqlite", source_dialect="postgres", strict=strict)
     assert "BIT_AND" in sql.upper() or "BITWISE" in sql.upper()
     assert "not supported in SQLite" in caplog.text
-
-
-def test_day_above_28_offset_on_the_bundled_wheel_is_not_silently_ignored(caplog):
-    with pinned_sqlite_engine_version(AT_LEAST), caplog.at_level(logging.WARNING):
-        translate_sql_query(MONTH_OFFSET, "sqlite", source_dialect="postgres", strict=False)
-    assert "SQLite does not support this INTERVAL expression" in caplog.text
 
 
 def _unversioned_sqlite(monkeypatch):
