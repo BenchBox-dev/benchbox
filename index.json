@@ -45358,10 +45358,15 @@
       "title": "Check run-timeout remote cleanup against live cloud services"
     },
     "run-timeout-remote-cleanup-more-adapters-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-26T04:33:18Z",
+        "generation": "7851d09c45fe4b67afd58d8647813fc9",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:883ac124f68c0bb7e4b8a7aa"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Extend run-timeout remote cleanup to more cloud adapters"
     },
     "run-timeout-remove-unused-timers-20261120": {
