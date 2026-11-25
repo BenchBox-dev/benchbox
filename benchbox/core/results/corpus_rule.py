@@ -1,14 +1,31 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import math
+import sys
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from functools import cache
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 DATA_PATH = Path(__file__).with_name("corpus_rule_data.json")
+
+
+def _load_sibling(name: str) -> ModuleType:
+    path = Path(__file__).with_name(f"{name}.py")
+    spec = importlib.util.spec_from_file_location(f"_benchbox_corpus_rule_{name}", path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load {name} from {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+_QUERY_STATUS = _load_sibling("query_status")
 
 PHASE_POWER = "power"
 PHASE_THROUGHPUT = "throughput"
@@ -648,56 +665,6 @@ def _status_text(value: Any) -> str | None:
     return str(value).strip().lower() or None
 
 
-def _int_or_none(value: Any) -> int | None:
-    if isinstance(value, bool):
-        return int(value)
-    if isinstance(value, int):
-        return value
-    if isinstance(value, float) and value.is_integer():
-        return int(value)
-    if isinstance(value, str):
-        try:
-            return int(value)
-        except ValueError:
-            return None
-    return None
-
-
-def _query_row_failed(query: Any) -> bool:
-    if not isinstance(query, Mapping):
-        return False
-    if str(query.get("run_type") or "measurement").strip().lower() != "measurement":
-        return False
-    status = query.get("status")
-    return status is not None and str(status).upper() not in {"SUCCESS", "SKIPPED"}
-
-
-def _recorded_failed_queries(data: Mapping[str, Any]) -> int:
-    summary = data.get("summary")
-    queries = summary.get("queries") if isinstance(summary, Mapping) else None
-    if isinstance(queries, Mapping):
-        failed = _int_or_none(queries.get("failed"))
-        if failed is not None and failed > 0:
-            return failed
-        total = _int_or_none(queries.get("total"))
-        passed = _int_or_none(queries.get("passed"))
-        skipped = _int_or_none(queries.get("skipped")) or 0
-        if total is not None and passed is not None and total > passed + skipped:
-            return total - passed - skipped
-    rows = data.get("queries")
-    return sum(1 for row in rows if _query_row_failed(row)) if isinstance(rows, list) else 0
-
-
-def _row_count_validation_failed(data: Mapping[str, Any]) -> bool:
-    rows = data.get("queries")
-    return isinstance(rows, list) and any(
-        isinstance(row, Mapping)
-        and isinstance(evidence := row.get("row_count_validation"), Mapping)
-        and str(evidence.get("status") or "").strip().upper() == "FAILED"
-        for row in rows
-    )
-
-
 def _recorded_validation_status(data: Mapping[str, Any]) -> str | None:
     summary = data.get("summary")
     return _status_text(summary.get("validation")) if isinstance(summary, Mapping) else None
@@ -720,7 +687,7 @@ def facts_from_result(
     benchmark = benchmark if isinstance(benchmark, Mapping) else {}
     benchmark_id = benchmark.get("id")
     status = _status_text(validation_status) if validation_status is not None else _recorded_validation_status(data)
-    failed = failed_queries if failed_queries is not None else _recorded_failed_queries(data)
+    failed = failed_queries if failed_queries is not None else _QUERY_STATUS.bundle_failed_query_count(data)
     return Facts(
         benchmark=benchmark_id if isinstance(benchmark_id, str) else None,
         scale_factor=_scale_value(benchmark.get("scale_factor")),
@@ -731,7 +698,7 @@ def facts_from_result(
         validation_failed=(
             status in NON_CLEAN_VALIDATION_STATUSES
             or failed > 0
-            or _row_count_validation_failed(data)
+            or _QUERY_STATUS.has_failed_query_validation(data.get("queries"))
             or _translation_non_clean(data)
         ),
         row_counts_checked=row_counts_checked(data),

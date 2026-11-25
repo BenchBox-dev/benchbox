@@ -443,8 +443,8 @@ def test_module_imports_only_the_standard_library() -> None:
 
 
 def test_module_runs_with_no_project_packages_installed(tmp_path: Path) -> None:
-    shutil.copy(MODULE_PATH, tmp_path / "corpus_rule.py")
-    shutil.copy(MODULE_PATH.with_name("corpus_rule_data.json"), tmp_path / "corpus_rule_data.json")
+    for name in ("corpus_rule.py", "corpus_rule_data.json", "query_status.py"):
+        shutil.copy(MODULE_PATH.with_name(name), tmp_path / name)
     completed = subprocess.run(
         [sys.executable, str(PROBE_PATH), str(tmp_path)], capture_output=True, text=True, check=False, cwd=tmp_path
     )

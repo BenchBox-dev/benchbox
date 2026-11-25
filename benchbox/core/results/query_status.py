@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import Any
 
 DOCUMENTED_PLATFORM_QUERY_EXCLUSIONS: dict[tuple[str, str], dict[str, frozenset[str]]] = {
@@ -88,7 +89,7 @@ def documented_exclusions_cover_failures(data: dict[str, Any]) -> bool:
     return _summary_counts_match(data, len(failed_rows))
 
 
-def bundle_failed_query_count(data: dict[str, Any]) -> int:
+def bundle_failed_query_count(data: Mapping[str, Any]) -> int:
     summary = data.get("summary")
     if isinstance(summary, dict):
         queries = summary.get("queries")
