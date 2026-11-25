@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -831,3 +832,310 @@ def test_ceiling_growth_counts_absent_files_from_zero_and_keeps_fifteen() -> Non
     assert growth[0]["file"] == "tests/f18.py"
     assert growth[0]["growth_seconds"] == 19.0
     assert all(row["file"] != "tests/f19.py" for row in growth)
+
+
+SHA_A = "a" * 40
+SHA_B = "b" * 40
+CEILING_PAYLOAD = {"schema": 1, "ceiling_seconds": 1000, "reference_calibration_best_seconds": 0.75, "reason": "x"}
+
+
+def git(repo: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", "-C", str(repo), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=True,
+    ).stdout
+
+
+class ReproduceFixture:
+    def __init__(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(tmp_path)
+        self.tmp_path = tmp_path
+        (tmp_path / "fast-refresh" / "runs").mkdir(parents=True)
+        self.runs = [
+            write_run(
+                tmp_path,
+                f"fast-refresh/runs/run-{100 + index}",
+                best_seconds=0.5 * (index + 1),
+                cases=(("test_alpha", 1.0 * (index + 1)), ("test_beta", 3.0 * (index + 1))),
+            )
+            for index in range(2)
+        ]
+        self.entries = [
+            {
+                "run_id": 100 + index,
+                "pr": 3500 + index,
+                "sha": SHA_A if index == 0 else SHA_B,
+                "artifact_id": 200 + index,
+                "dir": str(run_dir.relative_to(tmp_path)),
+            }
+            for index, run_dir in enumerate(self.runs)
+        ]
+        self.previous = tmp_path / "previous"
+        previous, _ = baseline.build_baseline(
+            [{**entry, "dir": str(self.runs[0].relative_to(tmp_path))} for entry in self.entries[:1]], GENERATED_AT
+        )
+        previous["tests"] = [{"id": "tests/test_sample.py::TestSample::test_alpha", "p50_seconds": 1.0}]
+        baseline.write_sharded_baseline(self.previous, previous)
+        self.repo = tmp_path / "repo"
+        self.directory = self.repo / "tests" / "fixtures" / "fast_tier_baseline"
+        built, _ = baseline.build_baseline(self.entries, GENERATED_AT)
+        baseline.write_sharded_baseline(self.directory, built)
+        baseline.write_summary(self.previous, self.directory)
+        self.ids = {record["id"] for record in built["tests"]}
+        self.ceiling = tmp_path / "ceiling.json"
+        self.ceiling.write_text(json.dumps(CEILING_PAYLOAD), encoding="utf-8")
+        git(self.repo, "init", "-q")
+        self.commit()
+
+    def commit(self, *, stage_worktree: bool = True) -> None:
+        if stage_worktree:
+            git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-q", "--allow-empty", "-m", "baseline")
+
+    def api(self, overrides: dict[str, dict[str, object]] | None = None) -> baseline.Api:
+        payloads: dict[str, dict[str, object]] = {}
+        for entry in self.entries:
+            run_id, pr, sha = entry["run_id"], entry["pr"], entry["sha"]
+            payloads[f"repos/o/r/actions/runs/{run_id}"] = {
+                "id": run_id,
+                "path": ".github/workflows/ci.yml",
+                "event": "pull_request",
+                "status": "completed",
+                "conclusion": "success",
+                "head_sha": sha,
+                "pull_requests": [{"number": pr}],
+            }
+            payloads[f"repos/o/r/actions/artifacts/{entry['artifact_id']}"] = {
+                "name": f"fast-junit-{pr}-{sha}",
+                "workflow_run": {"id": run_id, "head_sha": sha},
+            }
+            payloads[f"repos/o/r/pulls/{pr}"] = {"merged": True}
+        for path, changes in (overrides or {}).items():
+            payloads[path] = {**payloads[path], **changes}
+
+        def api(path: str) -> object:
+            if path not in payloads:
+                raise baseline.BaselineError("unknown")
+            return payloads[path]
+
+        return api
+
+    def problems(self, api: baseline.Api | None = None) -> list[str]:
+        scratch = self.tmp_path / "scratch"
+        if scratch.exists():
+            for child in scratch.iterdir():
+                child.unlink()
+        return baseline.reproduce_problems(
+            self.directory,
+            self.previous,
+            scratch,
+            rev="HEAD",
+            repo="o/r",
+            api=api or self.api(),
+            collected_ids=self.ids,
+            ceiling_path=self.ceiling,
+        )
+
+
+@pytest.fixture
+def reproduce(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReproduceFixture:
+    return ReproduceFixture(tmp_path, monkeypatch)
+
+
+def test_reproduce_passes_on_a_faithful_rebuild(reproduce: ReproduceFixture) -> None:
+    assert reproduce.problems() == []
+
+
+def test_reproduce_detects_an_extra_file_in_a_subdirectory(reproduce: ReproduceFixture) -> None:
+    (reproduce.directory / "nested").mkdir()
+    (reproduce.directory / "nested" / "hidden.json").write_text("{}\n", encoding="utf-8")
+    reproduce.commit()
+    assert reproduce.problems() == ['extra file "nested/hidden.json"']
+
+
+def test_reproduce_detects_a_missing_summary(reproduce: ReproduceFixture) -> None:
+    git(reproduce.repo, "rm", "-q", "tests/fixtures/fast_tier_baseline/SUMMARY.md")
+    reproduce.commit()
+    assert reproduce.problems() == ['missing file "SUMMARY.md"']
+
+
+def test_reproduce_detects_a_mode_change(reproduce: ReproduceFixture) -> None:
+    git(reproduce.repo, "update-index", "--chmod=+x", "tests/fixtures/fast_tier_baseline/tests-00.json")
+    reproduce.commit(stage_worktree=False)
+    assert reproduce.problems() == ['file mode 100755 on "tests-00.json"']
+
+
+def test_reproduce_detects_a_changed_byte(reproduce: ReproduceFixture) -> None:
+    target = next(
+        path
+        for path in sorted(reproduce.directory.glob("tests-*.json"))
+        if "p50_seconds" in path.read_text(encoding="utf-8")
+    )
+    target.write_text(
+        target.read_text(encoding="utf-8").replace('"p50_seconds": ', '"p50_seconds": 9', 1), encoding="utf-8"
+    )
+    reproduce.commit()
+    assert reproduce.problems() == [f'changed bytes in "{target.name}"']
+
+
+def test_reproduce_reads_the_commit_not_the_worktree(reproduce: ReproduceFixture) -> None:
+    (reproduce.directory / "SUMMARY.md").write_text("edited\n", encoding="utf-8")
+    assert reproduce.problems() == []
+
+
+@pytest.mark.parametrize(
+    ("path", "changes", "code"),
+    [
+        ("repos/o/r/actions/runs/100", {"head_sha": SHA_B}, "run-sha"),
+        ("repos/o/r/actions/runs/100", {"event": "push"}, "run-event"),
+        ("repos/o/r/actions/runs/100", {"conclusion": "failure"}, "run-conclusion"),
+        ("repos/o/r/actions/runs/100", {"path": ".github/workflows/evil.yml"}, "run-workflow"),
+        ("repos/o/r/actions/runs/100", {"path": ".github/workflows/ci.yml@refs/pull/3500/merge"}, None),
+        ("repos/o/r/actions/runs/100", {"pull_requests": [{"number": 1}]}, "run-pr"),
+        ("repos/o/r/actions/artifacts/200", {"name": f"fast-junit-9999-{SHA_A}"}, "artifact-name"),
+        ("repos/o/r/actions/artifacts/200", {"workflow_run": {"id": 7, "head_sha": SHA_A}}, "artifact-run"),
+        ("repos/o/r/actions/artifacts/200", {"workflow_run": {"id": 100, "head_sha": SHA_B}}, "artifact-sha"),
+        ("repos/o/r/pulls/3500", {"merged": False}, "pr-not-merged"),
+    ],
+)
+def test_reproduce_rejects_source_runs_whose_provenance_does_not_match(
+    reproduce: ReproduceFixture, path: str, changes: dict[str, object], code: str | None
+) -> None:
+    problems = reproduce.problems(reproduce.api({path: changes}))
+    assert problems == ([] if code is None else [f"run 100: {code}"])
+
+
+def test_reproduce_rejects_an_unreachable_api_without_trusting_the_artifact(reproduce: ReproduceFixture) -> None:
+    def unreachable(path: str) -> object:
+        raise baseline.BaselineError("down")
+
+    problems = reproduce.problems(unreachable)
+    assert "run 100: run-unavailable" in problems
+    assert "run 100: artifact-unavailable" in problems
+    assert "run 100: pr-unavailable" in problems
+
+
+def test_source_run_problems_limit_runs_and_forbid_duplicates() -> None:
+    def entry(run_id: int, pr: int) -> dict[str, object]:
+        return {"run_id": run_id, "pr": pr, "sha": SHA_A, "artifact_id": run_id}
+
+    def api(path: str) -> object:
+        raise baseline.BaselineError("down")
+
+    many = [entry(index, index) for index in range(1, 22)]
+    assert "source runs: more than 20" in baseline.source_run_problems(many, "o/r", api)
+    duplicated = baseline.source_run_problems([entry(1, 5), entry(1, 6), entry(2, 6)], "o/r", api)
+    assert "source runs: run 1 appears more than once" in duplicated
+    assert "source runs: pr 6 appears more than once" in duplicated
+
+
+def test_reproduce_enforces_the_ceiling_against_the_rebuilt_baseline(reproduce: ReproduceFixture) -> None:
+    reproduce.ceiling.write_text(json.dumps({**CEILING_PAYLOAD, "ceiling_seconds": 1}), encoding="utf-8")
+    assert reproduce.problems() == ["ceiling check: the baseline is over the fast-duration ceiling"]
+
+
+def test_reproduce_gate_check_needs_the_collected_fast_tier_covered(reproduce: ReproduceFixture) -> None:
+    reproduce.ids = {"tests/other.py::t1", "tests/other.py::t2"}
+    assert reproduce.problems() == ["gate check: coverage of the collected fast tier is below the minimum"]
+
+
+def test_reproduce_command_reports_problems_and_exit_codes(
+    reproduce: ReproduceFixture, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    collected = reproduce.tmp_path / "collected.txt"
+    collected.write_text("\n".join(sorted(reproduce.ids)) + "\n", encoding="utf-8")
+    argv = [
+        "reproduce",
+        "--baseline",
+        str(reproduce.directory),
+        "--previous",
+        str(reproduce.previous),
+        "--scratch",
+        str(reproduce.tmp_path / "scratch-cli"),
+        "--collected-ids",
+        str(collected),
+        "--ceiling",
+        str(reproduce.ceiling),
+        "--repo",
+        "o/r",
+    ]
+    monkeypatch.setattr(baseline, "github_api", reproduce.api())
+    assert baseline.main(argv) == 0
+    monkeypatch.setattr(baseline, "github_api", reproduce.api({"repos/o/r/pulls/3501": {"merged": False}}))
+    (reproduce.tmp_path / "scratch-cli" / "manifest.json").unlink()
+    assert baseline.main(argv) == 2
+    assert "run 101: pr-not-merged" in capsys.readouterr().out
+
+
+def summary_pair() -> tuple[dict[str, object], dict[str, object]]:
+    hostile = "tests/a.py::t[x|y `z` \nw]"
+    previous = {
+        "reference_calibration_best_seconds": 1.0,
+        "tests": [{"id": hostile, "p50_seconds": 1.0}, {"id": "tests/b.py::gone", "p50_seconds": 2.0}],
+    }
+    current = {
+        "reference_calibration_best_seconds": 1.0,
+        "tests": [{"id": hostile, "p50_seconds": 2.0}, {"id": "tests/c.py::new", "p50_seconds": 0.5}],
+        "runs": [{"run_id": 1, "pr": 2, "sha": SHA_A, "speed_factor": 1.0, "test_count": 2}],
+        "rejected_runs": [
+            {"run_id": 3, "pr": 4, "reason": "junit-unreadable"},
+            {"run_id": 5, "pr": 6, "reason": "missing or unreadable junit.xml: /home/runner/work/secret.xml"},
+        ],
+    }
+    return previous, current
+
+
+def table_cells(line: str) -> list[str]:
+    return re.split(r"(?<!\\)\|", line.strip())[1:-1]
+
+
+def test_summary_escapes_table_cells_and_keeps_each_row_on_one_line() -> None:
+    text = baseline.summary_markdown(*summary_pair())
+    rows = [line for line in text.splitlines() if "t[x" in line]
+    assert rows
+    for row in rows:
+        assert len(table_cells(row)) in {4, 2}
+        assert "``tests/a.py::t[x\\|y `z`  w]``" in row
+    assert "\nw]" not in text
+
+
+def test_summary_reduces_rejected_reasons_to_fixed_codes() -> None:
+    text = baseline.summary_markdown(*summary_pair())
+    assert "- run 3 (pr 4): junit-unreadable" in text
+    assert "- run 5 (pr 6): unrecognized" in text
+    assert "/home/runner" not in text
+    assert "secret" not in text
+
+
+def test_summary_is_deterministic_and_separates_the_list_with_blank_lines() -> None:
+    first = baseline.summary_markdown(*summary_pair())
+    assert first == baseline.summary_markdown(*summary_pair())
+    assert "Rejected source runs: 2.\n\n- run 3" in first
+    assert first.endswith("\n") and not first.endswith("\n\n")
+
+
+def test_summary_command_writes_the_summary_next_to_the_baseline(reproduce: ReproduceFixture) -> None:
+    (reproduce.directory / "SUMMARY.md").unlink()
+    argv = ["summary", "--previous", str(reproduce.previous), "--baseline", str(reproduce.directory)]
+    assert baseline.main(argv) == 0
+    assert (reproduce.directory / "SUMMARY.md").read_text(encoding="utf-8").startswith("# Fast-tier duration baseline")
+
+
+def test_rejected_source_runs_carry_fixed_codes(tmp_path: Path) -> None:
+    good = write_run(tmp_path, "good")
+    no_calibration = write_run(tmp_path, "bad-a", calibration=False)
+    bad_value = write_run(tmp_path, "bad-b", best_seconds=-1)
+    bad_time = write_run(tmp_path, "bad-c", cases=(("test_alpha", "oops"),))
+    no_junit = write_run(tmp_path, "bad-d")
+    (no_junit / "junit.xml").unlink()
+    manifest = write_manifest(tmp_path, [good, no_calibration, bad_value, bad_time, no_junit])
+    _built, rejected = baseline.build_baseline(baseline.load_manifest(manifest), GENERATED_AT)
+    assert [item["reason"] for item in rejected] == [
+        "calibration-unreadable",
+        "calibration-invalid",
+        "junit-time-invalid",
+        "junit-unreadable",
+    ]

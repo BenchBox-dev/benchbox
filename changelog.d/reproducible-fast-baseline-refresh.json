@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "Review the fast-tier duration baseline by reproduction plus a summary: refreshes carry a deterministic SUMMARY.md, and a required CI job rebuilds the committed baseline from its source runs and fails on any difference; no user-facing effect"}
