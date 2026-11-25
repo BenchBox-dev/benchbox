@@ -639,10 +639,12 @@ def test_classify_for_submit_keeps_unvalidated_as_passed_cell(tmp_path: Path):
     assert result.submit_terminal_state == "unvalidated"
 
 
-def test_classify_for_submit_prefers_unofficial_over_unvalidated(tmp_path: Path):
+def test_classify_for_submit_reports_unvalidated_before_unofficial(tmp_path: Path):
     result_path = tmp_path / "benchmark_runs" / "results" / "unofficial-unvalidated.json"
     _write_result_json(result_path, compliance_class="unofficial_subscale", validation="not_validated")
-    assert runner.classify_for_submit(result_path) is runner.SubmitTerminalState.unofficial
+    state = runner.classify_for_submit(result_path)
+    assert state is runner.SubmitTerminalState.unvalidated
+    assert not runner.submit_state_is_cell_failure(state)
 
 
 def test_classify_for_submit_keeps_uncertain_with_translation_fallback_as_passed_cell(tmp_path: Path):
