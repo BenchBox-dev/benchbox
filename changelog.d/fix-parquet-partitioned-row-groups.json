@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Partitioned Parquet output now fills row groups to the configured row_group_size (122,880 by default) instead of writing one small row group per input block. On 3 million rows across 200 partitions this cut the row-group count from 35,000 to 285 and conversion time from 9.1 s to 3.5 s."
+    }
+  ]
+}

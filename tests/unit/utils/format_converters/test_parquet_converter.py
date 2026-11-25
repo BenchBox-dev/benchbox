@@ -524,6 +524,28 @@ class TestParquetPartitioning:
         assert len(east_files) >= 1
         assert len(west_files) >= 1
 
+    def test_partitioned_row_groups_fill_to_the_row_group_size(self, temp_dir, partitioned_schema, monkeypatch):
+        tbl_file = temp_dir / "test.tbl"
+        regions = ("East", "West")
+        tbl_file.write_text("".join(f"{i}|name-{i}|{regions[i % 2]}|2023|\n" for i in range(2000)))
+
+        converter = ParquetConverter()
+        stream_batches = converter.iter_record_batches
+        monkeypatch.setattr(
+            converter, "iter_record_batches", lambda *args, **kwargs: stream_batches(*args, block_size=4096, **kwargs)
+        )
+        converter.convert(
+            source_files=[tbl_file],
+            table_name="test",
+            schema=partitioned_schema,
+            options=ConversionOptions(output_dir=temp_dir, partition_cols=["region"], row_group_size=400),
+        )
+
+        for region in regions:
+            (part_file,) = (temp_dir / "test" / f"region={region}").glob("*.parquet")
+            meta = pq.read_metadata(part_file)
+            assert [meta.row_group(i).num_rows for i in range(meta.num_row_groups)] == [400, 400, 200]
+
     def test_convert_with_multiple_partition_columns(self, temp_dir, partitioned_schema):
 
         tbl_file = temp_dir / "test.tbl"

@@ -487,6 +487,7 @@ class ParquetConverter(BaseFormatConverter):
                 partitioning=partitioning,
                 basename_template="part-{i}.parquet",
                 existing_data_behavior="overwrite_or_ignore",
+                min_rows_per_group=opts.row_group_size,
                 max_rows_per_group=opts.row_group_size,
                 file_options=ds.ParquetFileFormat().make_write_options(
                     compression=compression,
