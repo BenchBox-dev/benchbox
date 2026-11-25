@@ -25920,6 +25920,15 @@
       "status": "open",
       "title": "Record the observed execution engine on the SQL platforms that declare engines"
     },
+    "crr-v0-reference-reader-and-generator": {
+      "claim": null,
+      "needs": [
+        "crr-c1-validation-status-vocabulary"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Land the single row-count reference reader and generator with the SF 0.01, 0.1 and 1 references"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],
