@@ -1132,6 +1132,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "sql_dialect": "databricks",
       "supports_dataframe": true,
       "default_mode": "sql",
+      "run_timeout_cleanup": true,
       "cost_class": "paid_credits",
       "compute": {
         "resource_kind": "warehouse",
@@ -1470,6 +1471,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "sql_dialect": "trino",
       "supports_dataframe": false,
       "default_mode": "sql",
+      "run_timeout_cleanup": true,
       "platform_family": "trino",
       "inherits_from": "trino",
       "cost_class": "paid_compute",
@@ -2141,6 +2143,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "sql_dialect": "tsql",
       "supports_dataframe": false,
       "default_mode": "sql",
+      "run_timeout_cleanup": true,
       "cost_class": "paid_compute"
     },
     "support_status": "beta"
@@ -2197,6 +2200,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "sql_dialect": "tsql",
       "supports_dataframe": false,
       "default_mode": "sql",
+      "run_timeout_cleanup": true,
       "cost_class": "paid_compute"
     },
     "support_status": "beta"
@@ -2726,6 +2730,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "sql_dialect": "athena",
       "supports_dataframe": false,
       "default_mode": "sql",
+      "run_timeout_cleanup": true,
       "cost_class": "paid_credits",
       "compute": {
         "resource_kind": "workgroup",
@@ -2861,6 +2866,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
+      "run_timeout_cleanup": true,
       "cost_class": "paid_compute",
       "compute": {
         "resource_kind": "workgroup",
@@ -2962,6 +2968,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
+      "run_timeout_cleanup": true,
       "cost_class": "paid_compute"
     },
     "support_status": "experimental"
@@ -3012,6 +3019,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
+      "run_timeout_cleanup": true,
       "cost_class": "paid_compute",
       "compute": {
         "resource_kind": "pool",
@@ -3067,6 +3075,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "sql_dialect": "tsql",
       "supports_dataframe": false,
       "default_mode": "sql",
+      "run_timeout_cleanup": true,
       "cost_class": "paid_compute"
     },
     "support_status": "beta"
@@ -3117,6 +3126,7 @@ _PLATFORM_MANIFEST_JSON = """[
       "sql_dialect": "spark",
       "supports_dataframe": true,
       "default_mode": "sql",
+      "run_timeout_cleanup": true,
       "cost_class": "paid_compute",
       "compute": {
         "resource_kind": "pool",

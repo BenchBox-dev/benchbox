@@ -13,6 +13,7 @@ from rich.markup import escape
 from benchbox.cli.exit_codes import ExitCode
 from benchbox.cli.shared import console
 from benchbox.core.run_cleanup_warning import cloud_cleanup_warning
+from benchbox.core.run_service import resolve_execution_mode
 from benchbox.utils.run_deadline import (
     HARD_STOP_GRACE_SECONDS,
     RUN_TIMEOUT_CONFIG_KEY,
@@ -124,7 +125,7 @@ def bounded_orchestrated_run(execute: Callable[..., Any]) -> Callable[..., Any]:
         if deadline is None:
             return run()
 
-        warning = cloud_cleanup_warning(getattr(database_config, "type", None))
+        warning = cloud_cleanup_warning(getattr(database_config, "type", None), resolve_execution_mode(database_config))
         if warning:
             console.print(f"[yellow]{escape(warning)}[/yellow]", soft_wrap=True)
         deadline.write_partial_result = functools.partial(

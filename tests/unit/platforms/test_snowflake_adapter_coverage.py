@@ -10,6 +10,11 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from benchbox.core.tuning.applied_ledger import PHASE_DDL, PHASE_POST_LOAD, AppliedTuningLedger, recording_connection
+from tests.fixtures.snowflake_warehouses import (
+    SHOW_WAREHOUSES_COLUMNS,
+    warehouse_description as _warehouse_description,
+    warehouse_row as _warehouse_row,
+)
 
 pytestmark = [
     pytest.mark.unit,
@@ -155,6 +160,90 @@ class TestBuildCtasSortSql:
                 adapter._build_ctas_sort_sql("T", [col])
 
 
+def _platform_info_for(cursor_description, row):
+    adapter = _make_adapter(warehouse="MY_WH")
+    mock_conn = Mock()
+    mock_cursor = Mock()
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.description = cursor_description
+
+    def _execute_side_effect(sql):
+        if "SHOW WAREHOUSES" in sql:
+            mock_cursor.fetchone.return_value = row
+        else:
+            mock_cursor.fetchone.return_value = None
+        return mock_cursor
+
+    mock_cursor.execute = Mock(side_effect=_execute_side_effect)
+    return adapter.get_platform_info(connection=mock_conn)
+
+
+class TestWarehouseMetadataByColumnName:
+    VALUES = {
+        "min_cluster_count": 1,
+        "max_cluster_count": 3,
+        "auto_suspend": 300,
+        "auto_resume": "true",
+        "enable_query_acceleration": "true",
+        "query_acceleration_max_scale_factor": 8,
+        "scaling_policy": "ECONOMY",
+    }
+
+    def _assert_values(self, cc):
+        assert cc["warehouse_name"] == "MY_WH"
+        assert cc["warehouse_state"] == "STARTED"
+        assert cc["warehouse_type"] == "STANDARD"
+        assert cc["warehouse_size"] == "LARGE"
+        assert cc["min_cluster_count"] == 1
+        assert cc["max_cluster_count"] == 3
+        assert cc["auto_suspend"] == 300
+        assert cc["auto_resume"] == "true"
+        assert cc["enable_query_acceleration"] == "true"
+        assert cc["query_acceleration_max_scale_factor"] == 8
+        assert cc["scaling_policy"] == "ECONOMY"
+
+    def test_current_column_order(self):
+        info = _platform_info_for(_warehouse_description(), _warehouse_row(**self.VALUES))
+
+        self._assert_values(info["compute_configuration"])
+
+    def test_inserted_column_does_not_shift_values(self):
+        columns = list(SHOW_WAREHOUSES_COLUMNS)
+        columns.insert(5, "new_snowflake_column")
+        columns.insert(14, "another_new_column")
+        columns = tuple(columns)
+        row = _warehouse_row(columns, new_snowflake_column="x", another_new_column="y", **self.VALUES)
+
+        info = _platform_info_for(_warehouse_description(columns), row)
+
+        self._assert_values(info["compute_configuration"])
+
+    def test_uppercase_column_names_are_matched(self):
+        description = [(name.upper(), 0, None, None, None, None, True) for name in SHOW_WAREHOUSES_COLUMNS]
+
+        info = _platform_info_for(description, _warehouse_row(**self.VALUES))
+
+        self._assert_values(info["compute_configuration"])
+
+    def test_absent_column_is_recorded_as_none(self):
+        columns = tuple(name for name in SHOW_WAREHOUSES_COLUMNS if name != "query_acceleration_max_scale_factor")
+
+        info = _platform_info_for(_warehouse_description(columns), _warehouse_row(columns, **self.VALUES))
+
+        cc = info["compute_configuration"]
+        assert cc["query_acceleration_max_scale_factor"] is None
+        assert cc["enable_query_acceleration"] == "true"
+        assert cc["scaling_policy"] == "ECONOMY"
+        assert cc["auto_suspend"] == 300
+
+    def test_acceleration_fields_are_numeric_or_none_and_boolean_like(self):
+        info = _platform_info_for(_warehouse_description(), _warehouse_row(**self.VALUES))
+
+        cc = info["compute_configuration"]
+        assert isinstance(cc["query_acceleration_max_scale_factor"], (int, float, type(None)))
+        assert str(cc["enable_query_acceleration"]).lower() in {"true", "false"}
+
+
 class TestGetPlatformInfoWithWarehouse:
     def test_warehouse_details_captured(self):
         adapter = _make_adapter(compute_resource="MY_WH")
@@ -163,14 +252,14 @@ class TestGetPlatformInfoWithWarehouse:
         mock_cursor = Mock()
         mock_conn.cursor.return_value = mock_cursor
 
-        wh_row = ["MY_WH", "STARTED", "STANDARD", "LARGE"] + [None] * 27
-        wh_row[4] = 1
-        wh_row[5] = 3
-        wh_row[11] = 300
-        wh_row[12] = True
-        wh_row[21] = None
-        wh_row[22] = None
-        wh_row[27] = "STANDARD"
+        wh_row = _warehouse_row(
+            min_cluster_count=1,
+            max_cluster_count=3,
+            auto_suspend=300,
+            auto_resume=True,
+            scaling_policy="STANDARD",
+        )
+        mock_cursor.description = _warehouse_description()
 
         def _execute_side_effect(sql):
             if "current_version" in sql.lower():
@@ -211,14 +300,16 @@ class TestGetPlatformInfoWithWarehouse:
         mock_cursor = Mock()
         mock_conn.cursor.return_value = mock_cursor
 
-        wh_row = ["MY_WH", "STARTED", "STANDARD", "LARGE"] + [None] * 27
-        wh_row[4] = 1
-        wh_row[5] = 3
-        wh_row[11] = 300
-        wh_row[12] = True
-        wh_row[21] = True
-        wh_row[22] = 8
-        wh_row[27] = "ECONOMY"
+        wh_row = _warehouse_row(
+            min_cluster_count=1,
+            max_cluster_count=3,
+            auto_suspend=300,
+            auto_resume=True,
+            enable_query_acceleration=True,
+            query_acceleration_max_scale_factor=8,
+            scaling_policy="ECONOMY",
+        )
+        mock_cursor.description = _warehouse_description()
 
         def _execute_side_effect(sql):
             if "current_version" in sql.lower():
@@ -786,34 +877,10 @@ class TestGetPlatformMetadata:
     def _make_cursor(self, version="8.0.0", session_row=None, wh_row=None, tables=None):
         mock_cursor = Mock()
         session_row = session_row or ("user1", "role1", "WH1", "DB1", "PUBLIC", "AWS_US_EAST_1", "ACCT1")
-        wh_row = wh_row or (
-            "WH",
-            "STARTED",
-            "STANDARD",
-            "LARGE",
-            1,
-            3,
-            1,
-            0,
-            0,
-            False,
-            True,
-            None,
-            300,
-            True,
-            "100%",
-            "0%",
-            "0%",
-            "0%",
-            "2025-01-01",
-            "2025-01-01",
-            "2025-01-01",
-            "owner",
-            "",
-            None,
-            None,
-            "STANDARD",
+        wh_row = wh_row or _warehouse_row(
+            name="WH", min_cluster_count=1, max_cluster_count=3, auto_suspend=300, auto_resume=True
         )
+        mock_cursor.description = _warehouse_description()
         tables = tables or [("ORDERS", 1000, 1024, 1, None, None, None)]
 
         call_count = [0]
@@ -1626,7 +1693,8 @@ def _connection_reporting_size(observed_size):
     mock_conn = Mock()
     mock_cursor = Mock()
     mock_conn.cursor.return_value = mock_cursor
-    wh_row = ["MY_WH", "STARTED", "STANDARD", observed_size] + [None] * 27
+    wh_row = _warehouse_row(size=observed_size)
+    mock_cursor.description = _warehouse_description()
 
     def _execute_side_effect(sql):
         if "current_version" in sql.lower():

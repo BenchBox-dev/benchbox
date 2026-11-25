@@ -33,6 +33,7 @@ from benchbox.platforms.base.cloud_spark import (
 from benchbox.platforms.base.cloud_spark.config import CloudPlatform
 from benchbox.platforms.base.config_utils import make_platform_config_builder
 from benchbox.platforms.base.phase_tracking import _resolve_benchmark_table_names
+from benchbox.platforms.base.remote_work import StartedRemoteWork
 from benchbox.utils.dependencies import (
     check_platform_dependencies,
     get_dependency_error_message,
@@ -152,6 +153,7 @@ class AthenaSparkAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalT
         self._s3_client: Any = None
 
         self._session_id: str | None = None
+        self._started_work = StartedRemoteWork()
 
         self._query_count = 0
         self._total_execution_time_seconds = 0.0
@@ -264,6 +266,9 @@ class AthenaSparkAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalT
         except Exception:
             return AthenaSparkSessionState.TERMINATED
 
+    def _pause(self, seconds: float) -> None:
+        time.sleep(seconds)
+
     def _wait_for_session_ready(self, timeout_seconds: int = 300) -> None:
         client = self._get_athena_client()
         start_time = mono_time()
@@ -279,7 +284,7 @@ class AthenaSparkAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalT
                 reason = response["Status"].get("StateChangeReason", "Unknown")
                 raise ConfigurationError(f"Session failed: {state} - {reason}")
 
-            time.sleep(2)
+            self._pause(2)
 
         raise ConfigurationError(f"Session startup timed out after {timeout_seconds}s")
 
@@ -331,9 +336,11 @@ result.show(100, truncate=False)
 
         calculation_id = response["CalculationExecutionId"]
         state = response["State"]
+        self._started_work.add(calculation_id)
 
         if wait_for_completion:
             state = self._wait_for_calculation_complete(calculation_id)
+            self._started_work.discard(calculation_id)
 
         return calculation_id, state
 
@@ -353,7 +360,7 @@ result.show(100, truncate=False)
             if state in AthenaSparkCalculationState.TERMINAL_STATES:
                 return state
 
-            time.sleep(2)
+            self._pause(2)
 
         raise RuntimeError(f"Calculation timed out after {timeout}s")
 
@@ -507,6 +514,25 @@ result.show(100, truncate=False)
                 "error": str(e),
                 "error_type": type(e).__name__,
             }
+
+    def cancel_remote_work(self) -> None:
+        failures: list[str] = []
+        client = self._get_athena_client()
+        try:
+            self._started_work.cancel_all(
+                "Athena Spark",
+                lambda calculation_id, _: client.stop_calculation_execution(CalculationExecutionId=calculation_id),
+            )
+        except Exception as exc:
+            failures.append(str(exc))
+        if self._session_id:
+            try:
+                client.terminate_session(SessionId=self._session_id)
+                self._session_id = None
+            except Exception as exc:
+                failures.append(f"Athena Spark session terminate failed: {type(exc).__name__}: {exc}")
+        if failures:
+            raise RuntimeError("; ".join(failures))
 
     def close(self) -> None:
         if self._session_id:

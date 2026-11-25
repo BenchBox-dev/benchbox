@@ -96,7 +96,7 @@ owner decision and is tracked separately.
 | `.github/workflows/validate-submission.yml` | The submission CI gate. |
 | `.gitignore` | Repository-root ignore — kept minimal. |
 | `LICENSE`, `COPYRIGHT.md`, `DISCLAIMER.md` | Required for any public repo branch; near-zero churn. |
-| `CONTRIBUTING.md` | Slim; intended to point contributors at `https://benchbox.dev/docs/contributing-results.html` for the full guide *(note 2026-11-24: live `origin/published-results:CONTRIBUTING.md` still carries a broken link to `develop/docs/contributing-results.md` and is tracked for update)*. |
+| `CONTRIBUTING.md` | Slim; points contributors at `https://benchbox.dev/docs/contributing-results.html` for the full guide. |
 | `README.md` | A `published-results`-specific README (not the develop one) explaining what the branch is, why it is slim, and how to contribute. |
 
 Total expected file count: **on the order of hundreds**, dominated by

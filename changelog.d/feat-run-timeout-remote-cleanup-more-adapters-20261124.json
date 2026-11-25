@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "On a run timeout, including the hard stop, Dataproc Serverless, Athena, Athena Spark, Databricks (SQL), Starburst, Azure Synapse, Fabric Warehouse, Fabric Lakehouse, Fabric Spark and Synapse Spark now cancel the statements, calculations and batches the run started, and delete or terminate a Livy or Athena Spark session the run created, including one still starting up; they print the cleanup warning instead of the cannot-cancel one. On the cursor-based platforms (Synapse, Fabric Warehouse, Fabric Lakehouse, Databricks SQL, Athena, Starburst) and on BigQuery, the cleanup covers queries run through execute_query; load and DDL statements are not cancelled. A cancel that has no query id to act on is reported as failed. Snowflake, ClickHouse Cloud, Redshift and the Databricks DataFrame mode still cannot cancel work, and Databricks DataFrame mode prints the cannot-cancel warning; docs/operations/run-safety.md says why. The cleanup has not been checked against live services."
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -56,10 +57,13 @@ class FormatConversionOrchestrator:
 
         logger.info(f"Converting {total_tables} tables to {target_format}")
 
+        base_options = options or ConversionOptions()
+
         for idx, table_name in enumerate(tables_list, 1):
             logger.info(f"[{idx}/{total_tables}] Converting table: {table_name}")
 
-            source_files = self._get_source_files(manifest, table_name, output_dir)
+            source_entries = self._get_source_entries(manifest, table_name)
+            source_files = [output_dir / f.path for f in source_entries]
 
             if not source_files:
                 logger.warning(f"No source files found for table: {table_name}")
@@ -75,12 +79,18 @@ class FormatConversionOrchestrator:
                 logger.warning(f"No schema found for table: {table_name}, skipping")
                 continue
 
+            table_options = self._resolve_conversion_options(manifest, base_options, source_entries)
+            if table_options.expected_row_count is None:
+                source_row_count = self._get_source_row_count(manifest, table_name)
+                if source_row_count is not None:
+                    table_options = replace(table_options, expected_row_count=source_row_count)
+
             try:
                 result = converter.convert(
                     source_files=source_files,
                     table_name=table_name,
                     schema=schema,
-                    options=options or ConversionOptions(),
+                    options=table_options,
                 )
                 results[table_name] = result
 
@@ -97,12 +107,43 @@ class FormatConversionOrchestrator:
 
         if results:
             logger.info("Updating manifest with conversion results")
-            self._update_manifest_with_results(manifest, results, target_format, output_dir)
+            self._update_manifest_with_results(manifest, results, target_format, output_dir, base_options)
 
             write_manifest(manifest, manifest_path)
             logger.info(f"Updated manifest: {manifest_path}")
 
         return results
+
+    def _resolve_conversion_options(
+        self,
+        manifest: ManifestV2,
+        options: ConversionOptions | None,
+        source_entries: list[Any] | None = None,
+    ) -> ConversionOptions:
+        base_opts = options or ConversionOptions()
+        extras = manifest.extra_fields or {}
+        entry_meta: dict[str, Any] = {}
+        for entry in source_entries or ():
+            meta = getattr(entry, "metadata", None)
+            if isinstance(meta, dict) and meta:
+                entry_meta = meta
+                break
+
+        delimiter = base_opts.delimiter
+        if delimiter is None:
+            raw_delim = entry_meta.get("csv_delimiter", extras.get("csv_delimiter"))
+            if isinstance(raw_delim, str) and len(raw_delim) == 1:
+                delimiter = raw_delim
+
+        has_header = base_opts.has_header
+        if has_header is None:
+            raw_header = entry_meta.get("csv_has_header", extras.get("csv_has_header"))
+            if isinstance(raw_header, bool):
+                has_header = raw_header
+
+        if delimiter == base_opts.delimiter and has_header == base_opts.has_header:
+            return base_opts
+        return replace(base_opts, delimiter=delimiter, has_header=has_header)
 
     def _get_converter(self, format_name: str):
         converter = self._converters.get(format_name.lower())
@@ -111,20 +152,41 @@ class FormatConversionOrchestrator:
             raise ValueError(f"Unknown format: {format_name}. Available formats: {available}")
         return converter
 
-    def _get_source_files(self, manifest: ManifestV2, table_name: str, output_dir: Path) -> list[Path]:
+    def _get_source_entries(self, manifest: ManifestV2, table_name: str) -> list[Any]:
         table_formats = manifest.tables.get(table_name)
         if not table_formats:
             return []
 
         if "tbl" in table_formats.formats:
-            files = table_formats.formats["tbl"]
-            return [output_dir / f.path for f in files]
+            return list(table_formats.formats["tbl"])
 
         for format_name, files in table_formats.formats.items():
             logger.info(f"Using {format_name} files as source for {table_name}")
-            return [output_dir / f.path for f in files]
+            return list(files)
 
         return []
+
+    def _get_source_files(self, manifest: ManifestV2, table_name: str, output_dir: Path) -> list[Path]:
+        return [output_dir / f.path for f in self._get_source_entries(manifest, table_name)]
+
+    def _get_source_row_count(self, manifest: ManifestV2, table_name: str) -> int | None:
+        if manifest.extra_fields.get("row_counts_source") != "measured":
+            return None
+        entries = self._get_source_entries(manifest, table_name)
+        if not entries:
+            return None
+        total = 0
+        has_nonzero_size = False
+        for entry in entries:
+            rc = getattr(entry, "row_count", None)
+            if not isinstance(rc, int) or isinstance(rc, bool) or rc < 0:
+                return None
+            if getattr(entry, "size_bytes", 0) > 0:
+                has_nonzero_size = True
+            total += rc
+        if total == 0 and has_nonzero_size:
+            return None
+        return total
 
     def _update_manifest_with_results(
         self,
@@ -132,6 +194,7 @@ class FormatConversionOrchestrator:
         results: dict[str, ConversionResult],
         target_format: str,
         output_dir: Path,
+        effective_options: ConversionOptions | None = None,
     ) -> None:
         for table_name, result in results.items():
             table_formats = manifest.tables.get(table_name)
@@ -164,3 +227,54 @@ class FormatConversionOrchestrator:
         if target_format in manifest.format_preference:
             manifest.format_preference.remove(target_format)
         manifest.format_preference.insert(0, target_format)
+
+        formats_list = manifest.extra_fields.get("formats")
+        if isinstance(formats_list, list) and target_format not in formats_list:
+            manifest.extra_fields["formats"] = [*formats_list, target_format]
+
+        if target_format.lower() == "parquet":
+            self._stamp_parquet_provenance(manifest, results, effective_options)
+
+    def _stamp_parquet_provenance(
+        self,
+        manifest: ManifestV2,
+        results: dict[str, ConversionResult],
+        effective_options: ConversionOptions | None,
+    ) -> None:
+        from benchbox.utils.datagen_version import compute_datagen_identity_hash
+
+        row_group_size: int | None = None
+        if effective_options is not None and isinstance(effective_options.row_group_size, int):
+            row_group_size = effective_options.row_group_size
+        else:
+            for result in results.values():
+                candidate = result.conversion_options.get("row_group_size")
+                if isinstance(candidate, int) and not isinstance(candidate, bool):
+                    row_group_size = candidate
+                    break
+
+        writers = sorted(
+            {
+                str(result.metadata["parquet_writer"])
+                for result in results.values()
+                if isinstance(result.metadata.get("parquet_writer"), str) and result.metadata["parquet_writer"]
+            }
+        )
+        parquet_writer = "+".join(writers) if writers else "benchbox-pyarrow-streaming"
+
+        manifest.extra_fields["parquet_writer"] = parquet_writer
+        if row_group_size is not None:
+            manifest.extra_fields["parquet_row_group_size"] = row_group_size
+
+        configuration = manifest.extra_fields.get("skew_configuration")
+        backend = manifest.extra_fields.get("generator_backend")
+        backend_version = manifest.extra_fields.get("generator_backend_version")
+        manifest.extra_fields["parquet_data_generation_identity_hash"] = compute_datagen_identity_hash(
+            manifest.benchmark,
+            configuration if isinstance(configuration, dict) else None,
+            backend=str(backend) if backend is not None else None,
+            backend_version=str(backend_version) if backend_version is not None else None,
+            parquet_writer=parquet_writer,
+            parquet_row_group_size=row_group_size,
+            scale_factor=manifest.scale_factor,
+        )

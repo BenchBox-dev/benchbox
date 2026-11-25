@@ -32,6 +32,7 @@ from benchbox.platforms.base.cloud_spark import (
 )
 from benchbox.platforms.base.cloud_spark.config import CloudPlatform
 from benchbox.platforms.base.phase_tracking import _resolve_benchmark_table_names
+from benchbox.platforms.base.remote_work import StartedRemoteWork
 from benchbox.platforms.gcp._gcs_path import parse_gcs_staging_dir
 from benchbox.utils.dependencies import (
     check_platform_dependencies,
@@ -124,6 +125,7 @@ class DataprocServerlessAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkEx
         except Exception as e:
             logger.warning(f"Failed to initialize GCS staging: {e}")
 
+        self._started_work = StartedRemoteWork()
         self._batch_client: Any = None
         self._storage_client: Any = None
 
@@ -242,8 +244,16 @@ class DataprocServerlessAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkEx
             }
         )
 
+        self._started_work.add(batch_id, operation)
         if wait_for_completion:
-            result = operation.result(timeout=self.timeout_minutes * 60)
+            try:
+                result = operation.result(timeout=self.timeout_minutes * 60)
+            except TimeoutError:
+                raise
+            except Exception:
+                self._started_work.discard(batch_id)
+                raise
+            self._started_work.discard(batch_id)
             return batch_id, result.state.name
         else:
             return batch_id, DataprocBatchState.PENDING
@@ -380,6 +390,9 @@ class DataprocServerlessAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkEx
                 "error": str(e),
                 "error_type": type(e).__name__,
             }
+
+    def cancel_remote_work(self) -> None:
+        self._started_work.cancel_all("Dataproc Serverless", lambda _batch_id, operation: operation.cancel())
 
     def close(self) -> None:
         logger.info(f"Dataproc Serverless session closed. Executed {self._query_count} batches.")

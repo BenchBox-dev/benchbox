@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import contextlib
 import gzip
+import io
+import time
 from decimal import Decimal
 from pathlib import Path
+from unittest.mock import patch
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -12,6 +16,7 @@ import zstandard
 from benchbox.platforms.base.data_loading import CsvDialect
 from benchbox.platforms.gizmosql_loading import (
     MAX_INGEST_BATCH_BYTES,
+    MIN_INGEST_BATCH_BYTES,
     bounded_batches,
     count_source_rows,
     delimited_batches,
@@ -19,6 +24,7 @@ from benchbox.platforms.gizmosql_loading import (
     parquet_batches,
     stream_reader,
 )
+from tests.unit.endless_csv_stream import EndlessStream
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -225,3 +231,19 @@ def test_stream_reader_yields_plain_schema():
 
     assert reader.schema.field("a").metadata is None
     assert reader.read_all().num_rows == 1
+
+
+class TestAbandonedDelimitedReader:
+    def test_closing_the_generator_early_never_reads_a_closed_stream(self, tmp_path: Path):
+        path = tmp_path / "t.tbl"
+        path.write_text("1|10.50|1998-01-02|hello|\n", encoding="utf-8")
+        late = 0
+        for _ in range(10):
+            stream = EndlessStream(b"", b"1|10.50|1998-01-02|hello|\n")
+            with patch("benchbox.platforms.gizmosql_loading.open_binary", return_value=contextlib.closing(stream)):
+                batches = delimited_batches(path, TPCH_LIKE, PIPE_DIALECT, max_batch_bytes=MIN_INGEST_BATCH_BYTES)
+                assert next(batches).num_rows > 0
+                batches.close()
+            time.sleep(0.05)
+            late += stream.reads_after_close
+        assert late == 0

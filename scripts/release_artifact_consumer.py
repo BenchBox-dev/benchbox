@@ -34,6 +34,7 @@ PRODUCER_RECEIPT = "producer-receipt.json"
 MAX_PAYLOAD_BYTES = 256 * 1024 * 1024
 DOWNLOAD_TIMEOUT_SECONDS = 60.0
 PRODUCER_WAIT_SECONDS = 60.0
+NEAREST_CANDIDATE_LIMIT = 40
 PRODUCER_POLL_SECONDS = 3.0
 Api = Callable[[str], dict[str, Any]]
 ListApi = Callable[[str], list[dict[str, Any]]]
@@ -206,6 +207,10 @@ def _run_identity(run: dict[str, Any], sha: str, repository_id: int, branch: Any
     _require(_positive(run.get("id")) and _positive(run.get("run_attempt")), "invalid producer run identity")
 
 
+class NoProducerRun(ValueError):
+    pass
+
+
 def select_producer(
     sha: str, api: Api = github_json, *, branch: str = PRODUCER_BRANCH
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
@@ -217,7 +222,8 @@ def select_producer(
         f"actions/workflows/trunk.yml/runs?head_sha={sha}&event={PRODUCER_EVENT}&branch={quote(branch, safe='')}",
         "workflow_runs",
     )
-    _require(bool(runs), f"no trunk producer on {branch}")
+    if not runs:
+        raise NoProducerRun(f"no trunk producer on {branch}")
     for run in runs:
         _run_identity(run, sha, repository.get("id"), branch)
         _timestamp(run.get("created_at"))
@@ -1045,6 +1051,78 @@ def resolve_line_tip(root: Path, branch: str, tip: str | None) -> str:
     return tip
 
 
+def _commit_distance(root: Path, commit: str, other: str) -> tuple[int, int] | None:
+    result = _run_git(
+        root,
+        "rev-list",
+        "--left-right",
+        "--count",
+        f"{commit}...{other}",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        timeout=60,
+    )
+    if result.returncode != 0:
+        return None
+    only_commit, only_other = (int(value) for value in result.stdout.split())
+    return only_commit, only_other
+
+
+def nearest_tested_commits(
+    root: Path, commit: str, api: Api, branch: str, limit: int = NEAREST_CANDIDATE_LIMIT
+) -> dict[str, str]:
+    payload = api(
+        f"actions/workflows/trunk.yml/runs?branch={quote(branch, safe='')}"
+        f"&event={PRODUCER_EVENT}&status=success&per_page=100&page=1"
+    )
+    runs = payload.get("workflow_runs")
+    _require(isinstance(runs, list), "malformed API page")
+    runs = [run for run in runs if isinstance(run, dict) and run.get("conclusion") == "success"]
+    runs.sort(
+        key=lambda run: (str(run.get("created_at")), run.get("id") if type(run.get("id")) is int else 0), reverse=True
+    )
+    candidates: list[str] = []
+    for run in runs:
+        sha = run.get("head_sha")
+        if isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{40}", sha) and sha != commit and sha not in candidates:
+            candidates.append(sha)
+    descendants: list[tuple[int, str]] = []
+    ancestors: list[tuple[int, str]] = []
+    for sha in candidates[:limit]:
+        distance = _commit_distance(root, commit, sha)
+        if distance is None:
+            continue
+        only_commit, only_other = distance
+        if only_commit == 0 and only_other > 0:
+            descendants.append((only_other, sha))
+        elif only_other == 0 and only_commit > 0:
+            ancestors.append((only_commit, sha))
+    found: dict[str, str] = {}
+    for label, rows in (("descendant", descendants), ("ancestor", ancestors)):
+        for _, sha in sorted(rows):
+            try:
+                select_producer(sha, api, branch=branch)
+            except ValueError:
+                continue
+            found[label] = sha
+            break
+    return found
+
+
+def _replaced_commit_hint(root: Path, commit: str, api: Api, branch: str) -> str:
+    try:
+        found = nearest_tested_commits(root, commit, api, branch)
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        return f"the nearest tested commit could not be determined ({exc})"
+    if not found:
+        return f"no tested {branch} commit with a distribution artifact was found among the newest {NEAREST_CANDIDATE_LIMIT} successful trunk runs"
+    parts = [
+        f"nearest tested {label} on {branch}: {found[label]}" for label in ("descendant", "ancestor") if label in found
+    ]
+    return "; ".join(parts)
+
+
 def admit(
     root: Path, tag: str, output: Path, api: Api = github_json, pulls: ListApi = github_json_list
 ) -> dict[str, Any]:
@@ -1052,7 +1130,13 @@ def admit(
     branch = protected_line(root, tag, source["head_sha"])
     if branch != PRODUCER_BRANCH:
         verify_maintenance_line(root, tag, source["head_sha"], branch, pulls)
-    run, job, artifact = select_producer(source["head_sha"], api, branch=branch)
+    try:
+        run, job, artifact = select_producer(source["head_sha"], api, branch=branch)
+    except NoProducerRun as exc:
+        hint = _replaced_commit_hint(root, source["head_sha"], api, branch)
+        raise ValueError(
+            f"{exc} for {source['head_sha']} (its push may have been replaced while waiting); {hint}"
+        ) from exc
     _require(not output.exists(), "output already exists")
     output.parent.mkdir(parents=True, exist_ok=True)
     output = output.parent.resolve(strict=True) / output.name

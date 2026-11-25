@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import re
+import uuid
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -35,6 +36,7 @@ from ..utils.dependencies import (
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.config_utils import make_registered_platform_config_builder
 from .base.data_loading import DataSourceResolver, FileFormatRegistry
+from .base.remote_work import StartedRemoteWork, cancel_cursor_query
 from .base.runtime_metadata import build_default_normalized_result_metadata
 from .presto_trino_utils import normalize_existing_files, show_tables_lower
 
@@ -120,6 +122,7 @@ class AthenaAdapter(PlatformAdapter):
         self.cleanup_staging = config.get("cleanup_staging", True)
 
         self._total_data_scanned_bytes = 0
+        self._started_work = StartedRemoteWork()
         self._query_count = 0
 
         self._s3_client = None
@@ -1014,6 +1017,8 @@ class AthenaAdapter(PlatformAdapter):
         cursor = connection.cursor()
 
         try:
+            work_key = uuid.uuid4().hex
+            self._started_work.add(work_key, cursor)
             start_time = mono_time()
             cursor.execute(query)
             query_execution_id = self._statement_id_of(cursor)
@@ -1084,6 +1089,7 @@ class AthenaAdapter(PlatformAdapter):
                 "error_type": type(e).__name__,
             }
         finally:
+            self._started_work.discard(work_key)
             cursor.close()
 
         self._merge_plan_capture_into_result(result_dict, connection, query, query_id)
@@ -1126,6 +1132,9 @@ class AthenaAdapter(PlatformAdapter):
         from benchbox.core.query_plans.parsers.presto_trino import PrestoTrinoQueryPlanParser
 
         return PrestoTrinoQueryPlanParser(platform_name="athena")
+
+    def cancel_remote_work(self) -> None:
+        self._started_work.cancel_all("Athena", cancel_cursor_query)
 
     def close_connection(self, connection: Any) -> None:
         try:

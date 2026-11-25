@@ -143,6 +143,7 @@ help:
 	@echo ""
 	@echo "Release Preparation (tag-triggered publishing; see docs/internal/release-guide.md):"
 	@echo "  make release-prep VERSION=X.Y.Z     Bump version markers and compile changelog.d fragments into the [X.Y.Z] section"
+	@echo "                                      SECTION_FILE=path uses a curated section body (needed when the draft exceeds the bullet limit)"
 	@echo "  make release-check VERSION=X.Y.Z    Verify release content; RELEASE_PRE_TAG=1 also fails while fragments are pending"
 	@echo ""
 	@echo "Changelog Fragments (one changelog.d/<branch>.json per pull request):"

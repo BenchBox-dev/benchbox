@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY, RequestLedger, outside_query_timer
+from benchbox.platforms.base.remote_work import StartedRemoteWork
 from benchbox.platforms.base.tuning import make_informational_constraint_applier
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.dialect_utils import translate_ddl
@@ -47,6 +48,7 @@ class FabricWarehouseAdapter(PlatformAdapter):
 
     def __init__(self, **config):
         super().__init__(**config)
+        self._started_work = StartedRemoteWork()
 
         available, missing = check_platform_dependencies("fabric_dw")
         if not available:
@@ -462,6 +464,7 @@ class FabricWarehouseAdapter(PlatformAdapter):
         start_time = mono_time()
 
         try:
+            self._started_work.add(str(id(cursor)), cursor)
             ledger.add_request()
             cursor.execute(query)
 
@@ -493,6 +496,7 @@ class FabricWarehouseAdapter(PlatformAdapter):
                 "error_type": type(e).__name__,
             }
         finally:
+            self._started_work.discard(str(id(cursor)))
             cursor.close()
 
         self._merge_plan_capture_into_result(result_dict, connection, query, query_id)
@@ -822,6 +826,9 @@ class FabricWarehouseAdapter(PlatformAdapter):
             self.logger.debug(f"Updated statistics for {table_name}")
         finally:
             cursor.close()
+
+    def cancel_remote_work(self) -> None:
+        self._started_work.cancel_all("Fabric Warehouse", lambda _key, cursor: cursor.cancel())
 
     def close_connection(self, connection: Any) -> None:
         if connection:

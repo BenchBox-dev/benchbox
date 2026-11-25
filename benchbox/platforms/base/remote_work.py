@@ -5,6 +5,12 @@ from collections.abc import Callable
 from typing import Any
 
 
+def cancel_cursor_query(_key: str, cursor: Any) -> None:
+    if not getattr(cursor, "query_id", None):
+        raise RuntimeError("the service has not returned a query id yet, so there is nothing to cancel")
+    cursor.cancel()
+
+
 class StartedRemoteWork:
     def __init__(self) -> None:
         self._lock = threading.Lock()

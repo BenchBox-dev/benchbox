@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import time
+import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict
 from pathlib import Path, PurePosixPath
@@ -27,6 +28,7 @@ from benchbox.core.gateway import UNKNOWN_GATEWAY_ENGINE
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.upload_validation import UploadValidationEngine
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
+from benchbox.platforms.base.remote_work import StartedRemoteWork, cancel_cursor_query
 from benchbox.platforms.base.runtime_metadata import build_default_normalized_result_metadata, with_canonical_compute
 from benchbox.platforms.base.tuning import make_informational_constraint_applier
 from benchbox.utils.datagen_manifest import MANIFEST_FILENAME
@@ -344,6 +346,7 @@ class DatabricksAdapter(PlatformAdapter):
         disable_result_cache = config.get("disable_result_cache", True)
         self.disable_result_cache = True if disable_result_cache is None else bool(disable_result_cache)
         self._liquid_clustering_operations: list[dict[str, Any]] = []
+        self._started_work = StartedRemoteWork()
         self._z_order_operations: list[dict[str, Any]] = []
         self._cache_disabled_sessions: Any = None
         self._cache_disable_failed = False
@@ -2494,6 +2497,8 @@ class DatabricksAdapter(PlatformAdapter):
 
         start_time = mono_time()
         try:
+            work_key = uuid.uuid4().hex
+            self._started_work.add(work_key, cursor)
             with outside_query_timer():
                 query = self._normalize_databricks_query(query)
                 from benchbox.platforms.base.mysql_wire import split_sql_statements
@@ -2564,12 +2569,16 @@ class DatabricksAdapter(PlatformAdapter):
                 "error_type": type(e).__name__,
             }
         finally:
+            self._started_work.discard(work_key)
             if own_cursor:
                 cursor.close()
 
         self._merge_plan_capture_into_result(result_dict, connection, query, query_id)
 
         return result_dict
+
+    def cancel_remote_work(self) -> None:
+        self._started_work.cancel_all("Databricks", cancel_cursor_query)
 
     def probe_statement_id(self, cursor: Any) -> str | None:
         statement_id = getattr(cursor, "query_id", None)

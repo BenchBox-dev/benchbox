@@ -124,7 +124,7 @@ check_running_build() {
   listener=$(lsof -nP "-iTCP:$port" -sTCP:LISTEN -t 2>/dev/null | sort -u | paste -sd ' ' -)
   [ "$listener" = "$pid" ] \
     || fail "$label is process $pid but port $port is held by '${listener:-nothing}'; see its log in $LOG_DIR"
-  binary=$(ps -o comm= -p "$pid" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+  binary=$(lsof -a -p "$pid" -d txt -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1)
   [ -n "$binary" ] && [ -x "$binary" ] || fail "$label runs '$binary', which is not an executable file"
   ! process_predates_file "$pid" "$binary" \
     || fail "$label started before $binary was last written, so it may run an older build; run '$(basename "$0") broker' and '$(basename "$0") gateway'"
@@ -725,10 +725,10 @@ dispatch_sweep() {
   last=$(cat "$SWEEP_FILE" 2>/dev/null || echo 0)
   case $last in '' | *[!0-9]*) last=0 ;; esac
   [ $((now - last)) -ge "$SWEEP_INTERVAL" ] || return 0
-  if gh api --method POST "repos/$REPO_SLUG/dispatches" -f event_type=review-sweep >/dev/null 2>&1; then
+  if gh workflow run review-verdict.yml --repo "$REPO_SLUG" --ref develop -f sweep=true >/dev/null 2>&1; then
     printf '%s\n' "$now" > "$SWEEP_FILE"
   else
-    echo "monitor: review-sweep dispatch failed"
+    echo "monitor: sweep dispatch failed"
   fi
 }
 
