@@ -14867,7 +14867,8 @@
     },
     "tpcdi-historical": {
       "accepted_members": {
-        "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121": "14d85b40cb8989843e363bc97d135630ed44fc58"
+        "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121": "14d85b40cb8989843e363bc97d135630ed44fc58",
+        "tpcdi-historical-dimensions-20261121": "04be2ae3de51572ebf15409b17fdf8c9e9401cde"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -14953,10 +14954,37 @@
           ],
           "integration_head": "071dae99d275e3f62d596641fb05bb1fa43b4bda",
           "integration_seq": 1
+        },
+        "tpcdi-historical-dimensions-20261121": {
+          "accepted_head": "04be2ae3de51572ebf15409b17fdf8c9e9401cde",
+          "changed_files": [
+            "benchbox/core/tpcdi/etl/DEPARTURES.yaml",
+            "benchbox/core/tpcdi/etl/PROVENANCE.json",
+            "benchbox/core/tpcdi/etl/historical.py",
+            "benchbox/core/tpcdi/etl/historical/dim_account.sql",
+            "benchbox/core/tpcdi/etl/historical/dim_company.sql",
+            "benchbox/core/tpcdi/etl/historical/dim_customer.sql",
+            "benchbox/core/tpcdi/etl/historical/dim_security.sql",
+            "benchbox/core/tpcdi/etl/historical/financial.sql",
+            "benchbox/core/tpcdi/etl/historical/prospect.sql",
+            "benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql",
+            "benchbox/core/tpcdi/etl/ingest/prospect.sql",
+            "benchbox/core/tpcdi/etl/staging.py",
+            "changelog.d/tpcdi-staging-loads-and-departures.json",
+            "docs/internal/tpcdi-duckdb-comparison.md",
+            "pyproject.toml",
+            "scripts/tpcdi/EXPECTED_DIFFERENCES.yaml",
+            "tests/integration/core/test_tpcdi_etl_historical_digen_output.py",
+            "tests/unit/core/tpcdi/test_etl_historical.py",
+            "tests/unit/sql_compat/golden_corpus/area_tpcdi_etl.py",
+            "tests/unit/sql_compat/golden_corpus/frozen/area_tpcdi_etl.json"
+          ],
+          "integration_head": "c652f9cf2d1f1fa78faae51dcca4dfa55be03df0",
+          "integration_seq": 4
         }
       },
       "integration_branch": "feat/tpcdi-historical",
-      "integration_head": "b91abbddced4c1cc5352f41faadb16134c5a42a7",
+      "integration_head": "c652f9cf2d1f1fa78faae51dcca4dfa55be03df0",
       "integration_log": [
         {
           "at": "2026-11-23T23:39:31Z",
@@ -15127,6 +15155,15 @@
             "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121"
           ],
           "seq": 3
+        },
+        {
+          "at": "2026-11-25T19:03:48Z",
+          "head": "c652f9cf2d1f1fa78faae51dcca4dfa55be03df0",
+          "kind": "prepare",
+          "member": "tpcdi-historical-dimensions-20261121",
+          "op_id": "f97c44602d124c8694be455039737a26",
+          "previous_head": "b91abbddced4c1cc5352f41faadb16134c5a42a7",
+          "seq": 4
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-historical",
@@ -52678,17 +52715,12 @@
       "title": "TPC-DI generator: per-customer row ratios differ from the specification, and secondary fact tables generate single-threaded"
     },
     "tpcdi-historical-dimensions-20261121": {
-      "claim": {
-        "expires_at": "2026-11-26T19:03:39Z",
-        "generation": "1900aa1e50f44c8293f5590e4ab3c66a",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 15: historical load, dimension tables, with alerts written inside the transformation"
     },
     "tpcdi-historical-facts-20261121": {
