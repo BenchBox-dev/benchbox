@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -160,3 +160,27 @@ class TestClickBenchQueryExecution:
         query = get_clickbench_query("Q5")
         assert _to_pandas_result(query.expression_impl(expr_ctx))["uniq_users"].tolist() == [6]
         assert _to_pandas_result(query.pandas_impl(pandas_ctx))["uniq_users"].tolist() == [6]
+
+    def test_q43_returns_ten_minutes_after_the_first_thousand(self):
+        from benchbox.core.clickbench.dataframe_queries import get_clickbench_query
+
+        start = datetime(2013, 7, 14)
+        minutes = [start + timedelta(minutes=i) for i in range(1020)]
+        hits = pd.DataFrame(
+            {
+                "CounterID": 62,
+                "EventTime": minutes,
+                "EventDate": [minute.date() for minute in minutes],
+                "IsRefresh": 0,
+                "DontCountHits": 0,
+            }
+        )
+        expr_ctx = PolarsDataFrameAdapter().create_context()
+        expr_ctx.register_table("hits", pl.from_pandas(hits).lazy())
+
+        query = get_clickbench_query("Q43")
+        expr_result = _to_pandas_result(query.expression_impl(expr_ctx))
+        pandas_result = _to_pandas_result(query.pandas_impl(_PandasContext({"hits": hits})))
+
+        assert expr_result["M"].tolist() == minutes[1000:1010]
+        assert pandas_result["M"].tolist() == minutes[1000:1010]

@@ -9,7 +9,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 CLICKBENCH_Q43_TAIL = (
     " AS M, {count} AS PageViews FROM hits WHERE CounterID = 62 AND EventDate >= '2013-07-14' "
-    "AND EventDate <= '2013-07-15' AND IsRefresh = 0 AND DontCountHits = 0 GROUP BY {minute} ORDER BY {order}"
+    "AND EventDate <= '2013-07-15' AND IsRefresh = 0 AND DontCountHits = 0 GROUP BY {minute} ORDER BY {order} {page}"
 )
 
 EXPECTED_CLICKBENCH_Q43 = {
@@ -18,12 +18,21 @@ EXPECTED_CLICKBENCH_Q43 = {
         count="COUNT_BIG(*)",
         minute="DATETRUNC(MINUTE, EventTime)",
         order="CASE WHEN DATETRUNC(MINUTE, EventTime) IS NULL THEN 1 ELSE 0 END, DATETRUNC(MINUTE, EventTime)",
+        page="OFFSET 1000 ROWS FETCH FIRST 10 ROWS ONLY",
     ),
     "oracle": "SELECT TRUNC(EventTime, 'MI')"
-    + CLICKBENCH_Q43_TAIL.format(count="COUNT(*)", minute="TRUNC(EventTime, 'MI')", order="TRUNC(EventTime, 'MI')"),
-    "teradata": "SELECT TRUNC(EventTime, 'MI')"
     + CLICKBENCH_Q43_TAIL.format(
-        count="COUNT(*)", minute="TRUNC(EventTime, 'MI')", order="TRUNC(EventTime, 'MI') NULLS LAST"
+        count="COUNT(*)",
+        minute="TRUNC(EventTime, 'MI')",
+        order="TRUNC(EventTime, 'MI')",
+        page="OFFSET 1000 ROWS FETCH FIRST 10 ROWS ONLY",
+    ),
+    "teradata": "SELECT TOP 10 TRUNC(EventTime, 'MI')"
+    + CLICKBENCH_Q43_TAIL.format(
+        count="COUNT(*)",
+        minute="TRUNC(EventTime, 'MI')",
+        order="TRUNC(EventTime, 'MI') NULLS LAST",
+        page="OFFSET 1000",
     ),
 }
 
