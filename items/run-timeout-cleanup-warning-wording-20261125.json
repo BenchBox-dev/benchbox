@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The run-timeout cleanup warning matches each platform's verification state in the owner's chosen wording."
+  ],
+  "context": "Filed 2026-11-25 at the close of the run-timeout effort (umbrella run-timeout-plan-20261120, done). Evidence read that day; re-read code, docs and run folders before acting.",
+  "description": "## Problem\n`REMOTE_CLEANUP_WARNING` in `benchbox/utils/run_deadline.py` (owner's verbatim text from run-timeout-plan-20261120) says: \"A run time limit is set. If the run times out, BenchBox will try to cancel the work it started on {platform}. This cleanup has not been checked against the live service, so work may keep running and billing.\" It printed on the 2026-11-25 BigQuery run, although BigQuery cleanup has now been checked live (docs/operations/run-safety.md (capability table) says so). The warning was left unchanged because it is the owner's wording.\n\n## Change\nAsk the owner for the wording, then implement it: either one text per platform group (live-checked vs stub-only, chosen from a per-platform flag such as a manifest capability), or one revised text for all.\n\n## Decision gates\n- STOP and ask the owner (choice dialog) for the exact text(s); quote them verbatim on this item and in code.\n- Do not mark a platform live-checked without evidence (see run-timeout-cleanup-live-check-more-platforms-20261125).\n\n## Verification rubric\nPass: CLI and MCP tests show the chosen text for BigQuery and for a stub-only platform, failing before; the site docs that quote the warning updated in a benchbox-site pull request into `next`; `make pr-preflight` exits 0.\nFail: a warning that claims a live check for a platform without evidence.\n\n## Guardrails\nWork in a linked worktree (`make worktree-create`), never the primary clone. Edit files with the edit tool, never by script. Heavy work (benchmarks, test tiers, UAT, generators at scale) only through `make heavy-run` or lock-taking entry points; never skip the lock, admission or watchdog; never delete anything under `~/Developer/benchmark_runs`. No live cloud run and no cloud credentials unless this item's Decision gates say the owner approved it in the current task. BenchBox imposes no default run limit: add none. No comments or docstrings in first-party code; one changelog fragment for a user-facing change. Never post a stand-in review, close and reopen a pull request to restart CI, use `--no-verify`, force-push, or rewrite an author. Arm once; a second time only after fixing the cause the refusal named. Reply on every review thread; resolve it only after the bot's review of the new head does not raise it again.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:883ac124f68c0bb7e4b8a7aa",
+      "at": "2026-11-25T15:07:16Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "adfd03b3cf1b4bc2920bc96467b1a331",
+      "session_id": "0b8d661071874e74901ab9bff63c57d9"
+    }
+  ]
+}

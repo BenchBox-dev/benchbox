@@ -45388,6 +45388,13 @@
       "status": "open",
       "title": "Decide run-timeout cleanup for Snowflake, ClickHouse Cloud, Databricks DataFrame and Snowpark Connect"
     },
+    "run-timeout-cleanup-warning-wording-20261125": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Run-timeout cleanup warning says cleanup is unchecked even on a live-checked platform"
+    },
     "run-timeout-decision-record-refresh-20261122": {
       "claim": null,
       "needs": [],
