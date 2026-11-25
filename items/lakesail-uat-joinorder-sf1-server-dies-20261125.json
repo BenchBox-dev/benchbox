@@ -4,7 +4,7 @@
     "Fix lands as a code or configuration change; pruning or skipping the cell needs a proven external cause and owner approval.",
     "The UAT stage 2 lakesail job passes on trunk."
   ],
-  "context": "Candidate causes changed between ee2e196e3c (passing) and f1c6343bbf: #4506 perf(datagen) streams Parquet with 122,880-row groups (changes the files LakeSail reads); uv.lock changes from #4494/#4496; #4491 UAT runner changes. Start by reading the Sail server container log and runner memory in the artifact release-uat-trunk-f1c6343bbf...-stage2-lakesail (lakesail_joinorder_1.0_20261125_111921.log), then compare Parquet row-group layout for joinorder SF1 before and after #4506. A runner-only memory limit is not an external cause unless it reproduces on the earlier commit. Blocks the two-green trunk UAT gate for v0.6.0rc1.",
+  "context": "Candidate causes changed between ee2e196e3c (passing) and f1c6343bbf: #4506 perf(datagen) streams Parquet with 122,880-row groups (changes the files LakeSail reads); uv.lock changes from #4494/#4496; #4491 UAT runner changes. Start by reading the Sail server container log and runner memory in the artifact release-uat-trunk-f1c6343bbf...-stage2-lakesail (lakesail_joinorder_1.0_20261125_111921.log), then compare Parquet row-group layout for joinorder SF1 before and after #4506. A runner-only memory limit is not an external cause unless it reproduces on the earlier commit. Blocks the two-green trunk UAT gate for v0.6.0rc1.\n\n2026-11-25: Root cause: Sail container OOM-killed (OOMKilled=true, exit 137) at its 6g limit during joinorder SF1 query 16a; one container serves ~20 earlier cells in the shard. 16a alone peaks ~3.9 GB in a fresh 6g container (passes locally). #4506 ruled out: joinorder reads a prebuilt DuckDB-written Parquet tarball the converter never rewrites; no LakeSail/joinorder/image changes between runs. Fix #4525 (merged 2026-11-25T18:25Z) raises LAKESAIL_MEMORY_LIMIT to 12g in trunk-uat.yml and release-v2.yml with a test pinning 8 GiB <= limit <= runner memory - 4 GiB. Remaining acceptance: next scheduled trunk UAT stage 2 lakesail passes. If joinorder still fails at 12g, restart the Sail server between cells and check for per-cell memory growth.",
   "description": "Scheduled trunk UAT run 45599221098 (2026-11-25, develop f1c6343bbf) failed 'UAT stage 2 lakesail'. Cell lakesail/joinorder@1 timed out at 1200 s (exit 124); query 16a failed with gRPC UNAVAILABLE 'Failed to connect to remote host: Connection refused' at 127.0.0.1:50051, so the Sail server had exited. The sweep then marked all remaining lakesail cells 'not run: platform died mid-run' (coffeeshop, tpchavoc, tpch_skew, tsbs_devops, nyctaxi, flightdata, datavault). The same job passed in runs 45389336355 (joinorder_sf1 published) and 45155067627.",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "04036ee0d3e84d5e993acae8e68c44d3",
+      "session_id": "8ba2da598ad24a19888c9b8f950272f3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e82e03734cad9d7732bbc3a5",
+      "at": "2026-11-25T18:26:12Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "610536deabd9494e8840904f521c9837",
       "session_id": "8ba2da598ad24a19888c9b8f950272f3"
     }
   ]
