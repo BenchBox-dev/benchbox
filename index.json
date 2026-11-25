@@ -14868,7 +14868,8 @@
     "tpcdi-historical": {
       "accepted_members": {
         "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121": "14d85b40cb8989843e363bc97d135630ed44fc58",
-        "tpcdi-historical-dimensions-20261121": "04be2ae3de51572ebf15409b17fdf8c9e9401cde"
+        "tpcdi-historical-dimensions-20261121": "04be2ae3de51572ebf15409b17fdf8c9e9401cde",
+        "tpcdi-historical-facts-20261121": "2b44c6d7450dda1260a0abb1bde54cfcf34747a1"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -14981,10 +14982,34 @@
           ],
           "integration_head": "c652f9cf2d1f1fa78faae51dcca4dfa55be03df0",
           "integration_seq": 4
+        },
+        "tpcdi-historical-facts-20261121": {
+          "accepted_head": "2b44c6d7450dda1260a0abb1bde54cfcf34747a1",
+          "changed_files": [
+            "benchbox/core/tpcdi/etl/DEPARTURES.yaml",
+            "benchbox/core/tpcdi/etl/PROVENANCE.json",
+            "benchbox/core/tpcdi/etl/historical.py",
+            "benchbox/core/tpcdi/etl/historical/dim_trade.sql",
+            "benchbox/core/tpcdi/etl/historical/fact_cash_balances.sql",
+            "benchbox/core/tpcdi/etl/historical/fact_holdings.sql",
+            "benchbox/core/tpcdi/etl/historical/fact_market_history.sql",
+            "benchbox/core/tpcdi/etl/historical/fact_watches.sql",
+            "changelog.d/tpcdi-staging-loads-and-departures.json",
+            "docs/internal/tpcdi-duckdb-comparison.md",
+            "scripts/tpcdi/EXPECTED_DIFFERENCES.yaml",
+            "scripts/tpcdi/compare_warehouses.py",
+            "tests/integration/core/test_tpcdi_etl_historical_digen_output.py",
+            "tests/unit/core/tpcdi/test_etl_historical.py",
+            "tests/unit/core/tpcdi/test_etl_historical_facts.py",
+            "tests/unit/scripts/test_compare_warehouses.py",
+            "tests/unit/sql_compat/golden_corpus/frozen/area_tpcdi_etl.json"
+          ],
+          "integration_head": "17c7f385d824146db2090bd5effa8b0d9a632614",
+          "integration_seq": 5
         }
       },
       "integration_branch": "feat/tpcdi-historical",
-      "integration_head": "c652f9cf2d1f1fa78faae51dcca4dfa55be03df0",
+      "integration_head": "17c7f385d824146db2090bd5effa8b0d9a632614",
       "integration_log": [
         {
           "at": "2026-11-23T23:39:31Z",
@@ -15164,6 +15189,15 @@
           "op_id": "f97c44602d124c8694be455039737a26",
           "previous_head": "b91abbddced4c1cc5352f41faadb16134c5a42a7",
           "seq": 4
+        },
+        {
+          "at": "2026-11-25T19:12:50Z",
+          "head": "17c7f385d824146db2090bd5effa8b0d9a632614",
+          "kind": "prepare",
+          "member": "tpcdi-historical-facts-20261121",
+          "op_id": "3183c24f545b455cad98649aaa7b47d0",
+          "previous_head": "c652f9cf2d1f1fa78faae51dcca4dfa55be03df0",
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-historical",
@@ -52724,17 +52758,12 @@
       "title": "TPC-DI step 15: historical load, dimension tables, with alerts written inside the transformation"
     },
     "tpcdi-historical-facts-20261121": {
-      "claim": {
-        "expires_at": "2026-11-26T19:03:54Z",
-        "generation": "8a7e5d34c15349bf904ce7ff8fe9bb47",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-historical-dimensions-20261121"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 16: historical load, trade and fact tables"
     },
     "tpcdi-incremental-dimensions-20261121": {
