@@ -15137,9 +15137,9 @@
         "tpcdi-historical-facts-20261121",
         "tpcdi-12-duckdb-historical-load-and-audit-20261120"
       ],
-      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42bf49f5647c029c274baf89",
-      "owner_epoch": 2,
-      "owner_generation": "14740335c3d759dc21b21faa71a110b2",
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73",
+      "owner_epoch": 3,
+      "owner_generation": "a54f17fa9c2a8009d5f53a13aa84ec78",
       "project_id": "tpcdi-correction-plan-20261120",
       "recoveries": [
         {
@@ -15161,6 +15161,16 @@
           "previous_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4e373c3ffd2cd229e1d72fba",
           "reason": "The leader session ended with a host restart and its MCP client cannot resume; this session continues the batch.",
           "session_id": "874b2c1c7639488a851143d397e95e0b"
+        },
+        {
+          "at": "2026-11-25T19:03:31Z",
+          "client": "omp-coding-agent",
+          "epoch": 3,
+          "new_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73",
+          "op_id": "a972721bc5564a7bb0b60d04acad657c",
+          "previous_owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:42bf49f5647c029c274baf89",
+          "reason": "The tracker server restarted to load tractable 1.3.2, which gave the same leader a new worker identity; the old identity cannot act again.",
+          "session_id": "cf74886b085549ef9de2b13963b10382"
         }
       ],
       "repository": "https://github.com/BenchBox-dev/BenchBox.git",
