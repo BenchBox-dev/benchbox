@@ -57,12 +57,13 @@ class FormatConversionOrchestrator:
 
         logger.info(f"Converting {total_tables} tables to {target_format}")
 
-        effective_options = self._resolve_conversion_options(manifest, options)
+        base_options = options or ConversionOptions()
 
         for idx, table_name in enumerate(tables_list, 1):
             logger.info(f"[{idx}/{total_tables}] Converting table: {table_name}")
 
-            source_files = self._get_source_files(manifest, table_name, output_dir)
+            source_entries = self._get_source_entries(manifest, table_name)
+            source_files = [output_dir / f.path for f in source_entries]
 
             if not source_files:
                 logger.warning(f"No source files found for table: {table_name}")
@@ -78,7 +79,7 @@ class FormatConversionOrchestrator:
                 logger.warning(f"No schema found for table: {table_name}, skipping")
                 continue
 
-            table_options = effective_options
+            table_options = self._resolve_conversion_options(manifest, base_options, source_entries)
             if table_options.expected_row_count is None:
                 source_row_count = self._get_source_row_count(manifest, table_name)
                 if source_row_count is not None:
@@ -106,7 +107,7 @@ class FormatConversionOrchestrator:
 
         if results:
             logger.info("Updating manifest with conversion results")
-            self._update_manifest_with_results(manifest, results, target_format, output_dir, effective_options)
+            self._update_manifest_with_results(manifest, results, target_format, output_dir, base_options)
 
             write_manifest(manifest, manifest_path)
             logger.info(f"Updated manifest: {manifest_path}")
@@ -117,15 +118,29 @@ class FormatConversionOrchestrator:
         self,
         manifest: ManifestV2,
         options: ConversionOptions | None,
+        source_entries: list[Any] | None = None,
     ) -> ConversionOptions:
         base_opts = options or ConversionOptions()
         extras = manifest.extra_fields or {}
+        entry_meta: dict[str, Any] = {}
+        for entry in source_entries or ():
+            meta = getattr(entry, "metadata", None)
+            if isinstance(meta, dict) and meta:
+                entry_meta = meta
+                break
+
         delimiter = base_opts.delimiter
-        if delimiter is None and isinstance(extras.get("csv_delimiter"), str) and len(extras["csv_delimiter"]) == 1:
-            delimiter = extras["csv_delimiter"]
+        if delimiter is None:
+            raw_delim = entry_meta.get("csv_delimiter", extras.get("csv_delimiter"))
+            if isinstance(raw_delim, str) and len(raw_delim) == 1:
+                delimiter = raw_delim
+
         has_header = base_opts.has_header
-        if has_header is None and isinstance(extras.get("csv_has_header"), bool):
-            has_header = extras["csv_has_header"]
+        if has_header is None:
+            raw_header = entry_meta.get("csv_has_header", extras.get("csv_has_header"))
+            if isinstance(raw_header, bool):
+                has_header = raw_header
+
         if delimiter == base_opts.delimiter and has_header == base_opts.has_header:
             return base_opts
         return replace(base_opts, delimiter=delimiter, has_header=has_header)

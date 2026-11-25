@@ -1066,3 +1066,44 @@ class TestParquetStreamingAndBenchmarkCompatibility:
         assert results["nation"].row_count == 3
         updated = json.loads(manifest_path.read_text(encoding="utf-8"))
         assert updated["tables"]["nation"]["formats"]["parquet"][0]["row_count"] == 3
+
+    def test_orchestrator_honors_per_entry_write_delimited_manifest_dialect(self, tmp_path):
+        from benchbox.core.manifest_utils import write_delimited_manifest
+        from benchbox.core.runner.conversion import FormatConversionOrchestrator
+
+        csv_file = tmp_path / "metrics.csv"
+        csv_file.write_text("col_a;col_b\n1;hello\n2;world\n", encoding="utf-8")
+
+        class _StubGenerator:
+            output_dir = tmp_path
+            scale_factor = 0.01
+            compress_data = False
+            compression_type = "none"
+
+        write_delimited_manifest(
+            _StubGenerator(),
+            "custom_bench",
+            {"metrics": csv_file},
+            {"metrics": 2},
+            delimiter=";",
+            has_header=True,
+        )
+        schema = {
+            "metrics": {
+                "columns": [
+                    {"name": "id", "type": "INTEGER"},
+                    {"name": "label", "type": "VARCHAR(20)"},
+                ]
+            }
+        }
+        results = FormatConversionOrchestrator().convert_benchmark_tables(
+            manifest_path=tmp_path / "_datagen_manifest.json",
+            output_dir=tmp_path,
+            target_format="parquet",
+            schemas=schema,
+        )
+        assert results["metrics"].row_count == 2
+        assert pq.read_table(results["metrics"].output_files[0]).to_pydict() == {
+            "id": [1, 2],
+            "label": ["hello", "world"],
+        }

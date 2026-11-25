@@ -210,17 +210,23 @@ def _run_worker(mode: str, bench: str, sf: float, data_dir: Path, pq_dir: Path, 
             col_names = [f.name for f in arrow_schema]
             try:
                 tables = []
-                for src in src_files:
+                for entry in entries:
+                    src = data_dir / entry["path"]
+                    if not src.exists():
+                        continue
+                    entry_meta = entry.get("metadata") if isinstance(entry.get("metadata"), dict) else {}
+                    entry_delim = entry_meta.get("csv_delimiter", csv_delim_meta)
+                    entry_header = entry_meta.get("csv_has_header", csv_header_meta)
                     first_line = src.open("r", encoding="utf-8", errors="replace").readline().rstrip("\r\n")
-                    if isinstance(csv_delim_meta, str) and len(csv_delim_meta) == 1:
-                        delim = csv_delim_meta
+                    if isinstance(entry_delim, str) and len(entry_delim) == 1:
+                        delim = entry_delim
                     else:
                         delim = get_delimiter_for_file(src)
                         if delim == "," and len(col_names) > 1 and "|" in first_line:
                             if len(first_line.split("|")) in (len(col_names), len(col_names) + 1):
                                 delim = "|"
-                    if isinstance(csv_header_meta, bool):
-                        has_header = csv_header_meta
+                    if isinstance(entry_header, bool):
+                        has_header = entry_header
                     else:
                         hdr_parts = [p.strip().strip('"').lower() for p in first_line.split(delim)]
                         has_header = hdr_parts[: len(col_names)] == [c.lower() for c in col_names]
@@ -339,8 +345,13 @@ def _verify_except_all(ref_dir: Path, test_dir: Path) -> dict[str, Any]:
     conn = duckdb.connect(":memory:")
     try:
         ref_files = sorted(ref_dir.glob("*.parquet"))
+        test_files = sorted(test_dir.glob("*.parquet"))
+        ref_names = {f.name for f in ref_files}
         mismatches: dict[str, dict[str, Any]] = {}
         checked_tables: list[str] = []
+        for test_file in test_files:
+            if test_file.name not in ref_names:
+                mismatches[test_file.stem] = {"missing_in_ref": 1}
         for ref_file in ref_files:
             table_name = ref_file.stem
             test_file = test_dir / ref_file.name
@@ -370,7 +381,7 @@ def _verify_except_all(ref_dir: Path, test_dir: Path) -> dict[str, Any]:
             if left_diff or right_diff:
                 mismatches[table_name] = {"ref_minus_test": int(left_diff), "test_minus_ref": int(right_diff)}
         return {
-            "passed": not mismatches and len(checked_tables) == len(ref_files),
+            "passed": bool(ref_files) and not mismatches and len(checked_tables) == len(ref_files),
             "tables_checked": checked_tables,
             "mismatches": mismatches,
         }
@@ -379,13 +390,22 @@ def _verify_except_all(ref_dir: Path, test_dir: Path) -> dict[str, Any]:
 
 
 def _summarize_runs(runs: list[dict[str, Any]]) -> dict[str, Any]:
-    walls = [r["wall_s"] for r in runs if isinstance(r.get("wall_s"), (int, float))]
-    rss_values = [r["peak_rss_mib"] for r in runs if isinstance(r.get("peak_rss_mib"), (int, float))]
     statuses = [r.get("status") for r in runs]
+    if not statuses:
+        overall_status = "skipped"
+    elif all(s == "ok" for s in statuses):
+        overall_status = "ok"
+    else:
+        overall_status = next((str(s) for s in statuses if s != "ok"), "error")
+    ok_runs = [r for r in runs if r.get("status") == "ok"]
+    walls = [r["wall_s"] for r in ok_runs if isinstance(r.get("wall_s"), (int, float))]
+    rss_values = [r["peak_rss_mib"] for r in ok_runs if isinstance(r.get("peak_rss_mib"), (int, float))]
     return {
-        "status": "ok" if statuses and all(s == "ok" for s in statuses) else (statuses[-1] if statuses else "skipped"),
-        "median_wall_s": round(statistics.median(walls), 4) if walls else None,
-        "median_peak_rss_mib": round(statistics.median(rss_values), 2) if rss_values else None,
+        "status": overall_status,
+        "median_wall_s": round(statistics.median(walls), 4) if overall_status == "ok" and walls else None,
+        "median_peak_rss_mib": round(statistics.median(rss_values), 2)
+        if overall_status == "ok" and rss_values
+        else None,
         "runs": runs,
     }
 
