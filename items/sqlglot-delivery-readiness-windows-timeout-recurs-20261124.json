@@ -4,12 +4,13 @@
     "Limit or code change lands; no Windows timeout of this test in the next 20 PR CI runs that execute it.",
     "The test still fails when the readiness path mutates the repository."
   ],
-  "context": "Filed 2026-11-24 from the close-out of the scale and TPC-DI remediation (umbrella remediation-revised-plan-20261120, done 2026-11-23).\n\n2026-11-25: sqlglot-delivery-workflow-windows-timeout-20261112 was dropped as a duplicate by owner decision. Its evidence: PR #4175 (head bc7139178d), 2026-11-12, two test_sqlglot_delivery_workflow tests timed out after 20 s on node.EXE on windows-latest; cleared by re-run. Its guardrails carry over: no Windows skip without owner approval; no blanket retry. Fix both tests with this item.",
+  "context": "Filed 2026-11-24 from the close-out of the scale and TPC-DI remediation (umbrella remediation-revised-plan-20261120, done 2026-11-23).\n\n2026-11-25: sqlglot-delivery-workflow-windows-timeout-20261112 was dropped as a duplicate by owner decision. Its evidence: PR #4175 (head bc7139178d), 2026-11-12, two test_sqlglot_delivery_workflow tests timed out after 20 s on node.EXE on windows-latest; cleared by re-run. Its guardrails carry over: no Windows skip without owner approval; no blanket retry. Fix both tests with this item.\n\n2026-11-25: fix merged. PR https://github.com/BenchBox-dev/benchbox/pull/4527, merge 8da63cbebbae1adf3f57b954f0edc057802b9f1a. NODE_PROBE_TIMEOUT_SECONDS = 60 (owner-approved) replaces the 20 s limit for the single node - child covering all 12 readiness cases. Measurement: 324 samples over 27 windows-latest runs (22 dispatched windows-fast.yml runs on develop + 5 PR runs): p50 0.17 s, p99 7.2 s, max 15.2 s; 60 s = ~8x p99, ~4x max. Negative control: changing the ready path's GET /installation/repositories to POST failed ready, wrong-repository, extra-repository and unreadable-repositories cases on the read-only-calls assertion. Remaining acceptance: no Windows timeout of this test in the next 20 PR CI runs that execute it; hold until 2026-11-30 to count them, then finish.",
   "description": "## Problem\n`tests/unit/workflows/test_sqlglot_delivery_workflow.py::test_readiness_authenticates_without_repository_mutations[ready-Verified configured App authentication]` raises `subprocess.TimeoutExpired` when its `node -` child runs past the test's 20 s limit on `windows-latest`. sqlglot-delivery-readiness-windows-flake-20261120 was dropped as a single occurrence. It has since recurred:\n- CI run 43887923771, 2026-11-16 (the occurrence recorded on the dropped item);\n- #4410 at 7d8966ea57, 2026-11-20, rerun of run 44777675803 (recorded on feature-fix-corpus-classification-and-seed-provenance-20261120);\n- #4331 at aa403069cc, 2026-11-22, run 45059651205.\nEach time the PR under test did not touch the workflow or the test, `core` failed, and the merge needed an owner-authorised re-run.\n\n## Change\nMeasure how long the `node -` child takes on `windows-latest` (cold and warm). Then either set the limit from that evidence or remove the cold-start cost from the measured path, keeping what the test asserts: readiness authenticates without mutating the repository.\n\n## Decision gates\n- The new limit, if any, is shown to the owner with the measured distribution before it is committed.\n- Skipping or marking the test on Windows needs the owner's approval; it is not the default fix.\n\n## Verification rubric\nPass: the child's duration on `windows-latest` is recorded from at least 20 runs (CI history or a dispatched loop); the limit is at least 3x the observed p99, or the cold start is gone from the measured path; and a deliberate repository mutation in the readiness path still makes the test fail.\n\n## Guardrails\n- Work in a linked worktree from `make worktree-create`; never write in the primary clone. Stage named paths only; commit as the pinned human identity with no agent attribution.\n- Push only after `make pr-preflight` passes on the exact head. Never `--no-verify`, force-push, or rewrite authorship.\n- Arm only with `make pr-arm`, once per head. A second attempt only when the refusal named a cause that is now fixed; a third needs the owner. `make pr-rerun` only for a job the runner cancelled or never ran, never to re-roll a failed test.\n- Never post a stand-in review. Resolve a review thread only after the bot has reviewed the new head and did not raise the finding again.\n- Heavy work only through `make heavy-run` or a lock-taking target. Never set `BENCHBOX_HEAVY_ADMIT=force`, `BENCHBOX_SKIP_TEST_LOCK` or `BENCHBOX_HEAVY_WATCHDOG=off`.\n- Any new limit, threshold, default or user-facing label is shown to the owner before it is committed.\n- Do not mark a test skip, xfail, quarantine or slow to make it pass.\n- Report only what merged and what was verified, with run ids and heads.",
   "links": [
     "tests/unit/workflows/test_sqlglot_delivery_workflow.py",
     "sqlglot-delivery-readiness-windows-flake-20261120"
   ],
+  "not_before": "2026-11-30T00:00:00Z",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:7df5251ec4291d5bac245463",
@@ -25,6 +26,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "c669cdea84074c89ba20fe0b180389f8",
+      "session_id": "3370a2a2447845cd8a89682f505a3484"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9f9c6d68051f4bb162aa05a7",
+      "at": "2026-11-25T20:10:27Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "cac3acd07d3d48019ca7c887edc4819a",
       "session_id": "3370a2a2447845cd8a89682f505a3484"
     }
   ]
