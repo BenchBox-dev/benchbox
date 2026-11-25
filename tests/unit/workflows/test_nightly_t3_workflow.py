@@ -266,7 +266,7 @@ def _run_mirror_step(
     ("image", "source_image"),
     [
         ("clickhouse", "clickhouse/clickhouse-server:25.8"),
-        ("trino", "trinodb/trino:480"),
+        ("trino", "trinodb/trino:484"),
     ],
 )
 def test_mirror_reuses_an_existing_digest_without_reading_docker_hub(
@@ -291,7 +291,7 @@ def test_mirror_reuses_an_existing_digest_without_reading_docker_hub(
     ("image", "source_image"),
     [
         ("clickhouse", "clickhouse/clickhouse-server:25.8"),
-        ("trino", "trinodb/trino:480"),
+        ("trino", "trinodb/trino:484"),
     ],
 )
 @pytest.mark.parametrize(
@@ -321,7 +321,7 @@ def test_mirror_fails_closed_on_non_missing_registry_errors(
     ("image", "source_image"),
     [
         ("clickhouse", "clickhouse/clickhouse-server:25.8"),
-        ("trino", "trinodb/trino:480"),
+        ("trino", "trinodb/trino:484"),
     ],
 )
 def test_mirror_refuses_an_unpinned_compose_source(tmp_path: Path, image: str, source_image: str) -> None:
@@ -341,7 +341,7 @@ def test_mirror_refuses_an_unpinned_compose_source(tmp_path: Path, image: str, s
     ("image", "source_image"),
     [
         ("clickhouse", "clickhouse/clickhouse-server:25.8"),
-        ("trino", "trinodb/trino:480"),
+        ("trino", "trinodb/trino:484"),
     ],
 )
 def test_mirror_fails_if_existing_digest_reference_returns_other_content(
@@ -363,7 +363,7 @@ def test_mirror_fails_if_existing_digest_reference_returns_other_content(
     ("image", "source_image"),
     [
         ("clickhouse", "clickhouse/clickhouse-server:25.8"),
-        ("trino", "trinodb/trino:480"),
+        ("trino", "trinodb/trino:484"),
     ],
 )
 def test_mirror_copies_only_a_missing_digest_and_checks_the_result(
@@ -393,7 +393,7 @@ def test_mirror_copies_only_a_missing_digest_and_checks_the_result(
     ("image", "source_image"),
     [
         ("clickhouse", "clickhouse/clickhouse-server:25.8"),
-        ("trino", "trinodb/trino:480"),
+        ("trino", "trinodb/trino:484"),
     ],
 )
 def test_mirror_checks_the_digest_after_copy(tmp_path: Path, image: str, source_image: str) -> None:
@@ -878,7 +878,7 @@ def test_throughput_signal_publishes_the_commit_status_the_retiring_workflow_pub
         (
             "trino",
             "docker/trino/docker-compose.yml",
-            "docker://docker.io/trinodb/trino@sha256:1565e8cac299a32dd9177a4da2d748da4ceb9f1560a9c409d1d18fd72ea5253e",
+            "docker://docker.io/trinodb/trino@sha256:2704eb53935af5e582d63d6033e9bf99d20c325e9b0e30b1016ef59a4773979f",
         ),
         (
             "cedardb",

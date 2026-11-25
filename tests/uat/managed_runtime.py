@@ -42,8 +42,9 @@ i=0
 while [ "$i" -lt 60 ]; do
   case "$r" in *'"error"'*) echo "$r" >&2; exit 1;; esac
   case "$r" in *'"data":[[1]]'*) exit 0;; esac
-  n=$(echo "$r" | grep -o '"nextUri":"[^"]*"' | cut -d'"' -f4)
-  [ -n "$n" ] || { echo "$r" >&2; exit 1; }
+  case "$r" in *'"nextUri":"'*) ;; *) echo "$r" >&2; exit 1;; esac
+  n=${r#*'"nextUri":"'}
+  n=${n%%'"'*}
   sleep 1
   r=$(curl -fsS "http://localhost:8080/${n#*://*/}") || exit 1
   i=$((i+1))
