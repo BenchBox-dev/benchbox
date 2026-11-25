@@ -26905,15 +26905,10 @@
       "title": "DataFusion stores TPC-H money columns as DOUBLE, so Q15 intermittently returns 0 rows"
     },
     "datagen-converter-options-and-convert-cli": {
-      "claim": {
-        "expires_at": "2026-11-26T21:31:04Z",
-        "generation": "fc26ececc6f0445080d68c0a683f2a56",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Pass conversion options to every table-format converter and fix benchbox convert schema lookup"
     },
     "datagen-converter-options-and-convert-cli-deferral-1": {
