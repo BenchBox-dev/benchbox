@@ -12,9 +12,12 @@ from benchbox.core.write_primitives.benchmark import WritePrimitivesBenchmark
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 
-def test_current_timestamp_becomes_now():
+def test_current_timestamp_becomes_now(tmp_path):
+    benchmark = TransactionPrimitivesBenchmark(scale_factor=0.01, output_dir=tmp_path)
     sql = "INSERT INTO t (a, ts) VALUES (1, CURRENT_TIMESTAMP)"
-    assert rewrite_questdb_operation_sql(sql) == "INSERT INTO t (a, ts) VALUES (1, now())"
+    assert benchmark._rewrite_transactional_sql_for_platform(sql, "questdb") == (
+        "INSERT INTO t (a, ts) VALUES (1, now())"
+    )
 
 
 def test_statements_without_rewrites_are_returned_verbatim():
@@ -84,5 +87,5 @@ def test_questdb_series_select_uses_generate_series_table_function(tmp_path):
     benchmark = TransactionPrimitivesBenchmark(scale_factor=0.01, output_dir=tmp_path)
     sql = "INSERT INTO t SELECT n FROM (SELECT unnest(generate_series(1, 100)) AS n) t"
     assert benchmark._rewrite_transactional_sql_for_platform(sql, "questdb") == (
-        "INSERT INTO t SELECT n FROM (SELECT generate_series AS n FROM generate_series(1, 100)) t"
+        "INSERT INTO t SELECT n FROM (SELECT generate_series AS n FROM GENERATE_SERIES(1, 100)) AS t"
     )

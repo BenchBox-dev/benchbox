@@ -73,7 +73,7 @@ def test_generate_series_is_rewritten_to_the_table_function_on_starrocks(txn):
     sql = txn._rewrite_transactional_sql_for_platform(
         "INSERT INTO t SELECT 9200000 + n FROM (SELECT unnest(generate_series(1, 100)) AS n) t;", "starrocks"
     )
-    assert "TABLE(generate_series(1, 100)) AS series(n)" in sql
+    assert "TABLE(GENERATE_SERIES(1, 100)) AS series(n)" in sql
     assert "unnest" not in sql
 
 
