@@ -50524,17 +50524,12 @@
       "title": "Prepare pinned local review and gateway-host tooling and track every upstream port"
     },
     "theseus-local-review-hides-classification-cause-20261124": {
-      "claim": {
-        "expires_at": "2026-11-26T07:01:48Z",
-        "generation": "716a4cb6eccd4495b91c734ec51de688",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0a697a35e720a04d19e44a28"
-      },
+      "claim": null,
       "needs": [
         "review-classifier-degraded-remediation-20261124"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Theseus local review reports 'classification unreadable' and drops the real classification error"
     },
     "theseus-lock-self-review-format-release-b-20261110": {
