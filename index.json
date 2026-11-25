@@ -26591,10 +26591,10 @@
     },
     "datagen-p1-provenance-and-backend-selector": {
       "claim": {
-        "expires_at": "2026-11-25T18:19:40Z",
-        "generation": "6b087833961648e3a417830006f64bf7",
+        "expires_at": "2026-11-26T03:00:33Z",
+        "generation": "e96270e4e8d34276bfc4d304a50187ad",
         "renewals": 0,
-        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:d84499826d46cd4fe1e3cd0d"
+        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:09e72875364dbf224cdb1ab5"
       },
       "needs": [
         "datagen-p0-companion-adr"
