@@ -25929,6 +25929,15 @@
       "status": "open",
       "title": "Land the single row-count reference reader and generator with the SF 0.01, 0.1 and 1 references"
     },
+    "crr-v1-row-evidence-roll-up": {
+      "claim": null,
+      "needs": [
+        "crr-c1-validation-status-vocabulary"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Roll up row-count evidence with one rule shared by the writer, the validators, the DataFrame summary and the corpus rule"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],
