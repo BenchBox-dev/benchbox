@@ -25929,6 +25929,15 @@
       "status": "open",
       "title": "Official mode: start the power test immediately after the load, with no warm-up"
     },
+    "crr-o2-official-tpcds-stream-zero": {
+      "claim": null,
+      "needs": [
+        "crr-o1-official-power-after-load"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Official TPC-DS mode: run power as dsqgen stream 0 in Appendix D order from one dsqgen generation shared with both throughput tests"
+    },
     "crr-v0-reference-reader-and-generator": {
       "claim": null,
       "needs": [
