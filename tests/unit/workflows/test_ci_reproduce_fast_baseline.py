@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -158,3 +159,24 @@ def test_the_fast_junit_sources_are_kept_as_long_as_the_generated_at_window() ->
     assert uploads
     for step in uploads:
         assert step["with"]["retention-days"] == 30
+
+
+def test_the_files_the_fast_job_writes_into_fast_junit_are_the_allowed_artifact_members() -> None:
+    from scripts.build_fast_duration_baseline import ARTIFACT_MEMBERS
+
+    producers = [
+        job
+        for job in jobs().values()
+        if any(
+            str(step.get("with", {}).get("name", "")).startswith("fast-junit-")
+            and "upload-artifact" in step.get("uses", "")
+            for step in job.get("steps", [])
+        )
+    ]
+    assert len(producers) == 1
+    written = {
+        name
+        for step in producers[0]["steps"]
+        for name in re.findall(r"fast-junit/([A-Za-z0-9_.-]+)", step.get("run", ""))
+    }
+    assert written == set(ARTIFACT_MEMBERS)
