@@ -22,6 +22,7 @@ SELF_EXCLUDED = {
     "quality/docs-ownership.json",
     "quality/doc-lock-tests.json",
 }
+EXCLUDED_PREFIXES = ("tests/fixtures/fast_tier_baseline/",)
 DISPOSITIONS = (
     "contract-replaced",
     "governance-stays",
@@ -125,7 +126,7 @@ def extract(text: str, targets: Targets) -> list[tuple[str, str]]:
 def scan(files: list[str], targets: Targets) -> dict[str, Counter[tuple[str, str]]]:
     rows: dict[str, Counter[tuple[str, str]]] = {}
     for path in files:
-        if path.startswith("docs/") or path in SELF_EXCLUDED:
+        if path.startswith("docs/") or path.startswith(EXCLUDED_PREFIXES) or path in SELF_EXCLUDED:
             continue
         try:
             text = (ROOT / path).read_text(encoding="utf-8")
