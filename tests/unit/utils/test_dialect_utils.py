@@ -582,7 +582,7 @@ class TestSQLTranslation:
 
         assert "INTERVAL" not in result.upper()
         assert "EXTRACT" not in result.upper()
-        assert "DATE('1994-01-01', '+1 year')" in result
+        assert "DATE(DATE('1994-01-01'), '1 YEAR', 'floor')" in result
         assert "STRFTIME('%Y'," in result
 
     def test_translate_sqlite_rewrites_time_extract_and_date_trunc(self):
