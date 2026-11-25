@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Every path that writes SQLite SQL, including DDL and strict mode, passes the dialect as `sqlite, version=X.Y.Z` using the connected engine's sqlite_version().",
+    "On SQLite below 3.46, a month, quarter or year offset fails translation with a recorded unsupported outcome instead of returning NULL rows, and a test pins this.",
+    "On SQLite 3.46 or later, translated output is unchanged.",
+    "The item records which SQLite versions BenchBox CI and the supported platforms use."
+  ],
+  "context": "Confirmed on BenchBox develop: translate_sql_query (benchbox/utils/dialect_utils.py) calls expression.sql(dialect=tgt) with no SQLite version; benchbox/platforms/sqlite.py already queries SELECT sqlite_version(); the bundled fork is 30.33.0.1. The fork-side behaviour and evidence are in benchbox-sqlglot #148, #151 and #152. Kept as one item because the version plumbing and the unsupported-outcome handling touch the same code and land together.",
+  "description": "BenchBox translates SQLite queries without telling sqlglot which SQLite version it targets. translate_sql_query in benchbox/utils/dialect_utils.py calls expression.sql(dialect=tgt) with no version, although benchbox/platforms/sqlite.py already reads SELECT sqlite_version(). From fork wheel 30.35.0.1, sqlglot uses the dialect version to decide how month, quarter and year date offsets are written for SQLite; without a version, SQLite engines older than 3.46 can return NULL rows for those offsets instead of failing. BenchBox still bundles fork 30.33.0.1, so nothing returns NULL today; the exposure starts when the 30.35.0.1 adoption merges. Land this before or together with that adoption.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/issues/148",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/issues/151",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/issues/152"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:78b6d8d47866e7d93cae6f2f",
+      "at": "2026-11-25T13:56:26Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e2f829a48ac64bc78689d089a0a13e28",
+      "session_id": "692fcc79997f451aaa7c04181c6a2e9b"
+    }
+  ]
+}
