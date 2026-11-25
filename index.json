@@ -27081,10 +27081,15 @@
       "title": "Cut over TPC-H and TPC-DS default backend and decide published-run Parquet layout default"
     },
     "datagen-parquet-partitioned-row-groups": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-26T19:56:41Z",
+        "generation": "d44aac1c18734e60900319d889903518",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Fill partitioned Parquet row groups to the configured 122,880 rows"
     },
     "datagen-tpcgen-adopt-no-trailing-delimiter": {
