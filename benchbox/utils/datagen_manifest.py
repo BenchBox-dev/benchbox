@@ -156,6 +156,10 @@ class DataGenerationManifest:
         extra_metadata: dict[str, Any] | None = None,
         formats: list[str] | None = None,
         stamp: bool = True,
+        generator_backend: str | None = None,
+        generator_backend_version: str | None = None,
+        parquet_writer: str | None = None,
+        parquet_row_group_size: int | None = None,
     ) -> None:
         self._root = _ensure_path(output_dir)
         self._benchmark = benchmark
@@ -166,6 +170,12 @@ class DataGenerationManifest:
         self._seed = int(seed) if seed is not None else None
         self._extra_metadata = extra_metadata or {}
         self._formats = formats or ["tbl"]
+        self._generator_backend = str(generator_backend).lower() if generator_backend is not None else None
+        self._generator_backend_version = (
+            str(generator_backend_version) if generator_backend_version is not None else None
+        )
+        self._parquet_writer = str(parquet_writer) if parquet_writer is not None else None
+        self._parquet_row_group_size = int(parquet_row_group_size) if parquet_row_group_size is not None else None
         self._tables: dict[str, dict[str, list[ManifestTableEntry]]] = {}
 
     @property
@@ -247,9 +257,39 @@ class DataGenerationManifest:
         datagen_stamp: dict[str, Any] = {}
         if self._stamp:
             try:
-                from benchbox.utils.datagen_version import current_datagen_stamp
+                from benchbox.utils.datagen_version import (
+                    compute_datagen_identity_hash,
+                    current_datagen_stamp,
+                    get_benchmark_datagen_version,
+                    is_byte_identical_backend_output,
+                )
 
-                datagen_stamp = current_datagen_stamp(self._benchmark)
+                datagen_stamp = current_datagen_stamp(
+                    self._benchmark,
+                    backend=self._generator_backend,
+                    backend_version=self._generator_backend_version,
+                )
+                byte_identical = is_byte_identical_backend_output(
+                    self._benchmark,
+                    backend_version=self._generator_backend_version,
+                    parquet_writer=self._parquet_writer,
+                    scale_factor=self._scale_factor,
+                )
+                has_distinct_identity = (
+                    (self._generator_backend is not None and self._generator_backend != "legacy" and not byte_identical)
+                    or self._parquet_writer is not None
+                    or self._parquet_row_group_size is not None
+                    or get_benchmark_datagen_version(self._benchmark) > 1
+                )
+                if has_distinct_identity and "data_generation_identity_hash" not in self._extra_metadata:
+                    datagen_stamp["data_generation_identity_hash"] = compute_datagen_identity_hash(
+                        self._benchmark,
+                        backend=self._generator_backend,
+                        backend_version=self._generator_backend_version,
+                        parquet_writer=self._parquet_writer,
+                        parquet_row_group_size=self._parquet_row_group_size,
+                        scale_factor=self._scale_factor,
+                    )
             except Exception as exc:
                 logging.getLogger(__name__).debug("datagen stamp unavailable for %s: %s", self._benchmark, exc)
 
@@ -268,6 +308,18 @@ class DataGenerationManifest:
 
         if self._seed is not None:
             manifest["seed"] = self._seed
+
+        if self._generator_backend is not None:
+            manifest["generator_backend"] = self._generator_backend
+
+        if self._generator_backend_version is not None:
+            manifest["generator_backend_version"] = self._generator_backend_version
+
+        if self._parquet_writer is not None:
+            manifest["parquet_writer"] = self._parquet_writer
+
+        if self._parquet_row_group_size is not None:
+            manifest["parquet_row_group_size"] = self._parquet_row_group_size
 
         if self._extra_metadata:
             manifest.update(self._extra_metadata)
