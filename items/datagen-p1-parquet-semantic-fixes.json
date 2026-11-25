@@ -4,6 +4,8 @@
     "All 11 ADR benchmarks convert at SF 0.01 (ClickBench included) with the new writer identity recorded in manifests.",
     "TPC-H and TPC-DS SF 1 Parquet values equal what DuckDB's .tbl loader reads from the same files (bidirectional EXCEPT ALL = 0).",
     "Parquet bytes are identical for 1-chunk and 10-chunk inputs of the same data.",
+    "The writer budget gate (TPC-H SF 1/10 N=3 medians, <= 6 s / 512 MiB and <= 60 s / 1,024 MiB) is re-run on the bumped writer and recorded.",
+    "Cached manifests with any previous writer identity, including partitioned output written before datagen-parquet-partitioned-row-groups, are stale on Parquet runs (unit test).",
     "Owner decision on the NOT NULL empty-string policy recorded in context.",
     "PR merged to develop with a changelog.d fragment."
   ],
@@ -21,6 +23,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "d0f2b4c69e1a3c5d7f9b1d3f5b7d9f12",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-25T17:07:23Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "20091e27ced048fe930139f5075b3585",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
