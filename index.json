@@ -26002,7 +26002,8 @@
       "claim": null,
       "needs": [
         "crr-o1-official-power-after-load",
-        "crr-o3-official-seed-from-load-end"
+        "crr-o3-official-seed-from-load-end",
+        "crr-o4-official-tpch-two-runs"
       ],
       "priority": "medium",
       "status": "open",
