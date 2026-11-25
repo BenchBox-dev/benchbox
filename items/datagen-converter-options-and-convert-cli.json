@@ -1,0 +1,27 @@
+{
+  "acceptance": [
+    "`benchbox convert --input <SF 0.01 dir> --format parquet --output <tmp>` succeeds for tpch, tpcds, ssb, coffeeshop, clickbench and tsbs_devops (command run and recorded in the PR).",
+    "A unit test resolves real TPC-H column schemas for manifest tables through `_get_schemas_from_manifest` and fails on the pre-fix code.",
+    "Delta/Iceberg/Vortex/DuckLake converters receive the orchestrator's options; their existing tests pass and a coffeeshop (comma) conversion to at least one of them succeeds.",
+    "No private cross-module helper import remains; every caller of the renamed helper is migrated.",
+    "PR merged to develop with a changelog.d fragment."
+  ],
+  "context": "Split out on 2026-11-25 from an adversarial review of the datagen effort (findings C3 and C4). Owner chose separate PRs per tracker item.",
+  "description": "## Problem\n- Delta, Iceberg, Vortex and DuckLake converters call `BaseFormatConverter.read_tbl_files` without `options`, so they ignore the delimiter, header and strict-schema settings that `FormatConversionOrchestrator` resolves from the manifest (comma-delimited coffeeshop, headered vector_search/tsbs_devops).\n- `benchbox convert` (`benchbox/cli/commands/convert.py::_get_schemas_from_manifest`) calls `get_schema(table_name)`. TPC-H and TPC-DS `get_schema()` take no table argument (TypeError, swallowed); ssb, coffeeshop, h2odb and clickbench treat the argument as a dialect and return the whole schema dict, so conversion fails with \"Schema missing 'columns'\". The command fails for every benchmark, so the conversion repairs from #4506 only reach `benchbox run`.\n\n## Change\n- Pass `options=opts` from each of the four converters to `read_tbl_files`.\n- Make the runner's `_get_table_schemas_from_benchmark` public (move or rename; migrate every caller including `_project/scripts/measure_datagen_and_parquet.py` and `tests/unit/core/test_runner_helpers.py`) and use it in `convert`, selecting the manifest's tables.\n- Replace the mock-only convert schema test with one that resolves real schemas.\n- A prior uncommitted attempt exists in worktree `../BenchBox.wt-fix-parquet-single-writer` (convert.py, the four converters, the test); reuse those hunks only. That worktree also holds Parquet-writer changes that belong to other items and must not land here.\n\n## Decision gates\n- Stop and report if passing `options` changes Delta/Iceberg/Vortex/DuckLake output for any benchmark that converts successfully today (compare row counts and EXCEPT ALL on SF 0.01 for tpch and one headered/comma benchmark).\n\n## Guardrails\n- No change to ParquetConverter writer selection, row-group policy, or datagen identity hashing.\n- Follow AGENTS.md: linked worktree, COMMENT-POLICY-001, changelog fragment, make pr-preflight, merged PR.",
+  "links": [
+    "benchbox/cli/commands/convert.py",
+    "benchbox/core/runner/runner.py",
+    "benchbox/utils/format_converters/base.py",
+    "docs/internal/adr/adr-benchbox-datagen.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-25T15:41:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a1c3e5f70b2d4f6a8c0e1a3b5c7d9e01",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
