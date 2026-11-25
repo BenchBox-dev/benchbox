@@ -29,7 +29,7 @@ def wp(tmp_path):
 def test_unsupported_operations_are_skipped_with_the_engine_error(wp, operation_id):
     sql, reason = wp._get_effective_write_sql(wp.get_operation(operation_id), platform_key="clickhouse")
     assert sql is None
-    assert reason.startswith(f"Operation '{operation_id}' is skipped on ClickHouse: ClickHouse 25.8.33.6")
+    assert reason.startswith(f"Operation '{operation_id}' is skipped on ClickHouse: ClickHouse 26.8.46.6")
     assert "Code" in reason
 
 
@@ -39,6 +39,8 @@ def test_supported_operations_are_not_skipped(wp):
         "update_single_row_pk",
         "delete_single_row_pk",
         "ddl_alter_table_add_column",
+        "update_conditional_multi_column",
+        "delete_with_aggregation",
     ):
         sql, reason = wp._get_effective_write_sql(wp.get_operation(operation_id), platform_key="clickhouse")
         assert reason is None
