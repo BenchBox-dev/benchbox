@@ -9,6 +9,7 @@ import pytest
 from benchbox.core.expected_results.models import ValidationMode
 from benchbox.core.tpch.power_test import TPCHPowerTest
 from benchbox.core.validation.query_validation import QueryValidator
+from benchbox.core.validation.stream_checks import query_generation_context
 from benchbox.platforms.base.connection_wrappers import PlatformAdapterCursor
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast, pytest.mark.tpch]
@@ -22,12 +23,16 @@ class _ValidatingConnection:
         self.rows_for_query = rows_for_query
         self.query_id: int | None = None
 
-    def set_query_context(self, query_id: int, stream_id: int | None = None) -> None:
+    def set_query_context(self, query_id: int, stream_id: int | None = None, generation: Any = None) -> None:
         self.query_id = query_id
+        self.generation = generation
 
     def execute(self, _query: str) -> PlatformAdapterCursor:
         rows = self.rows_for_query(self.query_id)
-        validation = QueryValidator().validate_query_result("tpch", self.query_id, rows, scale_factor=0.01, stream_id=0)
+        with query_generation_context(self.generation):
+            validation = QueryValidator().validate_query_result(
+                "tpch", self.query_id, rows, scale_factor=0.01, stream_id=0
+            )
         evidence: dict[str, Any] = {"expected": validation.expected_row_count, "actual": rows}
         result: dict[str, Any] = {
             "query_id": str(self.query_id),

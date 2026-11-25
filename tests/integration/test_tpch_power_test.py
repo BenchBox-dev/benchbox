@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from benchbox.core.tpch.power_test import TPCHPowerTest, TPCHPowerTestConfig, TPCHPowerTestResult
+from benchbox.core.validation.stream_checks import QueryGeneration, query_generation_context
 
 pytestmark = [
     pytest.mark.integration,
@@ -153,53 +154,24 @@ class TestPowerTestExecution:
         assert sample_sql == f"SELECT {parts[3]}"
 
 
-class TestPowerTestReferenceSeedContext:
-    def test_reference_seed_context_true_for_qgen_defaults(self) -> None:
-        power_test = _make_power_test(scale_factor=1.0, seed=None)
+class TestPowerTestGenerationContext:
+    @pytest.mark.parametrize(("seed", "expected"), [(None, None), (17039360, 17039360), (12345, 12345)])
+    def test_every_query_passes_its_effective_generator_seed(self, seed: int | None, expected: int | None) -> None:
+        power_test = _make_power_test(scale_factor=1.0, seed=seed)
 
-        calls: list[bool] = []
-        with patch(
-            "benchbox.core.tpch.power_test.set_reference_seed_context",
-            side_effect=lambda v: calls.append(v),
-        ):
-            power_test.run()
+        power_test.run()
 
+        calls = power_test.connection.set_query_context.call_args_list
         assert len(calls) == 22
-        assert all(v is True for v in calls)
+        assert all(call.kwargs["generation"] == QueryGeneration(seed=expected) for call in calls)
 
-    def test_reference_seed_context_false_for_former_reference_seed(self) -> None:
-        power_test = _make_power_test(scale_factor=1.0, seed=17039360)
+    def test_stream_one_uses_the_stream_offset_seed(self) -> None:
+        power_test = _make_power_test(scale_factor=1.0, seed=12345, stream_id=1)
 
-        calls: list[bool] = []
-        with patch(
-            "benchbox.core.tpch.power_test.set_reference_seed_context",
-            side_effect=lambda v: calls.append(v),
-        ):
-            power_test.run()
+        power_test.run()
 
-        assert len(calls) == 22
-        assert all(v is False for v in calls)
-
-    def test_reference_seed_context_false_for_custom_seed(self) -> None:
-        power_test = _make_power_test(scale_factor=1.0, seed=12345)
-
-        calls: list[bool] = []
-        with patch(
-            "benchbox.core.tpch.power_test.set_reference_seed_context",
-            side_effect=lambda v: calls.append(v),
-        ):
-            power_test.run()
-
-        assert len(calls) == 22
-        assert all(v is False for v in calls)
-
-    def test_reference_seed_context_cleared_after_every_query(self) -> None:
-        power_test = _make_power_test(scale_factor=1.0, seed=12345)
-
-        with patch("benchbox.core.tpch.power_test.clear_reference_seed_context") as mock_clear:
-            power_test.run()
-
-        assert mock_clear.call_count == 22
+        calls = power_test.connection.set_query_context.call_args_list
+        assert all(call.kwargs["generation"] == QueryGeneration(seed=12345 + 1000) for call in calls)
 
     def test_boundary_query_not_failed_with_custom_seed_at_sf1(self) -> None:
         from benchbox.platforms.base.connection_wrappers import PlatformAdapterConnection
@@ -287,16 +259,18 @@ class TestPowerTestValidationAfterRefresh:
     @staticmethod
     def _connection(rows_for_query):
         connection = Mock()
-        state = {"query_id": None}
+        state = {"query_id": None, "generation": None}
 
-        def set_query_context(query_id, stream_id=None):
+        def set_query_context(query_id, stream_id=None, generation=None):
             state["query_id"] = query_id
+            state["generation"] = generation
 
         def execute(_query):
             from benchbox.core.validation.query_validation import QueryValidator
 
             rows = rows_for_query()
-            validation = QueryValidator().validate_query_result("tpch", state["query_id"], rows, scale_factor=0.01)
+            with query_generation_context(state["generation"]):
+                validation = QueryValidator().validate_query_result("tpch", state["query_id"], rows, scale_factor=0.01)
             status = "PASSED" if validation.is_valid and validation.expected_row_count is not None else "SKIPPED"
             if not validation.is_valid:
                 return Mock(

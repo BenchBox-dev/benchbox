@@ -2,18 +2,11 @@ import pytest
 
 from benchbox.core.expected_results.models import ValidationMode
 from benchbox.core.expected_results.tpch_results import (
-    PARAMETER_SENSITIVE_QUERY_IDS,
-    TPCH_LOOSE_QUERY_IDS,
     TPCH_RANGE_ROW_COUNT_BOUNDS,
     get_tpch_expected_results,
 )
-from benchbox.core.validation.query_validation import (
-    QueryValidator,
-    clear_reference_seed_context,
-    get_parameter_sensitive_query_ids,
-    get_reference_seed_context,
-    set_reference_seed_context,
-)
+from benchbox.core.validation.query_validation import QueryValidator
+from benchbox.core.validation.stream_checks import QueryGeneration, query_generation_context
 
 pytestmark = [
     pytest.mark.unit,
@@ -83,29 +76,28 @@ class TestQueryValidator:
 
         recorded = load_row_count_reference("tpcds", 1.0).streams[0].row_counts["1"]
         validator = QueryValidator()
-        result = validator.validate_query_result(
-            benchmark_type="tpcds",
-            query_id="1",
-            actual_row_count=recorded,
-            scale_factor=1.0,
-        )
+        with query_generation_context(QueryGeneration(seed=1001)):
+            result = validator.validate_query_result(
+                benchmark_type="tpcds",
+                query_id="1",
+                actual_row_count=recorded,
+                scale_factor=1.0,
+            )
         assert result.is_valid
         assert result.validation_mode == ValidationMode.EXACT
         assert result.actual_row_count == recorded
         assert result.expected_row_count == recorded
 
 
+SEEDED = QueryGeneration(seed=7)
+
+
+def _validate(query_id: str, count: int, generation: QueryGeneration | None = None):
+    with query_generation_context(generation):
+        return QueryValidator().validate_query_result("tpch", query_id, count, 1.0)
+
+
 class TestParameterSensitiveValidation:
-    @pytest.fixture(autouse=True)
-    def _reset_reference_seed_context(self):
-        clear_reference_seed_context()
-        yield
-        clear_reference_seed_context()
-
-    def test_parameter_sensitive_query_ids_constant(self):
-        assert frozenset({"11", "13", "16", "18", "20"}) == PARAMETER_SENSITIVE_QUERY_IDS
-        assert set(TPCH_RANGE_ROW_COUNT_BOUNDS) | set(TPCH_LOOSE_QUERY_IDS) == PARAMETER_SENSITIVE_QUERY_IDS
-
     def test_tpch_provider_assigns_exact_mode_with_ride_along_bounds(self):
         results = get_tpch_expected_results(scale_factor=1.0)
         assert results is not None
@@ -123,47 +115,17 @@ class TestParameterSensitiveValidation:
         assert q16 is not None
         assert q16.validation_mode == ValidationMode.EXACT
         assert q16.expected_row_count == 18_314
-        assert q16.expected_row_count_min is None
-        assert q16.expected_row_count_max is None
         assert q16.loose_tolerance_percent == 50.0
 
         for query_id, result in results.query_results.items():
             assert result.validation_mode == ValidationMode.EXACT
 
-    def test_get_parameter_sensitive_query_ids_tpch(self):
-        assert get_parameter_sensitive_query_ids("tpch") == PARAMETER_SENSITIVE_QUERY_IDS
-        assert get_parameter_sensitive_query_ids("tpc-h") == PARAMETER_SENSITIVE_QUERY_IDS
-        assert get_parameter_sensitive_query_ids("TPCH") == PARAMETER_SENSITIVE_QUERY_IDS
-
-    def test_get_parameter_sensitive_query_ids_unknown_benchmark_is_empty(self):
-        assert get_parameter_sensitive_query_ids("unknown_benchmark") == frozenset()
-
-    def test_context_default_is_none(self):
-        assert get_reference_seed_context() is None
-
-    def test_context_set_get_clear_round_trip(self):
-        set_reference_seed_context(True)
-        assert get_reference_seed_context() is True
-        set_reference_seed_context(False)
-        assert get_reference_seed_context() is False
-        clear_reference_seed_context()
-        assert get_reference_seed_context() is None
-
     @pytest.mark.parametrize("query_id,bounds", sorted(TPCH_RANGE_ROW_COUNT_BOUNDS.items()))
-    def test_range_queries_accept_both_documented_bounds_under_non_reference_context(self, query_id, bounds):
-        set_reference_seed_context(False)
-        validator = QueryValidator()
-        minimum, maximum = bounds
-
-        for actual_count in (minimum, maximum):
-            result = validator.validate_query_result(
-                benchmark_type="tpch",
-                query_id=query_id,
-                actual_row_count=actual_count,
-                scale_factor=1.0,
-            )
+    def test_range_queries_accept_both_documented_bounds_for_other_parameters(self, query_id, bounds):
+        for actual_count in bounds:
+            result = _validate(query_id, actual_count, SEEDED)
             assert result.is_valid
-            assert result.validation_mode == ValidationMode.RANGE
+            assert result.check == "range" and result.seed == 7
 
     @pytest.mark.parametrize(
         "query_id,actual_count",
@@ -171,159 +133,55 @@ class TestParameterSensitiveValidation:
         + [(query_id, maximum + 1) for query_id, (_, maximum) in sorted(TPCH_RANGE_ROW_COUNT_BOUNDS.items())],
     )
     def test_range_queries_reject_counts_outside_documented_bounds(self, query_id, actual_count):
-        set_reference_seed_context(False)
-        result = QueryValidator().validate_query_result(
-            benchmark_type="tpch",
-            query_id=query_id,
-            actual_row_count=actual_count,
-            scale_factor=1.0,
-        )
+        result = _validate(query_id, actual_count, SEEDED)
+
         assert not result.is_valid
-        assert result.validation_mode == ValidationMode.RANGE
+        assert result.check == "range"
 
-    def test_q13_row_count_from_a_non_reference_word_pair_validates(self):
-        set_reference_seed_context(False)
-        result = QueryValidator().validate_query_result(
-            benchmark_type="tpch",
-            query_id="13",
-            actual_row_count=41,
-            scale_factor=1.0,
-        )
+    def test_q13_row_count_from_a_non_default_word_pair_validates(self):
+        result = _validate("13", 41, SEEDED)
 
-        assert result.is_valid
-        assert result.validation_mode == ValidationMode.RANGE
-        assert result.expected_row_count is None or result.expected_row_count != 41
+        assert result.is_valid and result.check == "range"
 
-    def test_q13_reference_seed_still_requires_the_answer_file_count(self):
-        set_reference_seed_context(True)
-        validator = QueryValidator()
-
-        assert validator.validate_query_result("tpch", "13", 42, 1.0).is_valid
-        assert not validator.validate_query_result("tpch", "13", 41, 1.0).is_valid
+    def test_q13_default_parameters_still_require_the_answer_file_count(self):
+        assert _validate("13", 42).is_valid
+        assert not _validate("13", 41).is_valid
 
     @pytest.mark.parametrize("query_id", ["2", "9", "15", "21"])
-    def test_queries_with_fixed_sf1_cardinality_stay_exact_under_non_reference_context(self, query_id):
-        set_reference_seed_context(False)
-        validator = QueryValidator()
-        expected = validator.registry.get_expected_result("tpch", query_id, 1.0)
-        assert expected is not None
+    def test_queries_with_fixed_sf1_cardinality_stay_exact_for_other_parameters(self, query_id):
+        expected = QueryValidator().registry.get_expected_result("tpch", query_id, 1.0)
         count = expected.get_expected_count(1.0)
-        assert count is not None
 
-        assert query_id not in PARAMETER_SENSITIVE_QUERY_IDS
-        assert validator.validate_query_result("tpch", query_id, count, 1.0).is_valid
-        assert not validator.validate_query_result("tpch", query_id, count + 1, 1.0).is_valid
+        assert _validate(query_id, count, SEEDED).is_valid
+        assert not _validate(query_id, count + 1, SEEDED).is_valid
 
-    def test_loose_query_uses_tolerance_under_non_reference_context(self):
-        set_reference_seed_context(False)
-        validator = QueryValidator()
+    def test_loose_query_uses_tolerance_for_other_parameters(self):
+        accepted = _validate("16", 18_000, SEEDED)
+        rejected = _validate("16", 9_156, SEEDED)
 
-        accepted = validator.validate_query_result(
-            benchmark_type="tpch",
-            query_id="16",
-            actual_row_count=18_000,
-            scale_factor=1.0,
-        )
-        rejected = validator.validate_query_result(
-            benchmark_type="tpch",
-            query_id="16",
-            actual_row_count=9_156,
-            scale_factor=1.0,
-        )
-
-        assert accepted.is_valid
-        assert accepted.validation_mode == ValidationMode.LOOSE
-        assert not rejected.is_valid
-        assert rejected.validation_mode == ValidationMode.LOOSE
+        assert accepted.is_valid and accepted.check == "range"
+        assert not rejected.is_valid and rejected.check == "range"
 
     @pytest.mark.parametrize("query_id,bounds", sorted(TPCH_RANGE_ROW_COUNT_BOUNDS.items()))
-    def test_range_query_exact_compared_at_reference_seed(self, query_id, bounds):
+    def test_range_query_exact_compared_at_default_parameters(self, query_id, bounds):
         minimum, maximum = bounds
-        set_reference_seed_context(True)
-        validator = QueryValidator()
-
-        expected = validator.registry.get_expected_result("tpch", query_id, 1.0)
-        assert expected is not None
+        expected = QueryValidator().registry.get_expected_result("tpch", query_id, 1.0)
         reference_count = expected.get_expected_count(1.0)
-        assert reference_count is not None
         assert minimum <= reference_count <= maximum
-
         in_range_wrong = maximum if reference_count != maximum else minimum
-        assert minimum <= in_range_wrong <= maximum
-        assert in_range_wrong != reference_count
 
-        rejected = validator.validate_query_result(
-            benchmark_type="tpch",
-            query_id=query_id,
-            actual_row_count=in_range_wrong,
-            scale_factor=1.0,
-        )
-        assert not rejected.is_valid
-        assert rejected.validation_mode == ValidationMode.EXACT
+        rejected = _validate(query_id, in_range_wrong)
+        accepted = _validate(query_id, reference_count)
 
-        accepted = validator.validate_query_result(
-            benchmark_type="tpch",
-            query_id=query_id,
-            actual_row_count=reference_count,
-            scale_factor=1.0,
-        )
-        assert accepted.is_valid
-        assert accepted.validation_mode == ValidationMode.EXACT
+        assert not rejected.is_valid and rejected.check == "exact"
+        assert accepted.is_valid and accepted.check == "exact"
 
-    def test_parameter_sensitive_query_exact_when_context_unset(self):
-        assert get_reference_seed_context() is None
-        validator = QueryValidator()
-        expected = validator.registry.get_expected_result("tpch", "11", 1.0)
-        assert expected is not None
-        reference_count = expected.get_expected_count(1.0)
-        assert reference_count is not None
+    def test_loose_query_exact_compared_at_default_parameters(self):
+        result = _validate("16", 18_000)
 
-        minimum, maximum = TPCH_RANGE_ROW_COUNT_BOUNDS["11"]
-        in_range_wrong = maximum if reference_count != maximum else minimum
-        assert in_range_wrong != reference_count
+        assert not result.is_valid and result.check == "exact"
 
-        result = validator.validate_query_result(
-            benchmark_type="tpch",
-            query_id="11",
-            actual_row_count=in_range_wrong,
-            scale_factor=1.0,
-        )
-        assert not result.is_valid
-        assert result.validation_mode == ValidationMode.EXACT
+    def test_a_fixed_query_is_exact_at_default_parameters(self):
+        result = _validate("1", 5)
 
-    def test_loose_query_exact_compared_at_reference_seed(self):
-        set_reference_seed_context(True)
-        validator = QueryValidator()
-        result = validator.validate_query_result(
-            benchmark_type="tpch",
-            query_id="16",
-            actual_row_count=18_000,
-            scale_factor=1.0,
-        )
-        assert not result.is_valid
-        assert result.validation_mode == ValidationMode.EXACT
-
-    def test_non_boundary_query_not_excluded_when_non_reference_seed(self):
-        set_reference_seed_context(False)
-        validator = QueryValidator()
-        result = validator.validate_query_result(
-            benchmark_type="tpch",
-            query_id="1",
-            actual_row_count=5,
-            scale_factor=1.0,
-        )
-        assert not result.is_valid
-        assert result.validation_mode == ValidationMode.EXACT
-
-    def test_tpcds_non_reference_seed_context_excludes_row_count_validation(self):
-        set_reference_seed_context(False)
-        validator = QueryValidator()
-        result = validator.validate_query_result(
-            benchmark_type="tpcds",
-            query_id="1",
-            actual_row_count=101,
-            scale_factor=1.0,
-        )
-        assert result.is_valid
-        assert result.validation_mode == ValidationMode.SKIP
-        assert "excluded" in result.warning_message
+        assert not result.is_valid and result.check == "exact"

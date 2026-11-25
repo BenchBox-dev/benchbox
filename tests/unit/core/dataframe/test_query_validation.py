@@ -434,7 +434,18 @@ def test_tpch_subscale_wrong_count_fails_the_query_and_run() -> None:
     }
 
 
-def test_seeded_subscale_run_checks_fixed_queries_and_skips_parameter_sensitive_ones() -> None:
+def _unconstrained_tpch_query(scale_factor: float) -> str:
+    from benchbox.core.expected_results.row_count_references import load_row_count_reference
+
+    integrity = load_row_count_reference("tpch", scale_factor).integrity
+    return next(
+        str(number)
+        for number in range(1, 23)
+        if str(number) not in integrity.invariant_counts and str(number) not in integrity.never_empty
+    )
+
+
+def test_seeded_subscale_run_checks_every_query_it_has_a_bound_for_and_documents_the_rest() -> None:
     from benchbox.core.expected_results.row_count_references import load_row_count_reference
 
     reference = load_row_count_reference("tpch", 0.01)
@@ -445,17 +456,20 @@ def test_seeded_subscale_run_checks_fixed_queries_and_skips_parameter_sensitive_
     summary = validate_dataframe_query_results(measurements, benchmark_name="tpch", scale_factor=0.01, seed=7)
 
     statuses = {row["query_id"]: row["row_count_validation"]["status"] for row in measurements}
+    bounded = reference.integrity.never_empty | set(reference.integrity.invariant_counts)
     assert summary.status == "PASSED"
-    assert summary.details["skipped"] == len(reference.parameter_sensitive_query_ids)
-    assert summary.details["documented_skips"] == len(reference.parameter_sensitive_query_ids)
-    assert summary.details["checked"] == 22 - len(reference.parameter_sensitive_query_ids)
-    assert statuses["Q2"] == "SKIPPED"
-    assert statuses["Q4"] == "PASSED"
+    assert summary.details["checked"] == len(bounded)
+    assert summary.details["skipped"] == 22 - len(bounded)
+    assert summary.details["documented_skips"] == 22 - len(bounded)
+    assert all(statuses[f"Q{qid}"] == "PASSED" for qid in bounded)
+    assert {row["row_count_validation"]["seed"] for row in measurements} == {7}
 
 
-def test_seeded_subscale_run_with_only_parameter_sensitive_queries_is_not_a_pass() -> None:
+def test_seeded_subscale_run_with_only_unbounded_queries_is_not_a_pass() -> None:
+    query = _unconstrained_tpch_query(0.01)
+
     summary = validate_dataframe_query_results(
-        [_measurement(query_id="Q2", rows=3)], benchmark_name="tpch", scale_factor=0.01, seed=7
+        [_measurement(query_id=f"Q{query}", rows=3)], benchmark_name="tpch", scale_factor=0.01, seed=7
     )
 
     assert summary.status == "UNCERTAIN"
@@ -513,16 +527,6 @@ def test_seeded_subscale_run_fails_a_wrong_fixed_cardinality_count() -> None:
 
     assert summary.status == "FAILED"
     assert measurement["row_count_validation"]["expected"] == 5
-
-
-def test_seeded_validation_leaves_the_reference_seed_context_unchanged() -> None:
-    from benchbox.core.validation.query_validation import get_reference_seed_context
-
-    validate_dataframe_query_results(
-        [_measurement(query_id="Q4", rows=5)], benchmark_name="tpch", scale_factor=0.01, seed=7
-    )
-
-    assert get_reference_seed_context() is None
 
 
 @pytest.mark.parametrize(("benchmark_id", "scale_factor"), [("tpch", 10.0), ("tpcds", 10.0), ("ssb", 0.5)])

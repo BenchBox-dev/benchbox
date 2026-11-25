@@ -225,36 +225,18 @@ class TestThroughputExecution:
         assert result.throughput_at_size == 0.0
 
 
-class TestThroughputReferenceSeedContext:
+class TestThroughputGenerationContext:
     @pytest.mark.parametrize("seed", [42, 17039360])
-    def test_reference_seed_context_false_at_every_position(self, seed: int) -> None:
+    def test_every_query_passes_its_per_query_generator_seed(self, seed: int) -> None:
         benchmark = _make_benchmark_mock()
         connections: list[Mock] = []
         factory = _make_connection_factory(connections)
 
         test = TPCHThroughputTest(benchmark=benchmark, connection_factory=factory, scale_factor=1.0, num_streams=1)
+        test._execute_stream(stream_id=0, seed=seed, config=test.config)
 
-        calls: list[bool] = []
-        with patch(
-            "benchbox.core.tpch.throughput_test.set_reference_seed_context",
-            side_effect=lambda v: calls.append(v),
-        ):
-            test._execute_stream(stream_id=0, seed=seed, config=test.config)
-
-        assert len(calls) == 22
-        assert all(v is False for v in calls)
-
-    def test_reference_seed_context_cleared_after_every_query(self) -> None:
-        benchmark = _make_benchmark_mock()
-        connections: list[Mock] = []
-        factory = _make_connection_factory(connections)
-
-        test = TPCHThroughputTest(benchmark=benchmark, connection_factory=factory, scale_factor=1.0, num_streams=1)
-
-        with patch("benchbox.core.tpch.throughput_test.clear_reference_seed_context") as mock_clear:
-            test._execute_stream(stream_id=0, seed=42, config=test.config)
-
-        assert mock_clear.call_count == 22
+        calls = connections[0].set_query_context.call_args_list
+        assert [call.kwargs["generation"].seed for call in calls] == [seed + position for position in range(22)]
 
     def test_boundary_query_not_failed_on_stream1_with_default_seed_at_sf1(self) -> None:
         from benchbox.platforms.base.connection_wrappers import PlatformAdapterConnection

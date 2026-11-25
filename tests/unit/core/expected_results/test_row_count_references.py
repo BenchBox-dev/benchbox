@@ -7,11 +7,8 @@ import pytest
 
 from benchbox.core.expected_results import row_count_references as references
 from benchbox.core.expected_results.registry import LoadOutcome, get_registry
-from benchbox.core.validation.query_validation import (
-    QueryValidator,
-    clear_reference_seed_context,
-    set_reference_seed_context,
-)
+from benchbox.core.validation.query_validation import QueryValidator
+from benchbox.core.validation.stream_checks import QueryGeneration, query_generation_context
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -26,7 +23,6 @@ ALL_REFERENCES = [
 def _fresh_registry():
     get_registry().clear_cache()
     yield
-    clear_reference_seed_context()
     get_registry().clear_cache()
 
 
@@ -90,23 +86,15 @@ def test_a_missing_reference_is_reported_not_invented() -> None:
         references.load_row_count_reference("tpch", 0.5)
 
 
-def test_registry_serves_every_recorded_stream_and_labels_the_kind() -> None:
+def test_registry_serves_stream_zero_and_labels_the_kind() -> None:
     registry = get_registry()
     reference = references.load_row_count_reference("tpch", 0.01)
 
-    for stream in reference.streams:
-        expected, outcome = registry.get_expected_result_detailed("tpch", "4", 0.01, stream)
-        assert outcome is LoadOutcome.HIT
-        assert expected.expected_row_count == reference.streams[stream].row_counts["4"]
-        assert expected.reference_kind == references.KIND_ENGINE_AGREEMENT
-        assert expected.reference_label.startswith("agreement with duckdb")
-
-
-def test_registry_skips_a_stream_with_no_recorded_reference() -> None:
-    expected, outcome = get_registry().get_expected_result_detailed("tpcds", "3", 0.01, 99)
-
-    assert expected is None
-    assert outcome is LoadOutcome.STREAM_NOT_REFERENCE_VALIDATED
+    expected, outcome = registry.get_expected_result_detailed("tpch", "4", 0.01, 0)
+    assert outcome is LoadOutcome.HIT
+    assert expected.expected_row_count == reference.streams[0].row_counts["4"]
+    assert expected.reference_kind == references.KIND_ENGINE_AGREEMENT
+    assert expected.reference_label.startswith("agreement with duckdb")
 
 
 def test_tpch_scale_one_stream_zero_is_the_tpc_answer_set() -> None:
@@ -129,21 +117,32 @@ def test_validator_names_the_reference_kind_on_a_pass_and_on_a_failure() -> None
     assert "Reference: agreement with duckdb" in failed.error_message
 
 
-def test_validator_checks_a_later_tpcds_stream_against_that_streams_counts() -> None:
+def test_validator_checks_a_tpcds_row_against_the_counts_of_its_own_generator_seed() -> None:
     reference = references.load_row_count_reference("tpcds", 0.01)
     differing = next(
         query_id
         for query_id, count in reference.streams[0].row_counts.items()
-        if reference.streams[1].row_counts[query_id] != count
+        if reference.streams[1].row_counts[query_id] != count and query_id not in reference.integrity.invariant_counts
     )
-    set_reference_seed_context(True)
     validator = QueryValidator()
 
-    wrong_stream_count = reference.streams[0].row_counts[differing]
-    result = validator.validate_query_result("tpcds", differing, wrong_stream_count, scale_factor=0.01, stream_id=1)
+    with query_generation_context(QueryGeneration(seed=1002)):
+        wrong = validator.validate_query_result(
+            "tpcds", differing, reference.streams[0].row_counts[differing], scale_factor=0.01
+        )
+        right = validator.validate_query_result(
+            "tpcds", differing, reference.streams[1].row_counts[differing], scale_factor=0.01
+        )
 
-    assert not result.is_valid
-    assert result.expected_row_count == reference.streams[1].row_counts[differing]
+    assert not wrong.is_valid and wrong.check == "exact"
+    assert wrong.expected_row_count == reference.streams[1].row_counts[differing]
+    assert right.is_valid and right.seed == 1002
+
+
+def _restamp(payload: dict, mutate) -> None:
+    mutate(payload["provenance"]["generator"]["data_stamp"])
+    if "integrity" in payload:
+        mutate(payload["integrity"]["sample"]["data_stamp"])
 
 
 def _write_reference(tmp_path, monkeypatch, payload: dict) -> None:
@@ -169,7 +168,7 @@ def test_loader_refuses_a_reference_with_a_stale_data_stamp(
     benchmark_id: str, field: str, tmp_path, monkeypatch
 ) -> None:
     payload = copy.deepcopy(_payload(benchmark_id, 0.01))
-    payload["provenance"]["generator"]["data_stamp"][field] = "stale" if field.endswith("hash") else 0
+    _restamp(payload, lambda stamp: stamp.update({field: "stale" if field.endswith("hash") else 0}))
     _write_reference(tmp_path, monkeypatch, payload)
 
     with pytest.raises(ValueError, match="data stamp"):
@@ -185,32 +184,7 @@ def test_loader_refuses_a_reference_with_no_data_stamp(tmp_path, monkeypatch) ->
         references.load_row_count_reference("tpch", 0.01)
 
 
-def test_a_four_seed_sensitivity_list_never_fails_a_seeded_tpcds_row() -> None:
-    from benchbox.core.dataframe.query_validation import validate_dataframe_query_results
-
-    reference = references.load_row_count_reference("tpcds", 0.01)
-    assert reference.parameter_sensitive_query_ids
-    for stream, entry in reference.streams.items():
-        results = references.expected_query_results(reference, stream)
-        assert not any(result.reference_parameters_only for result in results.values())
-        rows = [
-            {
-                "query_id": query_id,
-                "status": "SUCCESS",
-                "run_type": "measurement",
-                "stream_id": stream,
-                "rows_returned": entry.row_counts[query_id],
-            }
-            for query_id in sorted(reference.parameter_sensitive_query_ids)
-        ]
-        summary = validate_dataframe_query_results(rows, benchmark_name="tpcds", scale_factor=0.01)
-        assert summary.status == "PASSED"
-        assert all(row["row_count_validation"]["status"] == "PASSED" for row in rows)
-
-    for seed_context in (None, True, False):
-        set_reference_seed_context(seed_context)
-        for query_id in sorted(reference.parameter_sensitive_query_ids):
-            result = QueryValidator().validate_query_result(
-                "tpcds", query_id, reference.streams[0].row_counts[query_id], scale_factor=0.01, stream_id=0
-            )
-            assert result.is_valid
+@pytest.mark.parametrize(("benchmark_id", "scale"), ALL_REFERENCES)
+def test_no_reference_carries_a_parameter_sensitivity_list(benchmark_id: str, scale: float) -> None:
+    assert "parameter_sensitive_query_ids" not in _payload(benchmark_id, scale)
+    assert not hasattr(references.load_row_count_reference(benchmark_id, scale), "parameter_sensitive_query_ids")
