@@ -1,1 +1,1 @@
-{"schema": 1, "internal": "Review the fast-tier duration baseline by reproduction plus a summary: refreshes carry a deterministic SUMMARY.md, and a required CI job rebuilds the committed baseline from its source runs and fails on any difference; no user-facing effect"}
+{"schema": 1, "internal": "Fast-tier baseline refreshes are reviewed by reproduction plus SUMMARY.md; fast-junit artifacts are kept 30 days. Refresh PRs opened before this change lack SUMMARY.md and fail the new check: close them and re-dispatch the refresh; no user-facing effect"}
