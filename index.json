@@ -34595,7 +34595,7 @@
     "livy-session-recreated-after-timeout-cleanup-20261125": {
       "claim": null,
       "needs": [],
-      "priority": "low",
+      "priority": "medium",
       "status": "open",
       "title": "Suspected: a run still in progress can re-create or restart a Livy session, EMR application or Dataproc cluster after timeout cleanup removed it"
     },
