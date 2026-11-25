@@ -270,85 +270,43 @@ class TestBaseFormatConverterValidation:
 
         return ParquetConverter()
 
-    def test_validate_row_count_match(self, converter):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
+    _SCHEMA = {"columns": [{"name": "id", "type": "INTEGER"}, {"name": "name", "type": "VARCHAR(100)"}]}
 
-            tbl_file = temp_path / "test.tbl"
-            tbl_file.write_text("1|Alice|\n2|Bob|\n3|Charlie|\n")
+    def test_inline_source_count_spans_shards_and_skips_empty_lines(self, converter, tmp_path):
+        shard1 = tmp_path / "test.tbl.1"
+        shard1.write_text("1|Alice|\n\n2|Bob|\n")
+        shard2 = tmp_path / "test.tbl.2"
+        shard2.write_text("3|Charlie|\n\n\n")
+        source_rows = [0]
 
-            converter.validate_row_count([tbl_file], 3, "test")
+        table = converter.read_tbl_files([shard1, shard2], self._SCHEMA, source_line_counter=source_rows)
 
-    def test_validate_row_count_mismatch_single_file(self, converter):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
+        assert source_rows == [3]
+        assert table.num_rows == 3
 
-            tbl_file = temp_path / "test.tbl"
-            tbl_file.write_text("1|Alice|\n2|Bob|\n3|Charlie|\n")
+    def test_inline_source_count_excludes_csv_header(self, converter, tmp_path):
+        csv_file = tmp_path / "tags.csv"
+        csv_file.write_text("id,name\n1,Alice\n2,Bob\n")
+        source_rows = [0]
 
-            with pytest.raises(ConversionError, match="Row count mismatch"):
-                converter.validate_row_count([tbl_file], 2, "test")
+        converter.read_tbl_files(
+            [csv_file],
+            self._SCHEMA,
+            options=ConversionOptions(delimiter=",", has_header=True),
+            source_line_counter=source_rows,
+        )
 
-    def test_validate_row_count_mismatch_merged_shards(self, converter):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
+        assert source_rows == [2]
 
-            shard1 = temp_path / "test.tbl.1"
-            shard1.write_text("1|Alice|\n2|Bob|\n")
+    def test_row_count_mismatch_names_table_and_both_counts(self, converter):
+        converter._verify_inline_row_count(expected_rows=3, written_rows=3, table_name="customer")
+        with pytest.raises(ConversionError) as exc_info:
+            converter._verify_inline_row_count(expected_rows=3, written_rows=1, table_name="customer")
 
-            shard2 = temp_path / "test.tbl.2"
-            shard2.write_text("3|Charlie|\n4|David|\n5|Eve|\n")
-
-            shard3 = temp_path / "test.tbl.3"
-            shard3.write_text("6|Frank|\n")
-
-            source_files = [shard1, shard2, shard3]
-
-            converter.validate_row_count(source_files, 6, "test")
-
-            with pytest.raises(ConversionError, match="Row count mismatch.*input=6.*output=5"):
-                converter.validate_row_count(source_files, 5, "test")
-
-            with pytest.raises(ConversionError, match="Row count mismatch.*input=6.*output=4"):
-                converter.validate_row_count(source_files, 4, "test")
-
-    def test_validate_row_count_error_message_contains_details(self, converter):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
-
-            tbl_file = temp_path / "customer.tbl"
-            tbl_file.write_text("1|Alice|\n2|Bob|\n3|Charlie|\n")
-
-            with pytest.raises(ConversionError) as exc_info:
-                converter.validate_row_count([tbl_file], 1, "customer")
-
-            error_msg = str(exc_info.value)
-            assert "customer" in error_msg
-            assert "input=3" in error_msg
-            assert "output=1" in error_msg
-            assert "TPC compliance" in error_msg
-
-    def test_validate_row_count_skips_empty_lines(self, converter):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
-
-            tbl_file = temp_path / "test.tbl"
-            tbl_file.write_text("1|Alice|\n\n2|Bob|\n\n\n3|Charlie|\n")
-
-            converter.validate_row_count([tbl_file], 3, "test")
-
-    def test_count_rows_across_shards(self, converter):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
-
-            shard1 = temp_path / "test.tbl.1"
-            shard1.write_text("1|Alice|\n2|Bob|\n")
-
-            shard2 = temp_path / "test.tbl.2"
-            shard2.write_text("3|Charlie|\n")
-
-            count = converter.count_rows([shard1, shard2])
-            assert count == 3
+        error_msg = str(exc_info.value)
+        assert "customer" in error_msg
+        assert "input=3" in error_msg
+        assert "output=1" in error_msg
 
     def test_read_tbl_files_handles_trailing_delimiter(self, converter):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -407,15 +365,6 @@ class TestBaseFormatConverterValidation:
             assert table.column_names == ["id", "name"]
             assert table["id"].to_pylist() == [1, 2]
             assert table["name"].to_pylist() == ["Alice", "Bob"]
-
-    def test_count_rows_handles_gzip_compressed_tbl(self, converter):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
-            tbl_file = temp_path / "test.tbl.gz"
-            with gzip.open(tbl_file, "wt", encoding="utf-8") as f:
-                f.write("1|Alice\n\n2|Bob\n")
-
-            assert converter.count_rows([tbl_file]) == 2
 
     def test_detect_source_format_tbl(self, converter):
         assert converter._detect_source_format([Path("customer.tbl")]) == "tbl"

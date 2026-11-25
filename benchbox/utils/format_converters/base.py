@@ -536,6 +536,7 @@ class BaseFormatConverter(FormatConverter):
         progress_start: float = 0.0,
         progress_end: float = 0.8,
         options: ConversionOptions | None = None,
+        source_line_counter: list[int] | None = None,
     ) -> pa.Table:
         strict = bool(options.strict_schema) if options is not None else False
         arrow_schema = self._build_arrow_schema(schema, strict=strict)
@@ -547,6 +548,7 @@ class BaseFormatConverter(FormatConverter):
                 progress_callback=progress_callback,
                 progress_start=progress_start,
                 progress_end=progress_end,
+                source_line_counter=source_line_counter,
             )
         )
         try:
@@ -572,36 +574,17 @@ class BaseFormatConverter(FormatConverter):
             total += max(0, data_lines)
         return total
 
-    def count_rows(self, file_paths: list[Path], delimiter: str = "|") -> int:
-        total_rows = 0
-        compression_manager = CompressionManager()
-        for file_path in file_paths:
-            compression_type = detect_compression(file_path)
-            if compression_type:
-                compressor = compression_manager.get_compressor(compression_type)
-                with compressor.open_for_read(file_path, mode="rt") as f:
-                    for line in f:
-                        if line.strip():
-                            total_rows += 1
-            else:
-                with open(file_path, encoding="utf-8", errors="replace") as f:
-                    for line in f:
-                        if line.strip():
-                            total_rows += 1
-        return total_rows
-
-    def validate_row_count(
+    def _verify_inline_row_count(
         self,
-        source_files: list[Path],
-        output_row_count: int,
+        *,
+        expected_rows: int,
+        written_rows: int,
         table_name: str,
     ) -> None:
-        input_row_count = self.count_rows(source_files)
-
-        if input_row_count != output_row_count:
+        if expected_rows != written_rows:
             raise ConversionError(
                 f"Row count mismatch for table '{table_name}': "
-                f"input={input_row_count:,} rows, output={output_row_count:,} rows. "
+                f"input={expected_rows:,} rows, output={written_rows:,} rows. "
                 f"Data loss detected during conversion! "
                 f"This violates TPC compliance and indicates a serious conversion error."
             )
