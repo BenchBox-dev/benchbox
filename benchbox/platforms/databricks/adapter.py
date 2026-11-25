@@ -28,7 +28,7 @@ from benchbox.core.gateway import UNKNOWN_GATEWAY_ENGINE
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.upload_validation import UploadValidationEngine
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
-from benchbox.platforms.base.remote_work import StartedRemoteWork
+from benchbox.platforms.base.remote_work import StartedRemoteWork, cancel_cursor_query
 from benchbox.platforms.base.runtime_metadata import build_default_normalized_result_metadata, with_canonical_compute
 from benchbox.platforms.base.tuning import make_informational_constraint_applier
 from benchbox.utils.datagen_manifest import MANIFEST_FILENAME
@@ -2583,7 +2583,7 @@ class DatabricksAdapter(PlatformAdapter):
         return result_dict
 
     def cancel_remote_work(self) -> None:
-        self._started_work.cancel_all("Databricks", lambda _key, cursor: cursor.cancel())
+        self._started_work.cancel_all("Databricks", cancel_cursor_query)
 
     def probe_statement_id(self, cursor: Any) -> str | None:
         statement_id = getattr(cursor, "query_id", None)

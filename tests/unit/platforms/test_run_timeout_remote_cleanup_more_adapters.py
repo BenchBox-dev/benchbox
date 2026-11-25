@@ -542,6 +542,22 @@ def test_the_databricks_dataframe_adapter_declares_no_cleanup() -> None:
     assert DatabricksDataFrameAdapter.cancel_remote_work is PlatformAdapter.cancel_remote_work
 
 
+@pytest.mark.parametrize("name", ["athena_case", "databricks_case", "starburst_case"])
+def test_a_cancel_before_the_service_returned_a_query_id_is_reported_as_failed(
+    name: str, request: pytest.FixtureRequest
+) -> None:
+    case: Case = request.getfixturevalue(name)
+    cursor = StubCursor(Work(lambda: None), Refuser(), case.cancels, "query-1")
+    case.adapter._started_work.add("pending", cursor)
+
+    with pytest.raises(RuntimeError, match="pending: RuntimeError: .*not returned a query id") as raised:
+        case.adapter.cancel_remote_work()
+
+    assert raised.value.args[0].startswith(f"Could not cancel {case.label} work")
+    assert case.cancels == []
+    assert case.adapter._started_work.keys() == ["pending"]
+
+
 @pytest.mark.parametrize("name", ["fabric_spark_case", "synapse_spark_case"])
 def test_a_livy_session_still_starting_at_timeout_is_deleted(name: str, request: pytest.FixtureRequest) -> None:
     case: Case = request.getfixturevalue(name)

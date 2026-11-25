@@ -36,7 +36,7 @@ from ..utils.dependencies import (
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.config_utils import make_registered_platform_config_builder
 from .base.data_loading import DataSourceResolver, FileFormatRegistry
-from .base.remote_work import StartedRemoteWork
+from .base.remote_work import StartedRemoteWork, cancel_cursor_query
 from .base.runtime_metadata import build_default_normalized_result_metadata
 from .presto_trino_utils import normalize_existing_files, show_tables_lower
 
@@ -1135,13 +1135,8 @@ class AthenaAdapter(PlatformAdapter):
 
         return PrestoTrinoQueryPlanParser(platform_name="athena")
 
-    @staticmethod
-    def _cancel_cursor(_key: str, cursor: Any) -> None:
-        if getattr(cursor, "query_id", None):
-            cursor.cancel()
-
     def cancel_remote_work(self) -> None:
-        self._started_work.cancel_all("Athena", self._cancel_cursor)
+        self._started_work.cancel_all("Athena", cancel_cursor_query)
 
     def close_connection(self, connection: Any) -> None:
         try:

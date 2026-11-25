@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from benchbox.platforms.base.adapter import DriverIsolationCapability
 from benchbox.platforms.base.config_utils import make_registered_platform_config_builder
-from benchbox.platforms.base.remote_work import StartedRemoteWork
+from benchbox.platforms.base.remote_work import StartedRemoteWork, cancel_cursor_query
 
 from .trino import TrinoAdapter
 
@@ -38,7 +38,7 @@ class StarburstAdapter(TrinoAdapter):
         self._started_work.discard(str(id(cursor)))
 
     def cancel_remote_work(self) -> None:
-        self._started_work.cancel_all("Starburst", lambda _key, cursor: cursor.cancel())
+        self._started_work.cancel_all("Starburst", cancel_cursor_query)
 
     def _configure_starburst_defaults(self, config: dict[str, Any]) -> None:
         if "host" not in config or not config["host"]:
