@@ -26041,7 +26041,8 @@
     "crr-v3-qualification-library": {
       "claim": null,
       "needs": [
-        "crr-c1-validation-status-vocabulary"
+        "crr-c1-validation-status-vocabulary",
+        "crr-v2-measured-stream-integrity-checks"
       ],
       "priority": "high",
       "status": "open",
