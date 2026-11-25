@@ -534,7 +534,7 @@ class TestParquetPartitioning:
         monkeypatch.setattr(
             converter, "iter_record_batches", lambda *args, **kwargs: stream_batches(*args, block_size=4096, **kwargs)
         )
-        converter.convert(
+        result = converter.convert(
             source_files=[tbl_file],
             table_name="test",
             schema=partitioned_schema,
@@ -545,6 +545,15 @@ class TestParquetPartitioning:
             (part_file,) = (temp_dir / "test" / f"region={region}").glob("*.parquet")
             meta = pq.read_metadata(part_file)
             assert [meta.row_group(i).num_rows for i in range(meta.num_row_groups)] == [400, 400, 200]
+
+        from benchbox.utils.datagen_version import compute_datagen_identity_hash
+
+        assert result.metadata["parquet_writer"] == "benchbox-pyarrow-partitioned"
+        assert compute_datagen_identity_hash(
+            "tpch", parquet_writer=result.metadata["parquet_writer"], parquet_row_group_size=122_880, scale_factor=1.0
+        ) != compute_datagen_identity_hash(
+            "tpch", parquet_writer="benchbox-pyarrow-streaming", parquet_row_group_size=122_880, scale_factor=1.0
+        )
 
     def test_convert_with_multiple_partition_columns(self, temp_dir, partitioned_schema):
 

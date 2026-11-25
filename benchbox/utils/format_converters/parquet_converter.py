@@ -28,6 +28,7 @@ _DUCKDB_MIN_ROW_GROUP_SIZE = 2048
 _DUCKDB_STREAM_MEMORY_LIMIT = "320MB"
 PARQUET_WRITER_DUCKDB = "benchbox-duckdb-streaming"
 PARQUET_WRITER_PYARROW = "benchbox-pyarrow-streaming"
+PARQUET_WRITER_PARTITIONED = "benchbox-pyarrow-partitioned"
 
 
 def _arrow_type_to_duckdb(arrow_type: pa.DataType) -> str | None:
@@ -535,7 +536,7 @@ class ParquetConverter(BaseFormatConverter):
         metadata = {
             "compression": opts.compression,
             "num_columns": len(column_names),
-            "parquet_writer": PARQUET_WRITER_PYARROW,
+            "parquet_writer": PARQUET_WRITER_PARTITIONED,
             "partitioned": True,
             "partition_cols": opts.partition_cols,
             "partition_counts": partition_counts,
