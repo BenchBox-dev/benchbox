@@ -414,3 +414,68 @@ class TestBaseFormatConverterValidation:
 
         with pytest.raises(SchemaError, match="Column 0 is not a dictionary"):
             normalize_schema_columns({"columns": ["not a dict"]})
+
+
+_TABLE_CONVERTERS = [
+    pytest.param("benchbox.utils.format_converters.delta_converter", "DeltaConverter", "deltalake", id="delta"),
+    pytest.param("benchbox.utils.format_converters.iceberg_converter", "IcebergConverter", "pyiceberg", id="iceberg"),
+    pytest.param("benchbox.utils.format_converters.vortex_converter", "VortexConverter", "vortex", id="vortex"),
+    pytest.param("benchbox.utils.format_converters.ducklake_converter", "DuckLakeConverter", "duckdb", id="ducklake"),
+]
+
+
+class TestTableFormatConvertersHonorManifestOptions:
+    _SCHEMA = {"columns": ["id INTEGER NOT NULL", "name VARCHAR(20)"]}
+
+    @staticmethod
+    def _converter(module_name: str, class_name: str, package: str) -> BaseFormatConverter:
+        import importlib
+
+        pytest.importorskip(package)
+        return getattr(importlib.import_module(module_name), class_name)()
+
+    @staticmethod
+    def _headered_csv(tmp_path: Path) -> Path:
+        source = tmp_path / "tags.csv"
+        source.write_text("id,name\n1,Alice\n2,Bob\n3,Carol\n", encoding="utf-8")
+        return source
+
+    @pytest.mark.parametrize(("module_name", "class_name", "package"), _TABLE_CONVERTERS)
+    def test_headered_comma_csv_converts_with_header_excluded_from_row_count(
+        self, tmp_path, module_name, class_name, package
+    ):
+        converter = self._converter(module_name, class_name, package)
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+
+        result = converter.convert(
+            source_files=[self._headered_csv(tmp_path)],
+            table_name="tags",
+            schema=self._SCHEMA,
+            options=ConversionOptions(output_dir=out_dir, delimiter=",", has_header=True, validate_row_count=True),
+        )
+
+        assert result.row_count == 3
+
+    @pytest.mark.parametrize(("module_name", "class_name", "package"), _TABLE_CONVERTERS)
+    def test_expected_row_count_mismatch_raises_and_removes_output(self, tmp_path, module_name, class_name, package):
+        converter = self._converter(module_name, class_name, package)
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+
+        with pytest.raises(ConversionError, match="input=5"):
+            converter.convert(
+                source_files=[self._headered_csv(tmp_path)],
+                table_name="tags",
+                schema=self._SCHEMA,
+                options=ConversionOptions(
+                    output_dir=out_dir,
+                    delimiter=",",
+                    has_header=True,
+                    validate_row_count=True,
+                    expected_row_count=5,
+                ),
+            )
+
+        assert not (out_dir / "tags").exists()
+        assert not (out_dir / "tags.vortex").exists()
