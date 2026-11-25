@@ -28,8 +28,10 @@ from benchbox.core.results.platform_timing import resolve_net_estimate_status, s
 from benchbox.core.results.provenance import VENDOR_PROVENANCE_FIELDS
 from benchbox.core.results.qphds import database_load_reused, load_scope_components
 from benchbox.core.results.query_execution import (
+    ROW_COUNT_VALIDATION_STREAM_FIELDS,
     QueryExecutionContractError,
     normalize_row_count_validation,
+    normalize_stream_checks,
     query_execution_from_legacy_dict,
     query_execution_to_compact_v2,
 )
@@ -44,6 +46,7 @@ from benchbox.core.results.schema_policy import (
     supports_round_trip_timing_fields,
     supports_row_count_validation,
     supports_run_timeout_marker,
+    supports_stream_checks,
 )
 from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
@@ -152,6 +155,7 @@ class SchemaV2Validator:
         "config",
         "phases",
         "comparisons",
+        "validation",
     )
 
     RUN_REQUIRED = ("id", "timestamp", "total_duration_ms", "query_time_ms")
@@ -217,6 +221,7 @@ class SchemaV2Validator:
 
         _validate_timing_fields(payload, version, run)
         _validate_capture_and_vendor_fields(payload, version)
+        _validate_stream_check_fields(payload, version, queries)
 
         unexpected = set(payload.keys()) - set(self.REQUIRED_KEYS) - set(self.OPTIONAL_KEYS)
         if unexpected:
@@ -235,6 +240,27 @@ def _validate_capture_and_vendor_fields(payload: Mapping[str, Any], version: Any
         raise SchemaV2ValidationError(f"{recorded[0]} requires schema version 2.5 or later")
     if isinstance(execution, Mapping) and "timeout" in execution and not supports_run_timeout_marker(version):
         raise SchemaV2ValidationError("execution.timeout requires schema version 2.6 or later")
+
+
+def _validate_stream_check_fields(payload: Mapping[str, Any], version: Any, queries: list[Any]) -> None:
+    if not supports_stream_checks(version):
+        if "validation" in payload:
+            raise SchemaV2ValidationError("validation requires schema version 2.7 or later")
+        for index, query in enumerate(queries):
+            evidence = query.get("row_count_validation") if isinstance(query, Mapping) else None
+            if isinstance(evidence, Mapping) and ROW_COUNT_VALIDATION_STREAM_FIELDS & set(evidence):
+                raise SchemaV2ValidationError(
+                    f"queries[{index}].row_count_validation stream-check fields require schema version 2.7 or later"
+                )
+    validation = payload.get("validation")
+    if validation is None:
+        return
+    if not isinstance(validation, Mapping) or set(validation) != {"stream_checks"}:
+        raise SchemaV2ValidationError("validation must hold exactly stream_checks")
+    try:
+        normalize_stream_checks(validation["stream_checks"])
+    except QueryExecutionContractError as exc:
+        raise SchemaV2ValidationError(f"validation.stream_checks is invalid: {exc}") from exc
 
 
 def _validate_timing_fields(payload: Mapping[str, Any], version: Any, run: Mapping[str, Any]) -> None:
@@ -369,6 +395,7 @@ def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets:
     _add_cost_section(payload, result)
     _add_execution_section(payload, result, driver_metadata)
     _add_provenance_section(payload, result)
+    _add_validation_section(payload, result)
 
     return order_dict(payload, CANONICAL_KEY_ORDER)
 
@@ -856,6 +883,13 @@ def _add_execution_section(payload: dict[str, Any], result: BenchmarkResults, dr
         payload["execution"]["timeout"] = {
             key: timeout[key] for key in ("timeout_seconds", "phase", "query_id") if timeout.get(key) is not None
         }
+
+
+def _add_validation_section(payload: dict[str, Any], result: BenchmarkResults) -> None:
+    details = getattr(result, "validation_details", None)
+    stream_checks = details.get("stream_checks") if isinstance(details, Mapping) else None
+    if isinstance(stream_checks, Mapping):
+        payload["validation"] = {"stream_checks": normalize_stream_checks(stream_checks)}
 
 
 _EXEC_CTX_PASSTHROUGH = [

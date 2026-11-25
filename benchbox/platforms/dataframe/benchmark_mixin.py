@@ -579,7 +579,9 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
 
                 for qr in query_results:
                     builder.add_query_result(
-                        normalize_query_result({k: v for k, v in qr.items() if k != "data_refreshed"})
+                        normalize_query_result(
+                            {k: v for k, v in qr.items() if k not in {"data_refreshed", "generation"}}
+                        )
                     )
 
                 plans_captured, capture_failures, capture_errors = compute_plan_capture_stats(

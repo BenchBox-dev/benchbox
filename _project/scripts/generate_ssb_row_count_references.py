@@ -67,7 +67,6 @@ def generate(scale_factor: float, work_dir: Path) -> Path:
                 "row_counts": agreed,
             }
         },
-        sensitive=[],
         versions=gen.engine_versions(),
         generator={
             "data_generator": "BenchBox SSB data generator (benchbox/core/ssb/generator.py) via the generate phase",

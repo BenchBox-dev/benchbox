@@ -17,19 +17,9 @@ from benchbox.core.expected_results.row_count_references import (
     has_reference,
     load_row_count_reference,
     reference_scales,
-    stream_query_results,
 )
 
 logger = logging.getLogger(__name__)
-
-TPCDS_REFERENCE_RNGSEED_BASE = 1001
-
-
-def tpcds_reference_seed(seed: int | None, stream_id: int | None = 0) -> bool:
-    from benchbox.core.tpcds.power_test import power_parameter_seed
-
-    stream = stream_id or 0
-    return power_parameter_seed(seed, stream) == TPCDS_REFERENCE_RNGSEED_BASE + stream
 
 
 def set_query_validation_mode(mode: ValidationMode | None) -> None:
@@ -111,7 +101,6 @@ def get_tpcds_expected_results(scale_factor: float = 1.0) -> BenchmarkExpectedRe
             "reference_rngseed": reference.streams[0].seed,
             "provenance": dict(reference.provenance),
         },
-        stream_results=stream_query_results(reference),
     )
 
 

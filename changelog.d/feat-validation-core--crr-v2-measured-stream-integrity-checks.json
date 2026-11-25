@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "**Every measured TPC-H and TPC-DS row is checked.** Seeded, seedless and official TPC-DS runs are no longer excluded from row-count checks. Each row is checked, in order, against a LIMIT or one-row bound derived from the templates, an exact count for the exact generator seed it ran with, a count that never varied across a recorded sample of at least 512 draws, an enumerated range (TPC-H SF 1), and a must-return-rows rule; anything else records a documented `parameter sensitive:` skip. A violation fails the row and the run. References bind to the data stamp and to the query generator, templates and below-SF-1 overrides; a mismatch records a documented `reference data differs:` skip. Result schema 2.7 records `validation.stream_checks` and, on each row, `check`, `bound`, `seed` and `streams_index`."
+    }
+  ]
+}

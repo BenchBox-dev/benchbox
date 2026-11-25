@@ -28,11 +28,7 @@ from benchbox.core.throughput.runner import (
     stream_cancel_event,
     stream_stop_requested,
 )
-from benchbox.core.validation.query_validation import (
-    clear_reference_seed_context,
-    reset_stream_seed_override_warnings,
-    set_reference_seed_context,
-)
+from benchbox.core.validation.stream_checks import QueryGeneration
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS, failed_query_status
 
@@ -171,7 +167,6 @@ class TPCDSThroughputTest:
         except Exception:
             raise
 
-        reset_stream_seed_override_warnings()
         self._pregenerated_queries = None
         if config.enable_preflight:
             self._pregenerated_queries = self._pregenerate_stream_queries(config)
@@ -361,15 +356,17 @@ class TPCDSThroughputTest:
         )
 
     def _run_single_stream_query(
-        self, connection, query_text: str, query_display_id: str, stream_id: int, query_result: dict[str, Any]
+        self,
+        connection,
+        query_text: str,
+        query_display_id: str,
+        stream_id: int,
+        query_result: dict[str, Any],
+        generation: QueryGeneration,
     ) -> tuple[dict[str, Any] | None, int]:
         if hasattr(connection, "set_query_context"):
-            connection.set_query_context(query_display_id, stream_id=stream_id)
-        set_reference_seed_context(False)
-        try:
-            cursor = connection.execute(query_text)
-        finally:
-            clear_reference_seed_context()
+            connection.set_query_context(query_display_id, stream_id=stream_id, generation=generation)
+        cursor = connection.execute(query_text)
         platform_result = getattr(cursor, "platform_result", None)
         if isinstance(platform_result, dict):
             propagate_row_count_validation(platform_result, query_result)
@@ -412,13 +409,15 @@ class TPCDSThroughputTest:
             cached_text = self._cached_query_text(stream_id, position)
             if cached_text is not None:
                 query_text = cached_text
+                generation = QueryGeneration(seed=config.base_seed, streams_index=stream_id)
             else:
                 stream_seed = seed + stream_id * 1000 + position
                 query_text = self._get_stream_query_text(query_id, variant, stream_seed, config.scale_factor)
+                generation = QueryGeneration(seed=stream_seed)
             label = f"Stream_{stream_id}_Position_{position + 1}_Query_{query_display_id}"
             try:
                 platform_result, row_count = self._run_single_stream_query(
-                    connection, query_text, query_display_id, stream_id, query_result
+                    connection, query_text, query_display_id, stream_id, query_result, generation
                 )
             finally:
                 with self._capture_lock:

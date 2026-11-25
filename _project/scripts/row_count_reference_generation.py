@@ -120,6 +120,17 @@ def data_checksum(datagen: Path) -> dict[str, Any]:
     return {"algorithm": CHECKSUM_ALGORITHM, "sha256": total.hexdigest(), "tables": tables}
 
 
+def generator_identity(benchmark: str, data_generator: str, query_generator: str, datagen: Path) -> dict[str, Any]:
+    from benchbox.utils.query_generation import current_query_generation_stamp
+
+    return {
+        "data_generator": data_generator,
+        "query_generator": query_generator,
+        "data_stamp": generator_stamp(datagen),
+        "query_generation": current_query_generation_stamp(benchmark),
+    }
+
+
 def generator_stamp(datagen: Path) -> dict[str, Any]:
     manifest = json.loads((datagen / MANIFEST_NAME).read_text(encoding="utf-8"))
     return {
@@ -154,6 +165,11 @@ def open_counters(root_by_engine: Mapping[str, Path]) -> tuple[dict[str, CountQu
     return counters, close_all
 
 
+def count_cache_key(engine: str, data_sha256: str, sql: str, label: str, query_id: str) -> str:
+    version = engine_versions()[engine]
+    return f"{engine}|{version}|{data_sha256}|{hashlib.sha256(sql.encode()).hexdigest()}|{label}|{query_id}"
+
+
 def counts_for_stream(
     counters: Mapping[str, CountQuery],
     cache: dict[str, int],
@@ -166,10 +182,9 @@ def counts_for_stream(
     data_sha256: str,
 ) -> dict[str, int]:
     counts: dict[str, int] = {}
-    version = engine_versions()[engine]
     for query_id in query_ids:
         sql = sql_for(query_id, engine)
-        key = f"{engine}|{version}|{data_sha256}|{hashlib.sha256(sql.encode()).hexdigest()}|{label}|{query_id}"
+        key = count_cache_key(engine, data_sha256, sql, label, query_id)
         if key not in cache:
             cache[key] = counters[engine](sql)
             cache_path.write_text(json.dumps(cache, indent=1), encoding="utf-8")
@@ -207,13 +222,13 @@ def build_payload(
     benchmark: str,
     scale_factor: float,
     streams: Mapping[int, dict[str, Any]],
-    sensitive: list[str],
     versions: Mapping[str, str],
     generator: dict[str, Any],
     checksum: dict[str, Any],
     agreement: dict[str, Any],
     regenerate: str,
     answer_set_check: dict[str, Any] | None = None,
+    integrity: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     provenance: dict[str, Any] = {
         "generator": generator,
@@ -231,8 +246,8 @@ def build_payload(
         "scale_factor": float(scale_factor),
         "reference_kind": KIND_ENGINE_AGREEMENT,
         "streams": {str(stream): dict(entry) for stream, entry in sorted(streams.items())},
-        "parameter_sensitive_query_ids": sensitive,
         "provenance": provenance,
+        **({"integrity": integrity} if integrity is not None else {}),
     }
 
 

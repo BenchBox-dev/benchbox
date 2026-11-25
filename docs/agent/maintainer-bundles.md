@@ -66,33 +66,73 @@ Staging skips a bundle whose `summary.validation` is a non-clean status such as
 with no row-count reference at its scale records `no_reference` with the reason
 "no row-count reference at this scale factor"; it is staged, ranked and labelled
 "Row counts not checked". `passed` requires per-query row-count evidence in the
-file. A passed run may carry `SKIPPED` row counts when the
-skip has a documented reason and at least one row count was checked: the data
-was refreshed, the count was within a tolerance or range, or the query's count
-depends on the substitution parameters and the run used `--seed`. SQL and
-DataFrame runs follow the same rule.
+file. A passed run may carry `SKIPPED` row counts when the skip has a documented
+reason and at least one row count was checked: the data was refreshed, the count
+was within a tolerance or range, the reference data differs from the run's, or the
+query's count depends on the substitution parameters (`parameter sensitive:`).
+SQL and DataFrame runs follow the same rule.
+
+## Stream checks on TPC-H and TPC-DS rows
+
+The measured power and throughput streams use parameters the specification never publishes
+answers for, so every TPC-H and TPC-DS row is checked by one decision function shared by the
+SQL and DataFrame paths (`benchbox/core/validation/stream_checks.py`), in this order:
+
+1. LIMIT and one-row bounds derived from the templates (`structural_bounds.json`, regenerated with
+   `uv run -- python _project/scripts/generate_structural_bounds.py`, checked against every
+   template's generated SQL by a unit test). Runs at every scale. Recorded as `check: structural`;
+   a violation fails the row. A structural pass alone is never "checked".
+2. An exact reference for these exact parameters: the dsqgen RNGSEED plus STREAMS file index, or
+   the qgen seed, recorded on the row (`seed`, `streams_index`; a null seed is the generator
+   default). Never keyed by stream number. `check: exact`.
+3. An invariant count: a count that never varied across the recorded sample. `check: invariant`.
+4. An enumerated range (TPC-H SF 1 only: Q11, Q13, Q18, Q20 and the Q16 tolerance). `check: range`.
+5. Must return rows: the statement never returned zero rows in the sample. `check: never_empty`.
+6. Otherwise a documented `parameter sensitive:` skip.
+
+The invariant and must-return-rows checks come from the `integrity` section of each reference
+file: at least 512 draws per scale at SF 0.01, 0.1 and 1 (256 above SF 1) spread over the
+per-template and STREAMS generation paths, the seedless seeds and load-end-time-style seeds. DuckDB
+runs every draw; DataFusion must agree on a 64-draw subset or generation stops. A reference applies
+only when the run's data stamp and the query generation identity (generator binary digests,
+template set and the below-SF-1 template overrides in `benchbox/core/tpcds/c_tools.py`) equal the
+reference's. Otherwise the row records a documented `reference data differs:` skip, the structural
+checks still run, and the run records `no_reference`. A unit test fails when the generator stamp or
+the query generation identity changes without regenerated references. Written bundles (schema 2.7)
+carry `validation.stream_checks` (the reference files applied, with hashes and stamps, and counts
+per check kind) and, on each row, `check`, `bound`, `seed` and `streams_index`.
+
+A violation makes the row `FAILED`, so the run is `failed`, refused and never official. The checks
+run at write time on new runs only; they are never applied to the outcomes of stored files.
+
+### Settling a disputed stream check
+
+A false failure from an invariant or must-return-rows check is possible when a count varies less
+often than the sample can show. Settle it, never by editing a stored file or relaxing a check:
+
+1. Take the statement text recorded for the failing row (the row's `seed` and `streams_index`
+   regenerate it exactly) and run it on DuckDB against data with the same data stamp.
+2. If DuckDB returns the platform's count, the reference was incomplete: add that seed to the
+   sample, regenerate the references with the make target below, and re-run the result.
+3. If DuckDB disagrees, the platform answer is wrong.
 
 Row-count references live in `benchbox/core/expected_results/reference_row_counts/`, one file per
-benchmark and scale factor, read through `row_count_references.py`. Each file lists every query for
-every recorded stream (TPC-H streams 0-2, TPC-DS streams 0-3, SSB stream 0) and records how it was
-made: data generator and stamp, data checksum, reference engines and versions, date and the
-agreement result. The TPC answer set is the reference for TPC-H at SF 1 stream 0; every other
-reference is labelled "agreement with <engine versions>" because no TPC answer exists for it.
-Validator output carries the reference kind (`reference_kind`, `reference_label`; DataFrame
-evidence lists `reference_kinds`). A reference is regenerated, never edited:
+benchmark and scale factor, read through `row_count_references.py`. Each file lists the exact
+streams (TPC-H qgen defaults, TPC-DS per-template RNGSEED 1001-1004 and STREAMS RNGSEED 42 files 0-8,
+SSB stream 0) and records how it was made: data generator and stamp, query generation identity, data
+checksum, reference engines and versions, date and the agreement result. The TPC answer set is the
+reference for TPC-H at SF 1 on the default parameters; every other reference is labelled "agreement
+with <engine versions>" because no TPC answer exists for it. Validator output carries the
+reference kind (`reference_kind`, `reference_label`; DataFrame evidence lists `reference_kinds`). A
+reference is regenerated, never edited:
 `make row-count-references-regen BENCHMARK=<tpch|tpcds|ssb> SCALE=<scale factor> WORK_DIR=<durable directory>`
-(run SF 10 only through `make heavy-run`), then
+(run it only through `make heavy-run`), then
 `uv run -- python scripts/generate_corpus_rule_data.py --write`. The generator stops and reports
-the query when DuckDB and DataFusion disagree on any query of any stream; it never omits a query.
+the statement and draw when DuckDB and DataFusion disagree; it never omits a query.
 
-DataFrame combinations that validate row counts: TPC-H at every scale with a reference, seeded or
-not (a seeded run checks fixed-count queries exactly and range-checks the parameter-sensitive
-ones; a count inside a range is recorded as passed, and a loose-tolerance query whose count is
-not exact is recorded as a documented skip); SSB and TPC-DS at every scale with a reference. A
-TPC-DS row is checked against the counts of its own stream when the run uses the reference seed
-(`--seed` unset or 1); any other TPC-DS row records a documented skip. A scale with no recorded
-reference records `no_reference`. Any other combination records `uncertain` or `not_run` and
-cannot be staged.
+DataFrame combinations that validate row counts: TPC-H and TPC-DS at every scale with a reference,
+seeded or not, and SSB at every scale with a reference. A scale with no recorded reference records
+`no_reference`. Any other combination records `uncertain` or `not_run` and cannot be staged.
 
 ## Guard refusals
 

@@ -16,6 +16,7 @@ DATA_REFRESHED_REASON = "data refreshed"
 WITHIN_TOLERANCE_REASON = "within tolerance"
 WITHIN_RANGE_REASON = "within range"
 PARAMETER_SENSITIVE_REASON = "parameter sensitive"
+REFERENCE_DATA_DIFFERS_REASON = "reference data differs"
 NO_REFERENCE_VALIDATION_STATUS = "NO_REFERENCE"
 NO_REFERENCE_REASON = "no row-count reference at this scale factor"
 NOT_VALIDATED_VALIDATION_STATUS = "NOT_VALIDATED"
@@ -27,6 +28,7 @@ DOCUMENTED_ROW_COUNT_SKIP_REASONS: tuple[str, ...] = (
     WITHIN_TOLERANCE_REASON,
     WITHIN_RANGE_REASON,
     PARAMETER_SENSITIVE_REASON,
+    REFERENCE_DATA_DIFFERS_REASON,
 )
 
 
@@ -176,6 +178,12 @@ def row_evidence_roll_up(query_rows: Any, *, reference_exists: bool, failed_quer
         and any(measurement and status == "PASSED" for measurement, status, _ in rows)
     ):
         return PASSED_VALIDATION_STATUS, "row counts validated"
+    reference_differs = any(
+        status == "SKIPPED" and str(evidence.get("warning") or "").startswith(f"{REFERENCE_DATA_DIFFERS_REASON}:")
+        for _, status, evidence in rows
+    )
+    if reference_differs:
+        return NO_REFERENCE_VALIDATION_STATUS, f"{NO_REFERENCE_REASON}; {REFERENCE_DATA_DIFFERS_REASON}"
     if not reference_exists:
         return NO_REFERENCE_VALIDATION_STATUS, NO_REFERENCE_REASON
     if unvalidated:
