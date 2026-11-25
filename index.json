@@ -26590,17 +26590,12 @@
       "title": "Re-baseline local published Parquet corpus for 122,880-row-group streaming layout"
     },
     "datagen-p1-provenance-and-backend-selector": {
-      "claim": {
-        "expires_at": "2026-11-26T03:00:33Z",
-        "generation": "e96270e4e8d34276bfc4d304a50187ad",
-        "renewals": 0,
-        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:09e72875364dbf224cdb1ab5"
-      },
+      "claim": null,
       "needs": [
         "datagen-p0-companion-adr"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Add per-benchmark datagen versioning, backend provenance, and --datagen-backend selector"
     },
     "datagen-p1-streaming-parquet-converter": {
