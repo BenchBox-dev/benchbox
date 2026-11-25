@@ -25943,15 +25943,10 @@
       "title": "Find why TPC-DS query 93 returned no rows at SF 0.1 on three cloud platforms"
     },
     "crr-i2-tpch-q15-empty-datafusion": {
-      "claim": {
-        "expires_at": "2026-11-26T16:48:14Z",
-        "generation": "4216ae20ada14d59ae7a7a12b2f36287",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Confirm the proven money-column cause covers the DataFusion 53 TPC-H Q15 results and reconcile the open bundle item"
     },
     "crr-o1-official-power-after-load": {
