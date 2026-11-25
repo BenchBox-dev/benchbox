@@ -6,12 +6,14 @@ import pyarrow as pa
 import pytest
 
 from benchbox.utils.format_converters.base import (
+    DEFAULT_ROW_GROUP_SIZE,
     ArrowTypeMapper,
     BaseFormatConverter,
     ConversionError,
     ConversionOptions,
     ConversionResult,
     SchemaError,
+    normalize_schema_columns,
 )
 
 pytestmark = [
@@ -24,13 +26,16 @@ class TestConversionOptions:
     def test_default_options(self):
         opts = ConversionOptions()
         assert opts.compression == "snappy"
-        assert opts.row_group_size == 128 * 1024 * 1024
+        assert opts.row_group_size == DEFAULT_ROW_GROUP_SIZE
+        assert opts.row_group_size == 122_880
         assert opts.partition_cols == []
         assert opts.merge_shards is True
         assert opts.output_dir is None
         assert opts.preserve_source is True
         assert opts.validate_row_count is True
         assert opts.strict_schema is False
+        assert opts.delimiter is None
+        assert opts.has_header is None
 
     def test_custom_options(self):
         opts = ConversionOptions(
@@ -433,3 +438,30 @@ class TestBaseFormatConverterValidation:
         timestamp = BaseFormatConverter.get_current_timestamp()
         assert "T" in timestamp
         assert "+" in timestamp or "Z" in timestamp
+
+    def test_normalize_schema_columns_supports_dict_and_sql_ddl_shapes(self):
+        dict_schema = {
+            "columns": {
+                "hostname": {"type": "VARCHAR(255)"},
+                "usage": {"type": "DOUBLE", "nullable": False},
+            }
+        }
+        normalized_dict = normalize_schema_columns(dict_schema)
+        assert [c["name"] for c in normalized_dict] == ["hostname", "usage"]
+        assert normalized_dict[1]["nullable"] is False
+
+        ddl_schema = {
+            "columns": [
+                "id INTEGER PRIMARY KEY",
+                "title TEXT NOT NULL",
+                "production_year INTEGER",
+            ]
+        }
+        normalized_ddl = normalize_schema_columns(ddl_schema)
+        assert [c["name"] for c in normalized_ddl] == ["id", "title", "production_year"]
+        assert [c["type"] for c in normalized_ddl] == ["INTEGER", "TEXT", "INTEGER"]
+        assert normalized_ddl[1]["nullable"] is False
+        assert normalized_ddl[2]["nullable"] is True
+
+        with pytest.raises(SchemaError, match="Column 0 is not a dictionary"):
+            normalize_schema_columns({"columns": ["not a dict"]})

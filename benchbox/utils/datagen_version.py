@@ -17,7 +17,14 @@ VERIFIED_BYTE_IDENTICAL_BACKENDS: Mapping[tuple[str, str], frozenset[float]] = M
     }
 )
 
-_BENCHBOX_PARQUET_WRITERS: frozenset[str] = frozenset({"benchbox-legacy", "benchbox-streaming"})
+_BENCHBOX_PARQUET_WRITERS: frozenset[str] = frozenset(
+    {
+        "benchbox-legacy",
+        "benchbox-streaming",
+        "benchbox-duckdb-streaming",
+        "benchbox-pyarrow-streaming",
+    }
+)
 
 
 _BENCHMARK_SPECS_FILES: dict[str, tuple[str, ...]] = {
@@ -115,7 +122,8 @@ def is_byte_identical_source_data(
 def is_benchbox_parquet_writer(parquet_writer: str | None) -> bool:
     if parquet_writer is None:
         return True
-    return str(parquet_writer).strip().lower() in _BENCHBOX_PARQUET_WRITERS
+    parts = [part.strip().lower() for part in str(parquet_writer).split("+") if part.strip()]
+    return bool(parts) and all(part in _BENCHBOX_PARQUET_WRITERS for part in parts)
 
 
 def is_byte_identical_backend_output(
@@ -256,12 +264,49 @@ def _backend_staleness(
     return None
 
 
+def _manifest_has_parquet(manifest: Mapping[str, Any]) -> bool:
+    for key in ("formats", "format_preference"):
+        values = manifest.get(key)
+        if isinstance(values, (list, tuple)) and any(str(v).lower() == "parquet" for v in values):
+            return True
+    tables = manifest.get("tables")
+    if isinstance(tables, Mapping):
+        for table_entry in tables.values():
+            if not isinstance(table_entry, Mapping):
+                continue
+            table_formats = table_entry.get("formats")
+            if isinstance(table_formats, Mapping) and "parquet" in table_formats:
+                return True
+    return False
+
+
+def _parquet_layout_staleness(manifest: Mapping[str, Any], *, expected_table_format: str | None) -> str | None:
+    if expected_table_format is None or str(expected_table_format).strip().lower() != "parquet":
+        return None
+    if not _manifest_has_parquet(manifest):
+        return None
+    parquet_writer = manifest.get("parquet_writer")
+    parquet_rg = manifest.get("parquet_row_group_size")
+    if (
+        not isinstance(parquet_writer, str)
+        or not parquet_writer.strip()
+        or not isinstance(parquet_rg, int)
+        or isinstance(parquet_rg, bool)
+    ):
+        return (
+            "cached Parquet files predate streaming row-group layout stamping; "
+            "regenerating with the current Parquet layout"
+        )
+    return None
+
+
 def manifest_datagen_is_current(
     manifest: Mapping[str, Any] | None,
     benchmark: str | None = None,
     *,
     expected_backend: str | None = None,
     expected_backend_version: str | None = None,
+    expected_table_format: str | None = None,
 ) -> bool:
     return (
         describe_datagen_staleness(
@@ -269,6 +314,7 @@ def manifest_datagen_is_current(
             benchmark=benchmark,
             expected_backend=expected_backend,
             expected_backend_version=expected_backend_version,
+            expected_table_format=expected_table_format,
         )
         is None
     )
@@ -304,6 +350,7 @@ def describe_datagen_staleness(
     *,
     expected_backend: str | None = None,
     expected_backend_version: str | None = None,
+    expected_table_format: str | None = None,
 ) -> str | None:
 
     if not isinstance(manifest, Mapping):
@@ -331,18 +378,45 @@ def describe_datagen_staleness(
     binary_reason = _generator_binary_staleness(manifest, name)
     if binary_reason is not None:
         return binary_reason
-    return _backend_staleness(
+    backend_reason = _backend_staleness(
         manifest,
         name,
         expected_backend=expected_backend,
         expected_backend_version=expected_backend_version,
     )
+    if backend_reason is not None:
+        return backend_reason
+    return _parquet_layout_staleness(manifest, expected_table_format=expected_table_format)
 
 
-def resolve_manifest_datagen_hash(manifest: Mapping[str, Any]) -> str | None:
-    identity_hash = manifest.get("data_generation_identity_hash")
-    if isinstance(identity_hash, str) and identity_hash:
-        return identity_hash
+_DELIMITED_FORMATS: frozenset[str] = frozenset({"tbl", "csv", "dat"})
+
+
+def _manifest_is_parquet_only(manifest: Mapping[str, Any]) -> bool:
+    formats = manifest.get("formats")
+    if isinstance(formats, (list, tuple)) and formats:
+        normalized = {str(fmt).strip().lower() for fmt in formats if str(fmt).strip()}
+        if normalized:
+            return "parquet" in normalized and not bool(normalized & _DELIMITED_FORMATS)
+    tables = manifest.get("tables")
+    if isinstance(tables, Mapping) and tables:
+        found: set[str] = set()
+        for table_entry in tables.values():
+            if not isinstance(table_entry, Mapping):
+                continue
+            table_formats = table_entry.get("formats")
+            if isinstance(table_formats, Mapping):
+                found.update(str(k).strip().lower() for k in table_formats)
+        if found:
+            return "parquet" in found and not bool(found & _DELIMITED_FORMATS)
+    return False
+
+
+def resolve_manifest_datagen_hash(
+    manifest: Mapping[str, Any],
+    *,
+    table_format: str | None = None,
+) -> str | None:
     benchmark = manifest.get("benchmark")
     backend = manifest.get("generator_backend")
     backend_version = manifest.get("generator_backend_version")
@@ -356,24 +430,43 @@ def resolve_manifest_datagen_hash(manifest: Mapping[str, Any]) -> str | None:
     benchmark_version = manifest.get("benchmark_datagen_version", 1)
     scale_raw = manifest.get("scale_factor")
     scale_factor = float(scale_raw) if isinstance(scale_raw, (int, float)) and not isinstance(scale_raw, bool) else None
-    byte_identical = is_byte_identical_backend_output(
+    configuration_raw = manifest.get("skew_configuration")
+    configuration = configuration_raw if isinstance(configuration_raw, Mapping) else None
+
+    use_parquet_identity = (table_format is not None and str(table_format).strip().lower() == "parquet") or (
+        table_format is None and _manifest_is_parquet_only(manifest)
+    )
+    if use_parquet_identity:
+        parquet_identity_hash = manifest.get("parquet_data_generation_identity_hash")
+        if isinstance(parquet_identity_hash, str) and parquet_identity_hash:
+            return parquet_identity_hash
+        if parquet_writer is not None or parquet_row_group_size is not None:
+            return compute_datagen_identity_hash(
+                benchmark,
+                configuration,
+                backend=str(backend) if backend is not None else None,
+                backend_version=str(backend_version) if backend_version is not None else None,
+                parquet_writer=str(parquet_writer) if parquet_writer is not None else None,
+                parquet_row_group_size=parquet_row_group_size,
+                scale_factor=scale_factor,
+            )
+
+    identity_hash = manifest.get("data_generation_identity_hash")
+    if isinstance(identity_hash, str) and identity_hash:
+        return identity_hash
+    source_byte_identical = is_byte_identical_source_data(
         benchmark,
         backend_version=str(backend_version) if backend_version is not None else None,
-        parquet_writer=str(parquet_writer) if parquet_writer is not None else None,
         scale_factor=scale_factor,
     )
-    if (
-        (backend is not None and str(backend).lower() != "legacy" and not byte_identical)
-        or (isinstance(benchmark_version, int) and not isinstance(benchmark_version, bool) and benchmark_version > 1)
-        or parquet_writer is not None
-        or parquet_row_group_size is not None
+    if (backend is not None and str(backend).lower() != "legacy" and not source_byte_identical) or (
+        isinstance(benchmark_version, int) and not isinstance(benchmark_version, bool) and benchmark_version > 1
     ):
         return compute_datagen_identity_hash(
             benchmark,
+            configuration,
             backend=str(backend) if backend is not None else None,
             backend_version=str(backend_version) if backend_version is not None else None,
-            parquet_writer=str(parquet_writer) if parquet_writer is not None else None,
-            parquet_row_group_size=parquet_row_group_size,
             scale_factor=scale_factor,
         )
     base_hash = manifest.get("base_constants_hash")

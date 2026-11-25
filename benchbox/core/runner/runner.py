@@ -401,11 +401,62 @@ def _collect_reused_table_stats(adapter: Any, benchmark: Any, connection: Any) -
     return table_stats
 
 
+def _resolve_effective_table_format(
+    manifest: Mapping[str, Any],
+    manifest_path: Any,
+    config_options: Mapping[str, Any],
+    *,
+    platform_name: str | None = None,
+    platform_config: Mapping[str, Any] | None = None,
+) -> str | None:
+    requested = config_options.get("table_format")
+    if isinstance(requested, str) and requested.strip():
+        return requested.strip().lower()
+    if not platform_name:
+        return None
+    normalized_platform = str(platform_name).strip().lower()
+    if not normalized_platform or normalized_platform == "data_only":
+        return None
+    tables = manifest.get("tables")
+    if not isinstance(tables, Mapping) or not tables or manifest_path is None:
+        return None
+    try:
+        from benchbox.core.manifest import ManifestV2, get_preferred_format, load_manifest
+
+        loaded_manifest = load_manifest(manifest_path)
+        if not isinstance(loaded_manifest, ManifestV2):
+            return None
+        table_mode = str(config_options.get("table_mode") or "native").strip().lower()
+        prefer_platform_defaults = table_mode == "native"
+        selected_formats = {
+            fmt.strip().lower()
+            for table_name in loaded_manifest.tables
+            if (
+                fmt := get_preferred_format(
+                    loaded_manifest,
+                    table_name,
+                    normalized_platform,
+                    table_mode=table_mode,
+                    platform_config=platform_config,
+                    prefer_platform_defaults=prefer_platform_defaults,
+                )
+            )
+        }
+        if "parquet" in selected_formats:
+            return "parquet"
+        if len(selected_formats) == 1:
+            return next(iter(selected_formats))
+    except Exception as exc:
+        logger.debug("could not resolve platform preferred format from manifest: %s", exc)
+    return None
+
+
 def _attach_datagen_version(
     result: BenchmarkResults,
     benchmark: Any = None,
     *,
     config: Any = None,
+    platform_config: Mapping[str, Any] | None = None,
     dataset_identity_established: bool = True,
 ) -> BenchmarkResults:
     try:
@@ -434,10 +485,18 @@ def _attach_datagen_version(
         )
         if expected_backend_version is None:
             expected_backend_version = config_options.get("datagen_backend_version")
+        effective_table_format = _resolve_effective_table_format(
+            manifest,
+            manifest_path,
+            config_options,
+            platform_name=getattr(result, "platform", None),
+            platform_config=platform_config,
+        )
         if not manifest_datagen_is_current(
             manifest,
             expected_backend=expected_backend,
             expected_backend_version=expected_backend_version,
+            expected_table_format=effective_table_format,
         ):
             return result
         if not _manifest_matches_result(manifest, result, benchmark):
@@ -446,7 +505,10 @@ def _attach_datagen_version(
         if callable(identity_matches) and not identity_matches(manifest):
             return result
         result.data_generation_version = manifest.get("data_generation_version")
-        result.data_generation_hash = resolve_manifest_datagen_hash(manifest)
+        result.data_generation_hash = resolve_manifest_datagen_hash(
+            manifest,
+            table_format=effective_table_format,
+        )
         if str(manifest.get("benchmark", "")).lower() == "tpcdi":
             seed = manifest.get("seed")
             if isinstance(seed, int) and not isinstance(seed, bool):
@@ -1085,6 +1147,8 @@ def _run_data_generation_phase(
     monitor: Any,
     validation_records: list[tuple[str, ValidationResult]],
     before_generate: Callable[[], None] | None = None,
+    platform_name: str | None = None,
+    platform_config: Mapping[str, Any] | None = None,
 ) -> tuple[float, bool, bool]:
     datagen_start = time.monotonic()
 
@@ -1099,11 +1163,23 @@ def _run_data_generation_phase(
     manifest_reused = False
     if monitor is not None:
         with monitor.time_operation("data_generation"):
-            freshly_generated, manifest_reused = _ensure_data_generated(benchmark, benchmark_config, before_generate)
+            freshly_generated, manifest_reused = _ensure_data_generated(
+                benchmark,
+                benchmark_config,
+                before_generate,
+                platform_name=platform_name,
+                platform_config=platform_config,
+            )
             if freshly_generated:
                 monitor.increment_counter("tables_generated", len(getattr(benchmark, "tables", []) or []))
     else:
-        freshly_generated, manifest_reused = _ensure_data_generated(benchmark, benchmark_config, before_generate)
+        freshly_generated, manifest_reused = _ensure_data_generated(
+            benchmark,
+            benchmark_config,
+            before_generate,
+            platform_name=platform_name,
+            platform_config=platform_config,
+        )
 
     if validation_opts.enable_postgen_manifest_validation:
         manifest_result = _run_manifest_validation(benchmark, benchmark_config)
@@ -1535,6 +1611,11 @@ def run_benchmark_lifecycle(
     datagen_duration = 0.0
     freshly_generated = False
     manifest_reused = False
+    target_platform_name = (
+        getattr(database_config, "type", None)
+        or getattr(platform_adapter, "platform_name", None)
+        or (platform_config.get("name") if isinstance(platform_config, Mapping) else None)
+    )
     if needs_data or phases.generate:
         enter_run_phase("generate")
         datagen_duration, freshly_generated, manifest_reused = _run_data_generation_phase(
@@ -1546,6 +1627,8 @@ def run_benchmark_lifecycle(
             monitor=monitor,
             validation_records=validation_records,
             before_generate=_dataframe_generation_guard(platform_adapter, benchmark, benchmark_config),
+            platform_name=target_platform_name,
+            platform_config=platform_config,
         )
     dataset_identity_established = bool(phases.load) and (freshly_generated or manifest_reused)
 
@@ -1623,6 +1706,7 @@ def run_benchmark_lifecycle(
             result_obj,
             benchmark,
             config=benchmark_config,
+            platform_config=platform_config,
             dataset_identity_established=dataset_identity_established and not _adapter_reused_database(adapter),
         )
 
@@ -1704,6 +1788,7 @@ def run_benchmark_lifecycle(
         finalized,
         benchmark,
         config=benchmark_config,
+        platform_config=platform_config,
         dataset_identity_established=dataset_identity_established and not _adapter_reused_database(adapter),
     )
 
@@ -1807,7 +1892,12 @@ def _run_ensure_auxiliary_hook(benchmark: Any) -> None:
 
 
 def _ensure_data_generated(
-    benchmark: Any, config: BenchmarkConfig, before_generate: Callable[[], None] | None = None
+    benchmark: Any,
+    config: BenchmarkConfig,
+    before_generate: Callable[[], None] | None = None,
+    *,
+    platform_name: str | None = None,
+    platform_config: Mapping[str, Any] | None = None,
 ) -> tuple[bool, bool]:
     options = getattr(config, "options", {}) or {}
     force_regenerate_flag = bool(options.get("force_regenerate"))
@@ -1815,7 +1905,12 @@ def _ensure_data_generated(
     populated_tables_invalid = False
 
     if getattr(benchmark, "tables", None) and not force_regenerate_flag:
-        tables_usable, tables_reuse_manifest = _populated_tables_are_valid(benchmark, config)
+        tables_usable, tables_reuse_manifest = _populated_tables_are_valid(
+            benchmark,
+            config,
+            platform_name=platform_name,
+            platform_config=platform_config,
+        )
         if tables_usable:
             _run_ensure_auxiliary_hook(benchmark)
             return False, tables_reuse_manifest
@@ -1831,7 +1926,11 @@ def _ensure_data_generated(
 
     if output_dir and not force_regenerate_flag and not populated_tables_invalid:
         manifest_valid, manifest_data, manifest_found = _validate_manifest_if_present(
-            benchmark, config, quiet=no_regenerate_flag
+            benchmark,
+            config,
+            quiet=no_regenerate_flag,
+            platform_name=platform_name,
+            platform_config=platform_config,
         )
         if manifest_valid:
             summary = _populate_tables_from_manifest(benchmark, manifest_data)
@@ -1859,7 +1958,13 @@ def _ensure_data_generated(
     return True, False
 
 
-def _populated_tables_are_valid(benchmark: Any, config: BenchmarkConfig) -> tuple[bool, bool]:
+def _populated_tables_are_valid(
+    benchmark: Any,
+    config: BenchmarkConfig,
+    *,
+    platform_name: str | None = None,
+    platform_config: Mapping[str, Any] | None = None,
+) -> tuple[bool, bool]:
     tables = getattr(benchmark, "tables", None)
     table_mode = str((getattr(config, "options", {}) or {}).get("table_mode", "native") or "native").lower()
     if not tables or not _table_mapping_paths_exist(tables, allow_cloud_uris=table_mode == "external"):
@@ -1872,7 +1977,13 @@ def _populated_tables_are_valid(benchmark: Any, config: BenchmarkConfig) -> tupl
     if not output_dir:
         return True, False
 
-    manifest_valid, manifest_data, _manifest_found = _validate_manifest_if_present(benchmark, config, quiet=True)
+    manifest_valid, manifest_data, _manifest_found = _validate_manifest_if_present(
+        benchmark,
+        config,
+        quiet=True,
+        platform_name=platform_name,
+        platform_config=platform_config,
+    )
     if not manifest_valid or manifest_data is None:
         return False, False
 
@@ -2051,7 +2162,12 @@ def _check_table_directory_collisions(output_dir: Any, tables: dict) -> bool:
 
 
 def _validate_manifest_if_present(
-    benchmark: Any, config: BenchmarkConfig, *, quiet: bool = False
+    benchmark: Any,
+    config: BenchmarkConfig,
+    *,
+    quiet: bool = False,
+    platform_name: str | None = None,
+    platform_config: Mapping[str, Any] | None = None,
 ) -> tuple[bool, dict | None, bool]:
     try:
         output_dir = getattr(benchmark, "output_dir", None)
@@ -2084,17 +2200,26 @@ def _validate_manifest_if_present(
         config_options = getattr(config, "options", None) or {}
         expected_backend = config_options.get("datagen_backend")
         expected_backend_version = config_options.get("datagen_backend_version")
+        expected_table_format = _resolve_effective_table_format(
+            manifest,
+            manifest_path,
+            config_options,
+            platform_name=platform_name,
+            platform_config=platform_config,
+        )
         if not manifest_datagen_is_current(
             manifest,
             benchmark=manifest_benchmark,
             expected_backend=expected_backend,
             expected_backend_version=expected_backend_version,
+            expected_table_format=expected_table_format,
         ):
             reason = describe_datagen_staleness(
                 manifest,
                 benchmark=manifest_benchmark,
                 expected_backend=expected_backend,
                 expected_backend_version=expected_backend_version,
+                expected_table_format=expected_table_format,
             )
             logger.warning("Datagen manifest is stale (%s); regenerating benchmark data", reason)
             if not quiet:
