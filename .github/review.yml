@@ -198,6 +198,13 @@ evidence:
     - "CHANGELOG*.md"
     - "**/CHANGELOG*.md"
     - "docs/*.md"
+  derived_paths:
+    - name: fast-tier-baseline
+      files:
+        - tests/fixtures/fast_tier_baseline/manifest.json
+        - tests/fixtures/fast_tier_baseline/tests-[0-9][0-9].json
+      summary: tests/fixtures/fast_tier_baseline/SUMMARY.md
+      attested_by: Reproduce the fast-tier duration baseline
 promotion:
   package: theseus-reviewer
   repository: joeharris76/theseus
