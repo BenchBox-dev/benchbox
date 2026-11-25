@@ -2,17 +2,20 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import math
 import os
 import re
+import stat
 import statistics
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
+import zipfile
 from collections import Counter
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -42,13 +45,19 @@ REJECTION_CODES = (
     "junit-no-samples",
 )
 MAX_SOURCE_RUNS = 20
+MIN_SOURCE_RUNS = 10
 CI_WORKFLOW_PATH = ".github/workflows/ci.yml"
 COMMITTED_FILE_MODE = "100644"
 GITHUB_API_TIMEOUT_SECONDS = 60
+GITHUB_ARTIFACT_TIMEOUT_SECONDS = 300
+ARTIFACT_MEMBERS = frozenset({"junit.xml", "calibration.json", "collection.jsonl"})
+ARTIFACT_MAX_BYTES = 256 * 1024 * 1024
+GENERATED_AT_WINDOW = timedelta(days=30)
 SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
 CONTROL_CHARACTERS = re.compile(r"[\x00-\x1f\x7f]")
 BACKTICK_RUNS = re.compile(r"`+")
 Api = Callable[[str], Any]
+Fetch = Callable[[str], bytes]
 
 
 NEW_TEST_NOTE = (
@@ -409,7 +418,7 @@ def write_summary(previous_dir: Path, baseline_dir: Path) -> Path:
     return path
 
 
-def reproduce_entries(manifest: dict[str, Any]) -> list[dict[str, Any]]:
+def reproduce_entries(manifest: dict[str, Any], runs_root: Path) -> list[dict[str, Any]]:
     entries = []
     for group in ("runs", "rejected_runs"):
         records = manifest.get(group)
@@ -424,7 +433,7 @@ def reproduce_entries(manifest: dict[str, Any]) -> list[dict[str, Any]]:
                     raise BaselineError("baseline manifest run records must carry positive ids")
             if not isinstance(entry["sha"], str) or not SHA_PATTERN.fullmatch(entry["sha"]):
                 raise BaselineError("baseline manifest run records must carry a full lowercase commit sha")
-            entries.append({**entry, "dir": REFRESH_RUN_DIR.format(run_id=entry["run_id"])})
+            entries.append({**entry, "dir": str(runs_root / REFRESH_RUN_DIR.format(run_id=entry["run_id"]))})
     if not entries:
         raise BaselineError("the baseline manifest names no source runs")
     return entries
@@ -445,6 +454,15 @@ def github_api(path: str) -> Any:
         raise BaselineError("a GitHub API request failed") from exc
 
 
+def github_artifact_zip(path: str) -> bytes:
+    try:
+        return subprocess.run(
+            ["gh", "api", path], capture_output=True, check=True, timeout=GITHUB_ARTIFACT_TIMEOUT_SECONDS
+        ).stdout
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise BaselineError("a GitHub artifact download failed") from exc
+
+
 def _fetch(api: Api, path: str) -> dict[str, Any] | None:
     try:
         payload = api(path)
@@ -453,59 +471,122 @@ def _fetch(api: Api, path: str) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
-def provenance_codes(entry: dict[str, Any], repo: str, api: Api) -> list[str]:
-    run_id, pr, sha = entry["run_id"], entry["pr"], entry["sha"]
+def _utc(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        return None
+    try:
+        return datetime.fromisoformat(f"{value[:-1]}+00:00")
+    except ValueError:
+        return None
+
+
+def _same_repo(record: object, repo: str) -> bool:
+    name = record.get("full_name") if isinstance(record, dict) else None
+    return isinstance(name, str) and name.lower() == repo.lower()
+
+
+def _run_codes(run: dict[str, Any], entry: dict[str, Any], repo: str, generated_at: datetime) -> list[str]:
     codes: list[str] = []
-    run = _fetch(api, f"repos/{repo}/actions/runs/{run_id}")
-    if run is None:
-        codes.append("run-unavailable")
-    else:
-        if run.get("id") != run_id:
-            codes.append("run-id")
-        if str(run.get("path", "")).split("@", 1)[0] != CI_WORKFLOW_PATH:
-            codes.append("run-workflow")
-        if run.get("event") != "pull_request":
-            codes.append("run-event")
-        if run.get("status") != "completed" or run.get("conclusion") != "success":
-            codes.append("run-conclusion")
-        if run.get("head_sha") != sha:
-            codes.append("run-sha")
-        linked = run.get("pull_requests")
-        if isinstance(linked, list) and linked:
-            numbers = {item.get("number") for item in linked if isinstance(item, dict)}
-            if pr not in numbers:
-                codes.append("run-pr")
-    artifact = _fetch(api, f"repos/{repo}/actions/artifacts/{entry['artifact_id']}")
-    if artifact is None:
-        codes.append("artifact-unavailable")
-    else:
-        if artifact.get("name") != f"fast-junit-{pr}-{sha}":
-            codes.append("artifact-name")
-        origin = artifact.get("workflow_run")
-        if not isinstance(origin, dict) or origin.get("id") != run_id:
-            codes.append("artifact-run")
-        elif origin.get("head_sha") != sha:
-            codes.append("artifact-sha")
-    pull = _fetch(api, f"repos/{repo}/pulls/{pr}")
-    if pull is None:
-        codes.append("pr-unavailable")
-    elif pull.get("merged") is not True:
-        codes.append("pr-not-merged")
+    if run.get("id") != entry["run_id"]:
+        codes.append("run-id")
+    if str(run.get("path", "")).split("@", 1)[0] != CI_WORKFLOW_PATH:
+        codes.append("run-workflow")
+    if run.get("event") != "pull_request":
+        codes.append("run-event")
+    if run.get("status") != "completed" or run.get("conclusion") != "success":
+        codes.append("run-conclusion")
+    if run.get("head_sha") != entry["sha"]:
+        codes.append("run-sha")
+    if not _same_repo(run.get("head_repository"), repo):
+        codes.append("run-fork")
+    created = _utc(run.get("created_at"))
+    if created is None:
+        codes.append("run-created")
+    elif generated_at < created:
+        codes.append("generated-before-run")
+    elif generated_at - created > GENERATED_AT_WINDOW:
+        codes.append("generated-too-late")
     return codes
 
 
-def source_run_problems(entries: list[dict[str, Any]], repo: str, api: Api) -> list[str]:
+def _artifact_codes(artifact: dict[str, Any], entry: dict[str, Any]) -> list[str]:
+    codes: list[str] = []
+    if artifact.get("name") != f"fast-junit-{entry['pr']}-{entry['sha']}":
+        codes.append("artifact-name")
+    origin = artifact.get("workflow_run")
+    if not isinstance(origin, dict) or origin.get("id") != entry["run_id"]:
+        codes.append("artifact-run")
+    elif origin.get("head_sha") != entry["sha"]:
+        codes.append("artifact-sha")
+    return codes
+
+
+def _pull_codes(pull: dict[str, Any], entry: dict[str, Any], repo: str) -> list[str]:
+    codes: list[str] = []
+    if pull.get("merged") is not True:
+        codes.append("pr-not-merged")
+    head = pull.get("head")
+    if not isinstance(head, dict) or head.get("sha") != entry["sha"]:
+        codes.append("pr-head")
+    elif not _same_repo(head.get("repo"), repo):
+        codes.append("pr-fork")
+    return codes
+
+
+def provenance_codes(entry: dict[str, Any], repo: str, api: Api, generated_at: datetime) -> list[str]:
+    codes: list[str] = []
+    run = _fetch(api, f"repos/{repo}/actions/runs/{entry['run_id']}")
+    codes += ["run-unavailable"] if run is None else _run_codes(run, entry, repo, generated_at)
+    artifact = _fetch(api, f"repos/{repo}/actions/artifacts/{entry['artifact_id']}")
+    codes += ["artifact-unavailable"] if artifact is None else _artifact_codes(artifact, entry)
+    pull = _fetch(api, f"repos/{repo}/pulls/{entry['pr']}")
+    codes += ["pr-unavailable"] if pull is None else _pull_codes(pull, entry, repo)
+    return codes
+
+
+def source_run_problems(entries: list[dict[str, Any]], repo: str, api: Api, generated_at: datetime) -> list[str]:
     problems: list[str] = []
     if len(entries) > MAX_SOURCE_RUNS:
         problems.append(f"source runs: more than {MAX_SOURCE_RUNS}")
-    for key, label in (("run_id", "run"), ("pr", "pr")):
+    if len(entries) < MIN_SOURCE_RUNS:
+        problems.append(f"source runs: fewer than {MIN_SOURCE_RUNS}")
+    for key, label in (("run_id", "run"), ("pr", "pr"), ("artifact_id", "artifact")):
         counts = Counter(entry[key] for entry in entries)
         problems += [
             f"source runs: {label} {value} appears more than once" for value, n in sorted(counts.items()) if n > 1
         ]
+    if problems:
+        return problems
     for entry in entries:
-        problems += [f"run {entry['run_id']}: {code}" for code in provenance_codes(entry, repo, api)]
+        problems += [f"run {entry['run_id']}: {code}" for code in provenance_codes(entry, repo, api, generated_at)]
     return problems
+
+
+def extract_artifact(archive: bytes, destination: Path) -> None:
+    try:
+        bundle = zipfile.ZipFile(io.BytesIO(archive))
+    except zipfile.BadZipFile as exc:
+        raise SourceRunError("artifact-unreadable", "the artifact is not a zip archive") from exc
+    with bundle:
+        infos = bundle.infolist()
+        names = [info.filename for info in infos]
+        if len(set(names)) != len(names) or any(name not in ARTIFACT_MEMBERS for name in names):
+            raise SourceRunError("artifact-members", "the artifact holds a member outside the allowed set")
+        for info in infos:
+            if info.is_dir() or stat.S_IFMT(info.external_attr >> 16) not in (0, stat.S_IFREG):
+                raise SourceRunError("artifact-members", "the artifact holds a member that is not a regular file")
+        if sum(info.file_size for info in infos) > ARTIFACT_MAX_BYTES:
+            raise SourceRunError("artifact-members", "the artifact is larger than the limit")
+        destination.mkdir(parents=True)
+        for info in infos:
+            try:
+                with bundle.open(info) as member:
+                    data = member.read(info.file_size + 1)
+            except (zipfile.BadZipFile, OSError, RuntimeError) as exc:
+                raise SourceRunError("artifact-unreadable", "the artifact could not be read") from exc
+            if len(data) != info.file_size:
+                raise SourceRunError("artifact-members", "an artifact member does not match its declared size")
+            (destination / info.filename).write_bytes(data)
 
 
 def _git(directory: Path, *args: str) -> bytes:
@@ -543,13 +624,15 @@ def tree_differences(baseline_dir: Path, tree: dict[str, tuple[str, str]], gener
 def reproduce_problems(
     baseline_dir: Path,
     previous_dir: Path,
-    scratch_dir: Path,
+    workdir: Path,
     *,
     rev: str,
     repo: str,
     api: Api,
+    fetch: Fetch,
     collected_ids: set[str],
     ceiling_path: Path,
+    not_after: datetime,
 ) -> list[str]:
     tree = committed_tree(baseline_dir, rev)
     if "manifest.json" not in tree:
@@ -558,14 +641,32 @@ def reproduce_problems(
         manifest = json.loads(_git(baseline_dir, "cat-file", "blob", tree["manifest.json"][1]))
     except ValueError as exc:
         raise BaselineError("the committed baseline manifest is not valid JSON") from exc
-    if not isinstance(manifest, dict) or not isinstance(manifest.get("generated_at"), str):
-        raise BaselineError("the committed baseline manifest must carry a generated_at string")
-    entries = reproduce_entries(manifest)
-    problems = source_run_problems(entries, repo, api)
+    if not isinstance(manifest, dict):
+        raise BaselineError("the committed baseline manifest must be an object")
+    generated_at = _utc(manifest.get("generated_at"))
+    if generated_at is None:
+        return ["manifest: generated_at is not a UTC timestamp"]
+    if generated_at > not_after:
+        return ["manifest: generated_at is after the pull request event"]
+    resolved = workdir.resolve()
+    if resolved == Path.cwd().resolve() or Path.cwd().resolve() in resolved.parents:
+        raise BaselineError("the working directory must lie outside the current directory")
+    if workdir.exists() and any(workdir.iterdir()):
+        raise BaselineError("the working directory must be empty")
+    entries = reproduce_entries(manifest, workdir)
+    problems = source_run_problems(entries, repo, api, generated_at)
     if problems:
         return problems
-    if scratch_dir.exists() and any(scratch_dir.iterdir()):
-        raise BaselineError("the scratch directory must be empty")
+    for entry in entries:
+        try:
+            extract_artifact(fetch(f"repos/{repo}/actions/artifacts/{entry['artifact_id']}/zip"), Path(entry["dir"]))
+        except SourceRunError as exc:
+            problems.append(f"run {entry['run_id']}: {exc.code}")
+        except BaselineError:
+            problems.append(f"run {entry['run_id']}: artifact-download")
+    if problems:
+        return problems
+    scratch_dir = workdir / "reproduced"
     rebuilt, _rejected = build_baseline(entries, manifest["generated_at"])
     write_sharded_baseline(scratch_dir, rebuilt)
     write_summary(previous_dir, scratch_dir)
@@ -1253,15 +1354,20 @@ def summary_command(args: argparse.Namespace) -> int:
 def reproduce_command(args: argparse.Namespace) -> int:
     if not args.repo:
         raise BaselineError("--repo or GITHUB_REPOSITORY is required")
+    not_after = _utc(args.not_after) if args.not_after else datetime.now(timezone.utc)
+    if not_after is None:
+        raise BaselineError("--not-after must be a UTC timestamp ending in Z")
     problems = reproduce_problems(
         Path(args.baseline),
         Path(args.previous),
-        Path(args.scratch),
+        Path(args.workdir),
         rev=args.rev,
         repo=str(args.repo),
         api=github_api,
+        fetch=github_artifact_zip,
         collected_ids=read_collected_ids(Path(args.collected_ids)),
         ceiling_path=Path(args.ceiling),
+        not_after=not_after,
     )
     if problems:
         print("error: the committed baseline is not reproduced from its source runs")
@@ -1319,7 +1425,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     reproduce_parser.add_argument("--baseline", required=True)
     reproduce_parser.add_argument("--previous", required=True)
-    reproduce_parser.add_argument("--scratch", required=True)
+    reproduce_parser.add_argument("--workdir", required=True)
+    reproduce_parser.add_argument("--not-after", default=None)
     reproduce_parser.add_argument("--collected-ids", required=True)
     reproduce_parser.add_argument("--ceiling", required=True)
     reproduce_parser.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY"))
