@@ -25947,7 +25947,7 @@
       "needs": [],
       "priority": "medium",
       "status": "open",
-      "title": "Find why DataFusion 53 returned no rows for TPC-H query 15"
+      "title": "Confirm the proven money-column cause covers the DataFusion 53 TPC-H Q15 results and reconcile the open bundle item"
     },
     "crr-o1-official-power-after-load": {
       "claim": null,
