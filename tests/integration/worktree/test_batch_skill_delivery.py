@@ -16,11 +16,11 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 DELIVERY_CATALOG_REV = "3b684e08b884f17f87e7855faa2364d1b67263ff"
-SOURCE_REV = "92557b47a934d9c912ebe15ca3d187508dd03ee4"
-TRACTABLE_VERSION = "1.3.0"
+SOURCE_REV = "90e78685d1f2a36223647c5cf2deabb10fde0efd"
+TRACTABLE_VERSION = "1.3.2"
 SCRIPTS_PROJECT = ROOT / "_project/scripts"
 WHEEL = SCRIPTS_PROJECT / f"vendor/tractable-{TRACTABLE_VERSION}-py3-none-any.whl"
-WHEEL_SHA256 = "8d7f6353e308b3a433074cdeacf0ecad362d17ef41450938238324fe43fdc0c6"
+WHEEL_SHA256 = "a4aa6feee0ae40de18fe0ca39fac221764687b924da53d8683d180b9dc35cb15"
 REQUIRED_BATCH_TOOLS = {"register_batch", "prepare", "bind_batch_pr", "abort_batch"}
 
 

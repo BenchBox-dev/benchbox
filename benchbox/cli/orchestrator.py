@@ -148,18 +148,22 @@ class BenchmarkOrchestrator:
         tuning_config: Optional[Any] = None,
         benchmark: Optional["BaseBenchmark"] = None,
     ) -> dict[str, Any]:
+        run_benchmark_name = benchmark_name
         if benchmark is not None:
             data_source = getattr(benchmark, "get_data_source_benchmark", lambda: None)()
             if data_source:
                 benchmark_name = data_source
 
-        return _core_get_platform_config(
+        platform_config = _core_get_platform_config(
             database_config,
             system_profile,
             benchmark_name=benchmark_name,
             scale_factor=scale_factor,
             tuning_config=tuning_config,
         )
+        if run_benchmark_name and run_benchmark_name != benchmark_name:
+            platform_config["run_benchmark_name"] = run_benchmark_name
+        return platform_config
 
     def _create_benchmark_instance(self, config: BenchmarkConfig, system_profile):
         return self._get_benchmark_instance(config, system_profile)
