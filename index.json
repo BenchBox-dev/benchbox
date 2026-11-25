@@ -26647,13 +26647,18 @@
       "title": "Make BaseFormatConverter and ParquetConverter stream batches instead of materializing full tables"
     },
     "datagen-p1-tpcgen-cli-adapter": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-26T07:00:24Z",
+        "generation": "c7387672632340f6ade6a46c8595c90d",
+        "renewals": 0,
+        "worker": "mcp:antigravity-client:joe@joe-mac-mini.local:09e72875364dbf224cdb1ab5"
+      },
       "needs": [
         "datagen-p1-provenance-and-backend-selector",
         "datagen-p1-streaming-parquet-converter"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Implement opt-in tpcgen-cli adapter for TPC-H and TPC-DS with required CI Gates A, B, and D"
     },
     "datagen-p2-rust-repo-gate": {
