@@ -1,15 +1,14 @@
 {
   "acceptance": [
-    "One regression fixture per defect (1)-(6) fails on the previous writer and passes on the new one.",
-    "All 11 ADR benchmarks convert at SF 0.01 (ClickBench included) with the new writer identity recorded in manifests.",
+    "One regression fixture per defect (1), (2), (4), (5) and (6) fails on the previous writer and passes on the new one.",
+    "All 11 ADR benchmarks convert at SF 0.01 with the new writer identity recorded in manifests.",
     "TPC-H and TPC-DS SF 1 Parquet values equal what DuckDB's .tbl loader reads from the same files (bidirectional EXCEPT ALL = 0).",
     "Parquet bytes are identical for 1-chunk and 10-chunk inputs of the same data.",
     "The writer budget gate (TPC-H SF 1/10 N=3 medians, <= 6 s / 512 MiB and <= 60 s / 1,024 MiB) is re-run on the bumped writer and recorded.",
     "Cached manifests with any previous writer identity, including partitioned output written before datagen-parquet-partitioned-row-groups, are stale on Parquet runs (unit test).",
-    "Owner decision on the NOT NULL empty-string policy recorded in context.",
     "PR merged to develop with a changelog.d fragment."
   ],
-  "context": "Owner chose (2026-11-25) to keep these out of the writer change so that change stays hash-neutral, and to land them as one versioned bump before the re-baseline.\n\n2026-11-25: with the single PyArrow writer (datagen-p1-deterministic-parquet-writer), ClickBench SF 0.01 Parquet conversion now fails on uncompressed input too ('Column Referer is declared non-nullable but contains nulls'); before, the DuckDB path wrote it as nullable. Defect (3) is therefore the only blocker for ClickBench Parquet runs and should be decided first.",
+  "context": "Owner chose (2026-11-25) to keep these out of the writer change so that change stays hash-neutral, and to land them as one versioned bump before the re-baseline.\n\n2026-11-25: with the single PyArrow writer (datagen-p1-deterministic-parquet-writer), ClickBench SF 0.01 Parquet conversion now fails on uncompressed input too ('Column Referer is declared non-nullable but contains nulls'); before, the DuckDB path wrote it as nullable. Defect (3) is therefore the only blocker for ClickBench Parquet runs and should be decided first.\n\n2026-11-25: defect (3) is resolved in the single-writer PR. Owner chose option D: the converter honours the manifest csv_null_marker as the loaders do (ClickBench __NULL__), TPC bytes unchanged, ClickBench EXCEPT ALL vs DuckDB read_csv = 0 both ways. Remaining scope: (1), (2), (4), (5), (6). Known adjacent loader gap: benchbox/core/dataframe/data_loader.py uses strings_can_be_null=False when a non-empty marker is set, so a '__NULL__' value in a nullable string column loads as the literal string; worth checking under defect review.",
   "description": "## Problem\nThe 2026-11-25 writer investigation found value-level defects in the PyArrow conversion path (all predate #4506):\n1. `escape_char=\"\\\\\"` drops backslashes (`back\\slash` -> `backslash`); the platform loaders use `escape='\"'`.\n2. Decimal precision overflow is written silently (`12345678901234.5` into DECIMAL(15,2)).\n3. ClickBench fails: empty strings in NOT NULL columns (`Referer`).\n4. Trailing-delimiter detection breaks on quoted delimiters (`\"q|p\"`).\n5. Manifest chunk order is lexical (1, 10, 2, ...), so row order differs from a parallel=1 run.\n6. Bytes depend on input chunk boundaries (dictionary fallback); `combine_chunks()` before each write made 10-chunk and single-file output identical at SF 0.01.\n\n## Change\nFix each in the PyArrow path; bump the Parquet writer identity (for example `benchbox-pyarrow-streaming-v2`) so data_generation_hash separates old and new layouts; add a regression fixture per defect.\n\n## Decision gates\n- For (3), propose the empty-string policy (NULL vs empty string vs relaxing NOT NULL for that column) with the ClickBench reference semantics, and get owner approval before implementing.\n- Stop if any fix changes values for TPC-H or TPC-DS output (they must stay EXCEPT ALL = 0 against the platform loaders' reading of the same files).\n\n## Guardrails\n- One writer-version bump for all fixes together, landed before datagen-p1-parquet-corpus-rebaseline runs.\n- No new dependency. AGENTS.md workflow, changelog fragment, merged PR.",
   "links": [
     "benchbox/utils/format_converters/base.py",
@@ -39,6 +38,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "60e1fdd46f1d4854843a5e0902c7b961",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-25T23:11:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "3dda1ef70bfd4d93a1f56d682adb67be",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
