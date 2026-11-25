@@ -3271,10 +3271,11 @@ class TestOverrideContract:
         assert "## Submission Validation: PASSED" in mirror
         assert "advisory only" in mirror
 
-    def test_exit_contract_community_vs_mirror(self, tmp_path):
-        bundle = tmp_path / "flat.json"
-        bundle.write_text(json.dumps(_timing_bundle(_flat_queries(base=4400.0), scale_factor=0.1)), encoding="utf-8")
+    def test_exit_contract_community_vs_mirror(self, tmp_path, capsys):
+        bundle = _write_plateau_bundle(tmp_path)
         assert main([str(bundle)]) == 1
+        captured = capsys.readouterr()
+        assert "requires overrides: timing-plateau" in captured.out + captured.err
         assert main([str(bundle), "--allow-partial-validation"]) == 0
 
     def test_rules_version_flag(self, capsys):
@@ -3302,9 +3303,11 @@ def _override_doc(*rules, **kw):
     return doc
 
 
-def _write_plateau_bundle(tmp_path, name="flat.json"):
+def _write_plateau_bundle(tmp_path, name="flat.json", scale_factor=1.0):
     bundle = tmp_path / name
-    bundle.write_text(json.dumps(_timing_bundle(_flat_queries(base=4400.0), scale_factor=0.1)), encoding="utf-8")
+    bundle.write_text(
+        json.dumps(_timing_bundle(_flat_queries(base=4400.0), scale_factor=scale_factor)), encoding="utf-8"
+    )
     return bundle
 
 
@@ -3370,7 +3373,7 @@ class TestOverrideSatisfaction:
     def test_valid_artifact_satisfies_finding(self, tmp_path):
         from benchbox.validation.bundle import unsatisfied_override_rules
 
-        bundle = _write_plateau_bundle(tmp_path)
+        bundle = _write_plateau_bundle(tmp_path, scale_factor=0.1)
         bundle.with_name("flat.override.json").write_text(
             json.dumps(_override_doc("timing-plateau", "small-scale-floor")), encoding="utf-8"
         )
@@ -3382,7 +3385,7 @@ class TestOverrideSatisfaction:
     def test_satisfaction_narrows_unsatisfied_map(self, tmp_path):
         from benchbox.validation.bundle import unsatisfied_override_rules
 
-        bundle = _write_plateau_bundle(tmp_path)
+        bundle = _write_plateau_bundle(tmp_path, scale_factor=0.1)
         bundle.with_name("flat.override.json").write_text(json.dumps(_override_doc("timing-plateau")), encoding="utf-8")
         (vr,) = validate_bundles([bundle], allow_partial_validation=True)
         assert vr.ok, vr.errors
@@ -3399,11 +3402,12 @@ class TestOverrideSatisfaction:
 
     def test_expired_artifact_satisfies_nothing(self, tmp_path):
         bundle = _write_plateau_bundle(tmp_path)
-        bundle.with_name("flat.override.json").write_text(
-            json.dumps(_override_doc(expires="2000-01-01")), encoding="utf-8"
-        )
+        artifact = bundle.with_name("flat.override.json")
+        artifact.write_text(json.dumps(_override_doc()), encoding="utf-8")
+        assert main([str(bundle)]) == 0
+        artifact.write_text(json.dumps(_override_doc(expires="2000-01-01")), encoding="utf-8")
         (vr,) = validate_bundles([bundle])
-        assert not vr.ok
+        assert vr.errors == ["override artifact flat.override.json: override artifact expired on 2000-01-01"]
         assert main([str(bundle)]) == 1
 
     def test_main_passes_with_valid_artifact(self, tmp_path, capsys):
@@ -3423,11 +3427,19 @@ class TestOverrideSatisfaction:
         artifact.write_text(json.dumps(_override_doc()), encoding="utf-8")
         assert not is_primary_bundle_file(artifact)
 
-    def test_override_companion_privacy_scanned(self, tmp_path):
+    def test_override_companion_privacy_scanned(self, tmp_path, capsys):
         bundle = _write_plateau_bundle(tmp_path)
-        doc = _override_doc(reason="see /Users/alice/private notes")
-        bundle.with_name("flat.override.json").write_text(json.dumps(doc), encoding="utf-8")
+        artifact = bundle.with_name("flat.override.json")
+        artifact.write_text(json.dumps(_override_doc()), encoding="utf-8")
+        assert main([str(bundle)]) == 0
+        artifact.write_text(json.dumps(_override_doc(reason="see /Users/alice/private notes")), encoding="utf-8")
+        capsys.readouterr()
         assert main([str(bundle)]) == 1
+        captured = capsys.readouterr()
+        assert (
+            "Public privacy contract rejects private absolute paths in flat.override.json at field(s): reason"
+            in captured.out + captured.err
+        )
 
 
 class TestTPCHavocVariantRowCountConsistency:
