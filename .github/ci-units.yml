@@ -64,6 +64,7 @@ results-data:
   - "scripts/corpus_compliance_snapshot.py"
   - "scripts/corpus_outcome_probe.py"
   - "scripts/generate_corpus_rule_data.py"
+  - "scripts/unpublished_rule_rankings.txt"
   - "_project/scripts/explorer_pipeline/**"
   - ".github/workflows/validate-submission.yml"
   - "benchbox/core/results/**"

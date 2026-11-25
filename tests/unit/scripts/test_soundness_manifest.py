@@ -104,6 +104,7 @@ pytestmark = [
         "benchbox/core/results/submit_classification.py",
         "scripts/check_mirror_validator_parity.py",
         "scripts/corpus_outcome_probe.py",
+        "scripts/unpublished_rule_rankings.txt",
         "_project/scripts/explorer_publish.py",
         "scripts/generate_corpus_inventory.py",
         "scripts/validate_submission.py",
