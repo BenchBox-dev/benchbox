@@ -45371,7 +45371,7 @@
       "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Live-check run-timeout cleanup beyond BigQuery, including a query in flight at the limit"
     },
     "run-timeout-cleanup-load-ddl-statements-20261125": {
