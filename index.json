@@ -25948,6 +25948,15 @@
       "status": "open",
       "title": "Check every measured TPC-H and TPC-DS row against an exact count, a recorded invariant, 'must return rows' or a LIMIT/one-row bound"
     },
+    "crr-v3-qualification-library": {
+      "claim": null,
+      "needs": [
+        "crr-v1-row-evidence-roll-up"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Build the TPC qualification test as a library: TPC-DS Appendix B and TPC-H qgen defaults compared with the TPC answer sets"
+    },
     "csv-html-tuning-exports-bypass-anonymization": {
       "claim": null,
       "needs": [],
