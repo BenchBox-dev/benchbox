@@ -43,7 +43,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MAX_RUNS_SCAN: "60"
           GITHUB_REPOSITORY: ${{ github.repository }}
-          API_CALL_BUDGET: "120"
+          API_CALL_BUDGET: "160"
         shell: bash
         run: |
           set -euo pipefail
