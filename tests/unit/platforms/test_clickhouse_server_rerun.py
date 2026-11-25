@@ -105,7 +105,7 @@ def tpch(tmp_path):
 
 
 def _adapter(tpch, **overrides) -> ClickHouseAdapter:
-    config = {"deployment_mode": "server", "database": DATABASE, "scale_factor": 0.01, **overrides}
+    config = {"_deployment_selector": "server", "database": DATABASE, "scale_factor": 0.01, **overrides}
     adapter = ClickHouseAdapter(**config)
     adapter.benchmark_instance = tpch
     adapter.scale_factor = 0.01
@@ -131,7 +131,7 @@ def test_notuning_rerun_recreates_the_database_with_force(server, tpch):
     server.seed()
     adapter = ClickHouseAdapter.from_config(
         {
-            "deployment_mode": "server",
+            "_deployment_selector": "server",
             "database": DATABASE,
             "benchmark": "tpch",
             "scale_factor": 0.01,

@@ -1117,7 +1117,7 @@ benchbox-fixture-key-material
             account="test_account",
             username="test_user",
             password="test_pass",
-            warehouse="TEST_WH",
+            compute_resource="TEST_WH",
             database="TEST_DB",
             modify_warehouse_settings=True,
             strict_validation=False,

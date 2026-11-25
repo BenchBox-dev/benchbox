@@ -161,7 +161,7 @@ class TestBuildCtasSortSql:
 
 
 def _platform_info_for(cursor_description, row):
-    adapter = _make_adapter(warehouse="MY_WH")
+    adapter = _make_adapter(compute_resource="MY_WH")
     mock_conn = Mock()
     mock_cursor = Mock()
     mock_conn.cursor.return_value = mock_cursor
