@@ -92,7 +92,7 @@ jobs:
             marker: live_trino
     env:
       CLICKHOUSE_MEMORY_LIMIT: 4g
-      CLICKHOUSE_IMAGE: ghcr.io/benchbox-dev/clickhouse:25.8@sha256:0152dd511befe6a2c2ef53e930726179669b08116da78500b37c51c96ff5ee77
+      CLICKHOUSE_IMAGE: ghcr.io/benchbox-dev/clickhouse:26.8@sha256:e49863ded96abdc0545bcd0320c1b99c979c18f27915eb6519a5546760d24cb9
       TRINO_IMAGE: ghcr.io/benchbox-dev/trino:480@sha256:1565e8cac299a32dd9177a4da2d748da4ceb9f1560a9c409d1d18fd72ea5253e
       POSTGRES_IMAGE: ghcr.io/benchbox-dev/postgres:18@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336
     steps:
