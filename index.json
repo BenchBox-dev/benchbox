@@ -49407,6 +49407,13 @@
       "status": "done",
       "title": "Stop overriding Spark defaults in notuning runs; record harness settings"
     },
+    "spark-cache-clearing-timing-test-flake": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Fix the timing-sensitive Spark cache-clearing test that fails trunk"
+    },
     "spark-ddl-generator-delta-default-mismatch": {
       "claim": null,
       "needs": [],
