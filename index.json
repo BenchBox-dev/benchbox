@@ -49618,12 +49618,17 @@
       "title": "Extend SQLGlot repro harness to cover wrapper call shapes (cross-dialect probes)"
     },
     "sqlglot-rewrites-into-fork": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-27T04:34:35Z",
+        "generation": "4310840c5af64fae9eb4265aaae0077f",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:38bfd61e73967b4e5aca7d45"
+      },
       "needs": [
         "sqlglot-adopt-30-35-0-2"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Move BenchBox's local and core SQL rewrites into the SQLGlot fork"
     },
     "sqlglot-rewrites-into-fork-deferral-1": {
