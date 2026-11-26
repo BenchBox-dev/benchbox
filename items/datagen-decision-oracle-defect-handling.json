@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Each decision is recorded in this item's context and in the library README.",
+    "The corpus manifest lists every excluded case with evidence of nondeterminism (at least 3 differing oracle runs) or non-termination.",
+    "A search of BenchBox shows no code path that passes seed 0 or no seed to TPC-H query generation, or such paths are fixed."
+  ],
+  "description": "## Problem\nThe conformance corpus (PR #4553) recorded C-tool defects: `qgen -r 0` never terminates for Q7 and Q12; 13 TPC-DS single-template cases give different output from dsqgen across runs. The qgen port refuses the two seed-0 cases with an error after 100,000 identical draws and refuses a missing seed (qgen's time-based seed is not reproducible). The dsqgen port has no rule yet for the 13 cases, and BenchBox carries a Windows retry workaround for a dsqgen distribution overrun (tracker item windows-dsqgen-streams-distribution-runtime-v2).\n\n## Change\nDecide and record: (1) seed 0 for Q7/Q12: refuse (current) or define a deterministic result; (2) the 13 nondeterministic dsqgen cases: exclude from the gate with a listed reason and define the library's deterministic behaviour, after finding the cause (likely uninitialised memory); (3) whether BenchBox ever passes seed 0 or relies on an implicit seed.\n\n## Decision gates\n- Owner confirms (1) and (2) because they define behaviour with no oracle.\n- The exclusion list may only contain cases proven nondeterministic by repeated oracle runs recorded in the corpus manifest; no case is excluded for convenience.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T23:46:54Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "3eba8056e81d4161971c4128b4894417",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}

@@ -27647,6 +27647,15 @@
       "status": "done",
       "title": "benchbox convert --format ducklake is offered but the orchestrator rejects it"
     },
+    "datagen-decision-oracle-defect-handling": {
+      "claim": null,
+      "needs": [
+        "tpc-query-conformance-corpus"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Decide how Rust query generation treats cases where the C oracle hangs or is nondeterministic"
+    },
     "datagen-decision-ssb-and-synthetic-acceptance": {
       "claim": null,
       "needs": [],
