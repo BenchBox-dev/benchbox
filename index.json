@@ -50041,7 +50041,7 @@
       "needs": [],
       "priority": "low",
       "status": "open",
-      "title": "Move the remaining local SQL translator logic into the SQLGlot fork"
+      "title": "Move the remaining local SQL translator logic (runtime generator patches, post-passes, QuestDB rewriter, cleanup regexes) into the SQLGlot fork"
     },
     "sqlglot-soft-fork-adoption": {
       "claim": null,
