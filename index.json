@@ -27251,15 +27251,10 @@
       "title": "DataFusion stores TPC-H money columns as DOUBLE, so Q15 intermittently returns 0 rows"
     },
     "datagen-adr-query-generation-rust": {
-      "claim": {
-        "expires_at": "2026-11-27T14:57:20Z",
-        "generation": "9e282bbe60a942cca4f7298e0ccc51ed",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Record Rust query generation and complete removal of the TPC C toolchain in the datagen ADR"
     },
     "datagen-adr-rust-library-revision": {
