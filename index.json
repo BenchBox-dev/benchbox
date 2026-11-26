@@ -27255,6 +27255,15 @@
       "status": "open",
       "title": "Create the benchbox-datagen repository with its Cargo workspace, CI and abi3 wheel builds"
     },
+    "datagen-lib-tpch": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-repo-skeleton"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Generate TPC-H in benchbox-datagen on the upstream tpchgen crates, delimited and Parquet"
+    },
     "datagen-p0-baseline-measurements": {
       "claim": null,
       "needs": [],
