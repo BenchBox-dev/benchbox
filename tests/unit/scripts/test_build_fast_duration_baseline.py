@@ -357,11 +357,8 @@ def test_medium_refresh_rejects_a_run_without_junit(tmp_path: Path, capsys: pyte
     assert not output.exists()
 
 
-def test_build_command_round_trips_through_subprocess(tmp_path: Path) -> None:
-    manifest, _runs = build_fixture(tmp_path)
-    output = tmp_path / "baseline"
-
-    completed = subprocess.run(
+def _build_subprocess(manifest: Path, output: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
         [
             sys.executable,
             "-m",
@@ -380,10 +377,29 @@ def test_build_command_round_trips_through_subprocess(tmp_path: Path) -> None:
         check=False,
     )
 
+
+def test_build_command_round_trips_through_subprocess(tmp_path: Path) -> None:
+    runs = [write_run(tmp_path, f"run-{index}") for index in range(baseline.MIN_SOURCE_RUNS)]
+    output = tmp_path / "baseline"
+
+    completed = _build_subprocess(write_manifest(tmp_path, runs), output)
+
     assert completed.returncode == 0, completed.stderr
     payload = baseline.read_sharded_baseline(output)
     assert payload["schema"] == 1
     assert len(payload["tests"]) == 2
+
+
+def test_build_command_refuses_fewer_than_the_minimum_usable_runs(tmp_path: Path) -> None:
+    runs = [write_run(tmp_path, f"run-{index}") for index in range(baseline.MIN_SOURCE_RUNS - 1)]
+    runs.append(write_run(tmp_path, "run-unusable", calibration=False))
+    output = tmp_path / "baseline"
+
+    completed = _build_subprocess(write_manifest(tmp_path, runs), output)
+
+    assert completed.returncode == 1
+    assert f"only {baseline.MIN_SOURCE_RUNS - 1} source runs are usable" in completed.stderr
+    assert not output.exists()
 
 
 def test_sharded_baseline_round_trips_and_shards_by_stable_hash(tmp_path: Path) -> None:
@@ -1088,6 +1104,19 @@ def test_reproduce_reports_a_failed_download_and_a_hostile_archive(reproduce: Re
     assert reproduce.problems(fetch=broken)[0] == "run 100: artifact-download"
     reproduce.archives[200] = zip_bytes({"junit.xml": b"<x/>", "extra.txt": b"x"})
     assert reproduce.problems() == ["run 100: artifact-members"]
+
+
+def test_reproduce_counts_only_usable_runs_toward_the_minimum(reproduce: ReproduceFixture) -> None:
+    unusable = write_run(reproduce.tmp_path, "source/unusable", calibration=False)
+    reproduce.archives[200] = zip_bytes({path.name: path.read_bytes() for path in unusable.iterdir()})
+    entries = [{**reproduce.entries[0], "dir": str(unusable)}, *reproduce.entries[1:]]
+    built, rejected = baseline.build_baseline(entries, GENERATED_AT)
+    assert len(rejected) == 1
+    baseline.write_sharded_baseline(reproduce.directory, built)
+    baseline.write_summary(reproduce.previous, reproduce.directory)
+    reproduce.commit()
+
+    assert f"source runs: fewer than {baseline.MIN_SOURCE_RUNS} usable" in reproduce.problems()
 
 
 def test_reproduce_requires_a_fresh_working_directory_outside_the_checkout(reproduce: ReproduceFixture) -> None:

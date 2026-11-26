@@ -684,6 +684,8 @@ def reproduce_problems(
         if path.is_file()
     }
     problems = tree_differences(baseline_dir, tree, generated)
+    if len(rebuilt["runs"]) < MIN_SOURCE_RUNS:
+        problems.append(f"source runs: fewer than {MIN_SOURCE_RUNS} usable")
     report = check_baseline(rebuilt, entries, collected_ids)
     if not report["sum_within_tolerance"]:
         problems.append("gate check: the baseline sum is outside tolerance of the source runs")
@@ -1344,6 +1346,8 @@ def ceiling_check_command(args: argparse.Namespace) -> int:
 def build_command(args: argparse.Namespace) -> int:
     generated_at = args.generated_at or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     baseline, _rejected = build_baseline(load_manifest(Path(args.manifest)), generated_at)
+    if len(baseline["runs"]) < MIN_SOURCE_RUNS:
+        raise BaselineError(f"only {len(baseline['runs'])} source runs are usable; a baseline needs {MIN_SOURCE_RUNS}")
     written = write_sharded_baseline(Path(args.output), baseline)
     print(f"baseline: {len(baseline['tests'])} tests from {len(baseline['runs'])} runs")
     print(f"rejected runs: {len(baseline['rejected_runs'])}")

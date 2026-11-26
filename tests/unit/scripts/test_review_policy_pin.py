@@ -208,3 +208,16 @@ def test_every_derived_path_is_attested_by_a_tooling_job_that_must_always_succee
         for job_id in attesting:
             assert job_id in tooling["needs"], job_id
             assert f"--always {job_id} " in aggregate["run"], job_id
+
+
+def test_the_code_that_attests_derived_paths_is_a_gate_path() -> None:
+    if not POLICY["evidence"].get("derived_paths", []):
+        pytest.skip("this policy declares no derived paths")
+    gate_paths = POLICY["classifier"]["gate_paths"]
+
+    for path in (
+        "scripts/build_fast_duration_baseline.py",
+        "scripts/ci_unit_result.py",
+        "tests/unit/workflows/test_ci_reproduce_fast_baseline.py",
+    ):
+        assert path in gate_paths

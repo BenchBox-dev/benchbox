@@ -176,6 +176,9 @@ classifier:
     - tests/fixtures/review_candidates/provenance.json
     - tests/unit/scripts/test_review_policy_pin.py
     - _project/scripts/soundness_manifest.py
+    - scripts/build_fast_duration_baseline.py
+    - scripts/ci_unit_result.py
+    - tests/unit/workflows/test_ci_reproduce_fast_baseline.py
   logic_paths:
     - benchbox/core/equivalence/*
     - benchbox/core/expected_results/*
