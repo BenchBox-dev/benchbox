@@ -27469,15 +27469,14 @@
     "datagen-p2-ssb-versioned-migration": {
       "claim": null,
       "needs": [
-        "datagen-p0-companion-adr",
-        "datagen-p1-provenance-and-backend-selector",
+        "datagen-lib-benchbox-integration",
         "crr-c2-row-count-references-tpc-and-ssb",
         "pvm-p1-run-ssb-clickbench",
         "pvm-p2-publish-ssb-clickbench"
       ],
       "priority": "medium",
-      "status": "blocked",
-      "title": "Migrate SSB generator with per-benchmark versioned RNG and regenerated reference row counts"
+      "status": "open",
+      "title": "Generate SSB in benchbox-datagen with a versioned deterministic RNG and migrate SSB_EXPECTED_ROW_COUNTS"
     },
     "datagen-p2-vectorize-synthetic-generators": {
       "claim": null,
