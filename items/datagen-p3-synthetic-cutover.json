@@ -1,12 +1,10 @@
 {
   "acceptance": [
-    "bundle-data-generation-hash-missing-from-corpus, datagen-p2-vectorize-synthetic-generators, and datagen-p2-rust-repo-gate are done, and every migrated Tier 3 benchmark exports a distinct post-cutover data_generation_hash.",
-    "Each validated Tier 3 synthetic benchmark has its default flipped in benchbox/utils/datagen_backend.py with Gate A, Gate C (owner-approved acceptance report + frozen golden hashes), and Gate D passing on all supported platforms.",
-    "--datagen-backend legacy remains functional and tested for every migrated benchmark, and a changelog.d/ fragment documents the cutover.",
-    "For any benchmark backed by the optional Rust package (if created in datagen-p2-rust-repo-gate), missing-extra behavior matches docs/internal/adr/adr-benchbox-datagen.md."
+    "Each of h2odb, tsbs_devops, clickbench (synthetic), vector_search, coffeeshop, tpch_skew, amplab and joinorder_synthetic defaults to native on platforms with a wheel, with legacy selectable for at least one minor release.",
+    "Golden hashes and the performance gate pass for each at its cutover."
   ],
   "context": "Phase 3 Tier 3 synthetic cutover. Independent of SSB's external pvm-p2/crr-c2 dependencies so validated Tier 3 benchmarks can cut over without waiting on SSB publication.\n\nParked 2026-11-25 by owner decision: the datagen target is now a BenchBox-owned Rust library (see datagen-adr-rust-library-revision). This item waits for the revised ADR, which decides whether it is rebuilt around the library or dropped.",
-  "description": "## Problem\nOnce Phase 2 validates each over-budget Tier 3 synthetic benchmark (via vectorized Python or, if budget-missed and approved, BenchBox-dev/benchbox-datagen) and bundle-data-generation-hash-missing-from-corpus ensures published results carry data_generation_hash, each validated benchmark can cut over independently.\n\n## Change\n- Verify bundle-data-generation-hash-missing-from-corpus, datagen-p2-vectorize-synthetic-generators, and datagen-p2-rust-repo-gate are done.\n- For each validated Tier 3 synthetic benchmark (h2odb, tsbs_devops, vector_search, coffeeshop, amplab, clickbench synthetic, joinorder_synthetic, tpch_skew — limited to those actually migrated in Phase 2), flip its entry in benchbox/utils/datagen_backend.py's default table once Gate A, Gate C, and Gate D pass on every supported platform.\n- Retain --datagen-backend legacy for at least one minor release and add a changelog.d/ fragment ([CHANGELOG-001]).\n\n## Decision gates\n- Hard blocked on bundle-data-generation-hash-missing-from-corpus closing and Gate C owner acceptance per benchmark.\n- Stop and report if pre-cutover and post-cutover datasets collide in shared datagen/ folders or produce identical data_generation_hash values.\n\n## Guardrails\n- Never invalidate unrelated benchmarks via global DATA_GENERATION_VERSION; use per-benchmark versions only.\n- Never make any optional native Rust generator a required dependency of core benchbox.\n- Never remove --datagen-backend legacy in this item.\n- Follow AGENTS.md ([CHANGELOG-001], [RUN-DATA-001], [COMMENT-POLICY-001], linked worktree, make pr-preflight, merged PR).",
+  "description": "Per-benchmark cutovers for the eight synthetic generators (docs/internal/adr/adr-benchbox-datagen.md (revised 2026-11-26, PR #4540), decision 4). Each benchmark flips in its own PR once its library item has passed acceptance; this item closes when all eight have flipped.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
   "links": [
     "benchbox/utils/datagen_backend.py",
     "benchbox/utils/datagen_version.py",
@@ -27,6 +25,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "0fba42eabf4c4848a435c3331898ddb8",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T13:58:49Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "f46f8951e7ec4fa5b8404ba77375adec",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]

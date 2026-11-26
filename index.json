@@ -27513,13 +27513,20 @@
     "datagen-p3-synthetic-cutover": {
       "claim": null,
       "needs": [
-        "datagen-p2-vectorize-synthetic-generators",
-        "datagen-p2-rust-repo-gate",
+        "datagen-lib-synthetic-h2odb",
+        "datagen-lib-synthetic-tsbs-devops",
+        "datagen-lib-synthetic-clickbench",
+        "datagen-lib-synthetic-vector-search",
+        "datagen-lib-synthetic-coffeeshop",
+        "datagen-lib-synthetic-tpch-skew",
+        "datagen-lib-synthetic-amplab",
+        "datagen-lib-synthetic-joinorder-synthetic",
+        "datagen-p3-tpc-default-cutover",
         "bundle-data-generation-hash-missing-from-corpus"
       ],
       "priority": "medium",
-      "status": "blocked",
-      "title": "Cut over validated Tier 3 synthetic generator defaults while preserving legacy reproducibility"
+      "status": "open",
+      "title": "Switch each synthetic benchmark's default backend to benchbox-datagen after it passes its gates"
     },
     "datagen-p3-tpc-default-cutover": {
       "claim": null,
