@@ -139,6 +139,28 @@ No special Windows-specific licensing considerations. The same EULA governs all
 platforms. The cross-compilation toolchain constraint (no MinGW on the current host)
 is an engineering constraint, not a legal one.
 
+## The `benchbox-datagen` library (owner position, 2026-11-27)
+
+`BenchBox-dev/benchbox-datagen` is MIT licensed and replaces the bundled TPC
+tools. This section records the working position the owner adopted; it is not
+legal advice, and whether a compatible reimplementation of TPC tool logic is a
+derivative work under clauses 4.a and 8 has not been reviewed by counsel.
+
+- The library ships no TPC query templates and no `tpcds.idx` or `dists.dss`
+  text. BenchBox keeps them under the carve-out above and passes them to the
+  library at call time.
+- The library links the upstream Apache-2.0 `tpcdsgen` crate, which embeds
+  TPC-derived distribution data carrying the TPC Legal Notice. Every library
+  wheel and sdist ships that notice together with the licences and NOTICE
+  files of all linked crates (`THIRD_PARTY_LICENSES`).
+- Library code written from the behaviour of `qgen`, `dsqgen` and `dsdgen`
+  (query parameter generation, TPC-DS refresh sets, tables derived from the
+  `dsdgen` column list) is distributed under MIT with the TPC Legal Notice
+  shipped alongside. Each such file is listed in the library README with its
+  source.
+- If counsel later restricts any of this, publication of the affected wheels
+  stops until the library is changed.
+
 ## References
 
 - TPC End User License Agreement v2.2: `_sources/tpc-ds/EULA.txt`
