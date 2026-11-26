@@ -27829,7 +27829,9 @@
       "claim": null,
       "needs": [
         "tpc-query-conformance-corpus",
-        "datagen-lib-tpcds-fractional-and-refresh"
+        "datagen-lib-tpcds-fractional-and-refresh",
+        "datagen-lib-tpcds-rowcount-inputs",
+        "datagen-decision-oracle-defect-handling"
       ],
       "priority": "high",
       "status": "open",
