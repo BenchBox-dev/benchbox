@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "A PR separate from sub-scale work contains the refresh code; CI is green and the review gate passes.",
+    "All 23 files per set are SHA-256 identical to bundled dsdgen at SF 0.01, 1, 10 and 100 (set 1) and SF 1 sets 2, 3 and 7, each run under make heavy-run with artifacts kept until merge.",
+    "`write_refresh('tpcds', ...)` is covered by Rust and Python tests with committed hashes; TPC-H `write_refresh` stays byte-identical to dbgen -U.",
+    "The upstream proposal link and the known oracle limitations are in the README."
+  ],
+  "description": "## Problem\nTPC-DS refresh sets (`dsdgen -update`) exist as own generators in `crates/benchbox-datagen-core/src/tpcds_update/` on draft PR #5, mixed with sub-scale work. Parity is proven at SF 1 (sets 1, 2, 3, 7), SF 0.01-0.5, SF 10 (set 1) and about 24 seeds, but SF 100 parity was never run under the heavy-work lock (a helper ran it without the lock and left no artifact). The code copies a dsdgen out-of-range calendar read (treated as 0), and dsdgen aborts at non-grid scales (SF 2, 3, 5), so those cannot be an oracle for the delete files. BenchBox uses refresh data in the TPC-DS maintenance test and QphDS.\n\n## Change\nIf datagen-decision-upstream-gap-policy keeps own refresh code: move `tpcds_update/`, its tests and tools into their own PR; run SF 100 parity (all 23 files, set 1) under make heavy-run and commit the result hashes; document the calendar edge case and non-grid limitation in the README; open an upstream proposal for refresh-set generators and link it. If the decision is otherwise, remove the code and record the chosen path.\n\n## Decision gates\n- Blocked until datagen-decision-upstream-gap-policy is decided.\n- If SF 100 parity fails, stop and report the differing file and first differing row; do not adjust the oracle.\n- If upstream accepts refresh generators, plan deletion of ours in datagen-upstream-contributions-followup.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T23:46:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2f4a480cc77c4f96b862e3e555d15afe",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}

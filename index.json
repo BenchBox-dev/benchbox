@@ -27798,6 +27798,17 @@
       "status": "open",
       "title": "Implement TPC-DS fractional scales and the TPC-H and TPC-DS refresh sets byte-identically in benchbox-datagen"
     },
+    "datagen-lib-tpcds-refresh-sets": {
+      "claim": null,
+      "needs": [
+        "datagen-decision-upstream-gap-policy",
+        "datagen-lib-tpcds",
+        "datagen-lib-review-gate-and-publishing-setup"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Deliver TPC-DS refresh sets in benchbox-datagen as a separate, reviewed change with full-scale parity"
+    },
     "datagen-lib-tpch": {
       "claim": null,
       "needs": [
