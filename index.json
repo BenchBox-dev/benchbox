@@ -4113,7 +4113,7 @@
         }
       },
       "integration_branch": "feat/corpus-rule-r4",
-      "integration_head": "92a21d582f175b9383d54321a5d1c86edaf0fe0e",
+      "integration_head": "aa7bccbf4c3a4ce603f98e2d80f03138e055890f",
       "integration_log": [
         {
           "at": "2026-11-22T23:06:06Z",
@@ -4999,6 +4999,22 @@
           "op_id": "cc84e5ed413a4817bae0f07a947622c4",
           "previous_head": "186d9a5cdaf89316c9532aaf8fc708f72faeab5a",
           "seq": 19
+        },
+        {
+          "at": "2026-11-26T19:33:54Z",
+          "changed_files": [
+            "benchbox/core/results/corpus_rule_data.json"
+          ],
+          "head": "aa7bccbf4c3a4ce603f98e2d80f03138e055890f",
+          "kind": "fix",
+          "op_id": "fb895bbf1eb14a88b4030e29bde0c6d1",
+          "previous_head": "92a21d582f175b9383d54321a5d1c86edaf0fe0e",
+          "requires_acceptance": [
+            "crr-a5-published-results-mirror",
+            "crr-c1-validation-status-vocabulary",
+            "crr-d1-observed-engine-contract-and-dataframe"
+          ],
+          "seq": 20
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r4",
