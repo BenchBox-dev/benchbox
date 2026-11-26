@@ -279,8 +279,8 @@ an Audit attribute that has rows for a later batch.
 
 | Scale | Evaluable audit rows OK | Excluded whole-run tests | Answer-key correction | Historical load | Unaccepted differences, 20 Batch 1 tables |
 |---|---|---|---|---|---|
-| 3 | 135 of 135 | 13 | C_TIER_INV 251 → 252 | 6.65 s | 0 |
-| 5 | 135 of 135 | 13 | C_TIER_INV 380 → 381 | 10.42 s | 0 |
+| 3 | 135 of 135 | 13 | C_TIER_INV 251 → 252 | 4.79 s | 0 |
+| 5 | 135 of 135 | 13 | C_TIER_INV 380 → 381 | 7.41 s | 0 |
 
 The excluded tests are DImessages Phase complete records, DImessages batches,
 the eight `<table> batches` tests (DimAccount, DimCustomer, DimTrade,

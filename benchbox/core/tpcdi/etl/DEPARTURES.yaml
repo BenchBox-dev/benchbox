@@ -12,7 +12,7 @@ departures:
       - benchbox/core/tpcdi/etl/historical/dim_security.sql
       - benchbox/core/tpcdi/etl/historical/financial.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: staging-files-read-as-generated
     kind: changed
@@ -23,7 +23,7 @@ departures:
       - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
       - benchbox/core/tpcdi/etl/ingest/finwire.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: only-the-first-batch-is-read
     kind: changed
@@ -36,7 +36,7 @@ departures:
       - benchbox/core/tpcdi/etl/ingest/daily_market.sql
       - benchbox/core/tpcdi/etl/ingest/cash_transaction.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: xml-parsed-in-the-timed-load
     kind: kept
@@ -46,7 +46,7 @@ departures:
     files:
       - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: customer-status-from-lookup
     kind: changed
@@ -56,7 +56,7 @@ departures:
     files:
       - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: finwire-record-type-is-not-split-at-ingest
     kind: changed
@@ -68,7 +68,7 @@ departures:
       - benchbox/core/tpcdi/etl/historical/dim_security.sql
       - benchbox/core/tpcdi/etl/historical/financial.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: transaction-files-land-in-raw-tables
     kind: changed
@@ -84,7 +84,7 @@ departures:
       - benchbox/core/tpcdi/etl/ingest/cash_transaction.sql
       - benchbox/core/tpcdi/etl/ingest/daily_market.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: dimbroker-keys-kept
     kind: kept
@@ -94,7 +94,7 @@ departures:
     files:
       - benchbox/core/tpcdi/etl/ingest/dim_broker.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: databricks-tuning-left-out
     kind: left_out
@@ -105,7 +105,7 @@ departures:
       - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
       - benchbox/core/tpcdi/etl/ingest/finwire.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: yield-multiplied-by-100
     kind: changed
@@ -115,7 +115,7 @@ departures:
     files:
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: fifty-two-week-date-range
     kind: changed
@@ -125,7 +125,7 @@ departures:
     files:
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: fifty-two-week-earliest-date-on-ties
     kind: changed
@@ -135,7 +135,7 @@ departures:
     files:
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: dimtrade-batchid-fixed-at-creation
     kind: changed
@@ -144,7 +144,7 @@ departures:
     benchbox_behaviour: "DimTrade.BatchID keeps the batch that created the row."
     files: []
     status: pending
-    approval: pending
+    approval: approved
 
   - id: prospect-status-messages
     kind: changed
@@ -154,7 +154,7 @@ departures:
     files:
       - benchbox/core/tpcdi/etl/historical/prospect.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: prospect-incremental-status-messages
     kind: changed
@@ -163,7 +163,7 @@ departures:
     benchbox_behaviour: "The incremental Prospect transformation writes its source, inserted and updated row counts to DImessages with the BatchID of its phase."
     files: []
     status: pending
-    approval: pending
+    approval: approved
 
   - id: answer-key-corrected-at-audit-load
     kind: changed
@@ -173,7 +173,7 @@ departures:
     files:
       - benchbox/core/tpcdi/audit.py
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: alerts-written-inside-transformations
     kind: changed
@@ -184,7 +184,7 @@ departures:
       - benchbox/core/tpcdi/etl/historical/dim_company.sql
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: one-alert-per-source-record
     kind: changed
@@ -195,7 +195,7 @@ departures:
       - benchbox/core/tpcdi/etl/historical/dim_company.sql
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: date-of-birth-range-by-date
     kind: changed
@@ -205,7 +205,7 @@ departures:
     files:
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: status-names-from-lookup
     kind: changed
@@ -218,7 +218,7 @@ departures:
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
       - benchbox/core/tpcdi/etl/historical/dim_account.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: date-and-key-surrogate-keys
     kind: kept
@@ -230,7 +230,7 @@ departures:
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
       - benchbox/core/tpcdi/etl/historical/dim_account.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: deterministic-security-keys
     kind: changed
@@ -240,7 +240,7 @@ departures:
     files:
       - benchbox/core/tpcdi/etl/historical/dim_security.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: daily-grain-history
     kind: kept
@@ -253,7 +253,7 @@ departures:
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
       - benchbox/core/tpcdi/etl/historical/dim_account.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: dependent-records-split-at-parent-changes
     kind: kept
@@ -264,7 +264,7 @@ departures:
       - benchbox/core/tpcdi/etl/historical/dim_security.sql
       - benchbox/core/tpcdi/etl/historical/dim_account.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: customer-tax-rates-left-joined
     kind: changed
@@ -274,7 +274,7 @@ departures:
     files:
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: phone-country-code-needs-area-code
     kind: changed
@@ -284,7 +284,7 @@ departures:
     files:
       - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: prospect-demographics-matched-by-name-and-address
     kind: kept
@@ -296,7 +296,7 @@ departures:
       - benchbox/core/tpcdi/etl/historical/dim_customer.sql
       - benchbox/core/tpcdi/etl/historical/prospect.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: price-earnings-prior-four-calendar-quarters
     kind: changed
@@ -306,7 +306,7 @@ departures:
     files:
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: trade-status-and-type-from-lookup
     kind: changed
@@ -316,7 +316,7 @@ departures:
     files:
       - benchbox/core/tpcdi/etl/historical/dim_trade.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: fact-alerts-written-inside-transformations
     kind: changed
@@ -327,7 +327,7 @@ departures:
       - benchbox/core/tpcdi/etl/historical/dim_trade.sql
       - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: fact-lookups-at-trade-creation
     kind: kept
@@ -340,7 +340,7 @@ departures:
       - benchbox/core/tpcdi/etl/historical/fact_holdings.sql
       - benchbox/core/tpcdi/etl/historical/fact_watches.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: watch-placed-on-activation
     kind: changed
@@ -350,7 +350,7 @@ departures:
     files:
       - benchbox/core/tpcdi/etl/historical/fact_watches.sql
     status: implemented
-    approval: pending
+    approval: approved
 
   - id: time-value-typed-time
     kind: changed
@@ -360,4 +360,4 @@ departures:
     files:
       - benchbox/core/tpcdi/etl/ingest/dim_time.sql
     status: implemented
-    approval: pending
+    approval: approved

@@ -31,6 +31,7 @@ OWNER_XML_REFUSAL = (
 
 DEPARTURE_KINDS = {"changed", "kept", "left_out"}
 DEPARTURE_STATUSES = {"implemented", "pending"}
+DEPARTURE_APPROVALS = {"pending", "approved"}
 DEPARTURE_FIELDS = {"id", "kind", "clause", "project_behaviour", "benchbox_behaviour", "files", "status", "approval"}
 
 
@@ -103,7 +104,7 @@ def test_departure_rows_follow_the_catalogue_shape():
         assert set(row) == DEPARTURE_FIELDS
         assert row["kind"] in DEPARTURE_KINDS
         assert row["status"] in DEPARTURE_STATUSES
-        assert row["approval"] == "pending"
+        assert row["approval"] in DEPARTURE_APPROVALS
         assert row["clause"].strip()
         assert row["project_behaviour"].strip()
         assert row["benchbox_behaviour"].strip()
