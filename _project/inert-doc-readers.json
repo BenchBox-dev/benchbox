@@ -236,6 +236,9 @@
     "tests/unit/scripts/test_agent_instruction_audit.py",
     "tests/unit/scripts/test_inert_paths.py"
   ],
+  "docs/agent/owner-decisions.md": [
+    "tests/unit/scripts/test_agent_instruction_audit.py"
+  ],
   "docs/agent/pr-review-evidence.md": [
     "tests/unit/scripts/test_agent_instruction_audit.py"
   ],

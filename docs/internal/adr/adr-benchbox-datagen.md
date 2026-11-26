@@ -439,7 +439,10 @@ every supported platform:
   a quiet host meeting the table above. Owned and run by the PR author on the
   maintainer host via `make heavy-run` (macOS arm64) and on the Linux CI/agent
   runner for PRs touching the streaming converter, the `benchbox-datagen` pin
-  or backend integration, with raw medians recorded in the PR body.
+  or backend integration, with raw medians recorded in the PR body. A miss
+  fails the gate and is reported to the owner with its measurements. It never
+  justifies changing output bytes, schema, row-group layout or the Parquet
+  writer to meet a budget.
 
 ## Consequences
 
