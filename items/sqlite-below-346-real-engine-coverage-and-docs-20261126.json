@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "Real SQLite below 3.46 run recorded: engine version, all 22 TPC-H outcomes, row comparison with DuckDB; no wrong or NULL rows.",
+    "SQLite version recorded for every CI job family.",
+    "User and maintainer docs state the SQLite 3.46 requirement for month, quarter and year offsets; merged."
+  ],
+  "context": "Filed 2026-11-26 from the sqlite-pass-engine-version-to-sqlglot close-out (its G1 measurement was partial).",
+  "description": "## Problem\nPR #4532 (merge 4bb8586f) generates SQLite SQL for the installed engine version. Below 3.46, month, quarter and year offsets from a DATE literal with day 28 or less run without 'floor'; every other such offset raises SqliteVersionUnsupportedError. This path is tested only with a stubbed version: tests pin 3.50.0 when the host is 3.46 or later, and every CI job read so far is 3.46 or later (ubuntu-latest 3.46.1; windows-latest and macos-latest 3.49.1). The medium-test shards, sql-execution-evidence, short-checks and nightly jobs were not read. No real engine older than 3.46 has executed the generated SQL, although users on system Pythons have one: Ubuntu 24.04 (Python 3.12, SQLite 3.45.1), Debian 12 (Python 3.11, SQLite 3.40.1) and macOS /usr/bin/python3. User documentation does not say that month, quarter and year offsets need SQLite 3.46, and scripts/check_sqlglot_repro_retirement.py now refuses to run below 3.46, so SQLGlot adoption tooling cannot run on such a host.\n\n## Change\n1. Run TPC-H (all 22 queries, SF0.01, strict translation) on a real SQLite older than 3.46, using Ubuntu 24.04's system Python in a local mocker container. Record each query's outcome (rows or SqliteVersionUnsupportedError) and compare returned rows with DuckDB on the same data.\n2. Read the sqlite3.sqlite_version pytest header for every CI job family not yet read and record it.\n3. Document in the SQLite platform page that month, quarter and year offsets need SQLite 3.46 or later, what fails below it, and how to get a newer SQLite (a uv-managed Python). Note in the SQLGlot maintainer docs that the retirement check needs SQLite 3.46.\n\n## Decision gates\n- G1: the owner chooses between this one-shot container check and a permanent CI job on an old-SQLite runner (extra CI cost). Recommended: one-shot; add a CI job only if G2 finds a defect.\n- G2: if any query returns rows that differ from DuckDB, or NULL where DuckDB returns a date, stop: that is a correctness defect in the fork guard. Fix it in the fork first, with the owner informed, before the docs change lands.\n\n## Verification rubric\nPass only if: the real-engine run records the SQLite version and every TPC-H query's outcome; every query that runs matches DuckDB rows; every offset that cannot be proven safe raises instead of returning rows; CI SQLite versions are recorded for every job family; the docs change is merged.\n\n## Guardrails\n- Local containers on mocker only, never in CI; heavy work only through make heavy-run with the host lock; delete created data afterwards.\n- No change to the guard's semantics (owner decision 2026-11-25: overflow-only guard in the fork) without the owner.\n- No new CI job without the owner's G1 decision.\n- Docs pages under development/ or operations/ need a docs/publish-allowlist.txt entry only if they are for users.\n- Write work: linked worktree, pinned human identity, no agent attribution, changelog fragment, make pr-preflight, make pr-open, make pr-arm.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4532",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/pull/155"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:38bfd61e73967b4e5aca7d45",
+      "at": "2026-11-26T14:13:32Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "67b53b77a5984a17a2943ccc1f4eb7e5",
+      "session_id": "1f0f3dea42f44058a5594bfcbaa33b2f"
+    }
+  ]
+}

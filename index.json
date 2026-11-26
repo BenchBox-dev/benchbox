@@ -50072,6 +50072,13 @@
       "status": "done",
       "title": "Audit sqlglot >=30.23.0 BigQuery FILTER transpilation change against cloud_compat and pin or adapt"
     },
+    "sqlite-below-346-real-engine-coverage-and-docs-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Prove the SQLite month-offset guard on a real SQLite older than 3.46 and tell users which version they need"
+    },
     "sqlite-clickbench-sf1-row-count-mismatches-20261025": {
       "claim": null,
       "needs": [],
