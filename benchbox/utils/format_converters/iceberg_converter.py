@@ -13,6 +13,7 @@ from benchbox.utils.format_converters.base import (
     ConversionOptions,
     ConversionResult,
     SchemaError,
+    normalize_schema_columns,
 )
 from benchbox.utils.iceberg_layout import local_iceberg_location
 
@@ -25,7 +26,7 @@ class IcebergConverter(BaseFormatConverter):
         return "Apache Iceberg"
 
     def _validate_partition_columns(self, partition_cols: list[str], schema: dict[str, Any]) -> None:
-        available_columns = {col["name"] for col in schema["columns"]}
+        available_columns = {col["name"] for col in normalize_schema_columns(schema)}
         for col in partition_cols:
             if col not in available_columns:
                 raise ConversionError(
@@ -201,12 +202,19 @@ class IcebergConverter(BaseFormatConverter):
 
         arrow_schema = self._build_arrow_schema_safely(schema)
 
+        source_rows = [0]
         combined_table = self.read_tbl_files(
-            source_files, schema, progress_callback, progress_start=0.0, progress_end=0.6
+            source_files,
+            schema,
+            progress_callback,
+            progress_start=0.0,
+            progress_end=0.6,
+            options=opts,
+            source_line_counter=source_rows,
         )
         combined_table = combined_table.cast(arrow_schema)
 
-        column_names = [col["name"] for col in schema["columns"]]
+        column_names = [col["name"] for col in normalize_schema_columns(schema)]
         output_dir = self._resolve_output_dir(opts, source_files)
         iceberg_table_path = output_dir / table_name
         iceberg_table_path.mkdir(parents=True, exist_ok=True)
@@ -241,7 +249,11 @@ class IcebergConverter(BaseFormatConverter):
 
         if opts.validate_row_count:
             try:
-                self.validate_row_count(source_files, row_count, table_name)
+                self._verify_inline_row_count(
+                    expected_rows=opts.expected_row_count if opts.expected_row_count is not None else source_rows[0],
+                    written_rows=row_count,
+                    table_name=table_name,
+                )
             except ConversionError:
                 if iceberg_table_path.exists():
                     shutil.rmtree(iceberg_table_path, ignore_errors=True)

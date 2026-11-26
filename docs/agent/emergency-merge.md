@@ -118,9 +118,11 @@ command are in `docs/internal/repo-admin-settings.md`.
 4. Restore the ruleset immediately after the merge attempt, whether it
    succeeded or failed. This step is unconditional and comes before any other
    action, including retrying the merge, starting other work, or recording
-   notes. If `review-gate` was removed, restore it bound to integration 5201041.
+   notes. Restore the removed context with the `integration_id` the capture
+   shows: 15368 for the six result contexts and `release-v2 probe`, 5201041 for
+   `review-gate`.
 5. Read the ruleset back and compare it with the capture using the command
-   under Follow-up, confirming `review-gate` is bound to integration 5201041 again.
+   under Follow-up, confirming every context is bound as the capture shows.
 6. Record the action in the decision record described above.
 
 ## Follow-up

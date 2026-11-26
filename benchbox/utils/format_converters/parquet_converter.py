@@ -28,6 +28,7 @@ _DUCKDB_MIN_ROW_GROUP_SIZE = 2048
 _DUCKDB_STREAM_MEMORY_LIMIT = "320MB"
 PARQUET_WRITER_DUCKDB = "benchbox-duckdb-streaming"
 PARQUET_WRITER_PYARROW = "benchbox-pyarrow-streaming"
+PARQUET_WRITER_PARTITIONED = "benchbox-pyarrow-partitioned"
 
 
 def _arrow_type_to_duckdb(arrow_type: pa.DataType) -> str | None:
@@ -133,21 +134,6 @@ class ParquetConverter(BaseFormatConverter):
             compression=compression,
             progress_callback=progress_callback,
         )
-
-    def _verify_inline_row_count(
-        self,
-        *,
-        expected_rows: int,
-        written_rows: int,
-        table_name: str,
-    ) -> None:
-        if expected_rows != written_rows:
-            raise ConversionError(
-                f"Row count mismatch for table '{table_name}': "
-                f"input={expected_rows:,} rows, output={written_rows:,} rows. "
-                f"Data loss detected during conversion! "
-                f"This violates TPC compliance and indicates a serious conversion error."
-            )
 
     def _try_write_single_file_duckdb(
         self,
@@ -487,6 +473,7 @@ class ParquetConverter(BaseFormatConverter):
                 partitioning=partitioning,
                 basename_template="part-{i}.parquet",
                 existing_data_behavior="overwrite_or_ignore",
+                min_rows_per_group=opts.row_group_size,
                 max_rows_per_group=opts.row_group_size,
                 file_options=ds.ParquetFileFormat().make_write_options(
                     compression=compression,
@@ -534,7 +521,7 @@ class ParquetConverter(BaseFormatConverter):
         metadata = {
             "compression": opts.compression,
             "num_columns": len(column_names),
-            "parquet_writer": PARQUET_WRITER_PYARROW,
+            "parquet_writer": PARQUET_WRITER_PARTITIONED,
             "partitioned": True,
             "partition_cols": opts.partition_cols,
             "partition_counts": partition_counts,

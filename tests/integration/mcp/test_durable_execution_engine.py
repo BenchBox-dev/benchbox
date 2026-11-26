@@ -29,6 +29,7 @@ def _payload(result: Any) -> dict[str, Any]:
     return json.loads(result.content[0].text)
 
 
+@pytest.mark.usefixtures("ample_available_memory")
 def test_start_benchmark_carries_the_requested_engine_into_the_bundle(tmp_path: Path) -> None:
     config = write_security_config(tmp_path, tokens={TOKEN: ("tenant-a", ("benchbox:read", "benchbox:execute"))})
     _allow_polars(config)

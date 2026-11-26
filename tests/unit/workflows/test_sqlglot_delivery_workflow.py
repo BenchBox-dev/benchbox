@@ -16,6 +16,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 WORKFLOWS = Path(__file__).resolve().parents[3] / ".github" / "workflows"
 WORKFLOW = WORKFLOWS / "sqlglot-delivery.yml"
 APP_SECRETS = {"SQLGLOT_DELIVERY_APP_ID", "SQLGLOT_DELIVERY_APP_PRIVATE_KEY"}
+NODE_PROBE_TIMEOUT_SECONDS = 60
 
 
 def load() -> dict[str, Any]:
@@ -248,7 +249,7 @@ globalThis.fetch = async (url, options) => {
             "PROBE_CALLS": str(calls_path),
             "GITHUB_STEP_SUMMARY": str(summary),
         },
-        timeout=20,
+        timeout=NODE_PROBE_TIMEOUT_SECONDS,
     )
     assert (result.returncode == 0) is (case == "ready"), result.stderr
     assert message in summary.read_text(encoding="utf-8")

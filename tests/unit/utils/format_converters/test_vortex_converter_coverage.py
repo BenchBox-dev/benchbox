@@ -244,3 +244,55 @@ def test_duckdb_write_failure_logs_warning(monkeypatch, tmp_path, caplog):
     assert isinstance(ok, bool)
     if not ok:
         assert err is not None
+
+
+def _local_vortex_writer(written_rows: list[int]):
+    def write(combined_table, output_path: Path, _opts: ConversionOptions) -> str:
+        written_rows.append(combined_table.num_rows)
+        output_path.write_bytes(b"vortex")
+        return "test-writer"
+
+    return write
+
+
+def _headered_csv(tmp_path: Path) -> Path:
+    source = tmp_path / "tags.csv"
+    source.write_text("id,name\n1,Alice\n2,Bob\n3,Carol\n", encoding="utf-8")
+    return source
+
+
+def test_convert_reads_headered_comma_csv_with_manifest_options(monkeypatch, tmp_path):
+    converter = VortexConverter()
+    written_rows: list[int] = []
+    monkeypatch.setattr(converter, "_write_vortex_file", _local_vortex_writer(written_rows))
+
+    result = converter.convert(
+        source_files=[_headered_csv(tmp_path)],
+        table_name="tags",
+        schema={"columns": ["id INTEGER NOT NULL", "name VARCHAR(20)"]},
+        options=ConversionOptions(output_dir=tmp_path / "out", delimiter=",", has_header=True, validate_row_count=True),
+    )
+
+    assert written_rows == [3]
+    assert result.row_count == 3
+
+
+def test_convert_row_count_mismatch_raises_and_removes_output(monkeypatch, tmp_path):
+    converter = VortexConverter()
+    monkeypatch.setattr(converter, "_write_vortex_file", _local_vortex_writer([]))
+
+    with pytest.raises(ConversionError, match="input=5"):
+        converter.convert(
+            source_files=[_headered_csv(tmp_path)],
+            table_name="tags",
+            schema={"columns": ["id INTEGER NOT NULL", "name VARCHAR(20)"]},
+            options=ConversionOptions(
+                output_dir=tmp_path / "out",
+                delimiter=",",
+                has_header=True,
+                validate_row_count=True,
+                expected_row_count=5,
+            ),
+        )
+
+    assert not (tmp_path / "out" / "tags.vortex").exists()

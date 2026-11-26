@@ -4,11 +4,13 @@
 import hashlib
 import logging
 import re
+import sqlite3
 from collections import Counter
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass
+from functools import cache
 from typing import Any, Callable
 
 _SELECT_TRANSFORMS_MARKER = "_benchbox_select_transforms"
@@ -158,12 +160,64 @@ class SqlTranslationOutcome:
     message: str | None = None
     scope: str | None = None
     query_fingerprint: str | None = None
+    sqlite_version: str | None = None
 
     def __post_init__(self) -> None:
         _resolve_translation_scope(self.scope)
 
     def to_dict(self) -> dict[str, object]:
         return {key: value for key, value in asdict(self).items() if value is not None and key != "query_fingerprint"}
+
+
+SQLITE_VERSION_UNSUPPORTED_MARKER = "SQLite 3.46"
+SQLITE_VERSION_UNSUPPORTED_CATEGORY = "sqlite_version_unsupported"
+
+
+class SqliteVersionUnsupportedError(ValueError):
+    pass
+
+
+def sqlite_engine_version() -> str:
+    return sqlite3.sqlite_version
+
+
+@cache
+def _sqlite_generation_dialect(version: str):
+    from benchbox._vendor.sqlglot.dialects.dialect import Dialect
+
+    return Dialect.get_or_raise(f"sqlite, version={version}")
+
+
+def _version_blocking_messages(messages: Iterable[str]) -> list[str]:
+    return [message for message in messages if SQLITE_VERSION_UNSUPPORTED_MARKER in message]
+
+
+def _recording_sqlite_dialect(version: str):
+    from benchbox._vendor.sqlglot.dialects.dialect import Dialect
+
+    dialect = Dialect.get_or_raise(f"sqlite, version={version}")
+    generators: list = []
+    build = dialect.generator
+
+    def generator(**options):
+        built = build(**options)
+        generators.append(built)
+        return built
+
+    dialect.generator = generator
+    return dialect, generators
+
+
+def _generate_sql(expression, dialect: str, sqlite_version: str | None = None, **options) -> str:
+    if dialect != "sqlite":
+        return expression.sql(dialect=dialect, **options)
+    version = sqlite_version or sqlite_engine_version()
+    generator = _sqlite_generation_dialect(version).generator(**options)
+    sql = generator.generate(expression)
+    blocking = _version_blocking_messages(generator.unsupported_messages)
+    if blocking:
+        raise SqliteVersionUnsupportedError(f"{blocking[0]} (targeting SQLite {version})")
+    return sql
 
 
 class SQLTranslationError(RuntimeError):
@@ -248,6 +302,7 @@ def summarize_sql_translation_outcomes(
             outcome.warning_category,
             outcome.error_category,
             outcome.strict_mode,
+            outcome.sqlite_version,
         )
         entry = grouped.get(key)
         if entry is None:
@@ -398,6 +453,7 @@ def translate_sql_query(
     tgt = resolve_sql_dialect(target_dialect)
     strict_mode = current_sql_translation_strict_mode() if strict is None else strict
     fingerprint = _fingerprint_sql(query) if translation_collection_active() else None
+    sqlite_version = sqlite_engine_version() if tgt == "sqlite" else None
 
     try:
         from benchbox._vendor import sqlglot
@@ -413,6 +469,7 @@ def translate_sql_query(
             message="SQLGlot not available",
             scope=scope,
             query_fingerprint=fingerprint,
+            sqlite_version=sqlite_version,
         )
         record_sql_translation_outcome(outcome)
         if strict_mode:
@@ -453,7 +510,7 @@ def translate_sql_query(
                     expression = apply_rewrite("mark_date_columns", expression, tgt, date_columns=date_columns)
             if tgt == "starrocks":
                 _eliminate_starrocks_qualify()
-            statement_sql = expression.sql(dialect=tgt, identify=should_identify, pretty=pretty)
+            statement_sql = _generate_sql(expression, tgt, sqlite_version, identify=should_identify, pretty=pretty)
             if tgt == "starrocks":
                 statement_sql = _starrocks_order_by_projection_aliases(statement_sql, should_identify, pretty)
             translated_statements.append(statement_sql)
@@ -470,10 +527,30 @@ def translate_sql_query(
                 strict_mode=strict_mode,
                 scope=scope,
                 query_fingerprint=fingerprint,
+                sqlite_version=sqlite_version,
             )
         )
         return translated
 
+    except SqliteVersionUnsupportedError as e:
+        outcome = SqlTranslationOutcome(
+            source_dialect=source_dialect,
+            target_dialect=target_dialect,
+            normalized_source_dialect=src,
+            normalized_target_dialect=tgt,
+            translator="sqlglot",
+            status="failed",
+            strict_mode=strict_mode,
+            error_category=SQLITE_VERSION_UNSUPPORTED_CATEGORY,
+            message=str(e),
+            scope=scope,
+            query_fingerprint=fingerprint,
+            sqlite_version=sqlite_version,
+        )
+        record_sql_translation_outcome(outcome)
+        raise SQLTranslationError(
+            f"SQLGlot translation failed from {source_dialect} to {target_dialect}: {e}", outcome
+        ) from e
     except Exception as e:
         outcome = SqlTranslationOutcome(
             source_dialect=source_dialect,
@@ -488,6 +565,7 @@ def translate_sql_query(
             message=str(e),
             scope=scope,
             query_fingerprint=fingerprint,
+            sqlite_version=sqlite_version,
         )
         record_sql_translation_outcome(outcome)
         if strict_mode:
@@ -579,6 +657,9 @@ def apply_rewrite(name: str, sql_or_expression, dialect: str, **args):
 def _record_rewrite_outcome(
     dialect: str, resolved: str, strict_mode: bool, status: str, error: Exception | None = None
 ) -> None:
+    version_unsupported = isinstance(error, SqliteVersionUnsupportedError)
+    if version_unsupported:
+        status = "failed"
     record_sql_translation_outcome(
         SqlTranslationOutcome(
             source_dialect=dialect,
@@ -588,10 +669,15 @@ def _record_rewrite_outcome(
             translator="sqlglot_rewrite",
             status=status,
             strict_mode=strict_mode,
-            warning_category=None if error is None or strict_mode else "rewrite_failed",
-            error_category="rewrite_failed" if error is not None and strict_mode else None,
+            warning_category=None if error is None or strict_mode or version_unsupported else "rewrite_failed",
+            error_category=SQLITE_VERSION_UNSUPPORTED_CATEGORY
+            if version_unsupported
+            else "rewrite_failed"
+            if error is not None and strict_mode
+            else None,
             message=None if error is None else str(error),
             scope=WORKLOAD_QUERY_SCOPE,
+            sqlite_version=sqlite_engine_version() if resolved == "sqlite" else None,
         )
     )
 
@@ -619,7 +705,7 @@ def apply_rewrites(sql: str, dialect: str, rewrites: Sequence[tuple[str, dict]],
             result = sql
         else:
             result = STATEMENT_SEPARATOR.join(
-                statement.sql(dialect=resolved, identify=False) for statement in rewritten_statements
+                _generate_sql(statement, resolved, identify=False) for statement in rewritten_statements
             )
     except Exception as error:
         record("failed" if strict_mode else "fallback", error)
@@ -656,10 +742,10 @@ def rewrite_sql_tree(
         else:
             if finalize is not None:
                 rewritten = finalize(rewritten)
-            result = rewritten.sql(dialect=resolved, identify=False)
+            result = _generate_sql(rewritten, resolved, identify=False)
     except Exception as error:
         _record_rewrite_outcome(dialect, resolved, strict_mode, "failed" if strict_mode else "fallback", error)
-        if strict_mode:
+        if strict_mode or isinstance(error, SqliteVersionUnsupportedError):
             raise
         return sql
     _record_rewrite_outcome(dialect, resolved, strict_mode, "success")
@@ -783,6 +869,8 @@ def translate_ddl(
     write = resolve_sql_dialect(target_dialect)
     strict_mode = current_sql_translation_strict_mode()
     fingerprint = _fingerprint_sql(ddl) if translation_collection_active() else None
+    sqlite_version = sqlite_engine_version() if write == "sqlite" else None
+    target, generators = _recording_sqlite_dialect(sqlite_version) if sqlite_version else (write, [])
 
     def record(status: str, error: Exception | None = None) -> None:
         record_sql_translation_outcome(
@@ -794,10 +882,15 @@ def translate_ddl(
                 translator="sqlglot",
                 status=status,
                 strict_mode=strict_mode,
-                error_category=None if error is None else "translation_failed",
+                error_category=None
+                if error is None
+                else SQLITE_VERSION_UNSUPPORTED_CATEGORY
+                if isinstance(error, SqliteVersionUnsupportedError)
+                else "translation_failed",
                 message=None if error is None else str(error),
                 scope=SCHEMA_DDL_SCOPE,
                 query_fingerprint=fingerprint,
+                sqlite_version=sqlite_version,
             )
         )
 
@@ -805,10 +898,13 @@ def translate_ddl(
         statements = ddl_module.transpile_ddl(
             ddl,
             read=read,
-            write=write,
+            write=target,
             options=ddl_module.DdlOptions(**options),
             identify=identify and write not in NO_IDENTIFY_DIALECTS,
         )
+        blocking = _version_blocking_messages(message for built in generators for message in built.unsupported_messages)
+        if blocking:
+            raise SqliteVersionUnsupportedError(f"{blocking[0]} (targeting SQLite {sqlite_version})")
     except Exception as error:
         record("failed", error)
         raise
@@ -868,7 +964,7 @@ def lift_ddl_table_layouts(schema_sql: str, read: str, table_format: str) -> tup
         lifted = True
     if not lifted:
         return schema_sql, {}
-    return ";\n".join(tree.sql(dialect=dialect) for tree in trees), layouts
+    return ";\n".join(_generate_sql(tree, dialect) for tree in trees), layouts
 
 
 def ddl_column_names(ddl: str, source_dialect: str = "standard") -> dict[str, list[str]]:
