@@ -36716,17 +36716,12 @@
       "title": "Migrate the hosted tracker DB to the todo-db >= 0.3 schema"
     },
     "migrate-local-sql-rewrites-into-sqlglot-fork-20261120": {
-      "claim": {
-        "expires_at": "2026-11-27T04:34:42Z",
-        "generation": "4b369ba55d4246e5a5c130506325136c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:38bfd61e73967b4e5aca7d45"
-      },
+      "claim": null,
       "needs": [
         "sqlglot-rewrites-into-fork"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Move BenchBox's local SQL compatibility rewrites into the SQLGlot fork"
     },
     "migrate-psycopg2-to-psycopg3": {
