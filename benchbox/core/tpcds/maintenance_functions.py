@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from functools import cache
 
 METHOD_FACT_INSERT = 1
 METHOD_FACT_DELETE = 2
@@ -14,7 +13,6 @@ SOURCE_DIALECT = "duckdb"
 CLICKHOUSE_DIALECT = "clickhouse"
 
 
-@cache
 def _translated_statements(statements: tuple[str, ...], dialect: str) -> tuple[str, ...]:
     from benchbox.utils.dialect_utils import translate_sql_query
 
