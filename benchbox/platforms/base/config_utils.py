@@ -93,6 +93,11 @@ def build_platform_config(
             linked_resource_keys,
         )
 
+    from benchbox.core.compute_resource import COMPUTE_RESOURCE_KIND_OPTION, COMPUTE_RESOURCE_OPTION
+
+    if merged_options.get(COMPUTE_RESOURCE_OPTION) != saved_creds.get(COMPUTE_RESOURCE_OPTION):
+        merged_options.pop(COMPUTE_RESOURCE_KIND_OPTION, None)
+
     name = info.display_name if info else default_display_name
     driver_package = info.driver_package if info else default_driver_package
 

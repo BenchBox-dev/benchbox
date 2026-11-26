@@ -331,6 +331,18 @@ class TestSnowflakeValidation:
         assert saved["compute_resource"] == "LEGACY_WH"
         assert "warehouse" not in saved
 
+    def test_saved_redshift_native_key_saves_without_the_derived_resource_kind(self, tmp_path):
+        path = tmp_path / "credentials.yaml"
+        path.write_text(
+            yaml.dump({"redshift": {"host": "h.example.com", "cluster_identifier": "c1"}}), encoding="utf-8"
+        )
+
+        mgr = CredentialManager(credentials_path=path)
+        mgr.save_credentials()
+        saved = yaml.safe_load(path.read_text(encoding="utf-8"))["redshift"]
+
+        assert saved == {"host": "h.example.com", "compute_resource": "c1"}
+
 
 class TestDatabricksValidation:
     def test_missing_credentials(self, cred_file):
