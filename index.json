@@ -42830,12 +42830,17 @@
       "title": "QuestDB benchmark compatibility remediation: disable always-failing benchmarks and patch adapter to expand coverage"
     },
     "questdb-case-prepass-upstream-9193-followup-20261119": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-27T04:34:06Z",
+        "generation": "7a490884b833465d8b389f44fc37edf5",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:38bfd61e73967b4e5aca7d45"
+      },
       "needs": [
         "sqlglot-adopt-30-35-0-2"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Decide whether to keep the QuestDB CASE pre-pass once an adopted SQLGlot wheel contains upstream #9193"
     },
     "questdb-ilp-date-columns-sent-as-strings-20261106": {
