@@ -1,0 +1,13 @@
+{
+  "description": "Promoted from deferral 1 on sqlglot-rewrites-into-fork: Owner decision 2026-11-25: out of the agreed Feature 3 scope; see local inventory section 4 summarized in context.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:38bfd61e73967b4e5aca7d45",
+      "at": "2026-11-26T04:34:15Z",
+      "client": "omp-coding-agent",
+      "op": "promote",
+      "op_id": "25ad6d91d4c04a259e4c260b3f3ab158",
+      "session_id": "1f0f3dea42f44058a5594bfcbaa33b2f"
+    }
+  ]
+}

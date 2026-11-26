@@ -49626,6 +49626,13 @@
       "status": "open",
       "title": "Move BenchBox's local and core SQL rewrites into the SQLGlot fork"
     },
+    "sqlglot-rewrites-into-fork-deferral-1": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Move the remaining local SQL translator logic into the SQLGlot fork"
+    },
     "sqlglot-soft-fork-adoption": {
       "claim": null,
       "needs": [
