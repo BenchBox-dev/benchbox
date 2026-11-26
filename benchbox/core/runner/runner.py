@@ -1025,10 +1025,8 @@ def _build_run_config_from_options(
         options.get("power_iterations", GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS)
         or GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS
     )
-    warmups = int(
-        options.get("power_warmup_iterations", GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS)
-        or GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS
-    )
+    warmups_raw = options.get("power_warmup_iterations")
+    warmups = GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS if warmups_raw is None else int(warmups_raw)
     seed_raw = options.get("seed")
     platform_options, platform_option_sources = build_platform_options_capture(
         requested_options=options.get("platform_options"),
