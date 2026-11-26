@@ -1,0 +1,489 @@
+{
+ "schema_version": 1,
+ "sources": [
+  "HEAD",
+  "origin/published-results"
+ ],
+ "bundle_count": 135,
+ "entries": [
+  {
+   "benchmark": "tpcds",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": null,
+   "streams": 3,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpcds_sf01_bigquery_sql_20260920_015238_a9f40f37"
+   ]
+  },
+  {
+   "benchmark": "tpcds",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": null,
+   "streams": 4,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpcds_sf01_databricks_sql_20261003_204005_294ed3a2",
+    "tpcds_sf01_snowflake_sql_20261003_140200_f5fd99c7"
+   ]
+  },
+  {
+   "benchmark": "tpcds",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "seed": 42,
+   "query_parameters": null,
+   "streams": 4,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpcds_sf1_clickhouse_local_sql_20261001_142742_4eb148cf",
+    "tpcds_sf1_databricks_sql_20261003_205449_cf4f01d0",
+    "tpcds_sf1_datafusion_sql_20260823_101453_f8619d78",
+    "tpcds_sf1_datafusion_sql_20260901_123155_6bed4cfc",
+    "tpcds_sf1_datafusion_sql_20261001_142302_754e0bfc",
+    "tpcds_sf1_duckdb_sql_20260823_101350_f8fa74b3",
+    "tpcds_sf1_duckdb_sql_20260901_123050_2e3c74db",
+    "tpcds_sf1_duckdb_sql_20261001_142219_17603c19",
+    "tpcds_sf1_snowflake_sql_20261003_141435_27bd9f9c",
+    "tpcds_sf1_spark_sql_20260823_102343_1d9231a1"
+   ]
+  },
+  {
+   "benchmark": "tpcds",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": null,
+   "streams": 3,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpcds_sf1_bigquery_sql_20260920_034529_dab15f22"
+   ]
+  },
+  {
+   "benchmark": "tpcds",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": null,
+   "streams": 4,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpcds_sf1_clickhouse_local_sql_20260826_112830_c250741b",
+    "tpcds_sf1_clickhouse_local_sql_20261026_175530_4b9e5193",
+    "tpcds_sf1_datafusion_sql_20260826_094401_5207d224",
+    "tpcds_sf1_datafusion_sql_20261026_113558_2fce59f7",
+    "tpcds_sf1_duckdb_sql_20260825_171849_be435b62",
+    "tpcds_sf1_pandas_df_20260826_213757_708c3f7a",
+    "tpcds_sf1_polars_df_20260826_204334_bda76dd1",
+    "tpcds_sf1_spark_sql_20260826_193418_5bc78a3d",
+    "tpcds_sf1_sqlite_sql_20260824_083944_c6745a86"
+   ]
+  },
+  {
+   "benchmark": "tpcds",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "seed": 42,
+   "query_parameters": null,
+   "streams": 4,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpcds_sf10_databricks_sql_20261003_212424_15e05c0c",
+    "tpcds_sf10_datafusion_sql_20260823_225543_15b41887",
+    "tpcds_sf10_duckdb_sql_20260823_173729_11fd39df",
+    "tpcds_sf10_snowflake_sql_20261003_143203_b8820a1d",
+    "tpcds_sf10_spark_sql_20260823_233540_e9faf36f"
+   ]
+  },
+  {
+   "benchmark": "tpcds",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": null,
+   "streams": 3,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpcds_sf10_bigquery_sql_20260920_050846_0fbf6500"
+   ]
+  },
+  {
+   "benchmark": "tpcds",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": null,
+   "streams": 4,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpcds_sf10_datafusion_sql_20261026_114739_9b8837db",
+    "tpcds_sf10_duckdb_v1_0_0_median",
+    "tpcds_sf10_duckdb_v1_1_3_median",
+    "tpcds_sf10_duckdb_v1_2_2_median",
+    "tpcds_sf10_duckdb_v1_3_2_median",
+    "tpcds_sf10_duckdb_v1_4_4_median",
+    "tpcds_sf10_duckdb_v1_5_5_median",
+    "tpcds_sf10_duckdb_v1_6_0_dev365_median"
+   ]
+  },
+  {
+   "benchmark": "tpcds_obt",
+   "scale_factor": 0.01,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": null,
+   "streams": 4,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpcds_obt_sf001_datafusion_sql_20261111_110035_78695483",
+    "tpcds_obt_sf001_doris_sql_20261111_110147_93ab6464",
+    "tpcds_obt_sf001_doris_sql_20261118_181752_c2022935",
+    "tpcds_obt_sf001_duckdb_sql_20261111_105936_37e7cc9b",
+    "tpcds_obt_sf001_lakesail_sql_20261111_110322_a1896614"
+   ]
+  },
+  {
+   "benchmark": "tpcds_obt",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": null,
+   "streams": 4,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpcds_obt_sf01_datafusion_sql_20261111_110045_4a0d3139",
+    "tpcds_obt_sf01_doris_sql_20261111_110240_9315b4c2",
+    "tpcds_obt_sf01_doris_sql_20261118_225023_c18125e7",
+    "tpcds_obt_sf01_duckdb_sql_20261111_110025_688df8f3",
+    "tpcds_obt_sf01_lakesail_sql_20261117_201241_312e8b59"
+   ]
+  },
+  {
+   "benchmark": "tpcds_obt",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": null,
+   "streams": 4,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpcds_obt_sf1_bigquery_sql_20260923_152357_480ffcea",
+    "tpcds_obt_sf1_clickhouse_local_sql_20260826_171140_836c988b",
+    "tpcds_obt_sf1_clickhouse_local_sql_20261026_132451_e8646728",
+    "tpcds_obt_sf1_databricks_sql_20261001_192224_d11b3297",
+    "tpcds_obt_sf1_datafusion_sql_20260826_164619_4e6d3fff",
+    "tpcds_obt_sf1_datafusion_sql_20261026_091037_b6577a1e",
+    "tpcds_obt_sf1_duckdb_sql_20260826_162433_2a6932b1",
+    "tpcds_obt_sf1_duckdb_sql_20261026_090851_b4cd9b9e",
+    "tpcds_obt_sf1_snowflake_sql_20261001_173028_d35974f6"
+   ]
+  },
+  {
+   "benchmark": "tpch",
+   "scale_factor": 0.01,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": "qgen -d (TPC-H default substitution parameters)",
+   "streams": 1,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpch_sf001_clickhouse_local_sql_20261026_174147_71dc6c6c",
+    "tpch_sf001_datafusion_sql_20261013_011859_c5cbcc9f",
+    "tpch_sf001_datafusion_sql_20261026_123955_8b8f54de",
+    "tpch_sf001_duckdb_sql_20261013_011855_80365293",
+    "tpch_sf001_sqlite_sql_20261026_155739_14b260b9"
+   ]
+  },
+  {
+   "benchmark": "tpch",
+   "scale_factor": 0.01,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": null,
+   "streams": 4,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpch_sf001_cedardb_sql_20260825_095330_cf0d9e4d",
+    "tpch_sf001_clickhouse_local_sql_20260826_100627_7ae478d5",
+    "tpch_sf001_clickhouse_server_sql_20260825_092429_4cd12ac0",
+    "tpch_sf001_datafusion_sql_20260826_110608_e8a7d048",
+    "tpch_sf001_datafusion_sql_20260901_122904_3e852d75",
+    "tpch_sf001_datafusion_sql_20261001_142138_cfca5d59",
+    "tpch_sf001_duckdb_sql_20260826_105325_8a57a5a8",
+    "tpch_sf001_duckdb_sql_20260901_122921_a51203c2",
+    "tpch_sf001_duckdb_sql_20261001_142056_24c85934",
+    "tpch_sf001_lakesail_sql_20260825_092257_ede75588",
+    "tpch_sf001_pandas_df_20260826_210019_8bde2222",
+    "tpch_sf001_polars_df_20260824_074104_51ccc406",
+    "tpch_sf001_polars_df_20260901_122908_f4c9a3b2",
+    "tpch_sf001_pyspark_df_20260825_184252_42abb28d",
+    "tpch_sf001_spark_sql_20260826_191913_2fd3b12b",
+    "tpch_sf001_sqlite_sql_20260825_180256_4eddc10f",
+    "tpch_sf001_starrocks_sql_20260825_103226_5cefdc41"
+   ]
+  },
+  {
+   "benchmark": "tpch",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": "qgen -d (TPC-H default substitution parameters)",
+   "streams": 1,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpch_sf01_clickhouse_local_sql_20261026_174709_25806a27",
+    "tpch_sf01_datafusion_sql_20261013_011903_1965c33f",
+    "tpch_sf01_datafusion_sql_20261026_124230_1bf2c529",
+    "tpch_sf01_duckdb_sql_20261013_011902_d286b8f0",
+    "tpch_sf01_sqlite_sql_20261026_155723_93a0b6f9"
+   ]
+  },
+  {
+   "benchmark": "tpch",
+   "scale_factor": 0.1,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": null,
+   "streams": 4,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpch_sf01_bigquery_sql_20261003_114214_37cecbba",
+    "tpch_sf01_clickhouse_local_sql_20260826_170326_1d1e2b2e",
+    "tpch_sf01_databricks_sql_20261003_114031_fbaeb62c",
+    "tpch_sf01_datafusion_sql_20260824_082755_adcfb35e",
+    "tpch_sf01_datafusion_sql_20260901_122911_dcb84b62",
+    "tpch_sf01_datafusion_sql_20261001_142058_a41c5d64",
+    "tpch_sf01_duckdb_sql_20260826_092426_786dcba6",
+    "tpch_sf01_duckdb_sql_20260901_122912_b62c06e1",
+    "tpch_sf01_duckdb_sql_20261001_142059_bf079c59",
+    "tpch_sf01_pandas_df_20260826_210239_77598616",
+    "tpch_sf01_polars_df_20260826_204211_f659fcbf",
+    "tpch_sf01_polars_df_20260901_122911_2244e405",
+    "tpch_sf01_snowflake_sql_20261003_113557_241439cc",
+    "tpch_sf01_spark_sql_20260826_192036_6f8737a4",
+    "tpch_sf01_sqlite_sql_20260826_113913_3bf2ac41"
+   ]
+  },
+  {
+   "benchmark": "tpch",
+   "scale_factor": 0.1,
+   "test_type": "standard",
+   "seed": null,
+   "query_parameters": null,
+   "streams": 1,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpch_sf01_duckdb_sql_20261111_213030_d24969ea",
+    "tpch_sf01_polars_df_20261111_154204_3d7d3e84"
+   ]
+  },
+  {
+   "benchmark": "tpch",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "seed": 42,
+   "query_parameters": null,
+   "streams": 4,
+   "first_stream_id": 0,
+   "qgen_seeds": [
+    42,
+    1042,
+    2042,
+    3042
+   ],
+   "bundles": [
+    "tpch_sf1_bigquery_sql_20261003_114700_6e0ec489",
+    "tpch_sf1_databricks_sql_20261003_114841_ab447f73",
+    "tpch_sf1_snowflake_sql_20261003_113923_e545c1c5"
+   ]
+  },
+  {
+   "benchmark": "tpch",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": "qgen -d (TPC-H default substitution parameters)",
+   "streams": 1,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpch_sf1_clickhouse_local_sql_20261013_011942_678507a6",
+    "tpch_sf1_clickhouse_local_sql_20261026_175754_f2bafd17",
+    "tpch_sf1_datafusion_sql_20261026_113613_5ef63e23",
+    "tpch_sf1_duckdb_sql_20261013_011919_e122b635",
+    "tpch_sf1_sqlite_sql_20261026_124224_113a3ebe"
+   ]
+  },
+  {
+   "benchmark": "tpch",
+   "scale_factor": 1.0,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": null,
+   "streams": 4,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpch_sf1_clickhouse_local_sql_20260825_174747_a4d8447f",
+    "tpch_sf1_clickhouse_local_sql_20261001_142203_f22a0442",
+    "tpch_sf1_datafusion_sql_20260825_172912_1d62bd4f",
+    "tpch_sf1_duckdb_sql_20260826_162117_67e59fb6",
+    "tpch_sf1_duckdb_sql_20260828_213108_3bd92bcc",
+    "tpch_sf1_duckdb_sql_20260829_211318_8b8d7c16",
+    "tpch_sf1_duckdb_sql_20260901_122950_dad309b3",
+    "tpch_sf1_duckdb_sql_20261001_142148_a33c5b2c",
+    "tpch_sf1_ducklake_sql_20260828_091755_137bc87e",
+    "tpch_sf1_polars_df_20260824_193005_54a9e53f",
+    "tpch_sf1_polars_df_20260825_184959_8ef4d6e2",
+    "tpch_sf1_pyspark_df_20260825_185531_14cd3451",
+    "tpch_sf1_spark_sql_20260826_192249_7478c401",
+    "tpch_sf1_sqlite_sql_20260825_180529_b9fdd7ba"
+   ]
+  },
+  {
+   "benchmark": "tpch",
+   "scale_factor": 1.0,
+   "test_type": "throughput",
+   "seed": 20260709,
+   "query_parameters": "qgen -r (20260709 + 1001 * stream_id + query_position)",
+   "streams": 3,
+   "first_stream_id": 1,
+   "qgen_seeds": [
+    20261710,
+    20261711,
+    20261712,
+    20261713,
+    20261714,
+    20261715,
+    20261716,
+    20261717,
+    20261718,
+    20261719,
+    20261720,
+    20261721,
+    20261722,
+    20261723,
+    20261724,
+    20261725,
+    20261726,
+    20261727,
+    20261728,
+    20261729,
+    20261730,
+    20261731,
+    20261732,
+    20262711,
+    20262712,
+    20262713,
+    20262714,
+    20262715,
+    20262716,
+    20262717,
+    20262718,
+    20262719,
+    20262720,
+    20262721,
+    20262722,
+    20262723,
+    20262724,
+    20262725,
+    20262726,
+    20262727,
+    20262728,
+    20262729,
+    20262730,
+    20262731,
+    20262732,
+    20262733,
+    20263712,
+    20263713,
+    20263714,
+    20263715,
+    20263716,
+    20263717,
+    20263718,
+    20263719,
+    20263720,
+    20263721,
+    20263722,
+    20263723,
+    20263724,
+    20263725,
+    20263726,
+    20263727,
+    20263728,
+    20263729,
+    20263730,
+    20263731,
+    20263732,
+    20263733,
+    20263734
+   ],
+   "bundles": [
+    "tpch_sf1_doris_sql_20261007_172956_5e453c54",
+    "tpch_sf1_duckdb_sql_20261007_155030_c3a60388",
+    "tpch_sf1_spark_sql_20261007_152057_cc60a6b0"
+   ]
+  },
+  {
+   "benchmark": "tpch",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "seed": 42,
+   "query_parameters": null,
+   "streams": 4,
+   "first_stream_id": 0,
+   "qgen_seeds": [
+    42,
+    1042,
+    2042,
+    3042
+   ],
+   "bundles": [
+    "tpch_sf10_bigquery_sql_20261003_120614_73b816d9",
+    "tpch_sf10_databricks_sql_20261003_120202_e83ea509",
+    "tpch_sf10_snowflake_sql_20261003_114454_2454b319"
+   ]
+  },
+  {
+   "benchmark": "tpch",
+   "scale_factor": 10.0,
+   "test_type": "power",
+   "seed": null,
+   "query_parameters": null,
+   "streams": 4,
+   "first_stream_id": 0,
+   "qgen_seeds": [],
+   "bundles": [
+    "tpch_sf10_duckdb_v1_0_0_median",
+    "tpch_sf10_duckdb_v1_1_3_median",
+    "tpch_sf10_duckdb_v1_2_2_median",
+    "tpch_sf10_duckdb_v1_3_2_median",
+    "tpch_sf10_duckdb_v1_4_4_median",
+    "tpch_sf10_duckdb_v1_5_5_median",
+    "tpch_sf10_duckdb_v1_6_0_dev365_median"
+   ]
+  }
+ ]
+}
