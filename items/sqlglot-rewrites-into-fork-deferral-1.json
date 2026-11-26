@@ -1,4 +1,5 @@
 {
+  "context": "Scope (from the 2026-11-25 rewrite inventory, BenchBox origin/develop f1c6343bbf): dialect_utils._keep_full_outer_join, _eliminate_starrocks_qualify and _install_select_transforms change the vendored Doris, SingleStore and StarRocks generator TRANSFORMS at runtime (carried-patch candidates); dialect_utils._starrocks_order_by_projection_aliases re-parses generated StarRocks SQL; benchbox/utils/questdb_subqueries.py (613 lines, rewrite_subqueries) may partly duplicate the fork QuestDB generator lowering; transactional/benchmark_base.py _starrocks_cleanup_statement, questdb_cleanup_statements and benchbox.platforms.questdb_rewrites.rewrite_query are regex cleanups the text-rewrite scanner misses. Note: PR #4537 extended _install_select_transforms with eliminate_window_clause for Doris/StarRocks.",
   "description": "Promoted from deferral 1 on sqlglot-rewrites-into-fork: Owner decision 2026-11-25: out of the agreed Feature 3 scope; see local inventory section 4 summarized in context.",
   "sessions": [
     {
@@ -7,6 +8,14 @@
       "client": "omp-coding-agent",
       "op": "promote",
       "op_id": "25ad6d91d4c04a259e4c260b3f3ab158",
+      "session_id": "1f0f3dea42f44058a5594bfcbaa33b2f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:38bfd61e73967b4e5aca7d45",
+      "at": "2026-11-26T04:34:32Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b9a5f3ebd40b40d593657808d2463852",
       "session_id": "1f0f3dea42f44058a5594bfcbaa33b2f"
     }
   ]
