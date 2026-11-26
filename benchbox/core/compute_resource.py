@@ -6,6 +6,7 @@ from typing import Any
 
 COMPUTE_RESOURCE_OPTION = "compute_resource"
 COMPUTE_SIZE_OPTION = "compute_size"
+COMPUTE_RESOURCE_KIND_OPTION = "_compute_resource_kind"
 
 
 @dataclass(frozen=True)
@@ -63,12 +64,15 @@ def migrate_saved_compute_keys(platform: str, saved: Mapping[str, Any]) -> dict[
         **dict.fromkeys(declaration.native_resource_keys, COMPUTE_RESOURCE_OPTION),
         **dict.fromkeys(declaration.native_size_keys, COMPUTE_SIZE_OPTION),
     }
+    kinds = declaration.resource_kind if isinstance(declaration.resource_kind, Mapping) else {}
     migrated: dict[str, Any] = {}
     for key, value in saved.items():
         target = renames.get(key, key)
         if target != key and (target in saved or target in migrated):
             continue
         migrated[target] = value
+        if key in kinds and value is not None:
+            migrated[COMPUTE_RESOURCE_KIND_OPTION] = kinds[key]
     return migrated
 
 
@@ -141,6 +145,7 @@ def register_compute_specs() -> None:
 
 
 __all__ = [
+    "COMPUTE_RESOURCE_KIND_OPTION",
     "COMPUTE_RESOURCE_OPTION",
     "COMPUTE_SIZE_OPTION",
     "ComputeDeclaration",

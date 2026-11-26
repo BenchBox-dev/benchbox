@@ -162,7 +162,7 @@ def test_compute_size_rejected_without_size_declaration(platform: str) -> None:
         ("snowflake", {"warehouse": "W", "warehouse_size": "L"}, {"compute_resource": "W", "compute_size": "L"}),
         ("firebolt", {"engine_name": "E", "engine_size": "S"}, {"compute_resource": "E", "compute_size": "S"}),
         ("quanton", {"cluster_size": "large"}, {"compute_size": "large"}),
-        ("redshift", {"workgroup_name": "wg"}, {"compute_resource": "wg"}),
+        ("redshift", {"workgroup_name": "wg"}, {"compute_resource": "wg", "_compute_resource_kind": "workgroup"}),
         ("duckdb", {"warehouse": "W"}, {"warehouse": "W"}),
     ],
 )
@@ -617,7 +617,7 @@ class TestClickhouseCloudComputeUnification:
 
 class TestRedshiftComputeUnification:
     @staticmethod
-    def _from_config(host: str):
+    def _from_config(host: str, **extra):
         from benchbox.platforms.redshift import RedshiftAdapter
 
         try:
@@ -630,6 +630,7 @@ class TestRedshiftComputeUnification:
                     "compute_resource": "wg",
                     "benchmark": "tpch",
                     "scale_factor": 0.01,
+                    **extra,
                 }
             )
         except ImportError:
@@ -649,6 +650,21 @@ class TestRedshiftComputeUnification:
 
         with pytest.raises(ConfigurationError, match="Ambiguous compute resource for platform 'redshift'"):
             self._from_config("redshift.internal.example.com")
+
+    @pytest.mark.parametrize(
+        "host",
+        ["redshift.internal.example.com", "wg.123456789012.us-east-1.redshift-serverless.amazonaws.com"],
+    )
+    def test_saved_cluster_identifier_keeps_its_kind_after_migration(self, host):
+        saved = migrate_saved_compute_keys(
+            "redshift", {"host": host, "username": "u", "password": "p", "cluster_identifier": "saved-cluster"}
+        )
+        assert saved["compute_resource"] == "saved-cluster"
+
+        adapter = self._from_config(**saved)
+
+        assert adapter.cluster_identifier == "saved-cluster"
+        assert adapter.workgroup_name != "saved-cluster"
 
 
 class TestAthenaComputeUnification:

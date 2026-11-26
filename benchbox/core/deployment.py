@@ -126,5 +126,5 @@ def configured_deployment(database_config: Any) -> str | None:
     if not database_config:
         return None
     options = getattr(database_config, "options", None) or {}
-    selected = options.get(DEPLOYMENT_SELECTOR_OPTION) or options.get("deployment_mode")
+    selected = options.get(DEPLOYMENT_SELECTOR_OPTION)
     return str(selected) if selected else None

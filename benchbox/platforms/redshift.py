@@ -32,6 +32,7 @@ if TYPE_CHECKING:
         UnifiedTuningConfiguration,
     )
 
+from ..core.compute_resource import COMPUTE_RESOURCE_KIND_OPTION
 from ..core.exceptions import ConfigurationError
 from ..utils.dependencies import (
     check_platform_dependencies,
@@ -207,15 +208,19 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         self.strict_validation = config.get("strict_validation", True)
 
         self.deployment_type = self._detect_deployment_type(self.host or "")
-        if self.deployment_type == "unknown" and self.compute_resource:
+        resource_kind = config.get(COMPUTE_RESOURCE_KIND_OPTION) or {
+            "serverless": "workgroup",
+            "provisioned": "cluster",
+        }.get(self.deployment_type)
+        if resource_kind is None and self.compute_resource:
             raise ConfigurationError(
                 f"Ambiguous compute resource for platform 'redshift': host {self.host!r} is not a "
                 "*.redshift.amazonaws.com or *.redshift-serverless.amazonaws.com endpoint, so BenchBox cannot tell "
                 f"whether compute_resource={self.compute_resource!r} names a provisioned cluster or a serverless "
                 "workgroup. Connect through the AWS endpoint hostname, or remove compute_resource."
             )
-        self.workgroup_name = self.compute_resource if self.deployment_type == "serverless" else None
-        if self.deployment_type == "provisioned":
+        self.workgroup_name = self.compute_resource if resource_kind == "workgroup" else None
+        if resource_kind == "cluster":
             self.cluster_identifier = self.compute_resource
         if self.workgroup_name is None and self.deployment_type == "serverless":
             self.workgroup_name = self._extract_identifier_from_hostname(self.host or "", self.deployment_type)
@@ -298,6 +303,7 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
                     "aws_session_token",
                     "aws_region",
                     "compute_resource",
+                    COMPUTE_RESOURCE_KIND_OPTION,
                     "admin_database",
                     "connect_timeout",
                     "statement_timeout",

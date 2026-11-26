@@ -988,7 +988,9 @@ class DatabricksAdapter(PlatformAdapter):
                 "collection_status": "available" if observed else "partial",
                 "workspace_host": config.get("server_hostname"),
                 "http_path": config.get("http_path"),
-                "warehouse_id": compute.get("warehouse_id") or config.get("compute_resource"),
+                "warehouse_id": compute.get("warehouse_id")
+                or config.get("compute_resource")
+                or config.get("warehouse_id"),
                 "catalog": config.get("catalog"),
                 "schema": config.get("schema"),
             }
@@ -1029,7 +1031,7 @@ class DatabricksAdapter(PlatformAdapter):
                 "state",
             )
         )
-        warehouse_id = compute.get("warehouse_id") or config.get("compute_resource")
+        warehouse_id = compute.get("warehouse_id") or config.get("compute_resource") or config.get("warehouse_id")
         serverless = cls._is_serverless_warehouse(compute)
         auto_stop_mins = (
             compute.get("auto_stop_mins")

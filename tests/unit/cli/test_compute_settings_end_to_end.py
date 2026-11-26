@@ -107,6 +107,23 @@ def test_redshift_saved_native_key_loads_as_compute_resource(tmp_path: Path) -> 
     assert config.get("workgroup_name") is None
 
 
+def test_redshift_saved_cluster_identifier_on_a_custom_host_still_names_a_cluster(tmp_path: Path) -> None:
+    from benchbox.platforms.redshift import RedshiftAdapter
+
+    _save_credentials(
+        redshift={"host": "redshift.internal.example.com", "username": "u", "password": "p", "cluster_identifier": "c1"}
+    )
+
+    config = _platform_config(tmp_path, "redshift")
+    try:
+        adapter = RedshiftAdapter.from_config({**config, "benchmark": "tpch", "scale_factor": 0.01})
+    except ImportError:
+        pytest.skip("Redshift drivers not installed")
+
+    assert adapter.cluster_identifier == "c1"
+    assert adapter.workgroup_name is None
+
+
 def test_redshift_command_line_compute_resource_overrides_the_saved_one(tmp_path: Path) -> None:
     _save_credentials(redshift={"host": SERVERLESS_HOST, "username": "u", "password": "p", "workgroup_name": "old"})
 
