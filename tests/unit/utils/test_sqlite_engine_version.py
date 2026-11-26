@@ -198,3 +198,16 @@ def test_schema_ddl_translation_targets_and_records_the_version():
     assert statements
     assert outcomes[0].sqlite_version == BELOW
     assert outcomes[0].normalized_target_dialect == "sqlite"
+
+
+@pytest.mark.parametrize("strict", [True, False])
+def test_schema_ddl_below_threshold_raises_for_unsafe_month_offsets(strict):
+    ddl = "CREATE VIEW v AS SELECT DATE '2024-01-31' + INTERVAL '1' MONTH AS d"
+    with pinned_sqlite_engine_version(BELOW), sql_translation_context(strict=strict) as outcomes:
+        with pytest.raises(SqliteVersionUnsupportedError):
+            translate_ddl(ddl, "sqlite", source_dialect="postgres", identify=False)
+    assert outcomes[0].status == "failed"
+    assert outcomes[0].error_category == "sqlite_version_unsupported"
+    assert outcomes[0].sqlite_version == BELOW
+    with pinned_sqlite_engine_version(AT_LEAST):
+        assert "floor" in translate_ddl(ddl, "sqlite", source_dialect="postgres", identify=False)[0]

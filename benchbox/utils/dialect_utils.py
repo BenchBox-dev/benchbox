@@ -201,13 +201,33 @@ def _sqlite_generation_dialect(version: str):
     return Dialect.get_or_raise(f"sqlite, version={version}")
 
 
+def _version_blocking_messages(messages: Iterable[str]) -> list[str]:
+    return [message for message in messages if SQLITE_VERSION_UNSUPPORTED_MARKER in message]
+
+
+def _recording_sqlite_dialect(version: str):
+    from benchbox._vendor.sqlglot.dialects.dialect import Dialect
+
+    dialect = Dialect.get_or_raise(f"sqlite, version={version}")
+    generators: list = []
+    build = dialect.generator
+
+    def generator(**options):
+        built = build(**options)
+        generators.append(built)
+        return built
+
+    dialect.generator = generator
+    return dialect, generators
+
+
 def _generate_sql(expression, dialect: str, sqlite_version: str | None = None, **options) -> str:
     if dialect != "sqlite":
         return expression.sql(dialect=dialect, **options)
     version = sqlite_version or sqlite_engine_version()
     generator = _sqlite_generation_dialect(version).generator(**options)
     sql = generator.generate(expression)
-    blocking = [message for message in generator.unsupported_messages if SQLITE_VERSION_UNSUPPORTED_MARKER in message]
+    blocking = _version_blocking_messages(generator.unsupported_messages)
     if blocking:
         raise SqliteVersionUnsupportedError(f"{blocking[0]} (targeting SQLite {version})")
     return sql
@@ -1173,6 +1193,7 @@ def translate_ddl(
     strict_mode = current_sql_translation_strict_mode()
     fingerprint = _fingerprint_sql(ddl) if translation_collection_active() else None
     sqlite_version = sqlite_engine_version() if write == "sqlite" else None
+    target, generators = _recording_sqlite_dialect(sqlite_version) if sqlite_version else (write, [])
 
     def record(status: str, error: Exception | None = None) -> None:
         record_sql_translation_outcome(
@@ -1184,7 +1205,11 @@ def translate_ddl(
                 translator="sqlglot",
                 status=status,
                 strict_mode=strict_mode,
-                error_category=None if error is None else "translation_failed",
+                error_category=None
+                if error is None
+                else SQLITE_VERSION_UNSUPPORTED_CATEGORY
+                if isinstance(error, SqliteVersionUnsupportedError)
+                else "translation_failed",
                 message=None if error is None else str(error),
                 scope=SCHEMA_DDL_SCOPE,
                 query_fingerprint=fingerprint,
@@ -1196,10 +1221,13 @@ def translate_ddl(
         statements = ddl_module.transpile_ddl(
             ddl,
             read=read,
-            write=_sqlite_generation_dialect(sqlite_version) if sqlite_version else write,
+            write=target,
             options=ddl_module.DdlOptions(**options),
             identify=identify and write not in NO_IDENTIFY_DIALECTS,
         )
+        blocking = _version_blocking_messages(message for built in generators for message in built.unsupported_messages)
+        if blocking:
+            raise SqliteVersionUnsupportedError(f"{blocking[0]} (targeting SQLite {sqlite_version})")
     except Exception as error:
         record("failed", error)
         raise
