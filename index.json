@@ -53202,12 +53202,17 @@
       "title": "TPCHOfficialBenchmark and TPCDSOfficialBenchmark produce wrong or no throughput results"
     },
     "tpc-query-conformance-corpus": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-27T21:39:39Z",
+        "generation": "60134112eac34f0f9ca8d1b915be7487",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
+      },
       "needs": [
         "datagen-adr-query-generation-rust"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Capture a frozen TPC-H and TPC-DS query conformance corpus from the bundled qgen and dsqgen"
     },
     "tpc-remove-certification-and-compliance-claims": {
