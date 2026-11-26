@@ -27932,10 +27932,8 @@
     "datagen-p1-parquet-corpus-rebaseline": {
       "claim": null,
       "needs": [
-        "datagen-p1-streaming-parquet-converter",
-        "bundle-data-generation-hash-missing-from-corpus",
-        "datagen-p1-deterministic-parquet-writer",
-        "datagen-p1-parquet-semantic-fixes"
+        "datagen-p3-tpc-default-cutover",
+        "bundle-data-generation-hash-missing-from-corpus"
       ],
       "priority": "medium",
       "status": "open",
