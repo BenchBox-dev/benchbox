@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "ADR merged with the query-generation decision and every accepted finding.",
+    "Tracker has items for the conformance corpus, Rust qgen, Rust dsqgen, query integration, and a retirement item that removes every TPC C binary and the compile pipeline."
+  ],
+  "description": "Owner decision 2026-11-26: the C compilation pipeline can only retire if every bundled TPC binary goes, so benchbox-datagen also replaces qgen and dsqgen. Revise docs/internal/adr/adr-benchbox-datagen.md with a query-generation decision, the accepted findings of the adversarial review (agent QueryGenCritic): lazy query managers, scale-model gate, CompatMode::C pin, oracle version table, frozen conformance corpus, TPC legend in wheels, qualification runner migration, reconciliation with the 2026-11-20 official-tool decision, and the compliance consequence; then rebuild the tracker items.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T14:57:17Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b54306e6b3a148af992b9abe22773657",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
