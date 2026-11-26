@@ -51,16 +51,20 @@ Ruleset name: `develop-squash-only` (id `15611785`), targets
 Required status checks:
 
 ```text
-- core
-- explorer
-- results-data
-- docs
-- tooling
-- hold
-- review-gate
-- release-v2 probe
+- core (integration 15368)
+- explorer (integration 15368)
+- results-data (integration 15368)
+- docs (integration 15368)
+- tooling (integration 15368)
+- hold (integration 15368)
+- review-gate (integration 5201041)
+- release-v2 probe (integration 15368)
 ```
 
+Every context is bound to the App that posts it, so a status or check run
+from any other source does not satisfy it. The six result contexts are check
+runs of GitHub Actions jobs (`integration_id` 15368); a commit status posted
+with a personal token or another App under the same name does not count.
 `review-gate` is bound to the `benchbox-review` App
 (`integration_id` 5201041). `release-v2 probe` is a commit status that
 `.github/workflows/release-v2-probe.yml` posts on the pull request head
@@ -173,12 +177,12 @@ The PUT replaces the whole rule list, so the payload carries every rule:
         "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
-          {"context": "core"},
-          {"context": "explorer"},
-          {"context": "results-data"},
-          {"context": "docs"},
-          {"context": "tooling"},
-          {"context": "hold"},
+          {"context": "core", "integration_id": 15368},
+          {"context": "explorer", "integration_id": 15368},
+          {"context": "results-data", "integration_id": 15368},
+          {"context": "docs", "integration_id": 15368},
+          {"context": "tooling", "integration_id": 15368},
+          {"context": "hold", "integration_id": 15368},
           {"context": "review-gate", "integration_id": 5201041},
           {"context": "release-v2 probe", "integration_id": 15368}
         ]
@@ -223,8 +227,10 @@ do first).
    that comment it stays bound; an agent never substitutes for it.
 5. Merge the named pull request at the named head.
 6. Restore the context immediately, whether the merge succeeded or failed,
-   before retrying, starting other work, or recording notes. If `review-gate`
-   was removed, restore it bound to integration 5201041 (`benchbox-review` App).
+   before retrying, starting other work, or recording notes. Restore it with
+   the `integration_id` the capture shows: 15368 (GitHub Actions) for the six
+   result contexts and `release-v2 probe`, 5201041 (`benchbox-review` App) for
+   `review-gate`. The GitHub UI defaults to any source, so set it explicitly.
 7. Read back and compare with the capture, using a token that can see
    `bypass_actors`:
    `gh auth token | uv run -- python scripts/ruleset_drift_check.py --token-stdin --compare-capture /tmp/ruleset-15611785-before.json`.
@@ -310,6 +316,15 @@ History of the required contexts:
   The migration is done: `review-gate` is the only required review check, and
   `scripts/ruleset_drift_check.py` treats `oracle-gate` as drift like any other
   unexpected required context. No BenchBox script reads an `oracle-*` status.
+- 2026-11-25: every required context on `develop-squash-only` and
+  `release-branches` is bound to the App that posts it: `core`, `explorer`,
+  `results-data`, `docs`, `tooling` and `hold` to GitHub Actions (integration
+  15368), alongside the existing `review-gate` (5201041) and `release-v2 probe`
+  (15368) bindings. Before this, the six result contexts were required by name
+  only, so a commit status of that name from any token with status write access
+  satisfied them. The hosted rulesets are changed right after this runbook
+  change merges, and the drift check reports any context bound to another
+  source or listed here without an integration.
 - Review infrastructure rename: the review workflows moved from the `oracle`
   environment and its secrets to the `review` environment with `REVIEW_*`
   secrets, and the runner tag from `tag:oracle-ci` to `tag:review-ci`. The App
@@ -442,9 +457,10 @@ The soundness gate, as operated:
   soundness-path commit that merged without a success review or
   another review signal. The develop review check
   (`review_enforcement_findings`) fails unless `review-gate` is required with
-  the App's integration ID, but the drift check's context comparison ignores
-  `integration_id`, so read the binding by hand after any ruleset edit with the
-  `required_check_bindings` field of the Verify command above, or
+  the App's integration ID, and the drift check compares every required
+  context's `integration_id` with the binding this runbook lists. To read the
+  bindings by hand after a ruleset edit, use the `required_check_bindings` field
+  of the Verify command above, or
   `gh api repos/BenchBox-dev/benchbox/rulesets/15611785 --jq '[.rules[] | select(.type == "required_status_checks") | .parameters.required_status_checks[]? | {context, integration_id}]'`,
   and compare the `review-gate` entry with `gh api apps/benchbox-review --jq .id`.
 - `make pr-open` does not arm auto-merge when it creates a PR. `make pr-arm`
@@ -604,14 +620,14 @@ approval in the `pypi` environment.
 Required status checks:
 
 ```text
-- core
-- explorer
-- results-data
-- docs
-- tooling
-- hold
-- review-gate
-- release-v2 probe
+- core (integration 15368)
+- explorer (integration 15368)
+- results-data (integration 15368)
+- docs (integration 15368)
+- tooling (integration 15368)
+- hold (integration 15368)
+- review-gate (integration 5201041)
+- release-v2 probe (integration 15368)
 ```
 
 `review-gate` is bound to the `benchbox-review` App (`integration_id` 5201041)
@@ -670,12 +686,12 @@ Apply (owner only; save the block as `release-branches.json`, then
         "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": true,
         "required_status_checks": [
-          {"context": "core"},
-          {"context": "explorer"},
-          {"context": "results-data"},
-          {"context": "docs"},
-          {"context": "tooling"},
-          {"context": "hold"},
+          {"context": "core", "integration_id": 15368},
+          {"context": "explorer", "integration_id": 15368},
+          {"context": "results-data", "integration_id": 15368},
+          {"context": "docs", "integration_id": 15368},
+          {"context": "tooling", "integration_id": 15368},
+          {"context": "hold", "integration_id": 15368},
           {"context": "review-gate", "integration_id": 5201041},
           {"context": "release-v2 probe", "integration_id": 15368}
         ]

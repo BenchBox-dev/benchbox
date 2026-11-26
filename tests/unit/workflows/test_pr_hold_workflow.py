@@ -12,6 +12,8 @@ from typing import Any
 import pytest
 import yaml
 
+from scripts.ruleset_drift_check import parse_expected_rulesets
+
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -58,9 +60,8 @@ def test_hold_job_reads_live_labels_not_the_event_payload() -> None:
 
 
 def test_runbook_requires_the_hold_context() -> None:
-    text = RUNBOOK.read_text(encoding="utf-8")
-    block = text.split("Required status checks:", 1)[1].split("```", 2)[1]
-    assert "- hold" in block.splitlines()
+    expected = parse_expected_rulesets(RUNBOOK.read_text(encoding="utf-8"))["develop-squash-only"]
+    assert "hold" in expected.required_checks
 
 
 _GH_SERVES_THE_PR_JSON = """endpoint=""

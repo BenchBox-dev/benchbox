@@ -272,6 +272,12 @@ def pytest_collection_modifyitems(session, config, items) -> None:
         _create_test_databases()
 
 
+def pytest_report_header(config) -> str:
+    import sqlite3
+
+    return f"sqlite3.sqlite_version: {sqlite3.sqlite_version}"
+
+
 def pytest_collection_finish(session) -> None:
     _warn_on_unreasoned_skip_markers(session.items)
 
@@ -335,6 +341,14 @@ def _restore_logging_state():
         else:
             _restore_logger(logger, (logging.NOTSET, [], True, False, []))
     logging.root.manager._clear_cache()
+
+
+@pytest.fixture(autouse=True)
+def _pinned_sqlite_engine_version():
+    from tests.utilities.sqlite_engine_pin import pinned_sqlite_engine_version
+
+    with pinned_sqlite_engine_version():
+        yield
 
 
 @pytest.fixture(autouse=True)

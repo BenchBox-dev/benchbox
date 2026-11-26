@@ -10,6 +10,7 @@ import yaml
 
 from scripts.ci_text_edit_verdict import TEXT_EDIT_RUN_NAME
 from scripts.release_probe_launch import PROBE_CONTEXT as PROBE_CHECK_NAME
+from scripts.ruleset_drift_check import parse_expected_rulesets
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -174,9 +175,8 @@ def _gate_context() -> str:
 
 
 def _required_names() -> set[str]:
-    text = ADMIN_SETTINGS.read_text(encoding="utf-8")
-    block = text.split("Required status checks:", 1)[1].split("```text", 1)[1].split("```", 1)[0]
-    required = {line.removeprefix("- ").strip() for line in block.splitlines() if line.strip()}
+    expected = parse_expected_rulesets(ADMIN_SETTINGS.read_text(encoding="utf-8"))["develop-squash-only"]
+    required = set(expected.required_checks)
     elsewhere = {
         str(job.get("name", job_id))
         for path in WORKFLOW.parent.glob("*.yml")
