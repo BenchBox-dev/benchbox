@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "TPC-DS delimited output is SHA-256 identical to bundled dsdgen for all 24 tables at SF 0.01 and 0.1.",
+    "TPC-H RF1/RF2 and TPC-DS -update output is byte-identical to the C binaries at SF 0.01 and 1.",
+    "PR parity CI covers TPC-DS SF 0.01, 0.1 and 1.0 and the refresh sets."
+  ],
+  "description": "Coverage the upstream crates lack (docs/internal/adr/adr-benchbox-datagen.md (revised 2026-11-26, PR #4540), decision 1). TPC-DS SF < 1 must follow BenchBox's patched dsdgen scaling curve; TPC-H RF1/RF2 and TPC-DS -update must match the C binaries. Prefer contributing upstream when the change fits upstream; otherwise implement in benchbox-datagen-core on top of the upstream crates without forking them.\n\nDecision gate: if byte identity at SF < 1 needs a change upstream will not accept and that cannot live outside the crates, stop and ask the owner.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T13:57:47Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "479fe1ce1cdb417bb89d6c3e7b7d638d",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
