@@ -127,6 +127,8 @@ def _prepare_config_for_platform(platform_name: str, tmp_path: Path) -> dict[str
         config["catalog"] = "duckdb"
     elif platform_name == "snowpark-connect":
         config["user"] = "EGRESS_USERNAME_SENTINEL"
+    elif platform_name == "redshift":
+        config["host"] = "egress.123456789012.us-east-1.redshift-serverless.amazonaws.com"
     return config
 
 
