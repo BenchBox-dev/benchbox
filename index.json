@@ -27570,6 +27570,7 @@
       "claim": null,
       "needs": [
         "datagen-lib-tpcds-fractional-and-refresh",
+        "datagen-lib-query-integration",
         "bundle-data-generation-hash-missing-from-corpus",
         "datagen-p1-parquet-semantic-fixes"
       ],
