@@ -27125,7 +27125,7 @@
         "datagen-p1-parquet-semantic-fixes"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "blocked",
       "title": "Cut over TPC-H and TPC-DS default backend and decide published-run Parquet layout default"
     },
     "datagen-parquet-partitioned-row-groups": {
