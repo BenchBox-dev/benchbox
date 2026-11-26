@@ -27291,6 +27291,15 @@
       "status": "open",
       "title": "Generate tsbs_devops in benchbox-datagen with a versioned deterministic RNG"
     },
+    "datagen-lib-synthetic-vector-search": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-benchbox-integration"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Generate vector_search in benchbox-datagen with a versioned deterministic RNG"
+    },
     "datagen-lib-tpcds": {
       "claim": null,
       "needs": [
