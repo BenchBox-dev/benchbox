@@ -32,7 +32,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 
-BASE = {"account": "acct", "username": "user", "password": "mock-password", "warehouse": "WH", "database": "DB"}
+BASE = {"account": "acct", "username": "user", "password": "mock-password", "compute_resource": "WH", "database": "DB"}
 
 
 @dataclass
