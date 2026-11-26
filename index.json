@@ -27822,7 +27822,7 @@
     "datagen-lib-tpcds": {
       "claim": null,
       "needs": [
-        "datagen-lib-benchbox-integration"
+        "datagen-lib-tpch"
       ],
       "priority": "high",
       "status": "open",
