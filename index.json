@@ -34416,6 +34416,13 @@
       "status": "done",
       "title": "Decide whether the heavy-work sentinel should act on CPU-bound orphaned shells"
     },
+    "heavy-sentinel-kills-preflight-lock-waiters": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Stop pr-preflight being terminated while it waits for the host test lock"
+    },
     "heavy-tier-merge-group-dead-code-20261009": {
       "claim": null,
       "needs": [],

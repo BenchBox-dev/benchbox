@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "A reproduction or log evidence names the signal sender.",
+    "A test shows a lock waiter below a small memory threshold is not terminated under pressure level 2, or is restarted transparently.",
+    "A terminated preflight writes a failure record naming the signal and the phase."
+  ],
+  "description": "## Problem\nOn 2026-11-26 `make pr-preflight` in BenchBox.wt-parquet-v2 was terminated by SIGTERM (rc 143, `make: *** [pr-preflight] Terminated: 15`) three times while waiting on the host test lock; once after its pytest step had passed (5,730 passed), leaving no receipt. The sentinel log at 15:06 shows pressure level 2 with the waiting `host_lock run --phase linux-preflight` process (0.06 GiB) listed among candidates. A waiter that uses almost no memory should not be killed, and a killed preflight should leave a clear failure record.\n\n## Change\nFind which component sent the signal (heavy sentinel, heavy-run watchdog, or lock-wait timeout) from ~/.benchbox/sentinel.log and the lock code; exempt idle lock waiters from memory-pressure kills or make them retry; make preflight report the cause on termination.\n\n## Decision gates\n- If the sentinel is not the sender, record the real sender before changing anything.\n- Do not weaken the memory budget or disable the watchdog; owner approval is needed for any change to kill policy.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T23:47:10Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "a8555642b14540fb9f3cfb6eef0f0f38",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
