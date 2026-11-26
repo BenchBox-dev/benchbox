@@ -28058,6 +28058,7 @@
         "datagen-lib-synthetic-tpch-skew",
         "datagen-lib-synthetic-amplab",
         "datagen-lib-synthetic-joinorder-synthetic",
+        "datagen-lib-benchbox-integration",
         "datagen-p3-tpc-default-cutover",
         "bundle-data-generation-hash-missing-from-corpus"
       ],
