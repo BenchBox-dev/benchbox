@@ -347,7 +347,6 @@ def test_doris_rewrites_are_registered_per_variant():
     from benchbox.core.tpchavoc.dialect_compat import (
         DORIS_CORRELATED_GROUP_VARIANTS,
         DORIS_FILTER_VARIANT_IDS,
-        DORIS_NAMED_WINDOW_VARIANT_IDS,
         DORIS_ORDER_BY_PROJECTION_VARIANT_IDS,
         GROUP_BY_EMPTY_VARIANT_IDS,
     )
@@ -357,8 +356,8 @@ def test_doris_rewrites_are_registered_per_variant():
     registered = {key[3] for key, _ in REGISTRY.all_rules() if key[:3] == (Phase.QUERY_ADAPTER, "doris", "tpchavoc")}
 
     assert registered == set(DORIS_FILTER_VARIANT_IDS) | set(GROUP_BY_EMPTY_VARIANT_IDS) | set(
-        DORIS_NAMED_WINDOW_VARIANT_IDS
-    ) | set(DORIS_ORDER_BY_PROJECTION_VARIANT_IDS) | set(DORIS_CORRELATED_GROUP_VARIANTS)
+        DORIS_ORDER_BY_PROJECTION_VARIANT_IDS
+    ) | set(DORIS_CORRELATED_GROUP_VARIANTS)
 
 
 def _doris_tree(query_id):
@@ -565,7 +564,6 @@ def test_starrocks_rewrites_are_registered_per_variant():
         GROUP_BY_EMPTY_VARIANT_IDS,
         STARROCKS_CORRELATED_GROUP_VARIANTS,
         STARROCKS_FILTER_VARIANT_IDS,
-        STARROCKS_NAMED_WINDOW_VARIANT_IDS,
         STARROCKS_ORDER_BY_PROJECTION_VARIANT_IDS,
         STARROCKS_SOURCELESS_EXISTS_VARIANT_IDS,
     )
@@ -577,10 +575,8 @@ def test_starrocks_rewrites_are_registered_per_variant():
     }
 
     assert registered == set(STARROCKS_FILTER_VARIANT_IDS) | set(GROUP_BY_EMPTY_VARIANT_IDS) | set(
-        STARROCKS_NAMED_WINDOW_VARIANT_IDS
-    ) | set(STARROCKS_ORDER_BY_PROJECTION_VARIANT_IDS) | set(STARROCKS_CORRELATED_GROUP_VARIANTS) | set(
-        STARROCKS_SOURCELESS_EXISTS_VARIANT_IDS
-    )
+        STARROCKS_ORDER_BY_PROJECTION_VARIANT_IDS
+    ) | set(STARROCKS_CORRELATED_GROUP_VARIANTS) | set(STARROCKS_SOURCELESS_EXISTS_VARIANT_IDS)
 
 
 @pytest.mark.parametrize("query_id", ["3_v1", "3_v9", "5_v1", "10_v1", "16_v1", "16_v7", "16_v10"])

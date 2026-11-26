@@ -5,7 +5,6 @@
 import hashlib
 import json
 import logging
-import re
 import sys
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass, field
@@ -13,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Any, Iterator, Optional
 
 from benchbox.core.primitives_benchmark_utils import failed_platform_error
+from benchbox.utils.dialect_utils import translate_ddl, translate_sql_query
 
 from .interface import BenchmarkTunings, TableTuning, TuningColumn, TuningType, UnifiedTuningConfiguration
 
@@ -36,6 +36,27 @@ _PLATFORM_KEY_ALIASES = {
 }
 
 _TSQL_PLATFORMS = frozenset({"synapse", "fabric_dw"})
+
+_CLICKHOUSE_METADATA_OPTIONS: dict[str, Any] = {
+    "type_map": {"VARCHAR": "VARCHAR", "INT": "INTEGER", "TIMESTAMP": "TIMESTAMP"},
+    "default_layout": {"engine": "MergeTree()", "sort_by": ("table_name", "tuning_type")},
+}
+_METADATA_DDL_TARGETS: dict[str, tuple[str, dict[str, Any]]] = {
+    "bigquery": (
+        "bigquery",
+        {
+            "type_map": {"VARCHAR": "STRING", "INT": "INT64", "TIMESTAMP": "TIMESTAMP"},
+            "drop_type_parameters": {"STRING"},
+        },
+    ),
+    "synapse": ("tsql", {}),
+    "fabric_dw": ("tsql", {}),
+    "snowflake": ("snowflake", {"type_map": {"INT": "INTEGER", "TIMESTAMP": "TIMESTAMP_NTZ"}}),
+    "clickhouse": ("clickhouse", _CLICKHOUSE_METADATA_OPTIONS),
+    "clickhouse_local": ("clickhouse", _CLICKHOUSE_METADATA_OPTIONS),
+    "clickhouse_server": ("clickhouse", _CLICKHOUSE_METADATA_OPTIONS),
+    "clickhouse_cloud": ("clickhouse", _CLICKHOUSE_METADATA_OPTIONS),
+}
 
 
 def _driver_paramstyle(connection: Any) -> str | None:
@@ -548,9 +569,10 @@ class TuningMetadataManager:
     _INDEX_TSQL_PLATFORMS = frozenset({"synapse"})
 
     def _first_row_query(self, select_sql: str) -> str:
+        limited = f"{select_sql} LIMIT 1"
         if self._platform_key() in _TSQL_PLATFORMS:
-            return re.sub(r"^\s*SELECT\b", "SELECT TOP 1", select_sql, count=1, flags=re.IGNORECASE)
-        return f"{select_sql} LIMIT 1"
+            return translate_sql_query(limited, "tsql", source_dialect="standard", identify=False)
+        return limited
 
     def unsupported_reason(self) -> Optional[str]:
         return metadata_store_unsupported_reason(self._platform_key())
@@ -600,28 +622,11 @@ class TuningMetadataManager:
             platform VARCHAR(50) NOT NULL
         )"""
 
-        if platform == "bigquery":
-            bigquery_sql = base_sql
-            for narrow, broad in (
-                ("VARCHAR(255)", "STRING"),
-                ("VARCHAR(50)", "STRING"),
-                ("VARCHAR(64)", "STRING"),
-                ("INTEGER", "INT64"),
-                ("TIMESTAMP", "TIMESTAMP"),
-            ):
-                bigquery_sql = bigquery_sql.replace(narrow, broad)
-            return bigquery_sql
-        elif platform in _TSQL_PLATFORMS:
-            body = base_sql.replace("CREATE TABLE IF NOT EXISTS", "CREATE TABLE").replace("TIMESTAMP", "DATETIME2")
-            return f"IF OBJECT_ID(N'{self._metadata_table_name}', N'U') IS NULL {body}"
-        elif platform == "snowflake":
-            return base_sql.replace("TIMESTAMP", "TIMESTAMP_NTZ")
-        elif platform == "redshift":
+        target = _METADATA_DDL_TARGETS.get(platform)
+        if target is None:
             return base_sql
-        elif platform in {"clickhouse", "clickhouse_local", "clickhouse_server", "clickhouse_cloud"}:
-            return base_sql + " ENGINE = MergeTree() ORDER BY (table_name, tuning_type)"
-        else:
-            return base_sql
+        dialect, options = target
+        return translate_ddl(base_sql, dialect, identify=False, **options)[0]
 
     def _get_create_index_sql(self) -> Optional[str]:
         platform = self._platform_key()

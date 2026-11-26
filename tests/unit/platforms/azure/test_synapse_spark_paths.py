@@ -235,7 +235,7 @@ class TestWaitPollAndDeleteFailures:
         states = [{"state": "running"}, {"state": "idle"}]
         with _transport() as http:
             http.get.side_effect = [_response(payload=s) for s in states]
-            with patch("benchbox.platforms.azure.synapse_spark_adapter.time.sleep") as nap:
+            with patch("benchbox.platforms.azure.spark_execution_utils.livy_pause") as nap:
                 assert adapter._wait_for_session_state(7, ["idle"]) == "idle"
         nap.assert_called_once()
 

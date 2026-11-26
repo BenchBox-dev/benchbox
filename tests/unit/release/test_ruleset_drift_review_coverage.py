@@ -64,6 +64,10 @@ def _status_check(context: str) -> dict:
     return check
 
 
+def _actions_check(context: str) -> dict:
+    return {"context": context, "integration_id": 15368}
+
+
 def _live_develop_ruleset(
     *,
     review_count: int = 0,
@@ -88,14 +92,13 @@ def _live_develop_ruleset(
                 "parameters": {
                     "strict_required_status_checks_policy": False,
                     "required_status_checks": [
-                        {"context": "core"},
-                        {"context": "explorer"},
-                        {"context": "results-data"},
-                        {"context": "docs"},
-                        {"context": "tooling"},
+                        *(
+                            _actions_check(context)
+                            for context in ("core", "explorer", "results-data", "docs", "tooling")
+                        ),
                         *(_status_check(context) for context in gate_contexts),
-                        {"context": "hold"},
-                        {"context": "release-v2 probe", "integration_id": 15368},
+                        _actions_check("hold"),
+                        _actions_check("release-v2 probe"),
                     ],
                 },
             },

@@ -187,25 +187,14 @@ class TestConvertCommand:
 
 
 class TestConvertCommandSchemaLookup:
-    def test_get_schemas_uses_manifest_benchmark(self, mock_manifest_v2):
+    def test_manifest_tables_resolve_to_column_schemas_for_the_manifest_benchmark(self, mock_manifest_v2):
+        from benchbox.cli.commands.convert import _get_schemas_from_manifest
+        from benchbox.core.manifest import load_manifest
 
-        with patch("benchbox.core.benchmark_loader.get_core_benchmark_class") as mock_get_benchmark:
-            mock_benchmark = MagicMock()
-            mock_benchmark.return_value.get_schema.return_value = {"columns": [{"name": "id", "type": "INTEGER"}]}
-            mock_get_benchmark.return_value = mock_benchmark
+        schemas = _get_schemas_from_manifest(load_manifest(mock_manifest_v2 / "_datagen_manifest.json"), None)
 
-            from benchbox.cli.commands.convert import _get_schemas_from_manifest
-            from benchbox.core.manifest import load_manifest
-
-            manifest = load_manifest(mock_manifest_v2 / "_datagen_manifest.json")
-
-            from benchbox.core.manifest import ManifestV1, upgrade_v1_to_v2
-
-            if isinstance(manifest, ManifestV1):
-                manifest = upgrade_v1_to_v2(manifest)
-
-            _get_schemas_from_manifest(manifest, None)
-            mock_get_benchmark.assert_called_with("tpch")
+        assert set(schemas) == {"customer", "orders"}
+        assert [column["name"] for column in schemas["orders"]["columns"]][:2] == ["o_orderkey", "o_custkey"]
 
 
 if __name__ == "__main__":

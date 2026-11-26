@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "ClickHouse server runs of tpcds_obt and write_primitives now use their own database instead of the one holding the TPC-DS or TPC-H tables they share data with, so they no longer refuse to start after the data benchmark has run and no longer modify its tables.",
+      "benchmarks": ["tpcds_obt", "write_primitives"]
+    }
+  ]
+}

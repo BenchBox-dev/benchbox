@@ -524,6 +524,37 @@ class TestParquetPartitioning:
         assert len(east_files) >= 1
         assert len(west_files) >= 1
 
+    def test_partitioned_row_groups_fill_to_the_row_group_size(self, temp_dir, partitioned_schema, monkeypatch):
+        tbl_file = temp_dir / "test.tbl"
+        regions = ("East", "West")
+        tbl_file.write_text("".join(f"{i}|name-{i}|{regions[i % 2]}|2023|\n" for i in range(2000)))
+
+        converter = ParquetConverter()
+        stream_batches = converter.iter_record_batches
+        monkeypatch.setattr(
+            converter, "iter_record_batches", lambda *args, **kwargs: stream_batches(*args, block_size=4096, **kwargs)
+        )
+        result = converter.convert(
+            source_files=[tbl_file],
+            table_name="test",
+            schema=partitioned_schema,
+            options=ConversionOptions(output_dir=temp_dir, partition_cols=["region"], row_group_size=400),
+        )
+
+        for region in regions:
+            (part_file,) = (temp_dir / "test" / f"region={region}").glob("*.parquet")
+            meta = pq.read_metadata(part_file)
+            assert [meta.row_group(i).num_rows for i in range(meta.num_row_groups)] == [400, 400, 200]
+
+        from benchbox.utils.datagen_version import compute_datagen_identity_hash
+
+        assert result.metadata["parquet_writer"] == "benchbox-pyarrow-partitioned"
+        assert compute_datagen_identity_hash(
+            "tpch", parquet_writer=result.metadata["parquet_writer"], parquet_row_group_size=122_880, scale_factor=1.0
+        ) != compute_datagen_identity_hash(
+            "tpch", parquet_writer="benchbox-pyarrow-streaming", parquet_row_group_size=122_880, scale_factor=1.0
+        )
+
     def test_convert_with_multiple_partition_columns(self, temp_dir, partitioned_schema):
 
         tbl_file = temp_dir / "test.tbl"
@@ -647,3 +678,604 @@ class TestParquetPartitioning:
         )
 
         assert result.metadata.get("partitioned") is False
+
+
+class TestParquetStreamingAndBenchmarkCompatibility:
+    def test_streaming_writes_exact_row_groups(self, tmp_path):
+        import duckdb
+
+        schema = {
+            "columns": [
+                {"name": "id", "type": "INTEGER"},
+                {"name": "label", "type": "VARCHAR(25)"},
+                {"name": "amount", "type": "DECIMAL(15,2)"},
+            ]
+        }
+        tbl_file = tmp_path / "orders.tbl"
+        lines = [f"{i}|row-{i}|{i * 1.25:.2f}|\n" for i in range(1, 351)]
+        tbl_file.write_text("".join(lines), encoding="utf-8")
+
+        converter = ParquetConverter()
+
+        result = converter.convert(
+            source_files=[tbl_file],
+            table_name="orders",
+            schema=schema,
+            options=ConversionOptions(output_dir=tmp_path, row_group_size=100),
+        )
+
+        assert result.success is True
+        assert result.row_count == 350
+        assert result.metadata["row_groups"] == 4
+
+        meta = pq.read_metadata(result.output_files[0])
+        assert [meta.row_group(i).num_rows for i in range(meta.num_row_groups)] == [100, 100, 100, 50]
+
+        con = duckdb.connect()
+        try:
+            from decimal import Decimal
+
+            ref_path = tmp_path / "ref.parquet"
+            ref_table = pa.table(
+                {
+                    "id": pa.array(list(range(1, 351)), type=pa.int64()),
+                    "label": pa.array([f"row-{i}" for i in range(1, 351)], type=pa.string()),
+                    "amount": pa.array([Decimal(f"{i * 1.25:.2f}") for i in range(1, 351)], type=pa.decimal128(15, 2)),
+                }
+            )
+            pq.write_table(ref_table, ref_path)
+            diff_a = con.execute(
+                f"SELECT COUNT(*) FROM (SELECT * FROM read_parquet('{result.output_files[0]}') EXCEPT ALL SELECT * FROM read_parquet('{ref_path}'))"
+            ).fetchone()[0]
+            diff_b = con.execute(
+                f"SELECT COUNT(*) FROM (SELECT * FROM read_parquet('{ref_path}') EXCEPT ALL SELECT * FROM read_parquet('{result.output_files[0]}'))"
+            ).fetchone()[0]
+            assert diff_a == 0
+            assert diff_b == 0
+        finally:
+            con.close()
+
+    def test_converts_tsbs_devops_dict_schema_headered_csv(self, tmp_path):
+        schema = {
+            "description": "CPU metrics",
+            "columns": {
+                "hostname": {"type": "VARCHAR(64)"},
+                "usage_user": {"type": "DOUBLE"},
+            },
+        }
+        csv_file = tmp_path / "cpu.csv"
+        csv_file.write_text("hostname,usage_user\nhost_0,12.5\nhost_1,44.0\n", encoding="utf-8")
+
+        result = ParquetConverter().convert(
+            source_files=[csv_file],
+            table_name="cpu",
+            schema=schema,
+            options=ConversionOptions(output_dir=tmp_path),
+        )
+        assert result.success is True
+        assert result.row_count == 2
+        table = pq.read_table(result.output_files[0])
+        assert table.to_pydict() == {"hostname": ["host_0", "host_1"], "usage_user": [12.5, 44.0]}
+
+    def test_converts_vector_search_pipe_csv_with_header_and_float_array(self, tmp_path):
+        schema = {
+            "columns": [
+                {"name": "id", "type": "BIGINT", "nullable": False},
+                {"name": "embedding", "type": "FLOAT_ARRAY", "nullable": False},
+                {"name": "category", "type": "VARCHAR(50)", "nullable": False},
+            ]
+        }
+        csv_file = tmp_path / "vectors.csv"
+        csv_file.write_text("id|embedding|category\n1|[0.1,0.2]|cat_a\n2|[0.3,0.4]|cat_b\n", encoding="utf-8")
+
+        result = ParquetConverter().convert(
+            source_files=[csv_file],
+            table_name="vectors",
+            schema=schema,
+            options=ConversionOptions(output_dir=tmp_path, strict_schema=True),
+        )
+        assert result.success is True
+        assert result.row_count == 2
+        table = pq.read_table(result.output_files[0])
+        assert table.to_pydict()["embedding"] == ["[0.1,0.2]", "[0.3,0.4]"]
+
+    def test_converts_coffeeshop_comma_csv_without_header(self, tmp_path):
+        schema = {
+            "columns": [
+                {"name": "record_id", "type": "INTEGER"},
+                {"name": "location_id", "type": "VARCHAR(32)"},
+            ]
+        }
+        csv_file = tmp_path / "dim_locations.csv"
+        csv_file.write_text("1,loc_east\n2,loc_west\n", encoding="utf-8")
+
+        result = ParquetConverter().convert(
+            source_files=[csv_file],
+            table_name="dim_locations",
+            schema=schema,
+            options=ConversionOptions(output_dir=tmp_path),
+        )
+        assert result.success is True
+        assert result.row_count == 2
+        assert pq.read_table(result.output_files[0]).to_pydict() == {
+            "record_id": [1, 2],
+            "location_id": ["loc_east", "loc_west"],
+        }
+
+    def test_converts_joinorder_ddl_string_schema_and_preserves_manifest_provenance(self, tmp_path):
+        import json
+
+        from benchbox.core.runner.conversion import FormatConversionOrchestrator
+
+        schema = {
+            "title": {
+                "columns": [
+                    "id INTEGER PRIMARY KEY",
+                    "title TEXT NOT NULL",
+                    "production_year INTEGER",
+                ]
+            }
+        }
+        csv_file = tmp_path / "title.csv"
+        csv_file.write_text("1,Movie A,2020\n2,Movie B,2021\n", encoding="utf-8")
+        manifest_path = tmp_path / "_datagen_manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "version": 2,
+                    "benchmark": "joinorder_synthetic",
+                    "scale_factor": 0.01,
+                    "formats": ["csv"],
+                    "format_preference": ["csv"],
+                    "data_generation_version": 1,
+                    "base_constants_hash": "a" * 64,
+                    "csv_delimiter": ",",
+                    "csv_has_header": False,
+                    "tables": {
+                        "title": {
+                            "formats": {
+                                "csv": [{"path": "title.csv", "size_bytes": csv_file.stat().st_size, "row_count": 2}]
+                            }
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        from benchbox.utils.datagen_version import compute_datagen_identity_hash
+
+        results = FormatConversionOrchestrator().convert_benchmark_tables(
+            manifest_path=manifest_path,
+            output_dir=tmp_path,
+            target_format="parquet",
+            schemas=schema,
+        )
+        assert results["title"].row_count == 2
+        updated = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert updated["data_generation_version"] == 1
+        assert updated["base_constants_hash"] == "a" * 64
+        assert updated["csv_delimiter"] == ","
+        assert "parquet" in updated["formats"]
+        assert updated["format_preference"][0] == "parquet"
+        assert updated["parquet_writer"] == "benchbox-duckdb-streaming"
+        assert updated["parquet_row_group_size"] == 122_880
+        assert "data_generation_identity_hash" not in updated
+        assert updated["parquet_data_generation_identity_hash"] == compute_datagen_identity_hash(
+            "joinorder_synthetic",
+            parquet_writer="benchbox-duckdb-streaming",
+            parquet_row_group_size=122_880,
+            scale_factor=0.01,
+        )
+
+    def test_parquet_conversion_does_not_change_tbl_run_datagen_hash(self, tmp_path):
+        import json
+
+        from benchbox.core.runner.conversion import FormatConversionOrchestrator
+        from benchbox.core.runner.runner import _attach_datagen_version
+        from benchbox.core.schemas import BenchmarkConfig
+        from benchbox.utils.datagen_version import (
+            compute_base_constants_hash,
+            compute_datagen_identity_hash,
+            current_datagen_stamp,
+        )
+        from tests.fixtures.result_dict_fixtures import make_benchmark_results
+
+        schema = {
+            "nation": {
+                "columns": [
+                    {"name": "n_nationkey", "type": "INTEGER"},
+                    {"name": "n_name", "type": "VARCHAR(25)"},
+                ]
+            }
+        }
+        tbl_file = tmp_path / "nation.tbl"
+        tbl_file.write_text("0|ALGERIA|\n1|ARGENTINA|\n", encoding="utf-8")
+        manifest_path = tmp_path / "_datagen_manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "version": 2,
+                    "benchmark": "tpch",
+                    "scale_factor": 1.0,
+                    "formats": ["tbl"],
+                    "format_preference": ["tbl"],
+                    **current_datagen_stamp("tpch"),
+                    "tables": {
+                        "nation": {
+                            "formats": {
+                                "tbl": [{"path": "nation.tbl", "size_bytes": tbl_file.stat().st_size, "row_count": 2}]
+                            }
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        FormatConversionOrchestrator().convert_benchmark_tables(
+            manifest_path=manifest_path,
+            output_dir=tmp_path,
+            target_format="parquet",
+            schemas=schema,
+        )
+
+        class _TpchBench:
+            output_dir = tmp_path
+
+        tbl_result = _attach_datagen_version(
+            make_benchmark_results(benchmark_id="tpch", benchmark_name="tpch", platform="DuckDB", scale_factor=1.0),
+            _TpchBench(),
+            config=BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=1.0, options={}),
+        )
+        pq_result = _attach_datagen_version(
+            make_benchmark_results(benchmark_id="tpch", benchmark_name="tpch", platform="DuckDB", scale_factor=1.0),
+            _TpchBench(),
+            config=BenchmarkConfig(
+                name="tpch", display_name="TPC-H", scale_factor=1.0, options={"table_format": "parquet"}
+            ),
+        )
+        spark_implicit_pq_result = _attach_datagen_version(
+            make_benchmark_results(benchmark_id="tpch", benchmark_name="tpch", platform="Spark", scale_factor=1.0),
+            _TpchBench(),
+            config=BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=1.0, options={}),
+        )
+        external_implicit_pq_result = _attach_datagen_version(
+            make_benchmark_results(benchmark_id="tpch", benchmark_name="tpch", platform="DuckDB", scale_factor=1.0),
+            _TpchBench(),
+            config=BenchmarkConfig(
+                name="tpch", display_name="TPC-H", scale_factor=1.0, options={"table_mode": "external"}
+            ),
+        )
+        expected_pq_hash = compute_datagen_identity_hash(
+            "tpch",
+            parquet_writer="benchbox-duckdb-streaming",
+            parquet_row_group_size=122_880,
+            scale_factor=1.0,
+        )
+        assert tbl_result.data_generation_hash == compute_base_constants_hash("tpch")
+        assert pq_result.data_generation_hash == expected_pq_hash
+        assert spark_implicit_pq_result.data_generation_hash == expected_pq_hash
+        assert external_implicit_pq_result.data_generation_hash == expected_pq_hash
+        assert pq_result.data_generation_hash != tbl_result.data_generation_hash
+
+        from benchbox.core.runner.runner import _validate_manifest_if_present
+
+        legacy_pq_dir = tmp_path / "legacy_mixed_pq"
+        legacy_pq_dir.mkdir()
+        (legacy_pq_dir / "nation.tbl").write_text("0|ALGERIA|\n", encoding="utf-8")
+        (legacy_pq_dir / "nation.parquet").write_bytes(b"PAR1")
+        (legacy_pq_dir / "_datagen_manifest.json").write_text(
+            json.dumps(
+                {
+                    "version": 2,
+                    "benchmark": "tpch",
+                    "scale_factor": 1.0,
+                    "formats": ["tbl", "parquet"],
+                    "format_preference": ["parquet", "tbl"],
+                    **current_datagen_stamp("tpch"),
+                    "tables": {
+                        "nation": {
+                            "formats": {
+                                "tbl": [{"path": "nation.tbl", "size_bytes": 11, "row_count": 1}],
+                                "parquet": [{"path": "nation.parquet", "size_bytes": 4, "row_count": 1}],
+                            }
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        class _LegacyMixedBench:
+            output_dir = legacy_pq_dir
+            tables = None
+
+        cfg_no_fmt = BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=1.0, options={})
+        cfg_ext = BenchmarkConfig(
+            name="tpch", display_name="TPC-H", scale_factor=1.0, options={"table_mode": "external"}
+        )
+        assert _validate_manifest_if_present(_LegacyMixedBench(), cfg_no_fmt, quiet=True, platform_name="duckdb")[
+            ::2
+        ] == (
+            True,
+            True,
+        )
+        assert _validate_manifest_if_present(_LegacyMixedBench(), cfg_no_fmt, quiet=True, platform_name="lakesail")[
+            ::2
+        ] == (False, True)
+        assert _validate_manifest_if_present(_LegacyMixedBench(), cfg_ext, quiet=True, platform_name="duckdb")[::2] == (
+            False,
+            True,
+        )
+
+    def test_pre_streaming_parquet_manifest_is_stale_for_parquet_runs(self, tmp_path):
+        from benchbox.core.tpch_skew.generator import TPCHSkewDataGenerator
+        from benchbox.core.tpch_skew.skew_config import SkewConfiguration
+        from benchbox.utils.datagen_version import (
+            compute_datagen_identity_hash,
+            current_datagen_stamp,
+            describe_datagen_staleness,
+            manifest_datagen_is_current,
+        )
+
+        legacy_pq_manifest = {
+            "benchmark": "h2odb",
+            "scale_factor": 1.0,
+            "formats": ["tbl", "parquet"],
+            "format_preference": ["parquet", "tbl"],
+            **current_datagen_stamp("h2odb"),
+        }
+        assert manifest_datagen_is_current(legacy_pq_manifest, benchmark="h2odb") is True
+        assert (
+            manifest_datagen_is_current(legacy_pq_manifest, benchmark="h2odb", expected_table_format="parquet") is False
+        )
+        reason = describe_datagen_staleness(legacy_pq_manifest, benchmark="h2odb", expected_table_format="parquet")
+        assert reason is not None and "streaming row-group layout" in reason
+
+        streaming_pq_manifest = {
+            **legacy_pq_manifest,
+            "parquet_writer": "benchbox-streaming",
+            "parquet_row_group_size": 122_880,
+        }
+        assert (
+            manifest_datagen_is_current(streaming_pq_manifest, benchmark="h2odb", expected_table_format="parquet")
+            is True
+        )
+
+        skew_cfg = SkewConfiguration(seed=42)
+        skew_gen = TPCHSkewDataGenerator(scale_factor=0.01, output_dir=tmp_path, skew_config=skew_cfg)
+        identity = skew_cfg.datagen_identity()
+        skew_pq_manifest = {
+            "benchmark": "tpch_skew",
+            "scale_factor": 0.01,
+            "skew_configuration": identity,
+            "skew_configuration_hash": skew_cfg.datagen_identity_hash(),
+            "parquet_writer": "benchbox-streaming",
+            "parquet_row_group_size": 122_880,
+            "data_generation_identity_hash": compute_datagen_identity_hash("tpch_skew", identity, scale_factor=0.01),
+            "parquet_data_generation_identity_hash": compute_datagen_identity_hash(
+                "tpch_skew",
+                identity,
+                parquet_writer="benchbox-streaming",
+                parquet_row_group_size=122_880,
+                scale_factor=0.01,
+            ),
+        }
+        assert skew_gen.manifest_matches_datagen_identity(skew_pq_manifest) is True
+
+    def test_duckdb_streaming_fast_path_matches_pyarrow(self, tmp_path):
+        import duckdb
+
+        from benchbox.utils.datagen_version import compute_datagen_identity_hash
+
+        schema = {
+            "columns": [
+                {"name": "id", "type": "INTEGER"},
+                {"name": "label", "type": "VARCHAR(25)"},
+                {"name": "amount", "type": "DECIMAL(15,2)"},
+            ]
+        }
+        tbl_file = tmp_path / "lineitem.tbl"
+        tbl_file.write_text("".join(f"{i}|item-{i}|{i * 2.5:.2f}\n" for i in range(1, 251)), encoding="utf-8")
+
+        converter = ParquetConverter()
+
+        fast_dir = tmp_path / "fast"
+        fallback_dir = tmp_path / "fallback"
+        fast_dir.mkdir()
+        fallback_dir.mkdir()
+
+        fast_res = converter.convert(
+            source_files=[tbl_file],
+            table_name="lineitem",
+            schema=schema,
+            options=ConversionOptions(output_dir=fast_dir, row_group_size=122_880, expected_row_count=250),
+        )
+        fallback_res = converter.convert(
+            source_files=[tbl_file],
+            table_name="lineitem",
+            schema=schema,
+            options=ConversionOptions(output_dir=fallback_dir, row_group_size=122_880, data_page_version="1.0"),
+        )
+        assert fast_res.row_count == 250
+        assert fallback_res.row_count == 250
+        assert fast_res.metadata["parquet_writer"] == "benchbox-duckdb-streaming"
+        assert fallback_res.metadata["parquet_writer"] == "benchbox-pyarrow-streaming"
+        assert compute_datagen_identity_hash(
+            "tpch",
+            parquet_writer=fast_res.metadata["parquet_writer"],
+            parquet_row_group_size=122_880,
+            scale_factor=1.0,
+        ) != compute_datagen_identity_hash(
+            "tpch",
+            parquet_writer=fallback_res.metadata["parquet_writer"],
+            parquet_row_group_size=122_880,
+            scale_factor=1.0,
+        )
+        assert pq.read_schema(fast_res.output_files[0]).types == pq.read_schema(fallback_res.output_files[0]).types
+
+        con = duckdb.connect()
+        try:
+            a = fast_res.output_files[0]
+            b = fallback_res.output_files[0]
+            assert (
+                con.execute(
+                    f"SELECT COUNT(*) FROM (SELECT * FROM read_parquet('{a}') EXCEPT ALL SELECT * FROM read_parquet('{b}'))"
+                ).fetchone()[0]
+                == 0
+            )
+            assert (
+                con.execute(
+                    f"SELECT COUNT(*) FROM (SELECT * FROM read_parquet('{b}') EXCEPT ALL SELECT * FROM read_parquet('{a}'))"
+                ).fetchone()[0]
+                == 0
+            )
+        finally:
+            con.close()
+
+    def test_independent_row_count_validation_detects_mismatch_on_all_paths(self, tmp_path):
+        schema = {
+            "columns": [
+                {"name": "id", "type": "INTEGER"},
+                {"name": "region", "type": "VARCHAR(16)"},
+            ]
+        }
+        tbl_file = tmp_path / "orders.tbl"
+        tbl_file.write_text("1|EAST\n2|WEST\n3|NORTH\n", encoding="utf-8")
+        converter = ParquetConverter()
+
+        duck_dir = tmp_path / "duck_bad"
+        duck_dir.mkdir()
+        with pytest.raises(ConversionError, match="Row count mismatch"):
+            converter.convert(
+                source_files=[tbl_file],
+                table_name="orders",
+                schema=schema,
+                options=ConversionOptions(output_dir=duck_dir, row_group_size=122_880, expected_row_count=99),
+            )
+        assert not (duck_dir / "orders.parquet").exists()
+
+        pa_dir = tmp_path / "pa_bad"
+        pa_dir.mkdir()
+        with pytest.raises(ConversionError, match="Row count mismatch"):
+            converter.convert(
+                source_files=[tbl_file],
+                table_name="orders",
+                schema=schema,
+                options=ConversionOptions(
+                    output_dir=pa_dir,
+                    row_group_size=122_880,
+                    data_page_version="1.0",
+                    expected_row_count=99,
+                ),
+            )
+        assert not (pa_dir / "orders.parquet").exists()
+
+        part_dir = tmp_path / "part_bad"
+        part_dir.mkdir()
+        with pytest.raises(ConversionError, match="Row count mismatch"):
+            converter.convert(
+                source_files=[tbl_file],
+                table_name="orders",
+                schema=schema,
+                options=ConversionOptions(
+                    output_dir=part_dir,
+                    partition_cols=["region"],
+                    expected_row_count=99,
+                ),
+            )
+        assert not (part_dir / "orders").exists()
+
+    def test_orchestrator_ignores_unmeasured_estimated_manifest_row_counts(self, tmp_path):
+        import json
+
+        from benchbox.core.runner.conversion import FormatConversionOrchestrator
+
+        schema = {
+            "nation": {
+                "columns": [
+                    {"name": "n_nationkey", "type": "INTEGER"},
+                    {"name": "n_name", "type": "VARCHAR(25)"},
+                ]
+            }
+        }
+        tbl_file = tmp_path / "nation.tbl"
+        tbl_file.write_text("0|ALGERIA\n1|ARGENTINA\n2|BRAZIL\n", encoding="utf-8")
+        manifest_path = tmp_path / "_datagen_manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "version": 2,
+                    "benchmark": "tpch_skew",
+                    "scale_factor": 10.0,
+                    "formats": ["tbl"],
+                    "format_preference": ["tbl"],
+                    "tables": {
+                        "nation": {
+                            "formats": {
+                                "tbl": [
+                                    {
+                                        "path": "nation.tbl",
+                                        "size_bytes": tbl_file.stat().st_size,
+                                        "row_count": 250,
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        results = FormatConversionOrchestrator().convert_benchmark_tables(
+            manifest_path=manifest_path,
+            output_dir=tmp_path,
+            target_format="parquet",
+            schemas=schema,
+        )
+        assert results["nation"].row_count == 3
+        updated = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert updated["tables"]["nation"]["formats"]["parquet"][0]["row_count"] == 3
+
+    def test_orchestrator_honors_per_entry_write_delimited_manifest_dialect(self, tmp_path):
+        from benchbox.core.manifest_utils import write_delimited_manifest
+        from benchbox.core.runner.conversion import FormatConversionOrchestrator
+
+        csv_file = tmp_path / "metrics.csv"
+        csv_file.write_text("col_a;col_b\n1;hello\n2;world\n", encoding="utf-8")
+
+        class _StubGenerator:
+            output_dir = tmp_path
+            scale_factor = 0.01
+            compress_data = False
+            compression_type = "none"
+
+        write_delimited_manifest(
+            _StubGenerator(),
+            "custom_bench",
+            {"metrics": csv_file},
+            {"metrics": 2},
+            delimiter=";",
+            has_header=True,
+        )
+        schema = {
+            "metrics": {
+                "columns": [
+                    {"name": "id", "type": "INTEGER"},
+                    {"name": "label", "type": "VARCHAR(20)"},
+                ]
+            }
+        }
+        results = FormatConversionOrchestrator().convert_benchmark_tables(
+            manifest_path=tmp_path / "_datagen_manifest.json",
+            output_dir=tmp_path,
+            target_format="parquet",
+            schemas=schema,
+        )
+        assert results["metrics"].row_count == 2
+        assert pq.read_table(results["metrics"].output_files[0]).to_pydict() == {
+            "id": [1, 2],
+            "label": ["hello", "world"],
+        }

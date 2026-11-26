@@ -461,7 +461,7 @@ def host(tmp_path: Path, mirror: dict[str, bytes]) -> dict:
         f' *) echo "tailscale $*" >> "{calls}";; esac\n',
     )
     env = {
-        **os.environ,
+        **{key: value for key, value in os.environ.items() if key != "GATEWAY_HOST_REPO"},
         **GIT_IDENTITY,
         "HOME": str(home),
         "GATEWAY_DIR": str(gateway_dir),
@@ -517,6 +517,29 @@ def _script(host: dict, *args: str) -> subprocess.CompletedProcess[str]:
 
 def _source(host: dict, body: str, env: dict | None = None) -> subprocess.CompletedProcess[str]:
     return _run(host, f"bash -c '. \"$0\"; {body}' {shlex.quote(str(host['script']))}", env)
+
+
+def test_the_running_build_is_read_from_the_program_image_not_the_process_name(host: dict) -> None:
+    binary = _executable(host["tmp"] / "pinned" / "omp", "#!/bin/sh\n")
+    os.utime(binary, (1_700_000_000, 1_700_000_000))
+    _executable(
+        host["stubs"] / "ps",
+        '#!/bin/sh\ncase "$*" in *comm=*) echo omp;; *etime=*) echo 1-00:00:00;; esac\n',
+    )
+    shared_memory = host["tmp"] / "agent.db-shm"
+    shared_memory.write_bytes(b"")
+    _executable(
+        host["stubs"] / "lsof",
+        '#!/bin/sh\ncase "$*" in *LISTEN*) echo 4242;; '
+        f'*txt*) printf "p4242\\nftxt\\nn%s\\nftxt\\nn%s\\n" "{binary}" "{shared_memory}";; esac\n',
+    )
+    result = _source(
+        host,
+        f"running_pid() {{ echo 4242; }}; binary_version() {{ echo 1.2.3; }}; PINNED_VERSION=1.2.3; "
+        f'PINNED_SHA=$(file_sha256 "{binary}"); check_running_build dev.omp.auth-broker 8765',
+    )
+    assert result.returncode == 0, result.stderr
+    assert f"dev.omp.auth-broker: omp 1.2.3 sha256={hashlib.sha256(binary.read_bytes()).hexdigest()}" in result.stdout
 
 
 def _revoke(host: dict, name: str) -> subprocess.CompletedProcess[str]:
@@ -807,7 +830,7 @@ def test_gateway_clients_follow_a_develop_config_that_changed_after_the_checkout
 FAKE_GH = """#!/bin/sh
 echo "$*" >> "$GH_LOG"
 case "$1 $2" in
-  "api --method") [ -z "${GH_FAIL_DISPATCH:-}" ] || exit 1;;
+  "workflow run") [ -z "${GH_FAIL_DISPATCH:-}" ] || exit 1;;
   "secret list") printf 'REVIEW_GATEWAY_TOKEN\\nREVIEW_GATEWAY_URL\\n';;
   "issue list") [ -f "$GH_STATE/open" ] && cat "$GH_STATE/open";;
   "issue create")
@@ -1241,7 +1264,7 @@ def _dispatches(log: Path) -> int:
     if not log.exists():
         return 0
     return sum(
-        "api --method POST repos/BenchBox-dev/benchbox/dispatches -f event_type=review-sweep" in line
+        "workflow run review-verdict.yml --repo BenchBox-dev/benchbox --ref develop -f sweep=true" in line
         for line in log.read_text(encoding="utf-8").splitlines()
     )
 
@@ -1283,7 +1306,7 @@ def test_a_failed_sweep_dispatch_is_logged_and_leaves_the_monitor_and_its_timest
     _fake_gh(host, GH_FAIL_DISPATCH="1")
     result = _monitor(host)
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "monitor: review-sweep dispatch failed" in result.stdout
+    assert "monitor: sweep dispatch failed" in result.stdout
     assert not (host["dir"] / "sweep.dispatched").exists()
 
 

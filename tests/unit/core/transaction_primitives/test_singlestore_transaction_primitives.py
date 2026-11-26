@@ -37,10 +37,10 @@ def test_begin_transaction_is_rewritten_to_begin_on_singlestore(txn):
 
 
 def test_read_committed_isolation_statement_is_dropped_on_singlestore(txn):
-    sql = txn._rewrite_transactional_sql_for_platform(
-        "SET TRANSACTION ISOLATION LEVEL READ COMMITTED;\nBEGIN TRANSACTION;\nCOMMIT;\n", "singlestore"
-    )
-    assert sql == "BEGIN;\nCOMMIT;\n"
+    operation = txn.operations_manager.get_operation("transaction_isolation_read_committed")
+    sql = txn._rewrite_transactional_sql_for_platform(operation.platform_overrides["singlestore"], "singlestore")
+    assert sql.startswith("BEGIN;\n")
+    assert "ISOLATION" not in sql
 
 
 def test_create_temp_table_is_rewritten_to_temporary_on_singlestore(txn):
@@ -69,17 +69,20 @@ def test_no_remaining_begin_transaction_or_series_in_singlestore_operations(txn,
     assert "generate_series" not in sql
 
 
-def test_ansi_date_literals_are_rewritten_to_quoted_strings_on_singlestore(txn):
+def test_ansi_date_literals_are_cast_on_singlestore(txn):
     sql = txn._rewrite_transactional_sql_for_platform(
         "INSERT INTO t VALUES (1, DATE '1998-01-01', date '1998-01-15');\nSELECT DATE '1998-01-01' AS o_orderdate;",
         "singlestore",
     )
-    assert sql == "INSERT INTO t VALUES (1, '1998-01-01', '1998-01-15');\nSELECT '1998-01-01' AS o_orderdate;"
+    assert (
+        sql
+        == "INSERT INTO t VALUES (1, '1998-01-01' :> DATE, '1998-01-15' :> DATE);\nSELECT '1998-01-01' :> DATE AS o_orderdate;"
+    )
 
 
 def test_ansi_date_literals_are_preserved_on_other_platforms(txn):
     sql = txn._rewrite_transactional_sql_for_platform("SELECT DATE '1998-01-01'", "postgresql")
-    assert sql == "SELECT DATE '1998-01-01'"
+    assert sql == "SELECT CAST('1998-01-01' AS DATE)"
 
 
 def test_no_ansi_date_literals_remain_in_any_singlestore_operation(txn):

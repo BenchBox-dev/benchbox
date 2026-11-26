@@ -244,7 +244,7 @@ class TestDuckDBExactSearch:
 
         conn = vector_db["conn"]
         rows = conn.execute(
-            "SELECT list_sum(list_transform(embedding, x -> x * x)) AS sq_norm FROM vectors LIMIT 20"
+            "SELECT list_sum(list_transform(embedding, lambda x: x * x)) AS sq_norm FROM vectors LIMIT 20"
         ).fetchall()
         for (sq_norm,) in rows:
             norm = math.sqrt(sq_norm)

@@ -10,6 +10,7 @@ from benchbox.utils.format_converters.base import (
     ConversionOptions,
     ConversionResult,
     SchemaError,
+    normalize_schema_columns,
 )
 
 
@@ -48,11 +49,18 @@ class DuckLakeConverter(BaseFormatConverter):
         except Exception as e:
             raise SchemaError(f"Failed to build Arrow schema: {e}") from e
 
+        source_rows = [0]
         combined_table = self.read_tbl_files(
-            source_files, schema, progress_callback, progress_start=0.0, progress_end=0.6
+            source_files,
+            schema,
+            progress_callback,
+            progress_start=0.0,
+            progress_end=0.6,
+            options=opts,
+            source_line_counter=source_rows,
         )
 
-        column_names = [col["name"] for col in schema["columns"]]
+        column_names = [col["name"] for col in normalize_schema_columns(schema)]
 
         source_dir = source_files[0].parent
         output_dir = opts.output_dir if opts.output_dir else source_dir
@@ -71,7 +79,11 @@ class DuckLakeConverter(BaseFormatConverter):
 
         if opts.validate_row_count:
             try:
-                self.validate_row_count(source_files, row_count, table_name)
+                self._verify_inline_row_count(
+                    expected_rows=opts.expected_row_count if opts.expected_row_count is not None else source_rows[0],
+                    written_rows=row_count,
+                    table_name=table_name,
+                )
             except ConversionError:
                 if ducklake_table_path.exists():
                     shutil.rmtree(ducklake_table_path, ignore_errors=True)

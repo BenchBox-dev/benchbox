@@ -47,6 +47,7 @@ def _cli_run(tmp_path: Path, *args: str, output: str | None = None) -> Any:
             "--phases",
             "generate,load,power",
             *args,
+            "--ignore-memory-warnings",
             "--non-interactive",
             "--output",
             output or str(tmp_path / "out"),
@@ -102,6 +103,7 @@ def test_cli_explicit_engine_conflicting_with_the_tuning_file_fails_before_any_w
     assert _bundles(tmp_path / "results") == []
 
 
+@pytest.mark.usefixtures("ample_available_memory")
 def test_mcp_explicit_engine_and_legacy_streaming_key_agree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     response = _mcp_run(tmp_path, monkeypatch, execution_engine="streaming", platform_options={"streaming": True})
 

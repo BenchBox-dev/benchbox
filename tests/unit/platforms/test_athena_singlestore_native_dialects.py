@@ -40,7 +40,8 @@ def test_write_primitives_overrides_name_singlestore_not_mysql():
 def test_transaction_primitives_overrides_name_singlestore_not_mysql():
     operations = load_transaction_primitives_catalog().operations.values()
     assert not [op.id for op in operations if "mysql" in op.platform_overrides]
-    assert [op.id for op in operations if "singlestore" in op.platform_overrides] == [
+    singlestore_only = {"transaction_isolation_read_committed"}
+    assert [op.id for op in operations if "singlestore" in op.platform_overrides and op.id not in singlestore_only] == [
         op.id for op in operations if "mariadb" in op.platform_overrides
     ]
 

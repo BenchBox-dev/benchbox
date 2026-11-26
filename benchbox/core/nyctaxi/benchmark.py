@@ -7,7 +7,6 @@ from __future__ import annotations
 import csv
 import importlib
 import logging
-import re
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Union
@@ -32,17 +31,6 @@ from benchbox.utils.path_utils import get_benchmark_runs_datagen_path
 
 if TYPE_CHECKING:
     from benchbox.core.connection import DatabaseConnection
-
-
-_NYCTAXI_DOW_RE = re.compile(r"EXTRACT\s*\(\s*DOW\s+FROM\s+([^()]+)\)", re.IGNORECASE)
-_NYCTAXI_EPOCH_DIFF_RE = re.compile(
-    r"EXTRACT\s*\(\s*EPOCH\s+FROM\s+\(\s*([^()]+?)\s*-\s*([^()]+?)\s*\)\s*\)",
-    re.IGNORECASE,
-)
-_NYCTAXI_SF_EPOCH_RE = re.compile(
-    r"DATE_PART\s*\(\s*EPOCH\s*,\s*\(\s*([^()]+?)\s*-\s*([^()]+?)\s*\)\s*\)",
-    re.IGNORECASE,
-)
 
 
 class NYCTaxiBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseBenchmark):
@@ -264,28 +252,6 @@ class NYCTaxiBenchmark(GeneratorOutputDirMixin, TranslatableQueryMixin, BaseBenc
             )
 
         manifest.write()
-
-    def translate_query_text(self, query_text: str, target_dialect: str) -> str:
-        d = target_dialect.lower()
-        if "bigquery" in d:
-            query_text = _NYCTAXI_DOW_RE.sub(r"(EXTRACT(DAYOFWEEK FROM \1) - 1)", query_text)
-            query_text = _NYCTAXI_EPOCH_DIFF_RE.sub(
-                r"(UNIX_SECONDS(TIMESTAMP(\1)) - UNIX_SECONDS(TIMESTAMP(\2)))", query_text
-            )
-        elif "databricks" in d or "spark" in d:
-            query_text = _NYCTAXI_DOW_RE.sub(r"(DAYOFWEEK(\1) - 1)", query_text)
-            query_text = _NYCTAXI_EPOCH_DIFF_RE.sub(r"(UNIX_TIMESTAMP(\1) - UNIX_TIMESTAMP(\2))", query_text)
-        elif "singlestore" in d:
-            query_text = _NYCTAXI_DOW_RE.sub(r"(DAYOFWEEK(\1) - 1)", query_text)
-        elif "sqlite" in d:
-            query_text = _NYCTAXI_DOW_RE.sub(r"CAST(strftime(\1, '%w') AS INTEGER)", query_text)
-            query_text = _NYCTAXI_EPOCH_DIFF_RE.sub(
-                r"(CAST(strftime(\1, '%s') AS INTEGER) - CAST(strftime(\2, '%s') AS INTEGER))", query_text
-            )
-        query_text = super().translate_query_text(query_text, target_dialect)
-        if "snowflake" in d:
-            query_text = _NYCTAXI_SF_EPOCH_RE.sub(r"(DATEDIFF(second, \2, \1))", query_text)
-        return query_text
 
     def get_queries(self, dialect: str | None = None) -> dict[str, str]:
         importlib.import_module("benchbox.sql_compat.rules.query_source.nyctaxi_variants")

@@ -206,14 +206,17 @@ class TestPlatformKeyDispatch:
         bench.execute_operation("op1", conn, platform_key="postgres")
 
         executed_sql = conn.execute.call_args.args[0]
-        assert "FROM (SELECT generate_series(1, 100) AS n) t" in executed_sql
+        assert "FROM (SELECT GENERATE_SERIES(1, 100) AS n) AS t" in executed_sql
         assert "unnest(generate_series" not in executed_sql
 
     @pytest.mark.parametrize(
         ("platform_key", "expected"),
         [
-            ("snowflake", "FROM (SELECT value::INT AS n FROM TABLE(FLATTEN(ARRAY_GENERATE_RANGE(1, 100 + 1)))) t"),
-            ("bigquery", "FROM (SELECT n FROM UNNEST(GENERATE_ARRAY(1, 100)) AS n) t"),
+            (
+                "snowflake",
+                "FROM (SELECT CAST(value AS INT) AS n FROM TABLE(FLATTEN(ARRAY_GENERATE_RANGE(1, 100 + 1)))) AS t",
+            ),
+            ("bigquery", "FROM (SELECT n FROM UNNEST(GENERATE_ARRAY(1, 100)) AS n) AS t"),
         ],
     )
     def test_rewrites_generate_series_for_cloud_dialects(self, tmp_path: Path, platform_key: str, expected: str):
@@ -235,22 +238,20 @@ class TestPlatformKeyDispatch:
         assert expected in executed_sql
         assert "generate_series" not in executed_sql
 
-    def test_rewrites_isolation_level_begin_for_postgres(self, tmp_path: Path):
+    def test_isolation_level_override_is_used_for_postgres(self, tmp_path: Path):
         bench = _make_benchmark(tmp_path)
         bench.operations_manager.get_operation.return_value = _make_operation(
-            write_sql="""
-                SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
-                BEGIN TRANSACTION;
-                INSERT INTO txn_orders VALUES (1);
-                COMMIT;
-            """,
+            write_sql="SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;\nBEGIN TRANSACTION;\nINSERT INTO txn_orders VALUES (1);\nCOMMIT;\n",
+            platform_overrides={
+                "postgres": "COMMIT;\nBEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;\nINSERT INTO txn_orders VALUES (1);\nCOMMIT;\n"
+            },
         )
         conn = _make_connection()
 
         bench.execute_operation("op1", conn, platform_key="postgres")
 
         executed_sql = conn.execute.call_args.args[0]
-        assert "COMMIT;\nBEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;" in executed_sql
+        assert "COMMIT;\nBEGIN ISOLATION LEVEL REPEATABLE READ;" in executed_sql
         assert "SET TRANSACTION ISOLATION LEVEL" not in executed_sql
 
 

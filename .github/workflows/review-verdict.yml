@@ -1,6 +1,6 @@
 name: review-verdict
 
-run-name: review-verdict (${{ github.event_name }} pr=${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || 'sweep' }}${{ (github.event.pull_request.head.sha || inputs.head) && format(' head={0}', github.event.pull_request.head.sha || inputs.head) || '' }})
+run-name: review-verdict (${{ github.event_name }} pr=${{ (inputs.sweep && 'sweep') || github.event.pull_request.number || github.event.issue.number || inputs.pr || 'sweep' }}${{ !inputs.sweep && (github.event.pull_request.head.sha || inputs.head) && format(' head={0}', github.event.pull_request.head.sha || inputs.head) || '' }})
 
 on:
   push:
@@ -12,8 +12,8 @@ on:
   workflow_dispatch:
     inputs:
       pr:
-        description: Pull request number to review
-        required: true
+        description: Pull request number to review; leave empty with sweep
+        required: false
         type: string
       head:
         description: Head commit the dispatch targets; a different current head skips the run
@@ -23,15 +23,18 @@ on:
         description: Why this dispatch was requested
         required: false
         type: string
+      sweep:
+        description: Run the retry sweep and health check instead of a review
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: '23 * * * *'
-  repository_dispatch:
-    types: [review-sweep]
 
 permissions: {}
 
 concurrency:
-  group: review-verdict-${{ ((github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'repository_dispatch') && 'sweep') || (((github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) || (github.event_name == 'issue_comment' && github.event.issue.pull_request && (startsWith(github.event.comment.body, '/review') || startsWith(github.event.comment.body, 'Review adjudication:')) && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) || github.event_name == 'workflow_dispatch') && format('pr-{0}', github.event.pull_request.number || github.event.issue.number || inputs.pr) || format('run-{0}', github.run_id)) }}
+  group: review-verdict-${{ ((github.event_name == 'schedule' || github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.sweep)) && 'sweep') || (((github.event_name == 'pull_request_target' && (github.event.action != 'edited' || github.event.changes.base)) || (github.event_name == 'issue_comment' && github.event.issue.pull_request && (startsWith(github.event.comment.body, '/review') || startsWith(github.event.comment.body, 'Review adjudication:')) && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)) || github.event_name == 'workflow_dispatch') && format('pr-{0}', github.event.pull_request.number || github.event.issue.number || inputs.pr) || format('run-{0}', github.run_id)) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
 
 jobs:
@@ -40,10 +43,10 @@ jobs:
       actions: write
       contents: read
       pull-requests: read
-    uses: joeharris76/theseus/.github/workflows/review.yml@6fa558e1ee5522260172983e7112d89f233ca2a8
+    uses: joeharris76/theseus/.github/workflows/review.yml@20d0d34b8f229cd06f0fc94a40658ac3f43567cc
     with:
       environment: review
-      theseus_ref: 6fa558e1ee5522260172983e7112d89f233ca2a8
+      theseus_ref: 20d0d34b8f229cd06f0fc94a40658ac3f43567cc
       gated_base: "develop,release/*"
       policy_path: .github/review.yml
       tailscale_tag: tag:review-ci
@@ -105,6 +108,10 @@ jobs:
               handled="$EVENT_HEAD"
               ;;
             workflow_dispatch)
+              if [ -z "$INPUT_PR" ]; then
+                echo "A sweep dispatch reviews no single pull request; nothing to check."
+                exit 0
+              fi
               pr="$INPUT_PR"
               handled="$INPUT_HEAD"
               ;;

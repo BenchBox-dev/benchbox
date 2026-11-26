@@ -70,6 +70,7 @@ def generate_cli_command(
     no_link_probe: bool = False,
     gateway: str | None = None,
     allow_greybeam_inline_load: bool = False,
+    datagen_backend: str | None = None,
 ) -> str:
     parts = ["benchbox run"]
     parts.append(f"--platform {platform}")
@@ -89,6 +90,7 @@ def generate_cli_command(
     _VALUE_PARAMS = [
         (tuning, "--tuning", "notuning"),
         (seed, "--seed", None),
+        (datagen_backend, "--datagen-backend", None),
         (iterations, "--iterations", None),
         (timeout, "--timeout", None),
         (output, "--output", None),
@@ -313,6 +315,7 @@ def display_interactive_preview(
         queries=benchmark_config.queries,
         tuning=tuning,
         seed=seed,
+        datagen_backend=(options.get("datagen_backend") if options.get("datagen_backend_explicit") else None),
         timeout=timeout,
         output=output,
         table_mode=table_mode,

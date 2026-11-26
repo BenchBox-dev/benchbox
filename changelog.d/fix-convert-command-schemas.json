@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "`benchbox convert` now finds table schemas for TPC-H, TPC-DS, SSB, coffeeshop, tsbs_devops and the other benchmarks; it failed with \"Could not get schemas\" or \"Schema missing 'columns'\" before."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Delta Lake, Iceberg, Vortex and DuckLake conversion now use the delimiter and header recorded in the manifest, accept string column schemas, and check row counts while reading instead of re-reading the source files, so headered CSV tables such as tsbs_devops no longer fail with a false row-count mismatch."
+    }
+  ]
+}

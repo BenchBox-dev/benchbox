@@ -293,5 +293,5 @@ class TestMetadataPersistsCanonicalKey:
     def test_create_table_sql_dispatches_on_canonical_key(self):
         adapter = _MetadataStubAdapter("ClickHouse (Local)", canonical_platform_type="clickhouse-local")
         manager = TuningMetadataManager(adapter)
-        assert "ENGINE = MergeTree()" in manager._get_create_table_sql()
+        assert "ENGINE=MergeTree()" in manager._get_create_table_sql()
         assert manager._get_create_index_sql() is None

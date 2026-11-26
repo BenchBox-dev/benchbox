@@ -28,6 +28,7 @@
     "--client-region": "not-yet-demanded",
     "--compression": "not-yet-demanded",
     "--concurrency": "security-scoped",
+    "--datagen-backend": "not-yet-demanded",
     "--force": "security-scoped",
     "--funding": "not-yet-demanded",
     "--gateway": "security-scoped",
