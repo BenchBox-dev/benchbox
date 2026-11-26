@@ -27633,6 +27633,13 @@
       "status": "done",
       "title": "Revise the datagen ADR to make a BenchBox-owned Rust generation library the target, and rebuild the datagen item set around it"
     },
+    "datagen-converter-linux-budget-gate": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Measure the Parquet converter budget on Linux and restore SF 1 memory headroom"
+    },
     "datagen-converter-options-and-convert-cli": {
       "claim": null,
       "needs": [],
