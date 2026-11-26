@@ -37476,6 +37476,13 @@
       "status": "done",
       "title": "Reconcile the stand-in and ruleset-relaxation rules across agent docs and correct the relaxation records"
     },
+    "merge-authority-stale-cancelled-hold-run-doc": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Reconcile merge-authority guidance with stale cancelled hold runs that block merging"
+    },
     "merge-queue-01-decision-and-governance-spec": {
       "claim": null,
       "needs": [],
