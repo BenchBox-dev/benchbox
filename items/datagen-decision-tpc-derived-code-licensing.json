@@ -4,6 +4,7 @@
     "Library wheels contain every notice the position requires; a test asserts their presence in the built wheel.",
     "Each TPC-derived file in the library repository is listed with its source and the basis for including it."
   ],
+  "context": "Owner decisions 2026-11-27 (dialog): (1) TPC-DS sub-scale: carry the 72-line tpcgen-rs #677 patch (pin tpcdsgen to a BenchBox-dev/tpcgen-rs commit = v4.0.0 + #677), delete own dsgen/ generators, return to crates.io when released. (2) Upstream-gap rule: no divergent fork; a carried patch only if <= ~200 changed lines, submitted upstream, pinned by commit, listed in README with its upstream PR; anything larger goes to the owner with sizes first. (3) TPC-DS refresh sets: keep own code in its own PR, finish SF 100 parity, offer upstream; required before C removal, not before the TPC cutover. (4) Acceptance: a metric passes inside legacy min-max or the 99.9% prediction interval from 5 legacy seeds; boundary quantiles on low-cardinality columns by rank. (5) Empty queries: must return rows on every seed where legacy does on every seed; where legacy is sometimes empty, the library may be empty on no more seeds than legacy. (6) SSB row counts follow the SSB specification (part = 200,000 x floor(1 + log2 SF), date = 2,556). (7) Oracle defects: qgen seed 0 for Q7/Q12 raises a clear error; the 13 nondeterministic dsqgen cases are excluded only with recorded proof and the library is deterministic for them. (8) Licensing: proceed; ship the TPC legal notice in wheels, templates and tpcds.idx stay in BenchBox, record the position in the licensing doc. (9) Until the review gate posts its first verdict, library PRs may merge with green CI plus an independent reviewer agent reporting no Critical/High/Medium findings; afterwards the gate is required. (10) BenchBox native-datagen extra may be developed and CI-tested against wheels built from a pinned library commit; the BenchBox PR adding the extra merges only after the PyPI release exists. (11) Lock-waiter kills: investigate and report only; no kill-policy change. Remaining: licensing doc PR, wheel notice test, file list.",
   "description": "## Problem\nThe library reimplements TPC tool logic (qgen done in draft, dsqgen planned, dsdgen refresh sets written) and links upstream tpcdsgen, which embeds TPC-derived data carrying the TPC legal notice. Wheels now append that notice to THIRD_PARTY_LICENSES. Whether a compatible reimplementation is a derivative work under TPC EULA clauses 4.a and 8, and whether fetching TPC templates in public CI is acceptable, is unverified. BenchBox keeps templates and tpcds.idx under its own TPC carve-out (docs/tpc-licensing-analysis.md) and passes them at call time.\n\n## Change\nOwner reviews (with legal advice if wanted) and records the position: licence text and notices the library must ship, whether generated tables such as `tpcds_update/columns.rs` (derived from dsdgen's column list) may live in the MIT repository, and whether CI may fetch templates.\n\n## Decision gates\n- Owner-only decision; an agent gathers facts and does not assert a legal conclusion.\n- If the answer restricts distribution, stop publishing wheels that contain the affected code until resolved.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "e7f90656f62d4bdea24be59e5c49fc42",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T23:54:21Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "b18780a64b334516afc866b6b8c7b88a",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
