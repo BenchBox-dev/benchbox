@@ -5,6 +5,8 @@ INSERT INTO DimSecurity (
 WITH sec AS (
   SELECT
     recdate AS effectivedate,
+    rects,
+    value AS record,
     trim(substring(value, 1, 15)) AS symbol,
     trim(substring(value, 16, 6)) AS issue,
     trim(substring(value, 22, 4)) AS status,
@@ -27,7 +29,7 @@ sec_dated AS (
       ELSE CAST(TRY_CAST(conameorcik AS BIGINT) AS VARCHAR)
     END AS company_key,
     coalesce(
-      lead(effectivedate) OVER (PARTITION BY symbol ORDER BY effectivedate),
+      lead(effectivedate) OVER (PARTITION BY symbol ORDER BY rects, record),
       DATE '9999-12-31'
     ) AS enddate
   FROM sec

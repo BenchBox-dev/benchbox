@@ -208,3 +208,12 @@ entries:
     column: TimeValue
     left_type: "TIME"
     right_type: "VARCHAR"
+
+  - id: accounts-inactive-with-customer
+    departure: accounts-inactive-with-customer
+    kind: column_value
+    clause: "4.5.1, 4.6.1.3"
+    reason: "An INACT action makes the customer and the customer's accounts inactive. BenchBox marks every account record Inactive while its customer record is Inactive; the DuckDB implementation takes the account status from account actions only and keeps those records Active. Accepted only where BenchBox's record is Inactive, the implementation's is Active, and BenchBox's customer record for that account record is Inactive."
+    table: DimAccount
+    column: Status
+    condition: "l.status = 'Inactive' AND r.status = 'Active' AND EXISTS (SELECT 1 FROM lhs.main.DimCustomer c WHERE c.sk_customerid = l.sk_customerid AND c.status = 'Inactive')"

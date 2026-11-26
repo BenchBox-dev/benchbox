@@ -20,6 +20,8 @@ INSERT INTO DimCompany (
 WITH cmp AS (
   SELECT
     recdate AS effectivedate,
+    rects,
+    value AS record,
     trim(substring(value, 1, 60)) AS name,
     CAST(trim(substring(value, 61, 10)) AS BIGINT) AS companyid,
     trim(substring(value, 71, 4)) AS status,
@@ -45,7 +47,7 @@ rated AS (
       'B+', 'B', 'B-', 'CCC+', 'CCC', 'CCC-', 'CC', 'C', 'D'
     ) AS valid_rating,
     coalesce(
-      lead(effectivedate) OVER (PARTITION BY companyid ORDER BY effectivedate),
+      lead(effectivedate) OVER (PARTITION BY companyid ORDER BY rects, record),
       DATE '9999-12-31'
     ) AS enddate
   FROM cmp

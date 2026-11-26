@@ -246,7 +246,7 @@ departures:
     kind: kept
     clause: "4.4.1.5"
     project_behaviour: "When a company, security, customer or account changes more than once on one day, only the last change of the day is kept as a record."
-    benchbox_behaviour: "Kept."
+    benchbox_behaviour: "Kept. Changes of one day are ordered by their full timestamp (the FINWIRE PTS field, the CustomerMgmt ActionTS), so the change kept is always the last of the day."
     files:
       - benchbox/core/tpcdi/etl/historical/dim_company.sql
       - benchbox/core/tpcdi/etl/historical/dim_security.sql
@@ -359,5 +359,15 @@ departures:
     benchbox_behaviour: "DimTime.TimeValue is a TIME, the type the specification gives it."
     files:
       - benchbox/core/tpcdi/etl/ingest/dim_time.sql
+    status: implemented
+    approval: approved
+
+  - id: accounts-inactive-with-customer
+    kind: changed
+    clause: "4.5.1, 4.6.1.3"
+    project_behaviour: "An INACT action changes only the customer record; the customer's accounts keep the status of their own last account action."
+    benchbox_behaviour: "From the date of an INACT action every account record of the customer is Inactive, as the INACT action and Appendix A's DimAccount inactive customers check require."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_account.sql
     status: implemented
     approval: approved

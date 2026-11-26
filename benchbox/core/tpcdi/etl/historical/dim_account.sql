@@ -24,7 +24,7 @@ split AS (
     a.accountid,
     a.brokerid,
     c.SK_CustomerID AS sk_customerid,
-    a.status_id,
+    CASE WHEN c.Status = inactive.ST_NAME THEN inactive.ST_ID ELSE a.status_id END AS status_id,
     a.accountdesc,
     a.taxstatus,
     greatest(a.effectivedate, c.EffectiveDate) AS effectivedate,
@@ -34,6 +34,7 @@ split AS (
     ON c.CustomerID = a.customerid
     AND c.EffectiveDate < a.enddate
     AND c.EndDate > a.effectivedate
+  JOIN StatusType AS inactive ON inactive.ST_ID = 'INAC'
   WHERE a.effectivedate < a.enddate
 )
 SELECT

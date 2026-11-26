@@ -91,14 +91,20 @@ def financial(company_key: str) -> str:
     )
 
 
+def finwire(rectype: str, day: date, value: str, time: str = "12:00:00") -> tuple[str, date, str, str]:
+    return (rectype, day, value, f"{day.isoformat()} {time}")
+
+
 FINWIRE = [
-    ("CMP", date(2000, 1, 3), company("Alpha", "0000000001", "AAA")),
-    ("CMP", date(2005, 6, 1), company("Alpha", "0000000001", "ZZ")),
-    ("CMP", date(2006, 1, 1), company("Beta", "0000000002", "BB")),
-    ("SEC", date(2001, 1, 1), security("SYM1", "0000000001")),
-    ("SEC", date(2006, 2, 1), security("SYM2", "Beta")),
-    ("FIN", date(2002, 4, 1), financial("0000000001")),
-    ("FIN", date(2006, 3, 1), financial("Beta")),
+    finwire("CMP", date(2000, 1, 3), company("Alpha", "0000000001", "AAA")),
+    finwire("CMP", date(2005, 6, 1), company("Alpha", "0000000001", "ZZ")),
+    finwire("CMP", date(2005, 6, 1), company("Alpha", "0000000001", "A"), "08:00:00"),
+    finwire("CMP", date(2006, 1, 1), company("Beta", "0000000002", "BB")),
+    finwire("SEC", date(2001, 1, 1), security("SYM1", "0000000001")),
+    finwire("SEC", date(2006, 2, 1), security("SYM2", "Beta")),
+    finwire("SEC", date(2006, 2, 1), security("SYM2", "0000000001"), "08:00:00"),
+    finwire("FIN", date(2002, 4, 1), financial("0000000001")),
+    finwire("FIN", date(2006, 3, 1), financial("Beta")),
 ]
 
 CUSTOMER_MGMT_COLUMNS = (
@@ -164,7 +170,7 @@ def warehouse(tmp_path):
     staging.load_batch1(
         connection, tmp_path, allow_third_party_extensions=False, steps=[STEPS_BY_NAME[name] for name in INGEST]
     )
-    connection.executemany("INSERT INTO FinWire VALUES (?, ?, ?)", FINWIRE)
+    connection.executemany("INSERT INTO FinWire VALUES (?, ?, ?, ?)", FINWIRE)
     connection.execute(f"CREATE TABLE CustomerMgmtRaw ({CUSTOMER_MGMT_COLUMNS})")
     for row in ACTIONS:
         columns = ", ".join(row)
@@ -298,7 +304,7 @@ def test_accounts_split_where_their_customer_changes(warehouse):
         (11, 201001011, 7, "Active", date(2010, 1, 1), date(2012, 5, 5)),
         (11, 201205051, 7, "Active", date(2012, 5, 5), date(9999, 12, 31)),
         (21, 201101012, 7, "Active", date(2011, 1, 1), date(2015, 1, 1)),
-        (21, 201501012, 7, "Active", date(2015, 1, 1), date(9999, 12, 31)),
+        (21, 201501012, 7, "Inactive", date(2015, 1, 1), date(9999, 12, 31)),
         (22, 201101012, 7, "Active", date(2013, 1, 1), date(2014, 1, 1)),
         (22, 201101012, 7, "Inactive", date(2014, 1, 1), date(2015, 1, 1)),
         (22, 201501012, 7, "Inactive", date(2015, 1, 1), date(9999, 12, 31)),
