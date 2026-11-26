@@ -56830,6 +56830,13 @@
       "status": "done",
       "title": "Vector Search Benchmark Support"
     },
+    "vector-search-refuse-platforms-without-vector-functions-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Vector search translates queries to COSINE_SIMILARITY on platforms that have no such function instead of skipping them with a reason"
+    },
     "velox-gluten-ansi-mode-fallback-20261023": {
       "claim": null,
       "needs": [],

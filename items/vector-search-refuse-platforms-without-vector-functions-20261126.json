@@ -1,0 +1,23 @@
+{
+  "acceptance": [
+    "G0 recorded: which platforms reach the translation fallback.",
+    "Each reachable platform has a variant with an equivalence test or a SKIP_QUERY rule with a reason and a test.",
+    "No reachable platform is sent a function its documentation lacks."
+  ],
+  "context": "Filed 2026-11-26 from the sqlglot-rewrites-into-fork close-out.",
+  "description": "## Problem\nVectorSearchQueryManager.get_query (benchbox/core/vector_search/queries.py) returns a variant, raises QuerySkippedError for a SKIP_QUERY rule, or else translates the DuckDB query with translate_sql_query. Since fork 30.35.0.4, DuckDB ARRAY_COSINE_SIMILARITY parses to a CosineSimilarity node, so the fallback now emits COSINE_SIMILARITY(a, b) instead of ARRAY_COSINE_SIMILARITY(a, b). The PR #4537 review found that BigQuery, SQLite, MySQL, Redshift, DataFusion and QuestDB have neither function, so those queries fail at execution instead of being skipped with a recorded reason. Trino has COSINE_SIMILARITY. This is not a regression: the old name did not exist on those engines either.\n\n## Change\nFor each platform that reaches the translation fallback, decide from vendor documentation (cite the page) or an engine run: add a variant where the engine has an equivalent (for example BigQuery COSINE_DISTANCE or ML.DISTANCE), or a SKIP_QUERY rule with the reason in benchbox/sql_compat/rules/query_source/vector_search_variants.py.\n\n## Decision gates\n- G0: first confirm which platforms the CLI and platform manifest actually allow to run vector_search. If the fallback is unreachable for a platform, leave it out; if it is unreachable for all six, drop this item with that evidence.\n- G1: where an engine has an equivalent function, the owner chooses a variant (needs a result-equivalence check) or a skip.\n\n## Verification rubric\nPass only if: every reachable platform is either served by a variant with a cited function reference and an equivalence test, or raises QuerySkippedError with a reason in a test; no reachable platform receives a function its documentation lacks.\n\n## Guardrails\n- Variants and skips go through the sql_compat registry; no text replacement in benchbox/core.\n- No live-cloud runs without owner approval; documentation evidence is enough for skips.\n- Write work: linked worktree, pinned human identity, no agent attribution, changelog fragment, make pr-preflight, make pr-open, make pr-arm.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox/pull/4537",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/pull/157"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:38bfd61e73967b4e5aca7d45",
+      "at": "2026-11-26T14:13:36Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f657e8b3d29247e9a1b6eb0ecca65072",
+      "session_id": "1f0f3dea42f44058a5594bfcbaa33b2f"
+    }
+  ]
+}
