@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 DEFAULT_CACHE_DIR = Path("benchmark_runs") / "datagen"
-DATAFRAME_CACHE_VERSION = "v9"
+DATAFRAME_CACHE_VERSION = "v10"
 
 _KNOWN_FORMAT_DIRS = frozenset(f.value for f in DataFormat)
 
