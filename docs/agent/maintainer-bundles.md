@@ -90,6 +90,11 @@ SQL and DataFrame paths (`benchbox/core/validation/stream_checks.py`), in this o
 5. Must return rows: the statement never returned zero rows in the sample. `check: never_empty`.
 6. Otherwise a documented `parameter sensitive:` skip.
 
+A query that ran after refresh functions changed the data (a TPC-H power or throughput test with
+refresh functions, a TPC-DS throughput test after the Data Maintenance Test) skips the exact
+reference and the enumerated range, because both come from the base data. The invariant and
+must-return-rows checks still run; anything else records a documented `data refreshed:` skip.
+
 The invariant and must-return-rows checks come from the `integrity` section of each reference
 file: at least 512 draws per scale at SF 0.01, 0.1 and 1 (256 above SF 1) spread over the
 per-template and STREAMS generation paths, the seedless seeds and load-end-time-style seeds. DuckDB

@@ -62,7 +62,7 @@ def summarize_power_validation(query_results: list[dict[str, Any]], data_state: 
             skipped.append(query_result["query_id"])
     summary: dict[str, Any] = {
         "data_state": data_state,
-        "validated_against": "base" if validated or failed else None,
+        "validated_against": "base" if data_state == DATA_STATE_BASE and (validated or failed) else None,
         "validated_queries": sorted(validated),
         "failed_queries": sorted(failed),
         "skipped_queries": sorted(skipped),

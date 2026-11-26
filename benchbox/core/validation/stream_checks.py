@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
-from functools import lru_cache
+from functools import lru_cache, partial
 
 from benchbox.core.expected_results.models import ValidationMode, ValidationResult
 from benchbox.core.expected_results.row_count_references import (
@@ -269,16 +269,23 @@ def decide_row_count(
     bound, failure = _structural(benchmark, statement, actual_row_count, generation, reference)
     if failure is not None:
         return failure
-    if data_refreshed:
-        return _skip(
+    refreshed_skip = (
+        partial(
+            _skip,
             statement,
             actual_row_count,
             generation,
             bound,
             DATA_REFRESHED_REASON,
-            f"query {query_id!r} ran after refresh functions changed the {benchmark} data, so reference counts do not apply.",
+            f"query {query_id!r} ran after refresh functions changed the {benchmark} data, so exact and range counts "
+            "taken from the base data do not apply.",
         )
+        if data_refreshed
+        else None
+    )
     if reference is None:
+        if refreshed_skip is not None:
+            return refreshed_skip()
         result = _result(
             statement,
             actual_row_count,
@@ -301,15 +308,21 @@ def decide_row_count(
         run_query_generation_hash or current_query_generation_hash(benchmark),
     )
     if inapplicable is not None:
-        return _skip(
-            statement,
-            actual_row_count,
-            generation,
-            bound,
-            REFERENCE_DATA_DIFFERS_REASON,
-            inapplicable.removeprefix(f"{REFERENCE_DATA_DIFFERS_REASON}: ") + ".",
+        return (
+            refreshed_skip()
+            if refreshed_skip is not None
+            else _skip(
+                statement,
+                actual_row_count,
+                generation,
+                bound,
+                REFERENCE_DATA_DIFFERS_REASON,
+                inapplicable.removeprefix(f"{REFERENCE_DATA_DIFFERS_REASON}: ") + ".",
+            )
         )
-    return _decide_against_reference(benchmark, statement, actual_row_count, scale, generation, reference, bound)
+    return _decide_against_reference(
+        benchmark, statement, actual_row_count, scale, generation, reference, bound, refreshed_skip
+    )
 
 
 def _decide_against_reference(
@@ -320,8 +333,9 @@ def _decide_against_reference(
     generation: QueryGeneration,
     reference: RowCountReference,
     bound: StructuralBound,
+    refreshed_skip: Callable[[], ValidationResult] | None = None,
 ) -> ValidationResult:
-    entry = reference.exact_stream(generation.seed, generation.streams_index)
+    entry = None if refreshed_skip is not None else reference.exact_stream(generation.seed, generation.streams_index)
     if entry is not None:
         expected = entry.row_counts[statement]
         if actual != expected:
@@ -371,7 +385,7 @@ def _decide_against_reference(
             expected=expected,
             reference=reference,
         )
-    bounds = _range_bounds(benchmark, statement, scale, reference)
+    bounds = None if refreshed_skip is not None else _range_bounds(benchmark, statement, scale, reference)
     if bounds is not None:
         low, high = bounds
         text = f"{low} to {high}"
@@ -408,14 +422,18 @@ def _decide_against_reference(
             bound="at least 1 row",
             reference=reference,
         )
-    return _skip(
-        statement,
-        actual,
-        generation,
-        bound,
-        PARAMETER_SENSITIVE_REASON,
-        f"query {statement!r} row count at scale factor {scale:g} depends on the substitution parameters; "
-        "no exact, invariant, range or must-return-rows check applies.",
+    return (
+        refreshed_skip()
+        if refreshed_skip is not None
+        else _skip(
+            statement,
+            actual,
+            generation,
+            bound,
+            PARAMETER_SENSITIVE_REASON,
+            f"query {statement!r} row count at scale factor {scale:g} depends on the substitution parameters; "
+            "no exact, invariant, range or must-return-rows check applies.",
+        )
     )
 
 

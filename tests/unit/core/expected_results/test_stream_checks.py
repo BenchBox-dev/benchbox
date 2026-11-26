@@ -233,10 +233,27 @@ def test_an_unconstrained_statement_records_a_documented_parameter_sensitive_ski
     assert record["seed"] == 31 and record["streams_index"] is None and "check" not in record
 
 
-def test_refreshed_data_is_a_documented_skip(reference_dir) -> None:
-    result = _decide("tpch", "1", 99, data_refreshed=True)
+def test_refreshed_data_keeps_the_checks_that_do_not_depend_on_the_base_data(reference_dir) -> None:
+    invariant = _decide("tpch", "1", 4, data_refreshed=True)
+    never_empty = _decide("tpch", "13", 43, data_refreshed=True)
+    wrong = _decide("tpch", "1", 3, data_refreshed=True)
+    empty = _decide("tpch", "13", 0, data_refreshed=True)
 
-    assert result.is_valid and result.warning_message.startswith("data refreshed:")
+    assert invariant.is_valid and invariant.check == "invariant" and invariant.bound == "exactly 4"
+    assert never_empty.is_valid and never_empty.check == "never_empty"
+    assert not wrong.is_valid and wrong.check == "invariant"
+    assert not empty.is_valid and empty.check == "never_empty"
+
+
+def test_refreshed_data_skips_exact_range_and_unconstrained_counts_with_a_documented_reason(reference_dir) -> None:
+    unconstrained = _decide("tpch", "2", 99, data_refreshed=True)
+    no_reference = _decide("tpch", "2", 99, scale=10.0, data_refreshed=True)
+    other_stamp = _decide("tpch", "1", 99, run_data_stamp="f" * 64, data_refreshed=True)
+
+    for result in (unconstrained, no_reference, other_stamp):
+        record = row_count_validation_record(result, 99)
+        assert result.is_valid and record["status"] == "SKIPPED"
+        assert record["warning"].startswith("data refreshed:") and row_count_skip_is_documented(record)
 
 
 @pytest.mark.parametrize(

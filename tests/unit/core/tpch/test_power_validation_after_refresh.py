@@ -94,15 +94,14 @@ def test_refresh_run_does_not_validate_queries_against_base_answers() -> None:
     assert result.success is True
     assert result.errors == []
     evidence = result.query_results[0]["row_count_validation"]
-    assert evidence["status"] == "SKIPPED"
+    assert evidence["status"] == "PASSED"
     assert evidence["actual"] == REFRESHED_Q13_ROWS
-    assert evidence["warning"].startswith("data refreshed")
     assert result.validation == {
         "data_state": "refreshed",
         "validated_against": None,
-        "validated_queries": [],
+        "validated_queries": [13],
         "failed_queries": [],
-        "skipped_queries": [13],
+        "skipped_queries": [],
         "errored_queries": [],
         "skip_reason": "data refreshed",
     }
