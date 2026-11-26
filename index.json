@@ -27223,9 +27223,9 @@
     },
     "datagen-p1-deterministic-parquet-writer": {
       "claim": {
-        "expires_at": "2026-11-26T21:58:18Z",
+        "expires_at": "2026-11-27T05:03:35Z",
         "generation": "bc5a8ccf494847a1b968dcd3e92f75a9",
-        "renewals": 0,
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
       },
       "needs": [
