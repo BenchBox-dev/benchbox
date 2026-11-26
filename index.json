@@ -27702,7 +27702,9 @@
     },
     "datagen-lib-platform-verification": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "datagen-lib-tpch"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Verify benchbox-datagen wheels where CI only import-tests them, and the macOS release load failure"
