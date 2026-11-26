@@ -10,11 +10,12 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+import yaml
 from ci_units import classify_units, load_unit_rules
 from path_filter_decision import classify_paths, load_rules
 
 from _project.scripts import inert_paths as inert
-from _project.scripts.soundness_paths import glob_matches, load_rules as load_manifest_rules
+from _project.scripts.soundness_paths import glob_matches, load_rules as load_manifest_rules, rules_match
 from scripts import coverage_test_selection as sel
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
@@ -106,14 +107,28 @@ def test_manifest_uses_only_known_kinds() -> None:
 GATE_INPUT_SAMPLE = "tests/fixtures/fast_tier_baseline/manifest.json"
 
 
+def _derived_summaries() -> set[str]:
+    policy = yaml.safe_load((ROOT / ".github" / "review.yml").read_text(encoding="utf-8"))
+    return {entry["summary"] for entry in policy["evidence"].get("derived_paths", [])}
+
+
 def test_gate_input_list_names_only_tracked_files() -> None:
     assert sorted(set(inert.GATE_INPUT_FILES) - _tracked()) == []
 
 
-def test_gate_input_list_covers_every_fast_tier_baseline_file() -> None:
-    baseline = {path for path in _tracked() if path.startswith("tests/fixtures/fast_tier_baseline/")}
+def test_gate_input_list_covers_every_fast_tier_baseline_data_file() -> None:
+    summaries = _derived_summaries()
+    baseline = {path for path in _tracked() if path.startswith("tests/fixtures/fast_tier_baseline/")} - summaries
     assert baseline
     assert baseline <= set(inert.GATE_INPUT_FILES)
+
+
+def test_every_derived_summary_is_a_soundness_path() -> None:
+    summaries = _derived_summaries()
+    rules = load_manifest_rules(ROOT / ".github" / "soundness-paths.txt")
+    assert summaries
+    for summary in summaries:
+        assert rules_match(summary, rules), summary
 
 
 def test_gate_input_list_names_known_blocking_gate_inputs() -> None:
