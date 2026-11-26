@@ -142,13 +142,10 @@ class FormatConversionOrchestrator:
                 has_header = raw_header
 
         null_marker = base_opts.null_marker
-        if null_marker == "":
-            for source in (entry_meta, extras):
-                if "csv_null_marker" in source and (
-                    source["csv_null_marker"] is None or isinstance(source["csv_null_marker"], str)
-                ):
-                    null_marker = source["csv_null_marker"]
-                    break
+        if not null_marker:
+            raw_marker = entry_meta.get("csv_null_marker", extras.get("csv_null_marker"))
+            if isinstance(raw_marker, str):
+                null_marker = raw_marker
 
         if (delimiter, has_header, null_marker) == (base_opts.delimiter, base_opts.has_header, base_opts.null_marker):
             return base_opts

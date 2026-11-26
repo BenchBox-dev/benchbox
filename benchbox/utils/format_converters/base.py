@@ -140,7 +140,7 @@ class ConversionOptions:
     data_page_version: Literal["1.0", "2.0"] | None = None
     delimiter: str | None = None
     has_header: bool | None = None
-    null_marker: str | None = ""
+    null_marker: str = ""
     expected_row_count: int | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -504,11 +504,10 @@ class BaseFormatConverter(FormatConverter):
             quote_char='"',
             escape_char="\\",
         )
-        null_marker = options.null_marker if options is not None else ""
         convert_options = csv.ConvertOptions(
             column_types=arrow_schema,
-            null_values=[null_marker] if null_marker else [""],
-            strings_can_be_null=null_marker is not None,
+            null_values=[options.null_marker if options is not None else ""],
+            strings_can_be_null=True,
             include_columns=column_names,
         )
 
