@@ -27300,6 +27300,15 @@
       "status": "open",
       "title": "Generate h2odb in benchbox-datagen with a versioned deterministic RNG"
     },
+    "datagen-lib-synthetic-joinorder-synthetic": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-benchbox-integration"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Generate joinorder_synthetic in benchbox-datagen with a versioned deterministic RNG"
+    },
     "datagen-lib-synthetic-tpch-skew": {
       "claim": null,
       "needs": [
