@@ -27663,6 +27663,13 @@
       "status": "open",
       "title": "Decide the SSB and synthetic acceptance rule, the empty-query rule and SSB row counts"
     },
+    "datagen-decision-tpc-derived-code-licensing": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Confirm the licensing position of TPC-derived logic and data in the MIT benchbox-datagen library"
+    },
     "datagen-decision-upstream-gap-policy": {
       "claim": null,
       "needs": [],

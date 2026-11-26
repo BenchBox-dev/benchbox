@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The position is recorded in docs/tpc-licensing-analysis.md (BenchBox) by merged PR and referenced from the library README.",
+    "Library wheels contain every notice the position requires; a test asserts their presence in the built wheel.",
+    "Each TPC-derived file in the library repository is listed with its source and the basis for including it."
+  ],
+  "description": "## Problem\nThe library reimplements TPC tool logic (qgen done in draft, dsqgen planned, dsdgen refresh sets written) and links upstream tpcdsgen, which embeds TPC-derived data carrying the TPC legal notice. Wheels now append that notice to THIRD_PARTY_LICENSES. Whether a compatible reimplementation is a derivative work under TPC EULA clauses 4.a and 8, and whether fetching TPC templates in public CI is acceptable, is unverified. BenchBox keeps templates and tpcds.idx under its own TPC carve-out (docs/tpc-licensing-analysis.md) and passes them at call time.\n\n## Change\nOwner reviews (with legal advice if wanted) and records the position: licence text and notices the library must ship, whether generated tables such as `tpcds_update/columns.rs` (derived from dsdgen's column list) may live in the MIT repository, and whether CI may fetch templates.\n\n## Decision gates\n- Owner-only decision; an agent gathers facts and does not assert a legal conclusion.\n- If the answer restricts distribution, stop publishing wheels that contain the affected code until resolved.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T23:46:57Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "e7f90656f62d4bdea24be59e5c49fc42",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
