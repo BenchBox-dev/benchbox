@@ -250,6 +250,51 @@ def test_a_failed_run_stays_failed_and_the_audit_outcome_is_used_once(tmp_path):
     assert "tpcdi_audit" not in (later.validation_details or {})
 
 
+@pytest.mark.parametrize(
+    ("incoming", "audit_failing", "expected"),
+    [
+        ("PASSED", False, "NOT_VALIDATED"),
+        ("PASSED", True, "FAILED"),
+        ("PARTIAL", False, "PARTIAL"),
+        ("PARTIAL", True, "PARTIAL"),
+        ("timed_out", True, "timed_out"),
+        ("UNCERTAIN", False, "UNCERTAIN"),
+        ("UNCERTAIN", True, "FAILED"),
+    ],
+)
+def test_the_audit_never_softens_a_non_clean_status(tmp_path, incoming, audit_failing, expected):
+    benchmark = TPCDIBenchmark(scale_factor=3, output_dir=tmp_path)
+    result = AuditResult("DimTrade Type", None, "Bad value" if audit_failing else "OK", "", True)
+    benchmark.record_power_phases(
+        record(phases.INITIALIZATION_PHASE, 0, 1), (record(phases.HISTORICAL_PHASE, 1, 9),), outcome_with((result,))
+    )
+
+    assert benchmark.create_enhanced_benchmark_result("DuckDB", [], validation_status=incoming).validation_status == (
+        expected
+    )
+
+
+def test_the_power_test_completes_with_the_audit_and_the_measured_interval(tmp_path, monkeypatch):
+    audited: list[int] = []
+    monkeypatch.setattr(
+        benchmark_module,
+        "run_audit",
+        lambda _connection, _staging, *, latest_batch, platform: audited.append(latest_batch) or outcome_with(()),
+    )
+    benchmark = TPCDIBenchmark(scale_factor=3, output_dir=tmp_path)
+    initialization, historical = record(phases.INITIALIZATION_PHASE, 0, 1), record(phases.HISTORICAL_PHASE, 1, 9)
+
+    assert benchmark.complete_power_test(DuckDBTarget(), None) is None
+    benchmark.record_measured_phases(initialization, (historical,))
+    timing = benchmark.complete_power_test(DuckDBTarget(), None)
+
+    assert audited == [1]
+    assert timing == (initialization.completed_at.isoformat(), historical.completed_at.isoformat(), 8000)
+    assert benchmark.complete_power_test(DuckDBTarget(), None) is None
+    result = benchmark.create_enhanced_benchmark_result("DuckDB", [], validation_status="PASSED")
+    assert result.validation_details["tpcdi_audit"]["status"] == "NOT_VALIDATED"
+
+
 def test_the_staging_directory_defaults_to_the_digen_output_and_can_be_named(tmp_path):
     benchmark = TPCDIBenchmark(scale_factor=3, output_dir=tmp_path)
     assert benchmark.digen_staging_dir == tmp_path / "source" / "digen"

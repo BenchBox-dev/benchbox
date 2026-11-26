@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from benchbox.core.tpcdi.audit import run_audit
 from benchbox.core.tpcdi.phases import (
     HISTORICAL_PHASE,
     POWER_WITHOUT_INITIALIZATION_MESSAGE,
@@ -28,9 +27,7 @@ def execute_tpcdi_power_test(
         allow_third_party_extensions=bool(getattr(adapter, "allow_third_party_extensions", False)),
         platform=platform,
     )
-    console.print("[green]Running the TPC-DI audit (untimed)[/green]")
-    outcome = run_audit(connection, staging_dir, latest_batch=historical.batch_id, platform=platform)
-    benchmark.record_power_phases(initialization, (historical,), outcome)
+    benchmark.record_measured_phases(initialization, (historical,))
     return [
         {
             "query_id": HISTORICAL_PHASE,

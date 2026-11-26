@@ -114,6 +114,7 @@ def test_phase_records_store_completion_timestamps_and_monotonic_times(run):
     (measured,) = run.query_results
     assert measured["query_id"] == format_query_id(phases.HISTORICAL_PHASE)
     assert measured["execution_time_seconds"] == pytest.approx(elapsed)
+    assert run.execution_phases.power_test.duration_ms == int(elapsed * 1000)
 
 
 @pytest.mark.parametrize("scale", SCALES)
