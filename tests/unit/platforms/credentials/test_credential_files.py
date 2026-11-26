@@ -343,6 +343,25 @@ class TestSnowflakeValidation:
         assert saved == {"host": "h.example.com", native_key: "r1"}
         assert reloaded["compute_resource"] == "r1"
 
+    def test_saved_redshift_cluster_identifier_keeps_its_kind_in_the_validation_adapter(self, tmp_path):
+        from benchbox.platforms.credentials.redshift import _build_redshift_adapter
+
+        path = tmp_path / "credentials.yaml"
+        path.write_text(
+            yaml.dump(
+                {"redshift": {"host": "h.example.com", "username": "u", "password": "p", "cluster_identifier": "c1"}}
+            ),
+            encoding="utf-8",
+        )
+        creds = CredentialManager(credentials_path=path).get_platform_credentials("redshift")
+        try:
+            adapter = _build_redshift_adapter(creds)
+        except ImportError:
+            pytest.skip("Redshift drivers not installed")
+
+        assert adapter.cluster_identifier == "c1"
+        assert adapter.workgroup_name is None
+
 
 class TestDatabricksValidation:
     def test_missing_credentials(self, cred_file):

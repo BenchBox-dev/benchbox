@@ -11,6 +11,7 @@ from typing import Any, Optional, Union
 from rich.console import Console
 from rich.prompt import Confirm, IntPrompt
 
+from benchbox.core.compute_resource import COMPUTE_RESOURCE_KIND_OPTION
 from benchbox.platforms.credentials.helpers import prompt_secure_field, prompt_with_default
 from benchbox.security.credentials import CredentialManager, CredentialStatus
 from benchbox.utils.printing import QuietConsoleProxy
@@ -268,6 +269,7 @@ _REDSHIFT_ADAPTER_CREDENTIAL_KEYS = (
     "aws_secret_access_key",
     "aws_region",
     "compute_resource",
+    COMPUTE_RESOURCE_KIND_OPTION,
     "admin_database",
     "connect_timeout",
     "statement_timeout",
