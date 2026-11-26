@@ -40704,10 +40704,15 @@
       "title": "Generate TPC-H and TPC-DS power-test query text before each per-query timer starts"
     },
     "power-warmup-zero-coerced-to-one": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-27T15:34:55Z",
+        "generation": "d604024bf8364d618cb2a822247f3e9b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
+      },
       "needs": [],
       "priority": "low",
-      "status": "open",
+      "status": "active",
       "title": "Let power_warmup_iterations=0 mean no warm-up pass"
     },
     "pr-1644-fix-commit-nits-20260811": {
