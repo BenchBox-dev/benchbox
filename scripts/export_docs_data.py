@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import importlib.util
 import json
+import logging
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 from types import ModuleType
 
@@ -249,6 +252,17 @@ def build_docs_data(benchmarks: set[str] | None = None) -> dict:
     }
 
 
+@contextlib.contextmanager
+def _sqlglot_quiet() -> Iterator[None]:
+    logger = logging.getLogger("sqlglot")
+    previous = logger.level
+    logger.setLevel(logging.ERROR)
+    try:
+        yield
+    finally:
+        logger.setLevel(previous)
+
+
 def render_json(data: dict) -> str:
     return json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
@@ -261,7 +275,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check and args.output is None:
         parser.error("--check requires --output")
-    text = render_json(build_docs_data())
+    with _sqlglot_quiet():
+        text = render_json(build_docs_data())
     if args.check:
         current = args.output.read_text(encoding="utf-8") if args.output.exists() else ""
         if current != text:

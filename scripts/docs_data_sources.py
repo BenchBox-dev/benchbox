@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib
-import logging
 import pkgutil
 import re
 
@@ -10,8 +9,6 @@ from benchbox.core.benchmark_registry import get_benchmark_class_name, get_core_
 from benchbox.core.query_catalog import query_groups
 from benchbox.core.tpcds.c_tools import SUBSCALE_TEMPLATE_OVERRIDES
 from benchbox.core.tpcds.qualification.classification import KNOWN as TPCDS_KNOWN_DIFFERENCES, RETURNS_DIFFERENCE
-
-logging.getLogger("sqlglot").setLevel(logging.ERROR)
 
 _TPC_DERIVED = {"tpch", "tpcds", "tpcdi", "tpch_skew", "tpchavoc", "tpcds_obt", "datavault"}
 _TPC_NOTICE = (
