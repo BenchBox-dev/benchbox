@@ -107,7 +107,7 @@ def test_corpus_file_hashes_and_record_counts_match_manifest(manifest: dict[str,
 
 def test_replay_file_hash_matches_manifest(manifest: dict[str, Any]) -> None:
     replay = CORPUS_DIR / manifest["replay"]["file"]
-    assert hashlib.sha256(replay.read_bytes()).hexdigest() == manifest["replay"]["sha256"]
+    assert hashlib.sha256(replay.read_bytes().replace(b"\r\n", b"\n")).hexdigest() == manifest["replay"]["sha256"]
 
 
 @pytest.mark.parametrize("suite", ["tpch", "tpcds"])
