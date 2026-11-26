@@ -54624,6 +54624,13 @@
       "status": "done",
       "title": "Confirm tpch_skew DataFrame-SQL id mapping"
     },
+    "tpch-skew-manifest-estimated-row-counts": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Record measured row counts in the tpch_skew manifest"
+    },
     "tpch-stdout-fix-integrate-stdout-datagen": {
       "claim": null,
       "needs": [
