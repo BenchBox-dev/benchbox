@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "A configured power_warmup_iterations of 0 now runs no warm-up pass and is recorded as 0, instead of being silently raised to 1. An unset value still uses the default."
+    }
+  ]
+}

@@ -83,7 +83,7 @@
       "provenance": "_sources/README.md"
     },
     {
-      "path": "_project/scripts/vendor/tractable-1.3.0-py3-none-any.whl",
+      "path": "_project/scripts/vendor/tractable-1.3.2-py3-none-any.whl",
       "owner": "tractable",
       "provenance": "_project/scripts/pyproject.toml"
     }
@@ -8419,7 +8419,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/customer_mgmt_processor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/customer_mgmt_processor.py",
       "symbol": "",
       "text": "# Copyright 2026 Joe Harris / BenchBox Project",
       "kind": "notice",
@@ -8431,7 +8431,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/customer_mgmt_processor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/customer_mgmt_processor.py",
       "symbol": "",
       "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
       "kind": "notice",
@@ -8443,7 +8443,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/customer_mgmt_processor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/customer_mgmt_processor.py",
       "symbol": "",
       "text": "# This implementation is based on the TPC-DI specification.",
       "kind": "notice",
@@ -8455,7 +8455,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/customer_mgmt_processor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/customer_mgmt_processor.py",
       "symbol": "",
       "text": "# Licensed under the MIT License. See LICENSE file in the project root for details.",
       "kind": "notice",
@@ -8467,7 +8467,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/data_quality_monitor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/data_quality_monitor.py",
       "symbol": "",
       "text": "# Copyright 2026 Joe Harris / BenchBox Project",
       "kind": "notice",
@@ -8479,7 +8479,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/data_quality_monitor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/data_quality_monitor.py",
       "symbol": "",
       "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
       "kind": "notice",
@@ -8491,7 +8491,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/data_quality_monitor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/data_quality_monitor.py",
       "symbol": "",
       "text": "# This implementation is based on the TPC-DI specification.",
       "kind": "notice",
@@ -8503,7 +8503,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/data_quality_monitor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/data_quality_monitor.py",
       "symbol": "",
       "text": "# Licensed under the MIT License. See LICENSE file in the project root for details.",
       "kind": "notice",
@@ -8515,7 +8515,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/error_recovery.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/error_recovery.py",
       "symbol": "",
       "text": "# Copyright 2026 Joe Harris / BenchBox Project",
       "kind": "notice",
@@ -8527,7 +8527,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/error_recovery.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/error_recovery.py",
       "symbol": "",
       "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
       "kind": "notice",
@@ -8539,7 +8539,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/error_recovery.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/error_recovery.py",
       "symbol": "",
       "text": "# This implementation is based on the TPC-DI specification.",
       "kind": "notice",
@@ -8551,7 +8551,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/error_recovery.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/error_recovery.py",
       "symbol": "",
       "text": "# Licensed under the MIT License. See LICENSE file in the project root for details.",
       "kind": "notice",
@@ -8563,7 +8563,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/finwire_processor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/finwire_processor.py",
       "symbol": "",
       "text": "# Copyright 2026 Joe Harris / BenchBox Project",
       "kind": "notice",
@@ -8575,7 +8575,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/finwire_processor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/finwire_processor.py",
       "symbol": "",
       "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
       "kind": "notice",
@@ -8587,7 +8587,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/finwire_processor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/finwire_processor.py",
       "symbol": "",
       "text": "# This implementation is based on the TPC-DI specification.",
       "kind": "notice",
@@ -8599,7 +8599,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/finwire_processor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/finwire_processor.py",
       "symbol": "",
       "text": "# Licensed under the MIT License. See LICENSE file in the project root for details.",
       "kind": "notice",
@@ -8611,7 +8611,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/incremental_loader.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/incremental_loader.py",
       "symbol": "",
       "text": "# Copyright 2026 Joe Harris / BenchBox Project",
       "kind": "notice",
@@ -8623,7 +8623,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/incremental_loader.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/incremental_loader.py",
       "symbol": "",
       "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
       "kind": "notice",
@@ -8635,7 +8635,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/incremental_loader.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/incremental_loader.py",
       "symbol": "",
       "text": "# This implementation is based on the TPC-DI specification.",
       "kind": "notice",
@@ -8647,7 +8647,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/incremental_loader.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/incremental_loader.py",
       "symbol": "",
       "text": "# Licensed under the MIT License. See LICENSE file in the project root for details.",
       "kind": "notice",
@@ -8659,7 +8659,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/scd_processor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/scd_processor.py",
       "symbol": "",
       "text": "# Copyright 2026 Joe Harris / BenchBox Project",
       "kind": "notice",
@@ -8671,7 +8671,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/scd_processor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/scd_processor.py",
       "symbol": "",
       "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
       "kind": "notice",
@@ -8683,7 +8683,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/scd_processor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/scd_processor.py",
       "symbol": "",
       "text": "# This implementation is based on the TPC-DI specification.",
       "kind": "notice",
@@ -8695,7 +8695,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/scd_processor.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/scd_processor.py",
       "symbol": "",
       "text": "# Licensed under the MIT License. See LICENSE file in the project root for details.",
       "kind": "notice",
@@ -8707,7 +8707,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/sources.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/sources.py",
       "symbol": "",
       "text": "# Copyright 2026 Joe Harris / BenchBox Project",
       "kind": "notice",
@@ -8719,7 +8719,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/sources.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/sources.py",
       "symbol": "",
       "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
       "kind": "notice",
@@ -8731,7 +8731,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/sources.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/sources.py",
       "symbol": "",
       "text": "# This implementation is based on the TPC-DI specification.",
       "kind": "notice",
@@ -8743,7 +8743,7 @@
       "count": 1
     },
     {
-      "path": "benchbox/core/tpcdi/etl/sources.py",
+      "path": "benchbox/core/tpcdi/_legacy_etl/sources.py",
       "symbol": "",
       "text": "# Licensed under the MIT License. See LICENSE file in the project root for details.",
       "kind": "notice",

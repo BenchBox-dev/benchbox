@@ -18,6 +18,12 @@ trunk push run succeeded and whose attempt-bound artifact passes the same
 selection admission uses; it examines at most the 40 newest distinct commits
 with a successful run. Candidate selection for trunk UAT uses that rule.
 
+When `release_artifact_consumer.py admit` finds no push run at all for the tagged commit (a commit whose run was
+replaced or never delivered), it still refuses. The message also names the nearest tested descendant and the nearest
+tested ancestor on the line: the commits with a successful run and an admissible artifact that sit closest to the
+tagged commit in history, found among the 40 newest successful runs and the local checkout. Tag the descendant, which
+contains the replaced commit's changes.
+
 The artifact contains exactly four regular files at its root:
 
 - one wheel (`*.whl`);

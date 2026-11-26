@@ -88,8 +88,9 @@ Nothing is printed when no limit is set or the limit is larger. The limit is not
 
 When a run time limit is set (`--timeout`, `execution.timeout_seconds`, `timeout_seconds=`), BenchBox warns once for
 every platform in the registry category `cloud`. No warning is printed without a limit (unset or `0`), and
-none for a local platform. Cleanup is implemented for Onehouse Quanton, Google BigQuery, Amazon EMR Serverless, AWS Glue
-and Google Dataproc; those platforms print:
+none for a local platform. Cleanup is implemented for Onehouse Quanton, Google BigQuery, Amazon EMR Serverless, AWS Glue,
+Google Dataproc, Google Dataproc Serverless, Amazon Athena, Amazon Athena for Apache Spark, Databricks (SQL), Starburst,
+Azure Synapse, Microsoft Fabric Warehouse, Fabric Lakehouse, Fabric Spark and Synapse Spark; those platforms print:
 
 > A run time limit is set. If the run times out, BenchBox will try to cancel the work it started on {platform}. This cleanup has not been checked against the live service, so work may keep running and billing.
 
@@ -97,14 +98,26 @@ Every other cloud platform prints:
 
 > A run time limit is set. If the run times out, work BenchBox started on {platform} may keep running and billing: BenchBox cannot cancel it on this platform.
 
-Cleanup has not been checked against live services. It is verified only with stubbed clients: no cloud run was made
-and no credentials were used. Work may keep running and billing after a timeout until a live check has been done.
+Cleanup is verified with stubbed clients on every platform that has it. Only BigQuery has also been checked live: a
+query started through the adapter and cancelled by `cancel_remote_work` ended as `stopped` ("Job execution was
+cancelled: User requested cancellation") with nothing billed, and a TPC-H run stopped at its limit exited with code 124
+and left no job running. On the other platforms, work may keep running and billing after a timeout until a live check
+has been done.
+
+On the cursor-based platforms (Synapse, Fabric Warehouse, Fabric Lakehouse, Databricks SQL, Athena and Starburst) and
+on BigQuery, the cleanup covers the queries BenchBox ran through `execute_query`. Load and DDL statements (for
+example `COPY INTO`, `INSERT` and `CTAS`) are not cancelled, so a run that times out while loading data can leave them
+running and billing. Databricks in DataFrame mode cannot cancel work and prints the cannot-cancel warning, as the
+Databricks DataFrame row of the table says.
 
 The cleanup starts when the run times out: when the timeout is recorded, or when the limit passes, whichever comes
 first. It calls one hook, `PlatformAdapter.cancel_remote_work`, on each adapter the run created. An adapter cancels
 only what this run started and has not seen finish: Onehouse jobs and a cluster it provisioned itself, BigQuery query
-jobs, EMR Serverless job runs and an application the run created, Glue job runs, and Dataproc jobs and an ephemeral
-cluster the run created. It never stops a warehouse, application, cluster or session that existed before the run. The
+jobs, EMR Serverless job runs and an application the run created, Glue job runs, Dataproc jobs and an ephemeral
+cluster the run created, Dataproc Serverless batches, Athena queries, Athena Spark calculations and the session the
+run started, Databricks SQL, Starburst, Synapse, Fabric Warehouse and Fabric Lakehouse statements, and Fabric Spark and
+Synapse Spark statements and the Livy session the run created. It never stops a warehouse, application, cluster or
+session that existed before the run. The
 run waits for the cleanup only until 5 seconds before the 30-second grace ends, so a run that stopped cleanly still
 exports its full result. The hard stop waits only for what is left of that time. The 30 seconds are not an exit
 bound: stopping starts at the limit plus 30 seconds. At that point BenchBox cancels remote work (only if the cleanup
@@ -133,20 +146,21 @@ The error carries `timeout_seconds`, `phase`, `query_id` and `detail`. It derive
 | Platform | Cancel a statement | Stop a job, session or cluster | Run-started work is known | Implemented |
 |---|---|---|---|---|
 | Onehouse Quanton | Job cancel API | Terminate a cluster the client provisioned | Job ids the client submitted | Yes |
-| BigQuery | Query job cancel | None in the query client | Job per query | Yes |
+| BigQuery | Query job cancel | None in the query client | Job per query run through `execute_query`; load and DDL jobs are not tracked | Yes |
 | EMR Serverless | Job run cancel | Stop an application the run created | Job run ids; created-by-run flag | Yes |
 | AWS Glue | Stop job runs | None used | Job run ids | Yes |
 | Dataproc | Job cancel | Delete an ephemeral cluster the run created | Job ids; created-by-run flag | Yes |
-| Dataproc Serverless | Batch cancel is not in the Python client | None | Batch id | No |
-| Athena, Athena Spark | Stop query or calculation, session terminate | Terminate session | Ids recorded, not tracked in flight | No |
-| Databricks (SQL) | Cursor cancel | Warehouse stop (never ours) | Statement id after the call | No |
+| Dataproc Serverless | Cancel the batch's create operation | None | Batch id and operation handle at submission | Yes |
+| Athena | Cursor cancel (stop query execution) | None | Cursor registered before `execute`, in `execute_query` only; load and DDL statements are not tracked; query id read from it at cancel, and a cancel before the service returned one is reported as failed | Yes |
+| Athena Spark | Stop calculation execution | Terminate the session the run started | Calculation ids at submission; the adapter only ever uses a session it started | Yes |
+| Databricks (SQL) | Cursor cancel | None; the warehouse is never stopped | Cursor registered before `execute`, in `execute_query` only; load and DDL statements are not tracked; a cancel before the service returned a query id is reported as failed | Yes |
 | Databricks DataFrame, Snowpark Connect | Session interrupt needs tags the adapter does not set | Session stop | No | No |
-| Snowflake | Abort by query id | None | Statement id after the call | No |
+| Snowflake | Abort by query id | None | No: the connector sets the query id only after the statement returns, so nothing is known while it runs | No |
 | Redshift | None on the connector path | Cluster stop (never ours) | Query id after the call | No |
-| Starburst | Cursor cancel | None | Statement id | No |
-| Synapse, Fabric Warehouse, Fabric Lakehouse | ODBC cancel | None | No | No |
-| Fabric Spark, Synapse Spark | Statement cancel over Livy | Delete a session the run created | Session and statement ids | No |
-| ClickHouse Cloud | Server `KILL QUERY` | None | Query ids generated by the run | No |
+| Starburst | Cursor cancel (Trino client) | None | Cursor registered before `execute`, in the query path only; load and DDL statements are not tracked; a cancel before the service returned a query id is reported as failed | Yes |
+| Synapse, Fabric Warehouse, Fabric Lakehouse | ODBC `SQLCancel` through the cursor | None | Cursor registered before `execute`, in `execute_query` only; load and DDL statements are not tracked | Yes |
+| Fabric Spark, Synapse Spark | Statement cancel over Livy | Delete a session the run created, including one still starting up | Statement ids at submission; created-by-run flag set when the create call returns the session id | Yes |
+| ClickHouse Cloud | Server `KILL QUERY` | None | Query ids generated by the run | No: `KILL QUERY` acts on one replica, and which replica runs a statement is not known; a finished statement can make it raise `NOTHING_TO_KILL`; the HTTP client cannot run it on the busy connection, so a second connection would be needed; none of this can be checked without a live service |
 | Firebolt, Databend, MotherDuck | Not retained or no ids | None | No | No |
 
 GizmoSQL is not a registry `cloud` platform; it already cancels a running statement at the limit.

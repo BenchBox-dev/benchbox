@@ -929,7 +929,7 @@ class TestExecuteOperation:
         result = wp_benchmark.execute_operation("insert_batch_values_100", mock_conn, platform_key="postgres")
 
         assert result.status == "SUCCESS"
-        assert "FROM (SELECT generate_series(0, 99) AS n) t" in sql_calls[0]
+        assert "FROM (SELECT GENERATE_SERIES(0, 99) AS n) AS t" in sql_calls[0]
         assert "unnest(generate_series" not in sql_calls[0]
 
     def test_execute_operation_fails_loud_on_failed_platform_write(self, wp_benchmark, monkeypatch):

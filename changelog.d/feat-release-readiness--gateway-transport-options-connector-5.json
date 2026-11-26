@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Snowflake gateway options now work on snowflake-connector-python 5.x: gateway_ca_bundle is passed to the connector as extra_root_store_path (no REQUESTS_CA_BUNDLE needed), gateway_ocsp_fail_open maps to crl_check_mode (true -> ADVISORY, false -> ENABLED), and allow_insecure_gateway maps to crl_check_mode DISABLED, which wins when both are set. On connectors below 5, allow_insecure_gateway now sets disable_ocsp_checks where the connector supports it (insecure_mode on older ones), and gateway_ca_bundle still needs REQUESTS_CA_BUNDLE."
+    }
+  ]
+}

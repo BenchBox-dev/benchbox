@@ -241,6 +241,17 @@ _CEDARDB_TPCDS_OBT_SF1_DISK_ENVELOPE_REASON = (
     "full load needs well over 80 GB. SF0.01 and SF0.1 stay in the gate."
 )
 
+_CEDARDB_FLIGHTDATA_SF1_SOURCE_DOWNLOAD_REASON = (
+    "cedardb FlightData SF1 cannot meet the 1200s release-gate cell contract: the cell timed out at 1200s in trunk "
+    "UAT run 45389336355 (develop ee2e196e3c), and the server-side evidence places the time outside the engine. "
+    "The container was never restarted or OOM-killed (OOMKilled false, cgroup oom_kill 0), logged no error, and "
+    "received its first statement 18.5 minutes after the cell started, then needed about 2 minutes for the load "
+    "and queries, as in the passing run 45155067627, where the same wait was 7 minutes. The wait is the "
+    "BTS On-Time download of 41 monthly archives from transtats.bts.gov, which BenchBox neither paces nor "
+    "controls; the other 34 cedardb cells ran at their usual speed on the same runner. SF0.01 and SF0.1 stay in "
+    "the gate."
+)
+
 _CEDARDB_RUNTIME_ENVELOPE_REASON = (
     "cedardb {benchmark} cannot meet the 1200s release-gate cell contract: the cell timed out at 1200s at SF0.01 "
     "and SF0.1 on the 8 GiB container stack on the 4 vCPU / 16 GB release runner (release UAT dry run 5, run "
@@ -486,6 +497,7 @@ _RELEASE_GATE_RUNTIME_ENVELOPES = (
         ("sqlite", "tpcds_obt", 0.1): _SQLITE_TPCDS_OBT_SF01_RUNTIME_ENVELOPE_REASON,
         ("sqlite", "tpcds_obt", 1.0): _SQLITE_TPCDS_OBT_RUNTIME_ENVELOPE_REASON,
         ("cedardb", "tpcds_obt", 1.0): _CEDARDB_TPCDS_OBT_SF1_DISK_ENVELOPE_REASON,
+        ("cedardb", "flightdata", 1.0): _CEDARDB_FLIGHTDATA_SF1_SOURCE_DOWNLOAD_REASON,
         **{
             ("cedardb", benchmark): _CEDARDB_RUNTIME_ENVELOPE_REASON.format(benchmark=label)
             for benchmark, label in (("tpchavoc", "TPC-Havoc"), ("tpch_skew", "TPC-H Skew"))
@@ -547,6 +559,11 @@ _RELEASE_GATE_RUNTIME_ENVELOPE_EVIDENCE = (
         ): "release UAT dry runs 3 (run 41243890531) and 4 (run 41255388284): runner disk exhausted; local SF1 Parquet COPY reproduction: 17.6 GB at 1,048,577 rows",
         ("cedardb", "tpchavoc"): "release UAT dry run 5 (run 41309974530) stage 2 cedardb: terminal=timeout at 1200s",
         ("cedardb", "tpch_skew"): "release UAT dry run 5 (run 41309974530) stage 2 cedardb: terminal=timeout at 1200s",
+        (
+            "cedardb",
+            "flightdata",
+            1.0,
+        ): "trunk UAT run 45389336355 stage 2 cedardb (job 138429445576): terminal=timeout at 1200s; cedardb-evidence shows the server idle and unerrored until 14:13:57, 18.5 minutes into the cell",
         (
             "presto",
             "joinorder",

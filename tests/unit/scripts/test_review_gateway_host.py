@@ -461,7 +461,7 @@ def host(tmp_path: Path, mirror: dict[str, bytes]) -> dict:
         f' *) echo "tailscale $*" >> "{calls}";; esac\n',
     )
     env = {
-        **os.environ,
+        **{key: value for key, value in os.environ.items() if key != "GATEWAY_HOST_REPO"},
         **GIT_IDENTITY,
         "HOME": str(home),
         "GATEWAY_DIR": str(gateway_dir),
@@ -517,6 +517,29 @@ def _script(host: dict, *args: str) -> subprocess.CompletedProcess[str]:
 
 def _source(host: dict, body: str, env: dict | None = None) -> subprocess.CompletedProcess[str]:
     return _run(host, f"bash -c '. \"$0\"; {body}' {shlex.quote(str(host['script']))}", env)
+
+
+def test_the_running_build_is_read_from_the_program_image_not_the_process_name(host: dict) -> None:
+    binary = _executable(host["tmp"] / "pinned" / "omp", "#!/bin/sh\n")
+    os.utime(binary, (1_700_000_000, 1_700_000_000))
+    _executable(
+        host["stubs"] / "ps",
+        '#!/bin/sh\ncase "$*" in *comm=*) echo omp;; *etime=*) echo 1-00:00:00;; esac\n',
+    )
+    shared_memory = host["tmp"] / "agent.db-shm"
+    shared_memory.write_bytes(b"")
+    _executable(
+        host["stubs"] / "lsof",
+        '#!/bin/sh\ncase "$*" in *LISTEN*) echo 4242;; '
+        f'*txt*) printf "p4242\\nftxt\\nn%s\\nftxt\\nn%s\\n" "{binary}" "{shared_memory}";; esac\n',
+    )
+    result = _source(
+        host,
+        f"running_pid() {{ echo 4242; }}; binary_version() {{ echo 1.2.3; }}; PINNED_VERSION=1.2.3; "
+        f'PINNED_SHA=$(file_sha256 "{binary}"); check_running_build dev.omp.auth-broker 8765',
+    )
+    assert result.returncode == 0, result.stderr
+    assert f"dev.omp.auth-broker: omp 1.2.3 sha256={hashlib.sha256(binary.read_bytes()).hexdigest()}" in result.stdout
 
 
 def _revoke(host: dict, name: str) -> subprocess.CompletedProcess[str]:
@@ -807,6 +830,7 @@ def test_gateway_clients_follow_a_develop_config_that_changed_after_the_checkout
 FAKE_GH = """#!/bin/sh
 echo "$*" >> "$GH_LOG"
 case "$1 $2" in
+  "workflow run") [ -z "${GH_FAIL_DISPATCH:-}" ] || exit 1;;
   "secret list") printf 'REVIEW_GATEWAY_TOKEN\\nREVIEW_GATEWAY_URL\\n';;
   "issue list") [ -f "$GH_STATE/open" ] && cat "$GH_STATE/open";;
   "issue create")
@@ -962,6 +986,26 @@ def test_check_passes_when_every_provider_is_granted_and_served(host: dict) -> N
     assert "secrets: REVIEW_GATEWAY_TOKEN and REVIEW_GATEWAY_URL are set" in checked.stdout
 
 
+def test_check_adds_no_degraded_line_when_the_installed_monitor_snapshot_matches_develop(host: dict) -> None:
+    (host["dir"] / "monitor-host.sh").write_bytes((host["origin"] / HOST_RELATIVE).read_bytes())
+    checked = _check(host)
+    assert checked.returncode == 0, checked.stdout + checked.stderr
+    assert "monitor script" not in checked.stdout
+
+
+def test_check_reports_a_monitor_snapshot_that_differs_from_develop_as_degraded(host: dict) -> None:
+    (host["dir"] / "monitor-host.sh").write_text("#!/bin/bash\necho stale\n", encoding="utf-8")
+    checked = _check(host)
+    assert checked.returncode == 3, checked.stdout + checked.stderr
+    assert (
+        "degraded: the installed monitor script differs from origin/develop; "
+        "run 'review_gateway_host.sh monitor-install'" in checked.stdout
+    )
+    reported = json.loads(_check(host, "--json").stdout)
+    assert reported["state"] == "degraded"
+    assert any("installed monitor script differs" in line for line in reported["degraded"])
+
+
 def test_check_names_a_granted_provider_the_gateway_does_not_serve(host: dict) -> None:
     host["served"].write_text("anthropic/from-develop\nopenai-codex/model-b\n", encoding="utf-8")
     checked = _check(host)
@@ -1086,11 +1130,11 @@ def test_the_monitor_alerts_once_per_confirmed_change_and_closes_the_issue_on_co
     first = _monitor(host)
     assert first.returncode == 0, first.stdout + first.stderr
     assert "unchanged" in first.stdout
-    assert not log.exists() and not host["notifications"].exists()
+    assert not _issue_calls(log) and not host["notifications"].exists()
 
     _logins(host, PROVIDERS[1:])
     assert "awaiting a second consecutive run" in _monitor(host).stdout
-    assert not log.exists() and not host["notifications"].exists()
+    assert not _issue_calls(log) and not host["notifications"].exists()
     degraded = _monitor(host)
     assert degraded.returncode == 0, degraded.stdout + degraded.stderr
     gh_calls = log.read_text(encoding="utf-8")
@@ -1129,7 +1173,7 @@ def test_an_outage_that_clears_before_the_second_run_publishes_nothing(host: dic
     assert "unchanged" in _monitor(host).stdout
     _logins(host, PROVIDERS[1:])
     assert "awaiting a second consecutive run" in _monitor(host).stdout
-    assert not log.exists() and not host["notifications"].exists()
+    assert not _issue_calls(log) and not host["notifications"].exists()
     assert not (host["dir"] / "monitor.state").exists()
 
 
@@ -1187,7 +1231,7 @@ def test_a_deliberate_removal_is_a_notice_and_does_not_alert(host: dict) -> None
     result = _monitor(host)
     assert result.returncode == 0, result.stdout + result.stderr
     assert "unchanged" in result.stdout
-    assert not log.exists() and not host["notifications"].exists()
+    assert not _issue_calls(log) and not host["notifications"].exists()
 
 
 def test_monitor_install_renders_a_fifteen_minute_agent_that_runs_the_monitor(host: dict) -> None:
@@ -1210,11 +1254,83 @@ def test_monitor_install_renders_a_fifteen_minute_agent_that_runs_the_monitor(ho
     assert "launchctl bootstrap" in host["calls"].read_text(encoding="utf-8")
 
 
-def test_the_host_script_names_no_provider_and_holds_no_provider_list() -> None:
-    script = (SCRIPTS / "review_gateway_host.sh").read_text(encoding="utf-8")
+def _issue_calls(log: Path) -> list[str]:
+    if not log.exists():
+        return []
+    return [line for line in log.read_text(encoding="utf-8").splitlines() if line.startswith("issue ")]
+
+
+def _dispatches(log: Path) -> int:
+    if not log.exists():
+        return 0
+    return sum(
+        "workflow run review-verdict.yml --repo BenchBox-dev/benchbox --ref develop -f sweep=true" in line
+        for line in log.read_text(encoding="utf-8").splitlines()
+    )
+
+
+def test_the_first_monitor_run_dispatches_the_sweep_and_a_second_within_the_hour_does_not(host: dict) -> None:
+    log = _fake_gh(host)
+    assert _monitor(host).returncode == 0
+    assert _dispatches(log) == 1
+    stamp = host["dir"] / "sweep.dispatched"
+    assert stamp.read_text(encoding="utf-8").strip().isdigit()
+    assert _monitor(host).returncode == 0
+    assert _dispatches(log) == 1
+
+
+def test_a_monitor_run_an_hour_after_the_last_dispatch_dispatches_again(host: dict) -> None:
+    log = _fake_gh(host)
+    assert _monitor(host).returncode == 0
+    (host["dir"] / "sweep.dispatched").write_text("1\n", encoding="utf-8")
+    assert _monitor(host).returncode == 0
+    assert _dispatches(log) == 2
+
+
+def test_a_degraded_monitor_run_still_dispatches_the_sweep(host: dict) -> None:
+    log = _fake_gh(host)
+    _logins(host, PROVIDERS[1:])
+    assert _monitor(host).returncode == 0
+    assert _dispatches(log) == 1
+
+
+def test_a_broken_monitor_run_dispatches_no_sweep(host: dict) -> None:
+    log = _fake_gh(host)
+    host["env"] = {**host["env"], "FAKE_SERVED_ERROR": "gateway unreachable"}
+    assert _monitor(host).returncode == 0
+    assert _dispatches(log) == 0
+    assert not (host["dir"] / "sweep.dispatched").exists()
+
+
+def test_a_failed_sweep_dispatch_is_logged_and_leaves_the_monitor_and_its_timestamp_alone(host: dict) -> None:
+    _fake_gh(host, GH_FAIL_DISPATCH="1")
+    result = _monitor(host)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "monitor: sweep dispatch failed" in result.stdout
+    assert not (host["dir"] / "sweep.dispatched").exists()
+
+
+def _gate_path_scripts() -> list[Path]:
+    policy = yaml.safe_load((REPO_ROOT / ".github" / "review.yml").read_text(encoding="utf-8"))
+    roots = (".github/workflows/", "_project/scripts/", "scripts/")
+    found: set[Path] = set()
+    for pattern in policy["classifier"]["gate_paths"]:
+        for path in REPO_ROOT.glob(pattern):
+            relative = path.relative_to(REPO_ROOT).as_posix()
+            if path.is_file() and path.suffix in {".sh", ".py", ".yml", ".yaml"} and relative.startswith(roots):
+                found.add(path)
+    return sorted(found)
+
+
+def test_no_gate_path_script_names_a_provider_or_holds_a_provider_list() -> None:
     config = yaml.safe_load((REPO_ROOT / ".github" / "review-omp-config.yml").read_text(encoding="utf-8"))
     targets = [*config["modelRoles"].values(), *config["retry"]["fallbackChains"]]
     targets += [entry for chain in config["retry"]["fallbackChains"].values() for entry in chain]
-    for provider in {target.split("/", 1)[0] for target in targets}:
-        assert provider not in script
-    assert "PROVIDERS" not in script
+    providers = {target.split("/", 1)[0] for target in targets}
+    scripts = _gate_path_scripts()
+    assert SCRIPTS / "review_gateway_host.sh" in scripts
+    for path in scripts:
+        text = path.read_text(encoding="utf-8")
+        for provider in providers:
+            assert provider not in text, f"{path.relative_to(REPO_ROOT)} names {provider}"
+    assert "PROVIDERS" not in (SCRIPTS / "review_gateway_host.sh").read_text(encoding="utf-8")

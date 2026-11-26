@@ -323,8 +323,8 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
         sql = operation.write_sql
         if not platform_key:
             return sql
-        if platform_key.lower() != "questdb" and self._rewrite_transactional_sql_for_platform(sql, platform_key) != sql:
-            return sql
+        if platform_key.lower() in self._SCRIPT_TARGET_DIALECTS:
+            return self._translate_transactional_script(sql, platform_key)
         return self.translate_query_text(sql, platform_key)
 
     def _get_effective_write_sql(
@@ -1184,7 +1184,8 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
     ) -> list[dict[str, Any]]:
         _ = (ctx, monitor, run_options)
         config_options = getattr(benchmark_config, "options", {}) or {}
-        warmup_iterations = int(config_options.get("power_warmup_iterations", 1) or 1)
+        warmup_iterations_raw = config_options.get("power_warmup_iterations")
+        warmup_iterations = 1 if warmup_iterations_raw is None else int(warmup_iterations_raw)
         measurement_iterations = int(config_options.get("power_iterations", 3) or 3)
 
         try:

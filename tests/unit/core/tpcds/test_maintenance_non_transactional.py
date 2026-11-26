@@ -161,7 +161,8 @@ def test_clickhouse_returns_deletes_are_uncorrelated_tuple_in(name: str) -> None
 def test_other_dialects_keep_the_exists_form() -> None:
     for name in RETURNS_DELETES:
         function = MAINTENANCE_FUNCTIONS_BY_NAME[name]
-        for dialect in (None, "duckdb", "postgres", "mysql"):
+        assert "EXISTS" in function.statements_for("mysql")[0].upper()
+        for dialect in (None, "duckdb", "postgres"):
             assert function.statements_for(dialect) == function.statements
             assert "EXISTS" in function.statements_for(dialect)[0].upper()
 

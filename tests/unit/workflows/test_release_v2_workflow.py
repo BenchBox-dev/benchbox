@@ -491,6 +491,26 @@ def test_stage_two_clickhouse_memory_leaves_runner_headroom():
     assert 8 < limit <= RUNNER_MEMORY_GIB - 4
 
 
+@pytest.mark.parametrize("workflow_name", ["release-v2.yml", "trunk-uat.yml"])
+def test_stage_two_lakesail_memory_covers_the_shared_server_and_leaves_runner_headroom(workflow_name):
+    from tests.uat import docker_assets
+
+    jobs = yaml.safe_load((WORKFLOWS / workflow_name).read_text(encoding="utf-8"))["jobs"]
+    step = next(s for s in jobs["uat-stage2"]["steps"] if "UAT_CONFIG" in s.get("env", {}))
+    limit = docker_assets.parse_memory_bytes(step["env"]["LAKESAIL_MEMORY_LIMIT"]) / 1024**3
+    assert 8 < limit <= RUNNER_MEMORY_GIB - 4
+
+
+@pytest.mark.parametrize("workflow_name", ["release-v2.yml", "trunk-uat.yml"])
+def test_stage_three_doris_memory_lifts_the_backend_limit_and_leaves_runner_headroom(workflow_name):
+    from tests.uat import docker_assets
+
+    jobs = yaml.safe_load((WORKFLOWS / workflow_name).read_text(encoding="utf-8"))["jobs"]
+    step = next(s for s in jobs["uat-stage3"]["steps"] if "UAT_CONFIG" in s.get("env", {}))
+    limit = docker_assets.parse_memory_bytes(step["env"]["DORIS_MEMORY_LIMIT"]) / 1024**3
+    assert 8 <= limit <= RUNNER_MEMORY_GIB - 4
+
+
 def test_every_uat_job_frees_runner_disk_through_the_shared_environment_action():
     action = yaml.safe_load(
         (WORKFLOW.parents[1] / "actions" / "release-uat-env" / "action.yml").read_text(encoding="utf-8")

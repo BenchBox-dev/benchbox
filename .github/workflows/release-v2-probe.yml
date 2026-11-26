@@ -34,6 +34,12 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
+      - name: Check out the base revision, whose launch script matches this workflow definition
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base-launcher
+
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
@@ -58,6 +64,7 @@ jobs:
           PULL_REQUEST: ${{ github.event.pull_request.number }}
           HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        working-directory: base-launcher
         run: |
           set -euo pipefail
           python3 -m scripts.release_probe_launch \
@@ -72,6 +79,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        working-directory: base-launcher
         run: |
           set -euo pipefail
           python3 -m scripts.release_probe_launch \

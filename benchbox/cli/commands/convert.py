@@ -17,8 +17,6 @@ from benchbox.core.manifest import (
 from benchbox.core.runner.conversion import FormatConversionOrchestrator
 from benchbox.utils.format_converters import ConversionOptions
 
-logger = logging.getLogger(__name__)
-
 
 def _get_schemas_from_manifest(manifest: ManifestV2, benchmark_name: str | None) -> dict[str, dict[str, Any]]:
     if not benchmark_name:
@@ -30,31 +28,19 @@ def _get_schemas_from_manifest(manifest: ManifestV2, benchmark_name: str | None)
         )
 
     from benchbox.core.benchmark_loader import get_core_benchmark_class
+    from benchbox.core.runner.runner import get_table_schemas_from_benchmark
 
     try:
-        benchmark_class = get_core_benchmark_class(benchmark_name)
-        benchmark_instance = benchmark_class()
-
-        schemas = {}
-        if hasattr(benchmark_instance, "get_schema"):
-            for table_name in manifest.tables.keys():
-                try:
-                    schema = benchmark_instance.get_schema(table_name)
-                    if schema:
-                        schemas[table_name] = schema
-                except Exception:
-                    logger.warning(f"Could not get schema for table: {table_name}")
-                    continue
-
-        if not schemas:
-            raise click.ClickException(
-                f"Could not get schemas from benchmark '{benchmark_name}'. Ensure the benchmark is properly configured."
-            )
-
-        return schemas
-
+        all_schemas = get_table_schemas_from_benchmark(get_core_benchmark_class(benchmark_name)())
     except Exception as e:
         raise click.ClickException(f"Failed to load benchmark '{benchmark_name}': {e}") from e
+
+    schemas = {table_name: all_schemas[table_name] for table_name in manifest.tables if table_name in all_schemas}
+    if not schemas:
+        raise click.ClickException(
+            f"Could not get schemas from benchmark '{benchmark_name}'. Ensure the benchmark is properly configured."
+        )
+    return schemas
 
 
 @click.command(

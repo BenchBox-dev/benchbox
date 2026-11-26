@@ -750,6 +750,7 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
         start_time = mono_time()
 
         try:
+            self._cursor_started(cursor)
             request = ledger.add_request()
             cursor.execute(query)
             request.statement_id = self.probe_statement_id(cursor)
@@ -810,7 +811,14 @@ class PrestoTrinoAdapterBase(CursorValidationQueryExecutionMixin, HiveExternalTa
                 "error_type": type(e).__name__,
             }
         finally:
+            self._cursor_finished(cursor)
             cursor.close()
+
+    def _cursor_started(self, cursor: Any) -> None:
+        return None
+
+    def _cursor_finished(self, cursor: Any) -> None:
+        return None
 
     def probe_statement_id(self, cursor: Any) -> str | None:
         statement_id = getattr(cursor, "query_id", None)

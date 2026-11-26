@@ -17,6 +17,8 @@ DENYLIST_FILE=$GATEWAY_DIR/disabled-providers
 GATEWAY_CONFIG=$GATEWAY_DIR/home/.omp/agent/config.yml
 STATE_FILE=$GATEWAY_DIR/monitor.state
 PENDING_FILE=$GATEWAY_DIR/monitor.pending
+SWEEP_FILE=$GATEWAY_DIR/sweep.dispatched
+SWEEP_INTERVAL=3600
 SCRATCH=
 DEVELOP_DIR=
 ACCOUNTS_FILE=
@@ -30,6 +32,7 @@ BROKER_LABEL=dev.omp.auth-broker
 GATEWAY_LABEL=dev.omp.auth-gateway
 MONITOR_LABEL=dev.omp.review-gateway-monitor
 MONITOR_INTERVAL=900
+MONITOR_STATE=
 HEALTH_LABEL=review-gateway-health
 PROVIDER_REASON_NO_LOGIN="no logged-in broker account"
 
@@ -121,7 +124,7 @@ check_running_build() {
   listener=$(lsof -nP "-iTCP:$port" -sTCP:LISTEN -t 2>/dev/null | sort -u | paste -sd ' ' -)
   [ "$listener" = "$pid" ] \
     || fail "$label is process $pid but port $port is held by '${listener:-nothing}'; see its log in $LOG_DIR"
-  binary=$(ps -o comm= -p "$pid" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+  binary=$(lsof -a -p "$pid" -d txt -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1)
   [ -n "$binary" ] && [ -x "$binary" ] || fail "$label runs '$binary', which is not an executable file"
   ! process_predates_file "$pid" "$binary" \
     || fail "$label started before $binary was last written, so it may run an older build; run '$(basename "$0") broker' and '$(basename "$0") gateway'"
@@ -524,6 +527,15 @@ cmd_secrets() {
   echo "secrets: REVIEW_GATEWAY_TOKEN and REVIEW_GATEWAY_URL=$url set on the review environment"
 }
 
+check_monitor_snapshot() {
+  local snapshot=$GATEWAY_DIR/monitor-host.sh current
+  [ -e "$snapshot" ] || return 0
+  current=$(git -C "$REPO_ROOT" show "origin/develop:_project/scripts/review_gateway_host.sh") \
+    || fail "origin/develop has no gateway host script"
+  [ "$current" = "$(cat "$snapshot")" ] \
+    || note_degraded "the installed monitor script differs from origin/develop; run 'review_gateway_host.sh monitor-install'"
+}
+
 health_collect() {
   trap cleanup EXIT
   DEGRADED_COUNT=0
@@ -531,6 +543,7 @@ health_collect() {
   broker_ok || fail "the broker is not running"
   echo "broker: ok on 127.0.0.1:$BROKER_PORT"
   check_builds
+  check_monitor_snapshot
   load_denylist
   fetch_accounts
   require_valid_token_files
@@ -672,10 +685,11 @@ publish_health() {
   fi
 }
 
-cmd_monitor() {
+monitor_evaluate() {
   local output rc=0 state signature previous previous_state pending summary
   output=$(health_collect 2>&1) || rc=$?
   state=$(health_state "$rc")
+  MONITOR_STATE=$state
   summary=$(health_lines "$output" 'degraded|error')
   signature=$(printf '%s\n%s\n' "$state" "$summary" | grep -v '^$' | sort)
   previous=$(cat "$STATE_FILE" 2>/dev/null || echo healthy)
@@ -703,6 +717,26 @@ cmd_monitor() {
   printf '%s\n' "$signature" > "$STATE_FILE"
   rm -f "$PENDING_FILE"
   echo "monitor: $state"
+}
+
+dispatch_sweep() {
+  local now=$1 last=0
+  [ "$MONITOR_STATE" != broken ] || return 0
+  last=$(cat "$SWEEP_FILE" 2>/dev/null || echo 0)
+  case $last in '' | *[!0-9]*) last=0 ;; esac
+  [ $((now - last)) -ge "$SWEEP_INTERVAL" ] || return 0
+  if gh workflow run review-verdict.yml --repo "$REPO_SLUG" --ref develop -f sweep=true >/dev/null 2>&1; then
+    printf '%s\n' "$now" > "$SWEEP_FILE"
+  else
+    echo "monitor: sweep dispatch failed"
+  fi
+}
+
+cmd_monitor() {
+  local started
+  started=$(date +%s)
+  monitor_evaluate
+  dispatch_sweep "$started"
 }
 
 cmd_monitor_install() {

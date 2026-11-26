@@ -64,13 +64,13 @@
       "reason": "Pricing staleness age is defined relative to wall-clock publication date."
     },
     {
-      "path_glob": "benchbox/core/tpcdi/etl/error_recovery.py",
+      "path_glob": "benchbox/core/tpcdi/_legacy_etl/error_recovery.py",
       "symbol": "datetime.now",
       "line_regex": "datetime\\.now\\(\\)\\s*-\\s*timedelta\\(",
       "reason": "Retention windows and recent-threshold cutoffs are intentional wall-clock semantics."
     },
     {
-      "path_glob": "benchbox/core/tpcdi/etl/incremental_loader.py",
+      "path_glob": "benchbox/core/tpcdi/_legacy_etl/incremental_loader.py",
       "symbol": "datetime.now",
       "line_regex": "datetime\\.now\\(\\)\\s*-\\s*timedelta\\(",
       "reason": "Watermark fallback and retention cutoff calculations are wall-clock policies."

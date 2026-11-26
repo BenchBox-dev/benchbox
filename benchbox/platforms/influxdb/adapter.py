@@ -15,6 +15,7 @@ from benchbox.core.results.timer_scope import TIMING_METHOD_QUERY_ONLY
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
 from benchbox.platforms.base.data_loading import DataLoadingError, FileFormatRegistry, _open_binary_stream
 from benchbox.platforms.base.sql_execution import execute_sql_query
+from benchbox.utils.arrow_rows import open_csv_over_stream
 from benchbox.utils.dependencies import (
     check_platform_dependencies,
     get_dependency_error_message,
@@ -356,7 +357,7 @@ class InfluxDBAdapter(
                 strings_can_be_null=False,
                 null_values=[],
             )
-            with pacsv.open_csv(stream, convert_options=convert) as reader:
+            with open_csv_over_stream(stream, convert_options=convert) as reader:
                 yield from reader
 
     def configure_for_benchmark(self, connection: Any, benchmark_type: str) -> None:

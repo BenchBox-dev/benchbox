@@ -23,6 +23,7 @@ from ..utils.dependencies import check_platform_dependencies, get_dependency_err
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.config_utils import make_registered_platform_config_builder
 from .base.data_loading import NO_BENCHMARK, DataSource, resolve_adapter_data_source, resolve_csv_dialect
+from .base.remote_work import StartedRemoteWork
 from .base.tuning import make_informational_constraint_applier
 from .presto_trino_utils import normalize_existing_files
 
@@ -43,6 +44,7 @@ class AzureSynapseAdapter(PlatformAdapter):
 
     def __init__(self, **config):
         super().__init__(**config)
+        self._started_work = StartedRemoteWork()
 
         available, missing = check_platform_dependencies("synapse")
         if not available:
@@ -924,6 +926,7 @@ class AzureSynapseAdapter(PlatformAdapter):
         start_time = mono_time()
 
         try:
+            self._started_work.add(str(id(cursor)), cursor)
             ledger.add_request()
             cursor.execute(query)
             result = cursor.fetchall()
@@ -973,6 +976,7 @@ class AzureSynapseAdapter(PlatformAdapter):
                 "error_type": type(e).__name__,
             }
         finally:
+            self._started_work.discard(str(id(cursor)))
             cursor.close()
 
         self._merge_plan_capture_into_result(result_dict, connection, query, query_id)
@@ -1064,6 +1068,9 @@ class AzureSynapseAdapter(PlatformAdapter):
             self.logger.info(f"Updated statistics for {table_name}")
         finally:
             cursor.close()
+
+    def cancel_remote_work(self) -> None:
+        self._started_work.cancel_all("Azure Synapse", lambda _key, cursor: cursor.cancel())
 
     def close_connection(self, connection: Any) -> None:
         try:

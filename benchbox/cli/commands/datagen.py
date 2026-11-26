@@ -75,6 +75,14 @@ from benchbox.core.run_service import resolve_lifecycle_phases
     help="Enable verbose logging",
 )
 @click.option(
+    "--datagen-backend",
+    "datagen_backend",
+    type=click.Choice(["legacy", "native"], case_sensitive=False),
+    default=None,
+    hidden=True,
+    help="Data generation backend ('legacy' or 'native'; omit for benchmark default).",
+)
+@click.option(
     "--timeout",
     "timeout",
     type=click.IntRange(min=0),
@@ -84,7 +92,7 @@ from benchbox.core.run_service import resolve_lifecycle_phases
 )
 @click.pass_context
 @host_guarded("datagen")
-def datagen(ctx, benchmark, scale, output_dir, data_format, seed, verbose, timeout):
+def datagen(ctx, benchmark, scale, output_dir, data_format, seed, verbose, datagen_backend, timeout):
     exit_if_benchmark_unavailable(benchmark)
 
     console.print("[bold blue]Running data generation...[/bold blue]")
@@ -147,6 +155,7 @@ def datagen(ctx, benchmark, scale, output_dir, data_format, seed, verbose, timeo
         publish_label="maintainer-run",
         funding=None,
         result_source=None,
+        datagen_backend=datagen_backend,
         timeout=timeout,
     )
 

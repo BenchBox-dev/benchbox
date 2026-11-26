@@ -63,7 +63,9 @@ class ClickHouseMetadataMixin:
             elif config.get("benchmark") and config.get("scale_factor") is not None:
                 from benchbox.utils.scale_factor import format_benchmark_name
 
-                benchmark_name = format_benchmark_name(config["benchmark"], config["scale_factor"])
+                benchmark_name = format_benchmark_name(
+                    config.get("run_benchmark_name") or config["benchmark"], config["scale_factor"]
+                )
                 adapter_config["database"] = re.sub(r"[^a-z0-9_]", "_", f"benchbox_{benchmark_name}".lower())
 
         for key in [
@@ -83,6 +85,7 @@ class ClickHouseMetadataMixin:
             "verbose_enabled",
             "very_verbose",
             "optimize_after_load",
+            "force_recreate",
         ]:
             if key in config:
                 adapter_config[key] = config[key]

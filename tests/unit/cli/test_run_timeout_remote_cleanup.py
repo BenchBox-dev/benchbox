@@ -175,6 +175,32 @@ def test_an_alias_of_a_cloud_platform_gets_the_warning() -> None:
     assert "try to cancel the work it started on Google BigQuery" in (cloud_cleanup_warning(alias) or "")
 
 
+def test_databricks_gets_the_cancel_warning_in_sql_mode_and_the_cannot_cancel_warning_in_dataframe_mode() -> None:
+    assert cloud_cleanup_warning("databricks", "sql") == remote_cleanup_warning("Databricks SQL", True)
+    assert cloud_cleanup_warning("databricks", "dataframe") == remote_cleanup_warning("Databricks DataFrame", False)
+    assert cloud_cleanup_warning("databricks-df") == cloud_cleanup_warning("databricks", "dataframe")
+
+
+@pytest.mark.parametrize(
+    "mode, implemented, display",
+    [("sql", True, "Databricks SQL"), ("dataframe", False, "Databricks DataFrame")],
+)
+def test_the_cli_warning_follows_the_execution_mode(printed, mode, implemented, display) -> None:
+    wrapper = run_time_limit.bounded_orchestrated_run(lambda *_a, **_k: SimpleNamespace(validation_status="PASSED"))
+
+    def dispatch(_s: Any) -> None:
+        wrapper(None, None, None, SimpleNamespace(type="databricks", execution_mode=mode), ["power"], quiet=True)
+
+    original = run_time_limit.dispatch_run
+    run_time_limit.dispatch_run = dispatch
+    try:
+        run_time_limit.run_within_time_limit(_settings("databricks", 5))
+    finally:
+        run_time_limit.dispatch_run = original
+
+    assert remote_cleanup_warning(display, implemented) in _output(printed)
+
+
 def test_every_cloud_platform_gets_exactly_one_of_the_two_warnings() -> None:
     cloud = [entry for entry in PLATFORM_MANIFEST if entry.metadata_dict().get("category") == "cloud"]
     assert cloud

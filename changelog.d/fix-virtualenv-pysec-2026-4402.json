@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Development lock update only: virtualenv is installed by the dev dependency group, which is not part of the published package."
+}

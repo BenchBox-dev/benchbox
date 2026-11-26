@@ -25,13 +25,6 @@ class ReadPrimitivesQueryManager(BaseQueryCatalogMixin):
 
         return self._catalog_version
 
-    def get_query(self, query_id: str, dialect: str | None = None) -> str:
-
-        query = super().get_query(query_id, dialect)
-        if query_id == "timeseries_trend_analysis" and dialect and dialect.lower().strip() == "clickhouse":
-            return query.replace("LAG(monthly_revenue, 1)", "lag(monthly_revenue, 1)")
-        return query
-
     def get_all_queries(self) -> dict[str, str]:
 
         return self._queries.copy()

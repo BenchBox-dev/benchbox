@@ -1,0 +1,1 @@
+{"schema": 1, "internal": "The develop and release-branches rulesets bind every required check to the App that posts it (GitHub Actions for core, explorer, results-data, docs, tooling, hold and release-v2 probe; benchbox-review for review-gate), and the ruleset drift check reports any required check bound to another source."}

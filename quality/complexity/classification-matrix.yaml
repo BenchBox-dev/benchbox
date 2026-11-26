@@ -2743,8 +2743,8 @@ functions:
   classification: ignore_with_rationale
   rationale: "External vs native table mode dispatch determines fundamentally different execution paths (external skips schema creation, calls different adapter methods, populates different phase metadata)."
 
-- key: "benchbox/core/tpcdi/etl/customer_mgmt_processor.py:parse_file"
-  file: "benchbox/core/tpcdi/etl/customer_mgmt_processor.py"
+- key: "benchbox/core/tpcdi/_legacy_etl/customer_mgmt_processor.py:parse_file"
+  file: "benchbox/core/tpcdi/_legacy_etl/customer_mgmt_processor.py"
   line: 194
   function: "parse_file"
   score: 12
@@ -3071,8 +3071,8 @@ functions:
   classification: ignore_with_rationale
   rationale: "Driver resolution must reconcile no-package platforms, current-env matches, isolated runtime reuse, auto-install policy, and fallback error reporting. The branching is the contract for deterministic driver selection."
 
-- key: "benchbox/core/tpcdi/etl/sql_backend.py:_build_safe_where_clause"
-  file: "benchbox/core/tpcdi/etl/sql_backend.py"
+- key: "benchbox/core/tpcdi/_legacy_etl/sql_backend.py:_build_safe_where_clause"
+  file: "benchbox/core/tpcdi/_legacy_etl/sql_backend.py"
   line: 174
   function: "_build_safe_where_clause"
   score: 12

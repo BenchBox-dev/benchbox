@@ -3,7 +3,6 @@ from __future__ import annotations
 from benchbox.core.tpchavoc.dialect_compat import (
     DORIS_CORRELATED_GROUP_VARIANTS,
     DORIS_FILTER_VARIANT_IDS,
-    DORIS_NAMED_WINDOW_VARIANT_IDS,
     DORIS_ORDER_BY_PROJECTION_VARIANT_IDS,
     GROUP_BY_EMPTY_VARIANT_IDS,
 )
@@ -54,7 +53,6 @@ for _query_id in GROUP_BY_EMPTY_VARIANT_IDS:
         query_id=_query_id,
     )
 
-_NAMED_WINDOW_REASON = "Doris does not parse the WINDOW clause; inline each named window into its OVER clauses"
 _ORDER_BY_PROJECTION_REASON = (
     "Doris rejects a subquery or window function repeated in ORDER BY (the optimizer expands the select alias "
     "into it); order by the projected alias instead"
@@ -65,10 +63,6 @@ _CORRELATED_GROUP_REASON = (
 )
 
 for _query_id, _transformer, _suffix, _reason, _failure_mode in (
-    *(
-        (q, "inline_named_windows", "named_window", _NAMED_WINDOW_REASON, FailureMode.SYNTAX_ERROR)
-        for q in sorted(DORIS_NAMED_WINDOW_VARIANT_IDS)
-    ),
     *(
         (
             q,

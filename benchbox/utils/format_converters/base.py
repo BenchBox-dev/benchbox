@@ -1,22 +1,141 @@
 from __future__ import annotations
 
+import queue
+import re
+import threading
 from abc import ABC, abstractmethod
+from collections import deque
+from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Literal
 
+import numpy as np
 import pyarrow as pa
 import pyarrow.csv as csv
 
 from benchbox.utils.compression import CompressionManager
-from benchbox.utils.file_format import detect_compression, get_column_names_with_trailing, has_trailing_delimiter
+from benchbox.utils.file_format import (
+    detect_compression,
+    get_column_names_with_trailing,
+    get_delimiter_for_file,
+    has_trailing_delimiter,
+)
+
+DEFAULT_ROW_GROUP_SIZE = 122_880
+DEFAULT_STREAM_BLOCK_SIZE = 1 * 1024 * 1024
+PARALLEL_FILE_READERS = 2
+_READER_QUEUE_DEPTH = 32
+_QUEUE_POLL_SECONDS = 0.1
+_ARROW_STREAM_CODECS = {"zstd": "zstd", "gzip": "gzip"}
+_LINE_COUNT_CHUNK_BYTES = 1024 * 1024
+_NEWLINE = ord("\n")
+_CARRIAGE_RETURN = ord("\r")
+
+_SQL_DDL_TYPE_PREFIXES = (
+    "INTEGER",
+    "INT",
+    "BIGINT",
+    "SMALLINT",
+    "TINYINT",
+    "HUGEINT",
+    "VARCHAR",
+    "CHAR",
+    "TEXT",
+    "DECIMAL",
+    "NUMERIC",
+    "DATE",
+    "TIMESTAMP",
+    "DATETIME",
+    "FLOAT_ARRAY",
+    "FLOAT",
+    "REAL",
+    "DOUBLE",
+    "BOOLEAN",
+    "BOOL",
+    "ARRAY",
+    "JSON",
+    "BINARY",
+    "BLOB",
+    "UUID",
+    "TIME",
+    "INTERVAL",
+)
+
+_SQL_COLUMN_DEF_RE = re.compile(
+    r"^\s*\"?([A-Za-z_][A-Za-z0-9_]*)\"?\s+"
+    r"([A-Za-z_][A-Za-z0-9_]*(?:\s+PRECISION)?(?:\s*\([^)]*\))?)"
+    r"(?:\s+(.*))?$",
+    re.IGNORECASE,
+)
+
+
+def _parse_sql_column_definition(column_def: str) -> dict[str, Any] | None:
+    match = _SQL_COLUMN_DEF_RE.match(column_def)
+    if not match:
+        return None
+    col_name, sql_type, constraints = match.group(1), match.group(2).strip(), (match.group(3) or "").upper()
+    sql_type_upper = sql_type.upper()
+    if not any(
+        sql_type_upper == prefix or sql_type_upper.startswith(f"{prefix}(") or sql_type_upper.startswith(f"{prefix} ")
+        for prefix in _SQL_DDL_TYPE_PREFIXES
+    ):
+        return None
+    return {
+        "name": col_name,
+        "type": sql_type,
+        "nullable": "NOT NULL" not in constraints,
+    }
+
+
+def normalize_schema_columns(schema: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not schema:
+        raise SchemaError("Schema is empty or None")
+
+    if not isinstance(schema, dict) or "columns" not in schema:
+        raise SchemaError("Schema missing 'columns' field")
+
+    columns = schema["columns"]
+    if isinstance(columns, dict):
+        if not columns:
+            raise SchemaError("Schema 'columns' must be a non-empty list or dict")
+        normalized: list[dict[str, Any]] = []
+        for col_name, col_spec in columns.items():
+            if not isinstance(col_spec, dict):
+                raise SchemaError(f"Column '{col_name}' specification is not a dictionary")
+            if "type" not in col_spec:
+                raise SchemaError(f"Column '{col_name}' missing 'type' field")
+            normalized.append({"name": str(col_name), **col_spec})
+        return normalized
+
+    if not columns or not isinstance(columns, list):
+        raise SchemaError("Schema 'columns' must be a non-empty list")
+
+    normalized_list: list[dict[str, Any]] = []
+    for i, col in enumerate(columns):
+        if isinstance(col, dict):
+            if "name" not in col:
+                raise SchemaError(f"Column {i} missing 'name' field")
+            if "type" not in col:
+                raise SchemaError(f"Column {i} ({col.get('name', 'unknown')}) missing 'type' field")
+            normalized_list.append(col)
+        elif isinstance(col, str):
+            parsed = _parse_sql_column_definition(col)
+            if parsed is None:
+                raise SchemaError(f"Column {i} is not a dictionary")
+            normalized_list.append(parsed)
+        else:
+            raise SchemaError(f"Column {i} is not a dictionary")
+
+    return normalized_list
 
 
 @dataclass
 class ConversionOptions:
     compression: str = "snappy"
-    row_group_size: int = 128 * 1024 * 1024
+    row_group_size: int = DEFAULT_ROW_GROUP_SIZE
     partition_cols: list[str] = field(default_factory=list)
     merge_shards: bool = True
     output_dir: Path | None = None
@@ -24,6 +143,10 @@ class ConversionOptions:
     validate_row_count: bool = True
     strict_schema: bool = False
     data_page_version: Literal["1.0", "2.0"] | None = None
+    delimiter: str | None = None
+    has_header: bool | None = None
+    null_marker: str = ""
+    expected_row_count: int | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -37,7 +160,36 @@ class ConversionOptions:
         if self.data_page_version is not None and self.data_page_version not in ("1.0", "2.0"):
             raise ValueError(f"Invalid data_page_version: {self.data_page_version!r}. Must be '1.0' or '2.0'.")
 
+        if self.delimiter is not None and len(self.delimiter) != 1:
+            raise ValueError(f"delimiter must be a single character, got {self.delimiter!r}")
+
         self.validate_row_count = bool(self.validate_row_count)
+
+
+def _count_nonempty_lines(stream: Any) -> int:
+    count = 0
+    tail = np.array([_NEWLINE, _NEWLINE], dtype=np.uint8)
+    while chunk := stream.read(_LINE_COUNT_CHUNK_BYTES):
+        data = np.concatenate((tail, np.frombuffer(chunk, dtype=np.uint8)))
+        newline = data[2:] == _NEWLINE
+        previous = data[1:-1]
+        blank = newline & ((previous == _NEWLINE) | ((previous == _CARRIAGE_RETURN) & (data[:-2] == _NEWLINE)))
+        count += int(np.count_nonzero(newline)) - int(np.count_nonzero(blank))
+        tail = data[-2:].copy()
+    unterminated = tail[-1] != _NEWLINE and not (tail[-1] == _CARRIAGE_RETURN and tail[-2] == _NEWLINE)
+    return count + int(unterminated)
+
+
+def _open_source(file_path: Path) -> Any:
+    compression_type = detect_compression(file_path)
+    if compression_type is None or compression_type in _ARROW_STREAM_CODECS:
+        return pa.input_stream(str(file_path), compression=_ARROW_STREAM_CODECS.get(compression_type))
+    return CompressionManager().get_compressor(compression_type).open_for_read(file_path, mode="rb")
+
+
+def _count_source_lines(file_path: Path) -> int:
+    with _open_source(file_path) as raw_stream:
+        return _count_nonempty_lines(raw_stream)
 
 
 @dataclass
@@ -76,13 +228,10 @@ class ArrowTypeMapper:
     def map_sql_type_to_arrow(sql_type: str, *, strict: bool = False) -> pa.DataType:
         sql_type_upper = sql_type.upper().strip()
 
-        if sql_type_upper in ("INTEGER", "INT"):
+        if sql_type_upper in ("INTEGER", "INT", "BIGINT", "SMALLINT", "TINYINT", "HUGEINT"):
             return pa.int64()
 
-        if sql_type_upper == "BIGINT":
-            return pa.int64()
-
-        if sql_type_upper.startswith("DECIMAL"):
+        if sql_type_upper.startswith(("DECIMAL", "NUMERIC")):
             if "(" in sql_type_upper:
                 try:
                     params = sql_type_upper[sql_type_upper.index("(") + 1 : sql_type_upper.index(")")].split(",")
@@ -97,7 +246,7 @@ class ArrowTypeMapper:
         if sql_type_upper == "DATE":
             return pa.date32()
 
-        if sql_type_upper == "TIMESTAMP":
+        if sql_type_upper in ("TIMESTAMP", "DATETIME") or sql_type_upper.startswith("TIMESTAMP("):
             return pa.timestamp("us")
 
         if sql_type_upper.startswith(("VARCHAR", "CHAR")):
@@ -105,13 +254,13 @@ class ArrowTypeMapper:
 
         if sql_type_upper in ("FLOAT", "REAL"):
             return pa.float32()
-        if sql_type_upper == "DOUBLE":
+        if sql_type_upper in ("DOUBLE", "DOUBLE PRECISION"):
             return pa.float64()
 
         if sql_type_upper in ("BOOLEAN", "BOOL"):
             return pa.bool_()
 
-        if sql_type_upper == "TEXT":
+        if sql_type_upper in ("TEXT", "FLOAT_ARRAY"):
             return pa.string()
 
         if strict:
@@ -119,12 +268,11 @@ class ArrowTypeMapper:
         return pa.string()
 
     @staticmethod
-    def build_arrow_schema(schema: dict[str, Any], *, strict: bool = False) -> pa.Schema:
-        if not schema or "columns" not in schema:
-            raise SchemaError("Schema missing 'columns' field")
-
+    def build_arrow_schema(schema: dict[str, Any] | None, *, strict: bool = False) -> pa.Schema:
+        if not schema or not isinstance(schema, dict) or "columns" not in schema:
+            raise SchemaError("Schema must contain 'columns' field")
+        columns = normalize_schema_columns(schema)
         fields = []
-        columns = schema["columns"]
 
         for col in columns:
             col_name = col["name"]
@@ -187,26 +335,7 @@ class BaseFormatConverter(FormatConverter):
                 raise ConversionError(f"Source path is not a file: {file_path}")
 
     def validate_schema(self, schema: dict[str, Any] | None) -> bool:
-        if not schema:
-            raise SchemaError("Schema is empty or None")
-
-        if "columns" not in schema:
-            raise SchemaError("Schema missing 'columns' field")
-
-        columns = schema["columns"]
-        if not columns or not isinstance(columns, list):
-            raise SchemaError("Schema 'columns' must be a non-empty list")
-
-        for i, col in enumerate(columns):
-            if not isinstance(col, dict):
-                raise SchemaError(f"Column {i} is not a dictionary")
-
-            if "name" not in col:
-                raise SchemaError(f"Column {i} missing 'name' field")
-
-            if "type" not in col:
-                raise SchemaError(f"Column {i} ({col.get('name', 'unknown')}) missing 'type' field")
-
+        normalize_schema_columns(schema)
         return True
 
     def _map_sql_type_to_arrow(self, sql_type: str, *, strict: bool = False) -> pa.DataType:
@@ -215,6 +344,222 @@ class BaseFormatConverter(FormatConverter):
     def _build_arrow_schema(self, schema: dict[str, Any], *, strict: bool = False) -> pa.Schema:
         return ArrowTypeMapper.build_arrow_schema(schema, strict=strict)
 
+    def _peek_nonempty_lines(self, file_path: Path, count: int = 2) -> list[str]:
+        lines: list[str] = []
+        compression_type = detect_compression(file_path)
+        if compression_type:
+            compressor = CompressionManager().get_compressor(compression_type)
+            with compressor.open_for_read(file_path, mode="rt") as handle:
+                for line in handle:
+                    if line.strip():
+                        lines.append(line.rstrip("\r\n"))
+                        if len(lines) >= count:
+                            break
+            return lines
+        with file_path.open("rt", encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                if line.strip():
+                    lines.append(line.rstrip("\r\n"))
+                    if len(lines) >= count:
+                        break
+        return lines
+
+    @staticmethod
+    def _line_matches_header(line: str, delimiter: str, column_names: list[str]) -> bool:
+        tokens = [tok.strip().strip('"').lower() for tok in line.split(delimiter)]
+        if len(tokens) == len(column_names) + 1 and tokens[-1] == "":
+            tokens = tokens[:-1]
+        return tokens == [name.lower() for name in column_names]
+
+    def _resolve_file_csv_settings(
+        self,
+        file_path: Path,
+        column_names: list[str],
+        options: ConversionOptions | None = None,
+    ) -> tuple[str, bool, bool, bool]:
+        preview = self._peek_nonempty_lines(file_path, count=2)
+        if not preview:
+            default_delim = (
+                options.delimiter if options and options.delimiter is not None else get_delimiter_for_file(file_path)
+            )
+            return default_delim, False, False, True
+
+        first_line = preview[0]
+        if options and options.delimiter is not None:
+            delimiter = options.delimiter
+        else:
+            delimiter = get_delimiter_for_file(file_path)
+            if delimiter == "," and len(column_names) > 1:
+                comma_parts = first_line.split(",")
+                pipe_parts = first_line.split("|")
+                if self._line_matches_header(first_line, "|", column_names) or (
+                    len(comma_parts) < len(column_names)
+                    and len(pipe_parts) in (len(column_names), len(column_names) + 1)
+                ):
+                    delimiter = "|"
+
+        if options and options.has_header is not None:
+            has_header = bool(options.has_header)
+        else:
+            has_header = self._line_matches_header(first_line, delimiter, column_names)
+
+        if has_header:
+            if len(preview) < 2:
+                return delimiter, True, False, True
+            data_line = preview[1]
+            data_parts = data_line.split(delimiter)
+            has_trailing = len(data_parts) > len(column_names) and data_line.endswith(delimiter)
+        else:
+            has_trailing = has_trailing_delimiter(file_path, delimiter, column_names)
+
+        return delimiter, has_header, has_trailing, False
+
+    def iter_record_batches(
+        self,
+        source_files: list[Path],
+        schema: dict[str, Any],
+        *,
+        options: ConversionOptions | None = None,
+        progress_callback: Callable[[str, float], None] | None = None,
+        progress_start: float = 0.0,
+        progress_end: float = 0.8,
+        block_size: int = DEFAULT_STREAM_BLOCK_SIZE,
+        source_line_counter: list[int] | None = None,
+        readers: int = PARALLEL_FILE_READERS,
+    ) -> Iterator[pa.RecordBatch]:
+        strict = bool(options.strict_schema) if options is not None else False
+        arrow_schema = self._build_arrow_schema(schema, strict=strict)
+        total_files = len(source_files)
+        progress_range = progress_end - progress_start
+        stop = threading.Event()
+        pending: deque[tuple[Path, queue.Queue[tuple[bool, Any]], threading.Thread, list[int]]] = deque()
+        next_index = 0
+
+        def start_next() -> None:
+            nonlocal next_index
+            file_path = source_files[next_index]
+            line_count = [0]
+            out: queue.Queue[tuple[bool, Any]] = queue.Queue(maxsize=_READER_QUEUE_DEPTH)
+            thread = threading.Thread(
+                target=self._produce_file_batches,
+                args=(file_path, arrow_schema, options, block_size, line_count, out, stop),
+                name=f"benchbox-csv-reader-{file_path.name}",
+                daemon=True,
+            )
+            thread.start()
+            pending.append((file_path, out, thread, line_count))
+            next_index += 1
+
+        try:
+            while next_index < total_files and len(pending) < max(1, readers):
+                start_next()
+            consumed = 0
+            while pending:
+                file_path, out, thread, line_count = pending[0]
+                if progress_callback:
+                    progress_callback(
+                        f"Reading {file_path.name}", progress_start + (consumed / total_files) * progress_range
+                    )
+                while True:
+                    has_batch, value = out.get()
+                    if not has_batch:
+                        break
+                    yield value
+                pending.popleft()
+                thread.join()
+                if value is not None:
+                    raise value
+                consumed += 1
+                if source_line_counter is not None:
+                    source_line_counter[0] += line_count[0]
+                if next_index < total_files:
+                    start_next()
+        except Exception as e:
+            raise ConversionError(f"Failed to read TBL files: {e}") from e
+        finally:
+            stop.set()
+            for _, _, thread, _ in pending:
+                thread.join()
+
+    def _produce_file_batches(
+        self,
+        file_path: Path,
+        arrow_schema: pa.Schema,
+        options: ConversionOptions | None,
+        block_size: int,
+        line_count: list[int],
+        out: queue.Queue[tuple[bool, Any]],
+        stop: threading.Event,
+    ) -> None:
+        def put(entry: tuple[bool, Any]) -> bool:
+            while not stop.is_set():
+                try:
+                    out.put(entry, timeout=_QUEUE_POLL_SECONDS)
+                    return True
+                except queue.Full:
+                    continue
+            return False
+
+        try:
+            for batch in self._iter_file_batches(file_path, arrow_schema, options, block_size, line_count):
+                if not put((True, batch)):
+                    return
+        except Exception as e:
+            put((False, e))
+            return
+        put((False, None))
+
+    def _iter_file_batches(
+        self,
+        file_path: Path,
+        arrow_schema: pa.Schema,
+        options: ConversionOptions | None,
+        block_size: int,
+        line_count: list[int],
+    ) -> Iterator[pa.RecordBatch]:
+        column_names = [field.name for field in arrow_schema]
+        delimiter, has_header, has_trailing, is_empty = self._resolve_file_csv_settings(
+            file_path, column_names, options
+        )
+        if is_empty:
+            return
+
+        read_options = csv.ReadOptions(
+            column_names=get_column_names_with_trailing(column_names, has_trailing),
+            autogenerate_column_names=False,
+            skip_rows=1 if has_header else 0,
+            block_size=block_size,
+        )
+        parse_options = csv.ParseOptions(
+            delimiter=delimiter,
+            quote_char='"',
+            escape_char="\\",
+        )
+        convert_options = csv.ConvertOptions(
+            column_types=arrow_schema,
+            null_values=[options.null_marker if options is not None else ""],
+            strings_can_be_null=True,
+            include_columns=column_names,
+        )
+
+        with ThreadPoolExecutor(max_workers=1, thread_name_prefix="benchbox-line-count") as counter:
+            source_lines = counter.submit(_count_source_lines, file_path)
+            with _open_source(file_path) as raw_stream:
+                reader = csv.open_csv(
+                    raw_stream,
+                    read_options=read_options,
+                    parse_options=parse_options,
+                    convert_options=convert_options,
+                )
+                for batch in reader:
+                    if batch.num_rows > 0:
+                        yield (
+                            pa.RecordBatch.from_arrays(batch.columns, schema=arrow_schema)
+                            if batch.schema != arrow_schema
+                            else batch
+                        )
+            line_count[0] = max(0, source_lines.result() - (1 if has_header else 0))
+
     def read_tbl_files(
         self,
         source_files: list[Path],
@@ -222,108 +567,45 @@ class BaseFormatConverter(FormatConverter):
         progress_callback: Callable[[str, float], None] | None = None,
         progress_start: float = 0.0,
         progress_end: float = 0.8,
+        options: ConversionOptions | None = None,
+        source_line_counter: list[int] | None = None,
     ) -> pa.Table:
-        arrow_schema = self._build_arrow_schema(schema)
-        column_names = [col["name"] for col in schema["columns"]]
-
-        tables = []
-        total_files = len(source_files)
-        progress_range = progress_end - progress_start
-        compression_manager = CompressionManager()
-
+        strict = bool(options.strict_schema) if options is not None else False
+        arrow_schema = self._build_arrow_schema(schema, strict=strict)
+        batches = list(
+            self.iter_record_batches(
+                source_files,
+                schema,
+                options=options,
+                progress_callback=progress_callback,
+                progress_start=progress_start,
+                progress_end=progress_end,
+                source_line_counter=source_line_counter,
+            )
+        )
         try:
-            for i, file_path in enumerate(source_files):
-                if progress_callback:
-                    progress = progress_start + (i / total_files) * progress_range
-                    progress_callback(f"Reading {file_path.name}", progress)
-
-                has_trailing = has_trailing_delimiter(file_path, "|", column_names)
-                column_names_for_file = get_column_names_with_trailing(column_names, has_trailing)
-
-                read_options = csv.ReadOptions(
-                    column_names=column_names_for_file,
-                    autogenerate_column_names=False,
-                )
-
-                parse_options = csv.ParseOptions(
-                    delimiter="|",
-                    quote_char='"',
-                    escape_char="\\",
-                )
-
-                convert_options = csv.ConvertOptions(
-                    column_types=arrow_schema,
-                    null_values=[""],
-                    strings_can_be_null=True,
-                    include_columns=column_names,
-                )
-
-                compression_type = detect_compression(file_path)
-                if compression_type:
-                    compressor = compression_manager.get_compressor(compression_type)
-                    with compressor.open_for_read(file_path, mode="rb") as stream:
-                        table = csv.read_csv(
-                            stream,
-                            read_options=read_options,
-                            parse_options=parse_options,
-                            convert_options=convert_options,
-                        )
-                else:
-                    table = csv.read_csv(
-                        file_path,
-                        read_options=read_options,
-                        parse_options=parse_options,
-                        convert_options=convert_options,
-                    )
-
-                tables.append(table)
-
-        except Exception as e:
-            raise ConversionError(f"Failed to read TBL files: {e}") from e
-
-        try:
-            if len(tables) > 1:
-                if progress_callback:
-                    progress_callback("Merging sharded files", progress_end)
-                return pa.concat_tables(tables)
-            else:
-                return tables[0]
+            if not batches:
+                return pa.Table.from_pylist([], schema=arrow_schema)
+            if len(source_files) > 1 and progress_callback:
+                progress_callback("Merging sharded files", progress_end)
+            return pa.Table.from_batches(batches, schema=arrow_schema)
         except Exception as e:
             raise ConversionError(f"Failed to concatenate tables: {e}") from e
 
     def calculate_file_size(self, file_paths: list[Path]) -> int:
         return sum(f.stat().st_size for f in file_paths if f.exists())
 
-    def count_rows(self, file_paths: list[Path], delimiter: str = "|") -> int:
-        total_rows = 0
-        compression_manager = CompressionManager()
-        for file_path in file_paths:
-            compression_type = detect_compression(file_path)
-            if compression_type:
-                compressor = compression_manager.get_compressor(compression_type)
-                with compressor.open_for_read(file_path, mode="rt") as f:
-                    for line in f:
-                        if line.strip():
-                            total_rows += 1
-            else:
-                with open(file_path, encoding="utf-8", errors="replace") as f:
-                    for line in f:
-                        if line.strip():
-                            total_rows += 1
-        return total_rows
-
-    def validate_row_count(
+    def _verify_inline_row_count(
         self,
-        source_files: list[Path],
-        output_row_count: int,
+        *,
+        expected_rows: int,
+        written_rows: int,
         table_name: str,
     ) -> None:
-        input_row_count = self.count_rows(source_files)
-
-        if input_row_count != output_row_count:
+        if expected_rows != written_rows:
             raise ConversionError(
                 f"Row count mismatch for table '{table_name}': "
-                f"input={input_row_count:,} rows, output={output_row_count:,} rows. "
+                f"input={expected_rows:,} rows, output={written_rows:,} rows. "
                 f"Data loss detected during conversion! "
                 f"This violates TPC compliance and indicates a serious conversion error."
             )

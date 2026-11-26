@@ -9,6 +9,8 @@ import pytest
 from benchbox.core.exceptions import ConfigurationError
 from benchbox.core.gateway import INSECURE_GATEWAY_ENV, GatewayConfigurationError, UnsupportedGatewayError
 from benchbox.platforms.snowflake import SnowflakeAdapter
+from tests.fixtures.snowflake_connector import installed_connector_major, installed_connector_parameters
+from tests.fixtures.snowflake_warehouses import SHOW_WAREHOUSES_COLUMNS
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium, pytest.mark.cloud_import]
 
@@ -19,10 +21,12 @@ BASE = {"account": "acct", "username": "user", "password": "mock-password", "war
 def snowflake_dependencies(monkeypatch):
     monkeypatch.delenv(INSECURE_GATEWAY_ENV, raising=False)
     monkeypatch.delenv("REQUESTS_CA_BUNDLE", raising=False)
+    monkeypatch.setattr("benchbox.platforms.snowflake._connector_major_version", lambda: 4)
     with (
         patch("benchbox.platforms.snowflake.check_platform_dependencies", return_value=(True, [])),
         patch("benchbox.platforms.snowflake.snowflake") as mock_snowflake,
     ):
+        mock_snowflake.connector.connection.DEFAULT_CONFIGURATION = {"disable_ocsp_checks": (False, bool)}
         yield mock_snowflake
 
 
@@ -34,7 +38,7 @@ def test_native_adapter_has_no_gateway_endpoint() -> None:
     adapter = _adapter()
     assert adapter.gateway_endpoint is None
     params = adapter._connect_params({}, include_database=True)
-    assert not {"host", "port", "protocol", "insecure_mode", "ocsp_fail_open"} & set(params)
+    assert not {"host", "port", "protocol", "disable_ocsp_checks", "insecure_mode", "ocsp_fail_open"} & set(params)
     assert "gateway" not in adapter.get_platform_info()
 
 
@@ -163,12 +167,24 @@ def test_insecure_gateway_requires_environment_opt_in() -> None:
         _adapter(gateway="custom", gateway_host="gw.example.com", allow_insecure_gateway=True)
 
 
-def test_insecure_gateway_maps_insecure_mode_and_warns(monkeypatch, caplog) -> None:
+def test_insecure_gateway_turns_off_ocsp_checks_and_warns(monkeypatch, caplog) -> None:
     monkeypatch.setenv(INSECURE_GATEWAY_ENV, "1")
     with caplog.at_level("WARNING", logger="benchbox.core.gateway"):
         adapter = _adapter(gateway="custom", gateway_host="gw.example.com", allow_insecure_gateway=True)
-    assert adapter._connect_params({}, include_database=False)["insecure_mode"] is True
-    assert any("without TLS verification" in record.message for record in caplog.records)
+    assert adapter._connect_params({}, include_database=False)["disable_ocsp_checks"] is True
+    assert any("without certificate revocation checks" in record.message for record in caplog.records)
+
+
+def test_insecure_gateway_uses_insecure_mode_on_connectors_without_disable_ocsp_checks(
+    snowflake_dependencies, monkeypatch
+) -> None:
+    snowflake_dependencies.connector.connection.DEFAULT_CONFIGURATION = {"insecure_mode": (False, bool)}
+    monkeypatch.setenv(INSECURE_GATEWAY_ENV, "1")
+    params = _adapter(gateway="custom", gateway_host="gw.example.com", allow_insecure_gateway=True)._connect_params(
+        {}, include_database=False
+    )
+    assert params["insecure_mode"] is True
+    assert "disable_ocsp_checks" not in params
 
 
 def test_plain_http_to_remote_host_requires_environment_opt_in(monkeypatch, caplog) -> None:
@@ -180,7 +196,7 @@ def test_plain_http_to_remote_host_requires_environment_opt_in(monkeypatch, capl
         adapter = _adapter(gateway="custom", gateway_host="gw.example.com", gateway_protocol="http")
     params = adapter._connect_params({}, include_database=False)
     assert params["protocol"] == "http"
-    assert "insecure_mode" not in params
+    assert not {"disable_ocsp_checks", "insecure_mode"} & set(params)
     assert caplog.records
 
 
@@ -224,8 +240,10 @@ def test_routed_platform_info_records_gateway() -> None:
     assert "gw.example.com" not in repr(info)
 
 
-def test_connector_accepts_every_gateway_parameter(monkeypatch) -> None:
+def test_installed_connector_accepts_every_gateway_parameter(snowflake_dependencies, monkeypatch) -> None:
     connection = pytest.importorskip("snowflake.connector.connection")
+    snowflake_dependencies.connector.connection.DEFAULT_CONFIGURATION = connection.DEFAULT_CONFIGURATION
+    _connector_major(monkeypatch, installed_connector_major())
     monkeypatch.setenv(INSECURE_GATEWAY_ENV, "1")
     adapter = _adapter(
         gateway="custom",
@@ -235,7 +253,9 @@ def test_connector_accepts_every_gateway_parameter(monkeypatch) -> None:
         allow_insecure_gateway=True,
     )
     params = adapter._connect_params({}, include_database=True)
-    assert set(params) <= set(connection.DEFAULT_CONFIGURATION)
+    assert set(params) <= installed_connector_parameters()
+    revocation = "crl_check_mode" if installed_connector_major() >= 5 else "disable_ocsp_checks"
+    assert revocation in params
 
 
 def test_explicit_gateway_options_reach_the_adapter_config() -> None:
@@ -524,10 +544,17 @@ def test_greybeam_query_only_real_validation_smoke(
 
 
 class _Cursor:
-    def __init__(self, answers: dict[str, object], fail: set[str] | None = None) -> None:
+    def __init__(
+        self,
+        answers: dict[str, object],
+        fail: set[str] | None = None,
+        warehouse_columns: tuple[str, ...] | None = None,
+    ) -> None:
         self.answers = answers
         self.fail = fail or set()
+        self.warehouse_columns = warehouse_columns or SHOW_WAREHOUSES_COLUMNS
         self.current: object = None
+        self.description: list[tuple[str]] | None = None
         self.statements: list[str] = []
 
     def execute(self, sql: str, *args):
@@ -536,6 +563,9 @@ class _Cursor:
             if needle in sql:
                 raise RuntimeError("synthetic gateway failure")
         self.current = next((value for key, value in self.answers.items() if key in sql), None)
+        self.description = None
+        if "SHOW WAREHOUSES" in sql and isinstance(self.current, list) and self.current:
+            self.description = [(name,) for name in self.warehouse_columns[: len(self.current[0])]]
         return self
 
     def fetchone(self):
@@ -555,7 +585,7 @@ def _connection(answers: dict[str, object], fail: set[str] | None = None) -> Moc
     return connection
 
 
-FULL_WAREHOUSE_ROW = tuple(f"c{i}" for i in range(28))
+FULL_WAREHOUSE_ROW = tuple(f"c{i}" for i in range(len(SHOW_WAREHOUSES_COLUMNS)))
 HEALTHY_ANSWERS = {
     "current_version()": [("8.1",)],
     "CURRENT_REGION()": [("AWS_US_EAST_1",)],
@@ -727,14 +757,55 @@ def test_platform_metadata_probe_healthy_rows_are_not_degraded() -> None:
     answers = {
         "CURRENT_VERSION()": [("8.1",)],
         "CURRENT_USER()": [tuple("abcdefg")],
-        "SHOW WAREHOUSES": [tuple(f"c{i}" for i in range(26))],
+        "SHOW WAREHOUSES": [FULL_WAREHOUSE_ROW],
         "INFORMATION_SCHEMA.TABLES": [("T1", 1, 2, 3, None, None, None)],
     }
     metadata = _adapter()._get_platform_metadata(_connection(answers))
     assert "metadata_degraded" not in metadata
     assert metadata["warehouse_info"]["name"] == "c0"
-    assert metadata["warehouse_info"]["scaling_policy"] == "c25"
+    assert metadata["warehouse_info"]["scaling_policy"] == "c30"
+    assert metadata["warehouse_info"]["auto_suspend"] == "c11"
+    assert metadata["warehouse_info"]["comment"] == "c21"
     assert metadata["tables"][0]["table_name"] == "T1"
+
+
+def _metadata_for_warehouse_columns(columns: tuple[str, ...]) -> dict:
+    row = tuple(f"v_{name}" for name in columns)
+    answers = {
+        "CURRENT_VERSION()": [("8.1",)],
+        "CURRENT_USER()": [tuple("abcdefg")],
+        "SHOW WAREHOUSES": [row],
+        "INFORMATION_SCHEMA.TABLES": [("T1", 1, 2, 3, None, None, None)],
+    }
+    connection = Mock()
+    connection.cursor.return_value = _Cursor(answers, warehouse_columns=columns)
+    return _adapter()._get_platform_metadata(connection)
+
+
+def test_platform_metadata_warehouse_info_survives_inserted_column() -> None:
+    columns = list(SHOW_WAREHOUSES_COLUMNS)
+    columns.insert(3, "new_snowflake_column")
+    columns.insert(20, "another_new_column")
+
+    metadata = _metadata_for_warehouse_columns(tuple(columns))
+
+    assert "metadata_degraded" not in metadata
+    assert metadata["warehouse_info"]["name"] == "v_name"
+    assert metadata["warehouse_info"]["size"] == "v_size"
+    assert metadata["warehouse_info"]["auto_suspend"] == "v_auto_suspend"
+    assert metadata["warehouse_info"]["comment"] == "v_comment"
+    assert metadata["warehouse_info"]["scaling_policy"] == "v_scaling_policy"
+    assert "new_snowflake_column" not in metadata["warehouse_info"]
+
+
+def test_platform_metadata_warehouse_info_records_none_for_absent_column() -> None:
+    columns = tuple(name for name in SHOW_WAREHOUSES_COLUMNS if name != "scaling_policy")
+
+    metadata = _metadata_for_warehouse_columns(columns)
+
+    assert metadata["warehouse_info"]["scaling_policy"] is None
+    assert metadata["warehouse_info"]["owner"] == "v_owner"
+    assert metadata["metadata_degraded"] is True
 
 
 def test_platform_metadata_probe_failure_is_degraded() -> None:
@@ -901,3 +972,59 @@ def test_mock_gateway_handshake_tag_preservation_and_receipt_parsing(snowflake_d
 def test_mock_gateway_fixture_binds_loopback_only(loopback_gateway) -> None:
     assert loopback_gateway.server.server_address[0] == "127.0.0.1"
     assert loopback_gateway.port > 0
+
+
+def _connector_major(monkeypatch, major: int) -> None:
+    monkeypatch.setattr("benchbox.platforms.snowflake._connector_major_version", lambda: major)
+
+
+@pytest.mark.parametrize(
+    ("option", "expected"),
+    [
+        ({"gateway_ocsp_fail_open": True}, "ADVISORY"),
+        ({"gateway_ocsp_fail_open": False}, "ENABLED"),
+        ({"allow_insecure_gateway": True}, "DISABLED"),
+        ({"gateway_ocsp_fail_open": True, "allow_insecure_gateway": True}, "DISABLED"),
+        ({"gateway_ocsp_fail_open": False, "allow_insecure_gateway": True}, "DISABLED"),
+    ],
+)
+def test_connector_5_maps_revocation_options_to_crl_check_mode(option, expected, monkeypatch) -> None:
+    _connector_major(monkeypatch, 5)
+    monkeypatch.setenv(INSECURE_GATEWAY_ENV, "1")
+    params = _adapter(gateway="custom", gateway_host="gw.example.com", **option)._connect_params(
+        {}, include_database=False
+    )
+    assert params["crl_check_mode"] == expected
+    assert not {"ocsp_fail_open", "disable_ocsp_checks", "insecure_mode"} & set(params)
+
+
+def test_connector_5_passes_no_revocation_setting_by_default(monkeypatch) -> None:
+    _connector_major(monkeypatch, 5)
+    params = _adapter(gateway="custom", gateway_host="gw.example.com")._connect_params({}, include_database=False)
+    assert not {
+        "crl_check_mode",
+        "ocsp_fail_open",
+        "disable_ocsp_checks",
+        "insecure_mode",
+        "extra_root_store_path",
+    } & set(params)
+
+
+def test_connector_5_passes_ca_bundle_without_environment(tmp_path: Path, monkeypatch) -> None:
+    _connector_major(monkeypatch, 5)
+    bundle = tmp_path / "ca.pem"
+    bundle.write_text("mock-ca", encoding="utf-8")
+    adapter = _adapter(gateway="custom", gateway_host="gw.example.com", gateway_ca_bundle=str(bundle))
+    assert adapter._connect_params({}, include_database=False)["extra_root_store_path"] == str(bundle)
+
+
+def test_connector_below_5_keeps_ocsp_parameters(monkeypatch) -> None:
+    _connector_major(monkeypatch, 4)
+    monkeypatch.setenv(INSECURE_GATEWAY_ENV, "1")
+    adapter = _adapter(
+        gateway="custom", gateway_host="gw.example.com", gateway_ocsp_fail_open=False, allow_insecure_gateway=True
+    )
+    params = adapter._connect_params({}, include_database=False)
+    assert params["ocsp_fail_open"] is False
+    assert params["disable_ocsp_checks"] is True
+    assert not {"crl_check_mode", "extra_root_store_path"} & set(params)

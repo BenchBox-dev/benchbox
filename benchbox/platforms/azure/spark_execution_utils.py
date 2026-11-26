@@ -10,6 +10,26 @@ from benchbox.core.exceptions import ConfigurationError
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 
+def livy_get(url: str, **kwargs: Any) -> Any:
+    return requests.get(url, **kwargs)
+
+
+def livy_post(url: str, **kwargs: Any) -> Any:
+    return requests.post(url, **kwargs)
+
+
+def livy_delete(url: str, **kwargs: Any) -> Any:
+    return requests.delete(url, **kwargs)
+
+
+def livy_pause(seconds: float) -> None:
+    time.sleep(seconds)
+
+
+class LivyStatementTimeout(ConfigurationError):
+    pass
+
+
 class LivyStatementState:
     WAITING = "waiting"
     RUNNING = "running"
@@ -31,7 +51,7 @@ def wait_for_livy_statement(
     statement_url = f"{livy_endpoint}/{session_id}/statements/{statement_id}"
 
     while elapsed_seconds(start_time) < timeout_seconds:
-        response = requests.get(
+        response = livy_get(
             statement_url,
             headers=get_headers(),
             timeout=30,
@@ -52,9 +72,36 @@ def wait_for_livy_statement(
         if state in [LivyStatementState.ERROR, LivyStatementState.CANCELLED]:
             raise ConfigurationError(f"Statement is in {state} state")
 
-        time.sleep(2)
+        livy_pause(2)
 
-    raise ConfigurationError(f"Timeout waiting for statement {statement_id} after {timeout_seconds}s")
+    raise LivyStatementTimeout(f"Timeout waiting for statement {statement_id} after {timeout_seconds}s")
+
+
+def cancel_livy_statement(
+    livy_endpoint: str,
+    session_id: int,
+    statement_id: int | str,
+    get_headers: Callable[[], dict[str, str]],
+) -> None:
+    response = livy_post(
+        f"{livy_endpoint}/{session_id}/statements/{statement_id}/cancel",
+        headers=get_headers(),
+        timeout=30,
+    )
+    response.raise_for_status()
+
+
+def delete_livy_session(
+    livy_endpoint: str,
+    session_id: int,
+    get_headers: Callable[[], dict[str, str]],
+) -> None:
+    response = livy_delete(
+        f"{livy_endpoint}/{session_id}",
+        headers=get_headers(),
+        timeout=30,
+    )
+    response.raise_for_status()
 
 
 def execute_livy_statement(
@@ -76,7 +123,7 @@ def execute_livy_statement(
 
     start_time = mono_time()
     if post is None:
-        post = requests.post
+        post = livy_post
 
     response = post(
         statements_url,

@@ -282,6 +282,9 @@
           "path": "benchbox/core/tpcdi/validation.py"
         },
         {
+          "prefix": "benchbox/core/tpcdi/_legacy_etl/"
+        },
+        {
           "prefix": "benchbox/core/tpcdi/etl/"
         },
         {
