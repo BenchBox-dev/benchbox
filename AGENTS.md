@@ -25,6 +25,8 @@ Personal defaults apply only where this guide is silent; where behavior conflict
 
 `[MERGE-AUTHORITY-001]` A hold is the `no-auto-merge` label, applied in the turn the owner asks. Lift one or post a stand-in only when the owner names that PR now; never bypass a check (`docs/agent/merge-authority.md`).
 
+`[OWNER-DECISION-001]` Ask for an owner decision through the blocking question tool, one question per decision, and record the answer on the tracker item it governs. "Proceed" continues approved work; it never answers an open question. A decision found mid-work becomes a tracker item that blocks the work it governs (`docs/agent/owner-decisions.md`).
+
 ## Code Review Rules
 
 Do not report commit identity. Review sandboxes may use synthetic identities.

@@ -191,6 +191,27 @@ def test_project_write_closeout_exception_drift_fails(tmp_path: Path, phrase: st
 @pytest.mark.parametrize(
     "phrase",
     [
+        "blocking question tool",
+        "one question per decision",
+        "record the answer on the tracker item it governs",
+        "never answers an open question",
+        "blocks the work it governs",
+    ],
+)
+def test_project_owner_decision_drift_fails(tmp_path: Path, phrase: str) -> None:
+    project = _candidate(tmp_path)
+    agents = project / "AGENTS.md"
+    pattern = re.compile(r"\s+".join(re.escape(w) for w in phrase.split()), re.IGNORECASE)
+    new_content, count = pattern.subn("deleted constraint", agents.read_text(encoding="utf-8"))
+    assert count == 1, f"Pattern {phrase} was not found exactly once in AGENTS.md"
+    agents.write_text(new_content, encoding="utf-8")
+    _, errors = audit(project, CORPUS)
+    assert any("AGENTS.md OWNER-DECISION-001 semantics drifted" in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    "phrase",
+    [
         "docs/internal/comment-policy.md",
         "no explanatory comments or docstrings",
         "make comment-policy-check",

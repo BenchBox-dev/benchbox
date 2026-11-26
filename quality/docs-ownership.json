@@ -25,6 +25,7 @@
     "docs/agent/identity-instruction-boundary.md": "core-only",
     "docs/agent/maintainer-bundles.md": "core-only",
     "docs/agent/merge-authority.md": "core-only",
+    "docs/agent/owner-decisions.md": "core-only",
     "docs/agent/pr-review-evidence.md": "core-only",
     "docs/agent/preflight-receipt.md": "core-only",
     "docs/agent/primary-clone-guard.md": "core-only",
