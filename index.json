@@ -26927,6 +26927,13 @@
       "status": "done",
       "title": "DataFusion stores TPC-H money columns as DOUBLE, so Q15 intermittently returns 0 rows"
     },
+    "datagen-adr-rust-library-revision": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Revise the datagen ADR to make a BenchBox-owned Rust generation library the target, and rebuild the datagen item set around it"
+    },
     "datagen-converter-options-and-convert-cli": {
       "claim": null,
       "needs": [],
