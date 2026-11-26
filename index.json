@@ -27838,11 +27838,12 @@
     "datagen-lib-tpcds-fractional-and-refresh": {
       "claim": null,
       "needs": [
-        "datagen-lib-tpcds"
+        "datagen-lib-tpcds",
+        "datagen-decision-upstream-gap-policy"
       ],
       "priority": "medium-high",
       "status": "open",
-      "title": "Implement TPC-DS fractional scales and the TPC-H and TPC-DS refresh sets byte-identically in benchbox-datagen"
+      "title": "TPC-DS below SF 1 through the carried upstream Scaling patch, TPC-H refresh sets and the scale model"
     },
     "datagen-lib-tpcds-refresh-sets": {
       "claim": null,
