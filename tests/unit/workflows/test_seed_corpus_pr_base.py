@@ -65,26 +65,26 @@ def test_schedule_runs_the_full_matrix() -> None:
     assert "github.event_name == 'schedule'" in selected
 
 
-def test_supported_matrix_has_three_local_identities_per_cohort() -> None:
+def test_supported_matrix_has_at_least_three_local_identities_per_cohort() -> None:
     entries = _workflow()["jobs"]["generate-seed-corpus"]["strategy"]["matrix"]["include"]
     cohorts: dict[tuple[str, str], set[str]] = {}
     cells = set()
     for entry in entries:
         assert "cloud" not in entry["platform"]
-        assert entry["extras"] in {"duckdb", "datafusion", "polars", "clickhouse-local", "postgresql"}
+        assert entry["extras"] in {"duckdb", "datafusion", "polars", "clickhouse-local", "postgresql", "trino"}
         cohorts.setdefault((entry["benchmark"], entry["scale_factor"]), set()).add(entry["platform"])
         cells.add((entry["benchmark"], entry["platform"], entry["scale_factor"]))
 
     assert cohorts == {
-        ("tpch", "0.01"): {"duckdb", "datafusion", "polars-df"},
+        ("tpch", "0.01"): {"duckdb", "datafusion", "polars-df", "trino"},
         ("tpch", "0.1"): {"duckdb", "datafusion", "polars-df"},
         ("tpch", "1.0"): {"duckdb", "clickhouse-local", "cedardb"},
         ("tpcds", "1"): {"duckdb", "clickhouse-local", "cedardb"},
-        ("ssb", "0.01"): {"duckdb", "datafusion", "polars-df"},
+        ("ssb", "0.01"): {"duckdb", "datafusion", "polars-df", "trino"},
         ("ssb", "0.1"): {"duckdb", "datafusion", "polars-df"},
     }
-    assert all(len(platforms) == 3 for platforms in cohorts.values())
-    assert len(entries) == len(cells) == 18
+    assert all(len(platforms) >= 3 for platforms in cohorts.values())
+    assert len(entries) == len(cells) == 20
 
 
 def test_seed_matrix_has_no_tpcdi_cell() -> None:
@@ -456,6 +456,57 @@ def test_cedardb_cells_connect_with_the_compose_service_credentials() -> None:
     assert f"--platform-option username={environment['CEDAR_USER']}" in run
     assert f"--platform-option 'password={environment['CEDAR_PASSWORD']}'" in run
     assert f"--platform-option admin_database={environment['CEDAR_DB']}" in run
+
+
+def test_trino_cells_start_the_pinned_mirror_with_the_run_directory_mounted() -> None:
+    compose = yaml.safe_load((REPO_ROOT / "docker" / "trino" / "docker-compose.yml").read_text(encoding="utf-8"))
+    default_image = compose["services"]["trino"]["image"].removeprefix("${TRINO_IMAGE:-").removesuffix("}")
+    tag_and_digest = default_image.partition(":")[2]
+    job = _workflow()["jobs"]["generate-seed-corpus"]
+    names = [step.get("name") for step in job["steps"]]
+    authenticate = job["steps"][names.index("Authenticate to GHCR")]
+    start = job["steps"][names.index("Start Trino")]
+
+    assert names.index("Authenticate to GHCR") < names.index("Start Trino") < names.index("Run benchmark")
+    assert "matrix.platform == 'trino'" in authenticate["if"]
+    assert start["if"] == "env.SELECTED == 'true' && matrix.platform == 'trino'"
+    assert "@sha256:" in tag_and_digest
+    assert start["env"]["TRINO_IMAGE"] == f"ghcr.io/benchbox-dev/trino:{tag_and_digest}"
+    assert start["env"]["BENCHBOX_DATA_DIR"] == "${{ env.BENCHBOX_OUTPUT_DIR }}"
+    assert job["env"]["BENCHBOX_OUTPUT_DIR"].startswith("${{ github.workspace }}/")
+    create_directory, start_service = start["run"].splitlines()
+    assert create_directory == 'mkdir -p "$BENCHBOX_DATA_DIR"'
+    assert start_service == "docker compose -f docker/trino/docker-compose.yml up -d --wait"
+
+
+def test_trino_cells_pass_the_uat_connection_options() -> None:
+    from tests.uat.docker_assets import platform_extra_opts
+
+    steps = _workflow()["jobs"]["generate-seed-corpus"]["steps"]
+    run = next(step for step in steps if step.get("name") == "Run benchmark")["run"]
+    block = run.split('if [ "${{ matrix.platform }}" = "trino" ]; then', 1)[1].split("\nfi", 1)[0]
+    options = re.findall(r"--platform-option (\S+)\)", block)
+
+    assert options == platform_extra_opts("trino", env={})[1::2]
+
+
+def test_trino_cells_run_only_benchmarks_uat_keeps_for_trino() -> None:
+    from tests.uat import compatibility, matrix
+
+    benchmarks = matrix.load_benchmarks()
+    entries = _workflow()["jobs"]["generate-seed-corpus"]["strategy"]["matrix"]["include"]
+    cells = [entry for entry in entries if entry["platform"] == "trino"]
+    assert cells
+    for entry in cells:
+        rule = compatibility.compatibility_rule_for(
+            "trino",
+            entry["benchmark"],
+            benchmarks[entry["benchmark"]],
+            include_release_gate_runtime_envelopes=True,
+            scale=float(entry["scale_factor"]),
+        )
+        assert rule is None, entry
+        assert entry["official"] is False
 
 
 def test_seed_corpus_pr_targets_develop() -> None:

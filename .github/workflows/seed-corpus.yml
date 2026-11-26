@@ -39,6 +39,11 @@ jobs:
             scale_factor: "0.01"
             extras: polars
             official: false
+          - benchmark: tpch
+            platform: trino
+            scale_factor: "0.01"
+            extras: trino
+            official: false
 
           - benchmark: tpch
             platform: duckdb
@@ -114,6 +119,11 @@ jobs:
             platform: polars-df
             scale_factor: "0.01"
             extras: polars
+            official: false
+          - benchmark: ssb
+            platform: trino
+            scale_factor: "0.01"
+            extras: trino
             official: false
 
           - benchmark: ssb
@@ -158,7 +168,7 @@ jobs:
         run: uv sync --extra ${{ matrix.extras }}
 
       - name: Authenticate to GHCR
-        if: env.SELECTED == 'true' && matrix.platform == 'cedardb'
+        if: env.SELECTED == 'true' && (matrix.platform == 'cedardb' || matrix.platform == 'trino')
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
@@ -168,6 +178,15 @@ jobs:
         env:
           CEDARDB_IMAGE: ghcr.io/benchbox-dev/cedardb@sha256:dbbacb16b24421a9a123cd1d065e2a049c60b7cc6060d7db2f3cccbf69f5ff62
         run: docker compose -f docker/cedardb/docker-compose.yml up -d --wait
+
+      - name: Start Trino
+        if: env.SELECTED == 'true' && matrix.platform == 'trino'
+        env:
+          TRINO_IMAGE: ghcr.io/benchbox-dev/trino:480@sha256:1565e8cac299a32dd9177a4da2d748da4ceb9f1560a9c409d1d18fd72ea5253e
+          BENCHBOX_DATA_DIR: ${{ env.BENCHBOX_OUTPUT_DIR }}
+        run: |
+          mkdir -p "$BENCHBOX_DATA_DIR"
+          docker compose -f docker/trino/docker-compose.yml up -d --wait
 
       - name: Run benchmark
         if: env.SELECTED == 'true'
@@ -192,6 +211,11 @@ jobs:
             command+=(--platform-option username=benchbox)
             command+=(--platform-option 'password=Benchbox1!')
             command+=(--platform-option admin_database=benchbox_test)
+          fi
+          if [ "${{ matrix.platform }}" = "trino" ]; then
+            command+=(--platform-option port=18080)
+            command+=(--platform-option source_catalog=hive)
+            command+=(--platform-option catalog=memory)
           fi
           "${command[@]}"
 

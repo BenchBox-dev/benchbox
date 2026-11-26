@@ -144,7 +144,7 @@ by stream count, because both composite metrics already contain the stream count
 | Benchmark phases | `generate,load,power`; official TPC-H cells add `throughput` (2 streams, RF1/RF2), official TPC-DS cells add `throughput,maintenance` (4 streams) |
 | Trust label | `maintainer-run` |
 | Visibility | `public-curated` |
-| Supported identities | DuckDB, DataFusion, Polars DataFrame, ClickHouse Local and CedarDB (a pinned local container); no cloud credentials |
+| Supported identities | DuckDB, DataFusion, Polars DataFrame, ClickHouse Local, and CedarDB and Trino (pinned local containers); no cloud credentials |
 
 The monthly schedule keeps published-results from stalling until someone remembers
 to dispatch. Maintainers can still run a full or single-benchmark refresh via
@@ -158,9 +158,15 @@ source of truth; the workflow drifts as admitted coverage changes.
 
 The supported matrix contains six local, merge-ready cohorts: TPC-H SF 0.01
 and SF 0.1, and SSB SF 0.01 and SF 0.1, each with DuckDB, DataFusion and
-Polars DataFrame; and the combined TPC-H SF 1 and TPC-DS SF 1 cohorts, each
-with DuckDB, ClickHouse Local and CedarDB. Every cohort has three local
-comparison identities and no cloud dependency.
+Polars DataFrame, plus Trino at SF 0.01; and the combined TPC-H SF 1 and
+TPC-DS SF 1 cohorts, each with DuckDB, ClickHouse Local and CedarDB. Every
+cohort has at least three local comparison identities and no cloud dependency.
+
+Trino cells start the pinned image from `docker/trino/docker-compose.yml`
+before the run, with the run directory mounted at the same path. Queries run
+against the `memory` catalog, loaded through external tables in the `hive`
+catalog. Only benchmarks that UAT keeps for Trino (`tests/uat/compatibility.py`)
+belong in the matrix.
 
 The combined cells run the full specification under `--official`: TPC-H runs
 power and a 2-stream throughput phase with RF1/RF2, and TPC-DS runs load, power,
@@ -183,7 +189,7 @@ gate when changed.
 ## Merge Gate Caveats
 
 1. The corpus validator fails any cohort with fewer than 3 comparison identities.
-   Each supported workflow cohort has all three local identities, so it remains
+   Each supported workflow cohort has at least three local identities, so it remains
    publishable without a cloud secret.
 2. Checked-in coverage and the workflow target can diverge briefly after a
    restore or schedule change. Prefer `results-data/corpus-inventory.json` and
@@ -231,11 +237,10 @@ TPC-DS SF 1 entries are the only ones marked `official: true`.
 The flag applies only at official scale points (SF 1, 10, 30, and so on).
 `benchbox run --official` refuses any other scale factor, and every TPC-H or
 TPC-DS run below SF 1 is classed `unofficial_subscale` with or without the
-flag. The TPC-H SF 0.01 and SF 0.1 entries therefore run the generic command,
-and staging skips their bundles as `unofficial_compliance`. Those cohorts
-contribute no rankable bundle and are reported as `UNRANKED`. They stay in the
-matrix because removing coverage is a maintainer decision; dropping them would
-only save runner time, since they add nothing to the admitted corpus.
+flag. The TPC-H SF 0.01 and SF 0.1 entries therefore run the generic command.
+`benchbox submit` and UAT packaging refuse that class as `unofficial`, but
+staging does not: the only class `exclusion_reason` excludes is `unofficial_nonstandard`, so
+their clean bundles are staged and rank, labelled Subscale · Unofficial.
 
 ### Timestamp contract
 
