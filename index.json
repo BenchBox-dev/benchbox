@@ -27774,7 +27774,7 @@
     "datagen-lib-synthetic-h2odb": {
       "claim": null,
       "needs": [
-        "datagen-lib-benchbox-integration"
+        "datagen-p2-ssb-versioned-migration"
       ],
       "priority": "medium",
       "status": "open",
