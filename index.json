@@ -27264,6 +27264,15 @@
       "status": "open",
       "title": "Create the benchbox-datagen repository with its Cargo workspace, CI and abi3 wheel builds"
     },
+    "datagen-lib-tpcds": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-benchbox-integration"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Generate TPC-DS at SF >= 1 in benchbox-datagen on the upstream tpcdsgen crates"
+    },
     "datagen-lib-tpch": {
       "claim": null,
       "needs": [

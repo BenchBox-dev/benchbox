@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Delimited output is SHA-256 identical to bundled dsdgen (--compat c NULL vs empty-string and UTF-8 parity) for all 24 tables at SF 1 and 10, at 1 thread and default threads.",
+    "Parquet bytes are thread-invariant on macOS arm64 and Linux x86_64; bidirectional EXCEPT ALL = 0 against dsdgen-converted Parquet.",
+    "N=3 medians meet the ADR budget: SF 1 <= 3 s / <= 4 s, SF 10 <= 30 s / <= 40 s, RSS <= 1,024 MiB / <= 2,048 MiB.",
+    "The native backend accepts tpcds at SF >= 1 and refuses SF < 1 loudly until datagen-lib-tpcds-fractional-and-refresh lands."
+  ],
+  "description": "TPC-DS stage (docs/internal/adr/adr-benchbox-datagen.md (revised 2026-11-26, PR #4540), decisions 1 and 3). Depend on tpcdsgen and tpcdsgen-arrow by exact version; delimited and Parquet output for the 24 benchmark tables only.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T13:57:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "763bd6e0b32c46068388befac4b2e085",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
