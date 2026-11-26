@@ -258,4 +258,5 @@ def test_tpcds_stream_all_covers_streams_order_and_scales(
             assert {name.rstrip("ab") for name in line["order"]} == {str(n) for n in range(1, 100)}
     assert {sf for _, sf in runs} == TPCDS_SCALES
     assert {seed for seed, sf in runs if sf == 1.0} == set(section["stream_all_seeds"])
+    assert len(section["stream_all_seeds"]) == 7
     assert sum(len(line["h"]) for line in tpcds_stream_all) == section["stream_all_statements"]
