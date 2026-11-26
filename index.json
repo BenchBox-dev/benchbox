@@ -49719,17 +49719,12 @@
       "title": "SQLite loader stores NULLs as empty text in numeric columns, changing aggregate results"
     },
     "sqlite-pass-engine-version-to-sqlglot": {
-      "claim": {
-        "expires_at": "2026-11-27T04:34:00Z",
-        "generation": "f82d124c71e140feafc31511283f3ef1",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:38bfd61e73967b4e5aca7d45"
-      },
+      "claim": null,
       "needs": [
         "sqlglot-adopt-30-35-0-2"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Pass the SQLite engine version to sqlglot so month and year offsets fail loudly on SQLite before 3.46"
     },
     "sqlite-throughput-dialect-and-stream-isolation": {
