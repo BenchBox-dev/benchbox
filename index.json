@@ -51785,15 +51785,10 @@
       "title": "Owner decision: approve one vendored soundness-path matcher module as the only embedded exception"
     },
     "theseus-derived-paths-reproduce-review-20261125": {
-      "claim": {
-        "expires_at": "2026-11-26T15:41:20Z",
-        "generation": "cb5aff59e64a4d85b062ca9052799de5",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0a697a35e720a04d19e44a28"
-      },
+      "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "Theseus: review generated files by reproduction plus a summary instead of reading every hunk"
     },
     "theseus-format-proposal-doc-status-note-20261113": {
