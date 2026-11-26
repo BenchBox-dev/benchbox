@@ -27103,7 +27103,7 @@
         "bundle-data-generation-hash-missing-from-corpus"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Cut over validated versioned SSB generator default while preserving v1 legacy reproducibility"
     },
     "datagen-p3-synthetic-cutover": {
