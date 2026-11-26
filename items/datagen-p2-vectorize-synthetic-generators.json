@@ -7,6 +7,7 @@
   ],
   "context": "Phase 2 step 1 of the faster data-generation plan. Applies adr-python-core-runtime.md's first remedy (vectorized PyArrow/NumPy or embedded DuckDB SQL) to over-budget Tier 3 synthetic benchmarks before any Rust repository may be proposed.\n\nParked 2026-11-25 by owner decision: the datagen target is now a BenchBox-owned Rust library (see datagen-adr-rust-library-revision). This item waits for the revised ADR, which decides whether it is rebuilt around the library or dropped.",
   "description": "## Problem\nScalar Python loops and full-in-memory materialization make several non-TPC synthetic generators slow or memory-heavy at SF 1 and SF 10. Per docs/internal/adr/adr-python-core-runtime.md and owner decision A1, over-budget synthetic generators must be vectorized in Python first before considering a Rust repository.\n\n## Change\n- Using the empirical baselines and budgets from datagen-p0-baseline-measurements and datagen-p0-companion-adr, rank all Tier 3 candidates that exceed budget: h2odb, tsbs_devops (5 tables: tags, cpu, mem, disk, net), vector_search, coffeeshop, amplab, clickbench (synthetic mode), plus lower-priority joinorder_synthetic (repo_only) and tpch_skew (experimental).\n- If more than two benchmarks exceed budget, create one child TODO and one PR per qualifying benchmark rather than shipping a monolithic PR.\n- For each over-budget benchmark, implement a vectorized Python (NumPy/PyArrow; DuckDB is not a core dependency, so embedded DuckDB SQL is allowed only as an optional extra with a NumPy/PyArrow path for core installs) generator behind opt-in --datagen-backend native with explicit deterministic seeding (fixing tsbs_devops unseeded default_rng(None)) and bounded streaming I/O.\n- Register a per-benchmark generator version in datagen_version.py (never bumping global DATA_GENERATION_VERSION).\n- Execute Gate C validation per benchmark: exact row counts, zero orphan FKs, documented hit rates, a one-time owner acceptance report comparing legacy vs new distributions and every benchmark query's row count across DuckDB and DataFusion, and frozen golden per-table hashes + expected row counts.\n- Measure wall time (mono_time()) and peak RSS under make heavy-run against the ADR's per-benchmark budget (Gate D).\n\n## Decision gates\n- Per benchmark: owner must approve the Gate C acceptance report before merging.\n- Per benchmark: if vectorized Python meets the ADR budget -> eligible for datagen-p3-synthetic-cutover; ONLY if it still misses its ADR wall-time or peak-RSS budget after vectorization -> document the residual bottleneck and route to datagen-p2-rust-repo-gate.\n\n## Guardrails\n- Never use arbitrary 2–5% tolerance bands on deterministic output; freeze exact golden hashes after owner acceptance.\n- Never bump global DATA_GENERATION_VERSION; keep legacy generators intact behind --datagen-backend legacy.\n- Enforce [RUN-DATA-001] (isolated cache/provenance per backend version), [HEAVY-LOCK-001], [COMMENT-POLICY-001], and AGENTS.md PR closeout.",
+  "drop_reason": "Superseded by the 2026-11-26 ADR revision (PR #4540): BenchBox builds its own Rust library, benchbox-datagen, on the upstream tpcgen-rs crates instead of adopting the tpcgen-cli wheel or vectorizing generators in Python.",
   "links": [
     "docs/internal/adr/adr-benchbox-datagen.md",
     "benchbox/core/h2odb/generator.py",
@@ -41,6 +42,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "fb09f3aaab6d48d4821ad3c810bf943c",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T13:58:56Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "07ba2598a87549aa893ca0f5d2ffd4d7",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
