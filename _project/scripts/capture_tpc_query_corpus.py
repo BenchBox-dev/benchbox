@@ -30,7 +30,10 @@ SUITES = ("tpch", "tpcds")
 CORPUS_DIR = REPO_ROOT / "tests" / "fixtures" / "tpc_query_corpus"
 BINARIES_DIR = REPO_ROOT / "benchbox" / "_binaries"
 ORACLE_PLATFORM = "linux-x86_64"
-SEED_GENERATOR = {"algorithm": "python random.Random(seed).sample(range(lo, hi), count)", "seed": 20261126}
+SEED_GENERATOR = {
+    "algorithm": 'python random.Random(f"{seed}:{label}").sample(range(2, max_seed), count + len(excluded)), excluded seeds dropped, first count kept; label is tpch or tpcds',
+    "seed": 20261126,
+}
 MAX_SEED = 2**31 - 2
 TEXT_NORMALISATION = {
     "tpch": "QGenBinary._clean_sql applied to qgen -a stdout",

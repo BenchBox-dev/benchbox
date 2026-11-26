@@ -179,7 +179,7 @@ def test_tpch_random_seeds(manifest: dict[str, Any], tpch_random: list[dict[str,
 
 def test_tpch_replay_seeds_are_covered(manifest: dict[str, Any], tpch_named: list[dict[str, Any]]) -> None:
     replay = json.loads((CORPUS_DIR / manifest["replay"]["file"]).read_text(encoding="utf-8"))
-    covered = {case["seed"] for case in tpch_named if case["sf"] == 1.0}
+    covered = {case["seed"] for case in tpch_named if case["sf"] == 1.0 and "s" not in case}
     wanted = {seed for entry in replay["entries"] for seed in entry["qgen_seeds"]}
     assert wanted
     assert wanted <= covered

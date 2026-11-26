@@ -181,7 +181,7 @@
   }
  },
  "seed_generator": {
-  "algorithm": "python random.Random(seed).sample(range(lo, hi), count)",
+  "algorithm": "python random.Random(f\"{seed}:{label}\").sample(range(2, max_seed), count + len(excluded)), excluded seeds dropped, first count kept; label is tpch or tpcds",
   "seed": 20261126
  },
  "max_seed": 2147483646,
