@@ -9,15 +9,18 @@ from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable, Literal
 
 import numpy as np
 import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.csv as csv
 
 from benchbox.utils.compression import CompressionManager
 from benchbox.utils.file_format import (
+    count_delimited_fields,
     detect_compression,
     get_column_names_with_trailing,
     get_delimiter_for_file,
@@ -27,7 +30,7 @@ from benchbox.utils.file_format import (
 DEFAULT_ROW_GROUP_SIZE = 122_880
 DEFAULT_STREAM_BLOCK_SIZE = 1 * 1024 * 1024
 PARALLEL_FILE_READERS = 2
-_READER_QUEUE_DEPTH = 32
+_READER_QUEUE_DEPTH = 4
 _QUEUE_POLL_SECONDS = 0.1
 _ARROW_STREAM_CODECS = {"zstd": "zstd", "gzip": "gzip"}
 _LINE_COUNT_CHUNK_BYTES = 1024 * 1024
@@ -178,6 +181,20 @@ def _count_nonempty_lines(stream: Any) -> int:
         tail = data[-2:].copy()
     unterminated = tail[-1] != _NEWLINE and not (tail[-1] == _CARRIAGE_RETURN and tail[-2] == _NEWLINE)
     return count + int(unterminated)
+
+
+def _check_decimal_precision(batch: pa.RecordBatch, arrow_schema: pa.Schema) -> None:
+    for index, schema_field in enumerate(arrow_schema):
+        if not pa.types.is_decimal(schema_field.type):
+            continue
+        extremes = pc.min_max(batch.column(index))
+        limit = Decimal(10) ** (schema_field.type.precision - schema_field.type.scale)
+        for value in (extremes["min"].as_py(), extremes["max"].as_py()):
+            if value is not None and abs(value) >= limit:
+                raise ConversionError(
+                    f"Decimal overflow in column '{schema_field.name}': value {value} does not fit "
+                    f"DECIMAL({schema_field.type.precision},{schema_field.type.scale})"
+                )
 
 
 def _open_source(file_path: Path) -> Any:
@@ -407,8 +424,7 @@ class BaseFormatConverter(FormatConverter):
             if len(preview) < 2:
                 return delimiter, True, False, True
             data_line = preview[1]
-            data_parts = data_line.split(delimiter)
-            has_trailing = len(data_parts) > len(column_names) and data_line.endswith(delimiter)
+            has_trailing = count_delimited_fields(data_line, delimiter) > len(column_names)
         else:
             has_trailing = has_trailing_delimiter(file_path, delimiter, column_names)
 
@@ -533,7 +549,8 @@ class BaseFormatConverter(FormatConverter):
         parse_options = csv.ParseOptions(
             delimiter=delimiter,
             quote_char='"',
-            escape_char="\\",
+            double_quote=True,
+            escape_char=False,
         )
         convert_options = csv.ConvertOptions(
             column_types=arrow_schema,
@@ -553,6 +570,7 @@ class BaseFormatConverter(FormatConverter):
                 )
                 for batch in reader:
                     if batch.num_rows > 0:
+                        _check_decimal_precision(batch, arrow_schema)
                         yield (
                             pa.RecordBatch.from_arrays(batch.columns, schema=arrow_schema)
                             if batch.schema != arrow_schema

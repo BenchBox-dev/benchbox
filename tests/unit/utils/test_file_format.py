@@ -540,3 +540,17 @@ class TestHasTrailingDelimiterSurfacesReadFailures:
         path = tmp_path / "blank.tbl"
         path.write_bytes(b"\n\r\n   \n")
         assert has_trailing_delimiter(path, "|", ["a", "b"]) is False
+
+
+class TestQuotedDelimiterTrailingDetection:
+    def test_quoted_delimiter_is_not_counted_as_a_field_boundary(self, tmp_path):
+        path = tmp_path / "t.tbl"
+        path.write_text('1|"q|p"\n', encoding="utf-8")
+
+        assert has_trailing_delimiter(path, "|", ["id", "v"]) is False
+
+    def test_trailing_delimiter_after_quoted_delimiter_is_detected(self, tmp_path):
+        path = tmp_path / "t.tbl"
+        path.write_text('1|"q|p"|\n', encoding="utf-8")
+
+        assert has_trailing_delimiter(path, "|", ["id", "v"]) is True

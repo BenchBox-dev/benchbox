@@ -172,3 +172,22 @@ def test_format_preference_inserts_new_format_at_position_zero(tmp_path):
     orchestrator._update_manifest_with_results(manifest, results, target_format="iceberg", output_dir=tmp_path)
 
     assert manifest.format_preference[0] == "iceberg"
+
+
+def test_source_entries_are_ordered_numerically_by_chunk_index():
+    orchestrator = FormatConversionOrchestrator()
+    names = [f"lineitem.tbl.{index}" for index in (1, 10, 11, 2, 3, 4, 5, 6, 7, 8, 9)]
+    manifest = ManifestV2(
+        benchmark="tpch",
+        scale_factor=1.0,
+        tables={
+            "lineitem": TableFormats(
+                formats={"tbl": [ConvertedFileEntry(path=name, size_bytes=1, row_count=1) for name in names]}
+            )
+        },
+        format_preference=["tbl"],
+    )
+
+    ordered = [entry.path for entry in orchestrator._get_source_entries(manifest, "lineitem")]
+
+    assert ordered == [f"lineitem.tbl.{index}" for index in range(1, 12)]

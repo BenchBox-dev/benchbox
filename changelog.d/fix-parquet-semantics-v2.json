@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed Parquet conversion of generated data: backslashes are preserved, decimal values that overflow their declared precision now fail the conversion, quoted delimiters no longer hide a trailing delimiter, sharded tables convert in numeric chunk order, and output bytes no longer depend on input chunk boundaries.",
+      "details": [
+        "Parquet written by the previous writer is regenerated: the writer identity is now benchbox-pyarrow-streaming-v2 (benchbox-pyarrow-partitioned-v2 when partitioned), and caches carrying the earlier identities are treated as stale.",
+        "Dataframe CSV-to-Parquet caching now loads the null marker (for example __NULL__) in nullable string columns as NULL while keeping empty strings."
+      ],
+      "benchmarks": ["tpch", "tpcds", "ssb", "h2odb", "tsbs_devops", "clickbench", "vector_search", "coffeeshop", "amplab", "joinorder_synthetic", "tpch_skew"]
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed benchbox convert --format ducklake, which the command offered but the conversion orchestrator rejected with Unknown format: ducklake."
+    }
+  ]
+}

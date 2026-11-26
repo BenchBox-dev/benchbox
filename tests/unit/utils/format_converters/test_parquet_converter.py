@@ -548,11 +548,11 @@ class TestParquetPartitioning:
 
         from benchbox.utils.datagen_version import compute_datagen_identity_hash
 
-        assert result.metadata["parquet_writer"] == "benchbox-pyarrow-partitioned"
+        assert result.metadata["parquet_writer"] == "benchbox-pyarrow-partitioned-v2"
         assert compute_datagen_identity_hash(
             "tpch", parquet_writer=result.metadata["parquet_writer"], parquet_row_group_size=122_880, scale_factor=1.0
         ) != compute_datagen_identity_hash(
-            "tpch", parquet_writer="benchbox-pyarrow-streaming", parquet_row_group_size=122_880, scale_factor=1.0
+            "tpch", parquet_writer="benchbox-pyarrow-streaming-v2", parquet_row_group_size=122_880, scale_factor=1.0
         )
 
     def test_convert_with_multiple_partition_columns(self, temp_dir, partitioned_schema):
@@ -858,12 +858,12 @@ class TestParquetStreamingAndBenchmarkCompatibility:
         assert updated["csv_delimiter"] == ","
         assert "parquet" in updated["formats"]
         assert updated["format_preference"][0] == "parquet"
-        assert updated["parquet_writer"] == "benchbox-pyarrow-streaming"
+        assert updated["parquet_writer"] == "benchbox-pyarrow-streaming-v2"
         assert updated["parquet_row_group_size"] == 122_880
         assert "data_generation_identity_hash" not in updated
         assert updated["parquet_data_generation_identity_hash"] == compute_datagen_identity_hash(
             "joinorder_synthetic",
-            parquet_writer="benchbox-pyarrow-streaming",
+            parquet_writer="benchbox-pyarrow-streaming-v2",
             parquet_row_group_size=122_880,
             scale_factor=0.01,
         )
@@ -949,7 +949,7 @@ class TestParquetStreamingAndBenchmarkCompatibility:
         )
         expected_pq_hash = compute_datagen_identity_hash(
             "tpch",
-            parquet_writer="benchbox-pyarrow-streaming",
+            parquet_writer="benchbox-pyarrow-streaming-v2",
             parquet_row_group_size=122_880,
             scale_factor=1.0,
         )
@@ -1035,7 +1035,7 @@ class TestParquetStreamingAndBenchmarkCompatibility:
 
         streaming_pq_manifest = {
             **legacy_pq_manifest,
-            "parquet_writer": "benchbox-pyarrow-streaming",
+            "parquet_writer": "benchbox-pyarrow-streaming-v2",
             "parquet_row_group_size": 122_880,
         }
         assert (
@@ -1062,13 +1062,13 @@ class TestParquetStreamingAndBenchmarkCompatibility:
             "scale_factor": 0.01,
             "skew_configuration": identity,
             "skew_configuration_hash": skew_cfg.datagen_identity_hash(),
-            "parquet_writer": "benchbox-pyarrow-streaming",
+            "parquet_writer": "benchbox-pyarrow-streaming-v2",
             "parquet_row_group_size": 122_880,
             "data_generation_identity_hash": compute_datagen_identity_hash("tpch_skew", identity, scale_factor=0.01),
             "parquet_data_generation_identity_hash": compute_datagen_identity_hash(
                 "tpch_skew",
                 identity,
-                parquet_writer="benchbox-pyarrow-streaming",
+                parquet_writer="benchbox-pyarrow-streaming-v2",
                 parquet_row_group_size=122_880,
                 scale_factor=0.01,
             ),
@@ -1109,7 +1109,7 @@ class TestParquetStreamingAndBenchmarkCompatibility:
                 options=ConversionOptions(output_dir=out_dir, row_group_size=2_048),
             )
             assert result.row_count == 9_000
-            assert result.metadata["parquet_writer"] == "benchbox-pyarrow-streaming"
+            assert result.metadata["parquet_writer"] == "benchbox-pyarrow-streaming-v2"
             meta = pq.read_metadata(result.output_files[0])
             sizes = [meta.row_group(i).num_rows for i in range(meta.num_row_groups)]
             assert sizes[:-1] == [2_048] * (len(sizes) - 1)
@@ -1353,3 +1353,127 @@ class TestParquetStreamingAndBenchmarkCompatibility:
             "id": [1, 2],
             "label": ["hello", "world"],
         }
+
+
+class TestParquetValueSemantics:
+    @staticmethod
+    def _convert(tmp_path, schema_columns, files, **options):
+        out_dir = tmp_path / "out"
+        out_dir.mkdir(exist_ok=True)
+        return ParquetConverter().convert(
+            source_files=files,
+            table_name="t",
+            schema={"columns": schema_columns},
+            options=ConversionOptions(output_dir=out_dir, **options),
+        )
+
+    def test_backslash_is_preserved(self, tmp_path):
+        source = tmp_path / "t.tbl"
+        source.write_text("1|back\\slash|\n2|trail\\|\n3|a\\\\b|\n", encoding="utf-8")
+
+        result = self._convert(
+            tmp_path,
+            [{"name": "id", "type": "INTEGER"}, {"name": "v", "type": "VARCHAR(20)"}],
+            [source],
+        )
+
+        assert pq.read_table(result.output_files[0]).to_pydict()["v"] == ["back\\slash", "trail\\", "a\\\\b"]
+
+    def test_decimal_precision_overflow_fails(self, tmp_path):
+        source = tmp_path / "t.tbl"
+        source.write_text("1|12345678901234.5|\n", encoding="utf-8")
+
+        with pytest.raises(ConversionError, match="Decimal overflow in column 'amount'"):
+            self._convert(
+                tmp_path,
+                [{"name": "id", "type": "INTEGER"}, {"name": "amount", "type": "DECIMAL(15,2)"}],
+                [source],
+            )
+
+        assert not (tmp_path / "out" / "t.parquet").exists()
+
+    def test_decimal_at_precision_limit_is_accepted(self, tmp_path):
+        source = tmp_path / "t.tbl"
+        source.write_text("1|9999999999999.99|\n2|-9999999999999.99|\n", encoding="utf-8")
+
+        result = self._convert(
+            tmp_path,
+            [{"name": "id", "type": "INTEGER"}, {"name": "amount", "type": "DECIMAL(15,2)"}],
+            [source],
+        )
+
+        assert result.row_count == 2
+
+    def test_quoted_delimiter_is_not_mistaken_for_a_trailing_delimiter(self, tmp_path):
+        source = tmp_path / "t.tbl"
+        source.write_text('1|"q|p"\n2|plain\n', encoding="utf-8")
+
+        result = self._convert(
+            tmp_path,
+            [{"name": "id", "type": "INTEGER"}, {"name": "v", "type": "VARCHAR(20)"}],
+            [source],
+        )
+
+        assert pq.read_table(result.output_files[0]).to_pydict() == {"id": [1, 2], "v": ["q|p", "plain"]}
+
+    @staticmethod
+    def _unique_string_rows(count):
+        import hashlib
+
+        return [f"{i}|{hashlib.md5(str(i).encode()).hexdigest() * 2}|\n" for i in range(count)]
+
+    def test_output_bytes_do_not_depend_on_input_chunk_boundaries(self, tmp_path):
+        rows = self._unique_string_rows(250_000)
+        single = tmp_path / "single.tbl"
+        single.write_text("".join(rows), encoding="utf-8")
+        bounds = [0, 13_001, 40_000, 77_777, 120_000, 121_001, 250_000]
+        shards = []
+        for index, (lo, hi) in enumerate(zip(bounds, bounds[1:]), start=1):
+            shard = tmp_path / f"shard.tbl.{index}"
+            shard.write_text("".join(rows[lo:hi]), encoding="utf-8")
+            shards.append(shard)
+        columns = [{"name": "id", "type": "INTEGER"}, {"name": "v", "type": "VARCHAR(200)"}]
+
+        written = []
+        for label, files in (("one", [single]), ("many", shards)):
+            out_dir = tmp_path / label
+            out_dir.mkdir()
+            self._convert_to(out_dir, columns, files)
+            written.append((out_dir / "t.parquet").read_bytes())
+
+        assert written[0] == written[1]
+
+    def test_partitioned_output_bytes_do_not_depend_on_input_chunk_boundaries(self, tmp_path):
+        rows = [row.replace("|", f"|{index % 3}|", 1) for index, row in enumerate(self._unique_string_rows(250_000))]
+        single = tmp_path / "single.tbl"
+        single.write_text("".join(rows), encoding="utf-8")
+        bounds = [0, 13_001, 40_000, 77_777, 120_000, 121_001, 250_000]
+        shards = []
+        for index, (lo, hi) in enumerate(zip(bounds, bounds[1:]), start=1):
+            shard = tmp_path / f"shard.tbl.{index}"
+            shard.write_text("".join(rows[lo:hi]), encoding="utf-8")
+            shards.append(shard)
+        columns = [
+            {"name": "id", "type": "INTEGER"},
+            {"name": "g", "type": "INTEGER"},
+            {"name": "v", "type": "VARCHAR(200)"},
+        ]
+
+        written = []
+        for label, files in (("one", [single]), ("many", shards)):
+            out_dir = tmp_path / label
+            out_dir.mkdir()
+            self._convert_to(out_dir, columns, files, partition_cols=["g"])
+            written.append({p.relative_to(out_dir): p.read_bytes() for p in sorted((out_dir / "t").rglob("*.parquet"))})
+
+        assert written[0].keys() == written[1].keys()
+        assert written[0] == written[1]
+
+    @staticmethod
+    def _convert_to(out_dir, columns, files, **options):
+        return ParquetConverter().convert(
+            source_files=files,
+            table_name="t",
+            schema={"columns": columns},
+            options=ConversionOptions(output_dir=out_dir, compression="none", **options),
+        )

@@ -1506,3 +1506,29 @@ class TestDataFrameDataLoaderWithWriteConfig:
                 loader.prepare_benchmark_data(benchmark, scale_factor=1.0, write_config=DataFrameWriteConfiguration())
 
             assert loader.applied_write_layout is None
+
+
+class TestNullMarkerStringsLoadAsNull:
+    def test_marker_in_nullable_string_column_becomes_null_while_empty_string_is_kept(self, tmp_path):
+        import pyarrow.parquet as pq
+
+        source = tmp_path / "t.csv"
+        source.write_text("a|__NULL__|1\nb||2\nc|x|__NULL__\n", encoding="utf-8")
+        target = tmp_path / "t.parquet"
+
+        status, rows = FormatConverter.convert_csv_to_parquet(
+            source,
+            target,
+            column_names=["k", "s", "n"],
+            delimiter="|",
+            null_marker="__NULL__",
+            column_types={"k": "string", "s": "string", "n": "int64"},
+        )
+
+        assert status == ConversionStatus.SUCCESS
+        assert rows == 3
+        assert pq.read_table(target).to_pylist() == [
+            {"k": "a", "s": None, "n": 1},
+            {"k": "b", "s": "", "n": 2},
+            {"k": "c", "s": "x", "n": None},
+        ]
