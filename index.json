@@ -27050,7 +27050,7 @@
         "datagen-p1-streaming-parquet-converter"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "blocked",
       "title": "Implement opt-in tpcgen-cli adapter for TPC-H and TPC-DS with required CI Gates A, B, and D"
     },
     "datagen-p2-rust-repo-gate": {
