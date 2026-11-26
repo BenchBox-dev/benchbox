@@ -27291,6 +27291,16 @@
       "status": "open",
       "title": "Generate h2odb in benchbox-datagen with a versioned deterministic RNG"
     },
+    "datagen-lib-synthetic-tpch-skew": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-benchbox-integration",
+        "datagen-lib-tpch"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Generate tpch_skew in benchbox-datagen with a versioned deterministic RNG"
+    },
     "datagen-lib-synthetic-tsbs-devops": {
       "claim": null,
       "needs": [
