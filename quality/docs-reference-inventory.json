@@ -2645,13 +2645,14 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "pattern": 7,
+    "extra": 1,
+    "pattern": 10,
     "unresolved": 8
    },
-   "occurrences": 15,
+   "occurrences": 20,
    "path": "tests/fixtures/medium_shard_durations.json",
    "rule": "test-sample-data",
-   "target_count": 15,
+   "target_count": 19,
    "targets": [
     {
      "kind": "unresolved",
@@ -2703,6 +2704,10 @@
     },
     {
      "kind": "pattern",
+     "target": "docs/internal/dev-loop-property-ledger.md]"
+    },
+    {
+     "kind": "pattern",
      "target": "docs/internal/pr-triage.md]"
     },
     {
@@ -2711,7 +2716,19 @@
     },
     {
      "kind": "pattern",
+     "target": "docs/notes/a.md]"
+    },
+    {
+     "kind": "pattern",
      "target": "docs/operations/key.pem]"
+    },
+    {
+     "kind": "pattern",
+     "target": "docs/publish-allowlist.txt]"
+    },
+    {
+     "kind": "extra",
+     "target": "quality/docs-ownership.json"
     }
    ]
   },
@@ -4101,14 +4118,14 @@
   "kinds": {
    "built-url": 29037,
    "dir": 163,
-   "extra": 41,
+   "extra": 42,
    "file": 1371,
    "generated": 3,
-   "pattern": 296,
+   "pattern": 300,
    "root": 202,
    "unresolved": 2081
   },
-  "references": 33194,
+  "references": 33199,
   "unclassified": 0
  }
 }
