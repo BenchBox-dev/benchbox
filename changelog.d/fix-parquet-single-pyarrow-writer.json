@@ -4,7 +4,7 @@
     {
       "category": "fixed",
       "breaking": false,
-      "text": "Parquet conversion always uses one writer (PyArrow) and reads up to two chunk files at once, so output no longer depends on whether DuckDB is installed or how much memory it can use. TPC-H conversion from default chunked zstd input takes 3.1 s at SF 1 and 35.6 s at SF 10, down from 9.5 s and 95.4 s, with unchanged output bytes. Row groups hold the configured row_group_size (122,880 by default; the last holds the remainder) and NOT NULL columns stay required. Cached Parquet written by the retired DuckDB path is regenerated on the next Parquet run."
+      "text": "Parquet conversion always uses one writer (PyArrow) and reads up to two chunk files at once, so output no longer depends on whether DuckDB is installed or how much memory it can use. TPC-H conversion from default chunked zstd input takes 3.0 s at SF 1 and 35.8 s at SF 10, down from 9.1 s and 95.2 s, with unchanged output bytes. Row groups hold the configured row_group_size (122,880 by default; the last holds the remainder) and NOT NULL columns stay required. Cached Parquet written by the retired DuckDB path is regenerated on the next Parquet run."
     },
     {
       "category": "fixed",

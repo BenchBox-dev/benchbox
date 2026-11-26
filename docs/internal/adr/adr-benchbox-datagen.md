@@ -209,15 +209,16 @@ non-quiesced development host; cutover enforcement requires 3-run medians
      bytes changed between runs, and it wrote NOT NULL columns as nullable.
      PyArrow `open_csv` is single-threaded, so the converter reads up to two
      chunk files concurrently and writes them in input order through one
-     `ParquetWriter`; the output is byte-identical to the serial writer.
-     Measured on TPC-H from 10-chunk zstd input on a loaded host: SF 1 4.8 s /
-     431 MiB and SF 10 52.6 s / 512 MiB (serial: 9.5 s and 100.3 s).
+     `ParquetWriter`; the output is byte-identical to the serial writer. A
+     separate thread counts each file's non-empty lines while it is parsed,
+     so row-count validation stays independent of the CSV parser.
+     Measured on TPC-H from 10-chunk zstd input (`N=3` medians, 5-minute
+     host load 3.6–5.5): SF 1 2.98 s / 491 MiB and SF 10 35.75 s / 609 MiB
+     (serial: 9.1 s and 95.2 s).
      DataFusion (one partition: SF 10 30.5 s / 476 MiB) and Polars (SF 10
      13.1 s / 2,129 MiB) were evaluated and rejected: each adds a 105–160 MB
      dependency, silently truncates out-of-scale decimals, and would change
-     Parquet bytes; Polars also exceeds the memory budget. A Linux SF 10 miss
-     against the converter budget is the measured miss that would open the
-     Rust repository gate.
+     Parquet bytes; Polars also exceeds the memory budget.
 3. **Keep a strict file/statistics boundary and Python-only manifest ownership.**
    Any native generator stays behind:
 

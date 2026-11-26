@@ -1137,6 +1137,26 @@ class TestParquetStreamingAndBenchmarkCompatibility:
             )
         assert not (tmp_path / "out" / "t.parquet").exists()
 
+    @pytest.mark.parametrize("readers", [1, 2])
+    def test_source_line_count_catches_rows_merged_by_a_stray_quote(self, tmp_path, readers):
+        schema = {"columns": [{"name": "id", "type": "INTEGER"}, {"name": "label", "type": "VARCHAR(25)"}]}
+        first = tmp_path / "t.tbl.1"
+        first.write_text("1|ok\n", encoding="utf-8")
+        merged = tmp_path / "t.tbl.2"
+        merged.write_text('2|"open\nclose"\n3|ok\n', encoding="utf-8")
+        converter = ParquetConverter()
+        original = converter.iter_record_batches
+        converter.iter_record_batches = lambda *a, **k: original(*a, readers=readers, **k)
+
+        with pytest.raises(ConversionError, match="input=4 rows, output=3 rows"):
+            converter.convert(
+                source_files=[first, merged],
+                table_name="t",
+                schema=schema,
+                options=ConversionOptions(output_dir=tmp_path / "out"),
+            )
+        assert not (tmp_path / "out" / "t.parquet").exists()
+
     def test_manifest_null_marker_keeps_empty_strings_in_not_null_columns(self, tmp_path):
         import json
 

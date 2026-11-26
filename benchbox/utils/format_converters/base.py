@@ -6,11 +6,13 @@ import threading
 from abc import ABC, abstractmethod
 from collections import deque
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Literal
 
+import numpy as np
 import pyarrow as pa
 import pyarrow.csv as csv
 
@@ -28,6 +30,9 @@ PARALLEL_FILE_READERS = 2
 _READER_QUEUE_DEPTH = 32
 _QUEUE_POLL_SECONDS = 0.1
 _ARROW_STREAM_CODECS = {"zstd": "zstd", "gzip": "gzip"}
+_LINE_COUNT_CHUNK_BYTES = 1024 * 1024
+_NEWLINE = ord("\n")
+_CARRIAGE_RETURN = ord("\r")
 
 _SQL_DDL_TYPE_PREFIXES = (
     "INTEGER",
@@ -159,6 +164,32 @@ class ConversionOptions:
             raise ValueError(f"delimiter must be a single character, got {self.delimiter!r}")
 
         self.validate_row_count = bool(self.validate_row_count)
+
+
+def _count_nonempty_lines(stream: Any) -> int:
+    count = 0
+    tail = np.array([_NEWLINE, _NEWLINE], dtype=np.uint8)
+    while chunk := stream.read(_LINE_COUNT_CHUNK_BYTES):
+        data = np.concatenate((tail, np.frombuffer(chunk, dtype=np.uint8)))
+        newline = data[2:] == _NEWLINE
+        previous = data[1:-1]
+        blank = newline & ((previous == _NEWLINE) | ((previous == _CARRIAGE_RETURN) & (data[:-2] == _NEWLINE)))
+        count += int(np.count_nonzero(newline)) - int(np.count_nonzero(blank))
+        tail = data[-2:].copy()
+    unterminated = tail[-1] != _NEWLINE and not (tail[-1] == _CARRIAGE_RETURN and tail[-2] == _NEWLINE)
+    return count + int(unterminated)
+
+
+def _open_source(file_path: Path) -> Any:
+    compression_type = detect_compression(file_path)
+    if compression_type is None or compression_type in _ARROW_STREAM_CODECS:
+        return pa.input_stream(str(file_path), compression=_ARROW_STREAM_CODECS.get(compression_type))
+    return CompressionManager().get_compressor(compression_type).open_for_read(file_path, mode="rb")
+
+
+def _count_source_lines(file_path: Path) -> int:
+    with _open_source(file_path) as raw_stream:
+        return _count_nonempty_lines(raw_stream)
 
 
 @dataclass
@@ -511,26 +542,23 @@ class BaseFormatConverter(FormatConverter):
             include_columns=column_names,
         )
 
-        compression_type = detect_compression(file_path)
-        if compression_type is None or compression_type in _ARROW_STREAM_CODECS:
-            raw_stream = pa.input_stream(str(file_path), compression=_ARROW_STREAM_CODECS.get(compression_type))
-        else:
-            raw_stream = CompressionManager().get_compressor(compression_type).open_for_read(file_path, mode="rb")
-        with raw_stream:
-            reader = csv.open_csv(
-                raw_stream,
-                read_options=read_options,
-                parse_options=parse_options,
-                convert_options=convert_options,
-            )
-            for batch in reader:
-                if batch.num_rows > 0:
-                    line_count[0] += batch.num_rows
-                    yield (
-                        pa.RecordBatch.from_arrays(batch.columns, schema=arrow_schema)
-                        if batch.schema != arrow_schema
-                        else batch
-                    )
+        with ThreadPoolExecutor(max_workers=1, thread_name_prefix="benchbox-line-count") as counter:
+            source_lines = counter.submit(_count_source_lines, file_path)
+            with _open_source(file_path) as raw_stream:
+                reader = csv.open_csv(
+                    raw_stream,
+                    read_options=read_options,
+                    parse_options=parse_options,
+                    convert_options=convert_options,
+                )
+                for batch in reader:
+                    if batch.num_rows > 0:
+                        yield (
+                            pa.RecordBatch.from_arrays(batch.columns, schema=arrow_schema)
+                            if batch.schema != arrow_schema
+                            else batch
+                        )
+            line_count[0] = max(0, source_lines.result() - (1 if has_header else 0))
 
     def read_tbl_files(
         self,
