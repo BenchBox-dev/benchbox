@@ -15416,7 +15416,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-historical",
-      "integration_head": "6b46b12b3721e93a54fa3f0ddf46e93ce935602a",
+      "integration_head": "a4352592e0f08c727d8e8a8b097ef51f40031b5f",
       "integration_log": [
         {
           "at": "2026-11-23T23:39:31Z",
@@ -15874,6 +15874,31 @@
           "op_id": "a98991e1b1fb4ba0ac84aa1a6422b8dc",
           "previous_head": "55bd74a74227bfe570ec4da1bd473e9e5c083874",
           "seq": 11
+        },
+        {
+          "at": "2026-11-26T19:59:49Z",
+          "changed_files": [
+            "benchbox/core/tpcdi/etl/DEPARTURES.yaml",
+            "benchbox/core/tpcdi/etl/historical/dim_account.sql",
+            "benchbox/core/tpcdi/etl/historical/dim_company.sql",
+            "benchbox/core/tpcdi/etl/historical/dim_security.sql",
+            "benchbox/core/tpcdi/etl/ingest/finwire.sql",
+            "benchbox/core/tpcdi/schema_specs.yaml",
+            "scripts/tpcdi/EXPECTED_DIFFERENCES.yaml",
+            "tests/unit/core/tpcdi/test_etl_historical.py",
+            "tests/unit/sql_compat/golden_corpus/frozen/area_tpcdi_etl.json"
+          ],
+          "head": "a4352592e0f08c727d8e8a8b097ef51f40031b5f",
+          "kind": "fix",
+          "op_id": "984bd506371a43b988e211e05e51edfb",
+          "previous_head": "6b46b12b3721e93a54fa3f0ddf46e93ce935602a",
+          "requires_acceptance": [
+            "tpcdi-12-duckdb-historical-load-and-audit-20261120",
+            "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121",
+            "tpcdi-historical-dimensions-20261121",
+            "tpcdi-historical-facts-20261121"
+          ],
+          "seq": 12
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-historical",
