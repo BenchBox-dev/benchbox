@@ -27082,7 +27082,7 @@
         "datagen-p1-provenance-and-backend-selector"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "blocked",
       "title": "Vectorize over-budget Tier 3 synthetic generators in Python with Gate C acceptance reports"
     },
     "datagen-p3-legacy-retirement-decision": {
