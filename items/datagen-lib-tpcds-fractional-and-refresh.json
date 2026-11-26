@@ -4,6 +4,7 @@
     "TPC-H RF1/RF2 and TPC-DS -update output is byte-identical to the C binaries at SF 0.01 and 1.",
     "PR parity CI covers TPC-DS SF 0.01, 0.1 and 1.0 and the refresh sets."
   ],
+  "context": "Owner decisions 2026-11-26 (dialog): (1) PyPI: owner sets up Trusted Publishing once; the agent then tags and publishes 0.x releases when a stage merges and BenchBox needs it. (2) Library repo merges require the review bot (theseus review-verdict/review-gate) and essential CI, mirroring BenchBox. (3) SSB and synthetic acceptance by pre-approved objective criteria: exact row counts, zero orphan FKs, per-column null rate, distinct ratio and mean/quantiles within the legacy generator's 5-seed variation, every query returns rows on both engines where legacy did, exact DuckDB/DataFusion agreement; escalate only on failure. (4) Upstream gaps: implement in benchbox-datagen-core on upstream's public API; upstream PRs are contributions, never waited on; no vendoring. (5) Agent may open tpcgen-rs issues/PRs from the BenchBox-dev fork. (6) Add a Windows arm64 wheel; if it passes the gates, Windows arm64 cuts over too. (7) Cutovers pre-approved when every ADR gate passes; misses go to the owner. (8) Parquet corpus re-baseline once, after the TPC cutover, against library Parquet. (9) Retirement: after all cutovers plus one minor release, remove dbgen/dsdgen and legacy Python generators (qgen/dsqgen under adversarial review). (10) Feature batches: A library TPC; B BenchBox integration; C SSB + 8 synthetic in parallel; D cutovers + re-baseline; E Parquet semantics + DuckLake convert in parallel with A; F retirement.",
   "description": "Coverage the upstream crates lack (docs/internal/adr/adr-benchbox-datagen.md (revised 2026-11-26, PR #4540), decision 1). TPC-DS SF < 1 must follow BenchBox's patched dsdgen scaling curve; TPC-H RF1/RF2 and TPC-DS -update must match the C binaries. Prefer contributing upstream when the change fits upstream; otherwise implement in benchbox-datagen-core on top of the upstream crates without forking them.\n\nDecision gate: if byte identity at SF < 1 needs a change upstream will not accept and that cannot live outside the crates, stop and ask the owner.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "479fe1ce1cdb417bb89d6c3e7b7d638d",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T14:31:18Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "1c258450b1c740878b039c5559490507",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
