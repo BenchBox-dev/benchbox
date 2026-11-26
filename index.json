@@ -27627,15 +27627,10 @@
       "title": "Pass conversion options to every table-format converter and fix benchbox convert schema lookup"
     },
     "datagen-converter-options-and-convert-cli-deferral-1": {
-      "claim": {
-        "expires_at": "2026-11-27T23:11:44Z",
-        "generation": "2979056ed6054ba78cbc30f96c2a36fe",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
-      },
+      "claim": null,
       "needs": [],
       "priority": "low",
-      "status": "active",
+      "status": "done",
       "title": "benchbox convert --format ducklake is offered but the orchestrator rejects it"
     },
     "datagen-empty-manifest-vacuous-validation-20261001": {
