@@ -27264,6 +27264,15 @@
       "status": "open",
       "title": "Create the benchbox-datagen repository with its Cargo workspace, CI and abi3 wheel builds"
     },
+    "datagen-lib-synthetic-clickbench": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-benchbox-integration"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Generate clickbench in benchbox-datagen with a versioned deterministic RNG"
+    },
     "datagen-lib-synthetic-h2odb": {
       "claim": null,
       "needs": [
