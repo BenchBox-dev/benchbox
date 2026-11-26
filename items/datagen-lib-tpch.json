@@ -4,6 +4,7 @@
     "Parquet bytes are identical at 1, 4 and default threads on macOS arm64 and Linux x86_64; schema matches benchbox/core/tpch/schema.py through ArrowTypeMapper.",
     "N=3 medians meet the ADR budget: SF 1 <= 3 s delimited / <= 4 s Parquet, SF 10 <= 30 s / <= 40 s, RSS <= 1,536 MiB (SF 1) and <= 2,048 MiB (SF 10)."
   ],
+  "context": "Owner decisions 2026-11-26 (dialog): (1) PyPI: owner sets up Trusted Publishing once; the agent then tags and publishes 0.x releases when a stage merges and BenchBox needs it. (2) Library repo merges require the review bot (theseus review-verdict/review-gate) and essential CI, mirroring BenchBox. (3) SSB and synthetic acceptance by pre-approved objective criteria: exact row counts, zero orphan FKs, per-column null rate, distinct ratio and mean/quantiles within the legacy generator's 5-seed variation, every query returns rows on both engines where legacy did, exact DuckDB/DataFusion agreement; escalate only on failure. (4) Upstream gaps: implement in benchbox-datagen-core on upstream's public API; upstream PRs are contributions, never waited on; no vendoring. (5) Agent may open tpcgen-rs issues/PRs from the BenchBox-dev fork. (6) Add a Windows arm64 wheel; if it passes the gates, Windows arm64 cuts over too. (7) Cutovers pre-approved when every ADR gate passes; misses go to the owner. (8) Parquet corpus re-baseline once, after the TPC cutover, against library Parquet. (9) Retirement: after all cutovers plus one minor release, remove dbgen/dsdgen and legacy Python generators (qgen/dsqgen under adversarial review). (10) Feature batches: A library TPC; B BenchBox integration; C SSB + 8 synthetic in parallel; D cutovers + re-baseline; E Parquet semantics + DuckLake convert in parallel with A; F retirement.",
   "description": "TPC-H stage of the library (docs/internal/adr/adr-benchbox-datagen.md (revised 2026-11-26, PR #4540), decisions 1, 3 and 5). Depend on tpchgen and tpchgen-arrow by exact version. Write delimited rows without the trailing delimiter and Parquet with BenchBox Arrow types, 122,880-row row groups, non-nullable NOT NULL columns and writer identity benchbox-datagen-<major>. Expose both entry points from the PyO3 module.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "e2c392109b194954b00842185326f4a0",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T14:31:04Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "e0a5064256ed48aa9faaedd3445e7f6b",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
