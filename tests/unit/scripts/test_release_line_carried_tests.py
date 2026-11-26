@@ -51,6 +51,7 @@ NOT_CARRIED = {
     "tests/unit/workflows/test_ci_changelog_gate.py": "tests the changelog gate workflow",
     "tests/unit/workflows/test_omp_pin_bump_workflow.py": "tests the pin-bump workflow",
     "tests/unit/workflows/test_omp_pin_watch_workflow.py": "tests the pin-watch workflow",
+    "tests/unit/workflows/test_ci_reproduce_fast_baseline.py": "tests ci.yml jobs the line does not carry, and reads review.yml only to match a job name",
 }
 
 
