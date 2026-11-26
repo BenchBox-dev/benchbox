@@ -188,6 +188,11 @@ def test_saved_migration_refuses_two_redshift_native_keys_that_disagree() -> Non
         migrate_saved_compute_keys("redshift", {"workgroup_name": "wg", "cluster_identifier": "c1"})
 
 
+def test_saved_canonical_size_wins_over_a_native_size_on_firebolt() -> None:
+    migrated = migrate_saved_compute_keys("firebolt", {"compute_size": "L", "engine_size": "S"})
+    assert migrated == {"compute_size": "L"}
+
+
 def test_saved_migration_leaves_unrelated_keys() -> None:
     saved = {"account": "a", "password": "p"}
     assert migrate_saved_compute_keys("snowflake", saved) == saved
@@ -211,6 +216,30 @@ def test_credential_manager_migrates_saved_native_keys(tmp_path) -> None:
     assert snowflake == {"account": "a", "compute_resource": "OLD_WH", "compute_size": "LARGE"}
     assert manager.get_platform_credentials("firebolt") == {"compute_resource": "eng"}
     assert manager.get_platform_credentials("duckdb") == {"warehouse": "untouched"}
+
+
+def test_conflicting_section_fails_only_for_its_own_platform(tmp_path) -> None:
+    from benchbox.core.exceptions import ConfigurationError
+    from benchbox.security.credentials import CredentialStatus
+
+    path = tmp_path / "credentials.yaml"
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "redshift": {"workgroup_name": "wg", "cluster_identifier": "c1"},
+                "snowflake": {"account": "a", "warehouse": "WH"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    path.chmod(0o600)
+    manager = CredentialManager(credentials_path=path)
+    assert manager.get_platform_credentials("snowflake") == {"account": "a", "compute_resource": "WH"}
+    assert manager.get_credential_status("redshift") is CredentialStatus.INVALID
+    with pytest.raises(ConfigurationError, match="cluster_identifier, workgroup_name"):
+        manager.get_platform_credentials("redshift")
+    manager.set_platform_credentials("redshift", {"compute_resource": "c1"})
+    assert manager.get_platform_credentials("redshift")["compute_resource"] == "c1"
 
 
 COMPUTE_BUILDER_PLATFORMS = sorted(

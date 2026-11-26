@@ -61,8 +61,13 @@ def migrate_saved_compute_keys(platform: str, saved: Mapping[str, Any]) -> dict[
     if declaration is None:
         return dict(saved)
     renames = {
-        **dict.fromkeys(declaration.native_resource_keys, COMPUTE_RESOURCE_OPTION),
-        **dict.fromkeys(declaration.native_size_keys, COMPUTE_SIZE_OPTION),
+        key: target
+        for keys, target in (
+            (declaration.native_resource_keys, COMPUTE_RESOURCE_OPTION),
+            (declaration.native_size_keys, COMPUTE_SIZE_OPTION),
+        )
+        for key in keys
+        if key != target
     }
     kinds = declaration.resource_kind if isinstance(declaration.resource_kind, Mapping) else {}
     migrated = {key: value for key, value in saved.items() if key not in renames}

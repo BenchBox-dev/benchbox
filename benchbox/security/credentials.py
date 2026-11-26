@@ -38,6 +38,7 @@ class CredentialManager:
     def __init__(self, credentials_path: Optional[Path] = None):
         self.credentials_path = credentials_path or self._get_default_credentials_path()
         self._raw_credentials: dict[str, Any] = {}
+        self._compute_key_conflicts: dict[str, str] = {}
         self.credentials = self._load_credentials()
 
     def _get_default_credentials_path(self) -> Path:
@@ -57,18 +58,23 @@ class CredentialManager:
         except Exception as e:
             raise ValueError(f"Failed to load credentials from {self.credentials_path}: {e}") from e
 
-    @staticmethod
-    def _migrate_compute_keys(data: Any) -> Any:
+    def _migrate_compute_keys(self, data: Any) -> Any:
         if not isinstance(data, dict):
             return data
         from benchbox.core.compute_resource import migrate_saved_compute_keys
+        from benchbox.core.exceptions import ConfigurationError
 
-        return {
-            platform: migrate_saved_compute_keys(str(platform), section)
-            if isinstance(section, dict) and not str(platform).startswith("_")
-            else section
-            for platform, section in data.items()
-        }
+        migrated: dict[Any, Any] = {}
+        for platform, section in data.items():
+            if not isinstance(section, dict) or str(platform).startswith("_"):
+                migrated[platform] = section
+                continue
+            try:
+                migrated[platform] = migrate_saved_compute_keys(str(platform), section)
+            except ConfigurationError as error:
+                self._compute_key_conflicts[str(platform).lower()] = str(error)
+                migrated[platform] = section
+        return migrated
 
     def _substitute_env_vars(self, data: Any) -> Any:
         if isinstance(data, dict):
@@ -148,6 +154,11 @@ class CredentialManager:
         self._raw_credentials = data_to_save
 
     def get_platform_credentials(self, platform: str) -> Optional[dict[str, Any]]:
+        conflict = self._compute_key_conflicts.get(platform.lower())
+        if conflict is not None:
+            from benchbox.core.exceptions import ConfigurationError
+
+            raise ConfigurationError(f"{conflict} ({self.credentials_path})")
         return self.credentials.get(platform.lower())
 
     def set_platform_credentials(
@@ -163,6 +174,7 @@ class CredentialManager:
         cred_data["status"] = status.value
 
         self.credentials[platform_key] = cred_data
+        self._compute_key_conflicts.pop(platform_key, None)
 
     def update_validation_status(
         self, platform: str, status: CredentialStatus, error_message: Optional[str] = None
@@ -181,6 +193,8 @@ class CredentialManager:
             del self.credentials[platform_key]["error_message"]
 
     def get_credential_status(self, platform: str) -> CredentialStatus:
+        if platform.lower() in self._compute_key_conflicts:
+            return CredentialStatus.INVALID
         creds = self.get_platform_credentials(platform)
 
         if not creds:
