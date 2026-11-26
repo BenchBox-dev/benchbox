@@ -27846,12 +27846,17 @@
       "title": "Re-baseline local published Parquet corpus for 122,880-row-group streaming layout"
     },
     "datagen-p1-parquet-semantic-fixes": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-27T23:11:36Z",
+        "generation": "26af26fb500545fe88373f036b530fdc",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
+      },
       "needs": [
         "datagen-p1-deterministic-parquet-writer"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Fix Parquet conversion value semantics in one versioned writer change before the corpus re-baseline"
     },
     "datagen-p1-provenance-and-backend-selector": {
