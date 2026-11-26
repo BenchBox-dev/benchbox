@@ -27535,7 +27535,7 @@
       ],
       "priority": "low",
       "status": "open",
-      "title": "Evaluate Windows arm64 support and retire eligible legacy generators and C binaries"
+      "title": "Retire the whole TPC C toolchain and the legacy Python generators"
     },
     "datagen-p3-ssb-cutover": {
       "claim": null,
