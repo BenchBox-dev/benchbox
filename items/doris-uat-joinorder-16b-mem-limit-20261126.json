@@ -4,7 +4,7 @@
     "Fix is a code or configuration change; pruning the cell needs a proven external cause and owner approval.",
     "doris/joinorder@1 passes on trunk."
   ],
-  "context": "Compare the Doris container memory settings in trunk-uat.yml / release-v2.yml with ClickHouse and LakeSail (12g after #4525) and check whether anything in the Doris path or sqlglot changed between f1c6343bbf and 98281065da. Blocks the two-green trunk UAT gate for v0.6.0rc1.",
+  "context": "Compare the Doris container memory settings in trunk-uat.yml / release-v2.yml with ClickHouse and LakeSail (12g after #4525) and check whether anything in the Doris path or sqlglot changed between f1c6343bbf and 98281065da. Blocks the two-green trunk UAT gate for v0.6.0rc1.\n\nFix merged 2026-11-26T16:18Z as #4544 (DORIS_MEMORY_LIMIT=10g for the stage 3 shards in trunk-uat.yml and release-v2.yml; BE mem_limit 4400m -> 6400m). Close after a scheduled trunk UAT run passes doris/joinorder@1.",
   "description": "Scheduled trunk UAT run 45801675348 (2026-11-26) failed doris/joinorder@1: query 16b fails with MEM_LIMIT_EXCEEDED (PODArray reserve memory failed, cannot alloc 512 MB). The cell passed in run 45599221098. LakeSail failed on the same query 16a/16b family on 2026-11-25 (fixed by raising its container limit in #4525).",
   "sessions": [
     {
@@ -13,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "f0b1ac25465b4998a9a53e3b0cfc2e47",
+      "session_id": "8ba2da598ad24a19888c9b8f950272f3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e82e03734cad9d7732bbc3a5",
+      "at": "2026-11-26T19:24:40Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "ef643da0b28d4663b739731c8afa1cc2",
       "session_id": "8ba2da598ad24a19888c9b8f950272f3"
     }
   ]
