@@ -53,6 +53,7 @@ from benchbox.cli.run_platform_resolution import (
     BENCHMARK_ALIASES as BENCHMARK_ALIASES,
     _apply_benchmark_default_scale,
     _apply_dataframe_suffix_mode as _apply_dataframe_suffix_mode,
+    _build_data_organization_from_tuning as _build_data_organization_from_tuning,
     _check_benchmark_platform_compatibility,
     _check_platforms_status,
     _parse_plat_bench_options,
@@ -84,10 +85,7 @@ from benchbox.cli.tuning_runtime import (
     infer_runtime_tuning_mode,
     resolve_dataframe_tuning_config,
 )
-from benchbox.core.benchmark_registry import (
-    get_presort_table_configs,
-    presort_capable_benchmarks,
-)
+from benchbox.core.benchmark_registry import get_presort_table_configs, presort_capable_benchmarks
 from benchbox.core.config import DatabaseConfig
 from benchbox.core.constants import (
     DEFAULT_OUTPUT_COMPRESSION_TYPE,
@@ -103,6 +101,7 @@ from benchbox.core.tpc_spec import refresh_functions_enabled, require_full_spec
 from benchbox.core.tuning import modes as tuning_modes
 from benchbox.utils.cloud_storage import is_cloud_path
 from benchbox.utils.compression import CompressionManager
+from benchbox.utils.datagen_backend import DatagenBackendError, resolve_datagen_backend
 from benchbox.utils.input_validation import MAX_QUERY_ID_LENGTH
 from benchbox.utils.output_path import normalize_output_root
 from benchbox.utils.printing import fatal, replay_quiet_output_on_failure
@@ -161,51 +160,6 @@ def _apply_platform_optimization_overrides(
             platform_optimizations.liquid_clustering_enabled = True
 
     platform_optimizations.__post_init__()
-
-
-def _build_data_organization_from_tuning(unified_tuning: Any) -> dict[str, Any] | None:
-    if unified_tuning is None:
-        return None
-
-    table_configs: dict[str, list[dict[str, str]]] = {}
-    table_partition_configs: dict[str, list[str]] = {}
-    table_cluster_configs: dict[str, list[str]] = {}
-
-    table_tunings = getattr(unified_tuning, "table_tunings", {}) or {}
-    for table_name, table_tuning in table_tunings.items():
-        sorting = sorted(getattr(table_tuning, "sorting", []) or [], key=lambda c: c.order)
-        partitioning = sorted(getattr(table_tuning, "partitioning", []) or [], key=lambda c: c.order)
-        clustering = sorted(getattr(table_tuning, "clustering", []) or [], key=lambda c: c.order)
-
-        if sorting:
-            table_configs[table_name] = [{"name": c.name, "order": str(c.sort_order).lower()} for c in sorting]
-        if partitioning:
-            table_partition_configs[table_name] = [c.name for c in partitioning]
-        if clustering:
-            table_cluster_configs[table_name] = [c.name for c in clustering]
-
-    if not table_configs and not table_partition_configs and not table_cluster_configs:
-        return None
-
-    platform_opts = getattr(unified_tuning, "platform_optimizations", None)
-    method = "z_order"
-    method_hint = str(getattr(platform_opts, "sorted_ingestion_method", "auto") or "auto").lower()
-    databricks_strategy = str(getattr(platform_opts, "databricks_clustering_strategy", "") or "").lower()
-    if databricks_strategy in {"liquid_clustering", "liquid_clustering_auto"} or getattr(
-        platform_opts, "liquid_clustering_enabled", False
-    ):
-        method = "liquid_clustering"
-    elif method_hint == "hilbert":
-        method = "hilbert"
-    elif method_hint == "z_order" or getattr(platform_opts, "z_ordering_enabled", False):
-        method = "z_order"
-
-    return {
-        "table_configs": table_configs,
-        "table_partition_configs": table_partition_configs,
-        "table_cluster_configs": table_cluster_configs,
-        "clustering_method": method,
-    }
 
 
 def _resolve_data_organization_payload(
@@ -1032,6 +986,11 @@ def _resolve_run_request(
     _resolve_compression_settings(s)
     _validate_output_dir(s)
     s.resolved_run_plan = _capture_resolved_run_plan(s)
+    s.resolved_datagen_backend = resolve_datagen_backend(
+        s.resolved_run_plan.benchmark,
+        requested=getattr(s, "datagen_backend", None),
+        scale_factor=s.resolved_run_plan.scale,
+    )
     _enforce_full_spec(s)
 
 
@@ -1098,6 +1057,19 @@ def _build_benchmark_config(
         **({"df_tuning_config": plan.dataframe_tuning_config} if plan.dataframe_tuning_config else {}),
         **({"data_organization": dict(plan.data_organization)} if plan.data_organization is not None else {}),
         **({"seed": plan.seed} if plan.seed is not None else {}),
+        **(
+            {
+                "datagen_backend": s.resolved_datagen_backend.backend,
+                **(
+                    {"datagen_backend_version": s.resolved_datagen_backend.backend_version}
+                    if s.resolved_datagen_backend.backend_version is not None
+                    else {}
+                ),
+                **({"datagen_backend_explicit": True} if getattr(s, "datagen_backend", None) is not None else {}),
+            }
+            if getattr(s, "resolved_datagen_backend", None) is not None
+            else {}
+        ),
         **({"power_iterations": plan.iterations} if plan.iterations is not None else {}),
         **_stream_timeout_config_entries(s),
         **({"validation_mode": s.validation_mode} if s.validation_mode is not None else {}),
@@ -2045,6 +2017,14 @@ def _data_or_load_handle_result(
 )
 @advanced_option("--seed", type=int, help="RNG seed for query parameter generation")
 @advanced_option(
+    "--datagen-backend",
+    "datagen_backend",
+    type=click.Choice(["legacy", "native"], case_sensitive=False),
+    default=None,
+    hidden=True,
+    help="Data generation backend ('legacy' or 'native'; omit for benchmark default).",
+)
+@advanced_option(
     "--streams",
     "--concurrency",
     "concurrency",
@@ -2182,6 +2162,7 @@ def run(
     polars_streaming: bool = False,
     allow_greybeam_inline_load: bool = False,
     acknowledge_billable_platform: bool = False,
+    datagen_backend: str | None = None,
 ) -> None:
     from benchbox.cli.unavailable_benchmark import exit_if_benchmark_unavailable, exit_unavailable_benchmark
     from benchbox.core.run_service import BenchmarkUnavailableError, apply_polars_streaming_flag, begin_run
@@ -2253,6 +2234,7 @@ def run(
         polars_streaming=polars_streaming,
         allow_greybeam_inline_load=allow_greybeam_inline_load,
         acknowledge_billable_platform=acknowledge_billable_platform,
+        datagen_backend=datagen_backend,
     )
     with replay_quiet_output_on_failure(bool(s.quiet)):
         try:
@@ -2266,7 +2248,7 @@ def run(
         except DriverAutoInstallRefused as exc:
             console.print(f"[red]❌ {escape(str(exc))}[/red]")
             sys.exit(ExitCode.ACKNOWLEDGEMENT_REQUIRED)
-        except InvalidDriverVersion as exc:
+        except (InvalidDriverVersion, DatagenBackendError) as exc:
             console.print(f"[red]❌ {escape(str(exc))}[/red]")
             sys.exit(ExitCode.USAGE)
         except BenchmarkUnavailableError as exc:

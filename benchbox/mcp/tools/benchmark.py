@@ -318,16 +318,16 @@ def _run_under_platform_policy(
     )
     if scale_note and response.get("status") not in ("error", "failed"):
         response.setdefault("warnings", []).append(scale_note)
-    limit_warning = run_limit_warning(platform, timeout_seconds)
+    limit_warning = run_limit_warning(platform, timeout_seconds, mode)
     if limit_warning:
         response.setdefault("warnings", []).append(limit_warning)
     return response
 
 
-def run_limit_warning(platform: str, timeout_seconds: int | None) -> str | None:
+def run_limit_warning(platform: str, timeout_seconds: int | None, mode: str | None = None) -> str | None:
     if validate_timeout_seconds(timeout_seconds) is None:
         return None
-    return cloud_cleanup_warning(platform)
+    return cloud_cleanup_warning(platform, mode)
 
 
 def _apply_platform_policy(

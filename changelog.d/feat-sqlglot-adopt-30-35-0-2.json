@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "SQLite SQL translation now targets the installed SQLite version, fails instead of emitting wrong dates for month-end interval arithmetic on SQLite older than 3.46 (strict and non-strict), and records the targeted SQLite version in translation outcomes."
+    },
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The bundled SQLGlot runtime moves from 30.33.0.1 to 30.35.0.3 (fork commit `a27947de80cd`, upstream v30.35.0), a verified delivery of the benchbox-sqlglot fork. SQLite month, quarter and year offsets now use the `floor` modifier on SQLite 3.46 or later; on older engines only offsets from a DATE literal with day 28 or less translate, and other offsets fail translation."
+    }
+  ]
+}

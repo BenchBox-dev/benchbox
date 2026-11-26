@@ -121,6 +121,31 @@ class TestOrchestratorDataSharing:
 
         assert mock_core.call_args.kwargs["benchmark_name"] == "tpch"
 
+    def test_get_platform_config_records_run_benchmark_when_data_is_shared(self):
+        orchestrator = BenchmarkOrchestrator()
+        benchmark = Mock()
+        benchmark.get_data_source_benchmark.return_value = "tpcds"
+
+        with patch("benchbox.cli.orchestrator._core_get_platform_config", side_effect=lambda *args, **kwargs: {}):
+            shared = orchestrator._get_platform_config(
+                database_config=Mock(),
+                system_profile=Mock(),
+                benchmark_name="tpcds_obt",
+                scale_factor=0.01,
+                benchmark=benchmark,
+            )
+            benchmark.get_data_source_benchmark.return_value = None
+            own = orchestrator._get_platform_config(
+                database_config=Mock(),
+                system_profile=Mock(),
+                benchmark_name="tpcds",
+                scale_factor=0.01,
+                benchmark=benchmark,
+            )
+
+        assert shared["run_benchmark_name"] == "tpcds_obt"
+        assert "run_benchmark_name" not in own
+
     def test_get_platform_config_passes_through_when_no_data_source(self):
         orchestrator = BenchmarkOrchestrator()
         benchmark = Mock()

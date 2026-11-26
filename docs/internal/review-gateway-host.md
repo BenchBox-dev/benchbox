@@ -163,7 +163,11 @@ Then:
      at all, is `degraded: usage probe: omp auth-gateway check failed` (the
      probe fails closed). An `unknown` entry (no usage data, or no probe for
      the provider) is not a failure. A gateway that
-     lists fewer models than `clients.json` grants is also degraded.
+     lists fewer models than `clients.json` grants is also degraded, as is an
+     installed monitor snapshot (`monitor-host.sh`) that differs from
+     `origin/develop`'s script: `degraded: the installed monitor script differs
+     from origin/develop; run 'review_gateway_host.sh monitor-install'`. No
+     snapshot installed adds no line.
    - **Notice** (exit 0): `notice: <provider> removed by owner; develop still
      names <provider>` for each provider on the denylist, and `notice: usage
      probe for <login> failed; <login> is not served` for a failing login
@@ -201,7 +205,9 @@ named steps (`--only`).
 - **omp pin bumped** in `.github/review.yml`: after the change
   merges, run `broker` and `gateway` at a quiet moment. Each installs the new
   pinned build and restarts its agent because the plist and `run.sh` name the
-  new path; a restart interrupts reviews in flight. Then run `check`.
+  new path; a restart interrupts reviews in flight. If the change also
+  altered `review_gateway_host.sh`, run `monitor-install` too, or `check`
+  reports the stale monitor snapshot as degraded. Then run `check`.
 - **Provider login changed:** log in again with `<pinned omp> auth-broker login
   <provider>`, then run `gateway` so the pinned accounts match. `check` reports
   `degraded: <provider>: stale pin` until you do.
@@ -269,6 +275,18 @@ published, it:
    `review-gateway-health` in the repository, through the owner's `gh` login
    (the label is created on first use);
 3. records the new state.
+
+After the health evaluation, every monitor run whose state is not broken sends
+a `workflow_dispatch` of `review-verdict.yml` with `sweep=true` on `develop`
+(`gh workflow run review-verdict.yml --ref develop -f sweep=true`) unless one
+was sent in the last hour. `review-verdict` runs its sweep and health check on
+that dispatch (GitHub refuses a `repository_dispatch` here), because GitHub
+delivers the hourly `schedule` only a few times a day and quota-pending heads
+would otherwise wait hours for their retry. The time of
+the last successful send is `~/.omp/review-gateway/sweep.dispatched`; a failed
+send logs `monitor: sweep dispatch failed`, leaves that file alone and
+does not change the monitor's exit status or recorded state. A broken gateway
+sends nothing, since it cannot review.
 
 If the issue cannot be filed, the state is not recorded, so the next run
 notifies and tries again. Steady state, an unconfirmed change and a deliberate removal are

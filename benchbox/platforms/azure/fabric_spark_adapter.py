@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -31,6 +30,7 @@ from benchbox.platforms.base.cloud_spark import (
     SparkTuningMixin,
 )
 from benchbox.platforms.base.cloud_spark.config import CloudPlatform
+from benchbox.platforms.base.remote_work import StartedRemoteWork
 from benchbox.utils.dependencies import (
     check_platform_dependencies,
     get_dependency_error_message,
@@ -76,6 +76,8 @@ class LivySessionState:
 
 
 class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
+    remote_cleanup_label = "Fabric Spark"
+
     timing_method = TIMING_METHOD_QUERY_ONLY
     plan_capture_phase_eligible = True
 
@@ -139,6 +141,7 @@ class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
 
         self._session_id: int | None = None
         self._session_created_by_us = False
+        self._started_work = StartedRemoteWork()
 
         self._query_count = 0
         self._total_statement_time_seconds = 0.0
@@ -202,7 +205,9 @@ class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
 
         logger.info("Creating Livy session in workspace %s", self.workspace_id)
 
-        response = requests.post(
+        from benchbox.platforms.azure.spark_execution_utils import livy_post
+
+        response = livy_post(
             self.livy_endpoint,
             headers=self._get_headers(),
             json=session_config,
@@ -214,43 +219,13 @@ class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
 
         session = response.json()
         session_id = session["id"]
+        self._session_id = session_id
+        self._session_created_by_us = True
 
         self._wait_for_session_state(session_id, [LivySessionState.IDLE])
-        self._session_created_by_us = True
 
         logger.info("Livy session created: %s", session_id)
         return session_id
-
-    def _wait_for_session_state(
-        self,
-        session_id: int,
-        target_states: list[str],
-        timeout_seconds: int = 600,
-    ) -> str:
-        start_time = mono_time()
-        session_url = f"{self.livy_endpoint}/{session_id}"
-
-        while elapsed_seconds(start_time) < timeout_seconds:
-            response = requests.get(
-                session_url,
-                headers=self._get_headers(),
-                timeout=30,
-            )
-
-            if response.status_code != 200:
-                raise ConfigurationError(f"Failed to get session status: {response.status_code}")
-
-            session = response.json()
-            state = session["state"]
-
-            if state in target_states:
-                return state
-            if state in [LivySessionState.ERROR, LivySessionState.DEAD, LivySessionState.KILLED]:
-                raise ConfigurationError(f"Session is in {state} state")
-
-            time.sleep(5)
-
-        raise ConfigurationError(f"Timeout waiting for session {session_id}")
 
     def _ensure_session(self) -> int:
         if self._session_id is not None:

@@ -17,6 +17,7 @@ consumer:
 minimize_superseded: true
 dashboard_comment: true
 check_run_mirror: true
+classifier_issue: true
 max_attempts: 5
 protocol:
   max_defects: 10

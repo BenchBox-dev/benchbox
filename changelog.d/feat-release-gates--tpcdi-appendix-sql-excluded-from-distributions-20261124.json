@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Exclude the TPC-DI appendix SQL from the wheel and source distribution while it stays in the repository"
+}

@@ -376,7 +376,7 @@ class TestMakefileCommands:
         assert "--cov-config=pyproject.toml" in pytest_ci_addopts
         assert coverage_run["source"] == ["benchbox"]
         assert coverage_run["branch"] is True
-        assert "benchbox/core/tpcdi/etl/scd_processor.py" in coverage_run["omit"]
+        assert "benchbox/core/tpcdi/_legacy_etl/scd_processor.py" in coverage_run["omit"]
         assert _marker_names(repo_root / "pytest.ini") == _marker_names(repo_root / "pytest-ci.ini")
 
     @pytest.mark.parametrize(

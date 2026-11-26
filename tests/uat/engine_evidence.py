@@ -11,7 +11,7 @@ from pathlib import Path
 
 from benchbox.mcp.errors import scrub_secret_material
 from benchbox.utils.clock import elapsed_seconds, mono_time
-from tests.uat import docker_assets
+from tests.uat import docker_assets, mocker_launch
 
 _FILE_BYTES = 16 * 1024 * 1024
 _COMMAND_SECONDS = 10
@@ -25,6 +25,12 @@ _CGROUP_MEMORY = (
     'do echo "$f"; cat "$f" || status=1; done; exit "$status"'
 )
 _CONTAINER_STATE = "{{json .State}}\n{{json .RestartCount}}\n{{json .HostConfig.Memory}}\n{{json .Image}}"
+_DORIS_HOME = "/opt/apache-doris"
+_DORIS_LOG_BYTES = 4 * 1024 * 1024
+_DORIS_BE_MEMORY_METRICS = (
+    "out=$(curl -fsS --max-time 5 http://127.0.0.1:8040/metrics) || exit 1; "
+    "printf '%s\\n' \"$out\" | grep -Ei 'mem|process' | head -n 400"
+)
 Collect = Callable[[str, list[str]], str]
 
 
@@ -147,10 +153,28 @@ def _collect_container_log_events_memory(collect: Collect, cli: str, container: 
     collect("memory.txt", [cli, "exec", container, "sh", "-c", _CGROUP_MEMORY])
 
 
+def _doris_logs_script(directory: str, names: Sequence[str]) -> str:
+    files = " ".join(f"{_DORIS_HOME}/{directory}/log/{name}" for name in names)
+    return (
+        f"status=0; for f in {files}; do "
+        'printf "SOURCE %s\\n" "$f"; [ -f "$f" ] || { status=1; continue; }; '
+        f'tail -c {_DORIS_LOG_BYTES} "$f" || status=1; done; exit "$status"'
+    )
+
+
+def _collect_doris(collect: Collect, cli: str, container: str) -> None:
+    _collect_container_log_events_memory(collect, cli, container)
+    execute = [cli, "exec", container, "sh", "-c"]
+    collect("be-logs.txt", [*execute, _doris_logs_script("be", ("be.INFO", "be.WARNING", "be.out"))])
+    collect("fe-logs.txt", [*execute, _doris_logs_script("fe", ("fe.log", "fe.warn.log", "fe.out"))])
+    collect("be-memory-metrics.txt", [*execute, _DORIS_BE_MEMORY_METRICS])
+
+
 _COLLECTORS: dict[str, Callable[[Collect, str, str], None]] = {
     "starrocks": _collect_starrocks,
     "cedardb": _collect_container_log_events_memory,
     "pg-mooncake": _collect_container_log_events_memory,
+    "doris": _collect_doris,
 }
 EVIDENCE_PLATFORMS: Sequence[str] = tuple(_COLLECTORS)
 
@@ -215,7 +239,12 @@ def capture_engine_evidence(
             return ""
 
     cli = docker_assets.resolve_container_cli()
-    ids = collect("containers.txt", docker_assets.compose_container_ids_command(spec, project_name))
+    ids = collect(
+        "containers.txt",
+        mocker_launch.container_ids_command(project_name)
+        if mocker_launch.applies(spec)
+        else docker_assets.compose_container_ids_command(spec, project_name),
+    )
     container_ids = ids.split()
     if len(container_ids) != 1 or not all(char.isalnum() or char in "-_" for char in container_ids[0]):
         failures.append(f"expected exactly one {platform} container")

@@ -94,6 +94,11 @@ verdict from `benchbox-review` covers its head. Even then a changed pin must
 name a path already pinned at the base, stay inside the base range, keep those
 bytes identical to the base, and not turn a partial pin into a whole-file pin.
 
+The repository-authored `COPYRIGHT.md` is not an external notice. Its pin may
+change with the file when no trusted external selector covers it. The drift
+check still requires the pin and checks its digests against the updated file.
+The pin does not exempt the file from the comment scan.
+
 ## What the candidate ledger must satisfy
 
 The checker validates the pull request's own ledger, read from the committed

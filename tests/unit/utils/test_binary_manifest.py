@@ -67,6 +67,33 @@ def test_tree_rejects_membership_and_byte_changes(
         verify_binary_tree(binary_root)
 
 
+@pytest.fixture
+def installed_root(binary_root: Path) -> Path:
+    appendix = binary_root / "tpc-di" / "tpcdi_audit.sql"
+    appendix.parent.mkdir()
+    appendix.write_bytes(b"select 1;\n")
+    (binary_root / MANIFEST_NAME).write_bytes(build_binary_manifest(binary_root))
+    return binary_root
+
+
+def test_installed_tree_accepts_a_missing_distribution_excluded_file(installed_root: Path) -> None:
+    (installed_root / "tpc-di" / "tpcdi_audit.sql").unlink()
+    verify_binary_tree(installed_root)
+
+
+def test_installed_tree_still_hash_checks_a_present_distribution_excluded_file(installed_root: Path) -> None:
+    (installed_root / "tpc-di" / "tpcdi_audit.sql").write_bytes(b"select 2;\n")
+    with pytest.raises(ValueError, match="hash differs"):
+        verify_binary_tree(installed_root)
+
+
+def test_installed_tree_rejects_a_missing_generator_when_an_excluded_file_is_absent(installed_root: Path) -> None:
+    (installed_root / "tpc-di" / "tpcdi_audit.sql").unlink()
+    (installed_root / "linux" / "dbgen").unlink()
+    with pytest.raises(ValueError, match="membership differs"):
+        verify_binary_tree(installed_root)
+
+
 @pytest.mark.parametrize(
     "payload",
     [

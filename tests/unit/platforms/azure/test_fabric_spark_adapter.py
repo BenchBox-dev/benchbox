@@ -321,7 +321,7 @@ class TestFabricSparkAdapterDataLoading:
             patch("benchbox.platforms.azure.fabric_spark_adapter.AZURE_IDENTITY_AVAILABLE", True),
             patch("benchbox.platforms.azure.fabric_spark_adapter.DefaultAzureCredential", MagicMock()),
             patch("benchbox.platforms.azure.fabric_spark_adapter.REQUESTS_AVAILABLE", True),
-            patch("benchbox.platforms.azure.fabric_spark_adapter.requests") as mock_requests,
+            patch("benchbox.platforms.azure.spark_execution_utils.requests") as mock_requests,
             patch("benchbox.platforms.azure.fabric_spark_adapter.CloudSparkStaging") as mock_staging,
         ):
             mock_staging_instance = MagicMock()
@@ -371,7 +371,7 @@ class TestFabricSparkAdapterDataLoading:
             patch("benchbox.platforms.azure.fabric_spark_adapter.AZURE_IDENTITY_AVAILABLE", True),
             patch("benchbox.platforms.azure.fabric_spark_adapter.DefaultAzureCredential", MagicMock()),
             patch("benchbox.platforms.azure.fabric_spark_adapter.REQUESTS_AVAILABLE", True),
-            patch("benchbox.platforms.azure.fabric_spark_adapter.requests") as mock_requests,
+            patch("benchbox.platforms.azure.spark_execution_utils.requests") as mock_requests,
             patch("benchbox.platforms.azure.fabric_spark_adapter.CloudSparkStaging") as mock_staging,
         ):
             mock_staging_instance = MagicMock()
@@ -690,7 +690,7 @@ class TestFabricSparkLivySessionConstants:
             patch("benchbox.platforms.azure.fabric_spark_adapter.AZURE_IDENTITY_AVAILABLE", True),
             patch("benchbox.platforms.azure.fabric_spark_adapter.DefaultAzureCredential", MagicMock()),
             patch("benchbox.platforms.azure.fabric_spark_adapter.REQUESTS_AVAILABLE", True),
-            patch("benchbox.platforms.azure.fabric_spark_adapter.requests") as mock_requests,
+            patch("benchbox.platforms.azure.spark_execution_utils.requests") as mock_requests,
         ):
             mock_response = MagicMock()
             mock_response.status_code = 201
@@ -717,7 +717,7 @@ class TestFabricSparkLivySessionConstants:
             patch("benchbox.platforms.azure.fabric_spark_adapter.AZURE_IDENTITY_AVAILABLE", True),
             patch("benchbox.platforms.azure.fabric_spark_adapter.DefaultAzureCredential", MagicMock()),
             patch("benchbox.platforms.azure.fabric_spark_adapter.REQUESTS_AVAILABLE", True),
-            patch("benchbox.platforms.azure.fabric_spark_adapter.requests") as mock_requests,
+            patch("benchbox.platforms.azure.spark_execution_utils.requests") as mock_requests,
         ):
             mock_response = MagicMock()
             mock_response.status_code = 201
@@ -753,7 +753,7 @@ class TestFabricSparkLivySessionConstants:
             patch("benchbox.platforms.azure.fabric_spark_adapter.DefaultAzureCredential", MagicMock()),
             patch("benchbox.platforms.azure.fabric_spark_adapter.REQUESTS_AVAILABLE", True),
             patch("benchbox.platforms.azure.fabric_spark_adapter.CloudSparkStaging") as mock_staging,
-            patch("benchbox.platforms.azure.fabric_spark_adapter.requests") as mock_requests,
+            patch("benchbox.platforms.azure.spark_execution_utils.requests") as mock_requests,
         ):
             mock_staging.from_uri.return_value = MagicMock()
             mock_response = MagicMock()
@@ -783,7 +783,7 @@ def _create_fabric_session_conf(**adapter_kwargs):
         patch("benchbox.platforms.azure.fabric_spark_adapter.DefaultAzureCredential", MagicMock()),
         patch("benchbox.platforms.azure.fabric_spark_adapter.REQUESTS_AVAILABLE", True),
         patch("benchbox.platforms.azure.fabric_spark_adapter.CloudSparkStaging") as mock_staging,
-        patch("benchbox.platforms.azure.fabric_spark_adapter.requests") as mock_requests,
+        patch("benchbox.platforms.azure.spark_execution_utils.requests") as mock_requests,
     ):
         mock_staging.from_uri.return_value = MagicMock()
         mock_response = MagicMock()

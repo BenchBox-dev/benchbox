@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Fixed a possible native crash when GizmoSQL loads or InfluxDB loads TSBS CSV files that are compressed: an Arrow CSV reader stopped early no longer reads its compressed stream after the stream is closed."
+    }
+  ]
+}

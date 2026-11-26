@@ -1582,7 +1582,7 @@ def register_durable_job_tools(mcp: MCPServer, runtime: DurableJobRuntime) -> No
             lambda: runtime.repository.submit(principal.principal_id, request, idempotency_key=idempotency_key)
         )
         started = {**_public_status(job), "created": created}
-        limit_warning = run_limit_warning(platform, timeout_seconds)
+        limit_warning = run_limit_warning(platform, timeout_seconds, mode)
         if limit_warning:
             started["warnings"] = [*started.get("warnings", []), limit_warning]
         return started

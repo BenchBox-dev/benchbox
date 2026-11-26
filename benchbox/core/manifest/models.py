@@ -98,3 +98,4 @@ class ManifestV2:
     created_at: str | None = None
     generator_version: str | None = None
     plan_metadata: PlanMetadata | None = None
+    extra_fields: dict[str, Any] = field(default_factory=dict)

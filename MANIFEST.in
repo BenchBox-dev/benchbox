@@ -28,6 +28,10 @@ recursive-include _sources/tpc-h/dbgen/variants *.sql
 recursive-include benchbox/_binaries/tpc-h *
 recursive-include benchbox/_binaries/tpc-ds *
 recursive-include benchbox/_binaries/tpc-di *
+exclude benchbox/_binaries/tpc-di/tpcdi_audit.sql
+exclude benchbox/_binaries/tpc-di/tpcdi_validation.sql
+exclude benchbox/_binaries/tpc-di/tpcdi_visibility_1.sql
+exclude benchbox/_binaries/tpc-di/tpcdi_visibility_2.sql
 include benchbox/_binaries/SHA256MANIFEST.json
 global-exclude .DS_Store
 

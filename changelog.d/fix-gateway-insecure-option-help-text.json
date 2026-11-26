@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The allow_insecure_gateway help text no longer claims it disables TLS or accepts self-signed gateways: it turns off certificate revocation checking only, and certificate and host name verification still apply. The gateway_ocsp_fail_open help text now describes the CRL-based check used by snowflake-connector-python 5.x."
+    }
+  ]
+}

@@ -4,9 +4,12 @@
 
 Accepted, and implemented. `benchbox explorer` is no longer registered on the
 CLI, and `benchbox/cli/commands/explorer.py` and
-`benchbox/core/explorer_pipeline/` have been removed. The Context section below
-describes the tree as it stood when the decision was taken, not the current
-tree.
+`benchbox/core/explorer_pipeline/` have been removed. Subsequently,
+`results-explorer/` moved to `BenchBox-dev/benchbox-site`
+([`adr-site-repo-split.md`](adr-site-repo-split.md)), and core now invokes
+`_project/scripts/explorer_publish.py` through `scripts/site_inputs.py`. The
+sections below describe the tree and consumers as they stood when this decision
+was taken, not the current post-split layout.
 
 ## Date
 

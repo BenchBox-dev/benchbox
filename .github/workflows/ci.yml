@@ -160,6 +160,7 @@ jobs:
         run: |
           uv run -- python scripts/generate_corpus_inventory.py --check
           uv run -- python scripts/corpus_compliance_snapshot.py --check
+          uv run -- python scripts/generate_standard_scales.py --check
       - name: Corpus validation
         id: results-corpus
         if: ${{ !cancelled() && steps.results-inventory.conclusion == 'success' }}
@@ -242,6 +243,7 @@ jobs:
       tuning-paths-changed: ${{ steps.path-flags.outputs.tuning-paths-changed }}
       generator-volume-needed: ${{ steps.path-flags.outputs.generator-volume-needed }}
       sql-evidence-paths-changed: ${{ steps.path-flags.outputs.sql-evidence-paths-changed }}
+      snowflake-connector5-needed: ${{ steps.path-flags.outputs.snowflake-connector5-needed }}
       windows-leg-needed: ${{ steps.windows-select.outputs.windows-leg-needed }}
       trunk-lane-plain-needed: ${{ steps.path-flags.outputs.trunk-lane-plain-needed }}
       trunk-lane-coverage-needed: ${{ steps.path-flags.outputs.trunk-lane-coverage-needed }}
@@ -412,6 +414,9 @@ jobs:
           echo "trunk-lane-plain-needed=$trunk_plain" >> "$GITHUB_OUTPUT"
           echo "trunk-lane-coverage-needed=$trunk_coverage" >> "$GITHUB_OUTPUT"
           echo "sql-evidence-paths-changed=$sql_evidence" >> "$GITHUB_OUTPUT"
+          snowflake_connector5=false
+          if grep -qE '^(benchbox/platforms/snowflake|benchbox/core/gateway\.py|benchbox/core/hooks/|tests/unit/platforms/(.*/)?test_snowflake|pyproject\.toml$|uv\.lock$)' .ci-paths/changed.txt; then snowflake_connector5=true; fi
+          echo "snowflake-connector5-needed=$snowflake_connector5" >> "$GITHUB_OUTPUT"
           generator_volume=false
           if grep -qE '^(benchbox/core/(vector_search/(generator\.py|generator_specs\.yaml|benchmark\.py)|(amplab|h2odb|coffeeshop|tsbs_devops|joinorder_synthetic|write_primitives|transaction_primitives)/generator(\.py|_specs\.yaml)|tsbs_devops/schema\.py|joinorder/schema\.py|primitives/generator_base\.py)|benchbox/data/coffeeshop/.*|benchbox/utils/coffeeshop_seed_loader\.py|tests/unit/generators/sf1_size_baseline\.json)$' .ci-paths/trunk-lane-changed.txt; then generator_volume=true; fi
           echo "generator-volume-needed=$generator_volume" >> "$GITHUB_OUTPUT"
@@ -1664,6 +1669,34 @@ jobs:
       - name: Run real-CLI tuning liveness matrix
         run: make tuning-liveness-gate
 
+  snowflake-connector5:
+    name: snowflake-connector5
+    needs: ci-paths
+    if: ${{ needs.ci-paths.outputs.snowflake-connector5-needed == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
+
+      - name: Run Snowflake unit tests on snowflake-connector-python 5.x
+        env:
+          CONNECTOR5: snowflake-connector-python>=5,<6
+        run: |
+          set -euo pipefail
+          uv run --group dev --extra snowflake --with "$CONNECTOR5" -- python -c "import snowflake.connector as c; assert c.__version__.startswith('5.'), f'expected connector 5.x, loaded {c.__version__}'; print(c.__version__)"
+          uv run --group dev --extra snowflake --with "$CONNECTOR5" -- python -m pytest tests/unit/platforms -k snowflake -q -n 0 --tb=short
+
   generator-volume:
     name: generator-volume
     needs: ci-paths
@@ -1773,6 +1806,7 @@ jobs:
         run: |
           uv build
           uv run -- python -m scripts.verify_sqlglot_runtime_distribution dist/*.whl dist/*.tar.gz
+          uv run -- python scripts/verify_distribution_binaries.py dist/*.whl dist/*.tar.gz
 
       - name: Test package installation
         shell: bash
@@ -1885,7 +1919,7 @@ jobs:
 
   core:
     name: ${{ (github.event.action == 'edited' && !github.event.changes.base) && 'core (text edit)' || 'core' }}
-    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, generator-volume, sql-execution-evidence, windows-tests, package-smoke, dependency-audit, trunk-lane-plain, trunk-lane-coverage]
+    needs: [ci-paths, code-lint, code-test, medium-collect, medium-test, correctness-gate, tpch-binary-framing, tuning-liveness, snowflake-connector5, generator-volume, sql-execution-evidence, windows-tests, package-smoke, dependency-audit, trunk-lane-plain, trunk-lane-coverage]
     if: ${{ always() && !cancelled() && !(github.event.action == 'edited' && !github.event.changes.base) }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
@@ -1981,6 +2015,7 @@ jobs:
             --expect correctness-gate=${{ needs.ci-paths.outputs.heavy-needed == 'true' }} \
             --expect tpch-binary-framing=${{ needs.ci-paths.outputs.heavy-needed == 'true' || needs.ci-paths.outputs.framing-needed == 'true' }} \
             --expect tuning-liveness=${{ needs.ci-paths.outputs.tuning-paths-changed == 'true' }} \
+            --expect snowflake-connector5=${{ needs.ci-paths.outputs.snowflake-connector5-needed == 'true' }} \
             --expect generator-volume=${{ needs.ci-paths.outputs.generator-volume-needed == 'true' }} \
             --expect sql-execution-evidence=${{ needs.ci-paths.outputs.sql-evidence-paths-changed == 'true' }} \
             --expect windows-tests=${{ needs.ci-paths.outputs.windows-leg-needed == 'true' }} \

@@ -1908,7 +1908,12 @@ def immutable_external_ownership(
     fresh = sorted({entry["path"] for entry in effective_notices if entry["path"] not in base_paths})
     if fresh:
         raise PolicyError("candidate notices must update paths already pinned at the base: " + ", ".join(fresh))
-    _check_candidate_ranges(effective_notices, policy["notices"], root, base, staged)
+    immutable_notices = [
+        notice
+        for notice in effective_notices
+        if notice["path"] != "COPYRIGHT.md" or any(matches(notice["path"], entry["selector"]) for entry in external)
+    ]
+    _check_candidate_ranges(immutable_notices, policy["notices"], root, base, staged)
     notices = []
     for notice in effective_notices:
         if not any(matches(notice["path"], entry["selector"]) for entry in external):

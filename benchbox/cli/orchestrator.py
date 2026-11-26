@@ -100,10 +100,32 @@ class BenchmarkOrchestrator:
         if getattr(benchmark_class, "DATA_SOURCE_BENCHMARK", None) is None:
             source_name = _local_datagen_name(benchmark_instance, config.name)
             if source_name != config.name.lower() and self.custom_output_dir is None:
-                shared_path = self.directory_manager.get_datagen_path(source_name, config.scale_factor)
+                shared_path = self._resolve_local_datagen_path(source_name, config)
                 benchmark_instance.output_dir = shared_path
 
+        if opts.get("datagen_backend") is not None:
+            benchmark_instance.datagen_backend = str(opts["datagen_backend"])
+        if opts.get("datagen_backend_version") is not None:
+            benchmark_instance.datagen_backend_version = str(opts["datagen_backend_version"])
+
         return benchmark_instance
+
+    def _resolve_local_datagen_path(self, source_name: str, config: BenchmarkConfig) -> Path:
+        base_path = self.directory_manager.get_datagen_path(source_name, config.scale_factor)
+        opts = getattr(config, "options", None) or {}
+        backend = opts.get("datagen_backend")
+        if backend is not None and str(backend).lower() != "legacy":
+            from benchbox.utils.datagen_backend import resolve_backend_output_dir
+
+            return resolve_backend_output_dir(
+                base_path,
+                source_name,
+                backend=str(backend),
+                scale_factor=config.scale_factor,
+                backend_version=opts.get("datagen_backend_version"),
+                parquet_writer=opts.get("parquet_writer"),
+            )
+        return base_path
 
     def _resolve_construction_output_dir(self, config: BenchmarkConfig, benchmark_class) -> Optional[Union[str, Path]]:
         if self.custom_output_dir:
@@ -115,7 +137,7 @@ class BenchmarkOrchestrator:
 
         data_source = getattr(benchmark_class, "DATA_SOURCE_BENCHMARK", None)
         source_name = (data_source or config.name).lower()
-        return self.directory_manager.get_datagen_path(source_name, config.scale_factor)
+        return self._resolve_local_datagen_path(source_name, config)
 
     def _get_platform_config(
         self,
@@ -126,18 +148,22 @@ class BenchmarkOrchestrator:
         tuning_config: Optional[Any] = None,
         benchmark: Optional["BaseBenchmark"] = None,
     ) -> dict[str, Any]:
+        run_benchmark_name = benchmark_name
         if benchmark is not None:
             data_source = getattr(benchmark, "get_data_source_benchmark", lambda: None)()
             if data_source:
                 benchmark_name = data_source
 
-        return _core_get_platform_config(
+        platform_config = _core_get_platform_config(
             database_config,
             system_profile,
             benchmark_name=benchmark_name,
             scale_factor=scale_factor,
             tuning_config=tuning_config,
         )
+        if run_benchmark_name and run_benchmark_name != benchmark_name:
+            platform_config["run_benchmark_name"] = run_benchmark_name
+        return platform_config
 
     def _create_benchmark_instance(self, config: BenchmarkConfig, system_profile):
         return self._get_benchmark_instance(config, system_profile)
@@ -276,7 +302,7 @@ class BenchmarkOrchestrator:
         data_source = getattr(benchmark, "get_data_source_benchmark", lambda: None)()
         if data_source:
             return None
-        return str(self.directory_manager.get_datagen_path(config.name.lower(), config.scale_factor))
+        return str(self._resolve_local_datagen_path(config.name.lower(), config))
 
     def _resolve_custom_output_root(self, config: BenchmarkConfig, benchmark, platform_cfg):
         from benchbox.utils.cloud_storage import is_cloud_path
@@ -285,7 +311,7 @@ class BenchmarkOrchestrator:
             return self.custom_output_dir
 
         source_name = _local_datagen_name(benchmark, config.name)
-        local_cache_path = self.directory_manager.get_datagen_path(source_name, config.scale_factor)
+        local_cache_path = self._resolve_local_datagen_path(source_name, config)
 
         if is_databricks_path(self.custom_output_dir):
             from benchbox.utils.cloud_storage import DatabricksPath

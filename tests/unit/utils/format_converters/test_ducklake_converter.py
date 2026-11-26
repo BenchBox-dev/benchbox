@@ -361,3 +361,46 @@ class TestDuckLakeTableRead:
         assert len(df) == 3
         assert list(df["id"]) == [1, 2, 3]
         assert list(df["name"]) == ["Alice", "Bob", "Charlie"]
+
+
+class TestDuckLakeManifestOptions:
+    _SCHEMA = {"columns": ["id INTEGER NOT NULL", "name VARCHAR(20)"]}
+
+    @staticmethod
+    def _headered_csv(tmp_path: Path) -> Path:
+        source = tmp_path / "tags.csv"
+        source.write_text("id,name\n1,Alice\n2,Bob\n3,Carol\n", encoding="utf-8")
+        return source
+
+    def test_headered_comma_csv_converts_with_header_excluded_from_row_count(self, tmp_path):
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+
+        result = DuckLakeConverter().convert(
+            source_files=[self._headered_csv(tmp_path)],
+            table_name="tags",
+            schema=self._SCHEMA,
+            options=ConversionOptions(output_dir=out_dir, delimiter=",", has_header=True, validate_row_count=True),
+        )
+
+        assert result.row_count == 3
+
+    def test_expected_row_count_mismatch_raises_and_removes_output(self, tmp_path):
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+
+        with pytest.raises(ConversionError, match="input=5"):
+            DuckLakeConverter().convert(
+                source_files=[self._headered_csv(tmp_path)],
+                table_name="tags",
+                schema=self._SCHEMA,
+                options=ConversionOptions(
+                    output_dir=out_dir,
+                    delimiter=",",
+                    has_header=True,
+                    validate_row_count=True,
+                    expected_row_count=5,
+                ),
+            )
+
+        assert not (out_dir / "tags").exists()

@@ -11,6 +11,8 @@ import pytest
 from benchbox.platforms.base import DriverIsolationCapability
 from benchbox.platforms.base.data_loading import NO_BENCHMARK, DataSource
 from benchbox.platforms.snowflake import SnowflakeAdapter
+from tests.fixtures.snowflake_connector import installed_connector_parameters
+from tests.fixtures.snowflake_warehouses import warehouse_description, warehouse_row
 
 pytestmark = [
     pytest.mark.unit,
@@ -205,10 +207,8 @@ class TestSnowflakeAdapter:
         assert call_kwargs["user"] == "test_user"
         assert "username" not in call_kwargs
 
-        snowflake_connection = pytest.importorskip("snowflake.connector.connection")
-        DEFAULT_CONFIGURATION = snowflake_connection.DEFAULT_CONFIGURATION
         extra = {"client_session_keep_alive", "login_timeout", "network_timeout"}
-        assert set(call_kwargs) - extra <= set(DEFAULT_CONFIGURATION)
+        assert set(call_kwargs) - extra <= installed_connector_parameters()
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_create_admin_connection_with_key_pair(self, mock_snowflake, tmp_path):
@@ -1099,12 +1099,43 @@ benchbox-fixture-key-material
         adapter.configure_for_benchmark(mock_connection, "olap")
 
         execute_calls = [str(call) for call in mock_cursor.execute.call_args_list]
-        assert any("QUERY_ACCELERATION_MAX_SCALE_FACTOR" in call for call in execute_calls)
+        assert not any("QUERY_ACCELERATION_MAX_SCALE_FACTOR" in call for call in execute_calls)
         assert any("USE_CACHED_RESULT" in call for call in execute_calls)
         assert any("STATEMENT_TIMEOUT_IN_SECONDS" in call for call in execute_calls)
         assert any("USE WAREHOUSE" in call for call in execute_calls)
 
         assert mock_cursor.close.call_count == 2
+
+    @pytest.mark.parametrize("benchmark_type", ["olap", "tpch", "tpcds"])
+    @patch("benchbox.platforms.snowflake.snowflake")
+    def test_configure_for_benchmark_session_statements(self, mock_snowflake, benchmark_type):
+        mock_connection = Mock()
+        mock_cursor = Mock()
+        mock_connection.cursor.return_value = mock_cursor
+
+        adapter = SnowflakeAdapter(
+            account="test_account",
+            username="test_user",
+            password="test_pass",
+            warehouse="TEST_WH",
+            database="TEST_DB",
+            modify_warehouse_settings=True,
+            strict_validation=False,
+        )
+
+        adapter.configure_for_benchmark(mock_connection, benchmark_type)
+
+        session_statements = [
+            str(call.args[0]) for call in mock_cursor.execute.call_args_list if "ALTER SESSION" in str(call.args[0])
+        ]
+        assert session_statements == [
+            f"ALTER SESSION SET QUERY_TAG = '{adapter.query_tag}_optimization'",
+            f"ALTER SESSION SET TIMEZONE = '{adapter.timezone}'",
+            "ALTER SESSION SET AUTOCOMMIT = TRUE",
+            "ALTER SESSION SET USE_CACHED_RESULT = FALSE",
+            "ALTER SESSION SET STATEMENT_TIMEOUT_IN_SECONDS = 1800",
+        ]
+        assert not any("QUERY_ACCELERATION" in str(call) for call in mock_cursor.execute.call_args_list)
 
     @patch("benchbox.platforms.snowflake.snowflake")
     def test_configure_for_benchmark_with_multi_cluster(self, mock_snowflake):
@@ -1479,6 +1510,7 @@ benchbox-fixture-key-material
         mock_connection = Mock()
         mock_cursor = Mock()
         mock_connection.cursor.return_value = mock_cursor
+        mock_cursor.description = warehouse_description()
 
         mock_cursor.fetchone.side_effect = [
             ["6.21.0"],
@@ -1499,34 +1531,17 @@ benchbox-fixture-key-material
 
         mock_cursor.fetchall.side_effect = [
             [
-                [
-                    "TEST_WH",
-                    "STARTED",
-                    "STANDARD",
-                    "MEDIUM",
-                    1,
-                    1,
-                    1,
-                    1,
-                    0,
-                    0,
-                    0,
-                    0,
-                    300,
-                    True,
-                    True,
-                    False,
-                    False,
-                    False,
-                    "2024-01-01",
-                    "2024-01-01",
-                    "2024-01-01",
-                    "test_user",
-                    "Test warehouse",
-                    None,
-                    None,
-                    "STANDARD",
-                ]
+                list(
+                    warehouse_row(
+                        name="TEST_WH",
+                        size="MEDIUM",
+                        min_cluster_count=1,
+                        max_cluster_count=1,
+                        auto_suspend=300,
+                        auto_resume=True,
+                        scaling_policy="STANDARD",
+                    )
+                )
             ],
             [["TABLE1", 1000, 1024000, 7, mock_datetime, mock_datetime, None]],
         ]
@@ -1547,6 +1562,8 @@ benchbox-fixture-key-material
         assert metadata["snowflake_version"] == "6.21.0"
         assert "session_info" in metadata
         assert "warehouse_info" in metadata
+        assert metadata["warehouse_info"]["name"] == "TEST_WH"
+        assert metadata["warehouse_info"]["auto_suspend"] == 300
         assert "tables" in metadata
 
         mock_cursor.close.assert_called()

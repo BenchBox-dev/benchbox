@@ -201,7 +201,8 @@ that reads `needs.<caller job>.result` explicitly and fails when the head the ru
 no status from `benchbox-review[bot]` in `review-verdict` (verdict) or
 `review-gate` (gate), so an empty secret mapping can no longer end green while
 posting nothing on a head that has no status yet. It asserts only for `pull_request_target`
-and `workflow_dispatch` runs, and skips the runs the callee skips by design: sweeps and
+and `workflow_dispatch` runs, and skips the runs the callee skips by design: sweeps (a
+`sweep=true` dispatch names no pull request, so it exits at once) and
 comment events, closed or draft pull requests, a base other than `develop` or `release/*`, a head that has
 since moved, and a title edit for the verdict. It cannot tell a run that posted nothing from
 a run the callee skipped because the head already had a decision, so a status left by an
@@ -404,8 +405,10 @@ Without `REVIEW_APP_ID`, the job logs the result and succeeds.
 `review-verdict.yml` has two jobs: `sweep` dispatches due retries; `review` does
 everything else for one PR in one runner-pool admission
 (`_project/decisions/oracle-single-review-job-2026-10-25.md`). Its `if:` admits
-a manual dispatch, a `pull_request_target` event other than a plain edit, and a
-`/review` comment from an owner, member or collaborator. Steps:
+a manual dispatch that names a pull request and is not a sweep, a
+`pull_request_target` event other than a plain edit, and a `/review` comment
+from an owner, member or collaborator. A `sweep=true` dispatch runs only the
+sweep and health jobs. Steps:
 
 1. Refuse a dispatch from a ref other than `develop`, and check out trusted
    `develop` into `trusted`.
@@ -519,7 +522,7 @@ one-time inspection:
 | C6 fresh `HOME` | Each attempt gets a new `mkdtemp` directory; the previous one is deleted first and the checkout reset. |
 | C7 token scope | Job permissions are exactly `actions: write`, `contents: read`, `pull-requests: read`; no `id-token`, and the isolation step fails if `ACTIONS_ID_TOKEN_REQUEST_TOKEN` is present. `github.token` appears only in the `env:` of steps before or after the loop; both checkouts use `persist-credentials: false`. |
 | C8 timeout budget | The job's `timeout-minutes` is `max_attempts` times the longest reviewer `timeout_minutes` plus setup, under 360; the harness timeout fires first and becomes an absence. Every phase step also carries its own `timeout-minutes`: attempt-loop steps the `max_attempts` times longest reviewer budget, every other phase at most 30. A workflow test recomputes both from the policy. |
-| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`. Push and schedule runs share one `sweep` group; owner `/review` and adjudication comments and dispatches share the pull request's group with its `pull_request_target` runs; every other event gets a group of its own. A run that waits behind one in flight is held as the group's single pending run, and a newer pending run replaces the older one, which GitHub cancels. The publish and dispatch steps keep the default success condition, so a cancelled run posts nothing. |
+| C9 cancellation | `cancel-in-progress` is true only for `pull_request_target`. Push and schedule runs and `workflow_dispatch` runs with `sweep=true` share one `sweep` group; owner `/review` and adjudication comments and pull request dispatches share the pull request's group with its `pull_request_target` runs; every other event gets a group of its own. A run that waits behind one in flight is held as the group's single pending run, and a newer pending run replaces the older one, which GitHub cancels. The publish and dispatch steps keep the default success condition, so a cancelled run posts nothing. |
 | C10 App mint last | `REVIEW_APP_PRIVATE_KEY` is referenced by the review job's posting mint, after the loop, last disk scan and the finalize phase's redaction check, and by the sweep job's failure-status mint; the sweep job runs no reviewer, so its mint cannot leak to one. |
 
 Redaction is accident hygiene, not a control: it matches literal and

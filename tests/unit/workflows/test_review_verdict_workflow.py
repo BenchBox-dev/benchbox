@@ -62,7 +62,13 @@ def test_the_workflow_keeps_the_protocol_name_one_caller_job_and_the_posting_che
 
 def test_triggers_are_trusted_only() -> None:
     triggers = _triggers()
-    assert set(triggers) == {"push", "pull_request_target", "issue_comment", "workflow_dispatch", "schedule"}
+    assert set(triggers) == {
+        "push",
+        "pull_request_target",
+        "issue_comment",
+        "workflow_dispatch",
+        "schedule",
+    }
     assert triggers["push"] == {"branches": ["develop"]}
     assert set(triggers["pull_request_target"]["types"]) == {
         "opened",
@@ -73,13 +79,16 @@ def test_triggers_are_trusted_only() -> None:
     }
     assert triggers["issue_comment"]["types"] == ["created"]
     assert triggers["schedule"] == [{"cron": "23 * * * *"}]
+    assert "repository_dispatch" not in triggers
     assert "pull_request" not in triggers
 
 
-def test_the_dispatch_inputs_are_a_required_pull_request_and_two_optional_strings() -> None:
+def test_the_dispatch_inputs_are_an_optional_pull_request_two_optional_strings_and_a_sweep_flag() -> None:
     inputs = _triggers()["workflow_dispatch"]["inputs"]
-    assert set(inputs) == {"pr", "head", "reason"}
-    assert inputs["pr"]["required"] is True
+    assert set(inputs) == {"pr", "head", "reason", "sweep"}
+    assert inputs["pr"]["required"] is False
+    assert inputs["sweep"]["type"] == "boolean" and inputs["sweep"]["default"] is False
+    assert inputs["sweep"]["required"] is False
     assert inputs["head"]["required"] is False
     assert inputs["reason"]["required"] is False
 
@@ -117,9 +126,9 @@ def test_the_caller_has_no_steps_and_passes_named_secrets_with_no_in_tree_engine
         assert needle not in text, needle
 
 
-def _cancels(event_name: str) -> Any:
+def _cancels(event_name: str, inputs: dict[str, Any] | None = None) -> Any:
     expression = str(_load()["concurrency"]["cancel-in-progress"]).removeprefix("${{").removesuffix("}}")
-    return evaluate(expression, _context(event_name))
+    return evaluate(expression, _context(event_name, inputs=inputs))
 
 
 def test_the_concurrency_group_keeps_the_verdict_prefix() -> None:
@@ -131,7 +140,9 @@ def test_the_concurrency_group_keeps_the_verdict_prefix() -> None:
 def test_push_and_schedule_sweeps_share_one_group_that_never_cancels() -> None:
     group = _load()["concurrency"]["group"]
     pushed = render(group, _context("push"))
-    assert pushed == render(group, _context("schedule")) == "review-verdict-sweep"
+    assert pushed == render(group, _context("schedule"))
+    assert pushed == render(group, _context("workflow_dispatch", inputs={"sweep": True}))
+    assert pushed == "review-verdict-sweep"
     pull_groups = {render(group, _context("workflow_dispatch", inputs={"pr": str(number)})) for number in (7, 8)} | {
         render(group, _context("pull_request_target", {"action": "synchronize", "pull_request": {"number": 9}})),
         render(group, _context("issue_comment", {"issue": {"number": 10}})),
@@ -139,6 +150,7 @@ def test_push_and_schedule_sweeps_share_one_group_that_never_cancels() -> None:
     assert pushed not in pull_groups
     assert _cancels("push") is False
     assert _cancels("schedule") is False
+    assert _cancels("workflow_dispatch", {"sweep": True}) is False
 
 
 @pytest.mark.parametrize(
@@ -159,11 +171,12 @@ def test_a_dispatch_run_queues_in_the_pull_request_group_instead_of_cancelling()
     group = _load()["concurrency"]["group"]
     pull = {"action": "synchronize", "pull_request": {"number": 7}}
     groups = {
-        render(group, _context("workflow_dispatch", inputs={"pr": "7"})),
+        render(group, _context("workflow_dispatch", inputs={"pr": "7", "sweep": False})),
         render(group, _context("pull_request_target", pull)),
     }
     assert groups == {"review-verdict-pr-7"}
-    assert _cancels("workflow_dispatch") is False
+    assert _cancels("workflow_dispatch", {"pr": "7", "sweep": False}) is False
+    assert _run_title("workflow_dispatch", None, {"sweep": True}) == "review-verdict (workflow_dispatch pr=sweep)"
 
 
 def test_a_title_edit_does_not_share_the_pull_request_group() -> None:
@@ -192,6 +205,13 @@ def _run_title(event_name: str, event: dict[str, Any] | None = None, inputs: dic
         ),
         ("issue_comment", {"issue": {"number": 10}}, None, "review-verdict (issue_comment pr=10)"),
         ("schedule", {}, None, "review-verdict (schedule pr=sweep)"),
+        ("workflow_dispatch", {}, {"sweep": True}, "review-verdict (workflow_dispatch pr=sweep)"),
+        (
+            "workflow_dispatch",
+            {},
+            {"sweep": True, "pr": "7", "head": SHA},
+            "review-verdict (workflow_dispatch pr=sweep)",
+        ),
     ],
 )
 def test_the_run_title_records_the_head_the_run_targets(
@@ -199,4 +219,4 @@ def test_the_run_title_records_the_head_the_run_targets(
 ) -> None:
     rendered = _run_title(event_name, event, inputs)
     assert rendered == title
-    assert (RUN_TITLE_PULL.search(rendered) is not None) == (event_name != "schedule")
+    assert (RUN_TITLE_PULL.search(rendered) is not None) == ("pr=sweep" not in title)
