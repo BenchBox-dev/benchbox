@@ -5,7 +5,7 @@
     "A unit test sends SIGTERM to the preflight driver during a step and asserts the receipt is not passed.",
     "pr-open refuses the existing bad receipt shape (passed with no test step)."
   ],
-  "context": "Find the receipt writer behind `preflight-receipt:` output (make/ and scripts/ preflight code). Likely the shell trap or EXIT handler records success from a step counter rather than from the overall exit. Related: pr-preflight-honours-heavy-admit-wait-20261124 and batch-member-check-lock-wait-counts-against-limit-20261124 (lock waits count against the target limit). Do not delete the bad receipt by hand; a fresh passing preflight for the same tree overwrites it.",
+  "context": "Find the receipt writer behind `preflight-receipt:` output (make/ and scripts/ preflight code). Likely the shell trap or EXIT handler records success from a step counter rather than from the overall exit. Related: pr-preflight-honours-heavy-admit-wait-20261124 and batch-member-check-lock-wait-counts-against-limit-20261124 (lock waits count against the target limit). Do not delete the bad receipt by hand; a fresh passing preflight for the same tree overwrites it.\n\n2026-11-26: a third preflight on PR #4534 (head 29a398ae95, tree ff3d86a40b) was killed at 15% of its test step: 'Received 3 SIGINT/SIGTERM's, forcefully exiting.' then '==> stopping linux machine benchbox-agent', exit 143. This time the receipt was correctly 'failed'. The run was inside the shared linux machine benchbox-agent; right after, another session's qcorpus probe (scripts/linux_machine_run.sh benchbox-agent) held the heavy lock with 3 live waiters. Suspected but unproven cause of all three kills: another session stopping or restarting the shared VM while a preflight is using it. Worth checking whether linux_machine_run.sh or pr-preflight stops the machine on exit or entry while another lock holder could be using it.",
   "description": "On 2026-11-25 `make pr-preflight` in the deprecated-spellings worktree waited on the host lock (10 live waiters, holder `make batch-advance`), was terminated by the make target time limit after about 65 minutes ('make: *** [pr-preflight] Terminated: 15'), and still wrote receipt /Users/joe/.cache/benchbox/preflight/260961ee31eb382089bf35b48272c1c714cbc57e.json with status 'passed' and exit_status 0. The receipt lists 6 steps (changelog-check, ruff, lint-imports, ty, lint-markers, tree-wide lint-markers); the changed-file tests and the Linux container run never ran. `make pr-open` accepts a passed receipt for the tree, so a killed preflight lets a PR open without its tests.",
   "sessions": [
     {
@@ -14,6 +14,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "61ac8bf2ab944d0a830a4f279470e7f5",
+      "session_id": "8ba2da598ad24a19888c9b8f950272f3"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e82e03734cad9d7732bbc3a5",
+      "at": "2026-11-26T15:16:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2a894faea3a04c79b665249c94d8504d",
       "session_id": "8ba2da598ad24a19888c9b8f950272f3"
     }
   ]
