@@ -28014,7 +28014,10 @@
       "needs": [
         "datagen-p3-tpc-default-cutover",
         "datagen-p3-ssb-cutover",
-        "datagen-p3-synthetic-cutover"
+        "datagen-p3-synthetic-cutover",
+        "datagen-lib-tpcds-refresh-sets",
+        "datagen-decision-tpc-derived-code-licensing",
+        "datagen-upstream-contributions-followup"
       ],
       "priority": "low",
       "status": "open",
