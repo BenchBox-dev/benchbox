@@ -28020,6 +28020,15 @@
       "status": "dropped",
       "title": "Adopt tpcgen-cli --no-trailing-delimiter and delete the post-write strip once upstream releases it"
     },
+    "datagen-upstream-contributions-followup": {
+      "claim": null,
+      "needs": [
+        "datagen-decision-upstream-gap-policy"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Follow up tpcgen-rs contributions and remove carried or own code when upstream releases them"
+    },
     "dataproc-gcs-helpers-duplicated-20261125": {
       "claim": null,
       "needs": [],
