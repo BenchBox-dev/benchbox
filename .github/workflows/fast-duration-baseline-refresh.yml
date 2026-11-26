@@ -47,7 +47,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          read -r MAX_SOURCE_RUNS MIN_SOURCE_RUNS < <(python3 -c "from scripts.build_fast_duration_baseline import MAX_SOURCE_RUNS, MIN_SOURCE_RUNS; print(MAX_SOURCE_RUNS, MIN_SOURCE_RUNS)")
+          read -r MAX_SOURCE_RUNS MIN_SOURCE_RUNS BASELINE_BRANCH < <(python3 -c "from scripts.build_fast_duration_baseline import BASELINE_BRANCH, MAX_SOURCE_RUNS, MIN_SOURCE_RUNS; print(MAX_SOURCE_RUNS, MIN_SOURCE_RUNS, BASELINE_BRANCH)")
           mkdir -p fast-refresh/runs
           : > fast-refresh/api-calls.log
           calls=0
@@ -92,12 +92,13 @@ jobs:
               case "$pr_number" in ''|*[!0-9]*) continue;; esac
               [ -n "${seen_pr[$pr_number]:-}" ] && continue
               api_call "pr $pr_number state"
-              pr_facts=$(gh pr view "$pr_number" --json state,headRefOid,isCrossRepository,mergedAt \
-                -q '[.state, .headRefOid, (.isCrossRepository | tostring), .mergedAt] | join(" ")' 2>/dev/null || echo "UNKNOWN none true none")
-              read -r state pr_head cross merged_at <<< "$pr_facts"
-              echo "run $run_id artifact $artifact_id pr $pr_number state $state cross-repository $cross" >> fast-refresh/api-calls.log
+              pr_facts=$(gh pr view "$pr_number" --json state,headRefOid,isCrossRepository,baseRefName,mergedAt \
+                -q '[.state, .headRefOid, (.isCrossRepository | tostring), .baseRefName, .mergedAt] | join(" ")' 2>/dev/null || echo "UNKNOWN none true none none")
+              read -r state pr_head cross base_ref merged_at <<< "$pr_facts"
+              echo "run $run_id artifact $artifact_id pr $pr_number state $state cross-repository $cross base $base_ref" >> fast-refresh/api-calls.log
               [ "$state" = "MERGED" ] || continue
               [ "$cross" = "false" ] || continue
+              [ "$base_ref" = "$BASELINE_BRANCH" ] || continue
               sha="${name##*-}"
               [ "$sha" = "$pr_head" ] || continue
               [ "$sha" = "$run_sha" ] || continue
@@ -210,7 +211,7 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Write and lint the refresh summary
+      - name: Write the refresh summary
         if: steps.check.outputs.changed == 'true'
         shell: bash
         run: |
@@ -218,7 +219,6 @@ jobs:
           uv run -- python -m scripts.build_fast_duration_baseline summary \
             --previous fast-refresh/previous-baseline \
             --baseline tests/fixtures/fast_tier_baseline
-          npx --yes markdownlint-cli@0.49.1 --disable MD013 MD033 MD041 -- tests/fixtures/fast_tier_baseline/SUMMARY.md
 
       - name: Regenerate the docs reference inventory
         if: steps.check.outputs.changed == 'true'

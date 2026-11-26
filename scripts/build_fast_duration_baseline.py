@@ -47,6 +47,7 @@ REJECTION_CODES = (
 MAX_SOURCE_RUNS = 20
 MIN_SOURCE_RUNS = 10
 CI_WORKFLOW_PATH = ".github/workflows/ci.yml"
+BASELINE_BRANCH = "develop"
 COMMITTED_FILE_MODE = "100644"
 GITHUB_API_TIMEOUT_SECONDS = 60
 GITHUB_ARTIFACT_TIMEOUT_SECONDS = 300
@@ -532,6 +533,9 @@ def _pull_codes(pull: dict[str, Any], entry: dict[str, Any], repo: str, run_crea
         codes.append("pr-head")
     elif not _same_repo(head.get("repo"), repo):
         codes.append("pr-fork")
+    base = pull.get("base")
+    if not isinstance(base, dict) or base.get("ref") != BASELINE_BRANCH or not _same_repo(base.get("repo"), repo):
+        codes.append("pr-base")
     merged_at = _utc(pull.get("merged_at"))
     if merged_at is None:
         codes.append("pr-merged-at")

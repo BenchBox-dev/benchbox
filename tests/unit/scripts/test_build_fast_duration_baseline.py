@@ -960,6 +960,7 @@ class ReproduceFixture:
                 "merged": True,
                 "merged_at": "2026-10-24T12:00:00Z",
                 "head": {"sha": sha, "repo": {"full_name": "o/r"}},
+                "base": {"ref": "develop", "repo": {"full_name": "o/r"}},
             }
         for path, changes in (overrides or {}).items():
             payloads[path] = {**payloads[path], **changes}
@@ -1069,6 +1070,10 @@ def test_reproduce_reads_the_commit_not_the_worktree(reproduce: ReproduceFixture
         (PULL_PATH, {"merged_at": "2026-10-23T23:59:59Z"}, ["run-after-merge"]),
         (PULL_PATH, {"merged_at": RUN_CREATED_AT}, []),
         (PULL_PATH, {"merged_at": None}, ["pr-merged-at"]),
+        (PULL_PATH, {"base": {"ref": "feature/x", "repo": {"full_name": "o/r"}}}, ["pr-base"]),
+        (PULL_PATH, {"base": {"ref": "release/1.0", "repo": {"full_name": "o/r"}}}, ["pr-base"]),
+        (PULL_PATH, {"base": {"ref": "develop", "repo": {"full_name": "attacker/r"}}}, ["pr-base"]),
+        (PULL_PATH, {"base": None}, ["pr-base"]),
     ],
 )
 def test_reproduce_rejects_source_runs_whose_provenance_does_not_match(
