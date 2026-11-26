@@ -51,7 +51,6 @@ NOT_CARRIED = {
     "tests/unit/workflows/test_ci_changelog_gate.py": "tests the changelog gate workflow",
     "tests/unit/workflows/test_omp_pin_bump_workflow.py": "tests the pin-bump workflow",
     "tests/unit/workflows/test_omp_pin_watch_workflow.py": "tests the pin-watch workflow",
-    "tests/unit/workflows/test_ci_reproduce_fast_baseline.py": "tests ci.yml jobs the line does not carry, and reads review.yml only to match a job name",
 }
 
 
@@ -196,6 +195,7 @@ LEFT_AT_TAG = {
     "scripts/typecheck.py": "the line's own type check: it runs the line's ty configuration over the files pr-preflight passes it",
 }
 READ_AT_TAG = {
+    ".github/workflows/ci.yml": "the line's own CI; creation verification requires it to attest every derived path the carried policy declares",
     "Makefile": "a line keeps its own Makefile; carried tests passed against the v0.5.1 one",
     ".github/PULL_REQUEST_TEMPLATE.md": "read as a tag document",
     "CHANGELOG.md": "read as a tag document",

@@ -39,17 +39,6 @@ def test_the_reproduce_job_has_the_exact_attested_name() -> None:
     assert jobs()[REPRODUCE]["name"] == REPRODUCE_NAME
 
 
-def test_the_review_policy_attests_the_baseline_with_this_job() -> None:
-    policy = yaml.safe_load((REPO_ROOT / ".github" / "review.yml").read_text(encoding="utf-8"))
-    (entry,) = policy["evidence"]["derived_paths"]
-    assert entry["attested_by"] == REPRODUCE_NAME
-    assert entry["summary"] == "tests/fixtures/fast_tier_baseline/SUMMARY.md"
-    assert entry["files"] == [
-        "tests/fixtures/fast_tier_baseline/manifest.json",
-        "tests/fixtures/fast_tier_baseline/tests-[0-9][0-9].json",
-    ]
-
-
 @pytest.mark.parametrize("name", GATED_JOBS)
 def test_each_job_runs_on_every_pull_request_regardless_of_changed_paths(name: str) -> None:
     condition = jobs()[name]["if"]
