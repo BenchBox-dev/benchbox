@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The gate fixture contains active_cities, active_counties and active_states for all ten scales and the library matches every cell in a test.",
+    "At SF 1, 10 and 100 the values equal a dsqgen probe template's output (probe script committed under tools/).",
+    "The returns-table behaviour of key_ranges is documented and tested."
+  ],
+  "description": "## Problem\nThe library's scale model matches patched dsdgen for row and key counts at SF 0.01-3000, but it does not provide `rowcount(\"active_cities\" | \"active_counties\" | \"active_states\")`, which dsqgen templates draw from; upstream exposes cities and counties only at SF >= 1 and no states, and dsqgen itself cannot answer below SF 1. `key_ranges` omits the returns tables because their order numbers are a data-dependent subset of the sales range.\n\n## Change\nDerive the active_* values from patched dsdgen output at every accepted scale (0.01, 0.05, 0.1, 0.25, 0.5, 1, 10, 100, 1000, 3000) and from dsqgen probes at SF >= 1; implement them in the library's model; add them to `tests/data/tpcds_rowcount_gate.json`. State in the API how returns ranges are reported (bounds of the sales range, flagged as a superset) or leave them out with a documented reason.\n\n## Decision gates\n- If dsdgen-derived and dsqgen-probed values disagree at SF >= 1, stop and report both; do not pick one.\n- Scales above SF 10 need generated dimension data only; do not generate fact tables at SF 1000 or 3000.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T23:46:51Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "39af8a30db774dccbe25f52b17217949",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
