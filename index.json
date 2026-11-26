@@ -27712,7 +27712,8 @@
       "needs": [
         "datagen-lib-tpch-qgen",
         "datagen-lib-tpcds-dsqgen",
-        "datagen-lib-benchbox-integration"
+        "datagen-lib-benchbox-integration",
+        "datagen-lib-query-tests-in-ci"
       ],
       "priority": "high",
       "status": "open",
