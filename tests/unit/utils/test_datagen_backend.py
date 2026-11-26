@@ -179,7 +179,8 @@ def test_resolve_backend_output_dir_isolates_non_identical_backends(tmp_path: Pa
 
     cases = [
         ("tpch", 1.0, "4.0.0", None, True),
-        ("tpch", 1.0, "4.0.0", "benchbox-streaming", True),
+        ("tpch", 1.0, "4.0.0", "benchbox-pyarrow-streaming", True),
+        ("tpch", 1.0, "4.0.0", "benchbox-duckdb-streaming+benchbox-pyarrow-streaming", True),
         ("tpch", 1.0, "4.0.0", "tpcgen-cli", False),
         ("tpch", 1.0, "5.0.0", None, False),
         ("tpch", 10.0, "4.0.0", None, False),

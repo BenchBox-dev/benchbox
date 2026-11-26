@@ -15,7 +15,8 @@ package.
 `docs/internal/adr/adr-python-core-runtime.md` keeps BenchBox's core harness
 pure Python (`py3-none-any`) and establishes a two-step acceleration order for
 non-TPC synthetic generators that hit a measured throughput or memory wall:
-vectorized PyArrow/NumPy or embedded DuckDB SQL first, and a decoupled native
+vectorized PyArrow/NumPy (or embedded DuckDB SQL behind the optional `duckdb`
+extra) first, and a decoupled native
 generator package second. That ADR left TPC-H and TPC-DS on bundled per-OS C
 binaries (`dbgen` and `dsdgen` in `benchbox/_binaries/`).
 
@@ -199,6 +200,25 @@ non-quiesced development host; cutover enforcement requires 3-run medians
         LakeSail) are scheduled for re-baselining once the streaming converter
         lands; existing cloud bundles (BigQuery, Databricks, Snowflake) remain
         marked pre-change without incurring live-cloud spend.
+   - **Writer decision (2026-11-25):** PyArrow is the only Parquet writer.
+     DuckDB is not a core dependency (it ships only in extras), and the DuckDB
+     `COPY` fast path that the streaming converter first added ran out of its
+     memory limit on default zstd chunked input and fell back to PyArrow for 6
+     of 8 TPC-H tables, so the writer depended on host and input shape. Where
+     it did run, its row groups did not match the recorded 122,880 rows, its
+     bytes changed between runs, and it wrote NOT NULL columns as nullable.
+     PyArrow `open_csv` is single-threaded, so the converter reads up to two
+     chunk files concurrently and writes them in input order through one
+     `ParquetWriter`; the output is byte-identical to the serial writer. A
+     separate thread counts each file's non-empty lines while it is parsed,
+     so row-count validation stays independent of the CSV parser.
+     Measured on TPC-H from 10-chunk zstd input (`N=3` medians, 5-minute
+     host load 3.6–5.5): SF 1 2.98 s / 491 MiB and SF 10 35.75 s / 609 MiB
+     (serial: 9.1 s and 95.2 s).
+     DataFusion (one partition: SF 10 30.5 s / 476 MiB) and Polars (SF 10
+     13.1 s / 2,129 MiB) were evaluated and rejected: each adds a 105–160 MB
+     dependency, silently truncates out-of-scale decimals, and would change
+     Parquet bytes; Polars also exceeds the memory budget.
 3. **Keep a strict file/statistics boundary and Python-only manifest ownership.**
    Any native generator stays behind:
 
@@ -228,7 +248,8 @@ non-quiesced development host; cutover enforcement requires 3-run medians
        the platform lacks a wheel (Windows arm64), or the benchmark/scale is
        unsupported (`tpcds` at `SF < 1.0`).
      - **In-tree vectorized Python generators** (synthetic benchmarks and SSB)
-       depend only on NumPy/PyArrow/DuckDB already shipped in `benchbox`; once
+       depend only on NumPy/PyArrow shipped in core `benchbox` (DuckDB is an
+       optional extra, not a core dependency); once
        validated, promoting their default in `datagen_backend.py` is
        unconditional, with `--datagen-backend legacy` preserved for at least
        one minor release.
@@ -263,7 +284,8 @@ non-quiesced development host; cutover enforcement requires 3-run medians
    - Re-implement over-budget synthetic benchmarks (`h2odb`, `tsbs_devops`,
      `clickbench` synthetic, `tpch_skew`, `vector_search`, `coffeeshop`,
      `joinorder_synthetic`, `amplab`) one benchmark at a time in vectorized
-     NumPy/PyArrow or embedded DuckDB SQL with explicit deterministic seeding
+     NumPy/PyArrow (embedded DuckDB SQL only behind the optional `duckdb`
+     extra) with explicit deterministic seeding
      and per-benchmark versioning.
    - **Python/NumPy stream stability:** `np.random.Generator` (PCG64) does not
      guarantee bit-identical streams across all future NumPy releases. Protect
