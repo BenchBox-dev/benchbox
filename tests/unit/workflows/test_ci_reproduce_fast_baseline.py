@@ -98,6 +98,8 @@ def test_the_reproduce_job_fails_when_an_upstream_job_did_not_succeed() -> None:
     assert guard["name"] == "Require the upstream jobs"
     assert "needs.fast-baseline-changes.result != 'success'" in guard["if"]
     assert "needs.collect-fast-tier-ids.result != 'success'" in guard["if"]
+    assert "needs.fast-baseline-changes.outputs.changed != 'true'" in guard["if"]
+    assert "needs.fast-baseline-changes.outputs.changed != 'false'" in guard["if"]
     assert "exit 1" in guard["run"]
 
 
@@ -199,7 +201,18 @@ def test_the_new_jobs_have_no_early_exit_consumer_under_pipefail() -> None:
             assert not EARLY_EXIT_CONSUMER.search(run), f"{job}: {name}"
 
 
-def _run_detection(tmp_path: Path, listing: str, gh_exit: int = 0) -> tuple[int, str]:
+EXPECTED_HEAD = "a" * 40
+OTHER_HEAD = "b" * 40
+
+
+def _run_detection(
+    tmp_path: Path,
+    listing: str,
+    gh_exit: int = 0,
+    *,
+    head_changes_at: int = 99,
+    head_lookup_fails: bool = False,
+) -> tuple[int, str]:
     if shutil.which("bash") is None:
         pytest.skip("bash is required")
     bin_dir = tmp_path / "bin"
@@ -207,7 +220,21 @@ def _run_detection(tmp_path: Path, listing: str, gh_exit: int = 0) -> tuple[int,
     data = tmp_path / "listing.tsv"
     data.write_text(listing, encoding="utf-8")
     gh = bin_dir / "gh"
-    gh.write_text(f'#!/bin/sh\nif [ {gh_exit} -ne 0 ]; then exit {gh_exit}; fi\ncat "{data}"\n', encoding="utf-8")
+    counter = tmp_path / "head-lookups"
+    head_lookup = "exit 1" if head_lookup_fails else f'echo "$n" > "{counter}"'
+    gh.write_text(
+        "#!/bin/sh\n"
+        f"if [ {gh_exit} -ne 0 ]; then exit {gh_exit}; fi\n"
+        'case "$*" in\n'
+        "  *--jq*)\n"
+        f'    n=$(( $(cat "{counter}" 2>/dev/null || echo 0) + 1 ))\n'
+        f"    {head_lookup}\n"
+        f'    if [ "$n" -ge {head_changes_at} ]; then echo {OTHER_HEAD}; else echo {EXPECTED_HEAD}; fi\n'
+        "    exit 0;;\n"
+        "esac\n"
+        f'cat "{data}"\n',
+        encoding="utf-8",
+    )
     gh.chmod(0o755)
     output = tmp_path / "github-output"
     output.write_text("", encoding="utf-8")
@@ -221,6 +248,7 @@ def _run_detection(tmp_path: Path, listing: str, gh_exit: int = 0) -> tuple[int,
         "PR_NUMBER": "1",
         "REPO": "o/r",
     }
+    env["EXPECTED_HEAD"] = EXPECTED_HEAD
     script = tmp_path / "detect.sh"
     script.write_text(steps(DETECT)[0]["run"], encoding="utf-8")
     result = subprocess.run(
@@ -260,5 +288,18 @@ def test_detection_fails_the_step_instead_of_reporting_no_change(tmp_path: Path)
     assert code != 0
     assert output == ""
     code, output = _run_detection(tmp_path / "gh-failure", BASELINE_ROW, gh_exit=1)
+    assert code != 0
+    assert output == ""
+
+
+@pytest.mark.parametrize("changes_at", [1, 2], ids=["before-listing", "after-listing"])
+def test_detection_fails_when_the_pull_request_head_differs_from_the_run(tmp_path: Path, changes_at: int) -> None:
+    code, output = _run_detection(tmp_path, listing_after("", 5), head_changes_at=changes_at)
+    assert code != 0
+    assert output == ""
+
+
+def test_detection_fails_when_the_head_lookup_fails(tmp_path: Path) -> None:
+    code, output = _run_detection(tmp_path, listing_after("", 5), head_lookup_fails=True)
     assert code != 0
     assert output == ""

@@ -2231,11 +2231,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
         shell: bash
         run: |
           set -euo pipefail
+          require_head() {
+            current=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq .head.sha)
+            if [ "$current" != "$EXPECTED_HEAD" ]; then
+              echo "::error::The pull request head is $current but this run is for $EXPECTED_HEAD, so the changed-file listing may not describe it. Re-run on the current head."
+              exit 1
+            fi
+          }
+          require_head
           gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" \
             -q '.[] | [.filename, (.previous_filename // "")] | @tsv' > "$RUNNER_TEMP/changed-files.tsv"
+          require_head
           total=$(wc -l < "$RUNNER_TEMP/changed-files.tsv")
           if [ "$total" -ge 3000 ]; then
             echo "::error::The pull request lists 3000 or more changed files, which is the limit of the files API, so a change under tests/fixtures/fast_tier_baseline/ cannot be ruled out. Split the pull request."
@@ -2317,7 +2327,7 @@ jobs:
       BASELINE_DIR: tests/fixtures/fast_tier_baseline
     steps:
       - name: Require the upstream jobs
-        if: needs.fast-baseline-changes.result != 'success' || needs.collect-fast-tier-ids.result != 'success'
+        if: needs.fast-baseline-changes.result != 'success' || needs.collect-fast-tier-ids.result != 'success' || (needs.fast-baseline-changes.outputs.changed != 'true' && needs.fast-baseline-changes.outputs.changed != 'false')
         run: |
           echo "::error::The change detection or the fast-tier collection did not succeed, so the baseline cannot be reproduced."
           exit 1
