@@ -4113,7 +4113,7 @@
         }
       },
       "integration_branch": "feat/corpus-rule-r4",
-      "integration_head": "aa7bccbf4c3a4ce603f98e2d80f03138e055890f",
+      "integration_head": "5c63a58be012a46b0a0d65b36ca3217fef316a68",
       "integration_log": [
         {
           "at": "2026-11-22T23:06:06Z",
@@ -5015,6 +5015,20 @@
             "crr-d1-observed-engine-contract-and-dataframe"
           ],
           "seq": 20
+        },
+        {
+          "at": "2026-11-26T23:17:39Z",
+          "changed_files": [
+            "scripts/docs_data_sources.py",
+            "scripts/export_docs_data.py",
+            "tests/unit/scripts/test_doc_contracts.py"
+          ],
+          "head": "5c63a58be012a46b0a0d65b36ca3217fef316a68",
+          "kind": "fix",
+          "op_id": "90e0821246b94cfdb86928a325b0815d",
+          "previous_head": "aa7bccbf4c3a4ce603f98e2d80f03138e055890f",
+          "requires_acceptance": [],
+          "seq": 21
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-corpus-rule-r4",
