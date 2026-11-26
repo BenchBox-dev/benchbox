@@ -34428,7 +34428,7 @@
       "needs": [],
       "priority": "medium-high",
       "status": "open",
-      "title": "Stop pr-preflight being terminated while it waits for the host test lock"
+      "title": "Find what terminates pr-preflight while it waits for the host test lock, and report"
     },
     "heavy-tier-merge-group-dead-code-20261009": {
       "claim": null,
