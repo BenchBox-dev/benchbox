@@ -27990,6 +27990,8 @@
     "datagen-p2-ssb-versioned-migration": {
       "claim": null,
       "needs": [
+        "datagen-lib-tpch",
+        "datagen-decision-ssb-and-synthetic-acceptance",
         "datagen-lib-benchbox-integration",
         "crr-c2-row-count-references-tpc-and-ssb",
         "pvm-p1-run-ssb-clickbench",
