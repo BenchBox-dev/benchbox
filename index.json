@@ -27806,7 +27806,7 @@
     "datagen-lib-synthetic-tpch-skew": {
       "claim": null,
       "needs": [
-        "datagen-p2-ssb-versioned-migration",
+        "datagen-lib-ssb-and-synthetic-framework",
         "datagen-lib-tpch"
       ],
       "priority": "medium",
