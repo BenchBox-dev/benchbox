@@ -52787,6 +52787,15 @@
       "status": "done",
       "title": "TPCHOfficialBenchmark and TPCDSOfficialBenchmark produce wrong or no throughput results"
     },
+    "tpc-query-conformance-corpus": {
+      "claim": null,
+      "needs": [
+        "datagen-adr-query-generation-rust"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Capture a frozen TPC-H and TPC-DS query conformance corpus from the bundled qgen and dsqgen"
+    },
     "tpc-remove-certification-and-compliance-claims": {
       "claim": null,
       "needs": [],

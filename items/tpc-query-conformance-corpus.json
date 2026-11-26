@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Corpus committed with a manifest naming oracle binary and template SHA-256s.",
+    "A CI test validates the corpus format and size and runs without C binaries.",
+    "A capture script regenerates the corpus deterministically from the C tools."
+  ],
+  "description": "Oracle for Rust query generation (docs/internal/adr/adr-benchbox-datagen.md decision 8 (query generation in Rust)). Using the bundled linux-x86_64 qgen 3.0.0 and dsqgen 4.0.0 and BenchBox's patched templates (identified by SHA-256), record substituted parameter values and cleaned query text: TPC-H 22 queries plus 15a, -d defaults, seeds 0, 1, 42, 2^31-2 and 10,000 random seeds, Q11 at eight scales; TPC-DS 99 templates plus variants in use, all three draw shapes (single template; single template with -STREAMS; all templates per stream), default and sampled seeds, streams 0-20, stream order, scales 0.01-3000 for the 14 rowcount()-dependent templates. Store compactly (hashes plus parameter logs) so CI replays without any C binary. Also extract every published bundle's recorded query parameters for replay.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T14:58:49Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5806c5e1e5e945e9a4cbd2948e8a434e",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
