@@ -27246,6 +27246,15 @@
       "status": "done",
       "title": "Fail datagen when the manifest records zero tables, and fail validation when zero rows load"
     },
+    "datagen-lib-repo-skeleton": {
+      "claim": null,
+      "needs": [
+        "datagen-adr-rust-library-revision"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Create the benchbox-datagen repository with its Cargo workspace, CI and abi3 wheel builds"
+    },
     "datagen-p0-baseline-measurements": {
       "claim": null,
       "needs": [],

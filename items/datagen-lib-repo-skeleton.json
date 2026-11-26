@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Repository exists with the three-crate workspace, MIT licence and README stating scope and the no-fork rule.",
+    "CI runs cargo fmt --check, clippy -D warnings and tests on Linux and macOS.",
+    "A wheel build job produces installable cp311-abi3 wheels for every listed platform; a smoke test imports the module and streams one Arrow batch through the PyCapsule interface into pyarrow.",
+    "The library has no dependency on BenchBox Python code."
+  ],
+  "description": "First stage of the BenchBox-owned Rust data generation library (docs/internal/adr/adr-benchbox-datagen.md (revised 2026-11-26, PR #4540), decisions 1 and 3). Create BenchBox-dev/benchbox-datagen (MIT) with crates benchbox-datagen-core, benchbox-datagen-writers and benchbox-datagen-py, CI (fmt, clippy, tests) and cp311-abi3 wheel builds for macOS arm64/x86_64, Linux glibc and musl x86_64/aarch64 and Windows x86_64.\n\nDecision gate: creating a repository in the BenchBox-dev organisation may need owner permissions; if gh repo create is refused, stop and ask the owner to create it. Publishing to PyPI is a release action and needs owner approval.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T13:57:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "4bdfbae78dc24bda8d60414d08725e65",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
