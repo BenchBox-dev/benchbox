@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Every TPC-H case in tpc-query-conformance-corpus matches: parameter values exactly, then cleaned text.",
+    "PyO3 API returns query text and parameters; covered by Python tests.",
+    "No TPC template text in the library repository."
+  ],
+  "description": "docs/internal/adr/adr-benchbox-datagen.md decision 8 (query generation in Rust). Substitution-parameter generation, -d defaults, seeds and stream numbering identical to qgen 3.0.0; rendering of BenchBox-supplied template text. Templates are passed at call time; the library ships no TPC query text. Coordinate with or reuse the successors of upstream tpcgen-rs PR #644 where they land, without waiting on them.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T14:58:55Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "eab0954b819540398b5570d311468561",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
