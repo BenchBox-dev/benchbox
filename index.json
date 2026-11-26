@@ -27647,6 +27647,13 @@
       "status": "done",
       "title": "benchbox convert --format ducklake is offered but the orchestrator rejects it"
     },
+    "datagen-decision-ssb-and-synthetic-acceptance": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Decide the SSB and synthetic acceptance rule, the empty-query rule and SSB row counts"
+    },
     "datagen-decision-upstream-gap-policy": {
       "claim": null,
       "needs": [],

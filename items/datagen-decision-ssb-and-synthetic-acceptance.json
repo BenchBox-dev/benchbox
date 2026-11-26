@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The three answers are recorded in this item's context with the date.",
+    "The ADR acceptance gate states the chosen statistical rule and empty-query rule in checkable terms.",
+    "PR #7's acceptance report is regenerated under the chosen rules and shows 0 failures, or the failures are listed for the owner."
+  ],
+  "description": "## Problem\nThe Rust SSB generator (library draft PR #7) passes exact row counts, zero orphan keys, exact DuckDB/DataFusion agreement on all 13 queries, thread invariance and budgets. Three points need the owner. (1) 'Within legacy's variation across 5 seeds' read as strict min-max fails by chance: 28 of 479 metrics at SF 1 seed 42 are outside, 27 inside a 99.9% prediction interval, 1 a boundary quantile on a low-cardinality column. (2) Q3.4 at SF 0.1 returns 0 rows on library seed 42 where legacy seed 42 returned 2; legacy returned 0 rows on 3 of 5 seeds there, the library on 2 of 5. (3) The legacy generator, which the library copies, differs from the SSB specification: part is 200,000 x SF (spec: 200,000 x floor(1 + log2 SF)), date has 2,557 rows (spec 2,556), lineorder is exactly 6,000,000 x SF (spec: approximately).\n\n## Change\nRecord the owner's answer to each point and apply it: update the ADR acceptance gate wording, `tools/ssb_acceptance.py`, and PR #7 (row counts and goldens if the spec is chosen). The same rule then binds the eight synthetic generators.\n\n## Decision gates\n- Owner decides all three; no goldens are frozen before that.\n- Options for (1): min-max or 99.9% prediction interval plus rank check for boundary quantiles; strict min-max over more legacy seeds; owner reviews each outlier. For (2): compare empty-result rates across seeds, or seed-for-seed. For (3): SSB specification counts or legacy counts.\n- If the spec counts are chosen, published SSB results need a re-baseline and SSB_EXPECTED_ROW_COUNTS (query result counts) change.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T23:46:45Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "f52a5072324d40b79bab7acf34e452e9",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
