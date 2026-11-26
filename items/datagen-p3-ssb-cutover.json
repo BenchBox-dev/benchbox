@@ -3,7 +3,7 @@
     "SSB default resolves to native on platforms with a wheel; legacy remains selectable for at least one minor release.",
     "Golden hashes and the performance gate pass on macOS arm64 and Linux x86_64 at cutover time."
   ],
-  "context": "Phase 3 SSB cutover (owner decision A3). Separated from Tier 1 and Tier 3 synthetic cutovers so SSB's external pvm-p2/crr-c2 dependencies do not delay unrelated benchmarks.\n\nParked 2026-11-25 by owner decision: the datagen target is now a BenchBox-owned Rust library (see datagen-adr-rust-library-revision). This item waits for the revised ADR, which decides whether it is rebuilt around the library or dropped.",
+  "context": "Phase 3 SSB cutover (owner decision A3). Separated from Tier 1 and Tier 3 synthetic cutovers so SSB's external pvm-p2/crr-c2 dependencies do not delay unrelated benchmarks.\n\nParked 2026-11-25 by owner decision: the datagen target is now a BenchBox-owned Rust library (see datagen-adr-rust-library-revision). This item waits for the revised ADR, which decides whether it is rebuilt around the library or dropped.\n\nOwner decisions 2026-11-26 (dialog): (1) PyPI: owner sets up Trusted Publishing once; the agent then tags and publishes 0.x releases when a stage merges and BenchBox needs it. (2) Library repo merges require the review bot (theseus review-verdict/review-gate) and essential CI, mirroring BenchBox. (3) SSB and synthetic acceptance by pre-approved objective criteria: exact row counts, zero orphan FKs, per-column null rate, distinct ratio and mean/quantiles within the legacy generator's 5-seed variation, every query returns rows on both engines where legacy did, exact DuckDB/DataFusion agreement; escalate only on failure. (4) Upstream gaps: implement in benchbox-datagen-core on upstream's public API; upstream PRs are contributions, never waited on; no vendoring. (5) Agent may open tpcgen-rs issues/PRs from the BenchBox-dev fork. (6) Add a Windows arm64 wheel; if it passes the gates, Windows arm64 cuts over too. (7) Cutovers pre-approved when every ADR gate passes; misses go to the owner. (8) Parquet corpus re-baseline once, after the TPC cutover, against library Parquet. (9) Retirement: after all cutovers plus one minor release, remove dbgen/dsdgen and legacy Python generators (qgen/dsqgen under adversarial review). (10) Feature batches: A library TPC; B BenchBox integration; C SSB + 8 synthetic in parallel; D cutovers + re-baseline; E Parquet semantics + DuckLake convert in parallel with A; F retirement.",
   "description": "Per-benchmark cutover (docs/internal/adr/adr-benchbox-datagen.md (revised 2026-11-26, PR #4540), decision 4) after the SSB stage passes its gates. Library is already a required dependency from the TPC cutover.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
   "links": [
     "benchbox/utils/datagen_backend.py",
@@ -34,6 +34,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "635485c5b9cd457db50ac679120d0d41",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T14:31:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "128acf3ae459409f88c33be547ba1982",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
