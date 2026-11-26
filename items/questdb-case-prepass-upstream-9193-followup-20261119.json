@@ -3,6 +3,7 @@
     "The adopted wheel version and its upstream base are recorded, with proof it contains d30884dc.",
     "The decision is recorded; if removed, the guard tests pass on that wheel and QuestDB tpchavoc passes in the next release or trunk UAT (run id recorded)."
   ],
+  "closing_note": "Decision: keep _case_flag_to_predicate. Evaluated with fork 30.35.0.3 (upstream v30.35.0, containing d30884dc) in BenchBox PR #4532 (merge 4bb8586f): without the pre-pass, TPC-Havoc 18_v10 QuestDB SQL keeps the CASE WHEN ... THEN 1 ELSE 0 END = 1 form and 12 other _v10 ids differ, so the removal condition (identical output) is not met. Guard tests retained.",
   "context": "2026-11-25: upstream d30884dc is in v30.35.0, so the decision gate is triggered by the 30.35.0.2 adoption. Owner decision: decide keep or remove on the same branch and PR as the adoption (umbrella sqlglot-adopt-30-35-0-2). Hold cleared because the adoption is now scheduled.\n\n2026-11-25 decision: keep _case_flag_to_predicate. With fork 30.35.0.3 (upstream v30.35.0, which contains d30884dc) and the pre-pass removed, TPC-Havoc 18_v10 QuestDB SQL changes from `WHERE NOT _u_0.l_orderkey IS NULL` to `WHERE CASE WHEN NOT _u_0.l_orderkey IS NULL THEN 1 ELSE 0 END = 1`, and 12 other _v10 ids (3, 4, 5, 7, 8, 9, 10, 12, 14, 15, 16, 17) also differ. The guard tests stay. Delivered on branch feat/sqlglot-adopt-30-35-0-2.",
   "description": "#4339 added _case_flag_to_predicate in benchbox/utils/questdb_subqueries.py, which turns a WHERE conjunct CASE WHEN p THEN 1 ELSE 0 END = 1 into p so SQLGlot 30.33 unnests the IN subquery for QuestDB again. Upstream answered tobymao/sqlglot#9190 with #9193 (merge d30884dc, 2026-11-18), which unnests membership in WHERE CASE conditions. It is not in v30.33.0. Once a benchbox-sqlglot wheel containing d30884dc is adopted, the pre-pass may be redundant. The not_before hold is a fallback; act earlier if such a wheel is adopted first.\n\nDecision gate: when an adopted wheel's upstream base contains d30884dc, or at the hold date, choose keep or remove. Remove only if the adopted wheel produces the same 18_v10 QuestDB SQL without the pre-pass.\n\nGuardrails: never remove before the adopted wheel contains d30884dc; test_tpchavoc_case_in_subquery_query_leaves_no_subquery_predicate and the not-exact-filter cases in tests/unit/platforms/test_questdb_subquery_rewrites.py stay either way.",
   "links": [
@@ -42,6 +43,15 @@
       "generation": "7a490884b833465d8b389f44fc37edf5",
       "op": "take",
       "op_id": "c752031d9f2e4a739bc19180284392b2",
+      "session_id": "1f0f3dea42f44058a5594bfcbaa33b2f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:38bfd61e73967b4e5aca7d45",
+      "at": "2026-11-26T04:34:12Z",
+      "client": "omp-coding-agent",
+      "generation": "7a490884b833465d8b389f44fc37edf5",
+      "op": "finish",
+      "op_id": "668bb240f2d440e5b85c4e2712d38956",
       "session_id": "1f0f3dea42f44058a5594bfcbaa33b2f"
     }
   ]
