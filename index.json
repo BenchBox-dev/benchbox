@@ -27683,6 +27683,13 @@
       "status": "done",
       "title": "Create the benchbox-datagen repository with its Cargo workspace, CI and abi3 wheel builds"
     },
+    "datagen-lib-review-gate-and-publishing-setup": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Activate the review gate, merge ruleset and PyPI publishing on benchbox-datagen"
+    },
     "datagen-lib-synthetic-amplab": {
       "claim": null,
       "needs": [

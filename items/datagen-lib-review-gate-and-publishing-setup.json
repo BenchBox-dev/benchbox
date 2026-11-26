@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "`gh api repos/BenchBox-dev/benchbox-datagen/environments/review/secrets` lists the 8 secrets; `gh api .../rulesets` shows the main ruleset with review-gate restricted to the App.",
+    "PR #3 receives an App-posted review-verdict and a review-gate status; a PR with an open finding is blocked from merging (shown on a real PR).",
+    "The hourly review-gate and review-verdict runs on main are green.",
+    "A `v0.1.0` tag publishes all 8 wheels and the sdist to PyPI through Trusted Publishing; `pip install benchbox-datagen==0.1.0` works on Linux, macOS and Windows.",
+    "The publish job runs only on tags and uses no stored token."
+  ],
+  "description": "## Problem\nOwner decided (2026-11-26) that library PRs must pass the review bot and essential CI. PR #2 wired the theseus callers, but on 2026-11-27 the `review` environment has 0 secrets, no ruleset protects `main`, and App installation is unconfirmed. Consequences: `review-gate`/`review-verdict` fail on every PR and hourly on main (red runs); nothing is required to merge; library PRs #3-#7 are held; no release can be published, so BenchBox cannot pin the library.\n\n## Change\nOwner actions: (1) install the benchbox-review App on BenchBox-dev/benchbox-datagen; (2) add to environment `review` (deployment branch main) the secrets REVIEW_APP_ID, REVIEW_APP_PRIVATE_KEY, REVIEW_GATEWAY_TOKEN, REVIEW_GATEWAY_URL, TS_OAUTH_CI_CLIENT_ID, TS_OAUTH_CI_SECRET, TYPESAFE_API_KEY, OPENAI_API_KEY; (3) ruleset on main requiring the CI checks, `review pins`, and the `review-gate` status with the App as expected source; (4) allow-list the pinned theseus workflows and their actions; (5) PyPI pending Trusted Publisher (repo BenchBox-dev/benchbox-datagen, workflow wheels.yml, environment pypi). Agent actions after that: add the tag-triggered publish job to wheels.yml (OIDC, no token), `/review` PR #3, and verify the gate end to end.\n\n## Decision gates\n- Owner-only: steps 1-5 (settings, secrets). An agent must not create secrets, rulesets or App installations.\n- If the gate cannot reach the gateway from this repository (tailnet tag), stop and report rather than weakening the policy.\n- Interim merges by CI plus agent review are NOT authorised; ask the owner if the hold must be lifted for a named PR.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T23:46:30Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "5dc91290e008481bb6208c8633db94f5",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
