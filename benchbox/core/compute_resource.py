@@ -65,13 +65,21 @@ def migrate_saved_compute_keys(platform: str, saved: Mapping[str, Any]) -> dict[
         **dict.fromkeys(declaration.native_size_keys, COMPUTE_SIZE_OPTION),
     }
     kinds = declaration.resource_kind if isinstance(declaration.resource_kind, Mapping) else {}
-    migrated: dict[str, Any] = {}
-    for key, value in saved.items():
-        target = renames.get(key, key)
-        if target != key and (target in saved or target in migrated):
+    migrated = {key: value for key, value in saved.items() if key not in renames}
+    for target in (COMPUTE_RESOURCE_OPTION, COMPUTE_SIZE_OPTION):
+        natives = {key: value for key, value in saved.items() if renames.get(key) == target and value is not None}
+        if not natives or migrated.get(target) is not None:
             continue
+        if len({(value, kinds.get(key)) for key, value in natives.items()}) > 1:
+            from benchbox.core.exceptions import ConfigurationError
+
+            raise ConfigurationError(
+                f"Saved {platform} credentials set {', '.join(sorted(natives))} to conflicting values; "
+                f"keep one and save it as '{target}'."
+            )
+        key, value = next(iter(natives.items()))
         migrated[target] = value
-        if key in kinds and value is not None:
+        if key in kinds:
             migrated[COMPUTE_RESOURCE_KIND_OPTION] = kinds[key]
     return migrated
 

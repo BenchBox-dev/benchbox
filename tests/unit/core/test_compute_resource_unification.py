@@ -175,6 +175,18 @@ def test_saved_migration_keeps_canonical_over_native() -> None:
     assert migrated == {"compute_resource": "NEW", "account": "a"}
 
 
+def test_saved_migration_treats_a_null_canonical_value_as_absent() -> None:
+    migrated = migrate_saved_compute_keys("snowflake", {"compute_resource": None, "warehouse": "W"})
+    assert migrated == {"compute_resource": "W"}
+
+
+def test_saved_migration_refuses_two_redshift_native_keys_that_disagree() -> None:
+    from benchbox.core.exceptions import ConfigurationError
+
+    with pytest.raises(ConfigurationError, match="cluster_identifier, workgroup_name"):
+        migrate_saved_compute_keys("redshift", {"workgroup_name": "wg", "cluster_identifier": "c1"})
+
+
 def test_saved_migration_leaves_unrelated_keys() -> None:
     saved = {"account": "a", "password": "p"}
     assert migrate_saved_compute_keys("snowflake", saved) == saved
