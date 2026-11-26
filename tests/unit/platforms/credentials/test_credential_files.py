@@ -331,17 +331,17 @@ class TestSnowflakeValidation:
         assert saved["compute_resource"] == "LEGACY_WH"
         assert "warehouse" not in saved
 
-    def test_saved_redshift_native_key_saves_without_the_derived_resource_kind(self, tmp_path):
+    @pytest.mark.parametrize("native_key", ["cluster_identifier", "workgroup_name"])
+    def test_saved_redshift_native_key_keeps_its_kind_across_a_save(self, tmp_path, native_key):
         path = tmp_path / "credentials.yaml"
-        path.write_text(
-            yaml.dump({"redshift": {"host": "h.example.com", "cluster_identifier": "c1"}}), encoding="utf-8"
-        )
+        path.write_text(yaml.dump({"redshift": {"host": "h.example.com", native_key: "r1"}}), encoding="utf-8")
 
-        mgr = CredentialManager(credentials_path=path)
-        mgr.save_credentials()
+        CredentialManager(credentials_path=path).save_credentials()
         saved = yaml.safe_load(path.read_text(encoding="utf-8"))["redshift"]
+        reloaded = CredentialManager(credentials_path=path).get_platform_credentials("redshift")
 
-        assert saved == {"host": "h.example.com", "compute_resource": "c1"}
+        assert saved == {"host": "h.example.com", native_key: "r1"}
+        assert reloaded["compute_resource"] == "r1"
 
 
 class TestDatabricksValidation:

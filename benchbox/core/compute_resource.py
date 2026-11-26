@@ -76,6 +76,19 @@ def migrate_saved_compute_keys(platform: str, saved: Mapping[str, Any]) -> dict[
     return migrated
 
 
+def restore_saved_compute_kind(platform: str, section: Mapping[str, Any]) -> dict[str, Any]:
+    kind = section.get(COMPUTE_RESOURCE_KIND_OPTION)
+    declaration = get_compute_declaration(platform)
+    kinds = declaration.resource_kind if declaration and isinstance(declaration.resource_kind, Mapping) else {}
+    native_key = next((key for key, value in kinds.items() if value == kind), None)
+    restored: dict[str, Any] = {}
+    for key, value in section.items():
+        if key == COMPUTE_RESOURCE_KIND_OPTION:
+            continue
+        restored[native_key if key == COMPUTE_RESOURCE_OPTION and native_key else key] = value
+    return restored
+
+
 def resolve_linked_compute_resource(
     merged: Mapping[str, Any],
     layers: Sequence[Mapping[str, Any]],
@@ -149,6 +162,7 @@ __all__ = [
     "COMPUTE_RESOURCE_OPTION",
     "COMPUTE_SIZE_OPTION",
     "ComputeDeclaration",
+    "restore_saved_compute_kind",
     "compute_size_keys",
     "compute_value_keys",
     "declares_compute",

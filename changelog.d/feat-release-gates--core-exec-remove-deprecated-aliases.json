@@ -11,7 +11,7 @@
         "Deployment keys: use the platform selector (for example --platform clickhouse:local or firebolt:core) instead of deployment_mode, mode, embedded, sail_mode, firebolt_mode or Velox deployment. The ClickHouse values embedded and mode=local|server are no longer accepted.",
         "Engine keys: use --execution-engine streaming instead of the Polars streaming option, --polars-streaming and the MCP streaming parameter; --execution-engine threaded or distributed instead of Dask use_distributed; --execution-engine postgres or duckdb instead of pg-duckdb force_execution; runtime_version instead of Athena Spark engine_version.",
         "Python API: adapter constructors and DatabaseConfig raise TypeError for a removed keyword argument and name the replacement. get_adapter() and PlatformRegistry.create_adapter() reject them before building an adapter.",
-        "Saved credentials: ~/.benchbox/credentials.yaml still loads an old key such as Snowflake warehouse as compute_resource and writes the new key on the next save. The SNOWFLAKE_WAREHOUSE environment variable and --official are unchanged."
+        "Saved credentials: ~/.benchbox/credentials.yaml still loads an old key such as Snowflake warehouse as compute_resource and writes the new key on the next save. A saved Redshift cluster_identifier or workgroup_name is kept, because it says which kind of resource it names. The SNOWFLAKE_WAREHOUSE environment variable and --official are unchanged."
       ]
     }
   ]

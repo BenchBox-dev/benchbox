@@ -124,12 +124,10 @@ class CredentialManager:
         parent.mkdir(mode=PRIVATE_DIRECTORY_MODE, parents=True, exist_ok=True)
         self._warn_if_too_open()
 
-        from benchbox.core.compute_resource import COMPUTE_RESOURCE_KIND_OPTION
+        from benchbox.core.compute_resource import restore_saved_compute_kind
 
         data_to_save = {
-            platform: {key: value for key, value in section.items() if key != COMPUTE_RESOURCE_KIND_OPTION}
-            if isinstance(section, dict)
-            else section
+            platform: restore_saved_compute_kind(str(platform), section) if isinstance(section, dict) else section
             for platform, section in self._restore_references(dict(self.credentials), self._raw_credentials).items()
         }
         data_to_save["_metadata"] = {
