@@ -559,7 +559,7 @@ def test_refuses_a_would_block_duration_verdict_unless_the_baseline_changes(
     err = _refusal(world, ready_pr, capsys)
     assert "summed-time ratio 1.500" in err
     assert "median per-test ratio 1.250" in err
-    assert "scripts/build_fast_duration_baseline.py" in err
+    assert "fast-duration-baseline-refresh.yml" in err
 
 
 def test_refuses_until_the_fast_duration_verdict_exists(
