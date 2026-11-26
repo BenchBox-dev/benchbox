@@ -15086,7 +15086,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-historical",
-      "integration_head": "55bd74a74227bfe570ec4da1bd473e9e5c083874",
+      "integration_head": "6b46b12b3721e93a54fa3f0ddf46e93ce935602a",
       "integration_log": [
         {
           "at": "2026-11-23T23:39:31Z",
@@ -15513,6 +15513,37 @@
             "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121"
           ],
           "seq": 10
+        },
+        {
+          "at": "2026-11-26T15:30:46Z",
+          "changed_files": [
+            "benchbox/core/results/standard_scales.json",
+            "benchbox/core/runner/conversion.py",
+            "benchbox/utils/datagen_version.py",
+            "benchbox/utils/format_converters/base.py",
+            "benchbox/utils/format_converters/parquet_converter.py",
+            "changelog.d/fix-parquet-single-pyarrow-writer.json",
+            "changelog.d/fix-tpcdi-registry-scales.json",
+            "docs/internal/adr/adr-benchbox-datagen.md",
+            "tests/fixtures/fast_tier_baseline/manifest.json",
+            "tests/fixtures/fast_tier_baseline/tests-00.json",
+            "tests/fixtures/fast_tier_baseline/tests-01.json",
+            "tests/fixtures/fast_tier_baseline/tests-02.json",
+            "tests/fixtures/fast_tier_baseline/tests-03.json",
+            "tests/fixtures/fast_tier_baseline/tests-04.json",
+            "tests/fixtures/fast_tier_baseline/tests-05.json",
+            "tests/fixtures/fast_tier_baseline/tests-06.json",
+            "tests/fixtures/fast_tier_baseline/tests-07.json",
+            "tests/unit/core/test_datagen_version.py",
+            "tests/unit/utils/format_converters/test_parquet_converter.py",
+            "tests/unit/utils/test_datagen_backend.py"
+          ],
+          "head": "6b46b12b3721e93a54fa3f0ddf46e93ce935602a",
+          "kind": "develop-merge",
+          "merged_parent": "b88291e0fdc93c2719c3dfb7249a4d882e0c52f0",
+          "op_id": "a98991e1b1fb4ba0ac84aa1a6422b8dc",
+          "previous_head": "55bd74a74227bfe570ec4da1bd473e9e5c083874",
+          "seq": 11
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-historical",
