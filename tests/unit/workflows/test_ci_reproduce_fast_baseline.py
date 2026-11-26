@@ -81,6 +81,18 @@ def test_tooling_needs_every_job_and_requires_each_one_to_succeed() -> None:
         assert f"--expect {name}" not in aggregate["run"]
 
 
+def test_the_attesting_jobs_and_the_aggregate_cannot_fail_open() -> None:
+    tooling = jobs()["tooling"]
+    assert "continue-on-error" not in tooling
+    for step in tooling["steps"]:
+        assert "continue-on-error" not in step, step.get("name")
+    for name in GATED_JOBS:
+        assert "continue-on-error" not in jobs()[name], name
+        for step in steps(name):
+            assert "continue-on-error" not in step, step.get("name")
+            assert "|| true" not in step.get("run", ""), step.get("name")
+
+
 def test_a_skipped_or_failed_job_fails_the_tooling_aggregate() -> None:
     for name in GATED_JOBS:
 
