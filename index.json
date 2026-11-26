@@ -27251,12 +27251,17 @@
       "title": "Wire benchbox-datagen into BenchBox as the native datagen backend behind the native-datagen extra"
     },
     "datagen-lib-repo-skeleton": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-27T14:01:25Z",
+        "generation": "578ee69c98ed4e818328956da1b32235",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
+      },
       "needs": [
         "datagen-adr-rust-library-revision"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Create the benchbox-datagen repository with its Cargo workspace, CI and abi3 wheel builds"
     },
     "datagen-lib-synthetic-amplab": {
