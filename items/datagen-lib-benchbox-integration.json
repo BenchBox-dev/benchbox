@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "--datagen-backend native generates TPC-H through the library on every supported scale; it fails loudly with an actionable message when the extra is missing, the platform has no wheel, or the benchmark is not implemented.",
+    "The default table keeps every benchmark on legacy; the trailing-delimiter strip tied to tpcgen-cli is removed.",
+    "Byte-identical delimited TPC-H shares datagen/<benchmark>_<sf> with dbgen output; library Parquet has its own identity hash and writer identity.",
+    "PR CI runs the TPC-H parity gate (SF 0.01 and 0.1, SHA-256 and bidirectional EXCEPT ALL on Parquet) and the 7 derived TPC consumer smoke suites."
+  ],
+  "description": "Integration stage (docs/internal/adr/adr-benchbox-datagen.md (revised 2026-11-26, PR #4540), decisions 3, 4 and 5). Replace the tpcgen-cli entries in benchbox/utils/datagen_backend.py with the library, add the native-datagen extra pinned to the library version, record generator_backend=benchbox-datagen and its version in the manifest, and add the PR parity CI job for TPC-H.\n\nDecision gate: the first PyPI release of benchbox-datagen needs owner approval before the extra can pin it.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T13:57:40Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8519f6e3773c4a809c2e04da291da440",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}

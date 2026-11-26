@@ -27246,6 +27246,15 @@
       "status": "done",
       "title": "Fail datagen when the manifest records zero tables, and fail validation when zero rows load"
     },
+    "datagen-lib-benchbox-integration": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-tpch"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Wire benchbox-datagen into BenchBox as the native datagen backend behind the native-datagen extra"
+    },
     "datagen-lib-repo-skeleton": {
       "claim": null,
       "needs": [
