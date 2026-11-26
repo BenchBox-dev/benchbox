@@ -27688,6 +27688,15 @@
       "status": "open",
       "title": "Switch BenchBox TPC query managers to benchbox-datagen and make them lazy"
     },
+    "datagen-lib-query-tests-in-ci": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-tpch-qgen"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Run the query conformance corpus in benchbox-datagen CI and close qgen coverage gaps"
+    },
     "datagen-lib-repo-skeleton": {
       "claim": null,
       "needs": [
