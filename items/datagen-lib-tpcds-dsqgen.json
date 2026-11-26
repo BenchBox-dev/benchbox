@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "Every TPC-DS case in the corpus matches: parameter values and stream order exactly, then normalised text.",
+    "Scale-model gate: rowcount() values equal library row/key counts at 0.01, 0.05, 0.1, 0.25, 0.5, 1, 10, 100, 1000 and 3000.",
+    "Q9 at SF 3000 within 2x of dsqgen time and memory."
+  ],
+  "description": "docs/internal/adr/adr-benchbox-datagen.md decision 8 (query generation in Rust). Interpreter for the dsqgen template language over BenchBox-supplied templates and tpcds.idx, rowcount() from the library's scale model (including BenchBox's patched fractional curve), all three draw shapes, stream permutation, -LOG style parameter output. Land crr-o2-official-tpcds-stream-zero first if it simplifies official mode.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T14:58:59Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "9559a690f8c143a48208adee59b87233",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
