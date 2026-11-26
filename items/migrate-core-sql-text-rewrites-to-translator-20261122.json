@@ -2,6 +2,7 @@
   "acceptance": [
     "UNRESOLVED_VIOLATIONS is empty and each former rewrite uses the standard translation path."
   ],
+  "closing_note": "BenchBox PR #4537 (merge 8d8723e04f2d6739112dce55cc02da328f0cc9ae) adopted fork 30.35.0.5 (fork PRs #157 and #158). UNRESOLVED_VIOLATIONS is empty (11 keys). NYC Taxi, QuestDB now(), series generation (lower_series_selects), SingleStore vector and Doris/StarRocks GROUP BY () handled by the fork; maintenance, T-SQL TOP and transactional scripts go through translate_sql_query (identify=False, terminators kept); tuning metadata DDL via translate_ddl with explicit type maps; ClickHouse lag( written in the catalog variant; SingleStore and PostgreSQL isolation handling are operation-catalog platform overrides per owner decision.",
   "context": "The broadened name match found an eleventh case: NYCTaxiBenchmark.translate_query_text (benchbox/core/nyctaxi/benchmark.py) rewrites query_text by regex per dialect (day-of-week, epoch difference) for bigquery, databricks/spark, singlestore, sqlite and snowflake. It is listed in UNRESOLVED_VIOLATIONS and is in scope here.\n\n2026-11-22 owner decision: migrate the 11 rewrites first so the guidance PR (#4442) lands with an empty UNRESOLVED_VIOLATIONS. The migration is done on the #4442 branch (docs/sql-translation-single-entry) and closes with it; the need on the guidance item is removed.\n\n2026-11-22 correction: the owner's migrate-first choice applied only if the review kept D1 a third time. The review of d754e88987 withdrew D1 (SHIP), so #4442 lands with the 11 recorded entries and this item stays a separate follow-up after it; the need is restored.\n\n2026-11-25: delivered under umbrella sqlglot-rewrites-into-fork. Owner decision: rewrites that become named rewrites go to the SQLGlot fork, not _LOCAL_REWRITES; the combined inventory with migrate-local-sql-rewrites-into-sqlglot-fork-20261120 is confirmed by the owner before code moves.",
   "description": "## Problem\nThe text-level SQL rewrite check (tests/unit/sql_compat/test_core_sql_text_rewrite.py) found ten existing per-platform rewrites of SQL text in benchbox/core, listed in its UNRESOLVED_VIOLATIONS: ClickHouse LAG (read_primitives/queries.py), MySQL CAST (tpcds/maintenance_functions.py), Doris/StarRocks GROUP BY () (tpchavoc/dialect_compat.py), SQLite series and typed dates (transaction_primitives/benchmark.py), per-platform transactional rewrites and StarRocks BEGIN (transactional/benchmark_base.py), QuestDB CURRENT_TIMESTAMP (transactional/questdb_sql.py), T-SQL TOP 1 and per-platform column types (tuning/metadata.py), SingleStore function replacement (vector_search/queries.py).\n\n## Change\nMove each to the standard path: translate_sql_query, or a named fork rewrite through apply_rewrite, or SCHEMA_EMIT/type_map for column types; remove its UNRESOLVED_VIOLATIONS entry in the same change. One PR per area is fine.\n\n## Verification rubric\nPass: UNRESOLVED_VIOLATIONS is empty; the affected benchmarks' golden corpus and translation tests show no unintended output change.",
   "sessions": [
@@ -52,6 +53,15 @@
       "generation": "e4f6a6a662ac44aa8921ee6b12e0b063",
       "op": "take",
       "op_id": "61c4a4ad3e814026b6ab381ebf784d1b",
+      "session_id": "1f0f3dea42f44058a5594bfcbaa33b2f"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:38bfd61e73967b4e5aca7d45",
+      "at": "2026-11-26T04:34:51Z",
+      "client": "omp-coding-agent",
+      "generation": "e4f6a6a662ac44aa8921ee6b12e0b063",
+      "op": "finish",
+      "op_id": "457420fa2fba4a6f998d2571c3b3f2a8",
       "session_id": "1f0f3dea42f44058a5594bfcbaa33b2f"
     }
   ]
