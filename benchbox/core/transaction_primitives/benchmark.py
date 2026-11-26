@@ -6,12 +6,13 @@
 
 import datetime
 import importlib
-import re
 import shutil
 import tempfile
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, Optional, Union
 
 from benchbox.core.connection import DatabaseConnection
@@ -441,24 +442,14 @@ class TransactionPrimitivesBenchmark(TransactionalBenchmarkBase["OperationResult
             get_staging_tables_sql=get_all_staging_tables_sql,
         )
 
-    _SQLITE_SERIES_RE = re.compile(
-        r"SELECT\s+unnest\(\s*generate_series\(\s*(?P<lo>[^,()]+?)\s*,\s*(?P<hi>[^,()]+?)\s*\)\s*\)\s+AS\s+(?P<alias>\w+)",
-        re.IGNORECASE,
+    _SCRIPT_TARGET_DIALECTS: Mapping[str, str] = MappingProxyType(
+        {**TransactionalBenchmarkBase._SCRIPT_TARGET_DIALECTS, "sqlite": "sqlite"}
     )
-    _SQLITE_TYPED_DATE_RE = re.compile(r"\b(?:DATE|TIMESTAMP)\s+(?P<literal>'[^']*')", re.IGNORECASE)
 
     def _rewrite_transactional_sql_for_platform(self, sql: str, platform_key: Optional[str]) -> str:
-        if (platform_key or "").lower() != "sqlite":
-            return super()._rewrite_transactional_sql_for_platform(sql, platform_key)
-        sql = self._SQLITE_SERIES_RE.sub(
-            lambda m: (
-                f"WITH RECURSIVE _series({m['alias']}) AS (SELECT {m['lo']} UNION ALL "
-                f"SELECT {m['alias']} + 1 FROM _series WHERE {m['alias']} < {m['hi']}) "
-                f"SELECT {m['alias']} FROM _series"
-            ),
-            sql,
+        return super()._rewrite_transactional_sql_for_platform(
+            self._translate_transactional_script(sql, platform_key), platform_key
         )
-        return self._SQLITE_TYPED_DATE_RE.sub(r"\g<literal>", sql)
 
     def execute_operation(
         self,

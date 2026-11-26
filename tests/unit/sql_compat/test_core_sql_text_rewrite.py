@@ -138,45 +138,7 @@ REVIEWED_ALLOWLIST: dict[Key, Accepted] = {
     ),
 }
 
-UNRESOLVED_VIOLATIONS: dict[Key, Accepted] = {
-    ("benchbox/core/nyctaxi/benchmark.py", "NYCTaxiBenchmark.translate_query_text", "re.sub"): Accepted(
-        8, "per-dialect day-of-week and epoch-difference rewrites by regex on query text"
-    ),
-    ("benchbox/core/read_primitives/queries.py", "ReadPrimitivesQueryManager.get_query", "replace"): Accepted(
-        1, "ClickHouse-only function-name case rewrite on query text"
-    ),
-    ("benchbox/core/tpcds/maintenance_functions.py", "MaintenanceFunction.statements_for", "replace"): Accepted(
-        1, "MySQL-family CAST target rewrite on statement text"
-    ),
-    ("benchbox/core/tpchavoc/dialect_compat.py", "rewrite_dialect_variant", "replace"): Accepted(
-        1, "Doris and StarRocks GROUP BY () removal by text replacement"
-    ),
-    (
-        "benchbox/core/transaction_primitives/benchmark.py",
-        "TransactionPrimitivesBenchmark._rewrite_transactional_sql_for_platform",
-        "re.sub",
-    ): Accepted(2, "SQLite series and typed-date rewrites by regex on transactional SQL"),
-    (
-        "benchbox/core/transactional/benchmark_base.py",
-        "TransactionalBenchmarkBase._rewrite_transactional_sql_for_platform",
-        "re.sub",
-    ): Accepted(9, "per-platform series, date-literal, temp-table and BEGIN rewrites by regex on transactional SQL"),
-    ("benchbox/core/transactional/benchmark_base.py", "_starrocks_begin_statement", "re.sub"): Accepted(
-        1, "StarRocks BEGIN rewrite by regex"
-    ),
-    ("benchbox/core/transactional/questdb_sql.py", "rewrite_questdb_operation_sql", "re.sub"): Accepted(
-        1, "QuestDB CURRENT_TIMESTAMP rewrite by regex"
-    ),
-    ("benchbox/core/tuning/metadata.py", "TuningMetadataManager._first_row_query", "re.sub"): Accepted(
-        1, "T-SQL TOP 1 injection by regex on select text"
-    ),
-    ("benchbox/core/tuning/metadata.py", "TuningMetadataManager._get_create_table_sql", "replace"): Accepted(
-        3, "per-platform column type substitution on metadata DDL text"
-    ),
-    ("benchbox/core/vector_search/queries.py", "<module>", "replace"): Accepted(
-        1, "SingleStore vector-function variants built by replacing function text in query SQL"
-    ),
-}
+UNRESOLVED_VIOLATIONS: dict[Key, Accepted] = {}
 
 
 def _name(node: ast.AST) -> str | None:

@@ -110,7 +110,7 @@ def test_qualify_without_order_by_is_left_for_the_generator():
 def test_unprojected_sort_key_is_reported_rather_than_silently_dropped(caplog):
     sql = "SELECT a FROM t QUALIFY ROW_NUMBER() OVER (PARTITION BY a ORDER BY b) = 1 ORDER BY b"
 
-    with caplog.at_level(logging.WARNING, logger="benchbox.utils.dialect_utils"):
+    with caplog.at_level(logging.WARNING, logger="sqlglot"):
         rendered = translate_sql_query(sql, "trino", source_dialect="duckdb")
 
     assert "cannot hoist" in caplog.text
@@ -228,7 +228,7 @@ def test_distinct_on_stays_with_its_own_elimination():
 def test_limit_stays_with_its_sort_key_when_the_key_cannot_be_hoisted(caplog):
     sql = "SELECT a FROM t QUALIFY ROW_NUMBER() OVER (PARTITION BY a ORDER BY b) = 1 ORDER BY b LIMIT 4"
 
-    with caplog.at_level(logging.WARNING, logger="benchbox.utils.dialect_utils"):
+    with caplog.at_level(logging.WARNING, logger="sqlglot"):
         rendered = translate_sql_query(sql, "postgres", source_dialect="duckdb")
 
     tree = sqlglot.parse_one(rendered, read="postgres")
@@ -262,7 +262,7 @@ def test_qualified_order_by_does_not_bind_to_an_alias_holding_another_column():
 def test_aggregate_and_window_sort_keys_are_not_hoisted(key, caplog):
     sql = f"SELECT a, b FROM t QUALIFY ROW_NUMBER() OVER (PARTITION BY a ORDER BY b) = 1 ORDER BY {key}"
 
-    with caplog.at_level(logging.WARNING, logger="benchbox.utils.dialect_utils"):
+    with caplog.at_level(logging.WARNING, logger="sqlglot"):
         rendered = translate_sql_query(sql, "trino", source_dialect="duckdb")
 
     assert "cannot hoist" in caplog.text

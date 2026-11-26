@@ -250,7 +250,8 @@ class TestVectorSearchQueryManager:
 
         mgr = VectorSearchQueryManager()
         sql = mgr.get_query("Q1", dialect="bigquery")
-        assert "array_cosine_similarity" in sql
+        assert "COSINE_SIMILARITY" in sql.upper()
+        assert "array_cosine_similarity" not in sql.lower()
 
     def test_get_all_queries_returns_six(self):
         from benchbox.core.vector_search.queries import VectorSearchQueryManager

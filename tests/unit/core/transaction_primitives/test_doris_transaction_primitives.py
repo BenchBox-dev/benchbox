@@ -39,7 +39,7 @@ def test_generate_series_is_rewritten_to_the_numbers_table_function_on_doris(txn
     sql = txn._rewrite_transactional_sql_for_platform(
         "INSERT INTO t SELECT 9200000 + n FROM (SELECT unnest(generate_series(1, 100)) AS n) t;", "doris"
     )
-    assert 'SELECT number + 1 AS n FROM numbers("number" = 100)' in sql
+    assert "SELECT number + 1 AS n FROM NUMBERS('number' = 100)" in sql
     assert "generate_series" not in sql
 
 

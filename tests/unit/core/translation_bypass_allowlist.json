@@ -257,10 +257,6 @@
         "trips-by-day-of-week",
         "weekday-weekend-comparison"
       ],
-      "snowflake": [
-        "rush-hour-analysis",
-        "trip-duration-analysis"
-      ],
       "starrocks": [
         "rush-hour-analysis",
         "trip-duration-analysis",
@@ -625,19 +621,6 @@
         "97",
         "98",
         "99"
-      ]
-    }
-  },
-  "tpchavoc": {
-    "reason": "Doris and StarRocks do not parse the empty GROUP BY () the translator emits for the 6_v2 and 14_v2 variants; the clause is dropped from the translated text so the global aggregate and HAVING run unchanged.",
-    "dialects": {
-      "doris": [
-        "14_v2",
-        "6_v2"
-      ],
-      "starrocks": [
-        "14_v2",
-        "6_v2"
       ]
     }
   },
@@ -1027,8 +1010,6 @@
         "ddl_create_index_on_existing",
         "ddl_create_table_with_index",
         "ddl_drop_index",
-        "insert_batch_values_100",
-        "insert_batch_values_1000",
         "insert_on_conflict_ignore",
         "merge_conditional_update",
         "merge_error_handling",
@@ -1037,10 +1018,6 @@
         "merge_overlap_50pct",
         "merge_overlap_90pct",
         "merge_simple_upsert_small"
-      ],
-      "postgres": [
-        "insert_batch_values_100",
-        "insert_batch_values_1000"
       ],
       "snowflake": [
         "ddl_create_table_with_index",
@@ -1087,8 +1064,6 @@
         "ddl_create_table_with_index",
         "ddl_drop_index",
         "delete_all_truncate_comparison",
-        "insert_batch_values_100",
-        "insert_batch_values_1000",
         "insert_on_conflict_ignore"
       ]
     }

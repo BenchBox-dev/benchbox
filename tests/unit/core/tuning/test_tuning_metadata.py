@@ -304,7 +304,7 @@ def test_clear_tunings_uses_where_true_for_bigquery():
         ("bigquery", "CREATE TABLE"),
         ("snowflake", "TIMESTAMP_NTZ"),
         ("redshift", "CREATE TABLE IF NOT EXISTS"),
-        ("clickhouse", "ENGINE = MergeTree()"),
+        ("clickhouse", "ENGINE=MergeTree()"),
         ("duckdb", "CREATE TABLE IF NOT EXISTS"),
     ],
 )
@@ -618,8 +618,8 @@ def test_clickhouse_create_table_sql_does_not_corrupt_varchar_columns(platform):
     assert "VARCHAR(255) NOT NULL" in sql
     assert "VARCHAR(50) NOT NULL" in sql
     assert "VARCHAR(64) NOT NULL" in sql
-    assert sql.count("ENGINE = MergeTree()") == 1
-    assert sql.rstrip().endswith("ENGINE = MergeTree() ORDER BY (table_name, tuning_type)")
+    assert sql.count("ENGINE=MergeTree()") == 1
+    assert sql.rstrip().endswith("ENGINE=MergeTree() ORDER BY (table_name, tuning_type)")
 
 
 def test_create_index_sql_skips_platforms_without_indexes():

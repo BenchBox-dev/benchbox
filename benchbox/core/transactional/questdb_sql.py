@@ -4,7 +4,6 @@ import re
 
 from benchbox.utils.dialect_utils import split_sql_statements
 
-_CURRENT_TIMESTAMP_RE = re.compile(r"\bCURRENT_TIMESTAMP\b(?!\s*\()", re.IGNORECASE)
 _DELETE_RE = re.compile(
     r"^\s*DELETE\s+FROM\s+(?P<table>\w+)(?:\s+WHERE\s+(?P<where>.+?))?\s*$", re.IGNORECASE | re.DOTALL
 )
@@ -14,7 +13,7 @@ def rewrite_questdb_operation_sql(sql: str) -> str:
     from benchbox.platforms.questdb_rewrites import rewrite_query
 
     statements = split_sql_statements(sql, "questdb")
-    rewritten = [rewrite_query(_CURRENT_TIMESTAMP_RE.sub("now()", statement)) for statement in statements]
+    rewritten = [rewrite_query(statement) for statement in statements]
     if rewritten == statements:
         return sql
     if len(rewritten) == 1:

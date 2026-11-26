@@ -323,8 +323,8 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
         sql = operation.write_sql
         if not platform_key:
             return sql
-        if platform_key.lower() != "questdb" and self._rewrite_transactional_sql_for_platform(sql, platform_key) != sql:
-            return sql
+        if platform_key.lower() in self._SCRIPT_TARGET_DIALECTS:
+            return self._translate_transactional_script(sql, platform_key)
         return self.translate_query_text(sql, platform_key)
 
     def _get_effective_write_sql(

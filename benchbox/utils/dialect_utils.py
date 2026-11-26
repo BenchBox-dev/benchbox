@@ -13,23 +13,6 @@ from dataclasses import asdict, dataclass
 from functools import cache
 from typing import Any, Callable
 
-from benchbox.utils.query_shape_rewrites import (
-    add_dual_source_to_filtered_selects,
-    alias_order_by_projections,
-    date_column_integer_arithmetic,
-    drop_correlated_scalar_group_by,
-    drop_empty_group_by,
-    exists_to_derived_join,
-    fold_scalar_having_into_case,
-    hoist_aggregate_subqueries,
-    inline_named_windows,
-    inline_sourceless_exists,
-    qualify_aggregated_columns,
-    rollup_empty_input_row,
-    unwrap_single_grouping_set,
-    wrap_order_by_subquery_aliases,
-)
-
 _SELECT_TRANSFORMS_MARKER = "_benchbox_select_transforms"
 
 
@@ -49,13 +32,20 @@ _KEEP_FULL_OUTER_JOIN_STEPS = (
     "eliminate_qualify",
     "unnest_generate_date_array_using_recursive_cte",
 )
+_DORIS_STEPS = ("eliminate_window_clause", *_KEEP_FULL_OUTER_JOIN_STEPS)
+_STARROCKS_STEPS = (
+    "eliminate_window_clause",
+    "eliminate_distinct_on",
+    "eliminate_qualify",
+    "unnest_generate_date_array_using_recursive_cte",
+)
 
 
 def _keep_full_outer_join(dialect: str) -> None:
     if dialect == "doris":
         from benchbox._vendor.sqlglot.generators.doris import DorisGenerator
 
-        _install_select_transforms(DorisGenerator, _KEEP_FULL_OUTER_JOIN_STEPS)
+        _install_select_transforms(DorisGenerator, _DORIS_STEPS)
     else:
         from benchbox._vendor.sqlglot.generators.singlestore import SingleStoreGenerator
 
@@ -65,10 +55,7 @@ def _keep_full_outer_join(dialect: str) -> None:
 def _eliminate_starrocks_qualify() -> None:
     from benchbox._vendor.sqlglot.generators.starrocks import StarRocksGenerator
 
-    _install_select_transforms(
-        StarRocksGenerator,
-        ("eliminate_distinct_on", "eliminate_qualify", "unnest_generate_date_array_using_recursive_cte"),
-    )
+    _install_select_transforms(StarRocksGenerator, _STARROCKS_STEPS)
 
 
 SCHEMA_DDL_SCOPE = "schema_ddl"
@@ -460,7 +447,6 @@ def translate_sql_query(
     rewrites: Sequence[tuple[str, dict]] | None = None,
     pretty: bool = False,
 ) -> str:
-    import logging
 
     logger = logging.getLogger(__name__)
     src = resolve_sql_dialect(source_dialect)
@@ -509,12 +495,12 @@ def translate_sql_query(
                 expression = apply_rewrite("hoist_qualify_outer_clauses", expression, tgt)
             if tgt == "doris":
                 _keep_full_outer_join("doris")
-                for doris_rewrite in (
-                    "alias_derived_tables",
-                    "date_column_integer_arithmetic",
-                    "rollup_empty_input_row",
+                for doris_rewrite, doris_args in (
+                    ("alias_derived_tables", {}),
+                    ("date_column_integer_arithmetic", {"suffix": "_date"}),
+                    ("rollup_empty_input_row", {}),
                 ):
-                    expression = apply_rewrite(doris_rewrite, expression, tgt)
+                    expression = apply_rewrite(doris_rewrite, expression, tgt, **doris_args)
             if tgt == "singlestore":
                 _keep_full_outer_join("singlestore")
                 expression = apply_rewrite("rollup_empty_input_row", expression, tgt)
@@ -633,7 +619,7 @@ def _starrocks_order_by_projection_aliases(sql: str, identify: bool, pretty: boo
     return tree.sql(dialect="starrocks", identify=identify, pretty=pretty)
 
 
-FORK_REWRITE_MODULES = ("rewrites", "engine_rewrites", "compat", "subqueries")
+FORK_REWRITE_MODULES = ("rewrites", "engine_rewrites", "compat", "subqueries", "shapes", "dialect_rewrites", "series")
 
 
 def _fork_rewrite(name: str) -> Callable[..., object]:
@@ -653,319 +639,10 @@ def _fork_rewrite(name: str) -> Callable[..., object]:
     raise ValueError(f"Unknown fork rewrite: {name!r}")
 
 
-def alias_outer_table_references(expression, table: str, alias: str, *, copy: bool = True):
-    from benchbox._vendor.sqlglot import exp
-
-    tree = expression.copy() if copy else expression
-    outer_tables = [
-        node
-        for node in tree.find_all(exp.Table)
-        if node.name == table and not node.alias and node.find_ancestor(exp.Select) is tree
-    ]
-    for node in outer_tables:
-        node.set("alias", exp.TableAlias(this=exp.to_identifier(alias)))
-    if outer_tables:
-        for column in tree.find_all(exp.Column):
-            if column.table == table:
-                column.set("table", exp.to_identifier(alias))
-    return tree
-
-
-def alias_derived_tables(expression, *, prefix: str = "_dt", copy: bool = True):
-    from benchbox._vendor.sqlglot import exp
-
-    tree = expression.copy() if copy else expression
-    taken = {node.alias for node in tree.find_all(exp.Subquery) if node.alias}
-    taken.update(node.alias for node in tree.find_all(exp.Table) if node.alias)
-    counter = 0
-    for subquery in tree.find_all(exp.Subquery):
-        if subquery.alias or not isinstance(subquery.parent, (exp.From, exp.Join)):
-            continue
-        if not isinstance(subquery.this, exp.Query):
-            continue
-        counter += 1
-        while f"{prefix}{counter}" in taken:
-            counter += 1
-        subquery.set("alias", exp.TableAlias(this=exp.to_identifier(f"{prefix}{counter}")))
-        taken.add(f"{prefix}{counter}")
-    return tree
-
-
-def coalesce_count_subqueries(expression, *, copy: bool = True):
-    from benchbox._vendor.sqlglot import exp
-
-    tree = expression.copy() if copy else expression
-    for subquery in list(tree.find_all(exp.Subquery)):
-        inner = subquery.this
-        if not isinstance(inner, exp.Select) or inner.args.get("group") or len(inner.expressions) != 1:
-            continue
-        if not isinstance(subquery.parent, (exp.Alias, exp.Select)):
-            continue
-        if isinstance(inner.expressions[0], exp.Count):
-            subquery.replace(exp.Coalesce(this=subquery.copy(), expressions=[exp.Literal.number(0)]))
-    return tree
-
-
-def trim_char_case_comparisons(expression, *, copy: bool = True):
-    from benchbox._vendor.sqlglot import exp
-
-    tree = expression.copy() if copy else expression
-    for node in list(tree.find_all(exp.EQ)):
-        column, case = node.this, node.expression
-        if isinstance(column, exp.Case):
-            column, case = case, column
-        if not isinstance(case, exp.Case):
-            continue
-        self_defaulting = isinstance(column, exp.Column) and case.args.get("default") == column
-        column_guarded_literal = (
-            isinstance(column, exp.Literal)
-            and column.is_string
-            and any(isinstance(branch.args.get("true"), exp.Column) for branch in case.args.get("ifs") or [])
-        )
-        if not self_defaulting and not column_guarded_literal:
-            continue
-        node.replace(
-            exp.EQ(
-                this=exp.Trim(this=column.copy(), position="TRAILING"),
-                expression=exp.Trim(this=case.copy(), position="TRAILING"),
-            )
-        )
-    return tree
-
-
-def in_subquery_or_to_left_join(expression, *, copy: bool = True):
-    from benchbox._vendor.sqlglot import exp
-
-    tree = expression.copy() if copy else expression
-    select = tree if isinstance(tree, exp.Select) else tree.find(exp.Select)
-    if select is None or select.args.get("joins"):
-        return tree
-    source = select.args.get("from_")
-    source_table = source.this if source is not None else None
-    outer_names = {source_table.alias_or_name} if isinstance(source_table, exp.Table) else set()
-    position = 0
-    for node in list(select.find_all(exp.In)):
-        query = node.args.get("query")
-        if (
-            not isinstance(query, exp.Subquery)
-            or not isinstance(query.this, exp.Select)
-            or len(query.this.expressions) != 1
-            or node.parent_select is not select
-            or node.find_ancestor(exp.Not)
-            or not node.find_ancestor(exp.Or)
-        ):
-            continue
-        inner = query.this.copy()
-        inner_names = {table.alias_or_name for table in inner.find_all(exp.Table)}
-        if any(column.table in outer_names - inner_names for column in inner.find_all(exp.Column)):
-            continue
-        position += 1
-        table_alias = f"in_subquery_{position}"
-        value_alias = f"in_value_{position}"
-        inner.set("distinct", exp.Distinct())
-        inner.set("expressions", [exp.alias_(inner.expressions[0], value_alias)])
-        select.append(
-            "joins",
-            exp.Join(
-                this=exp.Subquery(this=inner, alias=exp.TableAlias(this=exp.to_identifier(table_alias))),
-                side="LEFT",
-                on=exp.EQ(this=node.this.copy(), expression=exp.column(value_alias, table_alias)),
-            ),
-        )
-        node.replace(exp.Not(this=exp.Is(this=exp.column(value_alias, table_alias), expression=exp.Null())))
-    return tree
-
-
-def factor_common_conjuncts(expression, *, copy: bool = True):
-    from benchbox._vendor.sqlglot import exp
-
-    tree = expression.copy() if copy else expression
-
-    def disjuncts(node):
-        if isinstance(node, exp.Or):
-            return disjuncts(node.this) + disjuncts(node.expression)
-        return [node]
-
-    def conjuncts(node):
-        if isinstance(node, exp.Paren) and isinstance(node.this, exp.And):
-            return conjuncts(node.this)
-        if isinstance(node, exp.And):
-            return conjuncts(node.this) + conjuncts(node.expression)
-        return [node]
-
-    def conjoin(parts):
-        result = parts[0]
-        for part in parts[1:]:
-            result = exp.And(this=result, expression=part)
-        return result
-
-    def disjoin(parts):
-        result = parts[0]
-        for part in parts[1:]:
-            result = exp.Or(this=result, expression=part)
-        return result
-
-    for node in list(tree.find_all(exp.Or)):
-        if isinstance(node.parent, exp.Or):
-            continue
-        terms = [conjuncts(term.this if isinstance(term, exp.Paren) else term) for term in disjuncts(node)]
-        if len(terms) < 2:
-            continue
-        common = [part for part in terms[0] if all(part in other for other in terms[1:])]
-        if not common:
-            continue
-        remainders = []
-        for term in terms:
-            rest = [part for part in term if part not in common]
-            remainders.append(conjoin([part.copy() for part in rest]) if rest else None)
-        if any(rest is None for rest in remainders):
-            replacement = conjoin([part.copy() for part in common])
-        else:
-            residual = exp.Paren(this=disjoin([exp.Paren(this=rest) for rest in remainders]))
-            replacement = conjoin([*(part.copy() for part in common), residual])
-        node.replace(replacement if isinstance(node.parent, (exp.Where, exp.Paren)) else exp.Paren(this=replacement))
-    return tree
-
-
-def positive_count_subquery_to_exists(expression, *, copy: bool = True):
-    from benchbox._vendor.sqlglot import exp
-
-    tree = expression.copy() if copy else expression
-    for node in list(tree.find_all(exp.GT)):
-        subquery, zero = node.this, node.expression
-        if not isinstance(subquery, exp.Subquery) or not isinstance(zero, exp.Literal) or zero.name != "0":
-            continue
-        inner = subquery.this
-        if (
-            not isinstance(inner, exp.Select)
-            or len(inner.expressions) != 1
-            or any(inner.args.get(key) for key in ("distinct", "group", "having", "qualify", "limit", "offset"))
-        ):
-            continue
-        projection = inner.expressions[0]
-        count = projection.this if isinstance(projection, exp.Alias) else projection
-        if not isinstance(count, exp.Count) or not isinstance(count.this, exp.Star):
-            continue
-        inner.set("expressions", [exp.Literal.number(1)])
-        node.replace(exp.Exists(this=inner.copy()))
-    return tree
-
-
-def _outer_order_key(key, outputs: Sequence[tuple[object, object]], exp, *, nested: bool = False):
-    if isinstance(key, exp.Literal) and not key.is_string:
-        return key.copy()
-    if isinstance(key, exp.Column):
-        if not key.table and not nested:
-            for _, projection in outputs:
-                if projection.name.lower() == key.name.lower():
-                    return projection.copy()
-        for source, projection in outputs:
-            if source == key:
-                return projection.copy()
-        return None
-    for source, projection in outputs:
-        if source == key:
-            return projection.copy()
-    if key.find(exp.Window, exp.AggFunc) is not None:
-        return None
-    resolved = key.copy()
-    for column in list(resolved.find_all(exp.Column)):
-        replacement = _outer_order_key(column, outputs, exp, nested=True)
-        if replacement is None:
-            return None
-        column.replace(replacement)
-    return resolved
-
-
-def _hoistable_distinct(select, exp) -> bool:
-    distinct = select.args.get("distinct")
-    return isinstance(distinct, exp.Distinct) and not distinct.args.get("on")
-
-
-def hoist_qualify_outer_clauses(expression, *, copy: bool = True):
-    exp = sql_expressions()
-    from benchbox._vendor.sqlglot import transforms
-
-    tree = expression.copy() if copy else expression
-    targets = [
-        select
-        for select in tree.find_all(exp.Select)
-        if select.args.get("qualify") is not None
-        and (
-            select.args.get("order") is not None
-            or select.args.get("limit") is not None
-            or select.args.get("offset") is not None
-            or _hoistable_distinct(select, exp)
-        )
-    ]
-    for select in reversed(targets):
-        order = select.args.get("order")
-        sources = [item.this if isinstance(item, exp.Alias) else item for item in select.selects]
-        eliminated = transforms.eliminate_qualify(select.copy())
-        inner = eliminated.args["from_"].this.this
-        outputs = list(zip(sources, eliminated.selects))
-        keys = [_outer_order_key(item.this, outputs, exp) for item in order.expressions] if order is not None else []
-        order_hoisted = order is not None and all(key is not None for key in keys)
-        if order is not None and not order_hoisted:
-            logging.getLogger(__name__).warning(
-                "QUALIFY elimination cannot hoist %s to the outer select; its sort keys are not "
-                "projected, so the result order is undefined",
-                order.sql(),
-            )
-        if order_hoisted:
-            ordered = []
-            for item, key in zip(order.expressions, keys):
-                hoisted = item.copy()
-                hoisted.set("this", key)
-                ordered.append(hoisted)
-            eliminated.set("order", exp.Order(expressions=ordered))
-            if not inner.args.get("distinct") or _hoistable_distinct(inner, exp):
-                inner.set("order", None)
-        if order is None or order_hoisted:
-            for clause in ("limit", "offset"):
-                if inner.args.get(clause) is not None:
-                    eliminated.set(clause, inner.args[clause].copy())
-                    inner.set(clause, None)
-        if _hoistable_distinct(inner, exp):
-            eliminated.set("distinct", inner.args["distinct"].copy())
-            inner.set("distinct", None)
-        if select.parent is None:
-            tree = eliminated
-        else:
-            select.replace(eliminated)
-    return tree
-
-
-_LOCAL_REWRITES: dict[str, Callable[..., object]] = {
-    "add_dual_source_to_filtered_selects": add_dual_source_to_filtered_selects,
-    "alias_derived_tables": alias_derived_tables,
-    "alias_order_by_projections": alias_order_by_projections,
-    "date_column_integer_arithmetic": date_column_integer_arithmetic,
-    "alias_outer_table_references": alias_outer_table_references,
-    "coalesce_count_subqueries": coalesce_count_subqueries,
-    "drop_correlated_scalar_group_by": drop_correlated_scalar_group_by,
-    "drop_empty_group_by": drop_empty_group_by,
-    "exists_to_derived_join": exists_to_derived_join,
-    "factor_common_conjuncts": factor_common_conjuncts,
-    "fold_scalar_having_into_case": fold_scalar_having_into_case,
-    "hoist_aggregate_subqueries": hoist_aggregate_subqueries,
-    "hoist_qualify_outer_clauses": hoist_qualify_outer_clauses,
-    "in_subquery_or_to_left_join": in_subquery_or_to_left_join,
-    "inline_named_windows": inline_named_windows,
-    "inline_sourceless_exists": inline_sourceless_exists,
-    "positive_count_subquery_to_exists": positive_count_subquery_to_exists,
-    "qualify_aggregated_columns": qualify_aggregated_columns,
-    "rollup_empty_input_row": rollup_empty_input_row,
-    "trim_char_case_comparisons": trim_char_case_comparisons,
-    "unwrap_single_grouping_set": unwrap_single_grouping_set,
-    "wrap_order_by_subquery_aliases": wrap_order_by_subquery_aliases,
-}
-
-
 def _rewrite_tree(name: str, expression, resolved: str, **args):
     import inspect
 
-    function = _LOCAL_REWRITES.get(name) or _fork_rewrite(name)
+    function = _fork_rewrite(name)
     if "dialect" in inspect.signature(function).parameters:
         args.setdefault("dialect", resolved)
     return function(expression, **args)
