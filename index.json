@@ -27503,11 +27503,12 @@
       "claim": null,
       "needs": [
         "datagen-p2-ssb-versioned-migration",
+        "datagen-p3-tpc-default-cutover",
         "bundle-data-generation-hash-missing-from-corpus"
       ],
       "priority": "medium",
-      "status": "blocked",
-      "title": "Cut over validated versioned SSB generator default while preserving v1 legacy reproducibility"
+      "status": "open",
+      "title": "Switch the SSB default backend to benchbox-datagen"
     },
     "datagen-p3-synthetic-cutover": {
       "claim": null,
