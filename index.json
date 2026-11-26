@@ -15080,7 +15080,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-historical",
-      "integration_head": "70fd02a9746ad75f4cac369494180b5f033dee49",
+      "integration_head": "55bd74a74227bfe570ec4da1bd473e9e5c083874",
       "integration_log": [
         {
           "at": "2026-11-23T23:39:31Z",
@@ -15488,6 +15488,25 @@
             "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121"
           ],
           "seq": 9
+        },
+        {
+          "at": "2026-11-26T06:02:11Z",
+          "changed_files": [
+            "benchbox/core/tpcdi/benchmark.py",
+            "benchbox/core/tpcdi/platform_power.py",
+            "benchbox/platforms/duckdb.py",
+            "tests/integration/core/test_tpcdi_phases_digen_output.py",
+            "tests/unit/core/tpcdi/test_phases_and_audit.py"
+          ],
+          "head": "55bd74a74227bfe570ec4da1bd473e9e5c083874",
+          "kind": "fix",
+          "op_id": "a06f17cbeaa14d47ae495ba4c6740058",
+          "previous_head": "70fd02a9746ad75f4cac369494180b5f033dee49",
+          "requires_acceptance": [
+            "tpcdi-12-duckdb-historical-load-and-audit-20261120",
+            "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121"
+          ],
+          "seq": 10
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-historical",
