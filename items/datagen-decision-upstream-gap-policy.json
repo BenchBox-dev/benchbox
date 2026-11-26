@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "The owner's answer to each of (1)-(4) is recorded in this item's context with the date.",
+    "The ADR is revised by merged PR to match (upstream-gap rule, cutover versus retirement prerequisites).",
+    "datagen-lib-tpcds-fractional-and-refresh and datagen-lib-tpcds-refresh-sets are updated to the decided scope, and PR #5 contains no code the decision rejects."
+  ],
+  "description": "## Problem\nUpstream tpcdsgen 4.0.0 cannot reproduce BenchBox's patched dsdgen below SF 1 (9 of 24 tables differ) and has no refresh sets. Under the rules 'no fork' and 'never wait', an agent wrote about 2,000 lines of own sub-scale generators (`dsgen/`) and about 2,400 hand-written lines plus a 3,488-line generated column table for TPC-DS refresh sets (`tpcds_update/`), all on draft PR #5. The owner objected to the maintenance burden (2026-11-27). Review found the rules were over-read: a 72-line upstream change (tpcgen-rs PR #677) gave byte identity for all 24 tables in a probe build.\n\n## Change\nRecord the owner's decision on the proposal of 2026-11-27: (1) sub-scale: pin tpcdsgen to a BenchBox-dev/tpcgen-rs commit that is exactly v4.0.0 plus #677 and delete `dsgen/`; (2) replace 'no fork' with: no divergent fork; a carried patch is allowed only if small, submitted upstream, pinned by commit and listed in the README with its upstream PR; (3) refresh sets: keep own code in its own PR, off the cutover path, and offer it upstream; (4) refresh sets are required before C removal, not before the TPC cutover. Then update the ADR (decision 1 wording 'before any TPC cutover', the no-fork rule) by PR.\n\n## Decision gates\n- Owner decides each of (1)-(4); the agent implements nothing from PR #5's own-generator code until then.\n- Alternatives the owner may choose instead: keep own sub-scale generators; adopt upstream's scaling below SF 1 under a version bump (changes small-scale data and past comparability); keep C dsdgen for refresh or drop native TPC-DS maintenance runs.\n- If the owner rejects carried patches, TPC-DS sub-scale stays on the C tools until upstream releases the hook.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T23:46:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "1b2fdbf9b65942339763366a0548fe57",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}

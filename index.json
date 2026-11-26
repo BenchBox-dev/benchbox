@@ -27647,6 +27647,13 @@
       "status": "done",
       "title": "benchbox convert --format ducklake is offered but the orchestrator rejects it"
     },
+    "datagen-decision-upstream-gap-policy": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Decide how benchbox-datagen fills upstream gaps: carried patch for TPC-DS sub-scale, own code for refresh sets"
+    },
     "datagen-empty-manifest-vacuous-validation-20261001": {
       "claim": null,
       "needs": [],
