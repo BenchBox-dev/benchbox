@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "`git worktree list` in both repositories shows no datagen worktree whose PR is merged or closed.",
+    "The listed benchmark_runs directories and /tmp files are gone, or each remaining one names the open item that needs it."
+  ],
+  "description": "## Problem\nLeft on the maintainer host on 2026-11-27: BenchBox worktrees BenchBox.wt-ds-subscale (branch chore/ds-subscale-parity), BenchBox.wt-qcorpus and BenchBox.wt-tpch-oracle; library worktrees benchbox-datagen.wt-tpch, -tpcds, -frac, -qgen, -ssb; data under ~/Developer/benchmark_runs/ (tpch-stage, ds-update, ssb-accept, qcorpus); files /tmp/pr-body-*.md, /tmp/pr5.md and logs. AGENTS.md RUN-DATA-001 requires a session to delete what it created.\n\n## Change\nAfter each owning PR merges or is abandoned, remove its worktree and local branch, delete its scratch data, and delete merged remote branches. Keep the oracle worktree and oracle data while parity work is open.\n\n## Decision gates\n- Remove a worktree with uncommitted changes only after listing them to the owner.\n- Never run git worktree prune or gc.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T23:47:19Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b4a9a5c69c244b489777fa45a784762f",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}

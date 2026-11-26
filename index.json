@@ -28084,6 +28084,13 @@
       "status": "open",
       "title": "Follow up tpcgen-rs contributions and remove carried or own code when upstream releases them"
     },
+    "datagen-workspace-cleanup": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove datagen worktrees, scratch data and branches left by delivery agents"
+    },
     "dataproc-gcs-helpers-duplicated-20261125": {
       "claim": null,
       "needs": [],
