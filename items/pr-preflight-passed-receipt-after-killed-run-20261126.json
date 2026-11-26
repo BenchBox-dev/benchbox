@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "A preflight run that is interrupted, times out, or exits non-zero at any stage, including while waiting for the heavy lock, writes no passed receipt for its tree.",
+    "A test reproduces the interruption during the lock wait and asserts that no passed receipt exists afterwards.",
+    "make pr-open refuses a tree whose only receipt comes from an interrupted run."
+  ],
+  "context": "Observed while preparing BenchBox PR #4541. The run was stopped by a harness timeout while it waited for the lock (exit 143), and the receipt for that tree was written as passed. A later full preflight of a newer tree (76f3c65d) ran normally. Out of scope for the derived-paths work; filed at the owner's request.",
+  "description": "A make pr-preflight run was killed with exit 143 (SIGTERM) while it was still waiting for the shared heavy-work lock, before any test had run. It still wrote a preflight receipt with status passed for that tree under ~/.cache/benchbox/preflight/<tree>.json. make pr-open trusts that receipt, so a tree no test ever ran against can be opened as preflighted.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:0a697a35e720a04d19e44a28",
+      "at": "2026-11-26T14:27:44Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "34f7d61d06b1f54ecd87d8b9eb039df2",
+      "session_id": "25f1c82986254513a0ef576dc2985dfb"
+    }
+  ]
+}

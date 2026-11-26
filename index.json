@@ -41055,6 +41055,13 @@
       "status": "done",
       "title": "pr-preflight did not run test_shipped_docs_urls, which then failed in CI"
     },
+    "pr-preflight-passed-receipt-after-killed-run-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "pr-preflight writes a passed receipt when the run is killed while waiting for the heavy lock"
+    },
     "pr-preflight-skips-verified-theseus-tests-20261109": {
       "claim": null,
       "needs": [],
