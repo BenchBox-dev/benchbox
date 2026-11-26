@@ -5,17 +5,22 @@
 ## Status
 
 Accepted (2026-11-24); revised 2026-11-26. Extends
-`docs/internal/adr/adr-python-core-runtime.md` to cover TPC data generation,
-streaming format conversion, provenance versioning, and the BenchBox-owned
-Rust data generation library (`benchbox-datagen`) that replaces the bundled C
-binaries and the pure-Python synthetic generators.
+`docs/internal/adr/adr-python-core-runtime.md` to cover TPC data and query
+generation, streaming format conversion, provenance versioning, and the
+BenchBox-owned Rust library (`benchbox-datagen`) that replaces every bundled
+TPC C binary (`dbgen`, `dsdgen`, `qgen`, `dsqgen`), the C compilation
+pipeline, and the pure-Python synthetic generators.
 
 The 2026-11-26 revision makes that library the target. The accepted text
 adopted the upstream `tpcgen-cli` wheel through a subprocess adapter,
 vectorized synthetic generators in Python, and created a Rust repository only
 after a measured budget miss. Those decisions are replaced (decisions 1, 3, 4
 and 6 below); the measurements in Context remain the evidence for the
-library's budgets.
+library's budgets. The same day the owner decided that the C compilation
+pipeline retires only if every TPC binary goes, so query generation moves to
+the library as well (decision 8). This supersedes the 2026-11-20 decision
+(`tpcds-q9-generation-above-sf5000-owner-decision-20261120`) that the official
+`dsqgen` is a hard external dependency.
 
 ## Context
 
@@ -184,7 +189,9 @@ non-quiesced development host; cutover enforcement requires 3-run medians
      TPC-DS `-update` refresh sets are implemented byte-identically in the
      library (or upstream) before any TPC cutover, so the TPC default switches
      to one backend that covers every supported scale and refresh set.
-   - `qgen`, `dsqgen`, `tpcds.idx` and the query templates stay in `benchbox`.
+   - The query templates and `tpcds.idx` stay in `benchbox` under its TPC
+     licence carve-out and are passed to the library at call time; the MIT
+     library ships no TPC query text (decision 8).
 2. **Upgrade format conversion to streaming with an explicit row-group policy.**
    Replace full-table `pyarrow.csv.read_csv` + `pa.concat_tables`
    materialization in `benchbox/utils/format_converters/base.py` and
@@ -241,13 +248,18 @@ non-quiesced development host; cutover enforcement requires 3-run medians
 3. **Python binding: PyO3 with abi3 wheels; Python owns the manifest.**
    - The library is a PyO3 extension module built as `cp311-abi3` wheels for
      macOS arm64 and x86_64, Linux glibc and musl (x86_64 and aarch64), and
-     Windows x86_64. It exposes:
+     Windows x86_64 and arm64. Wheels ship `THIRD_PARTY_LICENSES` (licences
+     and NOTICE files of every linked crate) and the TPC legal notice that
+     covers TPC-derived data and logic. It exposes:
 
      ```text
      (benchmark, scale_factor, seed, table, part, parts, options)
          -> Arrow record batch stream (Arrow PyCapsule interface)
      (benchmark, scale_factor, seed, format, compression, threads, output_dir, options)
          -> generated table files + per-file statistics
+     (benchmark, scale_factor) -> per-table row counts and key ranges
+     (benchmark, template text, distributions, scale_factor, seed, stream, options)
+         -> query text + substituted parameter values
      ```
 
    - No subprocess and no temporary files: in-memory consumers receive Arrow
@@ -285,9 +297,12 @@ non-quiesced development host; cutover enforcement requires 3-run medians
    - A benchmark's default moves to `native` only after it passes every gate
      below. At the first cutover `benchbox-datagen` becomes a required
      dependency on every platform with a wheel (environment markers), so the
-     default never depends on which extras are installed. Platforms without a
-     wheel (Windows arm64 today) resolve to `legacy` from a fixed platform
-     table, and `benchbox datagen` says so.
+     default never depends on which extras are installed. Every supported
+     platform has a wheel, so no platform table is needed; a platform counts
+     as native only when both data and query generation pass there.
+   - The TPC-H and TPC-DS benchmark classes load their query managers lazily:
+     data-only consumers (`benchbox datagen`, `ai_primitives`, derived data
+     paths) never require a query generator.
    - `--datagen-backend legacy` keeps the bundled C binaries and legacy Python
      generators for at least one minor release after each cutover
      (decision 7).
@@ -321,13 +336,38 @@ non-quiesced development host; cutover enforcement requires 3-run medians
      the same rules, after active SSB reference-count and publication work
      finishes, and requires exact DuckDB and DataFusion agreement across all
      13 SSB queries at SF 0.01, 0.1, 1.0 and 10.0.
-7. **Defer Windows arm64 and legacy binary retirement until after validation.**
-   Keep bundled C binaries and legacy Python generators untouched during the
-   library buildout and for at least one minor release after each cutover.
-   Decide Windows arm64 keep-vs-drop and remove obsolete `dbgen`/`dsdgen`
-   binaries or legacy Python generators only after confirming platform
-   coverage, refresh-set coverage, and historical published-result
-   reproduction needs.
+7. **Retire the whole C toolchain after validation.**
+   Keep the bundled C binaries and legacy Python generators untouched during
+   the library buildout and for at least one minor release after the last TPC
+   cutover (data and queries). Then remove every TPC binary (`dbgen`,
+   `dsdgen`, `qgen`, `dsqgen`), `benchbox/_binaries/`, the compile scripts and
+   Dockerfiles, `tpc_compilation.py`, the binary identity workflow and the
+   patch stack, and the legacy Python generators. Historical results stay
+   reproducible by installing an older BenchBox. Before removal the TPC-DS
+   qualification runner generates data through the library, and every
+   published bundle's recorded query parameters replay through the library.
+8. **Query generation in Rust, with the C tools as the oracle until retirement.**
+   - The library implements TPC-H `qgen` (substitution parameters, `-d`
+     default parameters, update-stream numbering) and TPC-DS `dsqgen` (the
+     template language, `tpcds.idx` distributions, `rowcount()` scaling and
+     the three draw shapes BenchBox uses: one template, one template with
+     `-STREAMS`, and all templates per stream). Templates and distributions
+     come from BenchBox at call time.
+   - Parameter values are the contract; cleaned query text (after
+     `_clean_sql` for TPC-H and newline normalisation for TPC-DS) is the
+     regression check. Seeds, stream numbering and stream order match the C
+     tools exactly, including BenchBox's patched fractional TPC-DS scaling.
+   - The oracle is the bundled linux-x86_64 `qgen` 3.0.0 and `dsqgen` 4.0.0
+     with BenchBox's patched templates, named by SHA-256 in a frozen
+     conformance corpus that CI replays without any C binary.
+   - Consequence: BenchBox no longer runs the TPC-supplied QGen and `dsqgen`
+     (TPC-H clause 2.1.4.1, TPC-DS clauses 4.1.2 and 4.3.1), so its TPC runs
+     are TPC-derived, not specification-compliant executions. The corpus
+     proves equivalence with the official tools for every seed, stream and
+     scale it covers; documentation says so.
+   - The library pins upstream `tpcdsgen` to `CompatMode::C` distributions so
+     data and query parameter domains come from the same lineage as
+     `tpcds.idx`.
 
 ## Performance Budgets and Validation Gates
 
@@ -374,11 +414,25 @@ every supported platform:
 - **Thread invariance gate (all benchmarks):** Delimited and Parquet bytes are
   identical at 1, 4 and default threads, on macOS arm64 and Linux x86_64.
 - **Rewritten SSB and synthetic acceptance gate:** Exact table row counts,
-  zero orphan foreign keys, documented hit rates, a one-time owner-approved
-  acceptance report comparing legacy vs new distributions and every benchmark
-  query's row count across DuckDB and DataFusion, followed by frozen golden
-  per-table SHA-256 hashes and expected row counts. Never use arbitrary
-  tolerance bands on deterministic output.
+  zero orphan foreign keys, per-column null rate, distinct-count ratio and
+  mean/quantiles within the legacy generator's own variation across 5 seeds,
+  every query returning rows on both engines where legacy did, and exact
+  DuckDB and DataFusion agreement. An acceptance report goes in the PR; the
+  owner is asked only when a criterion fails. Then golden per-table SHA-256
+  hashes and expected row counts are frozen. Never use arbitrary tolerance
+  bands on deterministic output.
+- **Query conformance gate (TPC-H and TPC-DS):** The library reproduces the
+  frozen corpus: TPC-H 22 queries plus 15a, default parameters, seeds 0, 1,
+  42, 2^31-2 and 10,000 random seeds, Q11 at eight scales; TPC-DS all 99
+  templates plus the variants in use, all three draw shapes, default and
+  sampled seeds, streams 0-20, stream order. Parameter values must match
+  exactly, then cleaned text. Every published bundle's recorded parameters
+  replay to the same queries.
+- **Scale-model gate (TPC-DS):** For every accepted scale (at least 0.01,
+  0.05, 0.1, 0.25, 0.5, 1, 10, 100, 1000 and 3000), the library's row and key
+  counts equal both the generated data and the values `rowcount()` yields in
+  the 14 scale-dependent templates, so query parameter domains always match
+  the data.
 - **Performance and memory gate (ownership and execution):** Wall time
   (`mono_time()`) and peak RSS at both SF 1 and SF 10 across all 11 in-scope
   benchmarks (none has a registry upper scale cap) measured as `N=3` medians on
@@ -389,11 +443,12 @@ every supported platform:
 
 ## Consequences
 
-- BenchBox owns one Rust library for every in-scope generator, with one
-  determinism model, one Parquet writer and one cutover pattern. It carries
-  the cost of a second repository, abi3 wheel builds for six platform targets,
-  pin bumps of the upstream TPC crates, and implementing TPC-DS fractional
-  scales and refresh sets that upstream lacks.
+- BenchBox owns one Rust library for every in-scope generator and both TPC
+  query generators, with one determinism model, one scale model, one Parquet
+  writer and one cutover pattern. It carries the cost of a second repository,
+  abi3 wheel builds for eight targets, pin bumps of the upstream TPC crates,
+  and implementing TPC-DS fractional scales, refresh sets and query
+  generation that upstream lacks.
 - TPC generation keeps the upstream crates' measured speed (TPC-H SF 1
   1.34 s, TPC-DS SF 1 0.91 s at default threads) without a subprocess, a
   trailing-delimiter strip, or a CSV-to-Parquet round trip.
@@ -404,5 +459,8 @@ every supported platform:
   `benchbox convert`.
 - Library-written Parquet has its own writer identity, so the first cutover of
   each benchmark is a Parquet corpus re-baseline for that benchmark.
-- Bundled C binaries remain the `legacy` backend for every benchmark and the
-  only backend on platforms without a wheel until the retirement decision.
+- Until retirement, the C compile pipeline, its manual TPC-DS source copy and
+  the Windows `dsqgen` retry workaround stay; afterwards BenchBox ships no
+  native TPC binaries and no per-OS build.
+- BenchBox's TPC runs stop using the TPC-supplied query generators; the
+  conformance corpus is the evidence of equivalence.
