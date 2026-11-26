@@ -36692,13 +36692,18 @@
       "title": "Migrate ClickHouse/Firebolt to Deployment Registry"
     },
     "migrate-core-sql-text-rewrites-to-translator-20261122": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-27T04:34:48Z",
+        "generation": "e4f6a6a662ac44aa8921ee6b12e0b063",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:38bfd61e73967b4e5aca7d45"
+      },
       "needs": [
         "sql-translation-single-entry-guidance-and-check-20261122",
         "sqlglot-rewrites-into-fork"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Migrate the ten existing per-platform SQL text rewrites in benchbox/core to translate_sql_query / apply_rewrite"
     },
     "migrate-emits-no-audit-event": {
