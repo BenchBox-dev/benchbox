@@ -222,14 +222,14 @@ def write_sharded_baseline(output_dir: Path, baseline: dict[str, Any]) -> list[P
     manifest = {key: baseline[key] for key in baseline if key != "tests"}
     manifest["test_shard_count"] = TEST_SHARD_COUNT
     manifest_path = output_dir / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")
     buckets: dict[int, list[dict[str, Any]]] = {index: [] for index in range(TEST_SHARD_COUNT)}
     for record in baseline["tests"]:
         buckets[test_shard_index(record["id"])].append(record)
     written = [manifest_path]
     for index in range(TEST_SHARD_COUNT):
         shard_path = output_dir / f"tests-{index:02d}.json"
-        shard_path.write_text(json.dumps(buckets[index], indent=2) + "\n", encoding="utf-8")
+        shard_path.write_text(json.dumps(buckets[index], indent=2) + "\n", encoding="utf-8", newline="\n")
         written.append(shard_path)
     return written
 
@@ -413,7 +413,9 @@ def summary_markdown(previous: dict[str, Any], current: dict[str, Any]) -> str:
 def write_summary(previous_dir: Path, baseline_dir: Path) -> Path:
     path = baseline_dir / SUMMARY_NAME
     path.write_text(
-        summary_markdown(read_sharded_baseline(previous_dir), read_sharded_baseline(baseline_dir)), encoding="utf-8"
+        summary_markdown(read_sharded_baseline(previous_dir), read_sharded_baseline(baseline_dir)),
+        encoding="utf-8",
+        newline="\n",
     )
     return path
 
