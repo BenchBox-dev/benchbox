@@ -4,6 +4,7 @@
     "PyO3 API returns query text and parameters; covered by Python tests.",
     "No TPC template text in the library repository."
   ],
+  "context": "2026-11-27: library draft PR #6 (feat/tpch-qgen on #3). Corpus: 1,958/1,960 named cases match (2 seed-0 non-termination cases refused by design, owner decision 7), 230,000/230,000 random-seed parameter lists; Python text hashes match for named cases and first 500 seeds. API takes template_text and distributions_text; no TPC text in the repo. Follow-ups: datagen-lib-query-tests-in-ci, datagen-decision-oracle-defect-handling. Next: independent review, merge. Owner decisions 2026-11-27 (dialog): (1) TPC-DS sub-scale: carry the 72-line tpcgen-rs #677 patch (pin tpcdsgen to a BenchBox-dev/tpcgen-rs commit = v4.0.0 + #677), delete own dsgen/ generators, return to crates.io when released. (2) Upstream-gap rule: no divergent fork; a carried patch only if <= ~200 changed lines, submitted upstream, pinned by commit, listed in README with its upstream PR; anything larger goes to the owner with sizes first. (3) TPC-DS refresh sets: keep own code in its own PR, finish SF 100 parity, offer upstream; required before C removal, not before the TPC cutover. (4) Acceptance: a metric passes inside legacy min-max or the 99.9% prediction interval from 5 legacy seeds; boundary quantiles on low-cardinality columns by rank. (5) Empty queries: must return rows on every seed where legacy does on every seed; where legacy is sometimes empty, the library may be empty on no more seeds than legacy. (6) SSB row counts follow the SSB specification (part = 200,000 x floor(1 + log2 SF), date = 2,556). (7) Oracle defects: qgen seed 0 for Q7/Q12 raises a clear error; the 13 nondeterministic dsqgen cases are excluded only with recorded proof and the library is deterministic for them. (8) Licensing: proceed; ship the TPC legal notice in wheels, templates and tpcds.idx stay in BenchBox, record the position in the licensing doc. (9) Until the review gate posts its first verdict, library PRs may merge with green CI plus an independent reviewer agent reporting no Critical/High/Medium findings; afterwards the gate is required. (10) BenchBox native-datagen extra may be developed and CI-tested against wheels built from a pinned library commit; the BenchBox PR adding the extra merges only after the PyPI release exists. (11) Lock-waiter kills: investigate and report only; no kill-policy change.",
   "description": "docs/internal/adr/adr-benchbox-datagen.md decision 8 (query generation in Rust). Substitution-parameter generation, -d defaults, seeds and stream numbering identical to qgen 3.0.0; rendering of BenchBox-supplied template text. Templates are passed at call time; the library ships no TPC query text. Coordinate with or reuse the successors of upstream tpcgen-rs PR #644 where they land, without waiting on them.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
   "sessions": [
     {
@@ -12,6 +13,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "eab0954b819540398b5570d311468561",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T23:54:46Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "60912807c19e40c8be346915d52db3e0",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
