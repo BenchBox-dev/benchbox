@@ -1,1 +1,0 @@
-{"schema": 1, "internal": "Promote Theseus 0.2.22 and declare the fast-tier baseline as derived data, so a refresh pull request is reviewed by reading its generated summary while CI reproduces the data byte for byte."}
