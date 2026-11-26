@@ -27802,7 +27802,7 @@
     "datagen-lib-synthetic-tsbs-devops": {
       "claim": null,
       "needs": [
-        "datagen-lib-benchbox-integration"
+        "datagen-p2-ssb-versioned-migration"
       ],
       "priority": "medium",
       "status": "open",
