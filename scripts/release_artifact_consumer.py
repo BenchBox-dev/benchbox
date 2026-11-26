@@ -764,6 +764,71 @@ def _verify_creation(root: Path, creation: str, base: str, branch: str) -> None:
             _state_at(root, creation, path) == _state_at(root, source, path),
             f"{branch} creation does not carry {path} as {PRODUCER_BRANCH} has it at {source}",
         )
+    _verify_derived_paths_attested(root, creation, branch)
+
+
+def _load_yaml(text: str, label: str) -> Any:
+    import yaml
+
+    try:
+        return yaml.safe_load(text)
+    except yaml.YAMLError as exc:
+        raise ValueError(f"cannot parse {label} while checking the derived paths") from exc
+
+
+def _derived_path_entries(policy_text: str) -> list[dict[str, Any]]:
+    policy = _load_yaml(policy_text, "review.yml")
+    if not isinstance(policy, dict) or policy.get("evidence") is None:
+        return []
+    evidence = policy["evidence"]
+    _require(isinstance(evidence, dict), "review.yml evidence must be a mapping")
+    entries = evidence.get("derived_paths")
+    if entries is None:
+        return []
+    _require(isinstance(entries, list), "review.yml evidence.derived_paths must be a list")
+    _require(all(isinstance(entry, dict) for entry in entries), "each review.yml derived path must be a mapping")
+    return entries
+
+
+def _tooling_requires_always(workflow_text: str, job_names: set[str]) -> bool:
+    workflow = _load_yaml(workflow_text, "ci.yml")
+    jobs = workflow.get("jobs") if isinstance(workflow, dict) else None
+    tooling = jobs.get("tooling") if isinstance(jobs, dict) else None
+    if not isinstance(tooling, dict):
+        return False
+    needs = tooling.get("needs")
+    needs = [needs] if isinstance(needs, str) else needs if isinstance(needs, list) else []
+    steps = tooling.get("steps")
+    runs = (
+        "\n".join(str(step.get("run", "")) for step in steps if isinstance(step, dict))
+        if isinstance(steps, list)
+        else ""
+    )
+    for job_id, job in jobs.items():
+        if not isinstance(job, dict) or job.get("name") not in job_names:
+            continue
+        always = re.search(rf"--always {re.escape(str(job_id))}(?![\w.-])", runs) is not None
+        if job_id in needs and always:
+            return True
+    return False
+
+
+def _verify_derived_paths_attested(root: Path, creation: str, branch: str) -> None:
+    policy_path = ".github/review.yml"
+    if not _state_at(root, creation, policy_path):
+        return
+    entries = _derived_path_entries(_git_text(root, "show", f"{creation}:{policy_path}"))
+    if not entries:
+        return
+    ci_path = ".github/workflows/ci.yml"
+    workflow = _git_text(root, "show", f"{creation}:{ci_path}") if _state_at(root, creation, ci_path) else ""
+    for entry in entries:
+        attested_by = entry.get("attested_by")
+        _require(
+            bool(workflow) and isinstance(attested_by, str) and _tooling_requires_always(workflow, {attested_by}),
+            f"{branch} creation carries the derived path {entry.get('name')!r} attested by {attested_by!r}, "
+            f"but its {ci_path} has no job of that name that tooling needs and runs with --always",
+        )
 
 
 def resolve_tag(root: Path, tag: str) -> dict[str, str]:

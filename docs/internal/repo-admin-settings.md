@@ -602,7 +602,15 @@ instead and refuses a tag on a maintenance line unless:
   (`CREATION_LANDING_PATHS`) and the tests that pin it
   (`CREATION_LANDING_TESTS`), so a line cut from a tag that predates a landing
   feature still takes `make pr-open` and `make pr-arm` with
-  `BASE=release/X.Y.x`.
+  `BASE=release/X.Y.x`;
+- when the carried review policy declares `evidence.derived_paths`, the
+  creation commit's `.github/workflows/ci.yml` (which a line keeps from its
+  tag) must have a job whose `name` equals each entry's `attested_by`, listed
+  in the `tooling` job's `needs` and passed to its aggregate step as
+  `--always <job id>`. A line cut from a tag that predates the attesting job
+  is refused, because otherwise a data-and-summary pull request into it would
+  get a summary-only review that no check attests; cut it from a tag that has
+  the job.
 
 `scripts/release_line_create.py` builds the creation commit and runs these
 creation checks before pushing. `release_artifact_consumer.py verify-line

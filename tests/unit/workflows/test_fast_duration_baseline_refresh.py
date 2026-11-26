@@ -281,3 +281,52 @@ def test_refresh_never_writes_the_ceiling_file() -> None:
             if line.strip().startswith("git add"):
                 assert CEILING_PATH not in line
     assert not re.search(r">>?\s*\S*fast-duration-ceiling", all_run_text())
+
+
+def test_summary_is_written_after_the_build_and_before_the_commit_without_running_registry_code() -> None:
+    step = step_named("Write the refresh summary")
+    assert step["if"] == "steps.check.outputs.changed == 'true'"
+    assert step_index("Check for baseline changes") < step_index("Write the refresh summary")
+    assert step_index("Write the refresh summary") < step_index("Create refresh PR")
+    run = step["run"]
+    assert "scripts.build_fast_duration_baseline summary" in run
+    assert "--previous fast-refresh/previous-baseline" in run
+    assert "--baseline tests/fixtures/fast_tier_baseline" in run
+    assert "npx" not in all_run_text()
+
+
+def test_refresh_commits_the_whole_baseline_directory_with_its_summary() -> None:
+    assert (
+        "git add tests/fixtures/fast_tier_baseline quality/docs-reference-inventory.json"
+        in (step_named("Create refresh PR")["run"])
+    )
+
+
+def test_refresh_only_keeps_runs_that_are_the_final_head_of_a_merged_same_repository_pull_request() -> None:
+    text = all_run_text()
+    assert "gh run list --workflow ci.yml --event pull_request" in text
+    assert "headSha" in text
+    assert "--json state,headRefOid,isCrossRepository,baseRefName,mergedAt" in text
+    assert '[ "$base_ref" = "$BASELINE_BRANCH" ] || continue' in text
+    assert '[ "$state" = "MERGED" ] || continue' in text
+    assert '[ "$cross" = "false" ] || continue' in text
+    assert '[ "$sha" = "$pr_head" ] || continue' in text
+    assert '[ "$sha" = "$run_sha" ] || continue' in text
+
+
+def test_refresh_mirrors_the_merge_time_and_head_repository_rules_of_the_reproduction() -> None:
+    text = all_run_text()
+    assert "createdAt" in text
+    assert "mergedAt" in text
+    assert '[[ "$run_created" > "$merged_at" ]] && continue' in text
+    assert "-q .head_repository.full_name" in text
+    assert '[ "${run_repo,,}" = "${GITHUB_REPOSITORY,,}" ] || continue' in text
+
+
+def test_refresh_takes_its_run_bounds_from_the_script_and_fails_below_the_floor() -> None:
+    fetch = step_named("Fetch recent merged-PR fast-junit artifacts")
+    assert "MAX_SOURCE_RUNS" not in fetch["env"]
+    run = fetch["run"]
+    assert "from scripts.build_fast_duration_baseline import BASELINE_BRANCH, MAX_SOURCE_RUNS, MIN_SOURCE_RUNS" in run
+    assert '[ "$kept" -lt "$MIN_SOURCE_RUNS" ]' in run
+    assert "exit 1" in run.split('"$kept" -lt "$MIN_SOURCE_RUNS"')[1].split("\n          fi")[0].split("\nfi")[0]

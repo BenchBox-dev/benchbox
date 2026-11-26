@@ -1075,6 +1075,14 @@ sound, and it does not apply to an inline brief or to a verdict that does not sh
   the local runner. A plan without that list treats every required file as protected.
   Exemptions never waive the baseline: a verdict that ships still needs at least one successful read
   or grep in its trace.
+  Generated baseline data is the one case where changed files are not read at all.
+  `evidence.derived_paths` names the fast-tier baseline data (`tests/fixtures/fast_tier_baseline/`
+  `manifest.json` and `tests-NN.json`), its `SUMMARY.md`, and the CI job
+  `Reproduce the fast-tier duration baseline`, which rebuilds the data and the summary byte for byte
+  from verified source runs inside the required `tooling` check. When every changed file of a pull
+  request is that data plus a changed summary, the reviewer reads only the summary, and the status and
+  verdict say `summary only · data attested by …, not read`; any other change is reviewed in full
+  (Theseus `docs/consumer-policy.md`, Derived paths).
   A diff with a "Binary files" notice for any non-font path, a notice whose path cannot be parsed
   (for example a quoted header), or no diff at all is never briefed inline, so the read check applies.
 - Partial reads keep credit: exposure, not whole-file or semantic proof. The

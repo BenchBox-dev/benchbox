@@ -443,7 +443,7 @@ def test_a_would_block_refusal_names_the_full_rerun_remedy() -> None:
     assert len(reasons) == 1
     assert "make pr-rerun PR=7" in reasons[0]
     assert "re-runs the whole CI run" in reasons[0]
-    assert "regenerate" in reasons[0]
+    assert "gh workflow run fast-duration-baseline-refresh.yml" in reasons[0]
 
 
 def test_makefile_exposes_pr_arm_through_the_helper_and_declares_it_phony() -> None:
@@ -661,7 +661,7 @@ def test_a_would_block_verdict_refuses_with_the_ratios_and_the_baseline_route(
         "summed-time ratio 1.457",
         "median per-test ratio 1.234",
         "The duration gate blocks `core` on a would-block verdict",
-        "scripts/build_fast_duration_baseline.py",
+        "fast-duration-baseline-refresh.yml",
         "tests/fixtures/fast_tier_baseline",
     ):
         assert expected in err
