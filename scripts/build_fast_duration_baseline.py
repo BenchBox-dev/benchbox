@@ -2,12 +2,20 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import math
+import os
+import re
+import stat
 import statistics
+import subprocess
 import sys
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+import zipfile
+from collections import Counter
+from collections.abc import Callable
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +34,31 @@ MEDIUM_MIN_DELTA_SECONDS = 0.1
 MEDIUM_MIN_RELATIVE_DELTA = 0.20
 MEDIUM_SHARD_COUNT = 4
 TEST_SHARD_COUNT = 8
+SUMMARY_NAME = "SUMMARY.md"
+SUMMARY_LIST_LIMIT = 15
+REFRESH_RUN_DIR = "fast-refresh/runs/run-{run_id}"
+REJECTION_CODES = (
+    "calibration-unreadable",
+    "calibration-invalid",
+    "junit-unreadable",
+    "junit-time-invalid",
+    "junit-no-samples",
+)
+MAX_SOURCE_RUNS = 20
+MIN_SOURCE_RUNS = 10
+CI_WORKFLOW_PATH = ".github/workflows/ci.yml"
+BASELINE_BRANCH = "develop"
+COMMITTED_FILE_MODE = "100644"
+GITHUB_API_TIMEOUT_SECONDS = 60
+GITHUB_ARTIFACT_TIMEOUT_SECONDS = 300
+ARTIFACT_MEMBERS = frozenset({"junit.xml", "calibration.json", "collection.jsonl"})
+ARTIFACT_MAX_BYTES = 256 * 1024 * 1024
+GENERATED_AT_WINDOW = timedelta(days=30)
+SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
+CONTROL_CHARACTERS = re.compile(r"[\x00-\x1f\x7f]")
+BACKTICK_RUNS = re.compile(r"`+")
+Api = Callable[[str], Any]
+Fetch = Callable[[str], bytes]
 
 
 NEW_TEST_NOTE = (
@@ -38,17 +71,23 @@ class BaselineError(RuntimeError):
     pass
 
 
+class SourceRunError(BaselineError):
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
 def read_calibration_best(run_dir: Path) -> tuple[float, dict[str, Any]]:
     try:
         payload = json.loads((run_dir / "calibration.json").read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
-        raise BaselineError(f"missing or unreadable calibration.json: {exc}") from exc
+        raise SourceRunError("calibration-unreadable", f"missing or unreadable calibration.json: {exc}") from exc
     workload = payload.get("workload") if isinstance(payload, dict) else None
     best = workload.get("best_seconds") if isinstance(workload, dict) else None
     if isinstance(best, bool) or not isinstance(best, (int, float)):
-        raise BaselineError("calibration workload.best_seconds is not numeric")
+        raise SourceRunError("calibration-invalid", "calibration workload.best_seconds is not numeric")
     if not math.isfinite(best) or best <= 0:
-        raise BaselineError("calibration workload.best_seconds is not finite and positive")
+        raise SourceRunError("calibration-invalid", "calibration workload.best_seconds is not finite and positive")
     metadata: dict[str, Any] = {}
     if isinstance(payload, dict):
         for key in ("python", "cpu_count"):
@@ -62,7 +101,7 @@ def read_run_samples(run_dir: Path) -> dict[str, list[float]]:
     try:
         root = ET.parse(junit_path).getroot()
     except (OSError, ET.ParseError) as exc:
-        raise BaselineError(f"missing or unreadable junit.xml: {exc}") from exc
+        raise SourceRunError("junit-unreadable", f"missing or unreadable junit.xml: {exc}") from exc
     samples: dict[str, list[float]] = {}
     for testcase in root.iter("testcase"):
         raw_time = testcase.get("time")
@@ -71,15 +110,15 @@ def read_run_samples(run_dir: Path) -> dict[str, list[float]]:
         try:
             duration = float(raw_time)
         except ValueError as exc:
-            raise BaselineError(f"invalid junit time {raw_time!r} in {junit_path}") from exc
+            raise SourceRunError("junit-time-invalid", f"invalid junit time {raw_time!r} in {junit_path}") from exc
         if not math.isfinite(duration) or duration < 0:
-            raise BaselineError(f"invalid junit time {raw_time!r} in {junit_path}")
+            raise SourceRunError("junit-time-invalid", f"invalid junit time {raw_time!r} in {junit_path}")
         nodeid = _junit_nodeid(testcase)
         if nodeid is None:
             continue
         samples.setdefault(nodeid, []).append(duration)
     if not samples:
-        raise BaselineError(f"no usable testcase samples in {junit_path}")
+        raise SourceRunError("junit-no-samples", f"no usable testcase samples in {junit_path}")
     return samples
 
 
@@ -107,14 +146,14 @@ def build_baseline(entries: list[dict[str, Any]], generated_at: str) -> tuple[di
         try:
             best, metadata = read_calibration_best(run_dir)
             samples = read_run_samples(run_dir)
-        except BaselineError as exc:
+        except SourceRunError as exc:
             rejected.append(
                 {
                     "run_id": entry["run_id"],
                     "pr": entry["pr"],
                     "sha": entry["sha"],
                     "artifact_id": entry["artifact_id"],
-                    "reason": str(exc),
+                    "reason": exc.code,
                 }
             )
             continue
@@ -184,14 +223,14 @@ def write_sharded_baseline(output_dir: Path, baseline: dict[str, Any]) -> list[P
     manifest = {key: baseline[key] for key in baseline if key != "tests"}
     manifest["test_shard_count"] = TEST_SHARD_COUNT
     manifest_path = output_dir / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")
     buckets: dict[int, list[dict[str, Any]]] = {index: [] for index in range(TEST_SHARD_COUNT)}
     for record in baseline["tests"]:
         buckets[test_shard_index(record["id"])].append(record)
     written = [manifest_path]
     for index in range(TEST_SHARD_COUNT):
         shard_path = output_dir / f"tests-{index:02d}.json"
-        shard_path.write_text(json.dumps(buckets[index], indent=2) + "\n", encoding="utf-8")
+        shard_path.write_text(json.dumps(buckets[index], indent=2) + "\n", encoding="utf-8", newline="\n")
         written.append(shard_path)
     return written
 
@@ -246,6 +285,419 @@ def baseline_tests_map(baseline: dict[str, Any]) -> dict[str, float]:
             raise BaselineError(f"baseline record for {record.get('id')!r} must be finite and non-negative")
         tests[record["id"]] = amount
     return tests
+
+
+def _cell(text: object) -> str:
+    flat = CONTROL_CHARACTERS.sub(" ", str(text))
+    longest = max((len(run) for run in BACKTICK_RUNS.findall(flat)), default=0)
+    fence = "`" * (longest + 1)
+    pad = " " if flat.startswith("`") or flat.endswith("`") else ""
+    return f"{fence}{pad}{flat.replace('|', chr(92) + '|')}{pad}{fence}"
+
+
+def _count(value: object) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise BaselineError("baseline manifest run records must carry integer ids")
+    return value
+
+
+def _area(nodeid: str) -> str:
+    parts = nodeid.split("::", 1)[0].split("/")
+    return "/".join(parts[:3]) if len(parts) > 3 else "/".join(parts[:-1]) or parts[0]
+
+
+def _seconds(value: float) -> str:
+    return f"{value:.3f}"
+
+
+def _change(old: float, new: float) -> str:
+    if old <= 0:
+        return "new" if new > 0 else "0.0%"
+    return f"{(new - old) / old * 100:+.1f}%"
+
+
+def _reference_seconds(baseline: dict[str, Any]) -> str:
+    value = baseline.get("reference_calibration_best_seconds")
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        raise BaselineError("baseline manifest must carry a finite reference_calibration_best_seconds")
+    return f"{value:.6f}"
+
+
+def _rejection_code(reason: object) -> str:
+    return reason if isinstance(reason, str) and reason in REJECTION_CODES else "unrecognized"
+
+
+def summary_markdown(previous: dict[str, Any], current: dict[str, Any]) -> str:
+    old = baseline_tests_map(previous)
+    new = baseline_tests_map(current)
+    kept = sorted(old.keys() & new.keys())
+    added = sorted(new.keys() - old.keys(), key=lambda nodeid: (-new[nodeid], nodeid))
+    removed = sorted(old.keys() - new.keys(), key=lambda nodeid: (-old[nodeid], nodeid))
+    old_sum, new_sum = sum(old.values()), sum(new.values())
+    kept_old, kept_new = sum(old[nodeid] for nodeid in kept), sum(new[nodeid] for nodeid in kept)
+    lines = [
+        "# Fast-tier duration baseline refresh",
+        "",
+        "Generated by `scripts/build_fast_duration_baseline.py summary` from the previous and the refreshed baseline.",
+        "CI rebuilds the baseline and this summary from the source runs in `manifest.json` and fails unless both",
+        "match the committed files byte for byte.",
+        "",
+        "## Totals",
+        "",
+        "| measure | previous | refreshed | change |",
+        "| --- | ---: | ---: | ---: |",
+        f"| sum of p50 seconds | {_seconds(old_sum)} | {_seconds(new_sum)} | {_change(old_sum, new_sum)} |",
+        f"| sum over tests in both | {_seconds(kept_old)} | {_seconds(kept_new)} | {_change(kept_old, kept_new)} |",
+        f"| tests | {len(old)} | {len(new)} | +{len(added)} / -{len(removed)} |",
+        f"| reference calibration seconds | {_reference_seconds(previous)} | {_reference_seconds(current)} | |",
+        "",
+        "## Change by area (tests in both)",
+        "",
+        "| area | tests | previous | refreshed | change |",
+        "| --- | ---: | ---: | ---: | ---: |",
+    ]
+    areas: dict[str, list[float]] = {}
+    for nodeid in kept:
+        totals = areas.setdefault(_area(nodeid), [0, 0.0, 0.0])
+        totals[0] += 1
+        totals[1] += old[nodeid]
+        totals[2] += new[nodeid]
+    for area, (count, before, after) in sorted(
+        areas.items(), key=lambda item: (-abs(item[1][2] - item[1][1]), item[0])
+    )[:SUMMARY_LIST_LIMIT]:
+        lines.append(
+            f"| {_cell(area)} | {int(count)} | {_seconds(before)} | {_seconds(after)} | {_change(before, after)} |"
+        )
+    moved = sorted(kept, key=lambda nodeid: (-(new[nodeid] - old[nodeid]), nodeid))
+    for title, chosen in (
+        ("Largest increases", [nodeid for nodeid in moved if new[nodeid] > old[nodeid]][:SUMMARY_LIST_LIMIT]),
+        (
+            "Largest decreases",
+            [nodeid for nodeid in reversed(moved) if new[nodeid] < old[nodeid]][:SUMMARY_LIST_LIMIT],
+        ),
+    ):
+        lines += ["", f"## {title}", "", "| test | previous | refreshed | change |", "| --- | ---: | ---: | ---: |"]
+        lines += [
+            f"| {_cell(nodeid)} | {_seconds(old[nodeid])} | {_seconds(new[nodeid])} | "
+            f"{_change(old[nodeid], new[nodeid])} |"
+            for nodeid in chosen
+        ]
+    for title, chosen, values in (
+        ("Slowest added tests", added[:SUMMARY_LIST_LIMIT], new),
+        ("Slowest removed tests", removed[:SUMMARY_LIST_LIMIT], old),
+    ):
+        lines += ["", f"## {title}", "", "| test | p50 seconds |", "| --- | ---: |"]
+        lines += [f"| {_cell(nodeid)} | {_seconds(values[nodeid])} |" for nodeid in chosen]
+    lines += [
+        "",
+        "## Source runs",
+        "",
+        "| run | pr | sha | speed factor | tests |",
+        "| ---: | ---: | --- | ---: | ---: |",
+    ]
+    for run in current.get("runs", []):
+        lines.append(
+            f"| {_count(run['run_id'])} | {_count(run['pr'])} | {_cell(run['sha'])} | "
+            f"{float(run['speed_factor']):.3f} | {_count(run['test_count'])} |"
+        )
+    rejected = current.get("rejected_runs", [])
+    lines += ["", f"Rejected source runs: {len(rejected)}."]
+    if rejected:
+        lines.append("")
+    lines += [
+        f"- run {_count(item['run_id'])} (pr {_count(item['pr'])}): {_rejection_code(item.get('reason'))}"
+        for item in rejected
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def write_summary(previous_dir: Path, baseline_dir: Path) -> Path:
+    path = baseline_dir / SUMMARY_NAME
+    path.write_text(
+        summary_markdown(read_sharded_baseline(previous_dir), read_sharded_baseline(baseline_dir)),
+        encoding="utf-8",
+        newline="\n",
+    )
+    return path
+
+
+def reproduce_entries(manifest: dict[str, Any], runs_root: Path) -> list[dict[str, Any]]:
+    entries = []
+    for group in ("runs", "rejected_runs"):
+        records = manifest.get(group)
+        if not isinstance(records, list):
+            raise BaselineError(f"baseline manifest {group} must be a list")
+        for run in records:
+            if not isinstance(run, dict):
+                raise BaselineError(f"baseline manifest {group} must hold objects")
+            entry = {key: run.get(key) for key in ("run_id", "pr", "sha", "artifact_id")}
+            for key in ("run_id", "pr", "artifact_id"):
+                if _count(entry[key]) <= 0:
+                    raise BaselineError("baseline manifest run records must carry positive ids")
+            if not isinstance(entry["sha"], str) or not SHA_PATTERN.fullmatch(entry["sha"]):
+                raise BaselineError("baseline manifest run records must carry a full lowercase commit sha")
+            entries.append({**entry, "dir": str(runs_root / REFRESH_RUN_DIR.format(run_id=entry["run_id"]))})
+    if not entries:
+        raise BaselineError("the baseline manifest names no source runs")
+    return entries
+
+
+def github_api(path: str) -> Any:
+    try:
+        completed = subprocess.run(
+            ["gh", "api", path],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=True,
+            timeout=GITHUB_API_TIMEOUT_SECONDS,
+        )
+        return json.loads(completed.stdout)
+    except (OSError, subprocess.SubprocessError, ValueError) as exc:
+        raise BaselineError("a GitHub API request failed") from exc
+
+
+def github_artifact_zip(path: str) -> bytes:
+    try:
+        return subprocess.run(
+            ["gh", "api", path], capture_output=True, check=True, timeout=GITHUB_ARTIFACT_TIMEOUT_SECONDS
+        ).stdout
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise BaselineError("a GitHub artifact download failed") from exc
+
+
+def _fetch(api: Api, path: str) -> dict[str, Any] | None:
+    try:
+        payload = api(path)
+    except BaselineError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _utc(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        return None
+    try:
+        return datetime.fromisoformat(f"{value[:-1]}+00:00")
+    except ValueError:
+        return None
+
+
+def _same_repo(record: object, repo: str) -> bool:
+    name = record.get("full_name") if isinstance(record, dict) else None
+    return isinstance(name, str) and name.lower() == repo.lower()
+
+
+def _run_codes(run: dict[str, Any], entry: dict[str, Any], repo: str, generated_at: datetime) -> list[str]:
+    codes: list[str] = []
+    if run.get("id") != entry["run_id"]:
+        codes.append("run-id")
+    if str(run.get("path", "")).split("@", 1)[0] != CI_WORKFLOW_PATH:
+        codes.append("run-workflow")
+    if run.get("event") != "pull_request":
+        codes.append("run-event")
+    if run.get("status") != "completed" or run.get("conclusion") != "success":
+        codes.append("run-conclusion")
+    if run.get("head_sha") != entry["sha"]:
+        codes.append("run-sha")
+    if not _same_repo(run.get("head_repository"), repo):
+        codes.append("run-fork")
+    created = _utc(run.get("created_at"))
+    if created is None:
+        codes.append("run-created")
+    elif generated_at < created:
+        codes.append("generated-before-run")
+    elif generated_at - created > GENERATED_AT_WINDOW:
+        codes.append("generated-too-late")
+    return codes
+
+
+def _artifact_codes(artifact: dict[str, Any], entry: dict[str, Any]) -> list[str]:
+    codes: list[str] = []
+    if artifact.get("name") != f"fast-junit-{entry['pr']}-{entry['sha']}":
+        codes.append("artifact-name")
+    origin = artifact.get("workflow_run")
+    if not isinstance(origin, dict) or origin.get("id") != entry["run_id"]:
+        codes.append("artifact-run")
+    elif origin.get("head_sha") != entry["sha"]:
+        codes.append("artifact-sha")
+    return codes
+
+
+def _pull_codes(pull: dict[str, Any], entry: dict[str, Any], repo: str, run_created: datetime | None) -> list[str]:
+    codes: list[str] = []
+    if pull.get("merged") is not True:
+        codes.append("pr-not-merged")
+    head = pull.get("head")
+    if not isinstance(head, dict) or head.get("sha") != entry["sha"]:
+        codes.append("pr-head")
+    elif not _same_repo(head.get("repo"), repo):
+        codes.append("pr-fork")
+    base = pull.get("base")
+    if not isinstance(base, dict) or base.get("ref") != BASELINE_BRANCH or not _same_repo(base.get("repo"), repo):
+        codes.append("pr-base")
+    merged_at = _utc(pull.get("merged_at"))
+    if merged_at is None:
+        codes.append("pr-merged-at")
+    elif run_created is not None and run_created > merged_at:
+        codes.append("run-after-merge")
+    return codes
+
+
+def provenance_codes(entry: dict[str, Any], repo: str, api: Api, generated_at: datetime) -> list[str]:
+    codes: list[str] = []
+    run = _fetch(api, f"repos/{repo}/actions/runs/{entry['run_id']}")
+    codes += ["run-unavailable"] if run is None else _run_codes(run, entry, repo, generated_at)
+    artifact = _fetch(api, f"repos/{repo}/actions/artifacts/{entry['artifact_id']}")
+    codes += ["artifact-unavailable"] if artifact is None else _artifact_codes(artifact, entry)
+    pull = _fetch(api, f"repos/{repo}/pulls/{entry['pr']}")
+    created = _utc(run.get("created_at")) if run is not None else None
+    codes += ["pr-unavailable"] if pull is None else _pull_codes(pull, entry, repo, created)
+    return codes
+
+
+def source_run_problems(entries: list[dict[str, Any]], repo: str, api: Api, generated_at: datetime) -> list[str]:
+    problems: list[str] = []
+    if len(entries) > MAX_SOURCE_RUNS:
+        problems.append(f"source runs: more than {MAX_SOURCE_RUNS}")
+    if len(entries) < MIN_SOURCE_RUNS:
+        problems.append(f"source runs: fewer than {MIN_SOURCE_RUNS}")
+    for key, label in (("run_id", "run"), ("pr", "pr"), ("artifact_id", "artifact")):
+        counts = Counter(entry[key] for entry in entries)
+        problems += [
+            f"source runs: {label} {value} appears more than once" for value, n in sorted(counts.items()) if n > 1
+        ]
+    if problems:
+        return problems
+    for entry in entries:
+        problems += [f"run {entry['run_id']}: {code}" for code in provenance_codes(entry, repo, api, generated_at)]
+    return problems
+
+
+def extract_artifact(archive: bytes, destination: Path) -> None:
+    try:
+        bundle = zipfile.ZipFile(io.BytesIO(archive))
+    except zipfile.BadZipFile as exc:
+        raise SourceRunError("artifact-unreadable", "the artifact is not a zip archive") from exc
+    with bundle:
+        infos = bundle.infolist()
+        names = [info.filename for info in infos]
+        if len(set(names)) != len(names) or any(name not in ARTIFACT_MEMBERS for name in names):
+            raise SourceRunError("artifact-members", "the artifact holds a member outside the allowed set")
+        for info in infos:
+            if info.is_dir() or stat.S_IFMT(info.external_attr >> 16) not in (0, stat.S_IFREG):
+                raise SourceRunError("artifact-members", "the artifact holds a member that is not a regular file")
+        if sum(info.file_size for info in infos) > ARTIFACT_MAX_BYTES:
+            raise SourceRunError("artifact-members", "the artifact is larger than the limit")
+        destination.mkdir(parents=True)
+        for info in infos:
+            try:
+                with bundle.open(info) as member:
+                    data = member.read(info.file_size + 1)
+            except (zipfile.BadZipFile, OSError, RuntimeError) as exc:
+                raise SourceRunError("artifact-unreadable", "the artifact could not be read") from exc
+            if len(data) != info.file_size:
+                raise SourceRunError("artifact-members", "an artifact member does not match its declared size")
+            (destination / info.filename).write_bytes(data)
+
+
+def _git(directory: Path, *args: str) -> bytes:
+    try:
+        return subprocess.run(["git", "-C", str(directory), *args], capture_output=True, check=True).stdout
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise BaselineError("a git command failed while reading the committed baseline") from exc
+
+
+def committed_tree(baseline_dir: Path, rev: str) -> dict[str, tuple[str, str]]:
+    listing = _git(baseline_dir, "ls-tree", "-r", "-z", rev, "--", ".").decode("utf-8", errors="surrogateescape")
+    tree: dict[str, tuple[str, str]] = {}
+    for record in listing.split("\0"):
+        if not record:
+            continue
+        meta, _, name = record.partition("\t")
+        mode, _kind, blob = meta.split(" ")
+        tree[name] = (mode, blob)
+    return tree
+
+
+def tree_differences(baseline_dir: Path, tree: dict[str, tuple[str, str]], generated: dict[str, bytes]) -> list[str]:
+    quoted = {name: json.dumps(name) for name in {*tree, *generated}}
+    problems = [f"extra file {quoted[name]}" for name in sorted(tree.keys() - generated.keys())]
+    problems += [f"missing file {quoted[name]}" for name in sorted(generated.keys() - tree.keys())]
+    for name in sorted(tree.keys() & generated.keys()):
+        mode, blob = tree[name]
+        if mode != COMMITTED_FILE_MODE:
+            problems.append(f"file mode {mode} on {quoted[name]}")
+        elif _git(baseline_dir, "cat-file", "blob", blob) != generated[name]:
+            problems.append(f"changed bytes in {quoted[name]}")
+    return problems
+
+
+def reproduce_problems(
+    baseline_dir: Path,
+    previous_dir: Path,
+    workdir: Path,
+    *,
+    rev: str,
+    repo: str,
+    api: Api,
+    fetch: Fetch,
+    collected_ids: set[str],
+    ceiling_path: Path,
+    not_after: datetime,
+) -> list[str]:
+    tree = committed_tree(baseline_dir, rev)
+    if "manifest.json" not in tree:
+        return ["the committed baseline has no manifest.json"]
+    try:
+        manifest = json.loads(_git(baseline_dir, "cat-file", "blob", tree["manifest.json"][1]))
+    except ValueError as exc:
+        raise BaselineError("the committed baseline manifest is not valid JSON") from exc
+    if not isinstance(manifest, dict):
+        raise BaselineError("the committed baseline manifest must be an object")
+    generated_at = _utc(manifest.get("generated_at"))
+    if generated_at is None:
+        return ["manifest: generated_at is not a UTC timestamp"]
+    if generated_at > not_after:
+        return ["manifest: generated_at is after the pull request event"]
+    resolved = workdir.resolve()
+    if resolved == Path.cwd().resolve() or Path.cwd().resolve() in resolved.parents:
+        raise BaselineError("the working directory must lie outside the current directory")
+    if workdir.exists() and any(workdir.iterdir()):
+        raise BaselineError("the working directory must be empty")
+    entries = reproduce_entries(manifest, workdir)
+    problems = source_run_problems(entries, repo, api, generated_at)
+    if problems:
+        return problems
+    for entry in entries:
+        try:
+            extract_artifact(fetch(f"repos/{repo}/actions/artifacts/{entry['artifact_id']}/zip"), Path(entry["dir"]))
+        except SourceRunError as exc:
+            problems.append(f"run {entry['run_id']}: {exc.code}")
+        except BaselineError:
+            problems.append(f"run {entry['run_id']}: artifact-download")
+    if problems:
+        return problems
+    scratch_dir = workdir / "reproduced"
+    rebuilt, _rejected = build_baseline(entries, manifest["generated_at"])
+    write_sharded_baseline(scratch_dir, rebuilt)
+    write_summary(previous_dir, scratch_dir)
+    generated = {
+        path.relative_to(scratch_dir).as_posix(): path.read_bytes()
+        for path in sorted(scratch_dir.rglob("*"))
+        if path.is_file()
+    }
+    problems = tree_differences(baseline_dir, tree, generated)
+    if len(rebuilt["runs"]) < MIN_SOURCE_RUNS:
+        problems.append(f"source runs: fewer than {MIN_SOURCE_RUNS} usable")
+    report = check_baseline(rebuilt, entries, collected_ids)
+    if not report["sum_within_tolerance"]:
+        problems.append("gate check: the baseline sum is outside tolerance of the source runs")
+    if not report["coverage_within_minimum"]:
+        problems.append("gate check: coverage of the collected fast tier is below the minimum")
+    if ceiling_report(rebuilt, collected_ids, ceiling_path, read_sharded_baseline(previous_dir))["over"]:
+        problems.append("ceiling check: the baseline is over the fast-duration ceiling")
+    return problems
 
 
 def check_baseline(baseline: dict[str, Any], entries: list[dict[str, Any]], collected_ids: set[str]) -> dict[str, Any]:
@@ -862,31 +1314,44 @@ def ceiling_markdown(report: dict[str, object]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def ceiling_check_command(args: argparse.Namespace) -> int:
-    current_baseline = read_sharded_baseline(Path(args.baseline))
+def ceiling_report(
+    current_baseline: dict[str, Any],
+    collected: set[str],
+    ceiling_path: Path,
+    previous_baseline: dict[str, Any] | None = None,
+) -> dict[str, object]:
     current = baseline_tests_map(current_baseline)
-    collected = read_collected_ids(Path(args.collected_ids))
-    ceiling = ceiling_in_baseline_scale(Path(args.ceiling), current_baseline)
+    ceiling = ceiling_in_baseline_scale(ceiling_path, current_baseline)
     total = float(sum(current[nodeid] for nodeid in collected if nodeid in current))
-    over = total > ceiling
-    report: dict[str, object] = {"total": total, "ceiling": ceiling, "over": over}
-    if args.previous:
-        previous_baseline = read_sharded_baseline(Path(args.previous))
+    report: dict[str, object] = {"total": total, "ceiling": ceiling, "over": total > ceiling}
+    if previous_baseline is not None:
         scale = baseline_reference(current_baseline) / baseline_reference(previous_baseline)
         previous = {nodeid: value * scale for nodeid, value in baseline_tests_map(previous_baseline).items()}
         report["top_growth_files"] = ceiling_growth(current, previous, collected)
+    return report
+
+
+def ceiling_check_command(args: argparse.Namespace) -> int:
+    report = ceiling_report(
+        read_sharded_baseline(Path(args.baseline)),
+        read_collected_ids(Path(args.collected_ids)),
+        Path(args.ceiling),
+        read_sharded_baseline(Path(args.previous)) if args.previous else None,
+    )
     if args.report_out:
         Path(args.report_out).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     text = ceiling_markdown(report)
     if args.markdown_out:
         Path(args.markdown_out).write_text(text, encoding="utf-8")
     print(text)
-    return 3 if over else 0
+    return 3 if report["over"] else 0
 
 
 def build_command(args: argparse.Namespace) -> int:
     generated_at = args.generated_at or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     baseline, _rejected = build_baseline(load_manifest(Path(args.manifest)), generated_at)
+    if len(baseline["runs"]) < MIN_SOURCE_RUNS:
+        raise BaselineError(f"only {len(baseline['runs'])} source runs are usable; a baseline needs {MIN_SOURCE_RUNS}")
     written = write_sharded_baseline(Path(args.output), baseline)
     print(f"baseline: {len(baseline['tests'])} tests from {len(baseline['runs'])} runs")
     print(f"rejected runs: {len(baseline['rejected_runs'])}")
@@ -894,6 +1359,38 @@ def build_command(args: argparse.Namespace) -> int:
         print(f"rejected run {rejected['run_id']}: {rejected['reason']}")
     for path in written:
         print(f"wrote {path}")
+    return 0
+
+
+def summary_command(args: argparse.Namespace) -> int:
+    print(f"wrote {write_summary(Path(args.previous), Path(args.baseline))}")
+    return 0
+
+
+def reproduce_command(args: argparse.Namespace) -> int:
+    if not args.repo:
+        raise BaselineError("--repo or GITHUB_REPOSITORY is required")
+    not_after = _utc(args.not_after) if args.not_after else datetime.now(timezone.utc)
+    if not_after is None:
+        raise BaselineError("--not-after must be a UTC timestamp ending in Z")
+    problems = reproduce_problems(
+        Path(args.baseline),
+        Path(args.previous),
+        Path(args.workdir),
+        rev=args.rev,
+        repo=str(args.repo),
+        api=github_api,
+        fetch=github_artifact_zip,
+        collected_ids=read_collected_ids(Path(args.collected_ids)),
+        ceiling_path=Path(args.ceiling),
+        not_after=not_after,
+    )
+    if problems:
+        print("error: the committed baseline is not reproduced from its source runs")
+        for problem in problems:
+            print(f"  - {problem}")
+        return 2
+    print(f"reproduced {args.baseline} byte for byte from its source runs")
     return 0
 
 
@@ -934,6 +1431,23 @@ def main(argv: list[str] | None = None) -> int:
     build_parser.add_argument("--output", required=True)
     build_parser.add_argument("--generated-at", default=None)
     build_parser.set_defaults(handler=build_command)
+    summary_parser = subparsers.add_parser("summary", help="Write the refresh summary next to a baseline.")
+    summary_parser.add_argument("--previous", required=True)
+    summary_parser.add_argument("--baseline", required=True)
+    summary_parser.set_defaults(handler=summary_command)
+    reproduce_parser = subparsers.add_parser(
+        "reproduce",
+        help="Rebuild a committed baseline and its summary from its source runs and compare the committed tree.",
+    )
+    reproduce_parser.add_argument("--baseline", required=True)
+    reproduce_parser.add_argument("--previous", required=True)
+    reproduce_parser.add_argument("--workdir", required=True)
+    reproduce_parser.add_argument("--not-after", default=None)
+    reproduce_parser.add_argument("--collected-ids", required=True)
+    reproduce_parser.add_argument("--ceiling", required=True)
+    reproduce_parser.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY"))
+    reproduce_parser.add_argument("--rev", default="HEAD")
+    reproduce_parser.set_defaults(handler=reproduce_command)
     check_parser = subparsers.add_parser("check", help="Gate-check a baseline against its source runs.")
     check_parser.add_argument("--baseline", required=True)
     check_parser.add_argument("--manifest", required=True)

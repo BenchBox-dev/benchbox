@@ -179,3 +179,45 @@ def test_the_pinned_engine_recognises_the_review_named_revert_subject(theseus_en
         "",
     )
     assert change.is_revert
+
+
+def test_the_baseline_derived_path_names_the_summary_and_the_data_files() -> None:
+    entries = {entry["name"]: entry for entry in POLICY["evidence"].get("derived_paths", [])}
+    if not entries:
+        pytest.skip("this policy declares no derived paths")
+    entry = entries["fast-tier-baseline"]
+
+    assert entry["summary"] == "tests/fixtures/fast_tier_baseline/SUMMARY.md"
+    assert entry["files"] == [
+        "tests/fixtures/fast_tier_baseline/manifest.json",
+        "tests/fixtures/fast_tier_baseline/tests-[0-9][0-9].json",
+    ]
+
+
+def test_every_derived_path_is_attested_by_a_tooling_job_that_must_always_succeed() -> None:
+    entries = POLICY["evidence"].get("derived_paths", [])
+    if not entries:
+        pytest.skip("this policy declares no derived paths")
+    jobs = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))["jobs"]
+    tooling = jobs["tooling"]
+    aggregate = next(step for step in tooling["steps"] if step.get("id") == "aggregate")
+
+    for entry in entries:
+        attesting = [job_id for job_id, job in jobs.items() if job.get("name") == entry["attested_by"]]
+        assert attesting, f"no ci.yml job is named {entry['attested_by']!r}"
+        for job_id in attesting:
+            assert job_id in tooling["needs"], job_id
+            assert f"--always {job_id} " in aggregate["run"], job_id
+
+
+def test_the_code_that_attests_derived_paths_is_a_gate_path() -> None:
+    if not POLICY["evidence"].get("derived_paths", []):
+        pytest.skip("this policy declares no derived paths")
+    gate_paths = POLICY["classifier"]["gate_paths"]
+
+    for path in (
+        "scripts/build_fast_duration_baseline.py",
+        "scripts/ci_unit_result.py",
+        "tests/unit/workflows/test_ci_reproduce_fast_baseline.py",
+    ):
+        assert path in gate_paths

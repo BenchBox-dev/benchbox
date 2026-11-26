@@ -195,6 +195,7 @@ LEFT_AT_TAG = {
     "scripts/typecheck.py": "the line's own type check: it runs the line's ty configuration over the files pr-preflight passes it",
 }
 READ_AT_TAG = {
+    ".github/workflows/ci.yml": "the line's own CI; creation verification requires it to attest every derived path the carried policy declares",
     "Makefile": "a line keeps its own Makefile; carried tests passed against the v0.5.1 one",
     ".github/PULL_REQUEST_TEMPLATE.md": "read as a tag document",
     "CHANGELOG.md": "read as a tag document",

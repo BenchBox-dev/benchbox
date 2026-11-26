@@ -238,3 +238,16 @@ def test_tracked_files_decode_smart_quote_names(tmp_path: Path, monkeypatch: pyt
     monkeypatch.setattr(inventory, "ROOT", repo)
     monkeypatch.setattr(inventory, "subprocess", SimpleNamespace(run=_windows_locale_run(subprocess.run)))
     assert quoted in inventory.tracked_files()
+
+
+def test_scan_skips_the_generated_fast_tier_baseline(
+    targets: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    baseline = tmp_path / "tests" / "fixtures" / "fast_tier_baseline"
+    baseline.mkdir(parents=True)
+    (baseline / "SUMMARY.md").write_text("see docs/guide/page.md\n", encoding="utf-8")
+    other = tmp_path / "tests" / "fixtures" / "other.md"
+    other.write_text("see docs/guide/page.md\n", encoding="utf-8")
+    monkeypatch.setattr(inventory, "ROOT", tmp_path)
+    rows = inventory.scan(["tests/fixtures/fast_tier_baseline/SUMMARY.md", "tests/fixtures/other.md"], targets)
+    assert list(rows) == ["tests/fixtures/other.md"]

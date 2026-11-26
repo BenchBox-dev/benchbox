@@ -2645,344 +2645,6 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "file": 1,
-    "pattern": 2
-   },
-   "occurrences": 4,
-   "path": "tests/fixtures/fast_tier_baseline/tests-00.json",
-   "rule": "test-sample-data",
-   "target_count": 3,
-   "targets": [
-    {
-     "kind": "pattern",
-     "target": "docs/README.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/publish-exclusions.txt]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
-    }
-   ]
-  },
-  {
-   "disposition": "fixture-data",
-   "kinds": {
-    "extra": 2,
-    "file": 1,
-    "pattern": 6
-   },
-   "occurrences": 11,
-   "path": "tests/fixtures/fast_tier_baseline/tests-01.json",
-   "rule": "test-sample-data",
-   "target_count": 9,
-   "targets": [
-    {
-     "kind": "extra",
-     "target": "_project/design/api-public-symbols.json"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/agent/attribution-surfaces.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/changelog.d/x.json]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/comment-policy.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/independent-publication-contract.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/key.pem]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/publish-allowlist.txt]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
-    },
-    {
-     "kind": "extra",
-     "target": "scripts/check_docs_ownership.py"
-    }
-   ]
-  },
-  {
-   "disposition": "fixture-data",
-   "kinds": {
-    "file": 1,
-    "pattern": 8,
-    "unresolved": 1
-   },
-   "occurrences": 11,
-   "path": "tests/fixtures/fast_tier_baseline/tests-02.json",
-   "rule": "test-sample-data",
-   "target_count": 10,
-   "targets": [
-    {
-     "kind": "pattern",
-     "target": "docs/a.py]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/agent/identity-instruction-boundary.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/agent/notes.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/agent/review-protocol.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/assets/site.css]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/guides/intro.md]"
-    },
-    {
-     "kind": "unresolved",
-     "target": "docs/page.md-unsafe"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/publish-allowlist.txt]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/usage/getting-started.md]"
-    }
-   ]
-  },
-  {
-   "disposition": "fixture-data",
-   "kinds": {
-    "file": 1,
-    "pattern": 8,
-    "unresolved": 1
-   },
-   "occurrences": 13,
-   "path": "tests/fixtures/fast_tier_baseline/tests-03.json",
-   "rule": "test-sample-data",
-   "target_count": 10,
-   "targets": [
-    {
-     "kind": "unresolved",
-     "target": "docs//page.md-unsafe"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/adr/adr-duckdb-datasketches-vendoring.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/nightly-t3.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/release-guide.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/results-phase-2-runbook.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/site-deploy.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/publish-exclusions.txt]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/release.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/uv.lock]"
-    }
-   ]
-  },
-  {
-   "disposition": "fixture-data",
-   "kinds": {
-    "file": 1,
-    "pattern": 3
-   },
-   "occurrences": 4,
-   "path": "tests/fixtures/fast_tier_baseline/tests-04.json",
-   "rule": "test-sample-data",
-   "target_count": 4,
-   "targets": [
-    {
-     "kind": "pattern",
-     "target": "docs/agent/README.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/blog/post.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/pyproject.toml]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
-    }
-   ]
-  },
-  {
-   "disposition": "fixture-data",
-   "kinds": {
-    "extra": 1,
-    "file": 1,
-    "pattern": 3,
-    "unresolved": 1
-   },
-   "occurrences": 7,
-   "path": "tests/fixtures/fast_tier_baseline/tests-05.json",
-   "rule": "test-sample-data",
-   "target_count": 6,
-   "targets": [
-    {
-     "kind": "unresolved",
-     "target": "docs/../outside.md-unsafe"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/adr/adr-independent-publication-authorities.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/independent-publication-threat-model.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/release-guide.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
-    },
-    {
-     "kind": "extra",
-     "target": "quality/docs-ownership.json"
-    }
-   ]
-  },
-  {
-   "disposition": "fixture-data",
-   "kinds": {
-    "file": 1,
-    "pattern": 6
-   },
-   "occurrences": 7,
-   "path": "tests/fixtures/fast_tier_baseline/tests-06.json",
-   "rule": "test-sample-data",
-   "target_count": 7,
-   "targets": [
-    {
-     "kind": "pattern",
-     "target": "docs/CNAME]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/development/testing.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/adr/adr-published-results-slim-corpus-branch.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/snowflake-trial-exit-adversarial-review-handoff.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/usage/getting-started.md.bak]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/usage/getting-started.md]"
-    }
-   ]
-  },
-  {
-   "disposition": "fixture-data",
-   "kinds": {
-    "file": 1,
-    "pattern": 6,
-    "unresolved": 1
-   },
-   "occurrences": 8,
-   "path": "tests/fixtures/fast_tier_baseline/tests-07.json",
-   "rule": "test-sample-data",
-   "target_count": 8,
-   "targets": [
-    {
-     "kind": "unresolved",
-     "target": "docs/./page.md-unsafe"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/agent/review-protocol.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/assets/page.html]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/example.py]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/internal/results-phase-3-runbook.md]"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/reference/threat-model.md]"
-    },
-    {
-     "kind": "file",
-     "target": "docs/usage/getting-started.md"
-    },
-    {
-     "kind": "pattern",
-     "target": "docs/usage/other-page.md]"
-    }
-   ]
-  },
-  {
-   "disposition": "fixture-data",
-   "kinds": {
     "pattern": 7,
     "unresolved": 8
    },
@@ -3592,7 +3254,7 @@
     "root": 1,
     "unresolved": 8
    },
-   "occurrences": 34,
+   "occurrences": 36,
    "path": "tests/unit/scripts/test_doc_reference_inventory.py",
    "rule": "contract-export-tooling",
    "target_count": 13,
@@ -4427,7 +4089,7 @@
   "dispositions": {
    "contract-replaced": 1,
    "contract-tooling": 6,
-   "fixture-data": 42,
+   "fixture-data": 34,
    "governance-stays": 11,
    "historical-record": 118,
    "lock-test": 4,
@@ -4435,18 +4097,18 @@
    "site-pipeline-cutover": 4,
    "wiring-updated": 35
   },
-  "files": 232,
+  "files": 224,
   "kinds": {
    "built-url": 29037,
    "dir": 163,
-   "extra": 44,
-   "file": 1386,
+   "extra": 41,
+   "file": 1371,
    "generated": 3,
-   "pattern": 339,
+   "pattern": 296,
    "root": 202,
-   "unresolved": 2083
+   "unresolved": 2081
   },
-  "references": 33257,
+  "references": 33194,
   "unclassified": 0
  }
 }
