@@ -48827,15 +48827,10 @@
       "title": "Verify the SQLGlot 30.33 translation changes on engines and results the release UAT does not check"
     },
     "sqlglot-adopt-30-35-0-2": {
-      "claim": {
-        "expires_at": "2026-11-26T15:29:59Z",
-        "generation": "de6ff21ff9084ea8bd56771d287ce85b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:9f9c6d68051f4bb162aa05a7"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Adopt benchbox-sqlglot 30.35.0.2 with an overflow-only SQLite guard for engines older than 3.46"
     },
     "sqlglot-adoption-blocked-by-golden-corpus-change-20261117": {
