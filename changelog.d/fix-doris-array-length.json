@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "The read_primitives array_length query on Doris now translates to ARRAY_SIZE instead of ARRAY_LENGTH, which Doris rejects with \"Can not found function 'ARRAY_LENGTH'\". StarRocks keeps ARRAY_LENGTH."
+    },
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The bundled SQLGlot runtime moves from 30.35.0.5 to 30.35.0.6 (fork commit `ef99d3b5a45c`), a verified delivery of the benchbox-sqlglot fork."
+    }
+  ]
+}
