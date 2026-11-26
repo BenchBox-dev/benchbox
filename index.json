@@ -49309,6 +49309,13 @@
       "status": "dropped",
       "title": "Fork controller can merge after a hold is applied during its mergeability retry"
     },
+    "sqlglot-cutover-translated-scripts-engine-verification-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Run the SQL that PR #4537 now translates on the engines it targets; it was only executed on DuckDB and SQLite"
+    },
     "sqlglot-delivery-arm-waits-for-daily-run-20261107": {
       "claim": null,
       "needs": [],
