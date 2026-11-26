@@ -27072,7 +27072,7 @@
         "pvm-p2-publish-ssb-clickbench"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "blocked",
       "title": "Migrate SSB generator with per-benchmark versioned RNG and regenerated reference row counts"
     },
     "datagen-p2-vectorize-synthetic-generators": {
