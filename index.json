@@ -27862,7 +27862,7 @@
     "datagen-lib-tpcds-rowcount-inputs": {
       "claim": null,
       "needs": [
-        "datagen-lib-tpcds"
+        "datagen-lib-tpcds-fractional-and-refresh"
       ],
       "priority": "medium-high",
       "status": "open",
