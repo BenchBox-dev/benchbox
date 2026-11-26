@@ -3,7 +3,7 @@
     "power_warmup_iterations=0 runs no warm-up pass and records 0; refusal is not an option, because crr-o1-official-power-after-load and owner decision 6 of 2026-11-25 need it",
     "A test covers the behaviour"
   ],
-  "context": "Found by an independent review of the site page docs/platforms/snowflake-gateways.md against core v0.5.1 (91d357a); each claim was re-verified by a second reviewer.\n\n2026-11-25: crr-o1-official-power-after-load needs this item; official mode runs no warm-up (owner decision 6), so a zero warm-up must be honoured, not refused.",
+  "context": "Found by an independent review of the site page docs/platforms/snowflake-gateways.md against core v0.5.1 (91d357a); each claim was re-verified by a second reviewer.\n\n2026-11-25: crr-o1-official-power-after-load needs this item; official mode runs no warm-up (owner decision 6), so a zero warm-up must be honoured, not refused.\n\n2026-11-26: fixed by PR #4543, merged to develop as 1fa9ec3221 (PR head 07a22f747f). A configured 0 is now honoured in run_service.py, runner.py and write_primitives/benchmark.py: no warm-up pass runs and 0 reaches the power loops; unset keeps the default. Test: test_run_config_resolution_characterization.py::test_zero_warmup_is_honoured_while_unset_uses_the_default (fails before the fix with assert 1 == 0). make pr-preflight passed (4,228 tests); duplicate-check-delta +0; local and hosted review clean. Not run: a full benchmark with zero warm-up (no CLI flag for this setting).",
   "description": "run_service.py:155-158 and runner.py:932-935 use `or` on the configured value, so power_warmup_iterations=0 becomes 1 and a user cannot ask for a power run without a warm-up pass. Honour 0: run no warm-up pass and record 0. Official mode needs this (crr-o1-official-power-after-load, owner decision 6 of 2026-11-25); silently changing the value misstates the run.",
   "links": [
     "benchbox/core/run_service.py",
@@ -41,6 +41,14 @@
       "generation": "d604024bf8364d618cb2a822247f3e9b",
       "op": "take",
       "op_id": "841264178d904e8bb47f5ddd905c99c2",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-26T15:35:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "11a79b1a1d4a40df9f740c84cc4fe0e3",
       "session_id": "51a05311b8f040aabf2f02456b50b932"
     }
   ]
