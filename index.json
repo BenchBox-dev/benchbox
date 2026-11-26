@@ -46902,6 +46902,13 @@
       "status": "done",
       "title": "Schema Evolution & Backward Compatibility Management"
     },
+    "scoped-preflight-cancel-no-pattern-kill-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Give agents a way to cancel their own pr-preflight; a pattern kill on 2026-11-25 stopped other sessions' preflights"
+    },
     "secure-credential-handling": {
       "claim": null,
       "needs": [],
