@@ -27848,9 +27848,7 @@
     "datagen-lib-tpcds-refresh-sets": {
       "claim": null,
       "needs": [
-        "datagen-decision-upstream-gap-policy",
-        "datagen-lib-tpcds",
-        "datagen-lib-review-gate-and-publishing-setup"
+        "datagen-lib-tpcds-fractional-and-refresh"
       ],
       "priority": "medium-high",
       "status": "open",
