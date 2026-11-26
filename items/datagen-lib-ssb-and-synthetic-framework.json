@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "SSB row counts equal the specification at SF 0.01, 0.1, 1 and 10 (test), with the source cited in the README.",
+    "The acceptance report in the PR shows 0 failures under the decided rules, 0 orphan foreign keys, and exact DuckDB/DataFusion agreement on all 13 queries at the four scales.",
+    "tbl and Parquet bytes are identical at 1, 4 and default threads; golden SHA-256 per table at SF 0.01 and 0.1 are committed and pass on Linux and macOS CI.",
+    "N=3 medians meet the ADR budget (SF 1 <= 5 s / <= 6 s, SF 10 <= 50 s / <= 60 s, RSS <= 512 / <= 1,024 MiB).",
+    "An independent reviewer reports no Critical, High or Medium finding; the PR is merged."
+  ],
+  "description": "## Problem\nLibrary draft PR #7 holds the framework all synthetic generators reuse (65,536-row blocks, ChaCha8 stream keyed by benchmark, table, stream, seed and block; owned sampling routines) and the SSB generator. It copies the legacy generator's row counts, and its acceptance report predates the owner's rules.\n\n## Change\nOn PR #7: switch SSB to specification row counts (part = 200,000 x floor(1 + log2 SF), date = 2,556 rows, lineorder from orders x 1-7 lines per the SSB specification); implement the acceptance rules in tools/ssb_acceptance.py (min-max or 99.9% prediction interval from 5 legacy seeds, rank check for boundary quantiles on low-cardinality columns, empty-query rate rule); regenerate the report and the golden hashes; get an independent review; merge.\n\n## Decision gates\n- If the specification is ambiguous for a count (lineorder is approximate in the spec), follow the reference ssb-dbgen behaviour and state the source; if no reference is reachable, stop and ask the owner.\n- If any acceptance criterion fails under the decided rules, stop and report the metric; do not tune the rule.\n- Distribution comparison against legacy uses the columns whose domain is unchanged by the row-count change; list any metric excluded for that reason.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T23:56:07Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "2dca38e7256b47c2a8f1f788be9688fb",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}

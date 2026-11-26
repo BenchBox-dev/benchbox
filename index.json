@@ -27748,6 +27748,16 @@
       "status": "open",
       "title": "Activate the review gate, merge ruleset and PyPI publishing on benchbox-datagen"
     },
+    "datagen-lib-ssb-and-synthetic-framework": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-tpch",
+        "datagen-decision-ssb-and-synthetic-acceptance"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Merge the shared deterministic synthetic framework and the SSB generator in benchbox-datagen"
+    },
     "datagen-lib-synthetic-amplab": {
       "claim": null,
       "needs": [
