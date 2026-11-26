@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "Exact table row counts and zero orphan foreign keys at SF 0.01, 0.1, 1 and 10.",
+    "Owner-approved acceptance report (distributions and per-query row counts on DuckDB and DataFusion); golden per-table SHA-256 hashes and expected row counts frozen in BenchBox CI.",
+    "Delimited and Parquet bytes identical at 1, 4 and default threads on macOS arm64 and Linux x86_64.",
+    "N=3 medians meet the ADR budget: <= 5 s / <= 6 s at SF 1, <= 50 s / <= 60 s at SF 10, RSS <= 512 / <= 1,024 MiB."
+  ],
+  "description": "Synthetic-generator stage for h2odb (docs/internal/adr/adr-benchbox-datagen.md (revised 2026-11-26, PR #4540), decisions 1 and 6). Fixed-block per-table RNG (rand_chacha pinned, owned sampling, integer or pure-Rust libm math), delimited and Parquet output, and a per-benchmark generator version bump. Delimited value formatting matches the legacy generator's precision (no padded decimals or microseconds).\n\nDecision gate: the acceptance report comparing legacy and new distributions and every query's row count across DuckDB and DataFusion needs owner approval before golden hashes are frozen.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T13:57:50Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "0f052ebd8e8c48c9b3015a095d641d5f",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
