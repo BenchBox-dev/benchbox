@@ -404,3 +404,55 @@ class TestDuckLakeManifestOptions:
             )
 
         assert not (out_dir / "tags").exists()
+
+
+class TestDuckLakeOrchestratorTarget:
+    def test_orchestrator_converts_manifest_table_to_ducklake(self, tmp_path):
+        import json
+
+        from benchbox.core.runner.conversion import FormatConversionOrchestrator
+
+        (tmp_path / "metrics.tbl").write_text("1|hello|\n2|world|\n", encoding="utf-8")
+        manifest_path = tmp_path / "_datagen_manifest.json"
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "version": 2,
+                    "benchmark": "tpch",
+                    "scale_factor": 0.01,
+                    "format_preference": ["tbl"],
+                    "tables": {
+                        "metrics": {"formats": {"tbl": [{"path": "metrics.tbl", "size_bytes": 18, "row_count": 2}]}}
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        results = FormatConversionOrchestrator().convert_benchmark_tables(
+            manifest_path=manifest_path,
+            output_dir=tmp_path,
+            target_format="ducklake",
+            schemas={
+                "metrics": {"columns": [{"name": "id", "type": "INTEGER"}, {"name": "label", "type": "VARCHAR(20)"}]}
+            },
+        )
+
+        assert results["metrics"].row_count == 2
+        updated = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert updated["tables"]["metrics"]["formats"]["ducklake"][0]["path"] == "metrics"
+        assert updated["format_preference"][0] == "ducklake"
+
+        conn = duckdb.connect(":memory:")
+        try:
+            conn.execute("LOAD ducklake")
+            conn.execute(
+                f"ATTACH 'ducklake:{tmp_path / 'metrics' / 'metadata.ducklake'}' AS lake "
+                f"(DATA_PATH '{tmp_path / 'metrics' / 'data'}')"
+            )
+            assert conn.execute("SELECT id, label FROM lake.main.metrics ORDER BY id").fetchall() == [
+                (1, "hello"),
+                (2, "world"),
+            ]
+        finally:
+            conn.close()

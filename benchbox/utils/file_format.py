@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import csv
 import logging
 from pathlib import Path
 from typing import Union
@@ -138,6 +139,14 @@ def get_delimiter_for_file(path: Union[str, Path]) -> str:
 TRAILING_DUMMY_COLUMN: str = "_trailing_delimiter_"
 
 
+def count_delimited_fields(line: str, delimiter: str) -> int:
+    stripped = line.rstrip("\r\n")
+    try:
+        return len(next(csv.reader([stripped], delimiter=delimiter, quotechar='"', doublequote=True)))
+    except (csv.Error, StopIteration):
+        return len(stripped.split(delimiter))
+
+
 def has_trailing_delimiter(
     path: Union[str, Path],
     delimiter: str,
@@ -149,7 +158,7 @@ def has_trailing_delimiter(
 
     if column_names is not None:
         expected = len(column_names)
-        checker = lambda line: len(line.rstrip("\n").split(delimiter)) > expected
+        checker = lambda line: count_delimited_fields(line, delimiter) > expected
     else:
         checker = lambda line: line.rstrip("\n").endswith(delimiter)
 

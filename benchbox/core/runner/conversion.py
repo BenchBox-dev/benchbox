@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -17,12 +18,19 @@ from benchbox.utils.format_converters import (
     ConversionOptions,
     ConversionResult,
     DeltaConverter,
+    DuckLakeConverter,
     IcebergConverter,
     ParquetConverter,
     VortexConverter,
 )
 
 logger = logging.getLogger(__name__)
+
+_DIGIT_RUN = re.compile(r"(\d+)")
+
+
+def _chunk_order_key(entry: Any) -> list[str | int]:
+    return [int(part) if index % 2 else part for index, part in enumerate(_DIGIT_RUN.split(str(entry.path)))]
 
 
 class FormatConversionOrchestrator:
@@ -31,6 +39,7 @@ class FormatConversionOrchestrator:
             "parquet": ParquetConverter(),
             "delta": DeltaConverter(),
             "iceberg": IcebergConverter(),
+            "ducklake": DuckLakeConverter(),
             "vortex": VortexConverter(),
         }
 
@@ -164,11 +173,11 @@ class FormatConversionOrchestrator:
             return []
 
         if "tbl" in table_formats.formats:
-            return list(table_formats.formats["tbl"])
+            return sorted(table_formats.formats["tbl"], key=_chunk_order_key)
 
         for format_name, files in table_formats.formats.items():
             logger.info(f"Using {format_name} files as source for {table_name}")
-            return list(files)
+            return sorted(files, key=_chunk_order_key)
 
         return []
 

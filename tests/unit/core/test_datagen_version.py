@@ -638,19 +638,19 @@ def test_manifest_emits_optional_backend_fields_without_breaking_legacy(tmp_path
         scale_factor=1.0,
         generator_backend="native",
         generator_backend_version="vec-1.0",
-        parquet_writer="benchbox-pyarrow-streaming",
+        parquet_writer="benchbox-pyarrow-streaming-v2",
         parquet_row_group_size=122880,
         formats=["parquet"],
     ).to_dict()
     assert native_manifest["generator_backend"] == "native"
     assert native_manifest["generator_backend_version"] == "vec-1.0"
-    assert native_manifest["parquet_writer"] == "benchbox-pyarrow-streaming"
+    assert native_manifest["parquet_writer"] == "benchbox-pyarrow-streaming-v2"
     assert native_manifest["parquet_row_group_size"] == 122880
     assert native_manifest["data_generation_identity_hash"] == compute_datagen_identity_hash(
         "h2odb",
         backend="native",
         backend_version="vec-1.0",
-        parquet_writer="benchbox-pyarrow-streaming",
+        parquet_writer="benchbox-pyarrow-streaming-v2",
         parquet_row_group_size=122880,
         scale_factor=1.0,
     )
@@ -679,7 +679,7 @@ def test_manifest_emits_optional_backend_fields_without_breaking_legacy(tmp_path
         benchmark="tpch",
         scale_factor=1.0,
         formats=["tbl", "parquet"],
-        parquet_writer="benchbox-pyarrow-streaming",
+        parquet_writer="benchbox-pyarrow-streaming-v2",
         parquet_row_group_size=122880,
     ).to_dict()
     native_tpch_parquet = DataGenerationManifest(
@@ -689,7 +689,7 @@ def test_manifest_emits_optional_backend_fields_without_breaking_legacy(tmp_path
         formats=["tbl", "parquet"],
         generator_backend="native",
         generator_backend_version="4.0.0",
-        parquet_writer="benchbox-pyarrow-streaming",
+        parquet_writer="benchbox-pyarrow-streaming-v2",
         parquet_row_group_size=122880,
     ).to_dict()
     assert resolve_manifest_datagen_hash(native_tpch_parquet, table_format="parquet") == resolve_manifest_datagen_hash(
@@ -725,14 +725,14 @@ def test_identity_hash_collapses_byte_identical_tpc_and_separates_parquet_or_syn
     assert compute_datagen_identity_hash(
         "tpch",
         backend="legacy",
-        parquet_writer="benchbox-pyarrow-streaming",
+        parquet_writer="benchbox-pyarrow-streaming-v2",
         parquet_row_group_size=122880,
         scale_factor=1.0,
     ) == compute_datagen_identity_hash(
         "tpch",
         backend="native",
         backend_version="4.0.0",
-        parquet_writer="benchbox-pyarrow-streaming",
+        parquet_writer="benchbox-pyarrow-streaming-v2",
         parquet_row_group_size=122880,
         scale_factor=1.0,
     )
@@ -783,18 +783,18 @@ def test_identity_hash_collapses_byte_identical_tpc_and_separates_parquet_or_syn
 
     assert compute_datagen_identity_hash(
         "tpch",
-        parquet_writer="benchbox-pyarrow-streaming",
+        parquet_writer="benchbox-pyarrow-streaming-v2",
         parquet_row_group_size=122880,
     ) != compute_datagen_identity_hash(
         "tpch",
-        parquet_writer="benchbox-pyarrow-streaming",
+        parquet_writer="benchbox-pyarrow-streaming-v2",
         parquet_row_group_size=128 * 1024 * 1024,
     )
 
     assert compute_datagen_identity_hash(
         "tpch",
         backend="legacy",
-        parquet_writer="benchbox-pyarrow-streaming",
+        parquet_writer="benchbox-pyarrow-streaming-v2",
         scale_factor=1.0,
     ) != compute_datagen_identity_hash(
         "tpch",
@@ -944,3 +944,27 @@ def test_backend_reuse_safety_and_native_tpc_manifest_provenance(tmp_path: Path)
         config=cfg_tpch_native_verified,
     )
     assert tpch_result.data_generation_hash == compute_base_constants_hash("tpch")
+
+
+def _parquet_manifest(parquet_writer: str) -> dict:
+    return {
+        "benchmark": "tpch",
+        **current_datagen_stamp("tpch"),
+        "parquet_writer": parquet_writer,
+        "parquet_row_group_size": 122880,
+        "tables": {"lineitem": {"formats": {"parquet": [{"path": "lineitem.parquet"}]}}},
+    }
+
+
+@pytest.mark.parametrize("writer", ["benchbox-pyarrow-streaming", "benchbox-pyarrow-partitioned"])
+def test_previous_pyarrow_writer_identities_are_stale_for_parquet(writer: str) -> None:
+    manifest = _parquet_manifest(writer)
+    reason = describe_datagen_staleness(manifest, benchmark="tpch", expected_table_format="parquet")
+    assert reason is not None and writer in reason
+    assert describe_datagen_staleness(manifest, benchmark="tpch", expected_table_format="tbl") is None
+
+
+@pytest.mark.parametrize("writer", ["benchbox-pyarrow-streaming-v2", "benchbox-pyarrow-partitioned-v2"])
+def test_current_pyarrow_writer_identities_are_fresh_for_parquet(writer: str) -> None:
+    manifest = _parquet_manifest(writer)
+    assert describe_datagen_staleness(manifest, benchmark="tpch", expected_table_format="parquet") is None
