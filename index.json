@@ -27825,7 +27825,7 @@
     "datagen-lib-synthetic-vector-search": {
       "claim": null,
       "needs": [
-        "datagen-p2-ssb-versioned-migration"
+        "datagen-lib-ssb-and-synthetic-framework"
       ],
       "priority": "medium",
       "status": "open",
