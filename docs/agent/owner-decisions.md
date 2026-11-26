@@ -19,20 +19,16 @@ output, comparability, scope, or spend.
 In a harness with no blocking tool, end the turn with the question as its last
 paragraph.
 
-## Gate the dependent work
+## Hold the governed work
 
-A sentence in an ADR or an item description leaves a dependent item `ready`,
-so the next agent to pick ready work builds it. Make the tracker hold it:
+A sentence in an ADR or an item description leaves a governed item `ready`,
+so the next agent to pick ready work builds it. Make the tracker hold it, with
+the states `handoffs.md` already defines:
 
-1. `create_item` for the decision. The title starts with `Decide:`; the
-   description holds the options and the evidence; the acceptance is the
-   owner's recorded answer.
-2. `update_item` on each item that depends on it, adding the decision item to
-   `needs`. `needs` is replaced wholesale, so pass the full list.
-3. When the owner answers, `take` the decision item and `finish` it. Quote the
-   answer word for word in `closing_note`, with its date and source, as
-   `handoffs.md` requires for an owner decision. The dependent items become
-   ready again.
+1. On each item the decision governs, state the question in `context`,
+   release any claim, and set the item `blocked`.
+2. When the owner answers, record the answer on each governed item, quoted
+   word for word with its date and source, and move the item back to `open`.
 
-Do this in the turn the decision is found, before starting any item that
-depends on it.
+Do step 1 in the turn the decision is found, before starting any item it
+governs.

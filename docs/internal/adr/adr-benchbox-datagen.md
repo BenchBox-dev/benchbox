@@ -439,12 +439,10 @@ every supported platform:
   a quiet host meeting the table above. Owned and run by the PR author on the
   maintainer host via `make heavy-run` (macOS arm64) and on the Linux CI/agent
   runner for PRs touching the streaming converter, the `benchbox-datagen` pin
-  or backend integration, with raw medians recorded in the PR body. A budget
-  whose basis is an `N=1` measurement is a target until an `N=3` median
-  replaces that basis: a miss is recorded with its measurements and reported
-  to the owner, who decides whether it blocks. A miss never justifies changing
-  output bytes, schema, row-group layout or the Parquet writer to meet a
-  budget.
+  or backend integration, with raw medians recorded in the PR body. A miss
+  fails the gate and is reported to the owner with its measurements. It never
+  justifies changing output bytes, schema, row-group layout or the Parquet
+  writer to meet a budget.
 
 ## Consequences
 
