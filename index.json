@@ -27262,6 +27262,17 @@
       "status": "open",
       "title": "Wire benchbox-datagen into BenchBox as the native datagen backend behind the native-datagen extra"
     },
+    "datagen-lib-query-integration": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-tpch-qgen",
+        "datagen-lib-tpcds-dsqgen",
+        "datagen-lib-benchbox-integration"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Switch BenchBox TPC query managers to benchbox-datagen and make them lazy"
+    },
     "datagen-lib-repo-skeleton": {
       "claim": null,
       "needs": [

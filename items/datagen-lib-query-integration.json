@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "benchbox datagen and ai_primitives work with no qgen/dsqgen present.",
+    "Native query generation matches the corpus in BenchBox CI; legacy C path still selectable.",
+    "Bundle replay of recorded parameters passes."
+  ],
+  "description": "docs/internal/adr/adr-benchbox-datagen.md decision 8 (query generation in Rust). TPC-H and TPC-DS query managers call the library (native backend) and load lazily so data-only consumers never need a query generator; provenance records the query generator identity and version; published bundles' recorded parameters replay through the library. Delete dead C-tool code (c_tools.py unused parameter computation and global random reseed, DSQGenBinary._clean_sql, the unused qgen compile path in tpch/streams.py, runner.py generate_data_table call) and correct benchbox/_binaries/tpc-ds/NOTICE.txt (Windows binaries are patched). Replace TPC-H DataFrame regex re-derivation of parameters with the library's parameter output.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T14:59:02Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "09c43e720d9c485092c4ee3a48516fd0",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
