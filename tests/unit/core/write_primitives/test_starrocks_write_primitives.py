@@ -60,10 +60,8 @@ def test_operations_starrocks_can_run_are_not_skipped(write, operation_id):
 
 
 def test_batch_values_use_the_starrocks_series_table_function(write):
-    sql = write._rewrite_transactional_sql_for_platform(
-        write.get_operation("insert_batch_values_100").write_sql, "starrocks"
-    )
-    assert "TABLE(generate_series(0, 99))" in sql
+    sql = write._dialect_base_write_sql(write.get_operation("insert_batch_values_100"), "starrocks")
+    assert "TABLE(GENERATE_SERIES(0, 99))" in sql
     assert "unnest" not in sql.lower()
 
 

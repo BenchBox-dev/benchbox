@@ -20,11 +20,9 @@ CLICKHOUSE_OUTER_ALIAS_VARIANTS: dict[str, tuple[str, str]] = {
 }
 CLICKHOUSE_COALESCED_COUNT_SUBQUERY_VARIANT_IDS = frozenset({"13_v1"})
 DORIS_FILTER_VARIANT_IDS = frozenset({"1_v6", *(f"{number}_v7" for number in range(2, 19))})
-DORIS_NAMED_WINDOW_VARIANT_IDS = frozenset({"1_v8"})
 DORIS_ORDER_BY_PROJECTION_VARIANT_IDS = frozenset({"3_v1", "3_v9", "5_v1", "10_v1", "16_v1"})
 DORIS_CORRELATED_GROUP_VARIANTS: dict[str, tuple[str, ...]] = {"2_v2": ("ps_partkey",)}
 STARROCKS_FILTER_VARIANT_IDS = DORIS_FILTER_VARIANT_IDS
-STARROCKS_NAMED_WINDOW_VARIANT_IDS = DORIS_NAMED_WINDOW_VARIANT_IDS
 STARROCKS_ORDER_BY_PROJECTION_VARIANT_IDS = frozenset({"3_v1", "3_v9", "5_v1", "10_v1", "16_v1", "16_v7", "16_v10"})
 STARROCKS_CORRELATED_GROUP_VARIANTS = DORIS_CORRELATED_GROUP_VARIANTS
 STARROCKS_SOURCELESS_EXISTS_VARIANT_IDS = frozenset({"7_v8", "12_v8", "13_v8"})
@@ -140,8 +138,6 @@ def _doris_variant_rewrites(query_id: str) -> list[Rewrite]:
     rewrites: list[Rewrite] = []
     if query_id in DORIS_FILTER_VARIANT_IDS:
         rewrites.append(("filtered_aggregates_to_conditional", {}))
-    if query_id in DORIS_NAMED_WINDOW_VARIANT_IDS:
-        rewrites.append(("inline_named_windows", {}))
     if query_id in DORIS_ORDER_BY_PROJECTION_VARIANT_IDS:
         rewrites.append(("alias_order_by_projections", {}))
     if group_columns := DORIS_CORRELATED_GROUP_VARIANTS.get(query_id):
@@ -154,8 +150,6 @@ def _starrocks_variant_rewrites(query_id: str) -> list[Rewrite]:
     rewrites: list[Rewrite] = []
     if query_id in STARROCKS_FILTER_VARIANT_IDS:
         rewrites.append(("filtered_aggregates_to_conditional", {}))
-    if query_id in STARROCKS_NAMED_WINDOW_VARIANT_IDS:
-        rewrites.append(("inline_named_windows", {}))
     if query_id in STARROCKS_ORDER_BY_PROJECTION_VARIANT_IDS:
         rewrites.append(("alias_order_by_projections", {}))
     if query_id in STARROCKS_SOURCELESS_EXISTS_VARIANT_IDS:
@@ -208,8 +202,6 @@ def rewrite_dialect_variant(query_id: str, query: str, target_dialect: str) -> s
     rewrites = _variant_rewrites(query_id, target)
     if rewrites:
         query = translate_sql_query(query, target, source_dialect=target, identify=False, rewrites=rewrites)
-    if target in {"doris", "starrocks"} and query_id in GROUP_BY_EMPTY_VARIANT_IDS:
-        query = query.replace(" GROUP BY ()", "")
     return query
 
 
@@ -243,7 +235,6 @@ __all__ = [
     "DATAFUSION_EMPTY_GROUP_VARIANT_IDS",
     "DORIS_CORRELATED_GROUP_VARIANTS",
     "DORIS_FILTER_VARIANT_IDS",
-    "DORIS_NAMED_WINDOW_VARIANT_IDS",
     "DORIS_ORDER_BY_PROJECTION_VARIANT_IDS",
     "DUAL_VARIANT_IDS",
     "GROUP_BY_EMPTY_VARIANT_IDS",
@@ -268,7 +259,6 @@ __all__ = [
     "SPARK_CHAR_CASE_VARIANT_IDS",
     "STARROCKS_CORRELATED_GROUP_VARIANTS",
     "STARROCKS_FILTER_VARIANT_IDS",
-    "STARROCKS_NAMED_WINDOW_VARIANT_IDS",
     "STARROCKS_ORDER_BY_PROJECTION_VARIANT_IDS",
     "STARROCKS_SOURCELESS_EXISTS_VARIANT_IDS",
     "SPARK_VARIANT_IDS",

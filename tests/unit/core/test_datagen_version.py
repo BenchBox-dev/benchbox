@@ -638,19 +638,19 @@ def test_manifest_emits_optional_backend_fields_without_breaking_legacy(tmp_path
         scale_factor=1.0,
         generator_backend="native",
         generator_backend_version="vec-1.0",
-        parquet_writer="benchbox-streaming",
+        parquet_writer="benchbox-pyarrow-streaming",
         parquet_row_group_size=122880,
         formats=["parquet"],
     ).to_dict()
     assert native_manifest["generator_backend"] == "native"
     assert native_manifest["generator_backend_version"] == "vec-1.0"
-    assert native_manifest["parquet_writer"] == "benchbox-streaming"
+    assert native_manifest["parquet_writer"] == "benchbox-pyarrow-streaming"
     assert native_manifest["parquet_row_group_size"] == 122880
     assert native_manifest["data_generation_identity_hash"] == compute_datagen_identity_hash(
         "h2odb",
         backend="native",
         backend_version="vec-1.0",
-        parquet_writer="benchbox-streaming",
+        parquet_writer="benchbox-pyarrow-streaming",
         parquet_row_group_size=122880,
         scale_factor=1.0,
     )
@@ -679,7 +679,7 @@ def test_manifest_emits_optional_backend_fields_without_breaking_legacy(tmp_path
         benchmark="tpch",
         scale_factor=1.0,
         formats=["tbl", "parquet"],
-        parquet_writer="benchbox-streaming",
+        parquet_writer="benchbox-pyarrow-streaming",
         parquet_row_group_size=122880,
     ).to_dict()
     native_tpch_parquet = DataGenerationManifest(
@@ -689,7 +689,7 @@ def test_manifest_emits_optional_backend_fields_without_breaking_legacy(tmp_path
         formats=["tbl", "parquet"],
         generator_backend="native",
         generator_backend_version="4.0.0",
-        parquet_writer="benchbox-streaming",
+        parquet_writer="benchbox-pyarrow-streaming",
         parquet_row_group_size=122880,
     ).to_dict()
     assert resolve_manifest_datagen_hash(native_tpch_parquet, table_format="parquet") == resolve_manifest_datagen_hash(
@@ -725,14 +725,14 @@ def test_identity_hash_collapses_byte_identical_tpc_and_separates_parquet_or_syn
     assert compute_datagen_identity_hash(
         "tpch",
         backend="legacy",
-        parquet_writer="benchbox-streaming",
+        parquet_writer="benchbox-pyarrow-streaming",
         parquet_row_group_size=122880,
         scale_factor=1.0,
     ) == compute_datagen_identity_hash(
         "tpch",
         backend="native",
         backend_version="4.0.0",
-        parquet_writer="benchbox-streaming",
+        parquet_writer="benchbox-pyarrow-streaming",
         parquet_row_group_size=122880,
         scale_factor=1.0,
     )
@@ -783,18 +783,18 @@ def test_identity_hash_collapses_byte_identical_tpc_and_separates_parquet_or_syn
 
     assert compute_datagen_identity_hash(
         "tpch",
-        parquet_writer="benchbox-streaming",
+        parquet_writer="benchbox-pyarrow-streaming",
         parquet_row_group_size=122880,
     ) != compute_datagen_identity_hash(
         "tpch",
-        parquet_writer="benchbox-streaming",
+        parquet_writer="benchbox-pyarrow-streaming",
         parquet_row_group_size=128 * 1024 * 1024,
     )
 
     assert compute_datagen_identity_hash(
         "tpch",
         backend="legacy",
-        parquet_writer="benchbox-streaming",
+        parquet_writer="benchbox-pyarrow-streaming",
         scale_factor=1.0,
     ) != compute_datagen_identity_hash(
         "tpch",

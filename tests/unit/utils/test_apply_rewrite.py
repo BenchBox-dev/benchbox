@@ -82,9 +82,46 @@ LIST_AND_RUNNER_REWRITES = (
     "use_nulls_for_rollups",
     "round_inputs_to_decimal",
 )
+SHAPE_REWRITES = (
+    "drop_empty_group_by",
+    "unwrap_single_grouping_set",
+    "add_dual_source_to_filtered_selects",
+    "inline_sourceless_exists",
+    "exists_to_derived_join",
+    "drop_correlated_scalar_group_by",
+    "fold_scalar_having_into_case",
+    "qualify_aggregated_columns",
+    "wrap_order_by_subquery_aliases",
+    "alias_order_by_projections",
+    "date_column_integer_arithmetic",
+    "rollup_empty_input_row",
+    "hoist_aggregate_subqueries",
+)
+DIALECT_REWRITES = (
+    "alias_outer_table_references",
+    "alias_derived_tables",
+    "coalesce_count_subqueries",
+    "trim_char_case_comparisons",
+    "in_subquery_or_to_left_join",
+    "factor_common_conjuncts",
+    "positive_count_subquery_to_exists",
+    "hoist_qualify_outer_clauses",
+)
+SERIES_REWRITES = ("lower_series_selects",)
 
 
-@pytest.mark.parametrize("name", [*HAVOC_REWRITES, *SUBQUERY_REWRITES, *ENGINE_REWRITES, *LIST_AND_RUNNER_REWRITES])
+@pytest.mark.parametrize(
+    "name",
+    [
+        *HAVOC_REWRITES,
+        *SUBQUERY_REWRITES,
+        *ENGINE_REWRITES,
+        *LIST_AND_RUNNER_REWRITES,
+        *SHAPE_REWRITES,
+        *DIALECT_REWRITES,
+        *SERIES_REWRITES,
+    ],
+)
 def test_named_registry_resolves_every_moved_rewrite(name: str):
     assert callable(_fork_rewrite(name))
 
@@ -119,6 +156,9 @@ def test_registry_exposes_no_unlisted_rewrites():
         *SUBQUERY_REWRITES,
         *ENGINE_REWRITES,
         *LIST_AND_RUNNER_REWRITES,
+        *SHAPE_REWRITES,
+        *DIALECT_REWRITES,
+        *SERIES_REWRITES,
     }
     assert exposed == listed
 

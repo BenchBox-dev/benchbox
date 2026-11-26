@@ -27,12 +27,14 @@ def test_cedardb_adapter_runs_tpcds_maintenance() -> None:
     assert maintenance_unsupported_reason(adapter) is None
 
 
-@pytest.mark.parametrize("dialect", ["singlestore", "mysql", "SingleStore"])
-def test_mysql_wire_dialects_cast_to_signed(dialect: str) -> None:
+@pytest.mark.parametrize(
+    ("dialect", "cast"), [("singlestore", ":> INT"), ("mysql", "AS SIGNED)"), ("SingleStore", ":> INT")]
+)
+def test_mysql_wire_dialects_use_the_translator_integer_cast(dialect: str, cast: str) -> None:
     for name in RETURN_FUNCTIONS_WITH_TIME_PARSING:
         statements = MAINTENANCE_FUNCTIONS_BY_NAME[name].statements_for(dialect)
         assert all("AS INTEGER)" not in statement for statement in statements)
-        assert any("AS SIGNED)" in statement for statement in statements)
+        assert any(cast in statement for statement in statements)
 
 
 @pytest.mark.parametrize("dialect", [None, "duckdb", "postgres", "snowflake"])
@@ -44,5 +46,5 @@ def test_other_dialects_keep_integer_casts(dialect: str | None) -> None:
 def test_operations_sql_uses_the_target_dialect() -> None:
     harness = TPCDSMaintenanceTest(benchmark=None, connection_factory=lambda: None, dialect="singlestore")
     emitted = "\n".join(harness.get_maintenance_operations_sql()["LF_CR"])
-    assert "AS SIGNED)" in emitted
+    assert ":> INT" in emitted
     assert "AS INTEGER)" not in emitted.split("INSERT INTO", 1)[1]

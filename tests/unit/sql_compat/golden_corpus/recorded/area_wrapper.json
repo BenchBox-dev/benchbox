@@ -332,11 +332,11 @@
     "legacy": "SELECT TIMESTAMP_TRUNC(\"EventTime\", WEEK) FROM \"hits\""
   },
   "sqlite-syntax-extract-dow-netezza": {
-    "fork": "<UnsupportedError>",
+    "fork": "SELECT CAST(STRFTIME('%w', \"o_orderdate\") AS INTEGER) FROM \"orders\"",
     "legacy": "SELECT EXTRACT(DOW FROM \"o_orderdate\") FROM \"orders\""
   },
   "sqlite-syntax-extract-dow-postgres": {
-    "fork": "<UnsupportedError>",
+    "fork": "SELECT CAST(STRFTIME('%w', \"o_orderdate\") AS INTEGER) FROM \"orders\"",
     "legacy": "SELECT EXTRACT(DOW FROM \"o_orderdate\") FROM \"orders\""
   },
   "sqlite-syntax-extract-doy-netezza": {

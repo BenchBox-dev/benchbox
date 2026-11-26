@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from benchbox.utils.dialect_utils import translate_sql_query
+from benchbox.utils.dialect_utils import apply_rewrite, translate_sql_query
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -39,12 +39,11 @@ def test_rollup_with_grouping_function_is_left_alone():
 
 def test_sourceless_exists_is_inlined_as_its_predicate():
     from benchbox._vendor import sqlglot
-    from benchbox.utils.query_shape_rewrites import inline_sourceless_exists
 
     tree = sqlglot.parse_one("SELECT 1 FROM a WHERE EXISTS(SELECT 1 WHERE a.x = 1 OR a.y = 2)", read="starrocks")
-    rewritten = inline_sourceless_exists(tree).sql(dialect="starrocks")
+    rewritten = apply_rewrite("inline_sourceless_exists", tree, "starrocks").sql(dialect="starrocks")
     assert "EXISTS" not in rewritten
     assert "(a.x = 1 OR a.y = 2)" in rewritten
 
     kept = sqlglot.parse_one("SELECT 1 FROM a WHERE EXISTS(SELECT 1 FROM b WHERE b.k = a.k)", read="starrocks")
-    assert "EXISTS" in inline_sourceless_exists(kept).sql(dialect="starrocks")
+    assert "EXISTS" in apply_rewrite("inline_sourceless_exists", kept, "starrocks").sql(dialect="starrocks")

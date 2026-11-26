@@ -141,9 +141,15 @@ class FormatConversionOrchestrator:
             if isinstance(raw_header, bool):
                 has_header = raw_header
 
-        if delimiter == base_opts.delimiter and has_header == base_opts.has_header:
+        null_marker = base_opts.null_marker
+        if not null_marker:
+            raw_marker = entry_meta.get("csv_null_marker", extras.get("csv_null_marker"))
+            if isinstance(raw_marker, str):
+                null_marker = raw_marker
+
+        if (delimiter, has_header, null_marker) == (base_opts.delimiter, base_opts.has_header, base_opts.null_marker):
             return base_opts
-        return replace(base_opts, delimiter=delimiter, has_header=has_header)
+        return replace(base_opts, delimiter=delimiter, has_header=has_header, null_marker=null_marker)
 
     def _get_converter(self, format_name: str):
         converter = self._converters.get(format_name.lower())
@@ -241,7 +247,11 @@ class FormatConversionOrchestrator:
         results: dict[str, ConversionResult],
         effective_options: ConversionOptions | None,
     ) -> None:
-        from benchbox.utils.datagen_version import compute_datagen_identity_hash
+        from benchbox.utils.datagen_version import (
+            PARQUET_WRITER,
+            PARTITIONED_PARQUET_WRITER,
+            compute_datagen_identity_hash,
+        )
 
         row_group_size: int | None = None
         if effective_options is not None and isinstance(effective_options.row_group_size, int):
@@ -253,15 +263,11 @@ class FormatConversionOrchestrator:
                     row_group_size = candidate
                     break
 
-        writers = sorted(
-            {
-                str(result.metadata["parquet_writer"])
-                for result in results.values()
-                if isinstance(result.metadata.get("parquet_writer"), str) and result.metadata["parquet_writer"]
-            }
+        parquet_writer = (
+            PARTITIONED_PARQUET_WRITER
+            if any(result.metadata.get("partitioned") for result in results.values())
+            else PARQUET_WRITER
         )
-        parquet_writer = "+".join(writers) if writers else "benchbox-pyarrow-streaming"
-
         manifest.extra_fields["parquet_writer"] = parquet_writer
         if row_group_size is not None:
             manifest.extra_fields["parquet_row_group_size"] = row_group_size

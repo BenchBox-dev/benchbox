@@ -90,6 +90,10 @@ operations:
     expected_rows: 1
   cleanup_sql: "DELETE FROM txn_orders WHERE o_comment = 'read_committed'\n"
   expected_rows_affected: 2
+  platform_overrides:
+    postgres: &postgres_read_committed "COMMIT;\nBEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;\nINSERT INTO txn_orders VALUES (9700001, 1, 'O', 1000.0, DATE '1998-01-01', '5-LOW', 'Clerk#000000001', 0, 'read_committed');\nINSERT INTO txn_orders VALUES (9700002, 2, 'O', 2000.0, DATE '1998-01-01', '5-LOW', 'Clerk#000000001', 0, 'read_committed');\nCOMMIT;\n"
+    postgresql: *postgres_read_committed
+    singlestore: "BEGIN TRANSACTION;\nINSERT INTO txn_orders VALUES (9700001, 1, 'O', 1000.0, DATE '1998-01-01', '5-LOW', 'Clerk#000000001', 0, 'read_committed');\nINSERT INTO txn_orders VALUES (9700002, 2, 'O', 2000.0, DATE '1998-01-01', '5-LOW', 'Clerk#000000001', 0, 'read_committed');\nCOMMIT;\n"
 - id: transaction_isolation_repeatable_read
   category: isolation
   description: Tests REPEATABLE READ isolation level to measure mid-tier isolation overhead
@@ -100,6 +104,9 @@ operations:
     expected_rows: 1
   cleanup_sql: "DELETE FROM txn_orders WHERE o_comment = 'repeatable_read'\n"
   expected_rows_affected: 2
+  platform_overrides:
+    postgres: &postgres_repeatable_read "COMMIT;\nBEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;\nINSERT INTO txn_orders VALUES (9710001, 1, 'O', 1000.0, DATE '1998-01-01', '5-LOW', 'Clerk#000000001', 0, 'repeatable_read');\nINSERT INTO txn_orders VALUES (9710002, 2, 'O', 2000.0, DATE '1998-01-01', '5-LOW', 'Clerk#000000001', 0, 'repeatable_read');\nCOMMIT;\n"
+    postgresql: *postgres_repeatable_read
 - id: transaction_isolation_serializable
   category: isolation
   description: Tests SERIALIZABLE isolation level to measure strictest isolation overhead
@@ -111,6 +118,8 @@ operations:
   cleanup_sql: "DELETE FROM txn_orders WHERE o_comment = 'serializable'\n"
   expected_rows_affected: 2
   platform_overrides:
+    postgres: &postgres_serializable "COMMIT;\nBEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;\nINSERT INTO txn_orders VALUES (9800001, 1, 'O', 1000.0, DATE '1998-01-01', '5-LOW', 'Clerk#000000001', 0, 'serializable');\nINSERT INTO txn_orders VALUES (9800002, 2, 'O', 2000.0, DATE '1998-01-01', '5-LOW', 'Clerk#000000001', 0, 'serializable');\nCOMMIT;\n"
+    postgresql: *postgres_serializable
     sqlite: "BEGIN TRANSACTION;\nINSERT INTO txn_orders VALUES (9800001, 1, 'O', 1000.0, DATE '1998-01-01', '5-LOW', 'Clerk#000000001', 0, 'serializable');\nINSERT INTO txn_orders VALUES (9800002, 2, 'O', 2000.0, DATE '1998-01-01', '5-LOW', 'Clerk#000000001', 0, 'serializable');\nCOMMIT;\n"
 - id: transaction_mixed_dml_small
   category: multi_statement

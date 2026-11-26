@@ -110,9 +110,10 @@ def test_tsql_store_uses_tsql_forms_and_avoids_the_driver_result_fetch(platform)
 
     statements = _statements(connection)
     create = next(sql for sql in statements if "CREATE TABLE" in sql.upper())
-    assert create.lstrip().upper().startswith("IF OBJECT_ID(")
+    assert create.lstrip().upper().startswith("IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES")
     assert "CREATE TABLE IF NOT EXISTS" not in create.upper()
-    parsed_create = sqlglot.parse_one(create, dialect="tsql")
+    inner_create = create[create.index("EXEC('") + len("EXEC('") : create.rindex("')")]
+    parsed_create = sqlglot.parse_one(inner_create, dialect="tsql")
     column_types = {node.this for node in parsed_create.find_all(exp.DataType)}
     assert exp.DataType.Type.DATETIME2 in column_types
     assert exp.DataType.Type.ROWVERSION not in column_types
