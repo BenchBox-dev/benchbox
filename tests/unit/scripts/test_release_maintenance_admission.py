@@ -750,3 +750,88 @@ def test_a_pull_request_commit_naming_an_older_source_does_not_lower_the_recreat
     fixed = land(root, "0.4.3")
     with pytest.raises(ValueError, match="is older than"):
         consumer.verify_maintenance_line(root, "v0.4.3", fixed, LINE, merged_pulls(merged, fixed))
+
+
+ATTESTING_JOB = "Reproduce the data"
+DERIVED_POLICY = f"""evidence:
+  derived_paths:
+    - name: data
+      files: [data/manifest.json]
+      summary: data/SUMMARY.md
+      attested_by: "{ATTESTING_JOB}"
+"""
+
+
+def attested_ci(*, in_needs: bool = True, always: bool = True, named: str = ATTESTING_JOB) -> str:
+    needs = "[reproduce]" if in_needs else "[]"
+    flag = "--always reproduce" if always else ""
+    return (
+        "jobs:\n"
+        "  reproduce:\n"
+        f"    name: {named}\n"
+        "    runs-on: ubuntu-latest\n"
+        "  tooling:\n"
+        f"    needs: {needs}\n"
+        "    steps:\n"
+        "      - id: aggregate\n"
+        "        run: |\n"
+        f"          python scripts/ci_unit_result.py {flag} --always ci-paths\n"
+    )
+
+
+def create_with_derived_policy(root: Path, ci: str | None, policy: str = DERIVED_POLICY) -> str:
+    git(root, "checkout", "-q", "develop")
+    write(root, ".github/review.yml", policy)
+    git(root, "add", ".github/review.yml")
+    if ci is not None:
+        write(root, ".github/workflows/ci.yml", ci)
+        git(root, "add", ".github/workflows/ci.yml")
+    git(root, "commit", "-q", "-m", "Develop reviews derived data")
+    source = git(root, "rev-parse", "HEAD")
+    git(root, "update-ref", "refs/remotes/origin/develop", source)
+    git(root, "checkout", "-q", LINE)
+
+    def carry_ci(root: Path) -> None:
+        if ci is not None:
+            write(root, ".github/workflows/ci.yml", ci)
+            git(root, "add", ".github/workflows/ci.yml")
+
+    return create(root, source, policy=policy, edit=carry_ci)
+
+
+@pytest.mark.parametrize(
+    "ci",
+    [
+        None,
+        attested_ci(in_needs=False),
+        attested_ci(always=False),
+        attested_ci(named="Another job"),
+    ],
+    ids=["no-ci-workflow", "not-in-tooling-needs", "not-always", "no-job-by-that-name"],
+)
+def test_a_creation_commit_carrying_a_derived_path_without_its_attesting_job_is_refused(created_line, ci):
+    creation = create_with_derived_policy(created_line, ci)
+    expected = rf"creation carries the derived path 'data' attested by '{ATTESTING_JOB}'.*--always"
+    with pytest.raises(ValueError, match=expected):
+        consumer.verify_line(created_line, LINE, creation, merged_pulls())
+    fixed = land(created_line, "0.4.2")
+    with pytest.raises(ValueError, match=expected):
+        consumer.verify_maintenance_line(created_line, "v0.4.2", fixed, LINE, merged_pulls(fixed))
+
+
+def test_a_creation_commit_whose_ci_attests_every_derived_path_is_admitted(created_line):
+    creation = create_with_derived_policy(created_line, attested_ci())
+    consumer.verify_line(created_line, LINE, creation, merged_pulls())
+    fixed = land(created_line, "0.4.2")
+    consumer.verify_maintenance_line(created_line, "v0.4.2", fixed, LINE, merged_pulls(fixed))
+
+
+def test_a_creation_commit_whose_policy_has_no_derived_paths_needs_no_attesting_job(created_line):
+    creation = create_with_derived_policy(created_line, None, policy="evidence:\n  exempt_paths: []\n")
+    consumer.verify_line(created_line, LINE, creation, merged_pulls())
+
+
+def test_a_creation_commit_whose_ci_cannot_be_parsed_is_refused(created_line):
+    creation = create_with_derived_policy(created_line, "jobs: [unclosed\n")
+    with pytest.raises(ValueError, match="cannot parse ci.yml while checking the derived paths"):
+        consumer.verify_line(created_line, LINE, creation, merged_pulls())
