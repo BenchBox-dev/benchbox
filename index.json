@@ -28002,8 +28002,7 @@
     "datagen-p2-ssb-versioned-migration": {
       "claim": null,
       "needs": [
-        "datagen-lib-tpch",
-        "datagen-decision-ssb-and-synthetic-acceptance",
+        "datagen-lib-ssb-and-synthetic-framework",
         "datagen-lib-benchbox-integration",
         "crr-c2-row-count-references-tpc-and-ssb",
         "pvm-p1-run-ssb-clickbench",
@@ -28011,7 +28010,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "Generate SSB in benchbox-datagen with a versioned deterministic RNG and migrate SSB_EXPECTED_ROW_COUNTS"
+      "title": "Migrate BenchBox SSB to the benchbox-datagen generator: backend wiring, version bump and expected query row counts"
     },
     "datagen-p2-vectorize-synthetic-generators": {
       "claim": null,
