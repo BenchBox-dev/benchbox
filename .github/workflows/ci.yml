@@ -2241,7 +2241,9 @@ jobs:
             echo "::error::The pull request lists 3000 or more changed files, which is the limit of the files API, so a change under tests/fixtures/fast_tier_baseline/ cannot be ruled out. Split the pull request."
             exit 1
           fi
-          if tr '\t' '\n' < "$RUNNER_TEMP/changed-files.tsv" | grep -q "^tests/fixtures/fast_tier_baseline/"; then
+          matches=$(awk -F '\t' 'index($1, "tests/fixtures/fast_tier_baseline/") == 1 || index($2, "tests/fixtures/fast_tier_baseline/") == 1 { n++ } END { print n + 0 }' "$RUNNER_TEMP/changed-files.tsv")
+          [[ "$matches" =~ ^[0-9]+$ ]] || { echo "::error::The changed-file match count is not a number."; exit 1; }
+          if [ "$matches" -gt 0 ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"

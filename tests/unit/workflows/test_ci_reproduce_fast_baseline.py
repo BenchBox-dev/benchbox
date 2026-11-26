@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import os
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -180,3 +183,82 @@ def test_the_files_the_fast_job_writes_into_fast_junit_are_the_allowed_artifact_
         for name in re.findall(r"fast-junit/([A-Za-z0-9_.-]+)", step.get("run", ""))
     }
     assert written == set(ARTIFACT_MEMBERS)
+
+
+EARLY_EXIT_CONSUMER = re.compile(r"\|\s*(grep\b[^|\n]*(\s-[a-zA-Z]*[qm]|--quiet|--max-count)|head\b|sed\s+-n\s+\S*q)")
+
+
+def test_the_new_jobs_have_no_early_exit_consumer_under_pipefail() -> None:
+    refresh = yaml.safe_load(
+        (REPO_ROOT / ".github" / "workflows" / "fast-duration-baseline-refresh.yml").read_text(encoding="utf-8")
+    )["jobs"]["refresh"]["steps"]
+    scripts = [(job, step["name"], step.get("run", "")) for job in GATED_JOBS for step in steps(job)]
+    scripts += [("refresh", step["name"], step.get("run", "")) for step in refresh]
+    for job, name, run in scripts:
+        if "pipefail" in run:
+            assert not EARLY_EXIT_CONSUMER.search(run), f"{job}: {name}"
+
+
+def _run_detection(tmp_path: Path, listing: str, gh_exit: int = 0) -> tuple[int, str]:
+    if shutil.which("bash") is None:
+        pytest.skip("bash is required")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(parents=True)
+    data = tmp_path / "listing.tsv"
+    data.write_text(listing, encoding="utf-8")
+    gh = bin_dir / "gh"
+    gh.write_text(f'#!/bin/sh\nif [ {gh_exit} -ne 0 ]; then exit {gh_exit}; fi\ncat "{data}"\n', encoding="utf-8")
+    gh.chmod(0o755)
+    output = tmp_path / "github-output"
+    output.write_text("", encoding="utf-8")
+    runner_temp = tmp_path / "runner-temp"
+    runner_temp.mkdir()
+    env = {
+        **os.environ,
+        "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+        "RUNNER_TEMP": str(runner_temp),
+        "GITHUB_OUTPUT": str(output),
+        "PR_NUMBER": "1",
+        "REPO": "o/r",
+    }
+    script = tmp_path / "detect.sh"
+    script.write_text(steps(DETECT)[0]["run"], encoding="utf-8")
+    result = subprocess.run(
+        ["bash", "detect.sh"], cwd=tmp_path, env=env, capture_output=True, text=True, encoding="utf-8", check=False
+    )
+    return result.returncode, output.read_text(encoding="utf-8")
+
+
+BASELINE_ROW = "tests/fixtures/fast_tier_baseline/manifest.json\t\n"
+
+
+def listing_after(first: str, rows: int) -> str:
+    filler = "".join(f"pkg/section-{index:04d}/{'x' * 60}.md\t\n" for index in range(rows))
+    return first + filler
+
+
+def test_detection_sees_the_baseline_path_first_in_a_listing_larger_than_a_pipe_buffer(tmp_path: Path) -> None:
+    listing = listing_after(BASELINE_ROW, 2500)
+    assert len(listing) > 128 * 1024
+    code, output = _run_detection(tmp_path, listing)
+    assert code == 0
+    assert output == "changed=true\n"
+
+
+def test_detection_sees_a_baseline_path_in_the_rename_column(tmp_path: Path) -> None:
+    code, output = _run_detection(tmp_path, listing_after("pkg/new.md\ttests/fixtures/fast_tier_baseline/x.json\n", 5))
+    assert (code, output) == (0, "changed=true\n")
+
+
+def test_detection_reports_no_change_when_the_baseline_is_absent(tmp_path: Path) -> None:
+    code, output = _run_detection(tmp_path, listing_after("", 2500))
+    assert (code, output) == (0, "changed=false\n")
+
+
+def test_detection_fails_the_step_instead_of_reporting_no_change(tmp_path: Path) -> None:
+    code, output = _run_detection(tmp_path, listing_after(BASELINE_ROW, 3000))
+    assert code != 0
+    assert output == ""
+    code, output = _run_detection(tmp_path / "gh-failure", BASELINE_ROW, gh_exit=1)
+    assert code != 0
+    assert output == ""
