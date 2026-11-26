@@ -100,6 +100,7 @@ EXECUTORS: dict[str, Callable[[str], list[list[Any]]]] = {
     "duckdb": _execute_duckdb,
     "questdb": _execute_questdb,
 }
+SQLITE_MINIMUM = (3, 46, 0)
 ENTRIES = {"transpile", "wrapper"}
 
 
@@ -216,6 +217,10 @@ def check(
         for requirement in project["project"]["dependencies"]
     ):
         raise ValueError("BenchBox must use only its bundled runtime, not an external SQLGlot requirement")
+    if sqlite3.sqlite_version_info < SQLITE_MINIMUM:
+        raise ValueError(
+            f"The baseline expects SQLite {'.'.join(map(str, SQLITE_MINIMUM))} or later, found {sqlite3.sqlite_version}"
+        )
     cases = load_baseline(root, identity, executors)
     base = subprocess.check_output(["git", "merge-base", "HEAD", base_ref], cwd=root, text=True).strip()
     previous = dependency_identity(root, base)
