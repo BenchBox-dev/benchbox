@@ -27792,7 +27792,7 @@
     "datagen-lib-synthetic-tpch-skew": {
       "claim": null,
       "needs": [
-        "datagen-lib-benchbox-integration",
+        "datagen-p2-ssb-versioned-migration",
         "datagen-lib-tpch"
       ],
       "priority": "medium",
