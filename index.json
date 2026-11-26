@@ -27273,6 +27273,15 @@
       "status": "open",
       "title": "Generate clickbench in benchbox-datagen with a versioned deterministic RNG"
     },
+    "datagen-lib-synthetic-coffeeshop": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-benchbox-integration"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Generate coffeeshop in benchbox-datagen with a versioned deterministic RNG"
+    },
     "datagen-lib-synthetic-h2odb": {
       "claim": null,
       "needs": [
