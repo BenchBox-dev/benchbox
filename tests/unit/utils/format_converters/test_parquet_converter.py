@@ -858,12 +858,12 @@ class TestParquetStreamingAndBenchmarkCompatibility:
         assert updated["csv_delimiter"] == ","
         assert "parquet" in updated["formats"]
         assert updated["format_preference"][0] == "parquet"
-        assert updated["parquet_writer"] == "benchbox-duckdb-streaming"
+        assert updated["parquet_writer"] == "benchbox-pyarrow-streaming"
         assert updated["parquet_row_group_size"] == 122_880
         assert "data_generation_identity_hash" not in updated
         assert updated["parquet_data_generation_identity_hash"] == compute_datagen_identity_hash(
             "joinorder_synthetic",
-            parquet_writer="benchbox-duckdb-streaming",
+            parquet_writer="benchbox-pyarrow-streaming",
             parquet_row_group_size=122_880,
             scale_factor=0.01,
         )
@@ -949,7 +949,7 @@ class TestParquetStreamingAndBenchmarkCompatibility:
         )
         expected_pq_hash = compute_datagen_identity_hash(
             "tpch",
-            parquet_writer="benchbox-duckdb-streaming",
+            parquet_writer="benchbox-pyarrow-streaming",
             parquet_row_group_size=122_880,
             scale_factor=1.0,
         )
@@ -1035,12 +1035,23 @@ class TestParquetStreamingAndBenchmarkCompatibility:
 
         streaming_pq_manifest = {
             **legacy_pq_manifest,
-            "parquet_writer": "benchbox-streaming",
+            "parquet_writer": "benchbox-pyarrow-streaming",
             "parquet_row_group_size": 122_880,
         }
         assert (
             manifest_datagen_is_current(streaming_pq_manifest, benchmark="h2odb", expected_table_format="parquet")
             is True
+        )
+        for retired_writer in ("benchbox-duckdb-streaming", "benchbox-streaming"):
+            retired_manifest = {**streaming_pq_manifest, "parquet_writer": retired_writer}
+            assert (
+                manifest_datagen_is_current(retired_manifest, benchmark="h2odb", expected_table_format="parquet")
+                is False
+            )
+            reason = describe_datagen_staleness(retired_manifest, benchmark="h2odb", expected_table_format="parquet")
+            assert reason is not None and retired_writer in reason
+        assert manifest_datagen_is_current(
+            {**streaming_pq_manifest, "parquet_writer": "benchbox-duckdb-streaming"}, benchmark="h2odb"
         )
 
         skew_cfg = SkewConfiguration(seed=42)
@@ -1051,23 +1062,22 @@ class TestParquetStreamingAndBenchmarkCompatibility:
             "scale_factor": 0.01,
             "skew_configuration": identity,
             "skew_configuration_hash": skew_cfg.datagen_identity_hash(),
-            "parquet_writer": "benchbox-streaming",
+            "parquet_writer": "benchbox-pyarrow-streaming",
             "parquet_row_group_size": 122_880,
             "data_generation_identity_hash": compute_datagen_identity_hash("tpch_skew", identity, scale_factor=0.01),
             "parquet_data_generation_identity_hash": compute_datagen_identity_hash(
                 "tpch_skew",
                 identity,
-                parquet_writer="benchbox-streaming",
+                parquet_writer="benchbox-pyarrow-streaming",
                 parquet_row_group_size=122_880,
                 scale_factor=0.01,
             ),
         }
         assert skew_gen.manifest_matches_datagen_identity(skew_pq_manifest) is True
 
-    def test_duckdb_streaming_fast_path_matches_pyarrow(self, tmp_path):
-        import duckdb
-
-        from benchbox.utils.datagen_version import compute_datagen_identity_hash
+    @pytest.mark.parametrize("suffix", ["", ".gz"])
+    def test_multi_chunk_input_has_one_writer_exact_row_groups_and_reader_independent_bytes(self, tmp_path, suffix):
+        import gzip
 
         schema = {
             "columns": [
@@ -1076,63 +1086,127 @@ class TestParquetStreamingAndBenchmarkCompatibility:
                 {"name": "amount", "type": "DECIMAL(15,2)"},
             ]
         }
-        tbl_file = tmp_path / "lineitem.tbl"
-        tbl_file.write_text("".join(f"{i}|item-{i}|{i * 2.5:.2f}\n" for i in range(1, 251)), encoding="utf-8")
+        source_files = []
+        for chunk in range(3):
+            payload = "".join(
+                f"{i}|item-{i}|{i * 2.5:.2f}|\n" for i in range(chunk * 3_000 + 1, (chunk + 1) * 3_000 + 1)
+            ).encode()
+            path = tmp_path / f"lineitem.tbl.{chunk + 1}{suffix}"
+            path.write_bytes(gzip.compress(payload, mtime=0) if suffix else payload)
+            source_files.append(path)
 
+        outputs = {}
+        for readers in (1, 2, 3):
+            out_dir = tmp_path / f"readers-{readers}"
+            out_dir.mkdir()
+            converter = ParquetConverter()
+            original = converter.iter_record_batches
+            converter.iter_record_batches = lambda *a, _r=readers, _o=original, **k: _o(*a, readers=_r, **k)
+            result = converter.convert(
+                source_files=source_files,
+                table_name="lineitem",
+                schema=schema,
+                options=ConversionOptions(output_dir=out_dir, row_group_size=2_048),
+            )
+            assert result.row_count == 9_000
+            assert result.metadata["parquet_writer"] == "benchbox-pyarrow-streaming"
+            meta = pq.read_metadata(result.output_files[0])
+            sizes = [meta.row_group(i).num_rows for i in range(meta.num_row_groups)]
+            assert sizes[:-1] == [2_048] * (len(sizes) - 1)
+            assert sum(sizes) == 9_000
+            ids = pq.read_table(result.output_files[0], columns=["id"]).column("id").to_pylist()
+            assert ids == list(range(1, 9_001))
+            outputs[readers] = result.output_files[0].read_bytes()
+        assert outputs[1] == outputs[2] == outputs[3]
+
+    def test_parallel_reader_failure_in_a_later_chunk_raises_without_hanging(self, tmp_path):
+        schema = {"columns": [{"name": "id", "type": "INTEGER"}, {"name": "label", "type": "VARCHAR(25)"}]}
+        good = tmp_path / "t.tbl.1"
+        good.write_text("".join(f"{i}|x\n" for i in range(50_000)), encoding="utf-8")
+        bad = tmp_path / "t.tbl.2"
+        bad.write_text("1|x\nnot-a-number|y\n", encoding="utf-8")
+        tail = tmp_path / "t.tbl.3"
+        tail.write_text("".join(f"{i}|x\n" for i in range(50_000)), encoding="utf-8")
+
+        with pytest.raises(ConversionError, match="not-a-number"):
+            ParquetConverter().convert(
+                source_files=[good, bad, tail],
+                table_name="t",
+                schema=schema,
+                options=ConversionOptions(output_dir=tmp_path / "out"),
+            )
+        assert not (tmp_path / "out" / "t.parquet").exists()
+
+    @pytest.mark.parametrize("readers", [1, 2])
+    def test_source_line_count_catches_rows_merged_by_a_stray_quote(self, tmp_path, readers):
+        schema = {"columns": [{"name": "id", "type": "INTEGER"}, {"name": "label", "type": "VARCHAR(25)"}]}
+        first = tmp_path / "t.tbl.1"
+        first.write_text("1|ok\n", encoding="utf-8")
+        merged = tmp_path / "t.tbl.2"
+        merged.write_text('2|"open\nclose"\n3|ok\n', encoding="utf-8")
         converter = ParquetConverter()
+        original = converter.iter_record_batches
+        converter.iter_record_batches = lambda *a, **k: original(*a, readers=readers, **k)
 
-        fast_dir = tmp_path / "fast"
-        fallback_dir = tmp_path / "fallback"
-        fast_dir.mkdir()
-        fallback_dir.mkdir()
-
-        fast_res = converter.convert(
-            source_files=[tbl_file],
-            table_name="lineitem",
-            schema=schema,
-            options=ConversionOptions(output_dir=fast_dir, row_group_size=122_880, expected_row_count=250),
-        )
-        fallback_res = converter.convert(
-            source_files=[tbl_file],
-            table_name="lineitem",
-            schema=schema,
-            options=ConversionOptions(output_dir=fallback_dir, row_group_size=122_880, data_page_version="1.0"),
-        )
-        assert fast_res.row_count == 250
-        assert fallback_res.row_count == 250
-        assert fast_res.metadata["parquet_writer"] == "benchbox-duckdb-streaming"
-        assert fallback_res.metadata["parquet_writer"] == "benchbox-pyarrow-streaming"
-        assert compute_datagen_identity_hash(
-            "tpch",
-            parquet_writer=fast_res.metadata["parquet_writer"],
-            parquet_row_group_size=122_880,
-            scale_factor=1.0,
-        ) != compute_datagen_identity_hash(
-            "tpch",
-            parquet_writer=fallback_res.metadata["parquet_writer"],
-            parquet_row_group_size=122_880,
-            scale_factor=1.0,
-        )
-        assert pq.read_schema(fast_res.output_files[0]).types == pq.read_schema(fallback_res.output_files[0]).types
-
-        con = duckdb.connect()
-        try:
-            a = fast_res.output_files[0]
-            b = fallback_res.output_files[0]
-            assert (
-                con.execute(
-                    f"SELECT COUNT(*) FROM (SELECT * FROM read_parquet('{a}') EXCEPT ALL SELECT * FROM read_parquet('{b}'))"
-                ).fetchone()[0]
-                == 0
+        with pytest.raises(ConversionError, match="input=4 rows, output=3 rows"):
+            converter.convert(
+                source_files=[first, merged],
+                table_name="t",
+                schema=schema,
+                options=ConversionOptions(output_dir=tmp_path / "out"),
             )
-            assert (
-                con.execute(
-                    f"SELECT COUNT(*) FROM (SELECT * FROM read_parquet('{b}') EXCEPT ALL SELECT * FROM read_parquet('{a}'))"
-                ).fetchone()[0]
-                == 0
-            )
-        finally:
-            con.close()
+        assert not (tmp_path / "out" / "t.parquet").exists()
+
+    def test_manifest_null_marker_keeps_empty_strings_in_not_null_columns(self, tmp_path):
+        import json
+
+        from benchbox.core.runner.conversion import FormatConversionOrchestrator
+
+        source = tmp_path / "hits.csv"
+        source.write_text('1,"",x\n2,,__NULL__\n3,ref,y\n', encoding="utf-8")
+        (tmp_path / "_datagen_manifest.json").write_text(
+            json.dumps(
+                {
+                    "version": 2,
+                    "benchmark": "clickbench",
+                    "scale_factor": 0.01,
+                    "formats": ["csv"],
+                    "format_preference": ["csv"],
+                    "csv_delimiter": ",",
+                    "csv_has_header": False,
+                    "csv_null_marker": "__NULL__",
+                    "tables": {
+                        "hits": {
+                            "formats": {
+                                "csv": [{"path": "hits.csv", "size_bytes": source.stat().st_size, "row_count": 3}]
+                            }
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        schema = {
+            "hits": {
+                "columns": [
+                    {"name": "id", "type": "INTEGER", "nullable": False},
+                    {"name": "referer", "type": "VARCHAR", "nullable": False},
+                    {"name": "tag", "type": "VARCHAR"},
+                ]
+            }
+        }
+
+        results = FormatConversionOrchestrator().convert_benchmark_tables(
+            manifest_path=tmp_path / "_datagen_manifest.json",
+            output_dir=tmp_path,
+            target_format="parquet",
+            schemas=schema,
+        )
+
+        table = pq.read_table(results["hits"].output_files[0])
+        assert table.column("referer").to_pylist() == ["", "", "ref"]
+        assert table.column("tag").to_pylist() == ["x", None, "y"]
+        assert table.schema.field("referer").nullable is False
 
     def test_independent_row_count_validation_detects_mismatch_on_all_paths(self, tmp_path):
         schema = {

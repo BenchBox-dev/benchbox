@@ -4,18 +4,26 @@
 
 ## Status
 
-Accepted (2026-11-24). Extends
+Accepted (2026-11-24); revised 2026-11-26. Extends
 `docs/internal/adr/adr-python-core-runtime.md` to cover TPC data generation,
-streaming format conversion, synthetic generator vectorization, provenance
-versioning, and the entry criteria for any future standalone Rust generator
-package.
+streaming format conversion, provenance versioning, and the BenchBox-owned
+Rust data generation library (`benchbox-datagen`) that replaces the bundled C
+binaries and the pure-Python synthetic generators.
+
+The 2026-11-26 revision makes that library the target. The accepted text
+adopted the upstream `tpcgen-cli` wheel through a subprocess adapter,
+vectorized synthetic generators in Python, and created a Rust repository only
+after a measured budget miss. Those decisions are replaced (decisions 1, 3, 4
+and 6 below); the measurements in Context remain the evidence for the
+library's budgets.
 
 ## Context
 
 `docs/internal/adr/adr-python-core-runtime.md` keeps BenchBox's core harness
 pure Python (`py3-none-any`) and establishes a two-step acceleration order for
 non-TPC synthetic generators that hit a measured throughput or memory wall:
-vectorized PyArrow/NumPy or embedded DuckDB SQL first, and a decoupled native
+vectorized PyArrow/NumPy (or embedded DuckDB SQL behind the optional `duckdb`
+extra) first, and a decoupled native
 generator package second. That ADR left TPC-H and TPC-DS on bundled per-OS C
 binaries (`dbgen` and `dsdgen` in `benchbox/_binaries/`).
 
@@ -157,14 +165,26 @@ non-quiesced development host; cutover enforcement requires 3-run medians
 
 ## Decision
 
-1. **Extend the runtime ADR to TPC generation via upstream `tpcgen-cli`.**
-   Adopt published `tpcgen-cli` wheels (pinned by version and hashes in
-   `uv.lock`) for TPC-H (all supported scales) and TPC-DS (`SF >= 1.0`, integer
-   scales) through an opt-in subprocess adapter. Do not create a wrapper Rust
-   repository for TPC generation. Keep `qgen`, `dsqgen`, `tpcds.idx`, and query
-   templates in `benchbox`, and keep bundled `dbgen`/`dsdgen` for fractional
-   TPC-DS scales (`SF < 1.0`), refresh sets (`RF1`/`RF2`, TPC-DS `-update`),
-   and platforms without a `tpcgen-cli` wheel (Windows arm64).
+1. **Build `benchbox-datagen`, a BenchBox-owned Rust data generation library.**
+   - Repository `BenchBox-dev/benchbox-datagen`, MIT licensed, one Cargo
+     workspace: `benchbox-datagen-core` (generator registry, deterministic RNG,
+     chunk planning, Arrow schemas from BenchBox type rules),
+     `benchbox-datagen-writers` (Parquet and delimited writers) and
+     `benchbox-datagen-py` (the PyO3 module).
+   - Scope, built in stages: TPC-H, then TPC-DS, then SSB, then the synthetic
+     generators (`h2odb`, `tsbs_devops`, `clickbench` synthetic, `tpch_skew`,
+     `vector_search`, `coffeeshop`, `joinorder_synthetic`, `amplab`).
+   - TPC generation depends on the upstream Apache-2.0 crates `tpchgen`,
+     `tpchgen-arrow`, `tpcdsgen` and `tpcdsgen-arrow` from
+     `datafusion-contrib/tpcgen-rs`, pinned by exact version. BenchBox does
+     not fork them; fixes go upstream, and a library release that needs a fix
+     waits for the upstream release carrying it.
+   - TPC-DS fractional scales (`SF < 1.0`, where `tpcgen-rs` uses a different
+     scaling curve from BenchBox's patched `dsdgen`), TPC-H `RF1`/`RF2` and
+     TPC-DS `-update` refresh sets are implemented byte-identically in the
+     library (or upstream) before any TPC cutover, so the TPC default switches
+     to one backend that covers every supported scale and refresh set.
+   - `qgen`, `dsqgen`, `tpcds.idx` and the query templates stay in `benchbox`.
 2. **Upgrade format conversion to streaming with an explicit row-group policy.**
    Replace full-table `pyarrow.csv.read_csv` + `pa.concat_tables`
    materialization in `benchbox/utils/format_converters/base.py` and
@@ -199,45 +219,78 @@ non-quiesced development host; cutover enforcement requires 3-run medians
         LakeSail) are scheduled for re-baselining once the streaming converter
         lands; existing cloud bundles (BigQuery, Databricks, Snowflake) remain
         marked pre-change without incurring live-cloud spend.
-3. **Keep a strict file/statistics boundary and Python-only manifest ownership.**
-   Any native generator stays behind:
+   - **Writer decision (2026-11-25):** PyArrow is the only Parquet writer.
+     DuckDB is not a core dependency (it ships only in extras), and the DuckDB
+     `COPY` fast path that the streaming converter first added ran out of its
+     memory limit on default zstd chunked input and fell back to PyArrow for 6
+     of 8 TPC-H tables, so the writer depended on host and input shape. Where
+     it did run, its row groups did not match the recorded 122,880 rows, its
+     bytes changed between runs, and it wrote NOT NULL columns as nullable.
+     PyArrow `open_csv` is single-threaded, so the converter reads up to two
+     chunk files concurrently and writes them in input order through one
+     `ParquetWriter`; the output is byte-identical to the serial writer. A
+     separate thread counts each file's non-empty lines while it is parsed,
+     so row-count validation stays independent of the CSV parser.
+     Measured on TPC-H from 10-chunk zstd input (`N=3` medians, 5-minute
+     host load 3.6–5.5): SF 1 2.98 s / 491 MiB and SF 10 35.75 s / 609 MiB
+     (serial: 9.1 s and 95.2 s).
+     DataFusion (one partition: SF 10 30.5 s / 476 MiB) and Polars (SF 10
+     13.1 s / 2,129 MiB) were evaluated and rejected: each adds a 105–160 MB
+     dependency, silently truncates out-of-scale decimals, and would change
+     Parquet bytes; Polars also exceeds the memory budget.
+3. **Python binding: PyO3 with abi3 wheels; Python owns the manifest.**
+   - The library is a PyO3 extension module built as `cp311-abi3` wheels for
+     macOS arm64 and x86_64, Linux glibc and musl (x86_64 and aarch64), and
+     Windows x86_64. It exposes:
 
-   ```text
-   (benchmark, scale_factor, seed, format, compression, threads, output_dir, options)
-       -> generated table files + per-file statistics
-   ```
+     ```text
+     (benchmark, scale_factor, seed, table, part, parts, options)
+         -> Arrow record batch stream (Arrow PyCapsule interface)
+     (benchmark, scale_factor, seed, format, compression, threads, output_dir, options)
+         -> generated table files + per-file statistics
+     ```
 
-   - Zero dependency on `PlatformAdapter`, `benchbox-sqlglot`, query
-     translation, or runner orchestration.
+   - No subprocess and no temporary files: in-memory consumers receive Arrow
+     batches through the Arrow C Data Interface.
+   - Zero dependency on BenchBox Python code, `PlatformAdapter`,
+     `benchbox-sqlglot`, query translation, or runner orchestration. BenchBox
+     CI runs schema checks against the pinned library version; the library
+     repository does not depend on BenchBox.
    - `benchbox/utils/datagen_manifest.py` (`DataGenerationManifest`) remains
-     the sole writer of `_datagen_manifest.json`, extended with optional
-     `generator_backend` and `generator_backend_version` fields.
-   - Native generators use a CLI subprocess interface packaged as binary-only
-     `py3-none-<platform>` wheels under the optional extra
-     `benchbox[native-datagen]`. Core `benchbox` stays `py3-none-any` and never
-     makes a native generator a required dependency.
-4. **Backend selection: no `auto` mode, no extra-dependent default switching.**
-   - Expose `--datagen-backend legacy|native` on `benchbox datagen` and
-     `benchbox run` backed by a per-benchmark default table in
-     `benchbox/utils/datagen_backend.py` (initialized with every benchmark on
-     `legacy`).
-   - **Default resolution never depends on what optional extras are
-     installed.** There is no `auto` mode and no silent fallback:
-     - **Explicit `--datagen-backend native`:** always fails loudly with an
-       actionable install/fix message if `native-datagen` is not installed,
-       the platform lacks a wheel (Windows arm64), or the benchmark/scale is
-       unsupported (`tpcds` at `SF < 1.0`).
-     - **In-tree vectorized Python generators** (synthetic benchmarks and SSB)
-       depend only on NumPy/PyArrow/DuckDB already shipped in `benchbox`; once
-       validated, promoting their default in `datagen_backend.py` is
-       unconditional, with `--datagen-backend legacy` preserved for at least
-       one minor release.
-     - **Optional-extra `tpcgen-cli` (`tpch` and `tpcds` `SF >= 1.0`):** stays
-       opt-in (`--datagen-backend native`) while `tpcgen-cli` remains optional.
-       Promoting `tpcgen-cli` to the default backend on supported platforms
-       requires a separate post-validation owner decision (either accepting an
-       explicit install prompt when `native-datagen` is absent, or adopting a
-       dedicated packaging change).
+     the sole writer of `_datagen_manifest.json` and records
+     `generator_backend = "benchbox-datagen"` and the library version.
+   - Parquet is written in Rust with BenchBox Arrow types (the
+     `ArrowTypeMapper` rules: `INTEGER` as `int64`, `Utf8` strings, bare
+     `DECIMAL` as `decimal128(15, 2)`), the 122,880-row row-group policy, and
+     NOT NULL columns marked non-nullable. Parquet bytes depend only on the
+     library version and options, never on thread count. The recorded writer
+     identity is `benchbox-datagen-<major>`, so library-written Parquet never
+     shares a cache or corpus identity with PyArrow-written Parquet.
+   - Delimited output stays available for loaders that need it. TPC rows are
+     written without the trailing `|`, so no post-processing strip is needed.
+     The Python streaming converter (decision 2) stays for legacy-backend data
+     and `benchbox convert`.
+4. **Backend selection: no `auto` mode, no silent fallback, per-benchmark
+   cutover.**
+   - `--datagen-backend legacy|native` on `benchbox datagen` and `benchbox run`
+     stays, backed by the per-benchmark default table in
+     `benchbox/utils/datagen_backend.py`; `native` means `benchbox-datagen`.
+     The `tpcgen-cli` entries in that table and the unconditional
+     trailing-`|` strip tied to them are replaced when the library backend
+     lands; the `tpcgen-cli` subprocess adapter is not merged.
+   - Before the first cutover, the library is the optional extra
+     `benchbox[native-datagen]`. `--datagen-backend native` fails loudly with
+     an actionable message when the extra is missing, the platform has no
+     wheel, or the benchmark or scale is not yet implemented.
+   - A benchmark's default moves to `native` only after it passes every gate
+     below. At the first cutover `benchbox-datagen` becomes a required
+     dependency on every platform with a wheel (environment markers), so the
+     default never depends on which extras are installed. Platforms without a
+     wheel (Windows arm64 today) resolve to `legacy` from a fixed platform
+     table, and `benchbox datagen` says so.
+   - `--datagen-backend legacy` keeps the bundled C binaries and legacy Python
+     generators for at least one minor release after each cutover
+     (decision 7).
 5. **Per-benchmark versioning, folder identity, and Parquet layout provenance.**
    - **Never bump global `DATA_GENERATION_VERSION`** in
      `benchbox/utils/datagen_version.py` for individual generator changes,
@@ -247,52 +300,34 @@ non-quiesced development host; cutover enforcement requires 3-run medians
    - Record `generator_backend` and `generator_backend_version` in
      `_datagen_manifest.json` for audit provenance.
    - In `compute_datagen_identity_hash()`:
-     - For **byte-identical delimited TPC output** (`tpch` all scales, `tpcds`
-       `SF >= 1.0`), hash content/schema identity rather than the backend name
-       so `dbgen`/`dsdgen` and `tpcgen-cli` delimited datasets share
+     - For **byte-identical delimited TPC output** (`tpch` and `tpcds` at every
+       verified scale), hash content/schema identity rather than the backend
+       name so `dbgen`/`dsdgen` and `benchbox-datagen` delimited datasets share
        `datagen/<benchmark>_<sf>` and retain comparable corpus hashes.
      - For **non-identical outputs** (any Parquet writer/row-group change,
-       direct `tpcgen-cli` Parquet, or any rewritten synthetic/SSB generator),
+       library-written Parquet, or any rewritten SSB or synthetic generator),
        include per-benchmark generator version, Parquet writer/row-group
        layout, and backend in `compute_datagen_identity_hash()`, enforce
        exact match in `manifest_datagen_is_current()`, and isolate validation
        runs in private directories.
-   - Direct `tpcgen-cli` Parquet remains opt-in during parallel buildout.
-6. **Vectorize over-budget synthetic generators and SSB in Python first; enforce
-   NumPy stream stability; gate any Rust repository on measured failure.**
-   - Re-implement over-budget synthetic benchmarks (`h2odb`, `tsbs_devops`,
-     `clickbench` synthetic, `tpch_skew`, `vector_search`, `coffeeshop`,
-     `joinorder_synthetic`, `amplab`) one benchmark at a time in vectorized
-     NumPy/PyArrow or embedded DuckDB SQL with explicit deterministic seeding
-     and per-benchmark versioning.
-   - **Python/NumPy stream stability:** `np.random.Generator` (PCG64) does not
-     guarantee bit-identical streams across all future NumPy releases. Protect
-     every vectorized Python generator with golden per-table SHA-256 tests in
-     CI so any NumPy or PyArrow drift fails loudly on dependency updates; any
-     intentional RNG/stream change requires a per-benchmark version bump and
-     re-acceptance.
-   - Include `ssb` as a per-benchmark versioned RNG and
-     `SSB_EXPECTED_ROW_COUNTS` migration gated after active SSB reference-count
-     and publication work finishes, preserving legacy `random.Random(42)`
-     behind `--datagen-backend legacy` and requiring exact dual-engine DuckDB +
-     DataFusion agreement across all 13 SSB queries at SF 0.01, 0.1, 1.0, and
-     10.0.
-   - **Rust repository trigger (`BenchBox-dev/benchbox-datagen`):** Do not
-     create a standalone Rust repository unless an in-scope synthetic generator
-     or SSB still misses its wall-time or peak-RSS budget below after Python
-     vectorization and receives explicit owner approval. If created, keep it to
-     one library crate and one binary crate, distribute binary-only
-     `py3-none-<platform>` wheels (no PyO3), enforce cross-thread and
-     cross-platform bit-exact determinism (fixed-block per-table RNG, pinned
-     `rand`/`rand_chacha` with owned sampling, pure-Rust `libm` or integer
-     math), print JSON per-file stats (no Rust manifest writer), and run schema
-     checks in `benchbox` CI with no circular dependency.
+6. **Deterministic generation for SSB and the synthetic generators.**
+   - Each generator uses a fixed-block per-table RNG (`rand_chacha` pinned,
+     owned sampling code, integer or pure-Rust `libm` math) so output is
+     bit-exact across thread counts and platforms.
+   - Output may differ from the legacy Python generators. Each rewrite bumps
+     that benchmark's generator version, passes the acceptance gate below,
+     and freezes golden per-table SHA-256 hashes and expected row counts.
+   - `ssb` replaces `random.Random(42)` and `SSB_EXPECTED_ROW_COUNTS` under
+     the same rules, after active SSB reference-count and publication work
+     finishes, and requires exact DuckDB and DataFusion agreement across all
+     13 SSB queries at SF 0.01, 0.1, 1.0 and 10.0.
 7. **Defer Windows arm64 and legacy binary retirement until after validation.**
-   Keep bundled C binaries untouched during parallel buildout and for at least
-   one minor release after default cutover. Decide Windows arm64 keep-vs-drop
-   and remove obsolete `dbgen`/`dsdgen` binaries or legacy Python loops only
-   after confirming platform coverage, refresh-stream coverage, and historical
-   published-result reproduction needs.
+   Keep bundled C binaries and legacy Python generators untouched during the
+   library buildout and for at least one minor release after each cutover.
+   Decide Windows arm64 keep-vs-drop and remove obsolete `dbgen`/`dsdgen`
+   binaries or legacy Python generators only after confirming platform
+   coverage, refresh-set coverage, and historical published-result
+   reproduction needs.
 
 ## Performance Budgets and Validation Gates
 
@@ -301,11 +336,10 @@ non-quiesced development host; cutover enforcement requires 3-run medians
 | Subsystem / Benchmark | SF 1 Wall Budget | SF 10 Wall Budget | SF 1 Peak RSS | SF 10 Peak RSS | Basis & Margin |
 | :--- | ---: | ---: | ---: | ---: | :--- |
 | Streaming `ParquetConverter` (all 11 benchmarks, incl. the 4 currently failing) | <= 6 s (successful baselines) / <= 10 s (repaired 4) | <= 60 s / <= 100 s | <= 512 MiB | <= 1,024 MiB | SF 1 successful baselines 1.45–5.56 s at 695–2,184 MiB RSS; streaming 122,880-row RGs bounds RAM O(1). |
-| `tpch` (`tpcgen-cli` delimited / direct Parquet) | <= 3 s / <= 5 s | <= 30 s / <= 50 s | <= 1,536 MiB (default threads) / <= 768 MiB (`-n 1`) | <= 2,048 MiB (or cap `--num-threads`) | SF 1 measured 1.34 s / 2.52 s (932 / 616 MiB on 10 CPUs); margin accounts for thread-scaled RSS. |
-| `tpcds` `SF >= 1` (`tpcgen-cli` delimited / direct Parquet) | <= 3 s / <= 5 s | <= 30 s / <= 50 s | <= 1,024 MiB | <= 2,048 MiB | SF 1 measured 0.91 s / 1.05 s (156 / 586 MiB on 10 CPUs). |
-| `h2odb`, `tsbs_devops`, `clickbench` (synthetic), `ssb`, `vector_search`, `coffeeshop` | <= 15 s (target <= 10 s) | <= 150 s (target <= 100 s) | <= 512 MiB | <= 512 MiB | Vectorized `h2odb` prototype measured 6.20 s / 389 MiB (SF 1) and 62.14 s / 396 MiB (SF 10); ~2x margin. |
-| `tpch_skew` | <= 15 s | <= 150 s | <= 512 MiB | <= 1,024 MiB | SF 1 baseline 43.56 s / 451 MiB; streaming skew over `tpcgen-cli` / chunked batches. |
-| `amplab`, `joinorder_synthetic` | <= 15 s | <= 150 s | <= 512 MiB | <= 1,024 MiB | Streaming-architecture target (not extrapolated from `h2odb`); legacy SF 1 RSS is 1,423 / 3,133 MiB. |
+| `tpch` (`benchbox-datagen` delimited / Parquet) | <= 3 s / <= 4 s | <= 30 s / <= 40 s | <= 1,536 MiB | <= 2,048 MiB | Upstream `tpcgen-cli` SF 1 measured 1.34 s / 2.52 s (932 / 616 MiB on 10 CPUs); Parquet budget assumes no CSV round trip. |
+| `tpcds` (`benchbox-datagen` delimited / Parquet) | <= 3 s / <= 4 s | <= 30 s / <= 40 s | <= 1,024 MiB | <= 2,048 MiB | Upstream `tpcgen-cli` SF 1 measured 0.91 s / 1.05 s (156 / 586 MiB on 10 CPUs). |
+| `ssb`, `h2odb`, `tsbs_devops`, `clickbench` (synthetic), `vector_search`, `coffeeshop` (delimited / Parquet) | <= 5 s / <= 6 s | <= 50 s / <= 60 s | <= 512 MiB | <= 1,024 MiB | Vectorized Python `h2odb` prototype measured 6.20 s / 389 MiB (SF 1); a compiled generator should beat it. |
+| `tpch_skew`, `amplab`, `joinorder_synthetic` (delimited / Parquet) | <= 8 s / <= 10 s | <= 80 s / <= 100 s | <= 512 MiB | <= 1,024 MiB | Legacy SF 1: 43.56 s / 451 MiB, 15.84 s / 1,423 MiB, 17.48 s / 3,133 MiB; skew and FK-graph passes need extra headroom. |
 
 ### Mandatory Validation Gates
 
@@ -314,55 +348,61 @@ gaps are closed and all applicable gates pass on the pinned version across
 every supported platform:
 
 - **Structure gate (all benchmarks, all backends):** Output passes
-  `BenchmarkDataValidator`, matches `schema.py` column names/order/types (or
-  documents exact `tpcgen-cli` Parquet type differences for opt-in direct
-  Parquet), matches exact row counts (SF 0.01 and 0.1 on pull requests; SF 1
-  and 10 on pin bumps), and recovers cleanly from an interrupted
+  `BenchmarkDataValidator`, matches `schema.py` column names/order/types,
+  matches exact row counts (SF 0.01 and 0.1 on pull requests; SF 1 and 10 on
+  library-version bumps), and recovers cleanly from an interrupted
   `_generation_in_progress` marker.
-- **Exact parity gate (TPC-H and TPC-DS `SF >= 1.0`):**
-  - **PR required check** (path-filtered to the adapter, TPC generators, or
-    `tpcgen-cli` pin): SHA-256 delimited byte identity (after unconditional
-    trailing-`|` stripping on `tpcgen-cli` output, at `--num-threads 1` and
-    default) and bidirectional DuckDB `EXCEPT ALL` = 0 rows on Parquet for
-    **TPC-H at SF 0.01 and 0.1** and **TPC-DS at SF 1.0** (all 24 tables,
-    including `--compat c` NULL vs empty-string and UTF-8 parity), plus
-    validation of all 7 derived TPC consumers (`tpchavoc`, `read_primitives`,
-    `write_primitives`, `transaction_primitives`, `datavault`, `tpcds_obt` smoke
-    suites and `ai_primitives` datagen/dry-run).
-  - **Pin-bump and pre-cutover required check:** Extends the parity matrix to
-    **TPC-H SF 0.01, 0.1, 1.0, and 10.0** and **TPC-DS SF 1.0 and 10.0** (all
-    24 tables), adding secondary single-engine `result_digest.py` verification
-    on the Parquet path. Scales above SF 10 are not exhaustively byte-diffed
-    against C binaries in CI and instead verify specification row counts and
-    thread-count invariance.
-- **Rewritten synthetic and SSB acceptance gate:** Exact table row counts, zero
-  orphan foreign keys, documented hit rates, a one-time owner-approved
+- **Exact parity gate (TPC-H and TPC-DS):**
+  - **PR required check** (path-filtered to the TPC generators, the backend
+    integration, or the `benchbox-datagen` pin): SHA-256 delimited byte
+    identity against bundled `dbgen`/`dsdgen` at one thread and default
+    threads, and bidirectional DuckDB `EXCEPT ALL` = 0 rows on Parquet for
+    **TPC-H at SF 0.01 and 0.1** and **TPC-DS at SF 0.01, 0.1 and 1.0** (all
+    24 tables, including `--compat c` NULL vs empty-string and UTF-8
+    parity), plus validation of all 7 derived TPC consumers (`tpchavoc`,
+    `read_primitives`, `write_primitives`, `transaction_primitives`,
+    `datavault`, `tpcds_obt` smoke suites and `ai_primitives` datagen/dry-run).
+  - **Refresh-set parity:** TPC-H `RF1`/`RF2` and TPC-DS `-update` output is
+    byte-identical to the C binaries at SF 0.01 and 1.0 before the TPC
+    cutover.
+  - **Library-version bump and pre-cutover required check:** Extends the
+    parity matrix to **TPC-H SF 0.01, 0.1, 1.0, and 10.0** and **TPC-DS SF
+    0.01, 0.1, 1.0 and 10.0** (all 24 tables), adding secondary single-engine
+    `result_digest.py` verification on the Parquet path. Scales above SF 10
+    are not exhaustively byte-diffed against C binaries in CI and instead
+    verify specification row counts and thread-count invariance.
+- **Thread invariance gate (all benchmarks):** Delimited and Parquet bytes are
+  identical at 1, 4 and default threads, on macOS arm64 and Linux x86_64.
+- **Rewritten SSB and synthetic acceptance gate:** Exact table row counts,
+  zero orphan foreign keys, documented hit rates, a one-time owner-approved
   acceptance report comparing legacy vs new distributions and every benchmark
   query's row count across DuckDB and DataFusion, followed by frozen golden
-  per-table SHA-256 hashes and expected row counts (catching NumPy/PyArrow
-  drift in CI). Never use arbitrary tolerance bands on deterministic output.
+  per-table SHA-256 hashes and expected row counts. Never use arbitrary
+  tolerance bands on deterministic output.
 - **Performance and memory gate (ownership and execution):** Wall time
   (`mono_time()`) and peak RSS at both SF 1 and SF 10 across all 11 in-scope
   benchmarks (none has a registry upper scale cap) measured as `N=3` medians on
   a quiet host meeting the table above. Owned and run by the PR author on the
   maintainer host via `make heavy-run` (macOS arm64) and on the Linux CI/agent
-  runner for PRs touching the streaming converter, `tpcgen-cli` pin/adapter, or
-  any rewritten synthetic generator, with raw medians recorded in the PR body.
+  runner for PRs touching the streaming converter, the `benchbox-datagen` pin
+  or backend integration, with raw medians recorded in the PR body.
 
 ## Consequences
 
-- TPC-H and TPC-DS (`SF >= 1.0`) gain 3.8x–10.9x single-threaded (9.6x–61.2x
-  multi-threaded) generation speedups using an upstream Apache-2.0 wheel with
-  zero custom Rust code to maintain.
+- BenchBox owns one Rust library for every in-scope generator, with one
+  determinism model, one Parquet writer and one cutover pattern. It carries
+  the cost of a second repository, abi3 wheel builds for six platform targets,
+  pin bumps of the upstream TPC crates, and implementing TPC-DS fractional
+  scales and refresh sets that upstream lacks.
+- TPC generation keeps the upstream crates' measured speed (TPC-H SF 1
+  1.34 s, TPC-DS SF 1 0.91 s at default threads) without a subprocess, a
+  trailing-delimiter strip, or a CSV-to-Parquet round trip.
 - Streaming Parquet conversion fixes four broken benchmark conversions and
   removes the >2 GiB SF 1 memory wall, while explicitly surfacing the
   122,880-row-group layout change as a published-run re-baseline decision for
-  the owner.
-- Vectorized Python/PyArrow delivers ~20x speedups and flat ~390 MiB RSS up to
-  SF 10 (100M rows) on numeric synthetic generators, making a standalone Rust
-  repository unnecessary unless a string-heavy or complex FK-graph generator
-  later misses budget.
-- Bundled C binaries remain for `qgen`/`dsqgen`/templates, TPC-DS fractional
-  scales (`SF < 1.0`), refresh sets (`RF1`/`RF2`, `-update`), and Windows arm64
-  until upstream coverage or an explicit owner retirement decision changes that
-  boundary.
+  the owner. It stays the converter for legacy-backend data and
+  `benchbox convert`.
+- Library-written Parquet has its own writer identity, so the first cutover of
+  each benchmark is a Parquet corpus re-baseline for that benchmark.
+- Bundled C binaries remain the `legacy` backend for every benchmark and the
+  only backend on platforms without a wheel until the retirement decision.

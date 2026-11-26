@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Set TPC-DI's registry scales to DIGen's whole-number scales (3, 5 as the default, 10, 100) and regenerated the standard-scale projection to match; TPC-DI stays unavailable"
+}
