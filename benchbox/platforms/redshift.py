@@ -2491,6 +2491,8 @@ _build_redshift_config = make_registered_platform_config_builder(
         "aws_secret_access_key",
         "aws_session_token",
         "aws_region",
+        "compute_resource",
+        COMPUTE_RESOURCE_KIND_OPTION,
         "admin_database",
         "connect_timeout",
         "statement_timeout",

@@ -2127,6 +2127,7 @@ _build_snowflake_config = make_registered_platform_config_builder(
     [
         "account",
         "compute_resource",
+        "compute_size",
         "schema",
         "username",
         "password",

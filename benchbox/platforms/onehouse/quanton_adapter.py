@@ -458,7 +458,7 @@ class QuantonAdapter(
             "region": config.get("region", "us-east-1"),
             "database": config.get("database", "benchbox"),
             "table_format": config.get("table_format", "iceberg"),
-            "compute_size": config.get("compute_size", "small"),
+            "compute_size": config.get("compute_size") or "small",
             "timeout_minutes": config.get("timeout_minutes", 60),
             "api_endpoint": config.get("api_endpoint"),
             "record_key": config.get("record_key"),
@@ -490,5 +490,5 @@ _build_quanton_config = make_platform_config_builder(
     __name__,
     "Onehouse Quanton",
     "requests",
-    ["api_key", "s3_staging_dir", "region", "database", "table_format"],
+    ["api_key", "s3_staging_dir", "region", "database", "table_format", "compute_size"],
 )

@@ -7,6 +7,7 @@ import yaml
 
 import benchbox.platforms
 from benchbox.core.compute_resource import (
+    COMPUTE_RESOURCE_KIND_OPTION,
     compute_size_keys,
     compute_value_keys,
     declares_compute,
@@ -210,6 +211,26 @@ def test_credential_manager_migrates_saved_native_keys(tmp_path) -> None:
     assert snowflake == {"account": "a", "compute_resource": "OLD_WH", "compute_size": "LARGE"}
     assert manager.get_platform_credentials("firebolt") == {"compute_resource": "eng"}
     assert manager.get_platform_credentials("duckdb") == {"warehouse": "untouched"}
+
+
+COMPUTE_BUILDER_PLATFORMS = sorted(
+    platform for platform in PlatformHookRegistry._config_builders if declares_compute(platform)
+)
+
+
+@pytest.mark.parametrize("platform", COMPUTE_BUILDER_PLATFORMS)
+def test_saved_compute_keys_reach_the_built_platform_config(platform: str) -> None:
+    declaration = get_compute_declaration(platform)
+    saved = {}
+    if declaration.native_resource_keys:
+        saved["compute_resource"] = "SAVED_RESOURCE"
+    if declaration.native_size_keys:
+        saved["compute_size"] = "SAVED_SIZE"
+    if isinstance(declaration.resource_kind, dict):
+        saved[COMPUTE_RESOURCE_KIND_OPTION] = "cluster"
+    with patch.object(CredentialManager, "get_platform_credentials", return_value=dict(saved)):
+        config = PlatformHookRegistry.build_database_config(platform, {})
+    assert {key: getattr(config, key, None) for key in saved} == saved
 
 
 def test_resolve_linked_compute_resource_takes_first_layer_with_any_key() -> None:

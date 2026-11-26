@@ -863,6 +863,7 @@ _build_clickhouse_cloud_config = make_registered_platform_config_builder(
         "service_name",
         "service_tier",
         "compute_size",
+        "compute_resource",
         "s3_staging_url",
         "s3_region",
         "gcs_staging_url",
