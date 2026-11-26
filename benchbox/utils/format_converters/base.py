@@ -424,7 +424,9 @@ class BaseFormatConverter(FormatConverter):
             if len(preview) < 2:
                 return delimiter, True, False, True
             data_line = preview[1]
-            has_trailing = count_delimited_fields(data_line, delimiter) > len(column_names)
+            has_trailing = count_delimited_fields(data_line, delimiter) > len(column_names) and data_line.endswith(
+                delimiter
+            )
         else:
             has_trailing = has_trailing_delimiter(file_path, delimiter, column_names)
 

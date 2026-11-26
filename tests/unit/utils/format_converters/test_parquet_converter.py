@@ -1416,12 +1416,24 @@ class TestParquetValueSemantics:
 
         assert pq.read_table(result.output_files[0]).to_pydict() == {"id": [1, 2], "v": ["q|p", "plain"]}
 
+    def test_headered_row_with_an_extra_field_still_fails(self, tmp_path):
+        source = tmp_path / "t.csv"
+        source.write_text("id|v\n1|a|extra\n", encoding="utf-8")
+
+        with pytest.raises(ConversionError):
+            self._convert(
+                tmp_path,
+                [{"name": "id", "type": "INTEGER"}, {"name": "v", "type": "VARCHAR(20)"}],
+                [source],
+            )
+
     @staticmethod
     def _unique_string_rows(count):
         import hashlib
 
         return [f"{i}|{hashlib.md5(str(i).encode()).hexdigest() * 2}|\n" for i in range(count)]
 
+    @pytest.mark.slow
     def test_output_bytes_do_not_depend_on_input_chunk_boundaries(self, tmp_path):
         rows = self._unique_string_rows(250_000)
         single = tmp_path / "single.tbl"
@@ -1443,6 +1455,7 @@ class TestParquetValueSemantics:
 
         assert written[0] == written[1]
 
+    @pytest.mark.slow
     def test_partitioned_output_bytes_do_not_depend_on_input_chunk_boundaries(self, tmp_path):
         rows = [row.replace("|", f"|{index % 3}|", 1) for index, row in enumerate(self._unique_string_rows(250_000))]
         single = tmp_path / "single.tbl"
