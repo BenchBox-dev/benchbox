@@ -1,0 +1,22 @@
+{
+  "acceptance": [
+    "downstream/MAINTAINING.md documents the stranded-version failure, how to detect it, and the version-bump recovery, merged in the fork.",
+    "If the owner chose a tooling change, it is merged with a stranded-source test."
+  ],
+  "context": "Filed 2026-11-26 in the BenchBox tracker because this session's tracker connection is bound to BenchBox; move it to the fork tracker if the owner prefers.",
+  "description": "## Problem\nIn BenchBox-dev/benchbox-sqlglot, downstream/delivery.py delivers a version only from the first-parent main commit that introduced it, and only after the three required push workflows succeeded at that commit. On 2026-11-25 a GitHub incident during the merge of PR #155 left merge commit e015509a (version 30.35.0.2) with no push-event runs. No rerun or dispatch can create a push run, so 30.35.0.2 can never be delivered. The recovery used was a version-only PR (#156, 30.35.0.3, merge a27947de) carrying the same source. downstream/MAINTAINING.md does not describe this failure or its recovery, and the stranded version stays in history.\n\n## Change\nDocument the failure and the version-bump recovery in downstream/MAINTAINING.md, including how to confirm the missing push runs (gh run list -c <sha>) and that the stranded version is never delivered.\n\n## Decision gates\n- G1: the owner chooses documentation only (recommended) or a tooling change that lets delivery accept a later same-source commit. A tooling change weakens the source-commit rule and needs its own design review before code.\n\n## Verification rubric\nPass only if: MAINTAINING.md describes the symptom, the check and the recovery, citing the 2026-11-25 case; if G1 chose tooling, a delivery test covers a stranded source commit and the existing source-commit tests still pass.\n\n## Guardrails\n- Fork rules apply: linked worktree from origin/main, the fork's review and merge process, never rewrite consumed main commits or tags.\n- No change to the delivery gate's required-check rules without G1.\n- Pinned human identity, no agent attribution.",
+  "links": [
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/pull/155",
+    "https://github.com/BenchBox-dev/benchbox-sqlglot/pull/156"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:38bfd61e73967b4e5aca7d45",
+      "at": "2026-11-26T14:13:43Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "51249e5c969440298e90a398472913e2",
+      "session_id": "1f0f3dea42f44058a5594bfcbaa33b2f"
+    }
+  ]
+}

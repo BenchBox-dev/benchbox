@@ -49706,6 +49706,13 @@
       "status": "done",
       "title": "Correct the upstream-state record of the fork patches: 'declined' means fork-only by design; record the two real upstream refusals and fix the blog outline claims"
     },
+    "sqlglot-fork-delivery-recovery-without-push-runs-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Fork: a version whose source commit never got push runs can never be delivered, and the recovery is undocumented"
+    },
     "sqlglot-fork-f0-base-and-manifest": {
       "claim": null,
       "needs": [],
