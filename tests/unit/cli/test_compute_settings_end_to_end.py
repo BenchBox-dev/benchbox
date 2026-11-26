@@ -144,7 +144,7 @@ def test_redshift_command_line_compute_resource_ignores_the_saved_key_kind(tmp_p
         pytest.skip("Redshift drivers not installed")
 
     assert adapter.workgroup_name == "wg2"
-    assert adapter.cluster_identifier != "wg2"
+    assert adapter.cluster_identifier is None
 
 
 SNOWFLAKE_PROFILE = {

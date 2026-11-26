@@ -726,7 +726,7 @@ class TestRedshiftComputeUnification:
         adapter = self._from_config(**saved)
 
         assert adapter.cluster_identifier == "saved-cluster"
-        assert adapter.workgroup_name != "saved-cluster"
+        assert adapter.workgroup_name is None
 
 
 class TestAthenaComputeUnification:

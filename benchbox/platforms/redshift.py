@@ -222,7 +222,7 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         self.workgroup_name = self.compute_resource if resource_kind == "workgroup" else None
         if resource_kind == "cluster":
             self.cluster_identifier = self.compute_resource
-        if self.workgroup_name is None and self.deployment_type == "serverless":
+        if self.workgroup_name is None and self.deployment_type == "serverless" and self.cluster_identifier is None:
             self.workgroup_name = self._extract_identifier_from_hostname(self.host or "", self.deployment_type)
 
         if not all([self.host, self.username, self.password]):
