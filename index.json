@@ -27523,13 +27523,13 @@
     "datagen-p3-tpc-default-cutover": {
       "claim": null,
       "needs": [
-        "datagen-p1-tpcgen-cli-adapter",
+        "datagen-lib-tpcds-fractional-and-refresh",
         "bundle-data-generation-hash-missing-from-corpus",
         "datagen-p1-parquet-semantic-fixes"
       ],
       "priority": "medium-high",
-      "status": "blocked",
-      "title": "Cut over TPC-H and TPC-DS default backend and decide published-run Parquet layout default"
+      "status": "open",
+      "title": "Switch the TPC-H and TPC-DS default backend to benchbox-datagen and make the library a required dependency"
     },
     "datagen-parquet-partitioned-row-groups": {
       "claim": null,

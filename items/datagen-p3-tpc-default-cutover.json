@@ -1,12 +1,12 @@
 {
   "acceptance": [
-    "bundle-data-generation-hash-missing-from-corpus is verified done and fresh TPC-H/TPC-DS runs export non-null data_generation_hash values.",
-    "Gate A, Gate B (all 8 TPC-H tables, all 24 TPC-DS tables, and all 7 derived consumers: 6 local smoke suites plus ai_primitives datagen/dry-run), and Gate D pass on the pinned tpcgen-cli version across all supported CI platforms.",
-    "Owner decision on published-run Parquet layout default (keep BenchBox streaming converter vs adopt direct tpcgen-cli Parquet and re-baseline) is recorded in docs/internal/adr/adr-benchbox-datagen.md and implemented.",
-    "tpch and tpcds default backend cutover is merged on develop honoring the ADR's missing-extra rule, with --datagen-backend legacy still passing tests, Windows arm64 and refresh paths safely preserved, and a changelog.d/ fragment added."
+    "Pre-cutover parity matrix passes: TPC-H SF 0.01-10 and TPC-DS SF 0.01-10 byte identity, refresh-set parity, Parquet EXCEPT ALL and result_digest.py.",
+    "Performance gate passes on macOS arm64 and Linux x86_64 with N=3 medians in the PR body.",
+    "Default resolution never depends on installed extras; Windows arm64 resolves to legacy and says so; --datagen-backend legacy still works.",
+    "Corpus data_generation_hash export gaps are closed."
   ],
   "context": "Phase 3 Tier 1 cutover of the faster data-generation plan. Separated from Tier 3/SSB cutover and legacy retirement so validated TPC-H/TPC-DS cutover and Owner Decision A2 (Parquet layout default) can land independently.\n\nParked 2026-11-25 by owner decision: the datagen target is now a BenchBox-owned Rust library (see datagen-adr-rust-library-revision). This item waits for the revised ADR, which decides whether it is rebuilt around the library or dropped.",
-  "description": "## Problem\nAfter Phase 1 proves tpcgen-cli parity for TPC-H and TPC-DS behind opt-in --datagen-backend native, defaults cannot safely flip until corpus provenance hashing (bundle-data-generation-hash-missing-from-corpus) is fixed and the deferred published-run Parquet layout decision (owner decision A2) is settled with measured validation evidence.\n\n## Change\n- Verify bundle-data-generation-hash-missing-from-corpus is done and Gate A, Gate B, and Gate D are green on the pinned tpcgen-cli version across every supported CI platform.\n- Present the measured Parquet layout and query-timing comparison (BenchBox's final PyArrow writer, as recorded by datagen-p1-parquet-semantic-fixes, vs direct tpcgen-cli Parquet on DuckDB, DataFusion, Polars) to the owner to settle the published-run Parquet default (owner decision A2), and record the outcome in docs/internal/adr/adr-benchbox-datagen.md.\n- Flip tpch and tpcds in benchbox/utils/datagen_backend.py's default table per the ADR's optional-extra default rule (keeping Windows arm64 and TPC-H/TPC-DS refresh paths routed cleanly to bundled C binaries).\n- Retain --datagen-backend legacy as a fully tested escape hatch and add a changelog.d/ fragment ([CHANGELOG-001]).\n\n## Decision gates\n- Hard blocked on bundle-data-generation-hash-missing-from-corpus closing.\n- Hard stop for explicit owner sign-off on published-run Parquet layout default (A2: keep BenchBox streaming converter as default vs adopt direct tpcgen-cli Parquet with a documented re-baseline; that choice means a second corpus re-baseline after datagen-p1-parquet-corpus-rebaseline) before changing Parquet default behavior.\n\n## Guardrails\n- Never promote tpcgen-cli to a required dependency of core benchbox (conflicts with adr-python-core-runtime.md).\n- Never remove --datagen-backend legacy or any binary from benchbox/_binaries/ in this item (at least one minor release retention is required before retirement).\n- Never break Windows arm64 or TPC-H/TPC-DS refresh streams.\n- Follow AGENTS.md ([CHANGELOG-001], [COMMENT-POLICY-001], linked worktree, make pr-preflight, merged PR).",
+  "description": "First cutover (docs/internal/adr/adr-benchbox-datagen.md (revised 2026-11-26, PR #4540), decision 4). Make benchbox-datagen a required dependency on every platform with a wheel (environment markers), switch tpch and tpcds defaults to native, and resolve platforms without a wheel to legacy from a fixed platform table with a visible notice.\n\nDecision gate: owner sign-off on the pre-cutover gate results and on the Parquet corpus re-baseline this triggers (library Parquet has its own writer identity).\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
   "links": [
     "benchbox/utils/datagen_backend.py",
     "benchbox/utils/datagen_version.py",
@@ -43,6 +43,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "b67d8e83e33441fabcefe8e38b090018",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T13:58:42Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "d1b549d3730943a492dbe5f3f206f5dc",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
