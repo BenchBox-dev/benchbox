@@ -28,6 +28,7 @@ from benchbox.core.throughput.runner import (
     stream_cancel_event,
     stream_stop_requested,
 )
+from benchbox.core.validation.query_validation import clear_data_refreshed_context, set_data_refreshed_context
 from benchbox.core.validation.stream_checks import QueryGeneration
 from benchbox.utils.clock import elapsed_seconds, mono_time
 from benchbox.utils.run_deadline import TIMED_OUT_QUERY_STATUS, failed_query_status
@@ -47,6 +48,7 @@ class TPCDSThroughputTestConfig:
     queries_per_stream: Optional[int] = None
     enable_preflight: bool = True
     min_success_rate: float = 0.70
+    data_refreshed: bool = False
 
 
 TPCDSThroughputStreamResult = ThroughputStreamResult
@@ -363,10 +365,15 @@ class TPCDSThroughputTest:
         stream_id: int,
         query_result: dict[str, Any],
         generation: QueryGeneration,
+        data_refreshed: bool = False,
     ) -> tuple[dict[str, Any] | None, int]:
         if hasattr(connection, "set_query_context"):
             connection.set_query_context(query_display_id, stream_id=stream_id, generation=generation)
-        cursor = connection.execute(query_text)
+        set_data_refreshed_context(data_refreshed)
+        try:
+            cursor = connection.execute(query_text)
+        finally:
+            clear_data_refreshed_context()
         platform_result = getattr(cursor, "platform_result", None)
         if isinstance(platform_result, dict):
             propagate_row_count_validation(platform_result, query_result)
@@ -417,7 +424,7 @@ class TPCDSThroughputTest:
             label = f"Stream_{stream_id}_Position_{position + 1}_Query_{query_display_id}"
             try:
                 platform_result, row_count = self._run_single_stream_query(
-                    connection, query_text, query_display_id, stream_id, query_result, generation
+                    connection, query_text, query_display_id, stream_id, query_result, generation, config.data_refreshed
                 )
             finally:
                 with self._capture_lock:
