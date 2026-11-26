@@ -27694,7 +27694,9 @@
     "datagen-lib-benchbox-integration": {
       "claim": null,
       "needs": [
-        "datagen-lib-tpch"
+        "datagen-lib-tpch",
+        "datagen-lib-tpcds",
+        "datagen-lib-review-gate-and-publishing-setup"
       ],
       "priority": "high",
       "status": "open",
