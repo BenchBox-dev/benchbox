@@ -92,8 +92,10 @@ SQL and DataFrame paths (`benchbox/core/validation/stream_checks.py`), in this o
 
 A query that ran after refresh functions changed the data (a TPC-H power or throughput test with
 refresh functions, a TPC-DS throughput test after the Data Maintenance Test) skips the exact
-reference and the enumerated range, because both come from the base data. The invariant and
-must-return-rows checks still run; anything else records a documented `data refreshed:` skip.
+reference, the invariant count and the enumerated range, because all three describe the base data.
+Refresh functions add and remove fact rows, which moves grouped counts that never varied across the
+base-data sample: TPC-DS Q43 returns 8 rows instead of 6 after the Data Maintenance Test. The
+must-return-rows check still runs; anything else records a documented `data refreshed:` skip.
 
 The invariant and must-return-rows checks come from the `integrity` section of each reference
 file: at least 512 draws per scale at SF 0.01, 0.1 and 1 (256 above SF 1) spread over the

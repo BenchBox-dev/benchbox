@@ -361,7 +361,7 @@ def _decide_against_reference(
             reference=reference,
         )
     integrity = reference.integrity
-    if integrity is not None and statement in integrity.invariant_counts:
+    if refreshed_skip is None and integrity is not None and statement in integrity.invariant_counts:
         expected = integrity.invariant_counts[statement]
         if actual != expected:
             return _failure(

@@ -233,15 +233,14 @@ def test_an_unconstrained_statement_records_a_documented_parameter_sensitive_ski
     assert record["seed"] == 31 and record["streams_index"] is None and "check" not in record
 
 
-def test_refreshed_data_keeps_the_checks_that_do_not_depend_on_the_base_data(reference_dir) -> None:
-    invariant = _decide("tpch", "1", 4, data_refreshed=True)
-    never_empty = _decide("tpch", "13", 43, data_refreshed=True)
-    wrong = _decide("tpch", "1", 3, data_refreshed=True)
+def test_refreshed_data_runs_the_must_return_rows_check_and_no_base_data_count(reference_dir) -> None:
+    moved_invariant = _decide("tpch", "1", 3, data_refreshed=True)
+    moved_range = _decide("tpch", "13", 43, data_refreshed=True)
+    moved_tpcds_invariant = _decide("tpcds", "3", 9, generation=QueryGeneration(seed=42), data_refreshed=True)
     empty = _decide("tpch", "13", 0, data_refreshed=True)
 
-    assert invariant.is_valid and invariant.check == "invariant" and invariant.bound == "exactly 4"
-    assert never_empty.is_valid and never_empty.check == "never_empty"
-    assert not wrong.is_valid and wrong.check == "invariant"
+    for result in (moved_invariant, moved_range, moved_tpcds_invariant):
+        assert result.is_valid and result.check == "never_empty" and result.bound == "at least 1 row"
     assert not empty.is_valid and empty.check == "never_empty"
 
 
