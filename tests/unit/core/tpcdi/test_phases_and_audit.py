@@ -234,6 +234,22 @@ def test_the_result_carries_the_audit_block_and_its_status(tmp_path):
     assert publish_admission(result, "unofficial-research").allowed is False
 
 
+def test_a_failed_run_stays_failed_and_the_audit_outcome_is_used_once(tmp_path):
+    benchmark = TPCDIBenchmark(scale_factor=3, output_dir=tmp_path)
+    passing = AuditResult("DimTrade row count", 1, "OK", "", True)
+    benchmark.record_power_phases(
+        record(phases.INITIALIZATION_PHASE, 0, 1), (record(phases.HISTORICAL_PHASE, 1, 9),), outcome_with((passing,))
+    )
+
+    failed = benchmark.create_enhanced_benchmark_result("DuckDB", [], validation_status="FAILED")
+    later = benchmark.create_enhanced_benchmark_result("DuckDB", [], validation_status="FAILED")
+
+    assert failed.validation_status == "FAILED"
+    assert "tpcdi_audit" in failed.validation_details
+    assert later.validation_status == "FAILED"
+    assert "tpcdi_audit" not in (later.validation_details or {})
+
+
 def test_the_staging_directory_defaults_to_the_digen_output_and_can_be_named(tmp_path):
     benchmark = TPCDIBenchmark(scale_factor=3, output_dir=tmp_path)
     assert benchmark.digen_staging_dir == tmp_path / "source" / "digen"

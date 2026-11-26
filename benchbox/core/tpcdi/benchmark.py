@@ -44,7 +44,7 @@ from benchbox.core.tpcdi._legacy_etl.finwire_processor import FinWireParser, Fin
 from benchbox.core.tpcdi._legacy_etl.incremental_loader import IncrementalDataLoader
 from benchbox.core.tpcdi._legacy_etl.results import ETLPhaseResult
 from benchbox.core.tpcdi._legacy_etl.scd_processor import EnhancedSCDType2Processor
-from benchbox.core.tpcdi.audit import AuditOutcome
+from benchbox.core.tpcdi.audit import FAILED_STATUS, AuditOutcome
 from benchbox.core.tpcdi.config import TPCDIConfig
 from benchbox.core.tpcdi.etl.staging import prepare_xml_reader
 from benchbox.core.tpcdi.generator import TPCDIDataGenerator
@@ -194,8 +194,9 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         **kwargs: Any,
     ) -> Any:
         if self._power_phases is not None:
-            initialization, measured, outcome = self._power_phases
-            kwargs["validation_status"] = outcome.status
+            (initialization, measured, outcome), self._power_phases = self._power_phases, None
+            if kwargs.get("validation_status") != FAILED_STATUS:
+                kwargs["validation_status"] = outcome.status
             kwargs["validation_details"] = {
                 **(kwargs.get("validation_details") or {}),
                 TPCDI_AUDIT_BLOCK_KEY: {
