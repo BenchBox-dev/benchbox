@@ -213,8 +213,8 @@ def _run_detection(
     head_changes_at: int = 99,
     head_lookup_fails: bool = False,
 ) -> tuple[int, str]:
-    if shutil.which("bash") is None:
-        pytest.skip("bash is required")
+    if sys.platform == "win32" or shutil.which("bash") is None:
+        pytest.skip("needs POSIX bash")
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(parents=True)
     data = tmp_path / "listing.tsv"
