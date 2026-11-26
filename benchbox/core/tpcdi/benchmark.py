@@ -28,6 +28,7 @@ import pandas as pd
 from benchbox.base import BaseBenchmark, GeneratorOutputDirMixin
 from benchbox.core.dataframe.maintenance_interface import get_maintenance_operations_for_platform
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
+from benchbox.core.results.tpcdi_audit import TPCDI_AUDIT_BLOCK_KEY
 from benchbox.core.run_service import refuses_unavailable_benchmark
 from benchbox.core.tpcdi._legacy_etl import (
     DataFrameETLBackend,
@@ -43,10 +44,13 @@ from benchbox.core.tpcdi._legacy_etl.finwire_processor import FinWireParser, Fin
 from benchbox.core.tpcdi._legacy_etl.incremental_loader import IncrementalDataLoader
 from benchbox.core.tpcdi._legacy_etl.results import ETLPhaseResult
 from benchbox.core.tpcdi._legacy_etl.scd_processor import EnhancedSCDType2Processor
+from benchbox.core.tpcdi.audit import AuditOutcome
 from benchbox.core.tpcdi.config import TPCDIConfig
+from benchbox.core.tpcdi.etl.staging import prepare_xml_reader
 from benchbox.core.tpcdi.generator import TPCDIDataGenerator
 from benchbox.core.tpcdi.loader import TPCDIDataLoader
 from benchbox.core.tpcdi.metrics import BenchmarkMetrics, BenchmarkReport, TPCDIMetrics
+from benchbox.core.tpcdi.phases import PhaseRecord, check_staging, run_initialization
 from benchbox.core.tpcdi.schema import (
     TABLES,
     TPCDISchemaManager,
@@ -70,6 +74,8 @@ class TPCDITransformationError(RuntimeError):
 
 
 class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
+    SKIP_DATA_LOADING = True
+
     def __init__(
         self,
         scale_factor: float = 1.0,
@@ -133,6 +139,9 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         self._initialize_etl_components()
 
         self.tables: dict[str, Any] = {}
+        self._digen_staging_dir: Optional[Path] = None
+        self._initialization: Optional[PhaseRecord] = None
+        self._power_phases: Optional[tuple[PhaseRecord, tuple[PhaseRecord, ...], AuditOutcome]] = None
 
     def _sync_output_dir_to_generators(self, path: Any) -> None:
         super()._sync_output_dir_to_generators(path)
@@ -143,6 +152,67 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         self.source_dir = config.source_dir
         self.staging_dir = config.staging_dir
         self.warehouse_dir = config.warehouse_dir
+
+    @property
+    def digen_staging_dir(self) -> Path:
+        return self._digen_staging_dir or self.config.source_dir / DIGEN_SOURCE_DIRECTORY
+
+    @digen_staging_dir.setter
+    def digen_staging_dir(self, value: Union[str, Path]) -> None:
+        self._digen_staging_dir = Path(value)
+
+    def run_skipped_data_load(self, adapter: Any, connection: Any) -> dict[str, int]:
+        self._power_phases = None
+        check_staging(self.digen_staging_dir, scale_factor=self.scale_factor)
+        platform = adapter.get_target_dialect()
+        prepare_xml_reader(
+            connection,
+            allow_third_party_extensions=bool(getattr(adapter, "allow_third_party_extensions", False)),
+            platform=platform,
+        )
+        self._initialization = run_initialization(connection, platform=platform)
+        return {}
+
+    def take_initialization_record(self) -> Optional[PhaseRecord]:
+        record, self._initialization = self._initialization, None
+        return record
+
+    def record_power_phases(
+        self, initialization: PhaseRecord, phases: tuple[PhaseRecord, ...], outcome: AuditOutcome
+    ) -> None:
+        self._power_phases = (initialization, phases, outcome)
+
+    def create_enhanced_benchmark_result(
+        self,
+        platform: str,
+        query_results: list[dict[str, Any]],
+        execution_metadata: Optional[dict[str, Any]] = None,
+        phases: Optional[dict[str, dict[str, Any]]] = None,
+        resource_utilization: Optional[dict[str, Any]] = None,
+        performance_characteristics: Optional[dict[str, Any]] = None,
+        duration_seconds: Optional[float] = None,
+        **kwargs: Any,
+    ) -> Any:
+        if self._power_phases is not None:
+            initialization, measured, outcome = self._power_phases
+            kwargs["validation_status"] = outcome.status
+            kwargs["validation_details"] = {
+                **(kwargs.get("validation_details") or {}),
+                TPCDI_AUDIT_BLOCK_KEY: {
+                    **outcome.as_block(),
+                    "phases": [record.as_dict() for record in (initialization, *measured)],
+                },
+            }
+        return super().create_enhanced_benchmark_result(
+            platform,
+            query_results,
+            execution_metadata,
+            phases,
+            resource_utilization,
+            performance_characteristics,
+            duration_seconds,
+            **kwargs,
+        )
 
     @refuses_unavailable_benchmark("tpcdi")
     def generate_data(
@@ -171,7 +241,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         finally:
             self.data_generator.generation_seed = original_generation_seed
 
-    @refuses_unavailable_benchmark("tpcdi")
     def get_queries(self) -> dict[str, str]:
         return {}
 

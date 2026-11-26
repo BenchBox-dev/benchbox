@@ -84,15 +84,22 @@ def step_parameters(source_dir: str | Path, step: IngestStep) -> dict[str, str]:
     return {step.parameter: str(batch_directory(source_dir).resolve() / step.source)}
 
 
+def render_sql(sql: str, platform: str = SOURCE_DIALECT) -> list[str]:
+    translated = translate_sql_query(sql, platform, source_dialect=SOURCE_DIALECT, identify=False, strict=True)
+    return split_sql_statements(translated, platform)
+
+
 def render_step(step: IngestStep | TransformStep, platform: str = SOURCE_DIALECT) -> list[str]:
-    sql = translate_sql_query(
-        step.path.read_text(encoding="utf-8"),
-        platform,
-        source_dialect=SOURCE_DIALECT,
-        identify=False,
-        strict=True,
-    )
-    return split_sql_statements(sql, platform)
+    return render_sql(step.path.read_text(encoding="utf-8"), platform)
+
+
+def execute_sql(
+    connection: Any, sql: str, platform: str = SOURCE_DIALECT, parameters: dict[str, Any] | None = None
+) -> Any:
+    cursor = None
+    for statement in render_sql(sql, platform):
+        cursor = connection.execute(statement, parameters) if parameters else connection.execute(statement)
+    return cursor
 
 
 def _count(connection: Any, table: str) -> int:
@@ -121,6 +128,24 @@ def _run_ingest_step(connection: Any, source_dir: str | Path, step: IngestStep, 
     return run_step(connection, step, platform, parameters, table_exists=step.loads_into_existing_table)
 
 
+WEBBED_LOADED_SQL = "SELECT count(*) FROM duckdb_extensions() WHERE extension_name = 'webbed' AND loaded"
+
+
+def prepare_xml_reader(
+    connection: Any,
+    *,
+    allow_third_party_extensions: bool,
+    platform: str = SOURCE_DIALECT,
+    steps: Sequence[IngestStep] = INGEST_STEPS,
+) -> None:
+    if not any(step.requires_xml for step in steps):
+        return
+    if not allow_third_party_extensions:
+        raise ThirdPartyExtensionRequired(xml_refusal_message())
+    if not execute_sql(connection, WEBBED_LOADED_SQL, platform).fetchone()[0]:
+        install_webbed(connection)
+
+
 def load_batch1(
     connection: Any,
     source_dir: str | Path,
@@ -129,8 +154,7 @@ def load_batch1(
     platform: str = SOURCE_DIALECT,
     steps: Sequence[IngestStep] = INGEST_STEPS,
 ) -> list[StepResult]:
-    if any(step.requires_xml for step in steps):
-        if not allow_third_party_extensions:
-            raise ThirdPartyExtensionRequired(xml_refusal_message())
-        install_webbed(connection)
+    prepare_xml_reader(
+        connection, allow_third_party_extensions=allow_third_party_extensions, platform=platform, steps=steps
+    )
     return [_run_ingest_step(connection, source_dir, step, platform) for step in steps]

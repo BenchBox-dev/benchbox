@@ -170,8 +170,9 @@ departures:
     clause: "2.4.5, 7.2.6.7"
     project_behaviour: "The DuckDB implementation loads DIGen's answer key as generated; the Databricks project's own generator avoids the defect."
     benchbox_behaviour: "BenchBox loads the Audit table from the generator's files and corrects only the attributes that an independent recount shows to be wrong, listing each correction in the result. Generated files are never edited."
-    files: []
-    status: pending
+    files:
+      - benchbox/core/tpcdi/audit.py
+    status: implemented
     approval: pending
 
   - id: alerts-written-inside-transformations

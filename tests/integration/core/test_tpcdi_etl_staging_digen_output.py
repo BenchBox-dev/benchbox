@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import csv
 import hashlib
-import os
 import xml.etree.ElementTree as ET
 from collections import Counter
 from datetime import date, datetime
@@ -13,6 +12,7 @@ import pytest
 from benchbox.core.tpcdi.etl import staging
 from benchbox.core.tpcdi.etl.staging import INGEST_STEPS, ThirdPartyExtensionRequired
 from benchbox.core.tpcdi.schema import TPCDISchemaManager
+from tests.integration._tpcdi_digen_outputs import OUTPUTS_ENV, digen_outputs
 
 pytestmark = [
     pytest.mark.integration,
@@ -22,8 +22,6 @@ pytestmark = [
 ]
 
 duckdb = pytest.importorskip("duckdb")
-
-OUTPUTS_ENV = "BENCHBOX_TPCDI_DIGEN_OUTPUTS"
 
 AUDIT_COUNTS = {
     "CashTransactionRaw": ("CashTransaction_audit.csv", ("CT_Records",)),
@@ -51,15 +49,6 @@ FILE_LINE_COUNTS = {
 }
 
 FINWIRE_ATTRIBUTES = ("FW_CMP", "FW_SEC", "FW_FIN")
-
-
-def digen_outputs() -> dict[int, Path]:
-    raw = os.environ.get(OUTPUTS_ENV, "")
-    outputs = {}
-    for item in filter(None, (part.strip() for part in raw.split(","))):
-        scale, _, path = item.partition("=")
-        outputs[int(scale)] = Path(path)
-    return outputs
 
 
 OUTPUTS = digen_outputs()

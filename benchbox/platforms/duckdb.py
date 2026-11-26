@@ -23,7 +23,7 @@ from benchbox.utils.duckdb_extensions import (
     finish_unfinished_result,
 )
 from benchbox.utils.duckdb_lambda import duckdb_query_text
-from benchbox.utils.printing import emit
+from benchbox.utils.printing import emit, quiet_console
 
 from .base import DriverIsolationCapability, PlatformAdapter
 from .base.arrow_result import ArrowRows, fetch_result
@@ -1285,6 +1285,15 @@ class DuckDBAdapter(PlatformAdapter):
 
     def get_target_dialect(self) -> str:
         return "duckdb"
+
+    def materialize_schema_only_tables(self, benchmark, connection: Any) -> dict[str, int]:
+        run_skipped_data_load = getattr(benchmark, "run_skipped_data_load", None)
+        return run_skipped_data_load(self, connection) if callable(run_skipped_data_load) else {}
+
+    def _execute_tpcdi_power_test(self, benchmark, connection: Any, run_config: dict) -> list[dict[str, Any]]:
+        from benchbox.core.tpcdi.platform_power import execute_tpcdi_power_test
+
+        return execute_tpcdi_power_test(self, benchmark, connection, run_config, console=quiet_console)
 
     def enforced_primary_key_tables(self, connection: Any, tables: Sequence[str]) -> list[str]:
         wanted = {table.lower() for table in tables}
