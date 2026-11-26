@@ -14896,6 +14896,7 @@
     },
     "tpcdi-historical": {
       "accepted_members": {
+        "tpcdi-12-duckdb-historical-load-and-audit-20261120": "d7e6aee5cfb926f85f1c530ef2914d9a164093a9",
         "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121": "14d85b40cb8989843e363bc97d135630ed44fc58",
         "tpcdi-historical-dimensions-20261121": "04be2ae3de51572ebf15409b17fdf8c9e9401cde",
         "tpcdi-historical-facts-20261121": "2b44c6d7450dda1260a0abb1bde54cfcf34747a1"
@@ -14905,6 +14906,34 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "tpcdi-12-duckdb-historical-load-and-audit-20261120": {
+          "accepted_head": "d7e6aee5cfb926f85f1c530ef2914d9a164093a9",
+          "changed_files": [
+            "benchbox/core/power_harnesses.py",
+            "benchbox/core/tpcdi/audit.py",
+            "benchbox/core/tpcdi/benchmark.py",
+            "benchbox/core/tpcdi/etl/DEPARTURES.yaml",
+            "benchbox/core/tpcdi/etl/staging.py",
+            "benchbox/core/tpcdi/phases.py",
+            "benchbox/core/tpcdi/platform_power.py",
+            "benchbox/platforms/duckdb.py",
+            "changelog.d/tpcdi-staging-loads-and-departures.json",
+            "docs/internal/tpcdi-duckdb-comparison.md",
+            "scripts/tpcdi/run_phases.py",
+            "tests/integration/_tpcdi_digen_outputs.py",
+            "tests/integration/core/test_tpcdi_etl_historical_digen_output.py",
+            "tests/integration/core/test_tpcdi_etl_staging_digen_output.py",
+            "tests/integration/core/test_tpcdi_phases_digen_output.py",
+            "tests/unit/core/test_tpcdi_quarantine.py",
+            "tests/unit/core/tpcdi/test_etl_staging.py",
+            "tests/unit/core/tpcdi/test_phases_and_audit.py",
+            "tests/unit/sql_compat/golden_corpus/area_tpcdi_phases.py",
+            "tests/unit/sql_compat/golden_corpus/frozen/area_tpcdi_phases.json",
+            "tests/unit/sql_compat/golden_corpus/recorded/area_tpcdi_phases.json"
+          ],
+          "integration_head": "3a60bdbf5bc1baf83fbf164ae325d6871a2017bb",
+          "integration_seq": 6
+        },
         "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121": {
           "accepted_head": "14d85b40cb8989843e363bc97d135630ed44fc58",
           "changed_files": [
@@ -15038,7 +15067,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-historical",
-      "integration_head": "17c7f385d824146db2090bd5effa8b0d9a632614",
+      "integration_head": "3a60bdbf5bc1baf83fbf164ae325d6871a2017bb",
       "integration_log": [
         {
           "at": "2026-11-23T23:39:31Z",
@@ -15227,6 +15256,15 @@
           "op_id": "3183c24f545b455cad98649aaa7b47d0",
           "previous_head": "c652f9cf2d1f1fa78faae51dcca4dfa55be03df0",
           "seq": 5
+        },
+        {
+          "at": "2026-11-26T02:18:51Z",
+          "head": "3a60bdbf5bc1baf83fbf164ae325d6871a2017bb",
+          "kind": "prepare",
+          "member": "tpcdi-12-duckdb-historical-load-and-audit-20261120",
+          "op_id": "b78417b870c34f58abe2240ee62c3a4a",
+          "previous_head": "17c7f385d824146db2090bd5effa8b0d9a632614",
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-historical",
@@ -52432,18 +52470,13 @@
       "title": "TPC-DI step 12: independent recount for DIGen's known answer-key errors"
     },
     "tpcdi-12-duckdb-historical-load-and-audit-20261120": {
-      "claim": {
-        "expires_at": "2026-11-26T19:13:02Z",
-        "generation": "776873f650db42de8521caf5d46d19fd",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-historical-facts-20261121",
         "run-timeout-execution-phases-20261120"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 17 (milestone): DuckDB initialization and historical-load phases, completion records and the audit gate"
     },
     "tpcdi-13-digen-reference-path-and-comparison-20261120": {
