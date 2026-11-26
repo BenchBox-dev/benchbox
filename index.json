@@ -27273,6 +27273,15 @@
       "status": "open",
       "title": "Generate h2odb in benchbox-datagen with a versioned deterministic RNG"
     },
+    "datagen-lib-synthetic-tsbs-devops": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-benchbox-integration"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Generate tsbs_devops in benchbox-datagen with a versioned deterministic RNG"
+    },
     "datagen-lib-tpcds": {
       "claim": null,
       "needs": [
