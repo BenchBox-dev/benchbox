@@ -92,10 +92,10 @@ def test_wrong_execution_result_requires_retirement_review(guarded_repository: P
         check(guarded_repository, "HEAD")
 
 
-def test_unsupported_case_becoming_executable_requires_review(guarded_repository: Path) -> None:
+def test_changed_executable_result_requires_review(guarded_repository: Path) -> None:
     def alter(data):
         case = next(case for case in data["cases"] if case["id"] == "sqlite-month-interval")
-        case["sql"] = "SELECT DATE '2024-02-28' + INTERVAL '1' DAY"
+        case["sql"] = "SELECT DATE '2024-02-27' + INTERVAL '1' DAY"
 
     change_baseline(guarded_repository, alter)
     with pytest.raises(ValueError, match="sqlite-month-interval"):
@@ -281,3 +281,14 @@ def test_questdb_executor_gives_up_after_the_deadline(monkeypatch: pytest.Monkey
     monkeypatch.setattr("scripts.check_sqlglot_repro_retirement.QUESTDB_READY_SECONDS", -1)
     with pytest.raises(RuntimeError, match="endpoint unavailable"):
         _execute_questdb("SELECT 1")
+
+
+def test_baseline_refuses_a_sqlite_engine_older_than_the_minimum(
+    guarded_repository: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import scripts.check_sqlglot_repro_retirement as retirement
+
+    monkeypatch.setattr(retirement.sqlite3, "sqlite_version_info", (3, 45, 3))
+    monkeypatch.setattr(retirement.sqlite3, "sqlite_version", "3.45.3")
+    with pytest.raises(ValueError, match="SQLite 3.46"):
+        check(guarded_repository, "HEAD")
