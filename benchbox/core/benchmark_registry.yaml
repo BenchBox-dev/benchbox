@@ -175,13 +175,13 @@ benchmark_metadata:
     num_queries: 0
     query_description: Unavailable
     supports_streams: false
-    default_scale: 0.01
+    default_scale: 5.0
     scale_options:
-    - 0.01
-    - 0.1
-    - 1.0
+    - 3.0
+    - 5.0
     - 10.0
-    min_scale: 0.01
+    - 100.0
+    min_scale: 3.0
     complexity: High
     estimated_time_range:
     - 1
