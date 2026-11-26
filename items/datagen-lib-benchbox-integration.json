@@ -5,6 +5,7 @@
     "Byte-identical delimited TPC-H shares datagen/<benchmark>_<sf> with dbgen output; library Parquet has its own identity hash and writer identity.",
     "PR CI runs the TPC-H parity gate (SF 0.01 and 0.1, SHA-256 and bidirectional EXCEPT ALL on Parquet) and the 7 derived TPC consumer smoke suites."
   ],
+  "context": "Owner decisions 2026-11-26 (dialog): (1) PyPI: owner sets up Trusted Publishing once; the agent then tags and publishes 0.x releases when a stage merges and BenchBox needs it. (2) Library repo merges require the review bot (theseus review-verdict/review-gate) and essential CI, mirroring BenchBox. (3) SSB and synthetic acceptance by pre-approved objective criteria: exact row counts, zero orphan FKs, per-column null rate, distinct ratio and mean/quantiles within the legacy generator's 5-seed variation, every query returns rows on both engines where legacy did, exact DuckDB/DataFusion agreement; escalate only on failure. (4) Upstream gaps: implement in benchbox-datagen-core on upstream's public API; upstream PRs are contributions, never waited on; no vendoring. (5) Agent may open tpcgen-rs issues/PRs from the BenchBox-dev fork. (6) Add a Windows arm64 wheel; if it passes the gates, Windows arm64 cuts over too. (7) Cutovers pre-approved when every ADR gate passes; misses go to the owner. (8) Parquet corpus re-baseline once, after the TPC cutover, against library Parquet. (9) Retirement: after all cutovers plus one minor release, remove dbgen/dsdgen and legacy Python generators (qgen/dsqgen under adversarial review). (10) Feature batches: A library TPC; B BenchBox integration; C SSB + 8 synthetic in parallel; D cutovers + re-baseline; E Parquet semantics + DuckLake convert in parallel with A; F retirement.",
   "description": "Integration stage (docs/internal/adr/adr-benchbox-datagen.md (revised 2026-11-26, PR #4540), decisions 3, 4 and 5). Replace the tpcgen-cli entries in benchbox/utils/datagen_backend.py with the library, add the native-datagen extra pinned to the library version, record generator_backend=benchbox-datagen and its version in the manifest, and add the PR parity CI job for TPC-H.\n\nDecision gate: the first PyPI release of benchbox-datagen needs owner approval before the extra can pin it.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
   "sessions": [
     {
@@ -13,6 +14,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "8519f6e3773c4a809c2e04da291da440",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-26T14:31:07Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a9aad8331bf743e2b881610c008f46eb",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
