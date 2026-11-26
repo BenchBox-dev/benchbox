@@ -778,21 +778,32 @@ def _load_yaml(text: str, label: str) -> Any:
 
 def _derived_path_entries(policy_text: str) -> list[dict[str, Any]]:
     policy = _load_yaml(policy_text, "review.yml")
-    evidence = policy.get("evidence") if isinstance(policy, dict) else None
-    entries = evidence.get("derived_paths") if isinstance(evidence, dict) else None
-    return [entry for entry in entries or [] if isinstance(entry, dict)]
+    if not isinstance(policy, dict) or policy.get("evidence") is None:
+        return []
+    evidence = policy["evidence"]
+    _require(isinstance(evidence, dict), "review.yml evidence must be a mapping")
+    entries = evidence.get("derived_paths")
+    if entries is None:
+        return []
+    _require(isinstance(entries, list), "review.yml evidence.derived_paths must be a list")
+    _require(all(isinstance(entry, dict) for entry in entries), "each review.yml derived path must be a mapping")
+    return entries
 
 
 def _tooling_requires_always(workflow_text: str, job_names: set[str]) -> bool:
-    jobs = (_load_yaml(workflow_text, "ci.yml") or {}).get("jobs")
-    jobs = jobs if isinstance(jobs, dict) else {}
-    tooling = jobs.get("tooling")
+    workflow = _load_yaml(workflow_text, "ci.yml")
+    jobs = workflow.get("jobs") if isinstance(workflow, dict) else None
+    tooling = jobs.get("tooling") if isinstance(jobs, dict) else None
     if not isinstance(tooling, dict):
         return False
-    needs = tooling.get("needs") or []
-    needs = [needs] if isinstance(needs, str) else needs
-    steps = [step for step in tooling.get("steps") or [] if isinstance(step, dict)]
-    runs = "\n".join(str(step.get("run", "")) for step in steps)
+    needs = tooling.get("needs")
+    needs = [needs] if isinstance(needs, str) else needs if isinstance(needs, list) else []
+    steps = tooling.get("steps")
+    runs = (
+        "\n".join(str(step.get("run", "")) for step in steps if isinstance(step, dict))
+        if isinstance(steps, list)
+        else ""
+    )
     for job_id, job in jobs.items():
         if not isinstance(job, dict) or job.get("name") not in job_names:
             continue

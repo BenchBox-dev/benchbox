@@ -835,3 +835,39 @@ def test_a_creation_commit_whose_ci_cannot_be_parsed_is_refused(created_line):
     creation = create_with_derived_policy(created_line, "jobs: [unclosed\n")
     with pytest.raises(ValueError, match="cannot parse ci.yml while checking the derived paths"):
         consumer.verify_line(created_line, LINE, creation, merged_pulls())
+
+
+@pytest.mark.parametrize(
+    ("policy", "expected"),
+    [
+        ("evidence:\n  derived_paths: nope\n", "evidence.derived_paths must be a list"),
+        ("evidence:\n  derived_paths: [oops]\n", "each review.yml derived path must be a mapping"),
+        ("evidence:\n  derived_paths:\n    - name: ok\n    - nope\n", "each review.yml derived path must be a mapping"),
+        ("evidence: 3\n", "review.yml evidence must be a mapping"),
+    ],
+    ids=["not-a-list", "entry-not-a-mapping", "one-entry-not-a-mapping", "evidence-not-a-mapping"],
+)
+def test_a_creation_commit_with_a_malformed_derived_path_policy_is_refused(created_line, policy, expected):
+    creation = create_with_derived_policy(created_line, None, policy=policy)
+    with pytest.raises(ValueError, match=expected):
+        consumer.verify_line(created_line, LINE, creation, merged_pulls())
+
+
+@pytest.mark.parametrize(
+    "ci",
+    [
+        "- not\n- a mapping\n",
+        "plain text\n",
+        "jobs: []\n",
+        "jobs:\n  reproduce:\n    name: Reproduce the data\n",
+        "jobs:\n  tooling: []\n  reproduce:\n    name: Reproduce the data\n",
+        "jobs:\n  tooling:\n    needs: {reproduce: 1}\n    steps: nope\n  reproduce:\n    name: Reproduce the data\n",
+        "jobs:\n  tooling:\n    needs: [reproduce]\n    steps: [text]\n  reproduce:\n    name: Reproduce the data\n",
+    ],
+    ids=["list", "scalar", "jobs-list", "no-tooling", "tooling-list", "steps-not-a-list", "step-not-a-mapping"],
+)
+def test_a_creation_commit_whose_ci_has_the_wrong_shape_is_refused_with_the_admission_message(created_line, ci):
+    creation = create_with_derived_policy(created_line, ci)
+    expected = rf"creation carries the derived path 'data' attested by '{ATTESTING_JOB}'.*--always"
+    with pytest.raises(ValueError, match=expected):
+        consumer.verify_line(created_line, LINE, creation, merged_pulls())
