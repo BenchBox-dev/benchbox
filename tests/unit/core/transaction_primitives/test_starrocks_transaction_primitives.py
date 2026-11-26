@@ -43,7 +43,7 @@ def test_starrocks_transaction_sql_is_never_merged_and_skips_are_exactly_the_mul
     for operation_id, operation in txn.get_all_operations().items():
         original = operation.write_sql
         sql = txn._rewrite_transactional_sql_for_platform(original, "starrocks")
-        dml = r"(?im)^\s*(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(\w+)"
+        dml = r"(?im)(?:^|\)\s)\s*(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(\w+)"
         assert Counter(re.findall(dml, sql)) == Counter(
             re.findall(dml, txn._rewrite_transactional_sql_for_platform(original, "mysql"))
         ), operation_id
