@@ -199,8 +199,7 @@ def _check_local_tcp_endpoint(endpoint: LocalTcpEndpoint, timeout_seconds: float
 
 
 def _check_lakesail(platform: str, timeout_seconds: float) -> tuple[PlatformReadinessResult, ...]:
-    config = _configured_lakesail_config()
-    endpoint = config.endpoint
+    endpoint = _configured_lakesail_endpoint()
     results: list[PlatformReadinessResult] = []
 
     if _module_available("pyspark"):
@@ -238,7 +237,7 @@ def _check_lakesail(platform: str, timeout_seconds: float) -> tuple[PlatformRead
 
     pysail_available = _module_available("pysail")
     is_sql_adapter = platform == "lakesail"
-    if pysail_available and is_sql_adapter and config.sail_mode == "local":
+    if pysail_available and is_sql_adapter:
         results.append(
             PlatformReadinessResult(
                 platform=platform,
@@ -249,20 +248,15 @@ def _check_lakesail(platform: str, timeout_seconds: float) -> tuple[PlatformRead
                     "but the SQL adapter can auto-start a local pysail server at run time."
                 ),
                 detail=(
-                    "pysail is importable; LakeSailAdapter._ensure_server_ready will "
-                    "start a local Sail server when the benchmark runs."
+                    "pysail is importable; LakeSailAdapter._ensure_server_ready will start a local Sail server "
+                    "when the benchmark runs. A run selected with --platform lakesail:distributed does not auto-start."
                 ),
                 endpoint=endpoint,
             )
         )
         return tuple(results)
 
-    if pysail_available and is_sql_adapter and config.sail_mode != "local":
-        auto_start_detail = (
-            f"pysail is importable, but saved LakeSail sail_mode={config.sail_mode!r} is not local, so the SQL "
-            "adapter will not auto-start a server for this endpoint."
-        )
-    elif pysail_available:
+    if pysail_available:
         auto_start_detail = (
             "The SQL adapter can auto-start a local pysail server at run time, but this readiness check does not "
             "start it. LakeSail DataFrame mode still needs an already-running endpoint."
@@ -288,13 +282,7 @@ def _check_lakesail(platform: str, timeout_seconds: float) -> tuple[PlatformRead
     return tuple(results)
 
 
-@dataclass(frozen=True)
-class LakeSailReadinessConfig:
-    endpoint: str
-    sail_mode: str
-
-
-def _configured_lakesail_config() -> LakeSailReadinessConfig:
+def _configured_lakesail_endpoint() -> str:
     try:
         from benchbox.security.credentials import CredentialManager
 
@@ -302,14 +290,7 @@ def _configured_lakesail_config() -> LakeSailReadinessConfig:
     except Exception:
         credentials = {}
 
-    endpoint = credentials.get("endpoint") or DEFAULT_LAKESAIL_ENDPOINT
-    sail_mode = credentials.get("sail_mode") or "local"
-
-    return LakeSailReadinessConfig(endpoint=str(endpoint), sail_mode=str(sail_mode))
-
-
-def _configured_lakesail_endpoint() -> str:
-    return _configured_lakesail_config().endpoint
+    return str(credentials.get("endpoint") or DEFAULT_LAKESAIL_ENDPOINT)
 
 
 def _module_available(module_name: str) -> bool:

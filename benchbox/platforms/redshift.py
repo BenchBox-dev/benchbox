@@ -207,6 +207,13 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         self.strict_validation = config.get("strict_validation", True)
 
         self.deployment_type = self._detect_deployment_type(self.host or "")
+        if self.deployment_type == "unknown" and self.compute_resource:
+            raise ConfigurationError(
+                f"Ambiguous compute resource for platform 'redshift': host {self.host!r} is not a "
+                "*.redshift.amazonaws.com or *.redshift-serverless.amazonaws.com endpoint, so BenchBox cannot tell "
+                f"whether compute_resource={self.compute_resource!r} names a provisioned cluster or a serverless "
+                "workgroup. Connect through the AWS endpoint hostname, or remove compute_resource."
+            )
         self.workgroup_name = self.compute_resource if self.deployment_type == "serverless" else None
         if self.deployment_type == "provisioned":
             self.cluster_identifier = self.compute_resource

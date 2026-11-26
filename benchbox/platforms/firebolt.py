@@ -198,13 +198,6 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         firebolt_group = parser.add_argument_group("Firebolt Arguments")
 
         firebolt_group.add_argument(
-            "--deployment-mode",
-            type=str,
-            choices=["core", "cloud"],
-            help="Firebolt deployment mode (auto-detected if not specified)",
-        )
-
-        firebolt_group.add_argument(
             "--url",
             type=str,
             default="http://localhost:3473",
@@ -227,7 +220,7 @@ class FireboltAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
             help="Firebolt Cloud account name",
         )
         firebolt_group.add_argument(
-            "--engine-name",
+            "--compute-resource",
             type=str,
             help="Firebolt Cloud engine name",
         )

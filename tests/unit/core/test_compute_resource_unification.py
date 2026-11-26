@@ -616,13 +616,14 @@ class TestClickhouseCloudComputeUnification:
 
 
 class TestRedshiftComputeUnification:
-    def test_canonical_resource_from_config(self):
+    @staticmethod
+    def _from_config(host: str):
         from benchbox.platforms.redshift import RedshiftAdapter
 
         try:
-            adapter = RedshiftAdapter.from_config(
+            return RedshiftAdapter.from_config(
                 {
-                    "host": "h",
+                    "host": host,
                     "database": "dev",
                     "username": "u",
                     "password": "p",
@@ -633,7 +634,21 @@ class TestRedshiftComputeUnification:
             )
         except ImportError:
             pytest.skip("Redshift drivers not installed")
+
+    def test_serverless_host_applies_compute_resource_as_workgroup(self):
+        adapter = self._from_config("wg.123456789012.us-east-1.redshift-serverless.amazonaws.com")
         assert adapter.compute_resource == "wg"
+        assert adapter.workgroup_name == "wg"
+
+    def test_provisioned_host_applies_compute_resource_as_cluster(self):
+        adapter = self._from_config("other.abc123.us-east-1.redshift.amazonaws.com")
+        assert adapter.cluster_identifier == "wg"
+
+    def test_unrecognised_host_refuses_compute_resource(self):
+        from benchbox.core.exceptions import ConfigurationError
+
+        with pytest.raises(ConfigurationError, match="Ambiguous compute resource for platform 'redshift'"):
+            self._from_config("redshift.internal.example.com")
 
 
 class TestAthenaComputeUnification:
