@@ -239,10 +239,8 @@ def resolve_run_config(
         options.get("power_iterations", GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS)
         or GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS
     )
-    warmups = int(
-        options.get("power_warmup_iterations", GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS)
-        or GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS
-    )
+    warmups_raw = options.get("power_warmup_iterations")
+    warmups = GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS if warmups_raw is None else int(warmups_raw)
     fail_fast = bool(options.get("power_fail_fast", False))
 
     return RunConfig(

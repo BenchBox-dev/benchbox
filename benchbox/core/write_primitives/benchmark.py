@@ -1184,7 +1184,8 @@ class WritePrimitivesBenchmark(TranslatableQueryMixin, TransactionalBenchmarkBas
     ) -> list[dict[str, Any]]:
         _ = (ctx, monitor, run_options)
         config_options = getattr(benchmark_config, "options", {}) or {}
-        warmup_iterations = int(config_options.get("power_warmup_iterations", 1) or 1)
+        warmup_iterations_raw = config_options.get("power_warmup_iterations")
+        warmup_iterations = 1 if warmup_iterations_raw is None else int(warmup_iterations_raw)
         measurement_iterations = int(config_options.get("power_iterations", 3) or 3)
 
         try:
