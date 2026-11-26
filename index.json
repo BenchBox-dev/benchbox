@@ -27492,8 +27492,8 @@
       "claim": null,
       "needs": [
         "datagen-p3-tpc-default-cutover",
-        "datagen-p3-synthetic-cutover",
-        "datagen-p3-ssb-cutover"
+        "datagen-p3-ssb-cutover",
+        "datagen-p3-synthetic-cutover"
       ],
       "priority": "low",
       "status": "open",
