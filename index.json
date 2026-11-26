@@ -30045,6 +30045,13 @@
       "status": "done",
       "title": "Doris: query failures across seven benchmarks in release UAT"
     },
+    "doris-uat-joinorder-16b-mem-limit-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Doris joinorder SF1 query 16b hits MEM_LIMIT_EXCEEDED in trunk UAT"
+    },
     "driver-auto-install-from-cli-flag-20261113": {
       "claim": null,
       "needs": [
