@@ -2718,7 +2718,7 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "root": 1
+    "unresolved": 1
    },
    "occurrences": 1,
    "path": "tests/fixtures/ruleset-develop-squash-only.json",
@@ -2726,8 +2726,8 @@
    "target_count": 1,
    "targets": [
     {
-     "kind": "root",
-     "target": "docs/"
+     "kind": "unresolved",
+     "target": "docs/integration_id"
     }
    ]
   },
@@ -2868,7 +2868,7 @@
   {
    "disposition": "fixture-data",
    "kinds": {
-    "root": 1
+    "unresolved": 1
    },
    "occurrences": 1,
    "path": "tests/unit/release/test_ruleset_drift_review_coverage.py",
@@ -2876,8 +2876,8 @@
    "target_count": 1,
    "targets": [
     {
-     "kind": "root",
-     "target": "docs/"
+     "kind": "unresolved",
+     "target": "docs/tooling"
     }
    ]
   },
@@ -4105,8 +4105,8 @@
    "file": 1371,
    "generated": 3,
    "pattern": 296,
-   "root": 204,
-   "unresolved": 2079
+   "root": 202,
+   "unresolved": 2081
   },
   "references": 33194,
   "unclassified": 0

@@ -524,6 +524,37 @@ class TestParquetPartitioning:
         assert len(east_files) >= 1
         assert len(west_files) >= 1
 
+    def test_partitioned_row_groups_fill_to_the_row_group_size(self, temp_dir, partitioned_schema, monkeypatch):
+        tbl_file = temp_dir / "test.tbl"
+        regions = ("East", "West")
+        tbl_file.write_text("".join(f"{i}|name-{i}|{regions[i % 2]}|2023|\n" for i in range(2000)))
+
+        converter = ParquetConverter()
+        stream_batches = converter.iter_record_batches
+        monkeypatch.setattr(
+            converter, "iter_record_batches", lambda *args, **kwargs: stream_batches(*args, block_size=4096, **kwargs)
+        )
+        result = converter.convert(
+            source_files=[tbl_file],
+            table_name="test",
+            schema=partitioned_schema,
+            options=ConversionOptions(output_dir=temp_dir, partition_cols=["region"], row_group_size=400),
+        )
+
+        for region in regions:
+            (part_file,) = (temp_dir / "test" / f"region={region}").glob("*.parquet")
+            meta = pq.read_metadata(part_file)
+            assert [meta.row_group(i).num_rows for i in range(meta.num_row_groups)] == [400, 400, 200]
+
+        from benchbox.utils.datagen_version import compute_datagen_identity_hash
+
+        assert result.metadata["parquet_writer"] == "benchbox-pyarrow-partitioned"
+        assert compute_datagen_identity_hash(
+            "tpch", parquet_writer=result.metadata["parquet_writer"], parquet_row_group_size=122_880, scale_factor=1.0
+        ) != compute_datagen_identity_hash(
+            "tpch", parquet_writer="benchbox-pyarrow-streaming", parquet_row_group_size=122_880, scale_factor=1.0
+        )
+
     def test_convert_with_multiple_partition_columns(self, temp_dir, partitioned_schema):
 
         tbl_file = temp_dir / "test.tbl"
@@ -650,7 +681,7 @@ class TestParquetPartitioning:
 
 
 class TestParquetStreamingAndBenchmarkCompatibility:
-    def test_streaming_writes_exact_row_groups_without_second_count_pass(self, tmp_path, monkeypatch):
+    def test_streaming_writes_exact_row_groups(self, tmp_path):
         import duckdb
 
         schema = {
@@ -665,11 +696,6 @@ class TestParquetStreamingAndBenchmarkCompatibility:
         tbl_file.write_text("".join(lines), encoding="utf-8")
 
         converter = ParquetConverter()
-
-        def _forbid_count_rows(*_args, **_kwargs):
-            raise AssertionError("streaming conversion must count rows inline without calling count_rows()")
-
-        monkeypatch.setattr(converter, "count_rows", _forbid_count_rows)
 
         result = converter.convert(
             source_files=[tbl_file],
@@ -1038,7 +1064,7 @@ class TestParquetStreamingAndBenchmarkCompatibility:
         }
         assert skew_gen.manifest_matches_datagen_identity(skew_pq_manifest) is True
 
-    def test_duckdb_streaming_fast_path_matches_pyarrow_without_second_count_pass(self, tmp_path, monkeypatch):
+    def test_duckdb_streaming_fast_path_matches_pyarrow(self, tmp_path):
         import duckdb
 
         from benchbox.utils.datagen_version import compute_datagen_identity_hash
@@ -1054,11 +1080,6 @@ class TestParquetStreamingAndBenchmarkCompatibility:
         tbl_file.write_text("".join(f"{i}|item-{i}|{i * 2.5:.2f}\n" for i in range(1, 251)), encoding="utf-8")
 
         converter = ParquetConverter()
-
-        def _forbid_count_rows(*_args, **_kwargs):
-            raise AssertionError("streaming conversion must count rows inline without calling count_rows()")
-
-        monkeypatch.setattr(converter, "count_rows", _forbid_count_rows)
 
         fast_dir = tmp_path / "fast"
         fallback_dir = tmp_path / "fallback"

@@ -23,6 +23,7 @@ _BENCHBOX_PARQUET_WRITERS: frozenset[str] = frozenset(
         "benchbox-streaming",
         "benchbox-duckdb-streaming",
         "benchbox-pyarrow-streaming",
+        "benchbox-pyarrow-partitioned",
     }
 )
 

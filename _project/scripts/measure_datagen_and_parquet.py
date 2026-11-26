@@ -194,11 +194,11 @@ def _legacy_convert_table(
 
 
 def _run_legacy_reference_worker(bench: str, sf: float, data_dir: Path, pq_dir: Path) -> None:
-    from benchbox.core.runner.runner import _get_table_schemas_from_benchmark
+    from benchbox.core.runner.runner import get_table_schemas_from_benchmark
 
     instance = _make_benchmark(bench, sf, data_dir)
     manifest = json.loads((data_dir / "_datagen_manifest.json").read_text(encoding="utf-8"))
-    schemas = _get_table_schemas_from_benchmark(instance)
+    schemas = get_table_schemas_from_benchmark(instance)
     pq_dir.mkdir(parents=True, exist_ok=True)
     delim, has_header = _LEGACY_FIXED_DIALECTS.get(bench, ("|", False))
     t0 = mono_time()
@@ -269,12 +269,12 @@ def _run_worker(mode: str, bench: str, sf: float, data_dir: Path, pq_dir: Path, 
 
     if mode == "convert":
         from benchbox.core.runner.conversion import FormatConversionOrchestrator
-        from benchbox.core.runner.runner import _get_table_schemas_from_benchmark
+        from benchbox.core.runner.runner import get_table_schemas_from_benchmark
         from benchbox.utils.format_converters.base import ConversionOptions
 
         instance = _make_benchmark(bench, sf, data_dir)
         manifest_path = data_dir / "_datagen_manifest.json"
-        schemas = _get_table_schemas_from_benchmark(instance)
+        schemas = get_table_schemas_from_benchmark(instance)
         pq_dir.mkdir(parents=True, exist_ok=True)
         opts = ConversionOptions(
             compression="snappy",

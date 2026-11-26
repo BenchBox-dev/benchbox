@@ -871,7 +871,7 @@ def _execute_load_only_mode(
             connection_lifecycle.close_connection(connection)
 
 
-def _get_table_schemas_from_benchmark(benchmark: Any) -> dict[str, dict[str, Any]]:
+def get_table_schemas_from_benchmark(benchmark: Any) -> dict[str, dict[str, Any]]:
     if not hasattr(benchmark, "get_schema"):
         raise RuntimeError(f"Benchmark {type(benchmark).__name__} does not provide get_schema() method")
 
@@ -914,7 +914,7 @@ def _run_format_conversion(
         return None
 
     try:
-        schemas = _get_table_schemas_from_benchmark(benchmark)
+        schemas = get_table_schemas_from_benchmark(benchmark)
     except RuntimeError as e:
         logger.error(f"Format conversion failed: {e}")
         return None
