@@ -6,7 +6,7 @@
     "N=3 medians meet the ADR budget (SF 1 <= 5 s / <= 6 s, SF 10 <= 50 s / <= 60 s, RSS <= 512 / <= 1,024 MiB).",
     "Independent reviewer reports no Critical/High/Medium finding (or the live review gate passes); the PR is merged to main."
   ],
-  "context": "2026-11-27 review: for SF < 1 the spec part formula is undefined; use the reference ssb-dbgen behaviour and cite it; if none is reachable, stop and ask the owner.",
+  "context": "2026-11-27 review: for SF < 1 the spec part formula is undefined; use the reference ssb-dbgen behaviour and cite it; if none is reachable, stop and ask the owner.\n\nOwner decisions 2026-11-27: (a) date-valued columns compare against legacy statistics computed over the shared date domain only; (b) empty-query rule: never-empty-in-legacy queries must never be empty; otherwise fail only when library empty count is significantly higher (one-sided Fisher exact, p<0.001); (c) approved: exact 6M*SF lineorder, sparse lo_orderkey, part 200000*SF below SF 1 with 2556-row date, per-row order attributes. ADR acceptance section needs the same wording.",
   "description": "## Problem\nLibrary draft PR #7 holds the framework all synthetic generators reuse (65,536-row blocks, ChaCha8 stream keyed by benchmark, table, stream, seed and block; owned sampling routines) and the SSB generator. It copies the legacy generator's row counts, and its acceptance report predates the owner's rules.\n\n## Change\nOn PR #7: switch SSB to specification row counts (part = 200,000 x floor(1 + log2 SF), date = 2,556 rows, lineorder from orders x 1-7 lines per the SSB specification); implement the acceptance rules in tools/ssb_acceptance.py (min-max or 99.9% prediction interval from 5 legacy seeds, rank check for boundary quantiles on low-cardinality columns, empty-query rate rule); regenerate the report and the golden hashes; get an independent review; merge.\n\n## Decision gates\n- If the specification is ambiguous for a count (lineorder is approximate in the spec), follow the reference ssb-dbgen behaviour and state the source; if no reference is reachable, stop and ask the owner.\n- If any acceptance criterion fails under the decided rules, stop and report the metric; do not tune the rule.\n- Distribution comparison against legacy uses the columns whose domain is unchanged by the row-count change; list any metric excluded for that reason.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
   "sessions": [
     {
@@ -23,6 +23,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "1089f57b49214e2bb20ccb166cc92ef8",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-27T02:57:47Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "2b94a1b2c993424f8bcf2ce3b2489e2d",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
