@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, ClassVar, Union
 
 from benchbox.core.exceptions import RunTimeoutError
+from benchbox.core.tpch.queries import reject_nonterminating_qgen_seed
 from benchbox.utils.run_deadline import current_run_deadline, run_child
 from benchbox.utils.verbosity import VerbosityMixin, compute_verbosity
 
@@ -227,6 +228,9 @@ class TPCHStreams(VerbosityMixin):
         )
         if self.verbose_enabled:
             self.logger.info("Output directory: %s", self.output_dir)
+
+        for stream_id in range(self.num_streams):
+            reject_nonterminating_qgen_seed(self.rng_seed + stream_id, range(1, 23))
 
         stream_files = []
 

@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "TPC-H runs and stream generation with seed 0 now fail immediately with a clear error instead of hanging, because the TPC qgen never terminates for seed 0 on Q7 and Q12; use a non-zero seed.",
+      "benchmarks": ["tpch"]
+    }
+  ]
+}
