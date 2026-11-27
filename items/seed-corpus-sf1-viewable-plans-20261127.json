@@ -1,0 +1,25 @@
+{
+  "acceptance": [
+    "Measured plans-file size, plan count, cross-stream duplicate rate and capture-time overhead for one TPC-H SF 1 and one TPC-DS SF 1 official cell are recorded in context.",
+    "The owner's choice (A, B, C or D) and date are recorded.",
+    "Unless D: official SF 1 cells in seed-corpus.yml capture plans, and their staged plans files load in the Explorer viewer (shown with a local or preview build).",
+    "Unless D: after the next scheduled seed run, one SF 1 TPC-H and one SF 1 TPC-DS result URL on benchbox.dev whose plan viewer loads are recorded."
+  ],
+  "context": "Split from seed-corpus-capture-query-plans-20261127 by owner decision on 2026-11-27.",
+  "description": "## Problem\nThe monthly seed corpus captures query plans only on its power-only cells. The six official SF 1 full-specification cells (TPC-H with 2 streams and TPC-DS with 4 streams, on DuckDB, ClickHouse Local and CedarDB) do not, so the flagship results on benchbox.dev have no plans. In a multi-stream run, `build_plans_payload` (`benchbox/core/results/schema.py`) keeps one plan per query per stream and test, keyed `{query}#{stream}`. At about 26 KB per DuckDB TPC-H plan, a TPC-H SF 1 cell (about 110 plans) would be about 3 MB, and a TPC-DS SF 1 cell (about 890 plans) 20 MB or more [estimate, not measured]. The Explorer's viewer refuses plan files above 2,000,000 bytes (`MAX_PLAN_SIDECAR_BYTES`, benchbox-site `explorer/src/lib/queryPlans.ts`), and the corpus would grow by tens of MB a month.\n\n## Step 1: measure\nOn a host with headroom (Linux VM via `make ci-linux`, or CI), run one TPC-H SF 1 and one TPC-DS SF 1 official cell with `--capture-plans` exactly as the seed workflow would. Record the plans-file size, plan count, how many plans per query are identical across streams (same fingerprint), and the capture time against the cell's wall time.\n\n## Decision gate (owner)\nWith the measurements, choose one:\n- **A.** Keep only power-test plans in the companion for official runs (a code change to `build_plans_payload` or a capture option).\n- **B.** Deduplicate plans that are identical across streams: store one plan per distinct fingerprint, plus a stream-to-plan map.\n- **C.** Raise the viewer limit in benchbox-site and accept larger companions.\n- **D.** Leave SF 1 cells without plans.\n\n## Guardrails\n- Plan capture stays outside the query timer and stays non-strict; measured times and admission must not change.\n- Any companion format change keeps the site's parser (`parseQueryPlanDocument`) and the privacy gate working; coordinate a benchbox-site PR if the format changes.\n- Do not drop the per-stream fingerprint variation evidence (`fingerprint_varied`) without the owner's decision.\n- Heavy runs go through `make heavy-run` or `make ci-linux`.\n\n## Verification rubric\n- Measurements recorded in context.\n- For the chosen option: a TPC-H SF 1 and a TPC-DS SF 1 official run produce a staged plans file under the viewer limit (or under the new limit for C) that passes `stage_seed_corpus_bundle.py` and `validate_corpus.py`, and the Explorer viewer opens it.\n- The seed workflow captures plans on the official cells, and after the next scheduled run, an SF 1 result on benchbox.dev shows its plans.",
+  "links": [
+    ".github/workflows/seed-corpus.yml",
+    "benchbox/core/results/schema.py",
+    "results-data/SEED_CORPUS_SPEC.md"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8afb036c608ba6806b343500",
+      "at": "2026-11-27T16:25:46Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "6d1f0c2a9b8e4f7aa3c5d1e2f4b6a8c0",
+      "session_id": "fcabc717849d409bbc01a9206bfb26b3"
+    }
+  ]
+}

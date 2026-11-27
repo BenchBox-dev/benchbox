@@ -48311,6 +48311,15 @@
       "status": "done",
       "title": "Close Seed Corpus proof against the latest successful post-fix dispatch"
     },
+    "seed-corpus-sf1-viewable-plans-20261127": {
+      "claim": null,
+      "needs": [
+        "seed-corpus-capture-query-plans-20261127"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Publish viewable query plans for the official SF 1 seed-corpus cells"
+    },
     "seed-corpus-tpcdi-records-seed-and-engine-version-20261120": {
       "claim": null,
       "needs": [
