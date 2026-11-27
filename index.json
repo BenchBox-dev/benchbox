@@ -54757,17 +54757,12 @@
       "title": "TPC-DI step 15: historical load, dimension tables, with alerts written inside the transformation"
     },
     "tpcdi-historical-facts-20261121": {
-      "claim": {
-        "expires_at": "2026-11-28T18:35:36Z",
-        "generation": "57d1c65838164aaf90a6682fee55b671",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-historical-dimensions-20261121"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "TPC-DI step 16: historical load, trade and fact tables"
     },
     "tpcdi-incremental-dimensions-20261121": {
