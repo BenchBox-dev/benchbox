@@ -807,6 +807,15 @@
       "op": "dismiss",
       "op_id": "8e33ba7972de405bb37578d48f3d75ce",
       "session_id": "51a05311b8f040aabf2f02456b50b932"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-27T14:31:03Z",
+      "client": "omp-coding-agent",
+      "generation": "d70cebb1aeba43e7a76f4fc30f7ece1d",
+      "op": "take",
+      "op_id": "60e6cda881ae445c8aa88fbadc158b94",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
     }
   ]
 }
