@@ -27154,17 +27154,12 @@
       "title": "Add the guard that keeps class, lane and identity logic in one place"
     },
     "crr-b1-identity-and-comparison-version": {
-      "claim": {
-        "expires_at": "2026-11-28T14:31:34Z",
-        "generation": "27e729868c6a48d2bbc6b74a043c5e9b",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
-      },
+      "claim": null,
       "needs": [
         "crr-a1-rule-module-and-snapshot"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Define result identity and comparison version from fields in the file, in one function"
     },
     "crr-b2-site-accepts-next-read-model": {
