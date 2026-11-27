@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import atexit
 import copy
 import importlib.util
 import json
 import shutil
-import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -20,11 +18,9 @@ from tests.unit.scripts.explorer_pipeline.conftest import combined_bundle
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
 REPO_ROOT = script.CHECKOUT_ROOT
-ROOTS = {
-    "corpus": REPO_ROOT / "results-data" / "bundles",
-    "fixtures": REPO_ROOT / "tests" / "fixtures" / "explorer_browser" / "source" / "bundles",
-    "combined": Path(tempfile.mkdtemp(prefix="combined-guard-")) / "bundles",
-}
+CORPUS_ROOT = REPO_ROOT / "results-data" / "bundles"
+FIXTURES_ROOT = REPO_ROOT / "tests" / "fixtures" / "explorer_browser" / "source" / "bundles"
+ROOT_NAMES = ("combined", "corpus", "fixtures")
 CLASS_VALUES = ("official", "unofficial_subscale", "unofficial_nonstandard")
 TEST_TYPES = ("power", "throughput", "combined", "standard")
 
@@ -38,8 +34,12 @@ def _write_combined_bundles(root: Path) -> None:
             (root / f"{family}_sf1_{platform}_combined.json").write_text(json.dumps(data, indent=1), encoding="utf-8")
 
 
-_write_combined_bundles(ROOTS["combined"])
-atexit.register(shutil.rmtree, ROOTS["combined"].parent, ignore_errors=True)
+@pytest.fixture(scope="module")
+def roots(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Path]:
+    combined = tmp_path_factory.mktemp("combined-guard") / "bundles"
+    _write_combined_bundles(combined)
+    return {"corpus": CORPUS_ROOT, "fixtures": FIXTURES_ROOT, "combined": combined}
+
 
 Mutation = Callable[[dict[str, Any]], None]
 
@@ -182,9 +182,9 @@ def _rule_outcomes(snapshot: script.Snapshot) -> dict[str, Any]:
     return {name: entry["rule"] for name, entry in snapshot.items()}
 
 
-@pytest.fixture(scope="module", params=sorted(ROOTS))
-def baseline(request: pytest.FixtureRequest) -> tuple[Path, dict[str, Any]]:
-    root = ROOTS[request.param]
+@pytest.fixture(scope="module", params=ROOT_NAMES)
+def baseline(request: pytest.FixtureRequest, roots: dict[str, Path]) -> tuple[Path, dict[str, Any]]:
+    root = roots[request.param]
     return root, _rule_outcomes(script.compute_snapshot(root))
 
 
@@ -212,10 +212,10 @@ def _validator() -> Any:
 
 
 @pytest.mark.parametrize("label", sorted(MUTATIONS))
-@pytest.mark.parametrize("root_name", sorted(ROOTS))
-def test_validator_scores_ignore_every_recorded_field(root_name: str, label: str) -> None:
+@pytest.mark.parametrize("root_name", ROOT_NAMES)
+def test_validator_scores_ignore_every_recorded_field(roots: dict[str, Path], root_name: str, label: str) -> None:
     validator = _validator()
-    for path in _result_files(ROOTS[root_name]):
+    for path in _result_files(roots[root_name]):
         data = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(data, dict) or "benchmark" not in data:
             continue
@@ -227,9 +227,9 @@ def test_validator_scores_ignore_every_recorded_field(root_name: str, label: str
 
 
 @pytest.mark.parametrize("label", sorted(MUTATIONS))
-@pytest.mark.parametrize("root_name", sorted(ROOTS))
-def test_score_functions_ignore_every_recorded_field(root_name: str, label: str) -> None:
-    for path in _result_files(ROOTS[root_name]):
+@pytest.mark.parametrize("root_name", ROOT_NAMES)
+def test_score_functions_ignore_every_recorded_field(roots: dict[str, Path], root_name: str, label: str) -> None:
+    for path in _result_files(roots[root_name]):
         data = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(data, dict) or "benchmark" not in data:
             continue
@@ -240,10 +240,10 @@ def test_score_functions_ignore_every_recorded_field(root_name: str, label: str)
         assert corpus_score.combined_score(mutated) == corpus_score.combined_score(data), path.name
 
 
-def test_the_combined_fixtures_have_a_score_for_every_result() -> None:
+def test_the_combined_fixtures_have_a_score_for_every_result(roots: dict[str, Path]) -> None:
     scores = {
         path.name: corpus_score.combined_score(json.loads(path.read_text(encoding="utf-8")))
-        for path in _result_files(ROOTS["combined"])
+        for path in _result_files(roots["combined"])
     }
 
     assert len(scores) == 4
@@ -255,7 +255,7 @@ def _throughput_fixture() -> tuple[Path, dict[str, Any]]:
     name = next(
         name for name, entry in snapshot.items() if entry["rule"].get("class") == corpus_rule.CLASS_THROUGHPUT_ONLY
     )
-    path = ROOTS["corpus"] / name
+    path = CORPUS_ROOT / name
     return path, json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -270,10 +270,10 @@ def test_stream_count_comes_from_stream_results_not_run_streams(tmp_path: Path) 
     assert corpus_rule.facts_from_result(data).streams == executed
 
     root = tmp_path / "bundles"
-    target = root / path.relative_to(ROOTS["corpus"])
+    target = root / path.relative_to(CORPUS_ROOT)
     target.parent.mkdir(parents=True)
     target.write_text(json.dumps(data), encoding="utf-8")
-    entry = script.compute_snapshot(root)[path.relative_to(ROOTS["corpus"]).as_posix()]
+    entry = script.compute_snapshot(root)[path.relative_to(CORPUS_ROOT).as_posix()]
     assert entry["rule"]["class"] == corpus_rule.CLASS_THROUGHPUT_ONLY
     assert entry["rule"]["ranks"][corpus_rule.LANE_THROUGHPUT]["cohort"].endswith(f"/streams={executed}")
 
