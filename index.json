@@ -40587,6 +40587,15 @@
       "status": "done",
       "title": "pandas-df write_primitives SF1 intermittently segfaults in trunk UAT"
     },
+    "pandas-sf1-qualification-memory-20261126": {
+      "claim": null,
+      "needs": [
+        "crr-v4-official-runs-qualify"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Decide how pandas official runs qualify when SF 1 exceeds the host memory budget"
+    },
     "pandas-tpch-q15-exact-float-equality": {
       "claim": null,
       "needs": [],
