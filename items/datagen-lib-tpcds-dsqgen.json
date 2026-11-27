@@ -1,11 +1,14 @@
 {
   "acceptance": [
-    "Every TPC-DS case in the corpus matches: parameter values and stream order exactly, then normalised text.",
+    "Every TPC-DS case in the corpus matches: parameter values and stream order exactly, then normalised text; explicit-parameter rendering matches the corpus cases.",
+    "The nondeterministic oracle cases are excluded by the manifest list and produce deterministic output (test).",
     "Scale-model gate: rowcount() values equal library row/key counts at 0.01, 0.05, 0.1, 0.25, 0.5, 1, 10, 100, 1000 and 3000.",
-    "Q9 at SF 3000 within 2x of dsqgen time and memory."
+    "Q9 at SF 3000 within 2x of dsqgen time and memory.",
+    "Library CI replays the TPC-DS corpus on every PR from a pinned BenchBox commit and fails if the corpus is missing.",
+    "Independent reviewer reports no Critical/High/Medium finding (or the live review gate passes); the PR is merged to main."
   ],
   "context": "2026-11-27: not started. It was wrongly held by BenchBox's three-PR stack limit, which does not apply to the library repository. Corpus facts: 13 single-template cases are nondeterministic in dsqgen (owner decision 7: exclude with proof); active_cities/counties/states inputs come from datagen-lib-tpcds-rowcount-inputs. Owner decisions 2026-11-27 (dialog): (1) TPC-DS sub-scale: carry the 72-line tpcgen-rs #677 patch (pin tpcdsgen to a BenchBox-dev/tpcgen-rs commit = v4.0.0 + #677), delete own dsgen/ generators, return to crates.io when released. (2) Upstream-gap rule: no divergent fork; a carried patch only if <= ~200 changed lines, submitted upstream, pinned by commit, listed in README with its upstream PR; anything larger goes to the owner with sizes first. (3) TPC-DS refresh sets: keep own code in its own PR, finish SF 100 parity, offer upstream; required before C removal, not before the TPC cutover. (4) Acceptance: a metric passes inside legacy min-max or the 99.9% prediction interval from 5 legacy seeds; boundary quantiles on low-cardinality columns by rank. (5) Empty queries: must return rows on every seed where legacy does on every seed; where legacy is sometimes empty, the library may be empty on no more seeds than legacy. (6) SSB row counts follow the SSB specification (part = 200,000 x floor(1 + log2 SF), date = 2,556). (7) Oracle defects: qgen seed 0 for Q7/Q12 raises a clear error; the 13 nondeterministic dsqgen cases are excluded only with recorded proof and the library is deterministic for them. (8) Licensing: proceed; ship the TPC legal notice in wheels, templates and tpcds.idx stay in BenchBox, record the position in the licensing doc. (9) Until the review gate posts its first verdict, library PRs may merge with green CI plus an independent reviewer agent reporting no Critical/High/Medium findings; afterwards the gate is required. (10) BenchBox native-datagen extra may be developed and CI-tested against wheels built from a pinned library commit; the BenchBox PR adding the extra merges only after the PyPI release exists. (11) Lock-waiter kills: investigate and report only; no kill-policy change.",
-  "description": "docs/internal/adr/adr-benchbox-datagen.md decision 8 (query generation in Rust). Interpreter for the dsqgen template language over BenchBox-supplied templates and tpcds.idx, rowcount() from the library's scale model (including BenchBox's patched fractional curve), all three draw shapes, stream permutation, -LOG style parameter output. Land crr-o2-official-tpcds-stream-zero first if it simplifies official mode.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
+  "description": "docs/internal/adr/adr-benchbox-datagen.md decision 8 (query generation in Rust). Interpreter for the dsqgen template language over BenchBox-supplied templates and tpcds.idx, rowcount() from the library's scale model (including BenchBox's patched fractional curve), all three draw shapes, stream permutation, -LOG style parameter output.\n\nGuardrails: no divergent fork of tpcgen-rs (carried patches only under the 2026-11-27 rule); no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.\n\nAlso implements explicit-parameter rendering (generate_with_parameters).",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
@@ -21,6 +24,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "693d324338a84f20a7dc72d33d48cca4",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-27T00:07:06Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "4f4490bb3b2d4b43876b01b00f19e3e4",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]

@@ -27880,7 +27880,8 @@
         "tpc-query-conformance-corpus",
         "datagen-lib-tpcds-fractional-and-refresh",
         "datagen-lib-tpcds-rowcount-inputs",
-        "datagen-decision-oracle-defect-handling"
+        "datagen-decision-oracle-defect-handling",
+        "tpc-query-corpus-explicit-parameters-and-replay-rule"
       ],
       "priority": "high",
       "status": "open",
