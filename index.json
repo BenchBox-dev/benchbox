@@ -28056,6 +28056,16 @@
       "status": "dropped",
       "title": "Vectorize over-budget Tier 3 synthetic generators in Python with Gate C acceptance reports"
     },
+    "datagen-p3-legacy-python-generator-retirement": {
+      "claim": null,
+      "needs": [
+        "datagen-p3-ssb-cutover",
+        "datagen-p3-synthetic-cutover"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Retire the legacy Python SSB and synthetic generators"
+    },
     "datagen-p3-legacy-retirement-decision": {
       "claim": null,
       "needs": [

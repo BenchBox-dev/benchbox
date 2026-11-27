@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "One minor release has shipped after the later cutover.",
+    "Legacy SSB and synthetic generators and their legacy backend entries are removed; tests pass; changelog fragment added."
+  ],
+  "description": "## Problem\nAfter the SSB and synthetic cutovers the legacy Python generators are dead weight.\n\n## Change\nRemove the legacy SSB and synthetic generators and their --datagen-backend legacy entries.\n\n## Decision gates\n- Time gate: one minor release after the later of the two cutovers (set not_before then).\n- If any published result still needs a legacy generator to reproduce inside the supported window, stop and ask the owner.\n\n## Guardrails\n- BenchBox work only in a linked worktree; heavy work only through make heavy-run; never kill processes by name pattern.\n- No divergent fork of tpcgen-rs; carried patches only under the 2026-11-27 rule (<= ~200 changed lines, upstream PR, SHA pin, README entry); anything larger goes to the owner with sizes first.\n- Human commit identity, no agent attribution. Report only observed results.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-27T00:07:23Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "8b98c968554347c688b66e6ebc47e861",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
