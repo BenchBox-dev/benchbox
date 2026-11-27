@@ -6,9 +6,10 @@ import warnings
 from collections.abc import Mapping
 from typing import Any, Literal, Optional
 
-from benchbox.core.deployment import DEPLOYMENT_ALIAS_KEYS, resolve_deployment
+from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION, DEPLOYMENT_SELECTOR_PLATFORMS, resolve_deployment
 from benchbox.core.execution_engine import DEFAULT_EXECUTION_ENGINE, resolve_requested
 from benchbox.core.platform_registry import PlatformRegistry
+from benchbox.core.removed_options import reject_removed_keywords, removed_option_message
 from benchbox.platforms.base.adapter import check_isolation_capability
 from benchbox.platforms.clickhouse.deployment_mode import (
     CLICKHOUSE_CANONICAL_PLATFORM_NAMES,
@@ -67,6 +68,16 @@ def reject_removed_platform(platform: str) -> None:
 _reject_removed_platform = reject_removed_platform
 
 
+def _reject_removed_spellings(platform: str, mode: Optional[str], config: Mapping[str, Any]) -> None:
+    reject_removed_keywords(platform, config)
+    if mode is None or mode in ("sql", "dataframe"):
+        return
+    removed = removed_option_message(platform, "mode")
+    if removed is not None:
+        raise TypeError(removed)
+    raise ValueError(f"Invalid mode '{mode}'. Use 'sql' or 'dataframe'.")
+
+
 def get_adapter(
     platform: str,
     mode: Optional[Literal["sql", "dataframe"]] = None,
@@ -74,6 +85,7 @@ def get_adapter(
     **config: Any,
 ) -> Any:
     _reject_removed_platform(platform)
+    _reject_removed_spellings(platform, mode, config)
 
     resolved_platform, migration_warning = _resolve_clickhouse_legacy(platform)
     if migration_warning:
@@ -88,6 +100,7 @@ def get_adapter(
     if caps is None:
         raise ValueError(f"Unknown platform: {platform}")
 
+    reject_removed_keywords(base_platform, config)
     if mode is not None:
         resolved_mode = mode
     elif df_mode_implied:
@@ -104,10 +117,11 @@ def get_adapter(
         supported = ", ".join(mode_support) if mode_support else "none"
         raise ValueError(f"Platform '{platform}' does not support {resolved_mode} mode. Supported modes: {supported}")
 
-    if base_platform in DEPLOYMENT_ALIAS_KEYS:
-        resolution = _resolve_family_deployment(base_platform, deployment, deployment_from_name, config)
+    if base_platform in DEPLOYMENT_SELECTOR_PLATFORMS:
+        selector = deployment if deployment is not None else deployment_from_name
+        resolution = resolve_deployment(base_platform, selector)
         if resolution.explicit and resolution.selected is not None:
-            config["deployment_mode"] = resolution.selected
+            config[DEPLOYMENT_SELECTOR_OPTION] = resolution.selected
     else:
         resolved_deployment = _resolve_deployment_mode(base_platform, deployment, deployment_from_name, caps)
 
@@ -137,21 +151,6 @@ def get_adapter(
             config["execution_engine"] = requested_engine
         return _get_sql_adapter(base_platform, **config)
     return _get_dataframe_adapter(base_platform, execution_engine=requested_engine, **config)
-
-
-def _resolve_family_deployment(
-    platform: str,
-    explicit_deployment: Optional[str],
-    deployment_from_name: Optional[str],
-    config: dict[str, Any],
-):
-    nested = config.get("options")
-    nested_options = dict(nested) if isinstance(nested, Mapping) else {}
-    values = {**nested_options, **config}
-    marker = values.get("_explicit_platform_options")
-    explicit = set(marker.keys()) if isinstance(marker, Mapping) else None
-    selector = explicit_deployment if explicit_deployment is not None else deployment_from_name
-    return resolve_deployment(platform, selector, values, explicit)
 
 
 def _resolve_deployment_mode(

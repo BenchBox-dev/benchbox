@@ -3,11 +3,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION
+from benchbox.core.removed_options import removed_deployment_value_message
+
 DEFAULT_CLICKHOUSE_DEPLOYMENT_MODE = "local"
 CLICKHOUSE_DEPLOYMENT_MODE_VALUES = frozenset({"local", "server"})
-CLICKHOUSE_DEPLOYMENT_MODE_ALIASES = {
-    "embedded": "local",
-}
 
 
 CLICKHOUSE_CANONICAL_PLATFORM_NAMES: frozenset[str] = frozenset(
@@ -62,9 +62,6 @@ def normalize_clickhouse_deployment_mode(
     if value is None:
         return default
 
-    if isinstance(value, bool):
-        return "local" if value else "server"
-
     normalized = str(value).strip().lower()
     if not normalized:
         return default
@@ -74,7 +71,9 @@ def normalize_clickhouse_deployment_mode(
             return "cloud"
         raise ValueError(clickhouse_cloud_mode_error_message())
 
-    normalized = CLICKHOUSE_DEPLOYMENT_MODE_ALIASES.get(normalized, normalized)
+    removed = removed_deployment_value_message("clickhouse", normalized)
+    if removed is not None:
+        raise ValueError(removed)
     if normalized in CLICKHOUSE_DEPLOYMENT_MODE_VALUES:
         return normalized
 
@@ -88,22 +87,14 @@ def resolve_clickhouse_deployment_mode(
     default: str = DEFAULT_CLICKHOUSE_DEPLOYMENT_MODE,
     allow_cloud: bool = False,
 ) -> str:
-    if (value := config.get("deployment_mode")) not in (None, ""):
-        return normalize_clickhouse_deployment_mode(value, default=default, allow_cloud=allow_cloud)
-
-    if (value := config.get("mode")) not in (None, ""):
-        return normalize_clickhouse_deployment_mode(value, default=default, allow_cloud=allow_cloud)
-
-    if "embedded" in config and config.get("embedded") is not None:
-        return normalize_clickhouse_deployment_mode(config["embedded"], default=default, allow_cloud=allow_cloud)
-
-    return default
+    return normalize_clickhouse_deployment_mode(
+        config.get(DEPLOYMENT_SELECTOR_OPTION), default=default, allow_cloud=allow_cloud
+    )
 
 
 __all__ = [
     "CLICKHOUSE_CANONICAL_PLATFORM_NAMES",
     "CLICKHOUSE_DEFAULT_CANONICAL_PLATFORM",
-    "CLICKHOUSE_DEPLOYMENT_MODE_ALIASES",
     "CLICKHOUSE_DEPLOYMENT_MODE_VALUES",
     "CLICKHOUSE_LEGACY_SELECTOR_MAP",
     "DEFAULT_CLICKHOUSE_DEPLOYMENT_MODE",

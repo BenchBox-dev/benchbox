@@ -355,7 +355,7 @@ class TestClickHouseCloudAdapter:
         from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
         with pytest.raises(ValueError) as exc_info:
-            ClickHouseAdapter(deployment_mode="cloud")
+            ClickHouseAdapter(_deployment_selector="cloud")
 
         error_msg = str(exc_info.value)
         assert "first-class platform" in error_msg

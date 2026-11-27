@@ -54,7 +54,7 @@ def test_from_config_maps_cloud_and_optional_fields() -> None:
                 "database": "d",
                 "region": "us-east-2",
                 "cloud_provider": "aws",
-                "service_id": "svc123",
+                "compute_resource": "svc123",
                 "service_name": "prod",
                 "service_tier": "production",
                 "compute_size": "large",
@@ -66,7 +66,7 @@ def test_from_config_maps_cloud_and_optional_fields() -> None:
     assert captured["host"] == "h"
     assert captured["region"] == "us-east-2"
     assert captured["cloud_provider"] == "aws"
-    assert captured["service_id"] == "svc123"
+    assert captured["compute_resource"] == "svc123"
     assert captured["service_name"] == "prod"
     assert captured["service_tier"] == "production"
     assert captured["compute_size"] == "large"
@@ -171,7 +171,7 @@ def test_normalized_metadata_maps_full_clickhouse_cloud_config() -> None:
         host="svc123.us-east-2.aws.clickhouse.cloud",
         password="p",
         database="bench",
-        service_id="configured-svc",
+        compute_resource="configured-svc",
         service_name="prod",
         service_tier="production",
         compute_size="large",
@@ -252,7 +252,7 @@ def test_build_config_includes_oauth_and_staging() -> None:
                 "oauth_token": "tok",
                 "region": "us-west-2",
                 "cloud_provider": "aws",
-                "service_id": "svc123",
+                "compute_resource": "svc123",
                 "service_name": "prod",
                 "service_tier": "production",
                 "compute_size": "large",
@@ -267,7 +267,7 @@ def test_build_config_includes_oauth_and_staging() -> None:
     assert config.options["oauth_token"] == "tok"
     assert config.options["region"] == "us-west-2"
     assert config.options["cloud_provider"] == "aws"
-    assert config.options["service_id"] == "svc123"
+    assert config.options["compute_resource"] == "svc123"
     assert config.options["service_name"] == "prod"
     assert config.options["service_tier"] == "production"
     assert config.options["compute_size"] == "large"
@@ -862,7 +862,7 @@ def _make_ch_adapter(**kwargs):
     with patch.dict("sys.modules", {"clickhouse_driver": mock_driver}):
         from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
-        return ClickHouseAdapter(deployment_mode="server", host="localhost", password="pass", **kwargs)
+        return ClickHouseAdapter(_deployment_selector="server", host="localhost", password="pass", **kwargs)
 
 
 def test_diagnostics_get_platform_info_server_mode() -> None:
@@ -872,7 +872,7 @@ def test_diagnostics_get_platform_info_server_mode() -> None:
     with patch.dict("sys.modules", {"clickhouse_driver": mock_driver}):
         from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
-        adapter = ClickHouseAdapter(deployment_mode="server", host="localhost", password="pass")
+        adapter = ClickHouseAdapter(_deployment_selector="server", host="localhost", password="pass")
 
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = ("22.8.5.29",)
@@ -896,7 +896,7 @@ def test_diagnostics_get_platform_info_server_mode_no_connection() -> None:
     with patch.dict("sys.modules", {"clickhouse_driver": mock_driver}):
         from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
-        adapter = ClickHouseAdapter(deployment_mode="server", host="localhost", password="pass")
+        adapter = ClickHouseAdapter(_deployment_selector="server", host="localhost", password="pass")
 
     with patch.dict("sys.modules", {"clickhouse_driver": mock_driver}):
         info = adapter.get_platform_info(connection=None)
@@ -912,7 +912,7 @@ def test_diagnostics_get_platform_info_server_version_error_silenced() -> None:
     with patch.dict("sys.modules", {"clickhouse_driver": mock_driver}):
         from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
-        adapter = ClickHouseAdapter(deployment_mode="server", host="localhost", password="pass")
+        adapter = ClickHouseAdapter(_deployment_selector="server", host="localhost", password="pass")
 
     mock_cursor = MagicMock()
     mock_cursor.execute.side_effect = RuntimeError("connection lost")
@@ -932,7 +932,7 @@ def test_diagnostics_get_platform_metadata_captures_settings() -> None:
     with patch.dict("sys.modules", {"clickhouse_driver": mock_driver}):
         from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
-        adapter = ClickHouseAdapter(deployment_mode="server", host="localhost", password="pass")
+        adapter = ClickHouseAdapter(_deployment_selector="server", host="localhost", password="pass")
 
     mock_conn = MagicMock()
     mock_conn.execute.side_effect = [
@@ -955,7 +955,7 @@ def test_diagnostics_get_platform_metadata_error_captured() -> None:
     with patch.dict("sys.modules", {"clickhouse_driver": mock_driver}):
         from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
-        adapter = ClickHouseAdapter(deployment_mode="server", host="localhost", password="pass")
+        adapter = ClickHouseAdapter(_deployment_selector="server", host="localhost", password="pass")
 
     mock_conn = MagicMock()
     mock_conn.execute.side_effect = RuntimeError("network error")
@@ -971,7 +971,7 @@ def test_diagnostics_check_server_database_exists_true() -> None:
     with patch.dict("sys.modules", {"clickhouse_driver": mock_driver}):
         from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
-        adapter = ClickHouseAdapter(deployment_mode="server", host="localhost", password="pass")
+        adapter = ClickHouseAdapter(_deployment_selector="server", host="localhost", password="pass")
         adapter.database = "benchbox"
 
     mock_client = MagicMock()
@@ -989,7 +989,7 @@ def test_diagnostics_check_server_database_exists_false() -> None:
     with patch.dict("sys.modules", {"clickhouse_driver": mock_driver}):
         from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
-        adapter = ClickHouseAdapter(deployment_mode="server", host="localhost", password="pass")
+        adapter = ClickHouseAdapter(_deployment_selector="server", host="localhost", password="pass")
         adapter.database = "benchbox"
 
     mock_client = MagicMock()
@@ -1007,7 +1007,7 @@ def test_diagnostics_check_server_database_exists_exception_returns_false() -> N
     with patch.dict("sys.modules", {"clickhouse_driver": mock_driver}):
         from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
-        adapter = ClickHouseAdapter(deployment_mode="server", host="localhost", password="pass")
+        adapter = ClickHouseAdapter(_deployment_selector="server", host="localhost", password="pass")
 
     with patch.object(adapter, "_create_admin_client", side_effect=ConnectionError("refused")):
         result = adapter.check_server_database_exists(database="benchbox")
@@ -1022,7 +1022,7 @@ def _make_ch_server_adapter():
         from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
         adapter = ClickHouseAdapter(
-            deployment_mode="server",
+            _deployment_selector="server",
             host="localhost",
             port=9000,
             password="pass",
@@ -1039,7 +1039,7 @@ def _make_ch_local_adapter():
         from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
         adapter = ClickHouseAdapter(
-            deployment_mode="local",
+            _deployment_selector="local",
             data_path="/tmp/chdb",
             memory_limit="4GB",
         )

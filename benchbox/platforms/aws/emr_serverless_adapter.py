@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     pass
 
 from benchbox.core.exceptions import ConfigurationError
+from benchbox.core.removed_options import reject_removed_adapter_keywords
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
 from benchbox.platforms.base.cloud_spark import (
     CloudSparkConfigMixin,
@@ -81,7 +82,7 @@ class EMRServerlessAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExterna
 
     def __init__(
         self,
-        application_id: str | None = None,
+        compute_resource: str | None = None,
         s3_staging_dir: str | None = None,
         execution_role_arn: str | None = None,
         region: str = "us-east-1",
@@ -95,6 +96,7 @@ class EMRServerlessAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExterna
         table_format: str | None = None,
         **kwargs: Any,
     ) -> None:
+        reject_removed_adapter_keywords(type(self), kwargs)
         if not BOTO3_AVAILABLE:
             deps_satisfied, missing = check_platform_dependencies("emr-serverless")
             if not deps_satisfied:
@@ -109,14 +111,14 @@ class EMRServerlessAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExterna
         if not execution_role_arn:
             raise ConfigurationError("execution_role_arn is required for EMR Serverless")
 
-        if not application_id and not create_application:
-            raise ConfigurationError("Either application_id must be provided or create_application=True")
+        if not compute_resource and not create_application:
+            raise ConfigurationError("Either compute_resource must be provided or create_application=True")
 
         s3_parts = s3_staging_dir[5:].split("/", 1)
         self.s3_bucket = s3_parts[0]
         self.s3_prefix = s3_parts[1] if len(s3_parts) > 1 else ""
 
-        self.application_id = application_id
+        self.application_id = compute_resource
         self.s3_staging_dir = s3_staging_dir.rstrip("/")
         self.execution_role_arn = execution_role_arn
         self.region = region
@@ -598,10 +600,6 @@ spark.stop()
     def add_cli_arguments(parser: Any) -> None:
         group = parser.add_argument_group("EMR Serverless Options")
         group.add_argument(
-            "--application-id",
-            help="EMR Serverless application ID",
-        )
-        group.add_argument(
             "--s3-staging-dir",
             help="S3 path for data staging (e.g., s3://bucket/path)",
         )
@@ -632,12 +630,10 @@ spark.stop()
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> EMRServerlessAdapter:
-        from benchbox.core.compute_resource import normalize_compute_options
         from benchbox.platforms.base.config_utils import forward_plan_options
 
-        config = normalize_compute_options("emr-serverless", config)
         params = {
-            "application_id": config.get("compute_resource") or config.get("application_id"),
+            "compute_resource": config.get("compute_resource"),
             "s3_staging_dir": config.get("s3_staging_dir"),
             "execution_role_arn": config.get("execution_role_arn"),
             "region": config.get("region", "us-east-1"),

@@ -105,7 +105,7 @@ def tpch(tmp_path):
 
 
 def _adapter(tpch, **overrides) -> ClickHouseAdapter:
-    config = {"deployment_mode": "server", "database": DATABASE, "scale_factor": 0.01, **overrides}
+    config = {"_deployment_selector": "server", "database": DATABASE, "scale_factor": 0.01, **overrides}
     adapter = ClickHouseAdapter(**config)
     adapter.benchmark_instance = tpch
     adapter.scale_factor = 0.01
@@ -131,7 +131,7 @@ def test_notuning_rerun_recreates_the_database_with_force(server, tpch):
     server.seed()
     adapter = ClickHouseAdapter.from_config(
         {
-            "deployment_mode": "server",
+            "_deployment_selector": "server",
             "database": DATABASE,
             "benchmark": "tpch",
             "scale_factor": 0.01,
@@ -198,7 +198,7 @@ def test_tuned_rerun_still_drops_and_recreates_without_force(server, tpch):
 def test_benchmark_sharing_data_with_another_gets_its_own_database(server, data_source, run_benchmark, own_database):
     shared_database = f"benchbox_{data_source}_sf001"
     server.databases[shared_database] = {"loaded_by_data_benchmark": 10}
-    config = {"deployment_mode": "server", "benchmark": data_source, "scale_factor": 0.01}
+    config = {"_deployment_selector": "server", "benchmark": data_source, "scale_factor": 0.01}
 
     shared = ClickHouseAdapter.from_config(config)
     own = ClickHouseAdapter.from_config({**config, "run_benchmark_name": run_benchmark})

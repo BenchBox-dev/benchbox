@@ -146,7 +146,7 @@ class TestLiveClickHouseQueryPlanCapture:
         from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
         return ClickHouseAdapter(
-            deployment_mode="server",
+            _deployment_selector="server",
             host=os.environ["CLICKHOUSE_HOST"],
             port=int(os.environ.get("CLICKHOUSE_PORT", "9000")),
             username=os.environ.get("CLICKHOUSE_USER", "default"),
@@ -183,7 +183,7 @@ class TestLiveChdbQueryPlanCapture:
         pytest.importorskip("chdb", exc_type=ImportError)
         from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
-        return ClickHouseAdapter(deployment_mode="local", capture_plans=True)
+        return ClickHouseAdapter(_deployment_selector="local", capture_plans=True)
 
     @pytest.fixture
     def connection(self, adapter):

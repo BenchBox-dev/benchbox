@@ -94,35 +94,7 @@ class TestInteractiveEngineResolution:
         assert s.database_config.execution_engine == "streaming"
 
 
-def test_polars_streaming_cli_alias_adds_the_legacy_streaming_option():
-    import importlib
-
-    from click.testing import CliRunner
-
-    run_module = importlib.import_module("benchbox.cli.commands.run")
-    captured = {}
-
-    def prepare(state):
-        captured["execution_engine"] = state.execution_engine
-        captured["platform_option_pairs"] = state.platform_option_pairs
-        state.dry_run = True
-
-    with (
-        patch.object(run_module, "_prepare_run_state", prepare),
-        patch.object(run_module, "_run_dry_run"),
-    ):
-        result = CliRunner().invoke(
-            run_module.run,
-            ["--platform", "polars-df", "--benchmark", "tpch", "--polars-streaming"],
-            obj={},
-        )
-
-    assert result.exit_code == 0, result.output
-    assert captured["execution_engine"] is None
-    assert ("streaming", "true") in captured["platform_option_pairs"]
-
-
-def test_polars_streaming_cli_alias_rejects_conflicting_execution_engine():
+def test_polars_streaming_cli_flag_is_rejected_with_the_engine_replacement():
     import importlib
 
     from click.testing import CliRunner
@@ -132,18 +104,13 @@ def test_polars_streaming_cli_alias_rejects_conflicting_execution_engine():
     with patch.object(run_module, "_prepare_run_state") as prepare:
         result = CliRunner().invoke(
             run_module.run,
-            [
-                "--platform",
-                "polars-df",
-                "--benchmark",
-                "tpch",
-                "--execution-engine",
-                "in-memory",
-                "--polars-streaming",
-            ],
+            ["--platform", "polars-df", "--benchmark", "tpch", "--polars-streaming"],
             obj={},
         )
 
     assert result.exit_code == 2
-    assert "conflicts with --execution-engine in-memory" in result.output
+    assert (
+        "Option '--polars-streaming' for 'polars' was removed in BenchBox 0.6.0; "
+        "use '--execution-engine streaming' (execution_engine='streaming') instead."
+    ) in result.output
     prepare.assert_not_called()

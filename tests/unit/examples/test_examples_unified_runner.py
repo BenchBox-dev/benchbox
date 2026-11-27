@@ -163,7 +163,6 @@ class TestUnifiedRunner:
     def test_get_platform_adapter_config_clickhouse(self):
 
         args = Namespace(
-            mode="local",
             data_path="/custom/path",
             verbose=0,
             platform_config=None,
@@ -171,7 +170,7 @@ class TestUnifiedRunner:
 
         config = unified_runner.get_platform_adapter_config("clickhouse", args, None)
 
-        assert config["mode"] == "local"
+        assert config["_deployment_selector"] == "local"
         assert config["data_path"] == "/custom/path"
 
     def test_get_benchmark_config(self):

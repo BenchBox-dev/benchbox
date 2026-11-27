@@ -16,7 +16,7 @@ def _make_adapter() -> FireboltAdapter:
         return FireboltAdapter(
             account_name="acct",
             database="db",
-            engine_name="eng",
+            compute_resource="eng",
             client_id="id",
             client_secret="secret",
         )

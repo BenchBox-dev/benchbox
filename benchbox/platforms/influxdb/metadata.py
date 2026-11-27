@@ -6,6 +6,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION
+
 
 class InfluxDBMetadataMixin:
     @property
@@ -56,13 +58,6 @@ class InfluxDBMetadataMixin:
             action="store_false",
             help="Disable SSL/TLS connection",
         )
-        influx_group.add_argument(
-            "--mode",
-            type=str,
-            choices=["core", "cloud"],
-            default="cloud",
-            help="InfluxDB deployment mode: 'core' for local/OSS, 'cloud' for managed",
-        )
 
     @classmethod
     def from_config(cls, config: dict[str, Any]):
@@ -75,8 +70,10 @@ class InfluxDBMetadataMixin:
             "ssl": config.get("ssl", True),
             "verify_ssl": config.get("verify_ssl", True),
             "ca_cert_path": config.get("ca_cert_path"),
-            "mode": config.get("mode", "cloud"),
         }
+
+        if config.get(DEPLOYMENT_SELECTOR_OPTION) is not None:
+            adapter_config[DEPLOYMENT_SELECTOR_OPTION] = config[DEPLOYMENT_SELECTOR_OPTION]
 
         for key in [
             "tuning_config",

@@ -11,18 +11,17 @@ import yaml
 import benchbox.core.results.anonymization as anonymization
 from benchbox.core.execution_engine import (
     DEFAULT_EXECUTION_ENGINE,
-    DEPRECATED_OPTION_ALIASES,
     EXECUTION_ENGINE_CLASSES,
     RESERVED_OPTION_KEYS,
     supported_execution_engines,
 )
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry, PlatformOptionSpec
 from benchbox.core.platform_manifest import PLATFORM_MANIFEST, get_all_platform_aliases
+from benchbox.core.removed_options import manifest_key, removed_option_message, removed_option_pairs
 from benchbox.mcp.schemas import MCP_PLATFORM_OPTION_ALLOWLIST, MCP_PLATFORM_OPTION_CONTRACT
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
-GRANDFATHERED_KEYS: frozenset[tuple[str, str]] = frozenset()
 DEPLOYMENT_SELECTOR_KEYS = frozenset({"deployment_mode", "mode", "deployment", "sail_mode", "firebolt_mode"})
 REGISTERED_PLATFORM_SENTINELS = ("polars-df", "snowflake", "databricks", "redshift", "firebolt", "influxdb")
 CORE_VOCABULARY_KEYS = ("execution_engine", "compute_resource", "compute_size", "gateway")
@@ -63,13 +62,7 @@ def _platforms_without_option_specs(platforms: tuple[str, ...]) -> list[str]:
 
 
 def _violations(registrations: list[Registration]) -> list[Registration]:
-    return [
-        item
-        for item in registrations
-        if item.key in RESERVED_OPTION_KEYS
-        and (item.platform, item.key) not in GRANDFATHERED_KEYS
-        and not (item.is_alias and (item.platform, item.key) in DEPRECATED_OPTION_ALIASES)
-    ]
+    return [item for item in registrations if item.key in RESERVED_OPTION_KEYS]
 
 
 def _declared_engines() -> list[tuple[str, str, str]]:
@@ -111,34 +104,32 @@ def test_no_unlisted_reserved_option_keys() -> None:
 
 def test_grandfather_list_matches_live_registrations() -> None:
     live = {(item.platform, item.key) for item in _registrations() if item.key in RESERVED_OPTION_KEYS}
-    assert live - set(DEPRECATED_OPTION_ALIASES) == GRANDFATHERED_KEYS
+    assert live == set()
 
 
-def _unlisted_deployment_selectors(registrations: list[Registration]) -> list[tuple[str, str]]:
+def _registered_deployment_selectors(registrations: list[Registration]) -> list[tuple[str, str]]:
     return sorted(
         {
             (item.platform, item.key)
             for item in registrations
-            if item.surface == "option spec"
-            and item.key in DEPLOYMENT_SELECTOR_KEYS
-            and (item.platform, item.key) not in DEPRECATED_OPTION_ALIASES
+            if item.surface == "option spec" and item.key in DEPLOYMENT_SELECTOR_KEYS
         }
     )
 
 
-def test_every_registered_deployment_selector_option_is_a_deprecated_alias() -> None:
+def test_no_deployment_selector_option_is_registered() -> None:
     registrations = _registrations()
-    assert any(item.key in DEPLOYMENT_SELECTOR_KEYS for item in registrations)
-    assert _unlisted_deployment_selectors(registrations) == []
+    assert registrations
+    assert _registered_deployment_selectors(registrations) == []
 
 
-def test_registered_deployment_selector_missing_from_the_table_is_reported(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_registered_deployment_selector_is_reported(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(
         PlatformHookRegistry._option_specs,
         "fixture-platform",
         {"deployment_mode": PlatformOptionSpec(name="deployment_mode", aliases=("sail_mode",))},
     )
-    assert _unlisted_deployment_selectors(_registrations()) == [
+    assert _registered_deployment_selectors(_registrations()) == [
         ("fixture-platform", "deployment_mode"),
         ("fixture-platform", "sail_mode"),
     ]
@@ -153,10 +144,38 @@ def test_new_reserved_canonical_key_is_rejected(monkeypatch: pytest.MonkeyPatch)
     assert {(item.key, item.is_alias) for item in _violations(_registrations())} == {("engine", False), ("mode", True)}
 
 
-def test_deprecated_aliases_target_canonical_names() -> None:
-    for (platform, alias), entry in DEPRECATED_OPTION_ALIASES.items():
-        assert entry.target not in RESERVED_OPTION_KEYS, (platform, alias)
-        assert re.fullmatch(r"\d+\.\d+\.\d+", entry.removed_in), (platform, alias)
+def _registered_removed_options(registrations: list[Registration]) -> list[tuple[str, str]]:
+    removed = set(removed_option_pairs())
+    return sorted(
+        {(item.platform, item.key) for item in registrations if (manifest_key(item.platform), item.key) in removed}
+    )
+
+
+def test_no_removed_option_is_registered_on_any_surface() -> None:
+    registrations = _registrations()
+    assert registrations
+    assert _registered_removed_options(registrations) == []
+
+
+def test_registered_removed_option_is_reported(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(
+        PlatformHookRegistry._option_specs,
+        "snowflake",
+        {
+            **PlatformHookRegistry._option_specs["snowflake"],
+            "warehouse_size": PlatformOptionSpec(name="warehouse_size"),
+        },
+    )
+    assert _registered_removed_options(_registrations()) == [("snowflake", "warehouse_size")]
+
+
+def test_every_removed_option_names_a_replacement() -> None:
+    pairs = removed_option_pairs()
+    assert pairs
+    for platform, key in pairs:
+        message = removed_option_message(platform, key)
+        assert message is not None, (platform, key)
+        assert "was removed in BenchBox 0.6.0" in message, (platform, key)
 
 
 def test_anonymizer_does_not_hash_core_vocabulary_keys() -> None:

@@ -41,7 +41,7 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
         name="synapse_spark_tpch",
         options={
             "workspace_name": workspace_name,
-            "spark_pool_name": spark_pool,
+            "compute_resource": spark_pool,
             "storage_account": storage_account,
             "storage_container": storage_container,
             "storage_path": os.getenv("SYNAPSE_STORAGE_PATH", "benchbox"),

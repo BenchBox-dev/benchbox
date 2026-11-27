@@ -500,7 +500,7 @@ class TestDataFrameAdapterDryRun:
             type="lakesail-df",
             name="lakesail",
             execution_mode="dataframe",
-            options={"deployment_mode": "bogus"},
+            options={"_deployment_selector": "bogus"},
         )
         benchmark_config = BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=0.1)
 

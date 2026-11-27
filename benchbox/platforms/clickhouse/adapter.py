@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 
-from benchbox.core.deployment import deployment_class, select_adapter_deployment
+from benchbox.core.deployment import deployment_class
+from benchbox.core.removed_options import reject_removed_keywords
 from benchbox.core.results.fetch_mode import FETCH_MODE_ARROW, FETCH_MODE_ROWS
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
 from benchbox.utils.dependencies import check_platform_dependencies, get_dependency_error_message
@@ -44,14 +45,13 @@ class ClickHouseAdapter(
         return FETCH_MODE_ARROW if mode == "local" else FETCH_MODE_ROWS
 
     def __init__(self, **config):
+        reject_removed_keywords("clickhouse", config)
         super().__init__(**config)
 
         self._dialect = "clickhouse"
 
         is_cloud_subclass = config.get("_is_cloud_subclass", False)
         self.deployment_mode = resolve_clickhouse_deployment_mode(config, allow_cloud=is_cloud_subclass)
-        if not is_cloud_subclass:
-            select_adapter_deployment("clickhouse", config, self.deployment_mode)
         self.deployment_selected = self.deployment_mode
         self.deployment_selected_class = deployment_class("clickhouse", self.deployment_mode)
 

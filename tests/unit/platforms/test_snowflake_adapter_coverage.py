@@ -38,7 +38,7 @@ def _make_adapter(**kwargs):
         "account": "test_account",
         "username": "test_user",
         "password": "test_pass",
-        "warehouse": "COMPUTE_WH",
+        "compute_resource": "COMPUTE_WH",
         "database": "BENCHBOX",
     }
     defaults.update(kwargs)
@@ -161,7 +161,7 @@ class TestBuildCtasSortSql:
 
 
 def _platform_info_for(cursor_description, row):
-    adapter = _make_adapter(warehouse="MY_WH")
+    adapter = _make_adapter(compute_resource="MY_WH")
     mock_conn = Mock()
     mock_cursor = Mock()
     mock_conn.cursor.return_value = mock_cursor
@@ -246,7 +246,7 @@ class TestWarehouseMetadataByColumnName:
 
 class TestGetPlatformInfoWithWarehouse:
     def test_warehouse_details_captured(self):
-        adapter = _make_adapter(warehouse="MY_WH")
+        adapter = _make_adapter(compute_resource="MY_WH")
 
         mock_conn = Mock()
         mock_cursor = Mock()
@@ -284,11 +284,11 @@ class TestGetPlatformInfoWithWarehouse:
 
     def test_normalized_metadata_maps_requested_and_observed_snowflake_fields(self):
         adapter = _make_adapter(
-            warehouse="MY_WH",
+            compute_resource="MY_WH",
             database="BENCH_DB",
             schema="BENCH_SCHEMA",
             role="ANALYST",
-            warehouse_size="MEDIUM",
+            compute_size="MEDIUM",
             disable_result_cache=True,
             file_format="PARQUET",
             compression="ZSTD",
@@ -381,7 +381,7 @@ class TestGetPlatformInfoWithWarehouse:
 
     def test_normalized_metadata_keeps_requested_compute_when_warehouse_metadata_unavailable(self):
         adapter = _make_adapter(
-            warehouse="MY_WH", warehouse_size="XLARGE", modify_warehouse_settings=True, disable_result_cache=False
+            compute_resource="MY_WH", compute_size="XLARGE", modify_warehouse_settings=True, disable_result_cache=False
         )
         adapter.configure_for_benchmark(_configure_connection(), "olap")
 
@@ -524,7 +524,7 @@ class TestFromConfig:
                 "account": "my_account",
                 "username": "user",
                 "password": "pass",
-                "warehouse": "WH",
+                "compute_resource": "WH",
                 "database": "EXPLICIT_DB",
                 "benchmark": "tpch",
                 "scale_factor": 1.0,
@@ -544,7 +544,7 @@ class TestFromConfig:
                 "account": "my_account",
                 "username": "user",
                 "password": "pass",
-                "warehouse": "WH",
+                "compute_resource": "WH",
                 "benchmark": "tpch",
                 "scale_factor": 1.0,
             }
@@ -560,7 +560,7 @@ class TestFromConfig:
                 "account": "my_account",
                 "username": "user",
                 "password": "pass",
-                "warehouse": "WH",
+                "compute_resource": "WH",
                 "database": "DB",
                 "role": "SYSADMIN",
             }
@@ -576,7 +576,7 @@ class TestFromConfig:
                 "account": "my_account",
                 "username": "user",
                 "password": "pass",
-                "warehouse": "WH",
+                "compute_resource": "WH",
                 "database": "DB",
                 "authenticator": "externalbrowser",
             }
@@ -592,7 +592,7 @@ class TestFromConfig:
                 "account": "my_account",
                 "username": "user",
                 "password": "pass",
-                "warehouse": "WH",
+                "compute_resource": "WH",
                 "database": "DB",
                 "disable_result_cache": False,
             }
@@ -608,7 +608,7 @@ class TestFromConfig:
                 "account": "my_account",
                 "username": "user",
                 "password": "pass",
-                "warehouse": "WH",
+                "compute_resource": "WH",
                 "database": "DB",
                 "file_format": "PARQUET",
                 "compression": "ZSTD",
@@ -636,7 +636,7 @@ class TestConstructorValidation:
             SnowflakeAdapter(
                 username="u",
                 password="p",
-                warehouse="WH",
+                compute_resource="WH",
                 database="DB",
             )
 
@@ -648,7 +648,7 @@ class TestConstructorValidation:
             SnowflakeAdapter(
                 account="a",
                 username="u",
-                warehouse="WH",
+                compute_resource="WH",
                 database="DB",
             )
 
@@ -660,7 +660,7 @@ class TestConstructorValidation:
             SnowflakeAdapter(
                 account="a",
                 password="p",
-                warehouse="WH",
+                compute_resource="WH",
                 database="DB",
             )
 
@@ -924,7 +924,7 @@ class TestGetPlatformMetadata:
         assert result["session_info"]["current_user"] == "user1"
 
     def test_warehouse_info_populated(self):
-        adapter = _make_adapter(warehouse="WH")
+        adapter = _make_adapter(compute_resource="WH")
         mock_conn = Mock()
         mock_conn.cursor.return_value = self._make_cursor()
 
@@ -1717,7 +1717,7 @@ def _configure_connection():
 
 class TestRecordedWarehouseSize:
     def test_unapplied_default_is_not_recorded_as_size_used(self):
-        adapter = _make_adapter(warehouse="MY_WH", modify_warehouse_settings=False)
+        adapter = _make_adapter(compute_resource="MY_WH", modify_warehouse_settings=False)
 
         info = adapter.get_platform_info(connection=_connection_reporting_size("X-Small"))
 
@@ -1726,12 +1726,12 @@ class TestRecordedWarehouseSize:
         assert info["compute_configuration"]["warehouse_size"] == "X-Small"
 
     def test_unapplied_request_without_observation_records_no_size(self):
-        adapter = _make_adapter(warehouse="MY_WH", warehouse_size="LARGE", modify_warehouse_settings=False)
+        adapter = _make_adapter(compute_resource="MY_WH", compute_size="LARGE", modify_warehouse_settings=False)
 
         assert adapter.get_platform_info(connection=None)["configuration"]["warehouse_size"] is None
 
     def test_applied_resize_records_observed_size(self):
-        adapter = _make_adapter(warehouse="MY_WH", warehouse_size="LARGE", modify_warehouse_settings=True)
+        adapter = _make_adapter(compute_resource="MY_WH", compute_size="LARGE", modify_warehouse_settings=True)
 
         info = adapter.get_platform_info(connection=_connection_reporting_size("Large"))
 
@@ -1739,7 +1739,7 @@ class TestRecordedWarehouseSize:
 
     def test_applied_resize_without_observation_records_requested_size(self):
         adapter = _make_adapter(
-            warehouse="MY_WH", warehouse_size="LARGE", modify_warehouse_settings=True, disable_result_cache=False
+            compute_resource="MY_WH", compute_size="LARGE", modify_warehouse_settings=True, disable_result_cache=False
         )
         adapter.configure_for_benchmark(_configure_connection(), "olap")
 
@@ -1747,20 +1747,20 @@ class TestRecordedWarehouseSize:
 
     def test_unresized_benchmark_type_does_not_claim_requested_size(self):
         adapter = _make_adapter(
-            warehouse="MY_WH", warehouse_size="LARGE", modify_warehouse_settings=True, disable_result_cache=False
+            compute_resource="MY_WH", compute_size="LARGE", modify_warehouse_settings=True, disable_result_cache=False
         )
         adapter.configure_for_benchmark(_configure_connection(), "clickbench")
 
         assert adapter.get_platform_info(connection=None)["configuration"]["warehouse_size"] is None
 
     def test_modification_enabled_but_not_configured_does_not_claim_requested_size(self):
-        adapter = _make_adapter(warehouse="MY_WH", warehouse_size="LARGE", modify_warehouse_settings=True)
+        adapter = _make_adapter(compute_resource="MY_WH", compute_size="LARGE", modify_warehouse_settings=True)
 
         assert adapter.get_platform_info(connection=None)["configuration"]["warehouse_size"] is None
 
     def test_multi_cluster_modification_does_not_claim_requested_size(self):
         adapter = _make_adapter(
-            warehouse="MY_WH", warehouse_size="LARGE", modify_warehouse_settings=True, multi_cluster_warehouse=True
+            compute_resource="MY_WH", compute_size="LARGE", modify_warehouse_settings=True, multi_cluster_warehouse=True
         )
 
         assert adapter.get_platform_info(connection=None)["configuration"]["warehouse_size"] is None

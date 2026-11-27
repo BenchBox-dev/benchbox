@@ -59,7 +59,7 @@ class FabricWarehouseAdapter(PlatformAdapter):
 
         self.server = config.get("server")
         self.workspace = config.get("workspace")
-        self.database = config.get("database") or config.get("warehouse")
+        self.database = config.get("database")
         self.warehouse = self.database
         self.port = config.get("port") if config.get("port") is not None else 1433
 
@@ -73,11 +73,6 @@ class FabricWarehouseAdapter(PlatformAdapter):
                 UserWarning,
                 stacklevel=2,
             )
-
-        if config.get("warehouse") and not config.get("database"):
-            from benchbox.core.compute_resource import warn_deprecated_compute_alias
-
-            warn_deprecated_compute_alias("fabric_dw", "warehouse", "database")
 
         self.auth_method = config.get("auth_method") or "default_credential"
         self.tenant_id = config.get("tenant_id")
@@ -170,11 +165,6 @@ class FabricWarehouseAdapter(PlatformAdapter):
             help="Fabric warehouse endpoint (e.g., workspace-guid.datawarehouse.fabric.microsoft.com)",
         )
         fabric_group.add_argument("--workspace", type=str, help="Fabric workspace name or GUID")
-        fabric_group.add_argument(
-            "--warehouse",
-            type=str,
-            help="Deprecated alias of --database (removed in 0.6.0)",
-        )
         fabric_group.add_argument("--database", type=str, help="Database/warehouse name")
         fabric_group.add_argument(
             "--auth-method",
@@ -192,18 +182,14 @@ class FabricWarehouseAdapter(PlatformAdapter):
     def from_config(cls, config: dict[str, Any]):
         from benchbox.platforms.base.config_utils import build_adapter_config
 
-        adapter_source = config
-        if not config.get("database") and config.get("warehouse"):
-            adapter_source = {**config, "database": config["warehouse"]}
-
         return cls(
             **build_adapter_config(
-                adapter_source,
+                config,
                 platform="fabric_dw",
                 fields=[
                     "server",
                     "workspace",
-                    "warehouse",
+                    "database",
                     "port",
                     "schema",
                     "auth_method",

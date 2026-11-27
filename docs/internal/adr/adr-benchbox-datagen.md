@@ -181,14 +181,26 @@ non-quiesced development host; cutover enforcement requires 3-run medians
      `vector_search`, `coffeeshop`, `joinorder_synthetic`, `amplab`).
    - TPC generation depends on the upstream Apache-2.0 crates `tpchgen`,
      `tpchgen-arrow`, `tpcdsgen` and `tpcdsgen-arrow` from
-     `datafusion-contrib/tpcgen-rs`, pinned by exact version. BenchBox does
-     not fork them; fixes go upstream, and a library release that needs a fix
-     waits for the upstream release carrying it.
+     `datafusion-contrib/tpcgen-rs`, pinned by exact version.
+   - **Upstream gaps (owner decision 2026-11-27):** BenchBox keeps no
+     divergent fork and does not wait for upstream. A gap is filled, in order
+     of preference, by (a) a carried patch: at most about 200 changed lines,
+     already submitted upstream, pinned by commit in a `BenchBox-dev` fork
+     whose branch is the upstream release tag plus that patch only, listed in
+     the library README with its upstream pull request, and removed when an
+     upstream release contains it; or (b) BenchBox's own code in the library
+     on upstream's public API, offered upstream, when no small patch can
+     close the gap. Anything larger than a carried patch is sized and taken
+     to the owner before it is written.
    - TPC-DS fractional scales (`SF < 1.0`, where `tpcgen-rs` uses a different
-     scaling curve from BenchBox's patched `dsdgen`), TPC-H `RF1`/`RF2` and
-     TPC-DS `-update` refresh sets are implemented byte-identically in the
-     library (or upstream) before any TPC cutover, so the TPC default switches
-     to one backend that covers every supported scale and refresh set.
+     scaling curve from BenchBox's patched `dsdgen`) use a carried patch that
+     lets the caller supply per-table row counts (`tpcgen-rs` pull request
+     677), and are byte-identical before the TPC cutover, as are TPC-H
+     `RF1`/`RF2`.
+   - TPC-DS `-update` refresh sets have no upstream counterpart. They are
+     BenchBox's own generators in the library, byte-identical to `dsdgen`,
+     and are required before the C toolchain is removed (decision 7), not
+     before the TPC cutover; until then TPC-DS maintenance runs use `dsdgen`.
    - The query templates and `tpcds.idx` stay in `benchbox` under its TPC
      licence carve-out and are passed to the library at call time; the MIT
      library ships no TPC query text (decision 8).
@@ -335,7 +347,9 @@ non-quiesced development host; cutover enforcement requires 3-run medians
    - `ssb` replaces `random.Random(42)` and `SSB_EXPECTED_ROW_COUNTS` under
      the same rules, after active SSB reference-count and publication work
      finishes, and requires exact DuckDB and DataFusion agreement across all
-     13 SSB queries at SF 0.01, 0.1, 1.0 and 10.0.
+     13 SSB queries at SF 0.01, 0.1, 1.0 and 10.0. Its table row counts
+     follow the SSB specification (`part` is 200,000 x floor(1 + log2 SF),
+     `date` has 2,556 rows), not the legacy generator.
 7. **Retire the whole C toolchain after validation.**
    Keep the bundled C binaries and legacy Python generators untouched during
    the library buildout and for at least one minor release after the last TPC
@@ -344,8 +358,9 @@ non-quiesced development host; cutover enforcement requires 3-run medians
    Dockerfiles, `tpc_compilation.py`, the binary identity workflow and the
    patch stack, and the legacy Python generators. Historical results stay
    reproducible by installing an older BenchBox. Before removal the TPC-DS
-   qualification runner generates data through the library, and every
-   published bundle's recorded query parameters replay through the library.
+   qualification runner generates data through the library, TPC-DS refresh
+   sets come from the library, and every published bundle's recorded query
+   parameters replay through the library.
 8. **Query generation in Rust, with the C tools as the oracle until retirement.**
    - The library implements TPC-H `qgen` (substitution parameters, `-d`
      default parameters, update-stream numbering) and TPC-DS `dsqgen` (the
@@ -359,7 +374,11 @@ non-quiesced development host; cutover enforcement requires 3-run medians
      tools exactly, including BenchBox's patched fractional TPC-DS scaling.
    - The oracle is the bundled linux-x86_64 `qgen` 3.0.0 and `dsqgen` 4.0.0
      with BenchBox's patched templates, named by SHA-256 in a frozen
-     conformance corpus that CI replays without any C binary.
+     conformance corpus that CI replays without any C binary. Where the
+     oracle does not terminate (`qgen` seed 0 for Q7 and Q12) the library
+     raises an error; a case the oracle answers differently across runs is
+     excluded from the gate only with that evidence recorded in the corpus
+     manifest, and the library is deterministic for it.
    - Consequence: BenchBox no longer runs the TPC-supplied QGen and `dsqgen`
      (TPC-H clause 2.1.4.1, TPC-DS clauses 4.1.2 and 4.3.1), so its TPC runs
      are TPC-derived, not specification-compliant executions. The corpus
@@ -402,9 +421,10 @@ every supported platform:
     parity), plus validation of all 7 derived TPC consumers (`tpchavoc`,
     `read_primitives`, `write_primitives`, `transaction_primitives`,
     `datavault`, `tpcds_obt` smoke suites and `ai_primitives` datagen/dry-run).
-  - **Refresh-set parity:** TPC-H `RF1`/`RF2` and TPC-DS `-update` output is
-    byte-identical to the C binaries at SF 0.01 and 1.0 before the TPC
-    cutover.
+  - **Refresh-set parity:** TPC-H `RF1`/`RF2` output is byte-identical to
+    `dbgen -U` at SF 0.01 and 1.0 before the TPC cutover. TPC-DS `-update`
+    output is byte-identical to `dsdgen` at SF 0.01, 1, 10 and 100 before the
+    C toolchain is removed.
   - **Library-version bump and pre-cutover required check:** Extends the
     parity matrix to **TPC-H SF 0.01, 0.1, 1.0, and 10.0** and **TPC-DS SF
     0.01, 0.1, 1.0 and 10.0** (all 24 tables), adding secondary single-engine
@@ -413,14 +433,17 @@ every supported platform:
     verify specification row counts and thread-count invariance.
 - **Thread invariance gate (all benchmarks):** Delimited and Parquet bytes are
   identical at 1, 4 and default threads, on macOS arm64 and Linux x86_64.
-- **Rewritten SSB and synthetic acceptance gate:** Exact table row counts,
-  zero orphan foreign keys, per-column null rate, distinct-count ratio and
-  mean/quantiles within the legacy generator's own variation across 5 seeds,
-  every query returning rows on both engines where legacy did, and exact
-  DuckDB and DataFusion agreement. An acceptance report goes in the PR; the
-  owner is asked only when a criterion fails. Then golden per-table SHA-256
-  hashes and expected row counts are frozen. Never use arbitrary tolerance
-  bands on deterministic output.
+- **Rewritten SSB and synthetic acceptance gate:** Exact table row counts and
+  zero orphan foreign keys. Each per-column metric (null rate, distinct-count
+  ratio, mean and quantiles) passes when it lies inside the legacy
+  generator's minimum-to-maximum range across 5 seeds or inside the 99.9%
+  prediction interval built from those 5 seeds; a boundary quantile on a
+  low-cardinality column is compared by rank. A query must return rows on
+  every library seed where legacy does on every seed; where legacy is
+  sometimes empty, the library may be empty on no more seeds than legacy.
+  DuckDB and DataFusion must agree exactly. The acceptance report goes in the
+  PR; the owner is asked only when a criterion fails. Then golden per-table
+  SHA-256 hashes and expected row counts are frozen.
 - **Query conformance gate (TPC-H and TPC-DS):** The library reproduces the
   frozen corpus: TPC-H 22 queries plus 15a, default parameters, seeds 0, 1,
   42, 2^31-2 and 10,000 random seeds, Q11 at eight scales; TPC-DS all 99
@@ -439,7 +462,10 @@ every supported platform:
   a quiet host meeting the table above. Owned and run by the PR author on the
   maintainer host via `make heavy-run` (macOS arm64) and on the Linux CI/agent
   runner for PRs touching the streaming converter, the `benchbox-datagen` pin
-  or backend integration, with raw medians recorded in the PR body.
+  or backend integration, with raw medians recorded in the PR body. A miss
+  fails the gate and is reported to the owner with its measurements. It never
+  justifies changing output bytes, schema, row-group layout or the Parquet
+  writer to meet a budget.
 
 ## Consequences
 

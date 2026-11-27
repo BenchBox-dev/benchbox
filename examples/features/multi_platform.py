@@ -256,7 +256,7 @@ from benchbox.platforms.snowflake import SnowflakeAdapter
 
 adapter = SnowflakeAdapter(
     account="your-account",
-    warehouse="COMPUTE_WH",
+    compute_resource="COMPUTE_WH",
     database="BENCHMARKS",
     schema="PUBLIC"
 )

@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, Callable
 
+from benchbox.core.removed_options import reject_removed_adapter_keywords
 from benchbox.core.results.timer_scope import RequestLedger, excluded_from_query_timer, outside_query_timer
 from benchbox.platforms.base import PlatformAdapter
 from benchbox.platforms.databricks.adapter import DatabricksAdapter, _normalize_table_format
@@ -54,7 +55,8 @@ class DatabricksDataFrameAdapter(DatabricksAdapter):
     cancel_remote_work = PlatformAdapter.cancel_remote_work
 
     def __init__(self, **config: Any) -> None:
-        self.cluster_id = config.pop("compute_resource", None) or config.pop("cluster_id", None)
+        reject_removed_adapter_keywords(type(self), config)
+        self.cluster_id = config.pop("compute_resource", None)
         self.execution_mode = config.pop("execution_mode", "dataframe")
 
         if _normalize_table_format(config) == "hudi":
@@ -88,13 +90,8 @@ class DatabricksDataFrameAdapter(DatabricksAdapter):
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> DatabricksDataFrameAdapter:
-        from benchbox.core.compute_resource import normalize_compute_options
-
-        config = normalize_compute_options("databricks-df", config)
         adapter_config = dict(config)
         adapter_config["execution_mode"] = config.get("execution_mode", "dataframe")
-        adapter_config["cluster_id"] = config.get("compute_resource") or config.get("cluster_id")
-
         return cls(**adapter_config)
 
     def _get_or_create_spark_session(self) -> SparkSession:

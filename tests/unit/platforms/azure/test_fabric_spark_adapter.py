@@ -59,7 +59,7 @@ class TestFabricSparkAdapterInitialization:
                 workspace_id="workspace-abc-123",
                 lakehouse_id="lakehouse-xyz-456",
                 tenant_id="tenant-789",
-                spark_pool_name="my-pool",
+                compute_resource="my-pool",
             )
 
             assert adapter.workspace_id == "workspace-abc-123"
@@ -145,7 +145,7 @@ class TestFabricSparkAdapterPlatformInfo:
             adapter = FabricSparkAdapter(
                 workspace_id="workspace-abc",
                 lakehouse_id="lakehouse-xyz",
-                spark_pool_name="my-pool",
+                compute_resource="my-pool",
             )
 
             info = adapter.get_platform_info()
@@ -502,8 +502,6 @@ class TestFabricSparkAdapterCLI:
                     "test-lakehouse",
                     "--tenant-id",
                     "test-tenant",
-                    "--spark-pool",
-                    "test-pool",
                     "--timeout",
                     "120",
                 ]
@@ -512,7 +510,6 @@ class TestFabricSparkAdapterCLI:
             assert args.workspace_id == "test-workspace"
             assert args.lakehouse_id == "test-lakehouse"
             assert args.tenant_id == "test-tenant"
-            assert args.spark_pool_name == "test-pool"
             assert args.timeout_minutes == 120
 
     def test_from_config(self):
@@ -531,7 +528,7 @@ class TestFabricSparkAdapterCLI:
                 "workspace_id": "config-workspace",
                 "lakehouse_id": "config-lakehouse",
                 "tenant_id": "config-tenant",
-                "spark_pool_name": "config-pool",
+                "compute_resource": "config-pool",
                 "timeout_minutes": 90,
             }
 
@@ -558,7 +555,7 @@ class TestFabricSparkAdapterCLI:
                 "workspace_id": "config-workspace",
                 "lakehouse_id": "config-lakehouse",
                 "tenant_id": "config-tenant",
-                "spark_pool_name": "config-pool",
+                "compute_resource": "config-pool",
             }
 
             adapter = FabricSparkAdapter.from_config({**base, "options": {"adaptive_enabled": False}})

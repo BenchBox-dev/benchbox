@@ -219,7 +219,7 @@ def athena_spark_case():
     ):
         from benchbox.platforms.aws import AthenaSparkAdapter
 
-        adapter = AthenaSparkAdapter(workgroup="spark", s3_staging_dir="s3://bucket/data")
+        adapter = AthenaSparkAdapter(compute_resource="spark", s3_staging_dir="s3://bucket/data")
         adapter._pause = lambda _seconds: None
         work = Work(lambda: adapter._submit_calculation("SELECT 1"))
         refuser = Refuser()
@@ -426,7 +426,7 @@ def synapse_spark_case():
         case = _livy_case(
             "Synapse Spark",
             SynapseSparkAdapter(
-                workspace_name="workspace", spark_pool_name="pool", storage_account="account", storage_container="data"
+                workspace_name="workspace", compute_resource="pool", storage_account="account", storage_container="data"
             ),
         )
         yield case

@@ -171,8 +171,8 @@ def test_bundle_without_selected_reads_as_the_manifest_default(platform: str) ->
     assert published_variant_id(legacy, platform) == published_variant_id(recorded, platform) == platform
 
 
-def test_timescaledb_deployment_mode_reaches_the_adapter_through_from_config() -> None:
-    adapter = get_adapter("timescaledb", deployment_mode="cloud", host="db.example.com", password="secret")
+def test_timescaledb_deployment_selector_reaches_the_adapter_through_from_config() -> None:
+    adapter = get_adapter("timescaledb:cloud", host="db.example.com", password="secret")
 
     assert adapter.deployment_mode == "cloud"
     assert adapter.deployment_selected == "cloud"
@@ -204,21 +204,22 @@ def test_dry_run_files_for_a_deployment_selector_are_named_without_a_colon(tmp_p
 
 
 @pytest.mark.parametrize("platform", sorted(RECORDED_PLATFORMS))
-def test_run_command_rejects_a_selector_that_disagrees_with_the_legacy_option(tmp_path: Path, platform: str) -> None:
+def test_run_command_rejects_the_removed_deployment_mode_option(tmp_path: Path, platform: str) -> None:
     default, other = _default_mode(platform), next(m for m in _declared_modes(platform) if m != _default_mode(platform))
 
     result, _payload = _dry_run(tmp_path, f"{platform}:{default}", f"deployment_mode={other}")
 
     assert result.exit_code != 0
-    assert "conflicts with" in " ".join(result.output.split())
+    output = " ".join(result.output.split())
+    assert f"Platform option 'deployment_mode' for '{platform}' was removed in BenchBox 0.6.0" in output
 
 
 @pytest.mark.parametrize("platform", sorted(RECORDED_PLATFORMS))
-def test_legacy_deployment_mode_option_selects_the_same_mode(platform: str) -> None:
+def test_deployment_selector_selects_the_mode(platform: str) -> None:
     display_name, config = RECORDED_PLATFORMS[platform]
     mode = next(m for m in _declared_modes(platform) if m != _default_mode(platform))
 
-    adapter = get_adapter(platform, deployment_mode=mode, **config)
+    adapter = get_adapter(f"{platform}:{mode}", **config)
 
     assert published_variant_id(_bundle(adapter, display_name), platform) == f"{platform}~{mode}"
 

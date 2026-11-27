@@ -235,18 +235,3 @@ def test_redshift_bare_compute_resource_follows_the_deployment(host: str, expect
     assert getattr(adapter, other) is None
     compute = _bundle_compute("redshift", adapter)
     assert (compute["resource"], compute["resource_kind"]) == ("res1", kind)
-
-
-def test_redshift_cluster_identifier_is_not_used_as_the_workgroup() -> None:
-    adapter = get_adapter(
-        "redshift",
-        host="wg.1.us-east-1.redshift-serverless.amazonaws.com",
-        username="u",
-        password="p",
-        cluster_identifier="c1",
-        benchmark="tpch",
-        scale_factor=0.01,
-    )
-
-    assert adapter.cluster_identifier == "c1"
-    assert adapter.workgroup_name is None

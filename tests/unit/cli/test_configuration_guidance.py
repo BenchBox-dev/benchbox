@@ -69,7 +69,7 @@ def test_connection_guidance_does_not_advertise_unregistered_platform_options(
         ("spark", "java_home", "/usr/lib/jvm/java-17"),
         ("synapse", "staging_root", "abfss://c@a.dfs.core.windows.net/data"),
         ("velox", "jar", "/opt/gluten/gluten-velox-bundle.jar"),
-        ("fabric_dw", "warehouse", "example-warehouse"),
+        ("fabric_dw", "database", "example-warehouse"),
         ("clickhouse-cloud", "host", "example.us-east-2.aws.clickhouse.cloud"),
         ("clickhouse-server", "host", "my-clickhouse.example.com"),
         ("clickhouse-server", "port", "9000"),

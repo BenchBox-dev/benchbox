@@ -20,7 +20,7 @@ def test_snowflake_smoke_run(monkeypatch, tmp_path):
         account="benchbox",
         username="benchbox_user",
         password="secret",
-        warehouse="COMPUTE_WH",
+        compute_resource="COMPUTE_WH",
         database="BENCHBOX",
         schema="PUBLIC",
     )

@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.core.dataframe.tuning import DataFrameTuningConfiguration
-from benchbox.core.deployment import deployment_class, select_adapter_deployment
+from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION, deployment_class, select_adapter_deployment
+from benchbox.core.removed_options import reject_removed_keywords
 from benchbox.platforms._spark_helpers import spark_aqe_conf_entries
 from benchbox.platforms.dataframe.expression_family import ExpressionFamilyAdapter
 from benchbox.platforms.dataframe.pyspark_df import (
@@ -41,10 +42,11 @@ class LakeSailDataFrameAdapter(PySparkDataFrameAdapter):
         driver_memory: str = "4g",
         shuffle_partitions: int | None = None,
         enable_aqe: bool = True,
-        deployment_mode: str | None = None,
+        _deployment_selector: str | None = None,
         allow_third_party_extensions: bool = False,
         **spark_config: Any,
     ) -> None:
+        reject_removed_keywords("lakesail", spark_config)
         if not PYSPARK_AVAILABLE:
             raise ImportError(
                 'PySpark not installed. Install with: pip install "benchbox[lakesail]"  (or: uv add benchbox --extra lakesail)\n'
@@ -64,7 +66,9 @@ class LakeSailDataFrameAdapter(PySparkDataFrameAdapter):
         self._shuffle_partitions = shuffle_partitions or os.cpu_count() or 8
         self._enable_aqe = enable_aqe
         self.allow_third_party_extensions = bool(allow_third_party_extensions)
-        self.deployment_selected = select_adapter_deployment("lakesail", {"deployment_mode": deployment_mode}, "local")
+        self.deployment_selected = select_adapter_deployment(
+            "lakesail", {DEPLOYMENT_SELECTOR_OPTION: _deployment_selector}, "local"
+        )
         self.deployment_selected_class = deployment_class("lakesail", self.deployment_selected)
         self._spark_config = spark_config
         self._spark: SparkSession | None = None

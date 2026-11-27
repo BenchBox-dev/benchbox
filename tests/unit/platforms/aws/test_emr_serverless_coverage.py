@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 from unittest.mock import MagicMock, patch
 
@@ -24,7 +25,7 @@ def adapter():
         from benchbox.platforms.aws import EMRServerlessAdapter
 
         yield EMRServerlessAdapter(
-            application_id="app-123",
+            compute_resource="app-123",
             s3_staging_dir="s3://bucket/prefix",
             execution_role_arn="arn:aws:iam::123:role/EMR",
         )
@@ -90,7 +91,7 @@ class TestEMRServerlessCoverage:
         adapter._submit_job_run(query)
 
         payload = s3_client.put_object.call_args.kwargs["Body"].decode()
-        compile(payload, "<generated>", "exec")
+        ast.parse(payload)
         assert json.dumps(query) in payload
 
     def test_wait_for_job_run_and_retrieve_results(self, adapter):

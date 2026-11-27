@@ -35,7 +35,7 @@ def _snowflake(**kwargs):
         account="acct",
         username="user",
         password="pass",
-        warehouse="WH",
+        compute_resource="WH",
         database="DB",
         strict_validation=False,
         **kwargs,
@@ -102,7 +102,7 @@ class TestSessionStatementsAreNotTuning:
     @patch("benchbox.platforms.clickhouse.setup.ClickHouseClient")
     def test_clickhouse_records_only_the_tuned_olap_settings(self, mock_client_class, _deps):
         mock_client_class.return_value = Mock()
-        adapter = ClickHouseAdapter(deployment_mode="server", strict_validation=False)
+        adapter = ClickHouseAdapter(_deployment_selector="server", strict_validation=False)
         adapter.tuning_enabled = True
         adapter._start_applied_tuning_ledger()
         connection = adapter.create_connection()

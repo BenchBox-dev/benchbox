@@ -21,7 +21,7 @@ class TestEMRServerlessAdapterInitialization:
 
         with pytest.raises(ConfigurationError, match="s3_staging_dir"):
             EMRServerlessAdapter(
-                application_id="00f123",
+                compute_resource="00f123",
                 execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
             )
 
@@ -31,7 +31,7 @@ class TestEMRServerlessAdapterInitialization:
 
         with pytest.raises(ConfigurationError, match="execution_role_arn"):
             EMRServerlessAdapter(
-                application_id="00f123",
+                compute_resource="00f123",
                 s3_staging_dir="s3://my-bucket/benchbox-data",
             )
 
@@ -39,7 +39,7 @@ class TestEMRServerlessAdapterInitialization:
 
         from benchbox.platforms.aws import EMRServerlessAdapter
 
-        with pytest.raises(ConfigurationError, match="application_id"):
+        with pytest.raises(ConfigurationError, match="compute_resource"):
             EMRServerlessAdapter(
                 s3_staging_dir="s3://my-bucket/benchbox-data",
                 execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
@@ -50,7 +50,7 @@ class TestEMRServerlessAdapterInitialization:
 
         with pytest.raises(ConfigurationError, match="Invalid S3"):
             EMRServerlessAdapter(
-                application_id="00f123",
+                compute_resource="00f123",
                 s3_staging_dir="/local/path",
                 execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
             )
@@ -65,7 +65,7 @@ class TestEMRServerlessAdapterInitialization:
             from benchbox.platforms.aws import EMRServerlessAdapter
 
             adapter = EMRServerlessAdapter(
-                application_id="00f12345abc67890",
+                compute_resource="00f12345abc67890",
                 s3_staging_dir="s3://my-bucket/benchbox-data",
                 execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
                 region="us-west-2",
@@ -108,7 +108,7 @@ class TestEMRServerlessAdapterInitialization:
             from benchbox.platforms.aws import EMRServerlessAdapter
 
             adapter = EMRServerlessAdapter(
-                application_id="00f123",
+                compute_resource="00f123",
                 s3_staging_dir="s3://my-bucket/data",
                 execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
             )
@@ -130,7 +130,7 @@ class TestEMRServerlessTableFormat:
             from benchbox.platforms.aws import EMRServerlessAdapter
 
             adapter = EMRServerlessAdapter(
-                application_id="app-123",
+                compute_resource="app-123",
                 s3_staging_dir="s3://bucket/data",
                 execution_role_arn="arn:aws:iam::123:role/R",
             )
@@ -145,7 +145,7 @@ class TestEMRServerlessTableFormat:
             from benchbox.platforms.aws import EMRServerlessAdapter
 
             adapter = EMRServerlessAdapter(
-                application_id="app-123",
+                compute_resource="app-123",
                 s3_staging_dir="s3://bucket/data",
                 execution_role_arn="arn:aws:iam::123:role/R",
                 table_format="delta",
@@ -162,7 +162,7 @@ class TestEMRServerlessTableFormat:
 
             adapter = EMRServerlessAdapter.from_config(
                 {
-                    "application_id": "app-123",
+                    "compute_resource": "app-123",
                     "s3_staging_dir": "s3://bucket/data",
                     "execution_role_arn": "arn:aws:iam::123:role/R",
                     "table_format": "iceberg",
@@ -182,7 +182,7 @@ class TestEMRServerlessAdapterPlatformInfo:
             from benchbox.platforms.aws import EMRServerlessAdapter
 
             adapter = EMRServerlessAdapter(
-                application_id="00f12345abc67890",
+                compute_resource="00f12345abc67890",
                 s3_staging_dir="s3://my-bucket/data",
                 execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
                 region="eu-west-1",
@@ -209,7 +209,7 @@ class TestEMRServerlessAdapterPlatformInfo:
             from benchbox.platforms.aws import EMRServerlessAdapter
 
             adapter = EMRServerlessAdapter(
-                application_id="00f123",
+                compute_resource="00f123",
                 s3_staging_dir="s3://my-bucket/data",
                 execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
             )
@@ -240,7 +240,7 @@ class TestEMRServerlessAdapterConnection:
             from benchbox.platforms.aws import EMRServerlessAdapter
 
             adapter = EMRServerlessAdapter(
-                application_id="00f123",
+                compute_resource="00f123",
                 s3_staging_dir="s3://my-bucket/data",
                 execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
             )
@@ -269,7 +269,7 @@ class TestEMRServerlessAdapterDataLoading:
             from benchbox.platforms.aws import EMRServerlessAdapter
 
             adapter = EMRServerlessAdapter(
-                application_id="00f123",
+                compute_resource="00f123",
                 s3_staging_dir="s3://bucket/data",
                 execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
             )
@@ -328,7 +328,7 @@ class TestEMRServerlessAdapterTuning:
             from benchbox.platforms.aws import EMRServerlessAdapter
 
             adapter = EMRServerlessAdapter(
-                application_id="00f123",
+                compute_resource="00f123",
                 s3_staging_dir="s3://bucket/data",
                 execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
             )
@@ -346,7 +346,7 @@ class TestEMRServerlessAdapterTuning:
             from benchbox.platforms.aws import EMRServerlessAdapter
 
             adapter = EMRServerlessAdapter(
-                application_id="00f123",
+                compute_resource="00f123",
                 s3_staging_dir="s3://bucket/data",
                 execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
             )
@@ -370,7 +370,7 @@ class TestEMRServerlessAdapterTuning:
             from benchbox.platforms.aws import EMRServerlessAdapter
 
             adapter = EMRServerlessAdapter(
-                application_id="00f123",
+                compute_resource="00f123",
                 s3_staging_dir="s3://bucket/data",
                 execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
             )
@@ -405,7 +405,7 @@ class TestEMRServerlessAdapterFromConfig:
             from benchbox.platforms.aws import EMRServerlessAdapter
 
             config = {
-                "application_id": "00f12345",
+                "compute_resource": "00f12345",
                 "s3_staging_dir": "s3://test-bucket/data",
                 "execution_role_arn": "arn:aws:iam::123456789012:role/EMRRole",
                 "region": "ap-southeast-1",
@@ -431,7 +431,7 @@ class TestEMRServerlessAdapterClose:
             from benchbox.platforms.aws import EMRServerlessAdapter
 
             adapter = EMRServerlessAdapter(
-                application_id="00f123",
+                compute_resource="00f123",
                 s3_staging_dir="s3://bucket/data",
                 execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
             )
@@ -461,7 +461,7 @@ class TestLoadDataRequestedFormat:
             from benchbox.platforms.aws import EMRServerlessAdapter
 
             adapter = EMRServerlessAdapter(
-                application_id="00f123",
+                compute_resource="00f123",
                 s3_staging_dir="s3://bucket/data",
                 execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
             )

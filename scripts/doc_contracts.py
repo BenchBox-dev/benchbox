@@ -217,15 +217,15 @@ def _platform_manifest() -> dict[str, Any]:
 
 def _execution() -> dict[str, Any]:
     from benchbox.core.compute_resource import COMPUTE_RESOURCE_OPTION, COMPUTE_SIZE_OPTION, get_compute_declaration
-    from benchbox.core.deployment import DEPLOYMENT_ALIAS_KEYS
+    from benchbox.core.deployment import DEPLOYMENT_SELECTOR_PLATFORMS
     from benchbox.core.execution_engine import (
         DEFAULT_EXECUTION_ENGINE,
-        DEPRECATED_OPTION_ALIASES,
         EXECUTION_ENGINE_CLASSES,
         RESERVED_OPTION_KEYS,
         supported_execution_engines,
     )
     from benchbox.core.platform_manifest import PLATFORM_MANIFEST
+    from benchbox.core.removed_options import REMOVED_IN, removed_option_pairs, removed_option_replacement
 
     engines: dict[str, Any] = {}
     compute: dict[str, Any] = {}
@@ -240,19 +240,20 @@ def _execution() -> dict[str, Any]:
         if declaration is not None:
             compute[entry.key] = {
                 "resource_kind": declaration.resource_kind,
-                "resource_aliases": sorted(declaration.resource_aliases),
-                "size_aliases": sorted(declaration.size_aliases),
+                "native_resource_keys": sorted(declaration.native_resource_keys),
+                "native_size_keys": sorted(declaration.native_size_keys),
                 "size_choices": sorted(str(choice) for choice in declaration.size_choices),
             }
     return {
         "default_engine": DEFAULT_EXECUTION_ENGINE,
         "engine_classes": list(EXECUTION_ENGINE_CLASSES),
         "reserved_option_keys": sorted(RESERVED_OPTION_KEYS),
-        "deprecated_option_aliases": [
-            {"platform": platform, "key": key, "target": alias.target, "removed_in": alias.removed_in}
-            for (platform, key), alias in sorted(DEPRECATED_OPTION_ALIASES.items())
+        "removed_in": REMOVED_IN,
+        "removed_options": [
+            {"platform": platform, "key": key, "replacement": removed_option_replacement(platform, key)}
+            for platform, key in removed_option_pairs()
         ],
-        "deployment_alias_keys": {platform: sorted(keys) for platform, keys in sorted(DEPLOYMENT_ALIAS_KEYS.items())},
+        "deployment_selector_platforms": sorted(DEPLOYMENT_SELECTOR_PLATFORMS),
         "engines": engines,
         "compute_resource_option": COMPUTE_RESOURCE_OPTION,
         "compute_size_option": COMPUTE_SIZE_OPTION,

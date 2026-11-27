@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, cast
 if TYPE_CHECKING:
     from benchbox.core.execution_engine import ExecutionEngineReceipt
 
-from benchbox.core.deprecation_notices import warn_deprecated_alias
+from benchbox.core.removed_options import reject_removed_keywords
 from benchbox.utils.clock import elapsed_seconds, mono_time
 
 try:
@@ -92,6 +92,8 @@ class PolarsAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
     def from_config(cls, config: dict[str, Any]):
         from pathlib import Path
 
+        reject_removed_keywords("polars", config)
+
         from benchbox.utils.database_naming import generate_database_filename
         from benchbox.utils.scale_factor import format_benchmark_name
 
@@ -141,8 +143,6 @@ class PolarsAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
         ]:
             if key in config:
                 adapter_config[key] = config[key]
-        if "streaming" in config:
-            adapter_config["streaming"] = config["streaming"]
 
         return cls(**adapter_config)
 
@@ -161,10 +161,6 @@ class PolarsAdapter(NoConstraintEnforcementMixin, PlatformAdapter):
         self.n_rows = config.get("n_rows")
         self.rechunk = config.get("rechunk", True)
         self._engine_receipt = self.resolve_execution_engine(config.get("execution_engine") or "default")
-        if config.get("streaming", False):
-            warn_deprecated_alias(
-                "polars", "streaming", "no value ('streaming' has no effect on the SQL Polars adapter)"
-            )
 
         self._table_schemas: dict[str, dict] = {}
 

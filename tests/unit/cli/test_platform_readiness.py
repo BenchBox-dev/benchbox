@@ -52,8 +52,8 @@ def test_lakesail_unreachable_endpoint_reports_environment_skip_without_starting
     monkeypatch.setattr(readiness, "_module_available", module_available)
     monkeypatch.setattr(
         readiness,
-        "_configured_lakesail_config",
-        lambda: readiness.LakeSailReadinessConfig(endpoint="sc://localhost:50051", sail_mode="local"),
+        "_configured_lakesail_endpoint",
+        lambda: "sc://localhost:50051",
     )
     monkeypatch.setattr(readiness, "_tcp_reachable", lambda host, port, timeout: False)
 
@@ -77,8 +77,8 @@ def test_lakesail_sql_unreachable_endpoint_is_ready_when_pysail_importable(monke
     monkeypatch.setattr(readiness, "_module_available", module_available)
     monkeypatch.setattr(
         readiness,
-        "_configured_lakesail_config",
-        lambda: readiness.LakeSailReadinessConfig(endpoint="sc://localhost:50051", sail_mode="local"),
+        "_configured_lakesail_endpoint",
+        lambda: "sc://localhost:50051",
     )
     monkeypatch.setattr(readiness, "_tcp_reachable", lambda host, port, timeout: False)
 
@@ -90,28 +90,12 @@ def test_lakesail_sql_unreachable_endpoint_is_ready_when_pysail_importable(monke
     assert "auto-start" in results[1].summary or "auto-start" in (results[1].detail or "")
 
 
-def test_lakesail_sql_unreachable_distributed_endpoint_is_environment_skip_when_pysail_importable(monkeypatch):
-    monkeypatch.setattr(readiness, "_module_available", lambda name: name in {"pyspark", "pysail"})
-    monkeypatch.setattr(
-        readiness,
-        "_configured_lakesail_config",
-        lambda: readiness.LakeSailReadinessConfig(endpoint="sc://remote-sail:50051", sail_mode="distributed"),
-    )
-    monkeypatch.setattr(readiness, "_tcp_reachable", lambda host, port, timeout: False)
-
-    results = readiness.check_platform_readiness("lakesail")
-
-    assert results[1].check == "spark_connect_endpoint"
-    assert results[1].status == "environment_skip"
-    assert "sail_mode='distributed'" in results[1].detail
-
-
 def test_lakesail_dataframe_mode_still_requires_running_endpoint(monkeypatch):
     monkeypatch.setattr(readiness, "_module_available", lambda name: name in {"pyspark", "pysail"})
     monkeypatch.setattr(
         readiness,
-        "_configured_lakesail_config",
-        lambda: readiness.LakeSailReadinessConfig(endpoint="sc://localhost:50051", sail_mode="local"),
+        "_configured_lakesail_endpoint",
+        lambda: "sc://localhost:50051",
     )
     monkeypatch.setattr(readiness, "_tcp_reachable", lambda host, port, timeout: False)
 
@@ -125,8 +109,8 @@ def test_lakesail_reachable_endpoint_is_ready(monkeypatch):
     monkeypatch.setattr(readiness, "_module_available", lambda name: name == "pyspark")
     monkeypatch.setattr(
         readiness,
-        "_configured_lakesail_config",
-        lambda: readiness.LakeSailReadinessConfig(endpoint="sc://sail-host:50052", sail_mode="distributed"),
+        "_configured_lakesail_endpoint",
+        lambda: "sc://sail-host:50052",
     )
     monkeypatch.setattr(readiness, "_tcp_reachable", lambda host, port, timeout: (host, port) == ("sail-host", 50052))
 

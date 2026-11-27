@@ -20,7 +20,7 @@ def _adapter() -> AthenaSparkAdapter:
         patch("benchbox.platforms.aws.athena_spark_adapter.CloudSparkStaging") as mock_staging,
     ):
         mock_staging.from_uri.return_value = MagicMock()
-        return AthenaSparkAdapter(workgroup="wg", s3_staging_dir="s3://bucket/path")
+        return AthenaSparkAdapter(compute_resource="wg", s3_staging_dir="s3://bucket/path")
 
 
 def _benchmark(*tables: str) -> SimpleNamespace:
@@ -268,6 +268,7 @@ def test_submit_calculation_with_wait() -> None:
 
 
 def test_submit_calculation_escapes_quote_bearing_sql() -> None:
+    import ast
     import json
 
     adapter = _adapter()
@@ -283,7 +284,7 @@ def test_submit_calculation_escapes_quote_bearing_sql() -> None:
         adapter._submit_calculation(query, wait_for_completion=False)
 
     code = client.start_calculation_execution.call_args.kwargs["CodeBlock"]
-    compile(code, "<generated>", "exec")
+    ast.parse(code)
     assert json.dumps(query) in code
 
 
@@ -462,7 +463,7 @@ def test_add_cli_arguments_registers_options() -> None:
 def test_from_config_creates_adapter() -> None:
     from benchbox.platforms.aws import AthenaSparkAdapter
 
-    config = {"workgroup": "my-wg", "s3_staging_dir": "s3://bucket/path", "region": "us-west-2"}
+    config = {"compute_resource": "my-wg", "s3_staging_dir": "s3://bucket/path", "region": "us-west-2"}
     adapter = AthenaSparkAdapter.from_config(config)
     assert adapter.workgroup == "my-wg"
     assert adapter.region == "us-west-2"

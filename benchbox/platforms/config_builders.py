@@ -4,6 +4,7 @@ from collections.abc import Callable
 from functools import partial
 from typing import Any
 
+from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION
 from benchbox.core.platform_registry import PlatformInfo
 from benchbox.core.schemas import DatabaseConfig
 from benchbox.utils.path_utils import resolve_benchmark_runs_dir
@@ -48,7 +49,7 @@ def _build(
 
 
 def _build_clickhouse_config(platform, options, overrides, info) -> DatabaseConfig:
-    if options.get("deployment_mode") == "local" and not options.get("data_path"):
+    if options.get(DEPLOYMENT_SELECTOR_OPTION) == "local" and not options.get("data_path"):
         options["data_path"] = _local_chdb_path()
     return _build(platform, options, overrides, info, display_name="ClickHouse")
 

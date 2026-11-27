@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     pass
 
 from benchbox.core.exceptions import ConfigurationError
+from benchbox.core.removed_options import reject_removed_adapter_keywords
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
 from benchbox.platforms.base.cloud_spark import (
     CloudSparkConfigMixin,
@@ -76,7 +77,7 @@ class QuantonAdapter(
         region: str = "us-east-1",
         database: str | None = None,
         table_format: str = "iceberg",
-        cluster_size: str = "small",
+        compute_size: str = "small",
         timeout_minutes: int = 60,
         api_endpoint: str | None = None,
         record_key: str | None = None,
@@ -84,6 +85,7 @@ class QuantonAdapter(
         hudi_table_type: str = "COPY_ON_WRITE",
         **kwargs: Any,
     ) -> None:
+        reject_removed_adapter_keywords(type(self), kwargs)
         resolved_api_key = api_key or os.environ.get("ONEHOUSE_API_KEY")
         if not resolved_api_key:
             raise ConfigurationError(
@@ -111,7 +113,7 @@ class QuantonAdapter(
         self.region = region
         self.database = database or "benchbox"
         self.table_format_str = table_format.lower()
-        self.cluster_size = cluster_size
+        self.cluster_size = compute_size
         self.timeout_minutes = timeout_minutes
         self.api_endpoint = api_endpoint
 
@@ -133,7 +135,7 @@ class QuantonAdapter(
             logger.warning(f"Failed to initialize S3 staging: {e}")
 
         cluster_config = ClusterConfig(
-            cluster_size=cluster_size,
+            cluster_size=compute_size,
             auto_scaling=True,
         )
         self._client = OnehouseClient(
@@ -426,12 +428,6 @@ class QuantonAdapter(
             help="Table format: iceberg, hudi, or delta (default: iceberg)",
         )
         group.add_argument(
-            "--cluster-size",
-            choices=["small", "medium", "large", "xlarge"],
-            default="small",
-            help="Cluster size (default: small)",
-        )
-        group.add_argument(
             "--database",
             default="benchbox",
             help="Database name (default: benchbox)",
@@ -456,16 +452,13 @@ class QuantonAdapter(
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> QuantonAdapter:
-        from benchbox.core.compute_resource import normalize_compute_options
-
-        config = normalize_compute_options("quanton", config)
         params = {
             "api_key": config.get("api_key") or config.get("onehouse_api_key"),
             "s3_staging_dir": config.get("s3_staging_dir"),
             "region": config.get("region", "us-east-1"),
             "database": config.get("database", "benchbox"),
             "table_format": config.get("table_format", "iceberg"),
-            "cluster_size": config.get("compute_size") or config.get("cluster_size", "small"),
+            "compute_size": config.get("compute_size") or "small",
             "timeout_minutes": config.get("timeout_minutes", 60),
             "api_endpoint": config.get("api_endpoint"),
             "record_key": config.get("record_key"),
@@ -497,5 +490,5 @@ _build_quanton_config = make_platform_config_builder(
     __name__,
     "Onehouse Quanton",
     "requests",
-    ["api_key", "s3_staging_dir", "region", "database", "table_format"],
+    ["api_key", "s3_staging_dir", "region", "database", "table_format", "compute_size"],
 )

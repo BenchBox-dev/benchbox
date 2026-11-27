@@ -21,7 +21,6 @@ from benchbox.core.benchmark_registry import get_benchmark_default_scale
 from benchbox.core.execution_engine import UnsupportedExecutionEngineError, resolve_requested
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
 from benchbox.core.platform_registry import PlatformRegistry
-from benchbox.core.run_service import warn_polars_streaming_flag
 from benchbox.platforms import is_dataframe_platform, list_available_dataframe_platforms
 from benchbox.platforms.adapter_factory import _reject_removed_platform
 
@@ -69,7 +68,7 @@ def _apply_dataframe_suffix_mode(s: types.SimpleNamespace) -> None:
 def _split_deployment_selector(raw: str | None) -> tuple[str | None, str | None]:
     if not raw:
         return None, None
-    from benchbox.core.deployment import DEPLOYMENT_ALIAS_KEYS
+    from benchbox.core.deployment import DEPLOYMENT_SELECTOR_PLATFORMS
 
     key = normalize_platform_name(raw)
     if ":" not in key:
@@ -81,56 +80,18 @@ def _split_deployment_selector(raw: str | None) -> tuple[str | None, str | None]
         return key, None
     if resolved != normalize_platform_name(base):
         return resolved, None
-    if resolved not in DEPLOYMENT_ALIAS_KEYS:
+    if resolved not in DEPLOYMENT_SELECTOR_PLATFORMS:
         return key, None
     return resolved, suffix
 
 
 def _apply_deployment_selector_option(s: types.SimpleNamespace) -> None:
-    from benchbox.core.deployment import (
-        DEPLOYMENT_ALIAS_KEYS,
-        normalize_deployment_value,
-        note_deprecated_alias,
-    )
+    from benchbox.core.deployment import DEPLOYMENT_SELECTOR_PLATFORMS, normalize_deployment_value
 
     base = s.platform_key or ""
     selector = getattr(s, "deployment_selector", None)
-    if base not in DEPLOYMENT_ALIAS_KEYS:
-        return
-    if selector is not None:
-        selector = normalize_deployment_value(base, selector)
-        s.deployment_selector = selector
-    specs = PlatformHookRegistry.list_option_specs(base)
-    alias_to_canonical = {alias.lower(): name for name, spec in specs.items() for alias in spec.aliases}
-
-    def _canonical(raw_key: str) -> str:
-        lowered = raw_key.lower()
-        return alias_to_canonical.get(lowered, lowered)
-
-    raw_keys = [key for key, _value in (s.platform_option_pairs or ())]
-    canonical_keys = {_canonical(key) for key in raw_keys}
-    spelling: dict[str, str] = {}
-    for raw_key in raw_keys:
-        spelling[_canonical(raw_key)] = raw_key
-    parsed = s.parsed_platform_options or {}
-    seen: set[str] = set()
-    for alias in DEPLOYMENT_ALIAS_KEYS[base]:
-        canonical = alias_to_canonical.get(alias, alias)
-        if canonical in seen or canonical not in canonical_keys or parsed.get(canonical) is None:
-            continue
-        seen.add(canonical)
-        typed = spelling.get(canonical, canonical)
-        value = normalize_deployment_value(base, parsed[canonical])
-        if selector is not None and value != selector:
-            console.print(
-                f"[red]❌ Deployment selector '{base}:{selector}' conflicts with "
-                f"platform option '{typed}={escape(str(parsed[canonical]))}'. Use one deployment selection.[/red]"
-            )
-            if s.logger:
-                s.logger.error("Deployment selector conflicts with deprecated deployment option")
-            s.ctx.exit(1)
-            return
-        note_deprecated_alias(base, typed, value)
+    if base in DEPLOYMENT_SELECTOR_PLATFORMS and selector is not None:
+        s.deployment_selector = normalize_deployment_value(base, selector)
 
 
 def _apply_gateway_option(s: types.SimpleNamespace) -> None:
@@ -161,8 +122,6 @@ def _parse_plat_bench_options(s: types.SimpleNamespace) -> None:
     set_quiet_output(s.verbosity_settings.quiet)
     s.ctx.obj["verbosity"] = s.verbosity_settings
     s.verbosity_payload = s.verbosity_settings.to_config()
-    if getattr(s, "polars_streaming", False):
-        warn_polars_streaming_flag()
 
     _apply_dataframe_suffix_mode(s)
     s.platform_key, s.deployment_selector = _split_deployment_selector(s.platform)

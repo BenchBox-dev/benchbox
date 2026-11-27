@@ -21,6 +21,28 @@ from benchbox.utils.format_converters.base import (
 )
 
 
+def _row_groups(batches: Iterator[pa.RecordBatch], schema: pa.Schema, size: int) -> Iterator[pa.Table]:
+    buffer: list[pa.RecordBatch] = []
+    buffered_rows = 0
+    for batch in batches:
+        buffer.append(batch)
+        buffered_rows += batch.num_rows
+        if buffered_rows < size:
+            continue
+        table = pa.Table.from_batches(buffer, schema=schema).combine_chunks()
+        buffer = []
+        offset = 0
+        while table.num_rows - offset >= size:
+            yield table.slice(offset, size)
+            offset += size
+        buffered_rows = table.num_rows - offset
+        if buffered_rows:
+            buffer = table.slice(offset).combine_chunks().to_batches()
+        del table
+    if buffered_rows:
+        yield pa.Table.from_batches(buffer, schema=schema).combine_chunks()
+
+
 class ParquetConverter(BaseFormatConverter):
     def get_file_extension(self) -> str:
         return ".parquet"
@@ -122,57 +144,33 @@ class ParquetConverter(BaseFormatConverter):
         rows_read = 0
         rows_written = 0
         row_group_target = opts.row_group_size
-        buffer: list[pa.RecordBatch] = []
-        buffered_rows = 0
+
+        def _count_rows() -> Iterator[pa.RecordBatch]:
+            nonlocal rows_read
+            for batch in self.iter_record_batches(
+                source_files,
+                schema,
+                options=opts,
+                progress_callback=progress_callback,
+                progress_start=0.0,
+                progress_end=0.8,
+                source_line_counter=source_line_counter,
+            ):
+                rows_read += batch.num_rows
+                yield batch
 
         try:
             with pq.ParquetWriter(output_path, arrow_schema, **writer_kwargs) as writer:
-                for batch in self.iter_record_batches(
-                    source_files,
-                    schema,
-                    options=opts,
-                    progress_callback=progress_callback,
-                    progress_start=0.0,
-                    progress_end=0.8,
-                    source_line_counter=source_line_counter,
-                ):
-                    rows_read += batch.num_rows
-                    buffer.append(batch)
-                    buffered_rows += batch.num_rows
-
-                    if buffered_rows >= row_group_target:
-                        if progress_callback and rows_written == 0:
-                            progress_callback("Writing Parquet file", 0.9)
-                        table = pa.Table.from_batches(buffer, schema=arrow_schema)
-                        buffer.clear()
-                        offset = 0
-                        total = table.num_rows
-                        while total - offset >= row_group_target:
-                            chunk = table.slice(offset, row_group_target)
-                            writer.write_table(chunk, row_group_size=row_group_target)
-                            rows_written += chunk.num_rows
-                            offset += row_group_target
-                        remainder = table.slice(offset)
-                        if remainder.num_rows > 0:
-                            compacted = remainder.combine_chunks()
-                            buffer = compacted.to_batches()
-                            buffered_rows = compacted.num_rows
-                        else:
-                            buffered_rows = 0
-                        del table, remainder
-                        pa.default_memory_pool().release_unused()
-
-                if progress_callback and rows_written == 0:
-                    progress_callback("Writing Parquet file", 0.9)
-
-                if buffer:
-                    tail = pa.Table.from_batches(buffer, schema=arrow_schema)
-                    buffer.clear()
-                    writer.write_table(tail, row_group_size=row_group_target)
-                    rows_written += tail.num_rows
-                    del tail
+                for group in _row_groups(_count_rows(), arrow_schema, row_group_target):
+                    if progress_callback and rows_written == 0:
+                        progress_callback("Writing Parquet file", 0.9)
+                    writer.write_table(group, row_group_size=row_group_target)
+                    rows_written += group.num_rows
                     pa.default_memory_pool().release_unused()
-                elif rows_written == 0:
+
+                if rows_written == 0:
+                    if progress_callback:
+                        progress_callback("Writing Parquet file", 0.9)
                     writer.write_table(pa.Table.from_pylist([], schema=arrow_schema), row_group_size=row_group_target)
         except ConversionError:
             if output_path.exists():
@@ -322,6 +320,7 @@ class ParquetConverter(BaseFormatConverter):
                 partitioning=partitioning,
                 basename_template="part-{i}.parquet",
                 existing_data_behavior="overwrite_or_ignore",
+                preserve_order=True,
                 min_rows_per_group=opts.row_group_size,
                 max_rows_per_group=opts.row_group_size,
                 file_options=ds.ParquetFileFormat().make_write_options(

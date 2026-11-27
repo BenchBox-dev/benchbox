@@ -335,8 +335,7 @@ def _adapter_service_ports() -> dict[str, int]:
 PLATFORM_SERVICE_PORT: dict[str, int] = _adapter_service_ports()
 
 _PLATFORM_STATIC_OPTS: dict[str, list[str]] = {
-    "velox": ["--platform-option", "deployment=remote"],
-    "databend": ["--platform-option", "deployment_mode=self-hosted", "--platform-option", "host=localhost"],
+    "databend": ["--platform-option", "host=localhost"],
     "influxdb": [
         "--platform-option",
         "host=localhost",
@@ -348,7 +347,9 @@ _PLATFORM_STATIC_OPTS: dict[str, list[str]] = {
 }
 
 _PLATFORM_CLI_SELECTORS: dict[str, str] = {
+    "databend": "databend:self-hosted",
     "influxdb": "influxdb:core",
+    "velox": "velox:remote",
 }
 
 

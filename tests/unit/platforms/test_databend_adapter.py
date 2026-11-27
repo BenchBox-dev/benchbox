@@ -54,6 +54,10 @@ class TestDatabendAdapterInitialization:
         assert adapter.dsn == "databend+http://root:@localhost:8000/test_db"
         assert adapter.database == "benchbox"
 
+    def test_removed_warehouse_keyword_is_rejected(self):
+        with pytest.raises(TypeError, match="'warehouse' for 'databend' was removed.*'compute_resource'"):
+            DatabendAdapter(host="cloud.example.com", warehouse="my_wh")
+
     def test_initialization_with_cloud_config(self):
         try:
             adapter = DatabendAdapter(
@@ -61,7 +65,7 @@ class TestDatabendAdapterInitialization:
                 username="benchbox",
                 password="cloud_pass",
                 database="analytics",
-                warehouse="my_warehouse",
+                compute_resource="my_warehouse",
             )
         except ImportError:
             pytest.skip("databend-driver not installed")
@@ -157,7 +161,7 @@ class TestDatabendDSNBuilding:
                 host="cloud.example.com",
                 username="user",
                 password="pass",
-                warehouse="my_wh",
+                compute_resource="my_wh",
             )
         except ImportError:
             pytest.skip("databend-driver not installed")
@@ -608,7 +612,7 @@ class TestDatabendPlatformInfo:
             adapter = DatabendAdapter(
                 host="example.com",
                 password="pass",
-                warehouse="my_wh",
+                compute_resource="my_wh",
             )
         except ImportError:
             pytest.skip("databend-driver not installed")

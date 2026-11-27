@@ -150,7 +150,7 @@ class TestDatabendConfigBuilder:
             "password": "secret",
             "database": "default",
             "dsn": "databend://...",
-            "warehouse": "wh1",
+            "compute_resource": "wh1",
             "ssl": True,
             "disable_result_cache": True,
         }
@@ -161,7 +161,7 @@ class TestDatabendConfigBuilder:
         assert config.password == "secret"
         assert config.database == "default"
         assert config.dsn == "databend://..."
-        assert config.warehouse == "wh1"
+        assert config.compute_resource == "wh1"
         assert config.ssl is True
         assert config.disable_result_cache is True
 

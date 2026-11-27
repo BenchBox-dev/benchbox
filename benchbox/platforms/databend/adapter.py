@@ -84,9 +84,7 @@ class DatabendAdapter(PlatformAdapter):
         self.deployment_selected_class = deployment_class("databend", self.deployment_mode)
         self.ssl = self._coerce_bool(config.get("ssl"), self.deployment_mode == DEFAULT_DEPLOYMENT)
 
-        self.warehouse = (
-            config.get("compute_resource") or config.get("warehouse") or os.environ.get("DATABEND_WAREHOUSE")
-        )
+        self.warehouse = config.get("compute_resource") or os.environ.get("DATABEND_WAREHOUSE")
 
         self.disable_result_cache = self._coerce_bool(config.get("disable_result_cache"), True)
 
@@ -144,11 +142,6 @@ class DatabendAdapter(PlatformAdapter):
             help="Full Databend DSN (overrides individual connection params)",
         )
         databend_group.add_argument(
-            "--warehouse",
-            type=str,
-            help="Databend Cloud warehouse name",
-        )
-        databend_group.add_argument(
             "--disable-result-cache",
             action="store_true",
             default=True,
@@ -177,9 +170,7 @@ class DatabendAdapter(PlatformAdapter):
                     "password",
                     "dsn",
                     "ssl",
-                    "deployment_mode",
                     "compute_resource",
-                    "warehouse",
                     "disable_result_cache",
                     "admin_database",
                 ],

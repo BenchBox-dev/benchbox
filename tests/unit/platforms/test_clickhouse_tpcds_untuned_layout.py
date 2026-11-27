@@ -38,7 +38,7 @@ def untuned_tpcds_ddl(tmp_path_factory: pytest.TempPathFactory) -> dict[str, str
     with patch("benchbox.platforms.clickhouse.setup.ClickHouseClient") as client_class:
         client = Mock()
         client_class.return_value = client
-        adapter = ClickHouseAdapter(deployment_mode="server")
+        adapter = ClickHouseAdapter(_deployment_selector="server")
         adapter.tuning_enabled = False
         adapter.create_schema(benchmark, adapter.create_connection())
     statements = [str(call.args[0]) for call in client.execute.call_args_list]

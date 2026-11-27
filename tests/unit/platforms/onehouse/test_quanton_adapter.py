@@ -80,7 +80,7 @@ class TestQuantonAdapterInitialization:
                 region="us-west-2",
                 database="my_benchmark_db",
                 table_format="iceberg",
-                cluster_size="medium",
+                compute_size="medium",
             )
 
             assert adapter.s3_bucket == "my-bucket"
@@ -363,7 +363,7 @@ class TestQuantonAdapterFromConfig:
                 "region": "ap-southeast-1",
                 "database": "test_db",
                 "table_format": "delta",
-                "cluster_size": "large",
+                "compute_size": "large",
             }
 
             adapter = QuantonAdapter.from_config(config)

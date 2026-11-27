@@ -24,7 +24,7 @@ def influxdb_adapter():
         port=8181,
         token="test",
         database="benchbox_test",
-        mode="core",
+        _deployment_selector="core",
         ssl=False,
     )
     adapter.skip_database_management = True

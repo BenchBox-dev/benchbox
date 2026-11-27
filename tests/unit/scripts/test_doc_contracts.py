@@ -109,7 +109,7 @@ def test_benchmark_facts_are_internally_consistent(contracts: dict[str, Any]) ->
 def test_platform_option_kinds_capture_the_hook_registry(contracts: dict[str, Any]) -> None:
     databend = contracts["platform_options"]["platforms"]["databend"]
     assert databend["disable_result_cache"]["value_kind"] == "boolean"
-    assert databend["compute_resource"]["aliases"] == ["warehouse"]
+    assert databend["compute_resource"]["aliases"] == []
     kinds = {
         spec["value_kind"]
         for options in contracts["platform_options"]["platforms"].values()
@@ -123,8 +123,14 @@ def test_execution_vocabulary_facts(contracts: dict[str, Any]) -> None:
     assert execution["default_engine"] == "default"
     assert execution["default_engine"] not in execution["engine_classes"]
     assert execution["engines"]["databricks"]["selectable"] == sorted(execution["engines"]["databricks"]["selectable"])
-    assert execution["compute"]["databricks"]["resource_aliases"] == ["warehouse_id"]
+    assert execution["compute"]["databricks"]["native_resource_keys"] == ["warehouse_id"]
     assert {"engine", "mode", "backend", "runtime", "executor", "warehouse"} == set(execution["reserved_option_keys"])
+    assert execution["removed_in"] == "0.6.0"
+    removed = {(item["platform"], item["key"]): item["replacement"] for item in execution["removed_options"]}
+    assert removed[("snowflake", "warehouse")] == "'compute_resource'"
+    assert ("clickhouse", "mode") in removed
+    assert ("polars", "streaming") in removed
+    assert ("databricks", "warehouse_id") in removed
 
 
 def test_cli_commands_expose_the_documented_surface(contracts: dict[str, Any]) -> None:

@@ -10,7 +10,6 @@ import benchbox.platforms.pg_duckdb as pg_duckdb_module
 import benchbox.platforms.postgresql as postgresql_module
 from benchbox.platforms.pg_duckdb import PgDuckDBAdapter
 from benchbox.platforms.postgresql import POSTGRES_DIALECT
-from tests.utilities.deprecation_capture import captured_deprecations
 
 pytestmark = [
     pytest.mark.unit,
@@ -92,25 +91,24 @@ class TestPgDuckDBAdapter:
         assert adapter.force_execution is True
         assert adapter.postgres_scan_threads == 8
 
-    def test_saved_config_force_execution_alias_warns_and_maps(self, pg_duckdb_stubs, caplog):
-        with captured_deprecations(caplog) as seen:
-            adapter = PgDuckDBAdapter.from_config(
-                {
-                    "benchmark": "tpch",
-                    "scale_factor": 1.0,
-                    "execution_engine": "default",
-                    "options": {"force_execution": False},
-                }
-            )
+    @pytest.mark.parametrize(
+        ("kwargs", "replacement"),
+        [
+            ({"force_execution": False}, "--execution-engine postgres"),
+            ({"deployment_mode": "motherduck"}, "--platform pg-duckdb:"),
+        ],
+    )
+    def test_removed_keywords_are_rejected(self, pg_duckdb_stubs, kwargs, replacement):
+        with pytest.raises(TypeError, match=replacement):
+            PgDuckDBAdapter(**kwargs)
 
-        assert len(seen) == 1
-        assert "'force_execution'" in seen[0]
-        receipt = adapter.get_platform_info()["configuration"]["execution_engine"]
+    def test_from_config_explicit_postgres_engine(self, pg_duckdb_stubs):
+        adapter = PgDuckDBAdapter.from_config(
+            {"benchmark": "tpch", "scale_factor": 1.0, "execution_engine": "postgres"}
+        )
+
         assert adapter.force_execution is False
-        assert receipt["requested"] == "postgres"
-        assert receipt["applied"] == "postgres"
-        assert receipt["applied_class"] == "standard"
-        assert receipt["resolution"] == "legacy_option"
+        assert adapter.get_platform_info()["configuration"]["execution_engine"]["resolution"] == "explicit"
 
     def test_from_config_generates_database_name(self, pg_duckdb_stubs):
         config = {
@@ -331,13 +329,13 @@ class TestPgDuckDBMotherDuckMode:
         monkeypatch.delenv("MOTHERDUCK_TOKEN", raising=False)
 
         with pytest.raises(ValueError, match="MotherDuck deployment mode requires authentication token"):
-            PgDuckDBAdapter(deployment_mode="motherduck")
+            PgDuckDBAdapter(_deployment_selector="motherduck")
 
     def test_motherduck_mode_accepts_config_token(self, pg_duckdb_stubs, monkeypatch):
         monkeypatch.delenv("MOTHERDUCK_TOKEN", raising=False)
 
         adapter = PgDuckDBAdapter(
-            deployment_mode="motherduck",
+            _deployment_selector="motherduck",
             motherduck_token="test_token_123",
         )
 
@@ -347,14 +345,14 @@ class TestPgDuckDBMotherDuckMode:
     def test_motherduck_mode_accepts_env_token(self, pg_duckdb_stubs, monkeypatch):
         monkeypatch.setenv("MOTHERDUCK_TOKEN", "env_token_456")
 
-        adapter = PgDuckDBAdapter(deployment_mode="motherduck")
+        adapter = PgDuckDBAdapter(_deployment_selector="motherduck")
 
         assert adapter.deployment_mode == "motherduck"
         assert adapter.motherduck_token == "env_token_456"
 
     def test_invalid_deployment_mode_raises(self, pg_duckdb_stubs):
         with pytest.raises(ValueError, match="does not support deployment mode"):
-            PgDuckDBAdapter(deployment_mode="invalid")
+            PgDuckDBAdapter(_deployment_selector="invalid")
 
     def test_create_connection_sets_motherduck_token(self, pg_duckdb_stubs, monkeypatch):
         monkeypatch.delenv("MOTHERDUCK_TOKEN", raising=False)
@@ -373,7 +371,7 @@ class TestPgDuckDBMotherDuckMode:
         pg_duckdb_stubs.connect.return_value = mock_conn
 
         adapter = PgDuckDBAdapter(
-            deployment_mode="motherduck",
+            _deployment_selector="motherduck",
             motherduck_token="md_token_789",
         )
 
@@ -404,7 +402,7 @@ class TestPgDuckDBMotherDuckMode:
         pg_duckdb_stubs.connect.return_value = mock_conn
 
         adapter = PgDuckDBAdapter(
-            deployment_mode="motherduck",
+            _deployment_selector="motherduck",
             motherduck_token="md_token_789",
         )
 
@@ -452,7 +450,6 @@ class TestPgDuckDBConfigBuilder:
         options = {
             "host": "localhost",
             "port": 5432,
-            "force_execution": True,
             "postgres_scan_threads": 4,
         }
         overrides = {"scale_factor": 1.0}
@@ -461,7 +458,6 @@ class TestPgDuckDBConfigBuilder:
 
         assert config.host == "localhost"
         assert config.port == 5432
-        assert config.force_execution is True
         assert config.postgres_scan_threads == 4
         assert config.scale_factor == 1.0
 
@@ -479,7 +475,6 @@ class TestPgDuckDBConfigBuilder:
         assert config.maintenance_work_mem == "512MB"
         assert config.effective_cache_size == "1GB"
         assert config.max_parallel_workers_per_gather == 2
-        assert config.force_execution is None
         assert config.postgres_scan_threads == 0
 
     def test_platform_option_defaults_keep_numeric_types(self, pg_duckdb_stubs):
@@ -503,7 +498,7 @@ class TestPgDuckDBFromConfigPassthrough:
     def test_from_config_passes_deployment_mode(self, pg_duckdb_stubs):
         from benchbox.platforms.pg_duckdb import PgDuckDBAdapter
 
-        config = {"deployment_mode": "motherduck", "motherduck_token": "test_token_123"}
+        config = {"_deployment_selector": "motherduck", "motherduck_token": "test_token_123"}
         adapter = PgDuckDBAdapter.from_config(config)
 
         assert adapter.deployment_mode == "motherduck"

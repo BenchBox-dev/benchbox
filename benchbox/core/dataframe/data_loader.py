@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 DEFAULT_CACHE_DIR = Path("benchmark_runs") / "datagen"
-DATAFRAME_CACHE_VERSION = "v9"
+DATAFRAME_CACHE_VERSION = "v10"
 
 _KNOWN_FORMAT_DIRS = frozenset(f.value for f in DataFormat)
 
@@ -314,6 +314,9 @@ class FormatConverter:
             if is_tbl_file and column_names and has_trailing:
                 table = table.select(column_names)
 
+            if null_marker and dialect_preserves_empty_strings(null_marker):
+                table = FormatConverter._null_marker_strings_to_null(table, null_marker)
+
             table = FormatConverter._coerce_time_columns_to_string(table)
 
             if write_config:
@@ -352,6 +355,28 @@ class FormatConverter:
             "string": pa.string(),
         }
         return {col: type_lookup.get(dtype, pa.string()) for col, dtype in column_types.items()}
+
+    @staticmethod
+    def _null_marker_strings_to_null(table: Any, null_marker: str) -> Any:
+        import pyarrow as pa
+        import pyarrow.compute as pc
+
+        for index, schema_field in enumerate(table.schema):
+            value_type = (
+                schema_field.type.value_type if pa.types.is_dictionary(schema_field.type) else schema_field.type
+            )
+            if not (pa.types.is_string(value_type) or pa.types.is_large_string(value_type)):
+                continue
+            column = table.column(index)
+            if value_type != schema_field.type:
+                column = column.cast(value_type)
+            is_marker = pc.equal(column, null_marker)
+            if not pc.any(is_marker).as_py():
+                continue
+            table = table.set_column(
+                index, schema_field.name, pc.if_else(is_marker, pa.scalar(None, type=value_type), column)
+            )
+        return table
 
     @staticmethod
     def _coerce_time_columns_to_string(table: Any) -> Any:

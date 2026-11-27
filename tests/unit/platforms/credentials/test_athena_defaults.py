@@ -37,7 +37,7 @@ class TestAthenaCredentialDefaults:
         mock_manager = Mock()
         existing_creds = {
             "region": "us-west-2",
-            "workgroup": "my-workgroup",
+            "compute_resource": "my-workgroup",
             "s3_staging_dir": "s3://my-bucket/staging/",
             "s3_output_location": "s3://my-bucket/results/",
             "aws_profile": "production",
@@ -120,7 +120,7 @@ class TestAthenaCredentialDefaults:
         mock_manager = Mock()
         existing_creds = {
             "region": "us-east-1",
-            "workgroup": "primary",
+            "compute_resource": "primary",
             "s3_staging_dir": "s3://my-bucket/data/",
             "s3_output_location": "s3://my-bucket/results/",
             "aws_access_key_id": "AKIAIOSFODNN7EXAMPLE",
@@ -205,7 +205,7 @@ class TestAthenaCredentialDefaults:
         mock_manager = Mock()
         existing_creds = {
             "region": "us-west-2",
-            "workgroup": "my-workgroup",
+            "compute_resource": "my-workgroup",
             "s3_staging_dir": "s3://my-bucket/staging/",
             "aws_profile": "production",
         }
@@ -284,7 +284,7 @@ class TestAthenaValidation:
         mock_manager = Mock()
         mock_manager.get_platform_credentials.return_value = {
             "region": "us-east-1",
-            "workgroup": "primary",
+            "compute_resource": "primary",
             "aws_profile": "default",
         }
 
@@ -300,7 +300,7 @@ class TestAthenaValidation:
         mock_manager = Mock()
         mock_manager.get_platform_credentials.return_value = {
             "region": "us-east-1",
-            "workgroup": "primary",
+            "compute_resource": "primary",
             "s3_staging_dir": "s3://bucket/data/",
         }
 
@@ -318,7 +318,7 @@ class TestAthenaValidation:
         mock_manager = Mock()
         mock_manager.get_platform_credentials.return_value = {
             "region": "us-east-1",
-            "workgroup": "primary",
+            "compute_resource": "primary",
             "s3_staging_dir": "s3://bucket/data/",
             "aws_profile": "default",
         }
@@ -458,7 +458,7 @@ class TestAthenaAutoDetection:
         assert result is not None
         assert result["s3_staging_dir"] == "s3://bucket/data/"
         assert result["region"] == "us-east-1"
-        assert result["workgroup"] == "primary"
+        assert result["compute_resource"] == "primary"
 
 
 class TestAthenaCredentialStorage:

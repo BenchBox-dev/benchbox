@@ -45,7 +45,7 @@ def _new_adapter(**overrides) -> mod.DatabricksDataFrameAdapter:
         "access_token": overrides.get("access_token", "dapi_token"),
         "catalog": overrides.get("catalog", "main"),
         "schema": overrides.get("schema", "bench"),
-        "cluster_id": overrides.get("cluster_id"),
+        "compute_resource": overrides.get("compute_resource"),
         "execution_mode": overrides.get("execution_mode", "dataframe"),
     }
     with (
@@ -120,7 +120,7 @@ class TestInitWithConnectError:
             http_path="/sql/path",
             access_token="token",
             execution_mode="dataframe",
-            cluster_id="cl-1",
+            compute_resource="cl-1",
         )
 
         assert adapter.execution_mode == "dataframe"
@@ -150,7 +150,7 @@ class TestSparkSessionCredentialPaths:
         return _Builder(), calls
 
     def test_session_without_hostname(self, monkeypatch: pytest.MonkeyPatch):
-        adapter = _new_adapter(server_hostname=None, cluster_id=None)
+        adapter = _new_adapter(server_hostname=None, compute_resource=None)
         builder, calls = self._make_builder()
         monkeypatch.setattr(mod, "DATABRICKS_CONNECT_AVAILABLE", True)
         monkeypatch.setattr(mod, "DatabricksSession", SimpleNamespace(builder=builder))
@@ -160,7 +160,7 @@ class TestSparkSessionCredentialPaths:
         assert not any(k == "host" for k, _ in calls)
 
     def test_session_without_token(self, monkeypatch: pytest.MonkeyPatch):
-        adapter = _new_adapter(access_token=None, cluster_id=None)
+        adapter = _new_adapter(access_token=None, compute_resource=None)
         builder, calls = self._make_builder()
         monkeypatch.setattr(mod, "DATABRICKS_CONNECT_AVAILABLE", True)
         monkeypatch.setattr(mod, "DatabricksSession", SimpleNamespace(builder=builder))
@@ -170,7 +170,7 @@ class TestSparkSessionCredentialPaths:
         assert not any(k == "token" for k, _ in calls)
 
     def test_session_without_cluster_id(self, monkeypatch: pytest.MonkeyPatch):
-        adapter = _new_adapter(cluster_id=None)
+        adapter = _new_adapter(compute_resource=None)
         builder, calls = self._make_builder()
         monkeypatch.setattr(mod, "DATABRICKS_CONNECT_AVAILABLE", True)
         monkeypatch.setattr(mod, "DatabricksSession", SimpleNamespace(builder=builder))
@@ -180,7 +180,7 @@ class TestSparkSessionCredentialPaths:
         assert not any(k == "clusterId" for k, _ in calls)
 
     def test_session_with_all_credentials(self, monkeypatch: pytest.MonkeyPatch):
-        adapter = _new_adapter(cluster_id="cl-42")
+        adapter = _new_adapter(compute_resource="cl-42")
         builder, calls = self._make_builder()
         monkeypatch.setattr(mod, "DATABRICKS_CONNECT_AVAILABLE", True)
         monkeypatch.setattr(mod, "DatabricksSession", SimpleNamespace(builder=builder))

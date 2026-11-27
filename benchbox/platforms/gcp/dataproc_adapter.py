@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     pass
 
 from benchbox.core.exceptions import ConfigurationError
+from benchbox.core.removed_options import reject_removed_adapter_keywords
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
 from benchbox.platforms.base.cloud_spark import (
     CloudSparkConfigMixin,
@@ -74,7 +75,7 @@ class DataprocAdapter(CloudSparkConfigMixin, SparkTuningMixin, PlatformAdapter):
         self,
         project_id: str | None = None,
         region: str = "us-central1",
-        cluster_name: str | None = None,
+        compute_resource: str | None = None,
         gcs_staging_dir: str | None = None,
         database: str | None = None,
         master_machine_type: str = "n2-standard-4",
@@ -88,6 +89,7 @@ class DataprocAdapter(CloudSparkConfigMixin, SparkTuningMixin, PlatformAdapter):
         table_format: str | None = None,
         **kwargs: Any,
     ) -> None:
+        reject_removed_adapter_keywords(type(self), kwargs)
         if not GOOGLE_CLOUD_AVAILABLE:
             deps_satisfied, missing = check_platform_dependencies("dataproc")
             if not deps_satisfied:
@@ -102,7 +104,7 @@ class DataprocAdapter(CloudSparkConfigMixin, SparkTuningMixin, PlatformAdapter):
 
         self.project_id = project_id
         self.region = region
-        self.cluster_name = cluster_name or f"benchbox-{uuid.uuid4().hex[:8]}"
+        self.cluster_name = compute_resource or f"benchbox-{uuid.uuid4().hex[:8]}"
         self.gcs_staging_dir = parsed.uri
         self.database = database or "benchbox"
         self.master_machine_type = master_machine_type
@@ -528,10 +530,6 @@ spark.stop()
             help="GCP region (default: us-central1)",
         )
         group.add_argument(
-            "--cluster-name",
-            help="Dataproc cluster name",
-        )
-        group.add_argument(
             "--gcs-staging-dir",
             help="GCS path for data staging (e.g., gs://bucket/path)",
         )
@@ -569,14 +567,12 @@ spark.stop()
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> DataprocAdapter:
-        from benchbox.core.compute_resource import normalize_compute_options
         from benchbox.platforms.base.config_utils import forward_plan_options
 
-        config = normalize_compute_options("dataproc", config)
         params = {
             "project_id": config.get("project_id"),
             "region": config.get("region", "us-central1"),
-            "cluster_name": config.get("compute_resource") or config.get("cluster_name"),
+            "compute_resource": config.get("compute_resource"),
             "gcs_staging_dir": config.get("gcs_staging_dir"),
             "database": config.get("database", "benchbox"),
             "master_machine_type": config.get("master_machine_type", "n2-standard-4"),
@@ -587,10 +583,10 @@ spark.stop()
             "table_format": config.get("table_format"),
         }
 
-        if not params["cluster_name"]:
+        if not params["compute_resource"]:
             benchmark = config.get("benchmark", "benchmark")
             scale = config.get("scale_factor", 1)
-            params["cluster_name"] = f"benchbox-{benchmark}-sf{scale}-{uuid.uuid4().hex[:6]}"
+            params["compute_resource"] = f"benchbox-{benchmark}-sf{scale}-{uuid.uuid4().hex[:6]}"
 
         for key in [
             "tuning_config",

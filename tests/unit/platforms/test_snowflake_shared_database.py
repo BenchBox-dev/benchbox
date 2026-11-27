@@ -51,7 +51,7 @@ class _Connection:
 def adapter():
     with patch("benchbox.platforms.snowflake.snowflake"):
         instance = SnowflakeAdapter(
-            account="acct", username="user", password="pw", warehouse="WH", database=DATABASE, schema="PUBLIC"
+            account="acct", username="user", password="pw", compute_resource="WH", database=DATABASE, schema="PUBLIC"
         )
     instance.benchmark_instance = SimpleNamespace(get_schema=lambda: {name: {} for name in TPCH_TABLES})
     return instance

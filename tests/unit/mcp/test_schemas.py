@@ -177,11 +177,13 @@ class TestPlatformOptionAdmission:
                 assert contract.security_class in {"execution", "resource", "device", "layout", "connection"}
                 assert all(alias != option_name for alias in contract.aliases)
 
-    def test_clickhouse_mode_alias_is_neither_advertised_nor_accepted(self):
-        assert MCP_PLATFORM_OPTION_CONTRACT["clickhouse"]["deployment_mode"].aliases == ()
-        for platform in ("clickhouse", "clickhouse-server"):
-            with pytest.raises(MCPValidationError, match="not authorized"):
-                validate_platform_options(platform, {"mode": "server"})
+    def test_clickhouse_mode_keys_are_removed_and_not_advertised(self):
+        assert set(MCP_PLATFORM_OPTION_CONTRACT["clickhouse"]) == {"connection_profile"}
+        for name in ("mode", "deployment_mode"):
+            with pytest.raises(MCPValidationError, match=f"'{name}' for 'clickhouse' was removed in BenchBox 0.6.0"):
+                validate_platform_options("clickhouse", {name: "server"})
+        with pytest.raises(MCPValidationError, match="not authorized"):
+            validate_platform_options("clickhouse-server", {"mode": "server"})
 
     def test_option_without_contract_is_rejected_fail_closed(self, monkeypatch):
         monkeypatch.delitem(MCP_PLATFORM_OPTION_CONTRACT["duckdb"], "threads")
@@ -204,8 +206,9 @@ class TestPlatformOptionAdmission:
         with pytest.raises(MCPValidationError):
             validate_platform_options("sqlite", {"timeout": float("nan")})
 
-    def test_dataframe_aliases_and_identifier_options_are_bounded(self):
-        assert validate_platform_options("polars-df", {"streaming": True}) == {"streaming": True}
+    def test_removed_dataframe_options_and_identifier_options_are_bounded(self):
+        with pytest.raises(MCPValidationError, match="'streaming' for 'polars' was removed in BenchBox 0.6.0"):
+            validate_platform_options("polars-df", {"streaming": True})
         assert validate_platform_options("databricks", {"liquid_clustering_columns": "event_time,customer_id"}) == {
             "liquid_clustering_columns": "event_time,customer_id"
         }
@@ -222,7 +225,7 @@ class TestPlatformOptionAdmission:
 
     def test_velox_remote_cannot_reach_an_unapproved_endpoint(self):
         for deployment in ("remote", "local", "docker"):
-            with pytest.raises(MCPValidationError, match="not authorized"):
+            with pytest.raises(MCPValidationError, match="'deployment' for 'velox' was removed in BenchBox 0.6.0"):
                 validate_platform_options("velox", {"deployment": deployment})
 
     def test_df_suffixed_allowlist_key_resolves_to_itself(self, monkeypatch):
@@ -259,7 +262,6 @@ class TestPlatformOptionAdmission:
 
     def test_connection_class_covers_every_destination_changing_option(self):
         must_be_connection = {
-            ("clickhouse", "deployment_mode"),
             ("clickhouse", "connection_profile"),
             ("clickhouse-server", "connection_profile"),
         }
@@ -443,11 +445,10 @@ class TestClickHouseConnectionBoundary:
         monkeypatch.setenv(MCP_CLICKHOUSE_PROFILE_ENV, json.dumps({"analytics": {"port": 9440, "secure": True}}))
         with pytest.raises(MCPValidationError, match="requires the server deployment"):
             validate_platform_options("clickhouse", {"connection_profile": "analytics"})
-        with pytest.raises(MCPValidationError, match="requires the server deployment"):
-            validate_platform_options("clickhouse", {"connection_profile": "analytics", "deployment_mode": "local"})
-        assert validate_platform_options(
-            "clickhouse", {"connection_profile": "analytics", "deployment_mode": "server"}
-        ) == {"connection_profile": "analytics", "deployment_mode": "server"}
+        with pytest.raises(
+            MCPValidationError, match="'deployment_mode' for 'clickhouse' was removed in BenchBox 0.6.0"
+        ):
+            validate_platform_options("clickhouse", {"connection_profile": "analytics", "deployment_mode": "server"})
 
     @pytest.mark.parametrize(
         "registry",

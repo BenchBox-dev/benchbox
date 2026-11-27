@@ -30,8 +30,8 @@ PLAN_OPTION_CASES: dict[str, tuple[str, str, Any]] = {
 }
 
 OPTION_CASES: dict[str, dict[str, tuple[str, str, Any]]] = {
-    "emr-serverless": {"compute_resource": ("app-123", "application_id", "app-123")},
-    "dataproc": {"compute_resource": ("cluster-1", "cluster_name", "cluster-1")},
+    "emr-serverless": {"compute_resource": ("app-123", "compute_resource", "app-123")},
+    "dataproc": {"compute_resource": ("cluster-1", "compute_resource", "cluster-1")},
     "dataproc-serverless": {
         "project_id": ("proj-1", "project_id", "proj-1"),
         "region": ("europe-west4", "region", "europe-west4"),
@@ -46,11 +46,11 @@ OPTION_CASES: dict[str, dict[str, tuple[str, str, Any]]] = {
     },
     "synapse-spark": {
         "adaptive_enabled": ("false", "adaptive_enabled", False),
-        "compute_resource": ("pool-1", "spark_pool_name", "pool-1"),
+        "compute_resource": ("pool-1", "compute_resource", "pool-1"),
     },
     "fabric-spark": {
         "adaptive_enabled": ("false", "adaptive_enabled", False),
-        "compute_resource": ("pool-2", "spark_pool_name", "pool-2"),
+        "compute_resource": ("pool-2", "compute_resource", "pool-2"),
     },
     "glue": {
         "region": ("eu-west-1", "region", "eu-west-1"),
@@ -64,8 +64,8 @@ OPTION_CASES: dict[str, dict[str, tuple[str, str, Any]]] = {
         "job_timeout": ("30", "job_timeout", 30),
     },
     "snowpark-connect": {
-        "compute_resource": ("WH_CUSTOM", "warehouse", "WH_CUSTOM"),
-        "compute_size": ("LARGE", "warehouse_size", "LARGE"),
+        "compute_resource": ("WH_CUSTOM", "compute_resource", "WH_CUSTOM"),
+        "compute_size": ("LARGE", "compute_size", "LARGE"),
     },
     "fabric_dw": {
         "server": ("ws.datawarehouse.fabric.microsoft.com", "server", "ws.datawarehouse.fabric.microsoft.com"),
