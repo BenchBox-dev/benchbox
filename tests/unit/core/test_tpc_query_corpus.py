@@ -476,10 +476,9 @@ DSQGEN_CALLEES = (
     "dsqgen.generate",
     "generate_with_parameters",
     "generate_parameter_log",
-    "query_manager.get_query",
-    "query_manager.get_all_queries",
     "generate_dsqgen_streams",
 )
+TPCDS_MANAGER_CALLEES = ("query_manager.get_query", "query_manager.get_all_queries")
 
 
 def test_no_call_in_the_repository_passes_a_literal_dialect_to_dsqgen(manifest: dict[str, Any]) -> None:
@@ -495,8 +494,13 @@ def test_no_call_in_the_repository_passes_a_literal_dialect_to_dsqgen(manifest: 
                 for keyword in node.keywords:
                     if keyword.arg == "base_dialect":
                         base_dialect.add(ast.unparse(keyword.value))
-                    elif keyword.arg == "dialect" and ast.unparse(node.func).endswith(DSQGEN_CALLEES):
-                        dsqgen_dialect.add(ast.unparse(keyword.value))
+                    elif keyword.arg == "dialect":
+                        callee = ast.unparse(node.func)
+                        tpcds_manager = "tpcds" in str(path.relative_to(REPO_ROOT)) and callee.endswith(
+                            TPCDS_MANAGER_CALLEES
+                        )
+                        if callee.endswith(DSQGEN_CALLEES) or tpcds_manager:
+                            dsqgen_dialect.add(ast.unparse(keyword.value))
             elif isinstance(node, ast.Dict):
                 for key, value in zip(node.keys, node.values):
                     if isinstance(key, ast.Constant) and key.value == "base_dialect":
