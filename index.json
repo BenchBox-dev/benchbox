@@ -15192,20 +15192,80 @@
       "terminal_outcome": "deliver"
     },
     "tpcdi-cleanup": {
-      "accepted_members": {},
+      "accepted_members": {
+        "tpcdi-15-delete-old-generator-and-etl-20261120": "6e46cf7b5b38338eb059a48997084e0ef3ced2f6"
+      },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
-      "integrated_members": {},
+      "integrated_members": {
+        "tpcdi-15-delete-old-generator-and-etl-20261120": {
+          "accepted_head": "6e46cf7b5b38338eb059a48997084e0ef3ced2f6",
+          "changed_files": [
+            "benchbox/core/tpcdi/__init__.py",
+            "benchbox/core/tpcdi/_legacy_etl/__init__.py",
+            "benchbox/core/tpcdi/_legacy_etl/sources.py",
+            "benchbox/core/tpcdi/benchmark.py",
+            "benchbox/core/tpcdi/config.py",
+            "benchbox/core/tpcdi/financial_data.py",
+            "benchbox/core/tpcdi/generator/__init__.py",
+            "benchbox/core/tpcdi/generator/data.py",
+            "benchbox/core/tpcdi/generator/dimensions.py",
+            "benchbox/core/tpcdi/generator/facts.py",
+            "benchbox/core/tpcdi/generator/manifest.py",
+            "benchbox/core/tpcdi/generator/manifest_specs.yaml",
+            "benchbox/core/tpcdi/generator/monitoring.py",
+            "benchbox/core/tpcdi/generator/rows.py",
+            "benchbox/core/tpcdi/generator_specs.yaml",
+            "benchbox/core/tpcdi/loader.py",
+            "benchbox/core/tpcdi/scaling.py",
+            "benchbox/core/tpcdi/source_generators.py",
+            "benchbox/tpcdi.py",
+            "benchbox/utils/datagen_version.py",
+            "changelog.d/tpcdi-delete-old-generator.json",
+            "docs/internal/tpc-measured-intervals.md",
+            "pyproject.toml",
+            "quality/comment-cleanup-scope.json",
+            "quality/comment-policy.json",
+            "tests/fixtures/fast_tier_baseline/tests-00.json",
+            "tests/fixtures/fast_tier_baseline/tests-02.json",
+            "tests/fixtures/fast_tier_baseline/tests-04.json",
+            "tests/fixtures/fast_tier_baseline/tests-05.json",
+            "tests/fixtures/fast_tier_baseline/tests-07.json",
+            "tests/fixtures/medium_shard_durations.json",
+            "tests/integration/test_cloud_storage_integration.py",
+            "tests/system/test_module_size_thresholds.py",
+            "tests/unit/cli/test_benchmark_hooks.py",
+            "tests/unit/core/test_benchmark_output_root_propagation.py",
+            "tests/unit/core/test_datagen_manifest_guard.py",
+            "tests/unit/core/test_datagen_version.py",
+            "tests/unit/core/test_verbosity_rollout.py",
+            "tests/unit/core/tpcdi/test_schema_spec.py",
+            "tests/unit/scripts/test_comment_cleanup_scope.py",
+            "tests/unit/scripts/test_generator_volume_gate.py"
+          ],
+          "integration_head": "930bb11550dac2076c5b6955bb5dda1dd7756291",
+          "integration_seq": 1
+        }
+      },
       "integration_branch": "feat/tpcdi-cleanup",
-      "integration_head": "4cdd5df606916a6131eaaa1259dbadacab9b0029",
+      "integration_head": "930bb11550dac2076c5b6955bb5dda1dd7756291",
       "integration_log": [
         {
           "at": "2026-11-27T18:39:04Z",
           "head": "4cdd5df606916a6131eaaa1259dbadacab9b0029",
           "kind": "start",
           "seq": 0
+        },
+        {
+          "at": "2026-11-27T22:13:35Z",
+          "head": "930bb11550dac2076c5b6955bb5dda1dd7756291",
+          "kind": "prepare",
+          "member": "tpcdi-15-delete-old-generator-and-etl-20261120",
+          "op_id": "82b3c0032e944f0aa086f392b1924b98",
+          "previous_head": "4cdd5df606916a6131eaaa1259dbadacab9b0029",
+          "seq": 1
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-cleanup",
@@ -54511,17 +54571,12 @@
       "title": "TPC-DI step 18: milestone report and owner stop"
     },
     "tpcdi-15-delete-old-generator-and-etl-20261120": {
-      "claim": {
-        "expires_at": "2026-11-28T22:13:31Z",
-        "generation": "4635bd1f5709409a94ffbaf3d86fb800",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-14-milestone-report-owner-stop-20261120"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 19: delete the old generator and its direct load"
     },
     "tpcdi-16-generator-incremental-batches-20261120": {
