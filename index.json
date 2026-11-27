@@ -28182,17 +28182,12 @@
       "title": "Activate the review gate and merge ruleset on benchbox-datagen"
     },
     "datagen-lib-ssb-and-synthetic-framework": {
-      "claim": {
-        "expires_at": "2026-11-28T04:52:35Z",
-        "generation": "2fbf0d11e2f64d2ca5cfd977ea84c288",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
-      },
+      "claim": null,
       "needs": [
         "datagen-lib-tpch"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Merge the shared deterministic synthetic framework and the SSB generator in benchbox-datagen"
     },
     "datagen-lib-synthetic-amplab": {
