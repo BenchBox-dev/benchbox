@@ -10,6 +10,8 @@ from typing import Any
 from benchbox.utils.cloud_storage import CloudStorageGeneratorMixin, create_path_handler
 from benchbox.utils.compression_mixin import CompressionMixin
 from benchbox.utils.data_validation import BenchmarkDataValidator
+from benchbox.utils.datagen_backend import NATIVE_BACKEND_NAME
+from benchbox.utils.datagen_manifest import DataGenerationManifest, require_manifest_files, resolve_compression_metadata
 from benchbox.utils.file_format import is_tpc_format
 from benchbox.utils.generation_marker import track_generation
 from benchbox.utils.native_datagen import NativeDatagenMixin, write_native_tables
@@ -279,13 +281,21 @@ class TPCDSDataGenerator(
     def _generate_native(self, target_dir: Path) -> dict[str, list[Path]]:
         generation = write_native_tables("tpcds", self.scale_factor, target_dir)
         self.datagen_backend_version = generation.version
-        self._manifest_entries = {
-            table: [{"path": table_file.path.name, "size_bytes": table_file.size_bytes, "row_count": table_file.rows}]
-            for table, table_file in generation.files.items()
-        }
-        table_paths = {table: [table_file.path] for table, table_file in generation.files.items()}
-        self._write_manifest(target_dir, table_paths)
-        return table_paths
+        manifest = DataGenerationManifest(
+            output_dir=target_dir,
+            benchmark="tpcds",
+            scale_factor=self.scale_factor,
+            compression=resolve_compression_metadata(self),
+            parallel=self.parallel,
+            extra_metadata={"compliance_class": getattr(self.compliance_class, "value", str(self.compliance_class))},
+            generator_backend=NATIVE_BACKEND_NAME,
+            generator_backend_version=generation.version,
+        )
+        for table, table_file in generation.files.items():
+            manifest.add_entry(table, table_file.path, row_count=table_file.rows, size_bytes=table_file.size_bytes)
+        require_manifest_files(manifest.file_counts()[1], label="TPC-DS", output_dir=target_dir)
+        manifest.write()
+        return {table: [table_file.path] for table, table_file in generation.files.items()}
 
     def _prepare_output_dir(self, output_dir: Path | None) -> Path:
         if self.uses_native_datagen:

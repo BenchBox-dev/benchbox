@@ -159,7 +159,7 @@ def test_tpcds_generator_records_backend_and_row_counts_in_manifest(
     assert manifest["generator_backend"] == "benchbox-datagen"
     assert manifest["generator_backend_version"] == "0.1.0"
     assert "generator_binary_sha256" not in manifest
-    assert manifest["tables"]["item"][0]["row_count"] == 18_000
+    assert manifest["tables"]["item"]["formats"]["tbl"][0]["row_count"] == 18_000
 
 
 def test_tpcds_native_subscale_is_an_error_not_a_fallback(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -289,3 +289,21 @@ def test_parquet_writer_identity_is_read_from_file_metadata_and_required(tmp_pat
     schema = pa.schema([pa.field("key", pa.int64())], metadata={b"benchbox.parquet_writer": b"benchbox-datagen-0"})
     pq.write_table(pa.table({"key": [1]}, schema=schema), named)
     assert read_parquet_writer(named) == "benchbox-datagen-0"
+
+
+def test_tpcds_native_parquet_conversion_uses_the_library_writer(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    calls: list[dict[str, object]] = []
+    _fake_library(monkeypatch, TPCDS_ROWS, calls)
+    generator = TPCDSDataGenerator(scale_factor=1.0, output_dir=tmp_path, force_regenerate=True)
+    generator.datagen_backend = "native"
+    generator.generate()
+    manifest_path = tmp_path / "_datagen_manifest.json"
+    FormatConversionOrchestrator().convert_benchmark_tables(
+        manifest_path, tmp_path, "parquet", schemas={}, options=ConversionOptions(compression="snappy")
+    )
+    assert calls[-1]["format"] == "parquet"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert manifest["parquet_writer"] == "benchbox-datagen-0"
+    assert manifest["generator_backend"] == "benchbox-datagen"
