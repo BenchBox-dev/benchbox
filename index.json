@@ -43221,14 +43221,19 @@
       "title": "Remove the command-line charts from the Polars 2.x post"
     },
     "pvm-p1-run-ssb-clickbench": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-28T14:57:17Z",
+        "generation": "affd205bcf27420fb0a04fe3a3c9284c",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
+      },
       "needs": [
         "crr-a2-writer-and-score-from-timings",
         "crr-c1-validation-status-vocabulary",
         "crr-d1-observed-engine-contract-and-dataframe"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Run the Polars version matrix for SSB and ClickBench with three measured iterations"
     },
     "pvm-p2-publish-ssb-clickbench": {
