@@ -58652,6 +58652,13 @@
       "status": "done",
       "title": "Say that a subagent's worktree claim never goes stale"
     },
+    "worktree-cleanup-corpus-rule-older-rounds-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "low",
+      "status": "open",
+      "title": "Remove the linked worktrees left by earlier corpus rule rounds"
+    },
     "worktree-concurrent-session-ownership-guard-20261028": {
       "claim": null,
       "needs": [],
