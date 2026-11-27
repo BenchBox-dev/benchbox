@@ -27090,9 +27090,9 @@
     },
     "crr-a0-decision-records": {
       "claim": {
-        "expires_at": "2026-11-28T12:22:27Z",
-        "generation": "f1b445b7a7214efda9a1f854048a5cfb",
-        "renewals": 0,
+        "expires_at": "2026-11-28T14:30:48Z",
+        "generation": "cad278f40c0e4425af0727dc1e3f1882",
+        "renewals": 1,
         "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
       },
       "needs": [],
