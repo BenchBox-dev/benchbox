@@ -27643,6 +27643,16 @@
       "status": "open",
       "title": "Route BenchBox TPC-DS sub-scale data and TPC-H refresh sets through benchbox-datagen, with TPC-DS and pin-bump parity CI"
     },
+    "datagen-bb-tpcds-refresh-wiring": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-tpcds-refresh-sets",
+        "datagen-bb-tpc-refresh-and-subscale-wiring"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Use benchbox-datagen refresh sets in the BenchBox TPC-DS maintenance test and QphDS"
+    },
     "datagen-converter-linux-budget-gate": {
       "claim": null,
       "needs": [],

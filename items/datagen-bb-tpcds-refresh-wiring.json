@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "The TPC-DS maintenance test and QphDS refresh use library write_refresh, byte-identical to dsdgen -update at SF 0.01 and 1 (set 1), with dsdgen absent in the test.",
+    "Legacy backend behaviour is unchanged (test)."
+  ],
+  "description": "## Problem\nThe TPC-DS maintenance test and QphDS take refresh data from dsdgen -update. C removal needs them on the library.\n\n## Change\nRoute `generate_refresh_set` for the native backend through library write_refresh('tpcds').\n\n## Decision gates\n- If the 23 files differ from dsdgen at any tested scale, stop and report the file and first differing row.\n\n## Guardrails\n- BenchBox work only in a linked worktree; heavy work only through make heavy-run; never kill processes by name pattern.\n- No divergent fork of tpcgen-rs; carried patches only under the 2026-11-27 rule (<= ~200 changed lines, upstream PR, SHA pin, README entry); anything larger goes to the owner with sizes first.\n- Human commit identity, no agent attribution. Report only observed results.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-27T00:06:56Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "02c4d7ae914442bead900f9c303dbb35",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
