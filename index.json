@@ -15191,6 +15191,102 @@
       "start_head": "e3b793bdf55a538e06c8dcffd5530fc548fedad9",
       "terminal_outcome": "deliver"
     },
+    "tpcdi-cleanup": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/tpcdi-cleanup",
+      "integration_head": "4cdd5df606916a6131eaaa1259dbadacab9b0029",
+      "integration_log": [
+        {
+          "at": "2026-11-27T18:39:04Z",
+          "head": "4cdd5df606916a6131eaaa1259dbadacab9b0029",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-cleanup",
+      "lifecycle": "active",
+      "members": [
+        "tpcdi-15-delete-old-generator-and-etl-20261120",
+        "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121",
+        "tpcdi-correct-stale-claims-and-surfaces-20261121"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73",
+      "owner_epoch": 0,
+      "owner_generation": "e39dfa10a026749401ca3dea18f25d31",
+      "project_id": "tpcdi-correction-plan-20261120",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "tpcdi-15-delete-old-generator-and-etl-20261120": [
+          "benchbox/**",
+          "tests/**",
+          "docs/**",
+          "_project/**",
+          "quality/**",
+          "scripts/**",
+          "examples/**",
+          ".github/**",
+          "changelog.d/**",
+          "pyproject.toml",
+          "uv.lock",
+          "README.md",
+          "COPYRIGHT.md",
+          "NOTICE*",
+          "Makefile",
+          "make/**",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "tpcdi-correct-stale-claims-and-surfaces-20261121": [
+          "benchbox/**",
+          "tests/**",
+          "docs/**",
+          "_project/**",
+          "quality/**",
+          "scripts/**",
+          "examples/**",
+          ".github/**",
+          "changelog.d/**",
+          "pyproject.toml",
+          "uv.lock",
+          "README.md",
+          "COPYRIGHT.md",
+          "NOTICE*",
+          "Makefile",
+          "make/**",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121": [
+          "benchbox/**",
+          "tests/**",
+          "docs/**",
+          "_project/**",
+          "quality/**",
+          "scripts/**",
+          "examples/**",
+          ".github/**",
+          "changelog.d/**",
+          "pyproject.toml",
+          "uv.lock",
+          "README.md",
+          "COPYRIGHT.md",
+          "NOTICE*",
+          "Makefile",
+          "make/**",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "3e635371ebec5f892902864dfd7871cfab5949b5e706754641cecf4ef442cbfd",
+      "start_head": "4cdd5df606916a6131eaaa1259dbadacab9b0029",
+      "terminal_outcome": "deliver"
+    },
     "tpcdi-foundation": {
       "accepted_members": {
         "tpcdi-07-specification-schema-20261120": "8ba30ed5b1fd246d332da4cdb29a4f7f9f06f96f",
