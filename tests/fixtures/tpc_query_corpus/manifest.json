@@ -189,7 +189,8 @@
   "tpch": "QGenBinary._clean_sql applied to qgen -a stdout",
   "tpcds": "dsqgen stdout from DSQGenBinary._extract_sql_from_output, CRLF and CR replaced by LF, multi-part a/b selected as BenchBox does",
   "tpcds_stream_template": "statements of the last stream in the dsqgen stdout split on (?<=;)\\n+(?=\\S), stripped, joined with a blank line, newline normalised",
-  "tpcds_stream_all": "each statement of query_<n>.sql split as BenchBox does, newline normalised"
+  "tpcds_stream_all": "each statement of query_<n>.sql split as BenchBox does, newline normalised",
+  "tpcds_explicit": "dsqgen stdout for the template rewritten as DSQGenBinary.generate_with_parameters rewrites it, extracted and normalised as tpcds; t is the sha256 of the rewritten template text (UTF-8)"
  },
  "tpch": {
   "files": {
@@ -348,7 +349,44 @@
    100.0,
    1000.0
   ],
-  "random_digest": "sha256 over, for each query in order, '<query>\\n<cleaned text>\\n'"
+  "random_digest": "sha256 over, for each query in order, '<query>\\n<cleaned text>\\n'",
+  "nonterminating_cases": {
+   "suite": "tpch",
+   "timeout_seconds": 60,
+   "attempts": 2,
+   "cases": [
+    {
+     "q": "12",
+     "seed": 0,
+     "sf": 1.0,
+     "attempts": [
+      {
+       "outcome": "timeout",
+       "seconds": 60.1
+      },
+      {
+       "outcome": "timeout",
+       "seconds": 60.1
+      }
+     ]
+    },
+    {
+     "q": "7",
+     "seed": 0,
+     "sf": 1.0,
+     "attempts": [
+      {
+       "outcome": "timeout",
+       "seconds": 60.1
+      },
+      {
+       "outcome": "timeout",
+       "seconds": 60.1
+      }
+     ]
+    }
+   ]
+  }
  },
  "tpcds": {
   "files": {
@@ -380,6 +418,11 @@
    "tpcds_stream_all-03.jsonl.gz": {
     "sha256": "6891b885164be5a172f83d5053551a5eefd5f3665bfeb63452da4d7137ce3a64",
     "records": 36,
+    "abnormal": 0
+   },
+   "tpcds_explicit-00.jsonl.gz": {
+    "sha256": "c10b395f2f12912d9ec51d41a2d535505c8e901411d7e831d36917b6200e94e8",
+    "records": 824,
     "abnormal": 0
    }
   },
@@ -807,10 +850,697 @@
   "stream_all_statements": 34608,
   "unreachable_variant_templates": [
    "query_variants/query14a.tpl"
-  ]
+  ],
+  "explicit_parameters": {
+   "file_stem": "tpcds_explicit",
+   "mechanism": {
+    "source": "benchbox/core/tpcds/c_tools.py DSQGenBinary.generate_with_parameters and _substitute_parameters",
+    "summary": "dsqgen has no option that takes parameter values. BenchBox copies the template into a scratch work directory, rewrites the copy's text, and runs dsqgen on the copy with the options of a seeded run and no -LOG.",
+    "command": "dsqgen -TEMPLATE <template> -DIALECT netezza -SCALE <sf> -RNGSEED <seed> -FILTER Y -VERBOSE N -INPUT q/templates.lst -DIRECTORY q",
+    "name_pattern": "^([A-Za-z_][A-Za-z0-9_]*)\\.(\\d+)$",
+    "steps": [
+     "Sub-SF1 template overrides (SUBSCALE_TEMPLATE_OVERRIDES, query93.tpl) are applied to the staged template before the rewrite.",
+     "Each key must match name_pattern, the form dsqgen -LOG writes (for example YEAR.01); NAME is group 1 and POSITION is int(group 2). The value is used as str(value).",
+     "Every [NAME.POSITION] in the template text is replaced by the value; when POSITION is 1 every [NAME] is replaced as well. Replacement is literal text, applied key by key in the order given, so a later key sees the output of earlier ones.",
+     "A key that matches nothing raises ValueError unless the template has a define NAME = statement, in which case the key is ignored.",
+     "define statements stay in the rewritten template and dsqgen still parses them; the substituted names no longer appear in brackets. Brackets that were not substituted ([_LIMITA], [_END], names absent from the parameter dict) are evaluated by dsqgen from -RNGSEED and -SCALE.",
+     "Queries 14, 23, 24 and 39 use query<N>.tpl for both a and b; the output is split on ';' and part 0 (a) or 1 (b) is kept.",
+     "The text is the dsqgen stdout up to the 'qgen2 Query Generator' or 'Copyright Transaction' banner."
+    ]
+   },
+   "qualification": {
+    "caller": "benchbox/core/tpcds/qualification/runner.py prepare",
+    "parameters_file": "benchbox/core/tpcds/dataframe_queries/qualification_values.json",
+    "parameters_sha256": "c6f15da0a0a67cc3f6e8d150ad1b67e4f01d83e98528d12e03f74a1afb7f0808",
+    "scale_factor": 1.0,
+    "seed": 1,
+    "alternate_seed": 99,
+    "dialect": "netezza",
+    "templates": 99,
+    "statements": 103,
+    "seed_sensitive_statements": []
+   },
+   "equivalence": {
+    "caller": "benchbox/core/equivalence/builders/tpcds.py build_tpcds_duckdb",
+    "rngseed": "(seed or 1) + stream_id + 1000, as power_parameter_seed",
+    "parameter_source": "dsqgen -LOG values of template <n> at that rngseed and scale, stream 0",
+    "round_trip": "r is the text hash of the seeded dsqgen run at the same rngseed and scale",
+    "draws": [
+     {
+      "seed": null,
+      "stream": 0,
+      "rngseed": 1001,
+      "scale_factor": 0.01
+     },
+     {
+      "seed": 1,
+      "stream": 0,
+      "rngseed": 1001,
+      "scale_factor": 0.01
+     },
+     {
+      "seed": 42,
+      "stream": 0,
+      "rngseed": 1042,
+      "scale_factor": 0.01
+     },
+     {
+      "seed": 42,
+      "stream": 1,
+      "rngseed": 1043,
+      "scale_factor": 0.01
+     },
+     {
+      "seed": 20260709,
+      "stream": 2,
+      "rngseed": 20261711,
+      "scale_factor": 0.01
+     },
+     {
+      "seed": null,
+      "stream": 0,
+      "rngseed": 1001,
+      "scale_factor": 1.0
+     },
+     {
+      "seed": null,
+      "stream": 0,
+      "rngseed": 1001,
+      "scale_factor": 10.0
+     }
+    ],
+    "statements_per_draw": 103
+   },
+   "text_query_generate_with_parameters": "benchbox/core/tpcds/queries.py TPCDSQueryManager.generate_with_parameters forwards to DSQGenBinary.generate_with_parameters with the default seed 1, so its output is the qualification-case mechanism at the scale factor passed",
+   "records": 824,
+   "abnormal": 0
+  },
+  "dialects": {
+   "captured": [
+    "netezza"
+   ],
+   "passed_by_benchbox": [
+    "netezza"
+   ],
+   "accepted_by_dsqgen_templates": [
+    "ansi",
+    "db2",
+    "netezza",
+    "oracle",
+    "sqlserver"
+   ],
+   "unsupported_dialect_behavior": "DSQGenBinary._validate_dialect warns and falls back to netezza",
+   "reason": "every production call path reaches dsqgen with netezza; the other bundled dialect templates are never selected, so they are not captured",
+   "call_sites": [
+    {
+     "file": "benchbox/core/tpcds/c_tools.py",
+     "role": "the only place a single-query dsqgen command line takes -DIALECT",
+     "anchors": [
+      "cmd.extend([f\"{_opt}DIALECT\", dialect])"
+     ],
+     "calls": []
+    },
+    {
+     "file": "benchbox/core/tpcds/streams.py",
+     "role": "the only place a -STREAMS dsqgen command line takes -DIALECT; the parameter defaults to netezza",
+     "anchors": [
+      "f\"{opt}DIALECT\",",
+      "dialect: str = \"netezza\","
+     ],
+     "calls": []
+    },
+    {
+     "file": "benchbox/core/tpcds/qualification/runner.py",
+     "role": "qualification calls omit dialect, so the netezza default applies",
+     "anchors": [],
+     "calls": [
+      {
+       "callee": "dsqgen.generate_with_parameters",
+       "dialect_keyword": false
+      }
+     ]
+    },
+    {
+     "file": "benchbox/core/equivalence/builders/tpcds.py",
+     "role": "equivalence builder calls omit dialect, so the netezza default applies",
+     "anchors": [],
+     "calls": [
+      {
+       "callee": "dsqgen.generate_with_parameters",
+       "dialect_keyword": false
+      }
+     ]
+    },
+    {
+     "file": "benchbox/core/tpcds/throughput_test.py",
+     "role": "throughput streams call generate_dsqgen_streams without dialect, so the netezza default applies",
+     "anchors": [],
+     "calls": [
+      {
+       "callee": "generate_dsqgen_streams",
+       "dialect_keyword": false
+      }
+     ]
+    },
+    {
+     "file": "benchbox/core/tpcds/dataframe_queries/parameter_adapters.py",
+     "role": "parameter binding calls omit dialect, so the netezza default applies",
+     "anchors": [],
+     "calls": [
+      {
+       "callee": "dsqgen.generate_parameter_log",
+       "dialect_keyword": false
+      }
+     ]
+    },
+    {
+     "file": "benchbox/core/tpcds_obt/queries.py",
+     "role": "OBT parameter logging omits dialect, so the netezza default applies",
+     "anchors": [],
+     "calls": [
+      {
+       "callee": "_dsqgen.generate_parameter_log",
+       "dialect_keyword": false
+      }
+     ]
+    },
+    {
+     "file": "benchbox/core/tpcds/parameter_extractor.py",
+     "role": "parameter extraction omits dialect, so the netezza default applies",
+     "anchors": [],
+     "calls": [
+      {
+       "callee": "dsqgen.generate",
+       "dialect_keyword": false
+      }
+     ]
+    },
+    {
+     "file": "benchbox/core/tpcds/benchmark/runner.py",
+     "role": "the benchmark passes src to dsqgen, and src is base_dialect or netezza",
+     "anchors": [
+      "src = (base_dialect or \"netezza\").lower()"
+     ],
+     "calls": [
+      {
+       "callee": "query_manager.dsqgen.generate",
+       "dialect_keyword": true,
+       "dialect_value": "src"
+      },
+      {
+       "callee": "query_manager.get_query",
+       "dialect_keyword": true,
+       "dialect_value": "src"
+      },
+      {
+       "callee": "query_manager.get_all_queries",
+       "dialect_keyword": true,
+       "dialect_value": "src"
+      }
+     ]
+    },
+    {
+     "file": "benchbox/platforms/base/dialect_translation.py",
+     "role": "the only get_tpc_base_dialect definition; it returns netezza for every benchmark",
+     "anchors": [
+      "def get_tpc_base_dialect"
+     ],
+     "calls": []
+    },
+    {
+     "file": "benchbox/platforms/base/execution.py",
+     "role": "base_dialect for platform query extraction comes from get_tpc_base_dialect",
+     "anchors": [
+      "base = self.get_tpc_base_dialect(bench_family)"
+     ],
+     "calls": []
+    },
+    {
+     "file": "benchbox/core/dryrun.py",
+     "role": "base_dialect for dry runs comes from get_tpc_base_dialect",
+     "anchors": [
+      "base = platform_adapter.get_tpc_base_dialect(benchmark_family(benchmark_id))"
+     ],
+     "calls": []
+    }
+   ]
+  },
+  "nondeterministic_cases": {
+   "suite": "tpcds",
+   "shape": "single",
+   "runs_per_mode": 5,
+   "finding": "Repeated dsqgen runs in one mode return one text hash; the run that writes -LOG and the run that does not return different text for these cases, so the nondeterministic status in tpcds_single means the two invocation modes disagree. BenchBox DSQGenBinary.generate runs without -LOG and generate_parameter_log runs with it.",
+   "cases": [
+    {
+     "q": "34",
+     "seed": null,
+     "sf": 10.0,
+     "log": {
+      "h": [
+       "ae243217c13f1e1d62a3cfa0cb813b947a40543d3e17b6f9808018c6d83180fa",
+       "ae243217c13f1e1d62a3cfa0cb813b947a40543d3e17b6f9808018c6d83180fa",
+       "ae243217c13f1e1d62a3cfa0cb813b947a40543d3e17b6f9808018c6d83180fa",
+       "ae243217c13f1e1d62a3cfa0cb813b947a40543d3e17b6f9808018c6d83180fa",
+       "ae243217c13f1e1d62a3cfa0cb813b947a40543d3e17b6f9808018c6d83180fa"
+      ],
+      "p": [
+       "276c0d0ba72bc76332cf575e3e5b92032a943624e20c32bfd56d21f9b07733a2",
+       "276c0d0ba72bc76332cf575e3e5b92032a943624e20c32bfd56d21f9b07733a2",
+       "276c0d0ba72bc76332cf575e3e5b92032a943624e20c32bfd56d21f9b07733a2",
+       "276c0d0ba72bc76332cf575e3e5b92032a943624e20c32bfd56d21f9b07733a2",
+       "276c0d0ba72bc76332cf575e3e5b92032a943624e20c32bfd56d21f9b07733a2"
+      ],
+      "distinct_h": 1
+     },
+     "plain": {
+      "h": [
+       "f78d03caee49d2aeb3c820bdfb340c3edc4d8f8052b354456998f788d3f03bbe",
+       "f78d03caee49d2aeb3c820bdfb340c3edc4d8f8052b354456998f788d3f03bbe",
+       "f78d03caee49d2aeb3c820bdfb340c3edc4d8f8052b354456998f788d3f03bbe",
+       "f78d03caee49d2aeb3c820bdfb340c3edc4d8f8052b354456998f788d3f03bbe",
+       "f78d03caee49d2aeb3c820bdfb340c3edc4d8f8052b354456998f788d3f03bbe"
+      ],
+      "distinct_h": 1
+     },
+     "modes_differ": true
+    },
+    {
+     "q": "34",
+     "seed": 1,
+     "sf": 10.0,
+     "log": {
+      "h": [
+       "983887dc626f8f4175eba0485d1d6faf588c7cdee3f96c334270e483ad973904",
+       "983887dc626f8f4175eba0485d1d6faf588c7cdee3f96c334270e483ad973904",
+       "983887dc626f8f4175eba0485d1d6faf588c7cdee3f96c334270e483ad973904",
+       "983887dc626f8f4175eba0485d1d6faf588c7cdee3f96c334270e483ad973904",
+       "983887dc626f8f4175eba0485d1d6faf588c7cdee3f96c334270e483ad973904"
+      ],
+      "p": [
+       "2ccb820ed84f2408522dfa3c5816cdc2f26e3405102374657f0e5baac7b38376",
+       "2ccb820ed84f2408522dfa3c5816cdc2f26e3405102374657f0e5baac7b38376",
+       "2ccb820ed84f2408522dfa3c5816cdc2f26e3405102374657f0e5baac7b38376",
+       "2ccb820ed84f2408522dfa3c5816cdc2f26e3405102374657f0e5baac7b38376",
+       "2ccb820ed84f2408522dfa3c5816cdc2f26e3405102374657f0e5baac7b38376"
+      ],
+      "distinct_h": 1
+     },
+     "plain": {
+      "h": [
+       "0dfc1c792699647bbdd217043c0d06202590444e0304a8c8ccb516e76a0285f0",
+       "0dfc1c792699647bbdd217043c0d06202590444e0304a8c8ccb516e76a0285f0",
+       "0dfc1c792699647bbdd217043c0d06202590444e0304a8c8ccb516e76a0285f0",
+       "0dfc1c792699647bbdd217043c0d06202590444e0304a8c8ccb516e76a0285f0",
+       "0dfc1c792699647bbdd217043c0d06202590444e0304a8c8ccb516e76a0285f0"
+      ],
+      "distinct_h": 1
+     },
+     "modes_differ": true
+    },
+    {
+     "q": "34",
+     "seed": 42,
+     "sf": 10.0,
+     "log": {
+      "h": [
+       "78dbf7b84d65c57fbc9866f77d087e1e106f4fd5eddf7cbd6b551f12ab8c9b54",
+       "78dbf7b84d65c57fbc9866f77d087e1e106f4fd5eddf7cbd6b551f12ab8c9b54",
+       "78dbf7b84d65c57fbc9866f77d087e1e106f4fd5eddf7cbd6b551f12ab8c9b54",
+       "78dbf7b84d65c57fbc9866f77d087e1e106f4fd5eddf7cbd6b551f12ab8c9b54",
+       "78dbf7b84d65c57fbc9866f77d087e1e106f4fd5eddf7cbd6b551f12ab8c9b54"
+      ],
+      "p": [
+       "92c898b630b9c2202ce887ebf09daa6a6b5e2db1565d85ccc2502ebca1c4138b",
+       "92c898b630b9c2202ce887ebf09daa6a6b5e2db1565d85ccc2502ebca1c4138b",
+       "92c898b630b9c2202ce887ebf09daa6a6b5e2db1565d85ccc2502ebca1c4138b",
+       "92c898b630b9c2202ce887ebf09daa6a6b5e2db1565d85ccc2502ebca1c4138b",
+       "92c898b630b9c2202ce887ebf09daa6a6b5e2db1565d85ccc2502ebca1c4138b"
+      ],
+      "distinct_h": 1
+     },
+     "plain": {
+      "h": [
+       "d51cb6ae28b489d7690b271ba6dc2ffaaa5324d8e98333386649bbd6a6d5fb37",
+       "d51cb6ae28b489d7690b271ba6dc2ffaaa5324d8e98333386649bbd6a6d5fb37",
+       "d51cb6ae28b489d7690b271ba6dc2ffaaa5324d8e98333386649bbd6a6d5fb37",
+       "d51cb6ae28b489d7690b271ba6dc2ffaaa5324d8e98333386649bbd6a6d5fb37",
+       "d51cb6ae28b489d7690b271ba6dc2ffaaa5324d8e98333386649bbd6a6d5fb37"
+      ],
+      "distinct_h": 1
+     },
+     "modes_differ": true
+    },
+    {
+     "q": "34",
+     "seed": 158942413,
+     "sf": 10.0,
+     "log": {
+      "h": [
+       "2e0274b28c79da5ff3e946970030e1017ca353927554fc4d46a5c1fb50cfa5f6",
+       "2e0274b28c79da5ff3e946970030e1017ca353927554fc4d46a5c1fb50cfa5f6",
+       "2e0274b28c79da5ff3e946970030e1017ca353927554fc4d46a5c1fb50cfa5f6",
+       "2e0274b28c79da5ff3e946970030e1017ca353927554fc4d46a5c1fb50cfa5f6",
+       "2e0274b28c79da5ff3e946970030e1017ca353927554fc4d46a5c1fb50cfa5f6"
+      ],
+      "p": [
+       "816d9dda829385123cb83bbbd299be6d589bcf458a8600fea69fd5f3fe57ec42",
+       "816d9dda829385123cb83bbbd299be6d589bcf458a8600fea69fd5f3fe57ec42",
+       "816d9dda829385123cb83bbbd299be6d589bcf458a8600fea69fd5f3fe57ec42",
+       "816d9dda829385123cb83bbbd299be6d589bcf458a8600fea69fd5f3fe57ec42",
+       "816d9dda829385123cb83bbbd299be6d589bcf458a8600fea69fd5f3fe57ec42"
+      ],
+      "distinct_h": 1
+     },
+     "plain": {
+      "h": [
+       "45b2b862271697d3fe5b4c01f6ebf9ef036713cc8a58f3c2dbd6de75027759d7",
+       "45b2b862271697d3fe5b4c01f6ebf9ef036713cc8a58f3c2dbd6de75027759d7",
+       "45b2b862271697d3fe5b4c01f6ebf9ef036713cc8a58f3c2dbd6de75027759d7",
+       "45b2b862271697d3fe5b4c01f6ebf9ef036713cc8a58f3c2dbd6de75027759d7",
+       "45b2b862271697d3fe5b4c01f6ebf9ef036713cc8a58f3c2dbd6de75027759d7"
+      ],
+      "distinct_h": 1
+     },
+     "modes_differ": true
+    },
+    {
+     "q": "34",
+     "seed": 203854368,
+     "sf": 10.0,
+     "log": {
+      "h": [
+       "e3705043de9980709899648e6666d884a78b5953daa122c893a59812add88692",
+       "e3705043de9980709899648e6666d884a78b5953daa122c893a59812add88692",
+       "e3705043de9980709899648e6666d884a78b5953daa122c893a59812add88692",
+       "e3705043de9980709899648e6666d884a78b5953daa122c893a59812add88692",
+       "e3705043de9980709899648e6666d884a78b5953daa122c893a59812add88692"
+      ],
+      "p": [
+       "e755410e9684665e38b50e7cbccad2466e716c7be194cc50d921604ac3a6c23a",
+       "e755410e9684665e38b50e7cbccad2466e716c7be194cc50d921604ac3a6c23a",
+       "e755410e9684665e38b50e7cbccad2466e716c7be194cc50d921604ac3a6c23a",
+       "e755410e9684665e38b50e7cbccad2466e716c7be194cc50d921604ac3a6c23a",
+       "e755410e9684665e38b50e7cbccad2466e716c7be194cc50d921604ac3a6c23a"
+      ],
+      "distinct_h": 1
+     },
+     "plain": {
+      "h": [
+       "05a2296385dda9a2aeca353b918155dca9883a068bf62545d0d727e807946b3b",
+       "05a2296385dda9a2aeca353b918155dca9883a068bf62545d0d727e807946b3b",
+       "05a2296385dda9a2aeca353b918155dca9883a068bf62545d0d727e807946b3b",
+       "05a2296385dda9a2aeca353b918155dca9883a068bf62545d0d727e807946b3b",
+       "05a2296385dda9a2aeca353b918155dca9883a068bf62545d0d727e807946b3b"
+      ],
+      "distinct_h": 1
+     },
+     "modes_differ": true
+    },
+    {
+     "q": "34",
+     "seed": 646281343,
+     "sf": 10.0,
+     "log": {
+      "h": [
+       "1432184a9acd3c2c889fecd5f05efd6b72bcd5154efbfa9e62081bf27dc91c8f",
+       "1432184a9acd3c2c889fecd5f05efd6b72bcd5154efbfa9e62081bf27dc91c8f",
+       "1432184a9acd3c2c889fecd5f05efd6b72bcd5154efbfa9e62081bf27dc91c8f",
+       "1432184a9acd3c2c889fecd5f05efd6b72bcd5154efbfa9e62081bf27dc91c8f",
+       "1432184a9acd3c2c889fecd5f05efd6b72bcd5154efbfa9e62081bf27dc91c8f"
+      ],
+      "p": [
+       "29ebfdec8a273c1afe79a5fcda4386685921e2e981fa42f6406e795fa44ceba0",
+       "29ebfdec8a273c1afe79a5fcda4386685921e2e981fa42f6406e795fa44ceba0",
+       "29ebfdec8a273c1afe79a5fcda4386685921e2e981fa42f6406e795fa44ceba0",
+       "29ebfdec8a273c1afe79a5fcda4386685921e2e981fa42f6406e795fa44ceba0",
+       "29ebfdec8a273c1afe79a5fcda4386685921e2e981fa42f6406e795fa44ceba0"
+      ],
+      "distinct_h": 1
+     },
+     "plain": {
+      "h": [
+       "b6732fd4fbfc0a920058db92959efcf12f74bca4f59a36b02fe356d6f95042b3",
+       "b6732fd4fbfc0a920058db92959efcf12f74bca4f59a36b02fe356d6f95042b3",
+       "b6732fd4fbfc0a920058db92959efcf12f74bca4f59a36b02fe356d6f95042b3",
+       "b6732fd4fbfc0a920058db92959efcf12f74bca4f59a36b02fe356d6f95042b3",
+       "b6732fd4fbfc0a920058db92959efcf12f74bca4f59a36b02fe356d6f95042b3"
+      ],
+      "distinct_h": 1
+     },
+     "modes_differ": true
+    },
+    {
+     "q": "34",
+     "seed": 872720630,
+     "sf": 10.0,
+     "log": {
+      "h": [
+       "106221cc85cee3ed0a5e5089066bc015a2bec500e43801a85ca94683c10d6467",
+       "106221cc85cee3ed0a5e5089066bc015a2bec500e43801a85ca94683c10d6467",
+       "106221cc85cee3ed0a5e5089066bc015a2bec500e43801a85ca94683c10d6467",
+       "106221cc85cee3ed0a5e5089066bc015a2bec500e43801a85ca94683c10d6467",
+       "106221cc85cee3ed0a5e5089066bc015a2bec500e43801a85ca94683c10d6467"
+      ],
+      "p": [
+       "d9499ca93cae58ad9744b8ac58bdb5036d10b1bc1f627cdb65a2ea7fc9c04ae5",
+       "d9499ca93cae58ad9744b8ac58bdb5036d10b1bc1f627cdb65a2ea7fc9c04ae5",
+       "d9499ca93cae58ad9744b8ac58bdb5036d10b1bc1f627cdb65a2ea7fc9c04ae5",
+       "d9499ca93cae58ad9744b8ac58bdb5036d10b1bc1f627cdb65a2ea7fc9c04ae5",
+       "d9499ca93cae58ad9744b8ac58bdb5036d10b1bc1f627cdb65a2ea7fc9c04ae5"
+      ],
+      "distinct_h": 1
+     },
+     "plain": {
+      "h": [
+       "8cb2f313ea12b0caf54155689533f579aaa9eb442ec3087621644c502b3561c0",
+       "8cb2f313ea12b0caf54155689533f579aaa9eb442ec3087621644c502b3561c0",
+       "8cb2f313ea12b0caf54155689533f579aaa9eb442ec3087621644c502b3561c0",
+       "8cb2f313ea12b0caf54155689533f579aaa9eb442ec3087621644c502b3561c0",
+       "8cb2f313ea12b0caf54155689533f579aaa9eb442ec3087621644c502b3561c0"
+      ],
+      "distinct_h": 1
+     },
+     "modes_differ": true
+    },
+    {
+     "q": "34",
+     "seed": 883859879,
+     "sf": 10.0,
+     "log": {
+      "h": [
+       "390e6bf585e3196791f8014efe577a7d8a3317f5f6583a7061dd05d6d06864c2",
+       "390e6bf585e3196791f8014efe577a7d8a3317f5f6583a7061dd05d6d06864c2",
+       "390e6bf585e3196791f8014efe577a7d8a3317f5f6583a7061dd05d6d06864c2",
+       "390e6bf585e3196791f8014efe577a7d8a3317f5f6583a7061dd05d6d06864c2",
+       "390e6bf585e3196791f8014efe577a7d8a3317f5f6583a7061dd05d6d06864c2"
+      ],
+      "p": [
+       "df506310bc65dbeab43a82b32b0043cec0b5e7d723607baad3e6d37a2f63b952",
+       "df506310bc65dbeab43a82b32b0043cec0b5e7d723607baad3e6d37a2f63b952",
+       "df506310bc65dbeab43a82b32b0043cec0b5e7d723607baad3e6d37a2f63b952",
+       "df506310bc65dbeab43a82b32b0043cec0b5e7d723607baad3e6d37a2f63b952",
+       "df506310bc65dbeab43a82b32b0043cec0b5e7d723607baad3e6d37a2f63b952"
+      ],
+      "distinct_h": 1
+     },
+     "plain": {
+      "h": [
+       "43937b470398f9f3a67c508a5f96c6c79e0de68d8707fd0982eb24b04d14cdde",
+       "43937b470398f9f3a67c508a5f96c6c79e0de68d8707fd0982eb24b04d14cdde",
+       "43937b470398f9f3a67c508a5f96c6c79e0de68d8707fd0982eb24b04d14cdde",
+       "43937b470398f9f3a67c508a5f96c6c79e0de68d8707fd0982eb24b04d14cdde",
+       "43937b470398f9f3a67c508a5f96c6c79e0de68d8707fd0982eb24b04d14cdde"
+      ],
+      "distinct_h": 1
+     },
+     "modes_differ": true
+    },
+    {
+     "q": "34",
+     "seed": 1129185331,
+     "sf": 10.0,
+     "log": {
+      "h": [
+       "5a00d264b3c6fbc3c004d71f8a7ffc913032fcd708047a26ecc0dc2413618ba1",
+       "5a00d264b3c6fbc3c004d71f8a7ffc913032fcd708047a26ecc0dc2413618ba1",
+       "5a00d264b3c6fbc3c004d71f8a7ffc913032fcd708047a26ecc0dc2413618ba1",
+       "5a00d264b3c6fbc3c004d71f8a7ffc913032fcd708047a26ecc0dc2413618ba1",
+       "5a00d264b3c6fbc3c004d71f8a7ffc913032fcd708047a26ecc0dc2413618ba1"
+      ],
+      "p": [
+       "9e72eededd47d6f9c5a958c7b32b774f4cdc8e0ace7466289c5f8961f99599d2",
+       "9e72eededd47d6f9c5a958c7b32b774f4cdc8e0ace7466289c5f8961f99599d2",
+       "9e72eededd47d6f9c5a958c7b32b774f4cdc8e0ace7466289c5f8961f99599d2",
+       "9e72eededd47d6f9c5a958c7b32b774f4cdc8e0ace7466289c5f8961f99599d2",
+       "9e72eededd47d6f9c5a958c7b32b774f4cdc8e0ace7466289c5f8961f99599d2"
+      ],
+      "distinct_h": 1
+     },
+     "plain": {
+      "h": [
+       "f34fa194b4d54fe0414a52555bd85b0100295e4577e5c9942ea0bc90e8ef7e26",
+       "f34fa194b4d54fe0414a52555bd85b0100295e4577e5c9942ea0bc90e8ef7e26",
+       "f34fa194b4d54fe0414a52555bd85b0100295e4577e5c9942ea0bc90e8ef7e26",
+       "f34fa194b4d54fe0414a52555bd85b0100295e4577e5c9942ea0bc90e8ef7e26",
+       "f34fa194b4d54fe0414a52555bd85b0100295e4577e5c9942ea0bc90e8ef7e26"
+      ],
+      "distinct_h": 1
+     },
+     "modes_differ": true
+    },
+    {
+     "q": "34",
+     "seed": 1339962585,
+     "sf": 10.0,
+     "log": {
+      "h": [
+       "b4169b5484920f3ebd5058ace7656af837f592e34f10ba356085588160e029c7",
+       "b4169b5484920f3ebd5058ace7656af837f592e34f10ba356085588160e029c7",
+       "b4169b5484920f3ebd5058ace7656af837f592e34f10ba356085588160e029c7",
+       "b4169b5484920f3ebd5058ace7656af837f592e34f10ba356085588160e029c7",
+       "b4169b5484920f3ebd5058ace7656af837f592e34f10ba356085588160e029c7"
+      ],
+      "p": [
+       "3b85438433846e6364cfbab104086acad29e0a93dee46a410c84ffa637c52e76",
+       "3b85438433846e6364cfbab104086acad29e0a93dee46a410c84ffa637c52e76",
+       "3b85438433846e6364cfbab104086acad29e0a93dee46a410c84ffa637c52e76",
+       "3b85438433846e6364cfbab104086acad29e0a93dee46a410c84ffa637c52e76",
+       "3b85438433846e6364cfbab104086acad29e0a93dee46a410c84ffa637c52e76"
+      ],
+      "distinct_h": 1
+     },
+     "plain": {
+      "h": [
+       "7c5dd12b5886524434b8c1d9c85a22c1f67d708b4b144491687635e8388aba21",
+       "7c5dd12b5886524434b8c1d9c85a22c1f67d708b4b144491687635e8388aba21",
+       "7c5dd12b5886524434b8c1d9c85a22c1f67d708b4b144491687635e8388aba21",
+       "7c5dd12b5886524434b8c1d9c85a22c1f67d708b4b144491687635e8388aba21",
+       "7c5dd12b5886524434b8c1d9c85a22c1f67d708b4b144491687635e8388aba21"
+      ],
+      "distinct_h": 1
+     },
+     "modes_differ": true
+    },
+    {
+     "q": "34",
+     "seed": 1616913585,
+     "sf": 10.0,
+     "log": {
+      "h": [
+       "6661362db3cd7f44d27bc4371c30c40355c3afdd9ebb528cfb64252941bc9893",
+       "6661362db3cd7f44d27bc4371c30c40355c3afdd9ebb528cfb64252941bc9893",
+       "6661362db3cd7f44d27bc4371c30c40355c3afdd9ebb528cfb64252941bc9893",
+       "6661362db3cd7f44d27bc4371c30c40355c3afdd9ebb528cfb64252941bc9893",
+       "6661362db3cd7f44d27bc4371c30c40355c3afdd9ebb528cfb64252941bc9893"
+      ],
+      "p": [
+       "6592bfac012ed63971f5dcc6ec06942bd56059521e7f1076aec21ad7ae5a9015",
+       "6592bfac012ed63971f5dcc6ec06942bd56059521e7f1076aec21ad7ae5a9015",
+       "6592bfac012ed63971f5dcc6ec06942bd56059521e7f1076aec21ad7ae5a9015",
+       "6592bfac012ed63971f5dcc6ec06942bd56059521e7f1076aec21ad7ae5a9015",
+       "6592bfac012ed63971f5dcc6ec06942bd56059521e7f1076aec21ad7ae5a9015"
+      ],
+      "distinct_h": 1
+     },
+     "plain": {
+      "h": [
+       "c9d328280bac24efff6619e16e11934d50b12821a91c00ec5c23df92c4c5f21a",
+       "c9d328280bac24efff6619e16e11934d50b12821a91c00ec5c23df92c4c5f21a",
+       "c9d328280bac24efff6619e16e11934d50b12821a91c00ec5c23df92c4c5f21a",
+       "c9d328280bac24efff6619e16e11934d50b12821a91c00ec5c23df92c4c5f21a",
+       "c9d328280bac24efff6619e16e11934d50b12821a91c00ec5c23df92c4c5f21a"
+      ],
+      "distinct_h": 1
+     },
+     "modes_differ": true
+    },
+    {
+     "q": "34",
+     "seed": 1824035409,
+     "sf": 10.0,
+     "log": {
+      "h": [
+       "15ed45f8fbd93ec10fade15dbb5afde29ed2d638de9b520698eaebc5eaa05b44",
+       "15ed45f8fbd93ec10fade15dbb5afde29ed2d638de9b520698eaebc5eaa05b44",
+       "15ed45f8fbd93ec10fade15dbb5afde29ed2d638de9b520698eaebc5eaa05b44",
+       "15ed45f8fbd93ec10fade15dbb5afde29ed2d638de9b520698eaebc5eaa05b44",
+       "15ed45f8fbd93ec10fade15dbb5afde29ed2d638de9b520698eaebc5eaa05b44"
+      ],
+      "p": [
+       "9a9226b3c8e580d09fb2a524c0ac9584a98957bcd057b470969b2d95a6957c00",
+       "9a9226b3c8e580d09fb2a524c0ac9584a98957bcd057b470969b2d95a6957c00",
+       "9a9226b3c8e580d09fb2a524c0ac9584a98957bcd057b470969b2d95a6957c00",
+       "9a9226b3c8e580d09fb2a524c0ac9584a98957bcd057b470969b2d95a6957c00",
+       "9a9226b3c8e580d09fb2a524c0ac9584a98957bcd057b470969b2d95a6957c00"
+      ],
+      "distinct_h": 1
+     },
+     "plain": {
+      "h": [
+       "014ed1c8c25894a32e785d66604263a20154de7d5ae0423059ac654b92fc3a78",
+       "014ed1c8c25894a32e785d66604263a20154de7d5ae0423059ac654b92fc3a78",
+       "014ed1c8c25894a32e785d66604263a20154de7d5ae0423059ac654b92fc3a78",
+       "014ed1c8c25894a32e785d66604263a20154de7d5ae0423059ac654b92fc3a78",
+       "014ed1c8c25894a32e785d66604263a20154de7d5ae0423059ac654b92fc3a78"
+      ],
+      "distinct_h": 1
+     },
+     "modes_differ": true
+    },
+    {
+     "q": "34",
+     "seed": 2119102834,
+     "sf": 10.0,
+     "log": {
+      "h": [
+       "941bc0f2aabd82d4a42bd51684b77d9cced2ac31114801c6eb1057ead04dfc83",
+       "941bc0f2aabd82d4a42bd51684b77d9cced2ac31114801c6eb1057ead04dfc83",
+       "941bc0f2aabd82d4a42bd51684b77d9cced2ac31114801c6eb1057ead04dfc83",
+       "941bc0f2aabd82d4a42bd51684b77d9cced2ac31114801c6eb1057ead04dfc83",
+       "941bc0f2aabd82d4a42bd51684b77d9cced2ac31114801c6eb1057ead04dfc83"
+      ],
+      "p": [
+       "8ef1e1d542d86a6b87487f218f346ffeb64afee02571f03c12ac74f2db8c1bc7",
+       "8ef1e1d542d86a6b87487f218f346ffeb64afee02571f03c12ac74f2db8c1bc7",
+       "8ef1e1d542d86a6b87487f218f346ffeb64afee02571f03c12ac74f2db8c1bc7",
+       "8ef1e1d542d86a6b87487f218f346ffeb64afee02571f03c12ac74f2db8c1bc7",
+       "8ef1e1d542d86a6b87487f218f346ffeb64afee02571f03c12ac74f2db8c1bc7"
+      ],
+      "distinct_h": 1
+     },
+     "plain": {
+      "h": [
+       "f0cb10c16712943fcb5a912a24d9bbc341a45b85aa2ac89b330e61bb82818895",
+       "f0cb10c16712943fcb5a912a24d9bbc341a45b85aa2ac89b330e61bb82818895",
+       "f0cb10c16712943fcb5a912a24d9bbc341a45b85aa2ac89b330e61bb82818895",
+       "f0cb10c16712943fcb5a912a24d9bbc341a45b85aa2ac89b330e61bb82818895",
+       "f0cb10c16712943fcb5a912a24d9bbc341a45b85aa2ac89b330e61bb82818895"
+      ],
+      "distinct_h": 1
+     },
+     "modes_differ": true
+    }
+   ]
+  }
  },
  "replay": {
   "file": "replay.json",
-  "sha256": "d49231fa72574fc8739d398d3ff5d4e5ff80a9a34585e7a2e320c8f719c93014"
+  "sha256": "a7ca0b0c81ea6bd28917c54d7a0e7d4a2463eca3f3b59d395c3e44fa8bc98b13",
+  "rule": "An entry is replayable when its bundles record a seed or query parameters. Entries that record neither are not replayable and are excluded from the retirement gate.",
+  "entries": 22,
+  "bundles": 135,
+  "replayable": {
+   "entries": 8,
+   "bundles": 39
+  },
+  "not_replayable": {
+   "entries": 14,
+   "bundles": 96
+  },
+  "not_replayable_bundles_by_benchmark": {
+   "tpcds": 22,
+   "tpcds_obt": 19,
+   "tpch": 55
+  }
  }
 }

@@ -14,13 +14,14 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from collections.abc import Callable, Iterable, Iterator
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any, Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-from benchbox.core.tpcds.c_tools import DSQGenBinary, apply_subscale_template_overrides
+from benchbox.core.tpcds.c_tools import DSQGenBinary, _substitute_parameters, apply_subscale_template_overrides
 from benchbox.core.tpcds.parameter_log import parse_dsqgen_parameter_log
 from benchbox.core.tpcds.streams import _parse_dsqgen_stream_log, _split_dsqgen_stream_sql
 from benchbox.core.tpch.queries import QGenBinary
@@ -42,6 +43,8 @@ TEXT_NORMALISATION = {
     "tpcds_stream_template": "statements of the last stream in the dsqgen stdout split on (?<=;)\\n+(?=\\S), "
     "stripped, joined with a blank line, newline normalised",
     "tpcds_stream_all": "each statement of query_<n>.sql split as BenchBox does, newline normalised",
+    "tpcds_explicit": "dsqgen stdout for the template rewritten as DSQGenBinary.generate_with_parameters rewrites it, "
+    "extracted and normalised as tpcds; t is the sha256 of the rewritten template text (UTF-8)",
 }
 
 TPCH_QUERIES = [str(n) for n in range(1, 23)] + ["15a"]
@@ -73,6 +76,129 @@ TPCDS_CHUNK = 16
 TIMEOUT_ATTEMPTS = 2
 REPEATS = 3
 STREAM_TIMEOUT_SECONDS = 900
+EXPLICIT_STEM = "tpcds_explicit"
+EXPLICIT_CHUNK = 8
+QUALIFICATION_VALUES = REPO_ROOT / "benchbox" / "core" / "tpcds" / "dataframe_queries" / "qualification_values.json"
+QUALIFICATION_SEED = 1
+QUALIFICATION_SCALE = 1.0
+QUALIFICATION_ALT_SEED = 99
+EQUIVALENCE_DRAWS = [
+    (None, 0, 0.01),
+    (1, 0, 0.01),
+    (42, 0, 0.01),
+    (42, 1, 0.01),
+    (20260709, 2, 0.01),
+    (None, 0, 1.0),
+    (None, 0, 10.0),
+]
+MODE_RUNS = 5
+REPLAY_RULE = (
+    "An entry is replayable when its bundles record a seed or query parameters. Entries that record neither "
+    "are not replayable and are excluded from the retirement gate."
+)
+EXPLICIT_MECHANISM = {
+    "source": "benchbox/core/tpcds/c_tools.py DSQGenBinary.generate_with_parameters and _substitute_parameters",
+    "summary": "dsqgen has no option that takes parameter values. BenchBox copies the template into a scratch "
+    "work directory, rewrites the copy's text, and runs dsqgen on the copy with the options of a seeded run and no -LOG.",
+    "command": "dsqgen -TEMPLATE <template> -DIALECT netezza -SCALE <sf> -RNGSEED <seed> -FILTER Y -VERBOSE N "
+    "-INPUT q/templates.lst -DIRECTORY q",
+    "name_pattern": "^([A-Za-z_][A-Za-z0-9_]*)\\.(\\d+)$",
+    "steps": [
+        "Sub-SF1 template overrides (SUBSCALE_TEMPLATE_OVERRIDES, query93.tpl) are applied to the staged template "
+        "before the rewrite.",
+        "Each key must match name_pattern, the form dsqgen -LOG writes (for example YEAR.01); NAME is group 1 and "
+        "POSITION is int(group 2). The value is used as str(value).",
+        "Every [NAME.POSITION] in the template text is replaced by the value; when POSITION is 1 every [NAME] is "
+        "replaced as well. Replacement is literal text, applied key by key in the order given, so a later key "
+        "sees the output of earlier ones.",
+        "A key that matches nothing raises ValueError unless the template has a define NAME = statement, in "
+        "which case the key is ignored.",
+        "define statements stay in the rewritten template and dsqgen still parses them; the substituted names no "
+        "longer appear in brackets. Brackets that were not substituted ([_LIMITA], [_END], names absent from the "
+        "parameter dict) are evaluated by dsqgen from -RNGSEED and -SCALE.",
+        "Queries 14, 23, 24 and 39 use query<N>.tpl for both a and b; the output is split on ';' and part 0 (a) "
+        "or 1 (b) is kept.",
+        "The text is the dsqgen stdout up to the 'qgen2 Query Generator' or 'Copyright Transaction' banner.",
+    ],
+}
+DIALECT_CALL_SITES = [
+    {
+        "file": "benchbox/core/tpcds/c_tools.py",
+        "role": "the only place a single-query dsqgen command line takes -DIALECT",
+        "anchors": ['cmd.extend([f"{_opt}DIALECT", dialect])'],
+        "calls": [],
+    },
+    {
+        "file": "benchbox/core/tpcds/streams.py",
+        "role": "the only place a -STREAMS dsqgen command line takes -DIALECT; the parameter defaults to netezza",
+        "anchors": ['f"{opt}DIALECT",', 'dialect: str = "netezza",'],
+        "calls": [],
+    },
+    {
+        "file": "benchbox/core/tpcds/qualification/runner.py",
+        "role": "qualification calls omit dialect, so the netezza default applies",
+        "anchors": [],
+        "calls": [{"callee": "dsqgen.generate_with_parameters", "dialect_keyword": False}],
+    },
+    {
+        "file": "benchbox/core/equivalence/builders/tpcds.py",
+        "role": "equivalence builder calls omit dialect, so the netezza default applies",
+        "anchors": [],
+        "calls": [{"callee": "dsqgen.generate_with_parameters", "dialect_keyword": False}],
+    },
+    {
+        "file": "benchbox/core/tpcds/throughput_test.py",
+        "role": "throughput streams call generate_dsqgen_streams without dialect, so the netezza default applies",
+        "anchors": [],
+        "calls": [{"callee": "generate_dsqgen_streams", "dialect_keyword": False}],
+    },
+    {
+        "file": "benchbox/core/tpcds/dataframe_queries/parameter_adapters.py",
+        "role": "parameter binding calls omit dialect, so the netezza default applies",
+        "anchors": [],
+        "calls": [{"callee": "dsqgen.generate_parameter_log", "dialect_keyword": False}],
+    },
+    {
+        "file": "benchbox/core/tpcds_obt/queries.py",
+        "role": "OBT parameter logging omits dialect, so the netezza default applies",
+        "anchors": [],
+        "calls": [{"callee": "_dsqgen.generate_parameter_log", "dialect_keyword": False}],
+    },
+    {
+        "file": "benchbox/core/tpcds/parameter_extractor.py",
+        "role": "parameter extraction omits dialect, so the netezza default applies",
+        "anchors": [],
+        "calls": [{"callee": "dsqgen.generate", "dialect_keyword": False}],
+    },
+    {
+        "file": "benchbox/core/tpcds/benchmark/runner.py",
+        "role": "the benchmark passes src to dsqgen, and src is base_dialect or netezza",
+        "anchors": ['src = (base_dialect or "netezza").lower()'],
+        "calls": [
+            {"callee": "query_manager.dsqgen.generate", "dialect_keyword": True, "dialect_value": "src"},
+            {"callee": "query_manager.get_query", "dialect_keyword": True, "dialect_value": "src"},
+            {"callee": "query_manager.get_all_queries", "dialect_keyword": True, "dialect_value": "src"},
+        ],
+    },
+    {
+        "file": "benchbox/platforms/base/dialect_translation.py",
+        "role": "the only get_tpc_base_dialect definition; it returns netezza for every benchmark",
+        "anchors": ["def get_tpc_base_dialect"],
+        "calls": [],
+    },
+    {
+        "file": "benchbox/platforms/base/execution.py",
+        "role": "base_dialect for platform query extraction comes from get_tpc_base_dialect",
+        "anchors": ["base = self.get_tpc_base_dialect(bench_family)"],
+        "calls": [],
+    },
+    {
+        "file": "benchbox/core/dryrun.py",
+        "role": "base_dialect for dry runs comes from get_tpc_base_dialect",
+        "anchors": ["base = platform_adapter.get_tpc_base_dialect(benchmark_family(benchmark_id))"],
+        "calls": [],
+    },
+]
 
 _GZIP_LEVEL = 9
 _STATEMENT_SPLIT_RE = re.compile(r"(?<=;)\n+(?=\S)")
@@ -197,6 +323,31 @@ class TpchOracle(Oracle):
         env = os.environ.copy()
         env["DSS_QUERY"] = str(self.templates / ("variants" if query == "15a" else "queries"))
         return env
+
+    def timeout_probe(self, spec: tuple[str, Optional[int], float]) -> dict[str, Any]:
+        query, seed, scale = spec
+        work = self.workdir("tpch", self._stage)
+        log = work / "parameters.log"
+        attempts = []
+        for _ in range(TIMEOUT_ATTEMPTS):
+            log.unlink(missing_ok=True)
+            started = time.monotonic()
+            try:
+                subprocess.run(
+                    self._command(query, seed, scale, log),
+                    cwd=work,
+                    env=self._env(query),
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=ORACLE_TIMEOUT_SECONDS,
+                )
+            except subprocess.TimeoutExpired:
+                attempts.append({"outcome": "timeout", "seconds": round(time.monotonic() - started, 1)})
+                continue
+            attempts.append({"outcome": "exit", "seconds": round(time.monotonic() - started, 1)})
+            break
+        return {"q": query, "seed": seed, "sf": scale, "attempts": attempts}
 
     def case(self, spec: tuple[str, Optional[int], float, bool]) -> dict[str, Any]:
         query, seed, scale, verify = spec
@@ -349,6 +500,80 @@ class TpcdsOracle(Oracle):
             "s": None,
         }
 
+    def render(
+        self, template: str, base: int, variant: Optional[str], multi_part: bool, seed: Optional[int], scale: float
+    ) -> str:
+        work = self.staged(scale)
+        result = run_checked(self.command(template, seed, scale), cwd=work, env=self.env(work))
+        sql = self.extractor._extract_sql_from_output(result.stdout, base, variant)
+        if multi_part:
+            sql = self.extractor._select_multi_part(sql, base, variant)
+        return normalise_newlines(sql)
+
+    def explicit(self, spec: tuple[str, dict[str, str], int, float, Optional[int], bool]) -> dict[str, Any]:
+        query, parameters, seed, scale, alternate_seed, compare_seeded = spec
+        base, variant = self.parse_id(query)
+        multi_part = self.is_multi_part(base, variant)
+        template = self.template_argument(base, variant, multi_part)
+        source = (self.staged(scale) / "q" / template).resolve()
+        rewritten = _substitute_parameters(source.read_text(encoding="utf-8"), parameters, query)
+        scratch = source.with_name(f"explicit_{os.getpid()}_{source.name}")
+        argument = str(Path(template).with_name(scratch.name))
+        case: dict[str, Any] = {
+            "q": query,
+            "seed": seed,
+            "sf": scale,
+            "p": dict(parameters),
+            "t": text_hash(rewritten),
+            "text": None,
+            "alt": None,
+            "r": None,
+            "s": None,
+        }
+        scratch.write_text(rewritten, encoding="utf-8")
+        try:
+            case["text"] = self.render(argument, base, variant, multi_part, seed, scale)
+            if alternate_seed is not None:
+                case["alt"] = text_hash(self.render(argument, base, variant, multi_part, alternate_seed, scale))
+        except OracleTimeout:
+            return {**case, "text": None, "alt": None, "s": "timeout"}
+        finally:
+            scratch.unlink(missing_ok=True)
+        if compare_seeded:
+            case["r"] = hash_or_none(self.single((query, seed, scale, False))["text"])
+        return case
+
+    def explicit_repeatable(self, spec: tuple[str, dict[str, str], int, float, Optional[int], bool]) -> dict[str, Any]:
+        first = self.explicit(spec)
+        if first["s"] is not None or all(self.explicit(spec) == first for _ in range(REPEATS - 1)):
+            return first
+        return {**first, "text": None, "alt": None, "r": None, "s": "nondeterministic"}
+
+    def mode_runs(self, spec: tuple[str, Optional[int], float, int]) -> dict[str, dict[str, list[Optional[str]]]]:
+        query, seed, scale, count = spec
+        base, variant = self.parse_id(query)
+        multi_part = self.is_multi_part(base, variant)
+        template = self.template_argument(base, variant, multi_part)
+        work = self.staged(scale)
+        log = work / "parameters.log"
+        runs: dict[str, dict[str, list[Optional[str]]]] = {"log": {"h": [], "p": []}, "plain": {"h": []}}
+        for mode in ("log", "plain"):
+            for _ in range(count):
+                log.unlink(missing_ok=True)
+                result = run_checked(
+                    self.command(template, seed, scale, log=log if mode == "log" else None),
+                    cwd=work,
+                    env=self.env(work),
+                )
+                sql = self.extractor._extract_sql_from_output(result.stdout, base, variant)
+                if multi_part:
+                    sql = self.extractor._select_multi_part(sql, base, variant)
+                runs[mode]["h"].append(text_hash(normalise_newlines(sql)))
+                if mode == "log":
+                    values = dict(parse_dsqgen_parameter_log(log.read_text(encoding="utf-8"))[0][0].substitutions)
+                    runs["log"]["p"].append(sha256_bytes(dumps(values).encode("utf-8")))
+        return runs
+
     def repeat(self, function: Callable[[Any], dict[str, Any]], spec: Any) -> dict[str, Any]:
         first = function(spec)
         if first["s"] is not None or all(function(spec) == first for _ in range(REPEATS - 1)):
@@ -426,6 +651,247 @@ class TpcdsOracle(Oracle):
             return lines
         finally:
             shutil.rmtree(path, ignore_errors=True)
+
+
+def read_corpus_records(corpus_dir: Path, stem: str) -> Iterator[Any]:
+    for path in sorted(corpus_dir.glob(f"{stem}-*.jsonl.gz")):
+        with gzip.open(path, "rb") as handle:
+            for line in handle.read().decode("utf-8").splitlines():
+                yield json.loads(line)
+
+
+def power_parameter_seed(seed: Optional[int], stream_id: int) -> int:
+    return (seed or 1) + stream_id + 1000
+
+
+def qualification_statements() -> list[str]:
+    return [f"{n}{part}" for n in TPCDS_BASE_IDS for part in (("a", "b") if n in TPCDS_MULTI_PART_IDS else ("",))]
+
+
+def equivalence_statements() -> list[str]:
+    first = [f"{n}{'a' if n in TPCDS_MULTI_PART_IDS else ''}" for n in TPCDS_BASE_IDS]
+    return first + [f"{n}b" for n in TPCDS_MULTI_PART_IDS]
+
+
+def explicit_record(kind: str, case: dict[str, Any], draw: Optional[list[Any]]) -> dict[str, Any]:
+    record: dict[str, Any] = {"set": kind, "q": case["q"], "sf": case["sf"], "seed": case["seed"]}
+    if draw is not None:
+        record["draw"] = draw
+    record["p"] = case["p"]
+    record["t"] = case["t"]
+    record["h"] = hash_or_none(case["text"])
+    if kind == "qualification":
+        record["h_alt"] = case["alt"]
+    else:
+        record["r"] = case["r"]
+    if case["s"] is not None:
+        record["s"] = case["s"]
+    return record
+
+
+def capture_explicit(workers: Workers, corpus_dir: Path) -> dict[str, Any]:
+    document = json.loads(QUALIFICATION_VALUES.read_text(encoding="utf-8"))
+    writer = CorpusWriter(corpus_dir, EXPLICIT_STEM)
+    statements = qualification_statements()
+    specs = [
+        (
+            query,
+            document["values"][str(int(query.rstrip("ab")))],
+            QUALIFICATION_SEED,
+            QUALIFICATION_SCALE,
+            QUALIFICATION_ALT_SEED,
+            False,
+        )
+        for query in statements
+    ]
+    seed_sensitive = []
+    for case in workers.map("tpcds", "explicit_repeatable", specs, EXPLICIT_CHUNK):
+        writer.write(explicit_record("qualification", case, None))
+        if case["s"] is None and case["alt"] != text_hash(case["text"]):
+            seed_sensitive.append(case["q"])
+    draws = []
+    for seed, stream, scale in EQUIVALENCE_DRAWS:
+        rngseed = power_parameter_seed(seed, stream)
+        draws.append({"seed": seed, "stream": stream, "rngseed": rngseed, "scale_factor": scale})
+        logged = list(
+            workers.map(
+                "tpcds",
+                "single_repeatable",
+                [(str(number), rngseed, scale, False) for number in TPCDS_BASE_IDS],
+                TPCDS_CHUNK,
+            )
+        )
+        specs = []
+        for query in equivalence_statements():
+            values = logged[int(query.rstrip("ab")) - 1]
+            if values["p"] is None:
+                unresolved = {"q": query, "seed": rngseed, "sf": scale, "p": None, "t": None, "text": None, "r": None}
+                writer.write(explicit_record("equivalence", {**unresolved, "s": values["s"]}, [seed, stream]))
+            else:
+                specs.append((query, values["p"], rngseed, scale, None, True))
+        for case in workers.map("tpcds", "explicit_repeatable", specs, EXPLICIT_CHUNK):
+            writer.write(explicit_record("equivalence", case, [seed, stream]))
+    info = writer.close()
+    return {
+        "files": info,
+        "section": {
+            "file_stem": EXPLICIT_STEM,
+            "mechanism": EXPLICIT_MECHANISM,
+            "qualification": {
+                "caller": "benchbox/core/tpcds/qualification/runner.py prepare",
+                "parameters_file": str(QUALIFICATION_VALUES.relative_to(REPO_ROOT)),
+                "parameters_sha256": sha256_file(QUALIFICATION_VALUES),
+                "scale_factor": QUALIFICATION_SCALE,
+                "seed": QUALIFICATION_SEED,
+                "alternate_seed": QUALIFICATION_ALT_SEED,
+                "dialect": "netezza",
+                "templates": len(TPCDS_BASE_IDS),
+                "statements": len(statements),
+                "seed_sensitive_statements": seed_sensitive,
+            },
+            "equivalence": {
+                "caller": "benchbox/core/equivalence/builders/tpcds.py build_tpcds_duckdb",
+                "rngseed": "(seed or 1) + stream_id + 1000, as power_parameter_seed",
+                "parameter_source": "dsqgen -LOG values of template <n> at that rngseed and scale, stream 0",
+                "round_trip": "r is the text hash of the seeded dsqgen run at the same rngseed and scale",
+                "draws": draws,
+                "statements_per_draw": len(equivalence_statements()),
+            },
+            "text_query_generate_with_parameters": "benchbox/core/tpcds/queries.py TPCDSQueryManager"
+            ".generate_with_parameters forwards to DSQGenBinary.generate_with_parameters with the default seed 1, "
+            "so its output is the qualification-case mechanism at the scale factor passed",
+            "records": sum(shard["records"] for shard in info.values()),
+            "abnormal": sum(shard["abnormal"] for shard in info.values()),
+        },
+    }
+
+
+def capture_evidence(workers: Workers, corpus_dir: Path) -> dict[str, Any]:
+    unstable = sorted(
+        {
+            (record["q"], -1 if record["seed"] is None else record["seed"], record["sf"])
+            for record in read_corpus_records(corpus_dir, "tpcds_single")
+            if record.get("s") == "nondeterministic"
+        }
+    )
+    specs = [(query, None if seed == -1 else seed, scale, MODE_RUNS) for query, seed, scale in unstable]
+    cases = []
+    for (query, seed, scale, _), runs in zip(specs, workers.map("tpcds", "mode_runs", specs)):
+        cases.append(
+            {
+                "q": query,
+                "seed": seed,
+                "sf": scale,
+                "log": {**runs["log"], "distinct_h": len(set(runs["log"]["h"]))},
+                "plain": {**runs["plain"], "distinct_h": len(set(runs["plain"]["h"]))},
+                "modes_differ": not set(runs["log"]["h"]) & set(runs["plain"]["h"]),
+            }
+        )
+    stuck = sorted(
+        {
+            (record["q"], record["seed"], record["sf"])
+            for record in read_corpus_records(corpus_dir, "tpch_named")
+            if record.get("s") == "timeout"
+        }
+    )
+    probes = list(workers.map("tpch", "timeout_probe", stuck))
+    return {
+        "nondeterministic": {
+            "suite": "tpcds",
+            "shape": "single",
+            "runs_per_mode": MODE_RUNS,
+            "finding": "Repeated dsqgen runs in one mode return one text hash; the run that writes -LOG and the "
+            "run that does not return different text for these cases, so the nondeterministic status in "
+            "tpcds_single means the two invocation modes disagree. BenchBox DSQGenBinary.generate runs without "
+            "-LOG and generate_parameter_log runs with it.",
+            "cases": cases,
+        },
+        "nonterminating": {
+            "suite": "tpch",
+            "timeout_seconds": ORACLE_TIMEOUT_SECONDS,
+            "attempts": TIMEOUT_ATTEMPTS,
+            "cases": probes,
+        },
+    }
+
+
+def replay_class(entry: dict[str, Any]) -> tuple[bool, str]:
+    seed, parameters = entry["seed"], entry["query_parameters"]
+    if seed is None and parameters is None:
+        return False, "no seed and no query parameters recorded; the bundle does not identify its parameter draw"
+    if seed is None:
+        return True, f"query parameters recorded: {parameters}"
+    if entry["qgen_seeds"]:
+        return True, f"seed {seed} recorded; the qgen seeds derived from it are listed in qgen_seeds"
+    if entry["benchmark"] == "tpcds":
+        return True, f"seed {seed} recorded; dsqgen -RNGSEED derives from it as seed + stream_id + 1000"
+    return True, f"seed {seed} recorded"
+
+
+def classify_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    classified = []
+    for entry in entries:
+        replayable, reason = replay_class(entry)
+        rest = {key: value for key, value in entry.items() if key not in ("replayable", "reason", "bundles")}
+        classified.append({**rest, "replayable": replayable, "reason": reason, "bundles": entry["bundles"]})
+    return classified
+
+
+def replay_summary(replay_path: Path) -> dict[str, Any]:
+    entries = json.loads(replay_path.read_text(encoding="utf-8"))["entries"]
+    replayable = [entry for entry in entries if entry["replayable"]]
+    excluded = [entry for entry in entries if not entry["replayable"]]
+    by_benchmark: dict[str, int] = {}
+    for entry in excluded:
+        by_benchmark[entry["benchmark"]] = by_benchmark.get(entry["benchmark"], 0) + len(entry["bundles"])
+    return {
+        "file": replay_path.name,
+        "sha256": sha256_file(replay_path),
+        "rule": REPLAY_RULE,
+        "entries": len(entries),
+        "bundles": sum(len(entry["bundles"]) for entry in entries),
+        "replayable": {"entries": len(replayable), "bundles": sum(len(entry["bundles"]) for entry in replayable)},
+        "not_replayable": {"entries": len(excluded), "bundles": sum(len(entry["bundles"]) for entry in excluded)},
+        "not_replayable_bundles_by_benchmark": dict(sorted(by_benchmark.items())),
+    }
+
+
+def bundled_dialects() -> list[str]:
+    templates = BINARIES_DIR / "tpc-ds" / "templates" / "query_templates"
+    return sorted(path.stem for path in templates.glob("*.tpl") if not path.stem.startswith("query"))
+
+
+def extend(args: argparse.Namespace) -> None:
+    corpus_dir = Path(args.output)
+    replay_path = corpus_dir / "replay.json"
+    replay = json.loads(replay_path.read_text(encoding="utf-8"))
+    replay["entries"] = classify_entries(replay["entries"])
+    replay_path.write_text(json.dumps(replay, indent=1) + "\n", encoding="utf-8")
+    workers = Workers(args.platform, args.jobs)
+    try:
+        explicit = capture_explicit(workers, corpus_dir)
+        evidence = capture_evidence(workers, corpus_dir)
+    finally:
+        workers.close()
+    manifest_path = corpus_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["text_normalisation"]["tpcds_explicit"] = TEXT_NORMALISATION["tpcds_explicit"]
+    tpcds = manifest["tpcds"]
+    tpcds["files"].update(explicit["files"])
+    tpcds["explicit_parameters"] = explicit["section"]
+    tpcds["dialects"] = {
+        "captured": ["netezza"],
+        "passed_by_benchbox": ["netezza"],
+        "accepted_by_dsqgen_templates": bundled_dialects(),
+        "unsupported_dialect_behavior": "DSQGenBinary._validate_dialect warns and falls back to netezza",
+        "reason": "every production call path reaches dsqgen with netezza; the other bundled dialect templates "
+        "are never selected, so they are not captured",
+        "call_sites": DIALECT_CALL_SITES,
+    }
+    tpcds["nondeterministic_cases"] = evidence["nondeterministic"]
+    manifest["tpch"]["nonterminating_cases"] = evidence["nonterminating"]
+    manifest["replay"] = replay_summary(replay_path)
+    manifest_path.write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
 
 
 def dumps(record: Any) -> str:
@@ -720,7 +1186,7 @@ def assemble_manifest(corpus_dir: Path, args: argparse.Namespace) -> None:
         "max_seed": MAX_SEED,
         "text_normalisation": TEXT_NORMALISATION,
         **parts,
-        "replay": {"file": "replay.json", "sha256": sha256_file(corpus_dir / "replay.json")},
+        "replay": replay_summary(corpus_dir / "replay.json"),
     }
     (corpus_dir / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
     for suite in SUITES:
@@ -802,6 +1268,7 @@ def extract_replay(args: argparse.Namespace) -> None:
         entry = entries[key]
         entry["bundles"] = sorted(set(entry["bundles"]))
         ordered.append(entry)
+    ordered = classify_entries(ordered)
     document = {
         "schema_version": SCHEMA_VERSION,
         "sources": args.ref,
@@ -827,6 +1294,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     replay_parser.add_argument("--output", default=str(CORPUS_DIR))
     replay_parser.add_argument("--ref", action="append", default=None)
     replay_parser.set_defaults(handler=extract_replay)
+    extend_parser = sub.add_parser("extend")
+    extend_parser.add_argument("--output", default=str(CORPUS_DIR))
+    extend_parser.add_argument("--platform", default=ORACLE_PLATFORM)
+    extend_parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
+    extend_parser.set_defaults(handler=extend)
     args = parser.parse_args(argv)
     if args.command == "replay" and args.ref is None:
         args.ref = ["HEAD", "origin/published-results"]

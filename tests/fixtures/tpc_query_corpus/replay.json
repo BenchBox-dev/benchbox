@@ -15,6 +15,8 @@
    "streams": 3,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": false,
+   "reason": "no seed and no query parameters recorded; the bundle does not identify its parameter draw",
    "bundles": [
     "tpcds_sf01_bigquery_sql_20260920_015238_a9f40f37"
    ]
@@ -28,6 +30,8 @@
    "streams": 4,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": false,
+   "reason": "no seed and no query parameters recorded; the bundle does not identify its parameter draw",
    "bundles": [
     "tpcds_sf01_databricks_sql_20261003_204005_294ed3a2",
     "tpcds_sf01_snowflake_sql_20261003_140200_f5fd99c7"
@@ -42,6 +46,8 @@
    "streams": 4,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": true,
+   "reason": "seed 42 recorded; dsqgen -RNGSEED derives from it as seed + stream_id + 1000",
    "bundles": [
     "tpcds_sf1_clickhouse_local_sql_20261001_142742_4eb148cf",
     "tpcds_sf1_databricks_sql_20261003_205449_cf4f01d0",
@@ -64,6 +70,8 @@
    "streams": 3,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": false,
+   "reason": "no seed and no query parameters recorded; the bundle does not identify its parameter draw",
    "bundles": [
     "tpcds_sf1_bigquery_sql_20260920_034529_dab15f22"
    ]
@@ -77,6 +85,8 @@
    "streams": 4,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": false,
+   "reason": "no seed and no query parameters recorded; the bundle does not identify its parameter draw",
    "bundles": [
     "tpcds_sf1_clickhouse_local_sql_20260826_112830_c250741b",
     "tpcds_sf1_clickhouse_local_sql_20261026_175530_4b9e5193",
@@ -98,6 +108,8 @@
    "streams": 4,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": true,
+   "reason": "seed 42 recorded; dsqgen -RNGSEED derives from it as seed + stream_id + 1000",
    "bundles": [
     "tpcds_sf10_databricks_sql_20261003_212424_15e05c0c",
     "tpcds_sf10_datafusion_sql_20260823_225543_15b41887",
@@ -115,6 +127,8 @@
    "streams": 3,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": false,
+   "reason": "no seed and no query parameters recorded; the bundle does not identify its parameter draw",
    "bundles": [
     "tpcds_sf10_bigquery_sql_20260920_050846_0fbf6500"
    ]
@@ -128,6 +142,8 @@
    "streams": 4,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": false,
+   "reason": "no seed and no query parameters recorded; the bundle does not identify its parameter draw",
    "bundles": [
     "tpcds_sf10_datafusion_sql_20261026_114739_9b8837db",
     "tpcds_sf10_duckdb_v1_0_0_median",
@@ -148,6 +164,8 @@
    "streams": 4,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": false,
+   "reason": "no seed and no query parameters recorded; the bundle does not identify its parameter draw",
    "bundles": [
     "tpcds_obt_sf001_datafusion_sql_20261111_110035_78695483",
     "tpcds_obt_sf001_doris_sql_20261111_110147_93ab6464",
@@ -165,6 +183,8 @@
    "streams": 4,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": false,
+   "reason": "no seed and no query parameters recorded; the bundle does not identify its parameter draw",
    "bundles": [
     "tpcds_obt_sf01_datafusion_sql_20261111_110045_4a0d3139",
     "tpcds_obt_sf01_doris_sql_20261111_110240_9315b4c2",
@@ -182,6 +202,8 @@
    "streams": 4,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": false,
+   "reason": "no seed and no query parameters recorded; the bundle does not identify its parameter draw",
    "bundles": [
     "tpcds_obt_sf1_bigquery_sql_20260923_152357_480ffcea",
     "tpcds_obt_sf1_clickhouse_local_sql_20260826_171140_836c988b",
@@ -203,6 +225,8 @@
    "streams": 1,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": true,
+   "reason": "query parameters recorded: qgen -d (TPC-H default substitution parameters)",
    "bundles": [
     "tpch_sf001_clickhouse_local_sql_20261026_174147_71dc6c6c",
     "tpch_sf001_datafusion_sql_20261013_011859_c5cbcc9f",
@@ -220,6 +244,8 @@
    "streams": 4,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": false,
+   "reason": "no seed and no query parameters recorded; the bundle does not identify its parameter draw",
    "bundles": [
     "tpch_sf001_cedardb_sql_20260825_095330_cf0d9e4d",
     "tpch_sf001_clickhouse_local_sql_20260826_100627_7ae478d5",
@@ -249,6 +275,8 @@
    "streams": 1,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": true,
+   "reason": "query parameters recorded: qgen -d (TPC-H default substitution parameters)",
    "bundles": [
     "tpch_sf01_clickhouse_local_sql_20261026_174709_25806a27",
     "tpch_sf01_datafusion_sql_20261013_011903_1965c33f",
@@ -266,6 +294,8 @@
    "streams": 4,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": false,
+   "reason": "no seed and no query parameters recorded; the bundle does not identify its parameter draw",
    "bundles": [
     "tpch_sf01_bigquery_sql_20261003_114214_37cecbba",
     "tpch_sf01_clickhouse_local_sql_20260826_170326_1d1e2b2e",
@@ -293,6 +323,8 @@
    "streams": 1,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": false,
+   "reason": "no seed and no query parameters recorded; the bundle does not identify its parameter draw",
    "bundles": [
     "tpch_sf01_duckdb_sql_20261111_213030_d24969ea",
     "tpch_sf01_polars_df_20261111_154204_3d7d3e84"
@@ -312,6 +344,8 @@
     2042,
     3042
    ],
+   "replayable": true,
+   "reason": "seed 42 recorded; the qgen seeds derived from it are listed in qgen_seeds",
    "bundles": [
     "tpch_sf1_bigquery_sql_20261003_114700_6e0ec489",
     "tpch_sf1_databricks_sql_20261003_114841_ab447f73",
@@ -327,6 +361,8 @@
    "streams": 1,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": true,
+   "reason": "query parameters recorded: qgen -d (TPC-H default substitution parameters)",
    "bundles": [
     "tpch_sf1_clickhouse_local_sql_20261013_011942_678507a6",
     "tpch_sf1_clickhouse_local_sql_20261026_175754_f2bafd17",
@@ -344,6 +380,8 @@
    "streams": 4,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": false,
+   "reason": "no seed and no query parameters recorded; the bundle does not identify its parameter draw",
    "bundles": [
     "tpch_sf1_clickhouse_local_sql_20260825_174747_a4d8447f",
     "tpch_sf1_clickhouse_local_sql_20261001_142203_f22a0442",
@@ -440,6 +478,8 @@
     20263733,
     20263734
    ],
+   "replayable": true,
+   "reason": "seed 20260709 recorded; the qgen seeds derived from it are listed in qgen_seeds",
    "bundles": [
     "tpch_sf1_doris_sql_20261007_172956_5e453c54",
     "tpch_sf1_duckdb_sql_20261007_155030_c3a60388",
@@ -460,6 +500,8 @@
     2042,
     3042
    ],
+   "replayable": true,
+   "reason": "seed 42 recorded; the qgen seeds derived from it are listed in qgen_seeds",
    "bundles": [
     "tpch_sf10_bigquery_sql_20261003_120614_73b816d9",
     "tpch_sf10_databricks_sql_20261003_120202_e83ea509",
@@ -475,6 +517,8 @@
    "streams": 4,
    "first_stream_id": 0,
    "qgen_seeds": [],
+   "replayable": false,
+   "reason": "no seed and no query parameters recorded; the bundle does not identify its parameter draw",
    "bundles": [
     "tpch_sf10_duckdb_v1_0_0_median",
     "tpch_sf10_duckdb_v1_1_3_median",
