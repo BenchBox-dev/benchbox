@@ -27860,8 +27860,7 @@
     "datagen-lib-tpcds-fractional-and-refresh": {
       "claim": null,
       "needs": [
-        "datagen-lib-tpcds",
-        "datagen-decision-upstream-gap-policy"
+        "datagen-lib-tpcds"
       ],
       "priority": "medium-high",
       "status": "open",
