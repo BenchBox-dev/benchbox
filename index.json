@@ -26415,6 +26415,15 @@
       "status": "done",
       "title": "Add a continuous whole-corpus privacy gate, not just a changed-files scan"
     },
+    "corpus-rule-fast-tier-test-cost-20261126": {
+      "claim": null,
+      "needs": [
+        "crr-a1-rule-module-and-snapshot"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Cut the corpus rule's fast-tier test time without weakening what the tests prove"
+    },
     "corpus-sync-dispatch-20261026": {
       "claim": null,
       "needs": [],
