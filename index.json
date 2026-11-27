@@ -54386,13 +54386,18 @@
       "title": "TPC-DI step 12: independent recount for DIGen's known answer-key errors"
     },
     "tpcdi-12-duckdb-historical-load-and-audit-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-28T18:35:45Z",
+        "generation": "86b70cd1637c40478cf6e73848e266c1",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
+      },
       "needs": [
         "tpcdi-historical-facts-20261121",
         "run-timeout-execution-phases-20261120"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI step 17 (milestone): DuckDB initialization and historical-load phases, completion records and the audit gate"
     },
     "tpcdi-13-digen-reference-path-and-comparison-20261120": {
