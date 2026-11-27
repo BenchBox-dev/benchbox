@@ -44681,6 +44681,15 @@
       "status": "dropped",
       "title": "In-repo .claude/skills copies are stale forks; define refresh mechanism"
     },
+    "refreshed-data-row-count-bounds-20261126": {
+      "claim": null,
+      "needs": [
+        "crr-v2-measured-stream-integrity-checks"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Apply proven row-count bounds to queries that run on refreshed data"
+    },
     "regenerate-benchbox-mirrors-and-wrapper-contract-boundary": {
       "claim": null,
       "needs": [
