@@ -5,6 +5,7 @@ import logging
 import shutil
 from pathlib import Path
 
+from benchbox.utils.datagen_backend import NATIVE_BACKEND_NAME
 from benchbox.utils.datagen_manifest import require_manifest_files
 from benchbox.utils.file_format import COMPRESSION_EXTENSIONS, detect_compression, strip_compression_suffix
 from benchbox.utils.generation_marker import GENERATION_IN_PROGRESS_MARKER
@@ -247,10 +248,17 @@ class FileArtifactMixin:
             },
             "tables": {},
         }
+        native = getattr(self, "uses_native_datagen", False)
         try:
             from benchbox.utils.datagen_version import current_datagen_stamp
 
-            manifest.update(current_datagen_stamp("tpcds"))
+            manifest.update(
+                current_datagen_stamp(
+                    "tpcds",
+                    backend=NATIVE_BACKEND_NAME if native else None,
+                    backend_version=self.datagen_backend_version if native else None,
+                )
+            )
         except Exception as exc:
             logging.getLogger(__name__).debug("datagen stamp unavailable for tpcds: %s", exc)
         for table, file_paths in table_paths.items():

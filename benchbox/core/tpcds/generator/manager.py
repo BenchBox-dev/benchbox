@@ -12,6 +12,7 @@ from benchbox.utils.compression_mixin import CompressionMixin
 from benchbox.utils.data_validation import BenchmarkDataValidator
 from benchbox.utils.file_format import is_tpc_format
 from benchbox.utils.generation_marker import track_generation
+from benchbox.utils.native_datagen import NativeDatagenMixin, write_native_tables
 from benchbox.utils.printing import emit
 
 from ..compliance import TpcdsComplianceClass, validate_tpcds_scale
@@ -21,6 +22,7 @@ from .streaming import StreamingGenerationMixin
 
 
 class TPCDSDataGenerator(
+    NativeDatagenMixin,
     CompressionMixin,
     CloudStorageGeneratorMixin,
     DsdgenRunnerMixin,
@@ -164,6 +166,8 @@ class TPCDSDataGenerator(
         if removed_stale and self.verbose:
             emit(f"🧹 Removed {len(removed_stale)} stale TPC-DS table artifacts before regeneration")
 
+        if self.uses_native_datagen:
+            return self._generate_native(target_dir)
         sample_dir = self._get_sample_data_dir()
         if sample_dir is not None:
             result = self._generate_from_sample(sample_dir, target_dir)
@@ -272,8 +276,21 @@ class TPCDSDataGenerator(
             }
         return schema_registry
 
+    def _generate_native(self, target_dir: Path) -> dict[str, list[Path]]:
+        generation = write_native_tables("tpcds", self.scale_factor, target_dir)
+        self.datagen_backend_version = generation.version
+        self._manifest_entries = {
+            table: [{"path": table_file.path.name, "size_bytes": table_file.size_bytes, "row_count": table_file.rows}]
+            for table, table_file in generation.files.items()
+        }
+        table_paths = {table: [table_file.path] for table, table_file in generation.files.items()}
+        self._write_manifest(target_dir, table_paths)
+        return table_paths
+
     def _prepare_output_dir(self, output_dir: Path | None) -> Path:
-        if not self.dsdgen_available:
+        if self.uses_native_datagen:
+            self.require_native_compatible_options()
+        elif not self.dsdgen_available:
             self._raise_missing_dsdgen()
 
         target_dir = output_dir if output_dir is not None else self.output_dir

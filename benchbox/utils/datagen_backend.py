@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import importlib.metadata
-import os
+import importlib.util
 import platform
-import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
 from typing import Literal
+
+NATIVE_BACKEND_NAME: Literal["benchbox-datagen"] = "benchbox-datagen"
 
 DatagenBackend = Literal["legacy", "native"]
 
@@ -22,10 +23,10 @@ class DatagenBackendError(ValueError):
 @dataclass(frozen=True)
 class NativeBackendSpec:
     benchmark: str
-    mechanism: Literal["tpcgen-cli"]
+    mechanism: Literal["benchbox-datagen"]
     implemented: bool = False
     required_extra: str | None = None
-    required_executable: str | None = None
+    required_module: str | None = None
     required_package: str | None = None
     min_scale_factor: float | None = None
     require_integer_scale: bool = False
@@ -54,20 +55,20 @@ NATIVE_BACKEND_SPECS: Mapping[str, NativeBackendSpec] = MappingProxyType(
     {
         "tpch": NativeBackendSpec(
             benchmark="tpch",
-            mechanism="tpcgen-cli",
-            implemented=False,
+            mechanism=NATIVE_BACKEND_NAME,
+            implemented=True,
             required_extra="native-datagen",
-            required_executable="tpcgen-cli",
-            required_package="tpcgen-cli",
+            required_module="benchbox_datagen",
+            required_package="benchbox-datagen",
             unsupported_platforms=_WINDOWS_ARM64_PLATFORMS,
         ),
         "tpcds": NativeBackendSpec(
             benchmark="tpcds",
-            mechanism="tpcgen-cli",
-            implemented=False,
+            mechanism=NATIVE_BACKEND_NAME,
+            implemented=True,
             required_extra="native-datagen",
-            required_executable="tpcgen-cli",
-            required_package="tpcgen-cli",
+            required_module="benchbox_datagen",
+            required_package="benchbox-datagen",
             min_scale_factor=1.0,
             require_integer_scale=True,
             unsupported_platforms=_WINDOWS_ARM64_PLATFORMS,
@@ -97,26 +98,11 @@ def get_default_datagen_backend(benchmark: str | None) -> DatagenBackend:
     return DEFAULT_DATAGEN_BACKENDS.get(str(benchmark).strip().lower(), "legacy")
 
 
-def resolve_env_executable(
-    executable: str,
-    *,
-    python_executable: str | Path | None = None,
-) -> Path | None:
-    py_path = Path(python_executable if python_executable is not None else sys.executable)
-    bin_dir = py_path.parent
-    candidates = [executable]
-    if os.name == "nt" and not executable.lower().endswith(".exe"):
-        candidates.insert(0, f"{executable}.exe")
-    for name in candidates:
-        candidate = bin_dir / name
-        if not candidate.is_file():
-            continue
-        if os.name != "nt":
-            if os.access(candidate, os.X_OK):
-                return candidate
-        elif candidate.suffix.lower() in {".exe", ".cmd", ".bat"}:
-            return candidate
-    return None
+def manifest_backend_name(backend: str | None) -> str | None:
+    if backend is None:
+        return None
+    normalized = str(backend).strip().lower()
+    return NATIVE_BACKEND_NAME if normalized == "native" else normalized
 
 
 def resolve_installed_package_version(package_name: str) -> str | None:
@@ -126,16 +112,15 @@ def resolve_installed_package_version(package_name: str) -> str | None:
         return None
 
 
-def is_native_executable_available(
-    executable: str,
+def is_native_module_available(
+    module: str,
     *,
     package_name: str | None = None,
     extra_checker: Callable[[str], bool] | None = None,
-    python_executable: str | Path | None = None,
 ) -> bool:
     if extra_checker is not None:
-        return bool(extra_checker(executable))
-    if resolve_env_executable(executable, python_executable=python_executable) is None:
+        return bool(extra_checker(module))
+    if importlib.util.find_spec(module) is None:
         return False
     if package_name is not None and resolve_installed_package_version(package_name) is None:
         return False
@@ -151,6 +136,30 @@ def _current_platform_key(
     return system_name, machine_name
 
 
+def validate_native_scale(benchmark_key: str, scale_factor: float | None) -> NativeBackendSpec:
+    spec = NATIVE_BACKEND_SPECS.get(benchmark_key)
+    if spec is None:
+        raise DatagenBackendError(
+            f"Benchmark '{benchmark_key}' does not support --datagen-backend native. "
+            "Omit --datagen-backend or pass --datagen-backend legacy."
+        )
+    if scale_factor is None:
+        return spec
+    sf = float(scale_factor)
+    if spec.min_scale_factor is not None and sf < spec.min_scale_factor:
+        raise DatagenBackendError(
+            f"Benchmark '{benchmark_key}' with --datagen-backend native requires "
+            f"scale_factor >= {spec.min_scale_factor:g} (got {sf:g}). "
+            "Use --datagen-backend legacy for sub-scale generation."
+        )
+    if spec.require_integer_scale and not sf.is_integer():
+        raise DatagenBackendError(
+            f"Benchmark '{benchmark_key}' with --datagen-backend native requires an integer scale factor "
+            f"(got {sf:g}). Use --datagen-backend legacy for non-integer scales."
+        )
+    return spec
+
+
 def _validate_native_request(
     benchmark_key: str,
     *,
@@ -160,26 +169,7 @@ def _validate_native_request(
     extra_checker: Callable[[str], bool] | None,
     version_resolver: Callable[[str], str | None] | None,
 ) -> tuple[NativeBackendSpec, str | None]:
-    spec = NATIVE_BACKEND_SPECS.get(benchmark_key)
-    if spec is None:
-        raise DatagenBackendError(
-            f"Benchmark '{benchmark_key}' does not support --datagen-backend native. "
-            "Omit --datagen-backend or pass --datagen-backend legacy."
-        )
-
-    if scale_factor is not None:
-        sf = float(scale_factor)
-        if spec.min_scale_factor is not None and sf < spec.min_scale_factor:
-            raise DatagenBackendError(
-                f"Benchmark '{benchmark_key}' with --datagen-backend native requires "
-                f"scale_factor >= {spec.min_scale_factor:g} (got {sf:g}). "
-                "Use --datagen-backend legacy for sub-scale generation."
-            )
-        if spec.require_integer_scale and not sf.is_integer():
-            raise DatagenBackendError(
-                f"Benchmark '{benchmark_key}' with --datagen-backend native requires an integer scale factor "
-                f"(got {sf:g}). Use --datagen-backend legacy for non-integer scales."
-            )
+    spec = validate_native_scale(benchmark_key, scale_factor)
 
     platform_key = _current_platform_key(platform_system, platform_machine)
     if platform_key in spec.unsupported_platforms:
@@ -195,15 +185,15 @@ def _validate_native_request(
             "Use --datagen-backend legacy."
         )
 
-    if spec.required_executable and not is_native_executable_available(
-        spec.required_executable,
+    if spec.required_module and not is_native_module_available(
+        spec.required_module,
         package_name=spec.required_package,
         extra_checker=extra_checker,
     ):
         extra_name = spec.required_extra or "native-datagen"
         raise DatagenBackendError(
             f"Benchmark '{benchmark_key}' with --datagen-backend native requires optional extra "
-            f"'{extra_name}' ('{spec.required_executable}' was not found in this Python environment). "
+            f"'{extra_name}' (module '{spec.required_module}' was not found in this Python environment). "
             f"Install it with 'uv sync --extra {extra_name}' or 'pip install \"benchbox[{extra_name}]\"', "
             "or pass --datagen-backend legacy."
         )
@@ -310,6 +300,7 @@ def resolve_backend_output_dir(
 
 __all__ = [
     "DEFAULT_DATAGEN_BACKENDS",
+    "NATIVE_BACKEND_NAME",
     "NATIVE_BACKEND_SPECS",
     "VALID_DATAGEN_BACKENDS",
     "DatagenBackend",
@@ -317,10 +308,10 @@ __all__ = [
     "DatagenBackendSelection",
     "NativeBackendSpec",
     "get_default_datagen_backend",
-    "is_native_executable_available",
+    "is_native_module_available",
+    "manifest_backend_name",
     "normalize_datagen_backend",
     "resolve_backend_output_dir",
     "resolve_datagen_backend",
-    "resolve_env_executable",
     "resolve_installed_package_version",
 ]

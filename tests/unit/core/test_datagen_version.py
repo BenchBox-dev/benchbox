@@ -668,7 +668,7 @@ def test_manifest_emits_optional_backend_fields_without_breaking_legacy(tmp_path
         scale_factor=1.0,
         formats=["tbl"],
         generator_backend="native",
-        generator_backend_version="4.0.0",
+        generator_backend_version="0.1.0",
     ).to_dict()
     assert "data_generation_identity_hash" not in native_tpch
     assert resolve_manifest_datagen_hash(native_tpch) == resolve_manifest_datagen_hash(legacy_tpch)
@@ -688,7 +688,7 @@ def test_manifest_emits_optional_backend_fields_without_breaking_legacy(tmp_path
         scale_factor=1.0,
         formats=["tbl", "parquet"],
         generator_backend="native",
-        generator_backend_version="4.0.0",
+        generator_backend_version="0.1.0",
         parquet_writer="benchbox-pyarrow-streaming-v2",
         parquet_row_group_size=122880,
     ).to_dict()
@@ -708,7 +708,7 @@ def test_identity_hash_collapses_byte_identical_tpc_and_separates_parquet_or_syn
     assert compute_datagen_identity_hash("tpch", backend="legacy", scale_factor=1.0) == compute_datagen_identity_hash(
         "tpch",
         backend="native",
-        backend_version="4.0.0",
+        backend_version="0.1.0",
         scale_factor=1.0,
     )
     assert compute_datagen_identity_hash(
@@ -718,7 +718,7 @@ def test_identity_hash_collapses_byte_identical_tpc_and_separates_parquet_or_syn
     ) == compute_datagen_identity_hash(
         "tpcds",
         backend="native",
-        backend_version="4.0.0",
+        backend_version="0.1.0",
         scale_factor=1.0,
     )
 
@@ -731,7 +731,7 @@ def test_identity_hash_collapses_byte_identical_tpc_and_separates_parquet_or_syn
     ) == compute_datagen_identity_hash(
         "tpch",
         backend="native",
-        backend_version="4.0.0",
+        backend_version="0.1.0",
         parquet_writer="benchbox-pyarrow-streaming-v2",
         parquet_row_group_size=122880,
         scale_factor=1.0,
@@ -755,7 +755,7 @@ def test_identity_hash_collapses_byte_identical_tpc_and_separates_parquet_or_syn
     ) != compute_datagen_identity_hash(
         "tpch",
         backend="native",
-        backend_version="4.0.0",
+        backend_version="0.1.0",
         scale_factor=100.0,
     )
 
@@ -766,7 +766,7 @@ def test_identity_hash_collapses_byte_identical_tpc_and_separates_parquet_or_syn
     ) != compute_datagen_identity_hash(
         "tpchavoc",
         backend="native",
-        backend_version="4.0.0",
+        backend_version="0.1.0",
         scale_factor=1.0,
     )
 
@@ -777,7 +777,7 @@ def test_identity_hash_collapses_byte_identical_tpc_and_separates_parquet_or_syn
     ) != compute_datagen_identity_hash(
         "tpcds",
         backend="native",
-        backend_version="4.0.0",
+        backend_version="0.1.0",
         scale_factor=0.1,
     )
 
@@ -799,8 +799,8 @@ def test_identity_hash_collapses_byte_identical_tpc_and_separates_parquet_or_syn
     ) != compute_datagen_identity_hash(
         "tpch",
         backend="native",
-        backend_version="4.0.0",
-        parquet_writer="tpcgen-cli",
+        backend_version="0.1.0",
+        parquet_writer="benchbox-datagen-0",
         scale_factor=1.0,
     )
 
@@ -816,7 +816,7 @@ def test_backend_reuse_safety_and_native_tpc_manifest_provenance(tmp_path: Path)
     from benchbox.core.schemas import BenchmarkConfig
     from tests.fixtures.result_dict_fixtures import make_benchmark_results
 
-    native_tpc_stamp = current_datagen_stamp("tpch", backend="native", backend_version="4.0.0")
+    native_tpc_stamp = current_datagen_stamp("tpch", backend="native", backend_version="0.1.0")
     assert "generator_binary_sha256" not in native_tpc_stamp
     native_tpc_manifest = {"benchmark": "tpch", "scale_factor": 1.0, "formats": ["tbl"], **native_tpc_stamp}
     assert manifest_datagen_is_current(native_tpc_manifest, benchmark="tpch", expected_backend="native") is True
@@ -827,7 +827,7 @@ def test_backend_reuse_safety_and_native_tpc_manifest_provenance(tmp_path: Path)
         "benchmark": "tpch",
         "scale_factor": 1.0,
         "formats": ["parquet"],
-        "parquet_writer": "tpcgen-cli",
+        "parquet_writer": "benchbox-datagen-0",
         **native_tpc_stamp,
     }
     assert manifest_datagen_is_current(native_tpc_parquet, benchmark="tpch") is False
@@ -928,7 +928,7 @@ def test_backend_reuse_safety_and_native_tpc_manifest_provenance(tmp_path: Path)
         name="tpch",
         display_name="TPC-H",
         scale_factor=1.0,
-        options={"datagen_backend": "native", "datagen_backend_version": "4.0.0"},
+        options={"datagen_backend": "native", "datagen_backend_version": "0.1.0"},
     )
     cfg_tpch_native_unverified = BenchmarkConfig(
         name="tpch",

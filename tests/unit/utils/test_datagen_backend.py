@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-import stat
 from pathlib import Path
 from types import MappingProxyType
 from unittest.mock import MagicMock
@@ -15,15 +13,17 @@ from benchbox.cli.main import cli
 from benchbox.utils import datagen_backend as datagen_backend_module
 from benchbox.utils.datagen_backend import (
     DEFAULT_DATAGEN_BACKENDS,
+    NATIVE_BACKEND_NAME,
     NATIVE_BACKEND_SPECS,
     VALID_DATAGEN_BACKENDS,
     DatagenBackendError,
     NativeBackendSpec,
     get_default_datagen_backend,
+    is_native_module_available,
+    manifest_backend_name,
     normalize_datagen_backend,
     resolve_backend_output_dir,
     resolve_datagen_backend,
-    resolve_env_executable,
 )
 
 pytestmark = [
@@ -94,8 +94,23 @@ def test_explicit_native_fails_loudly_on_windows_arm64() -> None:
             )
 
 
-def test_unimplemented_adapter_errors_before_suggesting_extra() -> None:
-    assert NATIVE_BACKEND_SPECS["tpch"].implemented is False
+def test_unimplemented_adapter_errors_before_suggesting_extra(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        datagen_backend_module,
+        "NATIVE_BACKEND_SPECS",
+        MappingProxyType(
+            {
+                "tpch": NativeBackendSpec(
+                    benchmark="tpch",
+                    mechanism="benchbox-datagen",
+                    implemented=False,
+                    required_extra="native-datagen",
+                    required_module="benchbox_datagen",
+                    required_package="benchbox-datagen",
+                )
+            }
+        ),
+    )
     with pytest.raises(
         DatagenBackendError, match="not enabled in this build yet.*--datagen-backend legacy"
     ) as exc_info:
@@ -110,25 +125,20 @@ def test_unimplemented_adapter_errors_before_suggesting_extra() -> None:
     assert "uv sync --extra" not in str(exc_info.value)
 
 
-def test_implemented_spec_fails_loudly_when_extra_missing_and_succeeds_when_present(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        datagen_backend_module,
-        "NATIVE_BACKEND_SPECS",
-        MappingProxyType(
-            {
-                "tpch": NativeBackendSpec(
-                    benchmark="tpch",
-                    mechanism="tpcgen-cli",
-                    implemented=True,
-                    required_extra="native-datagen",
-                    required_executable="tpcgen-cli",
-                    required_package="tpcgen-cli",
-                )
-            }
-        ),
-    )
+def test_tpc_benchmarks_are_implemented_on_the_benchbox_datagen_library() -> None:
+    for benchmark in ("tpch", "tpcds"):
+        spec = NATIVE_BACKEND_SPECS[benchmark]
+        assert spec.implemented is True
+        assert spec.mechanism == NATIVE_BACKEND_NAME == "benchbox-datagen"
+        assert spec.required_module == "benchbox_datagen"
+        assert spec.required_package == "benchbox-datagen"
+        assert spec.required_extra == "native-datagen"
+    assert NATIVE_BACKEND_SPECS["tpch"].min_scale_factor is None
+    assert NATIVE_BACKEND_SPECS["tpcds"].min_scale_factor == 1.0
+    assert NATIVE_BACKEND_SPECS["tpcds"].require_integer_scale is True
+
+
+def test_native_fails_loudly_when_extra_missing_and_succeeds_when_present() -> None:
     with pytest.raises(
         DatagenBackendError, match="native-datagen.*uv sync --extra native-datagen.*--datagen-backend legacy"
     ):
@@ -147,28 +157,27 @@ def test_implemented_spec_fails_loudly_when_extra_missing_and_succeeds_when_pres
         scale_factor=1.0,
         platform_system="Darwin",
         platform_machine="arm64",
-        extra_checker=lambda exe: exe == "tpcgen-cli",
-        version_resolver=lambda pkg: "4.0.0" if pkg == "tpcgen-cli" else None,
+        extra_checker=lambda module: module == "benchbox_datagen",
+        version_resolver=lambda package: "0.1.0" if package == "benchbox-datagen" else None,
     )
     assert selection.backend == "native"
     assert selection.source == "explicit"
-    assert selection.mechanism == "tpcgen-cli"
-    assert selection.backend_version == "4.0.0"
+    assert selection.mechanism == "benchbox-datagen"
+    assert selection.backend_version == "0.1.0"
 
 
-def test_resolve_env_executable_scopes_to_active_python_env(tmp_path: Path) -> None:
-    bin_dir = tmp_path / "venv" / ("Scripts" if os.name == "nt" else "bin")
-    bin_dir.mkdir(parents=True)
-    fake_py = bin_dir / ("python.exe" if os.name == "nt" else "python")
-    fake_py.write_text("#!/bin/sh\n", encoding="utf-8")
+def test_native_module_availability_requires_module_and_installed_package() -> None:
+    assert is_native_module_available("json") is True
+    assert is_native_module_available("no_such_module_for_benchbox") is False
+    assert is_native_module_available("json", package_name="no-such-distribution-for-benchbox") is False
 
-    assert resolve_env_executable("tpcgen-cli", python_executable=fake_py) is None
 
-    fake_cli = bin_dir / ("tpcgen-cli.exe" if os.name == "nt" else "tpcgen-cli")
-    fake_cli.write_text("#!/bin/sh\n", encoding="utf-8")
-    if os.name != "nt":
-        fake_cli.chmod(fake_cli.stat().st_mode | stat.S_IXUSR)
-    assert resolve_env_executable("tpcgen-cli", python_executable=fake_py) == fake_cli
+def test_manifest_backend_name_maps_native_to_the_library_name() -> None:
+    assert manifest_backend_name("native") == "benchbox-datagen"
+    assert manifest_backend_name("NATIVE") == "benchbox-datagen"
+    assert manifest_backend_name("benchbox-datagen") == "benchbox-datagen"
+    assert manifest_backend_name("legacy") == "legacy"
+    assert manifest_backend_name(None) is None
 
 
 def test_resolve_backend_output_dir_isolates_non_identical_backends(tmp_path: Path) -> None:
@@ -178,12 +187,14 @@ def test_resolve_backend_output_dir_isolates_non_identical_backends(tmp_path: Pa
     assert resolve_backend_output_dir(shared, "tpch", backend="legacy", scale_factor=1.0) == shared
 
     cases = [
-        ("tpch", 1.0, "4.0.0", None, True),
-        ("tpch", 1.0, "4.0.0", "benchbox-pyarrow-streaming-v2", True),
-        ("tpch", 1.0, "4.0.0", "benchbox-duckdb-streaming+benchbox-pyarrow-streaming", True),
-        ("tpch", 1.0, "4.0.0", "tpcgen-cli", False),
-        ("tpch", 1.0, "5.0.0", None, False),
-        ("tpch", 10.0, "4.0.0", None, False),
+        ("tpch", 1.0, "0.1.0", None, True),
+        ("tpch", 1.0, "0.1.0", "benchbox-pyarrow-streaming-v2", True),
+        ("tpch", 1.0, "0.1.0", "benchbox-duckdb-streaming+benchbox-pyarrow-streaming", True),
+        ("tpch", 1.0, "0.1.0", "benchbox-datagen-0", False),
+        ("tpch", 1.0, "0.2.0", None, False),
+        ("tpch", 10.0, "0.1.0", None, False),
+        ("tpcds", 1.0, "0.1.0", None, True),
+        ("tpcds", 10.0, "0.1.0", None, False),
         ("h2odb", 1.0, "vec-1.0", None, False),
     ]
     for benchmark, sf, version, parquet_writer, expect_shared in cases:
@@ -224,7 +235,7 @@ def test_orchestrator_output_root_isolates_non_identical_native_backend(tmp_path
         name="tpch",
         display_name="TPC-H",
         scale_factor=10.0,
-        options={"datagen_backend": "native", "datagen_backend_version": "4.0.0"},
+        options={"datagen_backend": "native", "datagen_backend_version": "0.1.0"},
     )
     local_root = orchestrator._resolve_output_root(native_sf10, _FakeBenchmark(), None)
     assert isinstance(local_root, str)
@@ -234,7 +245,7 @@ def test_orchestrator_output_root_isolates_non_identical_native_backend(tmp_path
         name="tpch",
         display_name="TPC-H",
         scale_factor=1.0,
-        options={"datagen_backend": "native", "datagen_backend_version": "4.0.0"},
+        options={"datagen_backend": "native", "datagen_backend_version": "0.1.0"},
     )
     shared_root = orchestrator._resolve_output_root(native_sf1, _FakeBenchmark(), None)
     assert isinstance(shared_root, str)

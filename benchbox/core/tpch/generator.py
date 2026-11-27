@@ -23,6 +23,7 @@ import yaml
 from benchbox.utils.cloud_storage import CloudStorageGeneratorMixin, create_path_handler
 from benchbox.utils.compression_mixin import CompressionMixin
 from benchbox.utils.data_validation import BenchmarkDataValidator
+from benchbox.utils.datagen_backend import NATIVE_BACKEND_NAME
 from benchbox.utils.datagen_manifest import (
     MANIFEST_FILENAME,
     DataGenerationManifest,
@@ -34,6 +35,7 @@ from benchbox.utils.datagen_manifest import (
 from benchbox.utils.file_format import COMPRESSION_EXTENSIONS, detect_data_format
 from benchbox.utils.filesystem_flush import flush_filesystem
 from benchbox.utils.generation_marker import GENERATION_IN_PROGRESS_MARKER, track_generation
+from benchbox.utils.native_datagen import NativeDatagenMixin, write_native_tables
 from benchbox.utils.run_deadline import bind_run_deadline, current_run_deadline, run_child, stream_child
 from benchbox.utils.scale_factor import format_scale_factor
 from benchbox.utils.stale_artifact_pruning import TableArtifactPattern, prune_stale_table_artifacts
@@ -108,7 +110,7 @@ def _stage_distributions(source: Path, work_dir: Path) -> None:
     shutil.copy2(source, target)
 
 
-class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityMixin):
+class TPCHDataGenerator(NativeDatagenMixin, CompressionMixin, CloudStorageGeneratorMixin, VerbosityMixin):
     def __init__(
         self,
         scale_factor: float = 1.0,
@@ -654,7 +656,10 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
         return self._handle_cloud_or_local_generation(self.output_dir, self._generate_local, self.verbose)
 
     def _generate_local(self, output_dir: Path | None = None) -> dict[str, Path | list[Path]]:
-        _ = self.dbgen_exe
+        if self.uses_native_datagen:
+            self.require_native_compatible_options()
+        else:
+            _ = self.dbgen_exe
 
         target_dir = output_dir if output_dir is not None else self.output_dir
 
@@ -697,6 +702,8 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
         if removed_stale and self.verbose_enabled:
             self.logger.info("Removed %d stale TPC-H table artifacts before regeneration", len(removed_stale))
 
+        if self.uses_native_datagen:
+            return self._generate_native(target_dir)
         sample_dir = self._get_sample_data_dir()
         if sample_dir is not None:
             self.log_verbose(f"⚡ Using bundled TPC-H sample dataset for scale factor {self.scale_factor}")
@@ -1116,6 +1123,30 @@ class TPCHDataGenerator(CompressionMixin, CloudStorageGeneratorMixin, VerbosityM
             names = ", ".join(f.name for f in empties[:5])
             more = "..." if len(empties) > 5 else ""
             raise RuntimeError(f"File format consistency violation: Found empty compressed files: {names}{more}")
+
+    def _generate_native(self, target_dir: Path) -> dict[str, Path | list[Path]]:
+        self.log_operation_start(
+            "TPC-H data generation (benchbox-datagen)",
+            details=f"scale_factor={self.scale_factor}",
+        )
+        generation = write_native_tables("tpch", self.scale_factor, target_dir)
+        manifest = DataGenerationManifest(
+            output_dir=target_dir,
+            benchmark="tpch",
+            scale_factor=self.scale_factor,
+            compression=resolve_compression_metadata(self),
+            parallel=self.parallel,
+            seed=getattr(self, "seed", None),
+            extra_metadata={"row_counts_source": _MEASURED_ROW_COUNTS_SOURCE},
+            generator_backend=NATIVE_BACKEND_NAME,
+            generator_backend_version=generation.version,
+        )
+        for table, table_file in generation.files.items():
+            manifest.add_entry(table, table_file.path, row_count=table_file.rows, size_bytes=table_file.size_bytes)
+        require_manifest_files(manifest.file_counts()[1], label="TPC-H", output_dir=target_dir)
+        manifest.write()
+        self.log_operation_complete("TPC-H data generation (benchbox-datagen)")
+        return {table: table_file.path for table, table_file in generation.files.items()}
 
     def _write_manifest(
         self, output_dir: Path, table_paths: dict[str, Path | list[Path]], *, stamp: bool = True

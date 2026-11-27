@@ -3,8 +3,11 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import replace
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+import pyarrow.parquet as pq
 
 from benchbox.core.manifest import (
     ConvertedFileEntry,
@@ -14,6 +17,7 @@ from benchbox.core.manifest import (
     upgrade_v1_to_v2,
     write_manifest,
 )
+from benchbox.utils.datagen_backend import NATIVE_BACKEND_NAME, DatagenBackendError
 from benchbox.utils.format_converters import (
     ConversionOptions,
     ConversionResult,
@@ -23,6 +27,7 @@ from benchbox.utils.format_converters import (
     ParquetConverter,
     VortexConverter,
 )
+from benchbox.utils.native_datagen import PARQUET_ROW_GROUP_ROWS, read_parquet_writer, write_native_tables
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +64,13 @@ class FormatConversionOrchestrator:
             manifest = upgrade_v1_to_v2(manifest)
 
         converter = self._get_converter(target_format)
+
+        if target_format.lower() == "parquet" and manifest.extra_fields.get("generator_backend") == NATIVE_BACKEND_NAME:
+            native_options = options or ConversionOptions()
+            native_results = self._convert_native_parquet(manifest, output_dir, native_options)
+            self._update_manifest_with_results(manifest, native_results, target_format, output_dir, native_options)
+            write_manifest(manifest, manifest_path)
+            return native_results
 
         results = {}
         tables_list = list(manifest.tables.keys())
@@ -121,6 +133,56 @@ class FormatConversionOrchestrator:
             write_manifest(manifest, manifest_path)
             logger.info(f"Updated manifest: {manifest_path}")
 
+        return results
+
+    def _convert_native_parquet(
+        self,
+        manifest: ManifestV2,
+        output_dir: Path,
+        options: ConversionOptions,
+    ) -> dict[str, ConversionResult]:
+        if options.partition_cols or options.row_group_size != PARQUET_ROW_GROUP_ROWS:
+            raise DatagenBackendError(
+                "--datagen-backend native writes whole-table Parquet files with "
+                f"{PARQUET_ROW_GROUP_ROWS}-row row groups and does not support partition columns or a custom "
+                "row-group size; remove them or pass --datagen-backend legacy."
+            )
+        generation = write_native_tables(
+            manifest.benchmark,
+            manifest.scale_factor,
+            output_dir,
+            table_format="parquet",
+            compression=options.compression or "none",
+        )
+        results: dict[str, ConversionResult] = {}
+        for table_name, table_file in generation.files.items():
+            source_rows = self._get_source_row_count(manifest, table_name)
+            if source_rows is not None and source_rows != table_file.rows:
+                raise RuntimeError(
+                    f"benchbox-datagen wrote {table_file.rows} rows for {table_name}; "
+                    f"the delimited source has {source_rows}"
+                )
+            source_entries = self._get_source_entries(manifest, table_name)
+            results[table_name] = ConversionResult(
+                output_files=[table_file.path],
+                row_count=table_file.rows,
+                source_size_bytes=sum(entry.size_bytes for entry in source_entries),
+                output_size_bytes=table_file.size_bytes,
+                metadata={
+                    "row_groups": pq.read_metadata(table_file.path).num_row_groups,
+                    "compression": options.compression,
+                    "partitioned": False,
+                    "parquet_writer": read_parquet_writer(table_file.path),
+                },
+                converted_at=datetime.now(timezone.utc).isoformat(),
+                conversion_options={
+                    "compression": options.compression,
+                    "row_group_size": PARQUET_ROW_GROUP_ROWS,
+                    "merge_shards": True,
+                    "partition_cols": [],
+                    "validate_row_count": True,
+                },
+            )
         return results
 
     def _resolve_conversion_options(
@@ -272,8 +334,15 @@ class FormatConversionOrchestrator:
                     row_group_size = candidate
                     break
 
+        native_writers = {
+            writer
+            for writer in (result.metadata.get("parquet_writer") for result in results.values())
+            if writer is not None and writer not in {PARQUET_WRITER, PARTITIONED_PARQUET_WRITER}
+        }
         parquet_writer = (
-            PARTITIONED_PARQUET_WRITER
+            "+".join(sorted(native_writers))
+            if native_writers
+            else PARTITIONED_PARQUET_WRITER
             if any(result.metadata.get("partitioned") for result in results.values())
             else PARQUET_WRITER
         )

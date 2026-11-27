@@ -43,6 +43,9 @@ dependencies = [
 required-version = ">=0.13.4"
 override-dependencies = ["filelock>=4.2.1,<5"]
 
+[tool.uv.sources]
+benchbox-datagen = { git = "https://github.com/BenchBox-dev/benchbox-datagen", rev = "05855f2c883e2b31570e5b2cd433e213f85897de" }
+
 [tool.setuptools]
 include-package-data = true
 
@@ -286,6 +289,9 @@ mcp = [
 ]
 spark = [
     "pyspark>=4.0.1,<4.3",
+]
+native-datagen = [
+    "benchbox-datagen==0.1.0",
 ]
 
 [project.scripts]
