@@ -14,7 +14,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import time
 from collections.abc import Callable, Iterable, Iterator
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -25,6 +24,7 @@ from benchbox.core.tpcds.c_tools import DSQGenBinary, _substitute_parameters, ap
 from benchbox.core.tpcds.parameter_log import parse_dsqgen_parameter_log
 from benchbox.core.tpcds.streams import _parse_dsqgen_stream_log, _split_dsqgen_stream_sql
 from benchbox.core.tpch.queries import QGenBinary
+from benchbox.utils.clock import elapsed_seconds, mono_time
 
 SCHEMA_VERSION = 1
 SUITES = ("tpch", "tpcds")
@@ -335,7 +335,7 @@ class TpchOracle(Oracle):
         attempts = []
         for _ in range(TIMEOUT_ATTEMPTS):
             log.unlink(missing_ok=True)
-            started = time.monotonic()
+            started = mono_time()
             try:
                 subprocess.run(
                     self._command(query, seed, scale, log),
@@ -347,9 +347,9 @@ class TpchOracle(Oracle):
                     timeout=ORACLE_TIMEOUT_SECONDS,
                 )
             except subprocess.TimeoutExpired:
-                attempts.append({"outcome": "timeout", "seconds": round(time.monotonic() - started, 1)})
+                attempts.append({"outcome": "timeout", "seconds": round(elapsed_seconds(started), 1)})
                 continue
-            attempts.append({"outcome": "exit", "seconds": round(time.monotonic() - started, 1)})
+            attempts.append({"outcome": "exit", "seconds": round(elapsed_seconds(started), 1)})
             break
         return {"q": query, "seed": seed, "sf": scale, "attempts": attempts}
 

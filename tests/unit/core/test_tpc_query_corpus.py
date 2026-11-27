@@ -491,6 +491,8 @@ def test_no_call_in_the_repository_passes_a_literal_dialect_to_dsqgen(manifest: 
             continue
         for node in ast.walk(ast.parse(source)):
             if isinstance(node, ast.Call):
+                if ast.unparse(node.func).endswith("generate_dsqgen_streams") and len(node.args) > 3:
+                    dsqgen_dialect.add(ast.unparse(node.args[3]))
                 for keyword in node.keywords:
                     if keyword.arg == "base_dialect":
                         base_dialect.add(ast.unparse(keyword.value))
