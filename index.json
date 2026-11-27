@@ -44904,10 +44904,15 @@
       "title": "Remove deprecated `make worktree-add` and consolidate to pool-only paths"
     },
     "removed-options-from-config-silently-ignored-20261124": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-28T00:13:50Z",
+        "generation": "6b53ce97481548f881f54149bc0f5c6d",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e82e03734cad9d7732bbc3a5"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Reject removed option spellings in adapter from_config instead of silently ignoring them"
     },
     "rename-convert-and-data-format-cli-params": {
