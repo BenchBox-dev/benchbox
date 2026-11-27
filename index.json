@@ -27633,6 +27633,16 @@
       "status": "done",
       "title": "Revise the datagen ADR to make a BenchBox-owned Rust generation library the target, and rebuild the datagen item set around it"
     },
+    "datagen-bb-tpc-refresh-and-subscale-wiring": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-benchbox-integration",
+        "datagen-lib-tpcds-fractional-and-refresh"
+      ],
+      "priority": "medium-high",
+      "status": "open",
+      "title": "Route BenchBox TPC-DS sub-scale data and TPC-H refresh sets through benchbox-datagen, with TPC-DS and pin-bump parity CI"
+    },
     "datagen-converter-linux-budget-gate": {
       "claim": null,
       "needs": [],

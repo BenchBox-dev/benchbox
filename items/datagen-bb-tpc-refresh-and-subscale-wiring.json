@@ -1,0 +1,20 @@
+{
+  "acceptance": [
+    "--datagen-backend native generates TPC-DS at SF 0.01, 0.05, 0.1, 0.25 and 0.5 through the library, SHA-256 identical to patched dsdgen.",
+    "The native TPC-H maintenance path takes RF1/RF2 from library write_refresh, byte-identical to dbgen -U at SF 0.01 and 1; a test runs it with dbgen absent.",
+    "Native TPC-DS maintenance fails loudly ('TPC-DS refresh sets are not native yet') until datagen-bb-tpcds-refresh-wiring lands.",
+    "PR CI runs TPC-DS parity at SF 0.01, 0.1 and 1.0 (24 tables, SHA-256 and bidirectional EXCEPT ALL on Parquet).",
+    "A required check on benchbox-datagen pin changes runs TPC-H and TPC-DS parity at SF 0.01, 0.1, 1 and 10 plus result_digest.py."
+  ],
+  "description": "## Problem\ndatagen-lib-benchbox-integration covers TPC-H and TPC-DS at SF >= 1. Nothing routes TPC-DS below SF 1 or TPC-H RF1/RF2 (both TPC cutover prerequisites) through the library, and the ADR's TPC-DS PR check and library-version-bump check have no owner.\n\n## Change\nWire native TPC-DS at fractional scales and the TPC-H maintenance path (library write_refresh); add the TPC-DS PR parity check and a required check on library pin changes.\n\n## Decision gates\n- If a fractional scale accepted by BenchBox (TPCDS_MIN_SUBSCALE and the registry rules) is not covered by library parity evidence, stop and report rather than widening the accepted set.\n- SF 10 parity in the pin-bump check runs under the heavy lock or on CI runners only.\n\n## Guardrails\n- BenchBox work only in a linked worktree; heavy work only through make heavy-run; never kill processes by name pattern.\n- No divergent fork of tpcgen-rs; carried patches only under the 2026-11-27 rule (<= ~200 changed lines, upstream PR, SHA pin, README entry); anything larger goes to the owner with sizes first.\n- Human commit identity, no agent attribution. Report only observed results.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-27T00:06:52Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "645b9541985843438d03e2b61f064210",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
