@@ -15193,7 +15193,8 @@
     },
     "tpcdi-cleanup": {
       "accepted_members": {
-        "tpcdi-15-delete-old-generator-and-etl-20261120": "6e46cf7b5b38338eb059a48997084e0ef3ced2f6"
+        "tpcdi-15-delete-old-generator-and-etl-20261120": "6e46cf7b5b38338eb059a48997084e0ef3ced2f6",
+        "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121": "ae7fef8b5527ce1102e20971a453ce2b3fed5323"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -15247,10 +15248,61 @@
           ],
           "integration_head": "930bb11550dac2076c5b6955bb5dda1dd7756291",
           "integration_seq": 1
+        },
+        "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121": {
+          "accepted_head": "ae7fef8b5527ce1102e20971a453ce2b3fed5323",
+          "changed_files": [
+            "_project/config/timing_wall_clock_allowlist.json",
+            "benchbox/__init__.py",
+            "benchbox/core/tpcdi/_legacy_etl/__init__.py",
+            "benchbox/core/tpcdi/_legacy_etl/backend.py",
+            "benchbox/core/tpcdi/_legacy_etl/customer_mgmt_processor.py",
+            "benchbox/core/tpcdi/_legacy_etl/data_quality_monitor.py",
+            "benchbox/core/tpcdi/_legacy_etl/dataframe_backend.py",
+            "benchbox/core/tpcdi/_legacy_etl/error_recovery.py",
+            "benchbox/core/tpcdi/_legacy_etl/finwire_processor.py",
+            "benchbox/core/tpcdi/_legacy_etl/incremental_loader.py",
+            "benchbox/core/tpcdi/_legacy_etl/pipeline.py",
+            "benchbox/core/tpcdi/_legacy_etl/results.py",
+            "benchbox/core/tpcdi/_legacy_etl/scd_processor.py",
+            "benchbox/core/tpcdi/_legacy_etl/sql_backend.py",
+            "benchbox/core/tpcdi/benchmark.py",
+            "benchbox/core/tpcdi/metrics.py",
+            "benchbox/core/tpcdi/validation.py",
+            "benchbox/tpcdi.py",
+            "changelog.d/feat-tpcdi-cleanup--tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121.json",
+            "docs/internal/dependency-audit-raw.md",
+            "docs/internal/dependency-inventory.md",
+            "docs/internal/tpc-measured-intervals.md",
+            "pyproject.toml",
+            "quality/comment-cleanup-scope.json",
+            "quality/comment-policy.json",
+            "quality/complexity/classification-matrix.yaml",
+            "tests/fixtures/fast_tier_baseline/tests-00.json",
+            "tests/fixtures/fast_tier_baseline/tests-01.json",
+            "tests/fixtures/fast_tier_baseline/tests-02.json",
+            "tests/fixtures/fast_tier_baseline/tests-03.json",
+            "tests/fixtures/fast_tier_baseline/tests-04.json",
+            "tests/fixtures/fast_tier_baseline/tests-05.json",
+            "tests/fixtures/fast_tier_baseline/tests-06.json",
+            "tests/system/test_module_size_thresholds.py",
+            "tests/unit/core/test_benchmark_dependency_errors.py",
+            "tests/unit/core/test_csv_source_null_tokens.py",
+            "tests/unit/core/test_tpcdi_quarantine.py",
+            "tests/unit/core/tpcdi/test_recount.py",
+            "tests/unit/core/tpcdi/test_schema_spec.py",
+            "tests/unit/platforms/test_duckdb_unfinished_results.py",
+            "tests/unit/test_circular_imports.py",
+            "tests/unit/test_init.py",
+            "tests/unit/test_standardized_test_commands.py",
+            "uv.lock"
+          ],
+          "integration_head": "dc81f2f07b9a255fa2525c34f5c110bba3d250ea",
+          "integration_seq": 2
         }
       },
       "integration_branch": "feat/tpcdi-cleanup",
-      "integration_head": "930bb11550dac2076c5b6955bb5dda1dd7756291",
+      "integration_head": "dc81f2f07b9a255fa2525c34f5c110bba3d250ea",
       "integration_log": [
         {
           "at": "2026-11-27T18:39:04Z",
@@ -15266,6 +15318,15 @@
           "op_id": "82b3c0032e944f0aa086f392b1924b98",
           "previous_head": "4cdd5df606916a6131eaaa1259dbadacab9b0029",
           "seq": 1
+        },
+        {
+          "at": "2026-11-27T23:22:10Z",
+          "head": "dc81f2f07b9a255fa2525c34f5c110bba3d250ea",
+          "kind": "prepare",
+          "member": "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121",
+          "op_id": "15041992600f465197b07892223475f6",
+          "previous_head": "930bb11550dac2076c5b6955bb5dda1dd7756291",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-cleanup",
@@ -54837,17 +54898,12 @@
       "title": "TPC-DI step 43: DataFrame mode on pandas"
     },
     "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121": {
-      "claim": {
-        "expires_at": "2026-11-28T23:08:18Z",
-        "generation": "01606d454cec4b5da8ff642c7870089f",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-15-delete-old-generator-and-etl-20261120"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 20: delete the old ETL, DataFrame path and metric"
     },
     "tpcdi-deterministic-generation-contract": {
