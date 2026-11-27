@@ -48269,6 +48269,13 @@
       "status": "done",
       "title": "Seed a richer QA fixture corpus (multi-tier trust, tuned/notuned pairs, ≥4 platforms in one cohort)"
     },
+    "seed-corpus-capture-query-plans-20261127": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Capture query plans in the monthly seed-corpus runs so benchbox.dev shows them"
+    },
     "seed-corpus-official-cells-refused-by-full-spec-20261115": {
       "claim": null,
       "needs": [],

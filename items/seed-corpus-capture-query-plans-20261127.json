@@ -1,0 +1,28 @@
+{
+  "acceptance": [
+    "seed-corpus.yml passes --capture-plans on every cell's benchbox run, and no other run option changes.",
+    "Local evidence recorded in context: staged .plans.json size and plan-capture wall-time overhead for DuckDB TPC-DS SF 1 (4 streams) and TPC-H SF 1 (2 streams), with the staged companions passing stage_seed_corpus_bundle.py and validate_corpus.py.",
+    "Any cell whose staged plans file exceeds 2,000,000 bytes or whose overhead exceeds 10% has an owner decision recorded before 2026-11-30.",
+    "The change is merged to develop before 2026-12-01 07:00 UTC.",
+    "After the 2026-12-01 seed run: the run id, the count of eligible cells with a .plans.json, and one benchbox.dev result URL whose plan viewer loads are recorded here."
+  ],
+  "context": "Found 2026-11-27 by reading the live results snapshot: results.has_plans true for 2 of 470 rows. Owner asked to file this and make the change before 2026-12-01.",
+  "description": "## Problem\nbenchbox.dev's Explorer has a captured-plan viewer that loads each result's `<bundle>.plans.json` companion. Only 2 of 470 published results have plans (`tpch-duckdb-sf0.1-20261111-d8b0b97f` and `tpch-polars-sf0.1-20261111-27561037`, maintainer runs on 2026-11-11). The other 468 show none because `.github/workflows/seed-corpus.yml` runs `benchbox run` without `--capture-plans`. The rest of the pipeline already handles plans: `scripts/stage_seed_corpus_bundle.py` stages and anonymises `.plans.json` companions, the corpus spec documents the layout, and the site's privacy gate checks them. No decision on record keeps plans out of the corpus, and plan capture runs outside the query timer (`docs/internal/tpc-measured-intervals.md`), so it does not change measured times.\n\nThe next scheduled seed-corpus run is 2026-12-01 07:00 UTC; it must capture plans.\n\n## Change\nAdd `--capture-plans` (EXPLAIN only, the default `--no-analyze-plans`) to every seed-corpus cell's `benchbox run`.\n\n## Decision gate (owner)\nThe Explorer viewer refuses plan files above 2,000,000 bytes (`MAX_PLAN_SIDECAR_BYTES` in benchbox-site `explorer/src/lib/queryPlans.ts`); larger files are still downloadable. If a measured SF 1 full-specification cell's staged `.plans.json` exceeds that limit, or plan capture adds more than 10% to a cell's wall time, bring the numbers to the owner before 2026-11-30 with the options: raise the viewer limit (site PR), capture only the power test, or accept download-only for that cell.\n\n## Guardrails\n- Do not change measured intervals, phases, streams, seeds or any other run option in the workflow.\n- Do not make plan capture strict: a capture failure must not fail a cell or drop its result.\n- Do not weaken staging anonymisation, the privacy gate or companion validation.\n- Heavy local measurement goes through `make heavy-run` or `make ci-linux`.\n\n## Verification rubric\n- A local run of a seed-corpus cell command with `--capture-plans` produces a `.plans.json` that `stage_seed_corpus_bundle.py` stages without findings and that `results-data/validate_corpus.py` accepts.\n- Measured plan-file size and wall-time overhead for the largest cells (TPC-DS SF 1 four streams and TPC-H SF 1 two streams on DuckDB) recorded in context.\n- After the 2026-12-01 run, every eligible cell's bundle has a `.plans.json`, and at least one result on benchbox.dev opens its plans in the viewer.",
+  "links": [
+    ".github/workflows/seed-corpus.yml",
+    "scripts/stage_seed_corpus_bundle.py",
+    "results-data/SEED_CORPUS_SPEC.md",
+    "docs/agent/maintainer-bundles.md",
+    "https://benchbox.dev/results/data/results.duckdb"
+  ],
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8afb036c608ba6806b343500",
+      "at": "2026-11-27T15:10:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "76f54d1dc4e24ec7ae80386f297f6cf7",
+      "session_id": "fcabc717849d409bbc01a9206bfb26b3"
+    }
+  ]
+}
