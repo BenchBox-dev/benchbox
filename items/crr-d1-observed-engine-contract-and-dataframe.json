@@ -19,7 +19,9 @@
       "from_item": "crr-d1-observed-engine-contract-and-dataframe",
       "id": 1,
       "reason": "Reproduced on the corpus rule head aac258e471 in a batched unit run; the file passes in isolation. Fix the shared state the tests depend on before the next batch gate relies on that batched order.",
-      "resolution": "open",
+      "resolution": "promoted",
+      "resolved_at": "2026-11-27T12:22:15Z",
+      "resolved_item": "crr-d1-observed-engine-contract-and-dataframe-deferral-1",
       "summary": "test_dask_observed_engine.py fails 4 tests only inside a large batched pytest run (TypeError in isinstance; KeyError execution_engine): order-dependent pollution"
     }
   ],
@@ -592,6 +594,14 @@
       "client": "omp-coding-agent",
       "op": "defer",
       "op_id": "a6335803d8394d5bb023cf813ef42ff4",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-27T12:22:15Z",
+      "client": "omp-coding-agent",
+      "op": "promote",
+      "op_id": "ad4960720edd430d9f4c16755801a112",
       "session_id": "51a05311b8f040aabf2f02456b50b932"
     }
   ]

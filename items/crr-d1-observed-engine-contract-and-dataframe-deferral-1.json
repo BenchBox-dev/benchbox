@@ -1,0 +1,13 @@
+{
+  "description": "Promoted from deferral 1 on crr-d1-observed-engine-contract-and-dataframe: Reproduced on the corpus rule head aac258e471 in a batched unit run; the file passes in isolation. Fix the shared state the tests depend on before the next batch gate relies on that batched order.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-27T12:22:16Z",
+      "client": "omp-coding-agent",
+      "op": "promote",
+      "op_id": "ad4960720edd430d9f4c16755801a112",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
+    }
+  ]
+}

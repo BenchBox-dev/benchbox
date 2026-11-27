@@ -27238,6 +27238,13 @@
       "status": "open",
       "title": "Record the execution engine that actually ran, starting with the DataFrame platforms"
     },
+    "crr-d1-observed-engine-contract-and-dataframe-deferral-1": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Stop the Dask distributed-setup test leaking its replaced Client and LocalCluster into later tests"
+    },
     "crr-d2-observed-engine-sql-platforms": {
       "claim": null,
       "needs": [
