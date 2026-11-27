@@ -28379,17 +28379,12 @@
       "title": "TPC-DS below SF 1 through the carried upstream Scaling patch, TPC-H refresh sets and the scale model"
     },
     "datagen-lib-tpcds-refresh-sets": {
-      "claim": {
-        "expires_at": "2026-11-28T14:47:22Z",
-        "generation": "b08287fcf48a430b896d7f41681a7316",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
-      },
+      "claim": null,
       "needs": [
         "datagen-lib-tpcds"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "Deliver TPC-DS refresh sets in benchbox-datagen as a separate, reviewed change with full-scale parity"
     },
     "datagen-lib-tpcds-rowcount-inputs": {
