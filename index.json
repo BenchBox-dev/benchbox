@@ -52208,6 +52208,13 @@
       "status": "done",
       "title": "Unit tests leak root logger levels, and `make test-pytest` turns off session isolation, so tests run against the real ~/.benchbox"
     },
+    "test-logging-guard-misses-third-party-loggers-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Catch tests that leave third-party logger or root handler state changed"
+    },
     "test-module-state-leak-guard-20261025": {
       "claim": null,
       "needs": [
