@@ -31145,15 +31145,10 @@
       "title": "Doris: query failures across seven benchmarks in release UAT"
     },
     "doris-uat-joinorder-16b-mem-limit-20261126": {
-      "claim": {
-        "expires_at": "2026-11-28T14:49:50Z",
-        "generation": "e688fc807be44054af080ddf81706c0e",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e82e03734cad9d7732bbc3a5"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Doris joinorder SF1 query 16b hits MEM_LIMIT_EXCEEDED in trunk UAT"
     },
     "driver-auto-install-from-cli-flag-20261113": {
