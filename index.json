@@ -28173,7 +28173,13 @@
     },
     "datagen-workspace-cleanup": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "datagen-lib-tpch",
+        "datagen-lib-tpcds",
+        "datagen-lib-tpcds-fractional-and-refresh",
+        "datagen-lib-tpch-qgen",
+        "datagen-lib-ssb-and-synthetic-framework"
+      ],
       "priority": "low",
       "status": "open",
       "title": "Remove datagen worktrees, scratch data and branches left by delivery agents"
