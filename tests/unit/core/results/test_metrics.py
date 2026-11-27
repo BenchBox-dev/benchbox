@@ -355,14 +355,34 @@ class TestDeriveFromResultFiles:
 
     @pytest.mark.parametrize(("scale", "reason"), [(0.01, "below the standard scale"), (2.0, "non-standard scale")])
     def test_results_at_a_scale_without_official_metrics_are_refused(self, scale: float, reason: str) -> None:
-        small_throughput = _throughput_file()
-        small_throughput["benchmark"]["scale_factor"] = scale
+        power, throughput = _power_file({1: 1.0}), _throughput_file()
+        for data in (power, throughput):
+            data["benchmark"]["scale_factor"] = scale
         with pytest.raises(ValueError, match=reason):
-            TPCMetricsCalculator.derive_tpc_metrics(_power_file({1: 1.0}), small_throughput, 1.0)
-        small_power = _power_file({1: 1.0})
-        small_power["benchmark"]["scale_factor"] = scale
+            TPCMetricsCalculator.derive_tpc_metrics(power, throughput, scale)
+
+    @pytest.mark.parametrize(("scale", "reason"), [(0.01, "below the standard scale"), (2.0, "non-standard scale")])
+    def test_a_scale_from_the_environment_block_or_the_override_is_refused_like_a_recorded_one(
+        self, scale: float, reason: str
+    ) -> None:
+        power, throughput = _power_file({1: 1.0}), _throughput_file()
+        for data in (power, throughput):
+            data["environment"] = {"scale_factor": scale}
         with pytest.raises(ValueError, match=reason):
-            TPCMetricsCalculator.derive_tpc_metrics(small_power, _throughput_file(), 1.0)
+            TPCMetricsCalculator.compute_qphh_result(power, throughput)
+        assert any(
+            "not official compliance" in item
+            for item in TPCMetricsCalculator.qphh_unavailable_reasons(power, throughput)
+        )
+
+        for data in (power, throughput):
+            data["environment"] = {}
+        with pytest.raises(ValueError, match=reason):
+            TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=scale)
+        assert any(
+            "not official compliance" in item
+            for item in TPCMetricsCalculator.qphh_unavailable_reasons(power, throughput, scale_factor=scale)
+        )
 
     @pytest.mark.parametrize("stamp", [None, "official", "unofficial_subscale", "unofficial_nonstandard"])
     def test_the_stamped_class_never_changes_the_availability_or_value(self, stamp: str | None) -> None:

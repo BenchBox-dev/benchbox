@@ -182,6 +182,14 @@ class TPCMetricsCalculator:
         return (data.get("benchmark") or {}).get("scale_factor") or (data.get("environment") or {}).get("scale_factor")
 
     @staticmethod
+    def _with_scale(data: dict, scale_factor: float | None) -> dict:
+        benchmark = data.get("benchmark") or {}
+        resolved = TPCMetricsCalculator._recorded_scale_factor(data) or scale_factor
+        if benchmark.get("scale_factor") == resolved:
+            return data
+        return {**data, "benchmark": {**benchmark, "scale_factor": resolved}}
+
+    @staticmethod
     def _composite_scale_refusal(data: dict) -> str | None:
         facts = corpus_rule.facts_from_result(data)
         return corpus_rule.composite_scale_refusal(
@@ -222,7 +230,8 @@ class TPCMetricsCalculator:
         power_data: dict, throughput_data: dict, scale_factor: float | None = None
     ) -> list[str]:
         reasons = []
-        for label, data in (("Power", power_data), ("Throughput", throughput_data)):
+        for label, raw in (("Power", power_data), ("Throughput", throughput_data)):
+            data = TPCMetricsCalculator._with_scale(raw, scale_factor)
             benchmark = data.get("benchmark") or {}
             refusal = TPCMetricsCalculator._composite_scale_refusal(data)
             if refusal:
@@ -252,30 +261,22 @@ class TPCMetricsCalculator:
         throughput_data: dict,
         scale_factor: float,
     ) -> tuple[float | None, float | None, float | None, float | None]:
+        scale_factor = TPCMetricsCalculator.resolve_scale_factor(power_data, throughput_data, scale_factor)
+        power_data = TPCMetricsCalculator._with_scale(power_data, scale_factor)
+        throughput_data = TPCMetricsCalculator._with_scale(throughput_data, scale_factor)
         for label, data in (("Power", power_data), ("Throughput", throughput_data)):
             reason = TPCMetricsCalculator.metrics_refusal_reason(data, label)
             if reason:
                 raise ValueError(reason)
-        scale_factor = TPCMetricsCalculator.resolve_scale_factor(power_data, throughput_data, scale_factor)
 
         power_input = {
             **power_data,
-            "benchmark": {
-                **power_data.get("benchmark", {}),
-                "scale_factor": (power_data.get("benchmark") or {}).get("scale_factor") or scale_factor,
-            },
             "phases": {
                 **(power_data.get("phases") or {}),
                 "throughput_test": (throughput_data.get("phases") or {}).get("throughput_test"),
             },
         }
-        throughput_input = {
-            **throughput_data,
-            "benchmark": {
-                **throughput_data.get("benchmark", {}),
-                "scale_factor": (throughput_data.get("benchmark") or {}).get("scale_factor") or scale_factor,
-            },
-        }
+        throughput_input = throughput_data
         power_at_size = corpus_score.power_at_size(power_input)
         throughput_at_size = corpus_score.throughput_at_size(throughput_input)
 
