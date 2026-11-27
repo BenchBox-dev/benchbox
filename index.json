@@ -27681,7 +27681,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "Decide how Rust query generation treats cases where the C oracle hangs or is nondeterministic"
+      "title": "Apply the decided handling of non-terminating and nondeterministic C-oracle query cases"
     },
     "datagen-decision-ssb-and-synthetic-acceptance": {
       "claim": null,
