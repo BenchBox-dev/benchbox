@@ -29,7 +29,6 @@ from benchbox.core.h2odb.generator import H2ODataGenerator
 from benchbox.core.joinorder_synthetic.generator import JoinOrderGenerator
 from benchbox.core.read_primitives.generator import ReadPrimitivesDataGenerator
 from benchbox.core.ssb.generator import SSBDataGenerator
-from benchbox.core.tpcdi.generator import TPCDIDataGenerator
 from benchbox.core.tpcds.generator import TPCDSDataGenerator
 from benchbox.core.tpch.generator import TPCHDataGenerator
 from benchbox.utils.cloud_storage import create_path_handler
@@ -87,7 +86,6 @@ class TestCloudStorageIntegration:
             (AMPLabDataGenerator, {"scale_factor": 0.001}),
             (ClickBenchDataGenerator, {"scale_factor": 0.001}),
             (H2ODataGenerator, {"scale_factor": 0.001}),
-            (TPCDIDataGenerator, {"scale_factor": 0.001, "enable_progress": False}),
             (JoinOrderGenerator, {"scale_factor": 0.001}),
         ],
     )
@@ -116,11 +114,6 @@ class TestCloudStorageIntegration:
             (AMPLabDataGenerator, {"scale_factor": 0.001}, "generate_data"),
             (ClickBenchDataGenerator, {"scale_factor": 0.001}, "generate_data"),
             (H2ODataGenerator, {"scale_factor": 0.001}, "generate_data"),
-            (
-                TPCDIDataGenerator,
-                {"scale_factor": 0.001, "enable_progress": False},
-                "generate_data",
-            ),
             (JoinOrderGenerator, {"scale_factor": 0.001}, "generate_data"),
         ],
     )
@@ -148,7 +141,6 @@ class TestCloudStorageIntegration:
             (AMPLabDataGenerator, {"scale_factor": 0.001}),
             (ClickBenchDataGenerator, {"scale_factor": 0.001}),
             (H2ODataGenerator, {"scale_factor": 0.001}),
-            (TPCDIDataGenerator, {"scale_factor": 0.001, "enable_progress": False}),
         ],
     )
     @pytest.mark.skipif(not CLOUDPATHLIB_AVAILABLE, reason="cloudpathlib not installed")
@@ -228,7 +220,6 @@ class TestCloudStorageIntegration:
             AMPLabDataGenerator,
             ClickBenchDataGenerator,
             H2ODataGenerator,
-            TPCDIDataGenerator,
             JoinOrderGenerator,
         ]
 

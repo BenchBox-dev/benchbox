@@ -578,10 +578,8 @@ def test_unknown_table_is_refused():
     [
         "benchbox.core.tpcdi",
         "benchbox.core.tpcdi.benchmark",
-        "benchbox.core.tpcdi.loader",
         "benchbox.core.tpcdi.validation",
         "benchbox.core.tpcdi.metrics",
-        "benchbox.core.tpcdi.source_generators",
         "benchbox.core.tpcdi._legacy_etl.pipeline",
         "benchbox.core.tpcdi._legacy_etl.sql_backend",
         "benchbox.core.tpcdi._legacy_etl.scd_processor",
@@ -589,7 +587,6 @@ def test_unknown_table_is_refused():
         "benchbox.core.tpcdi._legacy_etl.finwire_processor",
         "benchbox.core.tpcdi._legacy_etl.customer_mgmt_processor",
         "benchbox.core.tpcdi._legacy_etl.data_quality_monitor",
-        "benchbox.core.tpcdi.generator",
     ],
 )
 def test_retained_old_modules_still_import(module):

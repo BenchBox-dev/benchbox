@@ -109,10 +109,6 @@ class TPCDI(BaseBenchmark):
     def calculate_official_metrics(self, etl_result: Any, validation_result: Any) -> Any:
         return self._impl.calculate_official_metrics(etl_result, validation_result)
 
-    @refuses_unavailable_benchmark("tpcdi")
-    def optimize_database(self, connection: Any) -> dict[str, Any]:
-        return self._impl.optimize_database(connection)
-
     @property
     def validator(self) -> Any:
         return self._impl.validator

@@ -661,7 +661,6 @@ ignore_rules = [
         "benchbox/core/dataframe/context.py",
         "benchbox/core/dataframe/protocols.py",
         "benchbox/core/operations/base.py",
-        "benchbox/core/tpcdi/_legacy_etl/sources.py",
         "benchbox/platforms/base/adapter.py",
         "benchbox/platforms/base/data_loading.py",
         "benchbox/utils/format_converters/base.py",
@@ -789,7 +788,6 @@ ignore_rules = [
 
     { function_names = ["_initialize_variant_generators", "get_query_categories", "get_file_format_info"], path_contains = [
         "benchbox/core/clickbench/queries.py",
-        "benchbox/core/tpcdi/source_generators.py",
         "benchbox/core/tpchavoc/queries.py",
     ] },
 

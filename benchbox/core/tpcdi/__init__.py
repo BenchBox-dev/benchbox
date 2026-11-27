@@ -6,7 +6,6 @@
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
 from .benchmark import TPCDIBenchmark
-from .generator import TPCDIDataGenerator
 from .schema import (
     DIMACCOUNT,
     DIMCOMPANY,
@@ -22,7 +21,6 @@ from .schema import (
 
 __all__ = [
     "TPCDIBenchmark",
-    "TPCDIDataGenerator",
     "DIMCUSTOMER",
     "DIMACCOUNT",
     "DIMSECURITY",

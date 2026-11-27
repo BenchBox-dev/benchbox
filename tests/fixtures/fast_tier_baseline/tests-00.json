@@ -6384,10 +6384,6 @@
     "p50_seconds": 0.01288
   },
   {
-    "id": "tests/unit/core/test_datagen_version.py::test_tpcdi_data_stamped_before_its_spec_was_fingerprinted_is_stale",
-    "p50_seconds": 0.01
-  },
-  {
     "id": "tests/unit/core/test_datagen_version.py::test_tpcds_direct_manifest_writer_stamps_version",
     "p50_seconds": 0.044592
   },

@@ -6396,10 +6396,6 @@
     "p50_seconds": 0.080254
   },
   {
-    "id": "tests/unit/core/test_datagen_manifest_guard.py::test_writer_refuses_a_manifest_without_table_files[tpcdi]",
-    "p50_seconds": 0.019816
-  },
-  {
     "id": "tests/unit/core/test_datagen_version.py::test_changed_base_constants_hash_is_stale",
     "p50_seconds": 0.010009
   },
@@ -7226,10 +7222,6 @@
   {
     "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_generated_ddl_has_no_floating_point_column[clickhouse]",
     "p50_seconds": 0.228501
-  },
-  {
-    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi.source_generators]",
-    "p50_seconds": 0.010369
   },
   {
     "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi]",

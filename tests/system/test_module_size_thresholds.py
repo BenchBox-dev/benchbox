@@ -14,7 +14,6 @@ ALLOWLIST_HEADROOM = 25
 ALLOWLIST = {
     Path("benchbox/cli/commands/run.py"): 2_251,
     Path("benchbox/core/tpcds/benchmark/runner.py"): 2_115,
-    Path("benchbox/core/tpcdi/generator/data.py"): 317,
 }
 
 MODULE_PATHS = [
@@ -25,7 +24,6 @@ MODULE_PATHS = [
     Path("benchbox/core/tpcds/benchmark/runner.py"),
     Path("benchbox/core/tpcds/generator/manager.py"),
     Path("benchbox/core/tpcdi/_legacy_etl/pipeline.py"),
-    Path("benchbox/core/tpcdi/generator/data.py"),
     Path("benchbox/platforms/clickhouse/adapter.py"),
 ]
 

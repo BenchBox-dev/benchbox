@@ -6528,10 +6528,6 @@
     "p50_seconds": 0.012138
   },
   {
-    "id": "tests/unit/core/test_datagen_manifest_guard.py::test_writer_still_records_generated_files[tpcdi]",
-    "p50_seconds": 0.022788
-  },
-  {
     "id": "tests/unit/core/test_datagen_manifest_guard.py::test_writer_still_records_generated_files[transaction_primitives]",
     "p50_seconds": 0.017584
   },
@@ -17018,10 +17014,6 @@
   {
     "id": "tests/unit/scripts/test_generator_volume_gate.py::test_the_smoke_limits_are_four_times_the_local_time_with_a_three_minute_floor",
     "p50_seconds": 0.019731
-  },
-  {
-    "id": "tests/unit/scripts/test_generator_volume_gate.py::test_tpcdi_generator_paths_select_nothing_while_it_is_outside_the_gate",
-    "p50_seconds": 0.018641
   },
   {
     "id": "tests/unit/scripts/test_generator_volume_gate.py::test_unaffected_paths_select_nothing[benchbox/core/tpch/generator.py]",
