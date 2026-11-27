@@ -6804,14 +6804,6 @@
     "p50_seconds": 0.010702
   },
   {
-    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi.etl.pipeline]",
-    "p50_seconds": 0.009758
-  },
-  {
-    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi.etl.scd_processor]",
-    "p50_seconds": 0.009755
-  },
-  {
     "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_table_matches_the_transcription_column_for_column[DimBroker]",
     "p50_seconds": 0.01
   },

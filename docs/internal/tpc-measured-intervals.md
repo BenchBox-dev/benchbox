@@ -86,30 +86,17 @@ Deviation column: tracker item id, `none`, `K<n>` (known deviations) or `F<n>` (
 | D10 | `tpcds/benchmark/runner.py` `TPCDSBenchmark.run_power_test` | 7.4.5.1 | 99-query loop as `total_time` (`time.time()`); Power@Size from that total | Warm-up | F4 |
 | D11 | `tpcds/benchmark/runner.py` `TPCDSBenchmark.run_official_benchmark`, `_finalize_benchmark_result`, `run_throughput_test`, `_aggregate_stream_results` | none | Wall-clock spans of the legacy run, routed throughput wrapper (reports `routed.total_time`) and stream aggregate | n/a | none; F4 |
 
-### TPC-DI
-
-| # | File and symbol | Clause | Inside | Outside | Deviation |
-|---|---|---|---|---|---|
-| I1 | `tpcdi/benchmark.py` `TPCDIBenchmark.run_etl_pipeline` | 7.2.4.1, 7.2.4.3, 7.2.5.4, 7.4.2; untimed 1.2.2.1.1 | `total_duration` covers `generate_source_data` (extract phase), `_transform_source_data`, `_load_transformed_data`, `backend.validate_results()` | Schema creation | F7 |
-| I2 | `tpcdi/benchmark.py` `TPCDIBenchmark._execute_etl_stage_queries` | 7.5.2, 7.5.3 | One `run_etl_pipeline` call per stage (historical, incremental, scd); `execution_time_seconds` is its `total_duration`, generation included | n/a | F7, F8 |
-| I3 | `tpcdi/benchmark.py` `TPCDIBenchmark.run_full_benchmark` | none (untimed 1.2.2.1.2) | Whole run: initialization, schema creation, ETL, validation, metrics | n/a | F7 |
-| I4 | `tpcdi/benchmark.py` `TPCDIBenchmark.run_etl_benchmark` (`datetime.now()` pair around `_execute_etl_stage_queries`) | 7.5.1 | `ETLResult.total_execution_time` as a wall-timestamp difference | n/a | F8 |
-| I5 | `tpcdi/benchmark.py` `TPCDIBenchmark.run_enhanced_etl_pipeline` | none (BenchBox phases) | Enhanced processing, SCD, incremental loading, optional quality monitoring | n/a | none |
-
 ## Not a measured interval
 
-Clock readers that define no specification interval, listed so the grep count reconciles (`datetime.now()` labels aside, except the I4 pair).
+Clock readers that define no specification interval, listed so the grep count reconciles (`datetime.now()` labels aside).
 
 | File and symbol | Reason |
 |---|---|
-| `tpcdi/_legacy_etl/data_quality_monitor.py` `DataQualityRuleEngine.execute_rule`, `DataQualityMonitor.run_quality_check_batch` | Quality monitor durations. |
-| `tpcdi/_legacy_etl/incremental_loader.py` `IncrementalDataLoader._process_table_incremental_changes` | Per-table statistic. |
-| `tpcdi/_legacy_etl/scd_processor.py` `EnhancedSCDType2Processor._analyze_dimension_changes` | Analysis duration statistic. |
 | `tpcds/power_test.py` `TPCDSPowerTest._execute_query` | No caller on the `run` path (unit tests only); `run` uses D1. |
 | `tpcds/qualification/runner.py` `worker`, `supervise`, `main` | Qualification harness elapsed reporting and deadlines. |
 | `tpcds/c_tools.py` `DSQGenBinary._generate_parameter_variations` | `time.time()` seeds a random generator; not a duration. |
 
-Coverage: 124 clock call sites (`mono_time()`, `elapsed_seconds()`, `time.time()`, excluding imports and helper definitions) in 43 file-and-symbol pairs. 102 sites in 33 symbols are covered by the 25 rows with a counted call site (H1 to H11, D1 to D6, D8 to D11, I1 to I3, I5; I4 is a `datetime.now()` pair with no counted call site, and D7 reads no clock; `TPCHThroughputTest._execute_stream` splits across H4 and H5). The other 22 sites in 10 symbols are in the table above.
+Coverage: 88 clock call sites (`mono_time()`, `elapsed_seconds()`, `time.time()`, excluding imports and helper definitions) in 35 file-and-symbol pairs. 75 sites in 29 symbols are covered by the 21 rows with a counted call site (H1 to H11, D1 to D6, D8 to D11; D7 reads no clock; `TPCHThroughputTest._execute_stream` splits across H4 and H5). The other 13 sites in 6 symbols are in the table above.
 
 ## QphDS@Size
 
@@ -168,7 +155,6 @@ Cost, not a deviation: `perf-tpch-rf1-bulk-load-20261031` (batched `INSERT ... V
 | F4 | Legacy `TPCDSBenchmark.run_power_test` and `_execute_power_test_query` use `time.time()`, time `get_query` inside the interval and compute Power@Size from whole-run elapsed time; `PlatformAdapter.run_power_test` and `run_official_benchmark` reach them. |
 | F5 | TPC-DS maintenance `total_time` runs from the first function start to the last function end, so it includes the per-function connect, row-count reads and staging cleanup between intervals. |
 | F6 | `TPCDSOfficialBenchmark.run_official_benchmark` runs power, throughput and maintenance once each; 7.4.6.2 and 7.4.7.6 to 7.4.7.8 put Throughput Test 2 after Data Maintenance Test 1; not modelled. |
-| F7 | TPC-DI `run_etl_pipeline` times source data generation (the `extract` phase calls `generate_source_data`), which 1.2.2.1.1 and 7.2.1.1.2 exclude; `run_full_benchmark` also times schema creation (1.2.2.1.2). The Historical Load starts at the SUT reading Source Data from the Staging Area (7.2.4.1); timing itself uses PCR timestamps (7.5.1). |
 | F8 | TPC-DI 7.5.1 to 7.5.3 take phase times from PCR records in `DImessages`; `tpcdi` writes none, so phase times come from BenchBox clocks. |
 
 ## Refresh path

@@ -573,29 +573,7 @@ def test_unknown_table_is_refused():
         get_create_table_sql("FactTrade")
 
 
-@pytest.mark.parametrize(
-    "module",
-    [
-        "benchbox.core.tpcdi",
-        "benchbox.core.tpcdi.benchmark",
-        "benchbox.core.tpcdi.validation",
-        "benchbox.core.tpcdi.metrics",
-        "benchbox.core.tpcdi._legacy_etl.pipeline",
-        "benchbox.core.tpcdi._legacy_etl.sql_backend",
-        "benchbox.core.tpcdi._legacy_etl.scd_processor",
-        "benchbox.core.tpcdi._legacy_etl.incremental_loader",
-        "benchbox.core.tpcdi._legacy_etl.finwire_processor",
-        "benchbox.core.tpcdi._legacy_etl.customer_mgmt_processor",
-        "benchbox.core.tpcdi._legacy_etl.data_quality_monitor",
-    ],
-)
-def test_retained_old_modules_still_import(module):
-    pytest.importorskip("pandas")
-    importlib.import_module(module)
-
-
 def _benchmark_without_construction():
-    pytest.importorskip("pandas")
     from benchbox.core.tpcdi.benchmark import TPCDIBenchmark
 
     benchmark = TPCDIBenchmark.__new__(TPCDIBenchmark)

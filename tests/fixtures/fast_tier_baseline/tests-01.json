@@ -6756,10 +6756,6 @@
     "p50_seconds": 0.011344
   },
   {
-    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi.etl.finwire_processor]",
-    "p50_seconds": 0.010572
-  },
-  {
     "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_schema_manager_creates_and_drops_the_schema_on_duckdb",
     "p50_seconds": 0.215085
   },

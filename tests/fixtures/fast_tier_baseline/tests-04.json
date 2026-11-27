@@ -7224,10 +7224,6 @@
     "p50_seconds": 0.228501
   },
   {
-    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi]",
-    "p50_seconds": 0.01
-  },
-  {
     "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_table_matches_the_transcription_column_for_column[DImessages]",
     "p50_seconds": 0.010004
   },

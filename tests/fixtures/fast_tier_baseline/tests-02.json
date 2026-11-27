@@ -7344,10 +7344,6 @@
     "p50_seconds": 0.011126
   },
   {
-    "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_retained_old_modules_still_import[benchbox.core.tpcdi.etl.customer_mgmt_processor]",
-    "p50_seconds": 0.01
-  },
-  {
     "id": "tests/unit/core/tpcdi/test_schema_spec.py::test_table_matches_the_transcription_column_for_column[DimDate]",
     "p50_seconds": 0.009908
   },
