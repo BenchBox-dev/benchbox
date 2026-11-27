@@ -21,7 +21,9 @@
       "from_item": "crr-a2-writer-and-score-from-timings",
       "id": 1,
       "reason": "Found by the local review of PR #4521 at a Medium level after its batch gate; fixed on the next delivery branch to avoid another full gate and preflight cycle on the core PR.",
-      "resolution": "open",
+      "resolution": "dismissed",
+      "resolved_at": "2026-11-27T12:22:01Z",
+      "resolved_reason": "Fixed in PR #4521 (merged to develop as 372f743e84): corpus_score.throughput_at_size scores TPC-DS throughput from the stream count of the timed round (corpus_rule.throughput_stream_count reads throughput_test).",
       "summary": "TPC-DS throughput score uses round-2 stream count, so throughput-only and power+throughput TPC-DS runs are never scored (corpus_score.throughput_at_size)"
     }
   ],
@@ -796,6 +798,14 @@
       "client": "omp-coding-agent",
       "op": "defer",
       "op_id": "d381030f829a460288e8d2d07e4b2a81",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-27T12:22:01Z",
+      "client": "omp-coding-agent",
+      "op": "dismiss",
+      "op_id": "8e33ba7972de405bb37578d48f3d75ce",
       "session_id": "51a05311b8f040aabf2f02456b50b932"
     }
   ]
