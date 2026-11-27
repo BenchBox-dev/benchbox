@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "`benchbox metrics` refuses a `--scale-factor` that differs from the scale recorded in the result files, instead of recomputing Power@Size and Throughput@Size at the wrong scale. The option still supplies a scale for files that record none."
+    }
+  ]
+}

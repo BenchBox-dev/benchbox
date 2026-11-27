@@ -7,6 +7,7 @@ from benchbox.core.results.schema import build_result_payload
 from benchbox.core.runner.runner import (
     _attach_translation_metadata,
     _finalize_validation_metadata,
+    _mark_unvalidated_queries,
     _resolve_strict_translation_mode,
 )
 from benchbox.utils.dialect_utils import SqlTranslationOutcome
@@ -215,3 +216,49 @@ def test_unavailable_runtime_pin_leaves_the_runtime_unrecorded(monkeypatch: pyte
 
     assert enriched.execution_metadata["translation"]["status"] == "success"
     assert "runtime" not in enriched.execution_metadata["translation"]
+
+
+@pytest.mark.parametrize("status", ["PASSED", "NO_REFERENCE"])
+def test_translation_fallback_downgrades_every_clean_status_to_uncertain(status: str) -> None:
+    result = make_benchmark_results(validation_status=status, validation_details={}, execution_metadata={})
+    outcomes = [
+        SqlTranslationOutcome(
+            source_dialect="netezza",
+            target_dialect="duckdb",
+            normalized_source_dialect="postgres",
+            normalized_target_dialect="duckdb",
+            translator="sqlglot",
+            status="fallback",
+            strict_mode=False,
+            warning_category="translation_failed",
+            message="synthetic failure",
+        )
+    ]
+
+    assert _attach_translation_metadata(result, outcomes, strict_mode=False).validation_status == "UNCERTAIN"
+
+
+def test_a_run_with_no_row_count_evidence_is_downgraded_after_translation_fallback_in_the_real_order() -> None:
+    result = make_benchmark_results(
+        validation_status="PASSED",
+        validation_details={},
+        execution_metadata={},
+        query_results=[{"query_id": "1", "run_type": "measurement", "status": "SUCCESS"}],
+    )
+    outcomes = [
+        SqlTranslationOutcome(
+            source_dialect="netezza",
+            target_dialect="duckdb",
+            normalized_source_dialect="postgres",
+            normalized_target_dialect="duckdb",
+            translator="sqlglot",
+            status="fallback",
+            strict_mode=False,
+            warning_category="translation_failed",
+            message="synthetic failure",
+        )
+    ]
+
+    finalized = _mark_unvalidated_queries(result)
+    assert finalized.validation_status == "NO_REFERENCE"
+    assert _attach_translation_metadata(finalized, outcomes, strict_mode=False).validation_status == "UNCERTAIN"

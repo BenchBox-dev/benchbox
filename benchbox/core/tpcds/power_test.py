@@ -14,6 +14,7 @@ from typing import Any, Callable, Optional
 from benchbox.core.connection import DatabaseConnection
 from benchbox.core.plan_capture_phase import (
     propagate_query_execution_metadata,
+    propagate_row_count_validation,
 )
 from benchbox.core.result_receipt import cursor_result_count
 from benchbox.core.results.fetch_mode import ConversionClock
@@ -303,12 +304,15 @@ class TPCDSPowerTest:
                     connection.set_query_context(query_display_id, stream_id=self.config.stream_id)
                 from benchbox.core.expected_results.tpcds_results import tpcds_subscale_reference_seed
 
-                set_reference_seed_context(tpcds_subscale_reference_seed(self.config.seed, self.config.stream_id))
+                set_reference_seed_context(
+                    tpcds_subscale_reference_seed(self.config.seed, self.config.stream_id, self.config.scale_factor)
+                )
                 try:
                     cursor = connection.execute(query_text)
 
                     if hasattr(cursor, "platform_result"):
                         result_dict = cursor.platform_result
+                        propagate_row_count_validation(result_dict, query_result)
                         if result_dict.get("status") == "FAILED":
                             error_msg = result_dict.get(
                                 "error", result_dict.get("row_count_validation_error", "Query validation failed")

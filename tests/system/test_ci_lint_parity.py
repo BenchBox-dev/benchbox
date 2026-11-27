@@ -281,6 +281,9 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "short-checks", "Corpus validation"): (
         "Covered by results-data/validate_corpus.py run in the results-data unit; no separate local target."
     ),
+    ("ci.yml", "short-checks", "Mirror and develop validators agree on the stored corpus"): (
+        "Covered by the local unit test that compares both validators across the stored corpus."
+    ),
     ("ci.yml", "short-checks", "Submission validator stays in sync"): (
         "Hosted branch-copy comparison against published-results; the checker logic is covered by its unit tests."
     ),

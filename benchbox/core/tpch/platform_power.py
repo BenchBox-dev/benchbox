@@ -41,8 +41,6 @@ def _power_query_result(
         platform_result["result_digest"] = query_result["result_digest"]
     if not query_result["success"]:
         platform_result["error"] = query_result.get("error", "Unknown error")
-    if query_result.get("row_count_validation") is not None:
-        platform_result["row_count_validation"] = query_result["row_count_validation"]
     propagate_query_execution_metadata(query_result, platform_result)
     return platform_result
 

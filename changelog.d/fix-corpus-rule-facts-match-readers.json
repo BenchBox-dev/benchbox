@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Make the corpus rule's fact extraction no looser than today's readers for failed validation, routed gateways and refresh and throughput evidence. A refresh that ran and failed counts as run, so the test that contains it is not scored."
+}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 from pathlib import Path
 
 import pytest
@@ -79,6 +80,61 @@ MINIMAL_BUNDLE: dict = {
 
 
 THROUGHPUT_QUERY_IDS: tuple[str, ...] = tuple(str(index) for index in range(1, 23))
+POWER_QUERY_IDS: tuple[str, ...] = tuple(f"Q{index}" for index in range(1, 23))
+THROUGHPUT_PHASE_MS = 63508
+SECONDS_PER_HOUR = 3600
+
+
+def power_query_timings(
+    power: float,
+    scale_factor: float = 1.0,
+    *,
+    ids: tuple[str, ...] = THROUGHPUT_QUERY_IDS,
+    pinned: dict[str, dict] | None = None,
+    fixed_ms: tuple[float, ...] = (),
+    test_type: str | None = None,
+) -> list[dict]:
+    pinned = pinned or {}
+    unknown = set(pinned) - set(ids)
+    assert not unknown, f"pinned queries outside the query set: {sorted(unknown)}"
+    free = [query_id for query_id in ids if query_id not in pinned]
+    target_log_ms = (len(ids) + len(fixed_ms)) * math.log(scale_factor * SECONDS_PER_HOUR * 1000.0 / power)
+    pinned_log_ms = sum(math.log(query["ms"]) for query in pinned.values()) + sum(math.log(ms) for ms in fixed_ms)
+    filler_ms = math.exp((target_log_ms - pinned_log_ms) / len(free)) if free else None
+    extra = {"test_type": test_type} if test_type else {}
+    return [
+        copy.deepcopy(pinned[query_id])
+        if query_id in pinned
+        else {
+            "id": query_id,
+            "ms": filler_ms,
+            "rows": 1,
+            "iter": 1,
+            "stream": 0,
+            "run_type": "measurement",
+            "status": "SUCCESS",
+            **extra,
+        }
+        for query_id in ids
+    ]
+
+
+def with_power(data: dict, power: float) -> dict:
+    scale_factor = data["benchmark"]["scale_factor"]
+    pinned = {query["id"]: query for query in data["queries"]}
+    data["queries"] = power_query_timings(power, scale_factor, ids=POWER_QUERY_IDS, pinned=pinned)
+    total = len(data["queries"])
+    data["summary"]["queries"] = {"total": total, "passed": total, "failed": 0}
+    data["summary"]["tpc_metrics"] = {}
+    return data
+
+
+def scored_minimal_bundle(power: float = 1234.56) -> dict:
+    return with_power(copy.deepcopy(MINIMAL_BUNDLE), power)
+
+
+def throughput_phase_ms(throughput: float, executed: int, scale_factor: float = 1.0) -> float:
+    return executed * scale_factor * SECONDS_PER_HOUR * 1000.0 / throughput
 
 
 def throughput_bundle(
@@ -86,7 +142,7 @@ def throughput_bundle(
     *,
     benchmark: str = "tpch",
     streams: int = 3,
-    throughput_at_size: float | None = 3741.26,
+    throughput_at_size: float | str | None = 3741.26,
     power_at_size: float | None = None,
     scale_factor: float = 1.0,
     compliance_class: str = "official",
@@ -125,26 +181,29 @@ def throughput_bundle(
         for stream in range(1, streams + 1)
         for query_id in THROUGHPUT_QUERY_IDS
     ]
-    total = len(data["queries"])
-    tpc_metrics: dict = {}
-    if throughput_at_size is not None:
-        tpc_metrics["throughput_at_size"] = throughput_at_size
+    executed = {"tpch": 22, "tpcds": 99}.get(benchmark, 0) * streams or len(data["queries"])
     if power_at_size is not None:
-        tpc_metrics["power_at_size"] = power_at_size
+        data["queries"] += power_query_timings(power_at_size, scale_factor, test_type="power")
+    total = len(data["queries"])
     data["summary"] = {
         "queries": {"total": total, "passed": total, "failed": 0},
         "validation": "passed",
-        "tpc_metrics": tpc_metrics,
     }
     data["phases"] = {
         "power_test": {"status": "NOT_RUN"},
         "throughput_test": {
             "status": "COMPLETED",
-            "duration_ms": 63508,
+            "num_streams": streams,
             "stream_results": [{"stream_id": stream, "success": True} for stream in range(1, streams + 1)],
             "stream_numbering": {"basis": "tpc_spec_throughput_streams_1_to_s", "first_stream_id": 1},
         },
     }
+    if throughput_at_size is not None:
+        scorable = isinstance(throughput_at_size, int | float) and math.isfinite(throughput_at_size)
+        scorable = scorable and throughput_at_size > 0
+        data["phases"]["throughput_test"]["duration_ms"] = (
+            throughput_phase_ms(throughput_at_size, executed, scale_factor) if scorable else throughput_at_size
+        )
     return data
 
 
@@ -153,25 +212,40 @@ TPCDS_QUERY_IDS: tuple[str, ...] = tuple(
     for index in range(1, 100)
     for identifier in ((f"{index}a", f"{index}b") if index in (14, 23, 24, 39) else (str(index),))
 )
+TPCDS_POWER_STATEMENTS = len(TPCDS_QUERY_IDS)
+TPCDS_STREAMS = 4
+MAINTENANCE_PHASE_MS = 5000
+POWER_PHASE_MS = 30000
+RF_PHASE_MS = 1200.0
 
 
 def _refresh_function(name: str, update_set: int, **extra: object) -> dict:
-    return {"function": name, "status": "SUCCESS", "update_set": update_set, "duration_ms": 1200.0, **extra}
+    return {"function": name, "status": "SUCCESS", "update_set": update_set, "duration_ms": RF_PHASE_MS, **extra}
+
+
+def tpcds_load_seconds_for(qph: float, streams: int, power_ms: float, scale_factor: float) -> float:
+    q = 99.0 * streams
+    quartic = (scale_factor * q / qph) ** 4
+    pt = power_ms / 1000.0 * streams / SECONDS_PER_HOUR
+    tt = 2 * THROUGHPUT_PHASE_MS / 1000.0 / SECONDS_PER_HOUR
+    dm = 2 * MAINTENANCE_PHASE_MS / 1000.0 / SECONDS_PER_HOUR
+    ld_hours = quartic / (pt * tt * dm)
+    return ld_hours * SECONDS_PER_HOUR / (0.01 * streams)
 
 
 def combined_bundle(
-    platform: str = "duckdb",
+    platform: str = "platform-a",
     *,
     benchmark: str = "tpch",
-    streams: int = 2,
+    streams: int | None = None,
     qph: float | None = 250.0,
+    power: float = 1234.5,
     transactional: bool | None = None,
 ) -> dict:
     tpcds = benchmark == "tpcds"
+    streams = streams if streams is not None else (TPCDS_STREAMS if tpcds else 2)
     query_ids = TPCDS_QUERY_IDS if tpcds else THROUGHPUT_QUERY_IDS
-    data = throughput_bundle(
-        platform, benchmark=benchmark, streams=streams, throughput_at_size=3741.26, power_at_size=1234.5
-    )
+    data = throughput_bundle(platform, benchmark=benchmark, streams=streams, throughput_at_size=None)
     data["benchmark"]["test_type"] = "combined"
     total_streams = streams * (2 if tpcds else 1)
     data["queries"] = [
@@ -188,16 +262,25 @@ def combined_bundle(
         for stream in range(1, total_streams + 1)
         for position, query_id in enumerate(query_ids)
     ]
+    executed = len(data["queries"])
+    refresh_ms = () if tpcds else (RF_PHASE_MS, RF_PHASE_MS)
+    data["queries"] += power_query_timings(power, 1.0, ids=query_ids, fixed_ms=refresh_ms, test_type="power")
     total = len(data["queries"])
     data["summary"]["queries"] = {"total": total, "passed": total, "failed": 0}
     phases = data["phases"]
-    metrics = data["summary"]["tpc_metrics"]
     flag = {} if transactional is None else {"transactional": transactional}
     if tpcds:
-        phases["power_test"] = {"status": "COMPLETED", "query_count": 99}
+        power_ms = float(POWER_PHASE_MS)
+        phases["power_test"] = {
+            "status": "COMPLETED",
+            "query_count": TPCDS_POWER_STATEMENTS,
+            "duration_ms": power_ms,
+        }
+        phases["throughput_test"]["duration_ms"] = THROUGHPUT_PHASE_MS
         phases["throughput_test_2"] = {
             "status": "COMPLETED",
-            "duration_ms": 63508,
+            "duration_ms": THROUGHPUT_PHASE_MS,
+            "num_streams": streams,
             "stream_results": [
                 {"stream_id": stream, "success": True} for stream in range(streams + 1, 2 * streams + 1)
             ],
@@ -206,21 +289,26 @@ def combined_bundle(
         for round_number, name in enumerate(("maintenance_test", "maintenance_test_2"), start=1):
             phases[name] = {
                 "status": "COMPLETED",
-                "duration_ms": 5000,
+                "duration_ms": MAINTENANCE_PHASE_MS,
                 "operations": [
                     {
                         "operation": operation,
                         "table": table,
                         "status": "SUCCESS",
-                        "refresh_set": round_number,
+                        "refresh_set": (round_number - 1) * (streams // 2) + run,
                         "duration_ms": 100.0,
                         **flag,
                     }
+                    for run in range(1, streams // 2 + 1)
                     for operation, table in (("DF_SS", "store_sales"), ("LF_SS", "store_sales"))
                 ],
             }
-        if qph is not None:
-            metrics["qphds_at_size"] = qph
+        phases["schema_creation"] = {"status": "COMPLETED", "duration_ms": 1000.0}
+        if qph is None:
+            phases["data_loading"] = {"status": "COMPLETED", "database_reused": False}
+        else:
+            load_ms = tpcds_load_seconds_for(math.floor(qph) + 0.5, streams, power_ms, 1.0) * 1000.0 - 1000.0
+            phases["data_loading"] = {"status": "COMPLETED", "duration_ms": load_ms, "database_reused": False}
     else:
         phases["power_test"] = {
             "status": "COMPLETED",
@@ -228,9 +316,13 @@ def combined_bundle(
             "refresh_first_set": 1,
             "refresh_functions": [_refresh_function("RF1", 1, **flag), _refresh_function("RF2", 1, **flag)],
         }
+        if qph is not None:
+            phases["throughput_test"]["duration_ms"] = throughput_phase_ms(qph**2 / power, executed)
         phases["throughput_test"]["refresh_stream"] = {
             "status": "COMPLETED",
             "first_set": 2,
+            "start_time": "2026-10-03T18:40:00",
+            "end_time": "2026-10-03T18:41:00",
             "pair_count": streams,
             "pairs": [
                 {
@@ -244,10 +336,9 @@ def combined_bundle(
                 for offset in range(streams)
             ],
         }
-        metrics["refresh_included"] = True
-        if qph is not None:
-            metrics["qphh_at_size"] = qph
-    metrics["load_scope"] = {"components": ["schema_creation", "data_loading"], "counted_in_qph": tpcds}
+    data["summary"]["tpc_metrics"] = {
+        "load_scope": {"components": ["schema_creation", "data_loading"], "counted_in_qph": tpcds}
+    }
     return data
 
 

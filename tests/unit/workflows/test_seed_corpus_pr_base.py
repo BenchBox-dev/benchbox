@@ -15,6 +15,7 @@ import yaml
 
 import scripts.check_make_targets as make_targets
 from benchbox.core.results.anonymization import public_pseudonym_salt_path
+from benchbox.validation.bundle import _manifest_declares_internal_source
 
 pytestmark = [
     pytest.mark.unit,
@@ -153,11 +154,15 @@ def test_seed_workflow_never_stages_uncertain_bundles(tmp_path: Path) -> None:
 
 def _clean_payload() -> dict[str, Any]:
     return {
-        "benchmark": {"id": "ssb"},
+        "benchmark": {"id": "ssb", "scale_factor": 1.0},
+        "phases": {},
         "summary": {"validation": "passed", "queries": {"total": 2}},
         "execution": {"translation": "success"},
         "environment": {"hostname": "seed-runner.internal"},
-        "queries": [{"id": "1", "ms": 12.0}, {"id": "2", "ms": 15.0}],
+        "queries": [
+            {"id": "1", "ms": 12.0, "run_type": "measurement", "status": "SUCCESS"},
+            {"id": "2", "ms": 15.0, "run_type": "measurement", "status": "SUCCESS"},
+        ],
         "export": {"tool": "benchbox", "anonymized": False},
     }
 
@@ -594,6 +599,29 @@ def test_internal_staging_writes_internal_manifest_matching_staged_bytes(tmp_pat
     assert manifest["companion_hashes"] == {
         "bundle.plans.json": hashlib.sha256((destination / "bundle.plans.json").read_bytes()).hexdigest()
     }
+
+
+@pytest.mark.parametrize("internal_manifest", [False, True])
+def test_seed_staging_preserves_known_defect_evidence(tmp_path: Path, internal_manifest: bool) -> None:
+    defects = ["defective-variant-or-loader-wrong-result"]
+    process, destination = _stage_bundle(
+        tmp_path,
+        _clean_payload(),
+        (".manifest.json",),
+        internal_manifest=internal_manifest,
+        companion_payloads={".manifest.json": {"known_defects": defects}},
+    )
+
+    assert process.returncode == 0, process.stderr
+    path = destination / "bundle.json"
+    manifest = json.loads(path.with_suffix(".manifest.json").read_text(encoding="utf-8"))
+    assert manifest["known_defects"] == defects
+    assert manifest["bundle_hash"] == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert _manifest_declares_internal_source(path) is internal_manifest
+    if internal_manifest:
+        assert (manifest["result_source"], manifest["submitted_by"]) == ("internal", "maintainer")
+    else:
+        assert not {"result_source", "submitted_by", "funding"} & manifest.keys()
 
 
 def test_seed_staging_writes_no_manifest_by_default(tmp_path: Path) -> None:

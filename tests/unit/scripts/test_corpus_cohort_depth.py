@@ -15,7 +15,6 @@ from _project.scripts.explorer_pipeline.models import (
     _PHASE_ALIASES,
     APPLIED_TUNING_STATUSES,
     COMBINED_PHASE,
-    RANKING_EXCLUDED_COMPLIANCE_CLASSES,
     RANKING_METRIC_BY_FAMILY,
     RANKING_METRIC_BY_FAMILY_PHASE,
     THROUGHPUT_PHASE,
@@ -27,7 +26,12 @@ from benchbox.core.results.status import NON_CLEAN_TRANSLATION_STATUSES, NON_CLE
 from benchbox.core.tuning.modes import MODES
 
 try:
-    from tests.unit.scripts.explorer_pipeline.conftest import MINIMAL_BUNDLE, combined_bundle, throughput_bundle
+    from tests.unit.scripts.explorer_pipeline.conftest import (
+        MINIMAL_BUNDLE,
+        combined_bundle,
+        scored_minimal_bundle,
+        throughput_bundle,
+    )
 
     _EXPLORER_FIXTURES_PRESENT = True
 except ImportError:
@@ -42,6 +46,7 @@ pytestmark = [
 ]
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+COMBINED_EVIDENCE_REASONS = frozenset({"combined_throughput_not_clean", "combined_refresh_not_clean"})
 VALIDATOR = REPO_ROOT / "results-data" / "validate_corpus.py"
 BUNDLES = REPO_ROOT / "results-data" / "bundles"
 
@@ -54,17 +59,29 @@ def _load_validator() -> ModuleType:
     return module
 
 
-def _rankable_body() -> dict:
+TPC_QUERY_COUNTS = {"tpch": 22, "tpcds": 99}
+
+
+def _rankable_body(benchmark: str = "tpch") -> dict:
+    count = TPC_QUERY_COUNTS.get(benchmark)
+    if count is None:
+        queries = [
+            {"id": "Q1", "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"},
+            {"id": "Q2", "ms": 12.0, "run_type": "measurement", "status": "SUCCESS"},
+        ]
+    else:
+        queries = [
+            {"id": str(number), "iter": 1, "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"}
+            for number in range(1, count + 1)
+        ]
     return {
         "summary": {
-            "queries": {"total": 2, "passed": 2, "failed": 0},
+            "queries": {"total": len(queries), "passed": len(queries), "failed": 0},
             "validation": "passed",
             "tpc_metrics": {"power_at_size": 1.0},
         },
-        "queries": [
-            {"id": "Q1", "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"},
-            {"id": "Q2", "ms": 12.0, "run_type": "measurement", "status": "SUCCESS"},
-        ],
+        "queries": queries,
+        "phases": {"power_test": {"status": "COMPLETED"}},
     }
 
 
@@ -95,7 +112,7 @@ def _write_bundle(
         "platform": platform_payload,
         "run": {"timestamp": run_timestamp},
         "export": {"anonymized": True},
-        **_rankable_body(),
+        **_rankable_body(benchmark),
     }
     if test_type is not None:
         payload["benchmark"]["test_type"] = test_type
@@ -426,13 +443,15 @@ def _write_phase_bundle(
         benchmark["test_type"] = test_type
     throughput_phase: dict = {"status": throughput}
     if throughput != "NOT_RUN":
+        if throughput_score is not None:
+            throughput_phase["duration_ms"] = 60000
         throughput_phase["stream_results"] = [{"stream_id": index, "success": True} for index in range(1, streams + 1)]
     tpc_metrics = {}
     if power_score is not None:
         tpc_metrics["power_at_size"] = power_score
     if throughput_score is not None and throughput != "NOT_RUN":
         tpc_metrics["throughput_at_size"] = throughput_score
-    query_count = _FULL_QUERY_COUNTS.get(benchmark_id) if throughput != "NOT_RUN" else None
+    query_count = _FULL_QUERY_COUNTS.get(benchmark_id)
     if query_count is None:
         queries = [
             {"id": "Q1", "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"},
@@ -445,18 +464,24 @@ def _write_phase_bundle(
             for number in range(1, query_count + 1)
             for suffix in (("a", "b") if number in variant_bases else ("",))
         ]
-        queries = [
-            {
-                "id": query_id,
-                "ms": 10.0 + index,
-                "run_type": "measurement",
-                "status": "SUCCESS",
-                "stream": stream,
-                "test_type": "throughput",
-            }
-            for stream in range(1, streams + 1)
-            for index, query_id in enumerate(query_ids)
-        ]
+        if throughput == "NOT_RUN":
+            queries = [
+                {"id": query_id, "iter": 1, "ms": 10.0 + index, "run_type": "measurement", "status": "SUCCESS"}
+                for index, query_id in enumerate(query_ids)
+            ]
+        else:
+            queries = [
+                {
+                    "id": query_id,
+                    "ms": 10.0 + index,
+                    "run_type": "measurement",
+                    "status": "SUCCESS",
+                    "stream": stream,
+                    "test_type": "throughput",
+                }
+                for stream in range(1, streams + 1)
+                for index, query_id in enumerate(query_ids)
+            ]
     payload = {
         "benchmark": benchmark,
         "platform": {"name": platform},
@@ -791,11 +816,15 @@ def test_phase_names_are_case_normalized_and_standard_is_power(tmp_path: Path) -
     _write_bundle(tmp_path, "standard.json", benchmark="tpch", scale=1.0, platform="Spark", test_type="Standard")
     (tmp_path / "combined.json").write_text(json.dumps(combined_bundle("Doris")), encoding="utf-8")
     _write_bundle(tmp_path, "none.json", benchmark="tpch", scale=1.0, platform="Polars", test_type=None)
+    _write_bundle(tmp_path, "unknown.json", benchmark="tpch", scale=1.0, platform="Trino", test_type=None)
+    unknown = json.loads((tmp_path / "unknown.json").read_text(encoding="utf-8"))
+    unknown["phases"] = {}
+    (tmp_path / "unknown.json").write_text(json.dumps(unknown), encoding="utf-8")
 
     assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {
-        ("tpch", "1.0"): {"duckdb", "spark"},
+        ("tpch", "1.0"): {"duckdb", "spark", "polars"},
         ("tpch", "1.0#combined"): {"doris"},
-        ("tpch", "1.0#unknown"): {"polars"},
+        ("tpch", "1.0#unknown"): set(),
     }
 
 
@@ -816,14 +845,6 @@ UNRANKABLE_OVERRIDES = {
     "failed-queries": {"summary": {"queries": {"total": 2, "passed": 1, "failed": 1}, "validation": "passed"}},
     "partial-validation": {"summary": {"queries": {"total": 2, "passed": 2, "failed": 0}, "validation": "partial"}},
     "failed-validation": {"summary": {"queries": {"total": 2, "passed": 2, "failed": 0}, "validation": "FAILED"}},
-    "unofficial": {
-        "benchmark": {
-            "id": "tpch",
-            "scale_factor": 1.0,
-            "test_type": "power",
-            "compliance_class": "unofficial_nonstandard",
-        }
-    },
     "translation-fallback": {
         "summary": {"queries": {"total": 2, "passed": 2, "failed": 0}, "validation": "passed"},
         "execution": {"translation": "fallback"},
@@ -911,7 +932,7 @@ def test_a_cohort_with_only_unrankable_bundles_is_reported_unranked_and_passes(
 ) -> None:
     validator = _load_validator()
     for platform in ("BigQuery", "Databricks", "Snowflake"):
-        _rankable_bundle(tmp_path, f"{platform}.json", platform, **UNRANKABLE_OVERRIDES["unofficial"])
+        _rankable_bundle(tmp_path, f"{platform}.json", platform, **UNRANKABLE_OVERRIDES["failed-queries"])
     for platform in ("DuckDB", "DataFusion", "Spark"):
         _write_bundle(tmp_path, f"{platform}.json", benchmark="tpcds", scale=1.0, platform=platform)
 
@@ -933,7 +954,7 @@ def test_a_cohort_with_one_or_two_rankable_identities_still_fails(tmp_path: Path
     for index, platform in enumerate(("DuckDB", "DataFusion")[:rankable]):
         _rankable_bundle(tmp_path, f"ok{index}.json", platform)
     for platform in ("BigQuery", "Snowflake"):
-        _rankable_bundle(tmp_path, f"{platform}.json", platform, **UNRANKABLE_OVERRIDES["unofficial"])
+        _rankable_bundle(tmp_path, f"{platform}.json", platform, **UNRANKABLE_OVERRIDES["failed-queries"])
 
     shallow = validator.shallow_cohorts(validator.cohort_platforms(validator.discover_bundles(tmp_path)))
 
@@ -949,12 +970,11 @@ def test_the_gate_accepts_a_full_cohort(tmp_path: Path) -> None:
     assert validator.shallow_cohorts(validator.cohort_platforms(validator.discover_bundles(tmp_path))) == {}
 
 
-def test_the_gate_accepts_a_version_matrix_as_distinct_identities(tmp_path: Path) -> None:
+def test_versions_of_one_platform_do_not_count_as_distinct_identities(tmp_path: Path) -> None:
     validator = _load_validator()
-    matrix_dir = tmp_path / "duckdb-version-matrix"
     for index, version in enumerate(("1.0.0", "1.5.5", "1.6.0.dev365")):
         _write_bundle(
-            matrix_dir,
+            tmp_path,
             f"duckdb-{index}.json",
             benchmark="tpch",
             scale=10.0,
@@ -962,7 +982,9 @@ def test_the_gate_accepts_a_version_matrix_as_distinct_identities(tmp_path: Path
             platform_version=version,
         )
 
-    assert validator.shallow_cohorts(validator.cohort_platforms(validator.discover_bundles(tmp_path))) == {}
+    cohorts = validator.cohort_platforms(validator.discover_bundles(tmp_path))
+    assert cohorts == {("tpch", "10.0"): {"duckdb"}}
+    assert validator.shallow_cohorts(cohorts) == cohorts
 
 
 def test_versions_do_not_pad_an_ordinary_cross_platform_cohort(tmp_path: Path) -> None:
@@ -982,29 +1004,31 @@ def test_versions_do_not_pad_an_ordinary_cross_platform_cohort(tmp_path: Path) -
     assert validator.shallow_cohorts(cohorts) == cohorts
 
 
-def test_same_platform_version_does_not_pad_a_cohort(tmp_path: Path) -> None:
+def test_the_folder_a_result_sits_in_does_not_change_its_identity(tmp_path: Path) -> None:
     validator = _load_validator()
-    matrix_dir = tmp_path / "duckdb-version-matrix"
-    for index in range(3):
-        _write_bundle(
-            matrix_dir,
-            f"duckdb-{index}.json",
-            benchmark="tpch",
-            scale=10.0,
-            platform="DuckDB",
-            platform_version="1.5.5",
-        )
+    for folder in ("flat", "duckdb-version-matrix"):
+        for index, version in enumerate(("1.4.4", "1.5.5")):
+            _write_bundle(
+                tmp_path / folder,
+                f"duckdb-{index}.json",
+                benchmark="tpch",
+                scale=10.0,
+                platform="DuckDB",
+                platform_version=version,
+            )
 
-    cohorts = validator.cohort_platforms(validator.discover_bundles(tmp_path))
-    assert cohorts == {("tpch", "10.0"): {"duckdb v1.5.5"}}
-    assert validator.shallow_cohorts(cohorts) == cohorts
+    by_folder = {
+        folder: validator.cohort_platforms(validator.discover_bundles(tmp_path / folder))
+        for folder in ("flat", "duckdb-version-matrix")
+    }
+
+    assert by_folder["flat"] == by_folder["duckdb-version-matrix"] == {("tpch", "10.0"): {"duckdb"}}
 
 
-def test_duckdb_package_version_overrides_internal_engine_version(tmp_path: Path) -> None:
+def test_duckdb_dev_wheel_resolves_to_a_pre_release_package_version(tmp_path: Path) -> None:
     validator = _load_validator()
-    matrix_dir = tmp_path / "duckdb-version-matrix"
     _write_bundle(
-        matrix_dir,
+        tmp_path,
         "duckdb-dev.json",
         benchmark="tpch",
         scale=10.0,
@@ -1012,10 +1036,14 @@ def test_duckdb_package_version_overrides_internal_engine_version(tmp_path: Path
         platform_version="2.0.0-alpha38615",
         execution_version="1.6.0.dev365",
     )
+    path = tmp_path / "duckdb-dev.json"
 
-    assert validator.cohort_platforms(validator.discover_bundles(tmp_path)) == {
-        ("tpch", "10.0"): {"duckdb v1.6.0.dev365"}
-    }
+    identity = validator._comparison_identity(path, validator._load_bundle(path))
+
+    assert identity.comparison_version.version == "1.6.0.dev365"
+    assert identity.comparison_version.is_release is False
+    assert identity.cohort_key == "duckdb"
+    assert validator.cohort_platforms([path]) == {("tpch", "10.0"): {"duckdb"}}
 
 
 def test_companion_files_are_not_counted_as_bundles(tmp_path: Path) -> None:
@@ -1388,7 +1416,7 @@ def _parity_variants() -> dict[str, dict]:
             lambda data: data["phases"]["throughput_test"]["refresh_stream"]["pairs"][0].update(status="FAILED"),
         ),
         "combined-tpch-refresh-not-included": _mutated_combined(
-            "tpch", lambda data: data["summary"]["tpc_metrics"].update(refresh_included=False)
+            "tpch", lambda data: data["phases"]["throughput_test"]["refresh_stream"].pop("start_time")
         ),
         "combined-tpch-no-refresh-evidence": _mutated_combined(
             "tpch", lambda data: data["phases"]["power_test"].pop("refresh_functions")
@@ -1462,7 +1490,6 @@ def _parity_variants() -> dict[str, dict]:
         "translation-fallback-no-validation": variant(
             summary={"queries": clean_queries}, execution={"translation": "failed"}
         ),
-        "unofficial": with_benchmark(compliance_class="unofficial_nonstandard", scale_factor=1.0),
         "subscale-recorded-official": with_benchmark(compliance_class="official"),
         "official": with_benchmark(compliance_class="official"),
         "phase-upper": with_benchmark(test_type="POWER"),
@@ -1481,6 +1508,16 @@ def _parity_variants() -> dict[str, dict]:
     }
 
 
+EXPECTED_RULE_DIVERGENCE = {
+    "combined-phase-with-power-score-only": ((), "missing_primary_metric"),
+    "combined-phase-with-throughput-score-only": ((), "missing_primary_metric"),
+    "combined-tpcds-second-round-missing": (("power_only",), None),
+    "combined-tpcds-second-throughput-failed": (("power_only",), None),
+    "combined-tpch-failed-throughput-stream": (("power_only",), None),
+    "combined-tpch-no-refresh-evidence": (("throughput",), None),
+}
+
+
 @pytest.mark.parametrize("name", sorted(_parity_variants()))
 def test_validator_agrees_with_the_explorer_on_phase_and_rankability(tmp_path: Path, name: str) -> None:
     validator = _load_validator()
@@ -1491,7 +1528,14 @@ def test_validator_agrees_with_the_explorer_on_phase_and_rankability(tmp_path: P
     explorer_phase, explorer_reason = _explorer_pipeline_view(path)
 
     assert validator.bundle_phase(payload) == explorer_phase
-    assert validator.exclusion_reason(payload) == explorer_reason
+    validator_reason = validator.exclusion_reason(payload)
+    if name in EXPECTED_RULE_DIVERGENCE:
+        lanes, reason = EXPECTED_RULE_DIVERGENCE[name]
+        assert explorer_reason in COMBINED_EVIDENCE_REASONS
+        assert validator.bundle_lanes(payload) == lanes
+        assert validator_reason == reason
+        return
+    assert validator_reason == explorer_reason
     assert validator.bundle_rankable(payload) is (explorer_reason is None)
 
 
@@ -1537,20 +1581,29 @@ def test_inventory_validator_and_explorer_agree_on_the_cohort_phase(tmp_path: Pa
     assert (scale.split("#")[1] if "#" in scale else "power") == explorer_phase
 
 
-def test_validator_agrees_with_the_explorer_on_every_committed_bundle() -> None:
+STAMP_REFUSAL_REASON = "unofficial_compliance"
+RULE_NEWLY_RANKED_COMMITTED_BUNDLES = 19
+
+
+DIVERGENCE_LIST = REPO_ROOT / "scripts" / "unpublished_rule_rankings.txt"
+
+
+def test_validator_and_explorer_disagree_on_exactly_the_bundles_the_rule_newly_ranks() -> None:
     validator = _load_validator()
     bundles = validator.discover_bundles(BUNDLES)
     assert bundles
 
-    disagreements = []
+    disagreements = set()
     for path in bundles:
         payload = json.loads(path.read_text(encoding="utf-8"))
-        if (validator.bundle_phase(payload), validator.exclusion_reason(payload, path)) != _explorer_pipeline_view(
-            path
-        ):
-            disagreements.append(path.name)
+        explorer_phase, explorer_reason = _explorer_pipeline_view(path)
+        assert validator.bundle_phase(payload) == explorer_phase, path.name
+        if validator.bundle_rankable(payload, path) is not (explorer_reason is None):
+            disagreements.add(path.relative_to(BUNDLES).as_posix())
 
-    assert not disagreements
+    expected = set(DIVERGENCE_LIST.read_text(encoding="utf-8").split())
+    assert len(expected) == RULE_NEWLY_RANKED_COMMITTED_BUNDLES
+    assert disagreements == expected
 
 
 def test_every_committed_bundle_declares_a_phase() -> None:
@@ -1593,7 +1646,6 @@ def test_copied_constants_match_their_explorer_sources() -> None:
     assert validator.EXECUTION_RUN_TYPES == explorer_transformer._ALLOWED_EXECUTION_RUN_TYPES
     assert validator.NON_CLEAN_VALIDATION_STATUSES == NON_CLEAN_VALIDATION_STATUSES
     assert validator.NON_CLEAN_TRANSLATION_STATUSES == NON_CLEAN_TRANSLATION_STATUSES
-    assert validator.SUBSCALE_POLICY.RANKING_EXCLUDED_COMPLIANCE_CLASSES == RANKING_EXCLUDED_COMPLIANCE_CLASSES
     assert validator.PHASE_ALIASES == _PHASE_ALIASES
 
 
@@ -1653,6 +1705,24 @@ def test_a_timed_out_stream_cannot_form_a_throughput_identity(tmp_path: Path) ->
     assert validator.main(tmp_path) == 1
 
 
+@pytest.mark.parametrize("benchmark_id", ["tpch", "TPC-H"])
+def test_tpc_power_lane_requires_all_query_timings_regardless_of_id_spelling(benchmark_id: str) -> None:
+    validator = _load_validator()
+    payload = {
+        "benchmark": {"id": benchmark_id, "scale_factor": 1.0, "test_type": "power"},
+        "platform": {"name": "example"},
+        "summary": {"queries": {"total": 2, "passed": 2, "failed": 0}, "validation": "passed"},
+        "queries": [
+            {"id": str(query), "ms": 20.0, "iter": 1, "run_type": "measurement", "status": "SUCCESS"}
+            for query in (1, 2)
+        ],
+        "phases": {"power_test": {"status": "COMPLETED"}},
+    }
+
+    assert validator.admission_reason(payload) == "missing_primary_metric"
+    assert validator.bundle_lanes(payload) == ()
+
+
 def _subscale_bundle(directory: Path, name: str, platform: str, tpc_metrics: dict, **benchmark: object) -> Path:
     payload: dict = {
         "benchmark": {"id": "tpch", "scale_factor": 0.01, "test_type": "power", **benchmark},
@@ -1660,6 +1730,7 @@ def _subscale_bundle(directory: Path, name: str, platform: str, tpc_metrics: dic
         "run": {"timestamp": "2026-08-01T12:00:00"},
         "export": {"anonymized": True},
         "result_schema_version": "2.3",
+        "phases": {"power_test": {"status": "COMPLETED"}},
         "summary": {
             "queries": {"total": 22, "passed": 22, "failed": 0},
             "validation": "passed",
@@ -1680,18 +1751,19 @@ def _subscale_bundle(directory: Path, name: str, platform: str, tpc_metrics: dic
 
 
 @pytest.mark.parametrize(
-    ("tpc_metrics", "benchmark_fields", "expected_power"),
+    ("tpc_metrics", "benchmark_fields"),
     [
-        ({"power_at_size": 1820.0, "unofficial": True}, {"compliance_class": "unofficial_subscale"}, 1820.0),
-        ({"power_at_size": 1820.0}, {}, 1820.0),
-        ({"suppressed": True}, {"compliance_class": "unofficial_subscale"}, 0.01 * 3600 / 0.02),
-        ({"suppressed": True}, {"id": "TPC-H", "compliance_class": "official"}, 0.01 * 3600 / 0.02),
+        ({"power_at_size": 1820.0, "unofficial": True}, {"compliance_class": "unofficial_subscale"}),
+        ({"power_at_size": 1820.0}, {}),
+        ({"suppressed": True}, {"compliance_class": "unofficial_subscale"}),
+        ({"suppressed": True}, {"id": "TPC-H", "compliance_class": "official"}),
     ],
-    ids=["recorded-unofficial", "legacy-null-class", "suppressed-back-filled", "id-variant-recorded-official"],
+    ids=["recorded-unofficial", "legacy-null-class", "suppressed-marker", "id-variant-recorded-official"],
 )
-def test_subscale_tpc_bundles_rank_on_recorded_or_derived_power(
-    tmp_path: Path, tpc_metrics: dict, benchmark_fields: dict, expected_power: float
+def test_subscale_tpc_bundles_rank_on_power_recomputed_from_timings(
+    tmp_path: Path, tpc_metrics: dict, benchmark_fields: dict
 ) -> None:
+    expected_power = 0.01 * 3600 / 0.02
     validator = _load_validator()
     path = _subscale_bundle(tmp_path, "duckdb.json", "DuckDB", tpc_metrics, **benchmark_fields)
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -1702,15 +1774,16 @@ def test_subscale_tpc_bundles_rank_on_recorded_or_derived_power(
     assert entry.ranking_exclusion_reason is None
     assert entry.compliance_class == "unofficial_subscale"
     assert entry.power_score == pytest.approx(expected_power)
-    assert entry.power_score_source == ("derived_from_timings" if "suppressed" in tpc_metrics else "recorded")
+    assert entry.power_score_source == "derived_from_timings"
 
 
-def test_subscale_bundle_without_iteration_numbers_has_no_primary_metric(tmp_path: Path) -> None:
+def test_modern_subscale_bundle_without_iteration_numbers_has_no_primary_metric(tmp_path: Path) -> None:
     validator = _load_validator()
     path = _subscale_bundle(
         tmp_path, "duckdb.json", "DuckDB", {"suppressed": True}, compliance_class="unofficial_subscale"
     )
     payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["result_schema_version"] = "2.4"
     for query in payload["queries"]:
         query.pop("iter")
     path.write_text(json.dumps(payload), encoding="utf-8")
@@ -1721,7 +1794,7 @@ def test_subscale_bundle_without_iteration_numbers_has_no_primary_metric(tmp_pat
     )
 
 
-def test_nonstandard_bundle_is_not_back_filled(tmp_path: Path) -> None:
+def test_a_stamp_at_a_standard_scale_does_not_stop_the_validator_ranking_the_bundle(tmp_path: Path) -> None:
     validator = _load_validator()
     path = _subscale_bundle(
         tmp_path,
@@ -1733,11 +1806,11 @@ def test_nonstandard_bundle_is_not_back_filled(tmp_path: Path) -> None:
     )
     payload = json.loads(path.read_text(encoding="utf-8"))
 
-    assert validator.exclusion_reason(payload) == "unofficial_compliance"
-    assert validator._power_score(payload) is None
+    assert validator.exclusion_reason(payload) is None
+    assert validator._power_score(payload) == pytest.approx(1.0 * 3600 / 0.02)
     entry = BundleTransformer().to_manifest_entry(path, result_id="r")
-    assert entry.ranking_exclusion_reason == "unofficial_compliance"
-    assert entry.power_score is None
+    assert entry.ranking_exclusion_reason == STAMP_REFUSAL_REASON
+    assert entry.power_score == pytest.approx(1.0 * 3600 / 0.02)
 
 
 def test_a_recorded_official_class_below_sf1_is_read_as_subscale(tmp_path: Path) -> None:
@@ -1746,7 +1819,7 @@ def test_a_recorded_official_class_below_sf1_is_read_as_subscale(tmp_path: Path)
     assert BundleTransformer().to_manifest_entry(path, result_id="r").compliance_class == "unofficial_subscale"
 
 
-def test_recorded_subscale_power_that_disagrees_with_timings_is_not_ranked(tmp_path: Path) -> None:
+def test_recorded_subscale_power_that_disagrees_with_timings_is_ignored(tmp_path: Path) -> None:
     validator = _load_validator()
     path = _subscale_bundle(
         tmp_path,
@@ -1757,10 +1830,11 @@ def test_recorded_subscale_power_that_disagrees_with_timings_is_not_ranked(tmp_p
     )
     payload = json.loads(path.read_text(encoding="utf-8"))
 
-    assert validator.exclusion_reason(payload) == "missing_primary_metric"
+    expected_power = 0.01 * 3600 / 0.02
+    assert validator.exclusion_reason(payload) is None
     entry = BundleTransformer().to_manifest_entry(path, result_id="r")
-    assert entry.ranking_exclusion_reason == "missing_primary_metric"
-    assert entry.power_score is None
+    assert entry.ranking_exclusion_reason is None
+    assert entry.power_score == pytest.approx(expected_power)
 
 
 def test_partial_final_iteration_is_not_back_filled(tmp_path: Path) -> None:
@@ -1786,8 +1860,8 @@ def test_combined_cohorts_rank_on_the_composite_qph_not_the_power_score(benchmar
     payload = combined_bundle(benchmark=benchmark_id, qph=qph)
 
     assert validator.bundle_phase(payload) == "combined"
-    assert payload["summary"]["tpc_metrics"]["power_at_size"] == 1234.5
-    assert _combined_ranking_value(validator, payload) == pytest.approx(qph)
+    assert validator._power_score(payload) == pytest.approx(1234.5)
+    assert _combined_ranking_value(validator, payload) == pytest.approx(qph, abs=1.0)
     assert validator.exclusion_reason(payload) is None
 
 
@@ -1814,9 +1888,7 @@ def test_combined_bundles_without_clean_throughput_and_refresh_evidence_are_not_
     validator = _load_validator()
     payload = _parity_variants()[name]
 
-    assert _combined_ranking_value(validator, payload) is None
-    assert validator.exclusion_reason(payload) == reason
-    assert validator.bundle_rankable(payload) is False
+    assert "combined" not in validator.bundle_lanes(payload)
 
 
 @pytest.mark.parametrize(
@@ -1830,7 +1902,7 @@ def test_non_transactional_refresh_does_not_stop_a_combined_bundle_ranking(name:
 
 def test_power_cohorts_keep_ranking_on_the_power_score() -> None:
     validator = _load_validator()
-    payload = json.loads(json.dumps(MINIMAL_BUNDLE))
+    payload = scored_minimal_bundle()
     payload["summary"]["tpc_metrics"]["qphh_at_size"] = 5.0
 
     assert validator.bundle_phase(payload) == "power"
@@ -1843,3 +1915,109 @@ def test_combined_cohort_keys_stay_separate_from_the_power_cohort() -> None:
 
     assert validator.cohort_phase_suffix(combined_bundle()) == "#combined"
     assert validator.cohort_phase_suffix(combined_bundle(benchmark="tpcds")) == "#combined"
+
+
+def _phase_bundle(*, throughput: bool, refresh: bool) -> dict:
+    payload = combined_bundle()
+    payload["phases"]["power_test"] = {
+        "status": "COMPLETED",
+        "query_count": 22,
+        **(
+            {
+                "refresh_first_set": 5,
+                "refresh_functions": [
+                    {"function": name, "update_set": 5, "duration_ms": 15, "status": "SUCCESS"}
+                    for name in ("RF1", "RF2")
+                ],
+            }
+            if refresh
+            else {}
+        ),
+    }
+    if not throughput:
+        payload["phases"]["throughput_test"] = {"status": "NOT_RUN"}
+        payload["queries"] = [query for query in payload["queries"] if query.get("test_type") != "throughput"]
+    elif not refresh:
+        payload["phases"]["throughput_test"].pop("refresh_stream", None)
+    payload["benchmark"].pop("test_type", None)
+    return payload
+
+
+def test_a_partial_power_and_throughput_bundle_ranks_in_both_cohorts(tmp_path: Path) -> None:
+    validator = _load_validator()
+    payload = _phase_bundle(throughput=True, refresh=False)
+    path = tmp_path / "partial.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator.bundle_lanes(payload, path) == ("power_only", "throughput")
+    cohorts = validator.cohort_platforms([path])
+    assert sorted(cohorts) == [("tpch", "1.0"), ("tpch", "1.0#throughput#2streams")]
+    assert all(len(identities) == 1 for identities in cohorts.values())
+
+
+def test_a_power_and_refresh_bundle_without_throughput_ranks_power_only(tmp_path: Path) -> None:
+    validator = _load_validator()
+    payload = _phase_bundle(throughput=False, refresh=True)
+    path = tmp_path / "refresh.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert validator.bundle_lanes(payload, path) == ("power_only",)
+    cohorts = validator.cohort_platforms([path])
+    assert {key: len(identities) for key, identities in cohorts.items()} == {("tpch", "1.0"): 1}
+
+
+def test_a_combined_lane_run_with_unclean_evidence_is_not_ranked_in_the_combined_cohort(tmp_path: Path) -> None:
+    validator = _load_validator()
+    for name, payload in _parity_variants().items():
+        if not name.startswith("combined"):
+            continue
+        path = tmp_path / f"{name}.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        lanes = validator.rule_outcome(payload, path).lanes
+        defects = validator._combined_evidence_defects(payload)
+        if "combined" in lanes and defects:
+            assert validator.lane_reasons(payload, path)["combined"] == defects[0], name
+            assert "combined" not in validator.bundle_lanes(payload, path), name
+
+
+@pytest.mark.parametrize("mutation", ["stream-failed", "errors", "outstanding-work"])
+@pytest.mark.parametrize("suite", ["tpch", "tpcds"])
+def test_unclean_throughput_evidence_keeps_a_full_spec_run_out_of_the_combined_lane(
+    tmp_path: Path, suite: str, mutation: str
+) -> None:
+    validator = _load_validator()
+    payload = combined_bundle(benchmark=suite)
+    block = payload["phases"]["throughput_test"]
+    if mutation == "stream-failed":
+        block["stream_results"][-1]["success"] = False
+    elif mutation == "errors":
+        block["errors"] = ["stream 1 died"]
+    else:
+        block["outstanding_work"] = {"stream_ids": [1], "cleanup_state": "unknown"}
+    path = tmp_path / "unclean.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert "combined" not in validator.bundle_lanes(payload, path)
+    assert validator._combined_score(payload) is None
+
+
+def test_the_depth_gate_does_not_count_rankings_the_explorer_does_not_publish() -> None:
+    validator = _load_validator()
+    bundles = validator.discover_bundles(BUNDLES)
+    listed = validator.unpublished_rule_rankings()
+    assert len(listed) == RULE_NEWLY_RANKED_COMMITTED_BUNDLES
+
+    shallow = validator.shallow_cohorts(validator.cohort_platforms(bundles))
+    assert shallow[("tpch", "1.0")] == {"duckdb"}
+
+    without = validator.cohort_platforms(bundles, frozenset())
+    assert len(without[("tpch", "1.0")]) == 4
+    sqlite_run = next(entry for entry in listed if "tpch_sf1_sqlite" in entry)
+    one_less = validator.cohort_platforms(bundles, listed - {sqlite_run})
+    assert one_less[("tpch", "1.0")] == {"duckdb", "sqlite"}
+
+
+def test_a_missing_unpublished_rankings_list_fails_the_depth_gate(tmp_path: Path) -> None:
+    validator = _load_validator()
+    with pytest.raises(validator.CorpusReadError, match="unpublished rule rankings"):
+        validator.unpublished_rule_rankings(tmp_path / "missing.txt")

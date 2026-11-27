@@ -273,6 +273,33 @@ class TestShellCommand:
             assert "tpcds" in result.output.lower() or "Available" in result.output
 
 
+@pytest.fixture
+def timed_tpch_results():
+    power = {
+        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0},
+        "queries": [
+            {"id": str(query), "status": "SUCCESS", "run_type": "measurement", "iter": 1, "ms": 1000}
+            for query in range(1, 23)
+        ],
+        "phases": {"power_test": {"status": "COMPLETED", "query_count": 22}},
+    }
+    throughput = {
+        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0},
+        "run": {"streams": 9},
+        "phases": {
+            "throughput_test": {
+                "status": "COMPLETED",
+                "duration_ms": 100000,
+                "stream_results": [
+                    {"stream_id": stream, "success": True, "duration_ms": 100000, "query_count": 22}
+                    for stream in (1, 2)
+                ],
+            }
+        },
+    }
+    return power, throughput
+
+
 class TestMetricsCommand:
     def test_metrics_command_exists(self):
         runner = CliRunner()
@@ -306,28 +333,14 @@ class TestMetricsCommand:
         assert result.exit_code != 0
         assert "Missing option" in result.output or "required" in result.output.lower()
 
-    def test_metrics_qphh_success(self):
+    def test_metrics_qphh_success(self, timed_tpch_results):
         runner = CliRunner()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             power_file = Path(tmpdir) / "power.json"
             throughput_file = Path(tmpdir) / "throughput.json"
 
-            power_data = {
-                "environment": {"scale_factor": 1.0},
-                "summary": {
-                    "tpc_metrics": {"power_at_size": 36.0},
-                    "timing": {"total_ms": 100000},
-                },
-            }
-            throughput_data = {
-                "environment": {"scale_factor": 1.0, "num_streams": 2},
-                "run": {"streams": 2},
-                "summary": {
-                    "tpc_metrics": {"throughput_at_size": 36.0},
-                    "timing": {"total_ms": 200000},
-                },
-            }
+            power_data, throughput_data = timed_tpch_results
 
             power_file.write_text(json.dumps(power_data))
             throughput_file.write_text(json.dumps(throughput_data))
@@ -337,58 +350,72 @@ class TestMetricsCommand:
                 ["metrics", "qphh", "--power-results", str(power_file), "--throughput-results", str(throughput_file)],
             )
 
-            assert result.exit_code == 0
-            assert "Power@Size" in result.output
-            assert "Throughput@Size" in result.output
+            assert result.exit_code == 0, result.output
+            output = " ".join(result.output.split())
+            assert "Num Streams: 2" in output
+            assert "Power@Size: 3,600.00" in output
+            assert "Throughput@Size: 1,584.00" in output
             assert "QphH@Size:" not in result.output
+            assert "Power phase must contain successful RF1 and RF2 evidence" in result.output
 
-    def test_metrics_qphh_reports_unavailable_reasons_for_tpch_without_refresh(self):
+    def test_metrics_qphh_reports_unavailable_reasons_for_tpch_without_refresh(self, timed_tpch_results):
         runner = CliRunner()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             power_file = Path(tmpdir) / "power.json"
             throughput_file = Path(tmpdir) / "throughput.json"
-            power_file.write_text(
-                json.dumps(
-                    {
-                        "benchmark": {"id": "tpch", "name": "TPC-H"},
-                        "environment": {"scale_factor": 1.0},
-                        "summary": {"tpc_metrics": {"power_at_size": 36.0}},
-                    }
-                )
-            )
-            throughput_file.write_text(
-                json.dumps(
-                    {
-                        "benchmark": {"id": "tpch", "name": "TPC-H"},
-                        "environment": {"scale_factor": 1.0},
-                        "run": {"streams": 2},
-                        "summary": {"tpc_metrics": {"throughput_at_size": 36.0}},
-                        "phases": {"throughput_test": {"status": "COMPLETED", "duration_ms": 1000}},
-                    }
-                )
-            )
+            power_data, throughput_data = timed_tpch_results
+            power_file.write_text(json.dumps(power_data))
+            throughput_file.write_text(json.dumps(throughput_data))
 
             result = runner.invoke(
                 cli,
                 ["metrics", "qphh", "--power-results", str(power_file), "--throughput-results", str(throughput_file)],
             )
 
-            assert result.exit_code == 0
-            assert "Power@Size:" in result.output
-            assert "Throughput@Size:" in result.output
+            assert result.exit_code == 0, result.output
+            output = " ".join(result.output.split())
+            assert "Power@Size: 3,600.00" in output
+            assert "Throughput@Size: 1,584.00" in output
             assert "QphH@Size:" not in result.output
             assert "QphH@Size is not reported" in result.output
             assert "Power phase must contain successful RF1 and RF2 evidence" in result.output
 
+    def test_metrics_qphh_refuses_a_scale_factor_that_differs_from_the_recorded_scale(self, timed_tpch_results):
+        runner = CliRunner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            power_file = Path(tmpdir) / "power.json"
+            throughput_file = Path(tmpdir) / "throughput.json"
+            power_data, throughput_data = timed_tpch_results
+            power_file.write_text(json.dumps(power_data))
+            throughput_file.write_text(json.dumps(throughput_data))
+
+            result = runner.invoke(
+                cli,
+                [
+                    "metrics",
+                    "qphh",
+                    "--power-results",
+                    str(power_file),
+                    "--throughput-results",
+                    str(throughput_file),
+                    "--scale-factor",
+                    "1000",
+                ],
+            )
+
+            assert result.exit_code != 0
+            assert "differs from the power results' recorded scale factor" in " ".join(result.output.split())
+            assert "Power@Size:" not in result.output
+
     @pytest.mark.parametrize(
         ("power_summary", "throughput_summary", "expected"),
         [
-            ({"tpc_metrics": {"suppressed": True, "reason": "compliance_class=unofficial_subscale"}}, {}, "suppressed"),
             ({}, {"queries": {"total": 44, "passed": 39, "failed": 5}}, "failed queries"),
         ],
     )
-    def test_metrics_qphh_refuses_suppressed_or_failed_results(self, power_summary, throughput_summary, expected):
+    def test_metrics_qphh_refuses_failed_results(self, power_summary, throughput_summary, expected):
         runner = CliRunner()
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -447,28 +474,14 @@ class TestCalculateQphhCommand:
         assert result.exit_code != 0
         assert "Missing option" in result.output or "required" in result.output.lower()
 
-    def test_calculate_qphh_shows_deprecation_warning(self):
+    def test_calculate_qphh_shows_deprecation_warning(self, timed_tpch_results):
         runner = CliRunner()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             power_file = Path(tmpdir) / "power.json"
             throughput_file = Path(tmpdir) / "throughput.json"
 
-            power_data = {
-                "environment": {"scale_factor": 1.0},
-                "summary": {
-                    "tpc_metrics": {"power_at_size": 36.0},
-                    "timing": {"total_ms": 100000},
-                },
-            }
-            throughput_data = {
-                "environment": {"scale_factor": 1.0, "num_streams": 2},
-                "run": {"streams": 2},
-                "summary": {
-                    "tpc_metrics": {"throughput_at_size": 36.0},
-                    "timing": {"total_ms": 200000},
-                },
-            }
+            power_data, throughput_data = timed_tpch_results
 
             power_file.write_text(json.dumps(power_data))
             throughput_file.write_text(json.dumps(throughput_data))
@@ -478,9 +491,11 @@ class TestCalculateQphhCommand:
                 ["calculate-qphh", "--power-results", str(power_file), "--throughput-results", str(throughput_file)],
             )
 
-            assert result.exit_code == 0
+            assert result.exit_code == 0, result.output
             assert "deprecated" in result.output.lower() or "DeprecationWarning" in result.output
-            assert "Power@Size" in result.output
+            output = " ".join(result.output.split())
+            assert "Power@Size: 3,600.00" in output
+            assert "Throughput@Size: 1,584.00" in output
             assert "QphH@Size:" not in result.output
 
 

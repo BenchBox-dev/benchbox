@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 class LoadOutcome(str, Enum):
     HIT = "hit"
     NO_ANSWER_SET = "no_answer_set"
+    ANSWER_FILES_MISSING = "answer_files_missing"
     STREAM_NOT_REFERENCE_VALIDATED = "stream_not_reference_validated"
     PROVIDER_FAILED = "provider_failed"
     PROVIDER_TIMEOUT = "provider_timeout"
@@ -30,7 +31,7 @@ class ExpectedResultsRegistry:
         self._providers: Dict[str, Callable] = {}
         self._lock = threading.Lock()
         self._loading: Dict[str, Dict[float, dict]] = {}
-        self._logged_stream_skips: set = set()
+        self._missing_answer_files: set[tuple[str, float]] = set()
         self.wait_timeout_seconds = 30.0
 
     def register_provider(self, benchmark_name: str, provider: Callable) -> None:
@@ -59,22 +60,17 @@ class ExpectedResultsRegistry:
         benchmark_key = benchmark_name.lower()
         sf = scale_factor or 1.0
 
-        if stream_id is not None and stream_id > 0 and benchmark_key in ("tpch", "tpcds"):
-            skip_key = (benchmark_key, stream_id)
-            if skip_key not in self._logged_stream_skips:
-                self._logged_stream_skips.add(skip_key)
-                logger.debug(
-                    f"Stream {stream_id} requested for {benchmark_name}. "
-                    f"Answer files only available for stream 0. Validation will be skipped for this stream."
-                )
-            return None, LoadOutcome.STREAM_NOT_REFERENCE_VALIDATED
-
         benchmark_results, outcome = self._load_benchmark_results(benchmark_key, sf)
 
         if outcome in (LoadOutcome.PROVIDER_FAILED, LoadOutcome.PROVIDER_TIMEOUT):
             return None, outcome
 
-        if benchmark_results is None and sf != 1.0:
+        missing_files = benchmark_results is None and (benchmark_key, sf) in self._missing_answer_files
+
+        if missing_files:
+            return None, LoadOutcome.ANSWER_FILES_MISSING
+
+        if benchmark_results is None and sf != 1.0 and not (stream_id and stream_id > 0):
             logger.debug(
                 f"No expected results at SF={sf} for benchmark '{benchmark_name}'. "
                 f"Trying SF=1.0 for scale-independent queries..."
@@ -103,6 +99,13 @@ class ExpectedResultsRegistry:
             )
             return None, LoadOutcome.NO_ANSWER_SET
 
+        if stream_id is not None and stream_id > 0 and benchmark_key in ("tpch", "tpcds"):
+            streams = benchmark_results.stream_results or {}
+            if stream_id not in streams:
+                return None, LoadOutcome.STREAM_NOT_REFERENCE_VALIDATED
+            expected_result = streams[stream_id].get(query_id)
+            return (expected_result, LoadOutcome.HIT) if expected_result else (None, LoadOutcome.QUERY_NOT_FOUND)
+
         expected_result = benchmark_results.get_expected_result(query_id)
         if expected_result is None:
             if benchmark_results.known_query_ids is not None and query_id in benchmark_results.known_query_ids:
@@ -118,6 +121,15 @@ class ExpectedResultsRegistry:
             return None, LoadOutcome.QUERY_NOT_FOUND
 
         return expected_result, LoadOutcome.HIT
+
+    def has_row_count_reference(self, benchmark_name: str, scale_factor: float | None = None) -> bool:
+        key, sf = benchmark_name.lower(), scale_factor or 1.0
+        results, outcome = self._load_benchmark_results(key, sf)
+        return (
+            results is not None
+            or outcome in (LoadOutcome.PROVIDER_FAILED, LoadOutcome.PROVIDER_TIMEOUT)
+            or (key, sf) in self._missing_answer_files
+        )
 
     def _load_benchmark_results(
         self, benchmark_key: str, scale_factor: float
@@ -176,6 +188,8 @@ class ExpectedResultsRegistry:
             )
             results = None
             permanent_absence = True
+            with self._lock:
+                self._missing_answer_files.add((benchmark_key, scale_factor))
         except Exception as e:
             logger.warning(
                 f"Failed to load expected results for benchmark '{benchmark_key}' "
@@ -212,13 +226,13 @@ class ExpectedResultsRegistry:
     def clear_cache(self) -> None:
         with self._lock:
             self._cache.clear()
+            self._missing_answer_files.clear()
             for benchmark_key in list(self._loading):
                 for scale_factor in list(self._loading[benchmark_key]):
                     if self._loading[benchmark_key][scale_factor]["outcome"] is not None:
                         del self._loading[benchmark_key][scale_factor]
                 if benchmark_key in self._loading and not self._loading[benchmark_key]:
                     del self._loading[benchmark_key]
-            self._logged_stream_skips.clear()
             logger.debug("Cleared expected results cache")
 
     def list_available_benchmarks(self) -> list[str]:

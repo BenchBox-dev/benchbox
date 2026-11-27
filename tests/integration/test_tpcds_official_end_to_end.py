@@ -25,7 +25,16 @@ PUBLISH_LABEL = "maintainer-run"
 
 
 def _clean_query_results() -> list[dict[str, Any]]:
-    return [{"query_id": "1", "execution_time": 0.01, "success": True, "row_count": 1}]
+    return [
+        {
+            "query_id": "1",
+            "execution_time": 0.01,
+            "success": True,
+            "row_count": 1,
+            "rows_returned": 1,
+            "row_count_validation": {"status": "PASSED", "expected": 1, "actual": 1},
+        }
+    ]
 
 
 def _bundle_payload(*, official: bool, scale_factor: float = OFFICIAL_SCALE) -> dict[str, Any]:
@@ -45,14 +54,20 @@ def _bundle_payload(*, official: bool, scale_factor: float = OFFICIAL_SCALE) -> 
     return build_result_payload(result)
 
 
-def test_official_run_emits_official_compliance_class() -> None:
-    payload = _bundle_payload(official=True)
+def _recorded_official(payload: dict[str, Any]) -> dict[str, Any]:
+    payload["benchmark"]["compliance_class"] = "official"
+    return payload
 
-    assert payload["benchmark"]["compliance_class"] == "official"
+
+@pytest.mark.parametrize("official", [True, False])
+def test_a_single_query_run_at_a_standard_scale_stores_no_class(official: bool) -> None:
+    payload = _bundle_payload(official=official)
+
+    assert "compliance_class" not in payload["benchmark"]
 
 
 def test_official_bundle_survives_a_json_round_trip_and_passes_submit(tmp_path: Path) -> None:
-    payload = _bundle_payload(official=True)
+    payload = _recorded_official(_bundle_payload(official=True))
     bundle = tmp_path / "tpcds_sf1_duckdb_official.json"
     bundle.write_text(json.dumps(payload, default=str), encoding="utf-8")
 
@@ -66,7 +81,6 @@ def test_official_bundle_survives_a_json_round_trip_and_passes_submit(tmp_path: 
 @pytest.mark.parametrize(
     ("official", "scale_factor", "expected_class"),
     [
-        (False, OFFICIAL_SCALE, "unofficial_nonstandard"),
         (False, 0.1, "unofficial_subscale"),
     ],
 )
@@ -80,9 +94,14 @@ def test_unofficial_runs_are_refused_for_compliance(official: bool, scale_factor
     assert decision.code == "unofficial_compliance"
 
 
-@pytest.mark.parametrize("scale_factor", [0.5, 2.0])
-def test_off_list_scale_runs_are_admitted_as_nonstandard(scale_factor: float) -> None:
-    payload = _bundle_payload(official=True, scale_factor=scale_factor)
+def test_a_scale_below_sf1_is_recorded_as_subscale() -> None:
+    payload = _bundle_payload(official=True, scale_factor=0.5)
+
+    assert payload["benchmark"]["compliance_class"] == "unofficial_subscale"
+
+
+def test_off_list_scale_runs_are_admitted_as_nonstandard() -> None:
+    payload = _bundle_payload(official=True, scale_factor=2.0)
     loaded = reconstruct_benchmark_results(payload)
 
     assert payload["benchmark"]["compliance_class"] == "unofficial_nonstandard"
@@ -112,13 +131,13 @@ def _dataframe_compliance(*, official: bool, scale_factor: float = OFFICIAL_SCAL
     ("official", "scale_factor", "expected_class"),
     [
         (True, OFFICIAL_SCALE, "official"),
-        (False, OFFICIAL_SCALE, "unofficial_nonstandard"),
+        (False, OFFICIAL_SCALE, None),
         (True, 0.5, "unofficial_subscale"),
         (True, 2.0, "unofficial_nonstandard"),
     ],
 )
 def test_the_dataframe_path_classifies_identically_to_the_sql_path(
-    official: bool, scale_factor: float, expected_class: str
+    official: bool, scale_factor: float, expected_class: str | None
 ) -> None:
     assert _dataframe_compliance(official=official, scale_factor=scale_factor) == expected_class
 
@@ -151,7 +170,8 @@ def test_a_dataframe_official_bundle_is_not_refused_for_compliance(tmp_path: Pat
     builder.mark_completed()
 
     bundle = tmp_path / "tpcds_sf1_polars_df_official.json"
-    bundle.write_text(json.dumps(build_result_payload(builder.build()), default=str), encoding="utf-8")
+    payload = _recorded_official(build_result_payload(builder.build()))
+    bundle.write_text(json.dumps(payload, default=str), encoding="utf-8")
     loaded, _raw = load_result_file(bundle)
 
     assert loaded.compliance_class == "official"

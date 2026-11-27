@@ -23,6 +23,15 @@ def _load_parity_module():
     return mod
 
 
+def _mirrored_runtime_paths() -> list[str]:
+    spec = importlib.util.spec_from_file_location("corpus_drift_under_test", REPO_ROOT / "scripts/corpus_drift.py")
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return [path for path in mod.CANARY_PATHSPECS if path.startswith(("benchbox/", "scripts/"))]
+
+
 def test_validator_parity_script_exists() -> None:
     assert SCRIPT.is_file(), "scripts/publication/validator_parity.py must exist (A2 w4)"
 
@@ -78,13 +87,22 @@ def _git(repo: Path, *args: str) -> str:
 
 def _minimal_bundle_dict() -> dict:
     return {
-        "version": "2.1",
+        "version": "2.2",
         "run": {"id": "abc123", "timestamp": "2026-04-01T12:00:00", "total_duration_ms": 5000},
-        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 0.01},
+        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0},
         "platform": {"name": "DuckDB", "version": "1.4.3"},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
         "phases": {"validation": {"status": "PASSED"}},
-        "queries": [{"id": f"Q{i}", "ms": 100 + i * 10, "status": "SUCCESS"} for i in range(1, 23)],
+        "queries": [
+            {
+                "id": f"Q{i}",
+                "ms": 100 + i * 10,
+                "status": "SUCCESS",
+                "rows": 1,
+                "row_count_validation": {"status": "PASSED", "expected": 1, "actual": 1},
+            }
+            for i in range(1, 23)
+        ],
     }
 
 
@@ -144,7 +162,8 @@ SLIM_RUNTIME = [
     "benchbox/core/results/timing_fields.py",
     "benchbox/core/results/schema_policy.py",
     "benchbox/core/results/subscale_policy.py",
-    "benchbox/core/results/standard_scales.json",
+    "benchbox/core/results/corpus_rule.py",
+    "benchbox/core/results/corpus_rule_data.json",
 ]
 
 
@@ -178,7 +197,11 @@ def test_parity_executes_real_payloads_in_an_isolated_slim_checkout(tmp_path: Pa
         _git(repo, "commit", "-m", "invalid head payload")
         head = _git(repo, "rev-parse", "HEAD")
 
-    _copy_slim_runtime(repo)
+    runtime = _mirrored_runtime_paths()
+    for path in runtime:
+        destination = repo / path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes((REPO_ROOT / path).read_bytes())
     if case == "missing_runtime":
         (repo / "benchbox/validation/bundle.py").unlink()
     result = subprocess.run(
@@ -227,7 +250,7 @@ def _offlist_bundle_dict(benchmark: str, compliance_class: str | None) -> dict:
         "benchmark": {"id": benchmark, "name": benchmark, "scale_factor": 2.0},
         "platform": {"name": "DuckDB", "version": "1.4.3"},
         "summary": {
-            "validation": "passed",
+            "validation": "no_reference",
             "queries": {"total": len(canonical), "passed": len(canonical), "failed": 0},
         },
         "phases": {"validation": {"status": "PASSED"}},

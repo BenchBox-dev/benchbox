@@ -376,7 +376,9 @@
   "results-data/CORPUS_NOTES.md": [
     "tests/unit/core/results/test_tpcdi_bundle_refusal.py",
     "tests/unit/core/results/test_tpcdi_withdrawal_history.py",
+    "tests/unit/publication/test_validator_parity.py",
     "tests/unit/scripts/test_annotate_sql_translator_version.py",
+    "tests/unit/scripts/test_check_mirror_validator_parity.py",
     "tests/unit/scripts/test_corpus_drift.py",
     "tests/unit/scripts/test_corpus_drift_canary.py",
     "tests/unit/scripts/test_inert_paths.py",
@@ -384,6 +386,8 @@
   ],
   "results-data/README.md": [
     "tests/unit/cli/test_shipped_docs_urls.py",
+    "tests/unit/publication/test_validator_parity.py",
+    "tests/unit/scripts/test_check_mirror_validator_parity.py",
     "tests/unit/scripts/test_ci_units.py",
     "tests/unit/scripts/test_corpus_drift.py",
     "tests/unit/scripts/test_corpus_drift_canary.py",
@@ -392,6 +396,8 @@
   ],
   "results-data/SEED_CORPUS_SPEC.md": [
     "tests/unit/cli/test_shipped_docs_urls.py",
+    "tests/unit/publication/test_validator_parity.py",
+    "tests/unit/scripts/test_check_mirror_validator_parity.py",
     "tests/unit/scripts/test_corpus_drift.py",
     "tests/unit/scripts/test_corpus_drift_canary.py",
     "tests/unit/test_sync_results_workflow.py"

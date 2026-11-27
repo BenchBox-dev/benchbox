@@ -12,7 +12,7 @@ from typing import Any, Optional
 
 import pytest
 
-from benchbox.core.results.models import BenchmarkResults
+from benchbox.core.results.models import BenchmarkResults, ExecutionPhases, PowerTestPhase, QueryExecution, SetupPhase
 
 
 def make_v2_result_dict(
@@ -141,6 +141,25 @@ def v2_result_file(tmp_path: Path):
         return path, data
 
     return _create
+
+
+def make_power_only_phases(
+    timestamp: Optional[datetime] = None,
+    query_executions: Optional[list[QueryExecution]] = None,
+    power_at_size: float = 1000.0,
+) -> ExecutionPhases:
+    ts = (timestamp or datetime.now()).isoformat()
+    return ExecutionPhases(
+        setup=SetupPhase(),
+        power_test=PowerTestPhase(
+            start_time=ts,
+            end_time=ts,
+            duration_ms=125,
+            query_executions=list(query_executions or []),
+            geometric_mean_time=0.1,
+            power_at_size=power_at_size,
+        ),
+    )
 
 
 def make_benchmark_results(

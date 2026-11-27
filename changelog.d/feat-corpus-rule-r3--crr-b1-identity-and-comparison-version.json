@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Corpus validation and inventory read result identity (platform, variant, comparison version) from file fields through one function; the folder-name version rule is removed and versions no longer count toward the cohort minimum."
+}

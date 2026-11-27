@@ -921,8 +921,8 @@ class TestMockBaseBenchmarkResultHelpers:
 
         assert result.platform == "duckdb"
         assert result.duration_seconds == 2.5
-        assert result.validation_status == "PASSED"
-        assert result.validation_details == {"ok": True}
+        assert result.validation_status == "NO_REFERENCE"
+        assert result.validation_details == {"ok": True, "reason": "no row-count reference at this scale factor"}
         assert result.execution_metadata == {
             "mode": "sql",
             "run_config": {

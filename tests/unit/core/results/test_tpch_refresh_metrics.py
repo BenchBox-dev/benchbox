@@ -6,7 +6,13 @@ import pytest
 
 from benchbox.core.results.builder import BenchmarkInfoInput, ResultBuilder
 from benchbox.core.results.metrics import TPCMetricsCalculator
-from benchbox.core.results.models import ExecutionPhases, PowerTestPhase, SetupPhase, ThroughputTestPhase
+from benchbox.core.results.models import (
+    ExecutionPhases,
+    PowerTestPhase,
+    SetupPhase,
+    ThroughputStream,
+    ThroughputTestPhase,
+)
 from benchbox.core.results.platform_info import PlatformInfoInput
 from benchbox.core.results.query_normalizer import normalize_query_result
 from benchbox.core.results.schema import build_result_payload
@@ -20,24 +26,30 @@ def _function(function: str, set_id: int) -> dict:
 
 def _eligible_results() -> tuple[dict, dict]:
     power = {
-        "benchmark": {"id": "tpch", "name": "TPC-H", "compliance_class": "official"},
+        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0, "compliance_class": "official"},
         "summary": {"queries": {"failed": 0}},
+        "queries": [
+            {"id": str(n), "iter": 1, "ms": 36000 * 36000 ** (2 / 22), "run_type": "measurement", "status": "SUCCESS"}
+            for n in range(1, 23)
+        ],
         "phases": {
             "power_test": {
                 "status": "COMPLETED",
                 "query_count": 22,
                 "refresh_first_set": 5,
-                "refresh_functions": [_function("RF1", 5), _function("RF2", 5)],
+                "refresh_functions": [{**_function(name, 5), "duration_ms": 1} for name in ("RF1", "RF2")],
             }
         },
     }
     throughput = {
-        "benchmark": {"id": "tpch", "name": "TPC-H", "compliance_class": "official"},
+        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0, "compliance_class": "official"},
         "summary": {"queries": {"failed": 0}},
         "phases": {
             "throughput_test": {
                 "status": "COMPLETED",
                 "num_streams": 2,
+                "duration_ms": 792000,
+                "stream_results": [{"stream_id": stream, "success": True} for stream in (1, 2)],
                 "refresh_stream": {
                     "first_set": 6,
                     "status": "COMPLETED",
@@ -59,7 +71,15 @@ def _eligible_results() -> tuple[dict, dict]:
     return power, throughput
 
 
-def _result_payload(scale_factor: float, compliance_class: str, *, power_refresh: bool = True) -> dict:
+def _result_payload(
+    scale_factor: float,
+    compliance_class: str | None,
+    *,
+    power_refresh: bool = True,
+    evidenced: bool = False,
+    stream_failure: bool = False,
+    validation_status: str | None = None,
+) -> dict:
     builder = ResultBuilder(
         benchmark=BenchmarkInfoInput(
             name="TPC-H",
@@ -70,10 +90,16 @@ def _result_payload(scale_factor: float, compliance_class: str, *, power_refresh
         ),
         platform=PlatformInfoInput(name="DuckDB", execution_mode="sql"),
     )
+    evidence = (
+        {"rows_returned": 1, "row_count_validation": {"status": "PASSED", "expected": 1, "actual": 1}}
+        if evidenced
+        else {}
+    )
     for query_id in range(1, 23):
         builder.add_query_result(
             normalize_query_result(
                 {
+                    **evidence,
                     "query_id": str(query_id),
                     "status": "SUCCESS",
                     "execution_time_seconds": 1.0,
@@ -89,6 +115,7 @@ def _result_payload(scale_factor: float, compliance_class: str, *, power_refresh
             builder.add_query_result(
                 normalize_query_result(
                     {
+                        **evidence,
                         "query_id": str(query_id),
                         "status": "SUCCESS",
                         "execution_time_seconds": 1.0,
@@ -136,7 +163,17 @@ def _result_payload(scale_factor: float, compliance_class: str, *, power_refresh
                 end_time="2026-01-01T00:00:01",
                 duration_ms=1000,
                 num_streams=2,
-                streams=[],
+                streams=[
+                    ThroughputStream(
+                        stream_id=stream_id,
+                        start_time="",
+                        end_time="",
+                        duration_ms=500,
+                        query_executions=[],
+                        success=not (stream_failure and stream_id == 1),
+                    )
+                    for stream_id in (1, 2)
+                ],
                 total_queries_executed=44,
                 throughput_at_size=200.0,
                 success=True,
@@ -144,7 +181,10 @@ def _result_payload(scale_factor: float, compliance_class: str, *, power_refresh
             ),
         )
     )
-    return build_result_payload(builder.build())
+    result = builder.build()
+    if validation_status is not None:
+        result.validation_status = validation_status
+    return build_result_payload(result)
 
 
 def test_duckdb_sf001_records_refresh_evidence_without_qphh() -> None:
@@ -204,12 +244,12 @@ def test_sf1_official_two_stream_results_emit_qphh_only_when_refresh_evidence_qu
 
 def test_sf001_unofficial_results_keep_refresh_evidence_but_withhold_qphh() -> None:
     power, throughput = _eligible_results()
-    power["benchmark"]["compliance_class"] = "unofficial_subscale"
-    throughput["benchmark"]["compliance_class"] = "unofficial_subscale"
+    power["benchmark"]["scale_factor"] = 0.01
+    throughput["benchmark"]["scale_factor"] = 0.01
     power["summary"]["tpc_metrics"] = {"power_at_size": 100.0}
     throughput["summary"]["tpc_metrics"] = {"throughput_at_size": 200.0}
 
-    with pytest.raises(ValueError, match="unofficial_subscale"):
+    with pytest.raises(ValueError, match="below the standard scale"):
         TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=0.01)
 
     assert len(power["phases"]["power_test"]["refresh_functions"]) == 2
@@ -228,11 +268,11 @@ def test_official_22_query_power_and_consecutive_refresh_pairs_qualify_qphh() ->
     ("mutate", "expected_reason"),
     [
         (
-            lambda power, throughput: power["benchmark"].update(compliance_class="unofficial_subscale"),
+            lambda power, throughput: power["benchmark"].update(scale_factor=0.01),
             "not official compliance",
         ),
         (
-            lambda power, throughput: throughput["benchmark"].update(compliance_class="unofficial_subscale"),
+            lambda power, throughput: throughput["benchmark"].update(scale_factor=0.01),
             "not official compliance",
         ),
         (lambda power, throughput: power["benchmark"].update(id="tpcds"), "not TPC-H"),
@@ -270,8 +310,8 @@ def test_official_22_query_power_and_consecutive_refresh_pairs_qualify_qphh() ->
             "Throughput results contain 2 failed queries",
         ),
         (
-            lambda power, throughput: throughput["phases"]["throughput_test"].update(num_streams=1),
-            "at least two throughput streams",
+            lambda power, throughput: throughput["phases"]["throughput_test"]["stream_results"].pop(),
+            "minimum number of successful throughput streams",
         ),
         (
             lambda power, throughput: throughput["phases"]["throughput_test"]["refresh_stream"].update(first_set=7),
@@ -282,7 +322,9 @@ def test_official_22_query_power_and_consecutive_refresh_pairs_qualify_qphh() ->
             "successful RF1/RF2 pair per query stream",
         ),
         (
-            lambda power, throughput: throughput["phases"]["throughput_test"].update(num_streams=3),
+            lambda power, throughput: throughput["phases"]["throughput_test"]["stream_results"].append(
+                {"stream_id": 3, "success": True}
+            ),
             "successful RF1/RF2 pair per query stream",
         ),
         (
@@ -362,3 +404,28 @@ def test_qphh_accepts_zero_duration_successful_refresh() -> None:
     result = TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=1.0)
     assert result["qphh_at_size"] == 141.4
     assert result["refresh_included"] is True
+
+
+def test_a_full_specification_tpch_run_without_the_official_flag_gets_qphh_and_no_official_class() -> None:
+    payload = _result_payload(1.0, None, evidenced=True)
+
+    assert "compliance_class" not in payload["benchmark"]
+    assert payload["summary"]["tpc_metrics"]["qphh_at_size"] > 0
+    assert "qphh_unavailable" not in payload["summary"]["tpc_metrics"]
+
+
+@pytest.mark.parametrize(
+    ("validation_status", "recorded"), [("PASSED", "official"), ("FAILED", None), ("NOT_RUN", None)]
+)
+def test_only_an_official_mode_run_whose_validation_passed_is_recorded_as_official(
+    validation_status: str, recorded: str | None
+) -> None:
+    payload = _result_payload(1.0, "official", evidenced=True, validation_status=validation_status)
+
+    assert payload["benchmark"].get("compliance_class") == recorded
+
+
+def test_failed_executed_stream_withholds_writer_qphh() -> None:
+    payload = _result_payload(1.0, None, evidenced=True, stream_failure=True)
+    assert "qphh_at_size" not in payload["summary"]["tpc_metrics"]
+    assert payload["summary"]["tpc_metrics"]["qphh_unavailable"]

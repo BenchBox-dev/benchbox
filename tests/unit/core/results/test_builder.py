@@ -95,15 +95,45 @@ def test_unvalidated_measurement_is_exported_and_never_summarised_as_passed():
     result = builder.build()
     payload = build_result_payload(result)
 
-    assert result.validation_status == "NOT_VALIDATED"
-    assert payload["summary"]["validation"] == "not_validated"
+    assert result.validation_status == "NO_REFERENCE"
+    assert payload["summary"]["validation"] == "no_reference"
+    assert result.validation_details["reason"] == "no row-count reference at this scale factor"
     assert payload["queries"][0]["row_count_validation"]["status"] == "UNVALIDATED"
     assert result_cli_failure_reason(result) is None
-    assert result_unvalidated_reason(result) == "validation_status=not_validated"
+    assert result_unvalidated_reason(result) is None
     payload["summary"]["validation"] = "passed"
     validation = ValidationResult("test")
     _validate_execution_consistency(payload, validation)
     assert any("counts queries[0] as validated" in error for error in validation.errors)
+
+
+@pytest.mark.parametrize(
+    ("scale_factor", "expected"), [(0.01, "NOT_VALIDATED"), (1.0, "NOT_VALIDATED"), (10.0, "NO_REFERENCE")]
+)
+def test_builder_records_no_reference_only_where_the_reference_data_records_none(scale_factor, expected):
+    builder = ResultBuilder(
+        benchmark=BenchmarkInfoInput(name="TPC-H", scale_factor=scale_factor),
+        platform=PlatformInfoInput(name="duckdb", platform_version="1.3.2"),
+    )
+    builder.add_query_results(
+        [
+            normalize_query_result(
+                {
+                    "query_id": "2",
+                    "status": "SUCCESS",
+                    "iteration": 1,
+                    "execution_time_seconds": 0.5,
+                    "rows_returned": 100,
+                    "row_count_validation": {"status": "UNVALIDATED", "expected": None, "actual": 100},
+                }
+            )
+        ]
+    )
+
+    result = builder.build()
+
+    assert result.validation_status == expected
+    assert ("reason" in (result.validation_details or {})) is (expected == "NO_REFERENCE")
 
 
 class TestNormalizeBenchmarkId:
@@ -263,7 +293,7 @@ class TestResultBuilder:
             ("ERROR", 1, "PARTIAL"),
             ("TIMEOUT", 1, "PARTIAL"),
             ("UNKNOWN", 1, "PARTIAL"),
-            ("SKIPPED", 0, "PASSED"),
+            ("SKIPPED", 0, "NOT_VALIDATED"),
         ],
     )
     def test_build_counts_failure_statuses_without_counting_skipped(

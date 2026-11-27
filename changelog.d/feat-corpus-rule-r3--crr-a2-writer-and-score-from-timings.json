@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Result files now always record the timings that Power@Size and throughput are recomputed from, together with the executed stream count, and the compliance class stored in a result is informational. A TPC result at a standard scale that is not a full specification run keeps its scores, and the results corpus and the Explorer pipeline recompute every score, including the combined QphH and QphDS composites, from timings."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Public admission checks validation evidence consistently, power tests without throughput exclude refresh timings from partial scores, and composite scores use successful streams and the scale-specific minimum."
+    }
+  ]
+}

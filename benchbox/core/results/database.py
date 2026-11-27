@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.core.cost.models import cost_status_of, published_total_cost
+from benchbox.core.results import corpus_rule, corpus_score
+from benchbox.core.results.comparison_identity import comparison_identity
 from benchbox.core.results.comparison_modes import (
     IncomparableModesError,
     results_fetch_mode,
@@ -30,17 +32,26 @@ from benchbox.core.results.fetch_mode import MIXED_FETCH_MODE, parse_fetch_mode
 from benchbox.core.results.models import BenchmarkResults
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.regression_policy import is_regression
-from benchbox.core.results.subscale_policy import result_compliance_class
+from benchbox.core.results.result_outcome import (
+    admitted_for_ranking,
+    facts_describe_result,
+    facts_for_result,
+    facts_to_json,
+    outcome_from_stored_facts,
+)
+from benchbox.core.results.schema import build_result_payload
 from benchbox.core.results.tpcdi_audit import audited_validation_status
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_DB_PATH = Path.home() / ".benchbox" / "results.db"
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 _RANKING_METRIC_CONFIG = {
     "geometric_mean": ("geometric_mean_ms", "ASC"),
     "power_at_size": ("power_at_size", "DESC"),
+    "throughput_at_size": ("throughput_at_size", "DESC"),
+    "qph_at_size": ("qph_at_size", "DESC"),
     "cost_efficiency": ("total_cost / NULLIF(successful_queries, 0)", "ASC"),
 }
 _BACKUP_TABLE_NAME_PATTERN = re.compile(r"^queries_orphan_backup_\d{20}$")
@@ -88,7 +99,7 @@ class StoredResult:
     validation_status: str
     config_hash: str
     metadata: dict[str, Any]
-    compliance_class: str | None = None
+    facts_json: str | None = None
 
     def __post_init__(self) -> None:
         self.validation_status = audited_validation_status(
@@ -117,9 +128,13 @@ class StoredResult:
             total_cost=row["total_cost"],
             validation_status=row["validation_status"],
             config_hash=row["config_hash"],
-            compliance_class=row["compliance_class"] if "compliance_class" in keys else None,
+            facts_json=row["facts_json"] if "facts_json" in keys else None,
             metadata=json.loads(row["metadata_json"]) if row["metadata_json"] else {},
         )
+
+    @property
+    def outcome(self) -> corpus_rule.Outcome:
+        return outcome_from_stored_facts(self.facts_json)
 
 
 @dataclass
@@ -163,6 +178,8 @@ class PlatformRanking:
     latest_timestamp: datetime
     trend: str
     trend_change: float | None
+    lane: str = ""
+    variant: str = ""
 
 
 @dataclass
@@ -258,6 +275,8 @@ class ResultDatabase:
                         self._migrate_to_v2(cursor)
                     if current_version < 3:
                         self._migrate_to_v3(cursor)
+                    if current_version < 4:
+                        self._migrate_to_v4(cursor)
                 cursor.execute("DELETE FROM schema_version")
                 cursor.execute(
                     "INSERT INTO schema_version (version) VALUES (?)",
@@ -288,7 +307,7 @@ class ResultDatabase:
                 total_cost REAL,
                 validation_status TEXT NOT NULL,
                 config_hash TEXT NOT NULL,
-                compliance_class TEXT,
+                facts_json TEXT,
                 metadata_json TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
@@ -350,6 +369,17 @@ class ResultDatabase:
         )
         logger.info("Schema v3: normalized validation_status to uppercase")
 
+    def _migrate_to_v4(self, cursor: sqlite3.Cursor) -> None:
+        try:
+            cursor.execute("ALTER TABLE results ADD COLUMN facts_json TEXT")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute("ALTER TABLE results DROP COLUMN compliance_class")
+        except sqlite3.OperationalError:
+            pass
+        logger.info("Schema v4: stored result facts instead of the compliance stamp")
+
     def _compute_config_hash(self, result: BenchmarkResults) -> str:
         config_data = {
             "platform": result.platform,
@@ -360,8 +390,16 @@ class ResultDatabase:
         config_str = json.dumps(config_data, sort_keys=True)
         return hashlib.sha256(config_str.encode()).hexdigest()[:16]
 
-    def store_result(self, result: BenchmarkResults) -> int:
+    def store_result(
+        self, result: BenchmarkResults, facts: corpus_rule.Facts | None = None, *, data: Mapping[str, Any] | None = None
+    ) -> int:
         config_hash = self._compute_config_hash(result)
+        payload = data if data is not None else build_result_payload(result)
+        scores = (
+            corpus_score.power_at_size(payload),
+            corpus_score.throughput_at_size(payload),
+            corpus_score.combined_score(payload),
+        )
 
         platform_version = None
         if result.platform_info:
@@ -379,6 +417,7 @@ class ResultDatabase:
             "fetch_mode": results_fetch_mode(result),
             "timing_method": int(results_timing_method(result)),
         }
+        metadata["comparison_version"] = comparison_identity(payload, "").comparison_version.version
         has_explicit_platform_meta = any(
             getattr(result, name, None) is not None
             for name in (
@@ -416,7 +455,11 @@ class ResultDatabase:
             if result.geometric_mean_execution_time is not None:
                 geometric_mean_ms = result.geometric_mean_execution_time * 1000.0
 
-            compliance_class = result_compliance_class(result)
+            if facts is not None and not facts_describe_result(facts, result):
+                raise ValueError(
+                    f"Facts for execution_id '{result.execution_id}' describe a different benchmark or scale factor"
+                )
+            facts_text = facts_to_json(facts if facts is not None else facts_for_result(result))
 
             cursor.execute(
                 """
@@ -425,7 +468,7 @@ class ResultDatabase:
                     timestamp, duration_seconds, total_queries, successful_queries,
                     failed_queries, geometric_mean_ms, power_at_size, throughput_at_size,
                     qph_at_size, total_cost, validation_status, config_hash,
-                    compliance_class, metadata_json
+                    facts_json, metadata_json
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
@@ -440,13 +483,11 @@ class ResultDatabase:
                     result.successful_queries,
                     result.failed_queries,
                     geometric_mean_ms,
-                    result.power_at_size,
-                    result.throughput_at_size,
-                    result.qph_at_size,
+                    *scores,
                     total_cost,
                     result.validation_status.upper(),
                     config_hash,
-                    compliance_class,
+                    facts_text,
                     json.dumps(metadata),
                 ),
             )
@@ -697,15 +738,38 @@ class ResultDatabase:
 
             validation_filter = ""
             if config.require_success:
-                validation_filter = "AND UPPER(validation_status) = 'PASSED'"
+                validation_filter = "AND UPPER(validation_status) IN ('PASSED', 'NO_REFERENCE')"
 
-            unofficial_filter = (
-                "" if include_unofficial else "AND (compliance_class = 'official' OR compliance_class IS NULL)"
+            cursor.execute(
+                "SELECT id, facts_json, platform, platform_version, metadata_json FROM results "
+                "WHERE benchmark = ? AND scale_factor = ?",
+                (benchmark, scale_factor),
+            )
+            conn.execute("CREATE TEMP TABLE ranking_groups (result_id INTEGER, lane TEXT, variant TEXT, version TEXT)")
+            groups = []
+            for row in cursor.fetchall():
+                outcome = outcome_from_stored_facts(row["facts_json"])
+                if not admitted_for_ranking(outcome, include_unofficial, config.metric):
+                    continue
+                metadata = json.loads(row["metadata_json"]) if row["metadata_json"] else {}
+                variant = _stored_variant(row["platform"], metadata)
+                variant_id = json.dumps([row["platform"], *variant.comparison_key()])
+                version = metadata.get("comparison_version", row["platform_version"])
+                lanes = outcome.lanes or ("timings_only",)
+                if config.metric == "power_at_size" and corpus_rule.LANE_POWER_ONLY in lanes:
+                    lanes = (corpus_rule.LANE_POWER_ONLY,)
+                elif config.metric == "throughput_at_size" and corpus_rule.LANE_THROUGHPUT in lanes:
+                    lanes = (corpus_rule.LANE_THROUGHPUT,)
+                groups.extend((row["id"], lane, variant_id, version) for lane in lanes)
+            conn.executemany("INSERT INTO ranking_groups VALUES (?, ?, ?, ?)", groups)
+            admitted = [group[0] for group in groups]
+            admission_filter = (
+                f"AND id IN ({', '.join(str(result_id) for result_id in admitted)})" if admitted else "AND 0"
             )
 
             mode_scope = (
                 f"benchmark = ? AND scale_factor = ? AND timestamp >= ? AND {metric_col} IS NOT NULL "
-                f"{validation_filter} {unofficial_filter}"
+                f"{validation_filter} {admission_filter}"
             )
             if fetch_mode is None:
                 cursor.execute(
@@ -749,20 +813,23 @@ class ResultDatabase:
                 SELECT
                     platform,
                     platform_version,
+                    ranking_groups.lane,
+                    ranking_groups.variant,
+                    ranking_groups.version,
                     AVG({metric_col}) as avg_score,
                     COUNT(*) as sample_count,
                     MAX(timestamp) as latest_timestamp
-                FROM results
+                FROM results JOIN ranking_groups ON ranking_groups.result_id = results.id
                 WHERE benchmark = ?
                     AND scale_factor = ?
                     AND timestamp >= ?
                     AND {metric_col} IS NOT NULL
                     {validation_filter}
-                    {unofficial_filter}
+                    {admission_filter}
                     {mode_filter}
-                GROUP BY platform, platform_version
+                GROUP BY ranking_groups.lane, ranking_groups.variant, ranking_groups.version
                 HAVING COUNT(*) >= ?
-                ORDER BY avg_score {order}
+                ORDER BY ranking_groups.lane, avg_score {order}
             """,
                 (benchmark, scale_factor, cutoff.isoformat(), config.min_samples),
             )
@@ -774,17 +841,20 @@ class ResultDatabase:
                 f"""
                 SELECT
                     platform,
+                    ranking_groups.lane,
+                    ranking_groups.variant,
+                    ranking_groups.version,
                     AVG({metric_col}) as avg_score
-                FROM results
+                FROM results JOIN ranking_groups ON ranking_groups.result_id = results.id
                 WHERE benchmark = ?
                     AND scale_factor = ?
                     AND timestamp >= ?
                     AND timestamp < ?
                     AND {metric_col} IS NOT NULL
                     {validation_filter}
-                    {unofficial_filter}
+                    {admission_filter}
                     {mode_filter}
-                GROUP BY platform
+                GROUP BY ranking_groups.lane, ranking_groups.variant, ranking_groups.version
             """,
                 (
                     benchmark,
@@ -794,20 +864,31 @@ class ResultDatabase:
                 ),
             )
 
-            previous_scores = {row["platform"]: row["avg_score"] for row in cursor.fetchall()}
+            previous_scores = {
+                (row["lane"], row["variant"], row["version"]): row["avg_score"] for row in cursor.fetchall()
+            }
 
             rankings = []
-            for rank, row in enumerate(current_results, 1):
+            lane_ranks: dict[str, int] = {}
+            for row in current_results:
+                rank = lane_ranks[row["lane"]] = lane_ranks.get(row["lane"], 0) + 1
                 platform = row["platform"]
                 current_score = row["avg_score"]
-                prev_score = previous_scores.get(platform)
+                prev_score = previous_scores.get((row["lane"], row["variant"], row["version"]))
+                _, deployment, engine, gateway, execution_class = json.loads(row["variant"])
+                variant_label = ", ".join(
+                    [str(engine)]
+                    + ([f"deployment={deployment}"] if deployment else [])
+                    + ([f"gateway={gateway}"] if gateway != "native" else [])
+                    + ([f"class={execution_class}"] if execution_class != "native" else [])
+                )
                 trend, trend_change = self._calculate_ranking_trend(current_score, prev_score, config.metric)
 
                 rankings.append(
                     PlatformRanking(
                         rank=rank,
                         platform=platform,
-                        platform_version=row["platform_version"],
+                        platform_version=row["version"],
                         benchmark=benchmark,
                         scale_factor=scale_factor,
                         score=current_score,
@@ -815,6 +896,8 @@ class ResultDatabase:
                         latest_timestamp=datetime.fromisoformat(row["latest_timestamp"]),
                         trend=trend,
                         trend_change=trend_change,
+                        lane=row["lane"],
+                        variant=variant_label,
                     )
                 )
 
@@ -858,7 +941,7 @@ class ResultDatabase:
                     AND benchmark = ?
                     AND scale_factor = ?
                     AND geometric_mean_ms IS NOT NULL
-                    AND UPPER(validation_status) = 'PASSED'
+                    AND UPPER(validation_status) IN ('PASSED', 'NO_REFERENCE')
                 ORDER BY timestamp DESC
             """,
                 (platform, benchmark, scale_factor),
@@ -1022,6 +1105,55 @@ class ResultDatabase:
                 "schema_version": SCHEMA_VERSION,
             }
 
+    def _backfill_facts(
+        self, result: BenchmarkResults, facts: corpus_rule.Facts, data: Mapping[str, Any] | None = None
+    ) -> bool:
+        if not facts_describe_result(facts, result):
+            logger.warning(
+                "Not backfilling facts for %s: they describe a different benchmark or scale factor",
+                result.execution_id,
+            )
+            return False
+        payload = data if data is not None else build_result_payload(result)
+        scores = (
+            corpus_score.power_at_size(payload),
+            corpus_score.throughput_at_size(payload),
+            corpus_score.combined_score(payload),
+        )
+        version = comparison_identity(payload, "").comparison_version.version
+        facts_text = facts_to_json(facts)
+        with self._connection() as conn:
+            cursor = conn.execute(
+                "UPDATE results SET facts_json = ?, power_at_size = ?, "
+                "throughput_at_size = ?, qph_at_size = ?, "
+                "metadata_json = json_set(COALESCE(metadata_json, '{}'), '$.comparison_version', ?) "
+                "WHERE execution_id = ? AND benchmark = ? AND ABS(scale_factor - ?) < 1e-9 "
+                "AND (facts_json IS NOT ? OR power_at_size IS NOT ? OR throughput_at_size IS NOT ? "
+                "OR qph_at_size IS NOT ? OR json_extract(metadata_json, '$.comparison_version') IS NOT ?)",
+                (
+                    facts_text,
+                    *scores,
+                    version,
+                    result.execution_id,
+                    result.benchmark_name,
+                    result.scale_factor,
+                    facts_text,
+                    *scores,
+                    version,
+                ),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def count_undetermined(self) -> int:
+        with self._connection() as conn:
+            rows = conn.execute("SELECT facts_json FROM results").fetchall()
+        return sum(
+            1
+            for row in rows
+            if outcome_from_stored_facts(row["facts_json"]).class_name == corpus_rule.CLASS_UNDETERMINED
+        )
+
     def import_results_from_directory(
         self,
         directory: Path,
@@ -1030,34 +1162,30 @@ class ResultDatabase:
     ) -> tuple[int, int, int]:
         from benchbox.core.results.loader import load_result_file
 
-        _unofficial_classes = {"unofficial_nonstandard", "unofficial_subscale"}
         imported = 0
         skipped = 0
         excluded = 0
 
         for file_path in directory.glob(pattern):
             try:
-                result, _ = load_result_file(file_path)
-                compliance_class = result_compliance_class(result)
-                if not include_unofficial:
-                    if compliance_class in _unofficial_classes:
-                        excluded += 1
-                        continue
-                if compliance_class is None and getattr(result, "benchmark_name", "").lower() in (
-                    "tpc-ds",
-                    "tpcds",
-                ):
-                    logger.warning(
-                        "Importing legacy TPC-DS result %s without compliance_class; "
-                        "it will be treated as official in ranking queries. "
-                        "Re-run the benchmark to generate a tagged result.",
-                        file_path.name,
-                    )
-                self.store_result(result)
+                result, data = load_result_file(file_path)
+                facts = corpus_rule.facts_from_result(data, known_defects=corpus_rule.sidecar_known_defects(file_path))
+                outcome = corpus_rule.derive_outcome(facts)
+                if outcome.held_reason == corpus_rule.HELD_NO_TIMED_PHASE:
+                    logger.warning("Skipped %s: no timed phase ran, so it is not a result", file_path.name)
+                    skipped += 1
+                    continue
+                if not include_unofficial and outcome.maintainer_admission and not outcome.public_admission:
+                    excluded += 1
+                    continue
+                self.store_result(result, facts, data=data)
                 imported += 1
             except ValueError as e:
                 if "already exists" in str(e):
-                    skipped += 1
+                    if self._backfill_facts(result, facts, data):
+                        imported += 1
+                    else:
+                        skipped += 1
                 else:
                     logger.warning(f"Failed to import {file_path}: {e}")
                     skipped += 1

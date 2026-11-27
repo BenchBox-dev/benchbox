@@ -18,7 +18,9 @@ from benchbox.core.results.anonymization import (
     resolve_public_pseudonym_salt,
 )
 from benchbox.core.results.canonical_json import canonical_json_text
+from benchbox.core.results.corpus_rule import sidecar_known_defects
 from benchbox.validation.bundle import (
+    KNOWN_DEFECT_IDS,
     export_anonymized_errors,
     find_public_path_leaks,
     unanonymized_plans_findings,
@@ -27,7 +29,7 @@ from benchbox.validation.bundle import (
 
 RESULTS_DATA = Path(__file__).resolve().parents[1] / "results-data"
 sys.path.insert(0, str(RESULTS_DATA))
-exclusion_reason = importlib.import_module("validate_corpus").exclusion_reason
+admission_reason = importlib.import_module("validate_corpus").admission_reason
 
 PLANS_SUFFIX = ".plans.json"
 TUNING_SUFFIX = ".tuning.json"
@@ -100,7 +102,10 @@ def stage_seed_bundle(result_file: Path, destination: Path, *, internal_manifest
     payload: Any = json.loads(result_file.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise StagingError(f"{result_file.name} is not a JSON object")
-    reason = exclusion_reason(payload)
+    known_defects = sidecar_known_defects(result_file)
+    if not KNOWN_DEFECT_IDS.issuperset(known_defects):
+        raise StagingError("Source manifest contains an unrecognized known defect ID")
+    reason = admission_reason(payload, result_file)
     if reason is not None:
         _write_status(reason)
         _write_output(False)
@@ -121,16 +126,17 @@ def stage_seed_bundle(result_file: Path, destination: Path, *, internal_manifest
         text = canonical_json_text(content)
         (destination / name).write_text(text, encoding="utf-8")
         written[name] = hashlib.sha256(text.encode("utf-8")).hexdigest()
-    if internal_manifest:
-        manifest = {
+    if internal_manifest or known_defects:
+        manifest: dict[str, Any] = {
             "bundle_file": result_file.name,
             "bundle_hash": written.pop(result_file.name),
             "companion_hashes": written,
-            "funding": "unspecified",
             "manifest_version": MANIFEST_VERSION,
-            "result_source": "internal",
-            "submitted_by": "maintainer",
         }
+        if internal_manifest:
+            manifest |= {"funding": "unspecified", "result_source": "internal", "submitted_by": "maintainer"}
+        if known_defects:
+            manifest["known_defects"] = known_defects
         manifest_path = destination / f"{result_file.stem}{MANIFEST_SUFFIX}"
         manifest_path.write_text(canonical_json_text(manifest), encoding="utf-8")
     _write_status(None)

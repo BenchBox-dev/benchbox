@@ -95,8 +95,8 @@ class TestAtomicPublication:
         second, outcome_second = fresh_registry.get_expected_result_detailed("policy_bench", "1")
 
         assert first is None and second is None
-        assert outcome_first is LoadOutcome.NO_ANSWER_SET
-        assert outcome_second is LoadOutcome.NO_ANSWER_SET
+        assert outcome_first is LoadOutcome.ANSWER_FILES_MISSING
+        assert outcome_second is LoadOutcome.ANSWER_FILES_MISSING
         assert calls["count"] == 1
 
     def test_transient_failure_is_not_cached_and_allows_retry(self, fresh_registry):

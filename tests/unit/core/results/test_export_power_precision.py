@@ -5,9 +5,9 @@ import random
 
 import pytest
 
+from benchbox.core.results import corpus_score
 from benchbox.core.results.models import QueryExecution
 from benchbox.core.results.schema import QUERY_MS_EXPORT_SIGNIFICANT_DIGITS, build_result_payload
-from benchbox.core.results.subscale_policy import derive_power_at_size
 from tests.fixtures.result_dict_fixtures import make_benchmark_results
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
@@ -36,7 +36,7 @@ def test_exported_query_timings_reproduce_power_within_tolerance(seed: int, scal
     )
 
     queries = build_result_payload(result)["queries"]
-    derived = derive_power_at_size(queries, scale, 22)
+    derived = corpus_score.power_at_size({"benchmark": {"id": "tpch", "scale_factor": scale}, "queries": queries})
 
     assert derived is not None
     assert abs(derived / _power_from_raw(durations, scale) - 1.0) <= POWER_REPRODUCTION_TOLERANCE

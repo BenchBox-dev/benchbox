@@ -11,6 +11,7 @@ from typing import Any, Callable, Optional
 
 from benchbox.core.plan_capture_phase import (
     propagate_query_execution_metadata,
+    propagate_row_count_validation,
 )
 from benchbox.core.result_receipt import cursor_result_count
 from benchbox.core.results.fetch_mode import ConversionClock
@@ -648,6 +649,7 @@ class TPCHThroughputTest:
 
                         if hasattr(cursor, "platform_result"):
                             result_dict = cursor.platform_result
+                            propagate_row_count_validation(result_dict, query_result)
                             if result_dict.get("status") == "FAILED":
                                 error_msg = result_dict.get(
                                     "error", result_dict.get("row_count_validation_error", "Query validation failed")

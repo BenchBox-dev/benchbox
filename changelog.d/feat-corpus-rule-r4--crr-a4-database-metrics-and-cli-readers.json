@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The results database, report commands, CLI result output and CSV export now derive a result's class from facts stored with it (phases run, executed streams, scale) instead of the recorded compliance stamp. Stored rows without those facts report as undetermined and are never ranked until their result file is imported again; `benchbox report rankings` gains `--include-unofficial`."
+    },
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Report rankings recompute scores from timings and group runs by derived lane and comparison identity; each lane is its own ranking, so a result appears once per lane and rank numbers restart for each lane."
+    }
+  ]
+}

@@ -12,6 +12,8 @@ from click.testing import CliRunner
 
 from benchbox.core.results.anonymization import public_pseudonym_salt_path
 from benchbox.core.results.canonical_json import canonical_json_bytes
+from benchbox.core.results.models import QueryExecution
+from tests.fixtures.result_dict_fixtures import make_power_only_phases
 
 sub = importlib.import_module("benchbox.cli.commands.submit")
 
@@ -32,28 +34,38 @@ def _acknowledge_hosted_submission(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _fake_result() -> SimpleNamespace:
+    query = QueryExecution(query_id="1", execution_time_ms=10.0, status="SUCCESS", run_type="measurement")
     return SimpleNamespace(
         benchmark_name="tpch",
         platform="duckdb",
-        scale_factor=0.01,
+        scale_factor=1.0,
         total_queries=22,
         duration_seconds=12.34,
+        execution_phases=make_power_only_phases(query_executions=[query]),
+        query_results=[query],
+        execution_metadata={},
     )
+
+
+_PASSED_ROW_COUNT = {"rows": 5, "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5}}
 
 
 def _valid_submission_bundle() -> dict:
     return {
-        "version": "2.1",
+        "version": "2.2",
         "run": {
             "id": "abc123",
             "timestamp": "2026-05-03T00:00:00",
             "total_duration_ms": 500,
         },
-        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 0.01},
+        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0},
         "platform": {"name": "duckdb", "version": "1.3.0"},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
-        "phases": {"validation": {"status": "PASSED"}},
-        "queries": [{"id": f"Q{i}", "ms": 123, "status": "SUCCESS"} for i in range(1, 23)],
+        "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
+        "queries": [
+            {"id": f"Q{i}", "ms": 123, "status": "SUCCESS", **(_PASSED_ROW_COUNT if i == 1 else {})}
+            for i in range(1, 23)
+        ],
     }
 
 
@@ -373,7 +385,7 @@ def test_submit_prints_next_steps_with_pr_target_branch(monkeypatch: pytest.Monk
         "published-results",
         "generate_corpus_inventory.py --write",
         "validate_submission.py",
-        "results: tpch duckdb sf0.01",
+        "results: tpch duckdb sf1",
         "results-data/bundles/tpch_duckdb.json",
     ):
         assert required in result.output, f"missing {required!r} in submit next-steps"
@@ -394,7 +406,7 @@ def test_submit_dry_run_matches_real_run_shape(monkeypatch: pytest.MonkeyPatch, 
         "Dry-run preview",
         "published-results",
         "generate_corpus_inventory.py --write",
-        "results: tpch duckdb sf0.01",
+        "results: tpch duckdb sf1",
         "(dry run; no files written)",
     ):
         assert required in result.output, f"missing {required!r} in dry-run output"
@@ -417,13 +429,14 @@ def test_submit_dry_run_validation_rejects_pr_package_errors(monkeypatch: pytest
 
 def _write_flat_plateau_bundle(path: Path) -> None:
     queries = [{"id": f"Q{i}", "ms": 4400.0 + (i % 5) * 15.0, "status": "SUCCESS"} for i in range(1, 23)]
+    queries[0].update(_PASSED_ROW_COUNT)
     bundle = {
-        "version": "2.1",
+        "version": "2.2",
         "run": {"id": "plateau", "timestamp": "2026-05-03T00:00:00", "total_duration_ms": 100000},
         "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 1.0},
         "platform": {"name": "duckdb", "version": "1.3.0"},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
-        "phases": {"validation": {"status": "PASSED"}},
+        "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
         "queries": queries,
     }
     path.write_text(json.dumps(bundle), encoding="utf-8")
@@ -1291,7 +1304,6 @@ def test_submit_real_run_packages_override_companion_unchanged(monkeypatch: pyte
         ("tpch", "unofficial TPC-H configuration", False),
         ("TPC-DS", "unofficial TPC-DS configuration", True),
         ("tpcds", "unofficial TPC-DS configuration", True),
-        ("SSB", "unofficial SSB configuration", False),
     ],
 )
 def test_unofficial_refusal_names_the_actual_benchmark(
@@ -1305,7 +1317,7 @@ def test_unofficial_refusal_names_the_actual_benchmark(
     src.write_text("{}", encoding="utf-8")
     unofficial = _fake_result()
     unofficial.benchmark_name = benchmark_name
-    unofficial.compliance_class = "unofficial_subscale"
+    unofficial.scale_factor = 0.1
     monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (unofficial, {}))
 
     result = CliRunner().invoke(sub.submit, [str(src), "--output", str(tmp_path / "out")])
@@ -1316,3 +1328,13 @@ def test_unofficial_refusal_names_the_actual_benchmark(
     assert expected in output
     assert ("tpcds-subscale-contract" in output) is mentions_tpcds_contract
     assert ("TPC-DS" in output) is ("TPC-DS" in expected)
+
+
+def test_a_sub_sf1_result_of_a_non_tpc_benchmark_is_not_refused_at_submission() -> None:
+    from benchbox.core.results.submit_classification import result_refused_at_submission
+
+    result = _fake_result()
+    result.benchmark_name = "SSB"
+    result.scale_factor = 0.1
+
+    assert result_refused_at_submission(result) is False

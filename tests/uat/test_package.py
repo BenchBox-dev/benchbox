@@ -115,13 +115,20 @@ def test_package_counts_failures(tmp_path: Path):
     assert result.exit_code() == 1
 
 
-def _write_minimal_result(path: Path, *, validation: str = "passed", compliance_class: str | None = None) -> None:
+def _write_minimal_result(
+    path: Path, *, validation: str = "passed", compliance_class: str | None = None, scale_factor: float = 1.0
+) -> None:
     import json
 
     payload = {
         "version": "2.1",
         "run": {"id": "pkg", "timestamp": "2026-01-01T00:00:00", "total_duration_ms": 1},
-        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 0.01, "test_type": "power"},
+        "benchmark": {
+            "id": "tpch",
+            "name": "TPC-H",
+            "scale_factor": scale_factor,
+            "test_type": "power",
+        },
         "platform": {"name": "DuckDB"},
         "summary": {
             "queries": {"total": 1, "passed": 1, "failed": 0},
@@ -161,7 +168,7 @@ def test_package_skips_unvalidated_without_counting_failure(tmp_path: Path):
 def test_package_skips_unofficial_without_counting_failure(tmp_path: Path):
     cfg = validate_config({"name": "x", "package": {"submit_terminal_state": "local-stage"}})
     unofficial = tmp_path / "unofficial.json"
-    _write_minimal_result(unofficial, compliance_class="unofficial_subscale")
+    _write_minimal_result(unofficial, compliance_class="unofficial_subscale", scale_factor=0.01)
     runner = _fake_runner_factory([])
     warnings: list[str] = []
     result = package.run_package(

@@ -61,8 +61,12 @@ never modified.
 the validator answers `only compliance_class=official may be submitted`.
 `benchbox publish run` is not needed for the corpus path.
 
-Staging skips a bundle whose `summary.validation` is not `passed`
-(`validation_not_clean`). A passed run may carry `SKIPPED` row counts when the
+Staging skips a bundle whose `summary.validation` is a non-clean status such as
+`failed`, `partial`, `not_run` or `uncertain` (`validation_not_clean`). A run
+with no row-count reference at its scale records `no_reference` with the reason
+"no row-count reference at this scale factor"; it is staged, ranked and labelled
+"Row counts not checked". `passed` requires per-query row-count evidence in the
+file. A passed run may carry `SKIPPED` row counts when the
 skip has a documented reason and at least one row count was checked: the data
 was refreshed, the count was within a tolerance or range, or the query's count
 depends on the substitution parameters and the run used `--seed`. SQL and
@@ -77,8 +81,9 @@ with recorded counts; TPC-DS at the scale factors with recorded subscale counts
 when the run uses the reference seed. DataFrame TPC-DS at SF 1 records
 `uncertain`: the SF 1 answer files hold the qualification parameters, and the
 SQL path also skips them unless exact mode is forced, so they cannot be matched
-to the dsqgen-bound parameters of a measured stream. Any other combination
-records `uncertain` or `not_run` and cannot be staged.
+to the dsqgen-bound parameters of a measured stream. A scale with no recorded
+reference records `no_reference`. Any other combination records `uncertain` or
+`not_run` and cannot be staged.
 
 ## Guard refusals
 

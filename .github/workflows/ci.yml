@@ -37,7 +37,7 @@ jobs:
       comment-policy: ${{ steps.comment-policy.conclusion == 'success' && steps.notice-drift.conclusion == 'success' && 'success' || 'failure' }}
       copy-guard: ${{ steps.copy-guard.conclusion == 'success' && 'success' || 'failure' }}
       spellcheck: ${{ steps.spellcheck.conclusion || 'skipped' }}
-      results-data-check: ${{ contains(format('{0} {1} {2} {3} {4} {5}', steps.results-python.conclusion, steps.results-install.conclusion, steps.results-inventory.conclusion, steps.results-corpus.conclusion, steps.results-validator.conclusion, steps.results-tests.conclusion), 'failure') && 'failure' || steps.results-tests.conclusion == 'success' && 'success' || 'skipped' }}
+      results-data-check: ${{ contains(format('{0} {1} {2} {3} {4} {5} {6}', steps.results-python.conclusion, steps.results-install.conclusion, steps.results-inventory.conclusion, steps.results-corpus.conclusion, steps.results-mirror-parity.conclusion, steps.results-validator.conclusion, steps.results-tests.conclusion), 'failure') && 'failure' || steps.results-tests.conclusion == 'success' && 'success' || 'skipped' }}
       example-validation: ${{ contains(format('{0} {1} {2} {3} {4}', steps.docs-python.conclusion, steps.docs-install.conclusion, steps.docs-validate.conclusion, steps.docs-urls.conclusion, steps.docs-generate.conclusion), 'failure') && 'failure' || steps.docs-generate.conclusion == 'success' && 'success' || 'skipped' }}
     steps:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
@@ -159,14 +159,22 @@ jobs:
           UV_PYTHON: "3.12"
         run: |
           uv run -- python scripts/generate_corpus_inventory.py --check
+          uv run -- python scripts/generate_corpus_rule_data.py --check
           uv run -- python scripts/corpus_compliance_snapshot.py --check
-          uv run -- python scripts/generate_standard_scales.py --check
       - name: Corpus validation
         id: results-corpus
         if: ${{ !cancelled() && steps.results-inventory.conclusion == 'success' }}
         env:
           UV_PYTHON: "3.12"
         run: uv run -- python results-data/validate_corpus.py
+      - name: Mirror and develop validators agree on the stored corpus
+        id: results-mirror-parity
+        if: ${{ !cancelled() && steps.results-corpus.conclusion == 'success' }}
+        env:
+          UV_PYTHON: "3.12"
+        run: |
+          uv python install 3.11
+          uv run -- python scripts/check_mirror_validator_parity.py --mirror-python "$(uv python find 3.11)"
       - name: Submission validator stays in sync
         id: results-validator
         if: ${{ !cancelled() && steps.results-corpus.conclusion == 'success' && needs.ci-paths.outputs.submission-validator-changed == 'true' }}
@@ -187,6 +195,11 @@ jobs:
         run: |
           uv run -- python -m pytest -p no:cacheprovider -o addopts='' -q \
             tests/unit/scripts/test_generate_corpus_inventory.py \
+            tests/unit/scripts/test_corpus_score_guard.py \
+            tests/unit/scripts/test_corpus_rule_parity.py \
+            tests/unit/scripts/test_check_mirror_validator_parity.py \
+            tests/unit/scripts/test_generate_corpus_rule_data.py \
+            tests/unit/cli/test_corpus_rule_lane_canary.py \
             tests/unit/scripts/test_validate_submission.py \
             tests/unit/scripts/explorer_pipeline \
             tests/unit/workflows/test_corpus_trust_boundary.py \

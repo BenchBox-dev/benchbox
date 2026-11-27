@@ -13,6 +13,7 @@ import yaml
 from benchbox.core.cost.models import normalized_cost_allows_direct_total
 from benchbox.core.execution_variant import VariantIdError, derive_variant_id, resolve_variant_platform_id
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
+from benchbox.core.results import corpus_rule
 from benchbox.core.results.comparison_modes import CONFIG_CAPTURE_VERSION
 from benchbox.core.results.environment import (
     build_environment_payload,
@@ -21,11 +22,11 @@ from benchbox.core.results.environment import (
 )
 from benchbox.core.results.execution_variant import execution_engine_payload, gateway_payload
 from benchbox.core.results.fetch_mode import summarize_fetch_modes
-from benchbox.core.results.metrics import UNOFFICIAL_COMPLIANCE_CLASSES, percentile_ms
+from benchbox.core.results.metrics import percentile_ms
 from benchbox.core.results.platform_options import sanitize_platform_options
 from benchbox.core.results.platform_timing import resolve_net_estimate_status, summarize_run_platform_timing
 from benchbox.core.results.provenance import VENDOR_PROVENANCE_FIELDS
-from benchbox.core.results.qphds import load_scope_components
+from benchbox.core.results.qphds import database_load_reused, load_scope_components
 from benchbox.core.results.query_execution import (
     QueryExecutionContractError,
     normalize_row_count_validation,
@@ -46,8 +47,11 @@ from benchbox.core.results.schema_policy import (
 )
 from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
+    OFFICIAL_COMPLIANCE_CLASS,
+    SUBSCALE_COMPLIANCE_CLASS,
+    UNOFFICIAL_COMPLIANCE_CLASSES,
     platform_info_gateway,
-    result_recorded_compliance_class,
+    result_compliance_class,
     unofficial_metric_marker,
 )
 from benchbox.core.results.timer_scope import TIMING_METHOD_LEGACY
@@ -275,8 +279,10 @@ def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets:
     skipped_queries = len([q for q in measurement_queries if q.get("status") == "SKIPPED"])
     failed_count = total_queries - successful_queries - skipped_queries
 
+    phases_block = _build_phases_block(result)
+    compliance_class = _recorded_compliance_class(result, phases_block, queries_list)
     summary = _build_summary_section(
-        result, query_times_ms, total_queries, successful_queries, failed_count, skipped_queries
+        result, query_times_ms, total_queries, successful_queries, failed_count, compliance_class, skipped_queries
     )
     scan_bytes = _aggregate_scan_bytes(result)
     if scan_bytes:
@@ -285,7 +291,7 @@ def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets:
     run_fetch_mode = _run_fetch_mode(queries_list)
     if run_fetch_mode is not None:
         run["fetch_mode"] = run_fetch_mode
-    benchmark = _build_benchmark_section(result)
+    benchmark = _build_benchmark_section(result, compliance_class)
     driver_metadata = _collect_driver_metadata(result)
     platform = _build_platform_section(result, driver_metadata, sanitize_platform_secrets=sanitize_platform_secrets)
 
@@ -295,7 +301,6 @@ def build_result_payload(result: BenchmarkResults, *, sanitize_platform_secrets:
     tables = _build_tables_block(result.table_statistics)
 
     config_block = _build_config_block(result)
-    phases_block = _build_phases_block(result)
 
     if result.execution_phases:
         table_errors = _extract_table_errors(result.execution_phases)
@@ -473,6 +478,7 @@ def _build_summary_section(
     total_queries: int,
     successful_queries: int,
     failed_count: int,
+    compliance_class: str | None,
     skipped_queries: int = 0,
 ) -> dict[str, Any]:
     timing_stats = _compute_timing_stats(query_times_ms)
@@ -500,7 +506,7 @@ def _build_summary_section(
     if result.validation_status:
         summary["validation"] = result.validation_status.lower()
 
-    tpc_metrics = _build_tpc_metrics(result)
+    tpc_metrics = _build_tpc_metrics(result, compliance_class)
     if tpc_metrics:
         summary["tpc_metrics"] = tpc_metrics
 
@@ -567,7 +573,7 @@ def _build_run_section(
     return run
 
 
-def _build_benchmark_section(result: BenchmarkResults) -> dict[str, Any]:
+def _build_benchmark_section(result: BenchmarkResults, compliance_class: str | None) -> dict[str, Any]:
     benchmark_name = _shorten_benchmark_name(result.benchmark_name)
     section: dict[str, Any] = {
         "id": result.benchmark_id,
@@ -575,7 +581,6 @@ def _build_benchmark_section(result: BenchmarkResults) -> dict[str, Any]:
         "scale_factor": result.scale_factor,
         "test_type": result.test_execution_type,
     }
-    compliance_class = result_recorded_compliance_class(result)
     if compliance_class is not None:
         section["compliance_class"] = compliance_class
     if getattr(result, "data_generation_version", None) is not None:
@@ -1158,6 +1163,7 @@ def _build_phases_block(result: BenchmarkResults) -> dict[str, Any]:
             phases["data_loading"] = {
                 "status": setup.data_loading.status,
                 "duration_ms": setup.data_loading.duration_ms,
+                "database_reused": database_load_reused(setup),
             }
         if setup.validation:
             phases["validation"] = {
@@ -1193,7 +1199,7 @@ def _build_phases_block(result: BenchmarkResults) -> dict[str, Any]:
 
     phases.update(_maintenance_and_migration_payloads(result.execution_phases))
 
-    if isinstance(result.execution_metadata, Mapping):
+    if isinstance(getattr(result, "execution_metadata", None), Mapping):
         phase_status = result.execution_metadata.get("phase_status") or {}
         for name, status in phase_status.items():
             if name not in phases:
@@ -1767,18 +1773,47 @@ def _compute_timing_stats(times_ms: list[float]) -> dict[str, Any]:
     return stats
 
 
-def _build_tpc_metrics(result: BenchmarkResults) -> dict[str, Any] | None:
-    compliance_class = result_recorded_compliance_class(result)
-    if compliance_class == NONSTANDARD_COMPLIANCE_CLASS:
-        metrics: dict[str, Any] = {"suppressed": True, "reason": f"compliance_class={compliance_class}"}
-    else:
-        metrics = (
-            unofficial_metric_marker(compliance_class) if compliance_class in UNOFFICIAL_COMPLIANCE_CLASSES else {}
-        )
-        if result.power_at_size is not None:
-            metrics["power_at_size"] = result.power_at_size
-        if result.throughput_at_size is not None:
-            metrics["throughput_at_size"] = result.throughput_at_size
+RECORDED_COMPLIANCE_CLASS_BY_RULE_CLASS = {
+    corpus_rule.CLASS_FULL_SPEC: OFFICIAL_COMPLIANCE_CLASS,
+    corpus_rule.CLASS_SUBSCALE: SUBSCALE_COMPLIANCE_CLASS,
+    corpus_rule.CLASS_NONSTANDARD_SCALE: NONSTANDARD_COMPLIANCE_CLASS,
+}
+
+
+def _recorded_compliance_class(
+    result: BenchmarkResults, phases_block: Mapping[str, Any], queries: list[dict[str, Any]]
+) -> str | None:
+    gateway = platform_info_gateway(getattr(result, "platform_info", None))
+    validation = str(getattr(result, "validation_status", None) or "").strip().lower()
+    facts = corpus_rule.facts_from_result(
+        {
+            "benchmark": {"id": result.benchmark_id, "scale_factor": result.scale_factor},
+            "platform": {"gateway": gateway},
+            "phases": phases_block,
+            "queries": queries,
+            "summary": {"validation": validation or None},
+        }
+    )
+    if facts.gateway_routed:
+        return NONSTANDARD_COMPLIANCE_CLASS
+    recorded = RECORDED_COMPLIANCE_CLASS_BY_RULE_CLASS.get(corpus_rule.derive_outcome(facts).class_name)
+    if recorded == OFFICIAL_COMPLIANCE_CLASS and not (
+        result_compliance_class(result) == OFFICIAL_COMPLIANCE_CLASS
+        and validation == "passed"
+        and not facts.validation_failed
+    ):
+        return None
+    return recorded
+
+
+def _build_tpc_metrics(result: BenchmarkResults, compliance_class: str | None) -> dict[str, Any] | None:
+    metrics: dict[str, Any] = (
+        unofficial_metric_marker(compliance_class) if compliance_class in UNOFFICIAL_COMPLIANCE_CLASSES else {}
+    )
+    if result.power_at_size is not None:
+        metrics["power_at_size"] = result.power_at_size
+    if result.throughput_at_size is not None:
+        metrics["throughput_at_size"] = result.throughput_at_size
 
     if getattr(result, "benchmark_id", None) == "tpch":
         if getattr(result, "qph_at_size", None) is not None:
@@ -1796,7 +1831,7 @@ def _build_tpc_metrics(result: BenchmarkResults) -> dict[str, Any] | None:
         if getattr(result, "qphds_unavailable", None):
             metrics["qphds_unavailable"] = list(result.qphds_unavailable)
 
-    if getattr(result, "test_execution_type", None) == "combined" and not metrics.get("suppressed"):
+    if getattr(result, "test_execution_type", None) == "combined":
         components = load_scope_components(getattr(result.execution_phases, "setup", None))
         if components is not None:
             metrics["load_scope"] = {

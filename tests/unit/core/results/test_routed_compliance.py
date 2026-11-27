@@ -19,7 +19,6 @@ from benchbox.core.results.submit_classification import (
 )
 from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
-    bundle_compliance_class,
     result_compliance_class,
 )
 
@@ -42,7 +41,7 @@ def _result(gateway: dict | None, compliance_class: str | None = "official") -> 
         total_queries=1,
         successful_queries=1,
         failed_queries=0,
-        query_results=[],
+        query_results=[{"query_id": "Q1", "execution_time": 1.0, "status": "SUCCESS", "run_type": "measurement"}],
         total_execution_time=1.0,
         average_query_time=1.0,
         validation_status="PASSED",
@@ -80,18 +79,20 @@ def test_native_result_is_unaffected() -> None:
     assert result_compliance_class(_result(None, compliance_class=None)) is None
 
 
-def test_routed_bundle_payload_is_not_official_and_has_no_tpc_metrics() -> None:
+def test_routed_bundle_payload_is_not_official_and_marks_its_metrics_unofficial() -> None:
     result = _result(ROUTED)
     result.power_at_size = 1234.0
     payload = build_result_payload(result)
     assert payload["benchmark"]["compliance_class"] == NONSTANDARD_COMPLIANCE_CLASS
     assert payload["tpc_compliant"] is False
-    assert payload["summary"]["tpc_metrics"]["suppressed"] is True
+    assert "suppressed" not in payload["summary"]["tpc_metrics"]
+    assert payload["summary"]["tpc_metrics"]["unofficial"] is True
+    assert payload["summary"]["tpc_metrics"]["power_at_size"] == 1234.0
 
 
-def test_native_bundle_payload_keeps_official() -> None:
+def test_native_bundle_payload_is_not_marked_non_standard() -> None:
     payload = build_result_payload(_result(None))
-    assert payload["benchmark"]["compliance_class"] == "official"
+    assert payload["benchmark"].get("compliance_class") != NONSTANDARD_COMPLIANCE_CLASS
 
 
 def test_publish_admission_rejects_routed_result_claiming_official() -> None:
@@ -121,8 +122,6 @@ def test_bundle_helper_and_metrics_readiness_refuse_routed_bundle() -> None:
         "summary": {"queries": {"failed": 0}},
     }
     native = {"benchmark": {"id": "tpch", "compliance_class": "official"}, "platform": {}}
-    assert bundle_compliance_class(routed) == NONSTANDARD_COMPLIANCE_CLASS
-    assert bundle_compliance_class(native) == "official"
     assert TPCMetricsCalculator.metrics_refusal_reason(routed, "Power") is not None
     assert any(
         "not official compliance" in reason for reason in TPCMetricsCalculator.qphh_unavailable_reasons(routed, routed)
@@ -132,20 +131,26 @@ def test_bundle_helper_and_metrics_readiness_refuse_routed_bundle() -> None:
     )
 
 
-def test_results_database_stores_routed_result_as_non_official(tmp_path: Path) -> None:
+def test_results_database_derives_routed_result_as_held_from_stored_facts(tmp_path: Path) -> None:
+    from benchbox.core.results import corpus_rule
+    from tests.fixtures.result_dict_fixtures import make_power_only_phases
+
     database = ResultDatabase(tmp_path / "results.db")
     routed = _result(ROUTED)
     routed.execution_id = "routed-run"
+    routed.execution_phases = make_power_only_phases(routed.timestamp)
     native = _result(None)
     native.execution_id = "native-run"
+    native.execution_phases = make_power_only_phases(native.timestamp)
     database.store_result(routed)
     database.store_result(native)
 
-    import sqlite3
-
-    with sqlite3.connect(tmp_path / "results.db") as connection:
-        rows = dict(connection.execute("SELECT execution_id, compliance_class FROM results"))
-    assert rows == {"routed-run": NONSTANDARD_COMPLIANCE_CLASS, "native-run": "official"}
+    stored_routed = database.get_result("routed-run")
+    stored_native = database.get_result("native-run")
+    assert stored_routed is not None and stored_native is not None
+    assert stored_routed.outcome.held_reason == corpus_rule.HELD_GATEWAY_ROUTED
+    assert stored_routed.outcome.ranked is False
+    assert stored_native.outcome.class_name == corpus_rule.CLASS_POWER_ONLY
 
 
 def _built_like_a_real_run(gateway: dict | None):
@@ -176,6 +181,7 @@ def _built_like_a_real_run(gateway: dict | None):
                 "iteration": 1,
                 "stream_id": 0,
                 "run_type": "measurement",
+                "row_count_validation": {"status": "PASSED", "expected": 1, "actual": 1},
             }
         )
     )
@@ -191,7 +197,8 @@ def test_routed_result_built_by_result_builder_is_non_official_everywhere(tmp_pa
     payload = build_result_payload(result)
     assert payload["benchmark"]["compliance_class"] == NONSTANDARD_COMPLIANCE_CLASS
     assert payload["tpc_compliant"] is False
-    assert payload["summary"]["tpc_metrics"]["suppressed"] is True
+    assert "suppressed" not in payload["summary"]["tpc_metrics"]
+    assert payload["summary"]["tpc_metrics"]["unofficial"] is True
     assert payload["platform"]["gateway"] == ROUTED
 
     assert publish_admission(result, "official").allowed is False
@@ -201,20 +208,19 @@ def test_routed_result_built_by_result_builder_is_non_official_everywhere(tmp_pa
     assert classify_result_path(written) is SubmitTerminalState.unofficial
 
 
-def test_native_result_built_by_result_builder_stays_official() -> None:
+def test_native_result_built_by_result_builder_is_not_marked_non_standard() -> None:
     result = _built_like_a_real_run(None)
     assert result_compliance_class(result) == "official"
-    assert build_result_payload(result)["benchmark"]["compliance_class"] == "official"
+    assert "compliance_class" not in build_result_payload(result)["benchmark"]
 
 
-def test_routed_result_built_by_result_builder_carries_no_tpc_metrics() -> None:
+def test_routed_result_built_by_result_builder_keeps_scores_and_has_no_composite() -> None:
     routed = _built_like_a_real_run(ROUTED)
-    assert routed.power_at_size is None
-    assert routed.throughput_at_size is None
+    assert routed.power_at_size is not None
     assert routed.qph_at_size is None
     assert routed.compliance_class == NONSTANDARD_COMPLIANCE_CLASS
     payload = build_result_payload(routed)
-    assert "power_at_size" not in payload["summary"]["tpc_metrics"]
+    assert payload["summary"]["tpc_metrics"]["power_at_size"] == routed.power_at_size
     assert "qphh_at_size" not in payload["summary"]["tpc_metrics"]
 
 

@@ -23,7 +23,6 @@ from benchbox.core.results.subscale_policy import (
     NONSTANDARD_COMPLIANCE_CLASS,
     effective_compliance_class,
     is_nonstandard_scale,
-    result_recorded_compliance_class,
 )
 from benchbox.validation.bundle import ValidationResult, validate_bundles
 
@@ -53,25 +52,43 @@ def _off_list_scale(benchmark_id: str) -> float:
     return candidate
 
 
+def _timed_queries(benchmark: str) -> list[dict]:
+    from benchbox.validation.bundle import CANONICAL_LOGICAL_QUERY_IDS
+
+    canonical = sorted(CANONICAL_LOGICAL_QUERY_IDS.get(benchmark, frozenset({"Q1", "Q2"})))
+    return [
+        {"id": query_id, "ms": 10.0 + index, "iter": 1, "run_type": "measurement", "status": "SUCCESS"}
+        for index, query_id in enumerate(canonical)
+    ]
+
+
 def _bundle_payload(benchmark: str, scale: float, platform: str, *, compliance_class: str | None = None) -> dict:
+    queries = _timed_queries(benchmark)
     payload = {
         "benchmark": {"id": benchmark, "scale_factor": scale, "test_type": "power"},
         "platform": {"name": platform},
         "run": {"timestamp": "2026-11-01T12:00:00"},
         "export": {"anonymized": True},
         "summary": {
-            "queries": {"total": 2, "passed": 2, "failed": 0},
+            "queries": {"total": len(queries), "passed": len(queries), "failed": 0},
             "validation": "passed",
-            "tpc_metrics": {"power_at_size": 1.0},
         },
-        "queries": [
-            {"id": "Q1", "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"},
-            {"id": "Q2", "ms": 12.0, "run_type": "measurement", "status": "SUCCESS"},
-        ],
+        "queries": queries,
+        "phases": {"power_test": {"status": "COMPLETED"}},
     }
     if compliance_class is not None:
         payload["benchmark"]["compliance_class"] = compliance_class
     return payload
+
+
+@pytest.mark.parametrize("bench_id", ["tpch", "tpcds"])
+def test_nonstandard_combined_run_is_admitted_without_metric(bench_id):
+    payload = _bundle_payload(bench_id, 2.0, "example")
+    payload["benchmark"]["test_type"] = "combined"
+    validator = _load_validator()
+    assert validator.rule_outcome(payload).lanes == ()
+    assert validator.admission_reason(payload) is None
+    assert validator.exclusion_reason(payload) == "missing_primary_metric"
 
 
 def _write_cohort(directory: Path, benchmark: str, scale: float, *, compliance_class: str | None = None) -> list[Path]:
@@ -87,6 +104,9 @@ def _write_cohort(directory: Path, benchmark: str, scale: float, *, compliance_c
     return paths
 
 
+_PASSED_ROW_COUNT = {"rows": 5, "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5}}
+
+
 def _submission_bundle(benchmark: str, scale: float, **benchmark_fields: object) -> dict:
     from benchbox.validation.bundle import CANONICAL_LOGICAL_QUERY_IDS
 
@@ -95,7 +115,7 @@ def _submission_bundle(benchmark: str, scale: float, **benchmark_fields: object)
         variants = {"14": ("14a", "14b"), "23": ("23a", "23b"), "24": ("24a", "24b"), "39": ("39a", "39b")}
         canonical = sorted({variant for query_id in canonical for variant in variants.get(query_id, (query_id,))})
     return {
-        "version": "2.1",
+        "version": "2.2",
         "run": {"id": "abc123", "timestamp": "2026-04-01T12:00:00", "total_duration_ms": 5000},
         "benchmark": {"id": benchmark, "name": benchmark, "scale_factor": scale, **benchmark_fields},
         "platform": {"name": "DuckDB", "version": "1.4.3"},
@@ -103,8 +123,11 @@ def _submission_bundle(benchmark: str, scale: float, **benchmark_fields: object)
             "validation": "passed",
             "queries": {"total": len(canonical), "passed": len(canonical), "failed": 0},
         },
-        "phases": {"validation": {"status": "PASSED"}},
-        "queries": [{"id": qid, "ms": 100 + index * 10, "status": "SUCCESS"} for index, qid in enumerate(canonical)],
+        "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
+        "queries": [
+            {"id": qid, "ms": 100 + index * 10, "status": "SUCCESS", **(_PASSED_ROW_COUNT if index == 0 else {})}
+            for index, qid in enumerate(canonical)
+        ],
     }
 
 
@@ -178,8 +201,9 @@ def test_three_platform_off_list_cohort_never_ranks(tmp_path: Path, benchmark_id
     assert cohorts == {(benchmark_id, f"{scale}"): set()}
     assert validator.unranked_cohorts(cohorts) == [(benchmark_id, f"{scale}")]
     assert validator.shallow_cohorts(cohorts) == {}
+    expected = "not_admitted_undetermined" if benchmark_id == "tpcdi" else "not_ranked_nonstandard_scale"
     for path in paths:
-        assert validator.exclusion_reason(json.loads(path.read_text(encoding="utf-8"))) == "unofficial_compliance"
+        assert validator.exclusion_reason(json.loads(path.read_text(encoding="utf-8"))) == expected
 
 
 @pytest.mark.parametrize("benchmark_id", list_benchmark_ids())
@@ -219,8 +243,8 @@ def test_submission_accepts_an_off_list_bundle_and_discloses_the_exclusion(bench
 
     assert vr.ok, vr.errors
     (warning,) = _nonstandard_warnings(vr)
-    assert "unofficial_compliance" in warning
-    assert "excluded from ranking" in warning
+    assert "accepted and not ranked" in warning
+    assert "Non-standard scale" in warning
 
 
 def test_submission_accepts_the_stamped_class_at_an_off_list_scale() -> None:
@@ -230,10 +254,11 @@ def test_submission_accepts_the_stamped_class_at_an_off_list_scale() -> None:
     assert len(_nonstandard_warnings(vr)) == 1
 
 
-def test_submission_accepts_a_recorded_subscale_class_at_an_off_list_scale() -> None:
+def test_submission_refuses_a_tpc_bundle_below_the_minimum_scale_whether_or_not_the_scale_is_listed() -> None:
     vr = _validate(_submission_bundle("tpch", 0.5, compliance_class="unofficial_subscale"))
 
-    assert vr.ok, vr.errors
+    assert not vr.ok
+    assert any("not accepted for public submissions" in error for error in vr.errors)
 
 
 @pytest.mark.parametrize("compliance_class", ["garbage", "", "Official", 7, ["official"]])
@@ -255,7 +280,7 @@ def test_unknown_compliance_class_is_refused_under_partial_validation_and_intern
         for scale in (1.0, 2.0):
             vr = ValidationResult("test")
             _validate_compliance_section(
-                {"id": "tpch", "scale_factor": scale, "compliance_class": "garbage"}, vr, **flags
+                {"benchmark": {"id": "tpch", "scale_factor": scale, "compliance_class": "garbage"}}, vr, **flags
             )
             assert any("not a recognised compliance class" in error for error in vr.errors), (flags, scale)
 
@@ -267,19 +292,26 @@ def test_unknown_compliance_class_on_a_gateway_routed_bundle_is_refused() -> Non
     assert any("not a recognised compliance class" in error for error in _validate(payload).errors)
 
 
-@pytest.mark.parametrize("compliance_class", [NONSTANDARD_COMPLIANCE_CLASS, "unofficial_subscale"])
-def test_submission_still_refuses_unofficial_classes_at_a_standard_scale(compliance_class: str) -> None:
-    scale = 1.0 if compliance_class == NONSTANDARD_COMPLIANCE_CLASS else 0.1
-    vr = _validate(_submission_bundle("tpch", scale, compliance_class=compliance_class))
+@pytest.mark.parametrize("compliance_class", [None, "official", "unofficial_subscale"])
+def test_submission_refuses_a_sub_sf1_tpc_bundle_whatever_it_is_stamped(compliance_class: str | None) -> None:
+    kwargs = {} if compliance_class is None else {"compliance_class": compliance_class}
+    vr = _validate(_submission_bundle("tpch", 0.1, **kwargs))
 
     assert not vr.ok
-    assert any("compliance_class" in error for error in vr.errors)
+    assert any("not accepted for public submissions" in error for error in vr.errors)
     assert not _nonstandard_warnings(vr)
+
+
+@pytest.mark.parametrize("compliance_class", [NONSTANDARD_COMPLIANCE_CLASS, "unofficial_subscale"])
+def test_a_stamp_does_not_refuse_a_bundle_at_a_standard_scale(compliance_class: str) -> None:
+    vr = _validate(_submission_bundle("tpch", 1.0, compliance_class=compliance_class))
+
+    assert vr.ok, vr.errors
 
 
 @pytest.mark.parametrize("benchmark_id", ["tpch", "ssb", "joinorder"])
 def test_submission_of_a_standard_scale_bundle_has_no_exclusion_warning(benchmark_id: str) -> None:
-    scale = get_scale_factor_rule(benchmark_id).standard[0]
+    scale = min(value for value in get_scale_factor_rule(benchmark_id).standard if value >= 1.0)
     vr = _validate(_submission_bundle(benchmark_id, scale))
 
     assert vr.ok, vr.errors
@@ -292,7 +324,22 @@ def test_submission_still_refuses_gateway_routed_bundles_at_an_off_list_scale() 
     routed = _validate(routed_payload)
 
     assert not routed.ok
-    assert any("unofficial_nonstandard" in error for error in routed.errors)
+    assert any("gateway_routed" in error for error in routed.errors)
+
+
+@pytest.mark.parametrize("compliance_class", [None, "official", NONSTANDARD_COMPLIANCE_CLASS, "unofficial_subscale"])
+def test_the_submission_outcome_at_an_off_list_scale_does_not_depend_on_the_stamp(
+    compliance_class: str | None,
+) -> None:
+    kwargs = {} if compliance_class is None else {"compliance_class": compliance_class}
+
+    ssb = _validate(_submission_bundle("ssb", 2.0, **kwargs))
+    assert ssb.ok, ssb.errors
+    assert len(_nonstandard_warnings(ssb)) == 1
+
+    routed_payload = _submission_bundle("ssb", 2.0, **kwargs)
+    routed_payload["platform"]["gateway"] = {"name": "espresso", "routed": True}
+    assert not _validate(routed_payload).ok
 
 
 MIRRORED_RUNTIME = (
@@ -302,7 +349,11 @@ MIRRORED_RUNTIME = (
     "benchbox/core/results/timing_fields.py",
     "benchbox/core/results/schema_policy.py",
     "benchbox/core/results/subscale_policy.py",
-    "benchbox/core/results/standard_scales.json",
+    "benchbox/core/results/corpus_rule.py",
+    "benchbox/core/results/corpus_rule_data.json",
+    "benchbox/core/results/corpus_score.py",
+    "benchbox/core/results/comparison_identity.py",
+    "benchbox/core/results/comparison_identity.json",
 )
 MIRROR_CASES = [
     ("tpch", 2.0, None),
@@ -328,7 +379,7 @@ MIRROR_CASES = [
 
 def _slim_mirror(root: Path, *, with_projection: bool = True) -> Path:
     for relative in MIRRORED_RUNTIME:
-        if relative.endswith("standard_scales.json") and not with_projection:
+        if relative.endswith("corpus_rule_data.json") and not with_projection:
             continue
         destination = root / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -400,21 +451,21 @@ def test_the_registry_less_validator_fails_closed_without_the_projection(tmp_pat
     mirror = _run_mirror(root, _submission_bundle("tpch", 2.0), partial=partial)
 
     assert mirror.returncode != 0
-    assert "benchbox/core/results/standard_scales.json is missing or unreadable" in mirror.stdout + mirror.stderr
+    assert "corpus_rule_data.json is missing or unreadable" in mirror.stdout + mirror.stderr
 
 
 @pytest.mark.parametrize(
     ("benchmark_id", "scale", "compliance_class", "expected"),
     [
-        ("tpch", 2.0, None, "unofficial_compliance"),
-        ("tpch", 2.0, "official", "unofficial_compliance"),
-        ("tpcds", 30.0, None, "unofficial_compliance"),
-        ("ssb", 2.0, None, "unofficial_compliance"),
-        ("tpch", 1.0, None, "missing_primary_metric"),
-        ("tpcds", 1000.0, None, "missing_primary_metric"),
+        ("tpch", 2.0, None, "not_ranked_nonstandard_scale"),
+        ("tpch", 2.0, "official", "not_ranked_nonstandard_scale"),
+        ("tpcds", 30.0, None, "not_ranked_nonstandard_scale"),
+        ("ssb", 2.0, None, "not_ranked_nonstandard_scale"),
+        ("tpch", 1.0, None, None),
+        ("tpcds", 1000.0, None, None),
     ],
 )
-def test_the_registry_less_exclusion_reason_sees_an_off_list_scale(
+def test_the_registry_less_exclusion_reason_uses_scale_and_timing_evidence(
     slim_mirror: Path, benchmark_id: str, scale: float, compliance_class: str | None, expected: str | None
 ) -> None:
     destination = slim_mirror / "results-data" / "validate_corpus.py"
@@ -431,6 +482,8 @@ def test_the_registry_less_exclusion_reason_sees_an_off_list_scale(
     payload = _submission_bundle(
         benchmark_id, scale, **({} if compliance_class is None else {"compliance_class": compliance_class})
     )
+    if expected == "not_ranked_nonstandard_scale":
+        payload = _bundle_payload(benchmark_id, scale, "DuckDB", compliance_class=compliance_class)
 
     result = subprocess.run(
         [sys.executable, "-I", "-S", "-c", code, json.dumps(payload)],
@@ -466,7 +519,16 @@ def _result(benchmark_name: str, scale: float, compliance_class: str | None = No
         total_queries=1,
         successful_queries=1,
         failed_queries=0,
-        query_results=[],
+        query_results=[
+            {
+                "query_id": "1",
+                "execution_time_ms": 1.0,
+                "status": "SUCCESS",
+                "iteration": 1,
+                "stream_id": 0,
+                "run_type": "measurement",
+            }
+        ],
         total_execution_time=1.0,
         average_query_time=1.0,
         validation_status="PASSED",
@@ -479,52 +541,68 @@ def _result(benchmark_name: str, scale: float, compliance_class: str | None = No
 def test_new_bundles_at_an_off_list_scale_record_the_unranked_class(benchmark_name: str) -> None:
     result = _result(benchmark_name, _off_list_scale(benchmark_name))
 
-    assert result_recorded_compliance_class(result) == NONSTANDARD_COMPLIANCE_CLASS
     payload = build_result_payload(result)
     assert payload["benchmark"]["compliance_class"] == NONSTANDARD_COMPLIANCE_CLASS
 
 
 @pytest.mark.parametrize(
-    ("benchmark_name", "recorded"), [("ssb", None), ("tpch", "unofficial_subscale"), ("tpch", "official")]
+    ("benchmark_name", "scale", "recorded_class"),
+    [
+        ("ssb", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
+        ("tpch", 0.5, "unofficial_subscale"),
+        ("tpch", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
+    ],
 )
-def test_off_list_bundles_suppress_tpc_metrics_in_step_with_the_recorded_class(
-    benchmark_name: str, recorded: str | None
+def test_off_list_bundles_keep_their_scores_and_never_suppress_them(
+    benchmark_name: str, scale: float, recorded_class: str
 ) -> None:
-    result = _result(benchmark_name, 2.0 if recorded != "unofficial_subscale" else 0.5, recorded)
+    result = _result(benchmark_name, scale)
     result.power_at_size = 10.0
 
-    summary = build_result_payload(result)["summary"]
+    payload = build_result_payload(result)
 
-    assert summary["tpc_metrics"] == {
-        "suppressed": True,
-        "reason": f"compliance_class={NONSTANDARD_COMPLIANCE_CLASS}",
+    assert payload["benchmark"]["compliance_class"] == recorded_class
+    assert payload["summary"]["tpc_metrics"] == {
+        "unofficial": True,
+        "reason": f"compliance_class={recorded_class}",
+        "power_at_size": 10.0,
     }
 
 
 def test_new_bundles_at_a_standard_scale_record_no_class() -> None:
     result = _result("ssb", 1.0)
 
-    assert result_recorded_compliance_class(result) is None
     assert "compliance_class" not in build_result_payload(result)["benchmark"]
 
 
 def test_cli_submit_and_publish_accept_an_off_list_result_and_refuse_the_rest() -> None:
+    from benchbox.core.results.models import QueryExecution
+    from tests.fixtures.result_dict_fixtures import make_power_only_phases
+
+    def timed_result(benchmark: str, scale: float, compliance: str | None = None) -> BenchmarkResults:
+        result = _result(benchmark, scale, compliance)
+        query = QueryExecution(query_id="1", execution_time_ms=1.0, status="SUCCESS", run_type="measurement")
+        result.execution_phases = make_power_only_phases(query_executions=[query])
+        return result
+
     for off_list in (
-        _result("ssb", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
-        _result("tpch", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
-        _result("tpch", 0.5, "unofficial_subscale"),
+        timed_result("ssb", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
+        timed_result("tpch", 2.0, NONSTANDARD_COMPLIANCE_CLASS),
+        timed_result("tpch", 1.0, NONSTANDARD_COMPLIANCE_CLASS),
+        timed_result("tpch", 1.0),
     ):
         assert classify_loaded_result(off_list) is SubmitTerminalState.submittable
         assert publish_admission(off_list, "community").allowed
 
-    routed = _result("ssb", 2.0)
+    routed = timed_result("ssb", 2.0)
     routed.platform_info["gateway"] = {"name": "espresso", "routed": True}
     assert classify_loaded_result(routed) is SubmitTerminalState.unofficial
     assert not publish_admission(routed, "community").allowed
 
     for refused in (
-        _result("tpch", 1.0, NONSTANDARD_COMPLIANCE_CLASS),
-        _result("tpch", 0.1, "unofficial_subscale"),
+        timed_result("tpch", 0.5),
+        timed_result("tpch", 0.1, "unofficial_subscale"),
+        timed_result("tpcds", 0.01, "official"),
     ):
         assert classify_loaded_result(refused) is SubmitTerminalState.unofficial
         assert not publish_admission(refused, "community").allowed

@@ -42,7 +42,13 @@ from benchbox.core.dataframe.query_validation import DataFrameQueryValidationSum
 from benchbox.core.dataframe.schema_utils import get_benchmark_schema_columns
 from benchbox.core.errors import PlanCaptureError
 from benchbox.core.exceptions import ConfigurationError, InsufficientMemoryError, RunTimeoutError
-from benchbox.core.execution_engine import DEFAULT_EXECUTION_ENGINE, ExecutionEngineHook
+from benchbox.core.execution_engine import (
+    DEFAULT_EXECUTION_ENGINE,
+    ExecutionEngineHook,
+    ExecutionEngineReceipt,
+    ObservationNotRecognizedError,
+    summarize_observed_engines,
+)
 from benchbox.core.results import (
     BenchmarkInfoInput,
     ResultBuilder,
@@ -57,7 +63,7 @@ from benchbox.core.results.models import (
 )
 from benchbox.core.results.query_plan_models import QueryPlanDAG
 from benchbox.core.results.schema import compute_plan_capture_stats
-from benchbox.core.results.timer_scope import TIMING_METHOD_LEGACY
+from benchbox.core.results.timer_scope import TIMING_METHOD_LEGACY, outside_query_timer
 from benchbox.core.schemas import BenchmarkConfig, SystemProfile
 from benchbox.platforms.base.adapter import DriverIsolationCapability
 from benchbox.platforms.base.client_region import discover_client_region
@@ -176,12 +182,11 @@ def dataframe_compliance_class(benchmark_instance: object | None, benchmark_conf
 
         classify = classify_tpcds_run
 
-    return _compliance_value(
-        classify(
-            float(getattr(benchmark_config, "scale_factor", 0) or 0),
-            official=bool(getattr(benchmark_config, "official", False)),
-        )
+    classified = classify(
+        float(getattr(benchmark_config, "scale_factor", 0) or 0),
+        official=bool(getattr(benchmark_config, "official", False)),
     )
+    return None if classified is None else _compliance_value(classified)
 
 
 def _compliance_value(compliance_class: object) -> str:
@@ -296,6 +301,49 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
     def tpch_refresh_backend(self) -> Any | None:
         return None
 
+    def _record_engine_observation(self, result: dict[str, Any], lazy: Any) -> None:
+        if self.OBSERVED_ENGINE_SOURCE == "none" or self.engine_observation_gap() is not None:
+            return
+        try:
+            with outside_query_timer():
+                observed = self.observe_execution_engine(lazy)
+        except ObservationNotRecognizedError as exc:
+            logger.debug("Engine observation not recognized: %s", exc)
+            observed = None
+            self._unrecognized_observations = getattr(self, "_unrecognized_observations", 0) + 1
+        except Exception as exc:
+            logger.debug("Engine observation failed: %s", exc)
+            observed = None
+        observations = getattr(self, "_engine_observations", None)
+        if observations is None:
+            observations = self._engine_observations = []
+        observations.append(observed)
+        if observed:
+            result["execution_engine"] = observed
+
+    def _finalize_engine_observation(self, platform_info: Any) -> None:
+        recorded = platform_info.config.get("execution_engine")
+        if self.OBSERVED_ENGINE_SOURCE == "none" or not isinstance(recorded, dict):
+            return
+        summary = summarize_observed_engines(
+            ExecutionEngineReceipt(**recorded),
+            getattr(self, "_engine_observations", []),
+            self.OBSERVED_ENGINE_SOURCE,
+            unavailable=self.engine_observation_gap(),
+        )
+        reason = summary.observed_reason
+        unrecognized = getattr(self, "_unrecognized_observations", 0)
+        if unrecognized and self.engine_observation_gap() is None:
+            reason = (
+                f"physical plan format not recognized for {unrecognized} of "
+                f"{len(getattr(self, '_engine_observations', []))} queries"
+            )
+        recorded.update(
+            observed=summary.observed,
+            observed_source=summary.observed_source,
+            observed_reason=reason,
+        )
+
     @abstractmethod
     def create_context(self) -> Any:
         pass
@@ -374,6 +422,8 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
         logger.info(f"Platform: {platform_name}, Scale Factor: {scale_factor}")
 
         platform_info = build_platform_info(self, execution_mode="dataframe")
+        self._engine_observations = []
+        self._unrecognized_observations = 0
 
         builder = ResultBuilder(
             benchmark=BenchmarkInfoInput(
@@ -489,6 +539,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
                     self._attach_applied_tuning_ledger(builder)
                     self._stamp_host_load(builder, host_load_start)
                     builder.mark_completed()
+                    self._finalize_engine_observation(platform_info)
                     return builder.build()
             elif phases.load and skip_data_loading:
                 logger.info("Skipping DataFrame table loading for benchmark-managed workload")
@@ -545,6 +596,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             self._attach_applied_tuning_ledger(builder)
             self._stamp_host_load(builder, host_load_start)
             builder.mark_completed()
+            self._finalize_engine_observation(platform_info)
             return builder.build()
 
         except (PlanCaptureError, RunTimeoutError):
@@ -559,6 +611,7 @@ class BenchmarkExecutionMixin(ExecutionEngineHook):
             self._attach_applied_tuning_ledger(builder)
             self._stamp_host_load(builder, host_load_start)
             builder.mark_completed()
+            self._finalize_engine_observation(platform_info)
             return builder.build()
 
     @staticmethod

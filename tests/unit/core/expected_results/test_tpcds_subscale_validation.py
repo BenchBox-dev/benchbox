@@ -8,6 +8,7 @@ from benchbox.core.expected_results.tpcds_results import (
     TPCDS_SUBSCALE_ROW_COUNTS,
     get_tpcds_expected_results,
     tpcds_subscale_expected_row_counts,
+    tpcds_subscale_reference_seed,
 )
 from benchbox.core.validation.query_validation import (
     QueryValidator,
@@ -156,6 +157,27 @@ def test_tpcds_subscale_sql_non_reference_seed_skips_validation(validator) -> No
     assert result.is_valid
     assert result.validation_mode == ValidationMode.SKIP
     assert result.expected_row_count is None
+
+
+def test_tpcds_power_stream_at_answer_file_scale_is_never_compared_with_answer_files(validator) -> None:
+    set_reference_seed_context(tpcds_subscale_reference_seed(None, 0, 1.0))
+
+    result = validator.validate_query_result(
+        benchmark_type="tpcds",
+        query_id="3",
+        actual_row_count=1,
+        scale_factor=1.0,
+    )
+
+    assert result.is_valid
+    assert result.validation_mode == ValidationMode.SKIP
+    assert result.expected_row_count is None
+
+
+def test_tpcds_power_stream_zero_binds_the_subscale_reference_parameters() -> None:
+    assert tpcds_subscale_reference_seed(None, 0, 0.01)
+    assert not tpcds_subscale_reference_seed(None, 1, 0.01)
+    assert not tpcds_subscale_reference_seed(None, 0, 1.0)
 
 
 def test_tpcds_subscale_variant_normalization(validator) -> None:
@@ -315,7 +337,7 @@ def test_tpcds_dataframe_sensitive_query_checked_at_reference_seed() -> None:
     }
 
 
-def test_tpcds_dataframe_query_without_agreed_count_is_uncertain() -> None:
+def test_tpcds_dataframe_query_without_agreed_count_stays_uncertain_at_a_reference_scale() -> None:
     measurement = _measurement(query_id="21", rows=6)
 
     summary = validate_dataframe_query_results(
@@ -330,7 +352,7 @@ def test_tpcds_dataframe_query_without_agreed_count_is_uncertain() -> None:
     assert measurement["row_count_validation"]["status"] == "UNVALIDATED"
 
 
-def test_tpcds_dataframe_unrecorded_scale_remains_uncertain() -> None:
+def test_tpcds_dataframe_unrecorded_scale_has_no_reference() -> None:
     measurement = _measurement(query_id="1", rows=1)
 
     summary = validate_dataframe_query_results(
@@ -339,7 +361,7 @@ def test_tpcds_dataframe_unrecorded_scale_remains_uncertain() -> None:
         scale_factor=0.5,
     )
 
-    assert summary.status == "UNCERTAIN"
+    assert summary.status == "NO_REFERENCE"
     assert summary.details["checked"] == 0
     assert measurement["row_count_validation"]["status"] == "UNVALIDATED"
 

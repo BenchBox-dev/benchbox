@@ -9,6 +9,11 @@ mirror landed, and `.github/workflows/sync-results-data-to-published.yml` keeps
 the mirrored corpus and validation runtime synced from `develop`. Historical
 paragraphs in Context below describe the branch as it stood on 2026-05-03.
 
+Amended 2026-11-22: the vendored runtime gains the stdlib-only corpus-rule
+module, its data file, the score module and the comparison-identity module
+and file (see "Corpus rule file set"). The rule itself is
+recorded in [adr-corpus-derived-outcome-rule.md](adr-corpus-derived-outcome-rule.md).
+
 ## Date
 
 2026-05-03
@@ -184,6 +189,20 @@ mirrored runtime file changes, the sync workflow opens a mirror PR against
 `published-results` carrying the change and squash-merges it once validation
 and freshness checks pass.
 
+The corpus-rule module, its data file and the stdlib-only score function
+(`benchbox/core/results/corpus_score.py`, which recomputes Power@Size and
+throughput from a result's timings) are covered by that workflow:
+`benchbox/core/results/corpus_rule.py`,
+`benchbox/core/results/corpus_rule_data.json` and
+`benchbox/core/results/corpus_score.py` are in the workflow's push
+trigger paths, its drift comparison paths, its copy list and its `git add`
+list.
+
+The comparison-identity module and its table, `benchbox/core/results/comparison_identity.py`
+and `benchbox/core/results/comparison_identity.json`, travel the same way. The
+module is stdlib-only, so `validate_corpus.py` and `generate_corpus_inventory.py`
+resolve the same comparison version on `develop` and on `published-results`.
+
 This means `published-results` will normally be at most one mirror PR
 behind `develop` on the vendored runtime. If a `develop` PR modifies one
 of these files and the mirror PR is still open or failing validation,
@@ -197,6 +216,42 @@ remains authoritative for these vendored implementation files —
 `published-results` copies are treated as read-only mirrors, and any
 develop-side validator or generator bug fix is the canonical fix. This does
 not make `develop` authoritative for published-only archive bundles.
+
+### Corpus rule file set
+
+The corpus-rule module and its data file are vendored together, as one unit,
+under the sync workflow. The ordering below is the delivery order the
+corpus rule requires so the slim branch never runs a mismatched rule; it is
+not an owner decision. Mirror-ordering rule:
+
+- The module and its data file always travel in the same mirror pull request;
+  neither is mirrored without the other, so the branch never holds a module
+  and a data file from different `develop` revisions.
+- A mirrored file that imports the module (a validator, the inventory
+  generator or the parity entry point) never reaches `published-results`
+  before the module and data file it needs. When one `develop` change
+  touches both, they go in the same mirror pull request; when they land
+  separately, the rule file set is mirrored first.
+- The module is stdlib-only and reads its data file without an installed
+  BenchBox, so the slim checkout can run it.
+- `develop` remains authoritative; the copies on `published-results` are
+  read-only mirrors, like the six runtime files.
+- The slim validator calls the rule and the score function for every
+  outcome and has no fallback to the stamp a writer recorded or to a value
+  the scale registry owns. The data file carries the standard scales, the
+  stream minima and the minimum throughput stream count;
+  `scripts/generate_corpus_rule_data.py --check` fails CI on `develop` when
+  the registry or `tpc_spec.py` and the data file differ.
+- `scripts/check_mirror_validator_parity.py` is a required check on
+  `develop`. It builds a checkout holding only the mirrored files, runs the
+  validator there with `python -I -S` (standard library only), runs the
+  `develop` validator over the same stored bundles, and fails when any
+  bundle differs in admission, lane, class, label, score or submission
+  findings.
+- Every mirrored runtime file, and the workflow file itself, is on the
+  "reject validator changes" list of `validate-submission.yml`;
+  `tests/unit/scripts/test_check_mirror_validator_parity.py` fails when the
+  list and the sync workflow's file list differ.
 
 ### The workflow file itself is NOT auto-mirrored — this is permanent, not a gap to close
 

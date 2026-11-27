@@ -9,7 +9,9 @@ from types import SimpleNamespace
 import pytest
 from click.testing import CliRunner
 
+from benchbox.core.results.models import QueryExecution
 from benchbox.validation.bundle import format_summary, validate_bundles, validation_failed
+from tests.fixtures.result_dict_fixtures import make_power_only_phases
 
 pytestmark = [
     pytest.mark.integration,
@@ -23,28 +25,43 @@ def _run_validator(paths: list[Path]) -> tuple[int, str]:
 
 
 def _fake_result() -> SimpleNamespace:
+    query = QueryExecution(query_id="1", execution_time_ms=10.0, status="SUCCESS", run_type="measurement")
     return SimpleNamespace(
         benchmark_name="tpch",
         platform="duckdb",
-        scale_factor=0.01,
+        scale_factor=1.0,
         total_queries=22,
         duration_seconds=12.34,
+        execution_phases=make_power_only_phases(query_executions=[query]),
+        query_results=[query],
+        execution_metadata={},
     )
 
 
 def _minimal_schema_v2_bundle() -> dict:
     return {
-        "version": "2.0",
+        "version": "2.2",
         "run": {
             "id": "test-run-id",
             "timestamp": "2026-04-29T00:00:00Z",
             "total_duration_ms": 12340,
         },
-        "benchmark": {"id": "tpch", "scale_factor": 0.01},
+        "benchmark": {"id": "tpch", "scale_factor": 1.0},
         "platform": {"name": "duckdb"},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
-        "phases": {"validation": {"status": "PASSED"}},
-        "queries": [{"id": f"Q{i}", "ms": 100.0} for i in range(1, 23)],
+        "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
+        "queries": [
+            {
+                "id": f"Q{i}",
+                "ms": 100.0,
+                **(
+                    {"rows": 5, "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5}}
+                    if i == 1
+                    else {}
+                ),
+            }
+            for i in range(1, 23)
+        ],
     }
 
 

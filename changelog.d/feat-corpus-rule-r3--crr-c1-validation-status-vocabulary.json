@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "**Runs with no row-count reference record one validation status.** SQL and DataFrame runs at a scale with no reference now record validation status `no_reference` with one reason, `passed` requires per-query row-count evidence in the file, and the corpus rule labels every result without that evidence \"Row counts not checked\" while keeping it ranked. The public path admits `no_reference` and still refuses a failed validation."
+    },
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "Admit throughput runs without row-count references and stage non-standard combined runs without ranking them."
+    }
+  ]
+}

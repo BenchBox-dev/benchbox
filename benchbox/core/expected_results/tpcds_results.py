@@ -67,9 +67,11 @@ def tpcds_subscale_expected_row_counts(scale_factor: float) -> dict[str, int] | 
     return None
 
 
-def tpcds_subscale_reference_seed(seed: int | None, stream_id: int | None = 0) -> bool:
+def tpcds_subscale_reference_seed(seed: int | None, stream_id: int | None, scale_factor: float) -> bool:
     from benchbox.core.tpcds.power_test import power_parameter_seed
 
+    if tpcds_subscale_expected_row_counts(scale_factor) is None:
+        return False
     return power_parameter_seed(seed, stream_id or 0) == TPCDS_REFERENCE_RNGSEED
 
 

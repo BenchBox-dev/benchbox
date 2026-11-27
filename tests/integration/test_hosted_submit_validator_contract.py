@@ -23,7 +23,7 @@ def _fake_result() -> SimpleNamespace:
     return SimpleNamespace(
         benchmark_name="tpch",
         platform="duckdb",
-        scale_factor=0.01,
+        scale_factor=1.0,
         total_queries=22,
         duration_seconds=12.34,
     )
@@ -31,16 +31,26 @@ def _fake_result() -> SimpleNamespace:
 
 def _minimal_schema_v2_bundle() -> dict:
     return {
-        "version": "2.0",
+        "version": "2.2",
         "run": {
             "id": "test-run-id",
             "timestamp": "2026-05-02T00:00:00Z",
             "total_duration_ms": 12340,
         },
-        "benchmark": {"id": "tpch", "scale_factor": 0.01},
+        "benchmark": {"id": "tpch", "scale_factor": 1.0},
         "platform": {"name": "duckdb"},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
-        "queries": [{"id": f"Q{i}", "ms": 100.0, "status": "SUCCESS"} for i in range(1, 23)],
+        "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
+        "queries": [
+            {
+                "id": f"Q{i}",
+                "ms": 100.0,
+                "status": "SUCCESS",
+                "rows": 5,
+                "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5},
+            }
+            for i in range(1, 23)
+        ],
     }
 
 
@@ -198,8 +208,6 @@ def test_hosted_and_pr_manifest_built_via_dispatch_call_sites(tmp_path: Path, mo
 
     src = tmp_path / "tpch_duckdb.json"
     src.write_text(json.dumps(_minimal_schema_v2_bundle()), encoding="utf-8")
-
-    monkeypatch.setattr(sub, "load_result_file", lambda *_a, **_k: (_fake_result(), {}))
 
     out_dir = tmp_path / "submission"
     pr_result = CliRunner().invoke(sub.submit, [str(src), "--output", str(out_dir)])

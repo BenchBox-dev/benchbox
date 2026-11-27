@@ -264,16 +264,34 @@ def _throughput_file(
 
 
 class TestDeriveFromResultFiles:
-    def test_suppressed_metrics_are_refused(self) -> None:
+    def test_qphh_checks_stream_minimum_at_the_selected_scale(self) -> None:
+        power = _power_file({1: 1.0})
+        throughput = _throughput_file(streams=2)
+        power["benchmark"]["scale_factor"] = 10
+        throughput["benchmark"]["scale_factor"] = 10
+        result = TPCMetricsCalculator.compute_qphh_result(power, throughput, 10)
+        assert "qphh_at_size" not in result
+        assert result["qphh_unavailable"]
+
+    def test_recorded_scores_do_not_override_timing_scores(self) -> None:
+        plain = TPCMetricsCalculator.compute_qphh_result(_power_file({1: 1.0}), _throughput_file(), 1.0)
+        recorded = TPCMetricsCalculator.compute_qphh_result(
+            _power_file({1: 1.0}, tpc_metrics={"power_at_size": 1}),
+            _throughput_file(tpc_metrics={"throughput_at_size": 2}),
+            1.0,
+        )
+        assert recorded == plain
+
+    def test_a_suppression_marker_is_not_read(self) -> None:
         suppressed = {"suppressed": True, "reason": "compliance_class=unofficial_subscale"}
-        with pytest.raises(ValueError, match="suppressed"):
-            TPCMetricsCalculator.compute_qphh_result(
-                _power_file({1: 1.0}), _throughput_file(tpc_metrics=suppressed), scale_factor=1.0
-            )
-        with pytest.raises(ValueError, match="suppressed"):
-            TPCMetricsCalculator.compute_qphh_result(
-                _power_file({1: 1.0}, tpc_metrics=suppressed), _throughput_file(), scale_factor=1.0
-            )
+        marked = TPCMetricsCalculator.compute_qphh_result(
+            _power_file({1: 1.0}, tpc_metrics=suppressed),
+            _throughput_file(tpc_metrics=suppressed),
+            scale_factor=1.0,
+        )
+        plain = TPCMetricsCalculator.compute_qphh_result(_power_file({1: 1.0}), _throughput_file(), scale_factor=1.0)
+
+        assert marked == plain
 
     @pytest.mark.parametrize("which", ["power", "throughput"])
     def test_failed_queries_are_refused(self, which: str) -> None:
@@ -298,9 +316,34 @@ class TestDeriveFromResultFiles:
 
     def test_tpcds_throughput_scores_99_queries_per_stream(self) -> None:
         throughput = _throughput_file(benchmark_id="tpcds", name="TPC-DS", streams=3)
+        throughput["phases"]["throughput_test_2"] = {
+            "stream_results": [{"stream_id": stream_id, "success": True} for stream_id in range(1, 4)]
+        }
         _, throughput_at_size, _, _ = TPCMetricsCalculator.derive_tpc_metrics(_power_file({1: 1.0}), throughput, 1.0)
 
         assert throughput_at_size == pytest.approx(99 * 3)
+
+    @pytest.mark.parametrize("override", [1000.0, 0.01])
+    def test_scale_override_differing_from_the_recorded_scale_is_refused(self, override: float) -> None:
+        with pytest.raises(ValueError, match="differs from the power results' recorded scale factor"):
+            TPCMetricsCalculator.compute_qphh_result(_power_file({1: 1.0}), _throughput_file(), scale_factor=override)
+        power_unrecorded = _power_file({1: 1.0})
+        power_unrecorded["environment"] = {}
+        with pytest.raises(ValueError, match="differs from the throughput results' recorded scale factor"):
+            TPCMetricsCalculator.compute_qphh_result(power_unrecorded, _throughput_file(), scale_factor=override)
+
+    def test_scale_override_equal_to_the_recorded_scale_matches_no_override(self) -> None:
+        power, throughput = _power_file({1: 1.0}), _throughput_file()
+        assert TPCMetricsCalculator.compute_qphh_result(
+            power, throughput, scale_factor=1.0
+        ) == TPCMetricsCalculator.compute_qphh_result(power, throughput)
+
+    def test_scale_override_fills_in_a_scale_the_files_do_not_record(self) -> None:
+        power, throughput = _power_file({1: 1.0}), _throughput_file()
+        expected = TPCMetricsCalculator.compute_qphh_result(power, throughput)
+        power["environment"] = {}
+        throughput["environment"] = {}
+        assert TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=1.0) == expected
 
     def test_power_uses_only_the_final_iteration(self) -> None:
         result = TPCMetricsCalculator.compute_qphh_result(
@@ -310,16 +353,53 @@ class TestDeriveFromResultFiles:
         assert result["power_at_size"] == pytest.approx(3600.0 / (0.01 * 0.01) ** (1.0 / 24.0))
         assert result["power_test_time"] == pytest.approx(22.02)
 
-    @pytest.mark.parametrize("compliance_class", ["unofficial_subscale", "unofficial_nonstandard"])
-    def test_unofficial_bundles_without_a_suppressed_marker_are_refused(self, compliance_class: str) -> None:
-        legacy = _throughput_file()
-        legacy["benchmark"]["compliance_class"] = compliance_class
-        with pytest.raises(ValueError, match=compliance_class):
-            TPCMetricsCalculator.compute_qphh_result(_power_file({1: 1.0}), legacy, scale_factor=1.0)
-        legacy_power = _power_file({1: 1.0})
-        legacy_power["benchmark"]["compliance_class"] = compliance_class
-        with pytest.raises(ValueError, match=compliance_class):
-            TPCMetricsCalculator.compute_qphh_result(legacy_power, _throughput_file(), scale_factor=1.0)
+    @pytest.mark.parametrize(("scale", "reason"), [(0.01, "below the standard scale"), (2.0, "non-standard scale")])
+    def test_results_at_a_scale_without_official_metrics_are_refused(self, scale: float, reason: str) -> None:
+        power, throughput = _power_file({1: 1.0}), _throughput_file()
+        for data in (power, throughput):
+            data["benchmark"]["scale_factor"] = scale
+        with pytest.raises(ValueError, match=reason):
+            TPCMetricsCalculator.derive_tpc_metrics(power, throughput, scale)
+
+    @pytest.mark.parametrize(("scale", "reason"), [(0.01, "below the standard scale"), (2.0, "non-standard scale")])
+    def test_a_scale_from_the_environment_block_or_the_override_is_refused_like_a_recorded_one(
+        self, scale: float, reason: str
+    ) -> None:
+        power, throughput = _power_file({1: 1.0}), _throughput_file()
+        for data in (power, throughput):
+            data["environment"] = {"scale_factor": scale}
+        with pytest.raises(ValueError, match=reason):
+            TPCMetricsCalculator.compute_qphh_result(power, throughput)
+        assert any(
+            "not official compliance" in item
+            for item in TPCMetricsCalculator.qphh_unavailable_reasons(power, throughput)
+        )
+
+        for data in (power, throughput):
+            data["environment"] = {}
+        with pytest.raises(ValueError, match=reason):
+            TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=scale)
+        assert any(
+            "not official compliance" in item
+            for item in TPCMetricsCalculator.qphh_unavailable_reasons(power, throughput, scale_factor=scale)
+        )
+
+    @pytest.mark.parametrize("stamp", [None, "official", "unofficial_subscale", "unofficial_nonstandard"])
+    def test_the_stamped_class_never_changes_the_availability_or_value(self, stamp: str | None) -> None:
+        expected = TPCMetricsCalculator.compute_qphh_result(
+            _power_file({1: 100.0, 2: 10.0, 3: 1.0}), _throughput_file(), scale_factor=1.0
+        )
+        power = _power_file({1: 100.0, 2: 10.0, 3: 1.0})
+        throughput = _throughput_file()
+        for data in (power, throughput):
+            data["benchmark"].pop("compliance_class", None)
+            if stamp is not None:
+                data["benchmark"]["compliance_class"] = stamp
+
+        assert TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=1.0) == expected
+        assert TPCMetricsCalculator.qphh_unavailable_reasons(
+            power, throughput
+        ) == TPCMetricsCalculator.qphh_unavailable_reasons(_power_file({1: 100.0, 2: 10.0, 3: 1.0}), _throughput_file())
 
     def test_official_bundles_are_accepted(self) -> None:
         power = _power_file({1: 1.0})
@@ -332,6 +412,7 @@ class TestDeriveFromResultFiles:
     def test_result_omits_composite_without_refresh_evidence(self) -> None:
         power = _power_file({1: 1.0})
         power["phases"]["power_test"].pop("refresh_functions")
+        power["phases"]["power_test"].pop("refresh_first_set")
         throughput = _throughput_file()
 
         result = TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=1.0)
@@ -351,17 +432,11 @@ class TestDeriveFromResultFiles:
             result["power_at_size"], result["throughput_at_size"]
         )
 
-    def test_pair_without_refresh_fields_or_compliance_class_reports_power_and_throughput(self) -> None:
+    def test_pair_without_executed_stream_evidence_is_refused(self) -> None:
         power = _legacy_power_file()
         throughput = _legacy_throughput_file()
-
-        result = TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=1.0)
-
-        assert result["power_at_size"] == pytest.approx(3600.0)
-        assert result["throughput_at_size"] == pytest.approx(22 * 2)
-        assert "qphh_at_size" not in result
-        assert result["qphh_unavailable"]
-        assert result["refresh_included"] is False
+        with pytest.raises(ValueError, match="Could not derive"):
+            TPCMetricsCalculator.compute_qphh_result(power, throughput, scale_factor=1.0)
 
 
 def _legacy_power_file() -> dict:
@@ -392,7 +467,10 @@ def test_scale_factor_is_detected_from_the_benchmark_block() -> None:
 
 def test_stream_count_comes_from_the_throughput_phase_not_distinct_row_streams() -> None:
     throughput = _throughput_file(streams=4)
-    throughput["phases"]["throughput_test"]["stream_results"] = [{"stream_id": 0}, {"stream_id": 1}]
+    throughput["phases"]["throughput_test"]["stream_results"] = [
+        {"stream_id": 0, "success": True},
+        {"stream_id": 1, "success": True},
+    ]
     throughput["phases"]["throughput_test"]["refresh_stream"] = _refresh_stream_evidence(2, 2)
 
     result = TPCMetricsCalculator.compute_qphh_result(_power_file({1: 1.0}), throughput, scale_factor=1.0)

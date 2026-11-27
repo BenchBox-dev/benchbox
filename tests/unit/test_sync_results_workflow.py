@@ -260,6 +260,26 @@ def test_build_mirror_carries_shared_schema_policy() -> None:
     assert "'benchbox/core/results/schema_policy.py'" in build
 
 
+def test_corpus_rule_module_data_file_and_score_function_travel_in_every_mirror_list() -> None:
+    pair = {
+        "benchbox/core/results/corpus_rule.py",
+        "benchbox/core/results/corpus_rule_data.json",
+        "benchbox/core/results/corpus_score.py",
+    }
+    triggers, compare_paths, copy_paths = _mirrored_runtime_paths()
+
+    for paths in (triggers, compare_paths, copy_paths, _git_add_targets()):
+        assert pair <= set(paths)
+
+
+def test_comparison_identity_module_and_table_travel_in_every_mirror_list() -> None:
+    pair = {"benchbox/core/results/comparison_identity.py", "benchbox/core/results/comparison_identity.json"}
+    triggers, compare_paths, copy_paths = _mirrored_runtime_paths()
+
+    for paths in (triggers, compare_paths, copy_paths, _git_add_targets()):
+        assert pair <= set(paths)
+
+
 def _mirrored_runtime_paths() -> tuple[list[str], list[str], list[str]]:
     text = WORKFLOW_PATH.read_text(encoding="utf-8")
     workflow = yaml.safe_load(text)
@@ -282,11 +302,11 @@ def test_parity_runtime_triggers_is_compared_and_is_copied() -> None:
 
 def test_standard_scale_projection_triggers_is_compared_and_is_copied_and_staged() -> None:
     for paths in _mirrored_runtime_paths():
-        assert "benchbox/core/results/standard_scales.json" in paths
+        assert "benchbox/core/results/corpus_rule_data.json" in paths
     stage = next(
         line for line in _build_step_run().splitlines() if line.strip().startswith("git add results-data scripts")
     )
-    assert "benchbox/core/results/standard_scales.json" in stage
+    assert "benchbox/core/results/corpus_rule_data.json" in stage
 
 
 def test_runtime_drift_copies_exact_source_and_preserves_published_only_archive(tmp_path: Path) -> None:
@@ -369,14 +389,14 @@ def test_validator_fails_closed_when_the_identity_module_is_not_mirrored(
         "platform": {"name": "DuckDB"},
         "run": {"timestamp": "2026-08-01T12:00:00"},
         "export": {"anonymized": True},
+        "phases": {"power_test": {"status": "COMPLETED"}},
         "summary": {
-            "queries": {"total": 2, "passed": 2, "failed": 0},
+            "queries": {"total": 22, "passed": 22, "failed": 0},
             "validation": "passed",
-            "tpc_metrics": {"power_at_size": 1.0},
         },
         "queries": [
-            {"id": "Q1", "ms": 10.0, "run_type": "measurement", "status": "SUCCESS"},
-            {"id": "Q2", "ms": 12.0, "run_type": "measurement", "status": "SUCCESS"},
+            {"id": str(number), "ms": 10.0 + number, "iter": 1, "run_type": "measurement", "status": "SUCCESS"}
+            for number in range(1, 23)
         ],
     }
     (tmp_path / "rankable.json").write_text(json.dumps(bundle), encoding="utf-8")

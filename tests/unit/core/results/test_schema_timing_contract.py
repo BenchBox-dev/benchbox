@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from benchbox.core.results import corpus_rule
 from benchbox.core.results.loader import reconstruct_benchmark_results
 from benchbox.core.results.metrics import percentile_ms
 from benchbox.core.results.models import (
@@ -144,6 +145,8 @@ def test_build_result_payload_accepts_consistent_duration_aliases() -> None:
         "errors": ["Stream 5 failed: worker died"],
     }
     assert "throughput_at_size" not in payload["summary"].get("tpc_metrics", {})
+    assert corpus_rule.executed_stream_count(payload) == 0
+    assert corpus_rule.facts_from_result(payload).streams == 0
 
 
 def test_refresh_evidence_is_serialized_as_phase_data_not_query_rows() -> None:
@@ -301,7 +304,7 @@ def _combined_rows(throughput_streams: int) -> list[dict[str, Any]]:
             "test_type": "power",
         }
         for iteration in (1, 2)
-        for query in (1, 2)
+        for query in range(1, 23)
     ]
     throughput = [
         {
@@ -315,7 +318,7 @@ def _combined_rows(throughput_streams: int) -> list[dict[str, Any]]:
             "test_type": "throughput",
         }
         for stream in range(1, throughput_streams + 1)
-        for query in (1, 2)
+        for query in range(1, 23)
     ]
     return power + throughput
 
@@ -342,11 +345,28 @@ def test_combined_run_qphh_reports_the_throughput_stream_count() -> None:
     from benchbox.core.results.metrics import TPCMetricsCalculator
 
     payload = build_result_payload(_result_with_queries(_combined_rows(4)))
-    power_data = {"benchmark": {"scale_factor": 1.0}, "summary": {"tpc_metrics": {"power_at_size": 10.0}}}
+    assert payload["run"]["streams"] == 4
+    power_data = {
+        "benchmark": {"id": "tpch", "scale_factor": 1.0},
+        "queries": [
+            {"id": str(query), "status": "SUCCESS", "run_type": "measurement", "iter": 1, "ms": 500}
+            for query in range(1, 23)
+        ],
+        "phases": {"power_test": {"status": "COMPLETED", "query_count": 22}},
+    }
     throughput_data = {
-        "benchmark": {"scale_factor": 1.0},
-        "run": payload["run"],
-        "summary": {"tpc_metrics": {"throughput_at_size": 5.0}},
+        "benchmark": {"id": "tpch", "scale_factor": 1.0},
+        "run": {**payload["run"], "streams": 9},
+        "phases": {
+            "throughput_test": {
+                "status": "COMPLETED",
+                "duration_ms": 22000,
+                "stream_results": [
+                    {"stream_id": stream, "success": True, "duration_ms": 22000, "query_count": 22}
+                    for stream in range(1, 5)
+                ],
+            }
+        },
     }
 
     result = TPCMetricsCalculator.compute_qphh_result(power_data, throughput_data, scale_factor=1.0)

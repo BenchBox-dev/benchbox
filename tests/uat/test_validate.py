@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from benchbox.core.results.submit_classification import SubmitTerminalState, classify_result_path
 from tests.uat.phases import validate
 
 pytestmark = pytest.mark.medium
@@ -15,12 +16,13 @@ def _minimal_bundle(
     platform: str = "duckdb",
     benchmark: str = "tpch",
     compliance_class: str | None = None,
+    scale_factor: float = 1.0,
 ) -> dict:
-    benchmark_payload = {"id": benchmark, "scale_factor": 0.01}
+    benchmark_payload = {"id": benchmark, "scale_factor": scale_factor}
     if compliance_class is not None:
         benchmark_payload["compliance_class"] = compliance_class
     return {
-        "version": "2.0",
+        "version": "2.2",
         "run": {
             "id": "uat-validate-test",
             "timestamp": "2026-05-21T00:00:00Z",
@@ -29,8 +31,19 @@ def _minimal_bundle(
         "benchmark": benchmark_payload,
         "platform": {"name": platform},
         "summary": {"validation": "passed", "queries": {"total": 22, "passed": 22, "failed": 0}},
-        "phases": {"validation": {"status": "PASSED"}},
-        "queries": [{"id": f"Q{i}", "ms": 1.0} for i in range(1, 23)],
+        "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
+        "queries": [
+            {
+                "id": f"Q{i}",
+                "ms": 1.0,
+                **(
+                    {"rows": 5, "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5}}
+                    if i == 1
+                    else {}
+                ),
+            }
+            for i in range(1, 23)
+        ],
     }
 
 
@@ -46,6 +59,46 @@ def _write_tsv(path: Path, statuses: list[str]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def _without_phases(data: dict) -> None:
+    del data["phases"]
+
+
+def _null_phases(data: dict) -> None:
+    data["phases"] = None
+
+
+def _untimed(data: dict) -> None:
+    data["phases"] = {"validation": {"status": "PASSED"}}
+    data["queries"] = []
+
+
+@pytest.mark.parametrize(
+    ("mutate", "reason"),
+    [(_without_phases, "undetermined"), (_null_phases, "undetermined"), (_untimed, "no_timed_phase")],
+)
+def test_run_validate_counts_bundles_the_cli_treats_as_schema_violations_as_errors(
+    tmp_path: Path, mutate, reason: str
+) -> None:
+    data = _minimal_bundle()
+    data["version"] = "2.4"
+    mutate(data)
+    path = _write_bundle(tmp_path / "result.json", data)
+    clean = _write_bundle(tmp_path / "clean.json", _minimal_bundle())
+
+    result = validate.run_validate([path, clean], output_tsv=tmp_path / "rollup.tsv", floor=0.80)
+
+    assert classify_result_path(path) is SubmitTerminalState.schema_violation
+    assert result.refused_count == 0
+    assert result.error_count == 1
+    assert result.clean_rate == 0.5
+    assert result.exit_code() == 1
+    row = next(
+        line for line in result.rollup_tsv_path.read_text(encoding="utf-8").splitlines() if "result.json" in line
+    )
+    assert row.split("\t")[4] == "error"
+    assert row.split("\t")[7] == f"compliance_class={reason}"
+
+
 def test_run_validate_writes_rollup_and_computes_counts_without_subprocess(tmp_path: Path):
     results_dir = tmp_path / "results"
     results_dir.mkdir()
@@ -54,7 +107,7 @@ def test_run_validate_writes_rollup_and_computes_counts_without_subprocess(tmp_p
     _write_bundle(results_dir / "error.json", {"version": "2.0"})
     _write_bundle(
         results_dir / "refused.json",
-        _minimal_bundle(benchmark="tpcds", compliance_class="unofficial_subscale"),
+        _minimal_bundle(benchmark="tpcds", scale_factor=0.01),
     )
 
     out = validate.run_validate(results_dir, output_tsv=tmp_path / "rollup.tsv", floor=0.80)
@@ -72,7 +125,7 @@ def test_run_validate_writes_rollup_and_computes_counts_without_subprocess(tmp_p
     assert "clean.json\tclean\t0\t0" in text
     assert "warning.json\twarning_only\t0\t1" in text
     warning_row = next(
-        line for line in text.splitlines() if line.startswith("MysteryDB\ttpch\t0.01\t") and "warning.json" in line
+        line for line in text.splitlines() if line.startswith("MysteryDB\ttpch\t1.0\t") and "warning.json" in line
     )
     assert warning_row.split("\t")[7] != ""
     assert "error.json\terror\t" in text
@@ -99,7 +152,7 @@ def test_run_validate_excludes_refused_from_denominator(tmp_path: Path):
     clean = _write_bundle(tmp_path / "clean.json", _minimal_bundle())
     refused = _write_bundle(
         tmp_path / "refused.json",
-        _minimal_bundle(benchmark="tpcds", compliance_class="unofficial_nonstandard"),
+        _minimal_bundle(benchmark="tpcds", scale_factor=0.01),
     )
 
     out = validate.run_validate([clean, refused], output_tsv=tmp_path / "rollup.tsv", floor=0.80)

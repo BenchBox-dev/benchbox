@@ -181,6 +181,7 @@
     "docs/internal/adr/TEMPLATE-results-data-extraction.md": "core-only",
     "docs/internal/adr/adr-benchbox-datagen.md": "core-only",
     "docs/internal/adr/adr-benchmark-methodology-provisional-policy.md": "core-only",
+    "docs/internal/adr/adr-corpus-derived-outcome-rule.md": "core-only",
     "docs/internal/adr/adr-dev-loop-v2.md": "core-only",
     "docs/internal/adr/adr-duckdb-datasketches-vendoring.md": "core-only",
     "docs/internal/adr/adr-explorer-cli-surface.md": "core-only",

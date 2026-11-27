@@ -15,14 +15,14 @@ pytestmark = [
 ]
 
 _FAKE_BUNDLE = {
-    "version": "2.0",
+    "version": "2.2",
     "export": {"anonymized": True},
     "run": {
         "id": "fake-run-1",
         "timestamp": "2026-04-27T00:00:00Z",
         "total_duration_ms": 100,
     },
-    "benchmark": {"id": "tpch", "scale_factor": 0.01},
+    "benchmark": {"id": "tpch", "scale_factor": 1.0},
     "platform": {"name": "duckdb"},
     "summary": {
         "power_score": 1.0,
@@ -31,7 +31,17 @@ _FAKE_BUNDLE = {
         "queries": {"total": 22, "passed": 22, "failed": 0},
         "validation": "passed",
     },
-    "queries": [{"id": str(i), "ms": 1.0} for i in range(1, 23)],
+    "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
+    "queries": [
+        {
+            "id": str(i),
+            "ms": 1.0,
+            "status": "SUCCESS",
+            "rows": 5,
+            "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5},
+        }
+        for i in range(1, 23)
+    ],
 }
 
 

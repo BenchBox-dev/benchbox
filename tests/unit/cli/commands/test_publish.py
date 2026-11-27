@@ -7,6 +7,9 @@ from types import SimpleNamespace
 import pytest
 from click.testing import CliRunner
 
+from benchbox.core.results.models import QueryExecution
+from tests.fixtures.result_dict_fixtures import make_power_only_phases
+
 pub = importlib.import_module("benchbox.cli.commands.publish")
 
 pytestmark = [
@@ -20,17 +23,29 @@ def _allow_maintainer_label(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("BENCHBOX_ALLOW_MAINTAINER_LABEL", "1")
 
 
-def _fake_result(compliance_class: str | None = None, benchmark_name: str = "tpcds") -> SimpleNamespace:
+def _fake_result(
+    compliance_class: str | None = None, benchmark_name: str = "tpcds", scale_factor: float = 1.0
+) -> SimpleNamespace:
+    query = QueryExecution(query_id="1", execution_time_ms=10.0, status="SUCCESS", run_type="measurement")
     ns = SimpleNamespace(
         benchmark_name=benchmark_name,
         platform="duckdb",
-        scale_factor=0.1,
+        scale_factor=scale_factor,
         total_queries=99,
         duration_seconds=30.0,
+        execution_phases=make_power_only_phases(query_executions=[query]),
+        query_results=[query],
+        execution_metadata={},
     )
     if compliance_class is not None:
         ns.compliance_class = compliance_class
     return ns
+
+
+def _gateway_routed_result() -> SimpleNamespace:
+    result = _fake_result()
+    result.platform_info = {"gateway": {"name": "proxy", "routed": True}}
+    return result
 
 
 def _partial_query_failure_result() -> SimpleNamespace:
@@ -49,7 +64,7 @@ def test_publish_run_refuses_unofficial_subscale_without_label(monkeypatch: pyte
     monkeypatch.setattr(
         pub,
         "load_result_file",
-        lambda *_a, **_k: (_fake_result("unofficial_subscale"), {}),
+        lambda *_a, **_k: (_fake_result(scale_factor=0.1), {}),
     )
 
     result = CliRunner().invoke(pub.publish_run, [str(src)])
@@ -67,7 +82,7 @@ def test_publish_run_refusal_names_class_once_and_not_tpcds_for_tpch(
     monkeypatch.setattr(
         pub,
         "load_result_file",
-        lambda *_a, **_k: (_fake_result("unofficial_subscale", benchmark_name="tpch"), {}),
+        lambda *_a, **_k: (_fake_result(benchmark_name="tpch", scale_factor=0.1), {}),
     )
 
     result = CliRunner().invoke(pub.publish_run, [str(src)])
@@ -86,7 +101,7 @@ def test_publish_run_refusal_points_tpcds_results_at_the_contract(
 ) -> None:
     src = tmp_path / "tpcds_subscale.json"
     src.write_text('{"schema_version": "2.0", "export": {"anonymized": true}}', encoding="utf-8")
-    monkeypatch.setattr(pub, "load_result_file", lambda *_a, **_k: (_fake_result("unofficial_subscale"), {}))
+    monkeypatch.setattr(pub, "load_result_file", lambda *_a, **_k: (_fake_result(scale_factor=0.1), {}))
 
     result = CliRunner().invoke(pub.publish_run, [str(src)])
 
@@ -104,7 +119,7 @@ def test_publish_run_refuses_unofficial_nonstandard_without_label(
     monkeypatch.setattr(
         pub,
         "load_result_file",
-        lambda *_a, **_k: (_fake_result("unofficial_nonstandard"), {}),
+        lambda *_a, **_k: (_gateway_routed_result(), {}),
     )
 
     result = CliRunner().invoke(pub.publish_run, [str(src)])
@@ -120,7 +135,7 @@ def test_publish_run_allows_unofficial_with_correct_label(monkeypatch: pytest.Mo
     monkeypatch.setattr(
         pub,
         "load_result_file",
-        lambda *_a, **_k: (_fake_result("unofficial_subscale"), {}),
+        lambda *_a, **_k: (_fake_result(scale_factor=0.1), {}),
     )
 
     monkeypatch.setattr(
@@ -147,7 +162,7 @@ def test_publish_run_label_check_is_case_insensitive(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(
         pub,
         "load_result_file",
-        lambda *_a, **_k: (_fake_result("unofficial_subscale"), {}),
+        lambda *_a, **_k: (_fake_result(scale_factor=0.1), {}),
     )
     monkeypatch.setattr(
         pub,
@@ -191,7 +206,7 @@ def test_publish_bundle_refuses_unofficial_without_label(monkeypatch: pytest.Mon
     monkeypatch.setattr(
         pub,
         "load_result_file",
-        lambda *_a, **_k: (_fake_result("unofficial_subscale"), {}),
+        lambda *_a, **_k: (_fake_result(scale_factor=0.1), {}),
     )
 
     result = pub.publish_bundle(src, label="maintainer-run")
@@ -223,7 +238,7 @@ def test_publish_bundle_allows_unofficial_with_correct_label(monkeypatch: pytest
     monkeypatch.setattr(
         pub,
         "load_result_file",
-        lambda *_a, **_k: (_fake_result("unofficial_subscale"), {}),
+        lambda *_a, **_k: (_fake_result(scale_factor=0.1), {}),
     )
     monkeypatch.setattr(
         pub,

@@ -46,6 +46,7 @@ from benchbox.core.cost.pricing import (
     resolve_snowflake_credit_price,
     resolve_snowflake_warehouse_credits_per_hour,
 )
+from benchbox.core.results import corpus_score
 from benchbox.core.results.anonymization import AnonymizationManager, find_public_path_leaks
 from benchbox.core.results.canonical_json import canonical_json_bytes
 from benchbox.core.results.execution_variant import (
@@ -57,12 +58,7 @@ from benchbox.core.results.hardware_class import CLASS_MANAGED, classify_hardwar
 from benchbox.core.results.release_history import resolve_benchbox_version
 from benchbox.core.results.schema_policy import EXPLORER_INPUT_SCHEMA_POLICY, result_schema_version_value
 from benchbox.core.results.status import bundle_failed_query_count, bundle_non_clean_reason, normalize_validation_status
-from benchbox.core.results.subscale_policy import (
-    POWER_SCORE_RECORDED,
-    SUBSCALE_COMPLIANCE_CLASS,
-    effective_compliance_class,
-    subscale_power_at_size,
-)
+from benchbox.core.results.subscale_policy import effective_compliance_class
 from benchbox.core.tuning.modes import is_canonical_mode
 from benchbox.validation.bundle import (
     APPLIED_COMPANION_MAX_BYTES,
@@ -436,23 +432,9 @@ def _driver_version(bundle: BundleDocument) -> str | None:
     return None
 
 
-def _tpc_metric(value: Any) -> float | None:
-    if value is None:
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _power_score(bundle: BundleDocument, bundle_data: Mapping[str, Any]) -> tuple[float | None, str | None]:
-    recorded = _tpc_metric(bundle.summary.tpc_metrics.power_at_size)
-    if _compliance_class(bundle) != SUBSCALE_COMPLIANCE_CLASS:
-        return recorded, POWER_SCORE_RECORDED if recorded is not None else None
-    queries = bundle_data.get("queries")
-    return subscale_power_at_size(
-        bundle.benchmark.id, recorded, queries if isinstance(queries, list) else [], bundle.benchmark.scale_factor
-    )
+def _power_score(bundle_data: Mapping[str, Any]) -> tuple[float | None, str | None]:
+    power = corpus_score.power_at_size(bundle_data)
+    return power, corpus_score.SCORE_DERIVED_FROM_TIMINGS if power is not None else None
 
 
 def _configured_stream_count(bundle: BundleDocument) -> int | None:
@@ -519,7 +501,7 @@ def _throughput_phase_clean(bundle: BundleDocument, bundle_data: Mapping[str, An
 def _throughput_at_size(bundle: BundleDocument, bundle_data: Mapping[str, Any]) -> float | None:
     if not _throughput_phase_clean(bundle, bundle_data):
         return None
-    return _tpc_metric(bundle.summary.tpc_metrics.throughput_at_size)
+    return corpus_score.throughput_at_size(bundle_data)
 
 
 _COMBINED_QPH_BY_BENCHMARK = {"tpch": "qphh_at_size", "tpcds": "qphds_at_size"}
@@ -542,10 +524,7 @@ def _qph_columns(bundle_data: Mapping[str, Any], test_type: str | None, benchmar
     metric = _COMBINED_QPH_BY_BENCHMARK.get(canonical_benchmark_slug(benchmark))
     if metric is None or canonical_phase(test_type) != COMBINED_PHASE or _combined_defects(bundle_data, test_type):
         return columns
-    raw = _raw_tpc_metrics(bundle_data)
-    if metric == "qphh_at_size" and raw.get("refresh_included") is not True:
-        return columns
-    columns[metric] = _tpc_metric(raw.get(metric))
+    columns[metric] = corpus_score.combined_score(bundle_data)
     return columns
 
 
@@ -1869,7 +1848,7 @@ class BundleTransformer:
         execution_mode = _execution_mode(bundle)
         translator = _translator_columns(bundle_data, bundle_path, execution_mode)
         hardware = _hardware_columns(bundle_data, bundle_path)
-        power_score, power_score_source = _power_score(bundle, bundle_data)
+        power_score, power_score_source = _power_score(bundle_data)
         entry = ManifestEntry(
             result_id=rid,
             benchmark=benchmark,
@@ -1980,7 +1959,7 @@ class BundleTransformer:
         test_type = _test_type(bundle)
         variant = _variant_info(bundle, bundle_data, bundle_path)
         resolve_translator_version(bundle_data, bundle_path)
-        power_score, power_score_source = _power_score(bundle, bundle_data)
+        power_score, power_score_source = _power_score(bundle_data)
         detail = DetailResult(
             result_id=result_id,
             benchmark=benchmark,

@@ -832,11 +832,25 @@ class BundleContainerBlock(_BundleBlock):
     pass
 
 
+class BundleExecutionEngineBlock(_BundleBlock):
+    requested: str | None = None
+    applied: str | None = None
+    observed: str | None = None
+    observed_source: str | None = None
+    observed_reason: str | None = None
+
+    @field_validator("requested", "applied", "observed", "observed_source", "observed_reason", mode="before")
+    @classmethod
+    def _coerce_text(cls, value: Any) -> Any:
+        return value if isinstance(value, str) and value else None
+
+
 class BundlePlatformBlock(_BundleBlock):
     name: str = "unknown"
     version: Any = None
     client_version: Any = None
     config: BundlePlatformConfig = Field(default_factory=BundlePlatformConfig)
+    execution_engine: BundleExecutionEngineBlock = Field(default_factory=BundleExecutionEngineBlock)
     tuning: BundleTuningBlock = Field(default_factory=BundleTuningBlock)
     deployment: BundleDeploymentBlock = Field(default_factory=BundleDeploymentBlock)
     cloud: BundleCloudBlock = Field(default_factory=BundleCloudBlock)

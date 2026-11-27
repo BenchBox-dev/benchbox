@@ -31,11 +31,11 @@ class TestClassifyTpchRun:
             result = classify_tpch_run(sf, official=True)
             assert result is TpchComplianceClass.OFFICIAL, f"SF={sf} should be OFFICIAL"
 
-    def test_sf1_without_official_flag_is_nonstandard(self):
-        assert classify_tpch_run(1.0, official=False) is TpchComplianceClass.UNOFFICIAL_NONSTANDARD
+    def test_sf1_without_official_flag_has_no_class(self):
+        assert classify_tpch_run(1.0, official=False) is None
 
-    def test_sf30_without_official_flag_is_nonstandard(self):
-        assert classify_tpch_run(30.0, official=False) is TpchComplianceClass.UNOFFICIAL_NONSTANDARD
+    def test_sf30_without_official_flag_has_no_class(self):
+        assert classify_tpch_run(30.0, official=False) is None
 
     def test_non_official_scale_point_with_official_flag_is_nonstandard(self):
         assert classify_tpch_run(2.0, official=True) is TpchComplianceClass.UNOFFICIAL_NONSTANDARD
@@ -52,7 +52,7 @@ class TestClassifyTpchRun:
         assert classify_tpch_run(0.1) is TpchComplianceClass.UNOFFICIAL_SUBSCALE
 
     def test_default_official_flag_is_false(self):
-        assert classify_tpch_run(1.0) is TpchComplianceClass.UNOFFICIAL_NONSTANDARD
+        assert classify_tpch_run(1.0) is None
         assert classify_tpch_run(0.5) is TpchComplianceClass.UNOFFICIAL_SUBSCALE
 
 
@@ -60,8 +60,8 @@ class TestValidateTpchScale:
     def test_subscale_returns_subscale_class(self):
         assert validate_tpch_scale(0.5) is TpchComplianceClass.UNOFFICIAL_SUBSCALE
 
-    def test_sf_above_one_returns_nonstandard_class(self):
-        assert validate_tpch_scale(1.0) is TpchComplianceClass.UNOFFICIAL_NONSTANDARD
+    def test_standard_scale_without_official_flag_returns_no_class(self):
+        assert validate_tpch_scale(1.0) is None
 
     def test_zero_scale_raises(self):
         with pytest.raises(ValueError, match="must be positive"):
@@ -104,7 +104,7 @@ class TestOfficialFlagReachesTheClassifier:
         from benchbox.core.tpch.benchmark import TPCHBenchmark
 
         assert TPCHBenchmark(scale_factor=1.0, official=True).compliance_class is TpchComplianceClass.OFFICIAL
-        assert TPCHBenchmark(scale_factor=1.0).compliance_class is TpchComplianceClass.UNOFFICIAL_NONSTANDARD
+        assert TPCHBenchmark(scale_factor=1.0).compliance_class is None
         assert TPCHBenchmark(scale_factor=0.01).compliance_class is TpchComplianceClass.UNOFFICIAL_SUBSCALE
 
     def test_loader_forwards_official_from_the_benchmark_config(self):
@@ -115,7 +115,7 @@ class TestOfficialFlagReachesTheClassifier:
         assert get_benchmark_instance(config, None).compliance_class is TpchComplianceClass.OFFICIAL
 
         default = BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=1.0)
-        assert get_benchmark_instance(default, None).compliance_class is TpchComplianceClass.UNOFFICIAL_NONSTANDARD
+        assert get_benchmark_instance(default, None).compliance_class is None
 
     def test_compliance_mode_kwargs_targets_tpch(self):
         from benchbox.core.benchmark_loader import compliance_mode_kwargs
@@ -128,12 +128,13 @@ class TestOfficialFlagReachesTheClassifier:
         assert compliance_mode_kwargs(ungated) == {}
 
     def test_an_official_run_is_not_refused_by_submit_classification(self):
-        from benchbox.validation.bundle import CLI_REFUSED_COMPLIANCE_CLASSES
+        from benchbox.core.results.corpus_rule import CLASS_SUBSCALE, public_refusal
 
-        official = validate_tpch_scale(1.0, official=True)
-        assert official.value not in CLI_REFUSED_COMPLIANCE_CLASSES
-        assert validate_tpch_scale(1.0).value in CLI_REFUSED_COMPLIANCE_CLASSES
-        assert validate_tpch_scale(0.01).value in CLI_REFUSED_COMPLIANCE_CLASSES
+        assert validate_tpch_scale(1.0, official=True) is TpchComplianceClass.OFFICIAL
+        assert public_refusal("tpch", 1.0) is None
+        assert validate_tpch_scale(1.0) is None
+        assert validate_tpch_scale(0.01) is not None
+        assert public_refusal("tpch", 0.01) == CLASS_SUBSCALE
 
     def test_dataframe_fallback_classifies_tpch_from_config(self):
         from benchbox.core.schemas import BenchmarkConfig
@@ -143,4 +144,4 @@ class TestOfficialFlagReachesTheClassifier:
         assert dataframe_compliance_class(None, official) == "official"
 
         casual = BenchmarkConfig(name="tpch", display_name="TPC-H", scale_factor=1.0)
-        assert dataframe_compliance_class(None, casual) == "unofficial_nonstandard"
+        assert dataframe_compliance_class(None, casual) is None

@@ -13,7 +13,6 @@ from benchbox.validation.bundle import (
     KNOWN_DEFECT_REASONS,
     SUBMISSION_NOTES_MAX_LEN,
     ValidationResult,
-    _validate_bundle,
     _validate_execution_consistency,
     _validate_manifest_hash,
     _validate_manifest_provenance,
@@ -32,6 +31,26 @@ pytestmark = [
 
 
 ATTESTATION = {"cpu_model": "Apple M4", "cpu_identity_provenance": "user_attested", "attested_by": "maintainer"}
+
+
+def _with_first_query_row_count_evidence(data: dict) -> dict:
+    summary = data.get("summary")
+    queries = data.get("queries")
+    if not isinstance(summary, dict) or summary.get("validation") != "passed" or not isinstance(queries, list):
+        return data
+    measurements = [q for q in queries if isinstance(q, dict) and q.get("run_type", "measurement") == "measurement"]
+    if not measurements or any("row_count_validation" in q for q in measurements):
+        return data
+    first = measurements[0]
+    rows = first["rows"] if isinstance(first.get("rows"), int) else 5
+    first["rows"] = rows
+    first["row_count_validation"] = {"status": "PASSED", "expected": rows, "actual": rows}
+    return data
+
+
+def _validate_bundle(data: dict, vr: ValidationResult, **flags) -> None:
+    evidenced = data if flags.get("allow_partial_validation") else _with_first_query_row_count_evidence(data)
+    bundle_module._validate_bundle(evidenced, vr, **flags)
 
 
 class TestManifestProvenance:
@@ -305,9 +324,12 @@ class TestManifestProvenance:
         assert not self._run(fields).ok
 
 
+_PASSED_ROW_COUNT = {"rows": 5, "row_count_validation": {"status": "PASSED", "expected": 5, "actual": 5}}
+
+
 def _minimal_bundle() -> dict:
     return {
-        "version": "2.1",
+        "version": "2.2",
         "run": {
             "id": "abc123",
             "timestamp": "2026-04-01T12:00:00",
@@ -316,7 +338,7 @@ def _minimal_bundle() -> dict:
         "benchmark": {
             "id": "tpch",
             "name": "TPC-H",
-            "scale_factor": 0.01,
+            "scale_factor": 1.0,
         },
         "platform": {
             "name": "DuckDB",
@@ -326,8 +348,16 @@ def _minimal_bundle() -> dict:
             "validation": "passed",
             "queries": {"total": 22, "passed": 22, "failed": 0},
         },
-        "phases": {"validation": {"status": "PASSED"}},
-        "queries": [{"id": f"Q{i}", "ms": 100 + i * 10, "status": "SUCCESS"} for i in range(1, 23)],
+        "phases": {"validation": {"status": "PASSED"}, "power_test": {"status": "COMPLETED"}},
+        "queries": [
+            {
+                "id": f"Q{i}",
+                "ms": 100 + i * 10,
+                "status": "SUCCESS",
+                **(_PASSED_ROW_COUNT if i == 1 else {}),
+            }
+            for i in range(1, 23)
+        ],
     }
 
 
@@ -464,6 +494,7 @@ class TestValidateBundle:
 
     def test_row_count_validation_requires_schema_2_2(self):
         data = _minimal_bundle()
+        data["version"] = "2.1"
         data["queries"][0].update(
             {
                 "rows": 4,
@@ -852,12 +883,12 @@ class TestValidateBundle:
         assert not vr.ok
         assert any("Missing keys in 'platform'" in e for e in vr.errors)
 
-    def test_unknown_benchmark_warns(self):
+    def test_unknown_benchmark_warns_and_is_undetermined(self):
         data = _minimal_bundle()
         data["benchmark"]["id"] = "my-custom-bench"
         vr = ValidationResult("test")
         _validate_bundle(data, vr)
-        assert vr.ok
+        assert vr.errors == ["result admission is undetermined: missing scale_registry_entry"]
         assert any("Unknown benchmark id" in w for w in vr.warnings)
 
     @pytest.mark.parametrize("benchmark_id", ["flightdata", "tsbs_devops"])
@@ -1018,14 +1049,15 @@ class TestValidateBundle:
             "summary.validation='passed' contradicts phases.validation.status='not_run'" in error for error in vr.errors
         )
 
-    def test_validation_claim_allows_absent_optional_phases(self):
+    def test_validation_claim_refuses_absent_phases_in_a_current_result(self):
         data = _minimal_bundle()
+        data["version"] = "2.4"
         del data["phases"]
         vr = ValidationResult("test")
 
         _validate_bundle(data, vr)
 
-        assert vr.ok, vr.errors
+        assert "result admission is undetermined: missing phases" in vr.errors
 
     @pytest.mark.parametrize(
         "phases",
@@ -1679,7 +1711,7 @@ def _timing_bundle(
     *,
     benchmark="tpch",
     platform="Snowflake",
-    scale_factor=0.1,
+    scale_factor=1.0,
     geomean_ms=None,
     rows_loaded=866602,
     validation="passed",
@@ -1688,6 +1720,8 @@ def _timing_bundle(
     for qid, ms in per_query_ms.items():
         for sample in ms if isinstance(ms, list) else [ms]:
             queries.append({"id": qid, "ms": sample, "status": "SUCCESS"})
+    if queries:
+        queries[0].update(_PASSED_ROW_COUNT)
     total = len(queries)
     timing = {"total_ms": sum(q["ms"] for q in queries)}
     if geomean_ms is not None:
@@ -1698,12 +1732,15 @@ def _timing_bundle(
     if rows_loaded is not None:
         summary["data"] = {"rows_loaded": rows_loaded}
     return {
-        "version": "2.1",
+        "version": "2.2",
         "run": {"id": "timing-test", "timestamp": "2026-09-19T00:00:00", "total_duration_ms": 60000},
         "benchmark": {"id": benchmark, "name": benchmark, "scale_factor": scale_factor},
         "platform": {"name": platform, "version": "1.0"},
         "summary": summary,
-        "phases": {"validation": {"status": "PASSED" if validation == "passed" else "PARTIAL"}},
+        "phases": {
+            "validation": {"status": "PASSED" if validation == "passed" else "PARTIAL"},
+            "power_test": {"status": "COMPLETED"},
+        },
         "queries": queries,
     }
 
@@ -1783,7 +1820,9 @@ class TestTimingPlateau:
 class TestSmallScaleFloor:
     def test_slow_floor_on_tiny_data_warns(self):
         vr = ValidationResult("test")
-        _validate_bundle(_timing_bundle(_flat_queries(base=4400.0)), vr)
+        _validate_bundle(
+            _timing_bundle(_flat_queries(base=4400.0), scale_factor=0.1), vr, allow_partial_validation=True
+        )
         assert vr.ok, vr.errors
         assert any("small-scale-floor" in w for w in vr.warnings)
 
@@ -1807,14 +1846,22 @@ class TestSmallScaleFloor:
 
     def test_missing_rows_never_silently_passes(self):
         vr = ValidationResult("test")
-        _validate_bundle(_timing_bundle(_flat_queries(base=4400.0), rows_loaded=None), vr)
+        _validate_bundle(
+            _timing_bundle(_flat_queries(base=4400.0), scale_factor=0.1, rows_loaded=None),
+            vr,
+            allow_partial_validation=True,
+        )
         assert vr.ok, vr.errors
         assert any("small-scale-floor" in w and "unreported" in w for w in vr.warnings)
 
     def test_nonfinite_rows_loaded_is_unreported_not_fatal(self):
         for bad_rows in (float("inf"), float("-inf"), float("nan")):
             vr = ValidationResult("test")
-            _validate_bundle(_timing_bundle(_flat_queries(base=4400.0), rows_loaded=bad_rows), vr)
+            _validate_bundle(
+                _timing_bundle(_flat_queries(base=4400.0), scale_factor=0.1, rows_loaded=bad_rows),
+                vr,
+                allow_partial_validation=True,
+            )
             assert vr.ok, vr.errors
             assert any("small-scale-floor" in w and "unreported" in w for w in vr.warnings)
 
@@ -1855,7 +1902,7 @@ class TestScaleInvariance:
             platform="Snowflake",
             rows_loaded=86_586_082,
         )
-        results = validate_bundles([lo, hi])
+        results = validate_bundles([lo, hi], allow_partial_validation=True)
         assert all(vr.ok for vr in results)
         assert all(any("scale-invariant" in w for w in vr.warnings) for vr in results)
 
@@ -1905,7 +1952,7 @@ class TestScaleInvariance:
             platform="Snowflake",
             rows_loaded=86_586_082,
         )
-        results = validate_bundles([lo, hi])
+        results = validate_bundles([lo, hi], allow_partial_validation=True)
         assert all(vr.ok for vr in results)
         assert not any("scale-invariant" in w for vr in results for w in vr.warnings)
 
@@ -1951,7 +1998,7 @@ class TestScaleInvariance:
             platform="Snowflake",
             rows_loaded=86_586_082,
         )
-        results = validate_bundles([lo, hi])
+        results = validate_bundles([lo, hi], allow_partial_validation=True)
         assert all(vr.ok for vr in results)
         warned = [w for vr in results for w in vr.warnings if "scale-invariant" in w]
         assert warned
@@ -2031,10 +2078,47 @@ class TestSubmissionDeterministicGates:
         for compliance in ("unofficial_nonstandard", "unofficial_subscale"):
             data = _minimal_bundle()
             data["benchmark"]["compliance_class"] = compliance
+            data["benchmark"]["scale_factor"] = 0.01
             vr = ValidationResult("test")
             _validate_bundle(data, vr)
             assert not vr.ok
-            assert any("compliance_class" in e for e in vr.errors)
+            assert any("not accepted for public submissions" in e for e in vr.errors)
+
+    @pytest.mark.parametrize("benchmark_id", ["star_schema", "tsbs-devops"])
+    def test_unregistered_scale_is_undetermined(self, benchmark_id):
+        data = _minimal_bundle()
+        data["benchmark"]["id"] = benchmark_id
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+        assert any("undetermined: missing scale_registry_entry" in error for error in vr.errors)
+
+    def test_started_throughput_without_stream_evidence_is_undetermined(self):
+        data = _minimal_bundle()
+        data["phases"]["power_test"]["refresh_functions"] = [{"status": "SUCCESS"}, {"status": "SUCCESS"}]
+        data["phases"]["throughput_test"] = {
+            "status": "IN_PROGRESS",
+            "refresh_stream": {"status": "COMPLETED", "pairs": [{"status": "SUCCESS"}]},
+        }
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+        assert any("undetermined: missing streams" in error for error in vr.errors)
+
+    @pytest.mark.parametrize("benchmark_id", ["TPC-H", "tpc_h"])
+    def test_tpc_alias_does_not_skip_query_coverage(self, benchmark_id):
+        data = _minimal_bundle()
+        data["benchmark"]["id"] = benchmark_id
+        data["queries"] = data["queries"][:21]
+        data["summary"]["queries"] = {"total": 21, "passed": 21, "failed": 0}
+        vr = ValidationResult("test")
+        _validate_bundle(data, vr)
+        assert any("canonical queries" in error for error in vr.errors)
+        assert not any("Unknown benchmark id" in warning for warning in vr.warnings)
+
+    @pytest.mark.parametrize("benchmark_id", ["TPC-H", "tpc_h", "TPC-DS", "tpc_ds"])
+    def test_tpc_alias_does_not_skip_combined_evidence(self, benchmark_id):
+        data = _minimal_bundle()
+        data["benchmark"]["id"] = benchmark_id
+        assert bundle_module.COMBINED_THROUGHPUT_NOT_CLEAN in bundle_module.combined_evidence_defects(data)
 
     def test_official_compliance_passes(self):
         data = _minimal_bundle()
@@ -2053,6 +2137,7 @@ class TestSubmissionDeterministicGates:
     def test_unofficial_compliance_allowed_on_mirror_lane(self):
         data = _minimal_bundle()
         data["benchmark"]["compliance_class"] = "unofficial_subscale"
+        data["benchmark"]["scale_factor"] = 0.01
         vr = ValidationResult("test")
         _validate_bundle(data, vr, allow_partial_validation=True)
         assert vr.ok, vr.errors
@@ -2066,7 +2151,7 @@ class TestSubmissionDeterministicGates:
         vr = ValidationResult("test")
         _validate_bundle(data, vr)
         assert not vr.ok
-        assert any("unofficial_nonstandard" in e for e in vr.errors)
+        assert any("gateway_routed" in e for e in vr.errors)
 
     def test_gateway_routed_bundle_is_allowed_on_mirror_lane(self):
         data = _minimal_bundle()
@@ -2108,12 +2193,12 @@ class TestSubmissionDeterministicGates:
         _validate_bundle(data, vr, allow_partial_validation=True)
         assert vr.ok, vr.errors
 
-    def test_unknown_benchmark_skips_coverage(self):
+    def test_unknown_benchmark_has_no_canonical_coverage_check(self):
         data = _minimal_bundle()
         data["benchmark"]["id"] = "some_new_benchmark"
         vr = ValidationResult("test")
         _validate_bundle(data, vr)
-        assert vr.ok, vr.errors
+        assert vr.errors == ["result admission is undetermined: missing scale_registry_entry"]
 
     def test_case_variant_benchmark_id_still_gated(self):
         for bm_id in ("TPCH", "tpch ", " Tpch"):
@@ -2181,21 +2266,23 @@ class TestSubmissionDeterministicGates:
 
     class TestThroughputStreamCompleteness:
         def _bundle(self, stream_ids, queries_by_stream, benchmark="tpch", status="COMPLETED"):
-            return {
-                "summary": {"validation": "passed"},
-                "benchmark": {"id": benchmark},
-                "phases": {
-                    "throughput_test": {
-                        "status": status,
-                        "stream_results": [{"stream_id": sid, "success": True} for sid in stream_ids],
-                    }
-                },
-                "queries": [
-                    {"id": qid, "status": "SUCCESS", "run_type": "measurement", "ms": 100, "stream": sid}
-                    for sid, qids in queries_by_stream.items()
-                    for qid in qids
-                ],
-            }
+            return _with_first_query_row_count_evidence(
+                {
+                    "summary": {"validation": "passed"},
+                    "benchmark": {"id": benchmark},
+                    "phases": {
+                        "throughput_test": {
+                            "status": status,
+                            "stream_results": [{"stream_id": sid, "success": True} for sid in stream_ids],
+                        }
+                    },
+                    "queries": [
+                        {"id": qid, "status": "SUCCESS", "run_type": "measurement", "ms": 100, "stream": sid}
+                        for sid, qids in queries_by_stream.items()
+                        for qid in qids
+                    ],
+                }
+            )
 
         def _full_tpch(self):
             return [f"Q{i}" for i in range(1, 23)]
@@ -2206,6 +2293,13 @@ class TestSubmissionDeterministicGates:
             vr = ValidationResult("test")
             _validate_execution_consistency(data, vr)
             assert vr.ok, vr.errors
+
+        @pytest.mark.parametrize("benchmark_id", ["TPC-H", "tpc_h"])
+        def test_tpc_alias_does_not_skip_stream_coverage(self, benchmark_id):
+            data = self._bundle([1, 2], {1: self._full_tpch(), 2: self._full_tpch()[:21]}, benchmark=benchmark_id)
+            vr = ValidationResult("test")
+            _validate_execution_consistency(data, vr)
+            assert any("throughput stream 2 covers 21 of 22" in error for error in vr.errors)
 
         def test_non_contiguous_stream_ids_rejected(self):
             full = self._full_tpch()
@@ -2256,7 +2350,7 @@ class TestSubmissionDeterministicGates:
         def test_non_completed_phase_skips_stream_checks(self):
             data = self._bundle([1, 3], {}, status="FAILED")
             vr = ValidationResult("test")
-            _validate_execution_consistency(data, vr)
+            _validate_execution_consistency(data, vr, allow_partial_validation=True)
             assert vr.ok, vr.errors
 
         def test_other_benchmark_skips_query_counts_but_checks_contiguity(self):
@@ -2924,6 +3018,8 @@ class TestInternalSourceComplianceExemption:
         data = _minimal_bundle()
         if compliance is not None:
             data["benchmark"]["compliance_class"] = compliance
+        if compliance in self.REFUSED:
+            data["benchmark"]["scale_factor"] = 0.01
         bundle = tmp_path / "result.json"
         bundle.write_text(json.dumps(data), encoding="utf-8")
         manifest = {
@@ -2947,29 +3043,30 @@ class TestInternalSourceComplianceExemption:
         bundle = self._bundle(tmp_path, compliance, source)
         (vr,) = validate_bundles([bundle], require_manifest=True, trust_internal_source=True)
         assert not vr.ok
-        assert any("compliance_class" in e for e in vr.errors)
+        assert any("not accepted for public submissions" in e or "compliance_class" in e for e in vr.errors)
 
     @pytest.mark.parametrize("compliance", REFUSED)
     def test_bundle_without_manifest_is_rejected(self, tmp_path, compliance):
         data = _minimal_bundle()
         data["benchmark"]["compliance_class"] = compliance
+        data["benchmark"]["scale_factor"] = 0.01
         bundle = tmp_path / "result.json"
         bundle.write_text(json.dumps(data), encoding="utf-8")
         (vr,) = validate_bundles([bundle], trust_internal_source=True)
         assert not vr.ok
-        assert any("compliance_class" in e for e in vr.errors)
+        assert any("not accepted for public submissions" in e or "compliance_class" in e for e in vr.errors)
 
     def test_internal_manifest_naming_another_bundle_does_not_exempt(self, tmp_path):
         bundle = self._bundle(tmp_path, "unofficial_subscale", "internal", bundle_file="other.json")
         (vr,) = validate_bundles([bundle], trust_internal_source=True)
         assert not vr.ok
-        assert any("compliance_class" in e for e in vr.errors)
+        assert any("not accepted for public submissions" in e or "compliance_class" in e for e in vr.errors)
 
     def test_internal_source_exemption_does_not_apply_to_invalid_class_values(self, tmp_path):
         bundle = self._bundle(tmp_path, "Official", "internal")
         (vr,) = validate_bundles([bundle], require_manifest=True, trust_internal_source=True)
         assert not vr.ok
-        assert any("compliance_class" in e for e in vr.errors)
+        assert any("not accepted for public submissions" in e or "compliance_class" in e for e in vr.errors)
 
     def test_internal_source_exempts_gateway_routed_bundle(self, tmp_path):
         data = _minimal_bundle()
@@ -2996,7 +3093,7 @@ class TestInternalSourceComplianceExemption:
         bundle = self._bundle(tmp_path, compliance, "internal")
         (vr,) = validate_bundles([bundle], require_manifest=True)
         assert not vr.ok
-        assert any("compliance_class" in e for e in vr.errors)
+        assert any("not accepted for public submissions" in e or "compliance_class" in e for e in vr.errors)
 
     @pytest.mark.parametrize("compliance", REFUSED)
     def test_cli_exempts_internal_bundle_only_with_trust_flag(self, tmp_path, compliance):
@@ -3128,7 +3225,9 @@ class TestOverrideContract:
 
     def test_plateau_and_floor_promoted_to_overrides(self):
         vr = ValidationResult("test")
-        _validate_bundle(_timing_bundle(_flat_queries(base=4400.0)), vr)
+        _validate_bundle(
+            _timing_bundle(_flat_queries(base=4400.0), scale_factor=0.1), vr, allow_partial_validation=True
+        )
         assert vr.ok, vr.errors
         assert sorted(vr.override_required) == ["small-scale-floor", "timing-plateau"]
 
@@ -3172,10 +3271,11 @@ class TestOverrideContract:
         assert "## Submission Validation: PASSED" in mirror
         assert "advisory only" in mirror
 
-    def test_exit_contract_community_vs_mirror(self, tmp_path):
-        bundle = tmp_path / "flat.json"
-        bundle.write_text(json.dumps(_timing_bundle(_flat_queries(base=4400.0))), encoding="utf-8")
+    def test_exit_contract_community_vs_mirror(self, tmp_path, capsys):
+        bundle = _write_plateau_bundle(tmp_path)
         assert main([str(bundle)]) == 1
+        captured = capsys.readouterr()
+        assert "requires overrides: timing-plateau" in captured.out + captured.err
         assert main([str(bundle), "--allow-partial-validation"]) == 0
 
     def test_rules_version_flag(self, capsys):
@@ -3203,9 +3303,11 @@ def _override_doc(*rules, **kw):
     return doc
 
 
-def _write_plateau_bundle(tmp_path, name="flat.json"):
+def _write_plateau_bundle(tmp_path, name="flat.json", scale_factor=1.0):
     bundle = tmp_path / name
-    bundle.write_text(json.dumps(_timing_bundle(_flat_queries(base=4400.0))), encoding="utf-8")
+    bundle.write_text(
+        json.dumps(_timing_bundle(_flat_queries(base=4400.0), scale_factor=scale_factor)), encoding="utf-8"
+    )
     return bundle
 
 
@@ -3271,11 +3373,11 @@ class TestOverrideSatisfaction:
     def test_valid_artifact_satisfies_finding(self, tmp_path):
         from benchbox.validation.bundle import unsatisfied_override_rules
 
-        bundle = _write_plateau_bundle(tmp_path)
+        bundle = _write_plateau_bundle(tmp_path, scale_factor=0.1)
         bundle.with_name("flat.override.json").write_text(
             json.dumps(_override_doc("timing-plateau", "small-scale-floor")), encoding="utf-8"
         )
-        (vr,) = validate_bundles([bundle])
+        (vr,) = validate_bundles([bundle], allow_partial_validation=True)
         assert vr.ok, vr.errors
         assert vr.override_required == ["timing-plateau", "small-scale-floor"]
         assert unsatisfied_override_rules([vr]) == {}
@@ -3283,9 +3385,9 @@ class TestOverrideSatisfaction:
     def test_satisfaction_narrows_unsatisfied_map(self, tmp_path):
         from benchbox.validation.bundle import unsatisfied_override_rules
 
-        bundle = _write_plateau_bundle(tmp_path)
+        bundle = _write_plateau_bundle(tmp_path, scale_factor=0.1)
         bundle.with_name("flat.override.json").write_text(json.dumps(_override_doc("timing-plateau")), encoding="utf-8")
-        (vr,) = validate_bundles([bundle])
+        (vr,) = validate_bundles([bundle], allow_partial_validation=True)
         assert vr.ok, vr.errors
         assert unsatisfied_override_rules([vr]) == {str(bundle): ["small-scale-floor"]}
 
@@ -3300,11 +3402,12 @@ class TestOverrideSatisfaction:
 
     def test_expired_artifact_satisfies_nothing(self, tmp_path):
         bundle = _write_plateau_bundle(tmp_path)
-        bundle.with_name("flat.override.json").write_text(
-            json.dumps(_override_doc(expires="2000-01-01")), encoding="utf-8"
-        )
+        artifact = bundle.with_name("flat.override.json")
+        artifact.write_text(json.dumps(_override_doc()), encoding="utf-8")
+        assert main([str(bundle)]) == 0
+        artifact.write_text(json.dumps(_override_doc(expires="2000-01-01")), encoding="utf-8")
         (vr,) = validate_bundles([bundle])
-        assert not vr.ok
+        assert vr.errors == ["override artifact flat.override.json: override artifact expired on 2000-01-01"]
         assert main([str(bundle)]) == 1
 
     def test_main_passes_with_valid_artifact(self, tmp_path, capsys):
@@ -3312,7 +3415,7 @@ class TestOverrideSatisfaction:
         bundle.with_name("flat.override.json").write_text(
             json.dumps(_override_doc("timing-plateau", "small-scale-floor")), encoding="utf-8"
         )
-        assert main([str(bundle)]) == 0
+        assert main([str(bundle), "--allow-partial-validation"]) == 0
         out = capsys.readouterr().out
         assert "override(s) required" in out
 
@@ -3324,11 +3427,19 @@ class TestOverrideSatisfaction:
         artifact.write_text(json.dumps(_override_doc()), encoding="utf-8")
         assert not is_primary_bundle_file(artifact)
 
-    def test_override_companion_privacy_scanned(self, tmp_path):
+    def test_override_companion_privacy_scanned(self, tmp_path, capsys):
         bundle = _write_plateau_bundle(tmp_path)
-        doc = _override_doc(reason="see /Users/alice/private notes")
-        bundle.with_name("flat.override.json").write_text(json.dumps(doc), encoding="utf-8")
+        artifact = bundle.with_name("flat.override.json")
+        artifact.write_text(json.dumps(_override_doc()), encoding="utf-8")
+        assert main([str(bundle)]) == 0
+        artifact.write_text(json.dumps(_override_doc(reason="see /Users/alice/private notes")), encoding="utf-8")
+        capsys.readouterr()
         assert main([str(bundle)]) == 1
+        captured = capsys.readouterr()
+        assert (
+            "Public privacy contract rejects private absolute paths in flat.override.json at field(s): reason"
+            in captured.out + captured.err
+        )
 
 
 class TestTPCHavocVariantRowCountConsistency:
@@ -3464,3 +3575,117 @@ def test_manifest_class_attestation_must_match_the_recorded_bundle(tmp_path, env
     manifest = {"execution_class": "container", "execution_class_evidence": "owner attestation"}
     _validate_manifest_provenance(manifest, bundle, vr)
     assert vr.ok is ok
+
+
+def _row_count_bundle(status: str, row_statuses: list[str | None], scale_factor: float | None = None) -> dict:
+    data = _minimal_bundle()
+    data["summary"]["validation"] = status
+    if scale_factor is None:
+        scale_factor = 10.0 if status == "no_reference" else 1.0
+    data["benchmark"]["scale_factor"] = scale_factor
+    for index, row in enumerate(data["queries"]):
+        row.pop("row_count_validation", None)
+        row_status = row_statuses[index] if index < len(row_statuses) else None
+        if row_status is not None:
+            expected = 5 if row_status == "PASSED" else None
+            row["rows"] = 5
+            row["row_count_validation"] = {"status": row_status, "expected": expected, "actual": 5}
+    return data
+
+
+class TestValidationStatusVocabulary:
+    @staticmethod
+    def _validate(data: dict, **flags) -> ValidationResult:
+        vr = ValidationResult("test")
+        bundle_module._validate_bundle(data, vr, **flags)
+        return vr
+
+    def test_passed_with_per_query_evidence_is_accepted(self):
+        vr = self._validate(_row_count_bundle("passed", ["PASSED"] * 22))
+        assert vr.ok, vr.errors
+
+    @pytest.mark.parametrize("row_statuses", [[], [None] * 22, ["SKIPPED"] * 22])
+    def test_new_passed_result_without_per_query_evidence_is_refused(self, row_statuses):
+        vr = self._validate(_row_count_bundle("passed", row_statuses))
+        assert not vr.ok
+        assert any("requires per-query row-count evidence" in e for e in vr.errors)
+
+    def test_stored_passed_results_without_evidence_stay_admitted_on_the_mirror_path(self):
+        vr = self._validate(_row_count_bundle("passed", []), allow_partial_validation=True)
+        assert vr.ok, vr.errors
+
+    @pytest.mark.parametrize("row_statuses", [[], [None] * 22, ["UNVALIDATED"] * 22])
+    @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
+    def test_no_reference_status_is_admitted_on_both_paths(self, row_statuses, flags):
+        vr = self._validate(_row_count_bundle("no_reference", row_statuses), **flags)
+        assert vr.ok, vr.errors
+
+    @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
+    def test_no_reference_with_skipped_rows_is_admitted(self, flags):
+        data = _row_count_bundle("no_reference", ["SKIPPED"] * 22)
+        for query in data["queries"]:
+            query["row_count_validation"]["warning"] = "no row-count reference at this scale factor"
+        vr = self._validate(data, **flags)
+        assert vr.ok, vr.errors
+
+    def test_no_reference_does_not_excuse_unrelated_skips(self):
+        data = _row_count_bundle("no_reference", ["SKIPPED"] * 22)
+        for query in data["queries"]:
+            query["row_count_validation"]["warning"] = "validation disabled"
+        assert not self._validate(data).ok
+
+    @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
+    def test_failed_validation_is_still_refused(self, flags):
+        assert not self._validate(_row_count_bundle("failed", ["PASSED"] * 22), **flags).ok
+
+    @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
+    def test_no_reference_with_a_failed_query_is_refused(self, flags):
+        data = _row_count_bundle("no_reference", [])
+        data["queries"][0]["status"] = "FAILED"
+        data["summary"]["queries"] = {"total": 22, "passed": 21, "failed": 1}
+        vr = self._validate(data, **flags)
+        assert not vr.ok
+        assert any("'no_reference' contradicts" in e for e in vr.errors)
+
+    @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
+    @pytest.mark.parametrize(("benchmark_id", "scale"), [("tpch", 1.0), ("tpch", 0.01), ("tpcds", 0.1), ("ssb", 10.0)])
+    def test_no_reference_is_refused_where_a_reference_exists(self, flags, benchmark_id, scale):
+        data = _row_count_bundle("no_reference", [], scale_factor=scale)
+        data["benchmark"]["id"] = benchmark_id
+        vr = self._validate(data, **flags)
+        assert any("only valid where no row-count reference exists" in e for e in vr.errors)
+
+    @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
+    def test_no_reference_is_accepted_where_no_reference_exists(self, flags):
+        vr = self._validate(_row_count_bundle("no_reference", [], scale_factor=10.0), **flags)
+        assert not any("only valid where" in e for e in vr.errors)
+
+    @pytest.mark.parametrize("status", ["passed", "no_reference"])
+    def test_throughput_stream_completeness_is_checked_for_both_statuses(self, status):
+        data = _row_count_bundle(status, ["PASSED"] * 22 if status == "passed" else [])
+        data["phases"]["throughput_test"] = {
+            "status": "COMPLETED",
+            "stream_results": [{"stream_id": 1, "success": True}, {"stream_id": 3, "success": True}],
+        }
+        vr = self._validate(data)
+        assert any("contiguous 1..2" in e for e in vr.errors)
+
+    @pytest.mark.parametrize("phase_status", ["FAILED", "PARTIAL", "NOT_RUN"])
+    def test_validation_phase_must_agree_with_no_reference(self, phase_status):
+        data = _row_count_bundle("no_reference", [])
+        data["phases"]["validation"]["status"] = phase_status
+        vr = self._validate(data)
+        assert any("contradicts phases.validation.status" in e for e in vr.errors)
+
+    @pytest.mark.parametrize("phase_status", ["PASSED", "NO_REFERENCE"])
+    def test_compatible_validation_phase_is_accepted_with_no_reference(self, phase_status):
+        data = _row_count_bundle("no_reference", [])
+        data["phases"]["validation"]["status"] = phase_status
+        assert self._validate(data).ok
+
+    def test_allowlists_admit_no_reference_and_keep_passed_the_clean_status(self):
+        assert bundle_module.PUBLIC_CLEAN_VALIDATION_STATUS == "passed"
+        assert "no_reference" in bundle_module.PUBLIC_ADMITTED_VALIDATION_STATUSES
+        assert "no_reference" in bundle_module.PUBLIC_MIRROR_ALLOWED_VALIDATION_STATUSES
+        blocked = {"failed", "not_validated", "uncertain"}
+        assert not blocked & bundle_module.PUBLIC_MIRROR_ALLOWED_VALIDATION_STATUSES

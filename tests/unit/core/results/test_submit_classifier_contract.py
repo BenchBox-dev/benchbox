@@ -26,6 +26,7 @@ def _write_result_json(
     failed: int = 0,
     validation: str = "passed",
     compliance_class: str | None = None,
+    scale_factor: float = 1.0,
     translation_status: str | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -33,13 +34,18 @@ def _write_result_json(
     payload: dict = {
         "version": "2.1",
         "run": {"id": "contract", "timestamp": "2026-01-01T00:00:00", "total_duration_ms": 1},
-        "benchmark": {"id": "tpch", "name": "TPC-H", "scale_factor": 0.01, "test_type": "power"},
+        "benchmark": {
+            "id": "tpch",
+            "name": "TPC-H",
+            "scale_factor": scale_factor,
+            "test_type": "power",
+        },
         "platform": {"name": "DuckDB"},
         "summary": {
             "queries": {"total": 1, "passed": passed, "failed": failed},
             "validation": {"status": validation},
         },
-        "queries": [{"id": "Q1", "status": "SUCCESS" if failed == 0 else "ERROR", "ms": 1}],
+        "queries": [{"id": "Q1", "status": "SUCCESS" if failed == 0 else "ERROR", "ms": 1, "run_type": "measurement"}],
         "phases": {},
     }
     if compliance_class is not None:
@@ -83,15 +89,19 @@ def _loadable_cases(tmp_path: Path) -> list[tuple[str, Path, SubmitTerminalState
     )
 
     unofficial = tmp_path / "unofficial.json"
-    _write_result_json(unofficial, compliance_class="unofficial_subscale")
+    _write_result_json(unofficial, compliance_class="unofficial_subscale", scale_factor=0.01)
 
-    unofficial_and_unvalidated = tmp_path / "unofficial-and-unvalidated.json"
+    subscale_and_not_validated = tmp_path / "subscale-and-not-validated.json"
     _write_result_json(
-        unofficial_and_unvalidated,
+        subscale_and_not_validated,
         failed=0,
+        scale_factor=0.01,
         validation="not_validated",
         compliance_class="unofficial_subscale",
     )
+
+    subscale_query_failure = tmp_path / "subscale-query-failure.json"
+    _write_result_json(subscale_query_failure, failed=1, scale_factor=0.01, compliance_class="unofficial_subscale")
 
     return [
         ("clean", clean, SubmitTerminalState.submittable),
@@ -108,7 +118,8 @@ def _loadable_cases(tmp_path: Path) -> list[tuple[str, Path, SubmitTerminalState
             SubmitTerminalState.unvalidated,
         ),
         ("unofficial", unofficial, SubmitTerminalState.unofficial),
-        ("unofficial_and_unvalidated", unofficial_and_unvalidated, SubmitTerminalState.unofficial),
+        ("subscale_and_not_validated", subscale_and_not_validated, SubmitTerminalState.unvalidated),
+        ("subscale_query_failure", subscale_query_failure, SubmitTerminalState.query_failure),
     ]
 
 
@@ -120,6 +131,21 @@ def test_submit_classifier_contract_loaded_and_path_agree(tmp_path: Path):
 
         loaded, _raw = load_result_file(path)
         assert classify_loaded_result(loaded) is expected, label
+
+
+def test_submit_classifier_uses_evidence_not_recorded_class(tmp_path: Path) -> None:
+    path = tmp_path / "evidence.json"
+    _write_result_json(path, compliance_class="unofficial_subscale", scale_factor=1.0)
+    assert classify_result_path(path) is SubmitTerminalState.submittable
+
+    _write_result_json(path, compliance_class="full_spec", scale_factor=0.01)
+    assert classify_result_path(path) is SubmitTerminalState.unofficial
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["queries"] = []
+    payload["summary"]["validation"] = {"status": "not_validated"}
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    assert classify_result_path(path) is SubmitTerminalState.unvalidated
 
 
 def test_submit_classifier_contract_path_only_states(tmp_path: Path):

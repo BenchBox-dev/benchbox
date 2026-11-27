@@ -186,6 +186,19 @@ def test_collecting_mcp_facts_leaves_logging_quiet_mode_and_tracing_unchanged(mo
     assert state() == before
 
 
+def test_collecting_tuning_facts_leaves_the_sqlglot_logger_level_unchanged() -> None:
+    import logging
+
+    sqlglot_logger = logging.getLogger("sqlglot")
+    previous = sqlglot_logger.level
+    sqlglot_logger.setLevel(logging.NOTSET)
+    try:
+        doc_contracts._tuning()
+        assert sqlglot_logger.level == logging.NOTSET
+    finally:
+        sqlglot_logger.setLevel(previous)
+
+
 def test_public_symbols_match_the_inventory_file(contracts: dict[str, Any]) -> None:
     source = json.loads((ROOT / "_project/design/api-public-symbols.json").read_text(encoding="utf-8"))
     assert [item["symbol"] for item in contracts["public_symbols"]["symbols"]] == sorted(

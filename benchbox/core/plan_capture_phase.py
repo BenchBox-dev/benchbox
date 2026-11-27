@@ -117,8 +117,15 @@ def propagate_plan_capture_fields(source: Mapping[str, Any], target: dict[str, A
             target[key] = value
 
 
+def propagate_row_count_validation(source: Mapping[str, Any], target: dict[str, Any]) -> None:
+    evidence = source.get("row_count_validation")
+    if isinstance(evidence, dict):
+        target["row_count_validation"] = evidence
+
+
 def propagate_query_execution_metadata(source: Mapping[str, Any], target: dict[str, Any]) -> None:
     propagate_plan_capture_fields(source, target)
+    propagate_row_count_validation(source, target)
     resource_usage = source.get("resource_usage")
     if resource_usage is not None:
         target["resource_usage"] = resource_usage

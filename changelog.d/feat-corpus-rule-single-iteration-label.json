@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "**Results with fewer than three measured iterations are labelled \"Single iteration\".** The corpus rule counts the measured iterations behind each result's query timings and labels a result with one or two of them, as the methodology record requires. The label does not change admission, lane, score or rank. Results already in a local results database gain the label when their file is imported again."
+    }
+  ]
+}

@@ -182,6 +182,7 @@ class BenchmarkExpectedResults:
     query_results: dict[str, ExpectedQueryResult]
     metadata: dict[str, Any] | None = None
     known_query_ids: frozenset[str] | None = None
+    stream_results: dict[int, dict[str, ExpectedQueryResult]] | None = None
 
     def get_expected_result(self, query_id: str) -> ExpectedQueryResult | None:
         return self.query_results.get(query_id)

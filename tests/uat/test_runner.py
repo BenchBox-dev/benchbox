@@ -25,6 +25,7 @@ def _write_result_json(
     *,
     failed: int = 0,
     compliance_class: str | None = None,
+    scale_factor: float = 0.01,
     validation: str | None = None,
     translation_status: str | None = None,
 ) -> None:
@@ -45,7 +46,7 @@ def _write_result_json(
         "benchmark": {
             "id": "tpch",
             "name": "TPC-H",
-            "scale_factor": 0.01,
+            "scale_factor": scale_factor,
             "test_type": "power",
         },
         "platform": {"name": "DuckDB"},
@@ -53,7 +54,7 @@ def _write_result_json(
             "queries": {"total": 1, "passed": passed, "failed": failed},
             "validation": {"status": validation},
         },
-        "queries": [{"id": "Q1", "status": "SUCCESS" if failed == 0 else "ERROR", "ms": 1}],
+        "queries": [{"id": "Q1", "status": "SUCCESS" if failed == 0 else "ERROR", "ms": 1, "run_type": "measurement"}],
         "phases": {},
     }
     if compliance_class is not None:
@@ -219,7 +220,7 @@ def test_run_cell_marks_failure(tmp_path: Path):
 
 def test_run_cell_preserves_result_path_when_failed_child_exports_json(tmp_path: Path):
     result_path = tmp_path / "benchmark_runs" / "results" / "failed-query.json"
-    _write_result_json(result_path, failed=1)
+    _write_result_json(result_path, failed=1, scale_factor=1.0)
     fake_argv = [sys.executable, "-c", f"print({str(result_path)!r}); raise SystemExit(2)"]
 
     with patch.object(runner, "benchbox_run_argv", return_value=fake_argv):
@@ -603,7 +604,7 @@ def test_default_log_dir_honours_benchbox_output_dir(monkeypatch, tmp_path: Path
 
 def test_classify_for_submit_vocabulary_and_clean_result(tmp_path: Path):
     result_path = tmp_path / "benchmark_runs" / "results" / "clean.json"
-    _write_result_json(result_path)
+    _write_result_json(result_path, scale_factor=1.0)
 
     assert runner.classify_for_submit(result_path) is runner.SubmitTerminalState.submittable
     assert set(runner.SubmitTerminalState.__members__) == {
@@ -628,7 +629,7 @@ def test_submit_state_is_cell_failure_excludes_unvalidated() -> None:
 
 def test_classify_for_submit_marks_query_failure_and_run_cell_failed(tmp_path: Path):
     result_path = tmp_path / "benchmark_runs" / "results" / "failed-query.json"
-    _write_result_json(result_path, failed=1)
+    _write_result_json(result_path, failed=1, scale_factor=1.0)
     fake_argv = [sys.executable, "-c", f"print({str(result_path)!r})"]
 
     with patch.object(runner, "benchbox_run_argv", return_value=fake_argv):
@@ -655,7 +656,7 @@ def test_classify_for_submit_keeps_unofficial_as_passed_cell(tmp_path: Path):
 
 def test_classify_for_submit_keeps_unvalidated_as_passed_cell(tmp_path: Path):
     result_path = tmp_path / "benchmark_runs" / "results" / "unvalidated.json"
-    _write_result_json(result_path, validation="not_validated")
+    _write_result_json(result_path, validation="not_validated", scale_factor=1.0)
     fake_argv = [sys.executable, "-c", f"print({str(result_path)!r})"]
 
     with patch.object(runner, "benchbox_run_argv", return_value=fake_argv):
@@ -667,15 +668,17 @@ def test_classify_for_submit_keeps_unvalidated_as_passed_cell(tmp_path: Path):
     assert result.submit_terminal_state == "unvalidated"
 
 
-def test_classify_for_submit_prefers_unofficial_over_unvalidated(tmp_path: Path):
+def test_classify_for_submit_reports_unvalidated_before_unofficial(tmp_path: Path):
     result_path = tmp_path / "benchmark_runs" / "results" / "unofficial-unvalidated.json"
     _write_result_json(result_path, compliance_class="unofficial_subscale", validation="not_validated")
-    assert runner.classify_for_submit(result_path) is runner.SubmitTerminalState.unofficial
+    state = runner.classify_for_submit(result_path)
+    assert state is runner.SubmitTerminalState.unvalidated
+    assert not runner.submit_state_is_cell_failure(state)
 
 
 def test_classify_for_submit_keeps_uncertain_with_translation_fallback_as_passed_cell(tmp_path: Path):
     result_path = tmp_path / "benchmark_runs" / "results" / "uncertain-fallback.json"
-    _write_result_json(result_path, validation="uncertain", translation_status="fallback")
+    _write_result_json(result_path, validation="uncertain", translation_status="fallback", scale_factor=1.0)
     fake_argv = [sys.executable, "-c", f"print({str(result_path)!r})"]
 
     with patch.object(runner, "benchbox_run_argv", return_value=fake_argv):
@@ -690,7 +693,7 @@ def test_classify_for_submit_keeps_uncertain_with_translation_fallback_as_passed
 
 def test_classify_for_submit_marks_translation_fallback_as_cell_failure(tmp_path: Path):
     result_path = tmp_path / "benchmark_runs" / "results" / "translation-fallback.json"
-    _write_result_json(result_path, validation="passed", translation_status="fallback")
+    _write_result_json(result_path, validation="passed", translation_status="fallback", scale_factor=1.0)
     fake_argv = [sys.executable, "-c", f"print({str(result_path)!r})"]
 
     with patch.object(runner, "benchbox_run_argv", return_value=fake_argv):
