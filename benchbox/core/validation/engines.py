@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -193,12 +193,28 @@ class DataValidationEngine:
         if not any((manifest.get("tables") or {}).values()):
             errors.append("Manifest lists no tables; data generation produced no usable output")
 
+        manifest = {
+            **manifest,
+            "tables": {
+                table: next(iter(entry["formats"].values()), []) if isinstance(entry, dict) else entry
+                for table, entry in (manifest.get("tables") or {}).items()
+            },
+        }
         benchmark_type = manifest.get("benchmark", "").lower()
         expectations = self.BENCHMARK_EXPECTATIONS.get(benchmark_type)
 
         if not expectations:
             warnings.append(f"No validation expectations defined for benchmark: {benchmark_type}")
         else:
+            excluded = {str(table) for table in manifest.get("excluded_tables") or ()}
+            if excluded:
+                kept = [table for table in expectations.critical_tables if table not in excluded]
+                expectations = replace(
+                    expectations,
+                    expected_table_count=expectations.expected_table_count
+                    - (len(expectations.critical_tables) - len(kept)),
+                    critical_tables=kept,
+                )
             table_errors, table_warnings = self._validate_table_count(manifest, expectations)
             errors.extend(table_errors)
             warnings.extend(table_warnings)

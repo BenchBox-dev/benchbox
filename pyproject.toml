@@ -44,7 +44,7 @@ required-version = ">=0.13.4"
 override-dependencies = ["filelock>=4.2.1,<5"]
 
 [tool.uv.sources]
-benchbox-datagen = { git = "https://github.com/BenchBox-dev/benchbox-datagen", rev = "05855f2c883e2b31570e5b2cd433e213f85897de" }
+benchbox-datagen = { git = "https://github.com/BenchBox-dev/benchbox-datagen", rev = "32779709a6eb9c11d4baf1bb2a534c1ef8c9b149" }
 
 [tool.setuptools]
 include-package-data = true

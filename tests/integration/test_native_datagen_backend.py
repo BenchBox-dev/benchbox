@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 
+import pyarrow.parquet as pq
 import pytest
 
 if os.environ.get("BENCHBOX_REQUIRE_NATIVE_DATAGEN") == "1":
@@ -17,6 +18,7 @@ duckdb = pytest.importorskip("duckdb", reason="DuckDB not installed")
 from benchbox import TPCDS, TPCH
 from benchbox.core.runner.conversion import FormatConversionOrchestrator
 from benchbox.core.runner.runner import get_table_schemas_from_benchmark
+from benchbox.core.validation.engines import DataValidationEngine
 from benchbox.utils.datagen_backend import NATIVE_BACKEND_NAME
 from benchbox.utils.format_converters import ConversionOptions
 from benchbox.utils.native_datagen import bind_datagen_backend, write_native_tables
@@ -127,10 +129,14 @@ def test_tpch_native_parquet_values_match_legacy_converter_both_directions(tmp_p
             legacy_file = str(legacy_result.output_files[0])
             native_file = str(native_results[table].output_files[0])
             assert native_results[table].row_count == legacy_result.row_count
+            legacy_schema = [(field.name, str(field.type)) for field in pq.read_schema(legacy_file)]
+            native_schema = [(field.name, str(field.type)) for field in pq.read_schema(native_file)]
+            assert native_schema == legacy_schema, table
+            columns = ", ".join(f'"{name}"' for name, _ in legacy_schema)
             for left, right in ((legacy_file, native_file), (native_file, legacy_file)):
                 missing = connection.execute(
-                    f"SELECT count(*) FROM (SELECT * FROM read_parquet('{left}') "
-                    f"EXCEPT ALL SELECT * FROM read_parquet('{right}'))"
+                    f"SELECT count(*) FROM (SELECT {columns} FROM read_parquet('{left}') "
+                    f"EXCEPT ALL SELECT {columns} FROM read_parquet('{right}'))"
                 ).fetchone()[0]
                 assert missing == 0, f"{table}: {missing} rows differ"
     finally:
@@ -152,7 +158,13 @@ def test_tpcds_native_backend_matches_legacy_dsdgen_through_benchbox(tmp_path: P
 
     native_tables = set(native_manifest["tables"])
     assert len(native_tables) == 24
-    assert native_tables <= set(legacy_manifest["tables"])
+    assert set(legacy_manifest["tables"]) - native_tables == {"dbgen_version"}
+    assert native_tables < set(legacy_manifest["tables"])
+    assert native_manifest["excluded_tables"] == ["dbgen_version"]
+    assert native_manifest["table_count"] == 24
+    assert native_manifest["row_counts_source"] == "measured"
+    validation = DataValidationEngine().validate_generated_data(native_dir / "_datagen_manifest.json")
+    assert validation.errors == []
 
     legacy_files = _manifest_files(legacy_manifest)
     native_files = _manifest_files(native_manifest)
@@ -163,3 +175,16 @@ def test_tpcds_native_backend_matches_legacy_dsdgen_through_benchbox(tmp_path: P
         legacy_hash = _sha256(legacy_dir / legacy_files[table][0]["path"])
         native_hash = _sha256(native_dir / native_files[table][0]["path"])
         assert native_hash == legacy_hash, table
+
+    native_benchmark = TPCDS(scale_factor=1.0, output_dir=native_dir)
+    results = FormatConversionOrchestrator().convert_benchmark_tables(
+        native_dir / "_datagen_manifest.json",
+        native_dir,
+        "parquet",
+        get_table_schemas_from_benchmark(native_benchmark),
+        ConversionOptions(compression="snappy"),
+    )
+    assert {table: result.row_count for table, result in results.items()} == {
+        table: sum(entry["row_count"] for entry in entries) for table, entries in native_files.items()
+    }
+    assert _manifest(native_dir)["parquet_writer"] == "benchbox-datagen-0"

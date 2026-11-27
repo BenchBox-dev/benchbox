@@ -757,7 +757,7 @@ requires-dist = [
     { name = "azure-storage-file-datalake", marker = "extra == 'cloud-spark'", specifier = ">=12.14.0" },
     { name = "azure-storage-file-datalake", marker = "extra == 'cloud-spark-azure'", specifier = ">=12.14.0" },
     { name = "azure-storage-file-datalake", marker = "extra == 'fabric'", specifier = ">=12.14.0" },
-    { name = "benchbox-datagen", marker = "extra == 'native-datagen'", git = "https://github.com/BenchBox-dev/benchbox-datagen?rev=05855f2c883e2b31570e5b2cd433e213f85897de" },
+    { name = "benchbox-datagen", marker = "extra == 'native-datagen'", git = "https://github.com/BenchBox-dev/benchbox-datagen?rev=32779709a6eb9c11d4baf1bb2a534c1ef8c9b149" },
     { name = "boto3", marker = "extra == 'all'", specifier = ">=1.20.0" },
     { name = "boto3", marker = "extra == 'athena'", specifier = ">=1.20.0" },
     { name = "boto3", marker = "extra == 'cloud'", specifier = ">=1.20.0" },
@@ -978,7 +978,7 @@ dev = [
 [[package]]
 name = "benchbox-datagen"
 version = "0.1.0"
-source = { git = "https://github.com/BenchBox-dev/benchbox-datagen?rev=05855f2c883e2b31570e5b2cd433e213f85897de#05855f2c883e2b31570e5b2cd433e213f85897de" }
+source = { git = "https://github.com/BenchBox-dev/benchbox-datagen?rev=32779709a6eb9c11d4baf1bb2a534c1ef8c9b149#32779709a6eb9c11d4baf1bb2a534c1ef8c9b149" }
 
 [[package]]
 name = "blis"

@@ -287,7 +287,12 @@ class TPCDSDataGenerator(
             scale_factor=self.scale_factor,
             compression=resolve_compression_metadata(self),
             parallel=self.parallel,
-            extra_metadata={"compliance_class": getattr(self.compliance_class, "value", str(self.compliance_class))},
+            extra_metadata={
+                "compliance_class": getattr(self.compliance_class, "value", str(self.compliance_class)),
+                "row_counts_source": "measured",
+                "table_count": len(generation.files),
+                "excluded_tables": ["dbgen_version"],
+            },
             generator_backend=NATIVE_BACKEND_NAME,
             generator_backend_version=generation.version,
         )

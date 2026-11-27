@@ -422,7 +422,7 @@ jobs:
           if grep -qE '^(benchbox/core/(vector_search/(generator\.py|generator_specs\.yaml|benchmark\.py)|(amplab|h2odb|coffeeshop|tsbs_devops|joinorder_synthetic|write_primitives|transaction_primitives)/generator(\.py|_specs\.yaml)|tsbs_devops/schema\.py|joinorder/schema\.py|primitives/generator_base\.py)|benchbox/data/coffeeshop/.*|benchbox/utils/coffeeshop_seed_loader\.py|tests/unit/generators/sf1_size_baseline\.json)$' .ci-paths/trunk-lane-changed.txt; then generator_volume=true; fi
           echo "generator-volume-needed=$generator_volume" >> "$GITHUB_OUTPUT"
           native_datagen_parity=false
-          if grep -qE '^(benchbox/core/(tpch|tpcds)/|benchbox/utils/(datagen_backend|datagen_manifest|datagen_version|native_datagen)\.py|benchbox/utils/format_converters/|benchbox/core/runner/conversion\.py|benchbox/cli/orchestrator\.py|tests/integration/test_native_datagen_backend\.py|pyproject\.toml$|uv\.lock$)' .ci-paths/changed.txt; then native_datagen_parity=true; fi
+          if grep -qE '^(benchbox/core/(tpch|tpcds)/|benchbox/core/validation/|benchbox/_binaries/(tpc-h|tpc-ds)/|_sources/(tpc-h|tpc-ds)/|benchbox/utils/(datagen_backend|datagen_manifest|datagen_version|native_datagen|data_validation)\.py|benchbox/utils/format_converters/|benchbox/core/runner/conversion\.py|benchbox/cli/orchestrator\.py|tests/integration/test_native_datagen_backend\.py|pyproject\.toml$|uv\.lock$)' .ci-paths/changed.txt; then native_datagen_parity=true; fi
           echo "native-datagen-parity-needed=$native_datagen_parity" >> "$GITHUB_OUTPUT"
 
       - name: Classify merge units
