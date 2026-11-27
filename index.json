@@ -52217,7 +52217,9 @@
     },
     "test-logging-guard-misses-third-party-loggers-20261126": {
       "claim": null,
-      "needs": [],
+      "needs": [
+        "crr-a1-rule-module-and-snapshot"
+      ],
       "priority": "medium",
       "status": "open",
       "title": "Catch tests that leave third-party logger or root handler state changed"
