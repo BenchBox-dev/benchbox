@@ -31131,10 +31131,15 @@
       "title": "Published Doris TPC-DS-OBT results ran with parallel_pipeline_task_num=1 and understate Doris"
     },
     "doris-uat-array-length-not-found-20261126": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-28T14:49:57Z",
+        "generation": "d8e653c5643043f79eea44e4b51c5f96",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e82e03734cad9d7732bbc3a5"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Doris read_primitives array_length fails: ARRAY_LENGTH function not found"
     },
     "doris-uat-failures-20261030": {
