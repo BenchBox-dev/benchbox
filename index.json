@@ -27879,17 +27879,12 @@
       "title": "Generate vector_search in benchbox-datagen with a versioned deterministic RNG"
     },
     "datagen-lib-tpcds": {
-      "claim": {
-        "expires_at": "2026-11-28T00:55:46Z",
-        "generation": "b2c3ee188ba04183b5231bdd18b88a0f",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
-      },
+      "claim": null,
       "needs": [
         "datagen-lib-tpch"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Generate TPC-DS at SF >= 1 in benchbox-datagen on the upstream tpcdsgen crates"
     },
     "datagen-lib-tpcds-dsqgen": {
