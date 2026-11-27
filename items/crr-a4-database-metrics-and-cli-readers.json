@@ -20,7 +20,9 @@
       "from_item": "crr-a4-database-metrics-and-cli-readers",
       "id": 1,
       "reason": "Found by the local review of the corpus rule PR after the batch gate; fixed on its own branch and delivered with the Explorer data batch to avoid another full gate and preflight cycle.",
-      "resolution": "open",
+      "resolution": "dismissed",
+      "resolved_at": "2026-11-27T12:22:07Z",
+      "resolved_reason": "Fixed in PR #4521 (merged to develop as 372f743e84): database.calculate_rankings groups and orders rankings by lane, and power and throughput metrics rank only in their own lane.",
       "summary": "Local rankings list a partial result once per lane for geometric_mean and cost metrics, and number ranks across lanes together (database.py calculate_rankings)"
     }
   ],
@@ -463,6 +465,14 @@
       "op": "recover",
       "op_id": "f143b2477c0a442b9e5c9f0422c6f612",
       "reason": "the leader's MCP server process restarted; the same session resumed under a new worker identity",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-27T12:22:07Z",
+      "client": "omp-coding-agent",
+      "op": "dismiss",
+      "op_id": "012888ae5c654913ba4bd94c832dff5a",
       "session_id": "51a05311b8f040aabf2f02456b50b932"
     }
   ]
