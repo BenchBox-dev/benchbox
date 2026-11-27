@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import io
 import json
+import re
+import stat
 import subprocess
 import sys
+import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -351,11 +357,8 @@ def test_medium_refresh_rejects_a_run_without_junit(tmp_path: Path, capsys: pyte
     assert not output.exists()
 
 
-def test_build_command_round_trips_through_subprocess(tmp_path: Path) -> None:
-    manifest, _runs = build_fixture(tmp_path)
-    output = tmp_path / "baseline"
-
-    completed = subprocess.run(
+def _build_subprocess(manifest: Path, output: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
         [
             sys.executable,
             "-m",
@@ -374,10 +377,29 @@ def test_build_command_round_trips_through_subprocess(tmp_path: Path) -> None:
         check=False,
     )
 
+
+def test_build_command_round_trips_through_subprocess(tmp_path: Path) -> None:
+    runs = [write_run(tmp_path, f"run-{index}") for index in range(baseline.MIN_SOURCE_RUNS)]
+    output = tmp_path / "baseline"
+
+    completed = _build_subprocess(write_manifest(tmp_path, runs), output)
+
     assert completed.returncode == 0, completed.stderr
     payload = baseline.read_sharded_baseline(output)
     assert payload["schema"] == 1
     assert len(payload["tests"]) == 2
+
+
+def test_build_command_refuses_fewer_than_the_minimum_usable_runs(tmp_path: Path) -> None:
+    runs = [write_run(tmp_path, f"run-{index}") for index in range(baseline.MIN_SOURCE_RUNS - 1)]
+    runs.append(write_run(tmp_path, "run-unusable", calibration=False))
+    output = tmp_path / "baseline"
+
+    completed = _build_subprocess(write_manifest(tmp_path, runs), output)
+
+    assert completed.returncode == 1
+    assert f"only {baseline.MIN_SOURCE_RUNS - 1} source runs are usable" in completed.stderr
+    assert not output.exists()
 
 
 def test_sharded_baseline_round_trips_and_shards_by_stable_hash(tmp_path: Path) -> None:
@@ -831,3 +853,471 @@ def test_ceiling_growth_counts_absent_files_from_zero_and_keeps_fifteen() -> Non
     assert growth[0]["file"] == "tests/f18.py"
     assert growth[0]["growth_seconds"] == 19.0
     assert all(row["file"] != "tests/f19.py" for row in growth)
+
+
+SHA = [f"{index:040x}" for index in range(1, 11)]
+CEILING_PAYLOAD = {"schema": 1, "ceiling_seconds": 1000, "reference_calibration_best_seconds": 0.75, "reason": "x"}
+RUN_CREATED_AT = "2026-10-24T00:00:00Z"
+NOT_AFTER = datetime(2026, 11, 1, tzinfo=timezone.utc)
+RUN_PATH = "repos/o/r/actions/runs/100"
+ARTIFACT_PATH = "repos/o/r/actions/artifacts/200"
+PULL_PATH = "repos/o/r/pulls/3500"
+
+
+def git(repo: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@example.com", "-C", str(repo), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=True,
+    ).stdout
+
+
+def zip_bytes(members: dict[str, bytes], *, symlinks: tuple[str, ...] = ()) -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as bundle:
+        for name, data in members.items():
+            info = zipfile.ZipInfo(name)
+            if name in symlinks:
+                info.external_attr = (stat.S_IFLNK | 0o777) << 16
+            bundle.writestr(info, data)
+    return buffer.getvalue()
+
+
+class ReproduceFixture:
+    def __init__(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        self.tmp_path = tmp_path
+        (tmp_path / "checkout").mkdir()
+        monkeypatch.chdir(tmp_path / "checkout")
+        (tmp_path / "source").mkdir()
+        self.runs = [
+            write_run(
+                tmp_path,
+                f"source/run-{100 + index}",
+                best_seconds=0.5 * (index % 3 + 1),
+                cases=(("test_alpha", 1.0 * (index % 3 + 1)), ("test_beta", 3.0 * (index % 3 + 1))),
+            )
+            for index in range(10)
+        ]
+        self.entries = [
+            {
+                "run_id": 100 + index,
+                "pr": 3500 + index,
+                "sha": SHA[index],
+                "artifact_id": 200 + index,
+                "dir": str(run_dir),
+            }
+            for index, run_dir in enumerate(self.runs)
+        ]
+        self.archives = {
+            entry["artifact_id"]: zip_bytes(
+                {path.name: path.read_bytes() for path in sorted(Path(entry["dir"]).iterdir())}
+            )
+            for entry in self.entries
+        }
+        self.previous = tmp_path / "previous"
+        previous, _ = baseline.build_baseline(self.entries[:1], GENERATED_AT)
+        previous["tests"] = [{"id": "tests/test_sample.py::TestSample::test_alpha", "p50_seconds": 1.0}]
+        baseline.write_sharded_baseline(self.previous, previous)
+        self.repo = tmp_path / "repo"
+        self.directory = self.repo / "tests" / "fixtures" / "fast_tier_baseline"
+        built, _ = baseline.build_baseline(self.entries, GENERATED_AT)
+        baseline.write_sharded_baseline(self.directory, built)
+        baseline.write_summary(self.previous, self.directory)
+        self.ids = {record["id"] for record in built["tests"]}
+        self.ceiling = tmp_path / "ceiling.json"
+        self.ceiling.write_text(json.dumps(CEILING_PAYLOAD), encoding="utf-8")
+        git(self.repo, "init", "-q")
+        self.commit()
+        self.attempts = 0
+
+    def commit(self, *, stage_worktree: bool = True) -> None:
+        if stage_worktree:
+            git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-q", "--allow-empty", "-m", "baseline")
+
+    def api(self, overrides: dict[str, dict[str, object]] | None = None) -> baseline.Api:
+        payloads: dict[str, dict[str, object]] = {}
+        for entry in self.entries:
+            run_id, pr, sha = entry["run_id"], entry["pr"], entry["sha"]
+            payloads[f"repos/o/r/actions/runs/{run_id}"] = {
+                "id": run_id,
+                "path": ".github/workflows/ci.yml",
+                "event": "pull_request",
+                "status": "completed",
+                "conclusion": "success",
+                "head_sha": sha,
+                "created_at": RUN_CREATED_AT,
+                "head_repository": {"full_name": "o/r"},
+                "pull_requests": [],
+            }
+            payloads[f"repos/o/r/actions/artifacts/{entry['artifact_id']}"] = {
+                "name": f"fast-junit-{pr}-{sha}",
+                "workflow_run": {"id": run_id, "head_sha": sha},
+            }
+            payloads[f"repos/o/r/pulls/{pr}"] = {
+                "merged": True,
+                "merged_at": "2026-10-24T12:00:00Z",
+                "head": {"sha": sha, "repo": {"full_name": "o/r"}},
+                "base": {"ref": "develop", "repo": {"full_name": "o/r"}},
+            }
+        for path, changes in (overrides or {}).items():
+            payloads[path] = {**payloads[path], **changes}
+
+        def api(path: str) -> object:
+            if path not in payloads:
+                raise baseline.BaselineError("unknown")
+            return payloads[path]
+
+        return api
+
+    def fetch(self, path: str) -> bytes:
+        artifact_id = int(path.split("/")[-2])
+        if artifact_id not in self.archives:
+            raise baseline.BaselineError("unknown")
+        return self.archives[artifact_id]
+
+    def problems(
+        self,
+        api: baseline.Api | None = None,
+        fetch: baseline.Fetch | None = None,
+        not_after: datetime = NOT_AFTER,
+    ) -> list[str]:
+        self.attempts += 1
+        return baseline.reproduce_problems(
+            self.directory,
+            self.previous,
+            self.tmp_path / f"work-{self.attempts}",
+            rev="HEAD",
+            repo="o/r",
+            api=api or self.api(),
+            fetch=fetch or self.fetch,
+            collected_ids=self.ids,
+            ceiling_path=self.ceiling,
+            not_after=not_after,
+        )
+
+
+@pytest.fixture
+def reproduce(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReproduceFixture:
+    return ReproduceFixture(tmp_path, monkeypatch)
+
+
+def test_reproduce_passes_on_a_faithful_rebuild(reproduce: ReproduceFixture) -> None:
+    assert reproduce.problems() == []
+
+
+def test_reproduce_detects_an_extra_file_in_a_subdirectory(reproduce: ReproduceFixture) -> None:
+    (reproduce.directory / "nested").mkdir()
+    (reproduce.directory / "nested" / "hidden.json").write_text("{}\n", encoding="utf-8")
+    reproduce.commit()
+    assert reproduce.problems() == ['extra file "nested/hidden.json"']
+
+
+def test_reproduce_detects_a_missing_summary(reproduce: ReproduceFixture) -> None:
+    git(reproduce.repo, "rm", "-q", "tests/fixtures/fast_tier_baseline/SUMMARY.md")
+    reproduce.commit()
+    assert reproduce.problems() == ['missing file "SUMMARY.md"']
+
+
+def test_reproduce_detects_a_mode_change(reproduce: ReproduceFixture) -> None:
+    git(reproduce.repo, "update-index", "--chmod=+x", "tests/fixtures/fast_tier_baseline/tests-00.json")
+    reproduce.commit(stage_worktree=False)
+    assert reproduce.problems() == ['file mode 100755 on "tests-00.json"']
+
+
+def test_reproduce_detects_a_changed_byte(reproduce: ReproduceFixture) -> None:
+    target = next(
+        path
+        for path in sorted(reproduce.directory.glob("tests-*.json"))
+        if "p50_seconds" in path.read_text(encoding="utf-8")
+    )
+    target.write_text(
+        target.read_text(encoding="utf-8").replace('"p50_seconds": ', '"p50_seconds": 9', 1), encoding="utf-8"
+    )
+    reproduce.commit()
+    assert reproduce.problems() == [f'changed bytes in "{target.name}"']
+
+
+def test_reproduce_reads_the_commit_not_the_worktree(reproduce: ReproduceFixture) -> None:
+    (reproduce.directory / "SUMMARY.md").write_text("edited\n", encoding="utf-8")
+    assert reproduce.problems() == []
+
+
+@pytest.mark.parametrize(
+    ("path", "changes", "codes"),
+    [
+        (RUN_PATH, {"head_sha": SHA[5]}, ["run-sha"]),
+        (RUN_PATH, {"event": "push"}, ["run-event"]),
+        (RUN_PATH, {"conclusion": "failure"}, ["run-conclusion"]),
+        (RUN_PATH, {"path": ".github/workflows/evil.yml"}, ["run-workflow"]),
+        (RUN_PATH, {"path": ".github/workflows/ci.yml@refs/pull/3500/merge"}, []),
+        (RUN_PATH, {"pull_requests": []}, []),
+        (RUN_PATH, {"pull_requests": [{"number": 1}]}, []),
+        (RUN_PATH, {"head_repository": {"full_name": "attacker/r"}}, ["run-fork"]),
+        (RUN_PATH, {"head_repository": None}, ["run-fork"]),
+        (RUN_PATH, {"created_at": "2026-09-01T00:00:00Z"}, ["generated-too-late"]),
+        (RUN_PATH, {"created_at": "2026-10-26T00:00:00Z"}, ["generated-before-run", "run-after-merge"]),
+        (RUN_PATH, {"created_at": "yesterday"}, ["run-created"]),
+        (ARTIFACT_PATH, {"name": f"fast-junit-9999-{SHA[0]}"}, ["artifact-name"]),
+        (ARTIFACT_PATH, {"workflow_run": {"id": 7, "head_sha": SHA[0]}}, ["artifact-run"]),
+        (ARTIFACT_PATH, {"workflow_run": {"id": 100, "head_sha": SHA[5]}}, ["artifact-sha"]),
+        (PULL_PATH, {"merged": False}, ["pr-not-merged"]),
+        (PULL_PATH, {"head": {"sha": SHA[5], "repo": {"full_name": "o/r"}}}, ["pr-head"]),
+        (PULL_PATH, {"head": {"sha": SHA[0], "repo": {"full_name": "attacker/r"}}}, ["pr-fork"]),
+        (PULL_PATH, {"head": {"sha": SHA[0], "repo": None}}, ["pr-fork"]),
+        (PULL_PATH, {"merged_at": "2026-10-23T23:59:59Z"}, ["run-after-merge"]),
+        (PULL_PATH, {"merged_at": RUN_CREATED_AT}, []),
+        (PULL_PATH, {"merged_at": None}, ["pr-merged-at"]),
+        (PULL_PATH, {"base": {"ref": "feature/x", "repo": {"full_name": "o/r"}}}, ["pr-base"]),
+        (PULL_PATH, {"base": {"ref": "release/1.0", "repo": {"full_name": "o/r"}}}, ["pr-base"]),
+        (PULL_PATH, {"base": {"ref": "develop", "repo": {"full_name": "attacker/r"}}}, ["pr-base"]),
+        (PULL_PATH, {"base": None}, ["pr-base"]),
+    ],
+)
+def test_reproduce_rejects_source_runs_whose_provenance_does_not_match(
+    reproduce: ReproduceFixture, path: str, changes: dict[str, object], codes: list[str]
+) -> None:
+    problems = reproduce.problems(reproduce.api({path: changes}))
+    assert problems == [f"run 100: {code}" for code in codes]
+
+
+def test_reproduce_downloads_nothing_until_provenance_passes(reproduce: ReproduceFixture) -> None:
+    def forbidden(path: str) -> bytes:
+        raise AssertionError(path)
+
+    problems = reproduce.problems(reproduce.api({PULL_PATH: {"merged": False}}), fetch=forbidden)
+    assert problems == ["run 100: pr-not-merged"]
+    assert not (reproduce.tmp_path / f"work-{reproduce.attempts}" / "fast-refresh").exists()
+
+
+def test_reproduce_rejects_an_unreachable_api_without_trusting_the_artifact(reproduce: ReproduceFixture) -> None:
+    def unreachable(path: str) -> object:
+        raise baseline.BaselineError("down")
+
+    problems = reproduce.problems(unreachable)
+    assert "run 100: run-unavailable" in problems
+    assert "run 100: artifact-unavailable" in problems
+    assert "run 100: pr-unavailable" in problems
+
+
+def test_reproduce_reports_a_failed_download_and_a_hostile_archive(reproduce: ReproduceFixture) -> None:
+    def broken(path: str) -> bytes:
+        raise baseline.BaselineError("down")
+
+    assert reproduce.problems(fetch=broken)[0] == "run 100: artifact-download"
+    reproduce.archives[200] = zip_bytes({"junit.xml": b"<x/>", "extra.txt": b"x"})
+    assert reproduce.problems() == ["run 100: artifact-members"]
+
+
+def test_reproduce_counts_only_usable_runs_toward_the_minimum(reproduce: ReproduceFixture) -> None:
+    unusable = write_run(reproduce.tmp_path, "source/unusable", calibration=False)
+    reproduce.archives[200] = zip_bytes({path.name: path.read_bytes() for path in unusable.iterdir()})
+    entries = [{**reproduce.entries[0], "dir": str(unusable)}, *reproduce.entries[1:]]
+    built, rejected = baseline.build_baseline(entries, GENERATED_AT)
+    assert len(rejected) == 1
+    baseline.write_sharded_baseline(reproduce.directory, built)
+    baseline.write_summary(reproduce.previous, reproduce.directory)
+    reproduce.commit()
+
+    assert f"source runs: fewer than {baseline.MIN_SOURCE_RUNS} usable" in reproduce.problems()
+
+
+def test_reproduce_requires_a_fresh_working_directory_outside_the_checkout(reproduce: ReproduceFixture) -> None:
+    kwargs: dict[str, Any] = {
+        "rev": "HEAD",
+        "repo": "o/r",
+        "api": reproduce.api(),
+        "fetch": reproduce.fetch,
+        "collected_ids": reproduce.ids,
+        "ceiling_path": reproduce.ceiling,
+        "not_after": NOT_AFTER,
+    }
+    with pytest.raises(baseline.BaselineError, match="outside the current directory"):
+        baseline.reproduce_problems(reproduce.directory, reproduce.previous, Path.cwd() / "inside", **kwargs)
+    occupied = reproduce.tmp_path / "occupied"
+    occupied.mkdir()
+    (occupied / "leftover").write_text("x", encoding="utf-8")
+    with pytest.raises(baseline.BaselineError, match="must be empty"):
+        baseline.reproduce_problems(reproduce.directory, reproduce.previous, occupied, **kwargs)
+
+
+def test_reproduce_pins_generated_at_to_utc_and_to_the_event_time(reproduce: ReproduceFixture) -> None:
+    assert reproduce.problems(not_after=datetime(2026, 10, 1, tzinfo=timezone.utc)) == [
+        "manifest: generated_at is after the pull request event"
+    ]
+    manifest = reproduce.directory / "manifest.json"
+    manifest.write_text(manifest.read_text(encoding="utf-8").replace(GENERATED_AT, "2026-10-25T00:00:00+00:00"))
+    reproduce.commit()
+    assert reproduce.problems() == ["manifest: generated_at is not a UTC timestamp"]
+
+
+def test_source_run_problems_bound_the_run_count_and_forbid_duplicates() -> None:
+    generated = datetime(2026, 10, 25, tzinfo=timezone.utc)
+
+    def entry(run_id: int, pr: int, artifact_id: int | None = None) -> dict[str, object]:
+        return {"run_id": run_id, "pr": pr, "sha": SHA[0], "artifact_id": artifact_id or run_id}
+
+    def api(path: str) -> object:
+        raise baseline.BaselineError("down")
+
+    many = [entry(index, index) for index in range(1, 22)]
+    assert baseline.source_run_problems(many, "o/r", api, generated) == ["source runs: more than 20"]
+    few = [entry(index, index) for index in range(1, 10)]
+    assert baseline.source_run_problems(few, "o/r", api, generated) == ["source runs: fewer than 10"]
+    base = [entry(index, index) for index in range(10, 20)]
+    duplicated = baseline.source_run_problems(
+        [*base, entry(10, 50), entry(51, 11), entry(52, 53, 12)], "o/r", api, generated
+    )
+    assert "source runs: run 10 appears more than once" in duplicated
+    assert "source runs: pr 11 appears more than once" in duplicated
+    assert "source runs: artifact 12 appears more than once" in duplicated
+    assert not any(problem.startswith("run ") for problem in duplicated)
+
+
+def test_extract_artifact_accepts_only_regular_allowed_members(tmp_path: Path) -> None:
+    good = zip_bytes({"junit.xml": b"<a/>", "calibration.json": b"{}", "collection.jsonl": b""})
+    baseline.extract_artifact(good, tmp_path / "ok")
+    assert sorted(path.name for path in (tmp_path / "ok").iterdir()) == [
+        "calibration.json",
+        "collection.jsonl",
+        "junit.xml",
+    ]
+    hostile = {
+        "traversal": zip_bytes({"../junit.xml": b"x"}),
+        "absolute": zip_bytes({"/etc/junit.xml": b"x"}),
+        "nested": zip_bytes({"p/junit.xml": b"x"}),
+        "other": zip_bytes({"__init__.py": b"x"}),
+        "directory": zip_bytes({"junit.xml/": b""}),
+        "symlink": zip_bytes({"junit.xml": b"../../scripts"}, symlinks=("junit.xml",)),
+    }
+    for label, archive in hostile.items():
+        with pytest.raises(baseline.SourceRunError) as caught:
+            baseline.extract_artifact(archive, tmp_path / label)
+        assert caught.value.code == "artifact-members", label
+        assert not (tmp_path / label).exists(), label
+    with pytest.raises(baseline.SourceRunError) as caught:
+        baseline.extract_artifact(b"not a zip", tmp_path / "garbage")
+    assert caught.value.code == "artifact-unreadable"
+
+
+def test_extract_artifact_enforces_the_size_limit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(baseline, "ARTIFACT_MAX_BYTES", 3)
+    with pytest.raises(baseline.SourceRunError):
+        baseline.extract_artifact(zip_bytes({"junit.xml": b"1234"}), tmp_path / "big")
+
+
+def test_reproduce_enforces_the_ceiling_against_the_rebuilt_baseline(reproduce: ReproduceFixture) -> None:
+    reproduce.ceiling.write_text(json.dumps({**CEILING_PAYLOAD, "ceiling_seconds": 1}), encoding="utf-8")
+    assert reproduce.problems() == ["ceiling check: the baseline is over the fast-duration ceiling"]
+
+
+def test_reproduce_gate_check_needs_the_collected_fast_tier_covered(reproduce: ReproduceFixture) -> None:
+    reproduce.ids = {"tests/other.py::t1", "tests/other.py::t2"}
+    assert reproduce.problems() == ["gate check: coverage of the collected fast tier is below the minimum"]
+
+
+def test_reproduce_command_reports_problems_and_exit_codes(
+    reproduce: ReproduceFixture, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    collected = reproduce.tmp_path / "collected.txt"
+    collected.write_text("\n".join(sorted(reproduce.ids)) + "\n", encoding="utf-8")
+
+    def argv(workdir: str) -> list[str]:
+        return [
+            "reproduce",
+            "--baseline",
+            str(reproduce.directory),
+            "--previous",
+            str(reproduce.previous),
+            "--workdir",
+            str(reproduce.tmp_path / workdir),
+            "--collected-ids",
+            str(collected),
+            "--ceiling",
+            str(reproduce.ceiling),
+            "--repo",
+            "o/r",
+            "--not-after",
+            "2026-11-01T00:00:00Z",
+        ]
+
+    monkeypatch.setattr(baseline, "github_api", reproduce.api())
+    monkeypatch.setattr(baseline, "github_artifact_zip", reproduce.fetch)
+    assert baseline.main(argv("work-cli-1")) == 0
+    monkeypatch.setattr(baseline, "github_api", reproduce.api({"repos/o/r/pulls/3501": {"merged": False}}))
+    assert baseline.main(argv("work-cli-2")) == 2
+    assert "run 101: pr-not-merged" in capsys.readouterr().out
+    assert baseline.main([*argv("work-cli-3")[:-1], "tomorrow"]) == 1
+
+
+def summary_pair() -> tuple[dict[str, object], dict[str, object]]:
+    hostile = "tests/a.py::t[x|y `z` \nw]"
+    previous = {
+        "reference_calibration_best_seconds": 1.0,
+        "tests": [{"id": hostile, "p50_seconds": 1.0}, {"id": "tests/b.py::gone", "p50_seconds": 2.0}],
+    }
+    current = {
+        "reference_calibration_best_seconds": 1.0,
+        "tests": [{"id": hostile, "p50_seconds": 2.0}, {"id": "tests/c.py::new", "p50_seconds": 0.5}],
+        "runs": [{"run_id": 1, "pr": 2, "sha": SHA[0], "speed_factor": 1.0, "test_count": 2}],
+        "rejected_runs": [
+            {"run_id": 3, "pr": 4, "reason": "junit-unreadable"},
+            {"run_id": 5, "pr": 6, "reason": "missing or unreadable junit.xml: /home/runner/work/secret.xml"},
+        ],
+    }
+    return previous, current
+
+
+def table_cells(line: str) -> list[str]:
+    return re.split(r"(?<!\\)\|", line.strip())[1:-1]
+
+
+def test_summary_escapes_table_cells_and_keeps_each_row_on_one_line() -> None:
+    text = baseline.summary_markdown(*summary_pair())
+    rows = [line for line in text.splitlines() if "t[x" in line]
+    assert rows
+    for row in rows:
+        assert len(table_cells(row)) in {4, 2}
+        assert "``tests/a.py::t[x\\|y `z`  w]``" in row
+    assert "\nw]" not in text
+
+
+def test_summary_reduces_rejected_reasons_to_fixed_codes() -> None:
+    text = baseline.summary_markdown(*summary_pair())
+    assert "- run 3 (pr 4): junit-unreadable" in text
+    assert "- run 5 (pr 6): unrecognized" in text
+    assert "/home/runner" not in text
+    assert "secret" not in text
+
+
+def test_summary_is_deterministic_and_separates_the_list_with_blank_lines() -> None:
+    first = baseline.summary_markdown(*summary_pair())
+    assert first == baseline.summary_markdown(*summary_pair())
+    assert "Rejected source runs: 2.\n\n- run 3" in first
+    assert first.endswith("\n") and not first.endswith("\n\n")
+
+
+def test_summary_command_writes_the_summary_next_to_the_baseline(reproduce: ReproduceFixture) -> None:
+    (reproduce.directory / "SUMMARY.md").unlink()
+    argv = ["summary", "--previous", str(reproduce.previous), "--baseline", str(reproduce.directory)]
+    assert baseline.main(argv) == 0
+    assert (reproduce.directory / "SUMMARY.md").read_text(encoding="utf-8").startswith("# Fast-tier duration baseline")
+
+
+def test_rejected_source_runs_carry_fixed_codes(tmp_path: Path) -> None:
+    good = write_run(tmp_path, "good")
+    no_calibration = write_run(tmp_path, "bad-a", calibration=False)
+    bad_value = write_run(tmp_path, "bad-b", best_seconds=-1)
+    bad_time = write_run(tmp_path, "bad-c", cases=(("test_alpha", "oops"),))
+    no_junit = write_run(tmp_path, "bad-d")
+    (no_junit / "junit.xml").unlink()
+    manifest = write_manifest(tmp_path, [good, no_calibration, bad_value, bad_time, no_junit])
+    _built, rejected = baseline.build_baseline(baseline.load_manifest(manifest), GENERATED_AT)
+    assert [item["reason"] for item in rejected] == [
+        "calibration-unreadable",
+        "calibration-invalid",
+        "junit-time-invalid",
+        "junit-unreadable",
+    ]

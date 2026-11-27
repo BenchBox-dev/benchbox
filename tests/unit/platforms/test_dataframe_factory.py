@@ -48,10 +48,13 @@ class TestGetDataFrameAdapter:
             get_dataframe_adapter("unknown-df")
 
     def test_config_passed_to_adapter(self):
-        adapter = get_dataframe_adapter("polars-df", streaming=True, rechunk=False)
+        adapter = get_dataframe_adapter("polars-df", rechunk=False)
 
-        assert adapter.streaming is True
         assert adapter.rechunk is False
+
+    def test_removed_streaming_keyword_is_rejected(self):
+        with pytest.raises(TypeError, match="--execution-engine streaming"):
+            get_dataframe_adapter("polars-df", streaming=True)
 
 
 class TestListAvailableDataFramePlatforms:
@@ -126,7 +129,7 @@ class TestPlatformHookRegistration:
 
         specs = PlatformHookRegistry.list_option_specs("polars")
 
-        assert "streaming" in specs
+        assert "streaming" not in specs
         assert "rechunk" in specs
         assert "n_rows" in specs
 
@@ -142,7 +145,7 @@ class TestPlatformHookRegistration:
 
         defaults = PlatformHookRegistry.get_default_options("polars")
 
-        assert defaults["streaming"] is False
+        assert "streaming" not in defaults
         assert defaults["rechunk"] is True
         assert defaults["n_rows"] is None
 
@@ -158,12 +161,16 @@ class TestPlatformHookRegistration:
 
         parsed = PlatformHookRegistry.parse_options(
             "polars",
-            [("streaming", "true"), ("rechunk", "false"), ("n_rows", "1000")],
+            [("rechunk", "false"), ("n_rows", "1000")],
         )
-
-        assert parsed["streaming"] is True
         assert parsed["rechunk"] is False
         assert parsed["n_rows"] == 1000
+
+    def test_polars_df_removed_streaming_option_is_rejected(self):
+        from benchbox.cli.platform_hooks import PlatformHookRegistry, PlatformOptionError
+
+        with pytest.raises(PlatformOptionError, match="--execution-engine streaming"):
+            PlatformHookRegistry.parse_options("polars", [("streaming", "true")])
 
     def test_pandas_df_option_parsing(self):
         from benchbox.cli.platform_hooks import PlatformHookRegistry

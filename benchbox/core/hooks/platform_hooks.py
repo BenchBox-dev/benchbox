@@ -4,8 +4,8 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from benchbox.core.execution_engine import legacy_option_engine
 from benchbox.core.platform_registry import PlatformInfo, PlatformRegistry
+from benchbox.core.removed_options import removed_option_message
 from benchbox.core.schemas import DatabaseConfig
 
 
@@ -24,33 +24,6 @@ def parse_bool(value: str) -> bool:
     if normalized in {"false", "0", "no", "n", "off"}:
         return False
     raise PlatformOptionError(f"Invalid boolean value '{value}'")
-
-
-def _warn_deprecated_compute_alias(platform: str, alias: str, canonical: str) -> None:
-    from benchbox.core.compute_resource import (
-        _manifest_key,
-        declares_compute,
-        get_compute_declaration,
-        warn_deprecated_compute_alias,
-    )
-    from benchbox.core.deployment import DEPLOYMENT_ALIAS_KEYS
-    from benchbox.core.execution_engine import DEPRECATED_OPTION_ALIASES
-
-    key = alias.lower()
-    if key in DEPLOYMENT_ALIAS_KEYS.get(platform.lower(), ()):
-        return
-    declaration = get_compute_declaration(platform) if declares_compute(platform) else None
-    known = declaration is not None and (key in declaration.resource_aliases or key in declaration.size_aliases)
-    if not known and (platform.lower(), key) not in DEPRECATED_OPTION_ALIASES:
-        if (_manifest_key(platform), key) not in DEPRECATED_OPTION_ALIASES:
-            return
-    warn_deprecated_compute_alias(platform, alias, canonical)
-
-
-def _selects_resource_kind(platform: str, key: str) -> bool:
-    from benchbox.core.compute_resource import is_kind_selecting_key
-
-    return is_kind_selecting_key(platform, key)
 
 
 @dataclass(frozen=True)
@@ -121,8 +94,13 @@ class PlatformHookRegistry:
     @classmethod
     def parse_options(cls, platform: str, provided: Iterable[tuple[str, str]]) -> dict[str, Any]:
         platform = platform.lower()
+        provided = tuple(provided)
+        for key, _raw in provided:
+            removed = removed_option_message(platform, key)
+            if removed is not None:
+                raise PlatformOptionError(removed)
         specs = cls._option_specs.get(platform, {})
-        if not specs and any(True for _ in provided):
+        if not specs and provided:
             raise PlatformOptionError(f"Platform '{platform}' does not accept platform-specific options")
 
         resolved: dict[str, Any] = {}
@@ -135,12 +113,8 @@ class PlatformHookRegistry:
                 raise PlatformOptionError(
                     f"Unknown platform option '{key}' for platform '{platform}'. Available: {options_str}"
                 )
-            if key.lower() != canonical:
-                _warn_deprecated_compute_alias(platform, key, canonical)
             spec = specs[canonical]
             value = spec.parse(raw)
-            if isinstance(value, bool):
-                legacy_option_engine(platform, canonical, value)
             if canonical in seen:
                 first_key, first_value = seen[canonical]
                 if value != first_value:
@@ -151,8 +125,6 @@ class PlatformHookRegistry:
             else:
                 seen[canonical] = (key, value)
             resolved[canonical] = value
-            if key.lower() != canonical and _selects_resource_kind(platform, key):
-                resolved[key.lower()] = value
 
         defaults = cls.get_default_options(platform)
         defaults.update(resolved)

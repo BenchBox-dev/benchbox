@@ -71,32 +71,9 @@ def official_scale_points(benchmark_id: str | None) -> frozenset[int | float]:
 
 
 def begin_run() -> None:
-    from benchbox.core.deprecation_notices import begin_run as reset_deprecation_notices
     from benchbox.core.option_notices import begin_run as reset_option_notices
 
-    reset_deprecation_notices()
     reset_option_notices()
-
-
-def apply_polars_streaming_flag(
-    option_pairs: tuple[tuple[str, str], ...], execution_engine: str | None
-) -> tuple[tuple[str, str], ...]:
-    from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
-
-    if execution_engine not in (None, DEFAULT_EXECUTION_ENGINE, "streaming"):
-        raise ValueError(f"--polars-streaming conflicts with --execution-engine {execution_engine}")
-    return (*option_pairs, ("streaming", "true"))
-
-
-def warn_polars_streaming_flag() -> None:
-    from benchbox.core.deprecation_notices import warn_deprecated_alias
-
-    warn_deprecated_alias(
-        "polars",
-        "--polars-streaming",
-        "'--execution-engine streaming' (execution_engine='streaming')",
-        setting="streaming",
-    )
 
 
 def validate_tpc_scale_factor(scale: float) -> None:
@@ -239,10 +216,8 @@ def resolve_run_config(
         options.get("power_iterations", GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS)
         or GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS
     )
-    warmups = int(
-        options.get("power_warmup_iterations", GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS)
-        or GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS
-    )
+    warmups_raw = options.get("power_warmup_iterations")
+    warmups = GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS if warmups_raw is None else int(warmups_raw)
     fail_fast = bool(options.get("power_fail_fast", False))
 
     return RunConfig(
@@ -641,7 +616,6 @@ __all__ = [
     "unavailable_benchmark_message",
     "UNAVAILABLE_BENCHMARK_MESSAGES",
     "AdapterFactory",
-    "apply_polars_streaming_flag",
     "begin_run",
     "build_databricks_clustering_intent",
     "build_timed_out_result",
@@ -669,5 +643,4 @@ __all__ = [
     "validate_tpc_scale_factor",
     "refuse_unavailable_benchmark",
     "VerbosityLike",
-    "warn_polars_streaming_flag",
 ]

@@ -19,7 +19,6 @@ from benchbox.platforms import get_dataframe_adapter, polars_compat
 from benchbox.platforms.dataframe import expression_family, polars_df, unified_frame
 from benchbox.platforms.dataframe.polars_df import PolarsDataFrameAdapter
 from benchbox.platforms.dataframe.unified_frame import UnifiedLazyFrame
-from tests.utilities.deprecation_capture import captured_deprecations
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium]
 
@@ -334,19 +333,9 @@ class TestEngineReachesEveryCollect:
 
         assert collect_calls == [{}]
 
-    def test_streaming_flag_selects_the_streaming_engine(self, collect_calls, caplog):
-        with captured_deprecations(caplog) as seen:
-            adapter = PolarsDataFrameAdapter(streaming=True)
-        collect_calls.clear()
-
-        adapter.collect(pl.LazyFrame({"a": [1]}))
-
-        assert adapter.collect_engine == "streaming"
-        assert adapter.get_platform_info()["execution_engine"]["resolution"] == "legacy_option"
-        assert collect_calls == [{"engine": "streaming"}]
-        assert len(seen) == 1
-        assert "'streaming'" in seen[0]
-        assert "0.6.0" in seen[0]
+    def test_removed_streaming_keyword_is_rejected(self):
+        with pytest.raises(TypeError, match="--execution-engine streaming"):
+            PolarsDataFrameAdapter(streaming=True)
 
     def test_default_on_a_version_without_an_engine_parameter_resolves_in_memory(self, monkeypatch):
         monkeypatch.setattr(polars_df, "collect_accepts_engine", lambda: False)
@@ -379,9 +368,6 @@ class TestExecutionEngineResolution:
             with pytest.raises(ExecutionEngineUnavailableError, match=rf"Polars {pl.__version__}.*{engine!r}"):
                 PolarsDataFrameAdapter(execution_engine=engine)
 
-        with pytest.raises(ExecutionEngineUnavailableError, match="'streaming'"):
-            PolarsDataFrameAdapter(streaming=True)
-
     def test_value_rejected_by_polars_fails_the_run(self, monkeypatch):
         def rejecting_collect(self, *, engine="auto"):
             raise ValueError(f"unsupported engine {engine}")
@@ -399,12 +385,6 @@ class TestExecutionEngineResolution:
         with pytest.raises(TypeError):
             PolarsDataFrameAdapter(engine="in-memory")
 
-    def test_conflicting_explicit_and_legacy_sources_fail(self):
-        with pytest.raises(
-            ValueError, match="explicit setting requests 'in-memory'.*legacy option requests 'streaming'"
-        ):
-            PolarsDataFrameAdapter(execution_engine="in-memory", streaming=True)
-
     def test_conflicting_explicit_and_tuning_sources_fail(self):
         tuning = _tuning_config(engine_affinity="in-memory")
 
@@ -414,7 +394,7 @@ class TestExecutionEngineResolution:
     def test_agreeing_sources_resolve_to_the_highest_precedence(self):
         tuning = _tuning_config(engine_affinity="streaming")
 
-        adapter = PolarsDataFrameAdapter(execution_engine="streaming", tuning_config=tuning, streaming=True)
+        adapter = PolarsDataFrameAdapter(execution_engine="streaming", tuning_config=tuning)
 
         assert adapter.get_platform_info()["execution_engine"]["resolution"] == "explicit"
 
@@ -518,7 +498,6 @@ class TestEngineMetadata:
         ("kwargs", "requested", "resolution", "collect_kwargs"),
         [
             ({}, "default", "version_default", {}),
-            ({"streaming": True}, "streaming", "legacy_option", {"engine": "streaming"}),
             ({"execution_engine": "streaming"}, "streaming", "explicit", {"engine": "streaming"}),
         ],
     )

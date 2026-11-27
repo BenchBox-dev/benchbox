@@ -254,8 +254,9 @@
         "default_engine",
         "engine_classes",
         "reserved_option_keys",
-        "deprecated_option_aliases",
-        "deployment_alias_keys",
+        "removed_in",
+        "removed_options",
+        "deployment_selector_platforms",
         "engines",
         "compute_resource_option",
         "compute_size_option",
@@ -265,21 +266,21 @@
         "default_engine": {"type": "string"},
         "engine_classes": {"$ref": "#/$defs/strings"},
         "reserved_option_keys": {"$ref": "#/$defs/sortedStrings"},
-        "deprecated_option_aliases": {
+        "removed_in": {"type": "string"},
+        "removed_options": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["platform", "key", "target", "removed_in"],
+            "required": ["platform", "key", "replacement"],
             "properties": {
               "platform": {"type": "string"},
               "key": {"type": "string"},
-              "target": {"type": "string"},
-              "removed_in": {"type": "string"}
+              "replacement": {"type": "string"}
             }
           }
         },
-        "deployment_alias_keys": {"type": "object", "additionalProperties": {"$ref": "#/$defs/sortedStrings"}},
+        "deployment_selector_platforms": {"$ref": "#/$defs/sortedStrings"},
         "engines": {
           "type": "object",
           "additionalProperties": {
@@ -307,7 +308,7 @@
           "additionalProperties": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["resource_kind", "resource_aliases", "size_aliases", "size_choices"],
+            "required": ["resource_kind", "native_resource_keys", "native_size_keys", "size_choices"],
             "properties": {
               "resource_kind": {
                 "oneOf": [
@@ -316,8 +317,8 @@
                   {"type": "object", "additionalProperties": {"type": "string"}}
                 ]
               },
-              "resource_aliases": {"$ref": "#/$defs/sortedStrings"},
-              "size_aliases": {"$ref": "#/$defs/sortedStrings"},
+              "native_resource_keys": {"$ref": "#/$defs/sortedStrings"},
+              "native_size_keys": {"$ref": "#/$defs/sortedStrings"},
               "size_choices": {"$ref": "#/$defs/sortedStrings"}
             }
           }

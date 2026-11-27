@@ -80,7 +80,7 @@ class TestClickHousePlatformInfo(TestPlatformInfoBase):
             patch("benchbox.platforms.clickhouse.setup.ClickHouseClient"),
             patch("benchbox.platforms.clickhouse.adapter.check_platform_dependencies", return_value=(True, [])),
         ):
-            adapter = ClickHouseAdapter(deployment_mode="server", host="localhost", port=9000, database="test")
+            adapter = ClickHouseAdapter(_deployment_selector="server", host="localhost", port=9000, database="test")
             platform_info = adapter.get_platform_info()
 
             self.validate_platform_info_schema(platform_info, "clickhouse")
@@ -104,7 +104,7 @@ class TestClickHousePlatformInfo(TestPlatformInfoBase):
 
         fake_chdb.__spec__ = importlib.machinery.ModuleSpec("chdb", None)
         with patch.dict("sys.modules", {"chdb": fake_chdb}):
-            adapter = ClickHouseAdapter(deployment_mode="local", data_path="/tmp/chdb")
+            adapter = ClickHouseAdapter(_deployment_selector="local", data_path="/tmp/chdb")
             platform_info = adapter.get_platform_info()
 
             self.validate_platform_info_schema(platform_info, "clickhouse")
@@ -178,7 +178,7 @@ class TestCloudPlatformInfo(TestPlatformInfoBase):
         ):
             adapter = SnowflakeAdapter(
                 account="test-account",
-                warehouse="COMPUTE_WH",
+                compute_resource="COMPUTE_WH",
                 database="TEST_DB",
                 schema="PUBLIC",
                 username="testuser",

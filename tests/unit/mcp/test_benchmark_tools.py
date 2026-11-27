@@ -345,6 +345,7 @@ class TestRunBenchmarkTool:
             MCP_CLICKHOUSE_PROFILE_ENV,
             MCP_PLATFORM_OPTION_ALLOWLIST,
             MCP_PLATFORM_OPTION_CONTRACT,
+            MCPValidationError,
             resolve_clickhouse_connection_profile,
             validate_platform_options,
         )
@@ -361,8 +362,6 @@ class TestRunBenchmarkTool:
             ("dask", "n_workers"): "n_workers",
             ("dask", "threads_per_worker"): "threads_per_worker",
             ("dask", "memory_limit"): "_memory_limit",
-            ("dask", "use_distributed"): "use_distributed",
-            ("clickhouse", "deployment_mode"): "deployment_mode",
             ("clickhouse", "connection_profile"): "port",
             ("clickhouse-server", "connection_profile"): "port",
             ("datafusion", "batch_size"): "batch_size",
@@ -373,7 +372,6 @@ class TestRunBenchmarkTool:
             ("cudf", "device_id"): "device_id",
             ("cudf", "spill_to_host"): "spill_to_host",
             ("polars", "n_rows"): "n_rows",
-            ("polars", "streaming"): "streaming",
             ("polars", "rechunk"): "rechunk",
             ("spark", "adaptive_enabled"): "adaptive_enabled",
             ("sqlite", "timeout"): "timeout",
@@ -404,9 +402,17 @@ class TestRunBenchmarkTool:
                 else:
                     value = "1GB"
 
-                request: dict[str, object] = {option_name: value}
                 if platform == "clickhouse" and option_name == "connection_profile":
-                    request["deployment_mode"] = "server"
+                    try:
+                        validate_platform_options(platform, {option_name: value})
+                    except MCPValidationError as e:
+                        assert "requires the server deployment" in str(e)
+                        observed += 1
+                    else:
+                        failures.append("clickhouse.connection_profile accepted without the server deployment")
+                    continue
+
+                request: dict[str, object] = {option_name: value}
 
                 try:
                     normalized = validate_platform_options(platform, request)

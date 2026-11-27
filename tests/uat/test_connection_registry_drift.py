@@ -142,4 +142,4 @@ def test_uat_databend_connects_to_the_published_self_hosted_endpoint():
     assert opts[opts.index("host=localhost") - 1] == "--platform-option"
     assert "port=8000" in opts
     assert "password=benchbox" in opts
-    assert "deployment_mode=self-hosted" in opts
+    assert docker_assets.platform_cli_selector("databend") == "databend:self-hosted"

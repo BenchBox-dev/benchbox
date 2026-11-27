@@ -36,7 +36,9 @@ class _Adapter(InfluxDBSetupMixin, ConnectionLifecycleMixin):
 
 def test_setup_connection_params_defaults_and_overrides():
     adapter = _Adapter()
-    adapter._setup_connection_params({"host": "influx.local", "token": "abc", "mode": "core", "ssl": False})
+    adapter._setup_connection_params(
+        {"host": "influx.local", "token": "abc", "_deployment_selector": "core", "ssl": False}
+    )
 
     assert adapter.host == "influx.local"
     assert adapter.token == "abc"
@@ -46,11 +48,11 @@ def test_setup_connection_params_defaults_and_overrides():
 
 def test_default_port_follows_mode():
     core = _Adapter()
-    core._setup_connection_params({"mode": "core"})
+    core._setup_connection_params({"_deployment_selector": "core"})
     cloud = _Adapter()
     cloud._setup_connection_params({})
     explicit = _Adapter()
-    explicit._setup_connection_params({"mode": "core", "port": 8086})
+    explicit._setup_connection_params({"_deployment_selector": "core", "port": 8086})
 
     assert core.port == 8181
     assert cloud.port == 443

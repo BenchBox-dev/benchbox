@@ -50,7 +50,7 @@ def snowflake_adapter():
     ):
         from benchbox.platforms.snowflake import SnowflakeAdapter
 
-        yield SnowflakeAdapter(account="acct", username="user", password="pw", warehouse="WH", database="DB")
+        yield SnowflakeAdapter(account="acct", username="user", password="pw", compute_resource="WH", database="DB")
 
 
 class TestSnowflakeTimingContract:

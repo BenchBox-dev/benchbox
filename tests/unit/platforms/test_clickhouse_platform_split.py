@@ -105,7 +105,7 @@ class TestClickHouseLocalAdapter:
             patch("benchbox.platforms.clickhouse.setup.ClickHouseLocalClient"),
             patch("importlib.util.find_spec", return_value=object()),
         ):
-            adapter = ClickHouseLocalAdapter.from_config({"deployment_mode": "server"})
+            adapter = ClickHouseLocalAdapter.from_config({"_deployment_selector": "server"})
             assert adapter.deployment_mode == "local"
 
 
@@ -142,7 +142,7 @@ class TestClickHouseServerAdapter:
             patch("benchbox.platforms.clickhouse.adapter.check_platform_dependencies", return_value=(True, [])),
             patch("benchbox.platforms.clickhouse.setup.ClickHouseClient"),
         ):
-            adapter = ClickHouseServerAdapter.from_config({"deployment_mode": "local"})
+            adapter = ClickHouseServerAdapter.from_config({"_deployment_selector": "local"})
             assert adapter.deployment_mode == "server"
 
     def test_from_config_preserves_database_config_options(self) -> None:

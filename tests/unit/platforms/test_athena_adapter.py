@@ -82,7 +82,7 @@ class TestAthenaAdapterConfigurationValidation:
         from benchbox.platforms.athena import AthenaAdapter
 
         with pytest.raises(ConfigurationError) as exc_info:
-            AthenaAdapter(s3_bucket="test-bucket", workgroup="123-invalid")
+            AthenaAdapter(s3_bucket="test-bucket", compute_resource="123-invalid")
 
         assert "Invalid workgroup name" in str(exc_info.value)
 
@@ -193,7 +193,7 @@ class TestAthenaAdapter:
 
         config = {
             "region": "us-west-2",
-            "workgroup": "test-workgroup",
+            "compute_resource": "test-workgroup",
             "database": "test_db",
             "s3_bucket": "test-bucket",
             "s3_output_location": "s3://test-bucket/results/",
@@ -250,7 +250,7 @@ class TestAthenaAdapter:
 
         config = {
             "region": "us-west-2",
-            "workgroup": "analytics",
+            "compute_resource": "analytics",
             "database": "benchmark",
             "s3_bucket": "data-bucket",
         }
@@ -274,7 +274,7 @@ class TestAthenaAdapter:
 
         adapter = AthenaAdapter(
             region="eu-west-1",
-            workgroup="analytics",
+            compute_resource="analytics",
             database="benchmark",
             catalog="AwsDataCatalog",
             s3_staging_dir="s3://data-bucket/benchbox/staging",
@@ -371,7 +371,7 @@ class TestAthenaAdapter:
             "benchmark": "TPC-H",
             "scale_factor": 10.0,
             "region": "eu-west-1",
-            "workgroup": "production",
+            "compute_resource": "production",
             "s3_bucket": "prod-bucket",
         }
 

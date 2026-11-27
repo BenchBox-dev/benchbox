@@ -26,7 +26,7 @@ def adapter():
         from benchbox.platforms.aws import EMRServerlessAdapter
 
         return EMRServerlessAdapter(
-            application_id="app-123",
+            compute_resource="app-123",
             s3_staging_dir="s3://my-bucket/benchbox-data",
             execution_role_arn="arn:aws:iam::123456789012:role/EMRRole",
         )

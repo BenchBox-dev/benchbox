@@ -101,7 +101,7 @@ class TestLivePgDuckDBMotherDuckMode:
             username=os.getenv("PG_DUCKDB_USER", "benchbox"),
             password=os.getenv("PG_DUCKDB_PASSWORD", "benchbox"),
             database=os.getenv("PG_DUCKDB_DATABASE", "benchbox_test"),
-            deployment_mode="motherduck",
+            _deployment_selector="motherduck",
             motherduck_token=token,
         )
         yield adapter

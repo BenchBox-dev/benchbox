@@ -26,6 +26,7 @@ REQUIRED_POLICY_IDS = {
     "COMMIT-IDENTITY-001",
     "DURABLE-ARTIFACTS-001",
     "EVIDENCE-FRESHNESS-001",
+    "OWNER-DECISION-001",
     "REVIEW-AUTH-001",
     "REVIEW-DEFECT-001",
     "REVIEW-DEPTH-001",
@@ -117,7 +118,15 @@ AGENT_WRITE_ANCHORS = {
         "explicitly forbids publication",
         "authorizes only a local commit",
         "gate fails",
-    )
+    ),
+    "OWNER-DECISION-001": (
+        "blocking question tool",
+        "one question per decision",
+        "record the answer on the tracker item it governs",
+        "never answers an open question",
+        "blocks the work it governs",
+        "docs/agent/owner-decisions.md",
+    ),
 }
 AGENT_COMMENT_POLICY_ANCHORS = {
     "COMMENT-POLICY-001": (
@@ -193,6 +202,7 @@ EVALUATION_ACTIONS = {
     "continue_locally",
     "capture_local_draft",
     "require_live_read",
+    "ask_owner_decision",
 }
 EVALUATION_IDENTITIES = {"human", "current_task_agent", "not_applicable"}
 EVALUATION_BOOLEAN_FIELDS = {

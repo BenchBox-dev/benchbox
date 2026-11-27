@@ -72,7 +72,7 @@ def test_registry_tunings_reject_nullable_keys_on_the_real_tpcds_schema(tmp_path
     from benchbox.platforms.clickhouse.adapter import ClickHouseAdapter
 
     benchmark = TPCDSBenchmark(scale_factor=0.01, output_dir=tmp_path / "tpcds")
-    adapter = ClickHouseAdapter(deployment_mode="local")
+    adapter = ClickHouseAdapter(_deployment_selector="local")
     nullable_by_table = adapter._get_nullable_columns_by_table(benchmark)
     tpcds_tunings = get_tunings().table_tunings
     statements = [

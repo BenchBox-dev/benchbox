@@ -183,6 +183,14 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
     ("ci.yml", "medium-collect", "Collect the complete medium tier"): (
         "Hosted exact-SHA medium collection is consumed by both shards; local test-medium runs the same selector unsplit."
     ),
+    ("ci.yml", "fast-baseline-changes", "Detect baseline changes"): (
+        "Reads the pull request's changed-file listing from the hosted files API, which exists only on the hosted "
+        "event; its logic is pinned by tests/unit/workflows/test_ci_reproduce_fast_baseline.py."
+    ),
+    ("ci.yml", "collect-fast-tier-ids", "Collect the current fast tier"): (
+        "Hosted collection whose ids are handed to the reproduce job as an artifact; reproducing a baseline needs "
+        "the source-run artifacts through the hosted API, and local test-fast collects the same selector."
+    ),
     ("ci.yml", "medium-test", "Partition the complete medium tier"): (
         "Hosted partitioning binds the shared collection artifact to this SHA; local test-medium runs the full set."
     ),

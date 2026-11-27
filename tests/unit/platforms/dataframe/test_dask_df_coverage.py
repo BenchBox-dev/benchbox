@@ -8,7 +8,6 @@ import pandas as pd
 import pytest
 
 from benchbox.utils.file_format import TRAILING_DUMMY_COLUMN
-from tests.utilities.deprecation_capture import captured_deprecations
 
 mod = importlib.import_module("benchbox.platforms.dataframe.dask_df")
 
@@ -126,7 +125,6 @@ def _make_adapter():
     adapter.threads_per_worker = 1
     adapter.use_distributed = False
     adapter.scheduler_address = None
-    adapter._legacy_use_distributed = None
     adapter._client = None
     adapter._cluster = None
     adapter.verbose = False
@@ -149,9 +147,8 @@ def test_init_raises_without_dask(monkeypatch):
         mod.DaskDataFrameAdapter()
 
 
-def _engine_resolver(*, legacy=None, scheduler_address=None):
+def _engine_resolver(*, scheduler_address=None):
     adapter = object.__new__(mod.DaskDataFrameAdapter)
-    adapter._legacy_use_distributed = legacy
     adapter.scheduler_address = scheduler_address
     return adapter
 
@@ -165,23 +162,12 @@ def test_default_execution_engine_resolves_to_distributed():
     assert receipt.resolution == "platform_default"
 
 
-@pytest.mark.parametrize(("legacy", "engine"), [(True, "distributed"), (False, "threaded")])
-def test_legacy_use_distributed_alias_warns_and_maps(legacy, engine, caplog):
-    with captured_deprecations(caplog) as seen:
-        receipt = _engine_resolver(legacy=legacy).resolve_execution_engine("default")
+def test_explicit_threaded_engine_is_recorded_as_explicit():
+    receipt = _engine_resolver().resolve_execution_engine("threaded")
 
-    assert len(seen) == 1
-    assert "'use_distributed'" in seen[0]
-    assert f"--execution-engine {engine}" in seen[0]
-
-    assert receipt.requested == engine
-    assert receipt.applied == engine
-    assert receipt.resolution == "legacy_option"
-
-
-def test_explicit_and_legacy_dask_engines_conflict():
-    with pytest.raises(ValueError, match="Conflicting execution engine sources"):
-        _engine_resolver(legacy=False).resolve_execution_engine("distributed")
+    assert receipt.requested == "threaded"
+    assert receipt.applied == "threaded"
+    assert receipt.resolution == "explicit"
 
 
 def test_threaded_engine_rejects_scheduler_address():
@@ -189,58 +175,14 @@ def test_threaded_engine_rejects_scheduler_address():
         _engine_resolver(scheduler_address="tcp://scheduler:8786").resolve_execution_engine("threaded")
 
 
-@pytest.mark.skipif(not mod.DASK_AVAILABLE, reason="Dask not installed")
-def test_factory_points_legacy_use_distributed_false_with_scheduler_address_at_distributed(tmp_path, caplog):
-    from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
-    from benchbox.platforms.adapter_factory import get_adapter
+def test_removed_use_distributed_option_is_rejected_by_the_constructor_and_the_option_parser():
+    from benchbox.core.hooks.platform_hooks import PlatformHookRegistry, PlatformOptionError
 
-    database_config = PlatformHookRegistry.build_database_config(
-        "dask", {"use_distributed": False, "scheduler_address": "tcp://scheduler:8786"}
-    )
-    option_names = PlatformHookRegistry.list_option_specs("dask")
-    options = {key: value for key, value in database_config.options.items() if key in option_names}
-    assert options["scheduler_address"] == "tcp://scheduler:8786"
-
-    with captured_deprecations(caplog) as seen:
-        with pytest.raises(
-            ValueError, match="use_distributed=false cannot be combined with scheduler_address"
-        ) as raised:
-            get_adapter(
-                "dask",
-                mode="dataframe",
-                working_dir=tmp_path,
-                execution_engine=database_config.execution_engine,
-                **options,
-            )
-
-    assert "execution_engine='distributed'" in str(raised.value)
-    assert "threaded" not in str(raised.value)
-    assert seen == []
-
-
-@pytest.mark.skipif(not mod.DASK_AVAILABLE, reason="Dask not installed")
-def test_saved_platform_option_resolves_legacy_dask_engine(tmp_path, caplog):
-    from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
-    from benchbox.platforms.adapter_factory import get_adapter
-
-    database_config = PlatformHookRegistry.build_database_config("dask", {"use_distributed": False})
-    option_names = PlatformHookRegistry.list_option_specs("dask")
-    options = {key: value for key, value in database_config.options.items() if key in option_names}
-    with captured_deprecations(caplog) as seen:
-        adapter = get_adapter(
-            "dask",
-            mode="dataframe",
-            working_dir=tmp_path,
-            execution_engine=database_config.execution_engine,
-            **options,
-        )
-
-    assert len(seen) == 1
-    receipt = adapter.get_platform_info()["execution_engine"]
-    assert receipt["requested"] == "threaded"
-    assert receipt["applied"] == "threaded"
-    assert receipt["resolution"] == "legacy_option"
-    adapter.close()
+    for value in (True, False):
+        with pytest.raises(TypeError, match="--execution-engine threaded"):
+            mod.DaskDataFrameAdapter(use_distributed=value)
+        with pytest.raises(PlatformOptionError, match="--execution-engine distributed"):
+            PlatformHookRegistry.parse_options("dask", [("use_distributed", str(value).lower())])
 
 
 @pytest.mark.skipif(not mod.DASK_AVAILABLE, reason="Dask not installed")

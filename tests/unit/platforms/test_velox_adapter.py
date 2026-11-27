@@ -73,7 +73,7 @@ class TestVeloxAdapterInit:
         from benchbox.platforms.velox import VeloxAdapter
 
         adapter = VeloxAdapter(
-            deployment="remote",
+            _deployment_selector="remote",
             endpoint="sc://myserver:50051",
             gluten_jar_path="/opt/gluten.jar",
             gluten_version="1.4.1",
@@ -99,30 +99,30 @@ class TestVeloxAdapterInit:
         assert adapter.table_format == "orc"
         assert adapter.disable_cache is False
 
-    def test_deployment_mode_alias(self, mock_pyspark):
-
-        from benchbox.platforms.velox import VeloxAdapter
-
-        adapter = VeloxAdapter(deployment_mode="remote")
-        assert adapter.deployment == "remote"
-
     @pytest.mark.parametrize("key", ["deployment", "deployment_mode"])
-    def test_constructor_rejects_docker_through_either_spelling(self, mock_pyspark, key):
+    def test_constructor_rejects_removed_deployment_keywords(self, mock_pyspark, key):
 
         from benchbox.platforms.velox import VeloxAdapter
 
-        with pytest.raises(ValueError, match="Unsupported Velox deployment 'docker'"):
-            VeloxAdapter(**{key: "docker"})
+        with pytest.raises(TypeError, match=f"'{key}' for 'velox' was removed.*--platform velox:local\\|remote"):
+            VeloxAdapter(**{key: "remote"})
+
+    def test_constructor_rejects_docker_selector(self, mock_pyspark):
+
+        from benchbox.platforms.velox import VeloxAdapter
+
+        with pytest.raises(ValueError, match="docker"):
+            VeloxAdapter(_deployment_selector="docker")
 
     def test_supported_deployments_still_select_their_own_endpoints(self, mock_pyspark):
 
         from benchbox.platforms.velox import VeloxAdapter
 
-        local = VeloxAdapter(deployment="local")
+        local = VeloxAdapter(_deployment_selector="local")
         assert local.deployment == "local"
         assert local._df_caching_supported is True
 
-        remote = VeloxAdapter(deployment="remote", endpoint="sc://remote:50051")
+        remote = VeloxAdapter(_deployment_selector="remote", endpoint="sc://remote:50051")
         assert remote.deployment == "remote"
         assert remote.endpoint == "sc://remote:50051"
         assert remote._df_caching_supported is False
@@ -150,7 +150,7 @@ class TestVeloxSparkConf:
         from benchbox.platforms.velox import VeloxAdapter
 
         adapter = VeloxAdapter(
-            deployment="local",
+            _deployment_selector="local",
             gluten_jar_path="/opt/gluten.jar",
             offheap_size="12g",
         )
@@ -168,7 +168,7 @@ class TestVeloxSparkConf:
     def test_remote_mode_excludes_gluten_conf(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
 
-        adapter = VeloxAdapter(deployment="remote", endpoint="sc://remote:50051")
+        adapter = VeloxAdapter(_deployment_selector="remote", endpoint="sc://remote:50051")
         conf = adapter._get_spark_conf()
 
         assert "spark.plugins" not in conf
@@ -215,7 +215,7 @@ class TestVeloxSparkConf:
         from benchbox.platforms.velox import VeloxAdapter
 
         adapter = VeloxAdapter(
-            deployment="local",
+            _deployment_selector="local",
             gluten_jar_path="/opt/gluten.jar",
             spark_config={"spark.shuffle.manager": "org.apache.spark.shuffle.sort.SortShuffleManager"},
         )
@@ -320,7 +320,7 @@ class TestVeloxTableFormatConf:
     def test_format_conf_applies_in_remote_mode(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
 
-        conf = VeloxAdapter(deployment="remote", table_format="delta")._get_spark_conf()
+        conf = VeloxAdapter(_deployment_selector="remote", table_format="delta")._get_spark_conf()
         assert conf["spark.sql.extensions"] == "io.delta.sql.DeltaSparkSessionExtension"
 
     def test_spark_config_override_still_wins(self, mock_pyspark):
@@ -433,7 +433,7 @@ class TestVeloxLocalModeValidation:
     def test_missing_jar_path_raises(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
 
-        adapter = VeloxAdapter(deployment="local", gluten_jar_path="")
+        adapter = VeloxAdapter(_deployment_selector="local", gluten_jar_path="")
         with pytest.raises(ValueError, match="gluten_jar_path is required"):
             adapter._create_spark_session()
 
@@ -441,7 +441,7 @@ class TestVeloxLocalModeValidation:
         from benchbox.platforms.velox import VeloxAdapter
 
         adapter = VeloxAdapter(
-            deployment="local",
+            _deployment_selector="local",
             gluten_jar_path=str(tmp_path / "nonexistent.jar"),
         )
         with pytest.raises(ValueError, match="Gluten jar not found"):
@@ -461,7 +461,7 @@ class TestVeloxLocalModeValidation:
         mock_builder.getOrCreate.return_value = MagicMock()
         mock_session_class.builder = mock_builder
 
-        adapter = VeloxAdapter(deployment="local", gluten_jar_path=str(jar))
+        adapter = VeloxAdapter(_deployment_selector="local", gluten_jar_path=str(jar))
         with patch.object(velox_module, "SparkSession", mock_session_class):
             session = adapter._create_spark_session()
         assert session is not None
@@ -485,7 +485,7 @@ class TestVeloxRemoteMode:
         from benchbox.platforms._spark_helpers import parse_spark_connect_endpoint
         from benchbox.platforms.velox import VeloxAdapter
 
-        adapter = VeloxAdapter(deployment="remote")
+        adapter = VeloxAdapter(_deployment_selector="remote")
         host, port = parse_spark_connect_endpoint(adapter.endpoint)
         assert host == "localhost"
         assert port == 50051
@@ -494,7 +494,7 @@ class TestVeloxRemoteMode:
         from benchbox.platforms._spark_helpers import parse_spark_connect_endpoint
         from benchbox.platforms.velox import VeloxAdapter
 
-        adapter = VeloxAdapter(deployment="remote", endpoint="sc://myhost:12345")
+        adapter = VeloxAdapter(_deployment_selector="remote", endpoint="sc://myhost:12345")
         host, port = parse_spark_connect_endpoint(adapter.endpoint)
         assert host == "myhost"
         assert port == 12345
@@ -502,7 +502,7 @@ class TestVeloxRemoteMode:
     def test_ensure_server_ready_raises_when_unreachable(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
 
-        adapter = VeloxAdapter(deployment="remote", endpoint="sc://unreachable-host:50051")
+        adapter = VeloxAdapter(_deployment_selector="remote", endpoint="sc://unreachable-host:50051")
         with patch("benchbox.platforms.velox.is_spark_connect_reachable", return_value=False):
             with pytest.raises(RuntimeError, match="Cannot connect"):
                 adapter._ensure_server_ready()
@@ -510,7 +510,7 @@ class TestVeloxRemoteMode:
     def test_ensure_server_ready_passes_when_reachable(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
 
-        adapter = VeloxAdapter(deployment="remote")
+        adapter = VeloxAdapter(_deployment_selector="remote")
         with patch("benchbox.platforms.velox.is_spark_connect_reachable", return_value=True):
             adapter._ensure_server_ready()
 
@@ -547,7 +547,7 @@ class TestVeloxPlatformInfo:
     def test_platform_info_remote_has_endpoint(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
 
-        adapter = VeloxAdapter(deployment="remote", endpoint="sc://host:50051")
+        adapter = VeloxAdapter(_deployment_selector="remote", endpoint="sc://host:50051")
         info = adapter.get_platform_info(connection=None)
 
         assert info["deployment"] == "remote"
@@ -556,7 +556,7 @@ class TestVeloxPlatformInfo:
     def test_platform_info_local_has_jar_name(self, mock_pyspark):
         from benchbox.platforms.velox import VeloxAdapter
 
-        adapter = VeloxAdapter(deployment="local", gluten_jar_path="/opt/gluten-velox-1.6.0.jar")
+        adapter = VeloxAdapter(_deployment_selector="local", gluten_jar_path="/opt/gluten-velox-1.6.0.jar")
         info = adapter.get_platform_info(connection=None)
 
         assert info["deployment"] == "local"
@@ -734,7 +734,7 @@ class TestVeloxFromConfig:
         config = {
             "benchmark": "tpch",
             "scale_factor": 1.0,
-            "deployment": "remote",
+            "_deployment_selector": "remote",
             "endpoint": "sc://velox-server:50051",
         }
         adapter = VeloxAdapter.from_config(config)
@@ -758,7 +758,6 @@ class TestVeloxCLIArguments:
         specs = PlatformHookRegistry.list_option_specs("velox")
 
         for name in (
-            "deployment",
             "endpoint",
             "gluten_jar_path",
             "offheap_size",
@@ -767,7 +766,6 @@ class TestVeloxCLIArguments:
             "adaptive_enabled",
         ):
             assert name in specs, f"Velox option-spec '{name}' is missing"
-        assert specs["deployment"].choices == ("local", "remote")
 
 
 class TestVeloxIdentifierValidation:
@@ -929,5 +927,5 @@ class TestDeploymentContractIsEnumerated:
 
         assert "deployment" not in MCP_PLATFORM_OPTION_ALLOWLIST.get("velox", {})
 
-        with pytest.raises(MCPValidationError, match="not authorized"):
+        with pytest.raises(MCPValidationError, match="removed in BenchBox 0.6.0"):
             validate_platform_options("velox", {"deployment": "remote"})

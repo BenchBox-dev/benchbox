@@ -266,13 +266,12 @@ _metadata:
 """
 
 
-@pytest.mark.parametrize("source", ["explicit", "legacy_option", "tuning_file"])
+@pytest.mark.parametrize("source", ["explicit", "tuning_file"])
 def test_cli_write_primitives_with_non_default_engine_fails_before_work(tmp_path: Path, source: str) -> None:
     tuning_file = tmp_path / "streaming.yaml"
     tuning_file.write_text(_STREAMING_TUNING, encoding="utf-8")
     engine_args = {
         "explicit": ("--execution-engine", "streaming"),
-        "legacy_option": ("--platform-option", "streaming=true"),
         "tuning_file": ("--tuning", str(tuning_file)),
     }[source]
     result = _cli_run(tmp_path, "polars-df", *engine_args, benchmark="write_primitives")

@@ -38,7 +38,7 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
         type="athena-spark",
         name="athena_spark_tpch",
         options={
-            "workgroup": workgroup,
+            "compute_resource": workgroup,
             "s3_staging_dir": s3_staging_dir,
             "region": os.getenv("AWS_REGION", "us-east-1"),
         },

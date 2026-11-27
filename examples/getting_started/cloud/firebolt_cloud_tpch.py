@@ -38,7 +38,7 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
             "client_id": _require_env("FIREBOLT_CLIENT_ID"),
             "client_secret": _require_env("FIREBOLT_CLIENT_SECRET"),
             "account_name": _require_env("FIREBOLT_ACCOUNT"),
-            "engine_name": _require_env("FIREBOLT_ENGINE"),
+            "compute_resource": _require_env("FIREBOLT_ENGINE"),
             "database": os.getenv("FIREBOLT_DATABASE", "benchbox"),
             "api_endpoint": os.getenv("FIREBOLT_API_ENDPOINT", "api.app.firebolt.io"),
         },

@@ -36,7 +36,6 @@ class TestPolarsDataFrameAdapter:
 
         assert adapter.platform_name == "Polars"
         assert adapter.family == "expression"
-        assert adapter.streaming is False
         assert adapter.rechunk is True
         assert adapter.n_rows is None
 
@@ -45,14 +44,12 @@ class TestPolarsDataFrameAdapter:
         adapter = PolarsDataFrameAdapter(
             working_dir="/tmp/polars",
             verbose=True,
-            streaming=True,
             rechunk=False,
             n_rows=1000,
         )
 
         assert adapter.working_dir == Path("/tmp/polars")
         assert adapter.verbose is True
-        assert adapter.streaming is True
         assert adapter.rechunk is False
         assert adapter.n_rows == 1000
 
@@ -467,9 +464,9 @@ class TestPolarsDataLoading:
         assert isinstance(df, pl.DataFrame)
         assert len(df) == 3
 
-    def test_collect_lazy_frame_with_streaming(self):
+    def test_collect_lazy_frame_with_streaming_engine(self):
 
-        adapter = PolarsDataFrameAdapter(streaming=True)
+        adapter = PolarsDataFrameAdapter(execution_engine="streaming")
 
         df = adapter.collect(pl.LazyFrame({"a": [1, 2, 3]}))
 

@@ -17,11 +17,17 @@ VERIFIED_BYTE_IDENTICAL_BACKENDS: Mapping[tuple[str, str], frozenset[float]] = M
     }
 )
 
-PARQUET_WRITER = "benchbox-pyarrow-streaming"
-PARTITIONED_PARQUET_WRITER = "benchbox-pyarrow-partitioned"
+PARQUET_WRITER = "benchbox-pyarrow-streaming-v2"
+PARTITIONED_PARQUET_WRITER = "benchbox-pyarrow-partitioned-v2"
 _CURRENT_PARQUET_WRITERS = frozenset({PARQUET_WRITER, PARTITIONED_PARQUET_WRITER})
 _BENCHBOX_PARQUET_WRITERS = _CURRENT_PARQUET_WRITERS | frozenset(
-    {"benchbox-legacy", "benchbox-streaming", "benchbox-duckdb-streaming"}
+    {
+        "benchbox-legacy",
+        "benchbox-streaming",
+        "benchbox-duckdb-streaming",
+        "benchbox-pyarrow-streaming",
+        "benchbox-pyarrow-partitioned",
+    }
 )
 
 

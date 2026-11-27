@@ -20,7 +20,7 @@ def test_clickhouse_smoke_server_mode(monkeypatch, tmp_path):
     from benchbox.platforms.clickhouse import ClickHouseAdapter
 
     adapter = ClickHouseAdapter(
-        deployment_mode="server",
+        _deployment_selector="server",
         host=state.host,
         port=state.port,
         database="benchbox_smoke",
@@ -44,6 +44,6 @@ def test_clickhouse_requires_valid_mode(monkeypatch):
     from benchbox.platforms.clickhouse import ClickHouseAdapter
 
     with pytest.raises(ValueError) as excinfo:
-        ClickHouseAdapter(deployment_mode="invalid_mode")
+        ClickHouseAdapter(_deployment_selector="invalid_mode")
 
     assert "Invalid ClickHouse deployment mode" in str(excinfo.value)

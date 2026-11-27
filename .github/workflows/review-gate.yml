@@ -37,10 +37,10 @@ jobs:
       actions: write
       contents: read
       pull-requests: read
-    uses: joeharris76/theseus/.github/workflows/gate.yml@20d0d34b8f229cd06f0fc94a40658ac3f43567cc
+    uses: joeharris76/theseus/.github/workflows/gate.yml@6760270329c6acf19575dccb6601193481818a75
     with:
       environment: review
-      theseus_ref: 20d0d34b8f229cd06f0fc94a40658ac3f43567cc
+      theseus_ref: 6760270329c6acf19575dccb6601193481818a75
       gated_base: "develop,release/*"
       policy_path: .github/review.yml
     secrets:

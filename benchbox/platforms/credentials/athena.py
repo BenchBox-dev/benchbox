@@ -16,8 +16,8 @@ from benchbox.utils.printing import QuietConsoleProxy
 
 def _print_athena_auto_config(console, auto_config: dict) -> None:
     console.print(f"\n✅ Found region: [cyan]{auto_config.get('region')}[/cyan]")
-    if auto_config.get("workgroup"):
-        console.print(f"✅ Found workgroup: [cyan]{auto_config['workgroup']}[/cyan]")
+    if auto_config.get("compute_resource"):
+        console.print(f"✅ Found workgroup: [cyan]{auto_config['compute_resource']}[/cyan]")
     if auto_config.get("s3_staging_dir"):
         console.print(f"✅ Found S3 staging dir: [cyan]{auto_config['s3_staging_dir']}[/cyan]")
     if auto_config.get("s3_output_location"):
@@ -95,7 +95,7 @@ def _prompt_athena_full(console, existing_creds: Optional[dict]) -> Optional[dic
 
     region = prompt_with_default("AWS Region", current_value=existing.get("region"), default_if_none="us-east-1")
     workgroup = prompt_with_default(
-        "Athena Workgroup", current_value=existing.get("workgroup"), default_if_none="primary"
+        "Athena Workgroup", current_value=existing.get("compute_resource"), default_if_none="primary"
     )
 
     s3_result = _prompt_athena_s3_config(console, existing)
@@ -110,7 +110,7 @@ def _prompt_athena_full(console, existing_creds: Optional[dict]) -> Optional[dic
 
     return {
         "region": region,
-        "workgroup": workgroup,
+        "compute_resource": workgroup,
         "s3_staging_dir": s3_staging_dir,
         "s3_output_location": s3_output_location,
         "aws_profile": aws_profile,
@@ -122,7 +122,7 @@ def _prompt_athena_full(console, existing_creds: Optional[dict]) -> Optional[dic
 def _finalize_athena_credentials(cred_manager: CredentialManager, console, raw: dict) -> None:
     credentials = {
         "region": raw["region"],
-        "workgroup": raw["workgroup"],
+        "compute_resource": raw["compute_resource"],
         "s3_staging_dir": raw["s3_staging_dir"],
         "s3_output_location": raw["s3_output_location"],
     }
@@ -249,7 +249,7 @@ def _build_athena_connect_kwargs(creds: dict) -> dict:
     connect_kwargs = {
         "s3_staging_dir": creds.get("s3_output_location") or creds.get("s3_staging_dir"),
         "region_name": creds.get("region", "us-east-1"),
-        "work_group": creds.get("workgroup", "primary"),
+        "work_group": creds.get("compute_resource", "primary"),
     }
 
     if creds.get("aws_access_key_id") and creds.get("aws_secret_access_key"):
@@ -281,7 +281,7 @@ def _classify_athena_error(error_msg: str, workgroup: str) -> str:
 def _auto_detect_athena(console: Union[Console, QuietConsoleProxy]) -> Optional[dict]:
     env_vars = {
         "region": os.getenv("AWS_DEFAULT_REGION") or os.getenv("AWS_REGION"),
-        "workgroup": os.getenv("ATHENA_WORKGROUP"),
+        "compute_resource": os.getenv("ATHENA_WORKGROUP"),
         "s3_staging_dir": os.getenv("ATHENA_S3_STAGING_DIR"),
         "s3_output_location": os.getenv("ATHENA_S3_OUTPUT_LOCATION"),
         "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
@@ -308,8 +308,8 @@ def _auto_detect_athena(console: Union[Console, QuietConsoleProxy]) -> Optional[
 
     if not env_vars.get("region"):
         env_vars["region"] = "us-east-1"
-    if not env_vars.get("workgroup"):
-        env_vars["workgroup"] = "primary"
+    if not env_vars.get("compute_resource"):
+        env_vars["compute_resource"] = "primary"
 
     console.print("  ✓ Found required environment variables")
 

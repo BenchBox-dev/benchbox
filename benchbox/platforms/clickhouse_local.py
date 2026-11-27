@@ -9,6 +9,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION
 from benchbox.platforms.clickhouse import ClickHouseAdapter
 from benchbox.platforms.clickhouse.client import ClickHouseLocalClient
 
@@ -49,7 +50,7 @@ class ClickHouseLocalAdapter(ClickHouseAdapter):
     reports_refresh_delete_counts = False
 
     def __init__(self, **config: Any) -> None:
-        config["deployment_mode"] = "local"
+        config[DEPLOYMENT_SELECTOR_OPTION] = "local"
         super().__init__(**config)
         self.deployment_selected = None
         self.deployment_selected_class = None
@@ -61,7 +62,7 @@ class ClickHouseLocalAdapter(ClickHouseAdapter):
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> ClickHouseLocalAdapter:
         config = dict(config)
-        config["deployment_mode"] = "local"
+        config[DEPLOYMENT_SELECTOR_OPTION] = "local"
         return super().from_config(config)
 
     def ensure_stream_sessions_supported(self, connection: Any = None) -> None:

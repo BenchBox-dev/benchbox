@@ -53,38 +53,13 @@ class TestPolarsAdapterBasics:
             assert adapter.n_rows == 1000
             assert adapter.rechunk is False
 
-    def test_streaming_true_warns_once_per_run_and_keeps_the_default_engine(self, caplog):
-        from benchbox.core.deprecation_notices import begin_run
+    def test_removed_streaming_keyword_is_rejected(self):
         from benchbox.platforms.polars_platform import PolarsAdapter
-        from tests.utilities.deprecation_capture import captured_deprecations
 
-        begin_run()
         with tempfile.TemporaryDirectory() as tmpdir:
-            with captured_deprecations(caplog) as seen:
-                first = PolarsAdapter(working_dir=tmpdir, streaming=True)
-                second = PolarsAdapter(working_dir=tmpdir, streaming=True)
-
-        assert len(seen) == 1
-        assert "'streaming'" in seen[0]
-        assert "has no effect on the SQL Polars adapter" in seen[0]
-        assert "0.6.0" in seen[0]
-        for adapter in (first, second):
-            receipt = adapter.get_platform_info()["configuration"]["execution_engine"]
-            assert receipt["requested"] == "default"
-            assert receipt["resolution"] == "platform_default"
-            assert receipt["applied"] is None
-
-    def test_streaming_false_is_accepted_silently(self, caplog):
-        from benchbox.core.deprecation_notices import begin_run
-        from benchbox.platforms.polars_platform import PolarsAdapter
-        from tests.utilities.deprecation_capture import captured_deprecations
-
-        begin_run()
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with captured_deprecations(caplog) as seen:
-                PolarsAdapter(working_dir=tmpdir, streaming=False)
-
-        assert seen == []
+            for value in (True, False):
+                with pytest.raises(TypeError, match="--execution-engine streaming"):
+                    PolarsAdapter(working_dir=tmpdir, streaming=value)
 
     def test_sql_adapter_rejects_non_default_engine(self):
         from benchbox.core.execution_engine import UnsupportedExecutionEngineError
@@ -147,33 +122,23 @@ class TestPolarsAdapterFromConfig:
             assert adapter.platform_name == "Polars"
             assert adapter.execution_mode == "lazy"
 
-    def test_from_config_warns_for_streaming_and_keeps_the_default_engine(self, caplog):
-        from benchbox.core.deprecation_notices import begin_run
+    def test_from_config_rejects_the_removed_streaming_key(self):
         from benchbox.platforms.polars_platform import PolarsAdapter
-        from tests.utilities.deprecation_capture import captured_deprecations
 
-        begin_run()
         with tempfile.TemporaryDirectory() as tmpdir:
             config = {"working_dir": tmpdir, "benchmark": "tpch", "scale_factor": 1.0, "streaming": True}
-            with captured_deprecations(caplog) as seen:
-                adapter = PolarsAdapter.from_config(config)
+            with pytest.raises(TypeError, match="--execution-engine streaming"):
+                PolarsAdapter.from_config(config)
 
-        assert len(seen) == 1
-        assert adapter.requested_execution_engine == "default"
-
-    def test_factory_built_adapter_with_streaming_records_the_default_receipt_in_the_bundle(self, caplog):
-        from benchbox.core.deprecation_notices import begin_run
+    def test_factory_built_adapter_records_the_default_receipt_in_the_bundle(self):
         from benchbox.core.results.models import QueryExecution
         from benchbox.core.results.schema import SchemaV2Validator, build_result_payload
         from benchbox.core.runner.runner import _enrich_normalized_runtime_metadata
         from benchbox.platforms import get_platform_adapter
         from tests.fixtures.result_dict_fixtures import make_benchmark_results
-        from tests.utilities.deprecation_capture import captured_deprecations
 
-        begin_run()
         with tempfile.TemporaryDirectory() as tmpdir:
-            with captured_deprecations(caplog) as seen:
-                adapter = get_platform_adapter("polars", working_dir=tmpdir, streaming=True)
+            adapter = get_platform_adapter("polars", working_dir=tmpdir)
             result = make_benchmark_results(
                 platform="polars",
                 platform_info=adapter.get_platform_info(),
@@ -182,7 +147,6 @@ class TestPolarsAdapterFromConfig:
             payload = build_result_payload(_enrich_normalized_runtime_metadata(result, adapter=adapter))
 
         SchemaV2Validator().validate(payload)
-        assert len(seen) == 1
         assert payload["platform"]["execution_engine"]["requested"] == "default"
         assert payload["platform"]["execution_engine"]["resolution"] == "platform_default"
         assert payload["platform"]["variant"] == "polars"

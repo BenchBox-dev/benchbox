@@ -366,7 +366,7 @@ def test_firebolt_cloud_runs_with_env(monkeypatch: pytest.MonkeyPatch, tmp_path)
     assert called["config"].name == "tpch"
     assert called["database_config"].type == "firebolt"
     assert called["database_config"].options["client_id"] == "test-client-id"
-    assert called["database_config"].options["engine_name"] == "test-engine"
+    assert called["database_config"].options["compute_resource"] == "test-engine"
 
 
 def test_firebolt_cloud_dry_run(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:

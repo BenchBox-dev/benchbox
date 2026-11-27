@@ -58,7 +58,7 @@ def _make_snowflake(monkeypatch):
         account="a",
         username="u",
         password="p",
-        warehouse="w",
+        compute_resource="w",
         database="d",
     )
 

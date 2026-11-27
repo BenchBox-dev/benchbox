@@ -735,9 +735,8 @@ class LocalPlatformPolicy:
         self,
         platform: str,
         deployment: str | None = None,
-        options: Mapping[str, object] | None = None,
     ) -> BillableAssessment | None:
-        assessment = assess_platform(platform, deployment, options)
+        assessment = assess_platform(platform, deployment)
         if assessment.billable and assessment.platform not in self.allowed_platforms:
             return assessment
         return None
@@ -746,9 +745,8 @@ class LocalPlatformPolicy:
         self,
         platform: str,
         deployment: str | None = None,
-        options: Mapping[str, object] | None = None,
     ) -> dict[str, object] | None:
-        assessment = assess_platform(platform, deployment, options)
+        assessment = assess_platform(platform, deployment)
         if assessment.billable and assessment.platform in self.allowed_platforms:
             return {"acknowledged": True, "source": self.source}
         return None

@@ -127,13 +127,13 @@ class TestPandasFamilyPlatformHooks:
             specs = PlatformHookRegistry.list_option_specs("dask")
             assert "threads_per_worker" in specs
 
-    def test_dask_df_use_distributed_option_registered(self):
+    def test_dask_df_use_distributed_option_not_registered(self):
 
         from benchbox.cli.platform_hooks import PlatformHookRegistry
 
         if DASK_AVAILABLE:
             specs = PlatformHookRegistry.list_option_specs("dask")
-            assert "use_distributed" in specs
+            assert "use_distributed" not in specs
 
     def test_dask_df_scheduler_address_option_registered(self):
 

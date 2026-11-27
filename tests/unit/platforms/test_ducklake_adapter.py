@@ -602,14 +602,16 @@ class TestDuckLakeDeploymentModeIsApplied:
         ],
     )
     def test_mode_supplies_the_catalog_axis(self, tmp_path, mode, expected_catalog):
-        assert self._from_config(tmp_path, deployment_mode=mode).catalog == expected_catalog
+        assert self._from_config(tmp_path, _deployment_selector=mode).catalog == expected_catalog
 
     def test_no_deployment_mode_leaves_behaviour_unchanged(self, tmp_path):
         assert self._from_config(tmp_path).catalog == "duckdb"
 
     def test_explicit_catalog_option_beats_the_mode(self, tmp_path, caplog):
         with caplog.at_level(logging.WARNING, logger="benchbox.platforms.ducklake"):
-            adapter = self._from_config(tmp_path, deployment_mode="postgres_catalog", options={"catalog": "sqlite"})
+            adapter = self._from_config(
+                tmp_path, _deployment_selector="postgres_catalog", options={"catalog": "sqlite"}
+            )
 
         assert adapter.catalog == "sqlite"
         assert "implies catalog=postgres" in caplog.text
@@ -617,7 +619,7 @@ class TestDuckLakeDeploymentModeIsApplied:
 
     def test_s3_mode_with_a_local_data_path_warns_and_uses_the_given_path(self, tmp_path, caplog):
         with caplog.at_level(logging.WARNING, logger="benchbox.platforms.ducklake"):
-            adapter = self._from_config(tmp_path, deployment_mode="postgres_catalog_s3")
+            adapter = self._from_config(tmp_path, _deployment_selector="postgres_catalog_s3")
 
         assert adapter._data_path_is_cloud is False
         assert "implies a cloud data_path" in caplog.text
@@ -625,7 +627,7 @@ class TestDuckLakeDeploymentModeIsApplied:
     def test_local_mode_with_an_s3_data_path_warns(self, tmp_path, caplog):
         with caplog.at_level(logging.WARNING, logger="benchbox.platforms.ducklake"):
             adapter = self._from_config(
-                tmp_path, deployment_mode="postgres_catalog", options={"data_path": "s3://bucket/x"}
+                tmp_path, _deployment_selector="postgres_catalog", options={"data_path": "s3://bucket/x"}
             )
 
         assert adapter._data_path_is_cloud is True
@@ -635,7 +637,7 @@ class TestDuckLakeDeploymentModeIsApplied:
         with caplog.at_level(logging.WARNING, logger="benchbox.platforms.ducklake"):
             adapter = self._from_config(
                 tmp_path,
-                deployment_mode="postgres_catalog_s3",
+                _deployment_selector="postgres_catalog_s3",
                 options={"catalog": "postgres", "data_path": "s3://bucket/x"},
             )
 
@@ -645,7 +647,11 @@ class TestDuckLakeDeploymentModeIsApplied:
 
     def test_unknown_mode_fails_closed(self, tmp_path):
         with pytest.raises(ValueError, match="does not support deployment mode"):
-            self._from_config(tmp_path, deployment_mode="not-a-mode")
+            self._from_config(tmp_path, _deployment_selector="not-a-mode")
+
+    def test_removed_deployment_mode_keyword_is_rejected(self):
+        with pytest.raises(TypeError, match="'deployment_mode' for 'ducklake' was removed.*--platform ducklake:"):
+            DuckLakeAdapter(deployment_mode="postgres_catalog")
 
     def test_every_registered_mode_is_mapped(self):
         from benchbox.core.platform_registry import PlatformRegistry

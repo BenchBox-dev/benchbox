@@ -91,7 +91,7 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
         self.shuffle_partitions = config.get("shuffle_partitions")
         self.adaptive_enabled = config.get("adaptive_enabled")
 
-        self.sail_mode = select_adapter_deployment("lakesail", config, config.get("sail_mode") or "local")
+        self.sail_mode = select_adapter_deployment("lakesail", config, "local")
         self.deployment_selected = self.sail_mode
         self.deployment_selected_class = deployment_class("lakesail", self.sail_mode)
         self._warn_unapplied_workers(config.get("sail_workers"))
@@ -128,13 +128,6 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
             type=str,
             default="sc://localhost:50051",
             help="LakeSail Sail server endpoint (Spark Connect URL, e.g., sc://host:port)",
-        )
-        lakesail_group.add_argument(
-            "--lakesail-mode",
-            type=str,
-            choices=["local", "distributed"],
-            default="local",
-            help="LakeSail deployment mode (local may start a server; distributed connects to an external one)",
         )
         lakesail_group.add_argument(
             "--lakesail-workers",
@@ -185,8 +178,6 @@ class LakeSailAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecu
                     "endpoint",
                     "app_name",
                     "driver_memory",
-                    "sail_mode",
-                    "deployment_mode",
                     "sail_workers",
                     "shuffle_partitions",
                     "adaptive_enabled",
@@ -561,8 +552,6 @@ _build_lakesail_config = make_registered_platform_config_builder(
         "endpoint",
         "app_name",
         "driver_memory",
-        "sail_mode",
-        "deployment_mode",
         "sail_workers",
         "shuffle_partitions",
         "adaptive_enabled",

@@ -29,7 +29,7 @@ def test_synapse_spark_load_data_propagates_table_creation_failure(tmp_path):
 
         adapter = SynapseSparkAdapter(
             workspace_name="workspace",
-            spark_pool_name="pool",
+            compute_resource="pool",
             storage_account="account",
             storage_container="container",
         )
@@ -52,7 +52,7 @@ class TestSynapseSparkAdapterInitialization:
 
             with pytest.raises(ConfigurationError, match="workspace_name"):
                 SynapseSparkAdapter(
-                    spark_pool_name="sparkpool1",
+                    compute_resource="sparkpool1",
                     storage_account="mystorageaccount",
                     storage_container="benchbox",
                 )
@@ -66,7 +66,7 @@ class TestSynapseSparkAdapterInitialization:
         ):
             from benchbox.platforms.azure import SynapseSparkAdapter
 
-            with pytest.raises(ConfigurationError, match="spark_pool_name"):
+            with pytest.raises(ConfigurationError, match="compute_resource"):
                 SynapseSparkAdapter(
                     workspace_name="my-synapse-workspace",
                     storage_account="mystorageaccount",
@@ -85,7 +85,7 @@ class TestSynapseSparkAdapterInitialization:
             with pytest.raises(ConfigurationError, match="storage_account"):
                 SynapseSparkAdapter(
                     workspace_name="my-synapse-workspace",
-                    spark_pool_name="sparkpool1",
+                    compute_resource="sparkpool1",
                     storage_container="benchbox",
                 )
 
@@ -101,7 +101,7 @@ class TestSynapseSparkAdapterInitialization:
             with pytest.raises(ConfigurationError, match="storage_container"):
                 SynapseSparkAdapter(
                     workspace_name="my-synapse-workspace",
-                    spark_pool_name="sparkpool1",
+                    compute_resource="sparkpool1",
                     storage_account="mystorageaccount",
                 )
 
@@ -118,7 +118,7 @@ class TestSynapseSparkAdapterInitialization:
 
             adapter = SynapseSparkAdapter(
                 workspace_name="my-synapse-workspace",
-                spark_pool_name="sparkpool1",
+                compute_resource="sparkpool1",
                 storage_account="mystorageaccount",
                 storage_container="benchbox",
                 tenant_id="tenant-123",
@@ -144,7 +144,7 @@ class TestSynapseSparkAdapterInitialization:
 
             adapter = SynapseSparkAdapter(
                 workspace_name="my-synapse-workspace",
-                spark_pool_name="sparkpool1",
+                compute_resource="sparkpool1",
                 storage_account="mystorageaccount",
                 storage_container="benchbox",
             )
@@ -166,7 +166,7 @@ class TestSynapseSparkAdapterInitialization:
 
             adapter = SynapseSparkAdapter(
                 workspace_name="my-workspace",
-                spark_pool_name="my-pool",
+                compute_resource="my-pool",
                 storage_account="mystorageaccount",
                 storage_container="benchbox",
             )
@@ -188,7 +188,7 @@ class TestSynapseSparkAdapterInitialization:
 
             adapter = SynapseSparkAdapter(
                 workspace_name="my-workspace",
-                spark_pool_name="my-pool",
+                compute_resource="my-pool",
                 storage_account="mystorageaccount",
                 storage_container="mycontainer",
                 storage_path="data/benchbox",
@@ -212,7 +212,7 @@ class TestSynapseSparkAdapterPlatformInfo:
 
             adapter = SynapseSparkAdapter(
                 workspace_name="test-workspace",
-                spark_pool_name="test-pool",
+                compute_resource="test-pool",
                 storage_account="teststorage",
                 storage_container="testcontainer",
             )
@@ -244,7 +244,7 @@ class TestSynapseSparkAdapterPlatformInfo:
 
             adapter = SynapseSparkAdapter(
                 workspace_name="test-workspace",
-                spark_pool_name="test-pool",
+                compute_resource="test-pool",
                 storage_account="teststorage",
                 storage_container="testcontainer",
             )
@@ -288,7 +288,7 @@ class TestSynapseSparkAdapterConnection:
 
                 adapter = SynapseSparkAdapter(
                     workspace_name="test-workspace",
-                    spark_pool_name="test-pool",
+                    compute_resource="test-pool",
                     storage_account="teststorage",
                     storage_container="testcontainer",
                 )
@@ -330,7 +330,7 @@ class TestSynapseSparkAdapterConnection:
 
                 adapter = SynapseSparkAdapter(
                     workspace_name="test-workspace",
-                    spark_pool_name="test-pool",
+                    compute_resource="test-pool",
                     storage_account="teststorage",
                     storage_container="testcontainer",
                 )
@@ -368,7 +368,7 @@ class TestSynapseSparkAdapterConnection:
 
                 adapter = SynapseSparkAdapter(
                     workspace_name="test-workspace",
-                    spark_pool_name="nonexistent-pool",
+                    compute_resource="nonexistent-pool",
                     storage_account="teststorage",
                     storage_container="testcontainer",
                 )
@@ -397,7 +397,7 @@ class TestSynapseSparkAdapterTuning:
 
             adapter = SynapseSparkAdapter(
                 workspace_name="test-workspace",
-                spark_pool_name="test-pool",
+                compute_resource="test-pool",
                 storage_account="teststorage",
                 storage_container="testcontainer",
             )
@@ -427,7 +427,7 @@ class TestSynapseSparkAdapterTuning:
 
             adapter = SynapseSparkAdapter(
                 workspace_name="test-workspace",
-                spark_pool_name="test-pool",
+                compute_resource="test-pool",
                 storage_account="teststorage",
                 storage_container="testcontainer",
             )
@@ -457,8 +457,6 @@ class TestSynapseSparkAdapterCLI:
                 [
                     "--workspace-name",
                     "test-workspace",
-                    "--spark-pool",
-                    "test-pool",
                     "--storage-account",
                     "teststorage",
                     "--storage-container",
@@ -473,7 +471,6 @@ class TestSynapseSparkAdapterCLI:
             )
 
             assert args.workspace_name == "test-workspace"
-            assert args.spark_pool_name == "test-pool"
             assert args.storage_account == "teststorage"
             assert args.storage_container == "testcontainer"
             assert args.storage_path == "data/benchbox"
@@ -494,7 +491,7 @@ class TestSynapseSparkAdapterCLI:
 
             config = {
                 "workspace_name": "config-workspace",
-                "spark_pool_name": "config-pool",
+                "compute_resource": "config-pool",
                 "storage_account": "configstorage",
                 "storage_container": "configcontainer",
                 "storage_path": "config/path",
@@ -525,7 +522,7 @@ class TestSynapseSparkAdapterCLI:
 
             base = {
                 "workspace_name": "config-workspace",
-                "spark_pool_name": "config-pool",
+                "compute_resource": "config-pool",
                 "storage_account": "configstorage",
                 "storage_container": "configcontainer",
             }
@@ -588,7 +585,7 @@ class TestSynapseLivyStateConstants:
 
             adapter = SynapseSparkAdapter(
                 workspace_name="ws",
-                spark_pool_name="pool",
+                compute_resource="pool",
                 storage_account="sa",
                 storage_container="c",
             )
@@ -607,7 +604,7 @@ class TestSynapseLivyStateConstants:
 
             adapter = SynapseSparkAdapter(
                 workspace_name="ws",
-                spark_pool_name="pool",
+                compute_resource="pool",
                 storage_account="sa",
                 storage_container="c",
                 table_format="delta",
@@ -628,7 +625,7 @@ class TestSynapseLivyStateConstants:
             adapter = SynapseSparkAdapter.from_config(
                 {
                     "workspace_name": "ws",
-                    "spark_pool_name": "pool",
+                    "compute_resource": "pool",
                     "storage_account": "sa",
                     "storage_container": "c",
                     "table_format": "iceberg",
@@ -650,7 +647,7 @@ class TestSynapseLivyStateConstants:
             adapter = SynapseSparkAdapter.from_config(
                 {
                     "workspace_name": "ws",
-                    "spark_pool_name": "pool",
+                    "compute_resource": "pool",
                     "storage_account": "sa",
                     "storage_container": "c",
                     "adaptive_enabled": False,
@@ -661,7 +658,7 @@ class TestSynapseLivyStateConstants:
             defaulted = SynapseSparkAdapter.from_config(
                 {
                     "workspace_name": "ws",
-                    "spark_pool_name": "pool",
+                    "compute_resource": "pool",
                     "storage_account": "sa",
                     "storage_container": "c",
                 }
@@ -687,7 +684,7 @@ class TestSynapseLivyStateConstants:
 
             adapter = SynapseSparkAdapter(
                 workspace_name="ws",
-                spark_pool_name="pool",
+                compute_resource="pool",
                 storage_account="sa",
                 storage_container="c",
                 table_format="delta",
@@ -719,7 +716,7 @@ class TestSynapseLivyStateConstants:
 
             adapter = SynapseSparkAdapter(
                 workspace_name="ws",
-                spark_pool_name="pool",
+                compute_resource="pool",
                 storage_account="sa",
                 storage_container="c",
                 table_format="iceberg",
@@ -751,7 +748,7 @@ class TestSynapseLivyStateConstants:
 
             adapter = SynapseSparkAdapter(
                 workspace_name="ws",
-                spark_pool_name="pool",
+                compute_resource="pool",
                 storage_account="sa",
                 storage_container="c",
             )
@@ -789,7 +786,7 @@ class TestSynapseLivyStateConstants:
 
             adapter = SynapseSparkAdapter(
                 workspace_name="ws",
-                spark_pool_name="pool",
+                compute_resource="pool",
                 storage_account="sa",
                 storage_container="c",
                 spark_config={"spark.sql.adaptive.enabled": "false"},
@@ -821,7 +818,7 @@ def _create_synapse_session_conf(**adapter_kwargs):
 
         adapter = SynapseSparkAdapter(
             workspace_name="ws",
-            spark_pool_name="pool",
+            compute_resource="pool",
             storage_account="sa",
             storage_container="c",
             **adapter_kwargs,
@@ -867,7 +864,7 @@ class TestSynapseAdaptiveToggle:
 
             adapter = SynapseSparkAdapter(
                 workspace_name="ws",
-                spark_pool_name="pool",
+                compute_resource="pool",
                 storage_account="sa",
                 storage_container="c",
                 adaptive_enabled=False,

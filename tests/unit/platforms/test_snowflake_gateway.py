@@ -14,7 +14,7 @@ from tests.fixtures.snowflake_warehouses import SHOW_WAREHOUSES_COLUMNS
 
 pytestmark = [pytest.mark.unit, pytest.mark.medium, pytest.mark.cloud_import]
 
-BASE = {"account": "acct", "username": "user", "password": "mock-password", "warehouse": "WH", "database": "DB"}
+BASE = {"account": "acct", "username": "user", "password": "mock-password", "compute_resource": "WH", "database": "DB"}
 
 
 @pytest.fixture(autouse=True)

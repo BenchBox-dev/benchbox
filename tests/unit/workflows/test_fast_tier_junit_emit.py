@@ -28,6 +28,8 @@ _CASES = [
     pytest.param("trunk.yml", "fast", "fast-junit-trunk-${{ github.sha }}", id="trunk"),
 ]
 
+_RETENTION_DAYS = {"ci.yml": 30, "trunk.yml": 14}
+
 
 def _steps(workflow: str, job: str) -> list[dict[str, Any]]:
     data = yaml.safe_load((WORKFLOWS_DIR / workflow).read_text(encoding="utf-8"))
@@ -59,7 +61,7 @@ def test_junit_is_scoped_to_the_fast_tier_invocation(workflow: str, job: str, ar
 
 
 @pytest.mark.parametrize(("workflow", "job", "artifact"), _CASES)
-def test_junit_artifact_uploaded_with_fourteen_day_retention(workflow: str, job: str, artifact: str) -> None:
+def test_junit_artifact_uploaded_with_its_retention_window(workflow: str, job: str, artifact: str) -> None:
     steps = _steps(workflow, job)
     upload = _step(steps, "Upload fast-tier junit")
 
@@ -67,7 +69,7 @@ def test_junit_artifact_uploaded_with_fourteen_day_retention(workflow: str, job:
     assert upload["if"] == "always()"
     assert upload["with"]["name"] == artifact
     assert upload["with"]["path"] == "fast-junit/"
-    assert upload["with"]["retention-days"] == 14
+    assert upload["with"]["retention-days"] == _RETENTION_DAYS[workflow]
     assert steps.index(upload) > steps.index(_step(steps, "Run fast tests"))
 
 

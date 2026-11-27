@@ -26,7 +26,7 @@ class TestClickHouseAdapter:
         mock_client_class.return_value = mock_client
         mock_client.execute.return_value = [[1, "test"], [2, "test2"]]
 
-        adapter = ClickHouseAdapter(deployment_mode="server")
+        adapter = ClickHouseAdapter(_deployment_selector="server")
         connection = adapter.create_connection()
 
         result = adapter.execute_query(connection, "SELECT * FROM test", "q1")

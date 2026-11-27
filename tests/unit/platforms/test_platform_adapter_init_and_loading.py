@@ -601,7 +601,7 @@ class TestFabricWarehouseAdapterPaths:
             with pytest.raises(ConfigurationError, match="incomplete"):
                 FabricWarehouseAdapter(
                     workspace="test-guid",
-                    warehouse="mywarehouse",
+                    database="mywarehouse",
                     auth_method="service_principal",
                     client_id="test",
                 )
@@ -622,7 +622,7 @@ class TestFabricWarehouseAdapterPaths:
         with patch("benchbox.platforms.fabric_warehouse.check_platform_dependencies", return_value=(True, [])):
             adapter = FabricWarehouseAdapter(
                 workspace="test-guid",
-                warehouse="mywarehouse",
+                database="mywarehouse",
             )
             assert adapter.server == "test-guid.datawarehouse.fabric.microsoft.com"
             assert adapter.database == "mywarehouse"
@@ -634,7 +634,7 @@ class TestFabricWarehouseAdapterPaths:
             with pytest.warns(UserWarning, match="only supports Warehouse"):
                 FabricWarehouseAdapter(
                     workspace="test-guid",
-                    warehouse="mywarehouse",
+                    database="mywarehouse",
                     item_type="Lakehouse",
                 )
 
@@ -644,7 +644,7 @@ class TestFabricWarehouseAdapterPaths:
         with patch("benchbox.platforms.fabric_warehouse.check_platform_dependencies", return_value=(True, [])):
             adapter = FabricWarehouseAdapter(
                 workspace="test-guid",
-                warehouse="mywarehouse",
+                database="mywarehouse",
             )
             assert adapter.platform_name == "Fabric Warehouse"
 
@@ -654,7 +654,7 @@ class TestFabricWarehouseAdapterPaths:
         with patch("benchbox.platforms.fabric_warehouse.check_platform_dependencies", return_value=(True, [])):
             adapter = FabricWarehouseAdapter(
                 workspace="test-guid",
-                warehouse="mywarehouse",
+                database="mywarehouse",
             )
             assert adapter.get_target_dialect() == FABRIC_DIALECT
 

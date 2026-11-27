@@ -58,6 +58,13 @@ class TestIterationDefaults:
 
         assert run_config.iterations == GENERIC_POWER_DEFAULT_MEASUREMENT_ITERATIONS
 
+    def test_zero_warmup_is_honoured_while_unset_uses_the_default(self, tmp_path):
+        zero = _prepare(tmp_path, options={"power_warmup_iterations": 0})
+        unset = _prepare(tmp_path, options={"power_warmup_iterations": None})
+
+        assert zero.warm_up_iterations == 0
+        assert unset.warm_up_iterations == GENERIC_POWER_DEFAULT_WARMUP_ITERATIONS
+
     def test_iterations_are_clamped_to_at_least_one(self, tmp_path):
         run_config = _prepare(tmp_path, options={"power_iterations": -5})
 

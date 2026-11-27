@@ -2097,7 +2097,7 @@ class TestRedshiftAdapter:
             "aws_access_key_id": "AKIAIOSFODNN7EXAMPLE",
             "aws_secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
             "aws_region": "us-west-2",
-            "cluster_identifier": "test-cluster",
+            "compute_resource": "test-cluster",
             "admin_database": "admin_db",
             "connect_timeout": 30,
             "statement_timeout": 60000,

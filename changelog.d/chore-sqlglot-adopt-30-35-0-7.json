@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "The bundled SQLGlot runtime moves from 30.35.0.6 to 30.35.0.7 (fork commit `4239b4821b57`, upstream v30.35.0), a verified delivery of the benchbox-sqlglot fork that adds the `exact_decimal_quotients` engine rewrite: it makes `CAST(x / y AS DECIMAL(p, s))` exact on DuckDB, which otherwise divides DECIMAL operands in DOUBLE and can round a half-cent tie the wrong way."
+    }
+  ]
+}

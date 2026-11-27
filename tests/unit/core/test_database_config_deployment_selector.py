@@ -13,7 +13,6 @@ from benchbox.cli.config import DirectoryManager
 from benchbox.cli.orchestrator import BenchmarkOrchestrator
 from benchbox.core.config import BenchmarkConfig, DatabaseConfig
 from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION, configured_deployment
-from benchbox.core.deprecation_notices import run_notices, run_scope
 from benchbox.core.dryrun import DryRunExecutor
 from benchbox.core.platform_registry import PlatformRegistry
 from benchbox.core.run_service import resolve_lifecycle_phases
@@ -83,36 +82,31 @@ class TestSelectorInType:
             DatabaseConfig(type="timescaledb:cloud", name="db", options={DEPLOYMENT_SELECTOR_OPTION: "self-hosted"})
 
     def test_type_without_selector_is_unchanged(self) -> None:
-        config = DatabaseConfig(type="lakesail-df", name="db", options={"deployment_mode": "local"})
+        config = DatabaseConfig(type="lakesail-df", name="db", options={"endpoint": "sc://h:1"})
 
         assert config.type == "lakesail-df"
         assert config.execution_mode is None
-        assert config.options == {"deployment_mode": "local"}
+        assert config.options == {"endpoint": "sc://h:1"}
+
+    def test_removed_top_level_keyword_is_rejected(self) -> None:
+        with pytest.raises(TypeError, match="Platform option 'warehouse' for 'snowflake' was removed"):
+            DatabaseConfig(type="snowflake", name="db", warehouse="WH")
 
 
 class TestDryRunRecordsDeployment:
-    def test_selector_form_records_mode_without_deprecation_notice(self, tmp_path: Path) -> None:
+    def test_selector_form_records_mode(self, tmp_path: Path) -> None:
         config = DatabaseConfig(type="timescaledb:cloud", name="db", options={"host": "h", "password": "p"})
 
-        with run_scope():
-            result = DryRunExecutor(tmp_path).execute_dry_run(_tpch(), _profile(), config)
-            notices = [notice.message for notice in run_notices()]
+        result = DryRunExecutor(tmp_path).execute_dry_run(_tpch(), _profile(), config)
 
         assert result.deployment == "cloud"
         assert result.database_config["type"] == "timescaledb"
-        assert not [message for message in notices if "deprecated" in message]
 
-    def test_deprecated_option_still_selects_and_warns(self, tmp_path: Path) -> None:
-        config = DatabaseConfig(
-            type="timescaledb", name="db", options={"host": "h", "password": "p", "deployment_mode": "cloud"}
-        )
-
-        with run_scope():
-            result = DryRunExecutor(tmp_path).execute_dry_run(_tpch(), _profile(), config)
-            notices = [notice.message for notice in run_notices()]
-
-        assert result.deployment == "cloud"
-        assert any("'deployment_mode' for 'timescaledb' is deprecated" in message for message in notices)
+    def test_removed_deployment_option_is_rejected(self) -> None:
+        with pytest.raises(TypeError, match="Platform option 'deployment_mode' for 'timescaledb' was removed"):
+            DatabaseConfig(
+                type="timescaledb", name="db", options={"host": "h", "password": "p", "deployment_mode": "cloud"}
+            )
 
     def test_unselected_run_records_the_manifest_default(self, tmp_path: Path) -> None:
         config = DatabaseConfig(type="timescaledb", name="db", options={"host": "h", "password": "p"})
@@ -179,13 +173,13 @@ class TestDataFrameAdapterOptions:
 
     def test_alias_type_keeps_registered_options(self, tmp_path: Path, captured: dict[str, Any]) -> None:
         config = DatabaseConfig(
-            type="lakesail-df", name="db", options={"endpoint": "sc://h:1", "deployment_mode": "local"}
+            type="lakesail-df", name="db", options={"endpoint": "sc://h:1", "adaptive_enabled": True}
         )
 
         self._build(tmp_path, config)
 
         assert captured["endpoint"] == "sc://h:1"
-        assert captured["deployment_mode"] == "local"
+        assert captured["adaptive_enabled"] is True
         assert captured["deployment"] is None
 
 
@@ -197,12 +191,20 @@ class TestLakeSailDataFrameDeployment:
     def test_records_selected_deployment_outside_spark_config(self) -> None:
         from benchbox.platforms.dataframe.lakesail_df import LakeSailDataFrameAdapter
 
-        adapter = LakeSailDataFrameAdapter(endpoint="sc://h:1", deployment_mode="distributed")
+        adapter = LakeSailDataFrameAdapter(endpoint="sc://h:1", _deployment_selector="distributed")
 
         assert adapter.deployment_selected == "distributed"
         assert adapter.deployment_selected_class == "self-hosted"
         assert "deployment_mode" not in adapter._spark_config
+        assert "_deployment_selector" not in adapter._spark_config
         assert adapter.get_platform_info()["deployment_mode"] == "distributed"
+
+    @pytest.mark.parametrize("keyword", ["deployment_mode", "sail_mode"])
+    def test_removed_keywords_raise_with_the_selector(self, keyword: str) -> None:
+        from benchbox.platforms.dataframe.lakesail_df import LakeSailDataFrameAdapter
+
+        with pytest.raises(TypeError, match=f"Platform option '{keyword}' for 'lakesail' was removed"):
+            LakeSailDataFrameAdapter(**{keyword: "distributed"})
 
     def test_defaults_to_local(self) -> None:
         from benchbox.platforms.dataframe.lakesail_df import LakeSailDataFrameAdapter

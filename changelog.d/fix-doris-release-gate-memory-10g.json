@@ -1,0 +1,1 @@
+{"schema":1,"internal":"The Docker release-gate stage 3 shards give the Doris container 10g instead of 6g, which raises the backend mem_limit from 4.4 GB to 6.4 GB, because JoinOrder SF 1 query 16b failed with MEM_LIMIT_EXCEEDED at 6g in trunk UAT run 45801675348."}

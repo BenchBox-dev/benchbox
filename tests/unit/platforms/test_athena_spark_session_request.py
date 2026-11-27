@@ -81,26 +81,6 @@ def test_documented_cli_options_start_a_session_the_athena_api_accepts(tmp_path:
     assert "engine_version" not in info
 
 
-def test_deprecated_engine_version_option_is_recorded_and_never_sent(tmp_path: Path, athena_client) -> None:
-    _, stubber = athena_client
-    platform_config = _cli_dry_run_platform_config(
-        tmp_path,
-        "compute_resource=spark-wg",
-        "s3_staging_dir=s3://bucket/benchbox",
-        f"engine_version={RUNTIME_VERSION}",
-    )
-    assert platform_config["runtime_version"] == RUNTIME_VERSION
-    adapter = get_platform_adapter("athena-spark", **platform_config)
-    _expect_session_start(
-        stubber, "spark-wg", {"CoordinatorDpuSize": 1, "MaxConcurrentDpus": 20, "DefaultExecutorDpuSize": 1}
-    )
-
-    adapter.create_connection()
-
-    stubber.assert_no_pending_responses()
-    assert adapter.get_platform_info()["runtime_version"] == RUNTIME_VERSION
-
-
 def test_unrequested_runtime_version_is_not_recorded(athena_client) -> None:
     adapter = get_platform_adapter("athena-spark", compute_resource="spark-wg", s3_staging_dir="s3://bucket/benchbox")
 
@@ -124,14 +104,3 @@ def test_rejected_session_request_is_a_configuration_error(athena_client) -> Non
         adapter.create_connection()
 
     assert adapter._session_id is None
-
-
-def test_conflicting_runtime_version_spellings_fail(athena_client) -> None:
-    with pytest.raises(ConfigurationError, match="Conflicting Athena Spark runtime versions"):
-        get_platform_adapter(
-            "athena-spark",
-            compute_resource="spark-wg",
-            s3_staging_dir="s3://bucket/benchbox",
-            runtime_version="PySpark engine version 3",
-            engine_version="PySpark engine version 2",
-        )

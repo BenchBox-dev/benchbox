@@ -208,6 +208,9 @@ class PlatformRegistry:
 
     @classmethod
     def create_adapter(cls, platform_name: str, config: dict[str, Any]) -> PlatformAdapter:
+        from benchbox.core.removed_options import reject_removed_keywords
+
+        reject_removed_keywords(platform_name, config)
         adapter_class = cls.get_adapter_class(platform_name)
         return adapter_class.from_config(config)
 

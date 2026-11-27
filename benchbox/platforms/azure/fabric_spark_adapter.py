@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     )
 
 from benchbox.core.exceptions import ConfigurationError
+from benchbox.core.removed_options import reject_removed_adapter_keywords
 from benchbox.platforms._spark_helpers import adaptive_enabled_from_config, spark_aqe_conf_entries
 from benchbox.platforms.azure._credentials import AzureTokenProvider
 from benchbox.platforms.azure._livy_mixin import LivyStatementMixin
@@ -93,13 +94,14 @@ class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
         tenant_id: str | None = None,
         livy_endpoint: str | None = None,
         onelake_path: str | None = None,
-        spark_pool_name: str | None = None,
+        compute_resource: str | None = None,
         timeout_minutes: int = 60,
         spark_config: dict[str, str] | None = None,
         table_format: str | None = None,
         adaptive_enabled: bool = True,
         **kwargs: Any,
     ) -> None:
+        reject_removed_adapter_keywords(type(self), kwargs)
         if not AZURE_IDENTITY_AVAILABLE:
             deps_satisfied, missing = check_platform_dependencies("fabric-spark")
             if not deps_satisfied:
@@ -114,7 +116,7 @@ class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
         self.workspace_id = workspace_id
         self.lakehouse_id = lakehouse_id
         self.tenant_id = tenant_id
-        self.spark_pool_name = spark_pool_name
+        self.spark_pool_name = compute_resource
         self.timeout_minutes = timeout_minutes
         self.table_format = table_format or "delta"
         self.user_spark_config = spark_config or {}
@@ -508,11 +510,6 @@ class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
             dest="tenant_id",
         )
         group.add_argument(
-            "--spark-pool",
-            help="Spark pool name",
-            dest="spark_pool_name",
-        )
-        group.add_argument(
             "--timeout",
             type=int,
             default=60,
@@ -529,17 +526,15 @@ class FabricSparkAdapter(LivyStatementMixin, SparkTuningMixin, PlatformAdapter):
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> FabricSparkAdapter:
-        from benchbox.core.compute_resource import normalize_compute_options
         from benchbox.platforms.base.config_utils import forward_plan_options
 
-        config = normalize_compute_options("fabric-spark", config)
         params: dict[str, Any] = {
             "workspace_id": config.get("workspace_id"),
             "lakehouse_id": config.get("lakehouse_id"),
             "tenant_id": config.get("tenant_id"),
             "livy_endpoint": config.get("livy_endpoint"),
             "onelake_path": config.get("onelake_path"),
-            "spark_pool_name": config.get("compute_resource") or config.get("spark_pool_name"),
+            "compute_resource": config.get("compute_resource"),
             "timeout_minutes": config.get("timeout_minutes", 60),
             "spark_config": config.get("spark_config"),
             "table_format": config.get("table_format"),

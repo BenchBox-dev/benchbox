@@ -25,7 +25,7 @@ def test_athena_smoke_run(monkeypatch, tmp_path):
 
     adapter = AthenaAdapter(
         region=state.region,
-        workgroup=state.workgroup,
+        compute_resource=state.workgroup,
         database="benchbox_smoke",
         s3_bucket=state.s3_bucket,
         s3_staging_dir=f"s3://{state.s3_bucket}/staging/",
@@ -65,7 +65,7 @@ def test_athena_platform_info(monkeypatch, tmp_path):
 
     adapter = AthenaAdapter(
         region=state.region,
-        workgroup=state.workgroup,
+        compute_resource=state.workgroup,
         database="benchbox_test",
         s3_bucket=state.s3_bucket,
         s3_staging_dir=f"s3://{state.s3_bucket}/staging/",
@@ -93,7 +93,7 @@ def test_athena_cost_tracking(monkeypatch, tmp_path):
 
     adapter = AthenaAdapter(
         region=state.region,
-        workgroup=state.workgroup,
+        compute_resource=state.workgroup,
         database="benchbox_cost_test",
         s3_bucket=state.s3_bucket,
         s3_staging_dir=f"s3://{state.s3_bucket}/staging/",

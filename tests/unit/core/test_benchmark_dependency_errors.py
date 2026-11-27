@@ -112,7 +112,7 @@ def test_mcp_job_worker_returns_dependency_missing_with_install_command(pandas_b
         completed_at=None,
     )
 
-    response = DurableJobWorker._execute_benchmark_request(job, tmp_path)
+    response = DurableJobWorker._execute_benchmark(job, tmp_path)
 
     assert response["status"] == "failed"
     assert response["error_code"] == "DEPENDENCY_MISSING"

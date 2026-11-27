@@ -8,8 +8,10 @@ import importlib.util
 from collections.abc import Callable, Iterable
 from typing import Optional, Type
 
+from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION, DEPLOYMENT_SELECTOR_PLATFORMS, resolve_deployment
 from benchbox.core.execution_engine import resolve_requested
 from benchbox.core.platform_registry import PlatformRegistry
+from benchbox.core.removed_options import reject_removed_keywords
 from benchbox.utils.runtime_env import DriverResolution, DriverRuntimeStrategy, ensure_driver_version
 
 from .base import BenchmarkResults, ConnectionConfig, DriverIsolationCapability, PlatformAdapter
@@ -219,20 +221,14 @@ from benchbox.platforms.adapter_factory import (
 )
 
 
-def _deployment_selector_config(config: dict) -> tuple[str | None, dict[str, object], set[str] | None]:
+def _configured_deployment_selector(config: dict) -> str | None:
     nested = config.get("options")
-    nested_options = dict(nested) if isinstance(nested, dict) else {}
-    values: dict[str, object] = {**nested_options, **config}
-    marker = values.get("_explicit_platform_options")
-    explicit = set(marker.keys()) if isinstance(marker, dict) else None
-    raw_selector = values.get("_deployment_selector")
-    selector = str(raw_selector) if raw_selector is not None else None
-    return selector, values, explicit
+    values = {**(nested if isinstance(nested, dict) else {}), **config}
+    raw_selector = values.get(DEPLOYMENT_SELECTOR_OPTION)
+    return str(raw_selector) if raw_selector is not None else None
 
 
 def _apply_deployment_selector(platform_name: str, config: dict) -> tuple[str, dict]:
-    from benchbox.core.deployment import DEPLOYMENT_ALIAS_KEYS, resolve_deployment
-
     lowered = platform_name.lower().strip()
     if ":" in lowered:
         from benchbox.platforms.clickhouse.deployment_mode import (
@@ -247,29 +243,30 @@ def _apply_deployment_selector(platform_name: str, config: dict) -> tuple[str, d
             warnings.warn(clickhouse_legacy_selector_warning(platform_name, target), DeprecationWarning, stacklevel=2)
             return target, config
         base, suffix = lowered.rsplit(":", 1)
-        if base in DEPLOYMENT_ALIAS_KEYS:
+        if base in DEPLOYMENT_SELECTOR_PLATFORMS:
             platform_name = base
-            if config.get("_deployment_selector") is None:
-                config = {**config, "_deployment_selector": suffix}
-            elif str(config["_deployment_selector"]).strip().lower() != suffix:
+            if config.get(DEPLOYMENT_SELECTOR_OPTION) is None:
+                config = {**config, DEPLOYMENT_SELECTOR_OPTION: suffix}
+            elif str(config[DEPLOYMENT_SELECTOR_OPTION]).strip().lower() != suffix:
                 raise ValueError(
                     f"Deployment selector '{lowered}' conflicts with "
-                    f"explicit deployment '{config['_deployment_selector']}'. "
+                    f"explicit deployment '{config[DEPLOYMENT_SELECTOR_OPTION]}'. "
                     "Use one deployment selection."
                 )
-    selector, values, explicit = _deployment_selector_config(config)
     base_key = platform_name.lower().strip()
-    if base_key not in DEPLOYMENT_ALIAS_KEYS:
+    if base_key not in DEPLOYMENT_SELECTOR_PLATFORMS:
         return platform_name, config
-    resolution = resolve_deployment(base_key, selector, values, explicit)
+    resolution = resolve_deployment(base_key, _configured_deployment_selector(config))
     if resolution.explicit and resolution.selected is not None:
-        config = {**config, "deployment_mode": resolution.selected}
+        config = {**config, DEPLOYMENT_SELECTOR_OPTION: resolution.selected}
     return platform_name, config
 
 
 def get_platform_adapter(platform_name: str, **config) -> PlatformAdapter:
     platform_name, config = _apply_deployment_selector(platform_name, config)
     canonical_name = PlatformRegistry.resolve_platform_name(platform_name)
+    nested = config.get("options")
+    reject_removed_keywords(canonical_name, {**(nested if isinstance(nested, dict) else {}), **config})
     resolve_requested(canonical_name, config.get("execution_engine") or "default")
 
     try:
@@ -476,7 +473,6 @@ trino|table_format|Table format for creating tables (memory, hive, iceberg, delt
 trino|source_catalog|Source catalog for external data loading (e.g., hive connector)|{}
 trino|host|Trino coordinator hostname|{'default': 'localhost'}
 trino|port|Trino coordinator HTTP port|{'parser': 'int', 'default': 8080}
-firebolt|deployment_mode|Deprecated alias of the platform selector: 'core' for local Docker, 'cloud' for managed Firebolt|{'aliases': ('firebolt_mode',), 'choices': ('core', 'cloud')}
 firebolt|url|Firebolt Core endpoint URL (default: http://localhost:3473)|{'default': 'http://localhost:3473'}
 firebolt|client_id|Firebolt Cloud OAuth client ID|{}
 firebolt|client_secret|Firebolt Cloud OAuth client secret|{}
@@ -505,7 +501,6 @@ postgresql|schema|PostgreSQL schema name|{'default': 'public'}
 postgresql|work_mem|PostgreSQL work_mem setting for queries|{'default': '256MB'}
 postgresql|statement_timeout|PostgreSQL per-statement timeout in milliseconds (0 disables)|{'parser': 'int'}
 postgresql|enable_timescale|Enable TimescaleDB extensions if available|{'default': 'false'}
-timescaledb|deployment_mode|Deprecated alias of the platform selector: 'self-hosted' for a user-managed server, 'cloud' for managed TigerData|{'choices': ('self-hosted', 'cloud')}
 timescaledb|host|TimescaleDB server hostname|{'default': 'localhost'}
 timescaledb|port|TimescaleDB server port|{'parser': 'int', 'default': 5432}
 timescaledb|database|TimescaleDB database name (auto-generated if not specified)|{}
@@ -553,14 +548,11 @@ pg-duckdb|work_mem|PostgreSQL work_mem setting for queries|{'default': '256MB'}
 pg-duckdb|maintenance_work_mem|PostgreSQL maintenance_work_mem for VACUUM/CREATE INDEX|{'default': '512MB'}
 pg-duckdb|effective_cache_size|PostgreSQL effective_cache_size planner hint|{'default': '1GB'}
 pg-duckdb|max_parallel_workers_per_gather|PostgreSQL max_parallel_workers_per_gather setting|{'parser': 'int', 'default': 2}
-pg-duckdb|force_execution|Deprecated alias: true selects duckdb, false selects postgres|{'parser': 'parse_bool'}
 pg-duckdb|postgres_scan_threads|Threads for parallel PostgreSQL table scanning (0 = auto)|{'parser': 'int', 'default': 0}
 pg-duckdb|compare_native|Run native DuckDB comparison for matched queries|{'parser': 'parse_bool', 'default': False}
-pg-duckdb|deployment_mode|Deprecated alias of the platform selector: 'self-hosted' for local PostgreSQL, 'motherduck' for MotherDuck cloud offload|{'choices': ('self-hosted', 'motherduck')}
 pg-duckdb|duckdb_db_path|Path to the DuckDB database file pg_duckdb attaches|{}
 ducklake|metadata_path|DuckLake catalog metadata file path (.ducklake)|{}
 ducklake|data_path|DuckLake Parquet data directory (local path or cloud URI: s3://, gs://, az://)|{}
-ducklake|deployment_mode|Deprecated alias of the platform selector: local, local_catalog_s3, postgres_catalog, or postgres_catalog_s3|{'choices': ('local', 'local_catalog_s3', 'postgres_catalog', 'postgres_catalog_s3')}
 ducklake|catalog|DuckLake catalog backend: duckdb, sqlite, or postgres|{'choices': ('duckdb', 'sqlite', 'postgres'), 'default': 'duckdb'}
 ducklake|pg_host|PostgreSQL hostname for the postgres catalog backend|{'default': 'localhost'}
 ducklake|pg_port|PostgreSQL port for the postgres catalog backend|{'parser': 'int', 'default': 5432}
@@ -657,7 +649,7 @@ synapse|resource_class|Workload resource class (e.g., staticrc20, staticrc30)|{'
 synapse|staging_root|Azure staging path, including the storage account (e.g., abfss://container@account.dfs.core.windows.net/path)|{}
 fabric_dw|server|Fabric warehouse endpoint (e.g., workspace-guid.datawarehouse.fabric.microsoft.com)|{}
 fabric_dw|workspace|Fabric workspace name or GUID|{}
-fabric_dw|database|Database/warehouse name|{'aliases': ('warehouse',)}
+fabric_dw|database|Database/warehouse name|{}
 fabric_dw|auth_method|Authentication method: service_principal, default_credential, or interactive|{'default': 'default_credential'}
 fabric_dw|tenant_id|Azure tenant ID for service principal auth|{}
 fabric_dw|client_id|Service principal client ID|{}
@@ -689,7 +681,6 @@ starrocks|username|StarRocks username|{'default': 'root'}
 starrocks|password|StarRocks password|{}
 starrocks|database|StarRocks database name (auto-generated if not specified)|{}
 starrocks|http_port|StarRocks BE HTTP port for Stream Load|{'default': '8040'}
-databend|deployment_mode|Deprecated alias of the platform selector: 'cloud' for Databend Cloud, 'self-hosted' for a user-managed cluster|{'choices': ('cloud', 'self-hosted')}
 databend|host|Databend host (or set DATABEND_HOST env var)|{}
 databend|port|Databend port (default: 443 for cloud, 8000 for self-hosted)|{}
 databend|username|Databend username (default: benchbox)|{'default': 'benchbox'}
@@ -713,7 +704,6 @@ singlestore|port|SingleStore MySQL protocol port|{'default': '3306'}
 singlestore|database|SingleStore database name (auto-generated if not specified)|{}
 singlestore|username|SingleStore username|{'default': 'root'}
 singlestore|password|SingleStore password|{}
-polars|streaming|Enable streaming mode for large datasets|{'parser': 'parse_bool', 'default': 'false'}
 polars|rechunk|Rechunk data for better memory layout|{'parser': 'parse_bool', 'default': 'true'}
 polars|n_rows|Limit number of rows to read (for testing)|{'parser': 'int'}
 polars|allow_third_party_extensions|Allow SKETCH operations in the write-primitives DataFrame workload on DuckDB 2.x to install the datasketches extension from the third-party Query.Farm repository (https://duckdb-extensions.query.farm); without it they are skipped|{'parser': 'parse_bool', 'default': False}
@@ -724,7 +714,6 @@ cudf|spill_to_host|Enable GPU memory spilling to host RAM|{'parser': 'parse_bool
 cudf|allow_third_party_extensions|Allow SKETCH operations in the write-primitives DataFrame workload on DuckDB 2.x to install the datasketches extension from the third-party Query.Farm repository (https://duckdb-extensions.query.farm); without it they are skipped|{'parser': 'parse_bool', 'default': False}
 dask|n_workers|Number of worker processes|{'parser': 'int'}
 dask|threads_per_worker|Threads per worker process|{'parser': 'int'}
-dask|use_distributed|Deprecated alias: true selects distributed, false selects threaded|{'parser': 'parse_bool'}
 dask|scheduler_address|Connect to existing scheduler (e.g., 'tcp://...')|{}
 dask|memory_limit|Memory limit per local Dask worker (e.g., '4GB')|{}
 dask|spill_directory|Directory for Dask spill files; explicit directories are not deleted by close()|{}
@@ -736,7 +725,6 @@ datafusion|batch_size|Batch size for query execution|{'parser': 'int', 'default'
 datafusion|memory_limit|Memory limit for fair spill pool (e.g., '8G', '16GB')|{}
 datafusion|temp_dir|Temporary directory for disk spilling (default: system temp)|{}
 datafusion|allow_third_party_extensions|Allow SKETCH operations in the write-primitives DataFrame workload on DuckDB 2.x to install the datasketches extension from the third-party Query.Farm repository (https://duckdb-extensions.query.farm); without it they are skipped|{'parser': 'parse_bool', 'default': False}
-clickhouse|deployment_mode|Deprecated alias of the platform selector: deployment mode for ClickHouse (server or local).|{'parser': 'clickhouse_mode', 'default': 'server', 'choices': ('server', 'local'), 'aliases': ('mode',)}
 clickhouse|host|ClickHouse server hostname (server mode only).|{'default': 'localhost'}
 clickhouse|port|ClickHouse native protocol port.|{'parser': 'int', 'default': 9000}
 clickhouse|username|ClickHouse username for authentication.|{'default': 'default', 'aliases': ('user',)}
@@ -774,7 +762,7 @@ athena|staging_root|S3 path for staging data (alternative to s3_bucket)|{}
 athena-spark|s3_staging_dir|S3 path for data staging (e.g., s3://bucket/path)|{}
 athena-spark|region|AWS region (default: us-east-1)|{}
 athena-spark|database|Glue Data Catalog database (default: benchbox)|{}
-athena-spark|runtime_version|Spark engine version expected on the workgroup, recorded in results as requested; the workgroup sets the engine version|{'aliases': ('engine_version',)}
+athena-spark|runtime_version|Spark engine version expected on the workgroup, recorded in results as requested; the workgroup sets the engine version|{}
 athena-spark|coordinator_dpu_size|Coordinator DPU size (default: 1)|{'parser': 'int'}
 athena-spark|max_concurrent_dpus|Maximum concurrent DPUs (default: 20)|{'parser': 'int'}
 athena-spark|default_executor_dpu_size|Default executor DPU size (default: 1)|{'parser': 'int'}
@@ -786,7 +774,6 @@ redshift|s3_bucket|S3 bucket for data staging|{}
 redshift|staging_root|S3 path for staging data (e.g., s3://bucket/path)|{}
 snowflake|staging_root|Cloud storage path for staging data|{}
 snowflake|iceberg_external_volume|Snowflake EXTERNAL VOLUME name for Iceberg tables|{}
-influxdb|deployment_mode|Deprecated alias of the platform selector: 'core' for self-hosted OSS, 'cloud' for the managed service|{'choices': ('core', 'cloud'), 'default': 'cloud', 'aliases': ('mode',)}
 influxdb|host|InfluxDB server hostname|{'default': 'localhost'}
 influxdb|port|InfluxDB server port (default: 8181 for core mode, 443 for cloud mode; InfluxDB 2 uses 8086)|{'parser': 'int'}
 influxdb|token|InfluxDB authentication token (or set INFLUXDB_TOKEN env var)|{}
@@ -795,9 +782,7 @@ influxdb|database|InfluxDB database (bucket) name|{'default': 'benchbox'}
 influxdb|ssl|Use SSL/TLS connection (true/false)|{'parser': 'parse_bool', 'default': True}
 lakesail|endpoint|Spark Connect server endpoint (for example, sc://localhost:50051)|{'default': 'sc://localhost:50051'}
 lakesail|adaptive_enabled|Enable or disable LakeSail Adaptive Query Execution (AQE)|{'parser': 'parse_bool'}
-lakesail|deployment_mode|Deprecated alias of the platform selector: 'local' for single-node, 'distributed' to connect to an external Sail server without starting one|{'choices': ('local', 'distributed'), 'aliases': ('sail_mode',)}
 lakesail|allow_third_party_extensions|Allow SKETCH operations in the write-primitives DataFrame workload on DuckDB 2.x to install the datasketches extension from the third-party Query.Farm repository (https://duckdb-extensions.query.farm); without it they are skipped|{'parser': 'parse_bool', 'default': False}
-velox|deployment|Deprecated alias of the platform selector: 'local' (in-process SparkSession, Linux only) or 'remote' (Spark-Connect server)|{'choices': ('local', 'remote'), 'default': 'local'}
 velox|endpoint|Spark-Connect endpoint for remote mode (e.g., sc://localhost:50051)|{'default': 'sc://localhost:50051'}
 velox|gluten_jar_path|Absolute path to the Gluten Velox bundle jar (required for local mode)|{'aliases': ('jar',)}
 velox|offheap_size|Off-heap memory for Velox native engine (e.g., '8g', '16g')|{'default': '8g'}
@@ -817,17 +802,10 @@ velox|lakehouse_jars|Comma-separated connector jars for delta/iceberg/hudi reads
 
         return parse
 
-    def _parse_clickhouse_mode(value: str) -> str:
-        normalized = value.strip().lower()
-        if normalized in {"server", "local"}:
-            return normalized
-        raise PlatformOptionError(f"Invalid ClickHouse mode '{value}'. Expected 'server' or 'local'.")
-
     _SPEC_PARSERS = {
         "int": _numeric_parser(int, "integer"),
         "float": _numeric_parser(float, "number"),
         "parse_bool": parse_bool,
-        "clickhouse_mode": _parse_clickhouse_mode,
     }
 
     def _spec_kwargs(text: str) -> dict[str, object]:
