@@ -41704,6 +41704,15 @@
       "status": "done",
       "title": "PostgreSQL Platform Documentation"
     },
+    "power-at-size-refresh-inclusion-differs-within-a-lane-20261127": {
+      "claim": null,
+      "needs": [
+        "crr-a1-rule-module-and-snapshot"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Compute Power@Size the same way for every result in a ranking lane"
+    },
     "power-run-iterations-configuration-completed": {
       "claim": null,
       "needs": [],
