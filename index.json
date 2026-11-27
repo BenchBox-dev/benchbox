@@ -27770,6 +27770,15 @@
       "status": "open",
       "title": "Run the query conformance corpus in benchbox-datagen CI and close qgen coverage gaps"
     },
+    "datagen-lib-remove-carried-scaling-patch": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-tpcds-fractional-and-refresh"
+      ],
+      "priority": "low",
+      "status": "open",
+      "title": "Return tpcdsgen to the crates.io pin when upstream releases the Scaling override"
+    },
     "datagen-lib-repo-skeleton": {
       "claim": null,
       "needs": [

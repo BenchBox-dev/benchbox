@@ -1,0 +1,17 @@
+{
+  "acceptance": [
+    "Cargo.toml pins crates.io tpcdsgen with no `[patch]` or git dependency.",
+    "TPC-DS parity at SF 0.01, 0.05, 0.1, 0.25, 0.5 and 1 passes for all 24 tables; README carried-patch list is empty."
+  ],
+  "description": "## Problem\nThe library carries tpcgen-rs PR #677 as a pinned fork commit. The carried-patch rule requires removing it when an upstream release contains it.\n\n## Change\nOn an upstream release containing #677: pin the crates.io version, delete the `[patch]` entry and the README entry, re-run parity.\n\n## Decision gates\n- Blocked until an upstream release contains #677 (no known date).\n- If upstream merges a different API, adapt only if the change stays small; otherwise report sizes to the owner.\n- If upstream rejects #677, report to the owner: the carried patch becomes permanent and needs a renewed decision.\n\n## Guardrails\n- BenchBox work only in a linked worktree; heavy work only through make heavy-run; never kill processes by name pattern.\n- No divergent fork of tpcgen-rs; carried patches only under the 2026-11-27 rule (<= ~200 changed lines, upstream PR, SHA pin, README entry); anything larger goes to the owner with sizes first.\n- Human commit identity, no agent attribution. Report only observed results.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-27T00:08:34Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "b6e7a4be88f6492a8e24b367785b630c",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
