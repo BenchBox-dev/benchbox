@@ -414,6 +414,7 @@ pytest_add_cli_args = ["-n", "0", "-p", "no:cacheprovider"]
 "benchbox.core.results" = ["benchmark_specs.yaml", "comparison_identity.json", "corpus_rule_data.json"]
 "benchbox.core.primitives.catalog" = ["queries.yaml"]
 "benchbox.core.tpcds_obt.catalog" = ["queries.yaml"]
+"benchbox.core.tpcdi.etl" = ["LICENSE-databricks-tpc-di.txt", "PROVENANCE.json", "DEPARTURES.yaml", "ingest/*.sql", "historical/*.sql"]
 "benchbox.core.tsbs_devops" = ["query_catalog.yaml"]
 "benchbox.data.coffeeshop" = ["*.csv"]
 

@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Added the TPC-DI historical load on DuckDB from DIGen output: staging loads, transformations with their alerts, initialization and historical-load phases with the official audit, and a departures catalogue; fixed DIGen stopping early; set scales to 3, 5 (default), 10, 100; TPC-DI stays unavailable"
+}

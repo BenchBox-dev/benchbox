@@ -37,10 +37,20 @@ def build(
         "CREATE TABLE DimCustomer (CustomerID BIGINT, EffectiveDate DATE, LastName VARCHAR, Tier VARCHAR)"
     )
     connection.executemany("INSERT INTO DimCustomer VALUES (?, ?, ?, ?)", customers)
-    connection.execute(f"CREATE TABLE FactMarketHistory (SK_SecurityID BIGINT, SK_DateID BIGINT, Yield {yield_type})")
+    connection.execute(
+        f"CREATE TABLE FactMarketHistory (SK_SecurityID BIGINT, SK_DateID BIGINT, Yield {yield_type}, "
+        "ClosePrice DECIMAL(8,2) DEFAULT 100)"
+    )
     connection.executemany(
-        "INSERT INTO FactMarketHistory VALUES (?, ?, ?)",
+        "INSERT INTO FactMarketHistory (SK_SecurityID, SK_DateID, Yield) VALUES (?, ?, ?)",
         [(security, date, float(value) * yield_scale) for security, date, value in yields],
+    )
+    connection.execute(
+        "CREATE TABLE DimSecurity (SK_SecurityID BIGINT, Symbol VARCHAR, EffectiveDate DATE, Dividend DECIMAL(10,2))"
+    )
+    connection.executemany(
+        "INSERT INTO DimSecurity VALUES (?, ?, DATE '2000-01-01', ?)",
+        [(security, f"S{security}", value) for security, _, value in YIELDS],
     )
     connection.execute(
         "CREATE TABLE DImessages (MessageDateAndTime TIMESTAMP, BatchID INTEGER, MessageSource VARCHAR, "
@@ -362,9 +372,20 @@ def build_market(path: Path, decimal: bool, market: list[tuple], trades: list[tu
     connection.execute(
         f"CREATE TABLE FactMarketHistory (SK_SecurityID BIGINT, SK_DateID BIGINT, Yield {yield_type}, "
         f"FiftyTwoWeekHigh {price}, SK_FiftyTwoWeekHighDate BIGINT, FiftyTwoWeekLow {price}, "
-        f"SK_FiftyTwoWeekLowDate BIGINT, DayHigh {price}, DayLow {price})"
+        f"SK_FiftyTwoWeekLowDate BIGINT, DayHigh {price}, DayLow {price}, ClosePrice {price} DEFAULT 100)"
     )
-    connection.executemany("INSERT INTO FactMarketHistory VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", market)
+    connection.executemany(
+        "INSERT INTO FactMarketHistory (SK_SecurityID, SK_DateID, Yield, FiftyTwoWeekHigh, SK_FiftyTwoWeekHighDate, "
+        "FiftyTwoWeekLow, SK_FiftyTwoWeekLowDate, DayHigh, DayLow) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        market,
+    )
+    connection.execute(
+        f"CREATE TABLE DimSecurity (SK_SecurityID BIGINT, Symbol VARCHAR, EffectiveDate DATE, Dividend {price})"
+    )
+    connection.executemany(
+        "INSERT INTO DimSecurity VALUES (?, ?, DATE '2000-01-01', ?)",
+        [(key, f"S{key}", dividend) for key, dividend in DIVIDENDS.items()],
+    )
     connection.execute(
         "CREATE TABLE DimTrade (TradeID BIGINT, SK_CreateDateID BIGINT, SK_CreateTimeID BIGINT, BatchID INTEGER)"
     )
@@ -380,6 +401,8 @@ def build_market(path: Path, decimal: bool, market: list[tuple], trades: list[tu
 LEAP = 20200301
 PLAIN = 20190301
 LEAP_EXTRA = 20190302
+
+DIVIDENDS = {1: 2.5, 2: 1.25, 3: 0.5, 4: 0.75, 5: 0.25}
 
 
 def market(rows: list[tuple]) -> list[tuple]:
@@ -471,6 +494,14 @@ def test_shipped_entries_refuse_values_outside_the_rows_they_describe(tmp_path, 
     assert ("FactMarketHistory", subject) in refused(report)
 
 
+def test_a_yield_within_half_a_cent_that_is_not_the_exact_rounding_is_refused(tmp_path):
+    implementation = replace(IMPLEMENTATION_MARKET, (1, LEAP, 0.0002495, 11.0, 20190501, 5.0, 20200105))
+    benchbox = replace(BENCHBOX_MARKET, (1, LEAP, 2.49, 12.0, LEAP_EXTRA, 5.0, 20200105))
+    assert ("FactMarketHistory", "Yield") in refused(
+        market_report(tmp_path, benchbox=benchbox, implementation=implementation)
+    )
+
+
 @pytest.mark.parametrize("trades", [[(1, 20200301, 1), (2, 20200302, 1)], [(1, 20200301, 0), (2, 20200302, 2)]])
 def test_a_constant_batch_id_is_refused_where_it_is_not_the_creation_batch(tmp_path, trades):
     assert ("DimTrade", "BatchID") in refused(market_report(tmp_path, trades=trades))
@@ -525,3 +556,36 @@ def test_a_tie_date_of_the_implementation_outside_the_window_is_refused(tmp_path
     implementation = replace(IMPLEMENTATION_MARKET, (2, LEAP, 0.000125, 10.0, 20200302, 5.0, 20200106))
     report = market_report(tmp_path, implementation=implementation)
     assert ("FactMarketHistory", "SK_FiftyTwoWeekHighDate") in refused(report)
+
+
+SECURITIES = [("AAA", "2020-01-01"), ("BBB", "2020-01-01"), ("AAA", "2020-02-01")]
+
+
+def build_securities(path: Path, numbering: list[int], watches: list[tuple]) -> Path:
+    connection = duckdb.connect(str(path))
+    connection.execute("CREATE TABLE DimSecurity (SK_SecurityID BIGINT, Symbol VARCHAR, EffectiveDate DATE)")
+    connection.executemany(
+        "INSERT INTO DimSecurity VALUES (?, ?, ?)",
+        [(key, *security) for key, security in zip(numbering, SECURITIES, strict=True)],
+    )
+    connection.execute(
+        "CREATE TABLE FactWatches (SK_CustomerID BIGINT, SK_SecurityID BIGINT, SK_DateID_DatePlaced BIGINT)"
+    )
+    connection.executemany("INSERT INTO FactWatches VALUES (?, ?, ?)", watches)
+    connection.close()
+    return path
+
+
+def security_findings(tmp_path: Path, right_watches: list[tuple]) -> set[tuple[str, str]]:
+    left = build_securities(tmp_path / "left.duckdb", [1, 2, 3], [(7, 1, 20200105), (7, 3, 20200205)])
+    right = build_securities(tmp_path / "right.duckdb", [2, 1, 3], right_watches)
+    return {(difference.table, difference.kind) for difference in run(left, right).unaccepted()}
+
+
+def test_fact_rows_match_through_the_security_they_reference(tmp_path):
+    assert security_findings(tmp_path, [(7, 2, 20200105), (7, 3, 20200205)]) == {("DimSecurity", "column_value")}
+
+
+def test_a_fact_row_referencing_another_security_is_a_difference(tmp_path):
+    findings = security_findings(tmp_path, [(7, 1, 20200105), (7, 3, 20200205)])
+    assert {("FactWatches", "rows_only_left"), ("FactWatches", "rows_only_right")} <= findings
