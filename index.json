@@ -15691,7 +15691,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-historical",
-      "integration_head": "67503ff6fab1bbbe42668acfc33154302dd32b77",
+      "integration_head": "608022b2eb92548d67943eaa502006a595f08141",
       "integration_log": [
         {
           "at": "2026-11-23T23:39:31Z",
@@ -16514,6 +16514,21 @@
             "tpcdi-historical-facts-20261121"
           ],
           "seq": 14
+        },
+        {
+          "at": "2026-11-27T18:13:35Z",
+          "changed_files": [
+            "scripts/tpcdi/run_phases.py",
+            "tests/unit/scripts/test_tpcdi_run_phases.py"
+          ],
+          "head": "608022b2eb92548d67943eaa502006a595f08141",
+          "kind": "fix",
+          "op_id": "2cd93d8b62944e6e84feab5cfcdfcf80",
+          "previous_head": "67503ff6fab1bbbe42668acfc33154302dd32b77",
+          "requires_acceptance": [
+            "tpcdi-12-duckdb-historical-load-and-audit-20261120"
+          ],
+          "seq": 15
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-historical",
