@@ -28322,18 +28322,13 @@
       "title": "Generate TPC-H in benchbox-datagen on the upstream tpchgen crates, delimited and Parquet"
     },
     "datagen-lib-tpch-qgen": {
-      "claim": {
-        "expires_at": "2026-11-28T03:24:09Z",
-        "generation": "6568314437f04a7a92507632458e3ac1",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
-      },
+      "claim": null,
       "needs": [
         "tpc-query-conformance-corpus",
         "datagen-lib-tpch"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Implement TPC-H qgen in benchbox-datagen against the conformance corpus"
     },
     "datagen-p0-baseline-measurements": {
