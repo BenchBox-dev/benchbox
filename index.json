@@ -5671,6 +5671,81 @@
       "start_head": "9f739da8e8647532916fdd8cecda169ce585a4af",
       "terminal_outcome": "deliver"
     },
+    "explorer-data": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/explorer-data",
+      "integration_head": "372f743e84df1422dea5d4926d8338b371be8518",
+      "integration_log": [
+        {
+          "at": "2026-11-27T14:59:19Z",
+          "head": "372f743e84df1422dea5d4926d8338b371be8518",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-explorer-data",
+      "lifecycle": "active",
+      "members": [
+        "crr-b3-pipeline-emits-rule-outcome-and-medians",
+        "crr-d2-observed-engine-sql-platforms"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "owner_epoch": 0,
+      "owner_generation": "1eb85b12dab483005a8e550d479d3a73",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "crr-b3-pipeline-emits-rule-outcome-and-medians": [
+          "benchbox/*",
+          "tests/*",
+          "scripts/*",
+          "_project/scripts/*",
+          "_project/inert-doc-readers.json",
+          "_project/design/*",
+          ".github/*",
+          "docs/*",
+          "quality/*",
+          "pyproject.toml",
+          "Makefile",
+          "make/*",
+          "results-data/*.py",
+          "results-data/*.md",
+          "results-data/compliance-classes.json",
+          "results-data/corpus-inventory.json",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "crr-d2-observed-engine-sql-platforms": [
+          "benchbox/*",
+          "tests/*",
+          "scripts/*",
+          "_project/scripts/*",
+          "_project/inert-doc-readers.json",
+          "_project/design/*",
+          ".github/*",
+          "docs/*",
+          "quality/*",
+          "pyproject.toml",
+          "Makefile",
+          "make/*",
+          "results-data/*.py",
+          "results-data/*.md",
+          "results-data/compliance-classes.json",
+          "results-data/corpus-inventory.json",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "d6104642ed45b51dfc3550a5bd07fbd64bbbfeee5bf3299595c6a96d5be048fb",
+      "start_head": "372f743e84df1422dea5d4926d8338b371be8518",
+      "terminal_outcome": "deliver"
+    },
     "hold-label-and-batch-e2e-20261106": {
       "accepted_members": {},
       "batch_schema": 2,
