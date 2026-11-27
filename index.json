@@ -28106,6 +28106,8 @@
         "datagen-lib-tpcds-fractional-and-refresh",
         "datagen-lib-query-integration",
         "datagen-lib-platform-verification",
+        "datagen-bb-tpc-refresh-and-subscale-wiring",
+        "datagen-decision-tpc-derived-code-licensing",
         "bundle-data-generation-hash-missing-from-corpus"
       ],
       "priority": "medium-high",
