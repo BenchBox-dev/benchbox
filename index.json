@@ -44690,7 +44690,8 @@
     "refreshed-data-row-count-bounds-20261126": {
       "claim": null,
       "needs": [
-        "crr-v2-measured-stream-integrity-checks"
+        "crr-v2-measured-stream-integrity-checks",
+        "crr-v4-official-runs-qualify"
       ],
       "priority": "medium",
       "status": "open",
