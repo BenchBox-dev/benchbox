@@ -199,6 +199,10 @@ DIALECT_CALL_SITES = [
         "calls": [],
     },
 ]
+DIALECT_ARGUMENT_EXPRESSIONS = {
+    "base_dialect": ["base", "base_dialect"],
+    "dsqgen_dialect": ["dialect", "src"],
+}
 
 _GZIP_LEVEL = 9
 _STATEMENT_SPLIT_RE = re.compile(r"(?<=;)\n+(?=\S)")
@@ -824,7 +828,11 @@ def replay_class(entry: dict[str, Any]) -> tuple[bool, str]:
     if entry["qgen_seeds"]:
         return True, f"seed {seed} recorded; the qgen seeds derived from it are listed in qgen_seeds"
     if entry["benchmark"] == "tpcds":
-        return True, f"seed {seed} recorded; dsqgen -RNGSEED derives from it as seed + stream_id + 1000"
+        return True, (
+            f"seed {seed} recorded; the power stream of stream_id n draws dsqgen -RNGSEED = seed + n + 1000 "
+            "(power_parameter_seed), and a throughput stream n draws from dsqgen -STREAMS at the seed or, per query, "
+            "seed + n * 1000 + position"
+        )
     return True, f"seed {seed} recorded"
 
 
@@ -884,9 +892,13 @@ def extend(args: argparse.Namespace) -> None:
         "passed_by_benchbox": ["netezza"],
         "accepted_by_dsqgen_templates": bundled_dialects(),
         "unsupported_dialect_behavior": "DSQGenBinary._validate_dialect warns and falls back to netezza",
-        "reason": "every production call path reaches dsqgen with netezza; the other bundled dialect templates "
-        "are never selected, so they are not captured",
+        "reason": "every call path in the repository reaches dsqgen with netezza; the other bundled dialect "
+        "templates are never selected, so they are not captured",
         "call_sites": DIALECT_CALL_SITES,
+        "argument_expressions": DIALECT_ARGUMENT_EXPRESSIONS,
+        "public_api": "TPCDS.get_queries and TPCDS.get_query forward a caller-supplied base_dialect to dsqgen; no "
+        "call in the repository passes a string literal, only the get_tpc_base_dialect result or a forwarded "
+        "parameter",
     }
     tpcds["nondeterministic_cases"] = evidence["nondeterministic"]
     manifest["tpch"]["nonterminating_cases"] = evidence["nonterminating"]

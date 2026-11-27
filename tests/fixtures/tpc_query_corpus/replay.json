@@ -47,7 +47,7 @@
    "first_stream_id": 0,
    "qgen_seeds": [],
    "replayable": true,
-   "reason": "seed 42 recorded; dsqgen -RNGSEED derives from it as seed + stream_id + 1000",
+   "reason": "seed 42 recorded; the power stream of stream_id n draws dsqgen -RNGSEED = seed + n + 1000 (power_parameter_seed), and a throughput stream n draws from dsqgen -STREAMS at the seed or, per query, seed + n * 1000 + position",
    "bundles": [
     "tpcds_sf1_clickhouse_local_sql_20261001_142742_4eb148cf",
     "tpcds_sf1_databricks_sql_20261003_205449_cf4f01d0",
@@ -109,7 +109,7 @@
    "first_stream_id": 0,
    "qgen_seeds": [],
    "replayable": true,
-   "reason": "seed 42 recorded; dsqgen -RNGSEED derives from it as seed + stream_id + 1000",
+   "reason": "seed 42 recorded; the power stream of stream_id n draws dsqgen -RNGSEED = seed + n + 1000 (power_parameter_seed), and a throughput stream n draws from dsqgen -STREAMS at the seed or, per query, seed + n * 1000 + position",
    "bundles": [
     "tpcds_sf10_databricks_sql_20261003_212424_15e05c0c",
     "tpcds_sf10_datafusion_sql_20260823_225543_15b41887",

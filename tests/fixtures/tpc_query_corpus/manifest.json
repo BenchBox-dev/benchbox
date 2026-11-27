@@ -950,7 +950,7 @@
     "sqlserver"
    ],
    "unsupported_dialect_behavior": "DSQGenBinary._validate_dialect warns and falls back to netezza",
-   "reason": "every production call path reaches dsqgen with netezza; the other bundled dialect templates are never selected, so they are not captured",
+   "reason": "every call path in the repository reaches dsqgen with netezza; the other bundled dialect templates are never selected, so they are not captured",
    "call_sites": [
     {
      "file": "benchbox/core/tpcds/c_tools.py",
@@ -1083,7 +1083,18 @@
      ],
      "calls": []
     }
-   ]
+   ],
+   "argument_expressions": {
+    "base_dialect": [
+     "base",
+     "base_dialect"
+    ],
+    "dsqgen_dialect": [
+     "dialect",
+     "src"
+    ]
+   },
+   "public_api": "TPCDS.get_queries and TPCDS.get_query forward a caller-supplied base_dialect to dsqgen; no call in the repository passes a string literal, only the get_tpc_base_dialect result or a forwarded parameter"
   },
   "nondeterministic_cases": {
    "suite": "tpcds",
@@ -1525,7 +1536,7 @@
  },
  "replay": {
   "file": "replay.json",
-  "sha256": "a7ca0b0c81ea6bd28917c54d7a0e7d4a2463eca3f3b59d395c3e44fa8bc98b13",
+  "sha256": "2055b58dab8fbfaea99acd90ff8184079fe13482bd05dacce97b6cefbb465225",
   "rule": "An entry is replayable when its bundles record a seed or query parameters. Entries that record neither are not replayable and are excluded from the retirement gate.",
   "entries": 22,
   "bundles": 135,

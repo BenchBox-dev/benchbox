@@ -472,6 +472,47 @@ def test_base_dialect_is_always_netezza() -> None:
     assert defined == ["benchbox/platforms/base/dialect_translation.py"]
 
 
+DSQGEN_CALLEES = (
+    "dsqgen.generate",
+    "generate_with_parameters",
+    "generate_parameter_log",
+    "query_manager.get_query",
+    "query_manager.get_all_queries",
+    "generate_dsqgen_streams",
+)
+
+
+def test_no_call_in_the_repository_passes_a_literal_dialect_to_dsqgen(manifest: dict[str, Any]) -> None:
+    expected = manifest["tpcds"]["dialects"]["argument_expressions"]
+    base_dialect: set[str] = set()
+    dsqgen_dialect: set[str] = set()
+    for path in python_sources():
+        source = path.read_text(encoding="utf-8")
+        if "dialect" not in source:
+            continue
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, ast.Call):
+                for keyword in node.keywords:
+                    if keyword.arg == "base_dialect":
+                        base_dialect.add(ast.unparse(keyword.value))
+                    elif keyword.arg == "dialect" and ast.unparse(node.func).endswith(DSQGEN_CALLEES):
+                        dsqgen_dialect.add(ast.unparse(keyword.value))
+            elif isinstance(node, ast.Dict):
+                for key, value in zip(node.keys, node.values):
+                    if isinstance(key, ast.Constant) and key.value == "base_dialect":
+                        base_dialect.add(ast.unparse(value))
+            elif isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if (
+                        isinstance(target, ast.Subscript)
+                        and isinstance(target.slice, ast.Constant)
+                        and target.slice.value == "base_dialect"
+                    ):
+                        base_dialect.add(ast.unparse(node.value))
+    assert sorted(base_dialect) == expected["base_dialect"]
+    assert sorted(dsqgen_dialect) == expected["dsqgen_dialect"]
+
+
 def test_nondeterministic_cases_have_repeated_differing_oracle_runs(
     manifest: dict[str, Any], tpcds_single: list[dict[str, Any]]
 ) -> None:
