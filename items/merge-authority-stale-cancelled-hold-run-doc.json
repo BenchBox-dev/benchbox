@@ -3,7 +3,7 @@
     "The document matches observed behaviour, with the evidence linked.",
     "`make pr-arm` reports a stale cancelled hold run by name and either reruns it or prints the exact command (test with a recorded API fixture)."
   ],
-  "description": "## Problem\ndocs/agent/merge-authority.md says a superseded cancelled run does not block (state UNSTABLE). On PR #4528 (2026-11-25) a stale cancelled `hold` run kept the PR BLOCKED with every check green until `gh run rerun 45700727976`.\n\n## Change\nReproduce or explain the behaviour from the ruleset and check-run API (`commits/<sha>/check-runs?filter=latest`); then either fix the hold workflow so a cancelled run is superseded, or correct the document and teach `make pr-arm` to detect and rerun it.\n\n## Decision gates\n- Rerunning a `hold` run is allowed only when no `no-auto-merge` label is present; never bypass a real hold.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
+  "description": "## Problem\ndocs/agent/merge-authority.md says a superseded cancelled run does not block (state UNSTABLE). On PR #4528 (2026-11-25) a stale cancelled `hold` run kept the PR BLOCKED with every check green until `gh run rerun 45700727976`.\n\n## Change\nReproduce or explain the behaviour from the ruleset and check-run API (`commits/<sha>/check-runs?filter=latest`); then either fix the hold workflow so a cancelled run is superseded, or correct the document and teach `make pr-arm` to detect and rerun it.\n\n## Decision gates\n- Rerunning a `hold` run is allowed only when no `no-auto-merge` label is present; never bypass a real hold.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
@@ -11,6 +11,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "df6b0379c95d41ec8e6112269534962f",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-27T00:09:03Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "44d8999599d547a5ac7d7e15c67648d1",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
