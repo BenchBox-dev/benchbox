@@ -1,31 +1,25 @@
 from __future__ import annotations
 
-import functools
-import json
-import math
-from collections.abc import Iterable, Mapping
+import importlib.util
+import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-STANDARD_SCALES_PATH = Path(__file__).with_name("standard_scales.json")
-STANDARD_SCALES_SCHEMA_VERSION = 1
-PROJECTION_UNAVAILABLE_MESSAGE = (
-    "standard-scale projection benchbox/core/results/standard_scales.json is missing or unreadable; "
-    "registry-less validation cannot classify scale factors"
-)
+OFFICIAL_COMPLIANCE_CLASS = "official"
 
+_rule_path = Path(__file__).with_name("corpus_rule.py")
+_rule_spec = importlib.util.spec_from_file_location("_benchbox_subscale_corpus_rule", _rule_path)
+if _rule_spec is None or _rule_spec.loader is None:
+    raise ImportError(f"Cannot load corpus rule from {_rule_path}")
+_corpus_rule = importlib.util.module_from_spec(_rule_spec)
+sys.modules[_rule_spec.name] = _corpus_rule
+_rule_spec.loader.exec_module(_corpus_rule)
 SUBSCALE_COMPLIANCE_CLASS = "unofficial_subscale"
 NONSTANDARD_COMPLIANCE_CLASS = "unofficial_nonstandard"
+UNOFFICIAL_COMPLIANCE_CLASSES = frozenset({SUBSCALE_COMPLIANCE_CLASS, NONSTANDARD_COMPLIANCE_CLASS})
 RANKING_EXCLUDED_COMPLIANCE_CLASSES = frozenset({NONSTANDARD_COMPLIANCE_CLASS})
 SUBSCALE_TPC_BENCHMARKS = frozenset({"tpch", "tpcds"})
-POWER_SCORE_RECORDED = "recorded"
-POWER_SCORE_DERIVED_FROM_TIMINGS = "derived_from_timings"
-
-POWER_QUERY_COUNTS = {"tpch": 22, "tpcds": 99}
-RECORDED_POWER_TOLERANCE = 0.05
-
-_NON_POWER_TEST_TYPES = frozenset({"throughput", "maintenance"})
-_PASSING_STATUSES = frozenset({"SUCCESS", "PASS"})
 
 
 def normalize_tpc_benchmark_id(benchmark_id: Any) -> str:
@@ -40,48 +34,29 @@ def is_subscale_tpc(benchmark_id: Any, scale_factor: Any) -> bool:
     return normalize_tpc_benchmark_id(benchmark_id) in SUBSCALE_TPC_BENCHMARKS and 0 < scale < 1.0
 
 
-@functools.cache
-def _standard_scales() -> tuple[float, dict[str, tuple[float, ...]]]:
-    try:
-        projection = json.loads(STANDARD_SCALES_PATH.read_text(encoding="utf-8"))
-        if projection["schema_version"] != STANDARD_SCALES_SCHEMA_VERSION:
-            raise ValueError("unsupported projection schema_version")
-        tolerance = float(projection["match_tolerance"])
-        benchmarks = {
-            str(benchmark_id).lower(): tuple(float(scale) for scale in scales)
-            for benchmark_id, scales in projection["benchmarks"].items()
-        }
-    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
-        raise RuntimeError(PROJECTION_UNAVAILABLE_MESSAGE) from error
-    return tolerance, benchmarks
-
-
-def _is_nonstandard_by_projection(benchmark_id: Any, scale_factor: Any) -> bool:
-    tolerance, benchmarks = _standard_scales()
-    standard = benchmarks.get(str(benchmark_id).lower())
-    if standard is None:
-        return False
-    value = float(scale_factor)
-    if not math.isfinite(value):
-        return True
-    return not any(abs(value - scale) < tolerance for scale in standard)
-
-
 def is_nonstandard_scale(benchmark_id: Any, scale_factor: Any) -> bool:
     if isinstance(scale_factor, bool) or scale_factor is None:
         return False
     try:
-        float(scale_factor)
+        scale = float(scale_factor)
     except (TypeError, ValueError):
         return False
     try:
-        from benchbox.core.benchmark_registry import is_standard_scale_factor
-    except ImportError:
-        return _is_nonstandard_by_projection(benchmark_id, scale_factor)
-    try:
-        return not is_standard_scale_factor(str(benchmark_id), scale_factor)
-    except ValueError:
-        return False
+        return _corpus_rule.is_standard_scale(benchmark_id, scale) is False
+    except RuntimeError as error:
+        try:
+            from benchbox.core.benchmark_registry import get_scale_factor_rule
+        except ImportError:
+            raise error from None
+        try:
+            rule = get_scale_factor_rule(str(benchmark_id))
+        except ValueError:
+            return False
+        benchmark = _corpus_rule.normalize_benchmark_id(benchmark_id)
+        return (
+            _corpus_rule.is_standard_scale(benchmark, scale, {"scales": {benchmark: {"standard": rule.standard}}})
+            is False
+        )
 
 
 def effective_compliance_class(benchmark_id: Any, scale_factor: Any, recorded: Any) -> str | None:
@@ -95,7 +70,7 @@ def effective_compliance_class(benchmark_id: Any, scale_factor: Any, recorded: A
 
 
 def gateway_routed(gateway: Any) -> bool:
-    return isinstance(gateway, Mapping) and bool(gateway.get("name")) and gateway.get("routed") is True
+    return isinstance(gateway, Mapping) and bool(gateway.get("routed"))
 
 
 def routed_compliance_class(compliance_class: Any, gateway: Any) -> str | None:
@@ -124,83 +99,5 @@ def result_compliance_class(result: Any) -> str | None:
     return routed_compliance_class(getattr(result, "compliance_class", None), gateway)
 
 
-def result_recorded_compliance_class(result: Any) -> str | None:
-    if is_nonstandard_scale(getattr(result, "benchmark_id", None), getattr(result, "scale_factor", None)):
-        return NONSTANDARD_COMPLIANCE_CLASS
-    return result_compliance_class(result)
-
-
-def bundle_compliance_class(data: Mapping[str, Any]) -> str | None:
-    benchmark = data.get("benchmark")
-    recorded = benchmark.get("compliance_class") if isinstance(benchmark, Mapping) else None
-    platform = data.get("platform")
-    gateway = platform.get("gateway") if isinstance(platform, Mapping) else None
-    return routed_compliance_class(recorded, gateway)
-
-
 def unofficial_metric_marker(compliance_class: str) -> dict[str, Any]:
     return {"unofficial": True, "reason": f"compliance_class={compliance_class}"}
-
-
-def derive_power_at_size(
-    queries: Iterable[Mapping[str, Any]], scale_factor: Any, minimum_queries: int = 1
-) -> float | None:
-    try:
-        scale = float(scale_factor)
-    except (TypeError, ValueError):
-        return None
-    measurement = [
-        query
-        for query in queries
-        if isinstance(query, Mapping)
-        and query.get("run_type") == "measurement"
-        and _iteration(query) > 0
-        and str(query.get("test_type") or "power").lower() not in _NON_POWER_TEST_TYPES
-    ]
-    if not measurement or scale <= 0:
-        return None
-    final_iteration = max(_iteration(query) for query in measurement)
-    final = [query for query in measurement if _iteration(query) == final_iteration]
-    if any(str(query.get("status") or "").upper() not in _PASSING_STATUSES for query in final):
-        return None
-    if len({str(query.get("id", query.get("query_id"))) for query in final}) < minimum_queries:
-        return None
-    durations = [_duration_ms(query) for query in final]
-    if any(ms is None or ms <= 0 for ms in durations):
-        return None
-    seconds = [ms / 1000.0 for ms in durations if ms is not None]
-    geometric_mean = math.exp(sum(math.log(value) for value in seconds) / len(seconds))
-    return (scale * 3600) / geometric_mean
-
-
-def subscale_power_at_size(
-    benchmark_id: Any, recorded: float | None, queries: Iterable[Mapping[str, Any]], scale_factor: Any
-) -> tuple[float | None, str | None]:
-    minimum = POWER_QUERY_COUNTS.get(normalize_tpc_benchmark_id(benchmark_id), 1)
-    derived = derive_power_at_size(queries, scale_factor, minimum)
-    if recorded is None:
-        return (derived, POWER_SCORE_DERIVED_FROM_TIMINGS) if derived is not None else (None, None)
-    if derived is None or not abs(recorded / derived - 1.0) <= RECORDED_POWER_TOLERANCE:
-        return None, None
-    return recorded, POWER_SCORE_RECORDED
-
-
-def _iteration(query: Mapping[str, Any]) -> int:
-    value = query.get("iter", query.get("iteration"))
-    if isinstance(value, bool):
-        return 0
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return 0
-
-
-def _duration_ms(query: Mapping[str, Any]) -> float | None:
-    value = query.get("ms", query.get("execution_time_ms"))
-    if value is None or isinstance(value, bool):
-        return None
-    try:
-        duration = float(value)
-    except (TypeError, ValueError):
-        return None
-    return duration if math.isfinite(duration) else None
