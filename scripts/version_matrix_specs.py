@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import random
 import re
-from dataclasses import dataclass
+from collections.abc import Sequence
+from dataclasses import dataclass, replace
 
 PRERELEASE_RE = re.compile(r"\.(?:dev\d+|rc\d+|a\d+|b\d+)$", re.IGNORECASE)
 
@@ -129,6 +130,17 @@ class MatrixSpec:
             for version in versions
         ]
 
+    def select(self, benchmark_ids: Sequence[str]) -> MatrixSpec:
+        unknown = sorted(set(benchmark_ids) - set(self.benchmark_ids))
+        if unknown:
+            raise ValueError(f"benchmarks not in the {self.engine} spec: {', '.join(unknown)}")
+        chosen = set(benchmark_ids)
+        return replace(
+            self,
+            benchmarks=tuple(entry for entry in self.benchmarks if entry[0] in chosen),
+            expected_queries=tuple(entry for entry in self.expected_queries if entry[0] in chosen),
+        )
+
     @property
     def expected_invocations(self) -> int:
         if not self.setup_versions:
@@ -199,7 +211,7 @@ POLARS = MatrixSpec(
     ),
     setup_engines=(("A", "default"), ("B", "in-memory"), ("C", "streaming")),
     rounds=3,
-    iterations=1,
+    iterations=3,
     thread_count=10,
     cell_timeout_s=1800.0,
     rss_limit_gib=14.0,

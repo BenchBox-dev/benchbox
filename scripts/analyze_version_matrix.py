@@ -511,8 +511,19 @@ def main(argv: list[str] | None = None, *, spec: MatrixSpec | None = None, descr
         help="also write one median bundle per version/benchmark cell to this directory",
     )
     parser.add_argument("--qualification", type=Path, default=None, help="Qualification file named by the spec")
+    parser.add_argument(
+        "--benchmark",
+        action="append",
+        default=None,
+        help="Benchmark the runner was limited to; repeat as given to the runner",
+    )
     args = parser.parse_args(argv)
     selected = spec or SPECS[args.engine]
+    if args.benchmark:
+        try:
+            selected = selected.select(args.benchmark)
+        except ValueError as exc:
+            parser.error(str(exc))
     if selected.setup_versions:
         if args.explorer_bundles_dir is not None:
             parser.error("--explorer-bundles-dir is not supported for a setup matrix")
