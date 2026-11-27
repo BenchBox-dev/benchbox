@@ -61,7 +61,7 @@ python unified_runner.py --platform duckdb --benchmark tpcds --scale 1.0 --phase
 ---
 
 ### 3. TPC-DI (Data Integration)
-TPC-DI is unavailable while BenchBox reworks it to run the specification's workload (historical load, two incremental updates, automated audit). Earlier BenchBox TPC-DI results were withdrawn.
+TPC-DI is unavailable while BenchBox reworks it to run the specification's workload (historical load, two incremental updates, automated audit). The historical load (Batch 1) runs on DuckDB and is audited; the incremental updates (Batches 2 and 3) are not done yet. Earlier BenchBox TPC-DI results were withdrawn.
 
 ---
 

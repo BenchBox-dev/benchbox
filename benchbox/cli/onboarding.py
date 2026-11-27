@@ -132,7 +132,7 @@ def _show_benchmarks_overview() -> None:
     benchmarks_table.add_row("TPC-DS", "Decision Support", "Complex queries, advanced features, realistic BI scenarios")
     benchmarks_table.add_row("ClickBench", "Analytics", "Real-world web analytics, columnar databases, fast scans")
     benchmarks_table.add_row("SSB", "Star Schema", "Simple star schema queries, dimensional modeling validation")
-    benchmarks_table.add_row("TPC-DI", "Data Integration", "ETL pipeline testing, data loading performance")
+    benchmarks_table.add_row("TPC-DI", "Data Integration", "Unavailable: incremental batches not done yet")
 
     console.print(Panel(benchmarks_table, title="🎯 Popular Benchmarks", border_style="green"))
     console.print("[dim]Tip: Start with TPC-H at SF=0.01 for a quick first run (2-5 minutes)[/dim]")

@@ -188,7 +188,7 @@ benchmark_metadata:
     - 2
     base_memory_gb: 1.5
     data_source: null
-    supports_dataframe: true
+    supports_dataframe: false
   ssb:
     display_name: SSB
     description: Star Schema Benchmark

@@ -6212,7 +6212,7 @@
     "p50_seconds": 0.008206
   },
   {
-    "id": "tests/unit/core/test_dataframe_benchmark_metadata.py::test_supports_dataframe_flags[tpcdi-True]",
+    "id": "tests/unit/core/test_dataframe_benchmark_metadata.py::test_supports_dataframe_flags[tpcdi-False]",
     "p50_seconds": 0.010899
   },
   {
