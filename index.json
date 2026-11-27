@@ -27716,6 +27716,16 @@
       "status": "open",
       "title": "Verify benchbox-datagen wheels where CI only import-tests them, and the macOS release load failure"
     },
+    "datagen-lib-pypi-publishing": {
+      "claim": null,
+      "needs": [
+        "datagen-lib-tpch",
+        "datagen-lib-tpcds"
+      ],
+      "priority": "high",
+      "status": "open",
+      "title": "Publish benchbox-datagen to PyPI through Trusted Publishing"
+    },
     "datagen-lib-query-integration": {
       "claim": null,
       "needs": [
