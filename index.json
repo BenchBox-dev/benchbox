@@ -27881,6 +27881,15 @@
       "status": "done",
       "title": "Plan DataFrame Adaptation for TPC-DS-OBT"
     },
+    "dataframe-tpcds-official-qualification-20261126": {
+      "claim": null,
+      "needs": [
+        "crr-v4-official-runs-qualify"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Let DataFrame platforms qualify official TPC-DS runs"
+    },
     "dataframe-tpchavoc-feasibility": {
       "claim": null,
       "needs": [],
