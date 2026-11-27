@@ -88,17 +88,10 @@ class TestDaskThreadedClusterOptions:
         adapter.close()
         assert len(_messages(caplog)) == 2
 
-    def test_legacy_use_distributed_false_warns_the_same_way(
-        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
-    ) -> None:
-        caplog.set_level(logging.WARNING, logger=NOTICE_LOGGER)
-
-        adapter = get_adapter("dask-df", working_dir=tmp_path, use_distributed=False, threads_per_worker=4)
-        info = adapter.get_platform_info()
-        adapter.close()
-
-        assert any("Option 'threads_per_worker' for 'dask'" in message for message in _messages(caplog))
-        assert "threads_per_worker" not in info
+    def test_removed_use_distributed_keyword_is_rejected(self, tmp_path: Path) -> None:
+        for value in (True, False):
+            with pytest.raises(TypeError, match="--execution-engine threaded"):
+                get_adapter("dask-df", working_dir=tmp_path, use_distributed=value)
 
     def test_distributed_engine_records_and_does_not_warn(
         self, tmp_path: Path, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch

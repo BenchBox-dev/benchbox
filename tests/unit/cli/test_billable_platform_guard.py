@@ -72,7 +72,8 @@ class TestRegistryEnumeration:
 
     def test_explicit_self_hosted_selection_is_not_billable_for_managed_default(self):
         assert assess_platform("influxdb").billable
-        assert not assess_platform("influxdb", options={"mode": "core"}).billable
+        assert not assess_platform("influxdb:core").billable
+        assert not assess_platform("influxdb", deployment="core").billable
 
 
 class TestRunRefusesBeforeAnyConnection:

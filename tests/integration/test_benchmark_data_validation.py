@@ -358,7 +358,7 @@ class MockPlatformAdapterErrorHandling:
 
         from benchbox.platforms.clickhouse import ClickHouseAdapter
 
-        adapter = ClickHouseAdapter(deployment_mode="local")
+        adapter = ClickHouseAdapter(_deployment_selector="local")
 
         with tempfile.TemporaryDirectory() as temp_dir:
             file1 = Path(temp_dir) / "table1.tbl"

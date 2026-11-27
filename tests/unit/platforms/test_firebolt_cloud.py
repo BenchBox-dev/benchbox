@@ -40,7 +40,7 @@ class TestFireboltCloudMode:
                 from benchbox.platforms.firebolt import FireboltAdapter
 
                 with pytest.raises(Exception) as exc_info:
-                    FireboltAdapter(deployment_mode="cloud")
+                    FireboltAdapter(_deployment_selector="cloud")
 
                 assert "client_id" in str(exc_info.value).lower() or "missing" in str(exc_info.value).lower()
 
@@ -68,7 +68,7 @@ class TestFireboltCloudMode:
             ):
                 from benchbox.platforms.firebolt import FireboltAdapter
 
-                adapter = FireboltAdapter(deployment_mode="cloud")
+                adapter = FireboltAdapter(_deployment_selector="cloud")
 
                 assert adapter.client_id == "env-client-id"
                 assert adapter.client_secret == "env-client-secret"
@@ -99,7 +99,7 @@ class TestFireboltCloudMode:
             ):
                 from benchbox.platforms.firebolt import FireboltAdapter
 
-                adapter = FireboltAdapter(deployment_mode="cloud")
+                adapter = FireboltAdapter(_deployment_selector="cloud")
 
                 assert adapter.client_id == "sa-client-id"
                 assert adapter.client_secret == "sa-client-secret"
@@ -128,11 +128,11 @@ class TestFireboltCloudMode:
                 from benchbox.platforms.firebolt import FireboltAdapter
 
                 adapter = FireboltAdapter(
-                    deployment_mode="cloud",
+                    _deployment_selector="cloud",
                     client_id="config-client-id",
                     client_secret="config-client-secret",
                     account_name="config-account",
-                    engine_name="config-engine",
+                    compute_resource="config-engine",
                 )
 
                 assert adapter.client_id == "config-client-id"
@@ -155,7 +155,7 @@ class TestFireboltCloudMode:
             from benchbox.platforms.firebolt import FireboltAdapter
 
             adapter = FireboltAdapter(
-                deployment_mode="core",
+                _deployment_selector="core",
                 url="http://localhost:3473",
             )
 
@@ -196,7 +196,7 @@ class TestFireboltCloudMode:
             from benchbox.platforms.firebolt import FireboltAdapter
 
             with pytest.raises(ValueError) as exc_info:
-                FireboltAdapter(deployment_mode="invalid")
+                FireboltAdapter(_deployment_selector="invalid")
 
             assert "invalid" in str(exc_info.value).lower()
             assert "core" in str(exc_info.value)
@@ -225,7 +225,7 @@ class TestFireboltCloudMode:
             ):
                 from benchbox.platforms.firebolt import FireboltAdapter
 
-                adapter = FireboltAdapter(deployment_mode="cloud")
+                adapter = FireboltAdapter(_deployment_selector="cloud")
 
                 assert adapter.api_endpoint == "api.app.firebolt.io"
 
@@ -253,7 +253,7 @@ class TestFireboltCloudMode:
             ):
                 from benchbox.platforms.firebolt import FireboltAdapter
 
-                adapter = FireboltAdapter(deployment_mode="cloud")
+                adapter = FireboltAdapter(_deployment_selector="cloud")
 
                 assert adapter.api_endpoint == "custom.api.firebolt.io"
 

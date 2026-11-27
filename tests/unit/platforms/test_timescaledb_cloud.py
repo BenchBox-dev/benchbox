@@ -20,7 +20,7 @@ class TestTimescaleDBCloudMode:
 
         with patch.dict(os.environ, {}, clear=True):
             with pytest.raises(ValueError) as exc_info:
-                TimescaleDBAdapter(deployment_mode="cloud")
+                TimescaleDBAdapter(_deployment_selector="cloud")
 
             assert "host" in str(exc_info.value).lower()
             assert "TigerData" in str(exc_info.value)
@@ -37,7 +37,7 @@ class TestTimescaleDBCloudMode:
 
             with pytest.raises(ValueError) as exc_info:
                 TimescaleDBAdapter(
-                    deployment_mode="cloud",
+                    _deployment_selector="cloud",
                     host="test.tsdb.cloud.timescale.com",
                 )
 
@@ -49,7 +49,7 @@ class TestTimescaleDBCloudMode:
         from benchbox.platforms.timescaledb import TimescaleDBAdapter
 
         adapter = TimescaleDBAdapter(
-            deployment_mode="cloud",
+            _deployment_selector="cloud",
             host="test.tsdb.cloud.timescale.com",
             password="test-password",
             port=30985,
@@ -62,7 +62,7 @@ class TestTimescaleDBCloudMode:
         from benchbox.platforms.timescaledb import TimescaleDBAdapter
 
         adapter = TimescaleDBAdapter(
-            deployment_mode="cloud",
+            _deployment_selector="cloud",
             host="test.tsdb.cloud.timescale.com",
             password="test-password",
             port=30985,
@@ -75,7 +75,7 @@ class TestTimescaleDBCloudMode:
         from benchbox.platforms.timescaledb import TimescaleDBAdapter
 
         adapter = TimescaleDBAdapter(
-            deployment_mode="cloud",
+            _deployment_selector="cloud",
             service_url="postgres://myuser:mypass@myhost.tsdb.cloud.timescale.com:12345/mydb?sslmode=require",
         )
 
@@ -100,7 +100,7 @@ class TestTimescaleDBCloudMode:
                 "TIGERDATA_DATABASE": "env-db",
             },
         ):
-            adapter = TimescaleDBAdapter(deployment_mode="cloud")
+            adapter = TimescaleDBAdapter(_deployment_selector="cloud")
 
             assert adapter.host == "env-host.tsdb.cloud.timescale.com"
             assert adapter.password == "env-password"
@@ -127,7 +127,7 @@ class TestTimescaleDBCloudMode:
                 "TIMESCALE_DATABASE": "timescale-db",
             },
         ):
-            adapter = TimescaleDBAdapter(deployment_mode="cloud")
+            adapter = TimescaleDBAdapter(_deployment_selector="cloud")
 
             assert adapter.host == "tigerdata-host.tsdb.cloud.timescale.com"
             assert adapter.password == "tigerdata-password"
@@ -150,7 +150,7 @@ class TestTimescaleDBCloudMode:
             },
             clear=True,
         ):
-            adapter = TimescaleDBAdapter(deployment_mode="cloud")
+            adapter = TimescaleDBAdapter(_deployment_selector="cloud")
 
             assert adapter.host == "fallback-host.tsdb.cloud.timescale.com"
             assert adapter.password == "fallback-password"
@@ -170,7 +170,7 @@ class TestTimescaleDBCloudMode:
             },
         ):
             adapter = TimescaleDBAdapter(
-                deployment_mode="cloud",
+                _deployment_selector="cloud",
                 host="config-host.tsdb.cloud.timescale.com",
                 password="config-password",
             )
@@ -183,7 +183,7 @@ class TestTimescaleDBCloudMode:
         from benchbox.platforms.timescaledb import TimescaleDBAdapter
 
         adapter = TimescaleDBAdapter(
-            deployment_mode="cloud",
+            _deployment_selector="cloud",
             host="test.tsdb.cloud.timescale.com",
             password="test-password",
         )
@@ -195,7 +195,7 @@ class TestTimescaleDBCloudMode:
         from benchbox.platforms.timescaledb import TimescaleDBAdapter
 
         adapter = TimescaleDBAdapter(
-            deployment_mode="cloud",
+            _deployment_selector="cloud",
             host="test.tsdb.cloud.timescale.com",
             password="test-password",
         )
@@ -214,13 +214,20 @@ class TestTimescaleDBCloudMode:
         assert adapter.deployment_mode == "self-hosted"
         assert getattr(adapter, "skip_database_management", False) is False
 
+    def test_removed_deployment_mode_keyword_is_rejected(self):
+
+        from benchbox.platforms.timescaledb import TimescaleDBAdapter
+
+        with pytest.raises(TypeError, match="'deployment_mode' for 'timescaledb' was removed.*--platform timescaledb:"):
+            TimescaleDBAdapter(deployment_mode="cloud", host="localhost", password="test")
+
     def test_invalid_deployment_mode(self):
 
         from benchbox.platforms.timescaledb import TimescaleDBAdapter
 
         with pytest.raises(ValueError) as exc_info:
             TimescaleDBAdapter(
-                deployment_mode="invalid",
+                _deployment_selector="invalid",
                 host="localhost",
                 password="test",
             )
@@ -239,7 +246,7 @@ class TestTimescaleDBCloudMode:
                 "TIGERDATA_SERVICE_URL": "postgres://envuser:envpass@envhost.com:9999/envdb?sslmode=require",
             },
         ):
-            adapter = TimescaleDBAdapter(deployment_mode="cloud")
+            adapter = TimescaleDBAdapter(_deployment_selector="cloud")
 
             assert adapter.host == "envhost.com"
             assert adapter.port == 9999
@@ -253,7 +260,7 @@ class TestTimescaleDBCloudMode:
 
         with pytest.raises(ValueError, match="Unsupported scheme"):
             TimescaleDBAdapter(
-                deployment_mode="cloud",
+                _deployment_selector="cloud",
                 service_url="http://user:pass@host.com:5432/db",
             )
 

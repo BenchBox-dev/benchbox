@@ -2,31 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from types import MappingProxyType
 from typing import Any
 
-from benchbox.core.deprecation_notices import warn_deprecated_alias
-from benchbox.core.execution_engine import DEPRECATED_OPTION_ALIASES
 from benchbox.core.platform_registry import PlatformRegistry
+from benchbox.core.removed_options import DEPLOYMENT_OPTION_KEYS, removed_deployment_value_message
 
-DEPLOYMENT_ALIAS_TARGET = "deployment"
-
-
-def _derive_deployment_alias_keys() -> Mapping[str, tuple[str, ...]]:
-    grouped: dict[str, list[str]] = {}
-    for (platform, key), entry in sorted(DEPRECATED_OPTION_ALIASES.items()):
-        if entry.target == DEPLOYMENT_ALIAS_TARGET:
-            grouped.setdefault(platform, []).append(key)
-    return MappingProxyType({platform: tuple(keys) for platform, keys in grouped.items()})
-
-
-DEPLOYMENT_ALIAS_KEYS: Mapping[str, tuple[str, ...]] = _derive_deployment_alias_keys()
-
-DEPLOYMENT_VALUE_SYNONYMS: Mapping[str, Mapping[str, str]] = MappingProxyType(
-    {
-        "clickhouse": MappingProxyType({"embedded": "local"}),
-    }
-)
+DEPLOYMENT_SELECTOR_PLATFORMS: frozenset[str] = frozenset(DEPLOYMENT_OPTION_KEYS)
+DEPLOYMENT_SELECTOR_OPTION = "_deployment_selector"
+LEGACY_CLICKHOUSE_SELECTOR_BASE = "clickhouse"
 
 
 @dataclass(frozen=True)
@@ -52,6 +35,9 @@ def parse_platform_selector(selector: str) -> PlatformSelector:
     available = PlatformRegistry.get_available_deployment_modes(base)
     if not available:
         raise ValueError(f"Platform '{base}' does not support deployment modes. Remove the ':{mode}' suffix.")
+    removed = removed_deployment_value_message(base, mode)
+    if removed is not None:
+        raise ValueError(removed)
     if mode not in available:
         raise ValueError(
             f"Platform '{base}' does not support deployment mode '{mode}'. Available: {', '.join(available)}"
@@ -59,29 +45,17 @@ def parse_platform_selector(selector: str) -> PlatformSelector:
     named = f"{base}-{mode}"
     if named in PLATFORM_MANIFEST_BY_KEY:
         return PlatformSelector(named, None)
-    if base not in DEPLOYMENT_ALIAS_KEYS and mode != PlatformRegistry.get_default_deployment(base):
+    if base not in DEPLOYMENT_SELECTOR_PLATFORMS and mode != PlatformRegistry.get_default_deployment(base):
         raise ValueError(f"Platform '{base}' cannot select deployment mode '{mode}' by name.")
     return PlatformSelector(base, mode)
-
-
-def _deployment_selector(platform: str, selected: str) -> str:
-    from benchbox.core.platform_manifest import PLATFORM_MANIFEST_BY_KEY
-
-    named = f"{platform}-{selected}".lower()
-    return named if named in PLATFORM_MANIFEST_BY_KEY else f"{platform}:{selected}".lower()
-
-
-def note_deprecated_alias(platform: str, key: str, selected: str) -> None:
-    warn_deprecated_alias(
-        platform, key, f"'--platform {_deployment_selector(platform, selected)}'", setting="deployment"
-    )
 
 
 def normalize_deployment_value(platform: str, value: Any) -> str:
     platform_key = platform.lower()
     normalized = str(value).strip().lower()
-    synonyms = DEPLOYMENT_VALUE_SYNONYMS.get(platform_key, {})
-    normalized = synonyms.get(normalized, normalized)
+    removed = removed_deployment_value_message(platform_key, normalized)
+    if removed is not None:
+        raise ValueError(removed)
     available = PlatformRegistry.get_available_deployment_modes(platform_key)
     if available and normalized not in available:
         modes = ", ".join(available)
@@ -94,48 +68,10 @@ def deployment_class(platform: str, selected: str) -> str | None:
     return capability.mode if capability is not None else None
 
 
-def _explicit_alias_keys(platform: str, values: Mapping[str, Any], explicit: set[str] | None) -> list[str]:
-    keys = DEPLOYMENT_ALIAS_KEYS.get(platform.lower(), ())
-    if explicit is not None:
-        lowered = {str(key).lower() for key in explicit}
-        return [key for key in keys if key in lowered and values.get(key) is not None]
-    return [key for key in keys if values.get(key) is not None]
-
-
-def resolve_deployment(
-    platform: str,
-    selector: str | None,
-    values: Mapping[str, Any],
-    explicit: set[str] | None = None,
-) -> DeploymentResolution:
-    platform_key = platform.lower()
-    selector_value = normalize_deployment_value(platform_key, selector) if selector is not None else None
-    candidates: list[tuple[str, str]] = []
-    for key in _explicit_alias_keys(platform_key, values, explicit):
-        candidates.append((key, normalize_deployment_value(platform_key, values[key])))
-    if selector_value is not None:
-        for key, value in candidates:
-            if value != selector_value:
-                raise ValueError(
-                    f"Deployment selector '{platform_key}:{selector_value}' conflicts with "
-                    f"platform option '{key}={values[key]}'. "
-                    f"Use the selector or the option, not both."
-                )
-    for first in range(len(candidates)):
-        for second in range(first + 1, len(candidates)):
-            if candidates[first][1] != candidates[second][1]:
-                raise ValueError(
-                    f"Platform options '{candidates[first][0]}={values[candidates[first][0]]}' and "
-                    f"'{candidates[second][0]}={values[candidates[second][0]]}' select different "
-                    f"deployments for '{platform_key}'. Use one deployment option."
-                )
-    for key, _value in candidates:
-        note_deprecated_alias(platform_key, key, selector_value or candidates[0][1])
-    if selector_value is not None:
-        return DeploymentResolution(selector_value, True)
-    if candidates:
-        return DeploymentResolution(candidates[0][1], True)
-    return DeploymentResolution(None, False)
+def resolve_deployment(platform: str, selector: str | None) -> DeploymentResolution:
+    if selector is None:
+        return DeploymentResolution(None, False)
+    return DeploymentResolution(normalize_deployment_value(platform, selector), True)
 
 
 def select_adapter_deployment(
@@ -143,45 +79,10 @@ def select_adapter_deployment(
     config: Mapping[str, Any],
     default: str | None,
 ) -> str | None:
-    platform_key = platform.lower()
-    marker = config.get("_explicit_platform_options")
-    explicit_keys = {str(key).lower() for key in marker} if isinstance(marker, Mapping) else None
-    canonical = config.get("deployment_mode")
-    legacy_keys = [key for key in DEPLOYMENT_ALIAS_KEYS.get(platform_key, ()) if key != "deployment_mode"]
-    legacies: list[tuple[str, Any]] = []
-    for key in legacy_keys:
-        value = config.get(key)
-        if value is None:
-            continue
-        if explicit_keys is not None and key not in explicit_keys:
-            continue
-        legacies.append((key, value))
-    normalized_canonical = normalize_deployment_value(platform_key, canonical) if canonical is not None else None
-    normalized_legacies = [(key, normalize_deployment_value(platform_key, value)) for key, value in legacies]
-    if normalized_canonical is not None:
-        for key, value in normalized_legacies:
-            if value != normalized_canonical:
-                raise ValueError(
-                    f"Platform option 'deployment_mode={canonical}' conflicts with "
-                    f"'{key}={dict(legacies)[key]}' for '{platform_key}'. "
-                    "Use one deployment selection."
-                )
-        return normalized_canonical
-    for key, value in normalized_legacies:
-        note_deprecated_alias(platform_key, key, value)
-    if normalized_legacies:
-        first_value = normalized_legacies[0][1]
-        for key, value in normalized_legacies[1:]:
-            if value != first_value:
-                raise ValueError(
-                    f"Platform options select different deployments for '{platform_key}'. Use one deployment selection."
-                )
-        return first_value
-    return default
-
-
-DEPLOYMENT_SELECTOR_OPTION = "_deployment_selector"
-LEGACY_CLICKHOUSE_SELECTOR_BASE = "clickhouse"
+    selector = config.get(DEPLOYMENT_SELECTOR_OPTION)
+    if selector is None:
+        return default
+    return normalize_deployment_value(platform, selector)
 
 
 @dataclass(frozen=True)
@@ -199,7 +100,7 @@ def resolve_config_platform(platform_type: str) -> ConfigPlatformSelection:
     if not separator or base == LEGACY_CLICKHOUSE_SELECTOR_BASE:
         return ConfigPlatformSelection(platform_type, None, None)
     selector = parse_platform_selector(key)
-    deployment = selector.deployment if selector.platform in DEPLOYMENT_ALIAS_KEYS else None
+    deployment = selector.deployment if selector.platform in DEPLOYMENT_SELECTOR_PLATFORMS else None
     return ConfigPlatformSelection(selector.platform, deployment, get_platform_alias_modes("cli").get(base))
 
 
@@ -225,5 +126,5 @@ def configured_deployment(database_config: Any) -> str | None:
     if not database_config:
         return None
     options = getattr(database_config, "options", None) or {}
-    selected = options.get(DEPLOYMENT_SELECTOR_OPTION) or options.get("deployment_mode")
+    selected = options.get(DEPLOYMENT_SELECTOR_OPTION)
     return str(selected) if selected else None

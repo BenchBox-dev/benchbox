@@ -41,7 +41,7 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
             "project_id": project_id,
             "gcs_staging_dir": staging_dir,
             "region": os.getenv("DATAPROC_REGION", "us-central1"),
-            "cluster_name": os.getenv("DATAPROC_CLUSTER_NAME"),
+            "compute_resource": os.getenv("DATAPROC_CLUSTER_NAME"),
             "database": os.getenv("DATAPROC_DATABASE", "benchbox"),
             "master_machine_type": os.getenv("DATAPROC_MASTER_TYPE", "n2-standard-4"),
             "worker_machine_type": os.getenv("DATAPROC_WORKER_TYPE", "n2-standard-4"),

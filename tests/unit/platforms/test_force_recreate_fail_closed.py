@@ -31,7 +31,7 @@ def _velox_adapter(monkeypatch: pytest.MonkeyPatch, tmp_path, **overrides):
     builder.config.return_value = builder
     builder.getOrCreate.return_value = session
     monkeypatch.setattr(velox_module, "SparkSession", MagicMock(builder=builder))
-    config = {"deployment": "local", "gluten_jar_path": str(jar), "database": "benchdb"}
+    config = {"_deployment_selector": "local", "gluten_jar_path": str(jar), "database": "benchdb"}
     config.update(overrides)
     return VeloxAdapter(**config), session
 

@@ -53,7 +53,7 @@ class TestSSBClickHouseIntegration:
 
     def test_clickhouse_tuning_configuration_override(self):
 
-        adapter = ClickHouseAdapter(deployment_mode="local")
+        adapter = ClickHouseAdapter(_deployment_selector="local")
 
         config = adapter.get_effective_tuning_configuration()
         assert config is not None
@@ -64,7 +64,7 @@ class TestSSBClickHouseIntegration:
 
     def test_clickhouse_constraint_configuration(self):
 
-        adapter = ClickHouseAdapter(deployment_mode="local")
+        adapter = ClickHouseAdapter(_deployment_selector="local")
 
         enable_primary_keys, enable_foreign_keys = adapter._get_constraint_configuration()
 
@@ -74,7 +74,7 @@ class TestSSBClickHouseIntegration:
     def test_ssb_schema_creation_without_engine(self, chdb_client):
         client = chdb_client
 
-        adapter = ClickHouseAdapter(deployment_mode="local")
+        adapter = ClickHouseAdapter(_deployment_selector="local")
         benchmark = SSBBenchmark(scale_factor=0.01, compress_data=False, compression_type="none")
 
         duration = adapter.create_schema(benchmark, client)
@@ -97,7 +97,7 @@ class TestSSBClickHouseIntegration:
         client = chdb_client
 
         try:
-            adapter = ClickHouseAdapter(deployment_mode="local")
+            adapter = ClickHouseAdapter(_deployment_selector="local")
             benchmark = SSBBenchmark(
                 scale_factor=0.01,
                 output_dir=data_dir,
@@ -133,7 +133,7 @@ class TestSSBClickHouseIntegration:
         client = chdb_client
 
         try:
-            adapter = ClickHouseAdapter(deployment_mode="local")
+            adapter = ClickHouseAdapter(_deployment_selector="local")
             benchmark = SSBBenchmark(
                 scale_factor=0.01,
                 output_dir=data_dir,

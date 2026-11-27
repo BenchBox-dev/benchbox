@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from benchbox.core.deployment import DEPLOYMENT_SELECTOR_OPTION
 from benchbox.platforms.clickhouse import ClickHouseAdapter
 
 
@@ -14,7 +15,7 @@ class ClickHouseServerAdapter(ClickHouseAdapter):
     default_service_port = 9000
 
     def __init__(self, **config: Any) -> None:
-        config["deployment_mode"] = "server"
+        config[DEPLOYMENT_SELECTOR_OPTION] = "server"
         super().__init__(**config)
         self.deployment_selected = "self-hosted"
         self.deployment_selected_class = "self-hosted"
@@ -26,7 +27,7 @@ class ClickHouseServerAdapter(ClickHouseAdapter):
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> ClickHouseServerAdapter:
         config = dict(config)
-        config["deployment_mode"] = "server"
+        config[DEPLOYMENT_SELECTOR_OPTION] = "server"
         return super().from_config(config)
 
 

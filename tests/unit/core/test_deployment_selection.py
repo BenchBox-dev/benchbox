@@ -5,14 +5,12 @@ from unittest.mock import patch
 import pytest
 
 from benchbox.core.deployment import (
-    DEPLOYMENT_ALIAS_KEYS,
+    DEPLOYMENT_SELECTOR_PLATFORMS,
     deployment_class,
     normalize_deployment_value,
     resolve_deployment,
     select_adapter_deployment,
 )
-from benchbox.core.deprecation_notices import alias_removal_release
-from benchbox.core.execution_engine import DEPRECATED_OPTION_ALIASES
 from benchbox.core.platform_manifest import PLATFORM_MANIFEST
 
 pytestmark = [
@@ -31,8 +29,9 @@ class TestNormalizeDeploymentValue:
         assert normalize_deployment_value("velox", "remote") == "remote"
         assert normalize_deployment_value("lakesail", "distributed") == "distributed"
 
-    def test_clickhouse_embedded_synonym_maps_to_local(self) -> None:
-        assert normalize_deployment_value("clickhouse", "embedded") == "local"
+    def test_clickhouse_embedded_synonym_is_rejected_with_the_replacement(self) -> None:
+        with pytest.raises(ValueError, match="'embedded' for 'clickhouse' was removed in BenchBox 0.6.0; use 'local'"):
+            normalize_deployment_value("clickhouse", "embedded")
 
     def test_unknown_value_lists_available_modes(self) -> None:
         with pytest.raises(ValueError, match="does not support deployment mode"):
@@ -40,65 +39,19 @@ class TestNormalizeDeploymentValue:
 
 
 class TestResolveDeployment:
-    def test_selector_alone_resolves(self) -> None:
-        resolution = resolve_deployment("firebolt", "cloud", {}, None)
+    def test_selector_resolves(self) -> None:
+        resolution = resolve_deployment("firebolt", "cloud")
         assert (resolution.selected, resolution.explicit) == ("cloud", True)
 
-    def test_no_input_resolves_to_nothing(self) -> None:
-        assert resolve_deployment("firebolt", None, {}, set()) == resolve_deployment("firebolt", None, {}, set())
-        resolution = resolve_deployment("firebolt", None, {}, set())
+    def test_no_selector_resolves_to_nothing(self) -> None:
+        resolution = resolve_deployment("firebolt", None)
         assert (resolution.selected, resolution.explicit) == (None, False)
 
-    def test_explicit_alias_resolves(self) -> None:
-        resolution = resolve_deployment("firebolt", None, {"deployment_mode": "cloud"}, None)
-        assert (resolution.selected, resolution.explicit) == ("cloud", True)
-
-    def test_spec_default_without_explicit_marker_is_ignored(self) -> None:
-        resolution = resolve_deployment("clickhouse", None, {"deployment_mode": "server"}, set())
-        assert (resolution.selected, resolution.explicit) == (None, False)
-
-    def test_selector_beats_matching_alias(self) -> None:
-        resolution = resolve_deployment("firebolt", "cloud", {"deployment_mode": "cloud"}, {"deployment_mode"})
-        assert (resolution.selected, resolution.explicit) == ("cloud", True)
-
-    def test_selector_conflict_with_alias_fails(self) -> None:
-        with pytest.raises(ValueError, match="conflicts with"):
-            resolve_deployment("firebolt", "core", {"deployment_mode": "cloud"}, {"deployment_mode"})
-
-    def test_disagreeing_aliases_fail(self) -> None:
-        with pytest.raises(ValueError, match="different"):
-            resolve_deployment("firebolt", None, {"deployment_mode": "core", "firebolt_mode": "cloud"}, None)
-
-    def test_no_input_resolves_to_nothing(self) -> None:
-        resolution = resolve_deployment("firebolt", None, {}, set())
-        assert (resolution.selected, resolution.explicit) == (None, False)
-
-    def test_alias_warns_once_per_run(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level("WARNING", logger="benchbox.core.deprecation_notices"):
-            resolve_deployment("firebolt", None, {"deployment_mode": "cloud"}, None)
-            resolve_deployment("firebolt", None, {"deployment_mode": "cloud"}, None)
-        warnings = [record for record in caplog.records if "deprecated" in record.message]
-        assert len(warnings) == 1
-
-    def test_alias_keys_derive_from_the_deprecated_alias_table(self) -> None:
-        derived: dict[str, set[str]] = {}
-        for (platform, key), entry in DEPRECATED_OPTION_ALIASES.items():
-            if entry.target == "deployment":
-                derived.setdefault(platform, set()).add(key)
-        assert {platform: set(keys) for platform, keys in DEPLOYMENT_ALIAS_KEYS.items()} == derived
-        assert all(len(keys) == len(set(keys)) for keys in DEPLOYMENT_ALIAS_KEYS.values())
-
-    def test_every_platform_with_several_manifest_modes_has_alias_keys(self) -> None:
+    def test_every_platform_with_several_manifest_modes_selects_by_selector(self) -> None:
         multi_mode = {
             entry.key for entry in PLATFORM_MANIFEST if len(entry.capabilities.get("deployment_modes") or {}) > 1
         }
-        assert multi_mode == set(DEPLOYMENT_ALIAS_KEYS)
-
-    def test_deployment_aliases_are_removed_with_the_other_native_keys(self) -> None:
-        for (platform, key), entry in DEPRECATED_OPTION_ALIASES.items():
-            if entry.target == "deployment":
-                assert entry.removed_in == "0.6.0", (platform, key)
-                assert alias_removal_release(platform, key) == "0.6.0"
+        assert multi_mode == set(DEPLOYMENT_SELECTOR_PLATFORMS)
 
 
 class TestDeploymentClass:
@@ -118,26 +71,25 @@ class TestDeploymentClass:
 
 
 class TestSelectAdapterDeployment:
-    def test_canonical_value_wins_without_warning(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level("WARNING", logger="benchbox.core.deprecation_notices"):
-            assert select_adapter_deployment("firebolt", {"deployment_mode": "cloud"}, None) == "cloud"
-        assert [record for record in caplog.records if "deprecated" in record.message] == []
+    def test_selector_value_is_normalized(self) -> None:
+        assert select_adapter_deployment("firebolt", {"_deployment_selector": " Cloud "}, None) == "cloud"
 
-    def test_legacy_fallback_warns(self, caplog: pytest.LogCaptureFixture) -> None:
-        with caplog.at_level("WARNING", logger="benchbox.core.deprecation_notices"):
-            assert select_adapter_deployment("firebolt", {"firebolt_mode": "cloud"}, None) == "cloud"
-        assert len([record for record in caplog.records if "deprecated" in record.message]) == 1
-
-    def test_non_explicit_spec_default_falls_back_to_default(self) -> None:
-        assert select_adapter_deployment("velox", {"deployment": "local"}, "local") == "local"
-
-    def test_canonical_and_legacy_conflict_fails(self) -> None:
-        with pytest.raises(ValueError, match="conflicts with"):
-            select_adapter_deployment("firebolt", {"deployment_mode": "core", "firebolt_mode": "cloud"}, None)
-
-    def test_missing_keys_return_default(self) -> None:
+    def test_missing_selector_returns_default(self) -> None:
         assert select_adapter_deployment("ducklake", {}, None) is None
         assert select_adapter_deployment("lakesail", {}, "local") == "local"
+
+    @pytest.mark.parametrize(
+        ("platform", "key"),
+        [
+            ("firebolt", "deployment_mode"),
+            ("firebolt", "firebolt_mode"),
+            ("velox", "deployment"),
+            ("lakesail", "sail_mode"),
+            ("influxdb", "mode"),
+        ],
+    )
+    def test_removed_keys_do_not_select_a_deployment(self, platform: str, key: str) -> None:
+        assert select_adapter_deployment(platform, {key: "cloud"}, "fallback") == "fallback"
 
 
 class TestFamilyAdaptersRecordSelection:
@@ -146,38 +98,38 @@ class TestFamilyAdaptersRecordSelection:
         from benchbox.platforms.firebolt import FireboltAdapter
 
         with patch.object(firebolt_module, "FIREBOLT_AVAILABLE", True):
-            adapter = FireboltAdapter(deployment_mode="core")
+            adapter = FireboltAdapter(_deployment_selector="core")
         assert adapter.deployment_selected == "core"
         assert adapter.deployment_selected_class == "local"
 
-    def test_firebolt_alias_key_matches_selector(self) -> None:
+    def test_firebolt_cloud_records_managed_class(self) -> None:
         import benchbox.platforms.firebolt as firebolt_module
         from benchbox.platforms.firebolt import FireboltAdapter
 
         with patch.object(firebolt_module, "FIREBOLT_AVAILABLE", True):
             adapter = FireboltAdapter(
-                firebolt_mode="cloud",
+                _deployment_selector="cloud",
                 client_id="id",
                 client_secret="secret",
                 account_name="account",
-                engine_name="engine",
+                compute_resource="engine",
             )
         assert adapter.deployment_selected == "cloud"
         assert adapter.deployment_selected_class == "managed"
 
-    def test_influxdb_mode_alias_matches_selector(self) -> None:
+    def test_influxdb_core_records_self_hosted(self) -> None:
         import benchbox.platforms.influxdb.adapter as influx_adapter
         from benchbox.platforms.influxdb.adapter import InfluxDBAdapter
 
         with patch.object(influx_adapter, "INFLUXDB_AVAILABLE", True):
-            adapter = InfluxDBAdapter(mode="core")
+            adapter = InfluxDBAdapter(_deployment_selector="core")
         assert adapter.deployment_selected == "core"
         assert adapter.deployment_selected_class == "self-hosted"
 
     def test_pg_duckdb_motherduck_records_managed(self) -> None:
         from benchbox.platforms.pg_duckdb import PgDuckDBAdapter
 
-        adapter = PgDuckDBAdapter(deployment_mode="motherduck", motherduck_token="token")
+        adapter = PgDuckDBAdapter(_deployment_selector="motherduck", motherduck_token="token")
         assert adapter.deployment_selected == "motherduck"
         assert adapter.deployment_selected_class == "managed"
 
@@ -187,7 +139,7 @@ class TestFamilyAdaptersRecordSelection:
         adapter = DuckLakeAdapter(
             metadata_path="/tmp/probe.ducklake",
             data_path="/tmp/probe-data",
-            deployment_mode="postgres_catalog",
+            _deployment_selector="postgres_catalog",
         )
         assert adapter.deployment_selected == "postgres_catalog"
         assert adapter.deployment_selected_class == "self-hosted"
@@ -202,7 +154,7 @@ class TestFamilyAdaptersRecordSelection:
             ),
             patch.object(ClickHouseAdapter, "_setup_server_mode", lambda self, config: None),
         ):
-            adapter = ClickHouseAdapter(deployment_mode="server", host="h")
+            adapter = ClickHouseAdapter(_deployment_selector="server", host="h")
         assert adapter.deployment_selected == "server"
         assert adapter.deployment_selected_class == "self-hosted"
 
@@ -211,7 +163,7 @@ class TestFamilyAdaptersRecordSelection:
         from benchbox.platforms.velox import VeloxAdapter
 
         with patch.object(velox_module, "SparkSession", object()):
-            adapter = VeloxAdapter(deployment="remote", endpoint="sc://localhost:50051")
+            adapter = VeloxAdapter(_deployment_selector="remote", endpoint="sc://localhost:50051")
         assert adapter.deployment_selected == "remote"
         assert adapter.deployment_selected_class == "self-hosted"
 
@@ -220,7 +172,7 @@ class TestFamilyAdaptersRecordSelection:
         from benchbox.platforms.lakesail import LakeSailAdapter
 
         with patch.object(lakesail_module, "SparkSession", object()):
-            adapter = LakeSailAdapter(sail_mode="distributed", endpoint="sc://localhost:50051")
+            adapter = LakeSailAdapter(_deployment_selector="distributed", endpoint="sc://localhost:50051")
         assert adapter.deployment_selected == "distributed"
         assert adapter.deployment_selected_class == "self-hosted"
 
@@ -236,24 +188,24 @@ class TestFactoryResolution:
                 client_id="id",
                 client_secret="secret",
                 account_name="account",
-                engine_name="engine",
+                compute_resource="engine",
                 database="db",
             )
         assert adapter.deployment_mode == "cloud"
         assert adapter.deployment_selected == "cloud"
         assert adapter.deployment_selected_class == "managed"
 
-    def test_sql_factory_selector_conflict_with_alias_fails(self) -> None:
+    def test_sql_factory_rejects_the_removed_deployment_keyword(self) -> None:
+        from benchbox.platforms import get_platform_adapter
+
+        with pytest.raises(TypeError, match="Platform option 'deployment_mode' for 'firebolt' was removed"):
+            get_platform_adapter("firebolt:core", deployment_mode="cloud")
+
+    def test_selector_conflict_with_explicit_selector_fails(self) -> None:
         from benchbox.platforms import get_platform_adapter
 
         with pytest.raises(ValueError, match="conflicts with"):
-            get_platform_adapter("firebolt:core", deployment_mode="cloud")
-
-    def test_dataframe_factory_resolves_explicit_deployment(self) -> None:
-        from benchbox.platforms.adapter_factory import _resolve_family_deployment
-
-        resolution = _resolve_family_deployment("firebolt", "cloud", None, {})
-        assert (resolution.selected, resolution.explicit) == ("cloud", True)
+            get_platform_adapter("firebolt:core", _deployment_selector="cloud")
 
     def test_firebolt_run_records_selected_and_class(self) -> None:
         import benchbox.platforms.firebolt as firebolt_module
@@ -280,7 +232,7 @@ class TestFactoryResolution:
             ),
             patch.object(ClickHouseAdapter, "_setup_server_mode", lambda self, config: None),
         ):
-            adapter = ClickHouseAdapter(deployment_mode="server", host="h")
+            adapter = ClickHouseAdapter(_deployment_selector="server", host="h")
             metadata = collect_normalized_result_metadata(adapter, connection=None)
         deployment = metadata["platform_deployment"]
         assert deployment["selected"] == "server"
@@ -316,95 +268,46 @@ class TestSelectorSplitting:
 
         assert _split_deployment_selector("firebolt:bogus") == ("firebolt:bogus", None)
 
-    def _namespace(self, **fields):
-        import types
-        from unittest.mock import MagicMock
 
-        namespace = types.SimpleNamespace(
-            platform_key=None,
-            deployment_selector=None,
-            platform_option_pairs=(),
-            parsed_platform_options={},
-            logger=None,
-            ctx=MagicMock(),
-        )
-        for key, value in fields.items():
-            setattr(namespace, key, value)
-        namespace.ctx.exit.side_effect = SystemExit(1)
-        return namespace
-
-    def test_selector_conflict_with_spec_alias_exits(self) -> None:
+class TestRemovedDeploymentKeys:
+    @pytest.mark.parametrize(
+        ("platform", "key"),
+        [
+            ("clickhouse", "deployment_mode"),
+            ("clickhouse", "mode"),
+            ("clickhouse", "embedded"),
+            ("databend", "deployment_mode"),
+            ("ducklake", "deployment_mode"),
+            ("firebolt", "deployment_mode"),
+            ("firebolt", "firebolt_mode"),
+            ("influxdb", "deployment_mode"),
+            ("influxdb", "mode"),
+            ("lakesail", "deployment_mode"),
+            ("lakesail", "sail_mode"),
+            ("pg-duckdb", "deployment_mode"),
+            ("timescaledb", "deployment_mode"),
+            ("velox", "deployment"),
+        ],
+    )
+    def test_cli_option_is_rejected_with_the_selector(self, platform: str, key: str) -> None:
         import importlib
 
         importlib.import_module("benchbox.platforms")
-        from benchbox.cli.run_platform_resolution import _apply_deployment_selector_option
+        from benchbox.core.hooks.platform_hooks import PlatformHookRegistry, PlatformOptionError
 
-        namespace = self._namespace(
-            platform_key="lakesail",
-            deployment_selector="distributed",
-            platform_option_pairs=(("sail_mode", "local"),),
-            parsed_platform_options={"deployment_mode": "local"},
-        )
-        with pytest.raises(SystemExit):
-            _apply_deployment_selector_option(namespace)
+        with pytest.raises(PlatformOptionError) as raised:
+            PlatformHookRegistry.parse_options(platform, [(key, "cloud")])
+        assert f"Platform option '{key}' for '{platform}' was removed in BenchBox 0.6.0" in str(raised.value)
+        assert f"the platform selector '--platform {platform}:" in str(raised.value)
 
-    def test_agreeing_alias_warns_and_keeps_mode(self, caplog: pytest.LogCaptureFixture) -> None:
-        import importlib
+    def test_database_config_rejects_a_removed_key_in_options(self) -> None:
+        from benchbox.core.schemas import DatabaseConfig
 
-        importlib.import_module("benchbox.platforms")
-        from benchbox.cli.run_platform_resolution import _apply_deployment_selector_option
+        with pytest.raises(TypeError, match="Platform option 'sail_mode' for 'lakesail' was removed"):
+            DatabaseConfig(type="lakesail", name="x", options={"sail_mode": "distributed"})
 
-        namespace = self._namespace(
-            platform_key="lakesail",
-            deployment_selector="distributed",
-            platform_option_pairs=(("sail_mode", "distributed"),),
-            parsed_platform_options={"deployment_mode": "distributed"},
-        )
-        with caplog.at_level("WARNING", logger="benchbox.core.deprecation_notices"):
-            _apply_deployment_selector_option(namespace)
-        assert [record for record in caplog.records if "deprecated" in record.message]
-        assert namespace.deployment_selector == "distributed"
+    def test_mcp_rejects_the_removed_clickhouse_key(self) -> None:
+        from benchbox.mcp.schemas import MCPValidationError, validate_platform_options
 
-
-class TestSavedConfigAndCredentialCompat:
-    def test_saved_yaml_alias_keys_parse_to_canonical(self) -> None:
-        import importlib
-
-        importlib.import_module("benchbox.platforms")
-        importlib.import_module("benchbox.platforms.influxdb")
-        from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
-
-        lakesail_options = PlatformHookRegistry.parse_options("lakesail", [("sail_mode", "distributed")])
-        assert lakesail_options["deployment_mode"] == "distributed"
-        influx_options = PlatformHookRegistry.parse_options("influxdb", [("mode", "core")])
-        assert influx_options["deployment_mode"] == "core"
-        firebolt_options = PlatformHookRegistry.parse_options("firebolt", [("firebolt_mode", "cloud")])
-        assert firebolt_options["deployment_mode"] == "cloud"
-
-    def test_credential_alias_marks_explicit_and_warns(self, caplog: pytest.LogCaptureFixture) -> None:
-        import importlib
-
-        importlib.import_module("benchbox.platforms")
-        from benchbox.cli.database import DatabaseManager
-        from benchbox.security.credentials import CredentialManager
-
-        with (
-            patch.object(CredentialManager, "get_platform_credentials", return_value={"sail_mode": "distributed"}),
-            caplog.at_level("WARNING", logger="benchbox.core.deprecation_notices"),
-        ):
-            config = DatabaseManager().create_config("lakesail", {})
-            assert config.options["sail_mode"] == "distributed"
-            assert config.options["_explicit_platform_options"].get("sail_mode") == "distributed"
-            resolution = resolve_deployment(
-                "lakesail",
-                None,
-                dict(config.options),
-                set(config.options["_explicit_platform_options"]),
-            )
-            assert resolution.selected == "distributed"
-        assert [record for record in caplog.records if "deprecated" in record.message]
-
-    def test_mcp_clickhouse_alias_stays_allowlisted(self) -> None:
-        from benchbox.mcp.schemas import validate_platform_options
-
-        assert validate_platform_options("clickhouse", {"deployment_mode": "server"}) == {"deployment_mode": "server"}
+        with pytest.raises(MCPValidationError, match="Platform option 'deployment_mode' for 'clickhouse' was removed"):
+            validate_platform_options("clickhouse", {"deployment_mode": "server"})

@@ -16,7 +16,7 @@ pytestmark = [
 
 def _ddl(sql: str) -> str:
     try:
-        adapter = FireboltAdapter(deployment_mode="core")
+        adapter = FireboltAdapter(_deployment_selector="core")
     except ImportError:
         pytest.skip("Firebolt SDK not installed")
     return "; ".join(adapter._translate_schema_ddl(sql))

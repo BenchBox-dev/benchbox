@@ -22,7 +22,7 @@ def clickhouse_adapter():
     adapter = ClickHouseAdapter(
         host="localhost",
         port=9000,
-        deployment_mode="server",
+        _deployment_selector="server",
         database="benchbox_test",
         password="benchbox",
     )

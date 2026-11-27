@@ -34,7 +34,7 @@ class TestSnowflakeCredentialDefaults:
             "account": "myorg-account123",
             "username": "TEST_USER",
             "password": "secret_password",
-            "warehouse": "MY_WAREHOUSE",
+            "compute_resource": "MY_WAREHOUSE",
             "database": "MY_DATABASE",
             "schema": "MY_SCHEMA",
             "role": "MY_ROLE",
@@ -129,7 +129,7 @@ class TestSnowflakeCredentialDefaults:
             "account": "myorg-account123",
             "username": "TEST_USER",
             "password": "existing_secret",
-            "warehouse": "MY_WAREHOUSE",
+            "compute_resource": "MY_WAREHOUSE",
             "database": "MY_DATABASE",
         }
         mock_manager.get_platform_credentials.return_value = existing_creds
@@ -172,7 +172,7 @@ class TestSnowflakeCredentialDefaults:
             "account": "myorg-account123",
             "username": "TEST_USER",
             "password": "old_password",
-            "warehouse": "MY_WAREHOUSE",
+            "compute_resource": "MY_WAREHOUSE",
             "database": "MY_DATABASE",
         }
         mock_manager.get_platform_credentials.return_value = existing_creds
@@ -257,7 +257,7 @@ class TestSnowflakeCredentialDefaults:
             "account": "myorg-account123",
             "username": "TEST_USER",
             "password": "secret",
-            "warehouse": "MY_WAREHOUSE",
+            "compute_resource": "MY_WAREHOUSE",
             "database": "MY_DATABASE",
             "schema": "CUSTOM_SCHEMA",
             "role": "CUSTOM_ROLE",
@@ -345,7 +345,7 @@ class TestSnowflakeCredentialDefaults:
             "account": "myorg-account123",
             "username": "TEST_USER",
             "password": "secret",
-            "warehouse": "MY_WAREHOUSE",
+            "compute_resource": "MY_WAREHOUSE",
             "database": "MY_DATABASE",
         }
         mock_manager.get_platform_credentials.return_value = existing_creds
@@ -581,7 +581,7 @@ class TestValidateSnowflakeErrorTranslation:
             "account": "acct",
             "username": "u",
             "password": "p",
-            "warehouse": "WH",
+            "compute_resource": "WH",
             "database": "DB",
             "role": "MYROLE",
         }
@@ -745,7 +745,7 @@ class TestValidateSnowflakeCredentials:
             "account": "acct",
             "username": "u",
             "password": "p",
-            "warehouse": "WH",
+            "compute_resource": "WH",
             "database": "DB",
         }
         mgr = self._make_cred_manager(creds)
@@ -765,7 +765,7 @@ class TestValidateSnowflakeCredentials:
             "account": "acct",
             "username": "u",
             "password": "p",
-            "warehouse": "WH",
+            "compute_resource": "WH",
             "database": "DB",
         }
         mgr = self._make_cred_manager(creds)
@@ -795,7 +795,7 @@ class TestValidateSnowflakeCredentials:
             "account": "acct",
             "username": "u",
             "password": "p",
-            "warehouse": "WH",
+            "compute_resource": "WH",
             "database": "DB",
         }
         mgr = self._make_cred_manager(creds)

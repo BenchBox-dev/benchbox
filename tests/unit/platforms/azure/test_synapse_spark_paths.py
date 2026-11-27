@@ -32,7 +32,7 @@ def _make_adapter(**overrides):
 
         kwargs: dict[str, Any] = {
             "workspace_name": "ws",
-            "spark_pool_name": "pool",
+            "compute_resource": "pool",
             "storage_account": "sa",
             "storage_container": "c",
         }
@@ -94,7 +94,7 @@ class TestInitGuards:
         with pytest.raises(ConfigurationError):
             SynapseSparkAdapter(
                 workspace_name="ws",
-                spark_pool_name="pool",
+                compute_resource="pool",
                 storage_account="sa",
                 storage_container="c",
             )
@@ -111,7 +111,7 @@ class TestInitGuards:
             with caplog.at_level("WARNING", logger="benchbox.platforms.azure.synapse_spark_adapter"):
                 fresh = SynapseSparkAdapter(
                     workspace_name="ws",
-                    spark_pool_name="pool",
+                    compute_resource="pool",
                     storage_account="sa",
                     storage_container="c",
                 )
@@ -297,7 +297,7 @@ class TestTuningNoOps:
             adapter = SynapseSparkAdapter.from_config(
                 {
                     "workspace_name": "ws",
-                    "spark_pool_name": "pool",
+                    "compute_resource": "pool",
                     "storage_account": "sa",
                     "storage_container": "c",
                     "tuning_enabled": True,

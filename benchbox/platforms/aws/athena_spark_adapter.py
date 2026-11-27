@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     pass
 
 from benchbox.core.exceptions import ConfigurationError
+from benchbox.core.removed_options import reject_removed_adapter_keywords
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
 from benchbox.platforms.base.cloud_spark import (
     CloudSparkConfigMixin,
@@ -93,12 +94,11 @@ class AthenaSparkAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalT
 
     def __init__(
         self,
-        workgroup: str | None = None,
+        compute_resource: str | None = None,
         s3_staging_dir: str | None = None,
         region: str = "us-east-1",
         database: str | None = None,
         runtime_version: str | None = None,
-        engine_version: str | None = None,
         session_idle_timeout_minutes: int = 15,
         coordinator_dpu_size: int = 1,
         max_concurrent_dpus: int = 20,
@@ -108,23 +108,16 @@ class AthenaSparkAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalT
         table_format: str | None = None,
         **kwargs: Any,
     ) -> None:
+        reject_removed_adapter_keywords(type(self), kwargs)
         if not BOTO3_AVAILABLE:
             deps_satisfied, missing = check_platform_dependencies("athena-spark")
             if not deps_satisfied:
                 raise ConfigurationError(get_dependency_error_message("athena-spark", missing))
 
-        if engine_version is not None:
-            from benchbox.core.compute_resource import warn_deprecated_compute_alias
-
-            warn_deprecated_compute_alias("athena-spark", "engine_version", "runtime_version")
-            if runtime_version is not None and runtime_version != engine_version:
-                raise ConfigurationError(
-                    f"Conflicting Athena Spark runtime versions: runtime_version='{runtime_version}' "
-                    f"disagrees with engine_version='{engine_version}'. Keep only runtime_version."
-                )
-            runtime_version = engine_version
-        if not workgroup:
-            raise ConfigurationError("workgroup is required for Athena Spark. Must be a Spark-enabled workgroup.")
+        if not compute_resource:
+            raise ConfigurationError(
+                "compute_resource is required for Athena Spark. Must be a Spark-enabled workgroup."
+            )
 
         if not s3_staging_dir:
             raise ConfigurationError("s3_staging_dir is required (e.g., s3://bucket/path)")
@@ -136,7 +129,7 @@ class AthenaSparkAdapter(CloudSparkConfigMixin, SparkTuningMixin, SparkExternalT
         self.s3_bucket = s3_parts[0]
         self.s3_prefix = s3_parts[1] if len(s3_parts) > 1 else ""
 
-        self.workgroup = workgroup
+        self.workgroup = compute_resource
         self.s3_staging_dir = s3_staging_dir.rstrip("/")
         self.region = region
         self.database = database or "benchbox"
@@ -560,10 +553,6 @@ result.show(100, truncate=False)
     def add_cli_arguments(parser: Any) -> None:
         group = parser.add_argument_group("Athena Spark Options")
         group.add_argument(
-            "--workgroup",
-            help="Spark-enabled Athena workgroup name",
-        )
-        group.add_argument(
             "--s3-staging-dir",
             help="S3 path for data staging (e.g., s3://bucket/path)",
         )
@@ -598,17 +587,13 @@ result.show(100, truncate=False)
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> AthenaSparkAdapter:
-        from benchbox.core.compute_resource import normalize_compute_options
-
-        normalized = normalize_compute_options("athena-spark", config)
-        config = {key: value for key, value in normalized.items() if value is not None}
+        config = {key: value for key, value in config.items() if value is not None}
         params = {
-            "workgroup": config.get("compute_resource") or config.get("workgroup"),
+            "compute_resource": config.get("compute_resource"),
             "s3_staging_dir": config.get("s3_staging_dir"),
             "region": config.get("region", "us-east-1"),
             "database": config.get("database", "benchbox"),
             "runtime_version": config.get("runtime_version"),
-            "engine_version": config.get("engine_version"),
             "session_idle_timeout_minutes": config.get("session_idle_timeout_minutes", 15),
             "coordinator_dpu_size": config.get("coordinator_dpu_size", 1),
             "max_concurrent_dpus": config.get("max_concurrent_dpus", 20),
@@ -644,7 +629,6 @@ _build_athena_spark_config = make_platform_config_builder(
         "region",
         "database",
         "runtime_version",
-        "engine_version",
         "session_idle_timeout_minutes",
         "coordinator_dpu_size",
         "max_concurrent_dpus",

@@ -26,7 +26,7 @@ def adapter():
         from benchbox.platforms.aws import AthenaSparkAdapter
 
         return AthenaSparkAdapter(
-            workgroup="spark-workgroup",
+            compute_resource="spark-workgroup",
             s3_staging_dir="s3://my-bucket/benchbox-data",
         )
 

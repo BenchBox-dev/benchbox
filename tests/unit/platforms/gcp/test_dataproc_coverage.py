@@ -111,7 +111,7 @@ def test_adapter_stores_cluster_config_defaults() -> None:
 
 def test_adapter_custom_cluster_config() -> None:
     adapter = _adapter(
-        cluster_name="my-cluster",
+        compute_resource="my-cluster",
         master_machine_type="n2-highmem-4",
         worker_machine_type="n2-highmem-8",
         num_workers=4,
@@ -446,7 +446,7 @@ def test_from_config_uses_provided_cluster_name() -> None:
     config = {
         "project_id": "my-project",
         "gcs_staging_dir": "gs://bucket/path",
-        "cluster_name": "my-cluster",
+        "compute_resource": "my-cluster",
     }
     adapter = DataprocAdapter.from_config(config)
     assert adapter.cluster_name == "my-cluster"

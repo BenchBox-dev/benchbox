@@ -64,9 +64,13 @@ class TestRunPathGateMatchesDeployment:
 
 
 class TestResolvedDeploymentMode:
-    def test_explicit_deployment_mode_is_threaded(self):
-        config = DatabaseConfig(type="clickhouse", name="ch", options={"deployment_mode": "local"})
+    def test_explicit_deployment_selector_is_threaded(self):
+        config = DatabaseConfig(type="clickhouse", name="ch", options={"_deployment_selector": "local"})
         assert resolved_deployment_mode(config) == "local"
+
+    def test_removed_deployment_mode_is_rejected(self):
+        with pytest.raises(TypeError, match="'deployment_mode' for 'clickhouse' was removed in BenchBox 0.6.0"):
+            DatabaseConfig(type="clickhouse", name="ch", options={"deployment_mode": "local"})
 
     def test_missing_deployment_mode_means_platform_default(self):
         assert resolved_deployment_mode(DatabaseConfig(type="duckdb", name="d")) is None

@@ -43,7 +43,7 @@ def _new_adapter() -> mod.DatabricksDataFrameAdapter:
             access_token="token",
             catalog="main",
             schema="bench",
-            cluster_id="cluster-1",
+            compute_resource="cluster-1",
             execution_mode="dataframe",
         )
 
@@ -73,7 +73,7 @@ def test_platform_name_and_from_config(monkeypatch: pytest.MonkeyPatch):
         http_path="/sql/path",
         access_token="token",
         execution_mode="dataframe",
-        cluster_id="cid",
+        compute_resource="cid",
     )
     assert adapter.platform_name == "Databricks-df"
 
@@ -83,7 +83,7 @@ def test_platform_name_and_from_config(monkeypatch: pytest.MonkeyPatch):
             "http_path": "/sql/path",
             "access_token": "token",
             "execution_mode": "sql",
-            "cluster_id": "cid2",
+            "compute_resource": "cid2",
         }
     )
     assert built.execution_mode == "sql"

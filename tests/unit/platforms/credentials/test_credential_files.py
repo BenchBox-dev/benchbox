@@ -315,6 +315,53 @@ class TestSnowflakeValidation:
         assert ok is False
         assert err == "Authentication failed. Check your username and password."
 
+    def test_saved_warehouse_loads_as_compute_resource_and_saves_under_the_new_key(self, tmp_path):
+        path = tmp_path / "credentials.yaml"
+        path.write_text(yaml.dump({"snowflake": {"account": "org-acct", "warehouse": "LEGACY_WH"}}), encoding="utf-8")
+
+        mgr = CredentialManager(credentials_path=path)
+        creds = mgr.get_platform_credentials("snowflake")
+
+        assert creds["compute_resource"] == "LEGACY_WH"
+        assert "warehouse" not in creds
+
+        mgr.save_credentials()
+        saved = yaml.safe_load(path.read_text(encoding="utf-8"))["snowflake"]
+
+        assert saved["compute_resource"] == "LEGACY_WH"
+        assert "warehouse" not in saved
+
+    @pytest.mark.parametrize("native_key", ["cluster_identifier", "workgroup_name"])
+    def test_saved_redshift_native_key_keeps_its_kind_across_a_save(self, tmp_path, native_key):
+        path = tmp_path / "credentials.yaml"
+        path.write_text(yaml.dump({"redshift": {"host": "h.example.com", native_key: "r1"}}), encoding="utf-8")
+
+        CredentialManager(credentials_path=path).save_credentials()
+        saved = yaml.safe_load(path.read_text(encoding="utf-8"))["redshift"]
+        reloaded = CredentialManager(credentials_path=path).get_platform_credentials("redshift")
+
+        assert saved == {"host": "h.example.com", native_key: "r1"}
+        assert reloaded["compute_resource"] == "r1"
+
+    def test_saved_redshift_cluster_identifier_keeps_its_kind_in_the_validation_adapter(self, tmp_path):
+        from benchbox.platforms.credentials.redshift import _build_redshift_adapter
+
+        path = tmp_path / "credentials.yaml"
+        path.write_text(
+            yaml.dump(
+                {"redshift": {"host": "h.example.com", "username": "u", "password": "p", "cluster_identifier": "c1"}}
+            ),
+            encoding="utf-8",
+        )
+        creds = CredentialManager(credentials_path=path).get_platform_credentials("redshift")
+        try:
+            adapter = _build_redshift_adapter(creds)
+        except ImportError:
+            pytest.skip("Redshift drivers not installed")
+
+        assert adapter.cluster_identifier == "c1"
+        assert adapter.workgroup_name is None
+
 
 class TestDatabricksValidation:
     def test_missing_credentials(self, cred_file):

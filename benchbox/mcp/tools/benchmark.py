@@ -22,7 +22,6 @@ from benchbox.core.benchmark_registry import (
 )
 from benchbox.core.billable_platforms import ACKNOWLEDGEMENT_ENV_VAR, refusal_message
 from benchbox.core.constants import VALID_PHASES
-from benchbox.core.deprecation_notices import begin_run
 from benchbox.core.hooks.benchmark_hooks import BenchmarkHookRegistry
 from benchbox.core.hooks.platform_hooks import PlatformHookRegistry
 from benchbox.core.results.exporter import ResultExporter
@@ -32,7 +31,6 @@ from benchbox.core.run_cleanup_warning import cloud_cleanup_warning
 from benchbox.core.run_selection import RunSelection, resolve_run_selection
 from benchbox.core.run_service import unavailable_benchmark_message
 from benchbox.core.tuning import modes as tuning_modes
-from benchbox.mcp.deprecations import attach_deprecations
 from benchbox.mcp.errors import (
     ErrorCode,
     make_benchmark_load_error,
@@ -142,9 +140,8 @@ def register_benchmark_tools(
         iterations: int | None = None,
         timeout_seconds: int | None = None,
     ) -> dict[str, Any]:
-        begin_run()
         if (unavailable := _unavailable_benchmark_response(benchmark)) is not None:
-            return attach_deprecations(unavailable)
+            return unavailable
         try:
             normalized_platform_options = validate_platform_options(platform, platform_options)
             resolved_execution_engine = validate_execution_engine(platform, execution_engine)
@@ -155,7 +152,7 @@ def register_benchmark_tools(
         except ValueError as exc:
             response = make_error(ErrorCode.VALIDATION_ERROR, str(exc), details={"platform": platform})
             response["status"] = "failed"
-            return attach_deprecations(response)
+            return response
 
         try:
             phases = validate_phases(phases)
@@ -164,7 +161,7 @@ def register_benchmark_tools(
                 ErrorCode.VALIDATION_INVALID_PHASE, str(exc), details={"valid_phases": list(VALID_PHASES)}
             )
             response["status"] = "failed"
-            return attach_deprecations(response)
+            return response
 
         if validate_only or dry_run:
             scale_note, scale_message = _check_scale_factor(benchmark, scale_factor)
@@ -175,7 +172,7 @@ def register_benchmark_tools(
                     response["errors"].append(scale_message)
                 elif scale_note:
                     response["warnings"].append(scale_note)
-                return attach_deprecations(response)
+                return response
             if scale_message:
                 response = make_error(
                     ErrorCode.VALIDATION_INVALID_SCALE_FACTOR,
@@ -183,11 +180,11 @@ def register_benchmark_tools(
                     details={"benchmark": benchmark, "scale_factor": scale_factor},
                 )
                 response["status"] = "error"
-                return attach_deprecations(response)
+                return response
             response = _dry_run_impl(selection, benchmark, scale_factor, queries, mode, normalized_platform_options)
             if scale_note and response.get("status") != "error":
                 response.setdefault("warnings", []).append(scale_note)
-            return attach_deprecations(response)
+            return response
 
         if not allow_synchronous_execution:
             response = make_error(
@@ -196,7 +193,7 @@ def register_benchmark_tools(
                 details={"replacement_tool": "start_benchmark"},
             )
             response["status"] = "failed"
-            return attach_deprecations(response)
+            return response
 
         return _as_tool_result(
             _run_under_platform_policy(
@@ -294,7 +291,7 @@ def _run_under_platform_policy(
     results_dir: Path,
     anonymize: bool,
 ) -> dict[str, Any]:
-    refused, acknowledgement = _apply_platform_policy(policy, selection, platform, mode, platform_options)
+    refused, acknowledgement = _apply_platform_policy(policy, selection, platform, mode)
     if refused is not None:
         return refused
     scale_note, _ = _check_scale_factor(benchmark, scale_factor)
@@ -335,11 +332,10 @@ def _apply_platform_policy(
     selection: RunSelection,
     platform: str,
     mode: str | None,
-    platform_options: Mapping[str, object],
 ) -> tuple[dict[str, Any] | None, dict[str, object] | None]:
     if mode == "data_only":
         return None, None
-    denied = policy.refusal(selection.platform, selection.deployment, platform_options)
+    denied = policy.refusal(selection.platform, selection.deployment)
     if denied is not None:
         response = make_error(
             ErrorCode.RESOURCE_ACCESS_DENIED,
@@ -352,14 +348,14 @@ def _apply_platform_policy(
         )
         response["status"] = "failed"
         return response, None
-    return None, policy.acknowledgement_record(selection.platform, selection.deployment, platform_options)
+    return None, policy.acknowledgement_record(selection.platform, selection.deployment)
 
 
 _RUN_ERROR_STATUSES = frozenset({"incomplete", "no_results", "timed_out"})
 
 
 def _as_tool_result(response: dict[str, Any]) -> dict[str, Any]:
-    response = attach_deprecations(response)
+    response = response
     metadata = response.get("mcp_metadata")
     status = metadata.get("status") if isinstance(metadata, Mapping) else None
     ended_without_result = status in _RUN_ERROR_STATUSES or (
@@ -910,7 +906,7 @@ def _build_data_only_response(
 
 def _selection_preview(selection: RunSelection, platform_options: Mapping[str, object]) -> dict[str, Any]:
     return {
-        "execution_engine": selection.effective_execution_engine,
+        "execution_engine": selection.execution_engine,
         "deployment": selection.deployment,
         "platform_options": dict(platform_options),
     }

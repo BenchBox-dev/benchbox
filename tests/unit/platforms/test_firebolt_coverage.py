@@ -46,7 +46,7 @@ def _make_cloud_adapter(**extra):
         client_id="cid",
         client_secret="csec",
         account_name="acct",
-        engine_name="engine",
+        compute_resource="engine",
         **extra,
     )
 
@@ -918,7 +918,7 @@ class TestFromConfigCoreOverride:
         from benchbox.platforms.firebolt import FireboltAdapter
 
         config = {
-            "deployment_mode": "core",
+            "_deployment_selector": "core",
             "benchmark": "tpch",
             "scale_factor": 1.0,
         }
@@ -934,7 +934,7 @@ class TestFromConfigCoreOverride:
             "client_id": "cid",
             "client_secret": "csec",
             "account_name": "acct",
-            "engine_name": "eng",
+            "compute_resource": "eng",
             "s3_staging_url": "s3://bucket/prefix/",
             "s3_region": "us-east-1",
             "benchmark": "tpch",
@@ -962,7 +962,7 @@ class TestBuildFireboltConfig:
 
         options = {"account_name": "options-acct"}
         overrides = {
-            "engine_name": "override-engine",
+            "compute_resource": "override-engine",
             "benchmark": "tpch",
             "scale_factor": 1.0,
         }
@@ -972,7 +972,7 @@ class TestBuildFireboltConfig:
 
         assert config.client_id == "saved-id"
         assert config.account_name == "options-acct"
-        assert config.engine_name == "override-engine"
+        assert config.compute_resource == "override-engine"
 
     def test_builds_config_without_platform_info(self):
         from benchbox.platforms.firebolt import _build_firebolt_config
@@ -1021,7 +1021,7 @@ class TestBuildFireboltConfig:
             "region": "us-east-1",
             "cloud_provider": "aws",
             "engine_type": "GENERAL_PURPOSE",
-            "engine_size": "large",
+            "compute_size": "large",
             "s3_staging_url": "s3://bench-bucket/stage/",
             "s3_region": "us-east-1",
         }
@@ -1033,22 +1033,21 @@ class TestBuildFireboltConfig:
         assert config.options["region"] == "us-east-1"
         assert config.options["cloud_provider"] == "aws"
         assert config.options["engine_type"] == "GENERAL_PURPOSE"
-        assert config.options["engine_size"] == "large"
+        assert config.options["compute_size"] == "large"
         assert config.options["s3_staging_url"] == "s3://bench-bucket/stage/"
 
-    def test_firebolt_platform_options_parse_metadata_aliases(self):
+    def test_firebolt_platform_options_parse_metadata_options(self):
         from benchbox.cli.platform_hooks import PlatformHookRegistry
 
         parsed = PlatformHookRegistry.parse_options(
             "firebolt",
             [
-                ("firebolt_mode", "cloud"),
                 ("cloud_region", "us-east-1"),
                 ("disable_result_cache", "false"),
             ],
         )
 
-        assert parsed["deployment_mode"] == "cloud"
+        assert "deployment_mode" not in parsed
         assert parsed["region"] == "us-east-1"
         assert parsed["disable_result_cache"] is False
 
@@ -1059,7 +1058,7 @@ class TestNormalizedResultMetadata:
             database="bench",
             region="us-east-1",
             cloud_provider="aws",
-            engine_size="large",
+            compute_size="large",
             s3_staging_url="s3://bench-bucket/stage/",
             s3_region="us-east-1",
             disable_result_cache=False,

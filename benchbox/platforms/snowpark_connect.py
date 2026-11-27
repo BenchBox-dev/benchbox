@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     pass
 
 from benchbox.core.exceptions import ConfigurationError
+from benchbox.core.removed_options import reject_removed_adapter_keywords
 from benchbox.platforms.base import DriverIsolationCapability, PlatformAdapter
 from benchbox.platforms.base.cloud_spark import SparkTuningMixin
 from benchbox.utils.dependencies import (
@@ -48,17 +49,19 @@ class SnowparkConnectAdapter(SparkTuningMixin, PlatformAdapter):
         account: str | None = None,
         user: str | None = None,
         password: str | None = None,
-        warehouse: str = "COMPUTE_WH",
+        compute_resource: str = "COMPUTE_WH",
         database: str = "BENCHBOX",
         schema: str = "PUBLIC",
         role: str | None = None,
         authenticator: str | None = None,
         private_key_path: str | None = None,
         private_key_passphrase: str | None = None,
-        warehouse_size: str = "MEDIUM",
+        compute_size: str = "MEDIUM",
         session_parameters: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
+        reject_removed_adapter_keywords(type(self), kwargs)
+
         if not SNOWPARK_AVAILABLE:
             deps_satisfied, missing = check_platform_dependencies("snowpark-connect")
             if not deps_satisfied:
@@ -79,14 +82,14 @@ class SnowparkConnectAdapter(SparkTuningMixin, PlatformAdapter):
         self.account = account
         self.user = user
         self.password = password
-        self.warehouse = warehouse
+        self.warehouse = compute_resource
         self.database = database
         self.schema = schema
         self.role = role
         self.authenticator = authenticator
         self.private_key_path = private_key_path
         self.private_key_passphrase = private_key_passphrase
-        self.warehouse_size = warehouse_size
+        self.warehouse_size = compute_size
         self.session_parameters = session_parameters or {}
 
         self._session: Any = None
@@ -421,7 +424,7 @@ class SnowparkConnectAdapter(SparkTuningMixin, PlatformAdapter):
             help="Snowflake password",
         )
         group.add_argument(
-            "--warehouse",
+            "--compute-resource",
             default="COMPUTE_WH",
             help="Virtual warehouse name (default: COMPUTE_WH)",
         )
@@ -440,29 +443,27 @@ class SnowparkConnectAdapter(SparkTuningMixin, PlatformAdapter):
             help="Role to use for the session",
         )
         group.add_argument(
-            "--warehouse-size",
+            "--compute-size",
             default="MEDIUM",
             help="Warehouse size (default: MEDIUM)",
         )
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> SnowparkConnectAdapter:
-        from benchbox.core.compute_resource import normalize_compute_options
         from benchbox.platforms.base.config_utils import forward_plan_options
 
-        config = normalize_compute_options("snowpark-connect", config)
         params = {
             "account": config.get("account"),
             "user": config.get("user"),
             "password": config.get("password"),
-            "warehouse": config.get("compute_resource") or config.get("warehouse") or "COMPUTE_WH",
+            "compute_resource": config.get("compute_resource") or "COMPUTE_WH",
             "database": config.get("database", "BENCHBOX"),
             "schema": config.get("schema", "PUBLIC"),
             "role": config.get("role"),
             "authenticator": config.get("authenticator"),
             "private_key_path": config.get("private_key_path"),
             "private_key_passphrase": config.get("private_key_passphrase"),
-            "warehouse_size": config.get("compute_size") or config.get("warehouse_size") or "MEDIUM",
+            "compute_size": config.get("compute_size") or "MEDIUM",
         }
 
         for key in [

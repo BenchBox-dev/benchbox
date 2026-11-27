@@ -41,7 +41,7 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
             "workspace_id": workspace_id,
             "lakehouse_id": lakehouse_id,
             "tenant_id": os.getenv("AZURE_TENANT_ID"),
-            "spark_pool_name": os.getenv("FABRIC_SPARK_POOL"),
+            "compute_resource": os.getenv("FABRIC_SPARK_POOL"),
         },
     )
 

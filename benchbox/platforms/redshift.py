@@ -32,6 +32,7 @@ if TYPE_CHECKING:
         UnifiedTuningConfiguration,
     )
 
+from ..core.compute_resource import COMPUTE_RESOURCE_KIND_OPTION
 from ..core.exceptions import ConfigurationError
 from ..utils.dependencies import (
     check_platform_dependencies,
@@ -81,13 +82,6 @@ def redshift_deployment_type(hostname: str | None) -> str:
     if ".redshift.amazonaws.com" in host:
         return "provisioned"
     return "unknown"
-
-
-_RESOURCE_KEY_BY_DEPLOYMENT = {"serverless": "workgroup_name", "provisioned": "cluster_identifier"}
-
-
-def redshift_resource_key(config: Mapping[str, Any]) -> str | None:
-    return _RESOURCE_KEY_BY_DEPLOYMENT.get(redshift_deployment_type(config.get("host")))
 
 
 REDSHIFT_HISTORY_ATTEMPTS = 3
@@ -152,11 +146,8 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         self.database = config.get("database") or "dev"
         self.username = config.get("username")
         self.password = config.get("password")
-        from benchbox.core.compute_resource import bind_resource_key
-
-        compute = bind_resource_key("redshift", config, redshift_resource_key(config))
-        self.cluster_identifier = compute.get("cluster_identifier")
-        self.compute_resource = compute.get("compute_resource")
+        self.compute_resource = config.get("compute_resource")
+        self.cluster_identifier = None
 
         self.admin_database = config.get("admin_database") or "dev"
 
@@ -217,7 +208,20 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
         self.strict_validation = config.get("strict_validation", True)
 
         self.deployment_type = self._detect_deployment_type(self.host or "")
-        self.workgroup_name = compute.get("workgroup_name")
+        resource_kind = config.get(COMPUTE_RESOURCE_KIND_OPTION) or {
+            "serverless": "workgroup",
+            "provisioned": "cluster",
+        }.get(self.deployment_type)
+        if resource_kind is None and self.compute_resource:
+            raise ConfigurationError(
+                f"Ambiguous compute resource for platform 'redshift': host {self.host!r} is not a "
+                "*.redshift.amazonaws.com or *.redshift-serverless.amazonaws.com endpoint, so BenchBox cannot tell "
+                f"whether compute_resource={self.compute_resource!r} names a provisioned cluster or a serverless "
+                "workgroup. Connect through the AWS endpoint hostname, or remove compute_resource."
+            )
+        self.workgroup_name = self.compute_resource if resource_kind == "workgroup" else None
+        if resource_kind == "cluster":
+            self.cluster_identifier = self.compute_resource
         if self.workgroup_name is None and self.deployment_type == "serverless" and self.cluster_identifier is None:
             self.workgroup_name = self._extract_identifier_from_hostname(self.host or "", self.deployment_type)
 
@@ -284,7 +288,6 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
             **build_adapter_config(
                 config,
                 platform="redshift",
-                resource_key=redshift_resource_key(config),
                 fields=[
                     "host",
                     "port",
@@ -299,9 +302,8 @@ class RedshiftAdapter(CursorValidationQueryExecutionMixin, PlatformAdapter):
                     "aws_secret_access_key",
                     "aws_session_token",
                     "aws_region",
-                    "cluster_identifier",
                     "compute_resource",
-                    "workgroup_name",
+                    COMPUTE_RESOURCE_KIND_OPTION,
                     "admin_database",
                     "connect_timeout",
                     "statement_timeout",
@@ -2489,7 +2491,8 @@ _build_redshift_config = make_registered_platform_config_builder(
         "aws_secret_access_key",
         "aws_session_token",
         "aws_region",
-        "cluster_identifier",
+        "compute_resource",
+        COMPUTE_RESOURCE_KIND_OPTION,
         "admin_database",
         "connect_timeout",
         "statement_timeout",
@@ -2498,5 +2501,4 @@ _build_redshift_config = make_registered_platform_config_builder(
         "strict_validation",
     ],
     base_options={"admin_database": "dev"},
-    resource_key=redshift_resource_key,
 )

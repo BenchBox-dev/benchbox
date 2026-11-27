@@ -17,7 +17,7 @@ def test_influxdb_smoke_core_mode(monkeypatch, tmp_path):
     from benchbox.platforms.influxdb import InfluxDBAdapter
 
     adapter = InfluxDBAdapter(
-        mode="core",
+        _deployment_selector="core",
         host=state.host,
         port=state.port,
         token=state.token,
@@ -50,7 +50,7 @@ def test_influxdb_smoke_cloud_mode(monkeypatch, tmp_path):
     from benchbox.platforms.influxdb import InfluxDBAdapter
 
     adapter = InfluxDBAdapter(
-        mode="cloud",
+        _deployment_selector="cloud",
         host=state.host,
         token=state.token,
         org="test-org",
@@ -76,7 +76,7 @@ def test_influxdb_requires_valid_mode(monkeypatch):
 
     with pytest.raises(ValueError) as excinfo:
         InfluxDBAdapter(
-            mode="invalid_mode",
+            _deployment_selector="invalid_mode",
             host="localhost",
             token="test-token",
             database="test",
@@ -94,7 +94,7 @@ def test_influxdb_query_execution(monkeypatch, tmp_path):
     from benchbox.platforms.influxdb import InfluxDBAdapter
 
     adapter = InfluxDBAdapter(
-        mode="core",
+        _deployment_selector="core",
         host=state.host,
         port=state.port,
         token=state.token,
@@ -122,7 +122,7 @@ def test_influxdb_table_row_count(monkeypatch, tmp_path):
     from benchbox.platforms.influxdb import InfluxDBAdapter
 
     adapter = InfluxDBAdapter(
-        mode="core",
+        _deployment_selector="core",
         host=state.host,
         port=state.port,
         token=state.token,
@@ -147,7 +147,7 @@ def test_influxdb_schema_auto_creation(monkeypatch, tmp_path):
     from benchbox.platforms.influxdb import InfluxDBAdapter
 
     adapter = InfluxDBAdapter(
-        mode="core",
+        _deployment_selector="core",
         host=state.host,
         port=state.port,
         token=state.token,
@@ -178,7 +178,7 @@ def test_influxdb_get_tables(monkeypatch, tmp_path):
     from benchbox.platforms.influxdb import InfluxDBAdapter
 
     adapter = InfluxDBAdapter(
-        mode="core",
+        _deployment_selector="core",
         host=state.host,
         port=state.port,
         token=state.token,

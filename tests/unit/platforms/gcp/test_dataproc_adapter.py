@@ -56,7 +56,7 @@ class TestDataprocAdapterInitialization:
             adapter = DataprocAdapter(
                 project_id="my-project",
                 region="us-west1",
-                cluster_name="my-cluster",
+                compute_resource="my-cluster",
                 gcs_staging_dir="gs://my-bucket/benchbox-data",
                 database="my_benchmark_db",
             )
@@ -153,7 +153,7 @@ class TestDataprocAdapterPlatformInfo:
             adapter = DataprocAdapter(
                 project_id="my-project",
                 region="europe-west1",
-                cluster_name="test-cluster",
+                compute_resource="test-cluster",
                 gcs_staging_dir="gs://my-bucket/data",
             )
 
@@ -206,7 +206,7 @@ class TestDataprocAdapterConnection:
 
             adapter = DataprocAdapter(
                 project_id="my-project",
-                cluster_name="my-cluster",
+                compute_resource="my-cluster",
                 gcs_staging_dir="gs://my-bucket/data",
             )
 
@@ -368,7 +368,7 @@ class TestDataprocAdapterFromConfig:
             config = {
                 "project_id": "test-project",
                 "region": "asia-east1",
-                "cluster_name": "test-cluster",
+                "compute_resource": "test-cluster",
                 "gcs_staging_dir": "gs://test-bucket/data",
                 "database": "test_db",
             }

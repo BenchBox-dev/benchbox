@@ -126,7 +126,7 @@ class TestSnowflakeConfigurationMessage:
         from benchbox.platforms.snowflake import SnowflakeAdapter
 
         assert "benchbox setup --platform snowflake" in message
-        SnowflakeAdapter(account="acct", username="user", password="secret", warehouse="WH", database="DB")
+        SnowflakeAdapter(account="acct", username="user", password="secret", compute_resource="WH", database="DB")
 
     def test_setup_prompt_lists_variable_names(self, clean_environment):
         from benchbox.platforms.credentials.snowflake import _auto_detect_snowflake

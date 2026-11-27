@@ -109,10 +109,6 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
 
         self._dialect = "spark"
 
-        for spelling in ("deployment", "deployment_mode"):
-            raw = config.get(spelling)
-            if isinstance(raw, str) and raw.strip().lower() == "docker":
-                self._validate_deployment(raw)
         self.deployment = self._validate_deployment(select_adapter_deployment("velox", config, "local"))
         self.deployment_selected = self.deployment
         self.deployment_selected_class = deployment_class("velox", self.deployment)
@@ -198,8 +194,6 @@ class VeloxAdapter(SparkLikeAdapterMixin, SparkDataLoadMixin, SparkQueryExecutio
                 merged,
                 platform="velox",
                 fields=[
-                    "deployment",
-                    "deployment_mode",
                     "_explicit_platform_options",
                     "endpoint",
                     "gluten_jar_path",
@@ -559,8 +553,6 @@ _build_velox_config = make_registered_platform_config_builder(
     "Apache Gluten + Velox",
     "pyspark",
     [
-        "deployment",
-        "deployment_mode",
         "endpoint",
         "gluten_jar_path",
         "gluten_version",

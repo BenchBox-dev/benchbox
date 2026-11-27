@@ -35,11 +35,11 @@ except ImportError:
 from benchbox.core.dataframe.tuning import DataFrameTuningConfiguration
 from benchbox.core.execution_engine import (
     ExecutionEngineReceipt,
-    legacy_option_engine,
     resolve_requested,
     supported_execution_engines,
 )
 from benchbox.core.platform_manifest import DEFAULT_EXECUTION_ENGINE
+from benchbox.core.removed_options import reject_removed_keywords
 from benchbox.platforms.dataframe.pandas_df import _pandas_string_columns
 from benchbox.platforms.dataframe.pandas_family import (
     PandasFamilyAdapter,
@@ -104,14 +104,17 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
         very_verbose: bool = False,
         n_workers: int | None = None,
         threads_per_worker: int | None = None,
-        use_distributed: bool | None = None,
         scheduler_address: str | None = None,
         memory_limit: str | None = None,
         spill_directory: str | Path | None = None,
         tuning_config: DataFrameTuningConfiguration | None = None,
         execution_engine: str = "default",
         allow_third_party_extensions: bool = False,
+        **removed: Any,
     ) -> None:
+        reject_removed_keywords("dask", removed)
+        if removed:
+            raise TypeError(f"DaskDataFrameAdapter got unexpected keyword arguments: {sorted(removed)}")
         if not DASK_AVAILABLE:
             raise ImportError("Dask not installed. Install with: pip install dask[distributed]")
 
@@ -129,7 +132,6 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
         self.allow_third_party_extensions = bool(allow_third_party_extensions)
         self.threads_per_worker = threads_per_worker if threads_per_worker is not None else 1
         self.scheduler_address = scheduler_address
-        self._legacy_use_distributed = use_distributed
         self._engine_receipt = self.resolve_execution_engine(execution_engine)
         self.use_distributed = self._engine_receipt.applied == "distributed"
         self._memory_limit: str | None = memory_limit
@@ -174,36 +176,15 @@ class DaskDataFrameAdapter(PandasFamilyAdapter[DaskDF]):
     def resolve_execution_engine(self, requested: str) -> ExecutionEngineReceipt:
         resolved = resolve_requested("dask", requested)
         explicit = None if resolved == DEFAULT_EXECUTION_ENGINE else resolved
-        legacy = None
-        if self._legacy_use_distributed is not None:
-            if not isinstance(self._legacy_use_distributed, bool):
-                raise ValueError("Dask use_distributed must be a boolean")
-            if self.scheduler_address and not self._legacy_use_distributed:
-                raise ValueError(
-                    "Dask use_distributed=false cannot be combined with scheduler_address; "
-                    "use execution_engine='distributed' (--execution-engine distributed) to connect to a scheduler"
-                )
-            legacy = legacy_option_engine("dask", "use_distributed", self._legacy_use_distributed)
-        if explicit is not None and legacy is not None and explicit != legacy:
-            raise ValueError(
-                "Conflicting execution engine sources: "
-                f"explicit setting requests {explicit!r} vs legacy option use_distributed requests {legacy!r}"
-            )
-        selected = explicit or legacy or "distributed"
+        selected = explicit or "distributed"
         if self.scheduler_address and selected != "distributed":
             raise ValueError("Dask scheduler_address requires execution_engine='distributed'")
         engines = supported_execution_engines("dask")
-        if explicit is not None:
-            resolution = "explicit"
-        elif legacy is not None:
-            resolution = "legacy_option"
-        else:
-            resolution = "platform_default"
         return ExecutionEngineReceipt(
-            requested=selected if explicit is not None or legacy is not None else DEFAULT_EXECUTION_ENGINE,
+            requested=selected if explicit is not None else DEFAULT_EXECUTION_ENGINE,
             applied=selected,
             applied_class=engines[selected].engine_class,
-            resolution=resolution,
+            resolution="explicit" if explicit is not None else "platform_default",
         )
 
     def _apply_tuning(self) -> None:

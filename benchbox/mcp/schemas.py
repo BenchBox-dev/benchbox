@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 from benchbox.core.constants import MCP_DATA_ONLY_ALIASES, MCP_MODE_CHOICES, VALID_PHASES
+from benchbox.core.removed_options import removed_option_message
 
 if TYPE_CHECKING:
     from benchbox.core.deployment import PlatformSelector
@@ -100,7 +101,6 @@ class MCPPlatformOptionContract:
 MCP_PLATFORM_OPTION_ALLOWLIST: dict[str, dict[str, MCPPlatformOptionSpec]] = {
     "clickhouse": {
         "connection_profile": _MCP_OPTION("string"),
-        "deployment_mode": _MCP_OPTION("string", choices=("local", "server")),
     },
     "clickhouse-server": {
         "connection_profile": _MCP_OPTION("string"),
@@ -113,7 +113,6 @@ MCP_PLATFORM_OPTION_ALLOWLIST: dict[str, dict[str, MCPPlatformOptionSpec]] = {
         "memory_limit": _MCP_OPTION("string"),
         "n_workers": _MCP_OPTION("int", minimum=1, maximum=256),
         "threads_per_worker": _MCP_OPTION("int", minimum=1, maximum=256),
-        "use_distributed": _MCP_OPTION("bool"),
     },
     "datafusion": {
         "batch_size": _MCP_OPTION("int", minimum=1, maximum=1_000_000),
@@ -140,7 +139,6 @@ MCP_PLATFORM_OPTION_ALLOWLIST: dict[str, dict[str, MCPPlatformOptionSpec]] = {
     "polars": {
         "n_rows": _MCP_OPTION("int", minimum=1, maximum=10_000_000),
         "rechunk": _MCP_OPTION("bool"),
-        "streaming": _MCP_OPTION("bool"),
     },
     "spark": {"adaptive_enabled": _MCP_OPTION("bool")},
     "sqlite": {
@@ -186,10 +184,6 @@ _CLICKHOUSE_PROFILE_CONTRACT = _contract(
 MCP_PLATFORM_OPTION_CONTRACT: dict[str, dict[str, MCPPlatformOptionContract]] = {
     "clickhouse": {
         "connection_profile": _CLICKHOUSE_PROFILE_CONTRACT,
-        "deployment_mode": _contract(
-            "Deprecated alias of the clickhouse:local|server platform name, resolved through the core deployment selector",
-            "connection",
-        ),
     },
     "clickhouse-server": {
         "connection_profile": _CLICKHOUSE_PROFILE_CONTRACT,
@@ -202,7 +196,6 @@ MCP_PLATFORM_OPTION_CONTRACT: dict[str, dict[str, MCPPlatformOptionContract]] = 
         "memory_limit": _contract("Dask worker resource envelope", "resource"),
         "n_workers": _contract("Dask LocalCluster worker count", "resource"),
         "threads_per_worker": _contract("Dask LocalCluster thread count", "resource"),
-        "use_distributed": _contract("Dask execution-mode selector", "execution"),
     },
     "datafusion": {
         "batch_size": _contract("DataFusion execution configuration", "resource"),
@@ -235,7 +228,6 @@ MCP_PLATFORM_OPTION_CONTRACT: dict[str, dict[str, MCPPlatformOptionContract]] = 
     "polars": {
         "n_rows": _contract("Polars input row limit", "resource"),
         "rechunk": _contract("Polars dataframe memory layout", "resource"),
-        "streaming": _contract("Polars dataframe execution mode", "execution"),
     },
     "spark": {"adaptive_enabled": _contract("Spark adaptive execution setting", "execution")},
     "sqlite": {
@@ -322,23 +314,13 @@ def resolve_clickhouse_connection_profile(name: str) -> dict[str, object]:
     return dict(profile)
 
 
-def _resolved_clickhouse_deployment(normalized: Mapping[str, object]) -> str | None:
-    from benchbox.core.deployment import normalize_deployment_value
-    from benchbox.core.platform_registry import PlatformRegistry
-
-    requested = normalized.get("deployment_mode")
-    if requested is None:
-        return PlatformRegistry.get_default_deployment("clickhouse")
-    return normalize_deployment_value("clickhouse", requested)
-
-
 def _validate_clickhouse_options(platform: str, normalized: Mapping[str, object]) -> None:
     profile = normalized.get("connection_profile")
     if profile is None:
         return
     if not CLICKHOUSE_PROFILE_NAME_PATTERN.fullmatch(str(profile)):
         raise MCPValidationError("Platform option 'connection_profile' must be a lowercase snake_case profile name")
-    if platform == "clickhouse" and _resolved_clickhouse_deployment(normalized) != "server":
+    if platform == "clickhouse":
         raise MCPValidationError(
             "Platform option 'connection_profile' requires the server deployment: "
             "use platform 'clickhouse:server' or 'clickhouse-server'"
@@ -476,6 +458,9 @@ def validate_platform_options(platform: str, options: Mapping[str, object] | Non
         name = raw_name.lower()
         spec = specs.get(name)
         contract = contracts.get(name)
+        removed = removed_option_message(platform, name)
+        if removed is not None:
+            raise MCPValidationError(removed)
         if spec is None or contract is None:
             raise MCPValidationError(f"Platform option '{name}' is not authorized for MCP")
         parsed = spec.parse(name, raw_value)

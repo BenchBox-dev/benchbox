@@ -26,7 +26,6 @@ _build_databricks_config = make_platform_config_builder(
         "server_hostname",
         "http_path",
         "compute_resource",
-        "warehouse_id",
         "access_token",
         "catalog",
         "schema",

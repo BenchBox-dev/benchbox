@@ -34,7 +34,7 @@ class TestVeloxSQLSmoke:
     def adapter(self):
         from benchbox.platforms.velox import VeloxAdapter
 
-        kwargs: dict = {"database": "benchbox_velox_smoke", "deployment": VELOX_DEPLOYMENT}
+        kwargs: dict = {"database": "benchbox_velox_smoke", "_deployment_selector": VELOX_DEPLOYMENT}
         if VELOX_DEPLOYMENT == "remote":
             kwargs["endpoint"] = VELOX_ENDPOINT
         else:

@@ -35,7 +35,7 @@ def adapter():
         from benchbox.platforms.aws import EMRServerlessAdapter
 
         yield EMRServerlessAdapter(
-            application_id="app-123",
+            compute_resource="app-123",
             s3_staging_dir="s3://bucket/prefix",
             execution_role_arn="arn:aws:iam::123:role/EMR",
         )
@@ -222,7 +222,7 @@ class TestExecuteAndClose:
 
         with pytest.raises(ConfigurationError):
             EMRServerlessAdapter(
-                application_id="app-123",
+                compute_resource="app-123",
                 s3_staging_dir="s3://bucket/prefix",
                 execution_role_arn="arn:aws:iam::123:role/EMR",
             )
@@ -238,7 +238,7 @@ class TestExecuteAndClose:
 
             with caplog.at_level("WARNING", logger="benchbox.platforms.aws.emr_serverless_adapter"):
                 adapter = EMRServerlessAdapter(
-                    application_id="app-123",
+                    compute_resource="app-123",
                     s3_staging_dir="s3://bucket/prefix",
                     execution_role_arn="arn:aws:iam::123:role/EMR",
                 )
@@ -307,7 +307,7 @@ class TestFromConfigTuning:
         ):
             adapter = EMRServerlessAdapter.from_config(
                 {
-                    "application_id": "app-1",
+                    "compute_resource": "app-1",
                     "s3_staging_dir": "s3://b/x",
                     "execution_role_arn": "arn:aws:iam::1:role/R",
                     "tuning_enabled": True,

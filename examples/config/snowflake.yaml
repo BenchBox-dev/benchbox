@@ -2,7 +2,7 @@ type: snowflake
 connection:
   extra_params:
     account: "your-account.snowflakecomputing.com"
-    warehouse: "COMPUTE_WH"
+    compute_resource: "COMPUTE_WH"
     database: "BENCHBOX"
     schema: "PUBLIC"
   username: "${SNOWFLAKE_USER}"
@@ -10,7 +10,7 @@ connection:
   extra_params:
     role: "ACCOUNTADMIN"
 settings:
-  warehouse_size: "MEDIUM"
+  compute_size: "MEDIUM"
   auto_suspend: 300
   auto_resume: true
   multi_cluster_warehouse: false

@@ -276,11 +276,8 @@ class TestBuildPlatformAdapterConfig:
         }
         assert result == expected
 
-    def test_build_clickhouse_config(self):
-
+    def test_build_clickhouse_server_config(self):
         args = SimpleNamespace(
-            deployment_mode="server",
-            mode=None,
             data_path="/tmp/ch_data",
             host="clickhouse.example.com",
             port=9000,
@@ -289,11 +286,10 @@ class TestBuildPlatformAdapterConfig:
             secure=True,
         )
 
-        result = build_platform_adapter_config("clickhouse", args)
+        result = build_platform_adapter_config("clickhouse-server", args)
 
         expected = {
-            "deployment_mode": "server",
-            "mode": "server",
+            "_deployment_selector": "server",
             "data_path": "/tmp/ch_data",
             "host": "clickhouse.example.com",
             "port": 9000,
@@ -303,38 +299,20 @@ class TestBuildPlatformAdapterConfig:
         }
         assert result == expected
 
-    def test_build_clickhouse_config_normalizes_legacy_mode_alias(self):
-        args = SimpleNamespace(
-            deployment_mode=None,
-            mode="embedded",
-            data_path="/tmp/ch_data",
-            host="clickhouse.example.com",
-            port=9000,
-            user="admin",
-            password="secret",
-            secure=True,
-        )
+    @pytest.mark.parametrize(
+        ("platform", "removed"),
+        [
+            ("clickhouse", {"deployment_mode": "server"}),
+            ("clickhouse", {"mode": "embedded"}),
+            ("clickhouse", {"embedded": True}),
+            ("clickhouse-server", {"deployment_mode": "server"}),
+        ],
+    )
+    def test_build_clickhouse_config_rejects_removed_keys(self, platform, removed):
+        args = SimpleNamespace(data_path=None, host=None, port=None, user=None, password=None, secure=None, **removed)
 
-        result = build_platform_adapter_config("clickhouse", args)
-
-        assert result["deployment_mode"] == "local"
-        assert result["mode"] == "local"
-
-    def test_build_clickhouse_config_rejects_cloud_mode(self):
-        args = SimpleNamespace(
-            deployment_mode="cloud",
-            mode=None,
-            embedded=None,
-            data_path=None,
-            host=None,
-            port=None,
-            user=None,
-            password=None,
-            secure=None,
-        )
-
-        with pytest.raises(ValueError, match="clickhouse-cloud"):
-            build_platform_adapter_config("clickhouse", args)
+        with pytest.raises(ValueError, match="was removed in BenchBox 0.6.0"):
+            build_platform_adapter_config(platform, args)
 
     def test_build_unknown_platform_config(self):
 
@@ -577,11 +555,11 @@ class TestBuiltinDefaults:
         [
             ("duckdb", {"memory_limit": "4GB", "database_path": None}),
             ("databricks", {"catalog": "workspace", "schema": "benchbox"}),
-            ("clickhouse", {"deployment_mode": "local", "data_path": "/tmp/benchbox_ch_local"}),
+            ("clickhouse", {"_deployment_selector": "local", "data_path": "/tmp/benchbox_ch_local"}),
             ("sqlite", {"timeout": 30.0, "database_path": None}),
             ("bigquery", {"location": "US", "dataset_id": "benchbox"}),
             ("redshift", {"port": 5439, "database": "dev"}),
-            ("snowflake", {"warehouse": "COMPUTE_WH", "database": "BENCHBOX"}),
+            ("snowflake", {"compute_resource": "COMPUTE_WH", "database": "BENCHBOX"}),
         ],
     )
     def test_platform_specific_defaults(self, platform, expected):

@@ -84,14 +84,14 @@ def test_tuned_tpcds_answers_match_untuned(tmp_path: Path) -> None:
 
     client = ClickHouseLocalClient()
     try:
-        untuned = ClickHouseAdapter(deployment_mode="local")
+        untuned = ClickHouseAdapter(_deployment_selector="local")
         untuned.create_schema(benchmark, client)
         untuned.load_data(benchmark, client, data_dir)
         untuned_answers = _query_answers(client, queries)
 
         _drop_all_tables(client)
 
-        tuned = ClickHouseAdapter(deployment_mode="local")
+        tuned = ClickHouseAdapter(_deployment_selector="local")
         tuned.tuning_enabled = True
         tuned.unified_tuning_configuration = _load_curated_tuning_config()
         tuned.create_schema(benchmark, client)

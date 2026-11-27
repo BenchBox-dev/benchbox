@@ -62,7 +62,7 @@ class TestSnowparkConnectAdapterInitialization:
             account="xy12345.us-east-1",
             user="test_user",
             password="test_password",
-            warehouse="COMPUTE_WH",
+            compute_resource="COMPUTE_WH",
             database="BENCHBOX",
         )
 
@@ -122,10 +122,18 @@ class TestSnowparkConnectAdapterInitialization:
             account="xy12345.us-east-1",
             user="test_user",
             password="test_password",
-            warehouse_size="XLARGE",
+            compute_size="XLARGE",
         )
 
         assert adapter.warehouse_size == "XLARGE"
+
+    def test_removed_compute_keywords_are_rejected(self, mock_snowpark):
+        from benchbox.platforms.snowpark_connect import SnowparkConnectAdapter
+
+        with pytest.raises(TypeError, match="'warehouse'.*'compute_resource'"):
+            SnowparkConnectAdapter(account="xy12345", user="u", password="p", warehouse="WH")
+        with pytest.raises(TypeError, match="'warehouse_size'.*'compute_size'"):
+            SnowparkConnectAdapter(account="xy12345", user="u", password="p", warehouse_size="LARGE")
 
     def test_init_with_role(self, mock_snowpark):
         from benchbox.platforms.snowpark_connect import SnowparkConnectAdapter
@@ -502,7 +510,7 @@ class TestSnowparkConnectAdapterCLI:
             "account": "xy12345.us-east-1",
             "user": "test_user",
             "password": "test_password",
-            "warehouse": "MY_WH",
+            "compute_resource": "MY_WH",
             "database": "MY_DB",
             "schema": "MY_SCHEMA",
             "role": "MY_ROLE",
@@ -663,7 +671,7 @@ class TestSnowparkConnectAdapterConnectionParams:
             account="xy12345.us-east-1",
             user="test_user",
             password="test_password",
-            warehouse="COMPUTE_WH",
+            compute_resource="COMPUTE_WH",
             database="BENCHBOX",
             schema="PUBLIC",
         )

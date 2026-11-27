@@ -51,7 +51,7 @@ class TestEligibility:
     def test_cloud_mode_not_eligible(self, tmp_path):
         f = tmp_path / "region.tbl"
         f.write_text("0|AFRICA|x|\n")
-        adapter = _adapter(client_id="id", client_secret="secret", account_name="acct", engine_name="eng")
+        adapter = _adapter(client_id="id", client_secret="secret", account_name="acct", compute_resource="eng")
         assert adapter._core_native_load_eligible(f, TBL_DIALECT) is False
 
     def test_compressed_file_not_eligible(self, tmp_path):

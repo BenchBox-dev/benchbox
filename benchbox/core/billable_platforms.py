@@ -17,7 +17,6 @@ BILLABLE_CATEGORY = "cloud"
 MANAGED_DEPLOYMENT_CLASS = "managed"
 
 _TRUTHY = frozenset({"1", "true", "yes", "on"})
-_DEPLOYMENT_OPTION_KEYS = ("deployment_mode", "deployment", "mode")
 
 
 @dataclass(frozen=True)
@@ -61,20 +60,9 @@ def _canonical_platform(platform: str) -> tuple[str, str | None]:
     return PlatformRegistry.resolve_platform_name(base), (mode if separator else None)
 
 
-def _option_deployments(platform: str, options: Mapping[str, object] | None) -> list[str]:
-    from benchbox.core.deployment import DEPLOYMENT_ALIAS_KEYS
-
-    if not options:
-        return []
-    keys = {*DEPLOYMENT_ALIAS_KEYS.get(platform, ()), *_DEPLOYMENT_OPTION_KEYS}
-    lowered = {str(key).lower(): value for key, value in options.items()}
-    return [str(lowered[key]).strip().lower() for key in sorted(keys) if lowered.get(key) not in (None, "")]
-
-
 def assess_platform(
     platform: str,
     deployment: str | None = None,
-    options: Mapping[str, object] | None = None,
 ) -> BillableAssessment:
     name, selector_mode = _canonical_platform(platform)
     metadata = PlatformRegistry.get_all_platform_metadata().get(name)
@@ -84,7 +72,6 @@ def assess_platform(
         reasons.append(f"registry category '{BILLABLE_CATEGORY}'")
     known_modes = capabilities.deployment_modes if capabilities is not None else {}
     requested = [value for value in (deployment, selector_mode) if value]
-    requested.extend(_option_deployments(name, options))
     resolved: list[str] = [value for value in dict.fromkeys(requested) if value in known_modes]
     if not resolved and capabilities is not None and capabilities.deployment_modes:
         resolved = [capabilities.default_deployment]

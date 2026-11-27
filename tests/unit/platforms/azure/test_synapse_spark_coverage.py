@@ -25,7 +25,7 @@ def _adapter() -> SynapseSparkAdapter:
         mock_staging.from_uri.return_value = MagicMock()
         return SynapseSparkAdapter(
             workspace_name="ws",
-            spark_pool_name="pool",
+            compute_resource="pool",
             storage_account="acct",
             storage_container="container",
         )

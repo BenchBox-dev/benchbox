@@ -157,7 +157,7 @@ class SnowflakeAdapter(PlatformAdapter):
         self._dialect = "snowflake"
 
         self.account = config.get("account")
-        self.warehouse = config.get("compute_resource") or config.get("warehouse") or "COMPUTE_WH"
+        self.warehouse = config.get("compute_resource") or "COMPUTE_WH"
         self.database = config.get("database") or "BENCHBOX"
         self.schema = config.get("schema") or "PUBLIC"
         self.username = config.get("username")
@@ -169,7 +169,7 @@ class SnowflakeAdapter(PlatformAdapter):
         self.private_key_path = config.get("private_key_path")
         self.private_key_passphrase = config.get("private_key_passphrase")
 
-        self.warehouse_size = config.get("compute_size") or config.get("warehouse_size") or "MEDIUM"
+        self.warehouse_size = config.get("compute_size") or "MEDIUM"
         self.auto_suspend = config.get("auto_suspend") if config.get("auto_suspend") is not None else 300
         self.auto_resume = config.get("auto_resume") if config.get("auto_resume") is not None else True
         self.multi_cluster_warehouse = (
@@ -287,7 +287,7 @@ class SnowflakeAdapter(PlatformAdapter):
 
         sf_group = parser.add_argument_group("Snowflake Arguments")
         sf_group.add_argument("--account", type=str, help="Snowflake account identifier")
-        sf_group.add_argument("--warehouse", type=str, default="COMPUTE_WH", help="Warehouse name")
+        sf_group.add_argument("--compute-resource", type=str, default="COMPUTE_WH", help="Warehouse name")
         sf_group.add_argument(
             "--platform", type=str, default=None, help="Database name (auto-generated if not specified)"
         )
@@ -326,7 +326,6 @@ class SnowflakeAdapter(PlatformAdapter):
             platform="snowflake",
             fields=[
                 "account",
-                "warehouse",
                 "compute_resource",
                 "schema",
                 "username",
@@ -336,7 +335,6 @@ class SnowflakeAdapter(PlatformAdapter):
                 "authenticator",
                 "private_key_path",
                 "private_key_passphrase",
-                "warehouse_size",
                 "auto_suspend",
                 "compute_size",
                 "auto_resume",
@@ -674,23 +672,16 @@ class SnowflakeAdapter(PlatformAdapter):
         )
         collection_error = compute.get("collection_error_class")
         collection_status = "available" if observed else "partial"
-        if collection_error and not (
-            config.get("compute_resource")
-            or config.get("warehouse")
-            or config.get("compute_size")
-            or config.get("warehouse_size")
-        ):
+        if collection_error and not (config.get("warehouse") or config.get("warehouse_size")):
             collection_status = "unavailable"
 
         payload = {
-            "warehouse": compute.get("warehouse_name") or config.get("compute_resource") or config.get("warehouse"),
-            "warehouse_size": compute.get("warehouse_size")
-            or config.get("compute_size")
-            or config.get("warehouse_size"),
+            "warehouse": compute.get("warehouse_name") or config.get("warehouse"),
+            "warehouse_size": compute.get("warehouse_size") or config.get("warehouse_size"),
             "warehouse_size_source": "observed"
             if compute.get("warehouse_size")
             else "requested"
-            if config.get("compute_size") or config.get("warehouse_size")
+            if config.get("warehouse_size")
             else None,
             "warehouse_type": compute.get("warehouse_type"),
             "warehouse_state": compute.get("warehouse_state"),
@@ -2135,7 +2126,8 @@ _build_snowflake_config = make_registered_platform_config_builder(
     "snowflake-connector-python",
     [
         "account",
-        "warehouse",
+        "compute_resource",
+        "compute_size",
         "schema",
         "username",
         "password",

@@ -25,7 +25,7 @@ pytestmark = [
 
 _DATAFRAME_OPTION_CASES = [
     ("datafusion-df", "target_partitions", "4", 4),
-    ("polars-df", "streaming", "true", True),
+    ("polars-df", "rechunk", "true", True),
     ("pandas-df", "dtype_backend", "pyarrow", "pyarrow"),
     ("cudf-df", "device_id", "1", 1),
     ("dask-df", "n_workers", "8", 8),

@@ -38,7 +38,7 @@ class TestClickHouseAdapter:
     def test_initialization_success(self):
         with patch("benchbox.platforms.clickhouse.setup.ClickHouseClient"):
             adapter = ClickHouseAdapter(
-                deployment_mode="server",
+                _deployment_selector="server",
                 host="localhost",
                 port=9000,
                 database="test",
@@ -57,7 +57,7 @@ class TestClickHouseAdapter:
             patch("benchbox.platforms.clickhouse.setup.ClickHouseClient"),
             pytest.raises(ValueError, match="other than 1000"),
         ):
-            ClickHouseAdapter(deployment_mode="server", insert_block_size=1000)
+            ClickHouseAdapter(_deployment_selector="server", insert_block_size=1000)
 
     def test_initialization_missing_driver(self):
         with (
@@ -67,7 +67,7 @@ class TestClickHouseAdapter:
             ),
             pytest.raises(ImportError) as excinfo,
         ):
-            ClickHouseAdapter(deployment_mode="server")
+            ClickHouseAdapter(_deployment_selector="server")
 
         assert "Missing dependencies for clickhouse platform" in str(excinfo.value)
 
@@ -81,7 +81,7 @@ class TestClickHouseAdapter:
             None,
         ]
 
-        adapter = ClickHouseAdapter(deployment_mode="server", host="localhost", port=9000)
+        adapter = ClickHouseAdapter(_deployment_selector="server", host="localhost", port=9000)
         connection = adapter.create_connection()
 
         assert connection._client is mock_client
@@ -95,7 +95,7 @@ class TestClickHouseAdapter:
         mock_client_class.return_value = Mock()
         mock_client_class.return_value.execute.side_effect = [[], None, None]
 
-        adapter = ClickHouseAdapter(deployment_mode="server", send_receive_timeout=900)
+        adapter = ClickHouseAdapter(_deployment_selector="server", send_receive_timeout=900)
         adapter.create_connection()
 
         assert mock_client_class.call_args_list[2].kwargs["send_receive_timeout"] == 900
@@ -110,7 +110,7 @@ class TestClickHouseAdapter:
         mock_client_class.side_effect = [check_client, create_client, main_client]
 
         adapter = ClickHouseAdapter(
-            deployment_mode="server",
+            _deployment_selector="server",
             host="localhost",
             port=9000,
             database="benchbox_run",
@@ -130,7 +130,7 @@ class TestClickHouseAdapter:
         check_client.execute.return_value = []
         mock_client_class.return_value = check_client
 
-        adapter = ClickHouseAdapter(deployment_mode="server", database="bad-name")
+        adapter = ClickHouseAdapter(_deployment_selector="server", database="bad-name")
 
         with pytest.raises(ValueError, match="Invalid database identifier"):
             adapter.create_connection()
@@ -139,14 +139,14 @@ class TestClickHouseAdapter:
     def test_create_connection_failure(self, mock_client_class):
         mock_client_class.side_effect = Exception("Connection failed")
 
-        adapter = ClickHouseAdapter(deployment_mode="server")
+        adapter = ClickHouseAdapter(_deployment_selector="server")
 
         with pytest.raises(Exception, match="Connection failed"):
             adapter.create_connection()
 
     def test_sql_translation(self):
         with patch("benchbox.platforms.clickhouse.setup.ClickHouseClient"):
-            adapter = ClickHouseAdapter(deployment_mode="server")
+            adapter = ClickHouseAdapter(_deployment_selector="server")
 
             result = adapter.translate_sql("SELECT * FROM orders", "duckdb")
             assert result == "SELECT * FROM orders;"
@@ -170,7 +170,7 @@ class TestClickHouseAdapter:
             "test2": {"columns": {"name": {"type": "STRING", "nullable": False}}},
         }
 
-        adapter = ClickHouseAdapter(deployment_mode="server")
+        adapter = ClickHouseAdapter(_deployment_selector="server")
         connection = adapter.create_connection()
 
         schema_time = adapter.create_schema(mock_benchmark, connection)
@@ -206,7 +206,7 @@ class TestClickHouseAdapter:
             mock_benchmark.tables = tables_dict
             mock_benchmark.get_schema.return_value = {}
 
-            adapter = ClickHouseAdapter(deployment_mode="server")
+            adapter = ClickHouseAdapter(_deployment_selector="server")
             connection = adapter.create_connection()
 
             with (
@@ -245,7 +245,7 @@ class TestClickHouseAdapter:
             Exception("Query failed"),
         ]
 
-        adapter = ClickHouseAdapter(deployment_mode="server")
+        adapter = ClickHouseAdapter(_deployment_selector="server")
         connection = adapter.create_connection()
 
         result = adapter.execute_query(connection, "INVALID SQL", "q1")
@@ -261,7 +261,7 @@ class TestClickHouseAdapter:
         mock_client = Mock()
         mock_client_class.return_value = mock_client
 
-        adapter = ClickHouseAdapter(deployment_mode="server", strict_validation=False)
+        adapter = ClickHouseAdapter(_deployment_selector="server", strict_validation=False)
         adapter.tuning_enabled = False
         connection = adapter.create_connection()
         mock_client.reset_mock()
@@ -284,7 +284,7 @@ class TestClickHouseAdapter:
         mock_client_class.return_value = mock_client
         mock_client.execute.side_effect = [[], None, None]
 
-        adapter = ClickHouseAdapter(deployment_mode="server", strict_validation=False)
+        adapter = ClickHouseAdapter(_deployment_selector="server", strict_validation=False)
         adapter.tuning_enabled = True
         connection = adapter.create_connection()
 
@@ -306,7 +306,7 @@ class TestClickHouseAdapter:
         mock_client = Mock()
         mock_client_class.return_value = mock_client
 
-        adapter = ClickHouseAdapter(deployment_mode="server", strict_validation=False)
+        adapter = ClickHouseAdapter(_deployment_selector="server", strict_validation=False)
         adapter.tuning_enabled = True
 
         connection = adapter.create_connection()
@@ -339,7 +339,7 @@ class TestClickHouseAdapter:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             adapter = ClickHouseAdapter(
-                deployment_mode="local",
+                _deployment_selector="local",
                 strict_validation=False,
                 data_path=tmpdir,
             )
@@ -361,7 +361,7 @@ class TestClickHouseAdapter:
         from benchbox.core.tpcds.benchmark.runner import TPCDSBenchmark
         from benchbox.core.tuning.interface import TableTuning, TuningColumn
 
-        adapter = ClickHouseAdapter(deployment_mode="local", strict_validation=False, data_path=str(tmp_path))
+        adapter = ClickHouseAdapter(_deployment_selector="local", strict_validation=False, data_path=str(tmp_path))
         connection = adapter.create_connection()
         request.addfinalizer(connection.close)
 
@@ -439,7 +439,7 @@ class TestClickHouseAdapter:
 
     def test_get_database_path_server_mode(self):
         with patch("benchbox.platforms.clickhouse.setup.ClickHouseClient"):
-            adapter = ClickHouseAdapter(deployment_mode="server")
+            adapter = ClickHouseAdapter(_deployment_selector="server")
 
             result = adapter.get_database_path(database_path="some/path.duckdb")
             assert result is None
@@ -449,7 +449,7 @@ class TestClickHouseAdapter:
         with patch("benchbox.platforms.clickhouse.setup.ClickHouseClient"):
             mock_connection = Mock()
 
-            adapter = ClickHouseAdapter(deployment_mode="local")
+            adapter = ClickHouseAdapter(_deployment_selector="local")
 
             result = adapter._apply_setting_with_validation(mock_connection, "join_algorithm", "hash")
             assert result is False
@@ -470,7 +470,7 @@ class TestClickHouseAdapter:
         with patch("benchbox.platforms.clickhouse.setup.ClickHouseClient"):
             mock_connection = Mock()
 
-            adapter = ClickHouseAdapter(deployment_mode="server")
+            adapter = ClickHouseAdapter(_deployment_selector="server")
 
             result = adapter._apply_setting_with_validation(mock_connection, "join_algorithm", "hash")
             assert result is True
@@ -485,7 +485,7 @@ class TestClickHouseAdapter:
 
     def test_memory_setting_parsing(self):
         with patch("benchbox.platforms.clickhouse.setup.ClickHouseClient"):
-            adapter = ClickHouseAdapter(deployment_mode="server")
+            adapter = ClickHouseAdapter(_deployment_selector="server")
 
             assert adapter._parse_memory_setting("8GB") == 8 * 1024 * 1024 * 1024
             assert adapter._parse_memory_setting("512MB") == 512 * 1024 * 1024
@@ -494,7 +494,7 @@ class TestClickHouseAdapter:
 
     def test_table_optimization(self):
         with patch("benchbox.platforms.clickhouse.setup.ClickHouseClient"):
-            adapter = ClickHouseAdapter(deployment_mode="server")
+            adapter = ClickHouseAdapter(_deployment_selector="server")
 
             original = "CREATE TABLE test (id INT, name STRING)"
             optimized = adapter._translate_schema_statement(original)
@@ -608,7 +608,7 @@ class TestClickHouseAdapter:
 
         mock_client.execute.return_value = [["21.8.0"]]
 
-        adapter = ClickHouseAdapter(deployment_mode="server", host="test", port=9000, database="test")
+        adapter = ClickHouseAdapter(_deployment_selector="server", host="test", port=9000, database="test")
         connection = adapter.create_connection()
 
         metadata = adapter._get_platform_metadata(connection)
@@ -632,7 +632,7 @@ class TestClickHouseAdapter:
             [(1000, 1024000, 512000)],
         ]
 
-        adapter = ClickHouseAdapter(deployment_mode="server")
+        adapter = ClickHouseAdapter(_deployment_selector="server")
         connection = adapter.create_connection()
 
         info = adapter.get_table_info(connection, "test_table")
@@ -647,7 +647,7 @@ class TestClickHouseAdapter:
         mock_client = Mock()
         mock_client_class.return_value = mock_client
 
-        adapter = ClickHouseAdapter(deployment_mode="server")
+        adapter = ClickHouseAdapter(_deployment_selector="server")
         connection = adapter.create_connection()
 
         adapter.optimize_table(connection, "test_table")
@@ -665,7 +665,7 @@ class TestClickHouseAdapter:
 
         mock_client_class.side_effect = _factory
 
-        adapter = ClickHouseAdapter(deployment_mode="server")
+        adapter = ClickHouseAdapter(_deployment_selector="server")
         connection = adapter.create_connection()
 
         adapter.close_connection(connection)
@@ -679,7 +679,7 @@ class TestClickHouseAdapter:
             mock_client = Mock()
             mock_client_class.return_value = mock_client
 
-            adapter = ClickHouseAdapter(deployment_mode="server")
+            adapter = ClickHouseAdapter(_deployment_selector="server")
 
             assert adapter.test_connection() is True
 
@@ -712,7 +712,7 @@ class TestClickHouseAdapter:
         mock_tuning.partitioning = None
         mock_tuning.distribution = None
 
-        adapter = ClickHouseAdapter(deployment_mode="server")
+        adapter = ClickHouseAdapter(_deployment_selector="server")
         connection = adapter.create_connection()
 
         adapter.apply_table_tunings(mock_tuning, connection)
@@ -746,7 +746,7 @@ class TestClickHouseAdapter:
         mock_tuning.partitioning = None
         mock_tuning.distribution = None
 
-        adapter = ClickHouseAdapter(deployment_mode="server")
+        adapter = ClickHouseAdapter(_deployment_selector="server")
         connection = adapter.create_connection()
 
         adapter.apply_table_tunings(mock_tuning, connection)
@@ -770,7 +770,7 @@ class TestClickHouseAdapter:
         mock_client = Mock()
         mock_client_class.return_value = mock_client
 
-        adapter = ClickHouseAdapter(deployment_mode="server")
+        adapter = ClickHouseAdapter(_deployment_selector="server")
         connection = adapter.create_connection()
 
         adapter.apply_table_tunings(None, connection)

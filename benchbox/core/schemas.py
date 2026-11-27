@@ -327,6 +327,24 @@ class DatabaseConfig(BaseModel):
             raise ValueError("database name cannot be empty")
         return v.strip()
 
+    @model_validator(mode="before")
+    @classmethod
+    def reject_removed_options(cls, data: Any) -> Any:
+        if not isinstance(data, Mapping):
+            return data
+        platform = data.get("type")
+        if not isinstance(platform, str) or not platform.strip():
+            return data
+        from benchbox.core.removed_options import first_removed_option_message
+
+        options = data.get("options")
+        keys = [key for key in data if key not in cls.model_fields]
+        keys.extend(options if isinstance(options, Mapping) else ())
+        message = first_removed_option_message(platform, keys)
+        if message is not None:
+            raise TypeError(message)
+        return data
+
     @model_validator(mode="after")
     def resolve_platform_selector(self) -> "DatabaseConfig":
         if ":" not in self.type:

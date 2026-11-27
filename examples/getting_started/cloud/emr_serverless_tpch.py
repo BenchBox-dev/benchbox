@@ -40,7 +40,7 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
         options={
             "s3_staging_dir": staging_dir,
             "execution_role_arn": execution_role,
-            "application_id": os.getenv("EMR_APPLICATION_ID"),
+            "compute_resource": os.getenv("EMR_APPLICATION_ID"),
             "create_application": os.getenv("EMR_CREATE_APPLICATION", "").lower() == "true",
             "region": os.getenv("AWS_REGION", "us-east-1"),
             "database": os.getenv("EMR_DATABASE", "benchbox"),

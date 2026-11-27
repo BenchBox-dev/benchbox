@@ -40,7 +40,7 @@ def _build_configs(scale_factor: float) -> tuple[BenchmarkConfig, DatabaseConfig
             "s3_staging_dir": staging_dir,
             "s3_output_location": os.getenv("ATHENA_OUTPUT_LOCATION") or f"{staging_dir.rstrip('/')}/results/",
             "region": os.getenv("AWS_REGION", "us-east-1"),
-            "workgroup": os.getenv("ATHENA_WORKGROUP", "primary"),
+            "compute_resource": os.getenv("ATHENA_WORKGROUP", "primary"),
             "database": os.getenv("ATHENA_DATABASE", "benchbox"),
             "aws_profile": os.getenv("AWS_PROFILE"),
             "default_format": "PARQUET",
