@@ -27922,17 +27922,12 @@
       "title": "Provide the remaining TPC-DS scale-model inputs dsqgen needs: active cities, counties, states and returns key ranges"
     },
     "datagen-lib-tpch": {
-      "claim": {
-        "expires_at": "2026-11-28T00:17:05Z",
-        "generation": "7502bdc9bc604d8396a8b21c2de0ced6",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
-      },
+      "claim": null,
       "needs": [
         "datagen-lib-repo-skeleton"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Generate TPC-H in benchbox-datagen on the upstream tpchgen crates, delimited and Parquet"
     },
     "datagen-lib-tpch-qgen": {
