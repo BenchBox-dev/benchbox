@@ -5689,7 +5689,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-explorer-data",
-      "lifecycle": "active",
+      "lifecycle": "aborted",
       "members": [
         "crr-b3-pipeline-emits-rule-outcome-and-medians",
         "crr-d2-observed-engine-sql-platforms"
