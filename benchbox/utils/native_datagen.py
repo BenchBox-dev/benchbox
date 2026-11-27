@@ -75,12 +75,13 @@ def write_native_tables(
     return NativeGeneration(version=str(module.__version__), files=files)
 
 
-def read_parquet_writer(path: Path) -> str | None:
+def read_parquet_writer(path: Path) -> str:
     import pyarrow.parquet as pq
 
-    metadata = pq.read_schema(path).metadata or {}
-    value = metadata.get(PARQUET_WRITER_METADATA_KEY)
-    return value.decode("utf-8") if value is not None else None
+    value = (pq.read_metadata(path).metadata or {}).get(PARQUET_WRITER_METADATA_KEY)
+    if value is None:
+        raise DatagenBackendError(f"{path} does not record its Parquet writer ({PARQUET_WRITER_METADATA_KEY.decode()})")
+    return value.decode("utf-8")
 
 
 class NativeDatagenMixin:

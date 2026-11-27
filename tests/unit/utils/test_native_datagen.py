@@ -275,3 +275,17 @@ def test_native_parquet_runs_need_native_written_data_while_delimited_data_is_sh
     native_parquet["parquet_row_group_size"] = 122_880
     assert current(native_parquet, "native", "parquet") is True
     assert current(native_parquet, "legacy", "parquet") is False
+
+
+def test_parquet_writer_identity_is_read_from_file_metadata_and_required(tmp_path: Path) -> None:
+    from benchbox.utils.native_datagen import read_parquet_writer
+
+    anonymous = tmp_path / "anonymous.parquet"
+    pq.write_table(pa.table({"key": [1]}), anonymous)
+    with pytest.raises(DatagenBackendError, match="does not record its Parquet writer"):
+        read_parquet_writer(anonymous)
+
+    named = tmp_path / "named.parquet"
+    schema = pa.schema([pa.field("key", pa.int64())], metadata={b"benchbox.parquet_writer": b"benchbox-datagen-0"})
+    pq.write_table(pa.table({"key": [1]}, schema=schema), named)
+    assert read_parquet_writer(named) == "benchbox-datagen-0"
