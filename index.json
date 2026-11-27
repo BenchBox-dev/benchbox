@@ -28130,6 +28130,17 @@
       "status": "done",
       "title": "Fill partitioned Parquet row groups to the configured 122,880 rows"
     },
+    "datagen-ssb-synthetic-reference-rebaseline": {
+      "claim": null,
+      "needs": [
+        "datagen-p3-ssb-cutover",
+        "datagen-p3-synthetic-cutover",
+        "crr-c2-row-count-references-tpc-and-ssb"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Re-baseline SSB and synthetic references and published results on native data"
+    },
     "datagen-tpcgen-adopt-no-trailing-delimiter": {
       "claim": null,
       "needs": [

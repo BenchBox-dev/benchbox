@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    "SSB row-count references at SF 0.01, 0.1, 1 and 10 are regenerated from native data with the library generator version in provenance.",
+    "Legacy-data SSB and synthetic bundles are separated from native ones by data_generation_hash in Explorer cohorts.",
+    "Local SSB and synthetic suites are re-run and submitted by PR to published-results with zero unapproved cloud spend."
+  ],
+  "description": "## Problem\nNative SSB (specification counts, new RNG) and native synthetic data differ from legacy, so row-count references and published bundles built from legacy data go stale at each cutover. The existing re-baseline item covers TPC Parquet only.\n\n## Change\nRegenerate references from native data and re-run local suites after each cutover.\n\n## Decision gates\n- No live-cloud spend without owner approval; cloud bundles stay marked pre-change.\n- Never mix legacy-data and native-data bundles in one cohort.\n\n## Guardrails\n- BenchBox work only in a linked worktree; heavy work only through make heavy-run; never kill processes by name pattern.\n- No divergent fork of tpcgen-rs; carried patches only under the 2026-11-27 rule (<= ~200 changed lines, upstream PR, SHA pin, README entry); anything larger goes to the owner with sizes first.\n- Human commit identity, no agent attribution. Report only observed results.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-27T00:07:31Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "67ab90ef34ed4e0e959460fd43accb58",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
