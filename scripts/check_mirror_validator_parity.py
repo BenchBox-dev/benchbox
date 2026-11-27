@@ -110,6 +110,9 @@ def main(argv: list[str] | None = None) -> int:
 
     problems = differences(mirror["outcomes"], develop["outcomes"])
     count = len(develop["outcomes"])
+    if count == 0:
+        print(f"::error::No stored bundles were found under {bundles_dir}; nothing was compared.", file=sys.stderr)
+        return 1
     if not problems:
         print(f"Mirror and develop validators agree on all {count} stored bundles.")
         return 0

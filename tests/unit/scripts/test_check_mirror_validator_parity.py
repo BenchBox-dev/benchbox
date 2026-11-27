@@ -63,6 +63,18 @@ def test_the_two_validators_agree_on_the_stored_corpus(capsys: pytest.CaptureFix
     assert "agree on all" in capsys.readouterr().out
 
 
+def test_an_empty_bundle_directory_fails_instead_of_agreeing_on_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    empty = tmp_path / "bundles"
+    empty.mkdir()
+
+    assert guard.main(["--bundles-dir", str(empty)]) == 1
+    captured = capsys.readouterr()
+    assert "nothing was compared" in captured.err
+    assert "agree on all" not in captured.out
+
+
 def test_the_mirror_runs_with_the_standard_library_only(tmp_path: Path) -> None:
     report = guard.mirror_report(_slim(tmp_path), _bundles(tmp_path), sys.executable)
     assert report["installed_third_party"] == []
