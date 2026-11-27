@@ -176,7 +176,6 @@ starrocks = ["pymysql>=1.1.0"]
 singlestore = ["singlestoredb>=1.0.0"]
 gizmosql = ["adbc-driver-gizmosql>=2.0.13,<3"]
 
-tpcdi = ["pandas>=3.0.0"]
 clickhouse-local = ["chdb>=4.5.0; sys_platform != 'win32'"]
 table-formats = [
     "deltalake>=1.2.1",
@@ -661,7 +660,6 @@ ignore_rules = [
         "benchbox/core/dataframe/context.py",
         "benchbox/core/dataframe/protocols.py",
         "benchbox/core/operations/base.py",
-        "benchbox/core/tpcdi/_legacy_etl/sources.py",
         "benchbox/platforms/base/adapter.py",
         "benchbox/platforms/base/data_loading.py",
         "benchbox/utils/format_converters/base.py",
@@ -789,7 +787,6 @@ ignore_rules = [
 
     { function_names = ["_initialize_variant_generators", "get_query_categories", "get_file_format_info"], path_contains = [
         "benchbox/core/clickbench/queries.py",
-        "benchbox/core/tpcdi/source_generators.py",
         "benchbox/core/tpchavoc/queries.py",
     ] },
 

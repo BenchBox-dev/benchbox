@@ -6764,10 +6764,6 @@
     "p50_seconds": 0.012419
   },
   {
-    "id": "tests/unit/core/test_verbosity_rollout.py::test_verbose_and_quiet_propagation[TPCDIBenchmark-kwargs5-data_generator]",
-    "p50_seconds": 0.011126
-  },
-  {
     "id": "tests/unit/core/test_wave_b_generators.py::test_h2odb_generator_trips_and_manifest_tracking",
     "p50_seconds": 0.079498
   },

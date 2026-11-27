@@ -171,9 +171,7 @@
    "aliases": [
     "benchbox.tpcdi.TPCDI"
    ],
-   "extras": [
-    "tpcdi"
-   ],
+   "extras": [],
    "signature": "(scale_factor: float = 1.0, output_dir: Union[str, pathlib.Path, NoneType] = None, **kwargs) -> None"
   },
   {
@@ -462,10 +460,8 @@
    "kind": "class",
    "area": "benchmarks",
    "aliases": [],
-   "extras": [
-    "tpcdi"
-   ],
-   "signature": "(scale_factor: float = 1.0, output_dir: Union[str, pathlib.Path, NoneType] = None, enable_parallel: bool = False, max_workers: Optional[int] = None, config: Optional[benchbox.core.tpcdi.config.TPCDIConfig] = None, **kwargs: Any)"
+   "extras": [],
+   "signature": "(scale_factor: float = 1.0, output_dir: Union[str, pathlib.Path, NoneType] = None, config: Optional[benchbox.core.tpcdi.config.TPCDIConfig] = None, **kwargs: Any)"
   },
   {
    "symbol": "benchbox.core.tpcdi.config.TPCDIConfig",
@@ -474,10 +470,8 @@
    "kind": "class",
    "area": "benchmarks",
    "aliases": [],
-   "extras": [
-    "tpcdi"
-   ],
-   "signature": "(scale_factor: float = 1.0, output_dir: Optional[pathlib.Path] = None, enable_parallel: bool = False, max_workers: Optional[int] = None, chunk_size: int = 10000, generation_seed: int = 42, enable_validation: bool = True, strict_validation: bool = False, optimize_memory: bool = True, log_level: str = 'INFO') -> None"
+   "extras": [],
+   "signature": "(scale_factor: float = 1.0, output_dir: Optional[pathlib.Path] = None, chunk_size: int = 10000, generation_seed: int = 42, enable_validation: bool = True, strict_validation: bool = False, optimize_memory: bool = True, log_level: str = 'INFO') -> None"
   },
   {
    "symbol": "benchbox.core.tpch.dataframe_queries.TPCH_DATAFRAME_QUERIES",

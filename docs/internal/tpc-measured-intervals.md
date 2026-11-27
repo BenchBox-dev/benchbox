@@ -95,7 +95,6 @@ Deviation column: tracker item id, `none`, `K<n>` (known deviations) or `F<n>` (
 | I3 | `tpcdi/benchmark.py` `TPCDIBenchmark.run_full_benchmark` | none (untimed 1.2.2.1.2) | Whole run: initialization, schema creation, ETL, validation, metrics | n/a | F7 |
 | I4 | `tpcdi/benchmark.py` `TPCDIBenchmark.run_etl_benchmark` (`datetime.now()` pair around `_execute_etl_stage_queries`) | 7.5.1 | `ETLResult.total_execution_time` as a wall-timestamp difference | n/a | F8 |
 | I5 | `tpcdi/benchmark.py` `TPCDIBenchmark.run_enhanced_etl_pipeline` | none (BenchBox phases) | Enhanced processing, SCD, incremental loading, optional quality monitoring | n/a | none |
-| I6 | `tpcdi/loader.py` `TPCDIDataLoader._load_data`, `load_csv_file` | 7.2.4.1 (load step) | Per-table counts, normalization, insert; CSV read for `load_csv_file` | n/a | none; diagnostic |
 
 ## Not a measured interval
 
@@ -110,7 +109,7 @@ Clock readers that define no specification interval, listed so the grep count re
 | `tpcds/qualification/runner.py` `worker`, `supervise`, `main` | Qualification harness elapsed reporting and deadlines. |
 | `tpcds/c_tools.py` `DSQGenBinary._generate_parameter_variations` | `time.time()` seeds a random generator; not a duration. |
 
-Coverage: 127 clock call sites (`mono_time()`, `elapsed_seconds()`, `time.time()`, excluding imports and helper definitions) in 44 file-and-symbol pairs. 105 sites in 34 symbols are covered by the 26 rows with a counted call site (H1 to H11, D1 to D6, D8 to D11, I1 to I3, I5, I6; I4 is a `datetime.now()` pair with no counted call site, and D7 reads no clock; `TPCHThroughputTest._execute_stream` splits across H4 and H5). The other 22 sites in 10 symbols are in the table above.
+Coverage: 124 clock call sites (`mono_time()`, `elapsed_seconds()`, `time.time()`, excluding imports and helper definitions) in 43 file-and-symbol pairs. 102 sites in 33 symbols are covered by the 25 rows with a counted call site (H1 to H11, D1 to D6, D8 to D11, I1 to I3, I5; I4 is a `datetime.now()` pair with no counted call site, and D7 reads no clock; `TPCHThroughputTest._execute_stream` splits across H4 and H5). The other 22 sites in 10 symbols are in the table above.
 
 ## QphDS@Size
 

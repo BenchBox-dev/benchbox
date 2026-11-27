@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "before-you-upgrade",
+      "breaking": true,
+      "lead": "TPC-DI synthetic generator removed",
+      "text": "Removed the Python TPC-DI data generator and its direct load. TPC-DI source data now comes only from the DIGen path.",
+      "details": [
+        "Removed classes: TPCDIDataGenerator, TPCDISourceDataGenerator and TPCDIDataLoader (benchbox.core.tpcdi.generator, source_generators and loader).",
+        "Removed TPCDIConfig.enable_parallel and TPCDIConfig.max_workers, the parallel argument of get_simple_config, and the TPCDIConfig helpers that reported worker settings (get_performance_profile and the max_workers and enable_parallel keys of to_dict, from_dict, get_streaming_config, get_etl_config and get_batch_config).",
+        "Removed the enable_parallel and max_workers parameters of TPCDIBenchmark, the matching benchmark option names (enable_parallel, enable-parallel, max_workers, max-workers), and TPCDIBenchmark.optimize_database with its benchbox.TPCDI wrapper.",
+        "Removed the benchbox[tpcdi] extra; install pandas directly if you need it."
+      ],
+      "benchmarks": ["tpcdi"]
+    }
+  ]
+}

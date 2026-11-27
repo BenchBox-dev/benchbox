@@ -1,3 +1,4 @@
+import dataclasses
 import sys
 import tomllib
 from pathlib import Path
@@ -34,6 +35,11 @@ def pandas_blocked(monkeypatch):
     for name in list(sys.modules):
         if name == "pandas" or name.startswith(("pandas.", "benchbox.tpcdi", "benchbox.core.tpcdi")):
             monkeypatch.delitem(sys.modules, name)
+    monkeypatch.setitem(
+        benchbox._BENCHMARK_REGISTRY,
+        "TPCDI",
+        dataclasses.replace(benchbox._BENCHMARK_REGISTRY["TPCDI"], optional_dependencies=("pandas",)),
+    )
     monkeypatch.setattr(sys, "meta_path", [_PandasBlocker(), *sys.meta_path])
     benchbox._clear_lazy_cache()
     yield
@@ -51,7 +57,7 @@ def broken_benchmark_module(monkeypatch):
 
 def _assert_names_module_and_install(text: str) -> None:
     assert "pandas" in text
-    assert "benchbox[tpcdi]" in text or "--extra tpcdi" in text
+    assert "benchbox[pandas]" in text or "--extra pandas" in text
 
 
 def test_registry_lookup_reports_missing_module_and_extra(pandas_blocked):
@@ -60,9 +66,9 @@ def test_registry_lookup_reports_missing_module_and_extra(pandas_blocked):
 
     error = excinfo.value
     assert error.module == "pandas"
-    assert error.extras == ("tpcdi",)
+    assert error.extras == ("pandas",)
     _assert_names_module_and_install(str(error))
-    assert "tpcdi" in error.remedy
+    assert "pandas" in error.remedy
 
 
 def test_availability_check_treats_missing_dependency_as_unavailable(pandas_blocked):
@@ -117,7 +123,7 @@ def test_mcp_job_worker_returns_dependency_missing_with_install_command(pandas_b
     assert response["status"] == "failed"
     assert response["error_code"] == "DEPENDENCY_MISSING"
     assert response["details"]["module"] == "pandas"
-    assert "benchbox[tpcdi]" in response["suggestion"] or "--extra tpcdi" in response["suggestion"]
+    assert "benchbox[pandas]" in response["suggestion"] or "--extra pandas" in response["suggestion"]
 
 
 def test_mcp_query_details_report_missing_dependency(pandas_blocked):

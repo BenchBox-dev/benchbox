@@ -233,18 +233,6 @@
       ]
     },
     {
-      "id": "tpcdi-generation-source-slice",
-      "owner": "comment-cleanup-tpcdi-generation",
-      "state": "blocked",
-      "blocking_disposition": "Source slice is verified; preserve generator and manifest contracts.",
-      "priority": 20,
-      "selectors": [
-        {
-          "prefix": "benchbox/core/tpcdi/generator/"
-        }
-      ]
-    },
-    {
       "id": "tpcdi-runtime-source-slice",
       "owner": "comment-cleanup-tpcdi-runtime",
       "state": "blocked",
@@ -261,12 +249,6 @@
           "path": "benchbox/core/tpcdi/config.py"
         },
         {
-          "path": "benchbox/core/tpcdi/financial_data.py"
-        },
-        {
-          "path": "benchbox/core/tpcdi/loader.py"
-        },
-        {
           "path": "benchbox/core/tpcdi/metrics.py"
         },
         {
@@ -274,9 +256,6 @@
         },
         {
           "path": "benchbox/core/tpcdi/schema_specs.yaml"
-        },
-        {
-          "path": "benchbox/core/tpcdi/source_generators.py"
         },
         {
           "path": "benchbox/core/tpcdi/validation.py"

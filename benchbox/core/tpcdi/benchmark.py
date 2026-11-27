@@ -20,7 +20,6 @@ from typing import (
 
 if TYPE_CHECKING:
     from benchbox.core.tuning.interface import UnifiedTuningConfiguration
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -52,8 +51,6 @@ from benchbox.core.tpcdi._legacy_etl.scd_processor import EnhancedSCDType2Proces
 from benchbox.core.tpcdi.audit import FAILED_STATUS, AuditOutcome, run_audit
 from benchbox.core.tpcdi.config import TPCDIConfig
 from benchbox.core.tpcdi.etl.staging import prepare_xml_reader
-from benchbox.core.tpcdi.generator import TPCDIDataGenerator
-from benchbox.core.tpcdi.loader import TPCDIDataLoader
 from benchbox.core.tpcdi.metrics import BenchmarkMetrics, BenchmarkReport, TPCDIMetrics
 from benchbox.core.tpcdi.phases import PhaseRecord, check_staging, run_initialization
 from benchbox.core.tpcdi.schema import (
@@ -85,8 +82,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         self,
         scale_factor: float = 1.0,
         output_dir: Optional[Union[str, Path]] = None,
-        enable_parallel: bool = False,
-        max_workers: Optional[int] = None,
         config: Optional[TPCDIConfig] = None,
         **kwargs: Any,
     ):
@@ -105,8 +100,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             self.config = TPCDIConfig(
                 scale_factor=scale_factor,
                 output_dir=Path(output_dir) if isinstance(output_dir, str) else output_dir,
-                enable_parallel=enable_parallel,
-                max_workers=max_workers,
             )
         else:
             self.config = config
@@ -115,18 +108,11 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         self.config.create_directories()
         assert self.output_dir is not None
 
-        self.enable_parallel = self.config.enable_parallel
-        self.max_workers = self.config.max_workers
         self.scale_factor = self.config.scale_factor
-
-        generator_kwargs = dict(kwargs)
-        generator_kwargs.setdefault("generation_seed", getattr(self.config, "generation_seed", 42))
-        self.data_generator = TPCDIDataGenerator(self.config.scale_factor, self.output_dir, **generator_kwargs)
 
         self.schema_manager = TPCDISchemaManager()
         self.validator = None
         self.etl_pipeline = None
-        self.data_loader = None
         self.metrics_calculator = TPCDIMetrics(self.config.scale_factor)
 
         self.finwire_processor = None
@@ -137,7 +123,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         self.error_recovery_manager = None
 
         self.etl_engine = None
-        self.source_generators: dict[str, Any] = {}
+        self.format_generators: dict[str, Any] = {}
         self.etl_stats: dict[str, Any] = {}
         self.batch_status: dict[str, Any] = {}
 
@@ -250,25 +236,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         output_format: str = "csv",
         seed: Optional[int] = None,
     ) -> list[Union[str, Path]]:
-        if output_format != "csv":
-            raise ValueError(f"Unsupported output format: {output_format}")
-
-        original_generation_seed = getattr(self.data_generator, "generation_seed", None)
-        if seed is not None:
-            self.data_generator.generation_seed = int(seed)
-
-        if tables is None:
-            tables = list(TABLES.keys())
-
-        invalid_tables = set(tables) - set(TABLES.keys())
-        if invalid_tables:
-            raise ValueError(f"Invalid table names: {invalid_tables}")
-
-        try:
-            self.tables = self.data_generator.generate_data(tables)
-            return list(self.tables.values())
-        finally:
-            self.data_generator.generation_seed = original_generation_seed
+        raise NotImplementedError("TPC-DI source data is produced by generate_digen_source_data")
 
     def get_queries(self) -> dict[str, str]:
         return {}
@@ -608,7 +576,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         if self.warehouse_dir:
             self.warehouse_dir.mkdir(parents=True, exist_ok=True)
 
-        self.source_generators = {
+        self.format_generators = {
             "csv": self._generate_csv_sources,
             "xml": self._generate_xml_sources,
             "fixed_width": self._generate_fixed_width_sources,
@@ -638,8 +606,8 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         generated_files = {}
 
         for format_type in formats:
-            if format_type in self.source_generators:
-                generated_files[format_type] = self.source_generators[format_type](batch_types)
+            if format_type in self.format_generators:
+                generated_files[format_type] = self.format_generators[format_type](batch_types)
             else:
                 raise ValueError(f"Unsupported format: {format_type}")
 
@@ -914,7 +882,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             "phases": {},
             "metrics": {},
             "validation_results": {},
-            "parallel_enabled": self.enable_parallel,
             "success": False,
         }
 
@@ -934,17 +901,13 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             }
 
             transform_start = mono_time()
-            if self.enable_parallel:
-                transformation_results = self._transform_source_data_parallel(source_files, batch_type)
-            else:
-                transformation_results = self._transform_source_data(source_files, batch_type)
+            transformation_results = self._transform_source_data(source_files, batch_type)
             transform_time = elapsed_seconds(transform_start)
 
             pipeline_results["phases"]["transform"] = {
                 "duration": transform_time,
                 "records_processed": transformation_results["records_processed"],
                 "transformations_applied": transformation_results["transformations_applied"],
-                "parallel_enabled": self.enable_parallel,
             }
 
             load_start = mono_time()
@@ -1047,42 +1010,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             raise TPCDITransformationError(failures) from failures[0][1]
         if attempted == 0:
             raise TPCDITransformationError([], "TPC-DI transformation found no transformable source files")
-
-    def _transform_source_data_parallel(self, source_files: dict[str, list[str]], batch_type: str) -> dict[str, Any]:
-        transformation_results: dict[str, Any] = {
-            "records_processed": 0,
-            "transformations_applied": [],
-            "staged_data": {},
-            "staged_data_parts": {},
-        }
-
-        transformers = self._file_transformers()
-        transform_tasks = [
-            (transformers[format_type], file_path)
-            for format_type, files in source_files.items()
-            if format_type in transformers
-            for file_path in files
-        ]
-
-        failures: list[tuple[str, BaseException]] = []
-        if transform_tasks:
-            with ThreadPoolExecutor(max_workers=min(self.max_workers, len(transform_tasks))) as executor:
-                futures = [
-                    (file_path, executor.submit(task_func, file_path, batch_type))
-                    for task_func, file_path in transform_tasks
-                ]
-
-                for file_path, future in futures:
-                    try:
-                        result = future.result()
-                    except Exception as e:
-                        failures.append((file_path, e))
-                        continue
-                    self._accumulate_transformation_result(transformation_results, result)
-
-        self._require_transformed_files(len(transform_tasks), failures)
-        self._materialize_staged_data(transformation_results)
-        return transformation_results
 
     @staticmethod
     def _read_source_csv(file_path: str) -> pd.DataFrame:
@@ -1360,7 +1287,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             "staging_directory": str(self.staging_dir),
             "warehouse_directory": str(self.warehouse_dir),
             "simple_stats": self._get_simple_stats(),
-            "supported_formats": list(self.source_generators.keys()),
+            "supported_formats": list(self.format_generators.keys()),
             "batch_types": ["historical", "incremental", "scd"],
         }
 
@@ -1370,9 +1297,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
 
         if self.etl_pipeline is None:
             self.etl_pipeline = TPCDIETLPipeline(connection, self, dialect)
-
-        if self.data_loader is None:
-            self.data_loader = TPCDIDataLoader(connection, dialect)
 
         if self.finwire_processor is None:
             self.finwire_processor = FinWireProcessor(connection, dialect)
@@ -1543,23 +1467,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         end_time = datetime.now()
 
         return self.metrics_calculator.calculate_detailed_metrics(etl_result, validation_result, start_time, end_time)
-
-    @refuses_unavailable_benchmark("tpcdi")
-    def optimize_database(self, connection: Any) -> dict[str, Any]:
-        if self.data_loader is None:
-            raise ValueError("Data loader not initialized")
-
-        emit("Optimizing database for TPC-DI performance...")
-
-        index_results = self.data_loader.create_indexes(connection)
-
-        optimize_results = self.data_loader.optimize_tables(connection)
-
-        return {
-            "indexes_created": index_results,
-            "tables_optimized": optimize_results,
-            "optimization_successful": all(index_results.values()) and all(optimize_results.values()),
-        }
 
     def _serialize_etl_result(self, etl_result: ETLResult) -> dict[str, Any]:
         return {
@@ -1964,8 +1871,6 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
                 "error_recovery_manager": self.error_recovery_manager is not None,
             },
             "enhanced_features": {
-                "parallel_processing_enabled": self.enable_parallel,
-                "max_workers": self.max_workers,
                 "scale_factor": self.scale_factor,
             },
             "basic_etl_status": self.get_etl_status(),
@@ -2101,29 +2006,3 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
 
         customer_files.append(prospect_csv)
         return customer_files
-
-
-from benchbox.core.hooks.benchmark_hooks import (
-    BenchmarkHookRegistry,
-    BenchmarkOptionSpec,
-    parse_bool,
-    parse_int,
-)
-
-BenchmarkHookRegistry.register_option_specs(
-    "tpcdi",
-    BenchmarkOptionSpec(
-        name="enable_parallel",
-        parser=parse_bool,
-        default=False,
-        help="Enable parallel processing for ETL",
-        aliases=("enable-parallel",),
-    ),
-    BenchmarkOptionSpec(
-        name="max_workers",
-        parser=parse_int,
-        help="Maximum number of parallel workers",
-        aliases=("max-workers",),
-    ),
-    benchmark_class=TPCDIBenchmark,
-)
