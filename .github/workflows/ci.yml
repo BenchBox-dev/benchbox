@@ -1728,7 +1728,7 @@ jobs:
       - name: Verify native datagen parity against bundled dbgen
         env:
           BENCHBOX_REQUIRE_NATIVE_DATAGEN: '1'
-        run: uv run --no-sync -- python -m pytest tests/integration/test_native_datagen_backend.py -m "slow and tpch" -n 0 -v
+        run: uv run --no-sync -- python -m pytest tests/integration/test_native_datagen_backend.py -m slow -n 0 -v
 
   generator-volume:
     name: generator-volume

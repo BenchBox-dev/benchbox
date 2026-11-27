@@ -27,7 +27,7 @@ pytestmark = [
     pytest.mark.data_generation,
 ]
 
-TPCH_PARITY_SCALES = (0.01, 0.1)
+TPCH_PARITY_SCALES = (0.01, 0.1, 1.0)
 CHUNK = 1 << 22
 
 

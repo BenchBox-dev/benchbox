@@ -269,7 +269,7 @@ def test_native_parquet_runs_need_native_written_data_while_delimited_data_is_sh
     assert current(native, "native", "parquet") is True
     assert current(native, "legacy", "tbl") is True
     assert current(legacy, "native", "parquet") is False
-    assert current(native, "legacy", "parquet") is True
+    assert current(native, "legacy", "parquet") is False
 
     native_parquet = {**native, "formats": ["tbl", "parquet"], "parquet_writer": "benchbox-datagen-0"}
     native_parquet["parquet_row_group_size"] = 122_880

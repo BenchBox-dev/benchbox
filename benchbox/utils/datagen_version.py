@@ -249,8 +249,8 @@ def _backend_staleness(
         manifest.get("generator_backend_version") if recorded_backend != "legacy" else expected_backend_version
     )
     if (
-        wanted_backend == NATIVE_BACKEND_NAME
-        and recorded_backend != NATIVE_BACKEND_NAME
+        recorded_backend != wanted_backend
+        and NATIVE_BACKEND_NAME in {recorded_backend, wanted_backend}
         and expected_table_format is not None
         and str(expected_table_format).strip().lower() == "parquet"
     ):

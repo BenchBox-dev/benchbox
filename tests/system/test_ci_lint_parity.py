@@ -132,7 +132,7 @@ MERGE_GATE_EXEMPTIONS: dict[tuple[str, str, str], str] = {
         "Builds the pinned benchbox-datagen wheel from source and compares its TPC-H output with the bundled dbgen, "
         "so it has no Make target (the target count is capped); run it locally with "
         "make heavy-run CMD='BENCHBOX_REQUIRE_NATIVE_DATAGEN=1 uv run --extra native-datagen -- python -m pytest "
-        'tests/integration/test_native_datagen_backend.py -m "slow and tpch" -n 0\'.'
+        "tests/integration/test_native_datagen_backend.py -m slow -n 0'."
     ),
     ("ci.yml", "ci-paths", "Guard SQLGlot adoption on a maintenance line"): (
         "Hosted check on pull requests into a release/X.Y.x line; it reads the pull request base and body, "
