@@ -28060,15 +28060,14 @@
       "claim": null,
       "needs": [
         "datagen-p3-tpc-default-cutover",
-        "datagen-p3-ssb-cutover",
-        "datagen-p3-synthetic-cutover",
         "datagen-lib-tpcds-refresh-sets",
+        "datagen-bb-tpcds-refresh-wiring",
         "datagen-decision-tpc-derived-code-licensing",
-        "datagen-upstream-contributions-followup"
+        "tpc-query-corpus-explicit-parameters-and-replay-rule"
       ],
       "priority": "low",
       "status": "open",
-      "title": "Retire the whole TPC C toolchain and the legacy Python generators"
+      "title": "Retire the bundled TPC C toolchain"
     },
     "datagen-p3-ssb-cutover": {
       "claim": null,
