@@ -138,7 +138,7 @@ local machine; a hosted runner can be slower.
 - DuckDB completing at SF 1 says nothing about Spark, DataFusion or other
   engines; platform timeouts at the new volume need the nightly or UAT runs.
 - A change that alters content but not size passes the size check.
-- TPC-DI unavailable while reworked.
+- TPC-DI is unavailable: its historical load (Batch 1) runs on DuckDB from DIGen output, and the incremental batches (2 and 3) are not done yet.
 - The smoke run of tsbs_devops is not seeded (`seed` defaults to `None`), so its
   size differs by about 0.02% between runs; the 5% tolerance absorbs it.
 - write_primitives and transaction_primitives stage and auxiliary files with

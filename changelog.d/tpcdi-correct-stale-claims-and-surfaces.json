@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "internal": "Corrected TPC-DI wording: the README, COPYRIGHT, examples and onboarding state that DIGen supplies the data and the historical load runs on DuckDB; source headers no longer claim TPC copyright on BenchBox code; the registry no longer lists TPC-DI as a DataFrame benchmark; TPC-DI stays unavailable"
+}

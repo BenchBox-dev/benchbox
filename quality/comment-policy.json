@@ -8289,30 +8289,6 @@
     {
       "path": "benchbox/core/tpcdi/__init__.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
-      "kind": "notice",
-      "consumer": "COPYRIGHT.md",
-      "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
-      "alternative": "An exact source comment retains this existing notice without a runtime docstring. Deletion or rewriting would lose unresolved attribution wording.",
-      "owner": "comment-cleanup-tpcdi-runtime",
-      "removal": "Change only after the owner records the governing provenance and applicable notice obligations; this representation change is not legal clearance.",
-      "count": 1
-    },
-    {
-      "path": "benchbox/core/tpcdi/__init__.py",
-      "symbol": "",
-      "text": "# This implementation is based on the TPC-DI specification.",
-      "kind": "notice",
-      "consumer": "COPYRIGHT.md",
-      "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
-      "alternative": "An exact source comment retains this existing notice without a runtime docstring. Deletion or rewriting would lose unresolved attribution wording.",
-      "owner": "comment-cleanup-tpcdi-runtime",
-      "removal": "Change only after the owner records the governing provenance and applicable notice obligations; this representation change is not legal clearance.",
-      "count": 1
-    },
-    {
-      "path": "benchbox/core/tpcdi/__init__.py",
-      "symbol": "",
       "text": "# Licensed under the MIT License. See LICENSE file in the project root for details.",
       "kind": "notice",
       "consumer": "LICENSE",
@@ -8337,30 +8313,6 @@
     {
       "path": "benchbox/core/tpcdi/benchmark.py",
       "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
-      "kind": "notice",
-      "consumer": "COPYRIGHT.md",
-      "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
-      "alternative": "An exact source comment retains this existing notice without a runtime docstring. Deletion or rewriting would lose unresolved attribution wording.",
-      "owner": "comment-cleanup-tpcdi-runtime",
-      "removal": "Change only after the owner records the governing provenance and applicable notice obligations; this representation change is not legal clearance.",
-      "count": 1
-    },
-    {
-      "path": "benchbox/core/tpcdi/benchmark.py",
-      "symbol": "",
-      "text": "# This implementation is based on the TPC-DI specification.",
-      "kind": "notice",
-      "consumer": "COPYRIGHT.md",
-      "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
-      "alternative": "An exact source comment retains this existing notice without a runtime docstring. Deletion or rewriting would lose unresolved attribution wording.",
-      "owner": "comment-cleanup-tpcdi-runtime",
-      "removal": "Change only after the owner records the governing provenance and applicable notice obligations; this representation change is not legal clearance.",
-      "count": 1
-    },
-    {
-      "path": "benchbox/core/tpcdi/benchmark.py",
-      "symbol": "",
       "text": "# Licensed under the MIT License. See LICENSE file in the project root for details.",
       "kind": "notice",
       "consumer": "LICENSE",
@@ -8380,30 +8332,6 @@
       "alternative": "Removing or replacing this payload would lose existing notice wording. A runtime docstring is unnecessary; an exact source comment retains the notice without carrying explanatory prose.",
       "owner": "comment-cleanup-tpcdi-runtime",
       "removal": "Remove or change only after the owner records the governing notice requirement and confirms that the exact existing notice may be changed.",
-      "count": 1
-    },
-    {
-      "path": "benchbox/core/tpcdi/config.py",
-      "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
-      "kind": "notice",
-      "consumer": "COPYRIGHT.md",
-      "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
-      "alternative": "An exact source comment retains this existing notice without a runtime docstring. Deletion or rewriting would lose unresolved attribution wording.",
-      "owner": "comment-cleanup-tpcdi-runtime",
-      "removal": "Change only after the owner records the governing provenance and applicable notice obligations; this representation change is not legal clearance.",
-      "count": 1
-    },
-    {
-      "path": "benchbox/core/tpcdi/config.py",
-      "symbol": "",
-      "text": "# This implementation is based on the TPC-DI specification.",
-      "kind": "notice",
-      "consumer": "COPYRIGHT.md",
-      "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
-      "alternative": "An exact source comment retains this existing notice without a runtime docstring. Deletion or rewriting would lose unresolved attribution wording.",
-      "owner": "comment-cleanup-tpcdi-runtime",
-      "removal": "Change only after the owner records the governing provenance and applicable notice obligations; this representation change is not legal clearance.",
       "count": 1
     },
     {
@@ -14092,30 +14020,6 @@
       "alternative": "Removing or replacing this payload would lose existing notice wording. A runtime docstring is unnecessary; an exact source comment retains the notice without carrying explanatory prose.",
       "owner": "comment-cleanup-tpcdi-runtime",
       "removal": "Remove or change only after the owner records the governing notice requirement and confirms that the exact existing notice may be changed.",
-      "count": 1
-    },
-    {
-      "path": "benchbox/tpcdi.py",
-      "symbol": "",
-      "text": "# TPC Benchmark™ DI (TPC-DI) - Copyright © Transaction Processing Performance Council",
-      "kind": "notice",
-      "consumer": "COPYRIGHT.md",
-      "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
-      "alternative": "An exact source comment retains this existing notice without a runtime docstring. Deletion or rewriting would lose unresolved attribution wording.",
-      "owner": "comment-cleanup-tpcdi-runtime",
-      "removal": "Change only after the owner records the governing provenance and applicable notice obligations; this representation change is not legal clearance.",
-      "count": 1
-    },
-    {
-      "path": "benchbox/tpcdi.py",
-      "symbol": "",
-      "text": "# This implementation is based on the TPC-DI specification.",
-      "kind": "notice",
-      "consumer": "COPYRIGHT.md",
-      "necessity": "COPYRIGHT.md acknowledges the TPC copyright and trademark for this benchmark and requires contributions to respect TPC trademark requirements. Preserve the existing attribution exactly; individual-file applicability remains unresolved.",
-      "alternative": "An exact source comment retains this existing notice without a runtime docstring. Deletion or rewriting would lose unresolved attribution wording.",
-      "owner": "comment-cleanup-tpcdi-runtime",
-      "removal": "Change only after the owner records the governing provenance and applicable notice obligations; this representation change is not legal clearance.",
       "count": 1
     },
     {
