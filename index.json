@@ -27776,7 +27776,7 @@
         "datagen-lib-tpcds-fractional-and-refresh"
       ],
       "priority": "low",
-      "status": "open",
+      "status": "blocked",
       "title": "Return tpcdsgen to the crates.io pin when upstream releases the Scaling override"
     },
     "datagen-lib-repo-skeleton": {
