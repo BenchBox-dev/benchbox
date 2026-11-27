@@ -54406,17 +54406,12 @@
       "title": "TPC-DI step 13: comparison harness with the DuckDB implementation, and the early full run"
     },
     "tpcdi-14-milestone-report-owner-stop-20261120": {
-      "claim": {
-        "expires_at": "2026-11-28T18:36:05Z",
-        "generation": "c494e81ec4ba4271b6243c5c2a2d2f2c",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-12-duckdb-historical-load-and-audit-20261120"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "TPC-DI step 18: milestone report and owner stop"
     },
     "tpcdi-15-delete-old-generator-and-etl-20261120": {
