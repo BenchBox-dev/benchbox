@@ -48270,10 +48270,15 @@
       "title": "Seed a richer QA fixture corpus (multi-tier trust, tuned/notuned pairs, ≥4 platforms in one cohort)"
     },
     "seed-corpus-capture-query-plans-20261127": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-28T15:10:38Z",
+        "generation": "eee4f50df84b4bfaaeb092ea3b809719",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:8afb036c608ba6806b343500"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Capture query plans in the monthly seed-corpus runs so benchbox.dev shows them"
     },
     "seed-corpus-official-cells-refused-by-full-spec-20261115": {
