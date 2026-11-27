@@ -44754,6 +44754,15 @@
       "status": "open",
       "title": "Apply proven row-count bounds to queries that run on refreshed data"
     },
+    "refused-no-reference-claim-keeps-maintainer-lanes-20261127": {
+      "claim": null,
+      "needs": [
+        "crr-a1-rule-module-and-snapshot"
+      ],
+      "priority": "medium",
+      "status": "open",
+      "title": "Decide whether a refused no-reference claim keeps maintainer admission and ranking lanes"
+    },
     "regenerate-benchbox-mirrors-and-wrapper-contract-boundary": {
       "claim": null,
       "needs": [
