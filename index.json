@@ -28044,7 +28044,7 @@
       ],
       "priority": "medium",
       "status": "open",
-      "title": "Migrate BenchBox SSB to the benchbox-datagen generator: backend wiring, version bump and expected query row counts"
+      "title": "Wire native SSB into BenchBox: generator version, spec row counts, SSB_EXPECTED_ROW_COUNTS"
     },
     "datagen-p2-vectorize-synthetic-generators": {
       "claim": null,
