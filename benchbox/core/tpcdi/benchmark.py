@@ -123,7 +123,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         self.error_recovery_manager = None
 
         self.etl_engine = None
-        self.format_generators: dict[str, Any] = {}
+        self.source_generators: dict[str, Any] = {}
         self.etl_stats: dict[str, Any] = {}
         self.batch_status: dict[str, Any] = {}
 
@@ -576,7 +576,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         if self.warehouse_dir:
             self.warehouse_dir.mkdir(parents=True, exist_ok=True)
 
-        self.format_generators = {
+        self.source_generators = {
             "csv": self._generate_csv_sources,
             "xml": self._generate_xml_sources,
             "fixed_width": self._generate_fixed_width_sources,
@@ -606,8 +606,8 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
         generated_files = {}
 
         for format_type in formats:
-            if format_type in self.format_generators:
-                generated_files[format_type] = self.format_generators[format_type](batch_types)
+            if format_type in self.source_generators:
+                generated_files[format_type] = self.source_generators[format_type](batch_types)
             else:
                 raise ValueError(f"Unsupported format: {format_type}")
 
@@ -1287,7 +1287,7 @@ class TPCDIBenchmark(GeneratorOutputDirMixin, BaseBenchmark):
             "staging_directory": str(self.staging_dir),
             "warehouse_directory": str(self.warehouse_dir),
             "simple_stats": self._get_simple_stats(),
-            "supported_formats": list(self.format_generators.keys()),
+            "supported_formats": list(self.source_generators.keys()),
             "batch_types": ["historical", "incremental", "scd"],
         }
 

@@ -146,7 +146,7 @@ or declaration appears unused.
 | `google-cloud-storage` | CS | `benchbox/platforms/base/cloud_spark/staging.py`, `benchbox/platforms/bigquery.py` | 7 | KEEP |
 | `influxdb3-python` | SQL | `benchbox/platforms/influxdb/_dependencies.py` | 1 | KEEP |
 | `mcp` | MCP | `benchbox/mcp/**`, tests | 18 | KEEP |
-| `pandas` | DF/BM | `benchbox/core/**`, `benchbox/experimental/**`, `benchbox/platforms/**`, tests | 182 | KEEP (extras only) - removed from core deps; supplied by `extras:{pandas,dataframe-pandas,dask}` and transitively by `chdb`. See finding F7. |
+| `pandas` | DF/BM | `benchbox/core/**`, `benchbox/experimental/**`, `benchbox/platforms/**`, tests | 182 | KEEP (extras only) - removed from core deps; supplied by `extras:{pandas,dataframe-pandas,tpcdi,dask}` and transitively by `chdb`. See finding F7. |
 | `polars` | DF | `benchbox/cli/**`, `benchbox/core/**`, `benchbox/platforms/**`, tests | 60 | KEEP |
 | `presto-python-client` | SQL | `benchbox/platforms/presto.py` | 2 | KEEP |
 | `psycopg2-binary` | SQL | `benchbox/platforms/pg_*.py`, `scripts/`, tests | 18 | KEEP |

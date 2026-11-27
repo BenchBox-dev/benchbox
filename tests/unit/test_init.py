@@ -2,7 +2,6 @@
 
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
-import dataclasses
 import importlib
 
 import pytest
@@ -139,11 +138,6 @@ class TestLazyImports:
         if had_existing_attr:
             del module_dict["TPCDI"]
 
-        monkeypatch.setitem(
-            benchbox_package._BENCHMARK_REGISTRY,
-            "TPCDI",
-            dataclasses.replace(benchbox_package._BENCHMARK_REGISTRY["TPCDI"], optional_dependencies=("pandas",)),
-        )
         simulated_error = ModuleNotFoundError("No module named 'pandas'", name="pandas")
         lazy_cache["TPCDI"] = simulated_error
         assert lazy_cache["TPCDI"] is simulated_error
@@ -154,7 +148,8 @@ class TestLazyImports:
 
             message = str(excinfo.value)
             assert "'pandas'" in message
-            assert "benchbox[pandas]" in message or "--extra pandas" in message
+            assert "tpcdi" in message
+            assert "benchbox[tpcdi]" in message or "--extra tpcdi" in message
             assert "Version Information" in message
             assert "Original error" in message
         finally:

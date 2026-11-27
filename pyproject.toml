@@ -176,6 +176,7 @@ starrocks = ["pymysql>=1.1.0"]
 singlestore = ["singlestoredb>=1.0.0"]
 gizmosql = ["adbc-driver-gizmosql>=2.0.13,<3"]
 
+tpcdi = ["pandas>=3.0.0"]
 clickhouse-local = ["chdb>=4.5.0; sys_platform != 'win32'"]
 table-formats = [
     "deltalake>=1.2.1",
