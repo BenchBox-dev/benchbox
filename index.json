@@ -27123,12 +27123,17 @@
       "title": "Move the validators, staging and the public admission path to the rule"
     },
     "crr-a4-database-metrics-and-cli-readers": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-28T14:31:17Z",
+        "generation": "e2d2045827ef4108b3785e0ecf900fce",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
+      },
       "needs": [
         "crr-a2-writer-and-score-from-timings"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Move the results database, metrics and CLI readers to the rule"
     },
     "crr-a5-published-results-mirror": {
