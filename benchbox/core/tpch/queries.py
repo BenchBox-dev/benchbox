@@ -7,11 +7,24 @@
 
 import atexit
 import threading
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Optional, Union
 
 from benchbox.utils.run_deadline import current_run_deadline, run_child
 from benchbox.utils.tpc_compilation import CompilationStatus, ensure_tpc_binaries
+
+QGEN_NONTERMINATING_SEED = 0
+QGEN_NONTERMINATING_SEED_QUERIES = frozenset({7, 12})
+
+
+def reject_nonterminating_qgen_seed(seed: Optional[int], query_ids: Iterable[int]) -> None:
+    if seed != QGEN_NONTERMINATING_SEED:
+        return
+    affected = sorted(QGEN_NONTERMINATING_SEED_QUERIES.intersection(query_ids))
+    if affected:
+        names = ", ".join(f"Q{query_id}" for query_id in affected)
+        raise ValueError(f"The TPC-H qgen does not terminate for seed {seed} on {names}; use a non-zero seed.")
 
 
 class QGenBinary:
@@ -40,6 +53,7 @@ class QGenBinary:
         return self._work_dir
 
     def generate(self, query_id: int, *, seed: Optional[int] = None, scale_factor: float = 1.0) -> str:
+        reject_nonterminating_qgen_seed(seed, (query_id,))
         cmd = [self.qgen_path, "-a"]
 
         if seed is not None:
