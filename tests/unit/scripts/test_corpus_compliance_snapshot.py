@@ -21,8 +21,17 @@ def recorded() -> script.Snapshot:
     return script.load_snapshot(SNAPSHOT)
 
 
+@pytest.fixture(scope="module")
+def computed() -> script.Snapshot:
+    return script.compute_snapshot(BUNDLES)
+
+
 def _changed_files(problems: list[str]) -> set[str]:
     return {line.split(":", 1)[0].strip() for line in problems if line.startswith("  ")}
+
+
+def test_committed_corpus_matches_the_snapshot(recorded, computed) -> None:
+    assert script.compare(recorded, computed) == []
 
 
 def test_every_stored_result_has_identity_today_and_rule_outcomes(recorded) -> None:

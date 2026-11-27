@@ -52,13 +52,13 @@
           "name": "row_count_evidence_label",
           "type": "VARCHAR",
           "nullable": true,
-          "description": "Wording for the row-count evidence behind the result, for example 'row counts not checked'; null when the evidence needs no label."
+          "description": "Wording for the row-count evidence behind the result, for example 'Row counts not checked'; null when the evidence needs no label."
         },
         {
           "name": "iteration_label",
           "type": "VARCHAR",
           "nullable": true,
-          "description": "'single iteration' when fewer than three measured iterations back the timings; null otherwise."
+          "description": "'Single iteration' when fewer than three measured iterations back the timings; null otherwise."
         }
       ]
     },
@@ -133,8 +133,8 @@
         "comparison_version": "1.3.0.dev4",
         "version_is_release": false,
         "observed_engine": "example-engine",
-        "row_count_evidence_label": "row counts not checked",
-        "iteration_label": "single iteration"
+        "row_count_evidence_label": "Row counts not checked",
+        "iteration_label": "Single iteration"
       },
       {
         "result_id": "example-version-not-recorded",
@@ -145,7 +145,7 @@
         "comparison_version": "version not recorded",
         "version_is_release": false,
         "observed_engine": null,
-        "row_count_evidence_label": "row counts not checked",
+        "row_count_evidence_label": "Row counts not checked",
         "iteration_label": null
       }
     ],

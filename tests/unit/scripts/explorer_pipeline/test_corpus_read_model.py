@@ -333,16 +333,12 @@ def test_labels_and_identity_come_from_the_rule_modules(tmp_path: Path) -> None:
         "and must not be compared with official TPC-H results.",
         corpus_rule.CLASS_WORDS[corpus_rule.CLASS_POWER_ONLY],
         corpus_rule.ROW_COUNTS_NOT_CHECKED_LABEL,
+        corpus_rule.SINGLE_ITERATION_LABEL,
     ]
     assert (identity, version, is_release) == ("duckdb v1.2.0", "1.2.0", True)
     assert observed is None
     assert row_counts == corpus_rule.ROW_COUNTS_NOT_CHECKED_LABEL
-    assert iterations == corpus_outcome.SINGLE_ITERATION_LABEL
-
-
-def test_three_measured_iterations_carry_no_iteration_label() -> None:
-    assert corpus_outcome.iteration_label(3) is None
-    assert corpus_outcome.iteration_label(2) == corpus_outcome.SINGLE_ITERATION_LABEL
+    assert iterations == corpus_rule.SINGLE_ITERATION_LABEL
 
 
 @pytest.mark.parametrize(

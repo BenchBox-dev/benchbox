@@ -8,9 +8,6 @@ from benchbox.core.execution_engine import NOT_CAPTURED
 from benchbox.core.results import comparison_identity, corpus_rule
 from benchbox.core.results.schema import NONSTANDARD_COMPLIANCE_CLASS, RECORDED_COMPLIANCE_CLASS_BY_RULE_CLASS
 
-SINGLE_ITERATION_LABEL = "single iteration"
-MINIMUM_MEASURED_ITERATIONS = 3
-
 LANE_PHASES = {
     corpus_rule.LANE_COMBINED: "combined",
     corpus_rule.LANE_POWER_ONLY: "power",
@@ -61,12 +58,6 @@ def compliance_class(outcome: corpus_rule.Outcome) -> str | None:
     return RECORDED_COMPLIANCE_CLASS_BY_RULE_CLASS.get(outcome.class_name)
 
 
-def iteration_label(measured_iterations: int) -> str | None:
-    if 0 < measured_iterations < MINIMUM_MEASURED_ITERATIONS:
-        return SINGLE_ITERATION_LABEL
-    return None
-
-
 def observed_engine(recorded: str | None) -> str | None:
     return None if not recorded or recorded == NOT_CAPTURED else recorded
 
@@ -77,7 +68,6 @@ def corpus_columns(
     *,
     variant_id: str,
     recorded_observed_engine: str | None,
-    measured_iterations: int,
 ) -> dict[str, Any]:
     identity = comparison_identity.comparison_identity(data, variant_id)
     version = identity.comparison_version
@@ -95,5 +85,7 @@ def corpus_columns(
             if corpus_rule.ROW_COUNTS_NOT_CHECKED_LABEL in outcome.labels
             else None
         ),
-        "iteration_label": iteration_label(measured_iterations),
+        "iteration_label": (
+            corpus_rule.SINGLE_ITERATION_LABEL if corpus_rule.SINGLE_ITERATION_LABEL in outcome.labels else None
+        ),
     }

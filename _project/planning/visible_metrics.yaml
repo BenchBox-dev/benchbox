@@ -330,7 +330,7 @@ metrics:
     canonical_ref: "_project.scripts.explorer_pipeline.corpus_outcome.iteration_label"
     tolerance: 0
     display_surfaces: [benchmark_index, result_detail]
-    notes: "'single iteration' when fewer than three measured iterations back the timings; null otherwise"
+    notes: "'Single iteration' when fewer than three measured iterations back the timings; null otherwise"
 
   - table: result_lane_scores
     column: score

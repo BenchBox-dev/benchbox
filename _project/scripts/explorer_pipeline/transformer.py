@@ -1922,7 +1922,6 @@ class BundleTransformer:
                 bundle_data,
                 variant_id=entry.variant_id,
                 recorded_observed_engine=bundle.platform.execution_engine.observed,
-                measured_iterations=entry.basis_availability.measurement_pass_count if entry.basis_availability else 0,
             )
         )
         lane_entries, reason = self._ranking_reason(entry, outcome, bundle_data)
