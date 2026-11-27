@@ -52238,6 +52238,13 @@
       "status": "done",
       "title": "✅ Test Organization Cleanup"
     },
+    "test-partial-generation-killed-generator-flake-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make the killed-generator partial-data test deterministic instead of racing real time"
+    },
     "test-pr-arm-batch-evidence-order-pollution-20261107": {
       "claim": null,
       "needs": [],
