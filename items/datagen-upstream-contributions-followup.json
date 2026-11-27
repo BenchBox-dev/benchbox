@@ -1,9 +1,9 @@
 {
   "acceptance": [
-    "Each upstream PR and issue has a recorded outcome (merged, rejected, or open with the last action date) in this item's context.",
-    "The wrapper-clamp bug is filed upstream with a failing example.",
-    "After an upstream release containing #677: Cargo.toml pins the crates.io version, no `[patch]` or git dependency remains, and TPC-DS parity at SF 0.01, 0.05, 0.1, 0.25, 0.5 and 1 passes."
+    "Each upstream PR and issue (#675, #676, #677, the refresh-set proposal) has a recorded outcome or last action date in context, checked at least at every library release.",
+    "The wrapper-clamp bug is filed upstream with a failing example."
   ],
+  "context": "2026-11-27 review: the switch back to the crates.io pin is datagen-lib-remove-carried-scaling-patch.",
   "description": "## Problem\nOpen upstream work on datafusion-contrib/tpcgen-rs from BenchBox-dev/tpcgen-rs: PR #675 (--no-trailing-delimiter; no longer needed by BenchBox, left open as a contribution), issue #676 and PR #677 (Scaling override: `Scaling::with_row_counts`, `SessionBuilder::with_scaling`). Not yet reported: the Arrow wrappers clamp row ranges to upstream's own sub-scale counts (truncated customer_address and web_page at SF 0.05), there is no seed on Session, and there are no refresh-set generators. Closed PR #644 (qgen and dbgen -U) may get successors.\n\n## Change\nRespond to upstream review on #675 and #677; file the wrapper-clamp bug with a reproduction; open the refresh-set proposal if the policy decision keeps that code. On each upstream release, check whether it contains #677 or refresh generators; if so, switch the library back to the crates.io pin, delete the carried patch or own code, and re-run the parity matrix.\n\n## Decision gates\n- Never block library delivery on upstream timing.\n- If upstream rejects #677, report to the owner: the carried patch then becomes permanent and needs a renewed decision.\n- Close #675 only if upstream asks or the owner says so.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
   "sessions": [
     {
@@ -12,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "5b0d518971354f0eb81e12105cb0e0aa",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-27T00:08:31Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "a95393fd859249b6bb4b362f6ff7ef7b",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
