@@ -44860,12 +44860,17 @@
       "title": "Resolve the textcharts dependency removal or retention decision"
     },
     "remove-the-legacy-mode-alias-and-embedded-synonym-entirely-a": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-28T00:13:41Z",
+        "generation": "e1c35b057a6e4b329620a91f6efe9dba",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e82e03734cad9d7732bbc3a5"
+      },
       "needs": [
         "core-exec-deployment-selection-recorded"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Remove the legacy `mode` alias and `embedded` synonym entirely after one deprecation window"
     },
     "remove-tpc-di-streaming-code-and-delegate-to-databases-completed": {
