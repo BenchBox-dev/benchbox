@@ -28286,17 +28286,12 @@
       "title": "Implement TPC-DS dsqgen (template language, distributions, streams) in benchbox-datagen"
     },
     "datagen-lib-tpcds-fractional-and-refresh": {
-      "claim": {
-        "expires_at": "2026-11-28T03:54:23Z",
-        "generation": "1472ea9ccc5e4b72927b661d79a2c90e",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
-      },
+      "claim": null,
       "needs": [
         "datagen-lib-tpcds"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "TPC-DS below SF 1 through the carried upstream Scaling patch, TPC-H refresh sets and the scale model"
     },
     "datagen-lib-tpcds-refresh-sets": {
