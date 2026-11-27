@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "added",
+      "breaking": false,
+      "text": "`--datagen-backend native` generates TPC-H and TPC-DS data (TPC-DS at integer scale factors of 1 or more) with the benchbox-datagen library from the new `native-datagen` extra, writes Parquet directly from the library, and records `generator_backend` and the library version in the data manifest. Anything the library does not support fails with an error instead of falling back to the bundled generators.",
+      "benchmarks": ["tpch", "tpcds"]
+    },
+    {
+      "category": "changed",
+      "breaking": false,
+      "text": "Native TPC-DS data has the 24 benchmark tables and no `dbgen_version` table; `dbgen_version` is a `dsdgen` artefact holding a generation timestamp, and the manifest lists it under `excluded_tables` so validation does not expect it.",
+      "benchmarks": ["tpcds"]
+    }
+  ]
+}

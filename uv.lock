@@ -635,6 +635,9 @@ mcp = [
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-sdk" },
 ]
+native-datagen = [
+    { name = "benchbox-datagen" },
+]
 pandas = [
     { name = "pandas" },
 ]
@@ -754,6 +757,7 @@ requires-dist = [
     { name = "azure-storage-file-datalake", marker = "extra == 'cloud-spark'", specifier = ">=12.14.0" },
     { name = "azure-storage-file-datalake", marker = "extra == 'cloud-spark-azure'", specifier = ">=12.14.0" },
     { name = "azure-storage-file-datalake", marker = "extra == 'fabric'", specifier = ">=12.14.0" },
+    { name = "benchbox-datagen", marker = "extra == 'native-datagen'", git = "https://github.com/BenchBox-dev/benchbox-datagen?rev=32779709a6eb9c11d4baf1bb2a534c1ef8c9b149" },
     { name = "boto3", marker = "extra == 'all'", specifier = ">=1.20.0" },
     { name = "boto3", marker = "extra == 'athena'", specifier = ">=1.20.0" },
     { name = "boto3", marker = "extra == 'cloud'", specifier = ">=1.20.0" },
@@ -924,7 +928,7 @@ requires-dist = [
     { name = "vortex-data", marker = "extra == 'table-formats'", specifier = ">=0.29.0" },
     { name = "zstandard", specifier = ">=0.20.0" },
 ]
-provides-extras = ["dev", "viz", "explorer", "all", "cloud", "cloudstorage", "duckdb", "ducklake", "clickhouse", "clickhouse-server", "clickhouse-cloud", "databricks", "bigquery", "redshift", "snowflake", "trino", "presto", "postgresql", "questdb", "synapse", "fabric", "athena", "datafusion", "firebolt", "databend", "doris", "influxdb", "starrocks", "singlestore", "gizmosql", "tpcdi", "clickhouse-local", "table-formats", "ai-primitives", "pandas", "dataframe-pandas", "dask", "dataframe-dask", "cudf", "dataframe-cudf", "polars", "dataframe-polars", "pyspark", "lakesail", "velox", "dataframe-pyspark", "dataframe-datafusion", "dataframe-pandas-family", "dataframe-expression-family", "dataframe-all", "quick-start", "cloud-spark-aws", "cloud-spark-gcp", "cloud-spark-azure", "cloud-spark-snowflake", "cloud-spark-databricks", "cloud-spark", "mcp", "spark"]
+provides-extras = ["dev", "viz", "explorer", "all", "cloud", "cloudstorage", "duckdb", "ducklake", "clickhouse", "clickhouse-server", "clickhouse-cloud", "databricks", "bigquery", "redshift", "snowflake", "trino", "presto", "postgresql", "questdb", "synapse", "fabric", "athena", "datafusion", "firebolt", "databend", "doris", "influxdb", "starrocks", "singlestore", "gizmosql", "tpcdi", "clickhouse-local", "table-formats", "ai-primitives", "pandas", "dataframe-pandas", "dask", "dataframe-dask", "cudf", "dataframe-cudf", "polars", "dataframe-polars", "pyspark", "lakesail", "velox", "dataframe-pyspark", "dataframe-datafusion", "dataframe-pandas-family", "dataframe-expression-family", "dataframe-all", "quick-start", "cloud-spark-aws", "cloud-spark-gcp", "cloud-spark-azure", "cloud-spark-snowflake", "cloud-spark-databricks", "cloud-spark", "mcp", "spark", "native-datagen"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -970,6 +974,11 @@ dev = [
     { name = "trino", specifier = ">=0.336.0" },
     { name = "ty", specifier = ">=0.0.1a14" },
 ]
+
+[[package]]
+name = "benchbox-datagen"
+version = "0.1.0"
+source = { git = "https://github.com/BenchBox-dev/benchbox-datagen?rev=32779709a6eb9c11d4baf1bb2a534c1ef8c9b149#32779709a6eb9c11d4baf1bb2a534c1ef8c9b149" }
 
 [[package]]
 name = "blis"

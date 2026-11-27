@@ -10,8 +10,11 @@ from typing import Any
 from benchbox.utils.cloud_storage import CloudStorageGeneratorMixin, create_path_handler
 from benchbox.utils.compression_mixin import CompressionMixin
 from benchbox.utils.data_validation import BenchmarkDataValidator
+from benchbox.utils.datagen_backend import NATIVE_BACKEND_NAME
+from benchbox.utils.datagen_manifest import DataGenerationManifest, require_manifest_files, resolve_compression_metadata
 from benchbox.utils.file_format import is_tpc_format
 from benchbox.utils.generation_marker import track_generation
+from benchbox.utils.native_datagen import NativeDatagenMixin, write_native_tables
 from benchbox.utils.printing import emit
 
 from ..compliance import TpcdsComplianceClass, validate_tpcds_scale
@@ -21,6 +24,7 @@ from .streaming import StreamingGenerationMixin
 
 
 class TPCDSDataGenerator(
+    NativeDatagenMixin,
     CompressionMixin,
     CloudStorageGeneratorMixin,
     DsdgenRunnerMixin,
@@ -164,6 +168,8 @@ class TPCDSDataGenerator(
         if removed_stale and self.verbose:
             emit(f"🧹 Removed {len(removed_stale)} stale TPC-DS table artifacts before regeneration")
 
+        if self.uses_native_datagen:
+            return self._generate_native(target_dir)
         sample_dir = self._get_sample_data_dir()
         if sample_dir is not None:
             result = self._generate_from_sample(sample_dir, target_dir)
@@ -272,8 +278,34 @@ class TPCDSDataGenerator(
             }
         return schema_registry
 
+    def _generate_native(self, target_dir: Path) -> dict[str, list[Path]]:
+        generation = write_native_tables("tpcds", self.scale_factor, target_dir)
+        self.datagen_backend_version = generation.version
+        manifest = DataGenerationManifest(
+            output_dir=target_dir,
+            benchmark="tpcds",
+            scale_factor=self.scale_factor,
+            compression=resolve_compression_metadata(self),
+            parallel=self.parallel,
+            extra_metadata={
+                "compliance_class": getattr(self.compliance_class, "value", str(self.compliance_class)),
+                "row_counts_source": "measured",
+                "table_count": len(generation.files),
+                "excluded_tables": ["dbgen_version"],
+            },
+            generator_backend=NATIVE_BACKEND_NAME,
+            generator_backend_version=generation.version,
+        )
+        for table, table_file in generation.files.items():
+            manifest.add_entry(table, table_file.path, row_count=table_file.rows, size_bytes=table_file.size_bytes)
+        require_manifest_files(manifest.file_counts()[1], label="TPC-DS", output_dir=target_dir)
+        manifest.write()
+        return {table: [table_file.path] for table, table_file in generation.files.items()}
+
     def _prepare_output_dir(self, output_dir: Path | None) -> Path:
-        if not self.dsdgen_available:
+        if self.uses_native_datagen:
+            self.require_native_compatible_options()
+        elif not self.dsdgen_available:
             self._raise_missing_dsdgen()
 
         target_dir = output_dir if output_dir is not None else self.output_dir

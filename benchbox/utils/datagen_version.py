@@ -12,8 +12,8 @@ BENCHMARK_DATAGEN_VERSIONS: dict[str, int] = {}
 
 VERIFIED_BYTE_IDENTICAL_BACKENDS: Mapping[tuple[str, str], frozenset[float]] = MappingProxyType(
     {
-        ("tpch", "4.0.0"): frozenset({0.01, 0.1, 1.0}),
-        ("tpcds", "4.0.0"): frozenset({1.0}),
+        ("tpch", "0.1.0"): frozenset({0.01, 0.1, 1.0}),
+        ("tpcds", "0.1.0"): frozenset({1.0}),
     }
 )
 
@@ -230,12 +230,13 @@ def _backend_staleness(
     *,
     expected_backend: str | None,
     expected_backend_version: str | None,
+    expected_table_format: str | None = None,
 ) -> str | None:
-    from benchbox.utils.datagen_backend import get_default_datagen_backend
+    from benchbox.utils.datagen_backend import NATIVE_BACKEND_NAME, get_default_datagen_backend, manifest_backend_name
 
-    recorded_backend = str(manifest.get("generator_backend") or "legacy").lower()
-    wanted_backend = (
-        str(expected_backend).lower() if expected_backend is not None else get_default_datagen_backend(benchmark)
+    recorded_backend = manifest_backend_name(manifest.get("generator_backend") or "legacy")
+    wanted_backend = manifest_backend_name(
+        expected_backend if expected_backend is not None else get_default_datagen_backend(benchmark)
     )
     scale_factor_raw = manifest.get("scale_factor")
     scale_factor = (
@@ -247,6 +248,16 @@ def _backend_staleness(
     native_version = (
         manifest.get("generator_backend_version") if recorded_backend != "legacy" else expected_backend_version
     )
+    if (
+        recorded_backend != wanted_backend
+        and NATIVE_BACKEND_NAME in {recorded_backend, wanted_backend}
+        and expected_table_format is not None
+        and str(expected_table_format).strip().lower() == "parquet"
+    ):
+        return (
+            f"cached dataset was generated with backend '{recorded_backend}'; "
+            f"Parquet from backend '{wanted_backend}' needs data it generated"
+        )
     if recorded_backend != wanted_backend and is_byte_identical_backend_output(
         benchmark,
         backend_version=str(native_version) if native_version is not None else None,
@@ -390,6 +401,7 @@ def describe_datagen_staleness(
         name,
         expected_backend=expected_backend,
         expected_backend_version=expected_backend_version,
+        expected_table_format=expected_table_format,
     )
     if backend_reason is not None:
         return backend_reason

@@ -34,6 +34,7 @@ from benchbox.core.run_service import (
 from benchbox.core.schemas import ExecutionContext
 from benchbox.platforms import get_adapter, get_platform_adapter
 from benchbox.utils.cloud_storage import is_databricks_path
+from benchbox.utils.native_datagen import bind_datagen_backend
 from benchbox.utils.printing import quiet_console
 from benchbox.utils.verbosity import VerbositySettings
 
@@ -104,9 +105,11 @@ class BenchmarkOrchestrator:
                 benchmark_instance.output_dir = shared_path
 
         if opts.get("datagen_backend") is not None:
-            benchmark_instance.datagen_backend = str(opts["datagen_backend"])
-        if opts.get("datagen_backend_version") is not None:
-            benchmark_instance.datagen_backend_version = str(opts["datagen_backend_version"])
+            bind_datagen_backend(
+                benchmark_instance,
+                str(opts["datagen_backend"]),
+                str(opts["datagen_backend_version"]) if opts.get("datagen_backend_version") is not None else None,
+            )
 
         return benchmark_instance
 
