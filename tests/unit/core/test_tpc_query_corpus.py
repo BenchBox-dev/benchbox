@@ -339,7 +339,8 @@ def test_explicit_qualification_cases_cover_all_99_templates(
     section = manifest["tpcds"]["explicit_parameters"]["qualification"]
     document = json.loads(QUALIFICATION_VALUES.read_text(encoding="utf-8"))
     pinned = json.loads(QUALIFICATION_INPUTS.read_text(encoding="utf-8"))["parameters_sha256"]
-    assert section["parameters_sha256"] == hashlib.sha256(QUALIFICATION_VALUES.read_bytes()).hexdigest() == pinned
+    normalised = QUALIFICATION_VALUES.read_bytes().replace(b"\r\n", b"\n")
+    assert section["parameters_sha256"] == hashlib.sha256(normalised).hexdigest() == pinned
     records = [record for record in tpcds_explicit if record["set"] == "qualification"]
     assert [record["q"] for record in records] == qualification_statements()
     assert section["statements"] == len(records) == 103
@@ -435,7 +436,7 @@ def test_every_dsqgen_dialect_site_is_listed_and_defaults_to_netezza(manifest: d
     sites = manifest["tpcds"]["dialects"]["call_sites"]
     pattern = re.compile(r"\{_?opt\}DIALECT|tpcds_option\([\"']dialect")
     command_sites = {
-        str(path.relative_to(REPO_ROOT)) for path in python_sources() if pattern.search(path.read_text("utf-8"))
+        path.relative_to(REPO_ROOT).as_posix() for path in python_sources() if pattern.search(path.read_text("utf-8"))
     }
     assert command_sites == {
         "benchbox/core/tpcds/c_tools.py",
@@ -465,7 +466,7 @@ def test_base_dialect_is_always_netezza() -> None:
             continue
         for node in ast.walk(ast.parse(source)):
             if isinstance(node, ast.FunctionDef) and node.name == "get_tpc_base_dialect":
-                defined.append(str(path.relative_to(REPO_ROOT)))
+                defined.append(path.relative_to(REPO_ROOT).as_posix())
                 returns = [child.value for child in ast.walk(node) if isinstance(child, ast.Return)]
                 assert returns
                 assert all(isinstance(value, ast.Constant) and value.value == "netezza" for value in returns)
@@ -498,7 +499,7 @@ def test_no_call_in_the_repository_passes_a_literal_dialect_to_dsqgen(manifest: 
                         base_dialect.add(ast.unparse(keyword.value))
                     elif keyword.arg == "dialect":
                         callee = ast.unparse(node.func)
-                        tpcds_manager = "tpcds" in str(path.relative_to(REPO_ROOT)) and callee.endswith(
+                        tpcds_manager = "tpcds" in path.relative_to(REPO_ROOT).as_posix() and callee.endswith(
                             TPCDS_MANAGER_CALLEES
                         )
                         if callee.endswith(DSQGEN_CALLEES) or tpcds_manager:
