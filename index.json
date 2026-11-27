@@ -27232,10 +27232,15 @@
       "title": "Add row-count references for TPC-H, TPC-DS and SSB at every scale that ranks, per query stream"
     },
     "crr-d1-observed-engine-contract-and-dataframe": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-28T14:31:48Z",
+        "generation": "917a54ba674f478e829140a03eca1193",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
+      },
       "needs": [],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Record the execution engine that actually ran, starting with the DataFrame platforms"
     },
     "crr-d1-observed-engine-contract-and-dataframe-deferral-1": {

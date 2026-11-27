@@ -603,6 +603,15 @@
       "op": "promote",
       "op_id": "ad4960720edd430d9f4c16755801a112",
       "session_id": "51a05311b8f040aabf2f02456b50b932"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-27T14:31:48Z",
+      "client": "omp-coding-agent",
+      "generation": "917a54ba674f478e829140a03eca1193",
+      "op": "take",
+      "op_id": "0ce125d7dd754d71a03c020019935eac",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
     }
   ]
 }
