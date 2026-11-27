@@ -54708,17 +54708,12 @@
       "title": "Resolve the TPC-DI enhanced parallel surface against the canonical ETL path"
     },
     "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121": {
-      "claim": {
-        "expires_at": "2026-11-28T18:35:13Z",
-        "generation": "f140d41bb9e94907abe02325d9dff611",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-13-digen-reference-path-and-comparison-20261120"
       ],
       "priority": "medium-high",
-      "status": "active",
+      "status": "done",
       "title": "TPC-DI step 14: ETL scaffolding and Batch 1 ingestion on DuckDB"
     },
     "tpcdi-fact-table-row-caps-20261111": {
