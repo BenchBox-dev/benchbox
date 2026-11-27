@@ -27756,8 +27756,7 @@
     "datagen-lib-ssb-and-synthetic-framework": {
       "claim": null,
       "needs": [
-        "datagen-lib-tpch",
-        "datagen-decision-ssb-and-synthetic-acceptance"
+        "datagen-lib-tpch"
       ],
       "priority": "high",
       "status": "open",
