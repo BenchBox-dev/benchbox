@@ -40,17 +40,24 @@ def market():
         "INSERT INTO DimCompany VALUES "
         "(1, 1, 'Active', 'One', 'Ind', 'AAA', false, 'C', '', '', 'P', 'C', 'S', '', 'D', NULL, true, 1, DATE '2000-01-01', DATE '9999-12-31'), "
         "(2, 2, 'Active', 'Two', 'Ind', 'AAA', false, 'C', '', '', 'P', 'C', 'S', '', 'D', NULL, true, 1, DATE '2000-01-01', DATE '9999-12-31'), "
-        "(3, 3, 'Active', 'Three', 'Ind', 'AAA', false, 'C', '', '', 'P', 'C', 'S', '', 'D', NULL, true, 1, DATE '2000-01-01', DATE '9999-12-31')"
+        "(3, 3, 'Active', 'Three', 'Ind', 'AAA', false, 'C', '', '', 'P', 'C', 'S', '', 'D', NULL, true, 1, DATE '2000-01-01', DATE '9999-12-31'), "
+        "(4, 4, 'Active', 'Four', 'Ind', 'AAA', false, 'C', '', '', 'P', 'C', 'S', '', 'D', NULL, true, 1, DATE '2000-01-01', DATE '9999-12-31')"
     )
     connection.execute(
         "INSERT INTO DimSecurity VALUES "
         "(1, 'EDGE', 'COMMON', 'Active', 'Edge', 'NYSE', 1, 1, DATE '1990-01-01', DATE '1990-01-01', 2.00, true, 1, DATE '2000-01-01', DATE '9999-12-31'), "
         "(2, 'TIES', 'COMMON', 'Active', 'Ties', 'NYSE', 2, 1, DATE '1990-01-01', DATE '1990-01-01', 1.00, true, 1, DATE '2000-01-01', DATE '9999-12-31'), "
-        "(3, 'NOPE', 'COMMON', 'Active', 'Nope', 'NYSE', 3, 1, DATE '1990-01-01', DATE '1990-01-01', 1.00, true, 1, DATE '2000-01-01', DATE '9999-12-31')"
+        "(3, 'NOPE', 'COMMON', 'Active', 'Nope', 'NYSE', 3, 1, DATE '1990-01-01', DATE '1990-01-01', 1.00, true, 1, DATE '2000-01-01', DATE '9999-12-31'), "
+        "(4, 'HALF', 'COMMON', 'Active', 'Half', 'NYSE', 4, 1, DATE '1990-01-01', DATE '1990-01-01', 1.71, true, 1, DATE '2000-01-01', DATE '9999-12-31')"
     )
     connection.execute(
         "INSERT INTO Financial "
         "SELECT 1, year(q), quarter(q), q, 100, 10, 1.00, 1.00, 0.10, 0, 0, 0, 10, 10 "
+        "FROM (SELECT CAST(range AS DATE) AS q FROM range(DATE '2015-01-01', DATE '2016-01-01', INTERVAL 3 MONTH))"
+    )
+    connection.execute(
+        "INSERT INTO Financial "
+        "SELECT 4, year(q), quarter(q), q, 100, 10, 1.50, 1.50, 0.10, 0, 0, 0, 10, 10 "
         "FROM (SELECT CAST(range AS DATE) AS q FROM range(DATE '2015-01-01', DATE '2016-01-01', INTERVAL 3 MONTH))"
     )
     connection.execute(f"CREATE TABLE DailyMarketRaw ({DAILY_MARKET})")
@@ -75,6 +82,11 @@ def market():
         """
     )
     connection.execute("INSERT INTO DailyMarketRaw VALUES (DATE '2016-02-01', 'NOPE', 10.00, 11.00, 9.00, 100, 1)")
+    connection.execute(
+        "INSERT INTO DailyMarketRaw VALUES "
+        "(DATE '2016-02-01', 'HALF', 600.00, 600.00, 600.00, 100, 1), "
+        "(DATE '2016-02-02', 'HALF', 1.71, 1.71, 1.71, 100, 1)"
+    )
     historical.load_historical(connection, steps=[STEPS["fact_market_history"]])
     yield connection
     connection.close()
@@ -107,6 +119,11 @@ def test_yield_is_the_dividend_over_the_close_times_one_hundred(market):
 def test_price_earnings_uses_the_four_calendar_quarters_before_the_date(market):
     assert row(market, 1, "2016-03-01")[0] == Decimal("10.00")
     assert row(market, 1, "2015-07-01")[0] == Decimal("20.00")
+
+
+def test_half_cent_quotients_round_half_away_from_zero(market):
+    assert row(market, 4, "2016-02-01")[1] == Decimal("0.29")
+    assert row(market, 4, "2016-02-02")[0] == Decimal("0.29")
 
 
 def test_a_company_without_earnings_gets_no_ratio_and_an_alert(market):

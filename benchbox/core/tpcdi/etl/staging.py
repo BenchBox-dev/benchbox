@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 ETL_DIR = Path(__file__).resolve().parent
 INGEST_DIR = ETL_DIR / "ingest"
 SOURCE_DIALECT = "duckdb"
+EXACT_DECIMAL_QUOTIENT_PLATFORMS = ("duckdb",)
 BATCH_ID = 1
 
 XML_REFUSAL_MESSAGE = (
@@ -85,7 +86,10 @@ def step_parameters(source_dir: str | Path, step: IngestStep) -> dict[str, str]:
 
 
 def render_sql(sql: str, platform: str = SOURCE_DIALECT) -> list[str]:
-    translated = translate_sql_query(sql, platform, source_dialect=SOURCE_DIALECT, identify=False, strict=True)
+    rewrites = [("exact_decimal_quotients", {})] if platform in EXACT_DECIMAL_QUOTIENT_PLATFORMS else None
+    translated = translate_sql_query(
+        sql, platform, source_dialect=SOURCE_DIALECT, identify=False, strict=True, rewrites=rewrites
+    )
     return split_sql_statements(translated, platform)
 
 

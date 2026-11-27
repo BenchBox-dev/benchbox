@@ -235,9 +235,12 @@ and so are the 52-week highs and lows with their dates. Of the PERatio
 differences at scale 3, 4464 are rows where the implementation falls back to
 Financial rows older than the four calendar quarters before the trading date
 and BenchBox stores no ratio, and 74 are rows where missing quarters change the
-sum. Both sides divide in DOUBLE, so a yield whose exact quotient ends in half a
-cent may round either way on either side; the yield entry therefore accepts a
-BenchBox value within half a cent of the scaled implementation value.
+sum. BenchBox computes Yield and PERatio exactly and rounds half away from zero
+(on DuckDB through the `exact_decimal_quotients` rewrite); the implementation
+divides in DOUBLE, so at an exact half cent its value can round the other way.
+The yield and price-earnings entries accept a BenchBox value only when it is the
+exact half-away rounding, checked in integer arithmetic, and the yield entry
+also requires it to lie within half a cent of the scaled implementation value.
 
 ## Initialization, historical load and audit (2026-11-25)
 

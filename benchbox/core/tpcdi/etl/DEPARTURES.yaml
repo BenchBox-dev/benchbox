@@ -3,7 +3,7 @@ departures:
     kind: changed
     clause: "3.2, Table 3.2.1"
     project_behaviour: "Staging and warehouse columns that hold prices, amounts, rates and ratios are DOUBLE or FLOAT."
-    benchbox_behaviour: "Every non-integer staging read is typed DECIMAL(p,s) with the precision and scale of the specification, and the warehouse columns carry the same types."
+    benchbox_behaviour: "Every non-integer staging read is typed DECIMAL(p,s) with the precision and scale of the specification, and the warehouse columns carry the same types. Quotients stored as DECIMAL (Yield, PERatio) are computed exactly and rounded half away from zero: on DuckDB, which divides DECIMAL values in DOUBLE, the ETL renderer applies the exact_decimal_quotients rewrite."
     files:
       - benchbox/core/tpcdi/etl/ingest/tax_rate.sql
       - benchbox/core/tpcdi/etl/ingest/trade.sql
@@ -11,6 +11,8 @@ departures:
       - benchbox/core/tpcdi/etl/ingest/daily_market.sql
       - benchbox/core/tpcdi/etl/historical/dim_security.sql
       - benchbox/core/tpcdi/etl/historical/financial.sql
+      - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+      - benchbox/core/tpcdi/etl/staging.py
     status: implemented
     approval: approved
 
