@@ -146,7 +146,7 @@ or declaration appears unused.
 | `google-cloud-storage` | CS | `benchbox/platforms/base/cloud_spark/staging.py`, `benchbox/platforms/bigquery.py` | 7 | KEEP |
 | `influxdb3-python` | SQL | `benchbox/platforms/influxdb/_dependencies.py` | 1 | KEEP |
 | `mcp` | MCP | `benchbox/mcp/**`, tests | 18 | KEEP |
-| `pandas` | DF/BM | `benchbox/core/**`, `benchbox/experimental/**`, `benchbox/platforms/**`, tests | 182 | KEEP (extras only) - removed from core deps; supplied by `extras:{pandas,dataframe-pandas,tpcdi,dask}` and transitively by `chdb`. See finding F7. |
+| `pandas` | DF/BM | `benchbox/core/**`, `benchbox/experimental/**`, `benchbox/platforms/**`, tests | 182 | KEEP (extras only) - removed from core deps; supplied by `extras:{pandas,dataframe-pandas,dask}` and transitively by `chdb`. See finding F7. |
 | `polars` | DF | `benchbox/cli/**`, `benchbox/core/**`, `benchbox/platforms/**`, tests | 60 | KEEP |
 | `presto-python-client` | SQL | `benchbox/platforms/presto.py` | 2 | KEEP |
 | `psycopg2-binary` | SQL | `benchbox/platforms/pg_*.py`, `scripts/`, tests | 18 | KEEP |
@@ -173,7 +173,7 @@ or declaration appears unused.
 | `mutmut` | DEV | (CLI tool) | 0 | KEEP - `[tool.mutmut]` config block targets specific files |
 | `codespell` | DEV | (CLI tool) | 0 | KEEP - invoked via `pre-commit` and CI |
 | `pre-commit` | DEV | (CLI tool) | 0 | KEEP - invoked by local hooks and content-guard CI |
-| `lxml` | DEV | `tests/unit/core/tpcdi/test_etl_sources.py` | 1 | **FLAG-UNUSED-RUNTIME** - only test imports; verify whether `benchbox/core/tpcdi/_legacy_etl/sources.py` actually requires lxml at runtime (it parses XML). If yes, promote to runtime extra; if no, keep dev-only. See finding F3. |
+| `lxml` | DEV | (none) | 0 | **FLAG-UNUSED** - the only importing test and the legacy TPC-DI source module were deleted; no import site remains. See finding F3. |
 | `clickhouse-connect` | DEV | (also in dev for tests) | covered above | KEEP |
 | `cloudpathlib[s3,gs,azure]` | DEV | tests use `cloudpathlib` core | covered above | KEEP - extras pin S3/GCS/Azure providers for live tests |
 | `pyiceberg[sql-sqlite,pyarrow]` | DEV | tests use `pyiceberg` core | covered above | KEEP - extras pin SQL-SQLite catalog for tests |
@@ -219,18 +219,15 @@ or declaration appears unused.
   from core would shrink the wheel install set by ~2 MB plus its (relatively
   small) transitive surface (`attrs`, `referencing`, `rpds-py`, `jsonschema-specifications`).
 
-### F3 - `lxml` is declared in `dep-group:dev` but only one test imports it
+### F3 - `lxml` is declared in `dep-group:dev` but nothing imports it
 
 - **Where:** `pyproject.toml` line 482.
 - **Evidence:**
-  - `lxml` has one import site: `tests/unit/core/tpcdi/test_etl_sources.py:22`.
-  - `grep -r "^import lxml\|^from lxml\|lxml\." benchbox/` returns **no
-    matches** - TPC-DI ETL uses `xml.etree` (stdlib), not `lxml`.
-- **Recommended action:** Either remove `lxml>=5.0.0` from `dep-group:dev`
-  and rewrite the single test to use stdlib `xml.etree`, or keep the dep and
-  document the test rationale inline. Removal is the lower-surface option.
-- **Risk:** Low. The single test (`test_etl_sources.py`) would need to be
-  rewritten to drop the lxml-specific assertion path.
+  - `grep -r "^import lxml\|^from lxml\|lxml\." benchbox/ tests/` returns **no
+    matches**; the only test that imported it and the legacy TPC-DI source
+    module that parsed XML were deleted.
+- **Recommended action:** Remove `lxml>=6.0.0` from `dep-group:dev`.
+- **Risk:** Low. No import site remains.
 
 ### F4 - `requests` is reachable transitively but explicitly declared in three extras
 

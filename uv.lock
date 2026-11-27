@@ -684,9 +684,6 @@ table-formats = [
     { name = "pyiceberg" },
     { name = "vortex-data" },
 ]
-tpcdi = [
-    { name = "pandas" },
-]
 trino = [
     { name = "cloudpathlib" },
     { name = "trino" },
@@ -850,7 +847,6 @@ requires-dist = [
     { name = "pandas", marker = "extra == 'dataframe-pandas'", specifier = ">=3.0.0" },
     { name = "pandas", marker = "extra == 'dataframe-pandas-family'", specifier = ">=3.0.0" },
     { name = "pandas", marker = "extra == 'pandas'", specifier = ">=3.0.0" },
-    { name = "pandas", marker = "extra == 'tpcdi'", specifier = ">=3.0.0" },
     { name = "polars", marker = "extra == 'all'", specifier = ">=1.35.2,<3.0.0" },
     { name = "polars", marker = "extra == 'dataframe-all'", specifier = ">=1.35.2,<3.0.0" },
     { name = "polars", marker = "extra == 'dataframe-expression-family'", specifier = ">=1.35.2,<3.0.0" },
@@ -924,7 +920,7 @@ requires-dist = [
     { name = "vortex-data", marker = "extra == 'table-formats'", specifier = ">=0.29.0" },
     { name = "zstandard", specifier = ">=0.20.0" },
 ]
-provides-extras = ["dev", "viz", "explorer", "all", "cloud", "cloudstorage", "duckdb", "ducklake", "clickhouse", "clickhouse-server", "clickhouse-cloud", "databricks", "bigquery", "redshift", "snowflake", "trino", "presto", "postgresql", "questdb", "synapse", "fabric", "athena", "datafusion", "firebolt", "databend", "doris", "influxdb", "starrocks", "singlestore", "gizmosql", "tpcdi", "clickhouse-local", "table-formats", "ai-primitives", "pandas", "dataframe-pandas", "dask", "dataframe-dask", "cudf", "dataframe-cudf", "polars", "dataframe-polars", "pyspark", "lakesail", "velox", "dataframe-pyspark", "dataframe-datafusion", "dataframe-pandas-family", "dataframe-expression-family", "dataframe-all", "quick-start", "cloud-spark-aws", "cloud-spark-gcp", "cloud-spark-azure", "cloud-spark-snowflake", "cloud-spark-databricks", "cloud-spark", "mcp", "spark"]
+provides-extras = ["dev", "viz", "explorer", "all", "cloud", "cloudstorage", "duckdb", "ducklake", "clickhouse", "clickhouse-server", "clickhouse-cloud", "databricks", "bigquery", "redshift", "snowflake", "trino", "presto", "postgresql", "questdb", "synapse", "fabric", "athena", "datafusion", "firebolt", "databend", "doris", "influxdb", "starrocks", "singlestore", "gizmosql", "clickhouse-local", "table-formats", "ai-primitives", "pandas", "dataframe-pandas", "dask", "dataframe-dask", "cudf", "dataframe-cudf", "polars", "dataframe-polars", "pyspark", "lakesail", "velox", "dataframe-pyspark", "dataframe-datafusion", "dataframe-pandas-family", "dataframe-expression-family", "dataframe-all", "quick-start", "cloud-spark-aws", "cloud-spark-gcp", "cloud-spark-azure", "cloud-spark-snowflake", "cloud-spark-databricks", "cloud-spark", "mcp", "spark"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -176,7 +176,6 @@ starrocks = ["pymysql>=1.1.0"]
 singlestore = ["singlestoredb>=1.0.0"]
 gizmosql = ["adbc-driver-gizmosql>=2.0.13,<3"]
 
-tpcdi = ["pandas>=3.0.0"]
 clickhouse-local = ["chdb>=4.5.0; sys_platform != 'win32'"]
 table-formats = [
     "deltalake>=1.2.1",
@@ -537,7 +536,6 @@ omit = [
     "benchbox/core/tpcds/dataframe_queries/channel_helper.py",
     "benchbox/core/datavault/dataframe_queries/queries.py",
     "benchbox/core/nyctaxi/dataframe_queries/queries.py",
-    "benchbox/core/tpcdi/_legacy_etl/scd_processor.py",
     "benchbox/experimental/load_testing/executor.py",
     "benchbox/experimental/load_testing/pool_tester.py",
     "benchbox/core/clickbench/dataframe_queries/queries.py",
@@ -708,7 +706,6 @@ ignore_rules = [
         "benchbox/core/tuning/interface.py",
         "benchbox/core/write_primitives/benchmark.py",
         "benchbox/nyctaxi.py",
-        "benchbox/tpcdi.py",
         "benchbox/tpcds.py",
         "benchbox/tpch.py",
         "benchbox/tsbs_devops.py",
@@ -718,7 +715,6 @@ ignore_rules = [
         "benchbox/core/ai_primitives/dataframe_operations.py",
         "benchbox/core/joinorder/benchmark.py",
         "benchbox/core/metadata_primitives/dataframe_operations.py",
-        "benchbox/core/tpcdi/_legacy_etl/data_quality_monitor.py",
         "benchbox/core/transaction_primitives/benchmark.py",
         "benchbox/core/transaction_primitives/dataframe_operations.py",
         "benchbox/core/write_primitives/benchmark.py",
@@ -746,7 +742,6 @@ ignore_rules = [
         "benchbox/core/joinorder/schema.py",
         "benchbox/core/metadata_primitives/benchmark.py",
         "benchbox/core/tpc_patterns.py",
-        "benchbox/core/tpcdi/_legacy_etl/incremental_loader.py",
         "benchbox/core/tpcds/benchmark/runner.py",
         "benchbox/core/tpcds/c_tools.py",
         "benchbox/core/tpcds/generator/manager.py",
@@ -840,9 +835,7 @@ ignore_rules = [
     ] },
 
     { function_names = ["classify_error", "date_add", "date_sub", "run_full_benchmark", "setup"], path_contains = [
-        "benchbox/core/tpcdi/_legacy_etl/error_recovery.py",
         "benchbox/platforms/dataframe/pandas_family.py",
-        "benchbox/tpcdi.py",
         "benchbox/transaction_primitives.py",
         "benchbox/write_primitives.py",
     ] },
@@ -850,7 +843,6 @@ ignore_rules = [
     { function_names = ["get", "get_variant_description", "run_etl_benchmark", "calculate_official_metrics", "execute_operation"], path_contains = [
         "benchbox/core/tpcds/dataframe_queries/parameters.py",
         "benchbox/core/tpchavoc/benchmark.py",
-        "benchbox/tpcdi.py",
         "benchbox/transaction_primitives.py",
     ] },
 

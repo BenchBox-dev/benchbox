@@ -22,19 +22,36 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 _PYPROJECT = Path(__file__).resolve().parents[3] / "pyproject.toml"
 
 
-class _PandasBlocker:
+STUB_BENCHMARK_ID = "needsextra"
+STUB_MISSING_MODULE = "stubpkg"
+STUB_MODULES = frozenset(
+    {"benchbox.needs_extra_stub", f"benchbox.core.{STUB_BENCHMARK_ID}", f"benchbox.core.{STUB_BENCHMARK_ID}.benchmark"}
+)
+
+
+class _MissingStubDependency:
     def find_spec(self, name, path=None, target=None):
-        if name == "pandas" or name.startswith("pandas."):
-            raise ModuleNotFoundError("No module named 'pandas'", name="pandas")
+        if name in STUB_MODULES:
+            raise ModuleNotFoundError(f"No module named '{STUB_MISSING_MODULE}'", name=STUB_MISSING_MODULE)
         return None
 
 
 @pytest.fixture
-def pandas_blocked(monkeypatch):
-    for name in list(sys.modules):
-        if name == "pandas" or name.startswith(("pandas.", "benchbox.tpcdi", "benchbox.core.tpcdi")):
-            monkeypatch.delitem(sys.modules, name)
-    monkeypatch.setattr(sys, "meta_path", [_PandasBlocker(), *sys.meta_path])
+def extra_gated_benchmark(monkeypatch):
+    monkeypatch.setitem(
+        benchbox._BENCHMARK_REGISTRY,
+        "NeedsExtra",
+        benchbox._BenchmarkSpec("needs_extra_stub", "NeedsExtra", ("stubextra",)),
+    )
+    original_class_name = benchmark_registry.get_benchmark_class_name
+
+    def class_name(benchmark_id):
+        if benchmark_id.lower() == STUB_BENCHMARK_ID:
+            return "NeedsExtra"
+        return original_class_name(benchmark_id)
+
+    monkeypatch.setattr(benchmark_registry, "get_benchmark_class_name", class_name)
+    monkeypatch.setattr(sys, "meta_path", [_MissingStubDependency(), *sys.meta_path])
     benchbox._clear_lazy_cache()
     yield
     benchbox._clear_lazy_cache()
@@ -50,36 +67,36 @@ def broken_benchmark_module(monkeypatch):
 
 
 def _assert_names_module_and_install(text: str) -> None:
-    assert "pandas" in text
-    assert "benchbox[tpcdi]" in text or "--extra tpcdi" in text
+    assert STUB_MISSING_MODULE in text
+    assert "benchbox[stubextra]" in text or "--extra stubextra" in text
 
 
-def test_registry_lookup_reports_missing_module_and_extra(pandas_blocked):
+def test_registry_lookup_reports_missing_module_and_extra(extra_gated_benchmark):
     with pytest.raises(BenchmarkDependencyError) as excinfo:
-        benchmark_registry.get_public_benchmark_class("tpcdi")
+        benchmark_registry.get_public_benchmark_class(STUB_BENCHMARK_ID)
 
     error = excinfo.value
-    assert error.module == "pandas"
-    assert error.extras == ("tpcdi",)
+    assert error.module == STUB_MISSING_MODULE
+    assert error.extras == ("stubextra",)
     _assert_names_module_and_install(str(error))
-    assert "tpcdi" in error.remedy
+    assert "stubextra" in error.remedy
 
 
-def test_availability_check_treats_missing_dependency_as_unavailable(pandas_blocked):
-    assert benchmark_registry.is_benchmark_available("tpcdi") is False
+def test_availability_check_treats_missing_dependency_as_unavailable(extra_gated_benchmark):
+    assert benchmark_registry.is_benchmark_available(STUB_BENCHMARK_ID) is False
 
 
-def test_python_api_error_carries_the_same_guidance(pandas_blocked):
+def test_python_api_error_carries_the_same_guidance(extra_gated_benchmark):
     with pytest.raises(ImportError) as excinfo:
-        _ = benchbox.TPCDI
+        _ = benchbox.NeedsExtra
 
     _assert_names_module_and_install(str(excinfo.value))
     assert "not supported yet" not in str(excinfo.value)
 
 
-def test_cli_loader_reports_missing_module_instead_of_unsupported(pandas_blocked):
+def test_cli_loader_reports_missing_module_instead_of_unsupported(extra_gated_benchmark):
     with pytest.raises(BenchmarkDependencyError) as excinfo:
-        get_core_benchmark_class("tpcdi")
+        get_core_benchmark_class(STUB_BENCHMARK_ID)
 
     _assert_names_module_and_install(str(excinfo.value))
     assert "not supported yet" not in str(excinfo.value)
@@ -90,14 +107,16 @@ def test_cli_loader_still_rejects_unknown_benchmarks():
         get_core_benchmark_class("definitely_not_a_benchmark")
 
 
-def test_mcp_job_worker_returns_dependency_missing_with_install_command(pandas_blocked, tmp_path):
+def test_mcp_job_worker_returns_dependency_missing_with_install_command(extra_gated_benchmark, tmp_path, monkeypatch):
+    from benchbox.mcp import jobs
     from benchbox.mcp.jobs import DurableJobWorker, JobRecord
 
+    monkeypatch.setattr(jobs, "get_all_benchmarks", lambda: {STUB_BENCHMARK_ID: {}})
     job = JobRecord(
         execution_id="mcp_dep",
         principal_id="principal",
         state="running",
-        request={"platform": "duckdb", "benchmark": "tpcdi", "scale_factor": 0.01},
+        request={"platform": "duckdb", "benchmark": STUB_BENCHMARK_ID, "scale_factor": 0.01},
         idempotency_key=None,
         attempts=1,
         lease_owner=None,
@@ -116,15 +135,15 @@ def test_mcp_job_worker_returns_dependency_missing_with_install_command(pandas_b
 
     assert response["status"] == "failed"
     assert response["error_code"] == "DEPENDENCY_MISSING"
-    assert response["details"]["module"] == "pandas"
-    assert "benchbox[tpcdi]" in response["suggestion"] or "--extra tpcdi" in response["suggestion"]
+    assert response["details"]["module"] == STUB_MISSING_MODULE
+    assert "benchbox[stubextra]" in response["suggestion"] or "--extra stubextra" in response["suggestion"]
 
 
-def test_mcp_query_details_report_missing_dependency(pandas_blocked):
+def test_mcp_query_details_report_missing_dependency(extra_gated_benchmark):
     from benchbox.mcp.tools import benchmark as benchmark_tools
 
     response: dict = {}
-    benchmark_tools._populate_sql_query_details(response, "tpcdi", "1", None)
+    benchmark_tools._populate_sql_query_details(response, STUB_BENCHMARK_ID, "1", None)
 
     _assert_names_module_and_install(response["error"])
 
@@ -158,7 +177,7 @@ def test_find_missing_module_ignores_benchbox_internal_modules():
 
 
 def test_create_import_error_never_advises_extras_without_a_missing_module():
-    error = create_import_error("X", ["tpcdi"], ImportError("DLL load failed"))
+    error = create_import_error("X", ["stubextra"], ImportError("DLL load failed"))
 
     assert "benchbox[" not in str(error)
     assert "--extra" not in str(error)

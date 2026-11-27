@@ -56,9 +56,6 @@ class TestCircularImports:
         ]
 
         for module_name, class_name in benchmark_imports:
-            if "tpcdi" in module_name and importlib.util.find_spec("pandas") is None:
-                continue
-
             module = importlib.import_module(module_name)
             cls = getattr(module, class_name, None)
             assert cls is not None, f"{module_name} should export {class_name}"
@@ -76,9 +73,6 @@ class TestCircularImports:
         ]
 
         for module_name in init_modules:
-            if "tpcdi" in module_name and importlib.util.find_spec("pandas") is None:
-                pytest.skip("pandas not available for TPCDI tests")
-
             module = importlib.import_module(module_name)
 
             if "tpchavoc" not in module_name:

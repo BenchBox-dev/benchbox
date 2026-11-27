@@ -58,7 +58,7 @@ class _BenchmarkSpec:
 
 
 _BENCHMARK_REGISTRY: dict[str, _BenchmarkSpec] = {
-    "TPCDI": _BenchmarkSpec("tpcdi", "TPCDI", ("tpcdi",)),
+    "TPCDI": _BenchmarkSpec("tpcdi", "TPCDI", ()),
     "SSB": _BenchmarkSpec("ssb", "SSB", ()),
     "AMPLab": _BenchmarkSpec("amplab", "AMPLab", ()),
     "H2ODB": _BenchmarkSpec("h2odb", "H2ODB", ()),
