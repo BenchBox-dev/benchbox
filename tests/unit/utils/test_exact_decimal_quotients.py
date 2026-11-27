@@ -6,7 +6,7 @@ from decimal import ROUND_HALF_UP, Decimal
 import duckdb
 import pytest
 
-from benchbox.utils.dialect_utils import apply_rewrite
+from benchbox.utils.dialect_utils import apply_rewrite, translate_sql_query
 
 pytestmark = [pytest.mark.unit, pytest.mark.fast]
 
@@ -31,6 +31,13 @@ def _expected(x: Decimal | None, y: Decimal | None) -> Decimal | None:
 
 def test_unrewritten_cast_rounds_the_tie_the_wrong_way():
     assert _quotients(QUOTIENT_SQL, [(Decimal("1.71"), Decimal("6.00"))]) == [Decimal("0.28")]
+
+
+def test_translate_sql_query_applies_exact_decimal_quotients_by_name():
+    translated = translate_sql_query(
+        QUOTIENT_SQL, "duckdb", "duckdb", identify=False, strict=True, rewrites=[("exact_decimal_quotients", {})]
+    )
+    assert _quotients(translated, [(Decimal("1.71"), Decimal("6.00"))]) == [Decimal("0.29")]
 
 
 def test_exact_decimal_quotients_rounds_ties_half_away_from_zero():
