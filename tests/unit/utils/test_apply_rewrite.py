@@ -71,6 +71,7 @@ ENGINE_REWRITES = (
     "correlated_exists_to_in",
     "add_derived_table_aliases",
     "qualify_order_by_columns",
+    "exact_decimal_quotients",
 )
 LIST_AND_RUNNER_REWRITES = (
     "reduce_list_aggregates",
