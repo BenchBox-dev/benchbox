@@ -286,6 +286,15 @@
       "op_id": "a972721bc5564a7bb0b60d04acad657c",
       "reason": "The tracker server restarted to load tractable 1.3.2, which gave the same leader a new worker identity; the old identity cannot act again.",
       "session_id": "cf74886b085549ef9de2b13963b10382"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73",
+      "at": "2026-11-27T18:35:13Z",
+      "client": "omp-coding-agent",
+      "generation": "f140d41bb9e94907abe02325d9dff611",
+      "op": "take",
+      "op_id": "30f9ec3da69c4e6c9c1ab6b1ea95ac21",
+      "session_id": "cf74886b085549ef9de2b13963b10382"
     }
   ]
 }
