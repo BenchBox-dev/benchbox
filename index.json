@@ -19137,6 +19137,108 @@
       "scope_hash": "b98e4873ab81a7a4db6dffb27aef2e9b5b6f05ac51c79145687e078b838672c7",
       "start_head": "1d2828e85f2cac38fda65b8337be1cf5371ab4cb",
       "terminal_outcome": "deliver"
+    },
+    "validation-core": {
+      "accepted_members": {},
+      "batch_schema": 2,
+      "delivery_boundary": "final-pr",
+      "develop_ref": "refs/remotes/origin/develop",
+      "final_pr_history": [],
+      "integrated_members": {},
+      "integration_branch": "feat/validation-core",
+      "integration_head": "372f743e84df1422dea5d4926d8338b371be8518",
+      "integration_log": [
+        {
+          "at": "2026-11-27T14:59:12Z",
+          "head": "372f743e84df1422dea5d4926d8338b371be8518",
+          "kind": "start",
+          "seq": 0
+        }
+      ],
+      "integration_worktree": "/Users/joe/Developer/BenchBox.wt-validation-core",
+      "lifecycle": "active",
+      "members": [
+        "crr-v0-reference-reader-and-generator",
+        "crr-v1-row-evidence-roll-up",
+        "crr-d1-observed-engine-contract-and-dataframe-deferral-1",
+        "crr-v2-measured-stream-integrity-checks"
+      ],
+      "owner": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "owner_epoch": 0,
+      "owner_generation": "738c2f34494ba4dae2a9200febd5dbaa",
+      "project_id": "benchbox",
+      "recoveries": [],
+      "repository": "https://github.com/BenchBox-dev/BenchBox.git",
+      "scope": {
+        "crr-d1-observed-engine-contract-and-dataframe-deferral-1": [
+          "tests/unit/platforms/dataframe/*",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "crr-v0-reference-reader-and-generator": [
+          "benchbox/*",
+          "tests/*",
+          "scripts/*",
+          "_project/scripts/*",
+          "_project/inert-doc-readers.json",
+          "_project/design/*",
+          ".github/*",
+          "docs/*",
+          "quality/*",
+          "pyproject.toml",
+          "Makefile",
+          "make/*",
+          "results-data/*.py",
+          "results-data/*.md",
+          "results-data/compliance-classes.json",
+          "results-data/corpus-inventory.json",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "crr-v1-row-evidence-roll-up": [
+          "benchbox/*",
+          "tests/*",
+          "scripts/*",
+          "_project/scripts/*",
+          "_project/inert-doc-readers.json",
+          "_project/design/*",
+          ".github/*",
+          "docs/*",
+          "quality/*",
+          "pyproject.toml",
+          "Makefile",
+          "make/*",
+          "results-data/*.py",
+          "results-data/*.md",
+          "results-data/compliance-classes.json",
+          "results-data/corpus-inventory.json",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ],
+        "crr-v2-measured-stream-integrity-checks": [
+          "benchbox/*",
+          "tests/*",
+          "scripts/*",
+          "_project/scripts/*",
+          "_project/inert-doc-readers.json",
+          "_project/design/*",
+          ".github/*",
+          "docs/*",
+          "quality/*",
+          "pyproject.toml",
+          "Makefile",
+          "make/*",
+          "results-data/*.py",
+          "results-data/*.md",
+          "results-data/compliance-classes.json",
+          "results-data/corpus-inventory.json",
+          "changelog.d/*",
+          "docs/internal/dev-loop-property-ledger.md"
+        ]
+      },
+      "scope_hash": "7591fff5402178d7b30968352062f170bc535df6455a293b7a709105bff81ea0",
+      "start_head": "372f743e84df1422dea5d4926d8338b371be8518",
+      "terminal_outcome": "deliver"
     }
   },
   "items": {
