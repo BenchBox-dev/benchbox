@@ -1,9 +1,12 @@
 {
   "acceptance": [
-    "benchbox datagen and ai_primitives work with no qgen/dsqgen present.",
-    "Native query generation matches the corpus in BenchBox CI; legacy C path still selectable.",
-    "Bundle replay of recorded parameters passes."
+    "Native TPC-H and TPC-DS query generation (all draw shapes and explicit parameters) matches the corpus in BenchBox CI; legacy C path still selectable.",
+    "Bundle replay passes for every entry replay.json classes replayable.",
+    "Provenance records the query generator identity and version.",
+    "TPC-H DataFrame parameters come from the library's parameter output, not regex extraction; dead C-tool code listed in the description is deleted; benchbox/_binaries/tpc-ds/NOTICE.txt is corrected.",
+    "All 10,000 TPC-H random-seed cleaned-text digests match in a BenchBox test."
   ],
+  "context": "2026-11-27 review: guardrail 'no fork of tpcgen-rs' now reads 'no divergent fork; carried patches only under the 2026-11-27 rule'. 2026-11-26 decisions (3) and (4) are superseded by 2026-11-27 decisions (1), (2) and (4)-(6).",
   "description": "docs/internal/adr/adr-benchbox-datagen.md decision 8 (query generation in Rust). TPC-H and TPC-DS query managers call the library (native backend) and load lazily so data-only consumers never need a query generator; provenance records the query generator identity and version; published bundles' recorded parameters replay through the library. Delete dead C-tool code (c_tools.py unused parameter computation and global random reseed, DSQGenBinary._clean_sql, the unused qgen compile path in tpch/streams.py, runner.py generate_data_table call) and correct benchbox/_binaries/tpc-ds/NOTICE.txt (Windows binaries are patched). Replace TPC-H DataFrame regex re-derivation of parameters with the library's parameter output.\n\nGuardrails: no fork of tpcgen-rs; no auto backend mode or silent fallback; Python stays the only manifest writer; heavy measurements only through make heavy-run with N=3 medians recorded in the PR body; budgets from the ADR table are the gate, and a miss goes to the owner rather than being waived.",
   "sessions": [
     {
@@ -20,6 +23,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "e3ce6476a0af4cb3a612903e32820979",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-27T00:07:10Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "5ab400f8519f4380a2d1e3377a8fb298",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
