@@ -54873,12 +54873,17 @@
       "title": "Results checks accept an always-empty query and an all-zero validator (found in the TPC-DI review)"
     },
     "tpcdi-correct-stale-claims-and-surfaces-20261121": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-28T23:48:02Z",
+        "generation": "d8c55b5c8a8e4fe4b9cca21368b479ac",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
+      },
       "needs": [
         "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI step 21: correct stale TPC-DI claims in copyright, examples, README, CLI text and docs"
     },
     "tpcdi-correction-plan-20261120": {
