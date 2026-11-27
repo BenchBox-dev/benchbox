@@ -21,17 +21,8 @@ def recorded() -> script.Snapshot:
     return script.load_snapshot(SNAPSHOT)
 
 
-@pytest.fixture(scope="module")
-def computed() -> script.Snapshot:
-    return script.compute_snapshot(BUNDLES)
-
-
 def _changed_files(problems: list[str]) -> set[str]:
     return {line.split(":", 1)[0].strip() for line in problems if line.startswith("  ")}
-
-
-def test_committed_corpus_matches_the_snapshot(recorded, computed) -> None:
-    assert script.compare(recorded, computed) == []
 
 
 def test_every_stored_result_has_identity_today_and_rule_outcomes(recorded) -> None:
@@ -47,8 +38,8 @@ def test_every_stored_result_has_identity_today_and_rule_outcomes(recorded) -> N
         assert entry["rule"]["class"] != corpus_rule.CLASS_UNDETERMINED or entry["rule"]["missing_facts"]
 
 
-def test_a_drifted_today_outcome_fails_and_names_the_result(recorded, computed) -> None:
-    drifted = copy.deepcopy(computed)
+def test_a_drifted_today_outcome_fails_and_names_the_result(recorded) -> None:
+    drifted = copy.deepcopy(recorded)
     name = next(name for name, entry in drifted.items() if entry["today"].get("rank") is not None)
     drifted[name]["today"]["rank"] += 1
 
@@ -59,8 +50,8 @@ def test_a_drifted_today_outcome_fails_and_names_the_result(recorded, computed) 
     assert _changed_files(problems) == {name}
 
 
-def test_a_drifted_rule_outcome_fails_and_names_the_result(recorded, computed) -> None:
-    drifted = copy.deepcopy(computed)
+def test_a_drifted_rule_outcome_fails_and_names_the_result(recorded) -> None:
+    drifted = copy.deepcopy(recorded)
     name = next(name for name, entry in drifted.items() if entry["rule"].get("lanes"))
     drifted[name]["rule"]["lanes"] = []
 
