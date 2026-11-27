@@ -28304,12 +28304,17 @@
       "title": "Deliver TPC-DS refresh sets in benchbox-datagen as a separate, reviewed change with full-scale parity"
     },
     "datagen-lib-tpcds-rowcount-inputs": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-28T05:29:04Z",
+        "generation": "c0635c989fa44b3eb2a3e9e2c4c2869a",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
+      },
       "needs": [
         "datagen-lib-tpcds-fractional-and-refresh"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "Provide the remaining TPC-DS scale-model inputs dsqgen needs: active cities, counties, states and returns key ranges"
     },
     "datagen-lib-tpch": {
