@@ -3,6 +3,11 @@
     "Every platform that declares engines passes the crr-d1 guard with an implementation or a declared reason",
     "Fixture tests cover each implementation; any platform not verified live is listed in the pull request"
   ],
+  "batch": {
+    "batch_id": "explorer-data",
+    "implementation_dependencies": [],
+    "member_id": "crr-d2-observed-engine-sql-platforms"
+  },
   "context": "Step of the corpus rule remediation plan (crr-00-corpus-rule-remediation-plan). Plan written 2026-11-22 and reviewed twice by an independent adversarial reviewer; counts marked (R) were measured by that reviewer and must be re-measured, not trusted. Owner decisions were given by choice dialog on 2026-11-22 and are quoted in crr-00.\n\n2026-11-22 owner decision: one small live run per cloud platform is allowed to verify the engine record (smallest supported scale, one run, credentials from the environment). Without credentials, use fixtures and list the platform as 'not verified live'. This replaces the gate's 'needs owner approval in that task' for this item only.\n\n2026-11-24 owner decision supersedes the 2026-11-22 entry above: no live cloud runs. Ship with fixture tests; list every cloud platform as 'not verified live'.\n\n2026-11-26 staging state: branch feat/staging-crr-d2 at b6e8cb01b4 (worktree /Users/joe/Developer/BenchBox.wt-staging-crr-d2). Not in a pull request; explorer-data batch after the corpus rule PR merges.",
   "description": "## Problem\nDatabricks (photon or standard, recorded only as platform.compute.photon_enabled) and pg_duckdb declare engines but record no observation; Velox already observes through EXPLAIN (R).\n\n## Change\n- Implement the crr-d1 contract for each remaining platform that declares engines, one platform family per pull request if needed. Reuse Velox's approach where it fits.\n\n## Decision gates\n- No live cloud run (owner, 2026-11-24). Implement against recorded fixtures and declare each cloud platform 'not verified live' in the guard table.\n\n## Guardrails (apply to every item of this plan)\n- Fix the root cause for every platform and benchmark. No rule, exception, label or test may name a platform or a version matrix. Only the pvm-p* items may name Polars, and only to run and stage that run's files.\n- Never edit a stored result file to make it pass. Outcomes change only through the rule.\n- Any change to the outcome of a stored result must show in the committed outcome snapshot diff in the same pull request and be explained in its body.\n- No new stored class value. No reader may decide anything from benchmark.compliance_class, conformance_class or summary.tpc_metrics.suppressed.\n- Paths, line numbers and counts in this plan were read on 2026-11-22 at develop 93f3360. Re-read before editing; report drift, do not guess.\n- AGENTS.md applies: linked worktree, one pull request per item, close at the merged pull request, heavy work only through make heavy-run, no live cloud run without owner approval in that task.\n- At a decision gate, follow the recorded default. If its stop condition is met, stop and report to the owner. Never substitute a different owner decision.\n- Read crr-00-corpus-rule-remediation-plan first: it holds the owner decisions, the rule table and the fault types (T1 to T5).",
   "sessions": [
@@ -44,6 +49,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "e84933268a28ba4dbe164fd598fc7017",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-27T14:59:52Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "eb979f11b7389d16b0fa6d3bf2d2fd19",
       "session_id": "51a05311b8f040aabf2f02456b50b932"
     }
   ]
