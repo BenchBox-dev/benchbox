@@ -27751,7 +27751,7 @@
       "needs": [],
       "priority": "high",
       "status": "open",
-      "title": "Activate the review gate, merge ruleset and PyPI publishing on benchbox-datagen"
+      "title": "Activate the review gate and merge ruleset on benchbox-datagen"
     },
     "datagen-lib-ssb-and-synthetic-framework": {
       "claim": null,
