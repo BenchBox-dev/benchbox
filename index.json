@@ -55208,6 +55208,13 @@
       "status": "blocked",
       "title": "TPC-H RF1 native ingest for Snowflake (PUT then COPY INTO), gated on live-run approval"
     },
+    "tpch-sf001-session-cache-loses-dists-file-20261127": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Find what deletes dists.dss from the session TPC-H SF 0.01 cache during a test run"
+    },
     "tpch-skew-dataframe-sql-id-mapping": {
       "claim": null,
       "needs": [],
