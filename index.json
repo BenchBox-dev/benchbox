@@ -20963,6 +20963,13 @@
       "status": "done",
       "title": "Two statements about shared tracker identity in the batch protocol doc were written from reading, not from a test"
     },
+    "batch-evidence-develop-merge-exclusion-mismatch-20261127": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Make the batch evidence script and the tracker agree on which develop-merge files are excluded"
+    },
     "batch-feature-branch-integration": {
       "claim": null,
       "needs": [
