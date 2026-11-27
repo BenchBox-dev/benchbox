@@ -381,6 +381,34 @@ class TestMetricsCommand:
             assert "QphH@Size is not reported" in result.output
             assert "Power phase must contain successful RF1 and RF2 evidence" in result.output
 
+    def test_metrics_qphh_refuses_a_scale_factor_that_differs_from_the_recorded_scale(self, timed_tpch_results):
+        runner = CliRunner()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            power_file = Path(tmpdir) / "power.json"
+            throughput_file = Path(tmpdir) / "throughput.json"
+            power_data, throughput_data = timed_tpch_results
+            power_file.write_text(json.dumps(power_data))
+            throughput_file.write_text(json.dumps(throughput_data))
+
+            result = runner.invoke(
+                cli,
+                [
+                    "metrics",
+                    "qphh",
+                    "--power-results",
+                    str(power_file),
+                    "--throughput-results",
+                    str(throughput_file),
+                    "--scale-factor",
+                    "1000",
+                ],
+            )
+
+            assert result.exit_code != 0
+            assert "differs from the power results' recorded scale factor" in " ".join(result.output.split())
+            assert "Power@Size:" not in result.output
+
     @pytest.mark.parametrize(
         ("power_summary", "throughput_summary", "expected"),
         [

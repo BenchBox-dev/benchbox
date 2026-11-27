@@ -158,19 +158,28 @@ class TPCMetricsCalculator:
         throughput_data: dict,
         scale_factor: float | None = None,
     ) -> float:
+        recorded = {
+            label: TPCMetricsCalculator._recorded_scale_factor(data)
+            for label, data in (("power", power_data), ("throughput", throughput_data))
+        }
         if scale_factor is not None:
+            for label, value in recorded.items():
+                if value and value != scale_factor:
+                    raise ValueError(
+                        f"Scale factor {scale_factor} differs from the {label} results' recorded scale factor "
+                        f"{value}; omit --scale-factor to use the recorded value"
+                    )
             return scale_factor
-        sf_power = power_data.get("environment", {}).get("scale_factor") or power_data.get("benchmark", {}).get(
-            "scale_factor"
-        )
-        sf_throughput = throughput_data.get("environment", {}).get("scale_factor") or throughput_data.get(
-            "benchmark", {}
-        ).get("scale_factor")
+        sf_power, sf_throughput = recorded["power"], recorded["throughput"]
         if sf_power and sf_throughput:
             if sf_power != sf_throughput:
                 raise ValueError(f"Scale factor mismatch: power={sf_power}, throughput={sf_throughput}")
             return sf_power
         raise ValueError("Could not auto-detect scale factor. Please specify --scale-factor")
+
+    @staticmethod
+    def _recorded_scale_factor(data: dict) -> float | None:
+        return (data.get("benchmark") or {}).get("scale_factor") or (data.get("environment") or {}).get("scale_factor")
 
     @staticmethod
     def _composite_scale_refusal(data: dict) -> str | None:
@@ -247,10 +256,14 @@ class TPCMetricsCalculator:
             reason = TPCMetricsCalculator.metrics_refusal_reason(data, label)
             if reason:
                 raise ValueError(reason)
+        scale_factor = TPCMetricsCalculator.resolve_scale_factor(power_data, throughput_data, scale_factor)
 
         power_input = {
             **power_data,
-            "benchmark": {**power_data.get("benchmark", {}), "scale_factor": scale_factor},
+            "benchmark": {
+                **power_data.get("benchmark", {}),
+                "scale_factor": (power_data.get("benchmark") or {}).get("scale_factor") or scale_factor,
+            },
             "phases": {
                 **(power_data.get("phases") or {}),
                 "throughput_test": (throughput_data.get("phases") or {}).get("throughput_test"),
@@ -258,7 +271,10 @@ class TPCMetricsCalculator:
         }
         throughput_input = {
             **throughput_data,
-            "benchmark": {**throughput_data.get("benchmark", {}), "scale_factor": scale_factor},
+            "benchmark": {
+                **throughput_data.get("benchmark", {}),
+                "scale_factor": (throughput_data.get("benchmark") or {}).get("scale_factor") or scale_factor,
+            },
         }
         power_at_size = corpus_score.power_at_size(power_input)
         throughput_at_size = corpus_score.throughput_at_size(throughput_input)
