@@ -27132,17 +27132,12 @@
       "title": "Move the results database, metrics and CLI readers to the rule"
     },
     "crr-a5-published-results-mirror": {
-      "claim": {
-        "expires_at": "2026-11-28T14:31:24Z",
-        "generation": "718c716905884e3ebccf93a3ac4b42e4",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
-      },
+      "claim": null,
       "needs": [
         "crr-a3-validators-staging-and-admission"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Make the published-results validator run the same rule"
     },
     "crr-a6-reader-allowlist-guard": {
