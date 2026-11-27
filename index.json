@@ -53393,6 +53393,13 @@
       "status": "done",
       "title": "Capture a frozen TPC-H and TPC-DS query conformance corpus from the bundled qgen and dsqgen"
     },
+    "tpc-query-corpus-explicit-parameters-and-replay-rule": {
+      "claim": null,
+      "needs": [],
+      "priority": "high",
+      "status": "open",
+      "title": "Extend the query corpus with explicit-parameter dsqgen cases and define which published bundles replay"
+    },
     "tpc-remove-certification-and-compliance-claims": {
       "claim": null,
       "needs": [],

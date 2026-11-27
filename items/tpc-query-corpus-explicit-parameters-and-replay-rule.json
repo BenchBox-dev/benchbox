@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The corpus adds explicit-parameter cases: the qualification values for all 99 templates at SF 1, plus the equivalence-builder cases, recorded from dsqgen, with a fast test.",
+    "replay.json classes each entry replayable or not with a reason; counts are in the manifest.",
+    "The manifest names the dialect coverage (netezza only) or adds the others BenchBox exposes.",
+    "Corpus stays under 10 MB; merged by PR."
+  ],
+  "description": "## Problem\nBenchBox also uses dsqgen with explicit parameter values (`DSQGenBinary.generate_with_parameters`: qualification runner, equivalence builders, TPCDSQueries.generate_with_parameters). That use is not one of the three draw shapes in the corpus, and the corpus holds only the netezza dialect. In replay.json, 96 of 135 bundles record no seed and no parameters, so 'every published bundle's parameters replay' is undefined for them.\n\n## Change\nCapture explicit-parameter cases from the C oracle (same Rosetta linux/amd64 method as PR #4553); classify replay.json entries; state dialect coverage.\n\n## Decision gates\n- The replay rule (non-replayable bundles are listed with a reason and excluded from the retirement gate) is the default; if more than the no-seed/no-parameter bundles would be excluded, stop and ask the owner.\n- Add other dialects only if BenchBox passes them to dsqgen today (show the call site).\n\n## Guardrails\n- BenchBox work only in a linked worktree; heavy work only through make heavy-run; never kill processes by name pattern.\n- No divergent fork of tpcgen-rs; carried patches only under the 2026-11-27 rule (<= ~200 changed lines, upstream PR, SHA pin, README entry); anything larger goes to the owner with sizes first.\n- Human commit identity, no agent attribution. Report only observed results.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-27T00:07:01Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "ca7200dd501f4b3fa68ae0eeaa45b61c",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    }
+  ]
+}
