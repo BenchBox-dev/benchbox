@@ -22,7 +22,9 @@
       "from_item": "crr-a3-validators-staging-and-admission",
       "id": 1,
       "reason": "Found by the local review of PR #4521 at a Medium level after its batch gate; fixed on the next delivery branch to avoid another full gate and preflight cycle on the core PR.",
-      "resolution": "open",
+      "resolution": "dismissed",
+      "resolved_at": "2026-11-27T12:22:04Z",
+      "resolved_reason": "Fixed in PR #4521 (merged to develop as 372f743e84): tests/uat/phases/validate.py counts undetermined and no-timed-phase bundles as errors (_SCHEMA_VIOLATION_REFUSALS) inside the floor's denominator instead of dropping them.",
       "summary": "UAT validate floor drops undetermined and no-timed-phase bundles from its denominator instead of counting them as errors (tests/uat/phases/validate.py)"
     }
   ],
@@ -492,6 +494,14 @@
       "client": "omp-coding-agent",
       "op": "defer",
       "op_id": "c0e92460a58a4cbbbfb0390239aa3a57",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-27T12:22:04Z",
+      "client": "omp-coding-agent",
+      "op": "dismiss",
+      "op_id": "5967d0d4a4c54249912381a6d2b3c22f",
       "session_id": "51a05311b8f040aabf2f02456b50b932"
     }
   ]
