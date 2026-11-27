@@ -3,7 +3,8 @@
     "tpch_skew manifests at SF 0.01 and 0.1 carry row counts equal to the generated files' non-empty line counts and `row_counts_source: measured` (unit test).",
     "A table of all 11 ADR benchmarks states whether each manifest has measured counts; any other gap has a tracker item."
   ],
-  "description": "## Problem\ntpch_skew's data manifest carries estimated row counts without `row_counts_source: measured` (SF 0.01: 86,612 in the manifest against 86,805 rows generated and converted). Conversion therefore validates against counted source lines instead of the manifest, and any consumer reading the manifest gets wrong counts.\n\n## Change\nMake the tpch_skew generator record measured per-table row counts and `row_counts_source: measured`, as TPC-H does; check the other generators for the same gap and list them.\n\n## Decision gates\n- If measured counts differ from documented expected counts for the benchmark, report rather than editing expectations.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
+  "context": "datagen-lib-synthetic-tpch-skew must record measured counts natively.",
+  "description": "## Problem\ntpch_skew's data manifest carries estimated row counts without `row_counts_source: measured` (SF 0.01: 86,612 in the manifest against 86,805 rows generated and converted). Conversion therefore validates against counted source lines instead of the manifest, and any consumer reading the manifest gets wrong counts.\n\n## Change\nMake the tpch_skew generator record measured per-table row counts and `row_counts_source: measured`, as TPC-H does; check the other generators for the same gap and list them.\n\n## Decision gates\n- If measured counts differ from documented expected counts for the benchmark, report rather than editing expectations.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
@@ -11,6 +12,14 @@
       "client": "omp-coding-agent",
       "op": "create",
       "op_id": "be34538eedb64e4180b3453388cd66b5",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-27T00:09:11Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "655c70b1e5c84c3aa0028f046deffad0",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]
