@@ -339,8 +339,7 @@ def test_explicit_qualification_cases_cover_all_99_templates(
     section = manifest["tpcds"]["explicit_parameters"]["qualification"]
     document = json.loads(QUALIFICATION_VALUES.read_text(encoding="utf-8"))
     pinned = json.loads(QUALIFICATION_INPUTS.read_text(encoding="utf-8"))["parameters_sha256"]
-    normalised = QUALIFICATION_VALUES.read_bytes().replace(b"\r\n", b"\n")
-    assert section["parameters_sha256"] == hashlib.sha256(normalised).hexdigest() == pinned
+    assert section["parameters_sha256"] == hashlib.sha256(QUALIFICATION_VALUES.read_bytes()).hexdigest() == pinned
     records = [record for record in tpcds_explicit if record["set"] == "qualification"]
     assert [record["q"] for record in records] == qualification_statements()
     assert section["statements"] == len(records) == 103

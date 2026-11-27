@@ -17,3 +17,4 @@
 /_project/scripts/theseus_bootstrap.py -text
 /.github/theseus-lock.json -text
 /_project/analysis/polars-version-matrix/qualification.json -text
+/benchbox/core/tpcds/dataframe_queries/qualification_values.json -text
