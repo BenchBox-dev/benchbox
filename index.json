@@ -27698,15 +27698,10 @@
       "title": "Confirm the licensing position of TPC-derived logic and data in the MIT benchbox-datagen library"
     },
     "datagen-decision-upstream-gap-policy": {
-      "claim": {
-        "expires_at": "2026-11-27T23:57:39Z",
-        "generation": "3e147de01c744aa2a8a1c1bfcd5f6820",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
-      },
+      "claim": null,
       "needs": [],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Decide how benchbox-datagen fills upstream gaps: carried patch for TPC-DS sub-scale, own code for refresh sets"
     },
     "datagen-empty-manifest-vacuous-validation-20261001": {
