@@ -27170,17 +27170,12 @@
       "title": "Define result identity and comparison version from fields in the file, in one function"
     },
     "crr-b2-site-accepts-next-read-model": {
-      "claim": {
-        "expires_at": "2026-11-28T14:57:08Z",
-        "generation": "4af39f04f75546cbba33315f51ea0a23",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
-      },
+      "claim": null,
       "needs": [
         "crr-b1-identity-and-comparison-version"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "done",
       "title": "Site: accept the next read-model version and render its new fields when present"
     },
     "crr-b3-pipeline-emits-rule-outcome-and-medians": {
