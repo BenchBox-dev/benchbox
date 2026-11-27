@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from benchbox.core.results.status import CLI_FAILURE_VALIDATION_STATUSES, normalize_validation_status
 from benchbox.core.tpcdi.benchmark import TPCDIBenchmark
 from benchbox.platforms.duckdb import DuckDBAdapter
 from benchbox.utils.dialect_utils import sql_translation_context, summarize_sql_translation_outcomes
@@ -59,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"status {summary['validation_status']}; failures {[t for t in audit['tests'] if t['evaluable'] and t['result'] != 'OK']}"
     )
-    return 0 if summary["validation_status"] != "FAILED" else 1
+    return 1 if normalize_validation_status(summary["validation_status"]) in CLI_FAILURE_VALIDATION_STATUSES else 0
 
 
 if __name__ == "__main__":
