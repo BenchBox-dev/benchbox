@@ -25815,7 +25815,12 @@
       "title": "Update the committed Polars version-matrix methodology to name the core execution-engine setting"
     },
     "core-exec-remove-deprecated-aliases": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-28T00:13:32Z",
+        "generation": "26d7723ca1664f22836ebec307ab09c7",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:e82e03734cad9d7732bbc3a5"
+      },
       "needs": [
         "core-exec-polars-cli-mcp-adoption",
         "core-exec-deployment-selection-recorded",
@@ -25824,7 +25829,7 @@
         "execution-variant-docs-leftovers-20261014"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Remove the deprecated execution-variant aliases after the deprecation window"
     },
     "core-exec-result-schema-2-3": {
