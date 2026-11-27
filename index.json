@@ -15457,7 +15457,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-historical",
-      "integration_head": "c9472e9a836eb378a4bb01e2913e750cdc2377ea",
+      "integration_head": "67503ff6fab1bbbe42668acfc33154302dd32b77",
       "integration_log": [
         {
           "at": "2026-11-23T23:39:31Z",
@@ -16256,6 +16256,30 @@
           "op_id": "9109387f815f4f5984d5d5e026334e88",
           "previous_head": "a4352592e0f08c727d8e8a8b097ef51f40031b5f",
           "seq": 13
+        },
+        {
+          "at": "2026-11-27T02:31:44Z",
+          "changed_files": [
+            "benchbox/core/tpcdi/etl/DEPARTURES.yaml",
+            "benchbox/core/tpcdi/etl/historical/fact_market_history.sql",
+            "benchbox/core/tpcdi/etl/staging.py",
+            "docs/internal/tpcdi-duckdb-comparison.md",
+            "scripts/tpcdi/EXPECTED_DIFFERENCES.yaml",
+            "tests/unit/core/tpcdi/test_etl_historical_facts.py",
+            "tests/unit/scripts/test_compare_warehouses.py",
+            "tests/unit/sql_compat/golden_corpus/frozen/area_tpcdi_etl.json"
+          ],
+          "head": "67503ff6fab1bbbe42668acfc33154302dd32b77",
+          "kind": "fix",
+          "op_id": "3b5147e920ad4b94960ad890d8bf667e",
+          "previous_head": "c9472e9a836eb378a4bb01e2913e750cdc2377ea",
+          "requires_acceptance": [
+            "tpcdi-12-duckdb-historical-load-and-audit-20261120",
+            "tpcdi-etl-scaffolding-and-batch1-ingestion-20261121",
+            "tpcdi-historical-dimensions-20261121",
+            "tpcdi-historical-facts-20261121"
+          ],
+          "seq": 14
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-historical",
