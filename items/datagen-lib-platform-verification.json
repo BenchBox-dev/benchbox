@@ -1,8 +1,9 @@
 {
   "acceptance": [
-    "musl and Windows arm64 wheel jobs generate TPC-H SF 0.01 tbl output and match the committed dbgen hashes.",
+    "musl and Windows arm64 wheel jobs generate TPC-H SF 0.01 and a fixed subset of TPC-DS SF 1 tables and match committed hashes, and replay a pyarrow-free sample of TPC-H and TPC-DS corpus parameters.",
+    "Each wheel platform's pass/fail for data and for queries is recorded in context.",
     "A CI-built macOS arm64 wheel is shown to load and pass tests on macOS 27, or the failure is recorded with a minimal reproduction and an upstream report link.",
-    "Budget measurements for the library are re-run through the Python `write_tables` path on a host where release wheels load."
+    "Budget measurements for the library are re-run through the Python write_tables path on a host where release wheels load."
   ],
   "description": "## Problem\nADR decision 4 counts a platform as native only when data and query generation pass there. CI runs the full Python tests on Linux glibc (x86_64, aarch64), macOS (arm64, x86_64) and Windows x86_64, but only an import and PyCapsule check on musl (x86_64, aarch64) and Windows arm64, because pyarrow has no wheels there. Separately, on the maintainer's Mac (macOS 27 beta, ld 27037.1) a locally built release abi3 `.so` fails to load (LINKEDIT string-table offset misaligned by 4); agents worked around it with debug builds, and all local budget numbers for the Python path came from a separate release driver binary.\n\n## Change\nAdd a pyarrow-free parity check (write tbl files, compare committed SHA-256 goldens) to the musl and Windows arm64 wheel jobs. Reproduce the macOS load failure, determine whether CI-built wheels load on macOS 27, and report to Apple or the Rust project as appropriate; add a wheel-load smoke test on the newest macOS runner available.\n\n## Decision gates\n- If CI-built wheels fail to load on macOS 27, raise priority to high and stop any cutover on macOS.\n- Do not add linker workarounds (post-processing the .so) to release builds without owner approval.\n\n## Guardrails\n- BenchBox work only in a linked worktree (make worktree-create, make agent-write-preflight); the primary clone is read-only.\n- Heavy work only through make heavy-run; never bypass or signal the lock, and never kill processes by name pattern (pkill -f); stop only PIDs you started.\n- Commits as the configured human identity; no agent attribution.\n- No carried or own reimplementation of upstream code without the owner decision recorded in datagen-decision-upstream-gap-policy.\n- A choice between a small and a large implementation path goes to the owner with sizes before work starts.\n- Report only results that were observed; name anything not run.",
   "sessions": [
@@ -20,6 +21,14 @@
       "client": "omp-coding-agent",
       "op": "update",
       "op_id": "69b3afe3209143eab8489195c4adc8a6",
+      "session_id": "f712a0dbd40744a0b61814816d0ceba7"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af",
+      "at": "2026-11-27T00:08:17Z",
+      "client": "omp-coding-agent",
+      "op": "update",
+      "op_id": "89b7a3cdc76e4134879e4bcff7a48f05",
       "session_id": "f712a0dbd40744a0b61814816d0ceba7"
     }
   ]

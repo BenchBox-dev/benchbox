@@ -27730,7 +27730,10 @@
     "datagen-lib-platform-verification": {
       "claim": null,
       "needs": [
-        "datagen-lib-tpch"
+        "datagen-lib-tpch",
+        "datagen-lib-tpcds",
+        "datagen-lib-tpch-qgen",
+        "datagen-lib-tpcds-dsqgen"
       ],
       "priority": "medium",
       "status": "open",
