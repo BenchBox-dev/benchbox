@@ -27902,7 +27902,7 @@
     "datagen-lib-tpcds-refresh-sets": {
       "claim": null,
       "needs": [
-        "datagen-lib-tpcds-fractional-and-refresh"
+        "datagen-lib-tpcds"
       ],
       "priority": "medium-high",
       "status": "open",
