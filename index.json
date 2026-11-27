@@ -27690,10 +27690,15 @@
       "title": "Apply the decided handling of non-terminating and nondeterministic C-oracle query cases"
     },
     "datagen-decision-ssb-and-synthetic-acceptance": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-28T00:50:46Z",
+        "generation": "b1477e2665d749238a2d745fe42cf707",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
+      },
       "needs": [],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Decide the SSB and synthetic acceptance rule, the empty-query rule and SSB row counts"
     },
     "datagen-decision-tpc-derived-code-licensing": {
