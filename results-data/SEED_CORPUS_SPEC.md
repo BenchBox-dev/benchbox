@@ -25,9 +25,9 @@ platform name, so two execution variants of one platform (for example
 runs of one variant do not pad the floor. A bundle that ran in a container (recorded in
 `environment.execution_class` or attested in its manifest sidecar) adds a `^container`
 suffix, so a container run and a native run of one engine are distinct identities; a bundle
-that records no class stays native (see `CORPUS_NOTES.md`, "Execution-class identity"). Bundles in
-the explicitly segregated `duckdb-version-matrix/` corpus count platform plus version;
-repeated runs of one platform/version do not pad that matrix.
+that records no class stays native (see `CORPUS_NOTES.md`, "Execution-class identity"). Versions of
+one platform never add identities: the floor counts platforms, engine settings and container runs,
+not versions (see [Version-over-version cohorts](#version-over-version-cohorts)).
 
 A cohort is one benchmark, scale factor and measured phase. Power timings and
 throughput timings are never mixed, and a throughput cohort is further split by
@@ -115,9 +115,16 @@ by stream count, because both composite metrics already contain the stream count
   every refresh step succeeded. For TPC-H that is RF1 and RF2 in the power phase,
   a `COMPLETED` refresh stream and `refresh_included: true`. For TPC-DS that is a
   `COMPLETED` `maintenance_test` and `maintenance_test_2`, each with at least one
-  operation and every operation `SUCCESS`. A failed stream or a failed refresh gives
-  the exclusion reason `combined_throughput_not_clean` or `combined_refresh_not_clean`,
+  operation and every operation `SUCCESS`. A bundle the rule puts in the combined lane
+  but whose evidence is not clean is not ranked there: a failed stream, `errors`,
+  `outstanding_work` or a configured-versus-executed stream mismatch gives
+  `combined_throughput_not_clean`, a failed refresh gives `combined_refresh_not_clean`,
   and a combined bundle without the composite metric gives `missing_primary_metric`.
+  When the facts leave out a phase the rule needs for the combined lane, the rule
+  places the bundle in the lanes its remaining phases support (power-only and
+  throughput, or power-only) and those lanes are scored from timings. The rule's
+  maintainer admission also gates staging: an undetermined outcome or a TPC-DI bundle
+  is refused with the rule's reason (`not_admitted_<class>`).
 - **Load time.** `summary.tpc_metrics.load_scope` records what load time includes:
   `components` lists the timed steps among `schema_creation`, `data_loading`,
   `statistics_gathering`, `post_load_maintenance` and `merge_settle`, and
@@ -197,17 +204,30 @@ gate when changed.
 
 ### Version-over-version cohorts
 
-Operator-run version matrices may repeat a platform name at several versions. The admitted
-DuckDB matrix is segregated under `results-data/bundles/duckdb-version-matrix/`, which is
-the only corpus location where the depth gate counts versions as distinct identities.
-Results Explorer disambiguates their rows by engine and resolved driver versions. The runner is
-`scripts/run_version_matrix.py`, and its median analyzer is
-`scripts/analyze_version_matrix.py`; both take an engine spec from
+A result's identity is its platform, its execution variant and its comparison version, all read
+from fields in the result file by one function
+(`benchbox/core/results/comparison_identity.py`). No folder name, file name or directory
+decides identity. The comparison version is resolved by a declarative table
+(`benchbox/core/results/comparison_identity.json`) keyed by platform-manifest key. For each platform
+family it names, in order, the result-file fields that hold the version and how a pre-release is
+recognised; a platform without an entry reads `platform.version`. The table records where a fact
+is stored. It is not an admission or ranking rule.
+
+A value that is missing, empty or `unknown` in every named field resolves to `version not recorded`.
+Every result with no recorded version shares that one identity, which is never a release and is
+never the newest version. A version the table recognises as a pre-release or development build
+(for example a development wheel or a release candidate) is recorded as a pre-release and never
+stands for its platform on a leaderboard.
+
+The comparison version is never a cohort-floor input. The depth gate counts execution variants
+and container runs; any number of versions of one platform is one identity there. Version
+matrices are ordinary results under this rule. The runner is `scripts/run_version_matrix.py`,
+and its median analyzer is `scripts/analyze_version_matrix.py`; both take an engine spec from
 `scripts/version_matrix_specs.py`. `scripts/run_duckdb_version_matrix.py` and
-`scripts/analyze_duckdb_version_matrix.py` run the DuckDB spec. The analyzer emits one median bundle per
-version/benchmark cell for promotion; raw repetitions stay outside the checkout. The
-current DuckDB matrix is documented in `results-data/CORPUS_NOTES.md` when its bundles
-are promoted.
+`scripts/analyze_duckdb_version_matrix.py` run the DuckDB spec. The analyzer emits one median
+bundle per version/benchmark cell for promotion; raw repetitions stay outside the checkout. The
+current DuckDB matrix is documented in `results-data/CORPUS_NOTES.md` when its bundles are
+promoted.
 
 ## Benchmark Notes
 
@@ -223,19 +243,31 @@ identities from DuckDB, ClickHouse Local (chDB only) and CedarDB; see
 
 A matrix entry marked `official: true` adds `--official --seed 42` and its
 `streams` value to the generic local command and runs the phases the entry lists;
-official TPC-H entries also enable the refresh functions. Only a TPC-H or TPC-DS
-run made with `--official` is classed `official`; without the flag a run at SF 1
-or above is `unofficial_nonstandard` and is never admitted. The TPC-H SF 1 and
-TPC-DS SF 1 entries are the only ones marked `official: true`.
+official TPC-H entries also enable the refresh functions. The stored
+`compliance_class` is information the writer derives from the corpus rule; no gate
+reads it. Admission and ranking follow from the facts in the result file: the
+benchmark, the scale factor, the phases that ran, the streams that completed and the
+validation record. `benchbox run --official` still refuses any scale factor that is not
+an official scale point (SF 1, 10, 30, and so on).
 
-The flag applies only at official scale points (SF 1, 10, 30, and so on).
-`benchbox run --official` refuses any other scale factor, and every TPC-H or
-TPC-DS run below SF 1 is classed `unofficial_subscale` with or without the
-flag. The TPC-H SF 0.01 and SF 0.1 entries therefore run the generic command,
-and staging skips their bundles as `unofficial_compliance`. Those cohorts
-contribute no rankable bundle and are reported as `UNRANKED`. They stay in the
-matrix because removing coverage is a maintainer decision; dropping them would
-only save runner time, since they add nothing to the admitted corpus.
+The staging script, `validate_submission.py` (public and trusted), `benchbox submit`,
+`benchbox publish` and `validate_corpus.py` all call `corpus_rule` and agree on the
+outcome (`tests/unit/scripts/test_corpus_rule_parity.py`):
+
+| Facts | Public path | Staging and trusted validation | `validate_corpus.py` lane |
+|---|---|---|---|
+| TPC-H or TPC-DS, standard scale, one or more of power, throughput, refresh | admitted | admitted | the lane the rule names (combined, power-only or throughput) |
+| TPC-H or TPC-DS below SF 1 | refused | admitted | subscale |
+| any benchmark at a non-standard scale | admitted | admitted | none: admitted and unranked |
+| other benchmark at a standard scale | admitted | admitted | its own |
+| gateway-routed result | refused | refused by staging | none |
+
+Staging stops at `validate_corpus.admission_reason`; it never reads the rank. A
+non-standard-scale result therefore stages and validates as admitted and unranked,
+and the TPC-H SF 0.01 and SF 0.1 entries stage as subscale results. The vendor-terms,
+anonymization, tuning and timing-coverage checks stay behind the same entry points.
+`tests/unit/cli/test_corpus_rule_lane_canary.py` builds one result per lane through the
+CLI arguments with a stubbed executor and asserts each enters its lane.
 
 ### Timestamp contract
 

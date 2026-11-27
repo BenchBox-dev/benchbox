@@ -1,0 +1,272 @@
+{
+  "min_throughput_streams": 2,
+  "row_count_reference_scales": {
+    "ssb": [
+      0.01,
+      0.1,
+      1.0,
+      10.0
+    ],
+    "tpcds": [
+      0.01,
+      0.1,
+      1.0
+    ],
+    "tpch": [
+      0.01,
+      0.1,
+      1.0
+    ]
+  },
+  "scales": {
+    "ai_primitives": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0
+      ]
+    },
+    "amplab": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0
+      ]
+    },
+    "clickbench": {
+      "minimum": 0.01,
+      "standard": [
+        0.1,
+        1.0,
+        10.0
+      ]
+    },
+    "coffeeshop": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0
+      ]
+    },
+    "datavault": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0,
+        10.0
+      ]
+    },
+    "flightdata": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0,
+        10.0,
+        100.0
+      ]
+    },
+    "h2odb": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0
+      ]
+    },
+    "joinorder": {
+      "minimum": 1.0,
+      "standard": [
+        1.0
+      ]
+    },
+    "joinorder_synthetic": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        0.5,
+        1.0,
+        2.0
+      ]
+    },
+    "metadata_primitives": {
+      "minimum": 1.0,
+      "standard": [
+        1.0
+      ]
+    },
+    "nyctaxi": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0,
+        10.0,
+        100.0
+      ]
+    },
+    "read_primitives": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0,
+        10.0
+      ]
+    },
+    "ssb": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0,
+        10.0
+      ]
+    },
+    "tpcdi": {
+      "minimum": 3.0,
+      "standard": [
+        3.0,
+        5.0,
+        10.0,
+        100.0
+      ]
+    },
+    "tpcds": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0,
+        10.0,
+        100.0,
+        300.0,
+        1000.0,
+        3000.0,
+        10000.0,
+        30000.0,
+        100000.0
+      ]
+    },
+    "tpcds_obt": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0,
+        10.0
+      ]
+    },
+    "tpch": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0,
+        10.0,
+        30.0,
+        100.0,
+        300.0,
+        1000.0,
+        3000.0,
+        10000.0,
+        30000.0,
+        100000.0
+      ]
+    },
+    "tpch_skew": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0,
+        10.0
+      ]
+    },
+    "tpchavoc": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0,
+        10.0
+      ]
+    },
+    "transaction_primitives": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0
+      ]
+    },
+    "tsbs_devops": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0,
+        10.0
+      ]
+    },
+    "vector_search": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0,
+        10.0,
+        100.0
+      ]
+    },
+    "write_primitives": {
+      "minimum": 0.01,
+      "standard": [
+        0.01,
+        0.1,
+        1.0
+      ]
+    }
+  },
+  "schema_version": 1,
+  "stream_minimum": {
+    "tpcds": {
+      "1.0": 4,
+      "10.0": 4,
+      "100.0": 4,
+      "1000.0": 4,
+      "10000.0": 4,
+      "100000.0": 4,
+      "300.0": 4,
+      "3000.0": 4,
+      "30000.0": 4
+    },
+    "tpch": {
+      "1.0": 2,
+      "10.0": 3,
+      "100.0": 5,
+      "1000.0": 7,
+      "10000.0": 9,
+      "100000.0": 11,
+      "30.0": 4,
+      "300.0": 6,
+      "3000.0": 8,
+      "30000.0": 10
+    }
+  },
+  "tpc_benchmarks": [
+    "tpch",
+    "tpcds"
+  ],
+  "tpc_derived_benchmarks": {
+    "datavault": "tpch",
+    "tpcds_obt": "tpcds",
+    "tpch_skew": "tpch",
+    "tpchavoc": "tpch"
+  }
+}

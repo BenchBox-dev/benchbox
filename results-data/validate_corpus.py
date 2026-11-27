@@ -104,7 +104,9 @@ def _load_repo_module(name: str, relative_path: str):
     return module
 
 
-SUBSCALE_POLICY = _load_repo_module("_benchbox_subscale_policy", "benchbox/core/results/subscale_policy.py")
+CORPUS_RULE = _load_repo_module("_benchbox_corpus_rule", "benchbox/core/results/corpus_rule.py")
+CORPUS_SCORE = _load_repo_module("_benchbox_corpus_score", "benchbox/core/results/corpus_score.py")
+COMPARISON_IDENTITY = _load_repo_module("_benchbox_comparison_identity", "benchbox/core/results/comparison_identity.py")
 
 
 @functools.cache
@@ -281,9 +283,8 @@ def _throughput_streams_incomplete(payload: dict) -> bool:
     stream_ids = _throughput_stream_ids(streams)
     if stream_ids is None:
         return True
-    raw_benchmark = _mapping(payload.get("benchmark")).get("id")
-    benchmark = raw_benchmark.strip().casefold() if isinstance(raw_benchmark, str) else None
-    canonical = THROUGHPUT_STREAM_QUERY_IDS.get(benchmark)
+    benchmark = CORPUS_SCORE.tpc_benchmark_id(payload)
+    canonical = THROUGHPUT_STREAM_QUERY_IDS.get(benchmark or "")
     if canonical is None:
         return False
     observed = _usable_queries_by_stream(payload)
@@ -473,7 +474,8 @@ def _logical_query_count(payload: dict, display: list[tuple[str, float | None, i
         return raw
     if raw <= observed:
         return raw or observed
-    known = KNOWN_LOGICAL_QUERY_COUNTS.get(str(_mapping(payload.get("benchmark")).get("id", "unknown")))
+    benchmark_id = CORPUS_RULE.normalize_benchmark_id(_mapping(payload.get("benchmark")).get("id"))
+    known = KNOWN_LOGICAL_QUERY_COUNTS.get(benchmark_id or "")
     if known and observed <= known and raw % known == 0:
         return known
     if raw % observed == 0 and any(samples > 1 for _, _, samples in display):
@@ -525,30 +527,8 @@ def _tuning_applied(payload: dict) -> bool:
     return bool(status) and str(status) in APPLIED_TUNING_STATUSES
 
 
-def _tpc_metric(payload: dict, name: str) -> float | None:
-    metrics = _mapping(_mapping(payload.get("summary")).get("tpc_metrics"))
-    value = metrics.get(name)
-    if value is None:
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
 def _power_score(payload: dict) -> float | None:
-    recorded = _tpc_metric(payload, "power_at_size")
-    benchmark = _mapping(payload.get("benchmark"))
-    compliance = SUBSCALE_POLICY.effective_compliance_class(
-        benchmark.get("id"), benchmark.get("scale_factor"), benchmark.get("compliance_class")
-    )
-    if compliance != SUBSCALE_POLICY.SUBSCALE_COMPLIANCE_CLASS:
-        return recorded
-    queries = payload.get("queries")
-    power, _ = SUBSCALE_POLICY.subscale_power_at_size(
-        benchmark.get("id"), recorded, queries if isinstance(queries, list) else [], benchmark.get("scale_factor")
-    )
-    return power
+    return CORPUS_SCORE.power_at_size(payload)
 
 
 def _throughput_phase_clean(payload: dict) -> bool:
@@ -570,20 +550,17 @@ def _throughput_phase_clean(payload: dict) -> bool:
 def _throughput_score(payload: dict) -> float | None:
     if not _throughput_phase_clean(payload):
         return None
-    return _tpc_metric(payload, "throughput_at_size")
+    return CORPUS_SCORE.throughput_at_size(payload)
 
 
 COMBINED_PHASE = "combined"
 COMBINED_QPH_METRICS = {"tpch": "qphh_at_size", "tpcds": "qphds_at_size"}
 
 
-def _combined_score(payload: dict, benchmark_id: str) -> float | None:
+def _combined_score(payload: dict) -> float | None:
     if _combined_evidence_defects(payload):
         return None
-    metrics = _mapping(_mapping(payload.get("summary")).get("tpc_metrics"))
-    if benchmark_id == "tpch" and metrics.get("refresh_included") is not True:
-        return None
-    return _tpc_metric(payload, COMBINED_QPH_METRICS[benchmark_id])
+    return CORPUS_SCORE.combined_score(payload)
 
 
 def _combined_evidence_defects(payload: dict) -> list[str]:
@@ -591,16 +568,16 @@ def _combined_evidence_defects(payload: dict) -> list[str]:
 
 
 def _primary_metric_value(payload: dict, display: list[tuple[str, float | None, int]]) -> float | None:
-    benchmark_id = str(_mapping(payload.get("benchmark")).get("id", "unknown"))
+    benchmark_id = CORPUS_SCORE.tpc_benchmark_id(payload)
     phase = bundle_phase(payload)
     if phase == COMBINED_PHASE and benchmark_id in COMBINED_QPH_METRICS:
-        return _combined_score(payload, benchmark_id)
+        return _combined_score(payload)
     if phase == THROUGHPUT_PHASE and benchmark_id in THROUGHPUT_SCORE_BENCHMARKS:
         return _throughput_score(payload)
     if benchmark_id in POWER_SCORE_BENCHMARKS:
         return _power_score(payload)
     values = [value for _, value, _ in display if value is not None and value > 0]
-    return math.exp(sum(math.log(item) for item in values) / len(values)) if values else None
+    return math.exp(math.fsum(math.log(item) for item in values) / len(values)) if values else None
 
 
 def _primary_metric_reason(payload: dict, display: list[tuple[str, float | None, int]]) -> str | None:
@@ -626,25 +603,62 @@ def sidecar_known_defects(bundle: pathlib.Path) -> list[str]:
     return [item for item in recorded if isinstance(item, str) and item]
 
 
-def exclusion_reason(payload: dict, bundle: pathlib.Path | None = None) -> str | None:
-    if bundle is not None and sidecar_known_defects(bundle):
-        return KNOWN_DEFECTIVE_DATA
-    benchmark = _mapping(payload.get("benchmark"))
-    compliance = SUBSCALE_POLICY.effective_compliance_class(
-        benchmark.get("id"), benchmark.get("scale_factor"), benchmark.get("compliance_class")
+def rule_outcome(payload: dict, bundle: pathlib.Path | None = None):
+    known_defects = sidecar_known_defects(bundle) if bundle is not None else []
+    return CORPUS_RULE.derive_outcome(
+        CORPUS_RULE.facts_from_result(
+            payload,
+            known_defects=known_defects,
+        )
     )
-    if compliance in SUBSCALE_POLICY.RANKING_EXCLUDED_COMPLIANCE_CLASSES:
-        return "unofficial_compliance"
+
+
+def _stream_reason(payload: dict) -> str | None:
+    if _throughput_stream_count_mismatch(payload) is not None:
+        return "stream_count_mismatch"
+    if _throughput_streams_succeeded(payload) and _throughput_streams_incomplete(payload):
+        return "incomplete_throughput_streams"
+    return None
+
+
+def _metric_reason(value: float | None) -> str | None:
+    if value is None:
+        return "missing_primary_metric"
+    if not math.isfinite(float(value)) or float(value) <= 0:
+        return "non_positive_primary_metric"
+    return None
+
+
+def _lane_reason(payload: dict, display: list[tuple[str, float | None, int]], lane: str) -> str | None:
+    benchmark_id = CORPUS_SCORE.tpc_benchmark_id(payload)
+    if lane == CORPUS_RULE.LANE_COMBINED:
+        defects = _combined_evidence_defects(payload)
+        return defects[0] if defects else _metric_reason(_combined_score(payload))
+    if lane == CORPUS_RULE.LANE_THROUGHPUT and benchmark_id in THROUGHPUT_SCORE_BENCHMARKS:
+        return _stream_reason(payload) or _metric_reason(_throughput_score(payload))
+    if lane in (CORPUS_RULE.LANE_POWER_ONLY, CORPUS_RULE.LANE_SUBSCALE) and benchmark_id in POWER_SCORE_BENCHMARKS:
+        return _metric_reason(_power_score(payload))
+    return _primary_metric_reason(payload, display)
+
+
+def lane_reasons(payload: dict, bundle: pathlib.Path | None = None) -> dict[str, str | None]:
+    display = _display_timings(payload)
+    return {lane: _lane_reason(payload, display, lane) for lane in rule_outcome(payload, bundle).lanes}
+
+
+def bundle_lanes(payload: dict, bundle: pathlib.Path | None = None) -> tuple[str, ...]:
+    if bundle is not None and sidecar_known_defects(bundle):
+        return ()
+    if admission_reason(payload, bundle) is not None:
+        return ()
+    return tuple(lane for lane, reason in lane_reasons(payload, bundle).items() if reason is None)
+
+
+def admission_reason(payload: dict, bundle: pathlib.Path | None = None) -> str | None:
+    if CORPUS_RULE.facts_from_result(payload).public_validation_refused:
+        return "validation_not_clean"
     if failed_query_count(payload):
         return "failed_queries"
-    if bundle_phase(payload) == THROUGHPUT_PHASE and _throughput_stream_count_mismatch(payload) is not None:
-        return "stream_count_mismatch"
-    if (
-        bundle_phase(payload) == THROUGHPUT_PHASE
-        and _throughput_streams_succeeded(payload)
-        and _throughput_streams_incomplete(payload)
-    ):
-        return "incomplete_throughput_streams"
     if bundle_validation_status(payload) in NON_CLEAN_VALIDATION_STATUSES:
         return "validation_not_clean"
     if not _tuning_applied(payload):
@@ -658,11 +672,31 @@ def exclusion_reason(payload: dict, bundle: pathlib.Path | None = None) -> str |
     timing = _timing_exclusion(display, _logical_query_count(payload, display))
     if timing is not None:
         return timing
-    if bundle_phase(payload) == COMBINED_PHASE and _mapping(payload.get("benchmark")).get("id") in COMBINED_QPH_METRICS:
-        defects = _combined_evidence_defects(payload)
-        if defects:
-            return defects[0]
-    return _primary_metric_reason(payload, display)
+    outcome = rule_outcome(payload, bundle)
+    if outcome.lanes:
+        reasons = [_lane_reason(payload, display, lane) for lane in outcome.lanes]
+        if all(reason is not None for reason in reasons):
+            return reasons[0]
+        return None
+    if not outcome.maintainer_admission:
+        return outcome.held_reason or f"not_admitted_{outcome.class_name}"
+    return None
+
+
+def exclusion_reason(payload: dict, bundle: pathlib.Path | None = None) -> str | None:
+    if bundle is not None and sidecar_known_defects(bundle):
+        return KNOWN_DEFECTIVE_DATA
+    reason = admission_reason(payload, bundle)
+    outcome = rule_outcome(payload, bundle)
+    if not outcome.lanes and (reason is None or reason == outcome.held_reason):
+        metric_reason = _primary_metric_reason(payload, _display_timings(payload))
+        if metric_reason is not None:
+            return metric_reason
+    if reason is not None:
+        return reason
+    if outcome.lanes:
+        return None
+    return outcome.held_reason or f"not_ranked_{outcome.class_name}"
 
 
 def bundle_rankable(payload: dict, bundle: pathlib.Path | None = None) -> bool:
@@ -702,31 +736,12 @@ def _variant_aware_identity(payload: dict, platform_name: str, bundle: pathlib.P
     return published_variant_id(payload, base, bundle)
 
 
-def _comparison_identity(bundle: pathlib.Path, payload: dict) -> str:
+def _comparison_identity(bundle: pathlib.Path, payload: dict):
     try:
-        platform_section = payload["platform"]
-        platform = platform_section["name"]
-        version = None
-        if bundle.parent.name == "duckdb-version-matrix":
-            version = platform_section.get("version") or platform_section.get("client_version")
-            execution = payload.get("execution", {})
-            if isinstance(execution, dict):
-                for key in (
-                    "driver_version_resolved",
-                    "driver_version_requested",
-                    "driver_resolved_version",
-                    "driver_requested_version",
-                ):
-                    candidate = execution.get(key)
-                    if candidate and str(candidate) != "unknown":
-                        version = candidate
-                        break
-        identity = _variant_aware_identity(payload, str(platform), bundle)
+        variant = _variant_aware_identity(payload, str(payload["platform"]["name"]), bundle)
+        return COMPARISON_IDENTITY.comparison_identity(payload, variant)
     except Exception as exc:
         raise CorpusReadError(f"ERROR reading platform identity from {bundle}: {exc}") from exc
-    if version and str(version) != "unknown":
-        identity = f"{identity} v{str(version)[:120]}"
-    return identity
 
 
 def parse_run_date(payload: dict, *, bundle: pathlib.Path | None = None) -> _dt.date:
@@ -787,7 +802,38 @@ def _declares_execution_class(payload: dict, bundle: pathlib.Path) -> bool:
     return isinstance(sidecar, dict) and "execution_class" in sidecar
 
 
-def cohort_platforms(bundles: list[pathlib.Path]) -> dict[CohortKey, set[str]]:
+def lane_cohort_key(payload: dict, lane: str) -> CohortKey:
+    benchmark_id, scale = _cohort_key(payload)
+    scale = scale.split("#", 1)[0]
+    if lane == CORPUS_RULE.LANE_COMBINED:
+        return (benchmark_id, f"{scale}#{COMBINED_PHASE}")
+    if lane == CORPUS_RULE.LANE_THROUGHPUT:
+        streams = _stream_count(payload)
+        return (benchmark_id, f"{scale}#{THROUGHPUT_PHASE}" + ("" if streams is None else f"#{streams}streams"))
+    if lane == CORPUS_RULE.LANE_OWN:
+        return _cohort_key(payload)
+    return (benchmark_id, scale)
+
+
+UNPUBLISHED_RANKINGS_PATH = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "unpublished_rule_rankings.txt"
+
+
+def unpublished_rule_rankings(path: pathlib.Path = UNPUBLISHED_RANKINGS_PATH) -> frozenset[str]:
+    try:
+        return frozenset(path.read_text(encoding="utf-8").split())
+    except OSError as exc:
+        raise CorpusReadError(f"ERROR reading unpublished rule rankings {path}: {exc}") from exc
+
+
+def _unpublished(bundle: pathlib.Path, listed: frozenset[str]) -> bool:
+    text = bundle.as_posix()
+    return any(text == entry or text.endswith(f"/{entry}") for entry in listed)
+
+
+def cohort_platforms(
+    bundles: list[pathlib.Path], unpublished: frozenset[str] | None = None
+) -> dict[CohortKey, set[str]]:
+    listed = unpublished_rule_rankings() if unpublished is None else unpublished
     cohorts: collections.defaultdict[CohortKey, set[str]] = collections.defaultdict(set)
     for bundle in bundles:
         payload = _load_bundle(bundle)
@@ -799,11 +845,15 @@ def cohort_platforms(bundles: list[pathlib.Path]) -> dict[CohortKey, set[str]]:
                 f"stream_results={recorded_count}"
             )
         _require_translator_version(bundle, payload)
-        identities = cohorts[_cohort_key(payload)]
         if _declares_execution_class(payload, bundle):
             _comparison_identity(bundle, payload)
-        if bundle_rankable(payload, bundle):
-            identities.add(_comparison_identity(bundle, payload))
+        lanes = bundle_lanes(payload, bundle)
+        if not lanes or _unpublished(bundle, listed):
+            cohorts[_cohort_key(payload)]
+            continue
+        identity = _comparison_identity(bundle, payload).cohort_key
+        for lane in lanes:
+            cohorts[lane_cohort_key(payload, lane)].add(identity)
     return dict(cohorts)
 
 
