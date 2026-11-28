@@ -54665,6 +54665,13 @@
       "status": "open",
       "title": "Let the Theseus installer fall back to the authenticated release-asset API when download links fail"
     },
+    "theseus-withdrawn-finding-reraised-each-round-20261126": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Theseus: a finding withdrawn on dispute comes back under a new id in every later full review"
+    },
     "throughput-adapter-session-capability-contract": {
       "claim": null,
       "needs": [
