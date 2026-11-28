@@ -325,11 +325,22 @@ def decide_row_count(
 
     from benchbox.core.expected_results.query_generation import current_query_generation_hash
 
-    inapplicable = reference.inapplicable_reason(
-        run_data_stamp if run_data_stamp is not None else current_run_data_stamp(),
-        run_query_generation_hash or current_query_generation_hash(benchmark),
-    )
+    stamp = run_data_stamp if run_data_stamp is not None else current_run_data_stamp()
+    generation_hash = run_query_generation_hash or current_query_generation_hash(benchmark)
+    inapplicable = reference.inapplicable_reason(stamp, generation_hash)
     if inapplicable is not None:
+        if (
+            refreshed_skip is None
+            and stamp == UNESTABLISHED_DATA_STAMP
+            and benchmark == "tpch"
+            and scale == TPCH_RANGE_SCALE
+            and reference.inapplicable_reason(None, generation_hash) is None
+        ):
+            answer_set = _decide_against_reference(
+                benchmark, statement, actual_row_count, scale, generation, reference, bound, data_independent_only=True
+            )
+            if answer_set is not None:
+                return answer_set
         return (
             refreshed_skip()
             if refreshed_skip is not None
@@ -382,8 +393,14 @@ def _decide_against_reference(
     reference: RowCountReference,
     bound: StructuralBound,
     refreshed_skip: Callable[[], ValidationResult] | None = None,
-) -> ValidationResult:
-    entry = None if refreshed_skip is not None else reference.exact_stream(generation.seed, generation.streams_index)
+    data_independent_only: bool = False,
+) -> ValidationResult | None:
+    default_parameters = generation.seed is None and generation.streams_index is None
+    entry = (
+        None
+        if refreshed_skip is not None or (data_independent_only and not default_parameters)
+        else reference.exact_stream(generation.seed, generation.streams_index)
+    )
     if entry is not None:
         expected = entry.row_counts[statement]
         if actual != expected:
@@ -409,7 +426,12 @@ def _decide_against_reference(
             reference=reference,
         )
     integrity = reference.integrity
-    if refreshed_skip is None and integrity is not None and statement in integrity.invariant_counts:
+    if (
+        refreshed_skip is None
+        and not data_independent_only
+        and integrity is not None
+        and statement in integrity.invariant_counts
+    ):
         expected = integrity.invariant_counts[statement]
         if actual != expected:
             return _failure(
@@ -449,6 +471,8 @@ def _decide_against_reference(
                 reference,
             )
         return _result(statement, actual, generation, valid=True, check=CHECK_RANGE, bound=text, reference=reference)
+    if data_independent_only:
+        return None
     if integrity is not None and statement in integrity.never_empty:
         if actual < 1:
             return _failure(

@@ -117,7 +117,7 @@ def test_passed_run_with_an_undocumented_skip_beside_passed_row_counts_is_not_re
         query_results=[_row("1", "PASSED"), _row("2", "SKIPPED")],
     )
 
-    assert _finalize_validation_metadata(result, []).validation_status == "NO_REFERENCE"
+    assert _finalize_validation_metadata(result, []).validation_status == "NOT_VALIDATED"
 
 
 @pytest.mark.parametrize(

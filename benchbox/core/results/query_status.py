@@ -170,7 +170,13 @@ def row_evidence_roll_up(query_rows: Any, *, reference_exists: bool, failed_quer
         1
         for _, status, evidence in rows
         if status not in {"PASSED", "UNVALIDATED"}
-        and not (status == "SKIPPED" and row_count_skip_is_documented(evidence))
+        and not (
+            status == "SKIPPED"
+            and (
+                row_count_skip_is_documented(evidence)
+                or (not reference_exists and str(evidence.get("warning") or "").startswith(NO_REFERENCE_REASON))
+            )
+        )
     )
     if (
         not unvalidated
@@ -178,15 +184,15 @@ def row_evidence_roll_up(query_rows: Any, *, reference_exists: bool, failed_quer
         and any(measurement and status == "PASSED" for measurement, status, _ in rows)
     ):
         return PASSED_VALIDATION_STATUS, "row counts validated"
-    if not reference_exists:
-        return NO_REFERENCE_VALIDATION_STATUS, NO_REFERENCE_REASON
-    if unvalidated:
-        return NOT_VALIDATED_VALIDATION_STATUS, f"{unvalidated} unvalidated row {_noun(unvalidated, 'count')}"
     if undocumented:
         return (
             NOT_VALIDATED_VALIDATION_STATUS,
             f"{undocumented} row {_noun(undocumented, 'count')} skipped without a documented reason",
         )
+    if not reference_exists:
+        return NO_REFERENCE_VALIDATION_STATUS, NO_REFERENCE_REASON
+    if unvalidated:
+        return NOT_VALIDATED_VALIDATION_STATUS, f"{unvalidated} unvalidated row {_noun(unvalidated, 'count')}"
     if any(
         status == "SKIPPED" and str(evidence.get("warning") or "").startswith(f"{REFERENCE_DATA_DIFFERS_REASON}:")
         for _, status, evidence in rows

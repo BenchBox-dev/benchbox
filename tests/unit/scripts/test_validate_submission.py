@@ -3627,11 +3627,18 @@ class TestValidationStatusVocabulary:
         vr = self._validate(data, **flags)
         assert vr.ok, vr.errors
 
-    def test_no_reference_is_recorded_for_any_unchecked_rows_where_no_reference_exists(self):
+    def test_no_reference_does_not_excuse_unrelated_skips(self):
         data = _row_count_bundle("no_reference", ["SKIPPED"] * 22)
         for query in data["queries"]:
             query["row_count_validation"]["warning"] = "validation disabled"
-        assert self._validate(data).ok
+        assert not self._validate(data).ok
+
+    @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
+    def test_no_reference_does_not_excuse_error_rows(self, flags):
+        data = _row_count_bundle("no_reference", ["UNVALIDATED"] * 21 + ["ERROR"])
+        vr = self._validate(data, **flags)
+        assert not vr.ok
+        assert any("'no_reference' contradicts" in e for e in vr.errors)
 
     @pytest.mark.parametrize("flags", [{}, {"allow_partial_validation": True}])
     def test_failed_validation_is_still_refused(self, flags):

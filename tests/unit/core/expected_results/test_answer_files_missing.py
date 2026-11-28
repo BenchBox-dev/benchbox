@@ -90,9 +90,24 @@ def test_a_reference_present_validates_normally() -> None:
 
 
 def test_skipped_rows_without_reference_are_no_reference() -> None:
-    rows = [{"row_count_validation": {"status": "SKIPPED"}}]
+    rows = [{"row_count_validation": {"status": "SKIPPED", "warning": "no row-count reference at this scale factor"}}]
     assert row_evidence_roll_up(rows, reference_exists=False)[0] == NO_REFERENCE_VALIDATION_STATUS
     assert row_evidence_roll_up(rows, reference_exists=True)[0] == NOT_VALIDATED_VALIDATION_STATUS
+
+
+@pytest.mark.parametrize(
+    "evidence",
+    [
+        {"status": "SKIPPED"},
+        {"status": "SKIPPED", "warning": "validation disabled"},
+        {"status": "ERROR", "warning": "no row-count reference at this scale factor"},
+    ],
+)
+@pytest.mark.parametrize("reference_exists", [False, True])
+def test_unrelated_skips_and_error_rows_are_never_no_reference(evidence, reference_exists) -> None:
+    rows = [{"row_count_validation": {"status": "UNVALIDATED"}}, {"row_count_validation": evidence}]
+
+    assert row_evidence_roll_up(rows, reference_exists=reference_exists)[0] == NOT_VALIDATED_VALIDATION_STATUS
 
 
 def test_positive_stream_without_reference_is_unvalidated() -> None:

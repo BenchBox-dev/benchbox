@@ -345,6 +345,30 @@ def test_a_differs_skip_beside_unvalidated_rows_is_not_validated(reference_dir) 
     assert only_differs == NO_REFERENCE_VALIDATION_STATUS and "reference data differs" in reason
 
 
+def test_an_unestablished_data_stamp_keeps_the_tpch_answer_set_check() -> None:
+    stream_checks.clear_reference_cache()
+    reference = stream_checks.reference_for("tpch", 1.0)
+    default = reference.exact_stream(None, None)
+    statement = next(query for query in sorted(default.row_counts, key=int) if query not in {"2", "11", "16"})
+    expected = default.row_counts[statement]
+
+    unestablished = decide_row_count("tpch", statement, expected, 1.0, run_data_stamp="")
+    wrong = decide_row_count("tpch", statement, expected + 1, 1.0, run_data_stamp="")
+    seeded = decide_row_count(
+        "tpch", statement, expected + 1, 1.0, run_data_stamp="", generation=QueryGeneration(seed=7)
+    )
+    established_other = decide_row_count("tpch", statement, expected + 1, 1.0, run_data_stamp="f" * 64)
+
+    assert unestablished.is_valid and unestablished.check == "exact" and unestablished.expected_row_count == expected
+    assert not wrong.is_valid and wrong.check == "exact"
+    assert (
+        seeded.is_valid
+        and seeded.validation_mode.value == "skip"
+        and "reference data differs" in seeded.warning_message
+    )
+    assert established_other.is_valid and "reference data differs" in established_other.warning_message
+
+
 def test_stream_checks_are_not_defined_for_other_benchmarks(reference_dir) -> None:
     with pytest.raises(ValueError):
         decide_row_count("ssb", "1.1", 5, 1.0)

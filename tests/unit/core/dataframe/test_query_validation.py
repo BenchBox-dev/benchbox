@@ -105,14 +105,26 @@ def test_tpcds_scale_one_is_checked_against_the_row_count_of_the_stream_that_ran
     from benchbox.core.expected_results.row_count_references import load_row_count_reference
 
     reference = load_row_count_reference("tpcds", 1.0)
-    measurement = _measurement(rows=reference.streams[3].row_counts["1"])
+    streams = reference.streams
+    query = next(
+        query_id
+        for query_id, count in streams[3].row_counts.items()
+        if query_id not in reference.integrity.invariant_counts
+        and all(entry.row_counts[query_id] != count for key, entry in streams.items() if key != 3)
+    )
+    expected = streams[3].row_counts[query]
+    measurement = _measurement(query_id=f"Q{query}", rows=expected)
+    other_stream = _measurement(query_id=f"Q{query}", rows=streams[0].row_counts[query])
 
     summary = validate_dataframe_query_results([measurement], benchmark_name="tpcds", scale_factor=1.0)
+    wrong = validate_dataframe_query_results([other_stream], benchmark_name="tpcds", scale_factor=1.0)
 
     assert summary.status == "PASSED"
     assert summary.details["checked"] == 1
-    assert measurement["row_count_validation"]["expected"] == reference.streams[3].row_counts["1"]
+    assert measurement["row_count_validation"]["expected"] == expected
     assert summary.details["reference_kinds"]["engine_agreement"]["rows"] == 1
+    assert wrong.status == "FAILED"
+    assert other_stream["row_count_validation"]["expected"] == expected
 
 
 @pytest.mark.parametrize(
