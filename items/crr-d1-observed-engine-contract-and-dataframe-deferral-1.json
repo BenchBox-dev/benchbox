@@ -10,6 +10,54 @@
   },
   "context": "Promoted from the crr-d1 deferral on 2026-11-27 when the corpus rule batch finished; fix staged on feat/staging-crr-v1 at b46cbf2b07.",
   "description": "## Problem\ntests/unit/platforms/dataframe/test_dask_observed_engine.py failed 4 tests (TypeError in isinstance; KeyError execution_engine) only inside a large batched pytest run on the corpus rule head aac258e471; the file passes alone. The cause: tests/unit/platforms/dataframe/test_dask_df_coverage.py::test_apply_tuning_and_setup_distributed_paths assigns `mod.Client` and `mod.LocalCluster` directly (still so on develop after PR #4521) and never restores them, so later tests in the same process see the stand-ins.\n\nA fix exists on branch feat/staging-crr-v1 at b46cbf2b07 (it uses monkeypatch.setattr for both names) and is contained in feat/staging-crr-v2; it is not on develop.\n\n## Change\n- Deliver that fix with the validation-core batch (or alone if that batch is delayed): replace the direct assignments with monkeypatch.setattr so the originals are restored after the test.\n\n## Decision gates\n- If the leak has other sources (a second test assigning module attributes), fix each at its source; do not add ordering or skip markers.\n\n## Verification rubric\n- Running test_dask_df_coverage.py followed by test_dask_observed_engine.py serially passes; it fails before the fix.\n\n## Guardrails\n- Reproduce or measure before changing anything; record the command, log path and run id in the item context.\n- Fix the root cause. Never skip, xfail, loosen a check or bound, or raise a timeout only to make a test or run pass; a timing or limit change needs measured evidence and owner approval.\n- No rule, check, label or test may name a platform or a version matrix unless the item is about that platform.\n- Never edit stored result files under results-data/ or CHANGELOG.md; user-facing changes add a changelog.d fragment.\n- No explanatory comments or docstrings (make comment-policy-check); make duplicate-check-delta stays at +0; reuse existing helpers.\n- Heavy work only through make heavy-run after make heavy-status, with command, maximum run time and log path announced first. Never touch the lock or set BENCHBOX_SKIP_TEST_LOCK, BENCHBOX_HEAVY_ADMIT=force, BENCHBOX_HEAVY_WATCHDOG=off, or raise BENCHBOX_HEAVY_MEMORY_BUDGET_GIB. No live cloud runs.\n- Work in a linked worktree; one pull request; run the local review before opening it; fix hosted-review findings. No stand-in approval unless the owner names the PR and head.\n- Re-read paths and line numbers before editing and report drift instead of guessing.\n- When a decision gate's stop condition is met, stop and report to the owner with the evidence; never substitute a different decision.",
+  "prepared": {
+    "accepted_head": "0464ce015ae4960166bbfc249fab02d8504fa82b",
+    "batch_id": "validation-core",
+    "changed_files": [
+      "changelog.d/feat-validation-core--crr-d1-observed-engine-contract-and-dataframe-deferral-1.json",
+      "tests/unit/platforms/dataframe/test_dask_df_coverage.py"
+    ],
+    "integration_head": "a66e6635e3e91f7ae3341b2c919af82d0f244646",
+    "integration_seq": 1,
+    "member_id": "crr-d1-observed-engine-contract-and-dataframe-deferral-1",
+    "overlaps": [],
+    "owner_epoch": 0,
+    "schema": "prepared_work_v2",
+    "scope_hash": "7591fff5402178d7b30968352062f170bc535df6455a293b7a709105bff81ea0",
+    "source_base": "372f743e84df1422dea5d4926d8338b371be8518",
+    "source_revision": "0464ce015ae4960166bbfc249fab02d8504fa82b",
+    "source_worktree": "/Users/joe/Developer/BenchBox.wt-validation-core--crr-d1-observed-engine-contract-and-dataframe-deferral-1",
+    "verification": {
+      "clean": true,
+      "command": [
+        "uv",
+        "run",
+        "--",
+        "python",
+        "-m",
+        "pytest",
+        "-n",
+        "0",
+        "-q",
+        "tests/unit/platforms/dataframe/test_dask_df_coverage.py",
+        "tests/unit/platforms/dataframe/test_dask_observed_engine.py",
+        "tests/unit/scripts/test_inert_paths.py::test_checked_in_readers_match_the_rebuilt_index"
+      ],
+      "review": {
+        "base_sha": "372f743e84df1422dea5d4926d8338b371be8518",
+        "head_sha": "0464ce015ae4960166bbfc249fab02d8504fa82b",
+        "head_tree": "44b55ea80dba583e6b513236fba68e052a1da12b",
+        "outcome": "clear",
+        "patch_digest": "b3ae266bb5d939a2cbb53f61eb2878e1",
+        "reason": "decided SHIP with no Critical or High findings",
+        "schema": "benchbox_member_review_v1",
+        "trusted_sha": "4cdd5df606916a6131eaaa1259dbadacab9b0029"
+      },
+      "revision": "0464ce015ae4960166bbfc249fab02d8504fa82b",
+      "status": "passed",
+      "suite": "member-tests"
+    }
+  },
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
@@ -42,6 +90,15 @@
       "generation": "265275d8ad1b4500ae2bcddfa3821a4b",
       "op": "take",
       "op_id": "04b6b1e775d9a74d45199b32fb55a03a",
+      "session_id": "51a05311b8f040aabf2f02456b50b932"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf",
+      "at": "2026-11-28T01:56:20Z",
+      "client": "omp-coding-agent",
+      "generation": "265275d8ad1b4500ae2bcddfa3821a4b",
+      "op": "prepare",
+      "op_id": "c4ef0cae23d86f015078458430e4b1e8",
       "session_id": "51a05311b8f040aabf2f02456b50b932"
     }
   ]
