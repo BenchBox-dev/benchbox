@@ -1414,9 +1414,6 @@
     "tests/integration/test_cloud_storage_integration.py::TestCloudStorageIntegration::test_generator_cloud_path_detection[SSBDataGenerator-init_kwargs3-generate_data]": {
       "p95_seconds": 0.004
     },
-    "tests/integration/test_cloud_storage_integration.py::TestCloudStorageIntegration::test_generator_cloud_path_detection[TPCDIDataGenerator-init_kwargs7-generate_data]": {
-      "p95_seconds": 0.004
-    },
     "tests/integration/test_cloud_storage_integration.py::TestCloudStorageIntegration::test_generator_cloud_path_detection[TPCDSDataGenerator-init_kwargs1-generate]": {
       "p95_seconds": 0.004
     },
@@ -1438,9 +1435,6 @@
     "tests/integration/test_cloud_storage_integration.py::TestCloudStorageIntegration::test_generator_cloud_upload_workflow[SSBDataGenerator-init_kwargs2]": {
       "p95_seconds": 0.004
     },
-    "tests/integration/test_cloud_storage_integration.py::TestCloudStorageIntegration::test_generator_cloud_upload_workflow[TPCDIDataGenerator-init_kwargs6]": {
-      "p95_seconds": 0.0056
-    },
     "tests/integration/test_cloud_storage_integration.py::TestCloudStorageIntegration::test_generator_cloud_upload_workflow[TPCHDataGenerator-init_kwargs0]": {
       "p95_seconds": 0.004
     },
@@ -1460,9 +1454,6 @@
       "p95_seconds": 0.0038
     },
     "tests/integration/test_cloud_storage_integration.py::TestCloudStorageIntegration::test_generator_local_path_handling[SSBDataGenerator-init_kwargs3]": {
-      "p95_seconds": 0.0038
-    },
-    "tests/integration/test_cloud_storage_integration.py::TestCloudStorageIntegration::test_generator_local_path_handling[TPCDIDataGenerator-init_kwargs7]": {
       "p95_seconds": 0.0038
     },
     "tests/integration/test_cloud_storage_integration.py::TestCloudStorageIntegration::test_generator_local_path_handling[TPCDSDataGenerator-init_kwargs1]": {

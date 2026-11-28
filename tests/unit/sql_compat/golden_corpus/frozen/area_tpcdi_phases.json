@@ -1,0 +1,9 @@
+{
+  "tpcdi-phases:duckdb:attributes_in_later_batches": "SELECT DISTINCT DataSet, Attribute FROM Audit WHERE BatchID > $latest_batch",
+  "tpcdi-phases:duckdb:completion_record": "SELECT MAX(MessageDateAndTime) FROM DImessages WHERE MessageType = 'PCR' AND BatchID = $batch_id",
+  "tpcdi-phases:duckdb:correct_value": "UPDATE Audit SET Value = $value WHERE DataSet = $data_set AND BatchID = $batch AND Attribute = $attribute",
+  "tpcdi-phases:duckdb:dvalues_not_stored": "SELECT TRIM(DataSet), CAST(NULLIF(TRIM(BatchID), '') AS INT), TRIM(Attribute), TRIM(DValue) FROM READ_CSV($paths, header = TRUE, \"columns\" = {'DataSet': 'VARCHAR', 'BatchID': 'VARCHAR', 'Date': 'VARCHAR', 'Attribute': 'VARCHAR', 'Value': 'VARCHAR', 'DValue': 'VARCHAR'}) WHERE NOT NULLIF(TRIM(DValue), '') IS NULL AND TRY_CAST(TRIM(DValue) AS DECIMAL(15, 5)) IS NULL ORDER BY 1, 2, 3",
+  "tpcdi-phases:duckdb:latest_batch": "SELECT COALESCE(MAX(BatchID), 0) FROM DImessages",
+  "tpcdi-phases:duckdb:load_audit": "INSERT INTO Audit SELECT TRIM(DataSet), CAST(NULLIF(TRIM(BatchID), '') AS INT), CAST(NULLIF(TRIM(Date), '') AS DATE), TRIM(Attribute), CAST(NULLIF(TRIM(Value), '') AS BIGINT), TRY_CAST(NULLIF(TRIM(DValue), '') AS DECIMAL(15, 5)) FROM READ_CSV($paths, header = TRUE, \"columns\" = {'DataSet': 'VARCHAR', 'BatchID': 'VARCHAR', 'Date': 'VARCHAR', 'Attribute': 'VARCHAR', 'Value': 'VARCHAR', 'DValue': 'VARCHAR'})",
+  "tpcdi-phases:duckdb:webbed_loaded": "SELECT COUNT(*) FROM DUCKDB_EXTENSIONS() WHERE extension_name = 'webbed' AND loaded"
+}

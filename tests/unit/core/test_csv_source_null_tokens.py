@@ -7,20 +7,6 @@ pytestmark = [pytest.mark.unit, pytest.mark.fast]
 SOURCE = "id,name,when\n1,N/A,2024-01-01\n2,NULL,2024-01-02\n3,,2024-01-03\n"
 
 
-def test_tpcdi_source_staging_keeps_null_looking_text(tmp_path):
-    pytest.importorskip("pandas")
-    pytest.importorskip("pyarrow")
-    from benchbox.core.tpcdi.benchmark import TPCDIBenchmark
-
-    path = tmp_path / "source.csv"
-    path.write_text(SOURCE)
-
-    frame = TPCDIBenchmark._read_source_csv(str(path))
-
-    assert frame["name"].tolist()[:2] == ["N/A", "NULL"]
-    assert bool(frame["name"].isna().tolist()[2])
-
-
 def test_write_primitives_pandas_bulk_load_keeps_null_looking_text(tmp_path):
     pd = pytest.importorskip("pandas")
     pytest.importorskip("pyarrow")

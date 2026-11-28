@@ -11,7 +11,6 @@ pytest.importorskip("pandas")
 from benchbox.core.amplab.benchmark import AMPLabBenchmark
 from benchbox.core.h2odb.benchmark import H2OBenchmark
 from benchbox.core.ssb.benchmark import SSBBenchmark
-from benchbox.core.tpcdi.benchmark import TPCDIBenchmark
 from benchbox.core.tpcds.benchmark import TPCDSBenchmark
 from benchbox.core.tpch.benchmark import TPCHBenchmark
 
@@ -24,7 +23,6 @@ from benchbox.core.tpch.benchmark import TPCHBenchmark
         (SSBBenchmark, {"compress_data": False, "compression_type": "none"}, "data_generator"),
         (AMPLabBenchmark, {}, "data_generator"),
         (H2OBenchmark, {}, "data_generator"),
-        (TPCDIBenchmark, {}, "data_generator"),
     ],
 )
 def test_verbose_and_quiet_propagation(bench_cls, kwargs, gen_attr):

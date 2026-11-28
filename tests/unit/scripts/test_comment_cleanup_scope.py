@@ -589,7 +589,6 @@ def test_verified_source_slices_have_distinct_blocked_owners() -> None:
         "benchbox/core/tpch/queries.py",
         "benchbox/core/tpcds/dataframe_queries/queries.py",
         "benchbox/core/tpcds/generator/runner.py",
-        "benchbox/core/tpcdi/generator/data.py",
         "benchbox/core/tpchavoc/dataframe_queries/queries.py",
         "benchbox/core/ssb/queries.py",
         "benchbox/core/clickbench/queries.py",
@@ -602,7 +601,6 @@ def test_verified_source_slices_have_distinct_blocked_owners() -> None:
         "comment-cleanup-tpch",
         "comment-cleanup-tpcds-dataframe",
         "comment-cleanup-tpcds-generation",
-        "comment-cleanup-tpcdi-generation",
         "comment-cleanup-tpchavoc-dataframe",
         "comment-cleanup-ssb",
         "comment-cleanup-clickbench",
@@ -624,7 +622,7 @@ def test_verified_source_slice_rule_ids_are_unique() -> None:
     policy = scope.load_policy(ROOT / "quality/comment-cleanup-scope.json")
     rules = scope.validate_rules(policy)
     ids = [rule["id"] for rule in rules if rule["id"].endswith("-source-slice")]
-    assert len(ids) >= 20
+    assert len(ids) >= 19
     assert len(ids) == len(set(ids))
 
 

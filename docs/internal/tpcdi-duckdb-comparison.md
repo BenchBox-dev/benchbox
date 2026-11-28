@@ -20,11 +20,12 @@ Rules set by the owner:
 - DIGen output, the appendix SQL and the audit SQL are never edited. Staging
   files produced by DIGen are never edited; the copy is.
 
-`benchbox/core/tpcdi/etl/DEPARTURES.yaml` does not exist yet. Until it does,
-every entry of the expected-differences list cites the specification clause that
-makes BenchBox's value right, and the harness accepts an entry without a
-`departure` field. Once the catalogue exists the harness refuses any entry
-whose `departure` is not a row of it.
+`benchbox/core/tpcdi/etl/DEPARTURES.yaml` is the catalogue. Every entry of the
+expected-differences list cites a row of it in its `departure` field, and the
+harness refuses an entry that cites none or cites a row that is not in the
+catalogue. A catalogue row whose `status` is `pending` names a behaviour of
+BenchBox that a later load step implements; the row exists so the difference is
+already accounted for when that step lands.
 
 ## Pinned versions
 
@@ -165,7 +166,8 @@ for is always a finding.
 
 `scripts/tpcdi/EXPECTED_DIFFERENCES.yaml` holds one entry per known, explained
 difference. Every entry has `id`, `kind`, `clause` (the specification clause that
-makes BenchBox right) and `reason`, plus `departure` once the catalogue exists.
+makes BenchBox right), `reason` and `departure` (the id of the catalogue row that
+records the difference).
 
 | `kind` | Fields | Accepts |
 |---|---|---|
@@ -182,11 +184,116 @@ condition holds for every differing row; one row outside it leaves the whole
 column unaccepted. Entries that accept nothing in a run are printed as unused.
 
 The list holds the differences that follow from the project's known departures
-and from the observations below. It has not been exercised against a BenchBox
-warehouse, which does not exist at this commit; the entries other than the
-answer-key ones are derived from the project's SQL and from its tables at
-scales 3, 5 and 10, and the owner's review has to confirm each against the
-first BenchBox build.
+and from the observations below. The entries for the historical dimension tables
+have been exercised against a BenchBox warehouse (see the next section); the
+others are derived from the project's SQL and from its tables at scales 3, 5 and
+10, and the owner's review has to confirm each against the BenchBox build that
+first loads their tables.
+
+## Historical dimension tables (2026-11-24)
+
+The implementation can stop after its historical phase
+(`sequential/scripts/run.py --batches 1`). Its historical warehouse was built at
+scales 3 and 5 from the same DIGen output as BenchBox's (DIGen output is
+identical between runs at one scale) and compared with BenchBox's warehouse
+after staging and the historical DimCompany, DimSecurity, Financial,
+DimCustomer, DimAccount and Prospect transformations. Both sides were reduced
+to those tables, the reference tables and the Alert and Status rows of
+`DImessages`, because the fact tables and the batch validation are not built
+yet.
+
+| Scale | Rows equal on all six tables | Differences | Unaccepted |
+|---|---|---|---|
+| 3 | yes | `SK_SecurityID` on 2243 rows, BatchDate rows of Batches 2 and 3, alert and status message groups, exact numeric types | 0 |
+| 5 | yes | `SK_SecurityID` on 3750 rows, BatchDate rows of Batches 2 and 3, alert and status message groups, exact numeric types | 0 |
+
+The implementation writes its alerts after Batch 3, so its historical warehouse
+holds none. Against its full three-batch run, BenchBox's Batch 1 alert counts at
+scale 3 are equal for customer tier (252) and date of birth (8) and larger for
+SPRating (154 against 113), because the implementation makes repeated alerts
+distinct.
+
+The trade and fact tables refer to securities through `SK_SecurityID`. BenchBox
+numbers securities by effective date and symbol, the implementation by effective
+date alone with ties in no defined order. When both warehouses hold
+`DimSecurity`, the harness therefore compares every other table's
+`SK_SecurityID` as the `Symbol` and `EffectiveDate` of the security it refers to.
+
+## Historical trade and fact tables (2026-11-25)
+
+The same comparison was repeated after the historical DimTrade,
+FactCashBalances, FactHoldings, FactWatches and FactMarketHistory
+transformations, with those tables and `DimTime` kept on both sides.
+
+| Scale | Rows equal on all five tables | Differences | Unaccepted |
+|---|---|---|---|
+| 3 | yes | PERatio on 4538 rows, Yield on 1272413 rows, trade and market alert groups, `DimTime.TimeValue` type | 0 |
+| 5 | yes | PERatio on 6192 rows, Yield on 2400580 rows, trade and market alert groups, `DimTime.TimeValue` type | 0 |
+
+DimTrade, FactCashBalances, FactHoldings and FactWatches are equal row for row,
+and so are the 52-week highs and lows with their dates. Of the PERatio
+differences at scale 3, 4464 are rows where the implementation falls back to
+Financial rows older than the four calendar quarters before the trading date
+and BenchBox stores no ratio, and 74 are rows where missing quarters change the
+sum. BenchBox computes Yield and PERatio exactly and rounds half away from zero
+(on DuckDB through the `exact_decimal_quotients` rewrite); the implementation
+divides in DOUBLE, so at an exact half cent its value can round the other way.
+The yield and price-earnings entries accept a BenchBox value only when it is the
+exact half-away rounding, checked in integer arithmetic, and the yield entry
+also requires it to lie within half a cent of the scaled implementation value.
+
+## Initialization, historical load and audit (2026-11-25)
+
+`scripts/tpcdi/run_phases.py` runs initialization, the historical load and the
+audit on DuckDB in one invocation, through the DuckDB adapter:
+
+```bash
+uv run -- python scripts/tpcdi/run_phases.py --scale-factor 3 \
+  --staging <DIGen output> --database <new .duckdb> --output <result .json> \
+  --allow-third-party-extensions
+```
+
+The CLI still refuses TPC-DI. The adapter's load phase first checks the staging
+manifest, refusing staging that changed or was generated at another scale
+factor, and loads the extension that reads CustomerMgmt.xml; neither step is
+timed. It then runs initialization: it drops and
+recreates the warehouse and the raw staging tables, runs Appendix B for BatchID
+0 and stores the completion record's timestamp and the monotonic time taken
+when it commits. The power phase refuses to start unless initialization ran in
+the same invocation. It loads Batch 1 and runs the historical transformations
+and Appendix B for BatchID 1.
+The measured time is the difference between the two monotonic times. The audit
+then loads every `*_audit.csv`, corrects only the attributes the independent
+recount finds wrong, runs Appendix A unchanged apart from the recorded
+`FROM DUMMY TABLE` substitution, and changes no warehouse table other than
+Audit.
+
+The result's `validation_details.tpcdi_audit` block lists every audit row with
+its outcome and whether it can be evaluated after Batch 1, the excluded tests,
+the answer-key corrections, the DValues too wide for `DECIMAL(15,5)` (stored as
+NULL; Appendix A reads no DValue) and both phase records. The status is FAILED
+when an evaluable test is not OK and NOT_VALIDATED otherwise; no TPC-DI result
+reads PASSED.
+
+Which rows can be evaluated is read from the audit SQL itself: a per-batch row
+counts when its batch is no later than the latest loaded batch; a whole-run test
+is excluded when it requires 3 batches or 4 completion records, or when it sums
+an Audit attribute that has rows for a later batch.
+
+| Scale | Evaluable audit rows OK | Excluded whole-run tests | Answer-key correction | Historical load | Unaccepted differences, 20 Batch 1 tables |
+|---|---|---|---|---|---|
+| 3 | 135 of 135 | 13 | C_TIER_INV 251 → 252 | 4.79 s | 0 |
+| 5 | 135 of 135 | 13 | C_TIER_INV 380 → 381 | 7.41 s | 0 |
+
+The excluded tests are DImessages Phase complete records, DImessages batches,
+the eight `<table> batches` tests (DimAccount, DimCustomer, DimTrade,
+FactCashBalances, FactHoldings, FactMarketHistory, FactWatches, Prospect), and
+DimTrade canceled trades, charge alerts and commission alerts, which sum Audit
+attributes that also have rows for Batches 2 and 3. Three negative controls (an
+invalid trade type, one suppressed customer-tier alert, one Trade row removed
+from a copy of staging with the manifest check bypassed) each make the run
+FAILED and are refused by `publish_admission`; the same copy is refused by the
+manifest check when it is not bypassed.
 
 ## Results of the early run (2026-11-22)
 

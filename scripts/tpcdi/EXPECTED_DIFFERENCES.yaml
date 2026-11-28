@@ -1,5 +1,6 @@
 entries:
   - id: exact-numerics
+    departure: exact-numerics
     kind: column_type
     clause: "3.2, Table 3.2.1"
     reason: "The specification types every non-integer measure as NUMERIC(p,s). BenchBox stores DECIMAL(p,s); the DuckDB implementation stores DOUBLE. Values are compared after the DOUBLE side is rounded to the scale of the DECIMAL side."
@@ -9,14 +10,22 @@ entries:
     right_type: "DOUBLE"
 
   - id: yield-multiplied-by-100
+    departure: yield-multiplied-by-100
     kind: column_value
     clause: "4.5.11.2, 4.6.10"
-    reason: "The specification defines Yield as the dividend divided by the closing price multiplied by 100. The DuckDB implementation divides by 100 instead (its yield equals dividend / close / 100 on every FactMarketHistory row at scales 3, 5 and 10), so its value is the specification value divided by 10000."
+    reason: "The specification defines Yield as the dividend divided by the closing price multiplied by 100. The DuckDB implementation divides by 100 instead (its yield equals dividend / close / 100 on every FactMarketHistory row at scales 3, 5 and 10), so its value is the specification value divided by 10000. BenchBox computes the quotient exactly and rounds half away from zero; the implementation divides in DOUBLE, so at an exact half cent its scaled value can round the other way. Accepted only when the BenchBox value is the exact half-away rounding of Dividend * 100 / ClosePrice (checked in integer arithmetic) and lies within half a cent of the scaled implementation value."
     table: FactMarketHistory
     column: Yield
-    condition: "l.yield = ROUND(r.yield * 10000, 2)"
+    condition: >-
+      ABS(l.yield - r.yield * 10000) <= 0.005000001
+      AND (SELECT CAST(l.yield * 100 AS HUGEINT)
+      = (CASE WHEN (v.d < 0) <> (v.c < 0) THEN -1 ELSE 1 END) * ((2 * abs(v.d) * 10000 + abs(v.c)) // (2 * abs(v.c)))
+      FROM (SELECT CAST((SELECT s.dividend FROM lhs.main.DimSecurity s
+      WHERE s.symbol || ' ' || CAST(s.effectivedate AS VARCHAR) = l.sk_securityid) * 100 AS HUGEINT) AS d,
+      CAST(l.closeprice * 100 AS HUGEINT) AS c) v)
 
   - id: fifty-two-week-high-window
+    departure: fifty-two-week-date-range
     kind: column_value
     clause: "4.5.11.2"
     reason: "The specification takes the high over the dates after DM_DATE minus one year. The DuckDB implementation takes the 364 preceding rows plus the current one. DailyMarket has one row per calendar day for every security at scales 3, 5 and 10 (no gaps), so its window is the specification window except that it is one day short when the specification window spans a 29 February. Only then can the specification high be larger, and only when it is the high of that one extra day (DM_DATE minus 365 days)."
@@ -31,6 +40,7 @@ entries:
       AND l.sk_fiftytwoweekhighdate = CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 365 DAY, '%Y%m%d') AS BIGINT)
 
   - id: fifty-two-week-high-date
+    departure: fifty-two-week-earliest-date-on-ties
     kind: column_value
     clause: "4.5.11.2"
     reason: "The specification takes the earliest date on which the high occurs in its window; the DuckDB implementation picks one of the tied dates without ordering. Accepted only when the highs are equal, the specification date is the earlier, and both sides carry the high as DayHigh on their own date, or when the specification window spans a 29 February and its high and date are those of the one extra day (see fifty-two-week-high-window)."
@@ -53,6 +63,7 @@ entries:
       AND l.sk_fiftytwoweekhighdate = CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 365 DAY, '%Y%m%d') AS BIGINT))
 
   - id: fifty-two-week-low-window
+    departure: fifty-two-week-date-range
     kind: column_value
     clause: "4.5.11.2"
     reason: "Same window difference as fifty-two-week-high-window: only when the specification window spans a 29 February can the specification low be smaller, and only when it is the low of the one extra day."
@@ -67,6 +78,7 @@ entries:
       AND l.sk_fiftytwoweeklowdate = CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 365 DAY, '%Y%m%d') AS BIGINT)
 
   - id: fifty-two-week-low-date
+    departure: fifty-two-week-earliest-date-on-ties
     kind: column_value
     clause: "4.5.11.2"
     reason: "Same tie and window difference as fifty-two-week-high-date, for the low and DayLow."
@@ -89,6 +101,7 @@ entries:
       AND l.sk_fiftytwoweeklowdate = CAST(strftime(strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')::DATE - INTERVAL 365 DAY, '%Y%m%d') AS BIGINT))
 
   - id: dimtrade-batchid-fixed-at-creation
+    departure: dimtrade-batchid-fixed-at-creation
     kind: column_value
     clause: "4.6.7.2"
     reason: "The specification fixes DimTrade.BatchID at the batch that created the row. The DuckDB implementation overwrites it with the batch of the last update. Accepted only when BenchBox's value is the first batch whose BatchDate is on or after the trade's create date, and the implementation's value is not earlier."
@@ -99,12 +112,14 @@ entries:
       AND l.batchid <= r.batchid
 
   - id: prospect-status-messages
+    departure: prospect-status-messages
     kind: messages
     clause: "4.5.15, 4.6.14.2"
     reason: "The specification has the Prospect transformation write status messages to DImessages. The DuckDB implementation writes none (its DImessages has no Prospect row of type Status at scales 3, 5 and 10)."
     condition: "g.messagetype = 'Status' AND g.messagesource = 'Prospect' AND g.right_count IS NULL"
 
   - id: answer-key-tier-inv-batch1-left
+    departure: answer-key-corrected-at-audit-load
     kind: rows_only
     clause: "2.4.5, 7.2.6.7"
     reason: "DIGen's Batch1 answer key for DimCustomer C_TIER_INV is off by one; BenchBox corrects it while loading the Audit table and records the correction. The DuckDB implementation loads the key as generated. Accepted only when BenchBox's Value equals the implementation's Value plus one; the recount itself is not computable from the warehouse tables."
@@ -115,6 +130,7 @@ entries:
       AND EXISTS (SELECT 1 FROM rhs.main.Audit o WHERE o.dataset = t.dataset AND o.attribute = t.attribute AND o.batchid = t.batchid AND t.value = o.value + 1)
 
   - id: answer-key-tier-inv-batch1-right
+    departure: answer-key-corrected-at-audit-load
     kind: rows_only
     clause: "2.4.5, 7.2.6.7"
     reason: "Counterpart of answer-key-tier-inv-batch1-left: the uncorrected key row held by the DuckDB implementation, accepted only when BenchBox's row for the same key holds that value plus one."
@@ -125,6 +141,7 @@ entries:
       AND EXISTS (SELECT 1 FROM lhs.main.Audit o WHERE o.dataset = t.dataset AND o.attribute = t.attribute AND o.batchid = t.batchid AND o.value = t.value + 1)
 
   - id: audit-customer-tier-alerts-batch1
+    departure: answer-key-corrected-at-audit-load
     kind: audit
     clause: "2.4.5, 7.2.6.7"
     reason: "With the uncorrected C_TIER_INV key the official audit reports Mismatch for the customer tier alert count of Batch 1 over the DuckDB implementation's tables at scales 3 and 5; BenchBox's corrected key gives OK."
@@ -132,3 +149,80 @@ entries:
     batch: "1"
     left_result: "OK"
     right_result: "Mismatch"
+
+  - id: later-batch-dates-after-the-historical-phase
+    departure: only-the-first-batch-is-read
+    kind: rows_only
+    clause: "4.3.5.5"
+    reason: "After the historical phase BenchBox's BatchDate holds Batch 1 only, because the phase reads no later batch. The DuckDB implementation loads the dates of Batches 2 and 3 with Batch 1."
+    table: BatchDate
+    side: right
+    condition: "t.batchid IN (2, 3) AND NOT EXISTS (SELECT 1 FROM lhs.main.BatchDate o WHERE o.batchid = t.batchid)"
+
+  - id: security-keys-by-date-and-symbol
+    departure: deterministic-security-keys
+    kind: column_value
+    clause: "3.4.3"
+    reason: "BenchBox numbers DimSecurity records by EffectiveDate and then Symbol. The DuckDB implementation numbers them by EffectiveDate only, so records that become effective on one day get their keys in no defined order. Accepted only when the BenchBox key is the record's position in that order."
+    table: DimSecurity
+    column: SK_SecurityID
+    condition: >-
+      l.sk_securityid = (SELECT count(*) FROM lhs.main.DimSecurity x
+      WHERE x.effectivedate < l.effectivedate OR (x.effectivedate = l.effectivedate AND x.symbol <= l.symbol))
+
+  - id: historical-alerts-written-in-the-phase
+    departure: alerts-written-inside-transformations
+    kind: messages
+    clause: "4.5.3.3, 4.5.4.4, 4.5.4.5"
+    reason: "BenchBox writes the DimCompany and DimCustomer alerts during the historical phase. The DuckDB implementation writes every alert in one pass after Batch 3, so after its historical phase its DImessages holds none."
+    condition: "g.messagetype = 'Alert' AND g.batchid = 1 AND g.messagesource IN ('DimCompany', 'DimCustomer') AND g.right_count IS NULL"
+
+  - id: sprating-alert-per-record
+    departure: one-alert-per-source-record
+    kind: messages
+    clause: "4.5.3.3"
+    reason: "BenchBox writes one Invalid SPRating alert for each CMP record with an invalid rating. The DuckDB implementation writes distinct alerts, so a company whose records repeat an invalid rating gets one (113 against 154 at scale 3)."
+    condition: "g.messagetype = 'Alert' AND g.messagesource = 'DimCompany' AND g.messagetext = 'Invalid SPRating' AND g.left_count > g.right_count"
+
+  - id: historical-fact-alerts-written-in-the-phase
+    departure: fact-alerts-written-inside-transformations
+    kind: messages
+    clause: "4.5.8.3, 4.5.8.4, 4.5.11.3"
+    reason: "BenchBox writes the DimTrade commission and fee alerts and the FactMarketHistory missing-earnings alerts during the historical phase. The DuckDB implementation writes them in one pass after Batch 3, so after its historical phase its DImessages holds none."
+    condition: "g.messagetype = 'Alert' AND g.batchid = 1 AND g.messagesource IN ('DimTrade', 'FactMarketHistory') AND g.right_count IS NULL"
+
+  - id: price-earnings-over-calendar-quarters
+    departure: price-earnings-prior-four-calendar-quarters
+    kind: column_value
+    clause: "4.5.11.2"
+    reason: "BenchBox sums FI_BASIC_EPS over the company's Financial rows whose quarter starts in the four calendar quarters before the quarter of DM_DATE, divides exactly and rounds half away from zero. The DuckDB implementation sums the four Financial rows before the current quarter's row, however old, so it has a ratio where BenchBox has none (4464 rows at scale 3) and a different ratio where quarters are missing (74 rows). Accepted only when the BenchBox value is the exact half-away rounding of the calendar-quarter ratio (checked in integer arithmetic), or NULL where those quarters have no earnings."
+    table: FactMarketHistory
+    column: PERatio
+    condition: >-
+      (SELECT CASE WHEN v.e IS NULL OR v.e = 0 THEN l.peratio IS NULL
+      ELSE CAST(l.peratio * 100 AS HUGEINT)
+      = (CASE WHEN (v.c < 0) <> (v.e < 0) THEN -1 ELSE 1 END) * ((2 * abs(v.c) * 100 + abs(v.e)) // (2 * abs(v.e))) END
+      FROM (SELECT CAST(l.closeprice * 100 AS HUGEINT) AS c, CAST((SELECT sum(f.fi_basic_eps)
+      FROM lhs.main.DimCompany c JOIN lhs.main.Financial f ON f.sk_companyid = c.sk_companyid
+      WHERE c.companyid = (SELECT x.companyid FROM lhs.main.DimCompany x WHERE x.sk_companyid = l.sk_companyid)
+      AND f.fi_qtr_start_date >= date_trunc('quarter', strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d')) - INTERVAL 1 YEAR
+      AND f.fi_qtr_start_date < date_trunc('quarter', strptime(CAST(l.sk_dateid AS VARCHAR), '%Y%m%d'))) * 100 AS HUGEINT) AS e) v)
+
+  - id: time-value-typed-time
+    departure: time-value-typed-time
+    kind: column_type
+    clause: "3.2"
+    reason: "The specification types DimTime.TimeValue as TIME, which BenchBox stores. The DuckDB implementation stores the text of the time."
+    table: DimTime
+    column: TimeValue
+    left_type: "TIME"
+    right_type: "VARCHAR"
+
+  - id: accounts-inactive-with-customer
+    departure: accounts-inactive-with-customer
+    kind: column_value
+    clause: "4.5.1, 4.6.1.3"
+    reason: "An INACT action makes the customer and the customer's accounts inactive. BenchBox marks every account record Inactive while its customer record is Inactive; the DuckDB implementation takes the account status from account actions only and keeps those records Active. Accepted only where BenchBox's record is Inactive, the implementation's is Active, and BenchBox's customer record for that account record is Inactive."
+    table: DimAccount
+    column: Status
+    condition: "l.status = 'Inactive' AND r.status = 'Active' AND EXISTS (SELECT 1 FROM lhs.main.DimCustomer c WHERE c.sk_customerid = l.sk_customerid AND c.status = 'Inactive')"

@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "before-you-upgrade",
+      "breaking": true,
+      "lead": "Python TPC-DI ETL, DataFrame path and metrics removed",
+      "text": "Removed the old Python TPC-DI ETL, its DataFrame path and the invented TPCDIMetrics score. The benchbox[tpcdi] extra is removed because TPC-DI no longer imports pandas.",
+      "details": [
+        "Removed modules: benchbox.core.tpcdi._legacy_etl, benchbox.core.tpcdi.metrics and benchbox.core.tpcdi.validation.",
+        "Removed TPCDIBenchmark methods: run_etl_pipeline, run_enhanced_etl_pipeline, get_etl_status, get_enhanced_etl_status, validate_etl_results, load_data_to_database, create_schema, generate_source_data, run_full_benchmark, run_etl_benchmark, run_data_validation, calculate_official_metrics, supports_dataframe_mode, skip_dataframe_data_loading, get_dataframe_etl_capabilities and execute_dataframe_workload.",
+        "Removed TPCDIBenchmark attributes schema_manager, validator, etl_pipeline, metrics_calculator, finwire_processor, customer_mgmt_processor, scd_processor, incremental_loader, data_quality_monitor, error_recovery_manager, etl_engine, source_generators, etl_stats and batch_status, and the TPCDITransformationError class.",
+        "Removed ETL classes: TPCDIETLPipeline, TPCDIETLBackend, SQLETLBackend, DataFrameETLBackend, ETLResult, ETLPhaseResult, ETLBatchResult, the bulk_insert_dataframe function, CustomerManagementProcessor, CustomerManagementXMLParser, ProspectCSVParser, FinWireProcessor, FinWireParser, EnhancedSCDType2Processor, IncrementalDataLoader, DataQualityMonitor, DataQualityRuleEngine, ErrorRecoveryManager and their record, rule, config, policy, severity, category and detector types.",
+        "Removed metrics classes: TPCDIMetrics, BenchmarkMetrics and BenchmarkReport. Removed validation classes: TPCDIValidator, ValidationRule, ValidationResult and DataQualityResult.",
+        "Removed benchbox.TPCDI methods and properties: generate_source_data, run_etl_pipeline, validate_etl_results, get_etl_status, etl_mode, load_data_to_database, create_schema, run_full_benchmark, run_etl_benchmark, run_data_validation, calculate_official_metrics, validator, schema_manager and metrics_calculator.",
+        "Removed the tpcdi extra: pip install benchbox[tpcdi] now warns that the extra does not exist, and pandas is no longer needed for TPC-DI."
+      ],
+      "benchmarks": ["tpcdi"]
+    }
+  ]
+}

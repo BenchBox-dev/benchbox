@@ -316,6 +316,7 @@ modification, decompilation or redistribution) and `SOURCING.md`. The package
 licence stays MIT. BenchBox unpacks the archive into its cache directory on
 first use and runs DIGen from a per-run copy of that unpack with your Java 8
 (DIGen failed on every newer Java tried: 17, 21, 25 and 27). On every generation it prints the licence
-notice, then answers DIGen's own licence prompt. The Python TPC-DI generators
-written for this project are separate legacy code that the DIGen path does not
-use; TPC-DI is unavailable while it is reworked.
+notice, then answers DIGen's own licence prompt. TPC-DI source data comes only
+from DIGen, run unmodified. The historical load (Batch 1) runs on DuckDB and is
+audited; the two incremental updates (Batches 2 and 3) are not done yet, so
+TPC-DI stays unavailable for results.

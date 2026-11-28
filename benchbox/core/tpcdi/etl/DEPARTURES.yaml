@@ -1,0 +1,375 @@
+departures:
+  - id: exact-numerics
+    kind: changed
+    clause: "3.2, Table 3.2.1"
+    project_behaviour: "Staging and warehouse columns that hold prices, amounts, rates and ratios are DOUBLE or FLOAT."
+    benchbox_behaviour: "Every non-integer staging read is typed DECIMAL(p,s) with the precision and scale of the specification, and the warehouse columns carry the same types. Quotients stored as DECIMAL (Yield, PERatio) are computed exactly and rounded half away from zero: on DuckDB, which divides DECIMAL values in DOUBLE, the ETL renderer applies the exact_decimal_quotients rewrite."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/tax_rate.sql
+      - benchbox/core/tpcdi/etl/ingest/trade.sql
+      - benchbox/core/tpcdi/etl/ingest/cash_transaction.sql
+      - benchbox/core/tpcdi/etl/ingest/daily_market.sql
+      - benchbox/core/tpcdi/etl/historical/dim_security.sql
+      - benchbox/core/tpcdi/etl/historical/financial.sql
+      - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+      - benchbox/core/tpcdi/etl/staging.py
+    status: implemented
+    approval: approved
+
+  - id: staging-files-read-as-generated
+    kind: changed
+    clause: "2.4.4, 2.4.5"
+    project_behaviour: "The project reads split files (CustomerMgmt_1.xml, FINWIRE_1.txt) through brace globs and expects the generator to have split them."
+    benchbox_behaviour: "The files are read exactly as DIGen wrote them: CustomerMgmt.xml whole, FINWIRE files through one character-class glob. No staging file is split, rewritten or repaired."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
+      - benchbox/core/tpcdi/etl/ingest/finwire.sql
+    status: implemented
+    approval: approved
+
+  - id: only-the-first-batch-is-read
+    kind: changed
+    clause: "4.3.5.5"
+    project_behaviour: "The ingestion notebooks read Batch1 together with Batch2 and Batch3 (DailyMarket, Prospect, CashTransaction, BatchDate) and precompute work for later batches."
+    benchbox_behaviour: "Every ingestion statement names the Batch1 directory only; the batch number of each row comes from the path of the file it was read from."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/batch_date.sql
+      - benchbox/core/tpcdi/etl/ingest/prospect.sql
+      - benchbox/core/tpcdi/etl/ingest/daily_market.sql
+      - benchbox/core/tpcdi/etl/ingest/cash_transaction.sql
+    status: implemented
+    approval: approved
+
+  - id: xml-parsed-in-the-timed-load
+    kind: kept
+    clause: "2.2.2.5, 7.2.4.3"
+    project_behaviour: "CustomerMgmt.xml is parsed by the engine inside the load, with its own XML reader."
+    benchbox_behaviour: "CustomerMgmt.xml is parsed inside the load by the community extension webbed, which BenchBox installs only when the setting allow_third_party_extensions is on and otherwise refuses with the owner's message."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
+    status: implemented
+    approval: approved
+
+  - id: customer-status-from-lookup
+    kind: changed
+    clause: "4.5.4.3"
+    project_behaviour: "CustomerMgmtRaw decodes the action type into the literals Active and Inactive."
+    benchbox_behaviour: "CustomerMgmtRaw keeps the action type and has no status column; the dimension transformations join StatusType for the names."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
+    status: implemented
+    approval: approved
+
+  - id: finwire-record-type-is-not-split-at-ingest
+    kind: changed
+    clause: "2.2.2.8, 4.5.14.2"
+    project_behaviour: "The FINWIRE ingestion splits financial records into FIN_COMPANYID and FIN_NAME by testing whether the company field is numeric."
+    benchbox_behaviour: "FinWire keeps the record type of the file (CMP, FIN, SEC); the Financial transformation decides between company identifier and company name from the stored text."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/finwire.sql
+      - benchbox/core/tpcdi/etl/historical/dim_security.sql
+      - benchbox/core/tpcdi/etl/historical/financial.sql
+    status: implemented
+    approval: approved
+
+  - id: transaction-files-land-in-raw-tables
+    kind: changed
+    clause: "7.2.4.1"
+    project_behaviour: "Trade, TradeHistory, HoldingHistory, WatchHistory, CashTransaction, DailyMarket and Prospect are read from the files inside each silver and gold transformation."
+    benchbox_behaviour: "Each of these files is read once, into a typed raw table that carries the batch number of its file, so row counts can be checked against the generator's audit files and every transformation reads the same typed image."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/prospect.sql
+      - benchbox/core/tpcdi/etl/ingest/trade.sql
+      - benchbox/core/tpcdi/etl/ingest/trade_history.sql
+      - benchbox/core/tpcdi/etl/ingest/holding_history.sql
+      - benchbox/core/tpcdi/etl/ingest/watch_history.sql
+      - benchbox/core/tpcdi/etl/ingest/cash_transaction.sql
+      - benchbox/core/tpcdi/etl/ingest/daily_market.sql
+    status: implemented
+    approval: approved
+
+  - id: dimbroker-keys-kept
+    kind: kept
+    clause: "4.5.2"
+    project_behaviour: "DimBroker takes the employee identifier as the surrogate key, sets BatchID to 1, and takes the earliest date of DimDate as the effective date."
+    benchbox_behaviour: "Kept."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/dim_broker.sql
+    status: implemented
+    approval: approved
+
+  - id: databricks-tuning-left-out
+    kind: left_out
+    clause: "0.2"
+    project_behaviour: "Partitioning by batch or action type, table properties, liquid clustering, the session time zone setting and INSERT OVERWRITE with Delta semantics."
+    benchbox_behaviour: "None of these appears in the ingestion SQL. The statements are the same on every platform; platform tuning goes through BenchBox's tuning configuration."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
+      - benchbox/core/tpcdi/etl/ingest/finwire.sql
+    status: implemented
+    approval: approved
+
+  - id: yield-multiplied-by-100
+    kind: changed
+    clause: "4.5.11.2, 4.6.10"
+    project_behaviour: "FactMarketHistory.Yield is the dividend divided by the closing price, divided by 100."
+    benchbox_behaviour: "Yield is the dividend divided by the closing price, multiplied by 100."
+    files:
+      - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+    status: implemented
+    approval: approved
+
+  - id: fifty-two-week-date-range
+    kind: changed
+    clause: "4.5.11.2"
+    project_behaviour: "The 52-week high and low are taken over the 364 preceding rows and the current row."
+    benchbox_behaviour: "The 52-week high and low are taken over the dates after DM_DATE minus one year."
+    files:
+      - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+    status: implemented
+    approval: approved
+
+  - id: fifty-two-week-earliest-date-on-ties
+    kind: changed
+    clause: "4.5.11.2"
+    project_behaviour: "When several dates carry the 52-week high or low, one of them is picked without an ordering."
+    benchbox_behaviour: "The earliest date on which the value occurs in the window is stored."
+    files:
+      - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+    status: implemented
+    approval: approved
+
+  - id: dimtrade-batchid-fixed-at-creation
+    kind: changed
+    clause: "4.6.7.2"
+    project_behaviour: "DimTrade.BatchID is overwritten with the batch of the last update."
+    benchbox_behaviour: "DimTrade.BatchID keeps the batch that created the row."
+    files: []
+    status: pending
+    approval: approved
+
+  - id: prospect-status-messages
+    kind: changed
+    clause: "4.5.15"
+    project_behaviour: "The Prospect transformation writes no status message to DImessages."
+    benchbox_behaviour: "The historical Prospect transformation writes the number of rows it inserted to DImessages as MessageSource Prospect, MessageType Status, MessageText Inserted rows, with BatchID 1."
+    files:
+      - benchbox/core/tpcdi/etl/historical/prospect.sql
+    status: implemented
+    approval: approved
+
+  - id: prospect-incremental-status-messages
+    kind: changed
+    clause: "4.6.14.2"
+    project_behaviour: "The incremental Prospect transformation writes no status message to DImessages."
+    benchbox_behaviour: "The incremental Prospect transformation writes its source, inserted and updated row counts to DImessages with the BatchID of its phase."
+    files: []
+    status: pending
+    approval: approved
+
+  - id: answer-key-corrected-at-audit-load
+    kind: changed
+    clause: "2.4.5, 7.2.6.7"
+    project_behaviour: "The DuckDB implementation loads DIGen's answer key as generated; the Databricks project's own generator avoids the defect."
+    benchbox_behaviour: "BenchBox loads the Audit table from the generator's files and corrects only the attributes that an independent recount shows to be wrong, listing each correction in the result. Generated files are never edited."
+    files:
+      - benchbox/core/tpcdi/audit.py
+    status: implemented
+    approval: approved
+
+  - id: alerts-written-inside-transformations
+    kind: changed
+    clause: "4.5.3.3, 4.5.4.4, 4.5.4.5"
+    project_behaviour: "Alerts for invalid SPRating, invalid customer tier and date of birth are written in one pass after Batch 3, read back from the finished dimension tables, with the time of that pass."
+    benchbox_behaviour: "The DimCompany and DimCustomer transformations write their alerts to DImessages from the source records they process, in the historical phase, with BatchID 1."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_company.sql
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+    status: implemented
+    approval: approved
+
+  - id: one-alert-per-source-record
+    kind: changed
+    clause: "4.5.3.3, 4.5.4.4, 4.5.4.5"
+    project_behaviour: "SPRating and date-of-birth alerts are made distinct, so a company or customer whose records repeat the same invalid value gets one alert; the tier alert is written once per customer from its last record."
+    benchbox_behaviour: "One alert is written for each CMP record with an invalid SPRating and for each NEW or UPDCUST action with an invalid tier or date of birth. A NEW action without a tier is invalid; an UPDCUST action without a tier changes nothing and raises no alert."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_company.sql
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+    status: implemented
+    approval: approved
+
+  - id: date-of-birth-range-by-date
+    kind: changed
+    clause: "4.5.4.5"
+    project_behaviour: "A date of birth is out of range when the difference in calendar years to the batch date is 100 or more, or when it is after the batch date."
+    benchbox_behaviour: "A date of birth is out of range when it is before the batch date minus 100 years, or after the batch date."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+    status: implemented
+    approval: approved
+
+  - id: status-names-from-lookup
+    kind: changed
+    clause: "4.5.1, 4.5.3, 4.5.4, 4.5.6"
+    project_behaviour: "DimCompany, DimSecurity, DimCustomer and DimAccount decode status codes into the literals Active, Inactive and the other names."
+    benchbox_behaviour: "Each transformation joins StatusType on the status code and stores ST_NAME. No status name appears in the SQL."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_company.sql
+      - benchbox/core/tpcdi/etl/historical/dim_security.sql
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+      - benchbox/core/tpcdi/etl/historical/dim_account.sql
+    status: implemented
+    approval: approved
+
+  - id: date-and-key-surrogate-keys
+    kind: kept
+    clause: "3.4.3"
+    project_behaviour: "SK_CompanyID, SK_CustomerID and SK_AccountID are the effective date as yyyyMMdd followed by the natural key."
+    benchbox_behaviour: "Kept."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_company.sql
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+      - benchbox/core/tpcdi/etl/historical/dim_account.sql
+    status: implemented
+    approval: approved
+
+  - id: deterministic-security-keys
+    kind: changed
+    clause: "3.4.3"
+    project_behaviour: "SK_SecurityID comes from monotonically_increasing_id, which depends on how the engine splits the work. The DuckDB implementation numbers records by EffectiveDate and leaves records of one day in no defined order."
+    benchbox_behaviour: "SK_SecurityID is the row number of the record ordered by EffectiveDate and then Symbol, so every run and platform gives the same keys."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_security.sql
+    status: implemented
+    approval: approved
+
+  - id: daily-grain-history
+    kind: kept
+    clause: "4.4.1.5"
+    project_behaviour: "When a company, security, customer or account changes more than once on one day, only the last change of the day is kept as a record."
+    benchbox_behaviour: "Kept. Changes of one day are ordered by their full timestamp (the FINWIRE PTS field, the CustomerMgmt ActionTS), so the change kept is always the last of the day."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_company.sql
+      - benchbox/core/tpcdi/etl/historical/dim_security.sql
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+      - benchbox/core/tpcdi/etl/historical/dim_account.sql
+    status: implemented
+    approval: approved
+
+  - id: dependent-records-split-at-parent-changes
+    kind: kept
+    clause: "4.5.1, 4.5.6"
+    project_behaviour: "A DimSecurity record is split where its company changes, and a DimAccount record where its customer changes, so each record's SK_CompanyID or SK_CustomerID names the parent record valid for its whole date range."
+    benchbox_behaviour: "Kept. The effective date of each FINWIRE record is the date of its PTS field."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_security.sql
+      - benchbox/core/tpcdi/etl/historical/dim_account.sql
+    status: implemented
+    approval: approved
+
+  - id: customer-tax-rates-left-joined
+    kind: changed
+    clause: "4.5.4"
+    project_behaviour: "DimCustomer inner-joins TaxRate for the national and local rates, which drops a customer whose tax identifier has no rate."
+    benchbox_behaviour: "TaxRate is left-joined, so every customer record is kept and a missing rate stays NULL."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+    status: implemented
+    approval: approved
+
+  - id: phone-country-code-needs-area-code
+    kind: changed
+    clause: "4.5.4"
+    project_behaviour: "A phone number with a country code but no area code is written as the country code followed by the local number."
+    benchbox_behaviour: "The country code is written only together with an area code; with no area code the phone number is the local number, followed by the extension."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/customer_mgmt.sql
+    status: implemented
+    approval: approved
+
+  - id: prospect-demographics-matched-by-name-and-address
+    kind: kept
+    clause: "4.5.4, 4.5.15"
+    project_behaviour: "DimCustomer takes AgencyID, CreditRating, NetWorth and MarketingNameplate from the Batch 1 prospect file, and Prospect.IsCustomer is set from current DimCustomer records, both matched case-insensitively on first name, last name, both address lines and postal code."
+    benchbox_behaviour: "Kept. MarketingNameplate is computed once, when the prospect file is read."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/prospect.sql
+      - benchbox/core/tpcdi/etl/historical/dim_customer.sql
+      - benchbox/core/tpcdi/etl/historical/prospect.sql
+    status: implemented
+    approval: approved
+
+  - id: price-earnings-prior-four-calendar-quarters
+    kind: changed
+    clause: "4.5.11.2"
+    project_behaviour: "PERatio divides the close by the sum of the four Financial rows that precede the company's row for the quarter of DM_DATE, so a quarter without its own Financial row gets no ratio and missing quarters shift the sum back in time."
+    benchbox_behaviour: "PERatio divides the close by the sum of FI_BASIC_EPS over the company's Financial rows whose quarter starts in the four calendar quarters before the quarter of DM_DATE."
+    files:
+      - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+    status: implemented
+    approval: approved
+
+  - id: trade-status-and-type-from-lookup
+    kind: changed
+    clause: "4.5.8.2"
+    project_behaviour: "DimTrade decodes status and trade type codes into literal names."
+    benchbox_behaviour: "DimTrade joins StatusType and TradeType and stores ST_NAME and TT_NAME."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_trade.sql
+    status: implemented
+    approval: approved
+
+  - id: fact-alerts-written-inside-transformations
+    kind: changed
+    clause: "4.5.8.3, 4.5.8.4, 4.5.11.3"
+    project_behaviour: "Commission, fee and missing-earnings alerts are written in one pass after Batch 3, read back from DimTrade and FactMarketHistory, distinct per trade or symbol, with the time of that pass."
+    benchbox_behaviour: "The DimTrade and FactMarketHistory transformations write one alert per source record they process, in the historical phase, with BatchID 1."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_trade.sql
+      - benchbox/core/tpcdi/etl/historical/fact_market_history.sql
+    status: implemented
+    approval: approved
+
+  - id: fact-lookups-at-trade-creation
+    kind: kept
+    clause: "4.5.8.2, 4.5.10, 4.5.12"
+    project_behaviour: "DimTrade takes its security and account keys from the records effective on the trade's creation date; FactHoldings takes its keys and date from the current trade's DimTrade row; FactWatches and FactCashBalances take theirs from the records effective on the watch placement date and the transaction date."
+    benchbox_behaviour: "Kept. Date and time keys are read from DimDate and DimTime instead of being formatted from the timestamp."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_trade.sql
+      - benchbox/core/tpcdi/etl/historical/fact_cash_balances.sql
+      - benchbox/core/tpcdi/etl/historical/fact_holdings.sql
+      - benchbox/core/tpcdi/etl/historical/fact_watches.sql
+    status: implemented
+    approval: approved
+
+  - id: watch-placed-on-activation
+    kind: changed
+    clause: "4.5.12"
+    project_behaviour: "A watch's placement date is the earliest WatchHistory record of the customer and symbol, whatever its action."
+    benchbox_behaviour: "The placement date is the earliest ACTV record; the removal date is the latest CNCL record."
+    files:
+      - benchbox/core/tpcdi/etl/historical/fact_watches.sql
+    status: implemented
+    approval: approved
+
+  - id: time-value-typed-time
+    kind: changed
+    clause: "3.2"
+    project_behaviour: "DimTime.TimeValue is a STRING."
+    benchbox_behaviour: "DimTime.TimeValue is a TIME, the type the specification gives it."
+    files:
+      - benchbox/core/tpcdi/etl/ingest/dim_time.sql
+    status: implemented
+    approval: approved
+
+  - id: accounts-inactive-with-customer
+    kind: changed
+    clause: "4.5.1, 4.6.1.3"
+    project_behaviour: "An INACT action changes only the customer record; the customer's accounts keep the status of their own last account action."
+    benchbox_behaviour: "From the date of an INACT action every account record of the customer is Inactive, as the INACT action and Appendix A's DimAccount inactive customers check require."
+    files:
+      - benchbox/core/tpcdi/etl/historical/dim_account.sql
+    status: implemented
+    approval: approved

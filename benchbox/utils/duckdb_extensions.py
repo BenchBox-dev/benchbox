@@ -19,6 +19,11 @@ DATASKETCHES_QUERY_FARM_STATEMENTS: tuple[str, ...] = (
     "LOAD datasketches FROM query_farm",
 )
 
+WEBBED_COMMUNITY_STATEMENTS: tuple[str, ...] = (
+    "INSTALL webbed FROM community",
+    "LOAD webbed",
+)
+
 
 def duckdb_major_version(version: str | None = None) -> int | None:
     if version is None:
@@ -79,3 +84,8 @@ def datasketches_skip_reason(sql: str, allow_third_party: bool, version: str | N
         "the datasketches extension for DuckDB 2.x is only available from the third-party Query.Farm repository "
         f"(https://{QUERY_FARM_HOST}); {THIRD_PARTY_ENABLE_HINT}"
     )
+
+
+def install_webbed(connection: Any) -> None:
+    for statement in WEBBED_COMMUNITY_STATEMENTS:
+        connection.execute(statement)
