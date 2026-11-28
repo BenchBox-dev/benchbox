@@ -29770,12 +29770,17 @@
       "title": "benchbox convert --format ducklake is offered but the orchestrator rejects it"
     },
     "datagen-decision-oracle-defect-handling": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-29T13:14:05Z",
+        "generation": "860a372a744d42c49b55f024735bbb0b",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:21d7fbbf00425cfd2c77a0af"
+      },
       "needs": [
         "tpc-query-conformance-corpus"
       ],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Apply the decided handling of non-terminating and nondeterministic C-oracle query cases"
     },
     "datagen-decision-ssb-and-synthetic-acceptance": {
