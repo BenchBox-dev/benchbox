@@ -152,7 +152,10 @@ def _apply_reference_row_counts(
     seed: int | None = None,
 ) -> str | None:
     if benchmark_id in ("ssb", "tpcds"):
-        reference = load_row_count_reference(benchmark_id, scale_factor)
+        try:
+            reference = load_row_count_reference(benchmark_id, scale_factor)
+        except Exception as exc:
+            return _record_oracle_initialization_error(successful_rows, evidence, exc)
         if benchmark_id == "ssb":
             _apply_row_count_oracle(
                 successful_rows,
@@ -311,6 +314,21 @@ def _validate_ssb_row_count(reference: RowCountReference, query_id: str, actual_
     )
 
 
+def _record_oracle_initialization_error(
+    successful_rows: list[dict[str, Any]], evidence: dict[str, Any], exc: Exception
+) -> str:
+    message = _bounded_message(f"Row-count oracle failed to initialize: {type(exc).__name__}: {exc}")
+    for row in successful_rows:
+        row["row_count_validation"] = {
+            "status": "ERROR",
+            "expected": None,
+            "actual": row.get("rows_returned"),
+            "error": message,
+        }
+    evidence["errors"] = len(successful_rows)
+    return message
+
+
 def _apply_expected_row_counts(
     successful_rows: list[dict[str, Any]],
     benchmark_id: str,
@@ -321,16 +339,7 @@ def _apply_expected_row_counts(
     try:
         validator = QueryValidator()
     except Exception as exc:
-        message = _bounded_message(f"Row-count oracle failed to initialize: {type(exc).__name__}: {exc}")
-        for row in successful_rows:
-            row["row_count_validation"] = {
-                "status": "ERROR",
-                "expected": None,
-                "actual": row.get("rows_returned"),
-                "error": message,
-            }
-        evidence["errors"] = len(successful_rows)
-        return message
+        return _record_oracle_initialization_error(successful_rows, evidence, exc)
 
     def _validate(query_id: str, actual: int, row: dict[str, Any]) -> ValidationResult:
         previous_refreshed = get_data_refreshed_context()

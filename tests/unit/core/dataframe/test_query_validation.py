@@ -254,6 +254,24 @@ def test_oracle_initialization_error_is_uncertain() -> None:
     assert measurement["row_count_validation"]["status"] == "ERROR"
 
 
+@pytest.mark.parametrize("benchmark_name", ["ssb", "tpcds"])
+def test_a_refused_reference_is_recorded_as_a_validation_error(benchmark_name: str) -> None:
+    measurement = _measurement("Q1.1" if benchmark_name == "ssb" else "Q1")
+
+    with patch(
+        "benchbox.core.dataframe.query_validation.load_row_count_reference",
+        side_effect=ValueError("reference data stamp no longer matches"),
+    ):
+        summary = validate_dataframe_query_results([measurement], benchmark_name=benchmark_name, scale_factor=1.0)
+
+    assert summary.status == "UNCERTAIN"
+    assert summary.details["errors"] == 1
+    assert "data stamp" in summary.details["reason"]
+    assert measurement["status"] == "SUCCESS"
+    assert measurement["row_count_validation"]["status"] == "ERROR"
+    assert "data stamp" in measurement["row_count_validation"]["error"]
+
+
 def test_execution_failure_keeps_an_unvalidated_run_partial() -> None:
     failed = _measurement(rows=None, status="FAILED")
 
