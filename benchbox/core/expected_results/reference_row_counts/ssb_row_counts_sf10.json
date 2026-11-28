@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "benchmark": "ssb",
   "scale_factor": 10.0,
   "reference_kind": "engine_agreement",
@@ -24,7 +24,6 @@
       }
     }
   },
-  "parameter_sensitive_query_ids": [],
   "provenance": {
     "generator": {
       "data_generator": "BenchBox SSB data generator (benchbox/core/ssb/generator.py) via the generate phase",
@@ -50,7 +49,7 @@
       "duckdb": "2.0.0",
       "datafusion": "55.0.0"
     },
-    "generated_on": "2026-11-23",
+    "generated_on": "2026-11-28",
     "agreement": {
       "result": "identical",
       "engines": [
