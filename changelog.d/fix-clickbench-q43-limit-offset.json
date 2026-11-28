@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "category": "fixed",
+      "breaking": false,
+      "text": "ClickBench Q43 now ends with LIMIT 10 OFFSET 1000, as in the upstream benchmark, in both the SQL and DataFrame versions. It returns no rows at scale factors 0.1, 1 and 10, and its timings are not comparable with earlier results."
+    }
+  ]
+}

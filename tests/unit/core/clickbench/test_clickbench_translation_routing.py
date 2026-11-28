@@ -116,3 +116,7 @@ def test_singlestore_domain_extraction_avoids_non_capturing_group(tmp_path) -> N
 
     assert "(?:" not in sql
     assert "'^https?://(www\\\\.)?([^/]+)/.*$', '\\\\2'" in sql
+
+
+def test_q43_keeps_upstream_limit_and_offset(clickbench_queries):
+    assert clickbench_queries["Q43"].endswith("ORDER BY DATE_TRUNC('minute', EventTime) LIMIT 10 OFFSET 1000;")

@@ -423,7 +423,7 @@ _GROUP_ROWS = """8|adv_ne_0||AdvEngineID|c=AdvEngineID:count|c:desc||
 40|july_source|source|TraficSourceID,SearchEngineID,AdvEngineID,Src,URL|PageViews=URL:count|PageViews:desc|10|1000
 41|july_referer_hash||URLHash,EventDate|PageViews=URLHash:count|PageViews:desc|10|100
 42|july_url_hash||WindowClientWidth,WindowClientHeight|PageViews=WindowClientWidth:count|PageViews:desc|10|10000
-43|minute_range|trunc_minute|M|PageViews=M:count|M:asc||
+43|minute_range|trunc_minute|M|PageViews=M:count|M:asc|10|1000
 """
 
 _SELECT_ROWS = """20|user_lookup|||
@@ -514,7 +514,7 @@ Q39|URL Views with Offset|URL page views with OFFSET 1000 - pagination test|FI,G
 Q40|Traffic Source CASE WHEN|Traffic source analysis with CASE WHEN conditional and OFFSET|FI,GB,SO,AN
 Q41|URL Hash IN Clause|URLHash + EventDate with IN clause filter and OFFSET 100|FI,GB,SO
 Q42|Window Dimensions|Window dimensions for specific URL hash with large OFFSET 10000|FI,GB,SO
-Q43|Minute Granularity|Page views by minute with DATE_TRUNC - temporal aggregation|FI,GB,SO,AN
+Q43|Minute Granularity|Page views by minute with DATE_TRUNC and OFFSET 1000 - temporal aggregation|FI,GB,SO,AN
 """
 
 
