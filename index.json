@@ -28169,13 +28169,18 @@
       "title": "Land the single row-count reference reader and generator with the SF 0.01, 0.1 and 1 references"
     },
     "crr-v1-row-evidence-roll-up": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-29T03:31:27Z",
+        "generation": "a81bd603b7894007ab552aa5df139d40",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
+      },
       "needs": [
         "crr-c1-validation-status-vocabulary",
         "crr-v0-reference-reader-and-generator"
       ],
       "priority": "high",
-      "status": "open",
+      "status": "active",
       "title": "Roll up row-count evidence with one rule shared by the writer, the validators, the DataFrame summary and the corpus rule"
     },
     "crr-v2-measured-stream-integrity-checks": {
