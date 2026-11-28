@@ -15200,7 +15200,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "df9e7e65ee87302d4041d18fa50e66fbe4ea74ec",
+        "node_id": "PR_kwDOQ7J64c8AAAABSelY6Q",
+        "number": 4562,
+        "repository": "https://github.com/BenchBox-dev/BenchBox.git"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-28T00:37:59Z",
+          "head": "df9e7e65ee87302d4041d18fa50e66fbe4ea74ec",
+          "op_id": "39c1d82ecbc2406e9086d14f83684b62",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "tpcdi-15-delete-old-generator-and-etl-20261120": {
           "accepted_head": "6e46cf7b5b38338eb059a48997084e0ef3ced2f6",
