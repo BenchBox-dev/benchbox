@@ -20348,7 +20348,7 @@
         }
       },
       "integration_branch": "feat/validation-core",
-      "integration_head": "15d2fdc31eaf5ecf78e258fb3240d8724acc6030",
+      "integration_head": "94c504545cdb0c1ae7bcc21e6a284adcd63949f9",
       "integration_log": [
         {
           "at": "2026-11-27T14:59:12Z",
@@ -20564,6 +20564,28 @@
             "crr-v2-measured-stream-integrity-checks"
           ],
           "seq": 6
+        },
+        {
+          "at": "2026-11-28T10:40:36Z",
+          "changed_files": [
+            "benchbox/core/results/query_status.py",
+            "benchbox/core/validation/stream_checks.py",
+            "tests/unit/core/dataframe/test_query_validation.py",
+            "tests/unit/core/expected_results/test_answer_files_missing.py",
+            "tests/unit/core/expected_results/test_stream_checks.py",
+            "tests/unit/core/results/test_unvalidated_row_counts.py",
+            "tests/unit/scripts/test_validate_submission.py"
+          ],
+          "head": "94c504545cdb0c1ae7bcc21e6a284adcd63949f9",
+          "kind": "fix",
+          "op_id": "1264e98e2cb4adc0c4e2622dc1335960",
+          "previous_head": "15d2fdc31eaf5ecf78e258fb3240d8724acc6030",
+          "requires_acceptance": [
+            "crr-v0-reference-reader-and-generator",
+            "crr-v1-row-evidence-roll-up",
+            "crr-v2-measured-stream-integrity-checks"
+          ],
+          "seq": 7
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-validation-core",
