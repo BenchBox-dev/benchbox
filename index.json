@@ -5748,6 +5748,7 @@
     },
     "explorer-data-r2": {
       "accepted_members": {
+        "crr-b3-pipeline-emits-rule-outcome-and-medians": "0066e90ff5aa6806534bf1c278eb1e56529c2915",
         "crr-d2-observed-engine-sql-platforms": "01d0a6765cabbd594a251fe311ea9f0b0d243fa7"
       },
       "batch_schema": 2,
@@ -5755,6 +5756,68 @@
       "develop_ref": "refs/remotes/origin/develop",
       "final_pr_history": [],
       "integrated_members": {
+        "crr-b3-pipeline-emits-rule-outcome-and-medians": {
+          "accepted_head": "0066e90ff5aa6806534bf1c278eb1e56529c2915",
+          "changed_files": [
+            ".github/ci-units.yml",
+            ".github/soundness-paths.txt",
+            ".github/workflows/sync-results-data-to-published.yml",
+            ".github/workflows/validate-submission.yml",
+            "_project/design/browser-duckdb-schema.sql",
+            "_project/planning/visible_metrics.yaml",
+            "_project/scripts/explorer_pipeline/contract.py",
+            "_project/scripts/explorer_pipeline/corpus_outcome.py",
+            "_project/scripts/explorer_pipeline/duckdb_builder.py",
+            "_project/scripts/explorer_pipeline/medians.py",
+            "_project/scripts/explorer_pipeline/models.py",
+            "_project/scripts/explorer_pipeline/pipeline.py",
+            "_project/scripts/explorer_pipeline/ranking.py",
+            "_project/scripts/explorer_pipeline/transformer.py",
+            "benchbox/cli/commands/metrics.py",
+            "benchbox/core/results/corpus_rule.py",
+            "benchbox/core/results/schema.py",
+            "benchbox/core/tpc_disclaimer.py",
+            "benchbox/core/tpc_patterns.py",
+            "benchbox/core/tpcdi/metrics.py",
+            "changelog.d/feat-explorer-emits-corpus-rule-outcome-and-medians.json",
+            "docs/internal/adr/adr-corpus-derived-outcome-rule.md",
+            "results-data/CORPUS_NOTES.md",
+            "results-data/compliance-classes.json",
+            "results-data/validate_corpus.py",
+            "scripts/corpus_compliance_snapshot.py",
+            "scripts/corpus_drift.py",
+            "scripts/publication/check_explorer_compat.py",
+            "scripts/unpublished_rule_rankings.txt",
+            "tests/fixtures/explorer_read_model/next_read_model_contract.json",
+            "tests/unit/cli/test_result_outcome_output.py",
+            "tests/unit/core/results/test_corpus_rule.py",
+            "tests/unit/core/test_tpc_disclaimer.py",
+            "tests/unit/scripts/explorer_pipeline/conftest.py",
+            "tests/unit/scripts/explorer_pipeline/test_combined_ranking.py",
+            "tests/unit/scripts/explorer_pipeline/test_corpus_read_model.py",
+            "tests/unit/scripts/explorer_pipeline/test_duckdb_browser_contract.py",
+            "tests/unit/scripts/explorer_pipeline/test_hardware_read_model.py",
+            "tests/unit/scripts/explorer_pipeline/test_medians.py",
+            "tests/unit/scripts/explorer_pipeline/test_meta_leaderboard.py",
+            "tests/unit/scripts/explorer_pipeline/test_next_read_model_contract.py",
+            "tests/unit/scripts/explorer_pipeline/test_observed_engine_parse.py",
+            "tests/unit/scripts/explorer_pipeline/test_ranking.py",
+            "tests/unit/scripts/explorer_pipeline/test_read_model_contract.py",
+            "tests/unit/scripts/explorer_pipeline/test_throughput_ranking.py",
+            "tests/unit/scripts/explorer_pipeline/test_transformer.py",
+            "tests/unit/scripts/explorer_pipeline/test_translator_read_model.py",
+            "tests/unit/scripts/publication/test_check_explorer_compat.py",
+            "tests/unit/scripts/test_ci_units.py",
+            "tests/unit/scripts/test_corpus_cohort_depth.py",
+            "tests/unit/scripts/test_corpus_compliance_snapshot.py",
+            "tests/unit/scripts/test_corpus_rule_parity.py",
+            "tests/unit/scripts/test_explorer_build_contract.py",
+            "tests/unit/scripts/test_soundness_manifest.py",
+            "tests/unit/test_sync_results_workflow.py"
+          ],
+          "integration_head": "39e507d8b19379674c3d95f68083e59932863c06",
+          "integration_seq": 2
+        },
         "crr-d2-observed-engine-sql-platforms": {
           "accepted_head": "01d0a6765cabbd594a251fe311ea9f0b0d243fa7",
           "changed_files": [
@@ -5783,7 +5846,7 @@
         }
       },
       "integration_branch": "feat/explorer-data-r2",
-      "integration_head": "437a81f68d08a9426ae7e99b1c6e23a92acc6b65",
+      "integration_head": "39e507d8b19379674c3d95f68083e59932863c06",
       "integration_log": [
         {
           "at": "2026-11-27T16:35:55Z",
@@ -5799,6 +5862,15 @@
           "op_id": "a43e4ec5413536a08c9c4259fe166d99",
           "previous_head": "372f743e84df1422dea5d4926d8338b371be8518",
           "seq": 1
+        },
+        {
+          "at": "2026-11-28T06:08:35Z",
+          "head": "39e507d8b19379674c3d95f68083e59932863c06",
+          "kind": "prepare",
+          "member": "crr-b3-pipeline-emits-rule-outcome-and-medians",
+          "op_id": "16cafc99b470f3c28f65a7677757a8c6",
+          "previous_head": "437a81f68d08a9426ae7e99b1c6e23a92acc6b65",
+          "seq": 2
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-explorer-data-r2",
@@ -28092,12 +28164,7 @@
       "title": "Site: accept the next read-model version and render its new fields when present"
     },
     "crr-b3-pipeline-emits-rule-outcome-and-medians": {
-      "claim": {
-        "expires_at": "2026-11-29T06:08:31Z",
-        "generation": "4048d47a52ef4abd8b3625a0afd6dada",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
-      },
+      "claim": null,
       "needs": [
         "crr-a3-validators-staging-and-admission",
         "crr-b2-site-accepts-next-read-model",
@@ -28105,7 +28172,7 @@
         "crr-d1-observed-engine-contract-and-dataframe"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Emit the rule outcome, identity and median rows from the Explorer pipeline"
     },
     "crr-b4-site-renders-rule-outcome-and-labels": {
