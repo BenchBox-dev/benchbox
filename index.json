@@ -34680,10 +34680,15 @@
       "title": "Land refresh PR #4548 on its summary-only review and confirm the weekly refresh repeats it unattended"
     },
     "fast-baseline-refresh-commit-identity-owner-setting-20261120": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-29T13:04:17Z",
+        "generation": "34bb68ebe75144b7a7b2347f32b0ea27",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4ee2124a787b6f05e0bc0950"
+      },
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "active",
       "title": "Test whether a scheduled baseline refresh merges without re-authoring its commit"
     },
     "fast-baseline-refresh-token-scope-20261126": {
