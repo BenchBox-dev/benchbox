@@ -44015,7 +44015,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "open",
+      "status": "dropped",
       "title": "pr-preflight can write a 'passed' receipt with no test step when the run is cut short"
     },
     "preflight-receipt-passes-when-killed-20261125": {

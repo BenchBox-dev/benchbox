@@ -7,6 +7,7 @@
   ],
   "context": "Evidence from 2026-11-20: the receipt was for tree a15722be933a9cee3f2346c9156b4a28cea61a96 (branch chore/review-omp-pin-18.20.0, later #4411), cached under ~/.cache/benchbox/preflight/. It was moved aside and later lost with /tmp, so gate 1 must reproduce it. A preflight of the same tree, re-run after the lock was released, gave a complete receipt (1435 passed) and #4411 merged.",
   "description": "Problem: scripts/preflight_receipt.py `finalize` sets `status` from `overall(steps)` whenever the recorded exit status is 0 (line ~315). `overall` passes if every *recorded* step is accepted, so it never checks that the steps the tree needed actually ran. On 2026-11-20 a `make pr-preflight` run was stopped by an outer job time limit while it waited for the host lock. It still wrote a receipt with `status: passed`, `exit_status: 0` and only changelog-check, docs-reference-inventory, project-references and theseus-prefetch steps: no `pytest` step, although the tree changed test files.\n\nCurrent guard: `verify_receipt` (line ~406) adds `pytest` / `linux-pytest` to the required steps, so `make pr-open` refuses that receipt. The harm is a receipt file that claims a pass it never earned. Anything that reads `status` without calling `verify` (dashboards, a future consumer, a person) is misled. It is also unclear why the trap recorded exit 0 for a killed run.\n\nDecision gates:\n1. Before changing code, reproduce the termination: run pr-preflight on a tree with test changes, send SIGTERM (and separately SIGINT and SIGHUP) to the make process during the host-lock wait, and record which exit status the EXIT trap passes to `finalize`. If the recorded status is non-zero in every case, the remaining fix is only gate 2; say so on this item.\n2. Choose where the completeness rule lives: `finalize` computes the same required-step set `verify_receipt` uses, or the receipt gets a separate 'complete' flag. Prefer one shared function so the two cannot drift.\n\nGuardrails: do not weaken `verify_receipt`, which stays the gate pr-open trusts. Do not move, delete or recreate the host lock, and do not set BENCHBOX_SKIP_TEST_LOCK or HEAVY_ADMIT=force in tests. Use a fake lock or a fixture. Keep existing receipt files readable: a receipt written before the fix must still verify or refuse exactly as today.",
+  "drop_reason": "Duplicate of preflight-receipt-passes-when-killed-20261125; its root-cause analysis, decision gates and the SIGTERM/SIGINT/SIGHUP reproduction requirement are copied into that item's context and acceptance.",
   "sessions": [
     {
       "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:f0306fe42dc404288de80bb6",
@@ -23,6 +24,14 @@
       "op": "update",
       "op_id": "4ae3c02ee6eaf28496f60341092cda94",
       "session_id": "85f847e9be7f4d2f8dd166c7531f637d"
+    },
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:4ee2124a787b6f05e0bc0950",
+      "at": "2026-11-28T13:04:04Z",
+      "client": "omp-coding-agent",
+      "op": "drop",
+      "op_id": "ec3b454954081fcea9d28ca4e6609601",
+      "session_id": "1d89ef118510408e88eb75fe7b796609"
     }
   ]
 }
