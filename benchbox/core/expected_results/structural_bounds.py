@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from benchbox.core.expected_results.row_count_references import QUERY_IDS, REFERENCE_DIR
+from benchbox.utils.dialect_utils import outer_select_output_bound
 
 STRUCTURAL_BOUNDS_PATH = REFERENCE_DIR / "structural_bounds.json"
 STRUCTURAL_BENCHMARKS = ("tpch", "tpcds")
@@ -26,34 +27,8 @@ class StructuralBound:
         return f"at most {self.limit} rows (LIMIT {self.limit})"
 
 
-def _aggregates_outer_select(projection: Any, outer: Any) -> bool:
-    from benchbox._vendor.sqlglot import exp
-
-    if projection.find(exp.Window) is not None:
-        return False
-    return any(node.find_ancestor(exp.Select) is outer for node in projection.find_all(exp.AggFunc))
-
-
 def derive_structural_bound(sql: str) -> StructuralBound:
-    from benchbox._vendor.sqlglot import exp, parse
-
-    statements = [statement for statement in parse(sql, read="duckdb") if statement is not None]
-    outer = statements[-1] if statements else None
-    while isinstance(outer, exp.Subquery):
-        outer = outer.this
-    if outer is None:
-        return StructuralBound()
-    limit_node = outer.args.get("limit")
-    limit = None
-    if isinstance(limit_node, exp.Limit) and isinstance(limit_node.expression, exp.Literal):
-        limit = int(limit_node.expression.this)
-    one_row = (
-        isinstance(outer, exp.Select)
-        and not outer.args.get("group")
-        and not outer.args.get("having")
-        and not outer.args.get("offset")
-        and all(_aggregates_outer_select(projection, outer) for projection in outer.expressions)
-    )
+    limit, one_row = outer_select_output_bound(sql, "duckdb")
     return StructuralBound(limit=limit, one_row=one_row)
 
 

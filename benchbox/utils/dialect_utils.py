@@ -989,6 +989,38 @@ def contains_division(sql: str, dialect: str) -> bool:
     return sqlglot.parse_one(sql, read=resolved).find(exp.Div) is not None
 
 
+def _aggregates_outer_select(projection: Any, outer: Any) -> bool:
+    from benchbox._vendor.sqlglot import exp
+
+    if projection.find(exp.Window) is not None:
+        return False
+    return any(node.find_ancestor(exp.Select) is outer for node in projection.find_all(exp.AggFunc))
+
+
+def outer_select_output_bound(sql: str, dialect: str) -> tuple[int | None, bool]:
+    from benchbox._vendor import sqlglot
+    from benchbox._vendor.sqlglot import exp
+
+    statements = [statement for statement in sqlglot.parse(sql, read=resolve_sql_dialect(dialect)) if statement]
+    outer = statements[-1] if statements else None
+    while isinstance(outer, exp.Subquery):
+        outer = outer.this
+    if outer is None:
+        return None, False
+    limit_node = outer.args.get("limit")
+    limit = None
+    if isinstance(limit_node, exp.Limit) and isinstance(limit_node.expression, exp.Literal):
+        limit = int(limit_node.expression.this)
+    one_row = (
+        isinstance(outer, exp.Select)
+        and not outer.args.get("group")
+        and not outer.args.get("having")
+        and not outer.args.get("offset")
+        and all(_aggregates_outer_select(projection, outer) for projection in outer.expressions)
+    )
+    return limit, one_row
+
+
 def is_create_table(ddl: str) -> bool:
     body = "\n".join(line for line in ddl.splitlines() if not line.lstrip().startswith("--"))
     return body.lstrip().upper().startswith("CREATE TABLE")
