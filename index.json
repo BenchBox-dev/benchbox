@@ -20130,7 +20130,20 @@
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
       "develop_ref": "refs/remotes/origin/develop",
-      "final_pr_history": [],
+      "final_pr": {
+        "head": "15d2fdc31eaf5ecf78e258fb3240d8724acc6030",
+        "node_id": "PR_kwDOQ7J64c8AAAABSiVSBg",
+        "number": 4570,
+        "repository": "BenchBox-dev/BenchBox"
+      },
+      "final_pr_history": [
+        {
+          "at": "2026-11-28T09:52:13Z",
+          "head": "15d2fdc31eaf5ecf78e258fb3240d8724acc6030",
+          "op_id": "2b6d0f3980204cf78154ed1f8372e630",
+          "previous_head": null
+        }
+      ],
       "integrated_members": {
         "crr-d1-observed-engine-contract-and-dataframe-deferral-1": {
           "accepted_head": "0464ce015ae4960166bbfc249fab02d8504fa82b",
