@@ -19835,7 +19835,8 @@
     "validation-core": {
       "accepted_members": {
         "crr-d1-observed-engine-contract-and-dataframe-deferral-1": "0464ce015ae4960166bbfc249fab02d8504fa82b",
-        "crr-v0-reference-reader-and-generator": "797f86f0382596d61b1d636e6e3290654de7527a"
+        "crr-v0-reference-reader-and-generator": "797f86f0382596d61b1d636e6e3290654de7527a",
+        "crr-v1-row-evidence-roll-up": "dc7f1b20afe2df8a990a09e635af65feabd56fd9"
       },
       "batch_schema": 2,
       "delivery_boundary": "final-pr",
@@ -19904,10 +19905,32 @@
           ],
           "integration_head": "d148520166eb0ccc81532ba2db3024575ae0b564",
           "integration_seq": 2
+        },
+        "crr-v1-row-evidence-roll-up": {
+          "accepted_head": "dc7f1b20afe2df8a990a09e635af65feabd56fd9",
+          "changed_files": [
+            "benchbox/core/dataframe/query_validation.py",
+            "benchbox/core/results/builder.py",
+            "benchbox/core/results/corpus_rule.py",
+            "benchbox/core/results/query_status.py",
+            "benchbox/core/runner/runner.py",
+            "benchbox/validation/bundle.py",
+            "changelog.d/fix-row-evidence-roll-up-shared-rule.json",
+            "tests/unit/core/dataframe/test_query_validation.py",
+            "tests/unit/core/expected_results/test_answer_files_missing.py",
+            "tests/unit/core/results/test_builder.py",
+            "tests/unit/core/results/test_row_evidence_roll_up.py",
+            "tests/unit/core/results/test_unvalidated_row_counts.py",
+            "tests/unit/core/test_runner_lifecycle.py",
+            "tests/unit/scripts/test_corpus_rule_parity.py",
+            "tests/unit/scripts/test_validate_submission.py"
+          ],
+          "integration_head": "8a92474fbb4705b6c3db2cfd8251dc1b56ee4933",
+          "integration_seq": 3
         }
       },
       "integration_branch": "feat/validation-core",
-      "integration_head": "d148520166eb0ccc81532ba2db3024575ae0b564",
+      "integration_head": "8a92474fbb4705b6c3db2cfd8251dc1b56ee4933",
       "integration_log": [
         {
           "at": "2026-11-27T14:59:12Z",
@@ -19932,6 +19955,15 @@
           "op_id": "e436a6d7023cee7cb8ec2d09408a9c00",
           "previous_head": "a66e6635e3e91f7ae3341b2c919af82d0f244646",
           "seq": 2
+        },
+        {
+          "at": "2026-11-28T04:11:19Z",
+          "head": "8a92474fbb4705b6c3db2cfd8251dc1b56ee4933",
+          "kind": "prepare",
+          "member": "crr-v1-row-evidence-roll-up",
+          "op_id": "b8a2e87a5aed3e303fee67f642666275",
+          "previous_head": "d148520166eb0ccc81532ba2db3024575ae0b564",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-validation-core",
@@ -28226,18 +28258,13 @@
       "title": "Land the single row-count reference reader and generator with the SF 0.01, 0.1 and 1 references"
     },
     "crr-v1-row-evidence-roll-up": {
-      "claim": {
-        "expires_at": "2026-11-29T03:31:27Z",
-        "generation": "a81bd603b7894007ab552aa5df139d40",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:1aa1b7754325244256f109cf"
-      },
+      "claim": null,
       "needs": [
         "crr-c1-validation-status-vocabulary",
         "crr-v0-reference-reader-and-generator"
       ],
       "priority": "high",
-      "status": "active",
+      "status": "open",
       "title": "Roll up row-count evidence with one rule shared by the writer, the validators, the DataFrame summary and the corpus rule"
     },
     "crr-v2-measured-stream-integrity-checks": {
