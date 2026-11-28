@@ -55218,12 +55218,17 @@
       "title": "TPC-DI step 16: historical load, trade and fact tables"
     },
     "tpcdi-incremental-dimensions-20261121": {
-      "claim": null,
+      "claim": {
+        "expires_at": "2026-11-29T02:56:35Z",
+        "generation": "cd0a04fc792549cdb907c78c0dd02832",
+        "renewals": 0,
+        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
+      },
       "needs": [
         "tpcdi-correct-stale-claims-and-surfaces-20261121"
       ],
       "priority": "medium-high",
-      "status": "open",
+      "status": "active",
       "title": "TPC-DI step 22: incremental updates, dimension tables"
     },
     "tpcdi-incremental-facts-20261121": {
