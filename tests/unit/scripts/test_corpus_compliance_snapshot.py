@@ -7,6 +7,7 @@ import json
 import corpus_compliance_snapshot as script
 import pytest
 
+from _project.scripts.explorer_pipeline import medians as pipeline_medians
 from benchbox.core.results import corpus_rule, corpus_score
 from tests.unit.scripts.explorer_pipeline.conftest import combined_bundle
 
@@ -27,6 +28,16 @@ def recorded() -> script.Snapshot:
 @pytest.fixture(scope="module")
 def computed() -> script.Snapshot:
     return script.compute_snapshot(BUNDLES)
+
+
+@pytest.fixture(scope="module")
+def recorded_medians() -> script.IdentityMedians:
+    return script.load_identity_medians(SNAPSHOT)
+
+
+@pytest.fixture(scope="module")
+def computed_medians() -> script.IdentityMedians:
+    return script.compute_identity_medians(BUNDLES)
 
 
 def _changed_files(problems: list[str]) -> set[str]:
@@ -206,3 +217,72 @@ def test_throughput_at_size_is_not_scored_for_failed_streams() -> None:
 
     assert corpus_score.throughput_at_size(good) is not None
     assert corpus_score.throughput_at_size(bad) is None
+
+
+def test_committed_identity_medians_match_the_snapshot(recorded_medians, computed_medians) -> None:
+    assert recorded_medians["today"]
+    assert script.compare_identity_medians(recorded_medians, computed_medians) == []
+
+
+def test_the_published_identity_medians_equal_the_rules_own_for_the_committed_corpus(recorded_medians) -> None:
+    assert recorded_medians["today"] == recorded_medians["rule"]
+    assert script.identity_median_differences(recorded_medians) == []
+
+
+def test_every_identity_median_row_records_its_rank_cohort_and_exclusion(recorded_medians) -> None:
+    fields = {
+        *script.MEDIAN_KEY_FIELDS,
+        "version_is_release",
+        "run_count",
+        "median_score",
+        "is_leaderboard_version",
+        "rank",
+        "total_in_cohort",
+        "ranking_exclusion_reason",
+    }
+    for side in ("today", "rule"):
+        for row in recorded_medians[side]:
+            assert set(row) == fields
+            assert (row["rank"] is None) == (row["ranking_exclusion_reason"] is not None)
+
+
+def test_a_drifted_median_rank_fails_and_names_the_identity(recorded_medians, computed_medians) -> None:
+    drifted = copy.deepcopy(computed_medians)
+    row = next(row for row in drifted["today"] if row["rank"] is not None)
+    row["rank"] += 1
+
+    problems = script.compare_identity_medians(recorded_medians, drifted)
+
+    assert "identity median" in problems[0]
+    assert script.REGENERATE_COMMAND in problems[0]
+    assert len(problems) == 2
+    assert row["variant_id"] in problems[1]
+
+
+def test_a_changed_median_ranking_shows_as_a_difference_from_the_rule(recorded_medians, monkeypatch) -> None:
+    original = pipeline_medians.rank_leaderboard_versions
+
+    def inverted(medians, *, higher_is_better):
+        return original(medians, higher_is_better=not higher_is_better)
+
+    monkeypatch.setattr("_project.scripts.explorer_pipeline.medians.rank_leaderboard_versions", inverted)
+    skewed = script.compute_identity_medians(BUNDLES)
+
+    assert skewed["rule"] == recorded_medians["rule"]
+    assert script.compare_identity_medians(recorded_medians, skewed)
+    assert script.identity_median_differences(skewed)
+
+
+def test_dropping_unrecorded_version_identities_from_the_leaderboard_is_caught(recorded_medians, monkeypatch) -> None:
+    original = pipeline_medians._mark_leaderboard_versions
+
+    def releases_only(medians):
+        return original([median for median in medians if median.version_is_release])
+
+    monkeypatch.setattr("_project.scripts.explorer_pipeline.medians._mark_leaderboard_versions", releases_only)
+    skewed = script.compute_identity_medians(BUNDLES)
+
+    assert script.identity_median_differences(skewed)
+    assert any(
+        "version not recorded" in problem for problem in script.compare_identity_medians(recorded_medians, skewed)
+    )

@@ -99,7 +99,7 @@ Quoted as recorded on 2026-11-22 (dialog answers unless quoted):
 1. "rank them with a label": query-only and partial TPC results at a standard scale are ranked in a labelled lane.
 2. Public path (submit, publish) accepts them the same as the maintainer path. Subscale stays refused on the public path.
 3. Cohort minimum: keep the recorded rule (engine settings and container runs count; versions of one platform do not).
-4. Leaderboard shows the newest released version that has a ranked result, as the median of its runs. Development and pre-release builds never stand for the platform. All versions stay in a version view.
+4. Leaderboard shows the newest released version that has a ranked result, as the median of its runs. Development and pre-release builds never stand for the platform. A platform with no recorded version stands on the median of its unrecorded-version runs, until a released version of it exists. All versions stay in a version view.
 5. Results with no per-query row-count evidence stay ranked, labelled "row counts not checked". References are added first for TPC-H, TPC-DS and SSB at the scales that rank.
 6. Runs with fewer than three measured iterations are labelled "single iteration" and stay ranked.
 7. Benchmarks built with TPC tools (TPC-H Skew, TPC-Havoc, Data Vault, TPC-DS OBT) get the derived label too.

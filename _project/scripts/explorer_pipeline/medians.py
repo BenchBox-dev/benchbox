@@ -18,10 +18,13 @@ from _project.scripts.explorer_pipeline.models import (
 )
 from _project.scripts.explorer_pipeline.ranking import MINIMUM_RANKED_COHORT, rank_scores
 from benchbox.core.results import corpus_rule, corpus_score
+from benchbox.core.results.comparison_identity import NOT_RECORDED
 
 _TIMING_KEYS = frozenset({"ms", "execution_time_ms", "duration_ms"})
 _VERSION_PART = re.compile(r"(\d+)")
 _POWER_LANES = frozenset({corpus_rule.LANE_POWER_ONLY, corpus_rule.LANE_SUBSCALE})
+
+UNRECORDED_VERSION_SUPERSEDED = "unrecorded_version_superseded_by_release"
 
 _SummaryKey = tuple[str, float, str, int | None]
 
@@ -207,21 +210,37 @@ def build_identity_medians(
 
 
 def _mark_leaderboard_versions(medians: list[IdentityMedian]) -> list[IdentityMedian]:
-    standing: dict[tuple[str, str, str], IdentityMedian] = {}
+    scored: dict[tuple[str, str, str], list[IdentityMedian]] = defaultdict(list)
     for median in medians:
-        if median.median_score is None or not median.version_is_release:
-            continue
+        if median.median_score is not None:
+            scored[(median.lane, median.platform_id, median.variant_id)].append(median)
+    standing: dict[tuple[str, str, str], IdentityMedian] = {}
+    for identity, candidates in scored.items():
+        released = [median for median in candidates if median.version_is_release]
+        unrecorded = [median for median in candidates if median.comparison_version == NOT_RECORDED]
+        if released:
+            standing[identity] = max(released, key=lambda median: version_order(median.comparison_version))
+        elif unrecorded:
+            standing[identity] = unrecorded[0]
+    marked: list[IdentityMedian] = []
+    for median in medians:
         identity = (median.lane, median.platform_id, median.variant_id)
-        current = standing.get(identity)
-        if current is None or version_order(median.comparison_version) > version_order(current.comparison_version):
-            standing[identity] = median
-    return [
-        replace(
-            median,
-            is_leaderboard_version=standing.get((median.lane, median.platform_id, median.variant_id)) is median,
+        stands = standing.get(identity) is median
+        superseded = (
+            not stands
+            and median.median_score is not None
+            and median.comparison_version == NOT_RECORDED
+            and standing.get(identity) is not None
+            and standing[identity].version_is_release
         )
-        for median in medians
-    ]
+        marked.append(
+            replace(
+                median,
+                is_leaderboard_version=stands,
+                ranking_exclusion_reason=UNRECORDED_VERSION_SUPERSEDED if superseded else None,
+            )
+        )
+    return marked
 
 
 def _identity(median: IdentityMedian) -> tuple[str, str, str]:
@@ -232,7 +251,7 @@ def _exclusion_reason(median: IdentityMedian) -> str:
     if median.median_score is None:
         return "no_median_score"
     if not median.is_leaderboard_version:
-        return "not_leaderboard_version"
+        return median.ranking_exclusion_reason or "not_leaderboard_version"
     return "below_cohort_minimum"
 
 

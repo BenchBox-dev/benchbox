@@ -275,6 +275,60 @@ def test_a_cohort_below_the_minimum_ranks_no_median_row(tmp_path: Path) -> None:
     ]
 
 
+def _unrecorded_run(engine: str, power: float, name: str) -> dict:
+    data = scored_minimal_bundle(power)
+    data["run"]["id"] = name
+    data["platform"] = {"name": engine}
+    data["execution"] = {}
+    return data
+
+
+def test_an_identity_with_no_recorded_version_is_ranked_on_its_unrecorded_version_median(tmp_path: Path) -> None:
+    db = _build(
+        tmp_path,
+        {
+            "a": _unrecorded_run("engine-a", 1000.0, "engine-a-unrecorded"),
+            "b": _unrecorded_run("engine-b", 2000.0, "engine-b-unrecorded"),
+        },
+    )
+
+    with duckdb.connect(str(db), read_only=True) as con:
+        rows = con.execute(
+            "SELECT variant_id, comparison_version, is_leaderboard_version, rank, total_in_cohort, "
+            "ranking_exclusion_reason FROM identity_medians ORDER BY variant_id"
+        ).fetchall()
+
+    assert [(variant, version, standing, total, reason) for variant, version, standing, _, total, reason in rows] == [
+        ("engine-a", "version not recorded", True, 2, None),
+        ("engine-b", "version not recorded", True, 2, None),
+    ]
+    assert sorted(rank for *_, rank, _, _ in rows) == [1, 2]
+
+
+def test_an_unrecorded_version_median_gives_way_to_a_released_version_of_the_same_identity(tmp_path: Path) -> None:
+    db = _build(
+        tmp_path,
+        {
+            "a-unrecorded": _unrecorded_run("engine-a", 1500.0, "engine-a-unrecorded"),
+            "a-release": _engine_run("engine-a", 1000.0),
+            "b-release": _engine_run("engine-b", 2000.0),
+        },
+    )
+
+    with duckdb.connect(str(db), read_only=True) as con:
+        rows = con.execute(
+            "SELECT variant_id, comparison_version, is_leaderboard_version, rank, ranking_exclusion_reason "
+            "FROM identity_medians ORDER BY variant_id, comparison_version"
+        ).fetchall()
+
+    assert [(variant, version, standing, reason) for variant, version, standing, _, reason in rows] == [
+        ("engine-a", "1.2.0", True, None),
+        ("engine-a", "version not recorded", False, "unrecorded_version_superseded_by_release"),
+        ("engine-b", "1.2.0", True, None),
+    ]
+    assert [rank for _, version, _, rank, _ in rows if version == "1.2.0"] == [2, 1]
+
+
 def test_run_rows_join_their_median_row_on_equal_keys(tmp_path: Path) -> None:
     runs = {
         "a1": _engine_run("engine-a", 2000.0),

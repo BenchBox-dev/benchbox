@@ -104,6 +104,15 @@ compliance class once three platforms shared its scale.
   so the depth gate counts the rule's rankings with no divergence list; the validator and
   the pipeline agree on every committed bundle. The 19 bundles that carried
   `unofficial_nonstandard` at a standard scale are ranked in the published read model too.
+- The leaderboard stands each identity on the median of the runs of its newest released
+  version. An identity with no recorded version stands on its unrecorded-version median
+  and is ranked (every BigQuery result in the corpus is such an identity). A
+  median with no recorded version is left out only when a released version of the same
+  identity exists, with the reason `unrecorded_version_superseded_by_release`.
+  `results-data/compliance-classes.json` now also records every identity median (score, rank,
+  cohort size, exclusion reason, leaderboard flag) as the pipeline publishes it and as
+  `scripts/corpus_compliance_snapshot.py` computes it from per-query medians, so a change to
+  the published leaderboard fails `--check`.
 
 Effect on the published corpus: the registry lists only SF 1 as a standard
 ClickBench scale. The 13 ClickBench bundles at SF 0.1 and SF 10 (see "Cloud

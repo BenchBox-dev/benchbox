@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
+import statistics
 import sys
 from collections import Counter, defaultdict
 from collections.abc import Mapping
@@ -13,7 +15,7 @@ from typing import Any
 
 BUNDLES_DIR = Path("results-data/bundles")
 SNAPSHOT_PATH = Path("results-data/compliance-classes.json")
-SNAPSHOT_SCHEMA_VERSION = 2
+SNAPSHOT_SCHEMA_VERSION = 3
 REGENERATE_COMMAND = "uv run -- python scripts/corpus_compliance_snapshot.py --write"
 SCORE_DECIMALS = 2
 
@@ -22,13 +24,14 @@ if str(CHECKOUT_ROOT) not in sys.path:
     sys.path.insert(0, str(CHECKOUT_ROOT))
 
 from _project.scripts.explorer_pipeline import pipeline as explorer_pipeline, transformer as explorer_transformer
+from _project.scripts.explorer_pipeline.medians import build_identity_medians
 from _project.scripts.explorer_pipeline.models import (
     ManifestEntry,
     canonical_benchmark_slug,
     canonical_phase,
     ranking_exclusion_reason,
 )
-from _project.scripts.explorer_pipeline.ranking import rank_platforms
+from _project.scripts.explorer_pipeline.ranking import MINIMUM_RANKED_COHORT, rank_platforms
 from benchbox.core.results import comparison_identity, corpus_rule, corpus_score
 from benchbox.validation.bundle import discover_bundles
 
@@ -47,8 +50,11 @@ RULE_LANE_PHASES = {
 
 UNLANED = "unlaned"
 
+MEDIAN_KEY_FIELDS = ("cohort_key", "lane", "platform_id", "variant_id", "comparison_version")
+
 Outcome = dict[str, Any]
 Snapshot = dict[str, Outcome]
+IdentityMedians = dict[str, list[dict[str, Any]]]
 CohortKey = tuple[str, float, str, int | None]
 
 
@@ -99,9 +105,8 @@ def _load(bundles_dir: Path, path: Path, seen: dict[str, str]) -> tuple[_Loaded 
     return _Loaded(path, name, data, entry, detail), None
 
 
-def _rank_cohorts(accum: dict[CohortKey, list[tuple[ManifestEntry, Any]]]) -> dict[tuple[CohortKey, str], Outcome]:
+def _rank_cohorts(summaries: list[tuple[CohortKey, Any]]) -> dict[tuple[CohortKey, str], Outcome]:
     ranks: dict[tuple[CohortKey, str], Outcome] = {}
-    summaries = explorer_pipeline._build_benchmark_summaries(accum, {})
     for key, summary in summaries:
         ranked = rank_platforms(summary)
         for row in ranked.rows:
@@ -246,6 +251,14 @@ def _rule(
 
 
 def compute_snapshot(bundles_dir: Path) -> Snapshot:
+    return _compute(bundles_dir)[0]
+
+
+def compute_identity_medians(bundles_dir: Path) -> IdentityMedians:
+    return _compute(bundles_dir)[1]
+
+
+def _compute(bundles_dir: Path) -> tuple[Snapshot, IdentityMedians]:
     seen: dict[str, str] = {}
     loaded: list[_Loaded] = []
     skipped: dict[str, str] = {}
@@ -265,7 +278,8 @@ def compute_snapshot(bundles_dir: Path) -> Snapshot:
             key = explorer_pipeline.summary_key(lane_entry, item.detail)
             keys[item.name][lane_entry.ranking_lane] = key
             accum[key].append((lane_entry, item.detail))
-    ranks = _rank_cohorts(accum)
+    summaries = explorer_pipeline._build_benchmark_summaries(accum, {})
+    ranks = _rank_cohorts(summaries)
 
     outcomes = {
         item.name: corpus_rule.derive_outcome(
@@ -289,7 +303,242 @@ def compute_snapshot(bundles_dir: Path) -> Snapshot:
         }
     for name, problem in skipped.items():
         snapshot[name] = {"identity": None, "today": {"skipped": problem}, "rule": {"skipped": problem}}
-    return dict(sorted(snapshot.items()))
+    medians = {
+        "today": _today_medians(summaries, loaded),
+        "rule": _rule_medians(loaded, rule_ranks, rule_keys),
+    }
+    return dict(sorted(snapshot.items())), medians
+
+
+def _median_row(**fields: Any) -> dict[str, Any]:
+    fields["median_score"] = _round(fields["median_score"])
+    return fields
+
+
+def _sorted_medians(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(rows, key=lambda row: tuple(row[field] for field in MEDIAN_KEY_FIELDS))
+
+
+def _today_medians(summaries: list[tuple[CohortKey, Any]], loaded: list[_Loaded]) -> list[dict[str, Any]]:
+    data_by_result = {item.entry.result_id: item.data for item in loaded}
+    details_by_result = {item.entry.result_id: item.detail for item in loaded}
+    return _sorted_medians(
+        [
+            _median_row(
+                cohort_key=median.cohort_key,
+                lane=median.lane,
+                platform_id=median.platform_id,
+                variant_id=median.variant_id,
+                comparison_version=median.comparison_version,
+                version_is_release=median.version_is_release,
+                run_count=median.run_count,
+                median_score=median.median_score,
+                is_leaderboard_version=median.is_leaderboard_version,
+                rank=median.rank,
+                total_in_cohort=median.total_in_cohort,
+                ranking_exclusion_reason=median.ranking_exclusion_reason,
+            )
+            for median in build_identity_medians(summaries, data_by_result, details_by_result)
+        ]
+    )
+
+
+TIMING_FIELDS = ("ms", "execution_time_ms", "duration_ms")
+
+
+def _final_iteration_queries(data: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    legacy = corpus_rule.legacy_query_timing_defaults(data)
+    default_iteration = 1 if legacy else 0
+
+    def iteration(query: Mapping[str, Any]) -> int:
+        value = query.get("iter", query.get("iteration", default_iteration))
+        try:
+            return 0 if isinstance(value, bool) else int(value)
+        except (TypeError, ValueError):
+            return 0
+
+    by_type: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for query in data.get("queries") or []:
+        if isinstance(query, Mapping) and query.get("run_type", "measurement" if legacy else None) == "measurement":
+            if iteration(query) > 0:
+                by_type[str(query.get("test_type") or "power").lower()].append(query)
+    return [
+        query
+        for queries in by_type.values()
+        for query in queries
+        if iteration(query) == max(iteration(other) for other in queries)
+    ]
+
+
+def _is_number(value: Any) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool)
+
+
+def _median_nodes(nodes: list[Any]) -> Any:
+    first = nodes[0]
+    if isinstance(first, Mapping):
+        return {
+            key: statistics.median(peers)
+            if key in TIMING_FIELDS and all(_is_number(peer) for peer in peers)
+            else _median_nodes(peers)
+            for key, value in first.items()
+            for peers in [[node[key] for node in nodes if isinstance(node, Mapping) and key in node]]
+        }
+    if isinstance(first, list) and all(isinstance(node, list) and len(node) == len(first) for node in nodes):
+        return [_median_nodes([node[index] for node in nodes]) for index in range(len(first))]
+    return first
+
+
+def _median_data(runs: list[Mapping[str, Any]]) -> dict[str, Any]:
+    merged = _median_nodes([{key: value for key, value in run.items() if key != "queries"} for run in runs])
+    peers: dict[tuple[str, str, str], list[Mapping[str, Any]]] = defaultdict(list)
+    for run in runs:
+        for query in _final_iteration_queries(run):
+            test_type = str(query.get("test_type") or "power").lower()
+            peers[(test_type, str(query.get("stream")), str(query.get("id", query.get("query_id"))))].append(query)
+    queries = []
+    for members in peers.values():
+        query = dict(members[0])
+        for field in TIMING_FIELDS:
+            values = [member[field] for member in members if _is_number(member.get(field))]
+            if values:
+                query[field] = statistics.median(values)
+        queries.append(query)
+    merged["queries"] = queries
+    return merged
+
+
+def _own_lane_median(items: list[_Loaded]) -> float | None:
+    by_query: dict[str, list[float]] = defaultdict(list)
+    for item in items:
+        for timing in item.detail.display_timings:
+            if timing.display_ms is not None and timing.display_ms > 0:
+                by_query[timing.query_id].append(timing.display_ms)
+    if not by_query:
+        return None
+    return math.exp(statistics.fmean(math.log(statistics.median(values)) for values in by_query.values()))
+
+
+def _rule_median_score(lane: str, items: list[_Loaded]) -> float | None:
+    if lane == corpus_rule.LANE_OWN:
+        return _own_lane_median(items)
+    merged = _median_data([item.data for item in items])
+    return _rule_lane_score(_Loaded(items[0].path, items[0].name, merged, items[0].entry, items[0].detail), lane)
+
+
+def _standing_versions(candidates: list[dict[str, Any]]) -> dict[tuple[str, str], dict[str, Any]]:
+    by_identity: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in candidates:
+        if row["median_score"] is not None:
+            by_identity[(row["platform_id"], row["variant_id"])].append(row)
+    standing: dict[tuple[str, str], dict[str, Any]] = {}
+    for identity, rows in by_identity.items():
+        released = [row for row in rows if row["version_is_release"]]
+        unrecorded = [row for row in rows if row["comparison_version"] == comparison_identity.NOT_RECORDED]
+        if released:
+            standing[identity] = max(released, key=lambda row: _version_sort_key(row["comparison_version"]))
+        elif unrecorded:
+            standing[identity] = unrecorded[0]
+    return standing
+
+
+def _version_sort_key(version: str) -> tuple[tuple[int, int, str], ...]:
+    return tuple((0, int(part), "") if part.isdigit() else (1, 0, part) for part in re.split(r"(\d+)", version) if part)
+
+
+def _rule_medians(
+    loaded: list[_Loaded],
+    rule_ranks: Mapping[tuple[CohortKey, str], Outcome],
+    rule_keys: Mapping[str, Mapping[str, CohortKey]],
+) -> list[dict[str, Any]]:
+    groups: dict[tuple[CohortKey, str, str, str, str, bool], list[tuple[_Loaded, bool]]] = defaultdict(list)
+    for item in loaded:
+        version = comparison_identity.resolve_comparison_version(item.data)
+        for lane, key in rule_keys[item.name].items():
+            ranked = rule_ranks[(key, item.entry.result_id)]["rank"] is not None
+            group = (key, lane, item.entry.platform_id, item.entry.variant_id, version.text, version.is_release)
+            groups[group].append((item, ranked))
+    rows: list[dict[str, Any]] = []
+    for (key, lane, platform_id, variant_id, version, is_release), members in groups.items():
+        eligible = [item for item, ranked in members if ranked]
+        rows.append(
+            {
+                "cohort_key": cohort_label(key),
+                "lane": lane,
+                "platform_id": platform_id,
+                "variant_id": variant_id,
+                "comparison_version": version,
+                "version_is_release": is_release,
+                "run_count": len(eligible),
+                "median_score": _rule_median_score(lane, eligible) if eligible else None,
+            }
+        )
+    lower_is_better = {lane: lane == corpus_rule.LANE_OWN for lane in {row["lane"] for row in rows}}
+    cohorts: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        cohorts[(row["cohort_key"], row["lane"])].append(row)
+    result: list[dict[str, Any]] = []
+    for (_, lane), cohort in cohorts.items():
+        standing = _standing_versions(cohort)
+        standing_ids = {id(row) for row in standing.values()}
+        scores = [row["median_score"] for row in standing.values()]
+        ranked = len(scores) >= MINIMUM_RANKED_COHORT
+        for row in cohort:
+            stands = id(row) in standing_ids
+            identity = (row["platform_id"], row["variant_id"])
+            superseded = (
+                not stands
+                and row["median_score"] is not None
+                and row["comparison_version"] == comparison_identity.NOT_RECORDED
+                and identity in standing
+                and standing[identity]["version_is_release"]
+            )
+            if stands and ranked:
+                rank, reason = _competition_rank(row["median_score"], scores, lower_is_better[lane]), None
+            elif row["median_score"] is None:
+                rank, reason = None, "no_median_score"
+            elif not stands:
+                rank = None
+                reason = "unrecorded_version_superseded_by_release" if superseded else "not_leaderboard_version"
+            else:
+                rank, reason = None, "below_cohort_minimum"
+            result.append(
+                _median_row(
+                    **row,
+                    is_leaderboard_version=stands,
+                    rank=rank,
+                    total_in_cohort=len(scores),
+                    ranking_exclusion_reason=reason,
+                )
+            )
+    return _sorted_medians(result)
+
+
+def compare_identity_medians(recorded: IdentityMedians, computed: IdentityMedians) -> list[str]:
+    problems: list[str] = []
+    for side in ("today", "rule"):
+        before = {tuple(row[field] for field in MEDIAN_KEY_FIELDS): row for row in recorded[side]}
+        after = {tuple(row[field] for field in MEDIAN_KEY_FIELDS): row for row in computed[side]}
+        changed = sorted(key for key in before.keys() & after.keys() if before[key] != after[key])
+        added = sorted(after.keys() - before.keys())
+        removed = sorted(before.keys() - after.keys())
+        if not (changed or added or removed):
+            continue
+        problems.append(
+            f"{len(changed) + len(added) + len(removed)} identity median row(s) changed their {side} outcome. A code "
+            "change moved the published leaderboard. If that is intended, regenerate the snapshot in the same pull "
+            f"request so the change is reviewed: {REGENERATE_COMMAND}"
+        )
+        problems.extend(f"  {'/'.join(map(str, key))}: {before[key]} -> {after[key]}" for key in changed)
+        problems.extend(f"  {'/'.join(map(str, key))}: added {after[key]}" for key in added)
+        problems.extend(f"  {'/'.join(map(str, key))}: removed {before[key]}" for key in removed)
+    return problems
+
+
+def identity_median_differences(medians: IdentityMedians) -> list[str]:
+    today = {tuple(row[field] for field in MEDIAN_KEY_FIELDS): row for row in medians["today"]}
+    rule = {tuple(row[field] for field in MEDIAN_KEY_FIELDS): row for row in medians["rule"]}
+    return ["/".join(map(str, key)) for key in sorted(today.keys() | rule.keys()) if today.get(key) != rule.get(key)]
 
 
 def compare(recorded: Snapshot, computed: Snapshot) -> list[str]:
@@ -321,7 +570,19 @@ def load_snapshot(path: Path) -> Snapshot:
     return json.loads(path.read_text(encoding="utf-8"))["results"]
 
 
-def render(snapshot: Snapshot) -> str:
+def load_identity_medians(path: Path) -> IdentityMedians:
+    return json.loads(path.read_text(encoding="utf-8"))["identity_medians"]
+
+
+def _render_medians(medians: IdentityMedians) -> str:
+    sides = ",\n".join(
+        f"    {json.dumps(side)}: [\n" + ",\n".join(f"      {json.dumps(row)}" for row in rows) + "\n    ]"
+        for side, rows in medians.items()
+    )
+    return "{\n" + sides + "\n  }"
+
+
+def render(snapshot: Snapshot, medians: IdentityMedians) -> str:
     entries = ",\n".join(
         f"    {json.dumps(name)}: {{\n"
         + ",\n".join(f"      {json.dumps(section)}: {json.dumps(value)}" for section, value in entry.items())
@@ -329,7 +590,10 @@ def render(snapshot: Snapshot) -> str:
         for name, entry in snapshot.items()
     )
     results = "{\n" + entries + "\n  }" if entries else "{}"
-    return f'{{\n  "schema_version": {SNAPSHOT_SCHEMA_VERSION},\n  "results": {results}\n}}\n'
+    return (
+        f'{{\n  "schema_version": {SNAPSHOT_SCHEMA_VERSION},\n  "results": {results},\n'
+        f'  "identity_medians": {_render_medians(medians)}\n}}\n'
+    )
 
 
 def _lane_reasons(today: Outcome | None, rule: Outcome | None) -> list[str]:
@@ -459,10 +723,10 @@ def main(argv: list[str] | None = None) -> int:
     if not BUNDLES_DIR.is_dir():
         print(f"Error: {BUNDLES_DIR} not found", file=sys.stderr)
         return 1
-    computed = compute_snapshot(BUNDLES_DIR)
+    computed, computed_medians = _compute(BUNDLES_DIR)
 
     if args.write:
-        SNAPSHOT_PATH.write_text(render(computed), encoding="utf-8")
+        SNAPSHOT_PATH.write_text(render(computed, computed_medians), encoding="utf-8")
         print(f"Wrote {SNAPSHOT_PATH} with {len(computed)} bundles")
         return 0
 
@@ -475,6 +739,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"FAIL: {SNAPSHOT_PATH} does not exist. Run: {REGENERATE_COMMAND}", file=sys.stderr)
         return 1
     problems = compare(load_snapshot(SNAPSHOT_PATH), computed)
+    problems.extend(compare_identity_medians(load_identity_medians(SNAPSHOT_PATH), computed_medians))
     if problems:
         print("FAIL: " + "\n".join(problems), file=sys.stderr)
         return 1
