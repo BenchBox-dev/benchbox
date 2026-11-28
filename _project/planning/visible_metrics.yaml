@@ -349,6 +349,17 @@ metrics:
     notes: "The rule's score source for the result's class"
 
   - table: identity_medians
+    column: tuning_mode
+    kind: derived
+    canonical_ref: "_project.scripts.explorer_pipeline.medians.build_identity_medians"
+    tolerance: 0
+    display_surfaces: [home, benchmark_index]
+    notes: >
+      Tuning mode of the runs behind the median, as the run rows carry it; a missing value is notuning.
+      Tuned and untuned runs of one variant and version are separate medians, each with its own leaderboard
+      version and rank.
+
+  - table: identity_medians
     column: median_score
     kind: derived
     canonical_ref: "_project.scripts.explorer_pipeline.medians.build_identity_medians"
@@ -378,7 +389,7 @@ metrics:
     canonical_ref: "_project.scripts.explorer_pipeline.medians.build_identity_medians"
     tolerance: 0
     display_surfaces: [home, benchmark_index]
-    notes: "True for the newest released version of the platform and variant that has a ranked result"
+    notes: "True for the newest released version of the platform, variant and tuning mode that has a ranked result"
 
   - table: identity_medians
     column: rank
@@ -421,7 +432,8 @@ metrics:
     display_surfaces: [benchmark_index, compare]
     notes: >
       Same value as identity_medians.cohort_key for the run's cohort. A run row joins its median row on
-      (cohort_key, lane, variant_id, comparison_version).
+      (cohort_key, lane, variant_id, tuning_mode, comparison_version). A run row with no tuning mode carries
+      notuning in benchmark_rankings.tuning_mode.
 
   - table: benchmark_rankings
     column: lane

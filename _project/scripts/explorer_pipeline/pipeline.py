@@ -21,7 +21,7 @@ from _project.scripts.explorer_pipeline.contract import (
     EXPLORER_READ_MODEL_VERSION,
 )
 from _project.scripts.explorer_pipeline.duckdb_builder import DuckDBSnapshotBuilder
-from _project.scripts.explorer_pipeline.medians import IdentityMedian, build_identity_medians
+from _project.scripts.explorer_pipeline.medians import UNTUNED, IdentityMedian, build_identity_medians
 from _project.scripts.explorer_pipeline.models import (
     BenchmarkSummary,
     DetailResult,
@@ -497,14 +497,17 @@ def _leaderboard_ranks(
     if not scores:
         return {}
     best = max(scores) if higher_is_better else min(scores)
+    by_variant: dict[str, IdentityMedian] = {}
+    for median in sorted(standing, key=lambda item: (item.tuning_mode != UNTUNED, item.tuning_mode)):
+        by_variant.setdefault(median.variant_id, median)
     return {
-        median.variant_id: {
+        variant_id: {
             "rank": median.rank,
             "total": median.total_in_cohort,
             "metric_value": median.median_score,
             "speedup_vs_best": speedup_vs_best(median.median_score, best, higher_is_better=higher_is_better),
         }
-        for median in standing
+        for variant_id, median in by_variant.items()
     }
 
 

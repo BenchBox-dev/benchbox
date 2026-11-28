@@ -105,7 +105,10 @@ compliance class once three platforms shared its scale.
   the pipeline agree on every committed bundle. The 19 bundles that carried
   `unofficial_nonstandard` at a standard scale are ranked in the published read model too.
 - The leaderboard stands each identity on the median of the runs of its newest released
-  version. An identity with no recorded version stands on its unrecorded-version median
+  version, separately for each tuning mode (a missing tuning mode counts as `notuning`), so
+  tuned and untuned runs of one version are two medians and two ranks, never one merged median. The meta leaderboard keeps one row per
+  variant and takes the variant's untuned median in each cohort, falling back to a tuned median
+  only when it has no ranked untuned median there. An identity with no recorded version stands on its unrecorded-version median
   and is ranked (every BigQuery result in the corpus is such an identity). A
   median with no recorded version is left out only when a released version of the same
   identity exists, with the existing reason `not_leaderboard_version`.

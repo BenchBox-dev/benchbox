@@ -66,7 +66,7 @@
       "added_columns": [
         {"name": "cohort_key", "type": "VARCHAR", "nullable": false, "description": "Same value as identity_medians.cohort_key for the run's cohort."},
         {"name": "lane", "type": "VARCHAR", "nullable": true, "description": "Lane the run ranks in for this cohort; null when the rule places the run in no lane."},
-        {"name": "comparison_version", "type": "VARCHAR", "nullable": false, "description": "Comparison version of the run; with cohort_key, lane and variant_id it joins the run row to its median row."}
+        {"name": "comparison_version", "type": "VARCHAR", "nullable": false, "description": "Comparison version of the run; with cohort_key, lane, variant_id and tuning_mode it joins the run row to its median row."}
       ]
     },
     "result_lane_scores": {
@@ -79,12 +79,13 @@
       ]
     },
     "identity_medians": {
-      "primary_key": ["cohort_key", "lane", "variant_id", "comparison_version"],
+      "primary_key": ["cohort_key", "lane", "variant_id", "tuning_mode", "comparison_version"],
       "columns": [
         {"name": "cohort_key", "type": "VARCHAR", "nullable": false, "description": "Benchmark, scale factor and phase of the cohort."},
         {"name": "lane", "type": "VARCHAR", "nullable": false, "description": "Lane the median ranks in."},
         {"name": "platform_id", "type": "VARCHAR", "nullable": false, "description": "Platform of the identity."},
         {"name": "variant_id", "type": "VARCHAR", "nullable": false, "description": "Execution variant of the identity."},
+        {"name": "tuning_mode", "type": "VARCHAR", "nullable": false, "description": "Tuning mode of the runs behind the median, as run rows carry it; a missing value is notuning. Tuned and untuned runs of one variant and version are separate rows."},
         {"name": "comparison_version", "type": "VARCHAR", "nullable": false, "description": "Comparison version of the identity."},
         {"name": "version_is_release", "type": "BOOLEAN", "nullable": false, "description": "Whether the comparison version is a release."},
         {"name": "run_count", "type": "INTEGER", "nullable": false, "description": "Number of runs behind the median."},
@@ -155,8 +156,8 @@
       {"result_id": "example-version-not-recorded", "lane": "throughput", "score": 2210.0, "score_source": "from_timings"}
     ],
     "benchmark_rankings": [
-      {"benchmark": "tpch", "scale_factor": 1.0, "phase": "power", "result_id": "example-ranked-release", "variant_id": "example-engine", "cohort_key": "tpch/sf1/power", "lane": "power_only", "comparison_version": "1.2.0"},
-      {"benchmark": "tpch", "scale_factor": 1.0, "phase": "power", "result_id": "example-pre-release", "variant_id": "example-engine", "cohort_key": "tpch/sf1/power", "lane": "power_only", "comparison_version": "1.3.0.dev4"}
+      {"benchmark": "tpch", "scale_factor": 1.0, "phase": "power", "result_id": "example-ranked-release", "variant_id": "example-engine", "cohort_key": "tpch/sf1/power", "lane": "power_only", "tuning_mode": "notuning", "comparison_version": "1.2.0"},
+      {"benchmark": "tpch", "scale_factor": 1.0, "phase": "power", "result_id": "example-pre-release", "variant_id": "example-engine", "cohort_key": "tpch/sf1/power", "lane": "power_only", "tuning_mode": "notuning", "comparison_version": "1.3.0.dev4"}
     ],
     "identity_medians": [
       {
@@ -164,6 +165,7 @@
         "lane": "power_only",
         "platform_id": "example-engine",
         "variant_id": "example-engine",
+        "tuning_mode": "notuning",
         "comparison_version": "1.2.0",
         "version_is_release": true,
         "run_count": 3,
@@ -179,6 +181,7 @@
         "lane": "power_only",
         "platform_id": "example-engine",
         "variant_id": "example-engine-tuned",
+        "tuning_mode": "notuning",
         "comparison_version": "1.2.0",
         "version_is_release": true,
         "run_count": 2,
@@ -194,6 +197,7 @@
         "lane": "power_only",
         "platform_id": "example-engine",
         "variant_id": "example-engine",
+        "tuning_mode": "notuning",
         "comparison_version": "1.3.0.dev4",
         "version_is_release": false,
         "run_count": 1,

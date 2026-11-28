@@ -22,7 +22,7 @@ from _project.scripts.explorer_pipeline.contract import (
     SELECTABLE_READ_MODEL_VERSIONS,
     TRANSLATOR_RESULT_COLUMNS,
 )
-from _project.scripts.explorer_pipeline.medians import IdentityMedian, cohort_key_text
+from _project.scripts.explorer_pipeline.medians import UNTUNED, IdentityMedian, cohort_key_text
 from _project.scripts.explorer_pipeline.models import (
     BenchmarkSummary,
     DetailResult,
@@ -785,11 +785,11 @@ class DuckDBSnapshotBuilder:
             con.execute(
                 "CREATE TABLE identity_medians ("
                 "cohort_key VARCHAR NOT NULL, lane VARCHAR NOT NULL, platform_id VARCHAR NOT NULL, "
-                "variant_id VARCHAR NOT NULL, comparison_version VARCHAR NOT NULL, "
+                "variant_id VARCHAR NOT NULL, tuning_mode VARCHAR NOT NULL, comparison_version VARCHAR NOT NULL, "
                 "version_is_release BOOLEAN NOT NULL, run_count INTEGER NOT NULL, median_score DOUBLE, "
                 "spread DOUBLE, is_leaderboard_version BOOLEAN NOT NULL, rank INTEGER, "
                 "total_in_cohort INTEGER NOT NULL, ranking_exclusion_reason VARCHAR, "
-                "PRIMARY KEY (cohort_key, lane, variant_id, comparison_version))"
+                "PRIMARY KEY (cohort_key, lane, variant_id, tuning_mode, comparison_version))"
             )
 
     @staticmethod
@@ -877,6 +877,12 @@ class DuckDBSnapshotBuilder:
         )
 
     @staticmethod
+    def _ranking_tuning_mode(row: PlatformRow, read_model_version: int) -> str | None:
+        if read_model_version < EXPLORER_CORPUS_READ_MODEL_VERSION:
+            return row.tuning_mode
+        return row.tuning_mode or UNTUNED
+
+    @staticmethod
     def _corpus_ranking_values(key: _SummaryKey, row: PlatformRow, read_model_version: int) -> tuple:
         if read_model_version < EXPLORER_CORPUS_READ_MODEL_VERSION:
             return ()
@@ -917,6 +923,7 @@ class DuckDBSnapshotBuilder:
                 median.lane,
                 median.platform_id,
                 median.variant_id,
+                median.tuning_mode,
                 median.comparison_version,
                 median.version_is_release,
                 median.run_count,
@@ -1258,7 +1265,7 @@ class DuckDBSnapshotBuilder:
                         full_to_short.get(platform_row.result_id, ""),
                         platform_row.trust_label,
                         entry.funding if entry is not None else "unspecified",
-                        platform_row.tuning_mode,
+                        self._ranking_tuning_mode(platform_row, read_model_version),
                         platform_row.tuning_hash,
                         platform_row.execution_mode,
                         platform_row.compliance_class,

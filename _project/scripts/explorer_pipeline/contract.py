@@ -57,6 +57,7 @@ IDENTITY_MEDIAN_COLUMNS = (
     ("lane", "VARCHAR"),
     ("platform_id", "VARCHAR"),
     ("variant_id", "VARCHAR"),
+    ("tuning_mode", "VARCHAR"),
     ("comparison_version", "VARCHAR"),
     ("version_is_release", "BOOLEAN"),
     ("run_count", "INTEGER"),

@@ -32,6 +32,7 @@ def _single_run_medians(summaries: list) -> list[IdentityMedian]:
                     lane="power_only",
                     platform_id=row.platform_id,
                     variant_id=row.variant_id or row.platform_id,
+                    tuning_mode="notuning",
                     comparison_version="1.0.0",
                     version_is_release=True,
                     run_count=1,

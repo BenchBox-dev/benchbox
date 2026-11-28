@@ -157,7 +157,7 @@ def test_fixture_rows_load_into_the_schema_at_the_next_version(contract, checker
             )
     joined = con.execute(
         "SELECT r.result_id, m.rank, m.ranking_exclusion_reason FROM benchmark_rankings r JOIN identity_medians m "
-        "USING (cohort_key, lane, variant_id, comparison_version) ORDER BY r.result_id"
+        "USING (cohort_key, lane, variant_id, tuning_mode, comparison_version) ORDER BY r.result_id"
     ).fetchall()
     assert joined == [("example-pre-release", None, "not_leaderboard_version"), ("example-ranked-release", 1, None)]
 

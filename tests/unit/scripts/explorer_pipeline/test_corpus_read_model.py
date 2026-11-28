@@ -329,6 +329,105 @@ def test_an_unrecorded_version_median_gives_way_to_a_released_version_of_the_sam
     assert [rank for _, version, _, rank, _ in rows if version == "1.2.0"] == [2, 1]
 
 
+def _tuned_run(engine: str, power: float, name: str, tuning_mode: str | None) -> dict:
+    data = _engine_run(engine, power)
+    data["run"]["id"] = name
+    if tuning_mode is not None:
+        data["config"] = {"tuning_mode": tuning_mode}
+    return data
+
+
+def _median_rows(db: Path) -> list[tuple]:
+    with duckdb.connect(str(db), read_only=True) as con:
+        return con.execute(
+            "SELECT variant_id, tuning_mode, comparison_version, run_count, median_score, rank, total_in_cohort "
+            "FROM identity_medians ORDER BY variant_id, tuning_mode"
+        ).fetchall()
+
+
+def test_tuned_and_untuned_runs_of_one_version_are_two_medians_and_two_ranks(tmp_path: Path) -> None:
+    db = _build(
+        tmp_path,
+        {
+            "untuned": _tuned_run("engine-a", 1000.0, "engine-a-untuned", "notuning"),
+            "tuned": _tuned_run("engine-a", 2000.0, "engine-a-tuned", "tuned"),
+            "other": _tuned_run("engine-b", 1500.0, "engine-b", "notuning"),
+        },
+    )
+
+    rows = _median_rows(db)
+
+    assert [(variant, mode, run_count) for variant, mode, _, run_count, *_ in rows] == [
+        ("engine-a", "notuning", 1),
+        ("engine-a", "tuned", 1),
+        ("engine-b", "notuning", 1),
+    ]
+    assert [score for *_, score, _, _ in rows] == pytest.approx([1000.0, 2000.0, 1500.0])
+    assert sorted(rank for *_, rank, _ in rows) == [1, 2, 3]
+    assert {total for *_, total in rows} == {3}
+
+
+def test_the_meta_leaderboard_falls_back_to_a_tuned_median_only_without_an_untuned_one(tmp_path: Path) -> None:
+    db = _build(
+        tmp_path,
+        {
+            "a-tuned": _tuned_run("engine-a", 3000.0, "engine-a-tuned", "tuned"),
+            "b-untuned": _tuned_run("engine-b", 2000.0, "engine-b-untuned", "notuning"),
+            "b-tuned": _tuned_run("engine-b", 4000.0, "engine-b-tuned", "tuned"),
+            "c-untuned": _tuned_run("engine-c", 1000.0, "engine-c", "notuning"),
+        },
+    )
+
+    with duckdb.connect(str(db), read_only=True) as con:
+        meta = con.execute(
+            "SELECT variant_id, avg_rank, n_cohorts FROM meta_leaderboard ORDER BY variant_id"
+        ).fetchall()
+
+    assert meta == [("engine-a", 2.0, 1), ("engine-b", 3.0, 1), ("engine-c", 4.0, 1)]
+
+
+def test_a_run_with_no_tuning_field_joins_the_untuned_median(tmp_path: Path) -> None:
+    db = _build(
+        tmp_path,
+        {
+            "explicit": _tuned_run("engine-a", 1000.0, "engine-a-explicit", "notuning"),
+            "missing": _tuned_run("engine-a", 1200.0, "engine-a-missing", None),
+            "other": _tuned_run("engine-b", 1500.0, "engine-b", "notuning"),
+        },
+    )
+
+    rows = _median_rows(db)
+
+    assert [(variant, mode, run_count) for variant, mode, _, run_count, *_ in rows] == [
+        ("engine-a", "notuning", 2),
+        ("engine-b", "notuning", 1),
+    ]
+    with duckdb.connect(str(db), read_only=True) as con:
+        modes = con.execute("SELECT DISTINCT tuning_mode FROM benchmark_rankings").fetchall()
+    assert modes == [("notuning",)]
+
+
+def test_the_identity_median_primary_key_includes_the_tuning_mode_and_is_unique(tmp_path: Path) -> None:
+    contract = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    key = contract["tables"]["identity_medians"]["primary_key"]
+    assert key == ["cohort_key", "lane", "variant_id", "tuning_mode", "comparison_version"]
+    columns = {column["name"]: column for column in contract["tables"]["identity_medians"]["columns"]}
+    assert columns["tuning_mode"]["nullable"] is False
+    rows = contract["rows"]["identity_medians"]
+    assert len({tuple(row[name] for name in key) for row in rows}) == len(rows)
+
+    db = _build(
+        tmp_path,
+        {
+            "untuned": _tuned_run("engine-a", 1000.0, "engine-a-untuned", "notuning"),
+            "tuned": _tuned_run("engine-a", 2000.0, "engine-a-tuned", "tuned"),
+        },
+    )
+    with duckdb.connect(str(db), read_only=True) as con:
+        stored = con.execute(f"SELECT {', '.join(key)} FROM identity_medians").fetchall()
+    assert len(set(stored)) == len(stored) == 2
+
+
 def test_run_rows_join_their_median_row_on_equal_keys(tmp_path: Path) -> None:
     runs = {
         "a1": _engine_run("engine-a", 2000.0),
@@ -343,12 +442,12 @@ def test_run_rows_join_their_median_row_on_equal_keys(tmp_path: Path) -> None:
         joined = con.execute(
             "SELECT m.variant_id, m.comparison_version, m.run_count, count(r.result_id), m.rank "
             "FROM identity_medians m JOIN benchmark_rankings r "
-            "USING (cohort_key, lane, variant_id, comparison_version) "
+            "USING (cohort_key, lane, variant_id, tuning_mode, comparison_version) "
             "GROUP BY ALL ORDER BY m.variant_id, m.comparison_version"
         ).fetchall()
         unmatched = con.execute(
             "SELECT count(*) FROM benchmark_rankings r ANTI JOIN identity_medians m "
-            "USING (cohort_key, lane, variant_id, comparison_version)"
+            "USING (cohort_key, lane, variant_id, tuning_mode, comparison_version)"
         ).fetchone()
 
     assert joined == [

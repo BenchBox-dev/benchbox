@@ -50,7 +50,8 @@ RULE_LANE_PHASES = {
 
 UNLANED = "unlaned"
 
-MEDIAN_KEY_FIELDS = ("cohort_key", "lane", "platform_id", "variant_id", "comparison_version")
+MEDIAN_KEY_FIELDS = ("cohort_key", "lane", "platform_id", "variant_id", "tuning_mode", "comparison_version")
+UNTUNED = "notuning"
 
 Outcome = dict[str, Any]
 Snapshot = dict[str, Outcome]
@@ -329,6 +330,7 @@ def _today_medians(summaries: list[tuple[CohortKey, Any]], loaded: list[_Loaded]
                 lane=median.lane,
                 platform_id=median.platform_id,
                 variant_id=median.variant_id,
+                tuning_mode=median.tuning_mode,
                 comparison_version=median.comparison_version,
                 version_is_release=median.version_is_release,
                 run_count=median.run_count,
@@ -426,12 +428,12 @@ def _rule_median_score(lane: str, items: list[_Loaded]) -> float | None:
     return _rule_lane_score(_Loaded(items[0].path, items[0].name, merged, items[0].entry, items[0].detail), lane)
 
 
-def _standing_versions(candidates: list[dict[str, Any]]) -> dict[tuple[str, str], dict[str, Any]]:
-    by_identity: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+def _standing_versions(candidates: list[dict[str, Any]]) -> dict[tuple[str, str, str], dict[str, Any]]:
+    by_identity: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
     for row in candidates:
         if row["median_score"] is not None:
-            by_identity[(row["platform_id"], row["variant_id"])].append(row)
-    standing: dict[tuple[str, str], dict[str, Any]] = {}
+            by_identity[(row["platform_id"], row["variant_id"], row["tuning_mode"])].append(row)
+    standing: dict[tuple[str, str, str], dict[str, Any]] = {}
     for identity, rows in by_identity.items():
         released = [row for row in rows if row["version_is_release"]]
         unrecorded = [row for row in rows if row["comparison_version"] == comparison_identity.NOT_RECORDED]
@@ -451,15 +453,23 @@ def _rule_medians(
     rule_ranks: Mapping[tuple[CohortKey, str], Outcome],
     rule_keys: Mapping[str, Mapping[str, CohortKey]],
 ) -> list[dict[str, Any]]:
-    groups: dict[tuple[CohortKey, str, str, str, str, bool], list[tuple[_Loaded, bool]]] = defaultdict(list)
+    groups: dict[tuple[CohortKey, str, str, str, str, str, bool], list[tuple[_Loaded, bool]]] = defaultdict(list)
     for item in loaded:
         version = comparison_identity.resolve_comparison_version(item.data)
         for lane, key in rule_keys[item.name].items():
             ranked = rule_ranks[(key, item.entry.result_id)]["rank"] is not None
-            group = (key, lane, item.entry.platform_id, item.entry.variant_id, version.text, version.is_release)
+            group = (
+                key,
+                lane,
+                item.entry.platform_id,
+                item.entry.variant_id,
+                item.entry.tuning_mode or UNTUNED,
+                version.text,
+                version.is_release,
+            )
             groups[group].append((item, ranked))
     rows: list[dict[str, Any]] = []
-    for (key, lane, platform_id, variant_id, version, is_release), members in groups.items():
+    for (key, lane, platform_id, variant_id, tuning_mode, version, is_release), members in groups.items():
         eligible = [item for item, ranked in members if ranked]
         rows.append(
             {
@@ -467,6 +477,7 @@ def _rule_medians(
                 "lane": lane,
                 "platform_id": platform_id,
                 "variant_id": variant_id,
+                "tuning_mode": tuning_mode,
                 "comparison_version": version,
                 "version_is_release": is_release,
                 "run_count": len(eligible),

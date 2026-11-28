@@ -286,3 +286,16 @@ def test_dropping_unrecorded_version_identities_from_the_leaderboard_is_caught(r
     assert any(
         "version not recorded" in problem for problem in script.compare_identity_medians(recorded_medians, skewed)
     )
+
+
+def test_tuned_and_untuned_runs_of_one_version_are_separate_identity_medians(recorded_medians) -> None:
+    pairs = {}
+    for side in ("today", "rule"):
+        for row in recorded_medians[side]:
+            if row["platform_id"] == "duckdb" and row["comparison_version"] == "1.3.2":
+                pairs.setdefault((side, row["cohort_key"], row["lane"]), set()).add(row["tuning_mode"])
+    assert pairs
+    joinorder = pairs[("today", "joinorder/sf1/power", "own")]
+    assert joinorder == {"notuning", "tuned"}
+    assert pairs[("rule", "joinorder/sf1/power", "own")] == joinorder
+    assert all(row["tuning_mode"] for side in ("today", "rule") for row in recorded_medians[side])

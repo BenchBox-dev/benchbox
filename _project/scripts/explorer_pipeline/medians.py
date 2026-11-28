@@ -24,6 +24,8 @@ _TIMING_KEYS = frozenset({"ms", "execution_time_ms", "duration_ms"})
 _VERSION_PART = re.compile(r"(\d+)")
 _POWER_LANES = frozenset({corpus_rule.LANE_POWER_ONLY, corpus_rule.LANE_SUBSCALE})
 
+UNTUNED = "notuning"
+
 _SummaryKey = tuple[str, float, str, int | None]
 
 
@@ -34,6 +36,7 @@ class IdentityMedian:
     lane: str
     platform_id: str
     variant_id: str
+    tuning_mode: str
     comparison_version: str
     version_is_release: bool
     run_count: int
@@ -176,14 +179,21 @@ def build_identity_medians(
     for key, summary in summaries:
         ranking = get_ranking_config(summary.benchmark, summary.phase)
         metric = ranking.primary_metric
-        groups: dict[tuple[str, str, str, str, bool], list[PlatformRow]] = defaultdict(list)
+        groups: dict[tuple[str, str, str, str, str, bool], list[PlatformRow]] = defaultdict(list)
         for row in summary.platforms:
             if row.lane is None:
                 continue
-            group = (row.lane, row.platform_id, row.variant_id, row.comparison_version, row.version_is_release)
+            group = (
+                row.lane,
+                row.platform_id,
+                row.variant_id,
+                row.tuning_mode or UNTUNED,
+                row.comparison_version,
+                row.version_is_release,
+            )
             groups[group].append(row)
         cohort_medians: list[IdentityMedian] = []
-        for (lane, platform_id, variant_id, version, is_release), rows in groups.items():
+        for (lane, platform_id, variant_id, tuning_mode, version, is_release), rows in groups.items():
             ranked = [row for row in rows if row.is_ranking_eligible]
             scores = [value for row in ranked if (value := primary_metric_value(row, metric)) is not None]
             median_score = _median_score(lane, key, ranked, data_by_result, details_by_result) if ranked else None
@@ -194,6 +204,7 @@ def build_identity_medians(
                     lane=lane,
                     platform_id=platform_id,
                     variant_id=variant_id,
+                    tuning_mode=tuning_mode,
                     comparison_version=version,
                     version_is_release=is_release,
                     run_count=len(ranked),
@@ -208,11 +219,11 @@ def build_identity_medians(
 
 
 def _mark_leaderboard_versions(medians: list[IdentityMedian]) -> list[IdentityMedian]:
-    scored: dict[tuple[str, str, str], list[IdentityMedian]] = defaultdict(list)
+    scored: dict[tuple[str, str, str, str], list[IdentityMedian]] = defaultdict(list)
     for median in medians:
         if median.median_score is not None:
-            scored[(median.lane, median.platform_id, median.variant_id)].append(median)
-    standing: dict[tuple[str, str, str], IdentityMedian] = {}
+            scored[(median.lane, median.platform_id, median.variant_id, median.tuning_mode)].append(median)
+    standing: dict[tuple[str, str, str, str], IdentityMedian] = {}
     for identity, candidates in scored.items():
         released = [median for median in candidates if median.version_is_release]
         unrecorded = [median for median in candidates if median.comparison_version == NOT_RECORDED]
@@ -223,14 +234,17 @@ def _mark_leaderboard_versions(medians: list[IdentityMedian]) -> list[IdentityMe
     return [
         replace(
             median,
-            is_leaderboard_version=standing.get((median.lane, median.platform_id, median.variant_id)) is median,
+            is_leaderboard_version=standing.get(
+                (median.lane, median.platform_id, median.variant_id, median.tuning_mode)
+            )
+            is median,
         )
         for median in medians
     ]
 
 
-def _identity(median: IdentityMedian) -> tuple[str, str, str]:
-    return (median.lane, median.variant_id, median.comparison_version)
+def _identity(median: IdentityMedian) -> tuple[str, str, str, str]:
+    return (median.lane, median.variant_id, median.tuning_mode, median.comparison_version)
 
 
 def _exclusion_reason(median: IdentityMedian) -> str:
@@ -246,7 +260,7 @@ def rank_leaderboard_versions(medians: list[IdentityMedian], *, higher_is_better
     for median in medians:
         if median.is_leaderboard_version and median.median_score is not None:
             standing_by_lane[median.lane].append(median)
-    ranks: dict[tuple[str, str, str], int] = {}
+    ranks: dict[tuple[str, str, str, str], int] = {}
     for standing in standing_by_lane.values():
         if len(standing) < MINIMUM_RANKED_COHORT:
             continue

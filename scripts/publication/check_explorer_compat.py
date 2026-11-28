@@ -663,7 +663,7 @@ def generate_schema_ddl(version: int) -> list[str]:
     if "identity_medians" in columns_map:
         im_cols = ", ".join(f"{c} {t}" for c, t in columns_map["identity_medians"].items())
         ddl_statements.append(
-            f"CREATE TABLE identity_medians ({im_cols}, PRIMARY KEY (cohort_key, lane, variant_id, comparison_version));"
+            f"CREATE TABLE identity_medians ({im_cols}, PRIMARY KEY (cohort_key, lane, variant_id, tuning_mode, comparison_version));"
         )
 
     env_select_cols = [f"e.{col}" for col in columns_map["result_environment"] if col != "result_id"]
@@ -831,14 +831,14 @@ CORPUS_EXPLORER_QUERIES: list[tuple[str, str]] = [
     ("Lane scores", "SELECT result_id, lane, score, score_source FROM result_lane_scores LIMIT 50"),
     (
         "Identity medians",
-        "SELECT cohort_key, lane, platform_id, variant_id, comparison_version, version_is_release, run_count, "
+        "SELECT cohort_key, lane, platform_id, variant_id, tuning_mode, comparison_version, version_is_release, run_count, "
         "median_score, spread, is_leaderboard_version, rank, total_in_cohort, ranking_exclusion_reason "
         "FROM identity_medians LIMIT 50",
     ),
     (
         "Runs behind a median row",
         "SELECT m.cohort_key, m.rank, r.result_id, r.rank FROM identity_medians m JOIN benchmark_rankings r "
-        "USING (cohort_key, lane, variant_id, comparison_version) LIMIT 50",
+        "USING (cohort_key, lane, variant_id, tuning_mode, comparison_version) LIMIT 50",
     ),
 ]
 
