@@ -20487,7 +20487,7 @@
         }
       },
       "integration_branch": "feat/validation-core",
-      "integration_head": "94c504545cdb0c1ae7bcc21e6a284adcd63949f9",
+      "integration_head": "a16854e59306f2691c36d31d0a8c76d648face63",
       "integration_log": [
         {
           "at": "2026-11-27T14:59:12Z",
@@ -20725,6 +20725,37 @@
             "crr-v2-measured-stream-integrity-checks"
           ],
           "seq": 7
+        },
+        {
+          "at": "2026-11-28T17:16:50Z",
+          "changed_files": [
+            "_project/scripts/generate_tpcds_subscale_row_counts.py",
+            "benchbox/core/results/query_execution.py",
+            "benchbox/core/results/query_status.py",
+            "benchbox/core/runner/runner.py",
+            "benchbox/core/validation/stream_checks.py",
+            "benchbox/utils/datagen_version.py",
+            "benchbox/validation/bundle.py",
+            "changelog.d/feat-measured-stream-integrity-checks.json",
+            "tests/integration/test_ducklake_integration.py",
+            "tests/integration/test_phases_data_reuse.py",
+            "tests/unit/core/expected_results/test_stream_checks.py",
+            "tests/unit/core/results/test_row_evidence_roll_up.py",
+            "tests/unit/core/results/test_stream_check_schema.py",
+            "tests/unit/core/test_datagen_version.py",
+            "tests/unit/platforms/dataframe/test_client_host_capture.py",
+            "tests/unit/scripts/test_generate_tpch_subscale_row_counts.py"
+          ],
+          "head": "a16854e59306f2691c36d31d0a8c76d648face63",
+          "kind": "fix",
+          "op_id": "27a920aeec939aea10e8d21f03233c7a",
+          "previous_head": "94c504545cdb0c1ae7bcc21e6a284adcd63949f9",
+          "requires_acceptance": [
+            "crr-v0-reference-reader-and-generator",
+            "crr-v1-row-evidence-roll-up",
+            "crr-v2-measured-stream-integrity-checks"
+          ],
+          "seq": 8
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-validation-core",
