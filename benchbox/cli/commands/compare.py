@@ -34,6 +34,7 @@ from benchbox.core.results.loader import (
 from benchbox.core.results.regression_policy import is_regression
 from benchbox.core.results.schema_policy import is_loader_supported_result_schema
 from benchbox.core.results.tpcdi_audit import LEGACY_TPCDI_REFUSAL, legacy_tpcdi_note
+from benchbox.core.runtime_paths import resolve_results_dir_from_env
 from benchbox.validation.bundle import COMPANION_SUFFIXES
 
 COMPARE_EXIT_CODES = (
@@ -93,7 +94,7 @@ def _discover_result_files_with_metadata(
 ) -> list[ResultFileMetadata]:
     if search_dirs is None:
         search_dirs = [
-            Path("benchmark_runs/results"),
+            resolve_results_dir_from_env(),
             Path("benchmark_runs"),
             Path("results"),
             Path("."),

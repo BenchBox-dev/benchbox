@@ -93,7 +93,7 @@ A disposable clone (remote session, CI runner) declares `BENCHBOX_EPHEMERAL_CLON
 
 For long output, write `/tmp/<slug>.log` (report status + short tail). UAT/stress runs use `BENCHBOX_OUTPUT_DIR=~/Developer/benchmark_runs` (announce command, max runtime, log path, and stop condition). Do not commit raw logs, screenshots, browser reports, or generated binaries.
 
-`[RUN-DATA-001]` Runs share `datagen/`: a run that needs its own root for results also passes `--output ~/Developer/benchmark_runs/datagen`. A session deletes the `datagen/` and `databases/` it created under a private or `/tmp` root before close-out.
+`[RUN-DATA-001]` Share `datagen/`: set `BENCHBOX_RESULTS_DIR` for results; private roots need `--output ~/Developer/benchmark_runs/datagen`. A session deletes the `datagen/` and `databases/` it created under a private or `/tmp` root before close-out.
 
 ## Verification and close-out
 

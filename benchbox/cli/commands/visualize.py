@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from pathlib import Path
 
 import click
 
 from benchbox.cli.shared import console
+from benchbox.core.runtime_paths import resolve_results_dir_from_env
 from benchbox.core.visualization import (
     ResultPlotter,
     list_templates,
@@ -107,7 +107,7 @@ def _resolve_source_paths(ctx: click.Context, sources: Sequence[str]) -> list[st
     source_paths = list(sources) if sources else []
 
     if not source_paths:
-        results_dir = Path("benchmark_runs/results")
+        results_dir = resolve_results_dir_from_env()
         if results_dir.exists():
             json_files = sorted(results_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
             source_paths = [str(f) for f in json_files[:5]]

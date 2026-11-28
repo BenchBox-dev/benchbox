@@ -58,6 +58,7 @@ from benchbox.core.results.submit_classification import (
     result_public_refusal_reason,
 )
 from benchbox.core.results.tpcdi_audit import LEGACY_TPCDI_REFUSAL, legacy_tpcdi_note
+from benchbox.core.runtime_paths import resolve_results_dir_from_env
 from benchbox.validation.bundle import (
     COMPANION_SUFFIXES,
     PLAN_TIERS,
@@ -841,7 +842,7 @@ def submit(
     if result_file:
         source_path = Path(result_file)
     elif last:
-        default_results_dir = Path("benchmark_runs/results")
+        default_results_dir = resolve_results_dir_from_env()
         source_path = find_latest_result(
             default_results_dir,
             benchmark=benchmark,
@@ -857,7 +858,7 @@ def submit(
                 if platform:
                     filters.append(f"platform={platform}")
                 console.print(f"  Filters: {', '.join(filters)}")
-            console.print("\n[dim]Tip: Run a benchmark first or check benchmark_runs/results/[/dim]")
+            console.print(f"\n[dim]Tip: Run a benchmark first or check {default_results_dir}/[/dim]")
             ctx.exit(1)
             return
 

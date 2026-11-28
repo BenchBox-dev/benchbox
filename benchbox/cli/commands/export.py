@@ -16,6 +16,7 @@ from benchbox.core.results.loader import (
     find_latest_result,
     load_result_file,
 )
+from benchbox.core.runtime_paths import resolve_results_dir_from_env
 
 
 @click.command(
@@ -97,7 +98,7 @@ def export(ctx, result_file, formats, output_dir, last, benchmark, platform, for
     if result is None:
         return
 
-    output_directory = Path(output_dir) if output_dir else Path("benchmark_runs/results")
+    output_directory = Path(output_dir) if output_dir else resolve_results_dir_from_env()
     output_directory.mkdir(parents=True, exist_ok=True)
 
     if not force and not _confirm_overwrite(source_path, output_directory, formats):
@@ -122,7 +123,7 @@ def _resolve_export_source(result_file, last, benchmark, platform):
         return Path(result_file)
 
     if last:
-        default_results_dir = Path("benchmark_runs/results")
+        default_results_dir = resolve_results_dir_from_env()
         source_path = find_latest_result(default_results_dir, benchmark=benchmark, platform=platform)
         if not source_path:
             console.print("[yellow]No results found[/yellow]")
@@ -133,7 +134,7 @@ def _resolve_export_source(result_file, last, benchmark, platform):
                 if platform:
                     filters.append(f"platform={platform}")
                 console.print(f"  Filters: {', '.join(filters)}")
-            console.print("\n[dim]Tip: Run a benchmark first or check benchmark_runs/results/[/dim]")
+            console.print(f"\n[dim]Tip: Run a benchmark first or check {default_results_dir}/[/dim]")
             return None
         console.print(f"[blue]Using latest result:[/blue] {source_path.name}")
         return source_path
