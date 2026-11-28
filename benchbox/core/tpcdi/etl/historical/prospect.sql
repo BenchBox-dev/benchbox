@@ -5,13 +5,14 @@ INSERT INTO Prospect (
 )
 WITH current_customers AS (
   SELECT DISTINCT
-    upper(LastName) AS lastname,
-    upper(FirstName) AS firstname,
-    upper(AddressLine1) AS addressline1,
-    upper(coalesce(AddressLine2, '')) AS addressline2,
-    upper(PostalCode) AS postalcode
-  FROM DimCustomer
-  WHERE IsCurrent
+    upper(c.LastName) AS lastname,
+    upper(c.FirstName) AS firstname,
+    upper(c.AddressLine1) AS addressline1,
+    upper(coalesce(c.AddressLine2, '')) AS addressline2,
+    upper(c.PostalCode) AS postalcode
+  FROM DimCustomer AS c
+  JOIN StatusType AS st ON st.ST_ID = 'ACTV' AND st.ST_NAME = c.Status
+  WHERE c.IsCurrent
 )
 SELECT
   p.agencyid,

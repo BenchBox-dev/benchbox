@@ -84,7 +84,7 @@ def test_ingest_sql_reads_the_first_batch_only():
         text = step.path.read_text(encoding="utf-8")
         assert not re.search(r"Batch\s*[23]|Batch\*|Batch\[", text)
         assert f"${step.parameter}" in text
-        assert staging.step_parameters("out", step)[step.parameter] == str(
+        assert staging.step_parameters("out", step, 1)[step.parameter] == str(
             Path("out").resolve() / "Batch1" / step.source
         )
 
@@ -146,7 +146,7 @@ class Recorder:
 def test_loading_without_third_party_extensions_refuses_before_touching_the_connection(tmp_path):
     connection = Recorder()
     with pytest.raises(ThirdPartyExtensionRequired) as refusal:
-        staging.load_batch1(connection, tmp_path, allow_third_party_extensions=False)
+        staging.load_batch(connection, tmp_path, 1, steps=INGEST_STEPS, allow_third_party_extensions=False)
     assert str(refusal.value) == OWNER_XML_REFUSAL
     assert connection.statements == []
 
@@ -197,7 +197,7 @@ def warehouse():
 
 def test_ingest_loads_every_file_without_the_xml_step(source_dir, warehouse):
     steps = [step for step in INGEST_STEPS if not step.requires_xml]
-    results = staging.load_batch1(warehouse, source_dir, allow_third_party_extensions=False, steps=steps)
+    results = staging.load_batch(warehouse, source_dir, 1, steps=steps, allow_third_party_extensions=False)
     assert {result.step.table: result.rows for result in results} == {
         "DimDate": 1,
         "DimTime": 1,
@@ -220,7 +220,7 @@ def test_ingest_loads_every_file_without_the_xml_step(source_dir, warehouse):
 
 def test_ingested_values_keep_the_specification_types(source_dir, warehouse):
     steps = [step for step in INGEST_STEPS if not step.requires_xml]
-    staging.load_batch1(warehouse, source_dir, allow_third_party_extensions=False, steps=steps)
+    staging.load_batch(warehouse, source_dir, 1, steps=steps, allow_third_party_extensions=False)
     assert warehouse.execute("SELECT tx_rate FROM TaxRate").fetchone() == (Decimal("0.15000"),)
     assert warehouse.execute("SELECT typeof(tx_rate) FROM TaxRate").fetchone() == ("DECIMAL(6,5)",)
     assert warehouse.execute("SELECT bidprice, tradeprice, fee, commission, tax, batchid FROM TradeRaw").fetchone() == (

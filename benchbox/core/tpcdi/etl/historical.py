@@ -14,24 +14,26 @@ HISTORICAL_DIR = ETL_DIR / "historical"
 class TransformStep:
     name: str
     table: str
+    directory: Path
+    atomic: bool = False
 
     @property
     def path(self) -> Path:
-        return HISTORICAL_DIR / f"{self.name}.sql"
+        return self.directory / f"{self.name}.sql"
 
 
 HISTORICAL_STEPS: tuple[TransformStep, ...] = (
-    TransformStep("dim_company", "DimCompany"),
-    TransformStep("dim_security", "DimSecurity"),
-    TransformStep("financial", "Financial"),
-    TransformStep("dim_customer", "DimCustomer"),
-    TransformStep("dim_account", "DimAccount"),
-    TransformStep("prospect", "Prospect"),
-    TransformStep("dim_trade", "DimTrade"),
-    TransformStep("fact_cash_balances", "FactCashBalances"),
-    TransformStep("fact_holdings", "FactHoldings"),
-    TransformStep("fact_watches", "FactWatches"),
-    TransformStep("fact_market_history", "FactMarketHistory"),
+    TransformStep("dim_company", "DimCompany", HISTORICAL_DIR),
+    TransformStep("dim_security", "DimSecurity", HISTORICAL_DIR),
+    TransformStep("financial", "Financial", HISTORICAL_DIR),
+    TransformStep("dim_customer", "DimCustomer", HISTORICAL_DIR),
+    TransformStep("dim_account", "DimAccount", HISTORICAL_DIR),
+    TransformStep("prospect", "Prospect", HISTORICAL_DIR),
+    TransformStep("dim_trade", "DimTrade", HISTORICAL_DIR),
+    TransformStep("fact_cash_balances", "FactCashBalances", HISTORICAL_DIR),
+    TransformStep("fact_holdings", "FactHoldings", HISTORICAL_DIR),
+    TransformStep("fact_watches", "FactWatches", HISTORICAL_DIR),
+    TransformStep("fact_market_history", "FactMarketHistory", HISTORICAL_DIR),
 )
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from benchbox.core.tpcdi.etl.historical import HISTORICAL_STEPS
+from benchbox.core.tpcdi.etl.incremental import INCREMENTAL_INGEST_DIR, INCREMENTAL_INGEST_STEPS, INCREMENTAL_STEPS
 from benchbox.core.tpcdi.etl.staging import INGEST_STEPS, render_step
 
 from . import Case, frozen_legacy
@@ -12,6 +13,12 @@ TPCDI_ETL_TARGETS = ("duckdb",)
 STEPS = (
     *((step.name, step) for step in INGEST_STEPS),
     *(("historical:" + step.name, step) for step in HISTORICAL_STEPS),
+    *(("incremental:" + step.name, step) for step in INCREMENTAL_STEPS),
+    *(
+        ("incremental-ingest:" + step.name, step)
+        for step in INCREMENTAL_INGEST_STEPS
+        if step.directory == INCREMENTAL_INGEST_DIR
+    ),
 )
 
 

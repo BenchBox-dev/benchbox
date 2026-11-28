@@ -29,6 +29,7 @@ BATCH_FILES = {
     "Prospect.csv": (
         "AG1,Lee,Ann,,F,1 Main St,,A1A,Town,ON,Canada,555,250000,1,0,S,30,700,O,Acme,2,50000\n"
         "AG2,Nobody,Bob,,M,2 Side St,,B2B,Town,ON,Canada,555,60000,1,0,S,50,700,O,Acme,2,200000\n"
+        "AG3,Ray,Bob,,M,9 Far Rd,,A1A,Town,ON,Canada,555,60000,1,0,S,50,700,O,Acme,2,200000\n"
     ),
 }
 
@@ -167,8 +168,12 @@ def warehouse(tmp_path):
         (batch / name).write_text(text, encoding="utf-8")
     connection = duckdb.connect()
     TPCDISchemaManager().create_schema(connection, "duckdb")
-    staging.load_batch1(
-        connection, tmp_path, allow_third_party_extensions=False, steps=[STEPS_BY_NAME[name] for name in INGEST]
+    staging.load_batch(
+        connection,
+        tmp_path,
+        1,
+        steps=[STEPS_BY_NAME[name] for name in INGEST],
+        allow_third_party_extensions=False,
     )
     connection.executemany("INSERT INTO FinWire VALUES (?, ?, ?, ?)", FINWIRE)
     connection.execute(f"CREATE TABLE CustomerMgmtRaw ({CUSTOMER_MGMT_COLUMNS})")
@@ -210,7 +215,7 @@ def test_steps_report_the_rows_they_insert(warehouse):
         "Financial": 2,
         "DimCustomer": 4,
         "DimAccount": 7,
-        "Prospect": 2,
+        "Prospect": 3,
     }
 
 
@@ -277,7 +282,7 @@ def test_customer_history_keeps_the_last_change_of_each_day(warehouse):
             False,
             date(2012, 5, 5),
         ),
-        (201101012, "Active", "F", None, None, "Ray", Decimal("0.15000"), None, None, False, date(2015, 1, 1)),
+        (201101012, "Active", "F", None, None, "Ray", Decimal("0.15000"), "AG3", "Boomer", False, date(2015, 1, 1)),
         (
             201205051,
             "Active",
@@ -291,7 +296,7 @@ def test_customer_history_keeps_the_last_change_of_each_day(warehouse):
             True,
             date(9999, 12, 31),
         ),
-        (201501012, "Inactive", "F", None, None, "Ray", Decimal("0.15000"), None, None, True, date(9999, 12, 31)),
+        (201501012, "Inactive", "F", None, None, "Ray", Decimal("0.15000"), "AG3", "Boomer", True, date(9999, 12, 31)),
     ]
 
 
@@ -319,11 +324,12 @@ def test_prospect_marks_customers_and_records_its_insert_count(warehouse):
     ).fetchall() == [
         ("AG1", 20170707, 20170707, 1, True, "HighValue+MoneyAlert"),
         ("AG2", 20170707, 20170707, 1, False, "Boomer"),
+        ("AG3", 20170707, 20170707, 1, False, "Boomer"),
     ]
     assert connection.execute(
         "SELECT BatchID, MessageSource, MessageText, MessageType, MessageData FROM DImessages "
         "WHERE MessageType = 'Status'"
-    ).fetchall() == [(1, "Prospect", "Inserted rows", "Status", "2")]
+    ).fetchall() == [(1, "Prospect", "Inserted rows", "Status", "3")]
 
 
 def test_rendered_historical_sql_goes_through_the_translator():
