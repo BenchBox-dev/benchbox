@@ -833,6 +833,30 @@ def unqualified_table_names(sql: str, dialect: str) -> list[str] | None:
     return names
 
 
+def placeholder_names(sql: str, dialect: str) -> list[str]:
+    from benchbox._vendor import sqlglot
+
+    resolved = resolve_sql_dialect(dialect)
+    exp = sqlglot.exp
+    if resolved == "duckdb":
+        bind_type = exp.Placeholder
+    elif resolved == "bigquery":
+        bind_type = exp.Parameter
+    else:
+        raise ValueError(f"Named SQL parameter discovery is not supported for {resolved}")
+    return sorted(
+        {
+            bind.name
+            for statement in sqlglot.parse(sql, read=resolved)
+            if statement is not None
+            for bind in statement.find_all(bind_type)
+            if isinstance(bind.this, (str, exp.Identifier, exp.Var))
+            and not (isinstance(bind.this, str) and bind.this.isdecimal())
+            and not isinstance(bind.parent, exp.Parameter)
+        }
+    )
+
+
 def translate_ddl(
     ddl: str,
     target_dialect: str,

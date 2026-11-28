@@ -9,6 +9,7 @@ from benchbox.utils.dialect_utils import (
     SQLTranslationError,
     UnknownSqlDialectError,
     apply_rewrite,
+    placeholder_names,
     resolve_sql_dialect,
     split_sql_statements,
     sql_translation_context,
@@ -1087,3 +1088,23 @@ def test_doris_rollup_rewrite_preserves_with_clause_and_limit():
     assert translated.startswith("WITH `w` AS")
     assert "`rollup_rows` AS" in translated
     assert translated.rstrip().endswith("LIMIT 5")
+
+
+@pytest.mark.parametrize(
+    ("sql", "dialect", "names"),
+    [
+        ("UPDATE t SET a = 1 WHERE batchid = $batch_id AND b = $batch_id", "duckdb", ["batch_id"]),
+        ("INSERT INTO t SELECT $batch_id, $source FROM s", "duckdb", ["batch_id", "source"]),
+        ("SELECT '$batch_id' AS literal FROM t", "duckdb", []),
+        ("SELECT ?, $1", "duckdb", []),
+        ("DROP TABLE t", "duckdb", []),
+        ("SELECT @RunKey, @`odd-name`, @@project_id", "bigquery", ["RunKey", "odd-name"]),
+    ],
+)
+def test_placeholder_names_come_from_the_parsed_statement(sql, dialect, names):
+    assert placeholder_names(sql, dialect) == names
+
+
+def test_placeholder_names_refuses_unverified_dialects():
+    with pytest.raises(ValueError, match="sqlite"):
+        placeholder_names("SELECT $batch_id", "sqlite")
