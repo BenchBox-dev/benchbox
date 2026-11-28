@@ -20311,7 +20311,7 @@
         }
       },
       "integration_branch": "feat/validation-core",
-      "integration_head": "a6ebe0604cfd1845f4e6e7576c5edc83228bfe59",
+      "integration_head": "15d2fdc31eaf5ecf78e258fb3240d8724acc6030",
       "integration_log": [
         {
           "at": "2026-11-27T14:59:12Z",
@@ -20512,6 +20512,21 @@
           "op_id": "b680042da57285555ceca2699fd9dc3b",
           "previous_head": "40c8e9c2a68016ae26395857fef50548c8c66a72",
           "seq": 5
+        },
+        {
+          "at": "2026-11-28T08:57:49Z",
+          "changed_files": [
+            "benchbox/core/expected_results/structural_bounds.py",
+            "benchbox/utils/dialect_utils.py"
+          ],
+          "head": "15d2fdc31eaf5ecf78e258fb3240d8724acc6030",
+          "kind": "fix",
+          "op_id": "4a51f0fb8e420388ac3630c77ef6bd94",
+          "previous_head": "a6ebe0604cfd1845f4e6e7576c5edc83228bfe59",
+          "requires_acceptance": [
+            "crr-v2-measured-stream-integrity-checks"
+          ],
+          "seq": 6
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-validation-core",
