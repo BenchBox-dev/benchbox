@@ -5846,7 +5846,7 @@
         }
       },
       "integration_branch": "feat/explorer-data-r2",
-      "integration_head": "67bc25c235a79b96cce604e20faf54dca084ab53",
+      "integration_head": "4e0957b501585680949c1b183567124d07cc5216",
       "integration_log": [
         {
           "at": "2026-11-27T16:35:55Z",
@@ -6055,6 +6055,25 @@
             "crr-d2-observed-engine-sql-platforms"
           ],
           "seq": 4
+        },
+        {
+          "at": "2026-11-28T08:07:40Z",
+          "changed_files": [
+            "benchbox/core/execution_engine.py",
+            "benchbox/platforms/pg_duckdb.py",
+            "benchbox/platforms/velox.py",
+            "tests/unit/platforms/test_databricks_observed_engine.py",
+            "tests/unit/platforms/test_pg_duckdb_observed_engine.py",
+            "tests/unit/platforms/test_velox_observed_engine.py"
+          ],
+          "head": "4e0957b501585680949c1b183567124d07cc5216",
+          "kind": "fix",
+          "op_id": "bf8d63c476f8e8e50723cc497b0d05f7",
+          "previous_head": "67bc25c235a79b96cce604e20faf54dca084ab53",
+          "requires_acceptance": [
+            "crr-d2-observed-engine-sql-platforms"
+          ],
+          "seq": 5
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-explorer-data-r2",
