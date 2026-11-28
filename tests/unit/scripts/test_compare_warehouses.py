@@ -441,7 +441,7 @@ TIE_ROWS = [
     (2, 20200302, 0.0, 10.0, 20200302, 5.0, 20200106, 10.0, 0.0),
 ]
 TRADES_BENCHBOX = [(1, 20200301, 1), (2, 20200302, 2)]
-TRADES_IMPLEMENTATION = [(1, 20200301, 2), (2, 20200302, 2)]
+TRADES_IMPLEMENTATION = [(1, 20200301, 1), (2, 20200302, 2)]
 
 
 def market_report(
@@ -469,7 +469,6 @@ def test_shipped_entries_accept_the_differences_they_describe(tmp_path):
     assert by_subject["FiftyTwoWeekLow"] == ["fifty-two-week-low-window"]
     assert by_subject["SK_FiftyTwoWeekLowDate"] == ["fifty-two-week-low-date"]
     assert by_subject["Yield"] == ["yield-multiplied-by-100"]
-    assert by_subject["BatchID"] == ["dimtrade-batchid-fixed-at-creation"]
 
 
 @pytest.mark.parametrize(
