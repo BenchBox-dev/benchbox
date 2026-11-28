@@ -56,7 +56,14 @@ def generate(scale_factor: float, streams: list[int], work_dir: Path) -> Path:
 
             by_engine = {
                 engine: gen.counts_for_stream(
-                    counters, cache, cache_path, engine, f"stream{stream}", query_ids, sql_for
+                    counters,
+                    cache,
+                    cache_path,
+                    engine,
+                    f"stream{stream}",
+                    query_ids,
+                    sql_for,
+                    data_sha256=checksum["sha256"],
                 )
                 for engine in gen.REFERENCE_ENGINES
             }

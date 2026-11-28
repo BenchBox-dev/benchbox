@@ -162,12 +162,16 @@ def counts_for_stream(
     label: str,
     query_ids: tuple[str, ...],
     sql_for: Callable[[str, str], str],
+    *,
+    data_sha256: str,
 ) -> dict[str, int]:
     counts: dict[str, int] = {}
+    version = engine_versions()[engine]
     for query_id in query_ids:
-        key = f"{engine}|{label}|{query_id}"
+        sql = sql_for(query_id, engine)
+        key = f"{engine}|{version}|{data_sha256}|{hashlib.sha256(sql.encode()).hexdigest()}|{label}|{query_id}"
         if key not in cache:
-            cache[key] = counters[engine](sql_for(query_id, engine))
+            cache[key] = counters[engine](sql)
             cache_path.write_text(json.dumps(cache, indent=1), encoding="utf-8")
             print(f"{engine} {label} Q{query_id}: {cache[key]}", file=sys.stderr, flush=True)
         counts[query_id] = cache[key]

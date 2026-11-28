@@ -75,6 +75,7 @@ def generate(scale_factor: float, streams: list[int], probe_seeds: list[int], wo
                     lambda query_id, dialect, seed=seed: benchmark.get_query(
                         int(query_id), seed=seed, scale_factor=scale_factor, dialect=dialect
                     ),
+                    data_sha256=checksum["sha256"],
                 )
                 for engine in gen.REFERENCE_ENGINES
             }
@@ -98,6 +99,7 @@ def generate(scale_factor: float, streams: list[int], probe_seeds: list[int], wo
                     lambda query_id, dialect, probe=probe: benchmark.get_query(
                         int(query_id), seed=probe, scale_factor=scale_factor, dialect=dialect
                     ),
+                    data_sha256=checksum["sha256"],
                 )
                 for engine in gen.REFERENCE_ENGINES
             }

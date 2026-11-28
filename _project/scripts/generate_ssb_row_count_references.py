@@ -45,6 +45,7 @@ def generate(scale_factor: float, work_dir: Path) -> Path:
                 "stream0",
                 query_ids,
                 lambda query_id, dialect: queries[dialect][f"Q{query_id}"],
+                data_sha256=checksum["sha256"],
             )
             for engine in gen.REFERENCE_ENGINES
         }

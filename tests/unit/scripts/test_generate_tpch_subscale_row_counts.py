@@ -58,6 +58,41 @@ def test_a_disagreement_names_the_stream_the_query_and_both_counts() -> None:
     assert disagreements == ["stream 1 Q15: {'duckdb': 15, 'datafusion': 0}"]
 
 
+def _count_with(tmp_path, cache, sql, *, data_sha256, calls, version="1.0") -> dict[str, int]:
+    def counter(text: str) -> int:
+        calls.append(text)
+        return len(calls)
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(gen, "engine_versions", lambda: {"duckdb": version, "datafusion": "1.0"})
+        return gen.counts_for_stream(
+            {"duckdb": counter},
+            cache,
+            tmp_path / "counts.json",
+            "duckdb",
+            "stream0",
+            ("1",),
+            lambda query_id, dialect: sql,
+            data_sha256=data_sha256,
+        )
+
+
+def test_cached_counts_are_reused_only_for_the_same_engine_version_sql_and_data(tmp_path) -> None:
+    cache: dict[str, int] = {}
+    calls: list[str] = []
+
+    first = _count_with(tmp_path, cache, "select 1", data_sha256="a" * 64, calls=calls)
+    again = _count_with(tmp_path, cache, "select 1", data_sha256="a" * 64, calls=calls)
+    assert again == first
+    assert len(calls) == 1
+
+    _count_with(tmp_path, cache, "select 1", data_sha256="a" * 64, calls=calls, version="2.0")
+    _count_with(tmp_path, cache, "select 2", data_sha256="a" * 64, calls=calls)
+    _count_with(tmp_path, cache, "select 1", data_sha256="b" * 64, calls=calls)
+
+    assert len(calls) == 4
+
+
 def test_a_disagreement_stops_the_generator_and_writes_the_report(tmp_path) -> None:
     report = tmp_path / "disagreements.txt"
 
