@@ -34683,7 +34683,7 @@
       "claim": null,
       "needs": [],
       "priority": "medium",
-      "status": "blocked",
+      "status": "open",
       "title": "Test whether a scheduled baseline refresh merges without re-authoring its commit"
     },
     "fast-baseline-refresh-token-scope-20261126": {
