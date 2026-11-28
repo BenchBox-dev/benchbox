@@ -38249,6 +38249,13 @@
       "status": "open",
       "title": "Run the local platform benchmark matrix against 1..S throughput stream numbering"
     },
+    "local-rankings-vs-corpus-rule-20261128": {
+      "claim": null,
+      "needs": [],
+      "priority": "medium",
+      "status": "open",
+      "title": "Decide how `benchbox report rankings` relates to the corpus ranking rule"
+    },
     "local-rerun-bundles-fail-submission-validation-20261025": {
       "claim": null,
       "needs": [],

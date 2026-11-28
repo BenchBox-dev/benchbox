@@ -1,0 +1,19 @@
+{
+  "acceptance": [
+    "The owner's choice between matching the Explorer and a named personal-history model is recorded.",
+    "For the same stored runs, `report rankings` either orders platforms as the Explorer does or states the rule it uses instead.",
+    "A benchmark without a local ranking metric is reported as not ranked locally, not as having no results."
+  ],
+  "context": "Found while settling how a reopened TPC-DI appears in local rankings (five-whys analysis, 2026-11-28). The owner asked to treat this as a separate follow-up.",
+  "description": "## Problem\n`benchbox report rankings` ranks platforms from the local results database (`ResultDatabase.calculate_rankings`, `benchbox/core/results/database.py:716`). Since the corpus-derived outcome rule (`docs/internal/adr/adr-corpus-derived-outcome-rule.md`), it shares only admission and lanes with the published corpus and Results Explorer (`outcome_from_stored_facts`, `admitted_for_ranking`). The rest differs:\n- Score: the value recorded with each run (`_RANKING_METRIC_CONFIG`, `database.py:50-56`); the corpus recomputes the score from timings for every lane (ADR, planner decisions).\n- Aggregation: mean of every run in the lookback window; the Explorer shows the median of the newest released version (ADR owner decision 4).\n- Labels: no \"Derived from TPC-H/TPC-DS ...\" wording or class on ranked TPC rows (ADR guardrail); unclear whether the ADR covers the CLI.\n- Metrics: a fixed list of query-timing formulas; a benchmark cannot declare its own primary metric, so benchmarks whose metric is not built from query times (TPC-DI's TPC_DI_RPS) cannot be ranked locally at all.\nThe same runs can therefore be ordered differently locally and in the Explorer. No decision chose this; the ADR is scoped to the corpus and the local database was migrated only as far as removing `compliance_class` (#4521) required.\n\n## Decision gate (owner)\nShould the local view match the Explorer (same score, aggregation, labels and lanes, from the same rule), or stay a personal-history tool with its own clearly named rules (and say so in its output and help)?\n\n## Change (after the decision)\nImplement the chosen model for every benchmark; give benchmarks a way to declare their ranking metric or an explicit \"not ranked locally\" status; keep the empty-result message truthful about why nothing was ranked.\n\n## Out of scope\nThe TPC-DI-specific empty-result message, which the TPC-DI reopening fixes.",
+  "sessions": [
+    {
+      "actor": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73",
+      "at": "2026-11-28T14:33:33Z",
+      "client": "omp-coding-agent",
+      "op": "create",
+      "op_id": "92da65f4dac7498a82be46d7c0a7bddb",
+      "session_id": "cf74886b085549ef9de2b13963b10382"
+    }
+  ]
+}
