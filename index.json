@@ -15194,6 +15194,7 @@
     "tpcdi-cleanup": {
       "accepted_members": {
         "tpcdi-15-delete-old-generator-and-etl-20261120": "6e46cf7b5b38338eb059a48997084e0ef3ced2f6",
+        "tpcdi-correct-stale-claims-and-surfaces-20261121": "6ac513b6ced2c6ebb4277d917190cb2465109e3b",
         "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121": "ae7fef8b5527ce1102e20971a453ce2b3fed5323"
       },
       "batch_schema": 2,
@@ -15249,6 +15250,29 @@
           "integration_head": "930bb11550dac2076c5b6955bb5dda1dd7756291",
           "integration_seq": 1
         },
+        "tpcdi-correct-stale-claims-and-surfaces-20261121": {
+          "accepted_head": "6ac513b6ced2c6ebb4277d917190cb2465109e3b",
+          "changed_files": [
+            "COPYRIGHT.md",
+            "README.md",
+            "benchbox/cli/onboarding.py",
+            "benchbox/core/benchmark_registry.yaml",
+            "benchbox/core/tpcdi/__init__.py",
+            "benchbox/core/tpcdi/benchmark.py",
+            "benchbox/core/tpcdi/config.py",
+            "benchbox/tpcdi.py",
+            "changelog.d/tpcdi-correct-stale-claims-and-surfaces.json",
+            "docs/internal/generator-volume-gate.md",
+            "examples/INDEX.md",
+            "examples/unified_runner_README.md",
+            "quality/comment-cleanup-scope.json",
+            "quality/comment-policy.json",
+            "tests/fixtures/fast_tier_baseline/tests-00.json",
+            "tests/unit/core/test_dataframe_benchmark_metadata.py"
+          ],
+          "integration_head": "df9e7e65ee87302d4041d18fa50e66fbe4ea74ec",
+          "integration_seq": 3
+        },
         "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121": {
           "accepted_head": "ae7fef8b5527ce1102e20971a453ce2b3fed5323",
           "changed_files": [
@@ -15302,7 +15326,7 @@
         }
       },
       "integration_branch": "feat/tpcdi-cleanup",
-      "integration_head": "dc81f2f07b9a255fa2525c34f5c110bba3d250ea",
+      "integration_head": "df9e7e65ee87302d4041d18fa50e66fbe4ea74ec",
       "integration_log": [
         {
           "at": "2026-11-27T18:39:04Z",
@@ -15327,6 +15351,15 @@
           "op_id": "15041992600f465197b07892223475f6",
           "previous_head": "930bb11550dac2076c5b6955bb5dda1dd7756291",
           "seq": 2
+        },
+        {
+          "at": "2026-11-28T00:09:30Z",
+          "head": "df9e7e65ee87302d4041d18fa50e66fbe4ea74ec",
+          "kind": "prepare",
+          "member": "tpcdi-correct-stale-claims-and-surfaces-20261121",
+          "op_id": "161c044f795a48e0ab1144904c8e9c2e",
+          "previous_head": "dc81f2f07b9a255fa2525c34f5c110bba3d250ea",
+          "seq": 3
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-cleanup",
@@ -54873,17 +54906,12 @@
       "title": "Results checks accept an always-empty query and an all-zero validator (found in the TPC-DI review)"
     },
     "tpcdi-correct-stale-claims-and-surfaces-20261121": {
-      "claim": {
-        "expires_at": "2026-11-28T23:48:02Z",
-        "generation": "d8c55b5c8a8e4fe4b9cca21368b479ac",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "open",
       "title": "TPC-DI step 21: correct stale TPC-DI claims in copyright, examples, README, CLI text and docs"
     },
     "tpcdi-correction-plan-20261120": {
