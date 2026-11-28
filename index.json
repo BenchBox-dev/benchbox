@@ -15406,7 +15406,7 @@
         }
       ],
       "integration_worktree": "/Users/joe/Developer/BenchBox.wt-tpcdi-cleanup",
-      "lifecycle": "active",
+      "lifecycle": "completed",
       "members": [
         "tpcdi-15-delete-old-generator-and-etl-20261120",
         "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121",
@@ -54977,17 +54977,12 @@
       "title": "Results checks accept an always-empty query and an all-zero validator (found in the TPC-DI review)"
     },
     "tpcdi-correct-stale-claims-and-surfaces-20261121": {
-      "claim": {
-        "expires_at": "2026-11-29T02:16:39Z",
-        "generation": "7b92d256ce6849baa87de4f5661ceb83",
-        "renewals": 0,
-        "worker": "mcp:omp-coding-agent:joe@joe-mac-mini.local:d9c82d4657b7a4cbcbfb0e73"
-      },
+      "claim": null,
       "needs": [
         "tpcdi-delete-old-etl-dataframe-and-stale-claims-20261121"
       ],
       "priority": "medium",
-      "status": "active",
+      "status": "done",
       "title": "TPC-DI step 21: correct stale TPC-DI claims in copyright, examples, README, CLI text and docs"
     },
     "tpcdi-correction-plan-20261120": {
